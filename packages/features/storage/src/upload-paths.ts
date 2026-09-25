@@ -74,6 +74,14 @@ function segment(value: string) {
   );
 }
 
+/**
+ * The folder a project's intros are uploaded to, and the only one the intro
+ * action will store a file from (KB-90).
+ */
+export function projectIntroFolder(projectId: string) {
+  return `projects/${projectId}/assets/intros/`;
+}
+
 /** A project's intro video for one language (KB-39) */
 export function projectIntroPath(
   projectId: string,
@@ -83,7 +91,7 @@ export function projectIntroPath(
 ) {
   const ext = VIDEO_EXTENSION[contentType.toLowerCase()] ?? 'mp4';
 
-  return `projects/${projectId}/assets/intros/${segment(language)}-${now}.${ext}`;
+  return `${projectIntroFolder(projectId)}${segment(language)}-${now}.${ext}`;
 }
 
 /**
@@ -105,13 +113,21 @@ export function projectCoverPath(
   return `projects/${projectId}/assets/covers/cover-${now}.${ext}`;
 }
 
+/**
+ * The folder an episode's thumbnails are uploaded to, and the only one the
+ * thumbnail action will store a file from (KB-90).
+ */
+export function episodeThumbnailFolder(episodeId: string) {
+  return `episodes/${episodeId}/thumbnails/`;
+}
+
 export function episodeThumbnailPath(
   episodeId: string,
   language: string,
   ext: string,
   now = Date.now(),
 ) {
-  return `episodes/${episodeId}/thumbnails/${segment(language)}-${now}.${ext}`;
+  return `${episodeThumbnailFolder(episodeId)}${segment(language)}-${now}.${ext}`;
 }
 
 export function publishVideoPath(

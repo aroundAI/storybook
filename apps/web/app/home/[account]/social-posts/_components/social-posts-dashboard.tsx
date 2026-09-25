@@ -131,7 +131,7 @@ export function SocialPostsDashboard({
     (postId: string) => {
       startTransition(async () => {
         try {
-          await deleteSocialPostAction({ postId });
+          await unwrap(deleteSocialPostAction({ postId }));
           toast.success('Post deleted');
           router.refresh();
         } catch (error) {

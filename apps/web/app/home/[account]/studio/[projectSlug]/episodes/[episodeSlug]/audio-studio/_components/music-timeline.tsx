@@ -35,7 +35,7 @@ import {
   updateAudioCueAction,
   updateAudioTrackAction,
 } from '@kit/audio-generation/server';
-import { unwrap } from '@kit/next/action-result';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
 import { Skeleton } from '@kit/ui/skeleton';
@@ -529,12 +529,12 @@ export const MusicTimeline = React.forwardRef<
 
   const handleDeleteTrack = async (track: MusicTrack) => {
     try {
-      await deleteAudioTrackAction({ trackId: track.id });
+      await unwrap(deleteAudioTrackAction({ trackId: track.id }));
       toast.success('Music track deleted');
       void fetchTracks();
       onRefresh?.();
-    } catch {
-      toast.error('Failed to delete track');
+    } catch (error) {
+      toast.error(refusalMessage(error, 'Failed to delete track'));
     }
   };
 
@@ -600,7 +600,14 @@ export const MusicTimeline = React.forwardRef<
       }
 
       if (success) {
-        await deleteAudioTrackAction({ trackId: track.id });
+        // The new track is on its way; a refused removal of the old one
+        // is reported on its own rather than as a failed regeneration.
+        await unwrap(deleteAudioTrackAction({ trackId: track.id })).catch(
+          (error: unknown) =>
+            toast.error(
+              refusalMessage(error, 'The previous track could not be removed'),
+            ),
+        );
         toast.success('Music regeneration started');
         handleGenerationComplete();
       } else {

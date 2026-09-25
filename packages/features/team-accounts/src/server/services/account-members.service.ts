@@ -4,6 +4,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 
 import { z } from 'zod';
 
+import { requireAffectedRows } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { Database } from '@kit/supabase/database';
 
@@ -42,7 +43,8 @@ class AccountMembersService {
       .match({
         account_id: params.accountId,
         user_id: params.userId,
-      });
+      })
+      .select('user_id');
 
     if (error) {
       logger.error(
@@ -55,6 +57,12 @@ class AccountMembersService {
 
       throw error;
     }
+
+    // RLS filters a refused delete to no rows, without an error (KB-61)
+    requireAffectedRows(
+      data,
+      "The member wasn't removed: they're no longer on the team, or you can't remove them. Reload the page.",
+    );
 
     logger.info(
       ctx,

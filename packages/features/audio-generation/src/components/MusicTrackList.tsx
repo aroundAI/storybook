@@ -186,7 +186,8 @@ export function MusicTrackList({
 
   // Delete track mutation
   const deleteMutation = useMutation({
-    mutationFn: (trackId: string) => deleteAudioTrackAction({ trackId }),
+    mutationFn: (trackId: string) =>
+      unwrap(deleteAudioTrackAction({ trackId })),
     onSuccess: () => {
       toast.success('Track deleted');
       queryClient.invalidateQueries({ queryKey: ['music-tracks', episodeId] });

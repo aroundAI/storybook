@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -319,18 +319,25 @@ export const updateSocialPostAction = enhanceAction(
 /**
  * Delete a social post (only non-published)
  */
-export const deleteSocialPostAction = enhanceAction(
+const deleteSocialPost = enhanceAction(
   async (input, _user) => {
     const client = getSupabaseServerClient();
 
-    const { error } = await client
+    const { data: deleted, error } = await client
       .from('social_posts')
       .delete()
-      .eq('id', input.postId);
+      .eq('id', input.postId)
+      .select('id');
 
     if (error) {
       throw new Error(`Failed to delete social post: ${error.message}`);
     }
+
+    // RLS filters a refused delete to no rows, without an error (KB-61)
+    requireAffectedRows(
+      deleted,
+      "The post wasn't deleted: it's already gone, or you can't delete it. Reload the page.",
+    );
 
     revalidatePath('/home/[account]/social-posts', 'page');
     return { success: true };
@@ -340,6 +347,8 @@ export const deleteSocialPostAction = enhanceAction(
     auth: true,
   },
 );
+
+export const deleteSocialPostAction = returnRefusals(deleteSocialPost);
 
 /**
  * Approve a social post for publishing

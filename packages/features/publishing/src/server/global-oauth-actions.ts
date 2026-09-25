@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { encrypt } from '@kit/shared/crypto';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -65,19 +66,26 @@ const DeleteGlobalOAuthAppSchema = z.object({
 /**
  * Delete global OAuth app credentials (super admin only)
  */
-export const deleteGlobalOAuthAppAction = enhanceAction(
+const deleteGlobalOAuthApp = enhanceAction(
   async (data) => {
     const client = getSupabaseServerClient();
 
-    const { error } = await client
+    const { data: deleted, error } = await client
       .from('oauth_app_credentials')
       .delete()
-      .eq('platform', data.platform);
+      .eq('platform', data.platform)
+      .select('id');
 
     if (error) {
       console.error('Error deleting global OAuth app:', error);
       throw new Error('Failed to delete OAuth credentials');
     }
+
+    // RLS filters a refused delete to no rows, without an error (KB-61)
+    requireAffectedRows(
+      deleted,
+      "The OAuth credentials weren't deleted: they're already gone, or you can't delete them. Reload the page.",
+    );
 
     revalidatePath('/admin/platforms');
     return { success: true };
@@ -86,3 +94,5 @@ export const deleteGlobalOAuthAppAction = enhanceAction(
     schema: DeleteGlobalOAuthAppSchema,
   },
 );
+
+export const deleteGlobalOAuthAppAction = returnRefusals(deleteGlobalOAuthApp);

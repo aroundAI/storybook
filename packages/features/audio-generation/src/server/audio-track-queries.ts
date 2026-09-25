@@ -3,6 +3,7 @@
 import 'server-only';
 
 import { enhanceAction } from '@kit/next/actions';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -199,7 +200,7 @@ export const getAudioTracksAction = enhanceAction(
  *
  * @throws {Error} If track not found or user lacks access
  */
-export const deleteAudioTrackAction = enhanceAction(
+const deleteAudioTrack = enhanceAction(
   async (
     data: DeleteAudioTrackSchemaType,
   ): Promise<{ success: boolean; trackId: string }> => {
@@ -221,15 +222,22 @@ export const deleteAudioTrackAction = enhanceAction(
 
     // Delete track - RLS will enforce access control
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (client as any)
+    const { data: deleted, error } = await (client as any)
       .from('audio_tracks')
       .delete()
-      .eq('id', data.trackId);
+      .eq('id', data.trackId)
+      .select('id');
 
     if (error) {
       logger.error({ ...ctx, error }, 'Failed to delete audio track');
       throw new Error('Failed to delete audio track');
     }
+
+    // RLS filters a refused delete to no rows, without an error (KB-61)
+    requireAffectedRows(
+      deleted,
+      "The track wasn't deleted: it's already gone, or you can't delete it. Reload the page.",
+    );
 
     logger.info(ctx, 'Audio track deleted successfully');
 
@@ -239,3 +247,5 @@ export const deleteAudioTrackAction = enhanceAction(
     schema: DeleteAudioTrackSchema,
   },
 );
+
+export const deleteAudioTrackAction = returnRefusals(deleteAudioTrack);

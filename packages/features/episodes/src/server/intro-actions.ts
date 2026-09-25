@@ -6,16 +6,28 @@ import { revalidatePath } from 'next/cache';
 
 import { z } from 'zod';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { requireAffectedRows } from '@kit/next/refusals';
 import { canPerformProjectAction } from '@kit/projects/queries';
 import { getLogger } from '@kit/shared/logger';
 import {
   type StorageAdapter,
   deleteOwnedObject,
   getStorageAdapter,
+  ownedStorageKey,
 } from '@kit/storage';
+import {
+  PROJECT_ASSETS_BUCKET,
+  projectIntroFolder,
+} from '@kit/storage/upload-paths';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+import {
+  INTRO_THUMBNAIL_REFUSALS,
+  failureMessage,
+} from './intro-thumbnail-refusals';
 
 // ============================================================================
 // Types & Schemas
@@ -150,6 +162,28 @@ export const uploadProjectIntroAction = enhanceAction(
     }
 
     try {
+      // Only this project's own uploads: the render step fetches what is
+      // saved here (KB-90). The same folder rule the delete uses (KB-54).
+      const storage = getStorageAdapter(client);
+      const ownIntro = ownedStorageKey(
+        storage,
+        PROJECT_ASSETS_BUCKET,
+        data.videoUrl,
+        projectIntroFolder(data.projectId),
+      );
+      const ownPoster =
+        !data.thumbnailUrl ||
+        ownedStorageKey(
+          storage,
+          PROJECT_ASSETS_BUCKET,
+          data.thumbnailUrl,
+          `projects/${data.projectId}/assets/`,
+        );
+
+      if (!ownIntro || !ownPoster) {
+        throw new ActionRefusal(INTRO_THUMBNAIL_REFUSALS.foreignFile);
+      }
+
       // Check if intro already exists for this project + language
       const { data: existingIntro } = await client
         .from('project_intros')
@@ -197,7 +231,7 @@ export const uploadProjectIntroAction = enhanceAction(
         existingIntro.video_url !== data.videoUrl
       ) {
         await removeIntroFile(
-          getStorageAdapter(client),
+          storage,
           existingIntro.video_url,
           data.projectId,
           ctx,
@@ -228,9 +262,8 @@ export const uploadProjectIntroAction = enhanceAction(
         },
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      logger.error({ ...ctx, error: message }, 'Intro upload failed');
-      return { success: false, error: message };
+      logger.error({ ...ctx, error }, 'Intro upload failed');
+      return { success: false, error: failureMessage(error) };
     }
   },
   {
@@ -287,6 +320,20 @@ export const deleteProjectIntroAction = enhanceAction(
         throw new Error('Intro not found');
       }
 
+      // The row first: a delete the table's policy refuses removes no row,
+      // and then the file must stay too (KB-61).
+      const { data: deleted, error: deleteError } = await client
+        .from('project_intros')
+        .delete()
+        .eq('id', data.introId)
+        .select('id');
+
+      if (deleteError) {
+        throw new Error(`Failed to delete intro: ${deleteError.message}`);
+      }
+
+      requireAffectedRows(deleted, INTRO_THUMBNAIL_REFUSALS.introNotDeleted);
+
       if (intro.video_url) {
         await removeIntroFile(
           getStorageAdapter(client),
@@ -296,16 +343,6 @@ export const deleteProjectIntroAction = enhanceAction(
         );
       }
 
-      // Delete from database
-      const { error: deleteError } = await client
-        .from('project_intros')
-        .delete()
-        .eq('id', data.introId);
-
-      if (deleteError) {
-        throw new Error(`Failed to delete intro: ${deleteError.message}`);
-      }
-
       logger.info(ctx, 'Project intro deleted successfully');
 
       // Revalidate project settings page
@@ -313,9 +350,8 @@ export const deleteProjectIntroAction = enhanceAction(
 
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      logger.error({ ...ctx, error: message }, 'Intro delete failed');
-      return { success: false, error: message };
+      logger.error({ ...ctx, error }, 'Intro delete failed');
+      return { success: false, error: failureMessage(error) };
     }
   },
   {

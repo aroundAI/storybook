@@ -4,7 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { R2StorageAdapter } from '../src/adapters/r2';
 import { SupabaseStorageAdapter } from '../src/adapters/supabase';
-import { deleteOwnedObject, storageKeyFromPublicUrl } from '../src/storage-key';
+import {
+  deleteOwnedObject,
+  ownedStorageKey,
+  storageKeyFromPublicUrl,
+} from '../src/storage-key';
 import type { StorageAdapter } from '../src/types';
 
 vi.mock('server-only', () => ({}));
@@ -101,6 +105,49 @@ describe('storageKeyFromPublicUrl', () => {
 
     expect(
       storageKeyFromPublicUrl(storage, 'project-assets', 'not a url'),
+    ).toBeNull();
+  });
+});
+
+// KB-90: what the intro and thumbnail actions will store — only a file this
+// adapter issued, inside the row's own folder. The same rule as the delete.
+describe('ownedStorageKey', () => {
+  const FOLDER = `projects/${PROJECT}/assets/intros/`;
+
+  it.each(PROVIDERS)('%s: accepts an upload in the folder', (name) => {
+    const storage = adapter(name);
+    const url = storage.getPublicUrl('project-assets', KEY);
+
+    expect(ownedStorageKey(storage, 'project-assets', url, FOLDER)).toBe(KEY);
+    expect(
+      ownedStorageKey(storage, 'project-assets', `${url}?v=123`, FOLDER),
+    ).toBe(KEY);
+  });
+
+  it.each(PROVIDERS)('%s: refuses anything else', (name) => {
+    const storage = adapter(name);
+    const own = (key: string) => storage.getPublicUrl('project-assets', key);
+
+    for (const url of [
+      'https://attacker.example/page.html',
+      own(`projects/${OTHER}/assets/intros/en-1.mp4`),
+      own(`projects/${PROJECT}/assets/covers/cover-1.png`),
+      own(`projects/${PROJECT}/assets/intros`),
+      storage.getPublicUrl('account_image', KEY),
+    ]) {
+      expect(ownedStorageKey(storage, 'project-assets', url, FOLDER)).toBeNull();
+    }
+  });
+
+  it('treats the folder as a folder: one id is not a prefix of another', () => {
+    const storage = adapter('r2');
+    const url = storage.getPublicUrl(
+      'project-assets',
+      `projects/${PROJECT}0/assets/intros/en-1.mp4`,
+    );
+
+    expect(
+      ownedStorageKey(storage, 'project-assets', url, `projects/${PROJECT}`),
     ).toBeNull();
   });
 });

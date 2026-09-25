@@ -4,15 +4,27 @@ import 'server-only';
 
 import { z } from 'zod';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { requireAffectedRows } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import {
   type StorageAdapter,
   deleteOwnedObject,
   getStorageAdapter,
+  ownedStorageKey,
 } from '@kit/storage';
+import {
+  PROJECT_ASSETS_BUCKET,
+  episodeThumbnailFolder,
+} from '@kit/storage/upload-paths';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+import {
+  INTRO_THUMBNAIL_REFUSALS,
+  failureMessage,
+} from './intro-thumbnail-refusals';
 
 // ============================================================================
 // Types & Schemas
@@ -197,6 +209,21 @@ export const uploadEpisodeThumbnailAction = enhanceAction(
     }
 
     try {
+      // Only this episode's own uploads: the publish step sends what is
+      // saved here to the platforms (KB-90). The delete's folder rule (KB-54).
+      const storage = getStorageAdapter(client);
+
+      if (
+        !ownedStorageKey(
+          storage,
+          PROJECT_ASSETS_BUCKET,
+          data.thumbnailUrl,
+          episodeThumbnailFolder(data.episodeId),
+        )
+      ) {
+        throw new ActionRefusal(INTRO_THUMBNAIL_REFUSALS.foreignFile);
+      }
+
       // Check if thumbnail already exists for this episode + language
       const { data: existingThumbnail } = await client
         .from('episode_thumbnails')
@@ -255,7 +282,7 @@ export const uploadEpisodeThumbnailAction = enhanceAction(
         existingThumbnail.thumbnail_url !== data.thumbnailUrl
       ) {
         await removeThumbnailFile(
-          getStorageAdapter(client),
+          storage,
           existingThumbnail.thumbnail_url,
           data.episodeId,
           ctx,
@@ -283,9 +310,8 @@ export const uploadEpisodeThumbnailAction = enhanceAction(
         },
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      logger.error({ ...ctx, error: message }, 'Thumbnail upload failed');
-      return { success: false, error: message };
+      logger.error({ ...ctx, error }, 'Thumbnail upload failed');
+      return { success: false, error: failureMessage(error) };
     }
   },
   {
@@ -339,6 +365,24 @@ export const deleteEpisodeThumbnailAction = enhanceAction(
         throw new Error('Thumbnail not found');
       }
 
+      // The row first: a member passes canEditEpisode but not the table's
+      // delete policy, so the delete can remove no row — and then the file
+      // must stay too (KB-61).
+      const { data: deleted, error: deleteError } = await client
+        .from('episode_thumbnails')
+        .delete()
+        .eq('id', data.thumbnailId)
+        .select('id');
+
+      if (deleteError) {
+        throw new Error(`Failed to delete thumbnail: ${deleteError.message}`);
+      }
+
+      requireAffectedRows(
+        deleted,
+        INTRO_THUMBNAIL_REFUSALS.thumbnailNotDeleted,
+      );
+
       if (thumbnail.thumbnail_url) {
         await removeThumbnailFile(
           getStorageAdapter(client),
@@ -348,23 +392,12 @@ export const deleteEpisodeThumbnailAction = enhanceAction(
         );
       }
 
-      // Delete from database
-      const { error: deleteError } = await client
-        .from('episode_thumbnails')
-        .delete()
-        .eq('id', data.thumbnailId);
-
-      if (deleteError) {
-        throw new Error(`Failed to delete thumbnail: ${deleteError.message}`);
-      }
-
       logger.info(ctx, 'Episode thumbnail deleted successfully');
 
       return { success: true };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      logger.error({ ...ctx, error: message }, 'Thumbnail delete failed');
-      return { success: false, error: message };
+      logger.error({ ...ctx, error }, 'Thumbnail delete failed');
+      return { success: false, error: failureMessage(error) };
     }
   },
   {

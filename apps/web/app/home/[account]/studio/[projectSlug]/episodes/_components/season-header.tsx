@@ -167,12 +167,12 @@ export function SeasonHeader({
   function handleDeleteSeason() {
     startTransition(async () => {
       try {
-        await deleteSeasonAction({ seasonId });
+        await unwrap(deleteSeasonAction({ seasonId }));
 
         toast.success('Season deleted');
         router.refresh();
-      } catch {
-        toast.error('Failed to delete season');
+      } catch (error) {
+        toast.error(refusalMessage(error, 'Failed to delete season'));
       } finally {
         setShowDeleteDialog(false);
       }

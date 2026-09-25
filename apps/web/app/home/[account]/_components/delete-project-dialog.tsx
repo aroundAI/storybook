@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 
 import { Trash2 } from 'lucide-react';
 
-import { refusalMessage } from '@kit/next/action-result';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { deleteProjectAction } from '@kit/projects/mutations';
 import {
   AlertDialog,
@@ -41,7 +41,7 @@ export function DeleteProjectDialog({
   const handleDelete = () => {
     startTransition(async () => {
       try {
-        const result = await deleteProjectAction({ id: projectId });
+        const result = await unwrap(deleteProjectAction({ id: projectId }));
 
         if (result.success) {
           toast.success(<Trans i18nKey="projects:deleteSuccess" />);

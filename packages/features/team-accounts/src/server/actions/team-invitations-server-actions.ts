@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -50,7 +51,7 @@ export const createInvitationsAction = enhanceAction(
  * @name deleteInvitationAction
  * @description Deletes an invitation specified by the invitation ID.
  */
-export const deleteInvitationAction = enhanceAction(
+const deleteInvitation = enhanceAction(
   async (data) => {
     const client = getSupabaseServerClient();
     const service = createAccountInvitationsService(client);
@@ -68,6 +69,8 @@ export const deleteInvitationAction = enhanceAction(
     schema: DeleteInvitationSchema,
   },
 );
+
+export const deleteInvitationAction = returnRefusals(deleteInvitation);
 
 /**
  * @name updateInvitationAction

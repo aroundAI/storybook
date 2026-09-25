@@ -5,6 +5,7 @@ import 'server-only';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { encrypt } from '@kit/shared/crypto';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -70,19 +71,26 @@ const DeleteOAuthAppSchema = z.object({
   platform: z.enum(['youtube', 'tiktok', 'meta']),
 });
 
-export const deleteAccountOAuthAppAction = enhanceAction(
+const deleteAccountOAuthApp = enhanceAction(
   async ({ accountId, platform }) => {
     const client = getSupabaseServerClient();
 
-    const { error } = await client
+    const { data: deleted, error } = await client
       .from('account_oauth_apps')
       .delete()
       .eq('account_id', accountId)
-      .eq('platform', platform);
+      .eq('platform', platform)
+      .select('id');
 
     if (error) {
       throw new Error('Failed to delete OAuth app credentials');
     }
+
+    // RLS filters a refused delete to no rows, without an error (KB-61)
+    requireAffectedRows(
+      deleted,
+      "The app credentials weren't deleted: they're already gone, or you can't delete them. Reload the page.",
+    );
 
     return { success: true };
   },
@@ -90,4 +98,8 @@ export const deleteAccountOAuthAppAction = enhanceAction(
     schema: DeleteOAuthAppSchema,
     auth: true,
   },
+);
+
+export const deleteAccountOAuthAppAction = returnRefusals(
+  deleteAccountOAuthApp,
 );

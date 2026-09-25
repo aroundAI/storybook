@@ -1,5 +1,6 @@
 import { useState, useTransition } from 'react';
 
+import { unwrap } from '@kit/next/action-result';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import {
   AlertDialog,
@@ -60,7 +61,7 @@ function DeleteInvitationForm({
   const onInvitationRemoved = () => {
     startTransition(async () => {
       try {
-        await deleteInvitationAction({ invitationId });
+        await unwrap(deleteInvitationAction({ invitationId }));
 
         setIsOpen(false);
       } catch {

@@ -54,14 +54,15 @@ describe('AccountInvitationsService', () => {
         delete: mockDelete,
       });
 
+      // The delete ends in .select() (KB-61); mockMatch still sees the filter
       mockDelete.mockReturnValue({
-        match: mockMatch,
+        match: (filter: unknown) => ({ select: () => mockMatch(filter) }),
       });
     });
 
     it('should delete invitation successfully', async () => {
       mockMatch.mockResolvedValue({
-        data: { id: INVITATION_ID },
+        data: [{ id: INVITATION_ID }],
         error: null,
       });
 
@@ -71,7 +72,7 @@ describe('AccountInvitationsService', () => {
 
       expect(mockFrom).toHaveBeenCalledWith('invitations');
       expect(mockMatch).toHaveBeenCalledWith({ id: INVITATION_ID });
-      expect(result).toEqual({ id: INVITATION_ID });
+      expect(result).toEqual([{ id: INVITATION_ID }]);
     });
 
     it('should throw error when deletion fails', async () => {
@@ -602,9 +603,8 @@ describe('AccountInvitationsService', () => {
           }),
         }),
         delete: mockDelete.mockReturnValue({
-          match: mockMatch.mockResolvedValue({
-            data: { id: 1 },
-            error: null,
+          match: () => ({
+            select: () => Promise.resolve({ data: [{ id: 1 }], error: null }),
           }),
         }),
       });
