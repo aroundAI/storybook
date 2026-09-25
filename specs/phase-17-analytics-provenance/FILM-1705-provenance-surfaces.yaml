@@ -55,7 +55,7 @@ acceptance_criteria:
   - text: "The strip's window matches the tab's window — Deep Dive's strip describes 52 weeks, the others the picker's range"
     met: false
     reason: "not met — spec not yet built"
-  - text: "`not_authorised` is distinguishable from `no_data_in_window` everywhere both can appear — handed on by FILM-1711, whose criterion stays open until this lands (`AnalyticsAccess.summary` already carries `not_authorised`)"
+  - text: "`not_authorised` is distinguishable from `no_data_in_window` everywhere both can appear — moved here from FILM-1711 (decision 2026-09-25), which provides `not_authorised` (`AnalyticsAccess.summary`); `no_data_in_window` arrives with FILM-1704"
     met: false
     reason: "not met — spec not yet built"
 open_questions: []

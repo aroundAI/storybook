@@ -45,13 +45,13 @@ acceptance_criteria:
     evidence: null
   - text: "Graph v18.0's liveness is checked before this spec concludes scopes were the cause"
     met: true
-    evidence: "probed 2026-09-21T20:28Z: /v18.0/oauth/access_token and /v23.0/oauth/access_token return the same OAuthException code 101, /v99.0/ returns code 1. v18.0 is still routed, so token refresh is not being rejected for its version. That rules out a hard failure, not a semantic difference; FILM-1723 still owns the pin"
+    evidence: "probed 2026-09-21T20:28Z: /v18.0/oauth/access_token and /v23.0/oauth/access_token return the same OAuthException code 101, /v99.0/ returns code 1. v18.0 is still routed, so token refresh is not being rejected for its version. That rules out a hard failure, not a semantic difference; FILM-1723 still owns the pin. Superseded 2026-09-25: FILM-1723 pins the version on main, and production (pre-#284) is served v21.0 for its v18/v19 requests until the deploy"
   - text: "An existing connection missing a scope is detectable without waiting for a sync to fail"
     met: true
     evidence: "resolveAnalyticsAccess, read by the Platform Connections page and by the sync job"
   - text: "not_authorised is distinguishable from no_data_in_window everywhere both can appear"
     met: false
-    reason: "AnalyticsAccess.summary carries not_authorised and the Platform Connections page renders it, but no_data_in_window does not exist in code yet — it arrives with FILM-1704's coverage query and FILM-1705's strip, which is where the two first share a surface. Open until then"
+    reason: "moved to FILM-1705 (decision 2026-09-25). FILM-1711's half is built — AnalyticsAccess.summary carries not_authorised and the Platform Connections page renders it — but no_data_in_window does not exist in code; it arrives with FILM-1704 and first shares a surface with not_authorised in FILM-1705, which now owns the criterion"
   - text: "The reconnect prompt names what that specific platform's analytics will add"
     met: true
     evidence: null
@@ -77,15 +77,18 @@ acceptance_criteria:
     met: true
     evidence: null
 remaining:
-  - criterion: "Meta App Review, Business Verification and TikTok app review are submitted"
+  - criterion: "Check F before the deploy: each vendor's consent screen accepts the newly requested scopes (TikTok with production credentials especially)"
+    reason: "Must run before the deploy that carries #289, not after: if TikTok (or Meta) rejects an authorise request naming an unapproved scope, connecting that platform breaks for everyone, publishing included. docs/vendor-review-runbook.md Part 1; result recorded in docs/vendor-review-status.md and FILM-1725 §3c"
+    closed_by: "FILM-1725"
+  - criterion: "Deployed: production runs #289"
+    reason: "Merged 2026-09-22; production's migrations stop at 20260831113625 (d8c635c1, 2026-08-31), so its code is inferred to predate #289. #289 has no migration of its own, so only the deployed commit shows it. See Deployment in notes"
+    closed_by: "owner"
+  - criterion: "Live-vendor verification after the deploy: YouTube revenue questions (mixed-query rejection, non-partner 403 shape, non-zero api rows for a Partner channel) and real TikTok and Instagram accounts returning data"
+    reason: "Nothing here has touched a live vendor yet — FILM-1725 Check G after the deploy; Check H after each review passes"
+    closed_by: "FILM-1725"
+  - criterion: "Meta App Review, Business Verification and TikTok app review are submitted and approved, and `review` in code flipped with docs/vendor-review-status.md"
     reason: "Need a person with each vendor's developer console; until they pass, review: 'required' keeps the reconnect prompt off for TikTok and Instagram, since a creator cannot grant a scope the vendor has not approved"
     closed_by: "owner"
-  - criterion: "Live-vendor verification: real TikTok and Instagram accounts return data instead of a *ScopeError; YouTube revenue questions (mixed-query rejection, non-partner 403 shape) settled by a real call"
-    reason: "Nothing here has touched a live vendor yet"
-    closed_by: "FILM-1725"
-  - criterion: "Confirm that requesting an unapproved scope does not break the TikTok consent/authorise screen"
-    reason: "Unknown until tried on staging (FILM-1725 Check F); if TikTok rejects the authorise request outright once the new scope is added, this change breaks connecting TikTok at all until review passes — must be settled on staging before production"
-    closed_by: "FILM-1725"
 open_questions: []
 feature:
   database:
@@ -356,14 +359,15 @@ notes: |
     Review gates other users, not the first one.
   - The app has no data-deletion endpoint or instructions page, which
     Meta requires of any app that accesses user data. A blocker for the
-    Meta submission.
+    Meta submission. **Fixed on main** by #294 (2026-09-23):
+    `/data-deletion`, linked from the footer. Not deployed (below).
   - The privacy policy lacks the three items YouTube's developer policies
     require (YouTube ToS link, Google Privacy Policy link, the Google
     security-settings revocation sentence). A blocker for Google
-    verification.
+    verification. **Fixed on main** by #294. Not deployed.
   - A failed authorise redirects to `/settings/platforms?error=...`, a
     route that does not exist, so it lands on a 404 and logs nothing.
-    Older than this spec and not fixed by it; unowned.
+    **Fixed on main** by #297 (KB-19). Not deployed.
 
   What an existing connection experiences. Nothing changes until its
   owner opens Settings -> Platforms. There, a YouTube connection shows
@@ -372,3 +376,39 @@ notes: |
   with no button. Publishing is untouched: old tokens keep their old
   scopes and keep working. The sync job stops calling TikTok and
   Instagram for connections it knows lack the scope.
+
+  ## Deployment — merged is not deployed (verified 2026-09-25)
+
+  Every criterion marked met was re-checked on main at 2dd2fb26: FILM-1711's
+  test files pass (content-analytics 58, publishing 24, clickhouse 94), and
+  all 19 unit mutation guards in `tooling/mutation-guards/film-1711.json`
+  still go red with their fix removed. The EDD with the per-criterion table
+  is `specs/plans/FILM-1711-verification-edd.md`.
+
+  **Production is inferred to run none of it.** Production's migrations stop
+  at `20260831113625` (`d8c635c1`, #232, 2026-08-31); #289 merged on
+  2026-09-22. #289 adds no migration, so this is inferred from production's
+  migration level, not observed — the deployed commit on the hosting
+  dashboard is the one-look confirmation. Until the deploy, production still
+  requests no analytics scopes, records the scopes it asked for as the grant,
+  asks for revenue inside `fetchTotals` without the monetary scope, lets the
+  sync cron throw `*ScopeError`s, and shows no analytics access on Settings →
+  Platforms. Criterion "Graph v18.0's liveness": FILM-1723 pins the version
+  on main; production still calls v18/v19 until the same deploy.
+
+  **The order at that deploy** (owner):
+  1. FILM-1725 **Check F** — `docs/vendor-review-runbook.md` Part 1 — before
+     deploying. A no-go on a platform holds the deploy for that platform's
+     review.
+  2. Deploy.
+  3. FILM-1725 Check D (Meta refresh on the pinned version) and Check G
+     (reconnect YouTube; revenue with and without the scope).
+  4. Submit the Meta and TikTok reviews (Part 2 of the runbook); on
+     approval flip `review` in `oauth/analytics-scopes.ts` together with
+     `docs/vendor-review-status.md`, then Check H.
+
+  **What depends on this spec, and on what.** FILM-1712, 1720, 1726, 1727
+  and 1730 (and FILM-1710's TikTok leg) need #289's code — the scope
+  declarations, the binding test and the access states — which is merged.
+  None needs the vendor reviews to be built; their live verification is
+  FILM-1725's. (FILM-1715 is not a dependent.)

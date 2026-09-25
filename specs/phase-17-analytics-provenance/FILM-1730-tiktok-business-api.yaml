@@ -9,7 +9,7 @@ dependencies:
   - spec_id: "FILM-1703"
     note: null
   - spec_id: "FILM-1711"
-    note: null
+    note: "#289's code (merged 2026-09-22): scope declarations, the binding test and the access states. Live verification is FILM-1725 Checks F–H, not this dependency"
   - spec_id: "FILM-1721"
     note: null
 summary: >
