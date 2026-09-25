@@ -151,6 +151,8 @@ export type {
   VideoSnapshot,
   VideoTrafficSource,
   YouTubeVideoMetric,
+  MeasuredColumns,
+  PerVideoTotals,
 } from '../types';
 
 export { formatDateStr } from '../utils';

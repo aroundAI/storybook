@@ -1842,10 +1842,12 @@ export async function querySubscriberDeltas(input: {
         SELECT
           toString(connection_id) as connection_id,
           toString(metric_date)   as metric_date,
-          -- TikTok and Instagram rows carry no measured loss (NULL, KB-111).
-          -- Without ifNull the whole net goes NULL and the day silently falls
-          -- back to channel_daily's leg alone. Their movement series is KB-114.
-          toInt64(sum(gained) - ifNull(sum(lost), 0)) as net
+          -- TikTok and Instagram rows carry no measured loss (NULL, KB-111),
+          -- and TikTok no measured gain (KB-114). Without ifNull the whole
+          -- net goes NULL and the day silently falls back to channel_daily's
+          -- leg alone. What the series should show instead is KB-114's open
+          -- product question; until it is answered it reads as it always has.
+          toInt64(ifNull(sum(gained), 0) - ifNull(sum(lost), 0)) as net
         FROM (
           SELECT
             d.connection_id      as connection_id,

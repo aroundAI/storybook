@@ -4,7 +4,12 @@
  * YouTube Studio's retention window is limited and comparisons get harder
  * the further back you look. A monthly dump of the underlying rows gives
  * a clean multi-year series that does not depend on any dashboard.
+ *
+ * The four columns a platform may not measure carry "(blank = not measured
+ * by the platform)" in their header, always, so the headers stay fixed from
+ * one month's file to the next (KB-111, KB-114).
  */
+import { measuredCell, measuredHeader } from './export-coverage';
 
 export interface RawExportRow {
   date: string;
@@ -20,13 +25,19 @@ export interface RawExportRow {
   likes: number;
   comments: number;
   shares: number;
-  saves: number;
-  watchTimeSeconds: number;
-  subscribersGained: number;
+  /**
+   * Null where the platform does not measure it (KB-111, KB-114): saves on
+   * YouTube and TikTok, watch time on TikTok and Instagram, follower gains
+   * on TikTok, average view duration on TikTok and Instagram. Blank in the
+   * file, with the column's header saying so; never 0.
+   */
+  saves: number | null;
+  watchTimeSeconds: number | null;
+  subscribersGained: number | null;
   revenueCents: number;
   impressions: number;
   ctr: number;
-  avgViewDurationSeconds: number;
+  avgViewDurationSeconds: number | null;
   /** Top traffic source for this video/day, when known. */
   topTrafficSource: string;
   /** Taxonomy tags as 'dimension:slug', pipe-separated. */
@@ -72,14 +83,17 @@ const COLUMNS: Array<{
   { header: 'Likes', getValue: (r) => String(r.likes) },
   { header: 'Comments', getValue: (r) => String(r.comments) },
   { header: 'Shares', getValue: (r) => String(r.shares) },
-  { header: 'Saves', getValue: (r) => String(r.saves) },
   {
-    header: 'Watch Time (s)',
-    getValue: (r) => String(r.watchTimeSeconds),
+    header: measuredHeader('Saves'),
+    getValue: (r) => measuredCell(r.saves),
   },
   {
-    header: 'Subscribers Gained',
-    getValue: (r) => String(r.subscribersGained),
+    header: measuredHeader('Watch Time (s)'),
+    getValue: (r) => measuredCell(r.watchTimeSeconds),
+  },
+  {
+    header: measuredHeader('Subscribers Gained'),
+    getValue: (r) => measuredCell(r.subscribersGained),
   },
   {
     // The header is a column name in files recipients already parse, so it
@@ -98,9 +112,11 @@ const COLUMNS: Array<{
     getValue: (r) => (r.impressions > 0 ? r.ctr.toFixed(4) : ''),
   },
   {
-    header: 'Avg View Duration (s)',
+    header: measuredHeader('Avg View Duration (s)'),
     getValue: (r) =>
-      r.avgViewDurationSeconds > 0 ? r.avgViewDurationSeconds.toFixed(1) : '',
+      r.avgViewDurationSeconds !== null && r.avgViewDurationSeconds > 0
+        ? r.avgViewDurationSeconds.toFixed(1)
+        : '',
   },
   { header: 'Views @30d', getValue: (r) => checkpointCell(r.viewsAt30) },
   { header: 'Views @90d', getValue: (r) => checkpointCell(r.viewsAt90) },
@@ -122,7 +138,9 @@ function escapeCSVValue(value: string): string {
  * successive monthly dumps concatenate cleanly into one long series.
  */
 export function generateRawExportCSV(rows: RawExportRow[]): string {
-  const lines = [COLUMNS.map((column) => column.header).join(',')];
+  const lines = [
+    COLUMNS.map((column) => escapeCSVValue(column.header)).join(','),
+  ];
 
   for (const row of rows) {
     lines.push(

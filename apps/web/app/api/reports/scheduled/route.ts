@@ -14,10 +14,10 @@ import {
 
 import { generateSummaryCSV } from '@kit/content-analytics/lib/csv-generator';
 import { generatePDFReport } from '@kit/content-analytics/lib/pdf-generator';
+import { calculateReportSummary } from '@kit/content-analytics/lib/report-summary';
 import type {
   AnalyticsDataRow,
   ReportMetric,
-  ReportSummary,
 } from '@kit/content-analytics/lib/report-types';
 import {
   deleteOrphanedReportFiles,
@@ -336,13 +336,18 @@ async function processScheduledReport(
         likes: totals.likes,
         comments: totals.comments,
         shares: totals.shares,
-        watchTimeSeconds: totals.watch_time_seconds,
-        subscribersGained: totals.subscribers_gained,
+        // Null, not 0, where the platform does not measure it (KB-114).
+        watchTimeSeconds: totals.measured.watch_time_seconds
+          ? totals.watch_time_seconds
+          : null,
+        subscribersGained: totals.measured.subscribers_gained
+          ? totals.subscribers_gained
+          : null,
         revenueCents: totals.revenue_cents,
         retentionData: retentionMap.get(pub.id) ?? null,
         impressions: quality?.impressions ?? 0,
         ctr: quality?.impressionsCtr ?? 0,
-        avgViewDurationSeconds: quality?.avgViewDurationSeconds ?? 0,
+        avgViewDurationSeconds: quality?.avgViewDurationSeconds ?? null,
       };
     })
     .filter((row): row is AnalyticsDataRow => row !== null);
@@ -529,16 +534,21 @@ async function processScheduledReport(
         likes: row.likes,
         comments: row.comments,
         shares: row.shares,
-        saves: row.saves,
-        watchTimeSeconds: row.watch_time_seconds,
-        subscribersGained: row.subscribers_gained,
+        // Null, not 0, where the platform does not measure it (KB-114).
+        saves: row.measured.saves ? row.saves : null,
+        watchTimeSeconds: row.measured.watch_time_seconds
+          ? row.watch_time_seconds
+          : null,
+        subscribersGained: row.measured.subscribers_gained
+          ? row.subscribers_gained
+          : null,
         revenueCents: row.revenue_cents,
         // Reach is a period total rather than a per-day figure, so it is
         // reported once per video on its own row set; CTR and AVD are the
         // view-weighted period rates.
         impressions: quality?.impressions ?? 0,
         ctr: quality?.impressionsCtr ?? 0,
-        avgViewDurationSeconds: quality?.avgViewDurationSeconds ?? 0,
+        avgViewDurationSeconds: quality?.avgViewDurationSeconds ?? null,
         topTrafficSource:
           topSourceByVideoDate.get(`${row.video_id}:${row.metric_date}`) ?? '',
         tags: tagsByPublish.get(row.video_id)?.join('|') ?? '',
@@ -562,7 +572,7 @@ async function processScheduledReport(
     filename = `analytics-report-${dateRange.start.toISOString().split('T')[0]}.csv`;
     contentType = 'text/csv';
   } else {
-    const summary = calculateSummary(transformedData);
+    const summary = calculateReportSummary(transformedData);
     buffer = await generatePDFReport({
       data: transformedData,
       summary,
@@ -715,40 +725,4 @@ function calculateNextRunTime(frequency: string): Date {
     nextMonth.setUTCHours(8, 0, 0, 0);
     return nextMonth;
   }
-}
-
-function calculateSummary(data: AnalyticsDataRow[]): ReportSummary {
-  const platformBreakdown: Record<string, number> = {};
-
-  const totals = data.reduce(
-    (acc, row) => {
-      platformBreakdown[row.platform] =
-        (platformBreakdown[row.platform] || 0) + row.views;
-
-      return {
-        totalViews: acc.totalViews + row.views,
-        totalLikes: acc.totalLikes + row.likes,
-        totalComments: acc.totalComments + row.comments,
-        totalShares: acc.totalShares + row.shares,
-        totalWatchTimeSeconds: acc.totalWatchTimeSeconds + row.watchTimeSeconds,
-        totalSubscribers: acc.totalSubscribers + row.subscribersGained,
-        totalRevenueCents: acc.totalRevenueCents + row.revenueCents,
-      };
-    },
-    {
-      totalViews: 0,
-      totalLikes: 0,
-      totalComments: 0,
-      totalShares: 0,
-      totalWatchTimeSeconds: 0,
-      totalSubscribers: 0,
-      totalRevenueCents: 0,
-    },
-  );
-
-  return {
-    ...totals,
-    contentCount: new Set(data.map((d) => d.contentTitle)).size,
-    platformBreakdown,
-  };
 }

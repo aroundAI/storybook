@@ -1,0 +1,35 @@
+{
+  "feature": "KB-114",
+  "mutations": [
+    {
+      "name": "KB-114 the TikTok row writes 0 saves, watch time and follower gains again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/ingest.ts",
+      "find": "      platform: 'tiktok',\n      saves: null,\n      watch_time_seconds: null,\n      subscribers_gained: null,\n",
+      "replace": "      platform: 'tiktok',\n      saves: 0 as unknown as null,\n      watch_time_seconds: 0 as unknown as null,\n      subscribers_gained: 0 as unknown as null,\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/ingest.test.ts",
+      "pattern": "writes TikTok saves, watch time and follower gains as null"
+    },
+    {
+      "name": "KB-114 a report total counts unmeasured rows as 0",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/export-coverage.ts",
+      "find": "    if (v === null) continue;\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/report-exports-not-measured.test.ts",
+      "pattern": "totals a figure over the videos that measure it"
+    },
+    {
+      "name": "KB-114 an export cell prints 0 for a figure the platform does not measure",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/export-coverage.ts",
+      "find": "  return value === null ? '' : format(value);\n",
+      "replace": "  return format(value ?? 0);\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/raw-export-generator.test.ts",
+      "pattern": "leaves a figure the platform does not measure blank"
+    }
+  ]
+}

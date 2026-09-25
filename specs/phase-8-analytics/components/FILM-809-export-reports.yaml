@@ -31,7 +31,7 @@ component:
 acceptance_criteria:
   - text: "Generate PDF reports with charts and branding"
     met: false
-    reason: "no longer true — branding (name, logo) yes; no charts, only tables, since b03fd102 — `packages/features/content-analytics/src/lib/pdf-generator.tsx:248`"
+    reason: "no longer true — branding (name, logo) yes; no charts, only tables, since b03fd102 — `packages/features/content-analytics/src/lib/pdf-generator.tsx:303`"
   - text: "Generate CSV exports with raw data"
     met: true
     evidence: null
@@ -49,7 +49,7 @@ acceptance_criteria:
     evidence: null
   - text: "View report history (deferred - using temporary signed URLs instead)"
     met: false
-    reason: "not met — deferred at ship time: report history; no table or UI exists, reports are signed URLs (`packages/features/content-analytics/src/server/report-actions.ts:331`)"
+    reason: "not met — deferred at ship time: report history; no table or UI exists, reports are signed URLs (`packages/features/content-analytics/src/server/report-actions.ts:293`)"
   - text: "Schedule recurring reports (weekly/monthly)"
     met: true
     evidence: null

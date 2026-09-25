@@ -35,6 +35,7 @@
     "./lib/retention": "./src/lib/retention.ts",
     "./lib/asset-duration": "./src/lib/asset-duration.ts",
     "./lib/report-types": "./src/lib/report-types.ts",
+    "./lib/report-summary": "./src/lib/report-summary.ts",
     "./lib/schemas/report": "./src/lib/schemas/report.schema.ts",
     "./lib/csv-generator": "./src/lib/csv-generator.ts",
     "./lib/raw-export-generator": "./src/lib/raw-export-generator.ts",

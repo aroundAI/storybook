@@ -764,7 +764,7 @@ async function assertions() {
         likes: 20,
         comments: 3,
         shares: 1,
-        saves: 0,
+        saves: null,
         watch_time_seconds: 18000,
         revenue_cents: 0,
         subscribers_gained: 5,
@@ -976,6 +976,122 @@ async function assertions() {
       if (got !== want) throw new Error(`expected ${want}, got ${got}`);
 
       return 'Nullable, no default; YouTube measured, TikTok null';
+    },
+  );
+
+  await step(
+    'assert: saves, watch time and follower gains a platform does not measure are null (KB-114)',
+    async () => {
+      // TikTok measures none of the three, Instagram no watch time, YouTube
+      // no saves. After migration 014 they are Nullable with no default, the
+      // view reads NULL, and the per-video and daily readers say which sums
+      // were measured at all: `count(col) > 0`, since `count` skips NULL.
+      const client = getClickHouseClient();
+      const project = '11411411-1141-4114-8114-114114114114';
+      const [youtube, tiktok, instagram] = [
+        'kb114-youtube',
+        'kb114-tiktok',
+        'kb114-instagram',
+      ];
+
+      const columns = await client.query({
+        query: `
+          SELECT table, name, type, default_kind
+          FROM system.columns
+          WHERE database = currentDatabase()
+            AND name IN ('saves', 'watch_time_seconds', 'subscribers_gained')
+            AND table IN ('video_metrics', 'video_daily_stats')
+          ORDER BY table, name`,
+        format: 'JSONEachRow',
+      });
+      const shapes = (
+        await columns.json<{ type: string; default_kind: string }>()
+      ).filter((c) => !c.type.startsWith('Nullable(') || c.default_kind !== '');
+      if (shapes.length > 0) {
+        throw new Error(
+          `not Nullable-without-default: ${JSON.stringify(shapes)}`,
+        );
+      }
+
+      await client.command({
+        query: `ALTER TABLE video_metrics DELETE WHERE project_id = {project:UUID}`,
+        query_params: { project },
+        clickhouse_settings: { mutations_sync: '2' },
+      });
+
+      const base = {
+        project_id: project,
+        metric_date: '2026-09-20',
+        views: 100,
+        likes: 1,
+        comments: 1,
+        shares: 1,
+        revenue_cents: 0,
+        extra_metrics: '{}',
+      };
+      await insertVideoMetrics([
+        {
+          ...base,
+          video_id: youtube,
+          platform: 'youtube',
+          saves: null,
+          watch_time_seconds: 600,
+          subscribers_gained: 2,
+          metric_source: 'reporting_api',
+        },
+        {
+          ...base,
+          video_id: tiktok,
+          platform: 'tiktok',
+          saves: null,
+          watch_time_seconds: null,
+          subscribers_gained: null,
+          metric_source: 'snapshot_delta',
+        },
+        {
+          ...base,
+          video_id: instagram,
+          platform: 'instagram',
+          saves: 4,
+          watch_time_seconds: null,
+          subscribers_gained: 3,
+          metric_source: 'snapshot_delta',
+        },
+      ]);
+
+      const ids = [youtube, tiktok, instagram];
+      const totals = await queryTotalsByVideoIds(ids);
+      const daily = await queryDailyStats({ videoIds: ids });
+
+      await client.command({
+        query: `ALTER TABLE video_metrics DELETE WHERE project_id = {project:UUID}`,
+        query_params: { project },
+        clickhouse_settings: { mutations_sync: '2' },
+      });
+
+      const got = JSON.stringify({
+        totals: ids.map((id) => totals.get(id)?.measured),
+        daily: ids.map(
+          (id) => daily.find((row) => row.video_id === id)?.measured,
+        ),
+        youtubeWatch: totals.get(youtube)?.watch_time_seconds,
+        instagramSaves: totals.get(instagram)?.saves,
+      });
+      const flags = [
+        { saves: false, watch_time_seconds: true, subscribers_gained: true },
+        { saves: false, watch_time_seconds: false, subscribers_gained: false },
+        { saves: true, watch_time_seconds: false, subscribers_gained: true },
+      ];
+      const want = JSON.stringify({
+        totals: flags,
+        daily: flags,
+        youtubeWatch: 600,
+        instagramSaves: 4,
+      });
+
+      if (got !== want) throw new Error(`expected ${want}, got ${got}`);
+
+      return 'Nullable, no default; measured flags per platform';
     },
   );
 

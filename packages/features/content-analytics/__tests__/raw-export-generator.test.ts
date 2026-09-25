@@ -116,3 +116,47 @@ describe('videoAgeInDays', () => {
     expect(cells[headers.indexOf('Views @30d')]).toBe('0');
   });
 });
+
+// KB-111, KB-114. A figure the platform does not measure is blank, never 0,
+// and the header says what a blank means — always, so monthly files keep
+// the same header and still concatenate.
+describe('generateRawExportCSV — not measured', () => {
+  const tiktok: RawExportRow = {
+    ...row,
+    platform: 'tiktok',
+    saves: null,
+    watchTimeSeconds: null,
+    subscribersGained: null,
+    avgViewDurationSeconds: null,
+  };
+
+  const cellOf = (rows: RawExportRow[], column: string) => {
+    const [header, line] = generateRawExportCSV(rows).split('\n');
+    const index = header!.split(',').findIndex((h) => h.startsWith(column));
+    return line!.split(',')[index];
+  };
+
+  it('leaves a figure the platform does not measure blank, not 0', () => {
+    expect(cellOf([tiktok], 'Saves')).toBe('');
+    expect(cellOf([tiktok], 'Watch Time (s)')).toBe('');
+    expect(cellOf([tiktok], 'Subscribers Gained')).toBe('');
+    expect(cellOf([tiktok], 'Avg View Duration (s)')).toBe('');
+  });
+
+  it('keeps a measured zero as 0', () => {
+    const measuredZero = { ...row, saves: 0, subscribersGained: 0 };
+
+    expect(cellOf([measuredZero], 'Saves')).toBe('0');
+    expect(cellOf([measuredZero], 'Subscribers Gained')).toBe('0');
+  });
+
+  it('says what a blank means in the header, in every file alike', () => {
+    const withBlank = generateRawExportCSV([tiktok]).split('\n')[0];
+    const without = generateRawExportCSV([row]).split('\n')[0];
+
+    expect(withBlank).toBe(without);
+    expect(withBlank).toContain(
+      'Watch Time (s) (blank = not measured by the platform)',
+    );
+  });
+});

@@ -562,7 +562,7 @@ async function ingestReportCsv(
         likes: row.likes,
         comments: row.comments,
         shares: row.shares,
-        saves: 0,
+        saves: null,
         watch_time_seconds: row.watchTimeSeconds,
         revenue_cents: 0,
         subscribers_gained: row.subscribersGained,

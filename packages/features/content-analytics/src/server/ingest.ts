@@ -151,7 +151,7 @@ export function buildYouTubeDailyRows(input: {
     likes: day.likes,
     comments: day.comments,
     shares: day.shares,
-    saves: 0,
+    saves: null,
     watch_time_seconds: Math.round(day.estimatedMinutesWatched * 60),
     revenue_cents: 0,
     subscribers_gained: day.subscribersGained,
@@ -169,18 +169,40 @@ export function buildYouTubeDailyRows(input: {
 
 /**
  * A TikTok/Instagram `video_metrics` row: the lifetime-counter delta for one
- * day. Neither platform reports subscribers lost, average view duration,
- * average percentage viewed or dislikes on any surface we ingest, so the type
- * pins those four to `null` — not measured (KB-111). A 0 there was read as a
- * measurement and pooled with YouTube's figures.
+ * day. What each platform does not report on any surface we ingest is pinned
+ * to `null` by the type — not measured. A 0 there was read as a measurement
+ * and pooled with YouTube's figures (KB-111, KB-114).
+ *
+ * - Neither reports subscribers lost, average view duration, average
+ *   percentage viewed or dislikes (KB-111).
+ * - TikTok: saves have no creator-auth surface, watch time is Business API
+ *   only, and there are no per-video follower gains (KB-114).
+ * - Instagram: Reels watch time is documented but never requested
+ *   (FILM-1712). Saves and follows are measured.
  */
-export type SnapshotDeltaMetric = VideoMetric & {
-  platform: 'tiktok' | 'instagram';
+type NeverMeasuredBySnapshot = {
   subscribers_lost: null;
   avg_view_duration_seconds: null;
   avg_view_percentage: null;
   dislikes: null;
 };
+
+export type SnapshotDeltaMetric = VideoMetric &
+  NeverMeasuredBySnapshot &
+  (
+    | {
+        platform: 'tiktok';
+        saves: null;
+        watch_time_seconds: null;
+        subscribers_gained: null;
+      }
+    | {
+        platform: 'instagram';
+        saves: number;
+        watch_time_seconds: null;
+        subscribers_gained: number;
+      }
+  );
 
 export function buildSnapshotDeltaRow(input: {
   projectId: string;
@@ -190,19 +212,39 @@ export function buildSnapshotDeltaRow(input: {
   delta: CumulativeTotals;
   extraMetricsJson: string;
 }): SnapshotDeltaMetric {
-  return {
+  const base = {
     project_id: input.projectId,
     video_id: input.videoId,
-    platform: input.platform,
     metric_date: input.metricDate,
-    ...input.delta,
+    views: input.delta.views,
+    likes: input.delta.likes,
+    comments: input.delta.comments,
+    shares: input.delta.shares,
     revenue_cents: 0,
     subscribers_lost: null,
     avg_view_duration_seconds: null,
     avg_view_percentage: null,
     dislikes: null,
-    metric_source: 'snapshot_delta',
+    metric_source: 'snapshot_delta' as const,
     extra_metrics: input.extraMetricsJson,
+  };
+
+  if (input.platform === 'tiktok') {
+    return {
+      ...base,
+      platform: 'tiktok',
+      saves: null,
+      watch_time_seconds: null,
+      subscribers_gained: null,
+    };
+  }
+
+  return {
+    ...base,
+    platform: 'instagram',
+    saves: input.delta.saves,
+    watch_time_seconds: null,
+    subscribers_gained: input.delta.subscribers_gained,
   };
 }
 

@@ -26,6 +26,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { generateSummaryCSV } from '../lib/csv-generator';
 import { generatePDFReport } from '../lib/pdf-generator';
+import { calculateReportSummary } from '../lib/report-summary';
 import type {
   AnalyticsDataRow,
   Branding,
@@ -33,7 +34,6 @@ import type {
   GeneratedReport,
   ReportMetric,
   ReportPlatform,
-  ReportSummary,
   ScheduledReport,
 } from '../lib/report-types';
 import {
@@ -270,59 +270,20 @@ async function fetchAnalyticsData(
         likes: stats.likes,
         comments: stats.comments,
         shares: stats.shares,
-        watchTimeSeconds: stats.watch_time_seconds,
-        subscribersGained: stats.subscribers_gained,
+        // Null, not 0, where the platform does not measure it (KB-114).
+        watchTimeSeconds: stats.measured.watch_time_seconds
+          ? stats.watch_time_seconds
+          : null,
+        subscribersGained: stats.measured.subscribers_gained
+          ? stats.subscribers_gained
+          : null,
         revenueCents: stats.revenue_cents,
         retentionData: retentionByPublish.get(row.id) ?? null,
         impressions: quality?.impressions ?? 0,
         ctr: quality?.impressionsCtr ?? 0,
-        avgViewDurationSeconds: quality?.avgViewDurationSeconds ?? 0,
+        avgViewDurationSeconds: quality?.avgViewDurationSeconds ?? null,
       };
     });
-}
-
-/**
- * Calculate report summary from data
- */
-function calculateSummary(data: AnalyticsDataRow[]): ReportSummary {
-  const platformBreakdown: Record<string, number> = {};
-
-  // Single-pass aggregation for totals and platform breakdown
-  let totalViews = 0;
-  let totalLikes = 0;
-  let totalComments = 0;
-  let totalShares = 0;
-  let totalWatchTimeSeconds = 0;
-  let totalSubscribers = 0;
-  let totalRevenueCents = 0;
-
-  for (const row of data) {
-    platformBreakdown[row.platform] =
-      (platformBreakdown[row.platform] || 0) + row.views;
-    totalViews += row.views;
-    totalLikes += row.likes;
-    totalComments += row.comments;
-    totalShares += row.shares;
-    totalWatchTimeSeconds += row.watchTimeSeconds;
-    totalSubscribers += row.subscribersGained;
-    totalRevenueCents += row.revenueCents;
-  }
-
-  const totals = {
-    totalViews,
-    totalLikes,
-    totalComments,
-    totalShares,
-    totalWatchTimeSeconds,
-    totalSubscribers,
-    totalRevenueCents,
-  };
-
-  return {
-    ...totals,
-    contentCount: new Set(data.map((d) => d.contentTitle)).size,
-    platformBreakdown,
-  };
 }
 
 /**
@@ -382,7 +343,7 @@ const generateReport = enhanceAction(
       filename = `analytics-report-${dateRange.start.toISOString().split('T')[0]}.csv`;
       contentType = 'text/csv';
     } else {
-      const summary = calculateSummary(analyticsData);
+      const summary = calculateReportSummary(analyticsData);
       buffer = await generatePDFReport({
         data: analyticsData,
         summary,
