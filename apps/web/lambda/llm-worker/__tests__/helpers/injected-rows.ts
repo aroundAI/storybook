@@ -188,7 +188,37 @@ export function fakeClient() {
             : [characterRow('c1')];
         }
         if (table === 'episode_facts') return [{ fact: FACT }];
-        return [];
+        if (table === 'projects') {
+          return single ? EPISODE.project : [EPISODE.project];
+        }
+        if (table === 'verified_facts') return [FACT];
+        if (table === 'shots') {
+          return [
+            {
+              sequence_number: 1,
+              scene_number: 1,
+              duration_seconds: 5,
+              scene_description: P,
+              generation_metadata: { veoPrompt: { audio: P }, action: P },
+            },
+          ];
+        }
+        if (table === 'dialogue_lines') {
+          return [
+            {
+              id: 'd1',
+              episode_id: 'e5',
+              character_asset_id: 'c1',
+              shot_id: null,
+              text: P,
+              sequence_number: 1,
+              scene_number: 1,
+              timeline_start_seconds: 0,
+              estimated_duration_seconds: 3,
+            },
+          ];
+        }
+        return single ? null : [];
       };
 
       const chain: Record<string, unknown> = {

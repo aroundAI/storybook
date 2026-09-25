@@ -9,6 +9,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { sanitizeForPrompt } from '@kit/episodes/lib';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
@@ -121,7 +122,8 @@ export async function processTranslateDialogue(
         data.preserveTiming && l.estimated_duration_seconds
           ? ` (max ${l.estimated_duration_seconds.toFixed(1)}s)`
           : '';
-      return `${i + 1}. "${l.text}"${timing}`;
+      // Stored dialogue, defused for the model (KB-101)
+      return `${i + 1}. "${sanitizeForPrompt(l.text)}"${timing}`;
     })
     .join('\n');
 
@@ -138,7 +140,7 @@ export async function processTranslateDialogue(
     accountId: data.accountId,
     dialogueLines: linesText,
     lineCount: linesToTranslate.length,
-    targetAudience,
+    targetAudience: sanitizeForPrompt(targetAudience),
   });
 
   if (!orchestratorResult.success) {

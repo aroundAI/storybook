@@ -6,6 +6,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { sanitizeStrings } from '@kit/episodes/lib';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
@@ -59,7 +60,8 @@ export async function processBatchTranslateMetadata(
     }>({
       templateSlug: 'batch-translate-metadata',
       variables: {
-        items: JSON.stringify(itemsForPrompt, null, 2),
+        // Titles and descriptions to translate, defused (KB-101)
+        items: JSON.stringify(sanitizeStrings(itemsForPrompt), null, 2),
         itemCount: data.items.length,
       },
       context: { name: 'batch-translate-metadata', accountId: 'system' },

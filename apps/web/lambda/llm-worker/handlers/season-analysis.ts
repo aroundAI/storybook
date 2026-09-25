@@ -7,6 +7,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { sanitizeForPrompt, sanitizeStrings } from '@kit/episodes/lib';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
@@ -102,14 +103,15 @@ export async function processSeasonAnalysis(
   // Format facts for the prompt if provided
   const verifiedFacts =
     externalFacts && externalFacts.length > 0
-      ? formatFactsForSeasonPrompt(externalFacts)
+      ? formatFactsForSeasonPrompt(sanitizeStrings(externalFacts))
       : '';
 
   // Use Lambda-safe LLM executor
   const { data: result } = await executeLLMForLambda<AnalysisResult>({
     templateSlug: 'season-generation',
     variables: {
-      roadmap,
+      // The user's roadmap and facts, defused for the model (KB-101)
+      roadmap: sanitizeForPrompt(roadmap),
       verified_facts: verifiedFacts,
     },
   });
