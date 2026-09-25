@@ -52,8 +52,8 @@
     {
       "name": "B1 frozen fields editable (action)",
       "file": "packages/features/content-analytics/src/lib/experiment-transitions.ts",
-      "find": "  if (status === 'planned') return;",
-      "replace": "  return;",
+      "find": "  return status === 'planned' ? [] : FROZEN_AFTER_START;",
+      "replace": "  return [];",
       "kind": "unit",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-actions.test.ts",
@@ -201,8 +201,8 @@
     {
       "name": "Form select uncontrolled",
       "file": "packages/features/content-analytics/src/components/experiments/experiment-form.tsx",
-      "find": "                <Select\n                  value={field.value ?? NONE}\n                  onValueChange={(next) =>\n                    field.onChange(next === NONE ? undefined : next)\n                  }\n                >\n                  <FormControl>\n                    <SelectTrigger data-test={'experiment-metric'}>",
-      "replace": "                <Select\n                  defaultValue={field.value ?? NONE}\n                  onValueChange={(next) =>\n                    field.onChange(next === NONE ? undefined : next)\n                  }\n                >\n                  <FormControl>\n                    <SelectTrigger data-test={'experiment-metric'}>",
+      "find": "                  disabled={isLocked('metricWatched')}\n                  value={field.value ?? NONE}",
+      "replace": "                  disabled={isLocked('metricWatched')}\n                  defaultValue={field.value ?? NONE}",
       "kind": "e2e",
       "spec": "tests/experiments/experiments.spec.ts",
       "grep": "second experiment"
