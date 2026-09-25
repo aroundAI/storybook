@@ -27,10 +27,6 @@ interface EpisodeOutline {
   tags?: string[];
 }
 
-interface SeasonOutlineResult {
-  episodes: EpisodeOutline[];
-}
-
 const generateSeasonOutlineTool = createTool({
   name: 'generateSeasonOutline',
   description:
@@ -88,7 +84,9 @@ const generateSeasonOutlineTool = createTool({
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
 
-      const result = await executeLLM<SeasonOutlineResult>({
+      // `season-outline` wraps its array under `wrapper_key: "episodes"`, so
+      // executeLLM returns the array itself (KB-115).
+      const result = await executeLLM<EpisodeOutline[]>({
         templateSlug: 'season-outline',
         variables: {
           season_premise: seasonPremise,
@@ -106,7 +104,7 @@ const generateSeasonOutlineTool = createTool({
         },
       });
 
-      const episodes = result.data.episodes;
+      const episodes = result.data;
 
       return toolSuccess({
         episodes,

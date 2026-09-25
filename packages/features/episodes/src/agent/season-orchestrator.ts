@@ -157,8 +157,22 @@ export async function runSeasonOrchestrator(
     | OutlineStepResult
     | undefined;
 
-  // Prefer step-level episodes (full data) over LLM-synthesized output
-  const episodes = outlineStepData?.episodes ?? result.data.episodes ?? [];
+  // Only the outliner's episodes count: they were validated against the
+  // season-outline schema. The director's final answer is not, so a run whose
+  // outliner step never succeeded is a failure, not a season (KB-115).
+  const episodes = outlineStepData?.episodes ?? [];
+
+  if (episodes.length === 0) {
+    console.warn(
+      `[Season Orchestrator] Failed: the Season Outliner produced no episodes`,
+    );
+    return {
+      success: false,
+      episodes: [],
+      orchestratorSteps: result.steps.length,
+      error: 'The Season Outliner produced no episodes',
+    };
+  }
 
   console.log(
     `[Season Orchestrator] Complete. Steps: ${result.steps.length}, ` +

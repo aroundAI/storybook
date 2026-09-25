@@ -116,7 +116,7 @@ export function controlHandler(
       ) {
         sendJson(res, 400, {
           error:
-            'expected {vendor: string, status: number, count?: positive integer, pathIncludes?: string}',
+            'expected {vendor: string, status: number, count?: positive integer, pathIncludes?: string, prompt?: string}',
         });
         return;
       }
@@ -127,6 +127,7 @@ export function controlHandler(
         ...(typeof rule.pathIncludes === 'string'
           ? { pathIncludes: rule.pathIncludes }
           : {}),
+        ...(typeof rule.prompt === 'string' ? { prompt: rule.prompt } : {}),
       });
       sendJson(res, 200, { failures: state.failures });
       return;
