@@ -351,13 +351,18 @@ test.describe('FILM-1617 — evidence', () => {
     await signInAs(page, team);
     await deepDive.goToDeepDive(team.slug, project.slug);
 
+    // The card loads after the page: wait for it, then for its points.
+    await expect(
+      page.locator('[data-test="subscriber-series"]:visible'),
+    ).toBeVisible({ timeout: 60_000 });
+
+    const card = cardAround(page, 'subscriber-series');
+    await card.scrollIntoViewIfNeeded();
+
     const points = page.locator(
       '[data-test="subscriber-snapshot-point"]:visible',
     );
     await expect(points).toHaveCount(seeded.length);
-
-    const card = cardAround(page, 'subscriber-series');
-    await card.scrollIntoViewIfNeeded();
 
     // Every recorded count, as drawn.
     const drawn = await points.evaluateAll((els) =>
@@ -401,6 +406,9 @@ test.describe('FILM-1617 — evidence', () => {
       .context()
       .addCookies([{ name: 'theme', value: 'dark', url: page.url() }]);
     await page.reload();
+    await expect(
+      page.locator('[data-test="subscriber-series"]:visible'),
+    ).toBeVisible({ timeout: 60_000 });
     await expect(points).toHaveCount(seeded.length);
     await cardAround(page, 'subscriber-series').scrollIntoViewIfNeeded();
     await cardAround(page, 'subscriber-series').screenshot({
