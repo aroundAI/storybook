@@ -13,7 +13,8 @@ export interface UncheckedDelete {
   op: 'delete' | 'soft-delete';
 }
 
-const WRITE = /\.delete\(\s*(?:\{[^)]*\})?\s*\)|\.update\(\s*\{\s*deleted_at\s*:/g;
+const WRITE =
+  /\.delete\(\s*(?:\{[^)]*\})?\s*\)|\.update\(\s*\{\s*deleted_at\s*:/g;
 
 export function findUncheckedDeletes(source: string): UncheckedDelete[] {
   const found: UncheckedDelete[] = [];

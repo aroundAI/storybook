@@ -1040,9 +1040,7 @@ const deleteEpisode = enhanceAction(
 
     // Soft delete episode
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: deletedEpisode, error: episodeError } = await (
-      client as any
-    )
+    const { data: deletedEpisode, error: episodeError } = await (client as any)
       .from('episodes')
       .update({ deleted_at: now })
       .eq('id', data.episodeId)

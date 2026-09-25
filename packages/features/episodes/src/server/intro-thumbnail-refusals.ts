@@ -17,7 +17,8 @@ export const INTRO_THUMBNAIL_REFUSALS = {
     "The intro wasn't deleted: it's already gone, or you can't delete it. Reload the page.",
   thumbnailNotDeleted:
     "The thumbnail wasn't removed: it's already gone, or you can't remove it. Reload the page.",
-  failed: 'Something went wrong. Try again; if it keeps failing, reload the page.',
+  failed:
+    'Something went wrong. Try again; if it keeps failing, reload the page.',
 } as const;
 
 /**

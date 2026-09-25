@@ -135,7 +135,9 @@ describe('ownedStorageKey', () => {
       own(`projects/${PROJECT}/assets/intros`),
       storage.getPublicUrl('account_image', KEY),
     ]) {
-      expect(ownedStorageKey(storage, 'project-assets', url, FOLDER)).toBeNull();
+      expect(
+        ownedStorageKey(storage, 'project-assets', url, FOLDER),
+      ).toBeNull();
     }
   });
 

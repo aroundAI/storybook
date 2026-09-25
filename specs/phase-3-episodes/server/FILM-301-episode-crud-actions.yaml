@@ -79,7 +79,7 @@ acceptance_criteria:
     evidence: "packages/features/episodes/src/server/actions.ts:904"
   - text: "`deleteEpisodeAction` soft deletes episode and all shots"
     met: false
-    reason: "not met — its shots are hard-deleted (`packages/features/episodes/src/server/actions.ts:1056`), although `shots.deleted_at` exists since migration `20251209061319`"
+    reason: "not met — its shots are hard-deleted (`packages/features/episodes/src/server/actions.ts:1064`), although `shots.deleted_at` exists since migration `20251209061319`"
   - text: "All actions enforce authentication"
     met: true
     evidence: "`packages/features/episodes/src/server/actions.ts:61`, `packages/next/src/actions/index.ts:43`"
@@ -107,7 +107,7 @@ remaining:
     reason: "`packages/features/episodes/src/server/actions.ts:659` reads `season?.[0]` from a many-to-one embed that PostgREST returns as an object, so `season` is always null; the action has no callers today"
     closed_by: "unassigned"
   - criterion: "`deleteEpisodeAction` soft-deletes the shots"
-    reason: "shots are hard-deleted (`packages/features/episodes/src/server/actions.ts:1056`) although `shots.deleted_at` exists (`apps/web/supabase/migrations/20251209061319_add-missing-shots-columns.sql:19`)"
+    reason: "shots are hard-deleted (`packages/features/episodes/src/server/actions.ts:1064`) although `shots.deleted_at` exists (`apps/web/supabase/migrations/20251209061319_add-missing-shots-columns.sql:19`)"
     closed_by: "unassigned"
 open_questions: []
 notes: |

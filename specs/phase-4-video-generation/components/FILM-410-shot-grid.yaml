@@ -26,7 +26,7 @@ acceptance_criteria:
     reason: "not met — single only (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:70`); Cmd/Shift multi and range select went in 5b88db3a"
   - text: "Drag-and-drop reordering works"
     met: false
-    reason: "not met — no drag-and-drop in Visual Studio; `reorderShotsAction` (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:183`) has no caller"
+    reason: "not met — no drag-and-drop in Visual Studio; `reorderShotsAction` (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:184`) has no caller"
   - text: "Status overlays display correctly"
     met: true
     evidence: "badge with per-status icon, incl. failed (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:138`), play overlay for completed (line 242); progress bar and Generate button went with generation (5b88db3a)"
@@ -51,7 +51,7 @@ remaining:
     reason: "Single selection only (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:70`); multi/range select served batch generation, retired in 5b88db3a"
     closed_by: "owner"
   - criterion: "Drag-and-drop reordering"
-    reason: "No drag-and-drop in Visual Studio; `reorderShotsAction` (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:183`) has no caller"
+    reason: "No drag-and-drop in Visual Studio; `reorderShotsAction` (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:184`) has no caller"
     closed_by: "unassigned"
   - criterion: "Keyboard navigation"
     reason: "Shot cards are not focusable (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:93`)"

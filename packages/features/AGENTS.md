@@ -144,8 +144,8 @@ await updateProjectAction({
   status: 'active', // or 'archived'
 });
 
-// Delete project
-await deleteProjectAction({ id: projectId });
+// Delete project (a refusal comes back as a value: unwrap throws it)
+await unwrap(deleteProjectAction({ id: projectId }));
 
 // Add member
 await addProjectMemberAction({
@@ -161,11 +161,11 @@ await updateProjectMemberAction({
   role: 'admin',
 });
 
-// Remove member
-await removeProjectMemberAction({
+// Remove member (a refusal comes back as a value: unwrap throws it)
+await unwrap(removeProjectMemberAction({
   project_id: projectId,
   user_id: userId,
-});
+}));
 ```
 
 ### Project Roles & Permissions
@@ -295,7 +295,7 @@ if (!canDelete) {
   throw new Error('Insufficient permissions');
 }
 
-await deleteProjectAction({ id: projectId });
+await unwrap(deleteProjectAction({ id: projectId }));
 ```
 
 **See**: `packages/features/projects/src/lib/server/project.queries.ts` for implementation details

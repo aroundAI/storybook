@@ -362,7 +362,7 @@ export const deleteEpisodeThumbnailAction = enhanceAction(
         .single();
 
       if (fetchError || !thumbnail) {
-        throw new Error('Thumbnail not found');
+        throw new ActionRefusal(INTRO_THUMBNAIL_REFUSALS.thumbnailNotDeleted);
       }
 
       // The row first: a member passes canEditEpisode but not the table's
