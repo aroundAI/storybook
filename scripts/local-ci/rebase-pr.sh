@@ -27,6 +27,15 @@ bash $CI/remerge-known-bugs.sh "$old" || { echo "#$n REMERGE FAILED"; exit 3; }
 if ! git diff --quiet "$old" -- specs/INDEX.md 2>/dev/null && [ -n "$(git diff $(git merge-base $old origin/main) $old -- specs/INDEX.md)" ]; then python3 $CI/remerge-index.py "$old" || { echo "#$n INDEX REMERGE FAILED"; exit 3; }; git diff --quiet -- specs/INDEX.md || { git add specs/INDEX.md; git commit -qm "docs(INDEX): re-apply this PR's rows onto main after the rebase
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"; }; fi
+# Task #15: once the INDEX generator is on the branch, recount INDEX's counts from the
+# spec files, so the delta arithmetic above is corrected rather than trusted. It never
+# edits a status cell; what it cannot fix fails the unit suite at re-verify.
+if grep -q '"specs:index"' package.json 2>/dev/null; then
+  pnpm specs:index --write >/dev/null 2>&1
+  if ! git diff --quiet -- specs/INDEX.md; then git add specs/INDEX.md; git commit -qm "docs(INDEX): recount after the rebase (pnpm specs:index --write)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"; echo "#$n INDEX counts rewritten"; fi
+fi
 # KB-81 (#349): once the citation checker is on the branch, re-point citations that moved
 if grep -q '"specs:citations"' package.json 2>/dev/null; then
   pnpm specs:citations --fix >/dev/null 2>&1

@@ -669,6 +669,17 @@ A requirements document and an engineering document for one feature, shipped in 
 > bulk deletions — `5b88db3a` (in-app video generation, 2026-01-15) and
 > `5f44d0e1` (the owner's dead-code cleanup, 2026-02-19) — were recorded nowhere
 > here. Recount from the files' `status:` lines, never by hand.
+>
+> **The counts below, and each section's `(N specs)`, are generated and
+> checked.** After changing a spec's `status:` and its row's Status cell, run
+> `pnpm specs:index --write`; on a rebase conflict in these tables, take either
+> side and run it again. `packages/shared/__tests__/spec-index-tracker.test.ts`
+> fails any PR where a row disagrees with its file or a count with the rows.
+> **What counts:** every row under By Phase, one per linked file, by that file's
+> own frontmatter `status:`: the YAML task specs *and* the Markdown documents
+> (PHASE-14 and the two Public Sharing docs). A recount of `*.yaml` alone comes
+> out 3 short, which is how #337 and #343 reported a drift that wasn't there.
+> FILM-CC-04 is the one OPEN row and is not counted.
 
 **What each status means:**
 
@@ -714,7 +725,7 @@ reason when not.
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
 | **TOTAL** | **231** | **26** | **79** | **2** | **50** | **74** |
 
-No column for In Progress: no PR is open.
+No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose PR is open keeps the status it has on `main`.
 
 ### By scope
 
