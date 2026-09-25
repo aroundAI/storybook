@@ -123,7 +123,7 @@ update public.projects set visibility = 'public' where id = current_setting('kb2
 select makerkit.authenticate_as('kb26_outsider');
 select is(
   (select count(*)::int from public.projects where id = current_setting('kb26.p')::uuid),
-  1, 'Control: the outsider can now read the public project itself');
+  0, 'Since KB-85/88 a public project''s row is not readable by an outsider either (public pages read public_projects)');
 select is(
   (select count(*)::int from public.external_content where external_id = 'manual-kb26-alice'),
   0, 'Project visibility does not grant access: the outsider still cannot read the upload');

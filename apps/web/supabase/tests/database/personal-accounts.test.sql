@@ -21,13 +21,14 @@ SELECT row_eq(
    'Inserting a user should create a personal account when personal accounts are enabled'
 );
 
--- anon users should not be able to see the personal account
+-- anon users should not be able to see the personal account. Since KB-88
+-- anon has USAGE on public, so the refusal is the table's (KB-85).
 
 set local role anon;
 
 SELECT throws_ok(
    $$ select * from public.accounts order by created_at desc limit 1 $$,
-    'permission denied for schema public'
+    'permission denied for table accounts'
 );
 
 -- the primary owner should be able to see the personal account

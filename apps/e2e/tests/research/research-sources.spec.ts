@@ -147,13 +147,22 @@ test.describe('Research sources are private to their project (KB-26)', () => {
       ),
     ).toEqual([]);
 
-    // Making the project public lets Bob read the project, and still not the
-    // research uploaded into it.
+    // Making the project public lets Bob read the project (through
+    // public_projects since KB-85/88: a public team's project with a public
+    // slug), and still not the research uploaded into it.
+    await updateRows('accounts', `id=eq.${alice.accountId}`, {
+      public_profile: { is_public: true },
+    });
     await updateRows('projects', `id=eq.${aliceProject.id}`, {
       visibility: 'public',
+      public_slug: `kb26-${aliceProject.id.slice(0, 8)}`,
     });
     expect(
-      await readAs(bobToken, 'projects', `id=eq.${aliceProject.id}&select=id`),
+      await readAs(
+        bobToken,
+        'public_projects',
+        `id=eq.${aliceProject.id}&select=id`,
+      ),
     ).toHaveLength(1);
     expect(
       await readAs(

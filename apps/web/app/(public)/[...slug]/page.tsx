@@ -63,7 +63,7 @@ export async function generateMetadata({
     const company = await getPublicCompany(companySlug);
     if (!company) return {};
     const projectSlug = decodedSlug[1]!;
-    const project = await getPublicProject(company.id, projectSlug);
+    const project = await getPublicProject(company, projectSlug);
     if (!project) return {};
     return generateProjectMetadata(project);
   }
@@ -73,10 +73,10 @@ export async function generateMetadata({
     const company = await getPublicCompany(companySlug);
     if (!company) return {};
     const projectSlug = decodedSlug[1]!;
-    const project = await getPublicProject(company.id, projectSlug);
+    const project = await getPublicProject(company, projectSlug);
     if (!project) return {};
     const episodeSlug = decodedSlug[3]!;
-    const episode = await getPublicEpisode(project.id, episodeSlug);
+    const episode = await getPublicEpisode(project, episodeSlug);
     if (!episode) return {};
     if (typeof lang !== 'string') return {};
     return generateEpisodeMetadata(episode, lang);
@@ -112,7 +112,7 @@ export default async function PublicPage({ params, searchParams }: PageProps) {
 
   // 1. Company Page
   if (decodedSlug.length === 1) {
-    const projects = await getPublicProjects(company.id);
+    const projects = await getPublicProjects(company);
     structuredData = getOrganizationSchema(company, BASE_URL);
 
     return (
@@ -129,10 +129,10 @@ export default async function PublicPage({ params, searchParams }: PageProps) {
   // 2. Project Page
   if (decodedSlug.length === 2) {
     const projectSlug = decodedSlug[1]!;
-    const project = await getPublicProject(company.id, projectSlug);
+    const project = await getPublicProject(company, projectSlug);
     if (!project) return notFound();
 
-    const episodes = await getPublicEpisodes(project.id);
+    const episodes = await getPublicEpisodes(project);
     structuredData = getTVSeriesSchema(project, BASE_URL);
 
     return (
@@ -149,15 +149,14 @@ export default async function PublicPage({ params, searchParams }: PageProps) {
   // 3. Episode Page
   if (decodedSlug.length === 4 && decodedSlug[2] === 'e') {
     const projectSlug = decodedSlug[1]!;
-    const project = await getPublicProject(company.id, projectSlug);
+    const project = await getPublicProject(company, projectSlug);
     if (!project) return notFound();
 
     const episodeSlug = decodedSlug[3]!;
-    const episode = await getPublicEpisode(project.id, episodeSlug);
+    const episode = await getPublicEpisode(project, episodeSlug);
     if (!episode) return notFound();
 
-    // Get YouTube/Facebook URLs from publishes table
-    const platformUrls = await getEpisodePlatformUrls(episode.id);
+    const platformUrls = getEpisodePlatformUrls(episode);
 
     if (typeof lang !== 'string') return notFound();
     structuredData = getTVEpisodeSchema(episode, lang, BASE_URL);

@@ -121,51 +121,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   // Projects
-  if (projects) {
-    projects.forEach(
-      (proj: {
-        account?: { slug: string | null };
-        public_slug?: string | null;
-        updated_at: string | null;
-      }) => {
-        if (!proj.account || !proj.account.slug || !proj.public_slug) return;
-        sharingPages.push({
-          url: `${baseUrl}/@${proj.account.slug}/${proj.public_slug}`,
-          lastModified: proj.updated_at ? new Date(proj.updated_at) : now,
-          changeFrequency: 'weekly',
-          priority: 0.7,
-        });
-      },
-    );
+  for (const proj of projects) {
+    if (!proj.account_slug || !proj.public_slug) continue;
+    sharingPages.push({
+      url: `${baseUrl}/@${proj.account_slug}/${proj.public_slug}`,
+      lastModified: proj.updated_at ? new Date(proj.updated_at) : now,
+      changeFrequency: 'weekly',
+      priority: 0.7,
+    });
   }
 
   // Episodes
-  if (episodes) {
-    episodes.forEach(
-      (ep: {
-        project?: {
-          account?: { slug: string | null };
-          public_slug?: string | null;
-        };
-        public_slug?: string | null;
-        updated_at: string;
-      }) => {
-        if (
-          !ep.project ||
-          !ep.project.account ||
-          !ep.project.account.slug ||
-          !ep.project.public_slug ||
-          !ep.public_slug
-        )
-          return;
-        sharingPages.push({
-          url: `${baseUrl}/@${ep.project.account.slug}/${ep.project.public_slug}/e/${ep.public_slug}`,
-          lastModified: ep.updated_at ? new Date(ep.updated_at) : now,
-          changeFrequency: 'weekly',
-          priority: 0.6,
-        });
-      },
-    );
+  for (const ep of episodes) {
+    if (!ep.account_slug || !ep.project_public_slug || !ep.public_slug) {
+      continue;
+    }
+    sharingPages.push({
+      url: `${baseUrl}/@${ep.account_slug}/${ep.project_public_slug}/e/${ep.public_slug}`,
+      lastModified: ep.updated_at ? new Date(ep.updated_at) : now,
+      changeFrequency: 'weekly',
+      priority: 0.6,
+    });
   }
 
   return [...staticPages, ...blogPosts, ...docPages, ...sharingPages];

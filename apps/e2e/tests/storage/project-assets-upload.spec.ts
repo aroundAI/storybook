@@ -55,9 +55,17 @@ test.beforeAll(async () => {
   await seedMembership(member.userId, team.accountId);
   await seedProjectMember(project.id, member.userId, 'member');
 
-  // Public, so the stranger can read it: reading is not writing.
+  // Public, so the stranger can read it: reading is not writing. Since
+  // KB-85/88 a public project is read through public_projects, which lists
+  // public teams' projects that have a public slug.
   stranger = await seedUser('kb28-stranger');
-  await updateRows('projects', `id=eq.${project.id}`, { visibility: 'public' });
+  await updateRows('accounts', `id=eq.${team.accountId}`, {
+    public_profile: { is_public: true },
+  });
+  await updateRows('projects', `id=eq.${project.id}`, {
+    visibility: 'public',
+    public_slug: `kb28-storage-${project.id.slice(0, 8)}`,
+  });
 });
 
 test.describe('Project storage (KB-28)', () => {
@@ -187,7 +195,7 @@ test.describe('Project storage (KB-28)', () => {
   }) => {
     const visible = await readRowsAs<{ id: string }>(
       stranger,
-      'projects',
+      'public_projects',
       `id=eq.${project.id}&select=id`,
     );
     expect(visible, 'precondition: the stranger can read it').toHaveLength(1);

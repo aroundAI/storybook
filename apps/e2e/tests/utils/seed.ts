@@ -869,6 +869,30 @@ export async function readRowsAs<T>(
   return JSON.parse(text) as T[];
 }
 
+/**
+ * A request with the public anon key and no session: what anyone on the
+ * internet can send (KB-85). Returns the status and parsed body rather than
+ * throwing, because a refusal is usually the expected answer.
+ */
+export async function anonRequest(
+  path: string,
+  init: { method?: string; body?: unknown } = {},
+): Promise<{ status: number; body: unknown }> {
+  const response = await fetch(`${SUPABASE_URL}${path}`, {
+    method: init.method ?? 'GET',
+    headers: {
+      apikey: ANON_KEY,
+      Authorization: `Bearer ${ANON_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: init.body === undefined ? undefined : JSON.stringify(init.body),
+  });
+
+  const text = await response.text();
+
+  return { status: response.status, body: text ? JSON.parse(text) : null };
+}
+
 /** Whether an object exists, asked with the service role. */
 export async function storageObjectExists(
   bucket: string,
