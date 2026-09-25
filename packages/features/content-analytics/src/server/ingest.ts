@@ -5,7 +5,7 @@ import type {
   RetentionCurvePoint,
   SnapshotTotals,
   VideoAudienceRow,
-  VideoMetric,
+  YouTubeVideoMetric,
 } from '@kit/clickhouse';
 import { VIEW_DEFINITIONS, formatDateStr } from '@kit/clickhouse';
 
@@ -138,7 +138,7 @@ export function buildYouTubeDailyRows(input: {
   dailyData: YouTubeDailyMetrics[];
   extraMetricsJson: string;
   metricSource?: 'analytics_api' | 'backfill';
-}): VideoMetric[] {
+}): YouTubeVideoMetric[] {
   const latest = latestDataDate(input.dailyData);
 
   return input.dailyData.map((day) => ({
@@ -154,8 +154,11 @@ export function buildYouTubeDailyRows(input: {
     watch_time_seconds: Math.round(day.estimatedMinutesWatched * 60),
     revenue_cents: 0,
     subscribers_gained: day.subscribersGained,
+    subscribers_lost: day.subscribersLost,
     metric_source: input.metricSource ?? ('analytics_api' as const),
     avg_view_duration_seconds: day.averageViewDuration,
+    avg_view_percentage: day.averageViewPercentage,
+    dislikes: day.dislikes,
     // Always set, null included: the Reporting ingest writes this key too,
     // and an omitted field would erase its figure (KB-50).
     engaged_views: engagedViewsFor(day),
