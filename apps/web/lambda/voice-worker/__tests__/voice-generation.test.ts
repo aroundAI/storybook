@@ -53,6 +53,8 @@ function supabaseWith(encrypted: string) {
       error: null,
     }),
     update: () => chain,
+    // KB-118: the line is in the payload's episode
+    maybeSingle: async () => ({ data: { episode_id: EPISODE }, error: null }),
     then: <R>(resolve: (value: { error: null }) => R) =>
       Promise.resolve({ error: null }).then(resolve),
   };

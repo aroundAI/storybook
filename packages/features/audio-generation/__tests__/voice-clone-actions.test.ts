@@ -79,6 +79,15 @@ vi.mock('../src/providers/elevenlabs', () => ({
   })),
 }));
 
+// KB-112: write access to the asset's project, asked as the caller. Its
+// refusals are covered by voice-clone-authorization.test.ts; here the caller
+// can write, and the target's account is the asset's.
+const mockAuthorizeProjectTarget = vi.fn();
+vi.mock('@kit/prompt-engine/llm-job-target', () => ({
+  authorizeProjectTarget: (...args: unknown[]) =>
+    mockAuthorizeProjectTarget(...args),
+}));
+
 // Mock fetch for audio sample downloads
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -86,6 +95,13 @@ global.fetch = mockFetch;
 describe('Voice Clone Actions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    mockAuthorizeProjectTarget.mockImplementation(
+      async (_client: unknown, projectId: string) => ({
+        accountId: 'account-123',
+        projectId,
+      }),
+    );
 
     // Default: user is authenticated
     mockRequireUser.mockResolvedValue({
@@ -235,7 +251,9 @@ describe('Voice Clone Actions', () => {
         });
       });
 
-      it('should throw error when account cannot be determined', async () => {
+      it('should refuse when the caller cannot write the asset’s project', async () => {
+        mockAuthorizeProjectTarget.mockResolvedValue(null);
+
         mockSupabaseClient.from.mockImplementation((table: string) => {
           if (table === 'assets') {
             return {
@@ -255,7 +273,7 @@ describe('Voice Clone Actions', () => {
         });
 
         await expect(unwrap(startVoiceCloneAction(validInput))).rejects.toThrow(
-          'Could not determine account',
+          'Asset not found',
         );
       });
 
@@ -580,7 +598,10 @@ describe('Voice Clone Actions', () => {
               single: vi.fn().mockResolvedValue({
                 data: {
                   provider_voice_id: 'voice-123',
-                  assets: { projects: { account_id: 'account-123' } },
+                  assets: {
+                    project_id: 'project-123',
+                    projects: { account_id: 'account-123' },
+                  },
                 },
                 error: null,
               }),
@@ -632,7 +653,10 @@ describe('Voice Clone Actions', () => {
               single: vi.fn().mockResolvedValue({
                 data: {
                   provider_voice_id: 'voice-123',
-                  assets: { projects: { account_id: 'account-123' } },
+                  assets: {
+                    project_id: 'project-123',
+                    projects: { account_id: 'account-123' },
+                  },
                 },
                 error: null,
               }),
@@ -677,7 +701,10 @@ describe('Voice Clone Actions', () => {
               single: vi.fn().mockResolvedValue({
                 data: {
                   provider_voice_id: null,
-                  assets: { projects: { account_id: 'account-123' } },
+                  assets: {
+                    project_id: 'project-123',
+                    projects: { account_id: 'account-123' },
+                  },
                 },
                 error: null,
               }),

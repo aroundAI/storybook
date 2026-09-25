@@ -138,6 +138,32 @@ interface DialogueVoiceResult {
   error?: string;
 }
 
+export class DialogueLineRefused extends Error {
+  override readonly name = 'DialogueLineRefused';
+}
+
+async function assertLineInEpisode(
+  supabase: SupabaseClient<Database>,
+  dialogueLineId: string,
+  episodeId: string,
+): Promise<void> {
+  const { data, error } = await supabase
+    .from('dialogue_lines')
+    .select('episode_id')
+    .eq('id', dialogueLineId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not read the dialogue line: ${error.message}`);
+  }
+
+  if (data?.episode_id !== episodeId) {
+    throw new DialogueLineRefused(
+      "The dialogue line is not in the job's episode",
+    );
+  }
+}
+
 export async function processDialogueVoiceGeneration(
   payload: unknown,
   supabase: SupabaseClient<Database>,
@@ -147,6 +173,11 @@ export async function processDialogueVoiceGeneration(
   console.log(
     `[Dialogue Voice Gen] Processing dialogue line ${data.dialogueLineId}`,
   );
+
+  // KB-118: the job's episode was authorised (KB-46, KB-49); its line must be
+  // in that episode, or the service-role writes below would land on a line
+  // of another project. Asked before anything is spent or written.
+  await assertLineInEpisode(supabase, data.dialogueLineId, data.episodeId);
 
   try {
     // 1. Check if text has speakable content after stripping stage directions
@@ -179,7 +210,8 @@ export async function processDialogueVoiceGeneration(
     await supabase
       .from('dialogue_lines')
       .update({ status: 'generating' })
-      .eq('id', data.dialogueLineId);
+      .eq('id', data.dialogueLineId)
+      .eq('episode_id', data.episodeId);
 
     // 4. Generate voice using ElevenLabs TTS API
     const response = await fetch(
@@ -247,7 +279,8 @@ export async function processDialogueVoiceGeneration(
         status: 'completed',
         generation_metadata: metadata,
       })
-      .eq('id', data.dialogueLineId);
+      .eq('id', data.dialogueLineId)
+      .eq('episode_id', data.episodeId);
 
     console.log(
       `[Dialogue Voice Gen] Completed dialogue line ${data.dialogueLineId}, audio: ${audioUrl}`,
@@ -272,7 +305,8 @@ export async function processDialogueVoiceGeneration(
           failedAt: new Date().toISOString(),
         },
       })
-      .eq('id', data.dialogueLineId);
+      .eq('id', data.dialogueLineId)
+      .eq('episode_id', data.episodeId);
 
     console.error(
       `[Dialogue Voice Gen] Failed dialogue line ${data.dialogueLineId}:`,

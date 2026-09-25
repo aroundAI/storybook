@@ -1,0 +1,74 @@
+{
+  "feature": "KB-112, KB-118, KB-119",
+  "mutations": [
+    {
+      "name": "VS1 a reader starts a voice clone on the account's key",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/voice-clone-actions.ts",
+      "find": "    const target = await authorizeProjectTarget(client, asset.project_id);\n\n    if (!target) {",
+      "replace": "    const target = { accountId: asset.projects?.account_id as string };\n\n    if (!target) {",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/voice-clone-authorization.test.ts",
+      "pattern": "cannot start a clone"
+    },
+    {
+      "name": "VS2 a reader deletes a voice clone on the account's key",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/voice-clone-actions.ts",
+      "find": "    const target = projectId\n      ? await authorizeProjectTarget(client, projectId)\n      : null;",
+      "replace": "    const target = projectId\n      ? { accountId: profile.assets?.projects?.account_id as string }\n      : null;",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/voice-clone-authorization.test.ts",
+      "pattern": "cannot delete a clone"
+    },
+    {
+      "name": "VS3 a reader lists voices with the account's key",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/voice-profile-actions.ts",
+      "find": "    const target = await authorizeProjectTarget(client, data.projectId);\n\n    if (!target) {\n      throw new ActionRefusal('Project not found or access denied');",
+      "replace": "    const target = { accountId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' };\n\n    if (!target) {\n      throw new ActionRefusal('Project not found or access denied');",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/voice-clone-authorization.test.ts",
+      "pattern": "cannot list"
+    },
+    {
+      "name": "VS4 the voice worker writes a line of another episode",
+      "kind": "unit",
+      "file": "apps/web/lambda/voice-worker/voice-generation.ts",
+      "find": "  if (data?.episode_id !== episodeId) {",
+      "replace": "  if (data?.episode_id === 'never') {",
+      "cwd": "apps/web",
+      "test": "lambda/voice-worker/__tests__/line-in-episode.test.ts",
+      "pattern": "is refused before the key is read"
+    },
+    {
+      "name": "VS5 the voice worker's failure write is not scoped to the episode",
+      "kind": "unit",
+      "file": "apps/web/lambda/voice-worker/voice-generation.ts",
+      "find": "          failedAt: new Date().toISOString(),\n        },\n      })\n      .eq('id', data.dialogueLineId)\n      .eq('episode_id', data.episodeId);",
+      "replace": "          failedAt: new Date().toISOString(),\n        },\n      })\n      .eq('id', data.dialogueLineId);",
+      "cwd": "apps/web",
+      "test": "lambda/voice-worker/__tests__/line-in-episode.test.ts",
+      "pattern": "is written only where it is in that episode"
+    },
+    {
+      "name": "VS6 the unpublish list claims a platform the worker cannot delete on",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/platforms.ts",
+      "find": "export const PLATFORMS_DELETED_ON_UNPUBLISH = [\n  'youtube',\n  'facebook',\n]",
+      "replace": "export const PLATFORMS_DELETED_ON_UNPUBLISH = [\n  'youtube',\n  'facebook',\n  'tiktok',\n]",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/unpublish-platforms.test.ts",
+      "pattern": "delete handler"
+    },
+    {
+      "name": "E2E VS7 the Delete All dialog says only records are removed",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/delete-all-dialog.tsx",
+      "find": "            This deletes this episode&apos;s videos on {REMOTELY_DELETED}, and",
+      "replace": "            This deletes this episode&apos;s records on {REMOTELY_DELETED}, and",
+      "spec": "tests/publishing/delete-all-copy.spec.ts",
+      "grep": "deleted on YouTube and Facebook"
+    }
+  ]
+}
