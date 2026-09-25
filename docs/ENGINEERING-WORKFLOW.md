@@ -306,6 +306,13 @@ watched value had been checked — while a ClickHouse container sat running.
 ./scripts/local-env.sh down
 ```
 
+`up` also starts the **AI vendor sandbox** (FILM-1803, `apps/vendor-sandbox`):
+local stand-ins for Gemini, ElevenLabs and OpenAI's key check on
+127.0.0.1:4110–4113, with its ledger at `http://127.0.0.1:4100/__sandbox`.
+With `local.env` loaded, every inline AI action answers from it: no key, no
+spend, output in the shape the next stage reads. The studio stages are
+enqueued and need a local queue first (FILM-1806).
+
 `up` writes `deployment/config/local.env` (no secrets; regenerated on demand)
 with `CLICKHOUSE_ENABLED=true`. **The app only reads ClickHouse if that file is
 in the server's environment** — `apps/web/.env*` does not enable it, so a plain
