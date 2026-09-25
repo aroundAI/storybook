@@ -19,6 +19,8 @@
  */
 import OpenAI from 'openai';
 
+import { vendorUrl } from '@kit/shared/vendors';
+
 import { LLMError } from './types';
 
 /**
@@ -89,8 +91,10 @@ export class WhisperTranscriptionService {
       ...config,
     };
 
+    // An explicit baseURL, so the SDK never reads OPENAI_BASE_URL (FILM-1805).
     this.client = new OpenAI({
       apiKey,
+      baseURL: `${vendorUrl('openai')}/v1`,
       timeout: config.timeout ?? 120000, // 2 minutes default
     });
   }

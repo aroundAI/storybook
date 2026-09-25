@@ -37,7 +37,14 @@ export const VENDORS = {
   'youtube-analytics': 'https://youtubeanalytics.googleapis.com',
   'youtube-reporting': 'https://youtubereporting.googleapis.com',
   gemini: 'https://generativelanguage.googleapis.com',
+  /**
+   * Vertex AI Express (`GEMINI_VERTEXAI=true`). Called with an API key, which
+   * makes `@google/genai` drop project and location, so it is always the
+   * global endpoint, never a regional one (FILM-1805 §3.2).
+   */
+  'gemini-vertex': 'https://aiplatform.googleapis.com',
   openai: 'https://api.openai.com',
+  anthropic: 'https://api.anthropic.com',
   deepseek: 'https://api.deepseek.com',
   voyage: 'https://api.voyageai.com',
   elevenlabs: 'https://api.elevenlabs.io',
@@ -153,18 +160,38 @@ export function vendorUrl(vendor: Vendor, env: Env = process.env): string {
 }
 
 /**
- * The `VENDOR_URL_*` variables that are set and will not be used: all of them
- * while the sandbox is disabled, and any that names no vendor while it is
- * enabled. `apps/web/instrumentation.ts` logs each as an error at server
- * start, so a deploy that carries one says so instead of degrading silently.
+ * The SDKs' own base-URL variables. Each SDK reads its variable only when it
+ * is constructed without a base URL, and every construction site now passes
+ * one from `vendorUrl()` (FILM-1805), so these are never used. They are named
+ * here so a deploy that still sets one says so rather than looking live.
+ */
+export const SDK_BASE_URL_VARIABLES = [
+  'ANTHROPIC_BASE_URL',
+  'GOOGLE_GEMINI_BASE_URL',
+  'GOOGLE_VERTEX_BASE_URL',
+  'OPENAI_BASE_URL',
+] as const;
+
+/**
+ * The variables that are set and will not be used: every `VENDOR_URL_*` while
+ * the sandbox is disabled, any that names no vendor while it is enabled, and
+ * any `SDK_BASE_URL_VARIABLES` at all. `apps/web/instrumentation.ts` logs
+ * each as an error at server start - by name, never by value - so a deploy
+ * that carries one says so instead of degrading silently.
  */
 export function ignoredVendorOverrides(env: Env = process.env) {
   const known = new Set(
     (Object.keys(VENDORS) as Vendor[]).map(vendorUrlEnvName),
   );
+  const sdkVariables = new Set<string>(SDK_BASE_URL_VARIABLES);
 
   return Object.keys(env)
-    .filter((name) => name.startsWith(OVERRIDE_PREFIX) && env[name])
-    .filter((name) => !vendorSandboxEnabled(env) || !known.has(name))
+    .filter((name) => env[name])
+    .filter(
+      (name) =>
+        sdkVariables.has(name) ||
+        (name.startsWith(OVERRIDE_PREFIX) &&
+          (!vendorSandboxEnabled(env) || !known.has(name))),
+    )
     .sort();
 }

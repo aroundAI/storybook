@@ -1,0 +1,95 @@
+{
+  "feature": "FILM-1805",
+  "mutations": [
+    {
+      "name": "OpenAI chat reads OPENAI_BASE_URL again",
+      "kind": "unit",
+      "file": "packages/llm/src/providers/openai.ts",
+      "find": "      apiKey: config.apiKey,\n      baseURL: `${vendorUrl('openai')}/v1`,\n",
+      "replace": "      apiKey: config.apiKey,\n",
+      "cwd": "packages/llm",
+      "test": "__tests__/sdk-base-urls.test.ts",
+      "pattern": "OpenAI chat"
+    },
+    {
+      "name": "Whisper reads OPENAI_BASE_URL again",
+      "kind": "unit",
+      "file": "packages/llm/src/transcription.ts",
+      "find": "      apiKey,\n      baseURL: `${vendorUrl('openai')}/v1`,\n",
+      "replace": "      apiKey,\n",
+      "cwd": "packages/llm",
+      "test": "__tests__/sdk-base-urls.test.ts",
+      "pattern": "Whisper transcription"
+    },
+    {
+      "name": "Anthropic reads ANTHROPIC_BASE_URL again",
+      "kind": "unit",
+      "file": "packages/llm/src/providers/anthropic.ts",
+      "find": "      baseURL: vendorUrl('anthropic'),\n",
+      "replace": "",
+      "cwd": "packages/llm",
+      "test": "__tests__/sdk-base-urls.test.ts",
+      "pattern": "Anthropic messages"
+    },
+    {
+      "name": "Gemini developer API reads GOOGLE_GEMINI_BASE_URL again",
+      "kind": "unit",
+      "file": "packages/llm/src/providers/gemini.ts",
+      "find": "        httpOptions: { baseUrl: vendorUrl('gemini') },\n",
+      "replace": "",
+      "cwd": "packages/llm",
+      "test": "__tests__/sdk-base-urls.test.ts",
+      "pattern": "Gemini developer API"
+    },
+    {
+      "name": "Vertex Express reads GOOGLE_VERTEX_BASE_URL again",
+      "kind": "unit",
+      "file": "packages/llm/src/providers/gemini.ts",
+      "find": "        httpOptions: { baseUrl: vendorUrl('gemini-vertex') },\n",
+      "replace": "",
+      "cwd": "packages/llm",
+      "test": "__tests__/sdk-base-urls.test.ts",
+      "pattern": "Vertex AI Express"
+    },
+    {
+      "name": "The guard misses a construction without a base URL",
+      "kind": "unit",
+      "file": "packages/llm/src/providers/anthropic.ts",
+      "find": "      baseURL: vendorUrl('anthropic'),\n",
+      "replace": "",
+      "cwd": "packages/llm",
+      "test": "__tests__/sdk-base-url-guard.test.ts",
+      "pattern": "constructs every OpenAI"
+    },
+    {
+      "name": "The guard misses a *_BASE_URL read",
+      "kind": "unit",
+      "file": "packages/llm/src/providers/openai.ts",
+      "find": "      baseURL: `${vendorUrl('openai')}/v1`,\n",
+      "replace": "      baseURL: process.env.OPENAI_BASE_URL ?? `${vendorUrl('openai')}/v1`,\n",
+      "cwd": "packages/llm",
+      "test": "__tests__/sdk-base-url-guard.test.ts",
+      "pattern": "reads no"
+    },
+    {
+      "name": "SDK base-URL variables are no longer reported",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/resolver.ts",
+      "find": "        sdkVariables.has(name) ||\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-url-resolver.test.ts",
+      "pattern": "names every LLM SDK base-URL variable"
+    },
+    {
+      "name": "Server start stops logging a set SDK variable",
+      "kind": "unit",
+      "file": "apps/web/lib/vendor-overrides.ts",
+      "find": "  const sdk = ignored.filter((name) => sdkVariables.has(name));\n",
+      "replace": "  const sdk: string[] = [];\n",
+      "cwd": "apps/web",
+      "test": "lib/__tests__/vendor-overrides.test.ts",
+      "pattern": "SDK base-URL variable by name only"
+    }
+  ]
+}
