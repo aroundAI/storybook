@@ -3,7 +3,7 @@ title: "Normalised Measures, Velocity and Acceleration"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: M
 dependencies:
   - spec_id: "FILM-1722"
@@ -20,41 +20,41 @@ summary: >
   one) on top.
 acceptance_criteria:
   - text: "Engagement rate has exactly one definition in the repository"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "packages/clickhouse/__tests__/engagement-rate-one-definition.test.ts scans packages/ and apps/ case-insensitively; the nine former copies call displayedEngagementRatePercent (guards NM1–NM8, NM20)"
   - text: "Share rate, save rate and subscriber conversion exist and are unit-tested"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "packages/clickhouse/__tests__/measures.test.ts (computeMeasure: share_rate, save_rate, subscriber_conversion; input support bound to docs/platform-capability-reference.md by packages/features/content-analytics/__tests__/measure-input-sources.test.ts)"
   - text: "Every measure records the denominator that produced it, including which view definition and its effective date"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "packages/clickhouse/__tests__/measures.test.ts \"stamps the views column and its definition after the YouTube change\" — DenominatorStamp.definitions carries each definition with effectiveFrom"
   - text: "A measure spanning a view-definition change is suppressed with a named reason, not returned"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "packages/clickhouse/__tests__/measures.test.ts \"refuses a range engaged views does not cover\" — view_definition_changed with its date, via viewsDenominatorFor"
   - text: "engagedViews backs any YouTube series crossing 2026-08-27"
     met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    reason: "In the module, yes: computeMeasure reads engaged_views across 2026-08-27 and stamps bridged (packages/clickhouse/__tests__/measures.test.ts \"reads engaged_views across 2026-08-27\"). On the surfaces, no: the owner's ruling of 2026-09-22 (FILM-1722 §12) keeps today's displayed figures, over views, until FILM-1719 can explain the switch. displayedEngagementRatePercent holds them"
   - text: "A measure computed over a fallback denominator is distinguishable from one over the preferred denominator"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "packages/clickhouse/__tests__/measures.test.ts \"uses views for Instagram, marked as the fallback\" — role: fallback, fallbackFor reach not_ingested (FILM-1712)"
   - text: "Velocity is only compared within an age bucket"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "packages/clickhouse/__tests__/velocity.test.ts \"refuses readings from different age buckets\" — compareVelocity returns not_comparable/different_age_buckets. A runtime state, not a type-level refusal"
   - text: "The finest genuinely available time grain is stated, and no measure is emitted at a finer one than the data supports"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "VELOCITY_GRAIN = 'day' in packages/clickhouse/src/lib/velocity.ts; ageBucket refuses a fractional age (packages/clickhouse/__tests__/velocity.test.ts). Hourly early-warning filed as a storage lead: specs/known-bugs/leads/2026-09-25-film-1713.md"
   - text: "Acceleration distinguishes accelerating, stable, decelerating and stalled"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "packages/clickhouse/__tests__/velocity.test.ts \"reads the spec examples as specified\", \"holds its boundaries\", \"tells stalled from decelerating\""
   - text: "Not enough points yet is a named state, not stable"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "packages/clickhouse/__tests__/velocity.test.ts \"is not_enough_points with fewer than two velocities, never stable\""
   - text: "Every threshold is a named constant with a doc-comment arguing the number"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "packages/clickhouse/__tests__/velocity.test.ts \"every threshold is a named, argued constant\" — each constant's doc-comment is required by the test"
   - text: "Attention efficiency returns duration_unknown rather than a figure when the asset duration is null"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "packages/clickhouse/__tests__/measures.test.ts \"is duration_unknown when the duration is null\" (and 0)"
 open_questions: []
 feature:
   database: null
@@ -245,3 +245,43 @@ notes: |
   plus six bucket edges is ten numbers, each of which needs a
   justification or it becomes the kind of unargued constant this codebase
   has otherwise avoided.
+
+  ## Implementation (2026-09-25)
+
+  - `packages/clickhouse/src/lib/measures.ts`: `engagementRatio` (the one
+    definition), `computeMeasure` for engagement, share, save and subscriber
+    conversion rates, `attentionEfficiency`, `MEASURE_INPUT_SUPPORT` and
+    `PREFERRED_DENOMINATOR`. A rate is a value stamped with its denominator
+    (column, preferred or fallback, the view definitions with effective
+    dates, and `bridged` when engaged views carried it across a change), or
+    absent with a named reason: `input_not_reported`,
+    `media_surface_unknown`, `zero_denominator`, `denominator_not_reported`,
+    `duration_unknown`, or the registry's own suppression reasons.
+  - Where platforms do not report an input, ingest stores a zero. YouTube
+    and TikTok have no saves, TikTok has no per-video follows, and an
+    Instagram Reel has no `follows`. The per-input support table stops
+    those zeros being divided into 0%. Each of its cells is checked against
+    the capability reference.
+  - Nine copies, not four. The spec counted four sites; there were eight on
+    main (two in `aggregation-queries.ts`, one in
+    `account-dashboard-actions.ts`, four in `language-analytics.ts`, one in
+    `company-dashboard.tsx`), plus a ninth (`epLikes + epComments + epShares`)
+    found when the class guard was made case-insensitive. All nine now call
+    `displayedEngagementRatePercent`. The class guard is a repository scan,
+    not the typecheck the Verification section proposed: removing an import
+    does not fail typecheck if the formula is written inline instead.
+  - **Owner ruling, recorded (2026-09-22, FILM-1722 §12; applied here
+    2026-09-25):** the unified definition ships, but the surfaces keep the
+    numbers they show today until FILM-1719 can explain the switch. So
+    `displayedEngagementRatePercent` is the one definition over the stored
+    `views` column, with 0 where there are no views. That is exactly what
+    the nine copies computed. New surfaces read `computeMeasure`.
+  - `packages/clickhouse/src/lib/velocity.ts`: daily grain (owner, Q2),
+    seven age buckets starting at day 0, 1, 2, 4, 8, 15 and 31, and
+    `ACCELERATING_AT = 1.05`, `DECELERATING_AT = 1/1.05` and
+    `STALLED_SHARE_OF_PEAK = 0.1`. The hourly buckets above
+    (0–1h … 24–48h) are not built. `video_snapshots` keeps one row per
+    video per day, so they would be daily data relabelled; see the lead.
+    Each number is argued in its doc-comment for the owner to review in the
+    PR (Q4).
+  - Guards: `tooling/mutation-guards/film-1713.json` (NM1–NM20).
