@@ -1,6 +1,7 @@
 #!/bin/bash
 # reverify.sh <pr>: make a PR that passed local CI merge-ready on the current main.
-#  1. rebase onto origin/main (FILM-CC-04 conflicts via remerge-known-bugs.sh)
+#  1. rebase onto origin/main (INDEX conflicts via remerge-index.py; a PR still
+#     editing the old known-bugs file is ported by split-known-bugs.ts --port)
 #  2. if the PR's own code patch is unchanged since its green run (same rule as
 #     CI's #353 fast path): light checks; otherwise the full static + services run
 #  3. push with lease, post the report as a PR comment (only when all green)

@@ -20,7 +20,8 @@ check() {
   fi
 }
 
-check false 'Markdown only' specs/cross-cutting/FILM-CC-04-known-bugs.md specs/INDEX.md
+check false 'Markdown only' specs/known-bugs/KB-14.md specs/INDEX.md
+check false 'known-bugs leads' specs/known-bugs/leads/2026-09-23-spec-audit.md
 check false 'spec YAML' specs/phase-3-episodes/server/FILM-305-story-generation.yaml
 check false 'spec YML' specs/spikes/example.yml
 check false 'README.md' README.md

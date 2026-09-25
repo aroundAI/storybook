@@ -30,9 +30,9 @@ and answer "what's open, and what does it depend on" without parsing prose.
 **Everything else stays Markdown** — it's read by people, not folded into a
 schema: the master index, this file, the constitution, the PRD and
 engineering design, the phase READMEs (each with its own dependency graph and
-locked decisions), and `FILM-CC-04-known-bugs.md`, the living known-bugs
-register (it grows daily; a fixed record shape doesn't fit a document that's
-still being written).
+locked decisions), and the living known-bugs register, `known-bugs/`: one
+Markdown file per bug, with a few front-matter fields for tools
+(`pnpm specs:known-bugs`) and the entry as prose under them.
 
 ## Folder Structure
 
@@ -47,7 +47,8 @@ specs/
 ├── PRD-public-sharing.md          # Public sharing: requirements
 ├── ENGINEERING-public-sharing.md  # Public sharing: design and delivery (PR #126)
 │
-├── cross-cutting/                 # Upload validation (.yaml), webhooks (.yaml), OAuth refresh (.yaml); FILM-CC-04, the known-bugs register (.md)
+├── cross-cutting/                 # Upload validation (.yaml), webhooks (.yaml), OAuth refresh (.yaml); FILM-CC-04's stub (.md)
+├── known-bugs/                    # FILM-CC-04, the known-bugs register: KB-<n>.md per bug, leads/, README
 ├── design-system/                 # UI patterns, tokens, accessibility (.yaml)
 ├── spikes/                        # Research & investigation (.yaml)
 │

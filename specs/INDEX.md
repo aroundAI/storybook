@@ -323,7 +323,7 @@ Retired 2026-09-23 (FILM-607). The only open work is FILM-608, dropping the kept
 | FILM-CC-01 | [file-upload-validation](./cross-cutting/FILM-CC-01-file-upload-validation.yaml) | ✅ DONE | M | - |
 | FILM-CC-02 | [webhook-security](./cross-cutting/FILM-CC-02-webhook-security.yaml) | 🗑️ RETIRED (5b88db3a) | M | - |
 | FILM-CC-03 | [oauth-token-refresh](./cross-cutting/FILM-CC-03-oauth-token-refresh.yaml) | 🟡 PARTIAL | M | - |
-| FILM-CC-04 | [known-bugs](./cross-cutting/FILM-CC-04-known-bugs.md) | OPEN | M | - |
+| FILM-CC-04 | [known-bugs](./known-bugs/README.md) | OPEN | M | - |
 
 ### Design System (5 specs)
 
@@ -691,7 +691,7 @@ A requirements document and an engineering document for one feature, shipped in 
 | ⏸️ DEFERRED | Blocked on something outside the code — a credential or account not held |
 | ✅ DONE | Code merged and every acceptance criterion met, or genuinely unverifiable by reading and marked so |
 | 🗑️ RETIRED | Dropped, removed or superseded — not outstanding work. The cell names the commit; the spec's note says what, if anything, replaced it |
-| OPEN | [FILM-CC-04](./cross-cutting/FILM-CC-04-known-bugs.md) only: a living register of known bugs, not a spec, and not counted below |
+| OPEN | [FILM-CC-04](./known-bugs/README.md) only: a living register of known bugs, not a spec, and not counted below |
 
 **In every spec file**, `status:` in the frontmatter is the source of truth, and
 `audited: 2026-09-23` marks one checked against the code that day. An audited box

@@ -846,6 +846,7 @@ Feature implementations must adhere to the specifications in the `specs/` folder
 - **During implementation**: Follow the database schema, API design, and component structure defined in the spec
 - **After implementation**: Update the spec file to mark acceptance criteria as complete and change status to `✅ DONE`
 - **Spec index**: See `specs/INDEX.md` for a complete list of all specifications and their status
+- **Known bugs** (FILM-CC-04): one file per bug in `specs/known-bugs/` — filing, fixing and numbering rules in its README; `pnpm specs:known-bugs` prints the open and fixed tables
 
 When a spec exists for a feature, treat it as the source of truth for requirements, database schema design, and acceptance criteria.
 
