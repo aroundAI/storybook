@@ -23,14 +23,14 @@ select tests.create_supabase_user('kb60_stranger', 'kb60-stranger@storybook.dev'
 
 insert into public.accounts
   (id, name, slug, email, is_personal_account, primary_owner_user_id,
-   monthly_budget_cents, public_profile)
+   public_profile)
 values
   ('60000000-0000-4000-8000-000000000001', 'KB-60 Public Co', 'kb60-public-co',
    'press@kb60-public.dev', false, tests.get_supabase_uid('kb60_team_owner'),
-   5000, '{"is_public": true, "display_name": "Public Co"}'),
+   '{"is_public": true, "display_name": "Public Co"}'),
   ('60000000-0000-4000-8000-000000000002', 'KB-60 Private Co', 'kb60-private-co',
    'private@kb60-private.dev', false, tests.get_supabase_uid('kb60_team_owner'),
-   null, '{"is_public": false}');
+   '{"is_public": false}');
 
 insert into public.accounts_memberships (user_id, account_id, account_role)
 values (tests.get_supabase_uid('kb60_team_owner'), '60000000-0000-4000-8000-000000000001', 'owner'),

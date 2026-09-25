@@ -31,7 +31,7 @@ import {
   RetryFailedDialogueSchema,
 } from '../lib/schemas/batch.schema';
 import { estimateVoiceCost } from '../lib/voice-utils';
-import { checkAccountBudget, getVoiceSettings } from './voice-queries';
+import { getVoiceSettings } from './voice-queries';
 import { queueVoiceJobs } from './voice-queue-helper';
 
 // Note: These actions use type assertions because the film studio tables
@@ -131,14 +131,14 @@ async function getProjectTTSModelForBatch(projectId: string): Promise<string> {
  * This action orchestrates batch voice generation by:
  * 1. Fetching all pending/failed dialogue lines for the episode
  * 2. Building voice assignments from user input or character profiles
- * 3. Estimating total cost and checking budget
+ * 3. Estimating total cost
  * 4. Creating a batch job record for tracking
  * 5. Dispatching dialogue lines to the voice SQS queue
  *
  * Each dialogue line is processed independently by a Voice Worker Lambda.
  * Progress is tracked atomically via the `increment_batch_progress` RPC.
  *
- * @throws {Error} If episode not found, budget insufficient, or missing voice assignments
+ * @throws {Error} If episode not found or missing voice assignments
  */
 const batchGenerateDialogue = enhanceAction(
   async (
@@ -247,22 +247,6 @@ const batchGenerateDialogue = enhanceAction(
     const estimatedCost = linesToProcess.reduce((total, line) => {
       return total + estimateVoiceCost(line.text.length);
     }, 0);
-
-    // 6. Check budget
-    const hasBudget = await checkAccountBudget(
-      client,
-      accountId,
-      estimatedCost,
-    );
-
-    if (!hasBudget) {
-      logger.warn({ ...ctx, estimatedCost, accountId }, 'Insufficient budget');
-      throw new ActionRefusal(
-        `Insufficient budget for batch generation. ` +
-          `Estimated cost: $${(estimatedCost / 100).toFixed(2)}. ` +
-          `Please upgrade your plan or wait until next month.`,
-      );
-    }
 
     // 7. Get TTS model for the project
     const ttsModel = await getProjectTTSModelForBatch(projectId);

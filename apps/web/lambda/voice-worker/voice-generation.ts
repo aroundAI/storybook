@@ -249,21 +249,6 @@ export async function processDialogueVoiceGeneration(
       })
       .eq('id', data.dialogueLineId);
 
-    // 10. Count the spend against the account's monthly usage (KB-83). The
-    // payload's account was authorised when the job was queued (KB-46/47).
-    // A failed count is logged; the line is already generated and paid for.
-    const { error: usageError } = await supabase.rpc(
-      'increment_account_usage',
-      { p_account_id: data.accountId, p_amount_cents: costCents },
-    );
-
-    if (usageError) {
-      console.error(
-        `[Dialogue Voice Gen] Failed to record spend for ${data.dialogueLineId}:`,
-        usageError.message,
-      );
-    }
-
     console.log(
       `[Dialogue Voice Gen] Completed dialogue line ${data.dialogueLineId}, audio: ${audioUrl}`,
     );

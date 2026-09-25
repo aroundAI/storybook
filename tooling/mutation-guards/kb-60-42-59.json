@@ -45,24 +45,6 @@
       "sql": "alter view public.public_accounts reset (security_barrier);"
     },
     {
-      "name": "KB-42 check_account_budget checks nothing again",
-      "kind": "pgtap",
-      "test": "apps/web/supabase/tests/database/account-budget-access.test.sql",
-      "sql": "create or replace function public.check_account_budget(p_account_id uuid, p_estimated_cost_cents integer default 0) returns boolean language plpgsql security definer set search_path = '' as $fn$ declare v_current_usage integer; v_budget integer; begin select current_usage_cents, monthly_budget_cents into v_current_usage, v_budget from public.accounts where id = p_account_id; if not found then raise exception 'Account not found: %', p_account_id; end if; if v_budget is null then return true; end if; return (v_current_usage + p_estimated_cost_cents) <= v_budget; end; $fn$;"
-    },
-    {
-      "name": "KB-42 the role comparison is not coalesced (a NULL role lets a stranger through)",
-      "kind": "pgtap",
-      "test": "apps/web/supabase/tests/database/account-budget-access.test.sql",
-      "sql": "create or replace function public.check_account_budget(p_account_id uuid, p_estimated_cost_cents integer default 0) returns boolean language plpgsql security definer set search_path = '' as $fn$ declare v_current_usage integer; v_budget integer; begin if not (public.has_account_access(p_account_id) or (select auth.role()) = 'service_role') then return false; end if; select current_usage_cents, monthly_budget_cents into v_current_usage, v_budget from public.accounts where id = p_account_id; if not found then return false; end if; if v_budget is null then return true; end if; return (v_current_usage + p_estimated_cost_cents) <= v_budget; end; $fn$;"
-    },
-    {
-      "name": "KB-42 the service-role branch is dropped",
-      "kind": "pgtap",
-      "test": "apps/web/supabase/tests/database/account-budget-access.test.sql",
-      "sql": "create or replace function public.check_account_budget(p_account_id uuid, p_estimated_cost_cents integer default 0) returns boolean language plpgsql security definer set search_path = '' as $fn$ declare v_current_usage integer; v_budget integer; begin if not public.has_account_access(p_account_id) then return false; end if; select current_usage_cents, monthly_budget_cents into v_current_usage, v_budget from public.accounts where id = p_account_id; if not found then return false; end if; if v_budget is null then return true; end if; return (v_current_usage + p_estimated_cost_cents) <= v_budget; end; $fn$;"
-    },
-    {
       "name": "KB-59 a public table ships without RLS (readonly_viewer reads it by default privileges)",
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/readonly-viewer-reach.test.sql",
@@ -78,7 +60,7 @@
       "name": "KB-59 a definer function becomes executable by PUBLIC",
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/readonly-viewer-reach.test.sql",
-      "sql": "grant execute on function public.increment_account_usage(uuid, integer) to public;"
+      "sql": "grant execute on function public.purge_connection_vendor_rows(uuid) to public;"
     }
   ]
 }

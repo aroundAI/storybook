@@ -39,7 +39,7 @@ async function accountLoader(id: string) {
       `
       id, name, slug, email, picture_url, is_personal_account,
       primary_owner_user_id, created_at, updated_at,
-      created_by, updated_by, current_usage_cents, monthly_budget_cents, public_data, public_profile,
+      created_by, updated_by, public_data, public_profile,
       memberships: accounts_memberships (
         account_id, user_id, account_role, created_at, updated_at, created_by, updated_by
       )

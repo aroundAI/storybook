@@ -98,8 +98,6 @@ vi.mock('../src/server/project-audio-settings', () => ({
 }));
 
 vi.mock('../src/server/voice-queries', () => ({
-  checkAccountBudget: async () => true,
-  recordVoiceSpend: async () => undefined,
   getVoiceIdForCharacter: async () => 'voice-1',
   getVoiceSettings: async () => ({ stability: 0.5, similarityBoost: 0.75 }),
 }));
