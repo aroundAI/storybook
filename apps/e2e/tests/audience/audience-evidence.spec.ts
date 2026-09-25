@@ -320,7 +320,7 @@ test.describe('FILM-1701 — the Audience tab shows only what was measured', () 
     // was false of this very page.
     const views = page.locator('[data-test="overview-views"]');
 
-    await expect(views).toContainText('4.0K');
+    await expect(views).toContainText('4,000');
     await expect(views).not.toContainText(/TikTok|Insta|YT\b/);
 
     await page.screenshot({

@@ -1,91 +1,137 @@
 'use client';
 
-import { Info } from 'lucide-react';
+import {
+  type ComponentType,
+  type ReactNode,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 
+import { ChevronRight, Info } from 'lucide-react';
+
+import type { AnalyticsPlatform } from '@kit/clickhouse';
+import { Collapsible, CollapsibleTrigger } from '@kit/ui/collapsible';
+import { Separator } from '@kit/ui/separator';
+import { Skeleton } from '@kit/ui/skeleton';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@kit/ui/tooltip';
+import { cn } from '@kit/ui/utils';
+
+import {
+  type CardClaim,
+  type CardMetricFamily,
+  sourceNotesFor,
+} from './card-claim';
+
+type NonEmpty<T> = readonly [T, ...T[]];
+
+/**
+ * Everything a card says beyond its claim, in a fixed order so the pattern
+ * is learnable across every card. The lists are non-empty by type: a card
+ * whose details are empty has failed FILM-1706, not passed it.
+ */
+export interface CardDetails {
+  breakdown?: NonEmpty<{ label: string; value: string }>;
+  /** Replaces the matrix-derived "where this comes from", when a card knows better. */
+  source?: ReactNode;
+  /** How the card's own figure is computed, in one sentence. */
+  method?: string;
+  caveats?: NonEmpty<ReactNode>;
+}
 
 interface AnalyticsCardProps {
-  /** Card title */
   title: string;
-  /** Icon component */
-  icon?: React.ComponentType<{ className?: string }>;
-  /** Tooltip description */
+  icon?: ComponentType<{ className?: string }>;
+  /** A one-line tooltip. Anything longer belongs in `details`. */
   description?: string;
-  /** Number of columns to span (1 or 2) */
+  /** What the card shows. Required, so no card can be added without saying. */
+  metricFamily: CardMetricFamily;
+  /** The platforms the card covers, when narrower than its family. */
+  platforms?: readonly AnalyticsPlatform[];
+  claim: CardClaim | 'loading';
+  /** `null` for a card that has nothing to say beyond its claim. */
+  details?: CardDetails | null;
+  /** FILM-1705's provenance chip. This shell provides the slot only. */
+  chip?: ReactNode;
   colSpan?: 1 | 2;
-  /** Card variant */
-  variant?: 'default' | 'gradient';
-  /** Badge text (e.g., "New") */
-  badge?: string;
-  /** Children content */
-  children: React.ReactNode;
-  /** Footer content */
-  footer?: React.ReactNode;
-  /** Optional className */
-  className?: string;
+  /** The evidence: a chart or list. Optional — some cards are their claim. */
+  children?: ReactNode;
+  /** Controls, not caveats — caveats go in `details`. */
+  footer?: ReactNode;
   'data-test'?: string;
 }
 
 /**
- * Base analytics card component matching the prototype design
+ * The shared shell for the Overview and Deep Dive cards (FILM-1706).
+ *
+ * One claim per card, evidence one gesture away: an eyebrow, one figure
+ * with one sentence, the chart, and a "Details" disclosure for breakdown,
+ * source, method and caveats. On design-system tokens, so light and dark
+ * need no hand-written pairs, and sized by its content.
  */
 export function AnalyticsCard({
   title,
   icon: Icon,
   description,
+  metricFamily,
+  platforms,
+  claim,
+  details,
+  chip,
   colSpan = 1,
-  variant = 'default',
-  badge,
   children,
   footer,
-  className = '',
   'data-test': dataTest,
 }: AnalyticsCardProps) {
-  const colSpanClass = colSpan === 2 ? 'md:col-span-2' : '';
-  const variantClasses =
-    variant === 'gradient'
-      ? 'bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border-indigo-100 dark:border-indigo-800'
-      : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800';
+  const titleId = useId();
+  const sources = details?.source
+    ? null
+    : sourceNotesFor(metricFamily, platforms);
+  const hasDetails =
+    details !== null &&
+    Boolean(
+      details?.breakdown ||
+        details?.source ||
+        details?.method ||
+        details?.caveats ||
+        (sources && sources.length > 0),
+    );
 
   return (
-    <div
+    <section
+      aria-labelledby={titleId}
       data-test={dataTest}
-      className={`flex h-64 flex-col rounded-2xl border p-6 shadow-sm transition-all hover:shadow-md ${variantClasses} ${colSpanClass} ${className}`}
+      className={cn(
+        'flex flex-col gap-4 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-sm',
+        colSpan === 2 && 'md:col-span-2',
+        hasDetails && 'transition-colors hover:bg-accent/30',
+      )}
     >
-      {/* Header */}
-      <div className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {Icon && (
-            <Icon
-              className={`h-4 w-4 ${variant === 'gradient' ? 'text-indigo-600' : 'text-gray-400'}`}
-            />
-          )}
+      <header className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          {Icon && <Icon className="size-4 shrink-0 text-muted-foreground" />}
           <h3
-            className={`text-base font-semibold ${variant === 'gradient' ? 'text-indigo-900 dark:text-indigo-100' : 'text-gray-500 dark:text-gray-400'}`}
+            id={titleId}
+            className="truncate text-sm font-medium text-muted-foreground"
           >
             {title}
           </h3>
-        </div>
-        <div className="flex items-center gap-2">
-          {badge && (
-            <span className="rounded border border-indigo-100 bg-white px-2 py-0.5 text-[10px] font-bold tracking-wider text-indigo-700 uppercase dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
-              {badge}
-            </span>
-          )}
           {description && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-                    aria-label={`Info about ${title}`}
+                    type="button"
+                    className="text-muted-foreground hover:text-foreground"
+                    aria-label={`About ${title}`}
                   >
-                    <Info className="h-3.5 w-3.5" />
+                    <Info className="size-3.5" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -95,22 +141,175 @@ export function AnalyticsCard({
             </TooltipProvider>
           )}
         </div>
-      </div>
+        {chip}
+      </header>
 
-      {/* Content */}
-      <div className="flex flex-1 flex-col justify-center">{children}</div>
+      <Claim claim={claim} />
 
-      {/* Footer */}
+      {children && <div className="flex flex-1 flex-col">{children}</div>}
+
       {footer && (
-        // A div, not a p. `footer` is ReactNode, and the deep-dive tab passes
-        // a flex row of buttons — a <div> inside a <p> is invalid HTML, which
-        // React logs as a hydration error and the parser fixes by closing the
-        // <p> early, so the footer escaped the card's text styling. Tailwind's
-        // preflight zeroes <p> margins, so nothing moves.
-        <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-          {footer}
-        </div>
+        // A div, not a p: `footer` is ReactNode, and the Deep Dive median
+        // card passes a row of buttons — a <div> inside a <p> is invalid.
+        <div className="text-xs text-muted-foreground">{footer}</div>
       )}
+
+      {hasDetails && details !== null && (
+        <Disclosure
+          title={title}
+          details={details ?? {}}
+          sources={sources}
+          dataTest={dataTest}
+        />
+      )}
+    </section>
+  );
+}
+
+function Claim({ claim }: { claim: CardClaim | 'loading' }) {
+  if (claim === 'loading') {
+    return (
+      <div className="flex flex-col gap-2" aria-busy="true">
+        <Skeleton className="h-8 w-24" />
+        <Skeleton className="h-4 w-48" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      {claim.figure === null ? (
+        <p
+          className="text-sm font-medium text-muted-foreground"
+          data-test="card-no-figure"
+        >
+          {claim.noFigure}
+        </p>
+      ) : (
+        <p
+          className="text-2xl font-semibold tracking-tight tabular-nums"
+          data-test="card-figure"
+        >
+          {claim.figure}
+        </p>
+      )}
+      <p className="text-sm text-muted-foreground" data-test="card-sentence">
+        {claim.sentence}
+      </p>
     </div>
+  );
+}
+
+/**
+ * The "Details" disclosure.
+ *
+ * Radix's `CollapsibleContent` renders nothing while closed, so browser
+ * find could never reach a caveat. The region is ours instead, and stays
+ * in the DOM: React renders it `hidden`, and once mounted it is upgraded
+ * to `hidden="until-found"`, which lets find-in-page match inside it and
+ * fire `beforematch` — the cue to open. Radix still owns the trigger, so
+ * `aria-expanded` and the keyboard behave as its other disclosures do.
+ */
+function Disclosure({
+  title,
+  details,
+  sources,
+  dataTest,
+}: {
+  title: string;
+  details: CardDetails;
+  sources: string[] | null;
+  dataTest?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const regionId = useId();
+  const region = useRef<HTMLDivElement>(null);
+
+  // A DOM event with no React prop, and an attribute value React cannot
+  // express (it renders `hidden` as a boolean). Both need the element.
+  useEffect(() => {
+    const element = region.current;
+
+    if (!element) return;
+
+    if (!open) element.setAttribute('hidden', 'until-found');
+
+    const reveal = () => setOpen(true);
+
+    element.addEventListener('beforematch', reveal);
+
+    return () => element.removeEventListener('beforematch', reveal);
+  }, [open]);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger
+        aria-controls={regionId}
+        className="inline-flex items-center gap-1 rounded-sm text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        data-test={dataTest ? `${dataTest}-details-trigger` : undefined}
+      >
+        <ChevronRight
+          aria-hidden
+          className={cn('size-3.5 transition-transform', open && 'rotate-90')}
+        />
+        Details
+      </CollapsibleTrigger>
+
+      <div
+        id={regionId}
+        ref={region}
+        role="region"
+        aria-label={`${title} details`}
+        hidden={!open}
+        className="mt-3 flex flex-col gap-3 text-sm"
+        data-test={dataTest ? `${dataTest}-details` : undefined}
+      >
+        {details.breakdown && (
+          <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1">
+            {details.breakdown.map(({ label, value }) => (
+              <div key={label} className="contents">
+                <dt className="text-muted-foreground">{label}</dt>
+                <dd className="text-right tabular-nums">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+
+        {(details.source || (sources && sources.length > 0)) && (
+          <div className="flex flex-col gap-1">
+            <h4 className="text-xs font-medium">Where this comes from</h4>
+            {details.source ? (
+              <div className="text-xs text-muted-foreground">
+                {details.source}
+              </div>
+            ) : (
+              sources?.map((note) => (
+                <p key={note} className="text-xs text-muted-foreground">
+                  {note}
+                </p>
+              ))
+            )}
+          </div>
+        )}
+
+        {details.method && (
+          <div className="flex flex-col gap-1">
+            <h4 className="text-xs font-medium">How it’s computed</h4>
+            <p className="text-xs text-muted-foreground">{details.method}</p>
+          </div>
+        )}
+
+        {details.caveats && (
+          <>
+            <Separator />
+            <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
+              {details.caveats.map((caveat, index) => (
+                <li key={index}>{caveat}</li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    </Collapsible>
   );
 }

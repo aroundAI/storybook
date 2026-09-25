@@ -3,6 +3,8 @@
 import type { TrafficGroupBucket, TrafficSourceGroup } from '@kit/clickhouse';
 import { Skeleton } from '@kit/ui/skeleton';
 
+import type { CardClaim } from '../overview/card-claim';
+
 /** One bucket of the Browse+Suggested trend, derived from the breakdown. */
 export interface TrafficShareEntry {
   bucket: string;
@@ -12,25 +14,10 @@ export interface TrafficShareEntry {
 }
 
 interface TrafficShareCardProps {
-  /**
-   * Names the window the query asked for. The empty state used to promise
-   * the data "arrives with the ingest", which is wrong when the data exists
-   * and merely predates the window the caller chose.
-   */
-  windowLabel?: string;
   /** Buckets in chronological order */
   buckets: TrafficShareEntry[];
   /** Loading state */
   isLoading?: boolean;
-  /**
-   * Noun for one bucket ('week', 'month'). The headline names the actual
-   * bucket it came from, because that bucket is the newest one *present in
-   * the response*, not the current one — buckets exist only where traffic
-   * rows do, so a paused channel's newest bucket can be months old. The
-   * stacked card beside this one legends the whole window under the same
-   * label, so both have to say what they cover.
-   */
-  bucketNoun?: string;
   /** True when the query failed, so the empty state does not lie about why. */
   isError?: boolean;
 }
@@ -62,6 +49,79 @@ const LATEST_BUCKET_CAVEAT = (bucketNoun: string) =>
 const RECOMMENDED_CHANNEL_THRESHOLD = 0.6;
 
 /**
+ * The newest bucket *with traffic*, which is what the claim and the caveat
+ * both name. The tab fills absent weeks, so the final element is the most
+ * recently closed calendar week whether or not it has been ingested yet —
+ * picking it blindly reported "no views" for a channel whose previous 51
+ * weeks are full.
+ */
+function latestWithTraffic(buckets: readonly TrafficShareEntry[]) {
+  return (
+    [...buckets].reverse().find((bucket) => bucket.totalViews > 0) ??
+    buckets[buckets.length - 1]
+  );
+}
+
+/**
+ * The Browse + Suggested card's claim: the newest week's share, and which
+ * side of the 60% line it is on.
+ *
+ * It names the bucket it came from, because that is the newest one *present
+ * in the response*, not the current one — buckets exist only where traffic
+ * rows do, so a paused channel's newest bucket can be months old. And it
+ * names the window the query asked for rather than promising the data
+ * "arrives with the ingest", which is wrong when data exists and merely
+ * predates the window.
+ */
+export function trafficShareClaim(
+  buckets: readonly TrafficShareEntry[],
+  { bucketNoun, windowLabel }: { bucketNoun: string; windowLabel: string },
+): CardClaim {
+  const latest = latestWithTraffic(buckets);
+
+  if (!latest) {
+    return {
+      figure: null,
+      noFigure: 'No traffic-source data.',
+      sentence: `No traffic-source data in ${windowLabel}.`,
+    };
+  }
+
+  if (!buckets.some((bucket) => bucket.totalViews > 0)) {
+    return {
+      figure: null,
+      noFigure: 'No views.',
+      sentence: `No views in ${windowLabel}, so there is no traffic mix to report.`,
+    };
+  }
+
+  // Gated on the *displayed* figure, not the raw share. Rounding to a whole
+  // percent while testing the unrounded value disagrees on [59.5%, 60%):
+  // the headline reads "60%" directly above a sentence saying "Below 60%".
+  // `>=`, and "At or above", because exactly 60% is on the line.
+  const shownPercent = Math.round(latest.share * 100);
+  const crossed = shownPercent >= RECOMMENDED_CHANNEL_THRESHOLD * 100;
+  const when = `the ${bucketNoun} of ${latest.bucket}`;
+
+  return {
+    figure: `${shownPercent}%`,
+    sentence: crossed
+      ? `At or above 60% in ${when} — recommendations, not just search.`
+      : `Below 60% in ${when} — short of recommended-channel territory.`,
+  };
+}
+
+export function trafficShareDetails(bucketNoun: string) {
+  return {
+    method: `Views from Browse and Suggested as a share of all views, per ${bucketNoun}.`,
+    caveats: [
+      LATEST_BUCKET_CAVEAT(bucketNoun),
+      'The dashed line marks 60%, above which a channel reads as recommended rather than searched for.',
+    ],
+  } as const;
+}
+
+/**
  * Browse + Suggested as a share of views over time — the clearest signal
  * of whether the algorithm has decided what the channel is for. Early on
  * most views come from Search and external; crossing ~60% means the
@@ -70,77 +130,22 @@ const RECOMMENDED_CHANNEL_THRESHOLD = 0.6;
 export function TrafficShareCard({
   buckets,
   isLoading = false,
-  bucketNoun = 'period',
   isError = false,
-  windowLabel = 'this window',
 }: TrafficShareCardProps) {
   if (isLoading) {
     return <TrafficShareCardSkeleton />;
   }
 
-  // Not gated on an empty array: the tab fills the window's 52 week starts,
-  // so `buckets` is never empty and that test made this branch dead code —
-  // a failed fetch then fell through to "no views", asserting absence where
-  // the truth is failure. The caller passes `isError` only when no response
-  // ever arrived, which is the check that matters.
-  if (isError) {
-    return (
-      <p className={'text-sm text-muted-foreground'}>
-        Traffic-source data could not be loaded. This is a fetch failure, not an
-        absence of data — retry, or check the project scope.
-      </p>
-    );
+  // The claim above says what failed or what is missing. Gated on
+  // `isError`, not an empty array: the tab fills the window's 52 week
+  // starts, so `buckets` is never empty, and the caller passes `isError`
+  // only when no response ever arrived.
+  if (isError || buckets.length === 0) {
+    return null;
   }
-
-  if (buckets.length === 0) {
-    return (
-      <p className={'text-sm text-muted-foreground'}>
-        No traffic-source data in {windowLabel}. Anything older falls outside
-        this window; new data arrives with the YouTube bulk report ingest.
-      </p>
-    );
-  }
-
-  // The newest bucket *with traffic*, which is what the footnote and the
-  // caveat both claim. Since the tab fills absent weeks, the final element
-  // is the most recently closed calendar week whether or not it has been
-  // ingested yet — picking it blindly reported "no views" for a channel
-  // whose previous 51 weeks are full.
-  const latest =
-    [...buckets].reverse().find((bucket) => bucket.totalViews > 0) ??
-    buckets[buckets.length - 1]!;
-  // Gated on the *displayed* figure, not the raw share. Rounding to a whole
-  // percent while testing the unrounded value disagrees on [59.5%, 60%): the
-  // headline reads "60%" directly above a footnote saying "Below 60%".
-  const shownPercent = Math.round(latest.share * 100);
-  // `>=`, and the copy below says "At or above" rather than "Above", because
-  // a share of exactly 60% is on the line and not past it. The bars stay on
-  // the unrounded share while this verdict uses the rounded one: over the
-  // [59.5%, 60%) window where those disagree the bar sits at most 0.4px
-  // below the dashed line on an 80px stack, which is under the pixel the
-  // browser rounds to. Positioning the line off this bucket's rounding
-  // instead would move a reference shared by all 52 bars to suit one.
-  const crossed = shownPercent >= RECOMMENDED_CHANNEL_THRESHOLD * 100;
-  // A share of 0 out of 0 views is not a composition, and saying "views come
-  // mostly from Search" about a week with no views contradicts the stacked
-  // card, which renders the same bucket as "no views".
-  const hasViews = latest.totalViews > 0;
-  // Distinct from "this particular week was quiet": when nothing in the
-  // window has views there is no newest-week-with-data to name, and the
-  // stacked card states the window rather than a week.
-  const windowHasViews = buckets.some((bucket) => bucket.totalViews > 0);
 
   return (
     <div className={'flex flex-col gap-4'}>
-      <div className={'flex items-baseline gap-2'}>
-        <span className={'text-2xl font-semibold'}>
-          {hasViews ? `${shownPercent}%` : '—'}
-        </span>
-        <span className={'text-sm text-muted-foreground'}>
-          Browse + Suggested — {bucketNoun} of {latest.bucket}
-        </span>
-      </div>
-
       <div className={'overflow-x-auto'}>
         {/* The threshold line is positioned against this inner box, not the
             scroller: an absolute child of an overflow container is laid out
@@ -186,16 +191,6 @@ export function TrafficShareCard({
           />
         </div>
       </div>
-
-      <p className={'text-xs text-muted-foreground'}>
-        {!windowHasViews
-          ? `No views in ${windowLabel}, so there is no traffic mix to report.`
-          : !hasViews
-            ? `No views in the ${bucketNoun} of ${latest.bucket}, so there is no traffic mix to report. That is the newest ${bucketNoun} with data.`
-            : crossed
-              ? `At or above 60% in the ${bucketNoun} shown — recommendations, not just search. ${LATEST_BUCKET_CAVEAT(bucketNoun)}`
-              : `Below 60% in the ${bucketNoun} shown — views still come mostly from Search and external sources. The dashed line marks recommended-channel territory. ${LATEST_BUCKET_CAVEAT(bucketNoun)}`}
-      </p>
     </div>
   );
 }
@@ -284,13 +279,70 @@ function stackHeights(
   );
 }
 
+/** Each group's views and share over the whole window, in legend order. */
+function windowShares(buckets: readonly TrafficGroupBucket[]) {
+  const windowViews = buckets.reduce((sum, b) => sum + b.totalViews, 0);
+  const byGroup = new Map<TrafficSourceGroup, number>();
+
+  for (const bucket of buckets) {
+    for (const group of bucket.groups) {
+      byGroup.set(group.group, (byGroup.get(group.group) ?? 0) + group.views);
+    }
+  }
+
+  return {
+    windowViews,
+    groups: (buckets[0]?.groups ?? []).map(({ group }) => ({
+      group,
+      share: windowViews > 0 ? (byGroup.get(group) ?? 0) / windowViews : 0,
+    })),
+  };
+}
+
+/** The breakdown card's claim: the largest source over the window. */
+export function trafficBreakdownClaim(
+  buckets: readonly TrafficGroupBucket[],
+  windowLabel: string,
+): CardClaim {
+  const { windowViews, groups } = windowShares(buckets);
+
+  if (buckets.length === 0) {
+    return {
+      figure: null,
+      noFigure: 'No traffic-source data.',
+      sentence: `No traffic-source data in ${windowLabel}.`,
+    };
+  }
+
+  if (windowViews === 0) {
+    return {
+      figure: null,
+      noFigure: 'No views.',
+      sentence: `No views in ${windowLabel}, so there is no traffic mix to report.`,
+    };
+  }
+
+  const top = Math.max(...groups.map(({ share }) => share));
+  const leaders = groups.filter(({ share }) => share === top);
+  const names = leaders.map(({ group }) => GROUP_LABELS[group]);
+
+  return {
+    figure: `${Math.round(top * 100)}%`,
+    sentence:
+      leaders.length > 1
+        ? `${names.join(' and ')} were level as the largest sources of views over ${windowLabel}.`
+        : `${names[0]} was the largest source of views over ${windowLabel}.`,
+  };
+}
+
+export const TRAFFIC_BREAKDOWN_DETAILS = {
+  method: 'Each source’s share of all views across the whole window shown.',
+  caveats: [
+    'Shares cover videos published through this platform. Views on channel videos that never matched a publish are not counted, so these percentages will not match YouTube Studio exactly.',
+  ],
+} as const;
+
 interface TrafficBreakdownCardProps {
-  /**
-   * Names the window the query asked for. The empty state used to promise
-   * the data "arrives with the ingest", which is wrong when the data exists
-   * and merely predates the window the caller chose.
-   */
-  windowLabel?: string;
   /** Buckets in chronological order, from getTrafficBreakdownAction. */
   buckets: TrafficGroupBucket[];
   isLoading?: boolean;
@@ -304,73 +356,30 @@ interface TrafficBreakdownCardProps {
  * Every group is drawn in every bucket, including at zero, so the stack
  * order never changes between renders. The share is over matched videos
  * only — unmatched traffic rows are dropped at ingest — so it will not
- * match Studio exactly, which the footnote says rather than leaving the
- * reader to discover.
+ * match Studio exactly, which the card's details say rather than leaving
+ * the reader to discover.
  */
 export function TrafficBreakdownCard({
   buckets,
   isLoading = false,
   isError = false,
-  windowLabel = 'this window',
 }: TrafficBreakdownCardProps) {
   if (isLoading) {
     return <TrafficShareCardSkeleton />;
   }
 
-  // Distinct from the empty state on purpose. "It arrives with the bulk
-  // report ingest" is a promise about the future, and a scope denial or a
-  // ClickHouse timeout will never keep it.
-  // The caller passes `isError` only when `data === undefined` — React Query
-  // keeps `data` through a failed background refetch, and discarding a chart
-  // the user is already reading is worse than serving the last good one.
-  // Testing `buckets.length` here instead would never fire, since the tab
-  // fills every week in the window.
-  if (isError) {
-    return (
-      <p className={'text-sm text-muted-foreground'}>
-        Traffic-source data could not be loaded. This is a fetch failure, not an
-        absence of data — retry, or check the project scope.
-      </p>
-    );
-  }
-
-  if (buckets.length === 0) {
-    return (
-      <p className={'text-sm text-muted-foreground'}>
-        No traffic-source data in {windowLabel}. Anything older falls outside
-        this window; new data arrives with the YouTube bulk report ingest.
-      </p>
-    );
-  }
-
   // Over the whole window, not the latest bucket. The legend sits above a
   // chart spanning every bucket, so a per-bucket figure reads as the period
   // share and would be wrong by exactly the amount the last bucket differs.
-  const windowViews = buckets.reduce((sum, b) => sum + b.totalViews, 0);
-  const windowByGroup = new Map<TrafficSourceGroup, number>();
+  const { windowViews, groups: legend } = windowShares(buckets);
 
-  for (const bucket of buckets) {
-    for (const group of bucket.groups) {
-      windowByGroup.set(
-        group.group,
-        (windowByGroup.get(group.group) ?? 0) + group.views,
-      );
-    }
+  // The claim above says what failed or what is missing. `isError` is set
+  // only when no response arrived: React Query keeps `data` through a
+  // failed background refetch, and discarding a chart the user is already
+  // reading is worse than serving the last good one.
+  if (isError || buckets.length === 0 || windowViews === 0) {
+    return null;
   }
-
-  if (windowViews === 0) {
-    return (
-      <p className={'text-sm text-muted-foreground'}>
-        No views in {windowLabel}, so there is no traffic mix to report.
-      </p>
-    );
-  }
-
-  const legend = (buckets[0]?.groups ?? []).map((group) => ({
-    group: group.group,
-    share:
-      windowViews > 0 ? (windowByGroup.get(group.group) ?? 0) / windowViews : 0,
-  }));
 
   return (
     <div className={'flex flex-col gap-4'}>
@@ -450,13 +459,6 @@ export function TrafficBreakdownCard({
           );
         })}
       </div>
-
-      <p className={'text-xs text-muted-foreground'}>
-        Percentages are the share across the whole window shown. Shares cover
-        videos published through this platform. Views on channel videos that
-        never matched a publish are not counted, so these percentages will not
-        match YouTube Studio exactly.
-      </p>
     </div>
   );
 }

@@ -12,8 +12,8 @@ import {
   Users,
 } from 'lucide-react';
 
-import { TRAFFIC_SOURCE_GROUPS } from '@kit/clickhouse';
-import type { TrafficGroupBucket } from '@kit/clickhouse';
+import { ANALYTICS_PLATFORMS, TRAFFIC_SOURCE_GROUPS } from '@kit/clickhouse';
+import type { AnalyticsPlatform, TrafficGroupBucket } from '@kit/clickhouse';
 import { Button } from '@kit/ui/button';
 
 import { unwrap } from '../../lib/action-result';
@@ -31,15 +31,25 @@ import {
 } from '../../server/diagnostics-actions';
 import { getSubscriberSeriesAction } from '../../server/subscriber-series-actions';
 import { AnalyticsCard } from '../overview/analytics-card';
+import { type CardClaim, claimFromQuery } from '../overview/card-claim';
 import { useProjectChannels } from '../use-project-channels';
-import { BackCatalogCard, BackCatalogCardSkeleton } from './back-catalog-card';
+import {
+  BackCatalogCard,
+  BackCatalogCardSkeleton,
+  backCatalogClaim,
+} from './back-catalog-card';
 import { ChannelFilter } from './channel-filter';
 import {
   CohortCurvesChart,
   CohortCurvesChartSkeleton,
 } from './cohort-curves-chart';
 import type { CohortEntry } from './cohort-curves-chart';
-import { MedianViewsCard, MedianViewsCardSkeleton } from './median-views-card';
+import {
+  MedianViewsCard,
+  MedianViewsCardSkeleton,
+  medianViewsClaim,
+  medianViewsDetails,
+} from './median-views-card';
 import {
   RetentionCurveChart,
   RetentionCurveChartSkeleton,
@@ -49,9 +59,13 @@ import {
   SubscriberSeriesCardSkeleton,
 } from './subscriber-series-card';
 import {
+  TRAFFIC_BREAKDOWN_DETAILS,
   TrafficBreakdownCard,
   TrafficShareCard,
   TrafficShareCardSkeleton,
+  trafficBreakdownClaim,
+  trafficShareClaim,
+  trafficShareDetails,
 } from './traffic-share-card';
 import {
   WeeklyDiagnosticsTable,
@@ -102,6 +116,10 @@ const TRAFFIC_WINDOW_WEEKS = 52;
  */
 const TRAFFIC_WINDOW_LABEL = `the last ${TRAFFIC_WINDOW_WEEKS} complete weeks`;
 
+/** What both traffic cards say when no response arrived. */
+const TRAFFIC_FAILURE =
+  'Traffic-source data could not be loaded — a fetch failure, not an absence of data.';
+
 /** Days of subscriber history the curve shows — a year, like YPP's window. */
 const SUBSCRIBER_WINDOW_DAYS = 365;
 
@@ -151,6 +169,18 @@ export function DeepDiveTab({
   const selectedChannel = channelsQuery.data?.find(
     (channel) => channel.connectionId === filters.connectionId,
   );
+
+  // The platforms these cards cover, for "where this comes from": the
+  // selected channel's, or every channel's in the project.
+  const scopePlatforms = useMemo(() => {
+    const platforms = new Set(
+      (selectedChannel ? [selectedChannel] : (channelsQuery.data ?? [])).map(
+        (channel) => channel.platform,
+      ),
+    );
+
+    return ANALYTICS_PLATFORMS.filter((platform) => platforms.has(platform));
+  }, [selectedChannel, channelsQuery.data]) satisfies AnalyticsPlatform[];
 
   // `getYppProgressAction` throws for a connection that is not an active
   // YouTube channel, and the gate is YouTube's, so any other selection skips
@@ -311,6 +341,14 @@ export function DeepDiveTab({
     [trafficBuckets],
   );
 
+  // Failure only when no response ever arrived: React Query keeps `data`
+  // through a failed background refetch, and the cards keep serving it.
+  const trafficQueryState = {
+    isLoading: trafficBreakdownQuery.isLoading,
+    isError: isUnavailable(trafficBreakdownQuery),
+    data: trafficBreakdownQuery.data,
+  };
+
   const backCatalogQuery = useQuery({
     queryKey: ['deep-dive-back-catalog', projectId, filters.connectionId],
     queryFn: () => getBackCatalogAction({ scope, ageDays: 90 }),
@@ -392,6 +430,32 @@ export function DeepDiveTab({
     );
   }, [yppQuery.data, channelsQuery.data]);
 
+  // Per channel, so there is no one figure: a pooled total would report the
+  // gate met when no channel has met it.
+  const yppClaim: CardClaim | 'loading' = !yppApplies
+    ? {
+        figure: null,
+        noFigure: 'Does not apply to this channel.',
+        sentence:
+          'The Partner Programme gate is YouTube’s, so it applies only to an active YouTube channel.',
+      }
+    : claimFromQuery(
+        {
+          isLoading: yppQuery.isLoading || channelsQuery.isLoading,
+          isError: isUnavailable(yppQuery) || isUnavailable(channelsQuery),
+          data:
+            isUnavailable(yppQuery) || isUnavailable(channelsQuery)
+              ? undefined
+              : projectYppProgress,
+        },
+        () => ({
+          figure: null,
+          noFigure: 'Progress is per channel.',
+          sentence:
+            'Progress toward the YouTube Partner Programme gate, one card per channel.',
+        }),
+      );
+
   return (
     <div className={'flex flex-col gap-4'} data-test={'deep-dive-tab'}>
       <div className={'flex items-center justify-end'}>
@@ -408,11 +472,14 @@ export function DeepDiveTab({
         <AnalyticsCard
           title={'Median views per video'}
           icon={TrendingUp}
-          description={
-            'The median resists outliers; one viral video can make a flat channel look like it is growing.'
-          }
+          metricFamily={'engagement'}
+          platforms={scopePlatforms}
+          claim={claimFromQuery(medianQuery, (buckets) =>
+            medianViewsClaim(buckets, medianMode),
+          )}
+          details={medianViewsDetails(medianQuery.data ?? [], medianMode)}
           colSpan={2}
-          className={'h-auto'}
+          data-test={'deep-dive-median'}
           footer={
             <div className={'flex gap-2 text-xs'}>
               <button
@@ -446,10 +513,7 @@ export function DeepDiveTab({
             message={'Median views could not be loaded.'}
             dataTest={'median-error'}
           >
-            <MedianViewsCard
-              buckets={medianQuery.data ?? []}
-              mode={medianMode}
-            />
+            <MedianViewsCard buckets={medianQuery.data ?? []} />
           </QueryState>
         </AnalyticsCard>
 
@@ -459,16 +523,26 @@ export function DeepDiveTab({
           description={
             'Whether the algorithm has decided what this channel is for.'
           }
-          className={'h-auto'}
+          metricFamily={'traffic_sources'}
+          platforms={scopePlatforms}
+          claim={claimFromQuery(
+            trafficQueryState,
+            () =>
+              trafficShareClaim(trafficShareBuckets, {
+                bucketNoun: 'week',
+                windowLabel: TRAFFIC_WINDOW_LABEL,
+              }),
+            TRAFFIC_FAILURE,
+          )}
+          details={trafficShareDetails('week')}
+          data-test={'deep-dive-traffic-share'}
         >
           {trafficBreakdownQuery.isLoading ? (
             <TrafficShareCardSkeleton />
           ) : (
             <TrafficShareCard
               buckets={trafficShareBuckets}
-              bucketNoun={'week'}
               isError={isUnavailable(trafficBreakdownQuery)}
-              windowLabel={TRAFFIC_WINDOW_LABEL}
             />
           )}
         </AnalyticsCard>
@@ -479,7 +553,15 @@ export function DeepDiveTab({
           description={
             'Search, Shorts, external, playlists, the channel page and direct — plus an Other residual — as a share of views.'
           }
-          className={'h-auto'}
+          metricFamily={'traffic_sources'}
+          platforms={scopePlatforms}
+          claim={claimFromQuery(
+            trafficQueryState,
+            () => trafficBreakdownClaim(trafficBuckets, TRAFFIC_WINDOW_LABEL),
+            TRAFFIC_FAILURE,
+          )}
+          details={TRAFFIC_BREAKDOWN_DETAILS}
+          data-test={'deep-dive-traffic-breakdown'}
         >
           {trafficBreakdownQuery.isLoading ? (
             <TrafficShareCardSkeleton />
@@ -487,7 +569,6 @@ export function DeepDiveTab({
             <TrafficBreakdownCard
               buckets={trafficBuckets}
               isError={isUnavailable(trafficBreakdownQuery)}
-              windowLabel={TRAFFIC_WINDOW_LABEL}
             />
           )}
         </AnalyticsCard>
@@ -498,7 +579,14 @@ export function DeepDiveTab({
           description={
             'Share of views from videos over 90 days old — the compounding signal.'
           }
-          className={'h-auto'}
+          metricFamily={'engagement'}
+          platforms={scopePlatforms}
+          claim={claimFromQuery(backCatalogQuery, backCatalogClaim)}
+          details={{
+            method:
+              'Views in each month from videos more than 90 days old, as a share of all views that month.',
+          }}
+          data-test={'deep-dive-back-catalog'}
         >
           <QueryState
             query={backCatalogQuery}
@@ -513,11 +601,23 @@ export function DeepDiveTab({
         <AnalyticsCard
           title={'Upload cohorts'}
           icon={CalendarRange}
-          description={
-            'Cumulative views per video at matched ages, so growth is measured independently of how long each video has been live.'
-          }
+          metricFamily={'engagement'}
+          platforms={scopePlatforms}
+          claim={claimFromQuery(
+            cohortQuery,
+            (): CardClaim => ({
+              figure: null,
+              noFigure: 'A comparison of curves has no single number.',
+              sentence:
+                'Views per video at matched ages, one line per upload quarter.',
+            }),
+          )}
+          details={{
+            method:
+              'Cumulative views per video at matched ages, so growth is measured independently of how long each video has been live.',
+          }}
           colSpan={2}
-          className={'h-auto'}
+          data-test={'deep-dive-cohorts'}
         >
           <QueryState
             query={cohortQuery}
@@ -535,11 +635,24 @@ export function DeepDiveTab({
         <AnalyticsCard
           title={'Subscribers'}
           icon={Users}
-          description={
-            'Each channel’s subscriber count over the last year, rebuilt from dated snapshots and daily movement. Per channel by default: channels connected at different times cannot be added up before every one of them has a count.'
-          }
+          metricFamily={'channel_totals'}
+          platforms={scopePlatforms}
+          claim={claimFromQuery(
+            subscriberCardQuery,
+            (): CardClaim => ({
+              figure: null,
+              noFigure: 'Shown per channel below.',
+              sentence:
+                'Each channel’s subscriber count over the last year, rebuilt from dated snapshots and daily movement.',
+            }),
+          )}
+          details={{
+            caveats: [
+              'Per channel by default: channels connected at different times cannot be added up before every one of them has a count.',
+            ],
+          }}
           colSpan={2}
-          className={'h-auto'}
+          data-test={'deep-dive-subscribers'}
         >
           <QueryState
             query={subscriberCardQuery}
@@ -557,11 +670,16 @@ export function DeepDiveTab({
         <AnalyticsCard
           title={'YouTube Partner Programme'}
           icon={BadgeCheck}
-          description={
-            'Progress toward the monetization gate, one card per channel — the gate is per channel, so a pooled total would report it met when no channel has met it.'
-          }
+          metricFamily={['channel_totals', 'watch_time']}
+          platforms={['youtube']}
+          claim={yppClaim}
+          details={{
+            caveats: [
+              'One card per channel — the gate is per channel, so a pooled total would report it met when no channel has met it.',
+            ],
+          }}
           colSpan={2}
-          className={'h-auto'}
+          data-test={'deep-dive-ypp'}
         >
           <YppProgressSection
             applies={yppApplies}

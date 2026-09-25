@@ -34,7 +34,7 @@ describe('SharesCard', () => {
   it('shows the total and says the breakdown is not collected', () => {
     const { container } = render(<SharesCard shares={1234} />);
 
-    expect(screen.getByText('1.2K')).toBeDefined();
+    expect(screen.getByText('1,234')).toBeDefined();
     expect(
       screen.getByText(/We don’t collect how content was shared/),
     ).toBeDefined();
@@ -180,7 +180,10 @@ describe('PlatformSplitCard', () => {
       />,
     );
 
-    expect(container.textContent).toContain('Share of 4.0K views by platform.');
+    // In the card's details, which stay in the DOM while closed.
+    expect(container.textContent).toContain(
+      'Each platform’s share of 4.0K views in the period.',
+    );
     expect(container.textContent).not.toContain('Dominant');
   });
 
@@ -190,6 +193,6 @@ describe('PlatformSplitCard', () => {
     expect(container.textContent).toContain(
       'No views recorded in this period.',
     );
-    expect(container.textContent).not.toContain('Share of');
+    expect(container.textContent).not.toMatch(/share of .* views/i);
   });
 });

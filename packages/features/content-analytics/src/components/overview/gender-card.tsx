@@ -4,6 +4,7 @@ import { Users } from 'lucide-react';
 
 import { formatPercent } from '../../lib/format';
 import { AnalyticsCard } from './analytics-card';
+import { genderClaim } from './card-claim';
 
 interface GenderData {
   male: number;
@@ -22,7 +23,8 @@ export function GenderCard({ genders }: GenderCardProps) {
       title="Gender"
       icon={Users}
       description="Viewer gender distribution"
-      footer="Based on platform demographics data"
+      metricFamily="demographics"
+      claim={genderClaim(genders)}
       data-test="overview-gender"
     >
       <div className="flex flex-1 flex-col justify-center gap-4">

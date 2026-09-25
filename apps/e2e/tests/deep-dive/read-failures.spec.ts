@@ -86,7 +86,7 @@ test.describe('Failed reads', () => {
     if (process.env.CAPTURE_EVIDENCE) {
       const card = page
         .locator('[data-test="subscriber-series-error"]:visible')
-        .locator('xpath=ancestor::div[contains(@class, "rounded-2xl")][1]');
+        .locator('xpath=ancestor::section[1]');
 
       await card.scrollIntoViewIfNeeded();
       await card.screenshot({
@@ -219,11 +219,9 @@ test.describe('Failed reads', () => {
 
     // The claims that must not be made off a read that never landed.
     await expect(
-      page.getByText('Not enough published videos yet to compute a median.'),
+      page.getByText('Not enough published videos yet.'),
     ).toHaveCount(0);
-    await expect(
-      page.getByText('Not enough history yet to separate back catalog'),
-    ).toHaveCount(0);
+    await expect(page.getByText('Not enough history yet.')).toHaveCount(0);
     await expect(page.getByText('No upload cohorts yet.')).toHaveCount(0);
   });
 

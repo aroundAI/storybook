@@ -15,6 +15,7 @@ import type {
   InsightsResult,
 } from '../../types';
 import { AIInsightCard } from './ai-insight-card';
+import { platformLabel, platformsWithViews } from './card-claim';
 import { CommentsCard } from './comments-card';
 import { GenderCard } from './gender-card';
 import { LikesCard } from './likes-card';
@@ -92,6 +93,13 @@ export function OverviewGrid({
     );
   }, [platformMetrics]);
 
+  // Where a figure comes from is said only for platforms it covers: a
+  // YouTube-only project reads nothing about TikTok's lifetime totals.
+  const present = useMemo(
+    () => platformsWithViews(platformMetrics),
+    [platformMetrics],
+  );
+
   const topContent = useMemo(
     () =>
       contentList?.slice(0, 2).map((item) => ({
@@ -138,12 +146,14 @@ export function OverviewGrid({
     return <OverviewGridSkeleton />;
   }
 
-  // Build AI insight summary HTML - only show real data
+  // Plain text: the card renders it as text. Written by a model only when
+  // one was passed; otherwise it restates this page's figures, and the card
+  // says so rather than calling it AI.
   const hasData = (totals?.views || 0) > 0;
   const aiSummary = insights?.summary
     ? insights.summary
     : hasData
-      ? `Your content has <span class="font-extrabold text-indigo-900 dark:text-indigo-100">${formatNumber(totals?.views || 0)}</span> total views with an average engagement rate of <span class="font-extrabold text-indigo-900 dark:text-indigo-100">${formatPercent(analytics?.avgEngagementRate || 0)}</span>.`
+      ? `Your content has ${formatNumber(totals?.views || 0)} total views with an average engagement rate of ${formatPercent(analytics?.avgEngagementRate || 0)}.`
       : 'No analytics data available yet. Publish content to social platforms and connect your accounts to see insights.';
 
   // Build AI insights from actual platform data - no hardcoded fallbacks
@@ -160,7 +170,7 @@ export function OverviewGrid({
       ? [
           {
             type: 'success' as const,
-            text: `${topPlatform.platform.charAt(0).toUpperCase() + topPlatform.platform.slice(1)} drives ${topPlatform.percentage.toFixed(0)}% of all views.`,
+            text: `${platformLabel(topPlatform.platform)} had ${topPlatform.percentage.toFixed(0)}% of all views.`,
           },
         ]
       : [];
@@ -168,30 +178,39 @@ export function OverviewGrid({
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {/* Row 1: Views, Likes, Platform Split, Comments */}
+      {/* `null` when the figures could not be read, never a 0 (KB-16). */}
       <ViewsCard
-        views={totals?.views || 0}
+        views={totals ? totals.views : null}
         sparklineDataPoints={viewsSparklineData}
+        platforms={present}
       />
       <LikesCard
-        likes={totals?.likes || 0}
+        likes={totals ? totals.likes : null}
         barDataPoints={likesSparklineData}
+        platforms={present}
       />
       <PlatformSplitCard platforms={platforms} />
       <CommentsCard
-        comments={totals?.comments || 0}
+        comments={totals ? totals.comments : null}
         mostDiscussed={topCommented}
+        platforms={present}
       />
 
       {/* Row 2: AI Insight (2 cols), Shares */}
       <AIInsightCard
         summary={aiSummary}
+        author={insights?.summary ? 'model' : 'page'}
         insights={aiInsights}
         onViewReport={onViewAIReport}
       />
-      <SharesCard shares={totals?.shares || 0} />
+      <SharesCard shares={totals ? totals.shares : null} platforms={present} />
 
       {/* Row 3: Top Content (2 cols), Revenue, Regions */}
-      <TopContentCard content={topContent} onViewAll={onViewAllContent} />
+      <TopContentCard
+        content={topContent}
+        onViewAll={onViewAllContent}
+        platforms={present}
+      />
       <RevenueCard revenue={revenue} />
       <TopRegionsCard regions={regions} />
 

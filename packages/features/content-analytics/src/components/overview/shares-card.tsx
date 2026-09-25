@@ -2,12 +2,16 @@
 
 import { Share2 } from 'lucide-react';
 
-import { formatNumber } from '../../lib/format';
+import type { AnalyticsPlatform } from '@kit/clickhouse';
+
 import { AnalyticsCard } from './analytics-card';
+import { countClaim } from './card-claim';
 
 interface SharesCardProps {
-  /** Total shares */
-  shares: number;
+  /** The platforms the figure covers, for "where this comes from". */
+  platforms?: readonly AnalyticsPlatform[];
+  /** Total shares, or `null` when they could not be read. */
+  shares: number | null;
 }
 
 /**
@@ -17,26 +21,25 @@ interface SharesCardProps {
  * platform read we ingest says how a share happened, so the card says so
  * instead of drawing one (KB-16).
  */
-export function SharesCard({ shares }: SharesCardProps) {
+export function SharesCard({ shares, platforms }: SharesCardProps) {
   return (
     <AnalyticsCard
       title="Shares"
       icon={Share2}
-      description="Times content was shared or reposted"
+      metricFamily="engagement"
+      platforms={platforms}
+      claim={countClaim(
+        shares,
+        'Times content was shared or reposted in the selected period.',
+      )}
+      details={{
+        caveats: [
+          <span key="how" data-test="overview-shares-not-collected">
+            We don&rsquo;t collect how content was shared, only how often.
+          </span>,
+        ],
+      }}
       data-test="overview-shares"
-    >
-      <div
-        className="text-5xl font-extrabold tracking-tight text-gray-900 dark:text-white"
-        data-test="overview-shares-total"
-      >
-        {formatNumber(shares)}
-      </div>
-      <p
-        className="mt-3 text-xs text-gray-500 dark:text-gray-400"
-        data-test="overview-shares-not-collected"
-      >
-        We don&rsquo;t collect how content was shared, only how often.
-      </p>
-    </AnalyticsCard>
+    />
   );
 }

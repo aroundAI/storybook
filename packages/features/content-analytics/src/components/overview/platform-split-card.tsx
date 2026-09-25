@@ -5,6 +5,11 @@ import { PieChart } from 'lucide-react';
 import { formatNumber } from '../../lib/format';
 import { HorizontalProgress } from '../charts/horizontal-progress';
 import { AnalyticsCard } from './analytics-card';
+import {
+  platformLabel,
+  platformSplitClaim,
+  platformsWithViews,
+} from './card-claim';
 
 interface PlatformViews {
   platform: string;
@@ -35,18 +40,23 @@ export function PlatformSplitCard({ platforms }: PlatformSplitCardProps) {
       title="Platform Split"
       icon={PieChart}
       description="View distribution across platforms"
-      footer={
+      metricFamily="engagement"
+      platforms={platformsWithViews(platforms)}
+      claim={platformSplitClaim(platforms)}
+      details={
         totalViews > 0
-          ? `Share of ${formatNumber(totalViews)} views by platform.`
-          : undefined
+          ? {
+              method: `Each platform’s share of ${formatNumber(totalViews)} views in the period.`,
+            }
+          : null
       }
       data-test="overview-platform-split"
     >
-      {totalViews > 0 ? (
+      {totalViews > 0 && (
         <div className="flex flex-1 flex-col justify-center space-y-4">
           {platforms.map((platform) => {
             const config = PLATFORM_CONFIG[platform.platform.toLowerCase()] || {
-              label: platform.platform,
+              label: platformLabel(platform.platform),
               color: 'bg-gray-500',
             };
 
@@ -61,13 +71,6 @@ export function PlatformSplitCard({ platforms }: PlatformSplitCardProps) {
             );
           })}
         </div>
-      ) : (
-        <p
-          className="text-xs text-gray-500 dark:text-gray-400"
-          data-test="overview-platform-split-none"
-        >
-          No views recorded in this period.
-        </p>
       )}
     </AnalyticsCard>
   );

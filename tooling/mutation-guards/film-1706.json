@@ -1,0 +1,115 @@
+{
+  "feature": "FILM-1706",
+  "mutations": [
+    {
+      "name": "The shell paints with a raw palette colour again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/overview/analytics-card.tsx",
+      "find": "'flex flex-col gap-4 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-sm',",
+      "replace": "'flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-6 text-card-foreground shadow-sm',",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/analytics-card-tokens.test.ts",
+      "pattern": "uses no raw palette colour"
+    },
+    {
+      "name": "The shell gets its fixed height back",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/overview/analytics-card.tsx",
+      "find": "'flex flex-col gap-4 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-sm',",
+      "replace": "'flex h-64 flex-col gap-4 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-sm',",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/analytics-card-tokens.test.ts",
+      "pattern": "sets no fixed height on the card"
+    },
+    {
+      "name": "A Deep Dive card escapes the shell by class again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx",
+      "find": "          data-test={'deep-dive-back-catalog'}\n",
+      "replace": "          data-test={'deep-dive-back-catalog'}\n          className={'h-auto'}\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/analytics-card-tokens.test.ts",
+      "pattern": "never pass a class"
+    },
+    {
+      "name": "The figure loses its tabular digits",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/overview/analytics-card.tsx",
+      "find": "className=\"text-2xl font-semibold tracking-tight tabular-nums\"",
+      "replace": "className=\"text-2xl font-semibold tracking-tight\"",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/analytics-card-shell.test.tsx",
+      "pattern": "shows one figure in tabular digits"
+    },
+    {
+      "name": "Closed details drop their caveats from the DOM",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/overview/analytics-card.tsx",
+      "find": "        {details.caveats && (\n",
+      "replace": "        {open && details.caveats && (\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/analytics-card-shell.test.tsx",
+      "pattern": "stays in the DOM while closed"
+    },
+    {
+      "name": "Find-in-page no longer opens the details",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/overview/analytics-card.tsx",
+      "find": "    element.addEventListener('beforematch', reveal);\n",
+      "replace": "    void reveal;\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/analytics-card-shell.test.tsx",
+      "pattern": "opens when find-in-page lands inside it"
+    },
+    {
+      "name": "A count that could not be read is drawn as 0",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/overview/card-claim.ts",
+      "find": "    ? {\n        figure: null,\n        noFigure: 'Could not be read.',\n        sentence: 'This figure could not be loaded.',\n      }",
+      "replace": "    ? {\n        figure: '0',\n        noFigure: 'Could not be read.',\n        sentence: 'This figure could not be loaded.',\n      }",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/card-claims.test.ts",
+      "pattern": "shows no number, not zero"
+    },
+    {
+      "name": "A claim sentence asserts a cause",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/deep-dive/back-catalog-card.tsx",
+      "find": "          ? 'Climbing — the catalog is compounding.'",
+      "replace": "          ? 'Climbing — driven by the catalog compounding.'",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/card-claims.test.ts",
+      "pattern": "back catalog: states what was measured"
+    },
+    {
+      "name": "The traffic breakdown loses its Studio caveat",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/deep-dive/traffic-share-card.tsx",
+      "find": "so these percentages will not match YouTube Studio exactly.",
+      "replace": "so these percentages may differ.",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/card-claims.test.ts",
+      "pattern": "traffic breakdown"
+    },
+    {
+      "name": "The AI card renders its summary as markup again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/overview/ai-insight-card.tsx",
+      "find": "<p className=\"text-sm leading-relaxed\">{summary}</p>",
+      "replace": "<p\n        className=\"text-sm leading-relaxed\"\n        dangerouslySetInnerHTML={{ __html: summary }}\n      />",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/ai-insight-card-text.test.tsx",
+      "pattern": "renders a summary as text"
+    },
+    {
+      "name": "Where a figure comes from stops reading the matrix",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/overview/card-claim.ts",
+      "find": "      .map(({ note }) => note),\n",
+      "replace": "      .map(() => 'Reported by the platform.'),\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/card-claims.test.ts",
+      "pattern": "is the matrix"
+    }
+  ]
+}

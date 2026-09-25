@@ -26,8 +26,20 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: {
-      'server-only': resolve(__dirname, 'src/__mocks__/server-only.ts'),
-    },
+    alias: [
+      {
+        find: 'server-only',
+        replacement: resolve(__dirname, 'src/__mocks__/server-only.ts'),
+      },
+      // `@kit/ui` declares no React of its own, so its sources cannot
+      // resolve `react/jsx-dev-runtime` from here and component tests had to
+      // stub every `@kit/ui` import. Pointing React at this package's copy
+      // lets a test render the real component — the analytics card shell's
+      // disclosure is only worth testing through Radix's own trigger.
+      {
+        find: /^react(-dom)?(\/.*)?$/,
+        replacement: `${resolve(__dirname, 'node_modules/react')}$1$2`,
+      },
+    ],
   },
 });

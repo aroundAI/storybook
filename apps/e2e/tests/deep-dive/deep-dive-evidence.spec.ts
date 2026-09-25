@@ -77,13 +77,13 @@ test.describe('FILM-1611 — evidence', () => {
     // The app scrolls inside its own container, so a full-page capture is
     // only the viewport; the YPP card is what changed, so it is captured.
     await expect(
-      page.getByText('Not enough published videos yet to compute a median.'),
+      page.getByText('Not enough published videos yet.'),
     ).toBeVisible();
 
     const yppCard = page
       .locator('[data-test="deep-dive-tab"]:visible')
-      .getByText('YouTube Partner Programme')
-      .locator('xpath=ancestor::div[contains(@class, "rounded-2xl")][1]');
+      .getByRole('heading', { name: 'YouTube Partner Programme' })
+      .locator('xpath=ancestor::section[1]');
 
     await yppCard.scrollIntoViewIfNeeded();
     await yppCard.screenshot({ path: `${OUT}/03-active-channel-ypp.png` });
@@ -101,7 +101,7 @@ test.describe('FILM-1611 — evidence', () => {
 
     await expect(notApplicable).toBeVisible();
     await expect(
-      page.getByText('Not enough published videos yet to compute a median.'),
+      page.getByText('Not enough published videos yet.'),
     ).toBeVisible();
 
     await yppCard.scrollIntoViewIfNeeded();
