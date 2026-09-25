@@ -45,8 +45,8 @@
       "name": "A5 A provider calls an endpoint no requirement declares",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/providers/tiktok/tiktok-analytics.ts",
-      "find": "`${TIKTOK_API_BASE}/user/info/?fields=follower_count`",
-      "replace": "`${TIKTOK_API_BASE}/video/list/?fields=id`",
+      "find": "  async getFollowerCount(): Promise<SubscriberCountResult> {\n    try {\n      const response = await fetch(\n        `${TIKTOK_API_BASE}/user/info/?fields=follower_count`",
+      "replace": "  async getFollowerCount(): Promise<SubscriberCountResult> {\n    try {\n      const response = await fetch(\n        `${TIKTOK_API_BASE}/video/list/?fields=id`",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/analytics-scope-binding.test.ts",
       "pattern": "has a requirement for each endpoint"
