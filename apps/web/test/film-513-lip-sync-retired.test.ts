@@ -30,7 +30,14 @@ export const RETIRED_NAMES = [
   'lip-sync.schema',
 ];
 
-const ROOTS = ['apps', 'packages', 'tooling', 'scripts', '.github', 'deployment'];
+const ROOTS = [
+  'apps',
+  'packages',
+  'tooling',
+  'scripts',
+  '.github',
+  'deployment',
+];
 const FILES = ['sst.config.ts', 'package.json', 'turbo.json', 'pnpm-lock.yaml'];
 
 const SKIPPED_DIRECTORIES = new Set([
