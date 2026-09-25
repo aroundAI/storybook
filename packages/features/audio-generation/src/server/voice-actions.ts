@@ -36,7 +36,7 @@ import {
   checkAccountBudget,
   getVoiceIdForCharacter,
   getVoiceSettings,
-  incrementAccountUsage,
+  recordVoiceSpend,
 } from './voice-queries';
 
 // Note: These actions use type assertions because the film studio tables
@@ -349,7 +349,7 @@ const generateDialogueVoice = enhanceAction(
         .eq('id', jobData.id);
 
       // 17. Increment account usage for cost tracking
-      await incrementAccountUsage(client, accountId, actualCost);
+      await recordVoiceSpend(target, actualCost);
 
       logger.info(
         { ...ctx, audioUrl, duration: result.duration },
@@ -759,7 +759,7 @@ const generateVoiceFromText = enhanceAction(
         .eq('id', jobData.id);
 
       // 11. Increment account usage for cost tracking
-      await incrementAccountUsage(client, accountId, actualCost);
+      await recordVoiceSpend(target, actualCost);
 
       logger.info(
         { ...ctx, audioUrl, duration: result.duration },
