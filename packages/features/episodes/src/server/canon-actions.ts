@@ -16,12 +16,20 @@ import { returnRefusals } from '@kit/next/refusals';
 import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import { buildMemoryContext } from '../lib/canon/memory-context-builder';
+import {
+  buildMemoryContext,
+  resolveEpisodeNumbers,
+} from '../lib/canon/memory-context-builder';
 import {
   MAX_MEMORY_HORIZON,
   MIN_MEMORY_HORIZON,
   effectiveMemoryHorizon,
 } from '../lib/canon/memory-horizon';
+import {
+  isThreadStale,
+  threadEpisodeIds,
+  threadLastActiveEpisode,
+} from '../lib/canon/thread-staleness';
 import type {
   AddImmutableEventInput,
   BuildMemoryContextInput,
@@ -772,24 +780,29 @@ export const getCanonHealthAction = enhanceAction(
       project?.metadata,
     ).memoryHorizon;
 
-    const staleThreads = (allActiveThreads ?? []).filter((thread) => {
-      const openedEpNumber =
-        (
-          thread.opened_episode as
-            | { id: string; title: string; number: number }
-            | undefined
-        )?.number ?? 0;
-      const touchedEps = (thread.episodes_touched as string[]) ?? [];
+    // One rule with CANON_007 (KB-72, KB-108): the latest episode the
+    // thread was opened or touched in, by number; unknown is not stale.
+    const activeThreads = (allActiveThreads ?? []).map((thread) => ({
+      row: thread,
+      episodes: {
+        openedAt: thread.opened_at,
+        episodesTouched: thread.episodes_touched as string[] | null,
+      },
+    }));
+    const episodeNumbers = await resolveEpisodeNumbers(
+      client,
+      activeThreads.flatMap((t) => threadEpisodeIds(t.episodes)),
+    );
 
-      // Estimate last-touched episode: opened + number of times touched
-      const lastTouchedEp =
-        touchedEps.length > 0
-          ? openedEpNumber + touchedEps.length
-          : openedEpNumber;
-
-      const episodesSinceLastTouch = currentEpisodeNumber - lastTouchedEp;
-      return episodesSinceLastTouch >= staleThreshold;
-    });
+    const staleThreads = activeThreads
+      .filter((t) =>
+        isThreadStale(
+          threadLastActiveEpisode(t.episodes, episodeNumbers),
+          currentEpisodeNumber,
+          staleThreshold,
+        ),
+      )
+      .map((t) => t.row);
 
     // Calculate health status based on stale count
     const staleCount = staleThreads.length;

@@ -5,6 +5,7 @@
  * Validates narrative continuity against canon data.
  * Implements 9 validation rules (CANON_001-009).
  */
+import { staleForEpisodes } from './thread-staleness';
 import type {
   ContinuityValidationResult,
   ContinuityViolation,
@@ -503,14 +504,16 @@ function checkConnectivityFailure(
 
     const payoffs = thread.payoffs ?? [];
 
-    // Unknown is not stale: a thread whose episodes do not resolve is not
-    // flagged (KB-72).
-    if (thread.lastActiveEpisodeNumber === undefined) continue;
-
-    const episodesSinceTouch = currentEpisode - thread.lastActiveEpisodeNumber;
+    // The canon health dashboard's rule too (KB-72, KB-108): unknown is not
+    // stale.
+    const episodesSinceTouch = staleForEpisodes(
+      thread.lastActiveEpisodeNumber,
+      currentEpisode,
+      staleThreshold,
+    );
 
     // Only flag if thread is stale AND has no payoffs
-    if (payoffs.length === 0 && episodesSinceTouch >= staleThreshold) {
+    if (payoffs.length === 0 && episodesSinceTouch !== undefined) {
       violations.push({
         code: 'CANON_007',
         severity: 'info',

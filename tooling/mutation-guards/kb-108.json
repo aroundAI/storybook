@@ -1,0 +1,35 @@
+{
+  "feature": "KB-108",
+  "mutations": [
+    {
+      "name": "K1 The canon health dashboard dates a thread by its opening episode only",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/canon-actions.ts",
+      "find": "          threadLastActiveEpisode(t.episodes, episodeNumbers),\n",
+      "replace": "          episodeNumbers.get(t.episodes.openedAt),\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/canon-health-staleness.test.ts",
+      "pattern": "previous episode"
+    },
+    {
+      "name": "K2 A thread whose episodes do not resolve counts as stale",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/thread-staleness.ts",
+      "find": "  if (lastActiveEpisodeNumber === undefined) return undefined;\n",
+      "replace": "  if (lastActiveEpisodeNumber === undefined) return currentEpisodeNumber;\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/canon-health-staleness.test.ts",
+      "pattern": "do not resolve"
+    },
+    {
+      "name": "K3 The canon health threshold stops following the memory horizon",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/canon-actions.ts",
+      "find": "          staleThreshold,\n        ),\n      )\n",
+      "replace": "          10,\n        ),\n      )\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/canon-health-staleness.test.ts",
+      "pattern": "horizon as the threshold"
+    }
+  ]
+}

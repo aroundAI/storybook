@@ -35,7 +35,7 @@ acceptance_criteria:
     evidence: null
   - text: "`buildMemoryContext` uses content-type strategies"
     met: true
-    evidence: "packages/features/episodes/src/lib/canon/memory-context-builder.ts:662 — threads, characters and summaries are ordered by `rankByPriority` (`memory-strategies.ts:308`, i.e. `calculatePriority`/`getDecayFactor` for the project's type) before budget fitting; `sourcesCitations` is filled with verified facts (`loadSources`, :475). Asserted in `__tests__/memory-context-builder.test.ts` and against a real database by `scripts/verify-memory-context.ts` (CI: Supabase DB job). `parentContext` moved to FILM-1113 (owner decision D3)"
+    evidence: "packages/features/episodes/src/lib/canon/memory-context-builder.ts:675 — threads, characters and summaries are ordered by `rankByPriority` (`memory-strategies.ts:308`, i.e. `calculatePriority`/`getDecayFactor` for the project's type) before budget fitting; `sourcesCitations` is filled with verified facts (`loadSources`, :475). Asserted in `__tests__/memory-context-builder.test.ts` and against a real database by `scripts/verify-memory-context.ts` (CI: Supabase DB job). `parentContext` moved to FILM-1113 (owner decision D3)"
   - text: "Unit tests for all decay functions"
     met: true
     evidence: null

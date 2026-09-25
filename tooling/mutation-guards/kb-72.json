@@ -2,14 +2,14 @@
   "feature": "KB-72",
   "mutations": [
     {
-      "name": "M1 CANON_007 counts touched episodes instead of the last-active number",
+      "name": "M1 CANON_007 flags a thread one episode too late (shared staleness rule)",
       "kind": "unit",
-      "file": "packages/features/episodes/src/lib/canon/continuity-validator.ts",
-      "find": "    const episodesSinceTouch = currentEpisode - thread.lastActiveEpisodeNumber;\n",
-      "replace": "    const episodesSinceTouch =\n      currentEpisode - (thread.episodesTouched ?? []).length;\n",
+      "file": "packages/features/episodes/src/lib/canon/thread-staleness.ts",
+      "find": "  return since >= threshold ? since : undefined;\n",
+      "replace": "  return since > threshold ? since : undefined;\n",
       "cwd": "packages/features/episodes",
       "test": "__tests__/continuity-validator.test.ts",
-      "pattern": "touched in the previous episode"
+      "pattern": "five episodes ago"
     },
     {
       "name": "M2 The builder drops the thread's last-active episode number",

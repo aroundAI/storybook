@@ -33,6 +33,7 @@ import {
   getMemoryOptionsForContentType,
   rankByPriority,
 } from './memory-strategies';
+import { threadEpisodeIds, threadLastActiveEpisode } from './thread-staleness';
 import type {
   BuildMemoryContextInput,
   CharacterState,
@@ -515,7 +516,7 @@ async function loadSources(
  * Project-wide episode numbers for the episode ids threads and character
  * states name. On failure every item ranks as "episode unknown": kept, last.
  */
-async function resolveEpisodeNumbers(
+export async function resolveEpisodeNumbers(
   client: CanonReadClient,
   episodeIds: string[],
 ): Promise<Map<string, number>> {
@@ -659,7 +660,7 @@ export async function buildMemoryContext(
   // Rank threads and characters by the episode they were last active in
   // (FILM-1111), then fit each to its budget.
   const episodeNumbers = await resolveEpisodeNumbers(client, [
-    ...threads.flatMap((t) => [t.openedAt, ...(t.episodesTouched ?? [])]),
+    ...threads.flatMap(threadEpisodeIds),
     ...characters.flatMap((c) => c.currentStates.map((s) => s.episodeId)),
   ]);
 
@@ -667,10 +668,7 @@ export async function buildMemoryContext(
   // active (KB-72), so the two cannot disagree.
   const threadsWithLastActive = threads.map((thread) => ({
     ...thread,
-    lastActiveEpisodeNumber: latestEpisode(
-      [thread.openedAt, ...(thread.episodesTouched ?? [])],
-      episodeNumbers,
-    ),
+    lastActiveEpisodeNumber: threadLastActiveEpisode(thread, episodeNumbers),
   }));
 
   const activeThreads = fitToBudget(
