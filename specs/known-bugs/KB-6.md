@@ -2,7 +2,7 @@
 id: KB-6
 title: "Server-action error messages are replaced in production"
 status: fixed
-fixed_in: ["#264 (round 4)", "#296", "#303 (re-land of #299)", "#406"]
+fixed_in: ["#264 (round 4)", "#296", "#303 (re-land of #299)", "#412"]
 fixed_summary: "Experiment log and note refusals replaced in production; Projects and episodes/studio refusals replaced in production; shared `returnRefusals` helper and guard; Assets, audio, publishing, analytics, edit-suite and admin refusals replaced in production; ten more exported actions threw a refusal unwrapped (audio library, AI insights, revenue projection, season, shot list, story, screenplay), and the manual revenue form showed a caught message"
 severity: Medium
 found: 2026-09-19
@@ -10,7 +10,7 @@ found: 2026-09-19
 
 ## KB-6 — Server-action error messages are replaced in production
 
-> **Fixed (2026-09-25), #406: the remainder.** The client scan only saw
+> **Fixed (2026-09-25), #412: the remainder.** The client scan only saw
 > files that read a caught message, so an action that *threw* its refusal
 > was invisible to it wherever the caller showed a fallback instead. A
 > server-side scan (`packages/next/__tests__/thrown-refusals.ts`) now reads
@@ -112,7 +112,7 @@ analytics) on the production build. It also found that the location
 editor could never save a location without an image (`fileUrl: ''`
 against `.url().optional()` — the FILM-1609 class); fixed in the same PR.
 
-**Remaining:** none. `manual-revenue-form.tsx` was fixed in #406, and
+**Remaining:** none. `manual-revenue-form.tsx` was fixed in #412, and
 `KNOWN` in the guard test is empty.
 
 **No change needed** (the error never crossed a server action):
