@@ -5,6 +5,7 @@ JSON file-based prompt engine for LLM template management. All prompt configurat
 ## Overview
 
 This package provides a simple, file-based approach to managing LLM prompts:
+
 - **No database required** - Prompts are JSON files in `packages/features/*/src/prompts/`
 - **Self-contained** - Each JSON file contains LLM config, system prompts, user prompt, variables, and output schema
 - **Type-safe** - Zod schema validation for both prompt files and LLM responses
@@ -108,6 +109,7 @@ Place prompt files in: `packages/features/<your-package>/src/prompts/<category>/
 ## File Location Discovery
 
 The engine automatically discovers prompts in:
+
 1. `packages/features/*/src/prompts/` - Recursively searches all feature packages
 2. `$PROMPTS_DIR` environment variable - Custom directory (highest priority)
 
@@ -128,26 +130,26 @@ Main execution function. All configuration comes from the prompt JSON file.
 
 ```typescript
 interface LLMExecutionConfig {
-  templateSlug: string;                    // JSON file name (without .json)
-  variables: Record<string, unknown>;      // Template variables
+  templateSlug: string; // JSON file name (without .json)
+  variables: Record<string, unknown>; // Template variables
   context: {
-    name: string;                          // Operation name for analytics
-    accountId: string;                     // Account for cost tracking
-    userId?: string;                       // Optional user ID
+    name: string; // Operation name for analytics
+    accountId: string; // Account for cost tracking
+    userId?: string; // Optional user ID
   };
-  temperature?: number;                    // Override file's temperature
-  maxTokens?: number;                      // Override file's max_tokens
-  validateSchema?: boolean;                // Enable/disable Zod validation (default: true)
+  temperature?: number; // Override file's temperature
+  maxTokens?: number; // Override file's max_tokens
+  validateSchema?: boolean; // Enable/disable Zod validation (default: true)
 }
 
 interface LLMExecutionResult<T> {
-  data: T;                                 // Validated response data
+  data: T; // Validated response data
   metadata: {
-    latency: number;                       // Execution time in ms
-    tokens: number;                        // Total tokens used
-    cost: number | undefined;              // Cost in USD
-    provider: string;                      // LLM provider used
-    model: string;                         // Model name
+    latency: number; // Execution time in ms
+    tokens: number; // Total tokens used
+    cost: number | undefined; // Cost in USD
+    provider: string; // LLM provider used
+    model: string; // Model name
   };
 }
 ```
@@ -164,19 +166,19 @@ const rendered = await loadAndRenderPrompt('summarize-content', {
   max_length: 100,
 });
 
-console.log(rendered.systemPrompt);  // Composed system prompts
-console.log(rendered.userPrompt);    // Variables interpolated
-console.log(rendered.llmConfig);     // Provider, model, etc.
+console.log(rendered.systemPrompt); // Composed system prompts
+console.log(rendered.userPrompt); // Variables interpolated
+console.log(rendered.llmConfig); // Provider, model, etc.
 ```
 
 ### Validation Functions
 
 ```typescript
 import {
+  validateExampleOutput,
   validatePromptTemplate,
   validateVariablePlaceholders,
   validateZodSchemaCompilation,
-  validateExampleOutput,
 } from '@kit/prompt-engine/validation';
 
 // Validate JSON structure
@@ -273,6 +275,7 @@ LOCAL_API_URL=http://127.0.0.1:8000/v1
 ## Analytics
 
 All executions are automatically logged to `llm_usage_analytics` table:
+
 - Account and user attribution
 - Token usage and cost tracking
 - Latency metrics
