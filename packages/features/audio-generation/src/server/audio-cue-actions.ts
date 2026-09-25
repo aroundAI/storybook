@@ -112,6 +112,8 @@ export const processAudioCuesAction = enhanceAction(
         .eq('project_id', data.projectId)
         .eq('prompt_hash', promptHash)
         .eq('status', 'completed')
+        // A deleted asset is not matched again (KB-95)
+        .is('deleted_at', null)
         .single();
 
       if (existingAsset?.file_url) {

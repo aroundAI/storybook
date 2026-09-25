@@ -1,6 +1,8 @@
 import 'server-only';
 
+import { STORAGE_BUCKETS } from './buckets';
 import type { StorageAdapter } from './types';
+import { isAudioLibraryPath } from './upload-paths';
 
 /**
  * The object key behind a public URL this adapter issued for `bucket`, or
@@ -77,4 +79,50 @@ export async function deleteOwnedObject(
   } catch (error) {
     return { deleted: false, reason: 'delete-failed', error };
   }
+}
+
+/**
+ * Where an audio-library asset's own file is, or null if its URL points
+ * anywhere else (KB-95).
+ *
+ * A project writer can rewrite `file_url` on the row, and the file is
+ * deleted with the app's own credentials, so the URL never chooses the key
+ * by itself: the key must be exactly one of the places this asset, by its
+ * own id and project, is stored. That is an upload (KB-73) or one of the
+ * three generated layouts.
+ */
+export function ownedAudioAssetLocation(
+  storage: StorageAdapter,
+  asset: { id: string; project_id: string; file_url: string | null },
+): { bucket: string; key: string } | null {
+  if (!asset.file_url) return null;
+
+  const { id, project_id: projectId } = asset;
+  const owned: Array<[string, (key: string) => boolean]> = [
+    [
+      STORAGE_BUCKETS.projectAssets,
+      (key) => isAudioLibraryPath(projectId, key),
+    ],
+    [
+      STORAGE_BUCKETS.audioAssets,
+      (key) => key === `music/${id}.mp3` || key === `sfx/${id}.mp3`,
+    ],
+    [
+      STORAGE_BUCKETS.audio,
+      (key) =>
+        ['music', 'sfx', 'ambient'].some(
+          (folder) => key === `${projectId}/${folder}/${id}.mp3`,
+        ),
+    ],
+  ];
+
+  for (const [bucket, isOwn] of owned) {
+    const key = storageKeyFromPublicUrl(storage, bucket, asset.file_url);
+
+    if (key && isOwn(key)) {
+      return { bucket, key };
+    }
+  }
+
+  return null;
 }

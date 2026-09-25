@@ -147,7 +147,9 @@ export function AudioAssetCard({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
+                className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                aria-label="Asset actions"
+                data-test="audio-asset-menu"
                 onClick={(e) => e.stopPropagation()}
               >
                 <MoreVertical className="h-4 w-4" />
@@ -175,6 +177,7 @@ export function AudioAssetCard({
                     onDelete(asset.id);
                   }}
                   className="text-destructive"
+                  data-test="audio-asset-delete"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete

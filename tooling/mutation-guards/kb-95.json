@@ -1,0 +1,79 @@
+{
+  "feature": "KB-95",
+  "mutations": [
+    {
+      "name": "KB-95 U1 delete skips the project-writer check",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/audio-asset-actions.ts",
+      "find": "    if (!(await authorizeProjectTarget(client, asset.project_id))) {",
+      "replace": "    if (!(await Promise.resolve(true))) {",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/delete-audio-asset.test.ts",
+      "pattern": "refuses a project viewer"
+    },
+    {
+      "name": "KB-95 U2 a file a timeline still plays is deleted",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/audio-asset-actions.ts",
+      "find": "    if (inUse !== 0) {",
+      "replace": "    if (inUse === -1) {",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/delete-audio-asset.test.ts",
+      "pattern": "keeps the file while"
+    },
+    {
+      "name": "KB-95 U3 a track that copied the URL is not counted",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/audio-asset-actions.ts",
+      "find": "    ...(fileUrl ? [`file_url.eq.",
+      "replace": "    ...(false && fileUrl ? [`file_url.eq.",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/delete-audio-asset.test.ts",
+      "pattern": "copied the URL"
+    },
+    {
+      "name": "KB-95 U4 an asset still generating is deleted",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/audio-asset-actions.ts",
+      "find": "    if (asset.status === 'pending' || asset.status === 'processing') {",
+      "replace": "    if (asset.status === 'never') {",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/delete-audio-asset.test.ts",
+      "pattern": "still generating"
+    },
+    {
+      "name": "KB-95 U5 the stored URL alone chooses what the server deletes",
+      "kind": "unit",
+      "file": "packages/features/storage/src/storage-key.ts",
+      "find": "    if (key && isOwn(key)) {",
+      "replace": "    if (key) {",
+      "cwd": "packages/features/storage",
+      "test": "__tests__/owned-audio-asset.test.ts",
+      "pattern": "does not own"
+    },
+    {
+      "name": "KB-95 U6 the cue matcher links a deleted asset again",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/audio-cue-actions.ts",
+      "find": "        // A deleted asset is not matched again (KB-95)\n        .is('deleted_at', null)\n",
+      "replace": "",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/cue-match-deleted.test.ts"
+    },
+    {
+      "name": "KB-95 E1 Delete only hides the card again",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/delete-audio-asset-dialog.tsx",
+      "find": "        await unwrap(deleteAudioAssetAction({ assetId: asset.id }));",
+      "replace": "        await Promise.resolve(deleteAudioAssetAction);",
+      "spec": "tests/storage/audio-library-delete.spec.ts",
+      "grep": "stays gone after a reload"
+    },
+    {
+      "name": "KB-95 DB1 the semantic matcher returns a deleted asset",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/audio-assets-deleted.test.sql",
+      "sql": "create or replace function public.match_audio_assets(query_embedding vector(1536), match_threshold float, match_count int, p_project_id uuid) returns table (id uuid, similarity float, prompt text, file_url text, audio_type text, name text) language sql stable as $$ select a.id, 1 - (a.embedding <=> query_embedding), a.prompt, a.file_url, a.audio_type, a.name from public.audio_assets a where a.project_id = p_project_id and a.embedding is not null and a.status = 'completed' and 1 - (a.embedding <=> query_embedding) > match_threshold order by a.embedding <=> query_embedding limit match_count; $$;"
+    }
+  ]
+}

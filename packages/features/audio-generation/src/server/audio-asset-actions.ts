@@ -863,3 +863,165 @@ const createUploadedAudioAsset = enhanceAction(
 export const createUploadedAudioAssetAction = returnRefusals(
   createUploadedAudioAsset,
 );
+
+// =============================================================================
+// Delete (KB-95)
+// =============================================================================
+
+const DeleteAudioAssetSchema = z.object({
+  assetId: z.string().uuid(),
+});
+
+const NOT_DELETABLE = "You can't delete assets in this project.";
+
+/**
+ * Delete a library asset: the row is soft-deleted as the caller, then its
+ * file is removed with the server's storage client.
+ *
+ * The caller must write the project, checked twice: `can_write_project`
+ * here, then the update policy on the row. The file goes only if it is the
+ * asset's own (`ownedAudioAssetLocation`; `file_url` is writable by any
+ * writer, so the URL alone never chooses the key) and nothing uses it: a
+ * timeline track copies the asset's URL, so removing a placed file would
+ * silence that episode. A kept file is logged; there is no sweep yet.
+ */
+const deleteAudioAsset = enhanceAction(
+  async (data): Promise<{ deleted: true; fileRemoved: boolean }> => {
+    const logger = await getLogger();
+    const ctx = { name: 'audioAsset.delete', assetId: data.assetId };
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    const refuse = (reason: string, message: string): never => {
+      logger.warn({ ...ctx, userId: user.id, reason }, 'Delete refused');
+      throw new ActionRefusal(message);
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: row, error: readError } = await (client as any)
+      .from('audio_assets')
+      .select('id, project_id, status, file_url, deleted_at')
+      .eq('id', data.assetId)
+      .maybeSingle();
+
+    if (readError) {
+      throw new Error(`Failed to read audio asset: ${readError.message}`);
+    }
+
+    const asset = row as {
+      id: string;
+      project_id: string;
+      status: string;
+      file_url: string | null;
+      deleted_at: string | null;
+    } | null;
+
+    if (!asset) {
+      return refuse('not_found', NOT_DELETABLE);
+    }
+
+    if (!(await authorizeProjectTarget(client, asset.project_id))) {
+      return refuse('not_writable', NOT_DELETABLE);
+    }
+
+    if (asset.deleted_at) {
+      return { deleted: true, fileRemoved: false };
+    }
+
+    // Its generation would write a file to the row after the delete
+    if (asset.status === 'pending' || asset.status === 'processing') {
+      return refuse('in_flight', 'This asset is still generating.');
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: updated, error: updateError } = await (client as any)
+      .from('audio_assets')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', asset.id)
+      .is('deleted_at', null)
+      .select('id');
+
+    if (updateError) {
+      throw new Error(`Failed to delete audio asset: ${updateError.message}`);
+    }
+
+    // RLS matched nothing: the write rule refused what the authoriser allowed
+    if (!updated?.length) {
+      return refuse('update_refused', NOT_DELETABLE);
+    }
+
+    const { getStorageAdapter, ownedAudioAssetLocation } = await import(
+      '@kit/storage'
+    );
+    const admin = getSupabaseServerAdminClient();
+    const storage = getStorageAdapter(admin);
+    const location = ownedAudioAssetLocation(storage, asset);
+
+    if (!location) {
+      logger.info({ ...ctx, fileUrl: asset.file_url }, 'file_not_owned');
+      return { deleted: true, fileRemoved: false };
+    }
+
+    const inUse = await countAudioAssetUses(asset.id, asset.file_url);
+
+    if (inUse !== 0) {
+      // null: the count failed, so the file is kept rather than guessed at
+      logger.info({ ...ctx, inUse }, 'file_kept_in_use');
+      return { deleted: true, fileRemoved: false };
+    }
+
+    try {
+      await storage.delete(location.bucket, location.key);
+    } catch (error) {
+      logger.error({ ...ctx, ...location, error }, 'delete-failed');
+      return { deleted: true, fileRemoved: false };
+    }
+
+    logger.info({ ...ctx, ...location }, 'Audio asset deleted');
+
+    return { deleted: true, fileRemoved: true };
+  },
+  { schema: DeleteAudioAssetSchema },
+);
+
+export const deleteAudioAssetAction = returnRefusals(deleteAudioAsset);
+
+/**
+ * Timeline tracks and cues that still use an asset: by id, or, for a track,
+ * by the URL it copied. The server's client, because RLS could hide a row
+ * that plays the file. Null when a count fails.
+ */
+async function countAudioAssetUses(
+  assetId: string,
+  fileUrl: string | null,
+): Promise<number | null> {
+  const admin = getSupabaseServerAdminClient();
+
+  const trackFilter = [
+    `audio_asset_id.eq.${assetId}`,
+    `metadata->>audio_asset_id.eq.${assetId}`,
+    ...(fileUrl ? [`file_url.eq."${fileUrl.replace(/"/g, '\\"')}"`] : []),
+  ].join(',');
+
+  const [tracks, cues] = await Promise.all([
+    admin
+      .from('audio_tracks')
+      .select('id', { count: 'exact', head: true })
+      .or(trackFilter),
+    admin
+      .from('audio_cues')
+      .select('id', { count: 'exact', head: true })
+      .eq('audio_asset_id', assetId),
+  ]);
+
+  if (tracks.error || cues.error) {
+    return null;
+  }
+
+  return (tracks.count ?? 0) + (cues.count ?? 0);
+}

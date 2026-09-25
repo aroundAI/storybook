@@ -65,6 +65,11 @@ vi.mock('../batch-generate-dialog', () => ({
   BatchGenerateDialog: () => null,
 }));
 
+// Delete is driven by audio-library-delete.spec.ts, against the real action
+vi.mock('../delete-audio-asset-dialog', () => ({
+  DeleteAudioAssetDialog: () => null,
+}));
+
 // Plain elements in place of the styled ones: the subject is which buttons
 // and cards are drawn, not how.
 vi.mock('@kit/ui/button', () => ({

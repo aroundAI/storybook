@@ -39,7 +39,11 @@ export {
 } from './routing';
 
 // Public URL → object key, and deletes confined to an owner's folder (KB-54)
-export { deleteOwnedObject, storageKeyFromPublicUrl } from './storage-key';
+export {
+  deleteOwnedObject,
+  ownedAudioAssetLocation,
+  storageKeyFromPublicUrl,
+} from './storage-key';
 export type { OwnedDeleteResult } from './storage-key';
 
 // Adapters (for direct instantiation if needed)
