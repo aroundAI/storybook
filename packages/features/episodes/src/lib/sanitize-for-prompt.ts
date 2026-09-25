@@ -4,7 +4,12 @@
  * Mitigates common prompt injection vectors:
  * - Markdown/template delimiters (---, ```, {{ }})
  * - XML-style role markers (<system>, <user>, <assistant>, etc.)
- * - Instruction override patterns (IGNORE PREVIOUS, SYSTEM OVERRIDE)
+ * - Instruction override patterns (IGNORE PREVIOUS/ABOVE/PRIOR, SYSTEM OVERRIDE)
+ * - Chat-template tokens ([INST], <<SYS>>, <|im_start|> and their closers)
+ *
+ * The one prompt sanitiser for `@kit/episodes` and the LLM worker (KB-101).
+ * Broader phrases ("you are now", "system:") are deliberately not matched:
+ * they strip ordinary prose.
  *
  * Uses iterative tag stripping to prevent nested tag bypass
  * (e.g., `<<system>system>` → `<system>` after single pass).
@@ -16,13 +21,14 @@ export function sanitizeForPrompt(input: string): string {
     .replace(/\{\{/g, '{ {')
     .replace(/\}\}/g, '} }')
     .replace(
-      /\bIGNORE\s+(?:ALL\s+)?(?:PREVIOUS|ABOVE)\b|\bSYSTEM\s+OVERRIDE\b/gi,
+      /\bIGNORE\s+(?:ALL\s+)?(?:PREVIOUS|ABOVE|PRIOR)\b|\bSYSTEM\s+OVERRIDE\b/gi,
       '[FILTERED]',
     );
 
-  // Iteratively strip role tags to prevent nested bypass
+  // Iteratively strip role tags and chat-template tokens to prevent nested
+  // bypass (`[IN[INST]ST]` → `[INST]` after one pass)
   const roleTagPattern =
-    /<\/?(?:system|user|assistant|prompt|instruction)[^>]*>/gi;
+    /<\/?(?:system|user|assistant|prompt|instruction)[^>]*>|\[\/?INST\]|<<\/?SYS>>|<\|im_(?:start|end)\|>/gi;
   let previous = '';
 
   while (previous !== result) {
