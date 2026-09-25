@@ -6,45 +6,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
-
-interface AnalyticsInsightsPayload {
-  projectId: string;
-  /** The project's account, stamped by queueLlmJob from its target (KB-31). */
-  accountId: string;
-  analytics: {
-    totals: {
-      views: number;
-      likes: number;
-      comments: number;
-      shares: number;
-      watchTimeSeconds: number;
-      subscribersGained: number;
-      revenueCents: number;
-      contentCount: number;
-    };
-    previousPeriodTotals?: Record<string, number>;
-    platformMetrics?: Array<{
-      platform: string;
-      views: number;
-      likes: number;
-      comments: number;
-      shares: number;
-    }>;
-    topContent?: Array<{
-      id: string;
-      title: string;
-      views: number;
-      likes: number;
-      engagementRate: number;
-      platform: string;
-    }>;
-    audience?: Record<string, unknown>;
-    contentCount: number;
-    avgEngagementRate: number;
-  };
-  userId: string;
-}
 
 interface InsightsResult {
   success: boolean;
@@ -79,8 +42,7 @@ export async function processAnalyticsInsights(
   payload: Record<string, unknown>,
   _supabase: SupabaseClient<Database>,
 ): Promise<InsightsResult> {
-  // SQS payload: cast, not validated (KB-33).
-  const data = payload as unknown as AnalyticsInsightsPayload;
+  const data = parseLlmJobPayload('analytics-insights', payload);
 
   console.log(`[Analytics Insights] Processing for project ${data.projectId}`);
 

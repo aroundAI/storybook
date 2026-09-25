@@ -10,8 +10,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { z } from 'zod';
-
+import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
 import {
@@ -19,12 +18,6 @@ import {
   markJobFailed,
   markJobProcessing,
 } from '../utils/job-tracking';
-
-const AudioCueGenerationPayloadSchema = z.object({
-  episodeId: z.string(),
-  projectId: z.string(),
-  accountId: z.string(),
-});
 
 /** The part of `shots.generation_metadata` (jsonb) this pipeline reads. */
 interface ShotGenerationMetadata {
@@ -38,7 +31,7 @@ export async function processAudioCueGeneration(
   payload: Record<string, unknown>,
   supabase: SupabaseClient<Database>,
 ): Promise<{ success: boolean; cuesCreated: number }> {
-  const data = AudioCueGenerationPayloadSchema.parse(payload);
+  const data = parseLlmJobPayload('audio-cue-generation', payload);
   const { episodeId } = data;
 
   console.log(

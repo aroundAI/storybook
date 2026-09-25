@@ -30,6 +30,8 @@ interface EpisodeContextValue {
   accountId: string;
   projectName: string;
   projectMetadata: Record<string, unknown> | null;
+  /** Owner or admin of the project: may take published videos down (KB-47) */
+  canTakeDown: boolean;
   isGenerating: boolean;
   setIsGenerating: (value: boolean) => void;
   refetchEpisode: () => void;
@@ -57,6 +59,7 @@ interface EpisodeContextProviderProps {
   accountId: string;
   projectName: string;
   projectMetadata: Record<string, unknown> | null;
+  canTakeDown: boolean;
 }
 
 export function EpisodeContextProvider({
@@ -68,6 +71,7 @@ export function EpisodeContextProvider({
   accountId,
   projectName,
   projectMetadata,
+  canTakeDown,
 }: EpisodeContextProviderProps) {
   const router = useRouter();
   const [isRefetching, startRefetchTransition] = useTransition();
@@ -95,6 +99,7 @@ export function EpisodeContextProvider({
         accountId,
         projectName,
         projectMetadata,
+        canTakeDown,
         isGenerating,
         setIsGenerating,
         refetchEpisode,

@@ -7,6 +7,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database, Json } from '@kit/supabase/database';
 
 import { executeLLMForLambda } from '../llm-utils';
@@ -20,13 +21,6 @@ import {
   markJobFailed,
   markJobProcessing,
 } from '../utils/job-tracking';
-
-interface ScreenplayRefinementPayload {
-  episodeId: string;
-  projectId: string;
-  feedback: string;
-  userId: string;
-}
 
 interface RefinementHistoryEntry {
   timestamp: string;
@@ -56,7 +50,7 @@ export async function processScreenplayRefinement(
   payload: Record<string, unknown>,
   supabase: SupabaseClient<Database>,
 ): Promise<ScreenplayRefinementResult> {
-  const data = payload as unknown as ScreenplayRefinementPayload;
+  const data = parseLlmJobPayload('screenplay-refinement', payload);
 
   console.log(
     `[Screenplay Refinement] Processing for episode ${data.episodeId}`,

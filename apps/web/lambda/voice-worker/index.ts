@@ -25,6 +25,10 @@ import {
 import type { SQSBatchResponse, SQSEvent } from 'aws-lambda';
 import ws from 'ws';
 
+import {
+  QueuedJobRefused,
+  assertQueuedJobAccess,
+} from '@kit/prompt-engine/llm-job-target';
 import type { Database } from '@kit/supabase/database';
 
 // Initialize DynamoDB client
@@ -198,6 +202,15 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
       );
 
       try {
+        // The job's user must still be able to write the line's project;
+        // the producer asked as them when it queued (KB-46), this asks again
+        // now, on the service-role key (KB-49)
+        await assertQueuedJobAccess(supabase, {
+          userId: payload.userId,
+          accountId: payload.accountId,
+          episodeId: payload.episodeId,
+        });
+
         // Process the voice generation with retry for rate limits
         const { processDialogueVoiceGeneration } = await import(
           './voice-generation'
@@ -336,6 +349,9 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
             timestamp: new Date().toISOString(),
           });
         }
+
+        // A refusal is an answer: acknowledged, so SQS does not ask again
+        if (error instanceof QueuedJobRefused) return;
 
         throw error; // Re-throw to be caught by Promise.allSettled
       }

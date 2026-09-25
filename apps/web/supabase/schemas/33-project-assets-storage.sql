@@ -37,7 +37,12 @@ values
 
 -- The project-write rule: owner, admin or member in project_members.
 -- A viewer, or someone who can only see a public project, may not write.
-create or replace function public.can_write_project (target_project_id uuid)
+-- For a named user: the service-role workers ask it about a queued job's
+-- user (KB-49), so it is not granted to `authenticated`.
+create or replace function public.can_user_write_project (
+  target_user_id uuid,
+  target_project_id uuid
+)
 returns boolean
 language sql
 stable
@@ -47,9 +52,22 @@ set search_path = '' as $$
     select 1
     from public.project_members pm
     where pm.project_id = target_project_id
-      and pm.user_id = auth.uid()
+      and pm.user_id = target_user_id
       and pm.role in ('owner', 'admin', 'member')
   );
+$$;
+
+revoke all on function public.can_user_write_project (uuid, uuid) from public, anon, authenticated;
+grant execute on function public.can_user_write_project (uuid, uuid) to service_role;
+
+-- The same rule for the session's user
+create or replace function public.can_write_project (target_project_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = '' as $$
+  select public.can_user_write_project(auth.uid(), target_project_id);
 $$;
 
 revoke all on function public.can_write_project (uuid) from public, anon;

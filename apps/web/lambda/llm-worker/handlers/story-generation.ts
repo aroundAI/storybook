@@ -13,6 +13,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database, Json } from '@kit/supabase/database';
 
 import { commitStoryCanon } from '../utils/commit-story-canon';
@@ -176,27 +177,6 @@ async function autoCreateNewAssets(
   }
 }
 
-interface StoryGenerationPayload {
-  episodeId: string;
-  title: string;
-  logline: string;
-  targetDuration: number;
-  contentStyle: string;
-  style?: string;
-  version: number;
-  accountId: string;
-  userId: string;
-  projectId: string;
-  threadCandidates?: Array<{
-    threadId: string;
-    threadName: string;
-    action: 'progress' | 'resolve';
-  }>;
-  themes?: string[];
-  hook?: string;
-  visualDirection?: string;
-}
-
 interface StoryOutput {
   fullText: string;
   title: string;
@@ -234,8 +214,7 @@ export async function processStoryGeneration(
   payload: Record<string, unknown>,
   supabase: SupabaseClient<Database>,
 ): Promise<StoryGenerationResult> {
-  // SQS payload: cast, not validated (KB-33).
-  const data = payload as unknown as StoryGenerationPayload;
+  const data = parseLlmJobPayload('story-generation', payload);
 
   console.log(
     `[Story Generation] Starting AGENTIC pipeline for episode ${data.episodeId}`,

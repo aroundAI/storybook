@@ -44,7 +44,20 @@ describe('LLM usage attribution in the worker', () => {
         projectId: PROJECT,
         accountId: ACCOUNT,
         userId: USER,
-        analytics: { totals: { views: 1 }, contentCount: 1 },
+        analytics: {
+          totals: {
+            views: 1,
+            likes: 0,
+            comments: 0,
+            shares: 0,
+            watchTimeSeconds: 0,
+            subscribersGained: 0,
+            revenueCents: 0,
+            contentCount: 1,
+          },
+          contentCount: 1,
+          avgEngagementRate: 0,
+        },
       },
       supabase,
     ).catch(() => undefined);
@@ -59,6 +72,10 @@ describe('LLM usage attribution in the worker', () => {
         accountId: ACCOUNT,
         userId: USER,
         languagePerformance: [{ language: 'es', views: 1 }],
+        platformMatrix: [],
+        contentType: {},
+        shorts: [],
+        geography: [],
       },
       supabase,
     ).catch(() => undefined);

@@ -7,6 +7,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database, Json } from '@kit/supabase/database';
 
 import { executeLLMForLambda } from '../llm-utils';
@@ -21,13 +22,6 @@ import {
   markJobFailed,
   markJobProcessing,
 } from '../utils/job-tracking';
-
-interface StoryRefinementPayload {
-  episodeId: string;
-  projectId: string;
-  feedback: string;
-  userId: string;
-}
 
 interface RefinementHistoryEntry {
   timestamp: string;
@@ -57,7 +51,7 @@ export async function processStoryRefinement(
   payload: Record<string, unknown>,
   supabase: SupabaseClient<Database>,
 ): Promise<StoryRefinementResult> {
-  const data = payload as unknown as StoryRefinementPayload;
+  const data = parseLlmJobPayload('story-refinement', payload);
 
   console.log(`[Story Refinement] Processing for episode ${data.episodeId}`);
 

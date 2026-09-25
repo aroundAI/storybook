@@ -7,6 +7,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
 import { executeLLMForLambda } from '../llm-utils';
@@ -62,12 +63,6 @@ interface ExternalFact {
   category?: string | null;
 }
 
-interface SeasonAnalysisPayload {
-  projectId: string;
-  roadmap: string;
-  externalFacts?: ExternalFact[];
-}
-
 /**
  * Format verified facts into a prompt-injectable string for season planning.
  * Each fact gets an ID so the LLM can reference it in episode assignments.
@@ -95,9 +90,10 @@ export async function processSeasonAnalysis(
   payload: Record<string, unknown>,
   _supabase: SupabaseClient<Database>,
 ): Promise<{ success: boolean; data: AnalysisResult }> {
-  const { projectId, roadmap, externalFacts } =
-    // SQS payload: cast, not validated (KB-33).
-    payload as unknown as SeasonAnalysisPayload;
+  const { projectId, roadmap, externalFacts } = parseLlmJobPayload(
+    'season-analysis',
+    payload,
+  );
 
   console.log(
     `[Season Analysis] Processing for project ${projectId}, facts: ${externalFacts?.length ?? 0}`,

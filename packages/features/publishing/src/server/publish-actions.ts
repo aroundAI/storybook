@@ -4,6 +4,8 @@ import 'server-only';
 
 import { revalidatePath } from 'next/cache';
 
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { z } from 'zod';
 
@@ -13,6 +15,7 @@ import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
+import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { DeleteJobMessage } from '../lib/job-types';
@@ -21,6 +24,7 @@ import {
   PublishToAllSchema,
   RetryPublishSchema,
 } from '../lib/schemas/publish.schema';
+import { TAKEDOWN_REFUSAL, canTakeDown, projectRoleOf } from '../lib/takedown';
 import type { Platform, PublishResult } from '../lib/types';
 import { validateContentUrl } from '../lib/url-validation';
 import {
@@ -34,6 +38,7 @@ import { InstagramProvider } from '../providers/instagram';
 import { LinkedInProvider } from '../providers/linkedin';
 import { TikTokProvider } from '../providers/tiktok';
 import { TwitterProvider } from '../providers/twitter';
+import { assertConnectionOfAccount } from './connection-account';
 import { getAccessToken } from './connection-tokens';
 import { uploadToYouTube } from './youtube-upload';
 
@@ -161,7 +166,7 @@ const publishToAllHandler = enhanceAction(
     const { data: episode, error: episodeError } = await client
       .from('episodes')
       .select(
-        'final_video_url, thumbnail_url, project_id, localized_videos, shorts_groups, public_slug, title, number',
+        'final_video_url, thumbnail_url, project_id, localized_videos, shorts_groups, public_slug, title, number, project:projects!inner(account_id)',
       )
       .eq('id', episodeId)
       .single();
@@ -190,6 +195,18 @@ const publishToAllHandler = enhanceAction(
       logger.error(ctx, 'Episode video not ready');
       throw new ActionRefusal(
         'No videos available for publishing. Upload videos first.',
+      );
+    }
+
+    // KB-109: every channel is one of the episode's account, asked before
+    // any token is decrypted or refreshed
+    for (const connectionId of new Set(
+      platforms.map((platform) => platform.connectionId),
+    )) {
+      await assertConnectionOfAccount(
+        client,
+        connectionId,
+        episode.project.account_id,
       );
     }
 
@@ -556,7 +573,7 @@ const retryPublish = enhanceAction(
         id, episode_id, platform_connection_id, platform, content_type, status,
         title, description, tags, thumbnail_url, platform_content_id, platform_url,
         scheduled_at, published_at, language, metadata, created_at,
-        episodes(final_video_url, thumbnail_url)
+        episodes(final_video_url, thumbnail_url, project:projects!inner(account_id))
       `,
       )
       .eq('id', publishId)
@@ -570,10 +587,7 @@ const retryPublish = enhanceAction(
       throw new ActionRefusal('Can only retry failed publishes');
     }
 
-    const episode = publish.episodes as {
-      final_video_url: string | null;
-      thumbnail_url: string | null;
-    } | null;
+    const episode = publish.episodes;
 
     if (!episode?.final_video_url) {
       throw new ActionRefusal('Episode video not available');
@@ -583,6 +597,14 @@ const retryPublish = enhanceAction(
     if (!publish.platform_connection_id) {
       throw new Error('Platform connection ID is missing');
     }
+
+    // KB-109: the publish's channel is one of its episode's account
+    await assertConnectionOfAccount(
+      client,
+      publish.platform_connection_id,
+      episode.project.account_id,
+    );
+
     const tokenResult = await getAccessToken(publish.platform_connection_id);
     if (tokenResult.error || !tokenResult.accessToken) {
       throw new Error(tokenResult.error ?? 'Failed to get access token');
@@ -971,12 +993,103 @@ export const getEpisodePublishesAction = enhanceAction(
 );
 
 /**
+ * The caller may take this episode's videos down, or a refusal (KB-47).
+ * Takedown is irreversible, so it asks for owner or admin on the episode's
+ * project (`TAKEDOWN_ROLES`), not the read access that let any member of
+ * the account queue it before.
+ */
+async function assertCanTakeDown(
+  client: SupabaseClient<Database>,
+  episodeId: string,
+  userId: string,
+) {
+  const { data: episode, error } = await client
+    .from('episodes')
+    .select('project_id')
+    .eq('id', episodeId)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Could not read the episode: ${error.message}`);
+  }
+
+  if (!episode) {
+    throw new ActionRefusal('Publish record not found');
+  }
+
+  const role = await projectRoleOf(client, episode.project_id, userId);
+
+  if (!canTakeDown(role)) {
+    throw new ActionRefusal(TAKEDOWN_REFUSAL);
+  }
+}
+
+interface MarkedPublish {
+  id: string;
+  platform: string;
+  platform_content_id: string | null;
+  platform_connection_id: string | null;
+  episode_id: string;
+}
+
+const MARKED_COLUMNS =
+  'id, platform, platform_content_id, platform_connection_id, episode_id';
+
+/**
+ * Sends one delete job per publish the caller's update marked 'deleting'.
+ * Only those: a row the update did not return is one RLS would not let the
+ * caller change, and the worker deletes nothing that is not 'deleting'. A
+ * publish whose job could not be sent goes back to the status it had.
+ */
+async function queueDeleteJobs(
+  client: SupabaseClient<Database>,
+  marked: MarkedPublish[],
+  previousStatus: Map<string, string>,
+  userId: string,
+) {
+  const sent = await Promise.allSettled(
+    marked.map((pub) => {
+      const message: DeleteJobMessage = {
+        type: 'delete',
+        publishId: pub.id,
+        userId,
+        platformConnectionId: pub.platform_connection_id ?? '',
+        episodeId: pub.episode_id,
+        platform: pub.platform as DeleteJobMessage['platform'],
+        platformContentId: pub.platform_content_id || '',
+      };
+
+      return sqsClient.send(
+        new SendMessageCommand({
+          QueueUrl: PUBLISH_QUEUE_URL,
+          MessageBody: JSON.stringify(message),
+        }),
+      );
+    }),
+  );
+
+  const unsent = marked.filter(
+    (_, index) => sent[index]?.status === 'rejected',
+  );
+
+  for (const pub of unsent) {
+    await client
+      .from('publishes')
+      .update({ status: previousStatus.get(pub.id) ?? 'published' })
+      .eq('id', pub.id);
+  }
+
+  return { queued: marked.length - unsent.length, failed: unsent.length };
+}
+
+/**
  * Deletes all publish records for an episode AND removes content from platforms
  * Used for cleanup/testing purposes.
  * Now uses async worker to avoid timeouts.
  */
-export const deleteEpisodePublishesAction = enhanceAction(
-  async ({ episodeId }, _user) => {
+const deleteEpisodePublishesHandler = enhanceAction(
+  async ({ episodeId }, user) => {
     const logger = await getLogger();
     const ctx = { name: 'publishing.deleteEpisodePublishes', episodeId };
 
@@ -984,64 +1097,58 @@ export const deleteEpisodePublishesAction = enhanceAction(
 
     const client = getSupabaseServerClient();
 
-    // Fetch all publishes with platform details for deletion
-    const { data: publishes } = await client
-      .from('publishes')
-      .select('id, platform, platform_content_id, platform_connection_id')
-      .eq('episode_id', episodeId);
-
-    if (!publishes || publishes.length === 0) {
-      logger.info(ctx, 'No publish records to delete');
-      return { success: true, deletedCount: 0, platformErrors: [] };
-    }
+    await assertCanTakeDown(client, episodeId, user.id);
 
     if (!PUBLISH_QUEUE_URL) {
       logger.error(ctx, 'PUBLISH_QUEUE_URL not configured');
       throw new Error('System configuration error: Queue URL missing');
     }
 
-    // Mark all as 'deleting' in database
-    await client
+    const { data: publishes, error: readError } = await client
       .from('publishes')
-      .update({ status: 'deleting' })
+      .select('id, status')
       .eq('episode_id', episodeId);
 
-    // Enqueue delete jobs
-    const messages = publishes.map((pub) => {
-      const message: DeleteJobMessage = {
-        type: 'delete',
-        publishId: pub.id,
-        userId: _user.id,
-        platformConnectionId: pub.platform_connection_id!,
-        episodeId,
-        platform: pub.platform as DeleteJobMessage['platform'],
-        platformContentId: pub.platform_content_id || '',
-      };
-      return message;
-    });
+    if (readError) {
+      throw new Error(`Could not read the publishes: ${readError.message}`);
+    }
 
-    // Send to SQS in batches (parallel)
-    await Promise.all(
-      messages.map((msg) =>
-        sqsClient.send(
-          new SendMessageCommand({
-            QueueUrl: PUBLISH_QUEUE_URL,
-            MessageBody: JSON.stringify(msg),
-          }),
-        ),
-      ),
+    if (!publishes || publishes.length === 0) {
+      logger.info(ctx, 'No publish records to delete');
+      return { success: true, deletedCount: 0, platformErrors: [] };
+    }
+
+    const { data: marked, error: markError } = await client
+      .from('publishes')
+      .update({ status: 'deleting' })
+      .eq('episode_id', episodeId)
+      .select(MARKED_COLUMNS);
+
+    if (markError) {
+      throw new Error(`Could not mark the publishes: ${markError.message}`);
+    }
+
+    const { queued, failed } = await queueDeleteJobs(
+      client,
+      marked ?? [],
+      new Map(publishes.map((pub) => [pub.id, pub.status])),
+      user.id,
     );
 
     // Analytics are stored in ClickHouse — no Supabase cleanup needed
 
     logger.info(
-      { ...ctx, count: publishes.length },
+      { ...ctx, count: queued, failed },
       'Enqueued delete jobs for publish records',
     );
 
+    if (queued === 0 && failed > 0) {
+      throw new Error('Could not queue the deletions');
+    }
+
     return {
       success: true,
-      deletedCount: publishes.length,
+      deletedCount: queued,
       platformErrors: [],
     };
   },
@@ -1051,12 +1158,16 @@ export const deleteEpisodePublishesAction = enhanceAction(
   },
 );
 
+export const deleteEpisodePublishesAction = returnRefusals(
+  deleteEpisodePublishesHandler,
+);
+
 /**
  * Unpublish a single publish record - deletes from platform AND database
  * Now uses async worker to avoid timeouts.
  */
 const unpublishHandler = enhanceAction(
-  async ({ publishId }, _user) => {
+  async ({ publishId }, user) => {
     const logger = await getLogger();
     const ctx = { name: 'publishing.unpublish', publishId };
 
@@ -1064,14 +1175,9 @@ const unpublishHandler = enhanceAction(
 
     const client = getSupabaseServerClient();
 
-    // Get the publish record with connection info
     const { data: publish, error: fetchError } = await client
       .from('publishes')
-      .select(
-        `
-        id, episode_id, platform_connection_id, platform, platform_content_id
-      `,
-      )
+      .select('id, episode_id, status')
       .eq('id', publishId)
       .single();
 
@@ -1080,34 +1186,37 @@ const unpublishHandler = enhanceAction(
       throw new ActionRefusal('Publish record not found');
     }
 
+    await assertCanTakeDown(client, publish.episode_id, user.id);
+
     if (!PUBLISH_QUEUE_URL) {
       logger.error(ctx, 'PUBLISH_QUEUE_URL not configured');
       throw new Error('System configuration error: Queue URL missing');
     }
 
-    // Mark as deleting
-    await client
+    const { data: marked, error: markError } = await client
       .from('publishes')
       .update({ status: 'deleting' })
-      .eq('id', publishId);
+      .eq('id', publishId)
+      .select(MARKED_COLUMNS);
 
-    // Enqueue delete job
-    const message: DeleteJobMessage = {
-      type: 'delete',
-      publishId: publish.id,
-      userId: _user.id,
-      platformConnectionId: publish.platform_connection_id!,
-      episodeId: publish.episode_id!,
-      platform: publish.platform as DeleteJobMessage['platform'],
-      platformContentId: publish.platform_content_id || '',
-    };
+    if (markError) {
+      throw new Error(`Could not mark the publish: ${markError.message}`);
+    }
 
-    await sqsClient.send(
-      new SendMessageCommand({
-        QueueUrl: PUBLISH_QUEUE_URL,
-        MessageBody: JSON.stringify(message),
-      }),
+    if (!marked || marked.length === 0) {
+      throw new ActionRefusal('Publish record not found');
+    }
+
+    const { failed } = await queueDeleteJobs(
+      client,
+      marked,
+      new Map([[publish.id, publish.status]]),
+      user.id,
     );
+
+    if (failed > 0) {
+      throw new Error('Could not queue the unpublish');
+    }
 
     logger.info(ctx, 'Unpublish job enqueued');
 

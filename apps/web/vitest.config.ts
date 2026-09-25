@@ -102,6 +102,10 @@ export default defineConfig({
         __dirname,
         '../../packages/features/prompt-engine/src/lib/server/llm-job-target.ts',
       ),
+      '@kit/prompt-engine/llm-job-payloads': path.resolve(
+        __dirname,
+        '../../packages/features/prompt-engine/src/lib/llm-job-payloads.ts',
+      ),
       '@kit/next/action-result': path.resolve(
         __dirname,
         '../../packages/next/src/refusals/action-result.ts',
@@ -280,6 +284,10 @@ export default defineConfig({
       '@kit/publishing/lib/token-expiry': path.resolve(
         __dirname,
         '../../packages/features/publishing/src/lib/token-expiry.ts',
+      ),
+      '@kit/publishing/lib/takedown': path.resolve(
+        __dirname,
+        '../../packages/features/publishing/src/lib/takedown.ts',
       ),
       '@kit': path.resolve(__dirname, '../../packages'),
       '~/lib/server/require-user-in-server-component': path.resolve(

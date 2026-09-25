@@ -10,6 +10,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
 import {
@@ -19,14 +20,6 @@ import {
   formatRecurringElementsForPrompt,
   formatVerifiedFactsForPrompt,
 } from '../utils/context-builder';
-
-interface StoryIdeationPayload {
-  episodeId: string;
-  premise: string;
-  numberOfIdeas?: number;
-  accountId: string;
-  userId: string;
-}
 
 interface StoryIdea {
   title: string;
@@ -57,8 +50,7 @@ export async function processStoryIdeation(
   payload: Record<string, unknown>,
   supabase: SupabaseClient<Database>,
 ): Promise<StoryIdeationResult> {
-  // SQS payload: cast, not validated (KB-33).
-  const data = payload as unknown as StoryIdeationPayload;
+  const data = parseLlmJobPayload('story-ideation', payload);
 
   console.log(
     `[Story Ideation] Starting AGENTIC pipeline for episode ${data.episodeId}`,

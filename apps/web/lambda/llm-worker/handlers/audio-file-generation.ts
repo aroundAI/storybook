@@ -6,22 +6,11 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { z } from 'zod';
-
 import type { UploadFn } from '@kit/audio-generation/server-core';
+import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
 import { uploadToR2 } from '../utils/r2-storage';
-
-const AudioFileGenerationPayloadSchema = z.object({
-  cueId: z.string().uuid(),
-  projectId: z.string().uuid(),
-  episodeId: z.string().uuid(),
-  cueType: z.enum(['sfx', 'ambient', 'music']),
-  prompt: z.string(),
-  durationSeconds: z.number(),
-  startOffsetSeconds: z.number(),
-});
 
 // =============================================================================
 // Inline Decryption (Lambda-safe, no server-only import)
@@ -148,7 +137,7 @@ export async function processAudioFileGeneration(
   payload: Record<string, unknown>,
   supabase: SupabaseClient<Database>,
 ): Promise<{ success: boolean; assetId?: string; cueId: string }> {
-  const data = AudioFileGenerationPayloadSchema.parse(payload);
+  const data = parseLlmJobPayload('audio-file-generation', payload);
 
   console.log(
     `[Audio File Gen] Processing cue ${data.cueId} (${data.cueType})`,

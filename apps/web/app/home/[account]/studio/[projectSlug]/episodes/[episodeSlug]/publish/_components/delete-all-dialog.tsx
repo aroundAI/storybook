@@ -2,6 +2,7 @@
 
 import { AlertCircle, Loader2, Trash2 } from 'lucide-react';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { deleteEpisodePublishesAction } from '@kit/publishing/server';
 import { Button } from '@kit/ui/button';
 import {
@@ -62,16 +63,18 @@ export function DeleteAllDialog({
             onClick={async () => {
               setIsDeletingAll(true);
               try {
-                const result = await deleteEpisodePublishesAction({
-                  episodeId,
-                });
+                const result = await unwrap(
+                  deleteEpisodePublishesAction({ episodeId }),
+                );
                 toast.success(
                   `Deleted ${result.deletedCount} publish record(s)`,
                 );
                 onDeleted();
                 onOpenChange(false);
-              } catch {
-                toast.error('Failed to delete publish records');
+              } catch (error) {
+                toast.error(
+                  refusalMessage(error, 'Failed to delete publish records'),
+                );
               } finally {
                 setIsDeletingAll(false);
               }

@@ -9,15 +9,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
-
-interface TranslateDialoguePayload {
-  episodeId: string;
-  targetLanguage: string;
-  preserveTiming: boolean;
-  accountId: string;
-  userId: string;
-}
 
 interface DialogueLine {
   id: string;
@@ -58,8 +51,7 @@ export async function processTranslateDialogue(
   payload: Record<string, unknown>,
   supabase: SupabaseClient<Database>,
 ): Promise<TranslateDialogueResult> {
-  // SQS payload: cast, not validated (KB-33).
-  const data = payload as unknown as TranslateDialoguePayload;
+  const data = parseLlmJobPayload('translate-dialogue', payload);
 
   console.log(
     `[Translate Dialogue] Starting AGENTIC pipeline for episode ${data.episodeId} to ${data.targetLanguage}`,

@@ -83,6 +83,8 @@ interface PublishScreenProps {
   refetchEpisode: () => void;
   accountSlug?: string;
   accountId?: string;
+  /** Owner or admin of the project: sees the takedown controls (KB-47) */
+  canTakeDown?: boolean;
 }
 
 export function PublishScreen({
@@ -90,6 +92,7 @@ export function PublishScreen({
   refetchEpisode,
   accountSlug,
   accountId,
+  canTakeDown = false,
 }: PublishScreenProps) {
   const [isPending, startTransition] = useTransition();
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -1461,8 +1464,10 @@ export function PublishScreen({
               loadingPublishes={loadingPublishes}
               fetchingPublishes={fetchingPublishes}
               onRefresh={() => refetchPublishes()}
-              onDeleteAll={() => setDeleteAllDialogOpen(true)}
-              onUnpublish={initiateUnpublish}
+              onDeleteAll={
+                canTakeDown ? () => setDeleteAllDialogOpen(true) : undefined
+              }
+              onUnpublish={canTakeDown ? initiateUnpublish : undefined}
             />
           </div>
 

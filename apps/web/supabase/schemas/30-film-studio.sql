@@ -589,7 +589,7 @@ create table if not exists public.publishes (
   created_at timestamp with time zone default now() not null,
   check (platform in ('youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'linkedin')),
   check (content_type in ('full', 'short', 'teaser', 'trailer')),
-  check (status in ('draft', 'scheduled', 'queued', 'publishing', 'published', 'failed', 'unlisted', 'deleted'))
+  check (status in ('draft', 'scheduled', 'queued', 'publishing', 'published', 'failed', 'unlisted', 'deleted', 'deleting'))
 );
 
 comment on table public.publishes is 'Tracks published content across platforms';

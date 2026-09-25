@@ -23,6 +23,7 @@ import {
   UpdateSocialPostSchema,
 } from '../lib/schemas/social-post.schema';
 import { createLinkedInProvider } from '../providers/linkedin';
+import { assertConnectionOfAccount } from './connection-account';
 import { getAccessToken } from './connection-tokens';
 
 interface PostVariant {
@@ -409,7 +410,9 @@ const publishSocialPostHandler = enhanceAction(
     // Get the post
     const { data: post, error: fetchError } = await client
       .from('social_posts')
-      .select('id, final_text, platform_connection_id, visibility, metadata')
+      .select(
+        'id, account_id, final_text, platform_connection_id, visibility, metadata',
+      )
       .eq('id', input.postId)
       .single();
 
@@ -426,6 +429,14 @@ const publishSocialPostHandler = enhanceAction(
         'No LinkedIn connection selected. Please approve the post with a connection first.',
       );
     }
+
+    // KB-109: the post's channel is one of the post's account, asked before
+    // the token is decrypted
+    await assertConnectionOfAccount(
+      client,
+      post.platform_connection_id,
+      post.account_id,
+    );
 
     // Update status to publishing
     await client

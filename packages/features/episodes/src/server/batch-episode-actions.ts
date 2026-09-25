@@ -305,7 +305,6 @@ export const regenerateEpisodeOutlineAction = enhanceAction(
         seasonPremise: data.seasonPremise,
         episodeCount: 1,
         startingNumber: data.episodeNumber,
-        surroundingEpisodes: data.surroundingEpisodes,
         userId: user.id,
       },
     });

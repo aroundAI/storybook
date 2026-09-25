@@ -25,7 +25,10 @@ import {
 import type { SQSBatchResponse, SQSEvent } from 'aws-lambda';
 import ws from 'ws';
 
+import type { LlmJobType } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
+
+import { runLlmJob } from './job-boundary';
 
 // Initialize DynamoDB client
 const ddbClient = new DynamoDBClient({});
@@ -81,15 +84,6 @@ const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey, {
     transport: ws as unknown as typeof WebSocket,
   },
 });
-
-/**
- * LLM Job message structure
- */
-interface LlmJobMessage {
-  jobType: string;
-  userId: string;
-  payload: Record<string, unknown>;
-}
 
 /**
  * Send message to user via WebSocket
@@ -165,109 +159,114 @@ async function sendToUser(
  * Process a single LLM job
  * Routes to appropriate handler based on jobType
  */
-async function processJob(job: LlmJobMessage): Promise<unknown> {
-  console.log(`[LLM Worker] Processing job: ${job.jobType}`);
+async function processJob(
+  jobType: LlmJobType,
+  payload: Record<string, unknown>,
+): Promise<unknown> {
+  console.log(`[LLM Worker] Processing job: ${jobType}`);
 
   // Dynamic import of job handlers to keep Lambda bundle smaller
-  switch (job.jobType) {
+  switch (jobType) {
     case 'season-analysis': {
       const { processSeasonAnalysis } = await import(
         './handlers/season-analysis'
       );
-      return processSeasonAnalysis(job.payload, supabase);
+      return processSeasonAnalysis(payload, supabase);
     }
     case 'season-outline': {
       const { processSeasonOutline } = await import(
         './handlers/season-outline'
       );
-      return processSeasonOutline(job.payload, supabase);
+      return processSeasonOutline(payload, supabase);
     }
     case 'story-ideation': {
       const { processStoryIdeation } = await import(
         './handlers/story-ideation'
       );
-      return processStoryIdeation(job.payload, supabase);
+      return processStoryIdeation(payload, supabase);
     }
     case 'story-generation': {
       const { processStoryGeneration } = await import(
         './handlers/story-generation'
       );
-      return processStoryGeneration(job.payload, supabase);
+      return processStoryGeneration(payload, supabase);
     }
     case 'screenplay-conversion': {
       const { processScreenplayConversion } = await import(
         './handlers/screenplay-conversion'
       );
-      return processScreenplayConversion(job.payload, supabase);
+      return processScreenplayConversion(payload, supabase);
     }
     case 'shot-generation': {
       const { processShotGeneration } = await import(
         './handlers/shot-generation'
       );
-      return processShotGeneration(job.payload, supabase);
+      return processShotGeneration(payload, supabase);
     }
     case 'batch-translate-metadata': {
       const { processBatchTranslateMetadata } = await import(
         './handlers/batch-translate-metadata'
       );
-      return processBatchTranslateMetadata(job.payload, supabase);
+      return processBatchTranslateMetadata(payload, supabase);
     }
     case 'analytics-insights': {
       const { processAnalyticsInsights } = await import(
         './handlers/analytics-insights'
       );
-      return processAnalyticsInsights(job.payload, supabase);
+      return processAnalyticsInsights(payload, supabase);
     }
     case 'asset-creation': {
       const { processAssetCreation } = await import(
         './handlers/asset-creation'
       );
-      return processAssetCreation(job.payload, supabase);
+      return processAssetCreation(payload, supabase);
     }
     case 'language-insights': {
       const { processLanguageInsights } = await import(
         './handlers/language-insights'
       );
-      return processLanguageInsights(job.payload, supabase);
+      return processLanguageInsights(payload, supabase);
     }
     case 'translate-dialogue': {
       const { processTranslateDialogue } = await import(
         './handlers/translate-dialogue'
       );
-      return processTranslateDialogue(job.payload, supabase);
+      return processTranslateDialogue(payload, supabase);
     }
     case 'audio-cue-generation': {
       const { processAudioCueGeneration } = await import(
         './handlers/audio-cue-generation'
       );
-      return processAudioCueGeneration(job.payload, supabase);
+      return processAudioCueGeneration(payload, supabase);
     }
     case 'audio-file-generation': {
       const { processAudioFileGeneration } = await import(
         './handlers/audio-file-generation'
       );
-      return processAudioFileGeneration(job.payload, supabase);
+      return processAudioFileGeneration(payload, supabase);
     }
     case 'story-refinement': {
       const { processStoryRefinement } = await import(
         './handlers/story-refinement'
       );
-      return processStoryRefinement(job.payload, supabase);
+      return processStoryRefinement(payload, supabase);
     }
     case 'screenplay-refinement': {
       const { processScreenplayRefinement } = await import(
         './handlers/screenplay-refinement'
       );
-      return processScreenplayRefinement(job.payload, supabase);
+      return processScreenplayRefinement(payload, supabase);
     }
     case 'fact-extraction': {
       const { processFactExtraction } = await import(
         './handlers/fact-extraction'
       );
-      return processFactExtraction(job.payload, supabase);
+      return processFactExtraction(payload, supabase);
     }
-    default:
-      throw new Error(`Unknown job type: ${job.jobType}`);
+    default: {
+      const unhandled: never = jobType;
+      throw new Error(`Unknown job type: ${String(unhandled)}`);
+    }
   }
 }
 
@@ -282,41 +281,34 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
 
   for (const record of event.Records) {
     try {
-      const job: LlmJobMessage = JSON.parse(record.body);
-
-      console.log(
-        `[LLM Worker] Processing job ${job.jobType} for user ${job.userId.substring(0, 8)}...`,
-      );
-
-      // Process the job
-      const result = await processJob(job);
-
-      // Send success result via WebSocket
-      await sendToUser(job.userId, {
-        type: 'llm-result',
-        jobType: job.jobType,
-        episodeId: (job.payload?.episodeId as string) ?? undefined,
-        result,
-        timestamp: new Date().toISOString(),
+      await runLlmJob(record.body, {
+        supabase,
+        dispatch: processJob,
+        notify: sendToUser,
       });
-
-      console.log(`[LLM Worker] Job ${job.jobType} completed successfully`);
     } catch (error) {
       console.error(`[LLM Worker] Job failed:`, error);
 
-      // Try to parse job to send error to user
-      try {
-        const job: LlmJobMessage = JSON.parse(record.body);
+      // Tell the user, when the message names one
+      const userId = messageUserId(record.body);
 
-        await sendToUser(job.userId, {
-          type: 'llm-error',
-          jobType: job.jobType,
-          episodeId: (job.payload?.episodeId as string) ?? undefined,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString(),
-        });
-      } catch {
-        console.error(`[LLM Worker] Could not parse job or send error to user`);
+      if (userId) {
+        try {
+          const job = JSON.parse(record.body) as {
+            jobType?: unknown;
+            payload?: { episodeId?: unknown };
+          };
+
+          await sendToUser(userId, {
+            type: 'llm-error',
+            jobType: job.jobType,
+            episodeId: job.payload?.episodeId,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString(),
+          });
+        } catch {
+          console.error(`[LLM Worker] Could not send the error to the user`);
+        }
       }
 
       // Add to failures for retry/DLQ
@@ -326,3 +318,13 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
 
   return { batchItemFailures };
 };
+
+function messageUserId(body: string): string | null {
+  try {
+    const { userId } = JSON.parse(body) as { userId?: unknown };
+
+    return typeof userId === 'string' ? userId : null;
+  } catch {
+    return null;
+  }
+}

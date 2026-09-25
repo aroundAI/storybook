@@ -4,7 +4,7 @@ import { useEpisodeContext } from '../_components/episode-context-provider';
 import { PublishScreen } from './_components/publish-screen';
 
 export default function PublishPage() {
-  const { episode, refetchEpisode, accountSlug, accountId } =
+  const { episode, refetchEpisode, accountSlug, accountId, canTakeDown } =
     useEpisodeContext();
 
   // Unlock condition: Has completed shots (meaning assets are ready for export)
@@ -34,6 +34,7 @@ export default function PublishPage() {
         refetchEpisode={refetchEpisode}
         accountSlug={accountSlug}
         accountId={accountId}
+        canTakeDown={canTakeDown}
       />
     </div>
   );

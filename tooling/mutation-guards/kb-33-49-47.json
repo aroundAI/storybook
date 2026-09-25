@@ -1,0 +1,182 @@
+{
+  "feature": "KB-33, KB-49, KB-47 (publishing), KB-109",
+  "mutations": [
+    {
+      "name": "WA1 queueLlmJob sends a payload without parsing it",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/lib/server/sqs-helper.ts",
+      "find": "  const payload = parseLlmJobPayload(params.jobType, {\n    ...payloadForTarget(params.target, params.payload),\n    userId: params.userId,\n  });",
+      "replace": "  const payload = {\n    ...payloadForTarget(params.target, params.payload),\n    userId: params.userId,\n  };",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/llm-job-payloads.test.ts",
+      "pattern": "refuses a payload its handler would refuse"
+    },
+    {
+      "name": "WA2 a payload may name another user than its message",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/lib/llm-job-payloads.ts",
+      "find": "    payload.userId !== messageUserId\n",
+      "replace": "    payload.userId === 'never'\n",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/llm-job-payloads.test.ts",
+      "pattern": "whose userId is not the message's"
+    },
+    {
+      "name": "WA3 the LLM worker runs a job without its access check",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/job-boundary.ts",
+      "find": "    await assertQueuedJobAccess(deps.supabase, {",
+      "replace": "    await Promise.resolve({",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/job-boundary.test.ts",
+      "pattern": "can no longer write the project"
+    },
+    {
+      "name": "WA4 the worker's access check ignores the write rule",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/lib/server/llm-job-target.ts",
+      "find": "  if (canWrite !== true) {",
+      "replace": "  if (canWrite === 'never') {",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/queued-job-access.test.ts",
+      "pattern": "revoked after queueing"
+    },
+    {
+      "name": "WA5 the worker's access check accepts an episode of another project",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/lib/server/llm-job-target.ts",
+      "find": "    if (projectId && episode.project_id !== projectId) {",
+      "replace": "    if (projectId && episode.project_id === 'never') {",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/queued-job-access.test.ts",
+      "pattern": "is not in the job's project"
+    },
+    {
+      "name": "WA6 a handler casts its payload again",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/story-ideation.ts",
+      "find": "parseLlmJobPayload('story-ideation', payload)",
+      "replace": "(payload as never)",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/job-boundary.test.ts",
+      "pattern": "parse their payload rather than cast it"
+    },
+    {
+      "name": "WA7 members and viewers may take videos down",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/takedown.ts",
+      "find": "export const TAKEDOWN_ROLES = ['owner', 'admin'] as const;",
+      "replace": "export const TAKEDOWN_ROLES = ['owner', 'admin', 'member', 'viewer'] as const;",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-queue-authorization.test.ts",
+      "pattern": "refuses a project member"
+    },
+    {
+      "name": "WA8 unpublish queues without asking the caller's role",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "    await assertCanTakeDown(client, publish.episode_id, user.id);\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-queue-authorization.test.ts",
+      "pattern": "unpublishAction refuses"
+    },
+    {
+      "name": "WA9 delete-all queues without asking the caller's role",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "    await assertCanTakeDown(client, episodeId, user.id);\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-queue-authorization.test.ts",
+      "pattern": "deleteEpisodePublishesAction refuses"
+    },
+    {
+      "name": "WA10 delete-all queues rows its update did not mark",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "      marked ?? [],\n",
+      "replace": "      publishes.map((pub) => ({\n        id: pub.id,\n        platform: 'youtube',\n        platform_content_id: null,\n        platform_connection_id: null,\n        episode_id: episodeId,\n      })),\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-queue-authorization.test.ts",
+      "pattern": "its update did not mark"
+    },
+    {
+      "name": "WA11 a token is read for a channel of another account",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/connection-account.ts",
+      "find": "  if (data?.account_id !== accountId) {",
+      "replace": "  if (data === undefined) {",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-queue-authorization.test.ts",
+      "pattern": "a channel of another account"
+    },
+    {
+      "name": "WA12 the publish worker deletes a row nobody marked",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/job-guard.ts",
+      "find": "  if (row.status !== 'deleting') {",
+      "replace": "  if (row.status === 'never') {",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/job-guard.test.ts",
+      "pattern": "nobody marked for deletion"
+    },
+    {
+      "name": "WA13 the publish worker uses another account's connection",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/job-guard.ts",
+      "find": "  if (connectionAccount !== null && connectionAccount !== episodeAccount) {",
+      "replace": "  if (connectionAccount === 'never') {",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/job-guard.test.ts",
+      "pattern": "another account's connection"
+    },
+    {
+      "name": "WA14 the publish worker lets a member take a video down",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/job-guard.ts",
+      "find": "  if (!canTakeDown(role)) {\n    throw new PublishJobRefused(TAKEDOWN_REFUSAL);",
+      "replace": "  if (role === 'never') {\n    throw new PublishJobRefused(TAKEDOWN_REFUSAL);",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/job-guard.test.ts",
+      "pattern": "refuses a project member"
+    },
+    {
+      "name": "WA15 the publish worker uploads with the message's connection",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/job-guard.ts",
+      "find": "  if (row.platform_connection_id !== job.platformConnectionId) {",
+      "replace": "  if (row.platform_connection_id === 'never') {",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/job-guard.test.ts",
+      "pattern": "naming a connection the publish doesn't"
+    },
+    {
+      "name": "DB WA16 can_user_write_project lets a viewer write",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/worker-authz.test.sql",
+      "sql": "create or replace function public.can_user_write_project (target_user_id uuid, target_project_id uuid) returns boolean language sql stable security definer set search_path = '' as $$ select exists (select 1 from public.project_members pm where pm.project_id = target_project_id and pm.user_id = target_user_id and pm.role in ('owner', 'admin', 'member', 'viewer')); $$;"
+    },
+    {
+      "name": "DB WA17 any signed-in user may ask who can write a project",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/worker-authz.test.sql",
+      "sql": "grant execute on function public.can_user_write_project (uuid, uuid) to authenticated;"
+    },
+    {
+      "name": "DB WA18 'deleting' refused again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/worker-authz.test.sql",
+      "sql": "alter table public.publishes drop constraint publishes_status_check; alter table public.publishes add constraint publishes_status_check check (status in ('draft', 'scheduled', 'queued', 'publishing', 'published', 'failed', 'unlisted', 'deleted'));"
+    },
+    {
+      "name": "E2E WA19 the Publish screen shows takedown controls to a member",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx",
+      "find": "              onUnpublish={canTakeDown ? initiateUnpublish : undefined}",
+      "replace": "              onUnpublish={initiateUnpublish}",
+      "spec": "tests/publishing/takedown-roles.spec.ts",
+      "grep": "a project member sees the published video"
+    }
+  ]
+}
