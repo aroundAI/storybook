@@ -893,6 +893,36 @@ export async function anonRequest(
   return { status: response.status, body: text ? JSON.parse(text) : null };
 }
 
+/**
+ * Changes or deletes rows through PostgREST as a signed-in user, under their
+ * RLS, and returns the HTTP status. A write RLS filters out is still a 2xx
+ * that touched nothing, so assert on the rows afterwards, not on this.
+ */
+export async function writeRowsAs(
+  user: { email: string; password: string },
+  method: 'PATCH' | 'DELETE',
+  table: string,
+  query: string,
+  body?: Record<string, unknown>,
+): Promise<number> {
+  const session = await post('/auth/v1/token?grant_type=password', ANON_KEY, {
+    email: user.email,
+    password: user.password,
+  });
+
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+    method,
+    headers: {
+      apikey: ANON_KEY,
+      Authorization: `Bearer ${session.access_token as string}`,
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  return response.status;
+}
+
 /** Whether an object exists, asked with the service role. */
 export async function storageObjectExists(
   bucket: string,

@@ -1,9 +1,12 @@
 'use server';
 
+import 'server-only';
+
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
 import { decrypt } from '@kit/shared/crypto';
+import { readExternalApiKey } from '@kit/supabase/external-api-keys';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { ELEVENLABS } from '../lib/constants';
@@ -70,14 +73,13 @@ export const getElevenLabsModelsAction = enhanceAction(
   async (data) => {
     const client = getSupabaseServerClient();
 
-    // Get stored API key - required, no fallback
-    const { data: storedKey } = await client
-      .from('external_api_keys')
-      .select('encrypted_key, is_active')
-      .eq('account_id', data.accountId)
-      .eq('provider', 'elevenlabs')
-      .eq('is_active', true)
-      .single();
+    // Get stored API key - required, no fallback. accountId comes from the
+    // browser; readExternalApiKey checks the caller's access to it (KB-84).
+    const storedKey = await readExternalApiKey(
+      client,
+      data.accountId,
+      'elevenlabs',
+    );
 
     if (!storedKey?.encrypted_key) {
       throw new Error(
@@ -135,13 +137,11 @@ export const testElevenLabsConnectionAction = enhanceAction(
     let apiKey = data.apiKey;
 
     if (!apiKey) {
-      const { data: storedKey } = await client
-        .from('external_api_keys')
-        .select('encrypted_key')
-        .eq('account_id', data.accountId)
-        .eq('provider', 'elevenlabs')
-        .eq('is_active', true)
-        .single();
+      const storedKey = await readExternalApiKey(
+        client,
+        data.accountId,
+        'elevenlabs',
+      );
 
       if (!storedKey?.encrypted_key) {
         return {
@@ -230,13 +230,13 @@ export const getElevenLabsAccountInfoAction = enhanceAction(
   async (data) => {
     const client = getSupabaseServerClient();
 
-    // Get stored API key
-    const { data: storedKey } = await client
-      .from('external_api_keys')
-      .select('encrypted_key, is_active')
-      .eq('account_id', data.accountId)
-      .eq('provider', 'elevenlabs')
-      .single();
+    // Get stored API key, active or not (KB-84: access-checked read)
+    const storedKey = await readExternalApiKey(
+      client,
+      data.accountId,
+      'elevenlabs',
+      { activeOnly: false },
+    );
 
     if (!storedKey?.encrypted_key || !storedKey.is_active) {
       return {

@@ -664,7 +664,10 @@ grant select (id, account_id, platform, platform_account_id, platform_account_na
   token_expires_at, scopes, is_active, created_at, updated_at, language, metadata,
   disconnected_at) on table public.platform_connections to authenticated;
 grant select, insert, update, delete on table public.shared_resources to authenticated;
-grant select, insert, update, delete on table public.external_api_keys to authenticated;
+-- KB-84: members read every column but the ciphertext; the server decrypts.
+grant insert, update, delete on table public.external_api_keys to authenticated;
+grant select (id, account_id, provider, is_active, last_used_at, created_at)
+  on table public.external_api_keys to authenticated;
 grant select, insert, update, delete on table public.shots to authenticated;
 grant select, insert, update, delete on table public.dialogue_lines to authenticated;
 grant select, insert, update, delete on table public.audio_tracks to authenticated;
@@ -912,7 +915,30 @@ create policy "shared_resources_delete" on public.shared_resources for delete
 -- ==================================
 -- External API Keys RLS Policies
 -- ==================================
--- Uses has_account_access() helper function for cleaner, reusable authorization
+-- Every role on the account reads which providers are configured; only
+-- account owners add, replace or remove a key (KB-84, owner decision
+-- 2026-09-25; 20260925121457_kb84-external-api-key-grants.sql).
+
+create or replace function public.can_manage_account_api_keys(p_account_id uuid)
+returns boolean
+language sql
+stable
+security invoker
+set search_path = ''
+as $$
+  select exists (
+    select 1
+      from public.accounts a
+     where a.id = p_account_id
+       and (
+         a.primary_owner_user_id = (select auth.uid())
+         or public.has_role_on_account(a.id, 'owner')
+       )
+  );
+$$;
+
+revoke all on function public.can_manage_account_api_keys(uuid) from public, anon;
+grant execute on function public.can_manage_account_api_keys(uuid) to authenticated, service_role;
 
 create policy "external_api_keys_read" on public.external_api_keys for select
   to authenticated using (
@@ -920,19 +946,17 @@ create policy "external_api_keys_read" on public.external_api_keys for select
   );
 
 create policy "external_api_keys_create" on public.external_api_keys for insert
-  to authenticated with check (
-    public.has_account_access(account_id)
-  );
+  to authenticated
+  with check (public.can_manage_account_api_keys(account_id));
 
 create policy "external_api_keys_update" on public.external_api_keys for update
-  to authenticated using (
-    public.has_account_access(account_id)
-  );
+  to authenticated
+  using (public.can_manage_account_api_keys(account_id))
+  with check (public.can_manage_account_api_keys(account_id));
 
 create policy "external_api_keys_delete" on public.external_api_keys for delete
-  to authenticated using (
-    public.has_account_access(account_id)
-  );
+  to authenticated
+  using (public.can_manage_account_api_keys(account_id));
 
 -- ==================================
 -- Shots RLS Policies

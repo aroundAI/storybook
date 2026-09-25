@@ -7,7 +7,6 @@ import { revalidatePath } from 'next/cache';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
-import { decrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -24,30 +23,7 @@ import {
   StartVoiceCloneSchema,
 } from '../lib/schemas';
 import { ElevenLabsProvider } from '../providers/elevenlabs';
-
-/**
- * Helper to get ElevenLabs API key for an account
- * Only uses stored keys - no platform fallback
- */
-async function getElevenLabsApiKey(accountId: string): Promise<string> {
-  const client = getSupabaseServerClient();
-
-  const { data: userKey } = await client
-    .from('external_api_keys')
-    .select('encrypted_key')
-    .eq('account_id', accountId)
-    .eq('provider', 'elevenlabs')
-    .eq('is_active', true)
-    .single();
-
-  if (userKey?.encrypted_key) {
-    return decrypt(userKey.encrypted_key);
-  }
-
-  throw new Error(
-    'No ElevenLabs API key configured. Please add your API key in Settings > API Keys.',
-  );
-}
+import { getAccountElevenLabsApiKey } from './project-audio-settings';
 
 /**
  * Start voice cloning process
@@ -123,7 +99,7 @@ const startVoiceClone = enhanceAction(
 
     try {
       // Get API key and create provider
-      const apiKey = await getElevenLabsApiKey(accountId);
+      const apiKey = await getAccountElevenLabsApiKey(accountId);
       const provider = new ElevenLabsProvider({
         apiKey,
         timeout: 120000, // 2 minute timeout for large uploads
@@ -247,7 +223,7 @@ const deleteVoiceClone = enhanceAction(
     // Delete from ElevenLabs if we have a provider_voice_id
     if (profile.provider_voice_id && accountId) {
       try {
-        const apiKey = await getElevenLabsApiKey(accountId);
+        const apiKey = await getAccountElevenLabsApiKey(accountId);
         const provider = new ElevenLabsProvider({
           apiKey,
           timeout: 30000,

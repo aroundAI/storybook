@@ -83,7 +83,7 @@ acceptance_criteria:
     evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:289"
   - text: "last_used_at tracks usage"
     met: false
-    reason: "not met — nothing writes it when a key is used; the only write sets it to null on save (apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts:111)"
+    reason: "not met — nothing writes it when a key is used; the only write sets it to null on save (apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts:137)"
 test_plan:
   unit:
     - text: "Insert key with valid provider succeeds"
@@ -104,10 +104,10 @@ test_plan:
   integration:
     - text: "Retrieve active key for account+provider"
       met: true
-      evidence: "packages/features/audio-generation/__tests__/config-loader.test.ts:79"
+      evidence: "packages/features/audio-generation/__tests__/config-loader.test.ts:86"
     - text: "Inactive keys are excluded from queries"
       met: true
-      evidence: "packages/features/audio-generation/__tests__/config-loader.test.ts:79 (asserts the is_active filter)"
+      evidence: "packages/supabase/__tests__/external-api-keys.test.ts:142 (asserts the is_active filter; KB-84 moved every key read into that helper)"
     - text: "Update last_used_at on key retrieval"
       met: false
       reason: "not met — no test found; no code updates it"
@@ -127,7 +127,7 @@ test_plan:
       reason: "not met — no test found"
     - text: "Missing key for provider (falls back to platform key)"
       met: true
-      evidence: "packages/features/audio-generation/__tests__/config-loader.test.ts:97"
+      evidence: "packages/features/audio-generation/__tests__/config-loader.test.ts:103"
     - text: "Multiple accounts with same provider (different keys)"
       met: false
       reason: "not met — no test found"
@@ -139,7 +139,7 @@ test_plan:
       reason: "not met — no test found"
 remaining:
   - criterion: "last_used_at tracks usage"
-    reason: "No key reader updates it; saveApiKeyAction writes null (apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts:111), and git log -S last_used_at shows no writer ever existed"
+    reason: "No key reader updates it; saveApiKeyAction writes null (apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts:137), and git log -S last_used_at shows no writer ever existed"
     closed_by: "unassigned"
 open_questions: []
 notes: |

@@ -53,6 +53,21 @@ vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: () => mockSupabaseClient,
 }));
 
+// KB-84: the key is read through the access-checked helper. Each test still
+// describes the stored row with its `external_api_keys` table mock; the helper
+// mock returns that row, so "no key stored" stays a per-test decision.
+vi.mock('@kit/supabase/external-api-keys', () => ({
+  readExternalApiKey: vi.fn(async () => {
+    const { data } = await mockSupabaseClient
+      .from('external_api_keys')
+      .select('encrypted_key')
+      .eq('provider', 'elevenlabs')
+      .single();
+
+    return data ?? null;
+  }),
+}));
+
 // Mock ElevenLabs provider
 const mockCloneVoice = vi.fn();
 const mockDeleteClonedVoice = vi.fn();
@@ -316,7 +331,7 @@ describe('Voice Clone Actions', () => {
         });
 
         await expect(unwrap(startVoiceCloneAction(validInput))).rejects.toThrow(
-          'No ElevenLabs API key configured',
+          'ElevenLabs API key not configured',
         );
       });
 

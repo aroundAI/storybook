@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Import mocked functions
 import { decrypt } from '@kit/shared/crypto';
+import { readExternalApiKey } from '@kit/supabase/external-api-keys';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 // Import the module under test
@@ -20,8 +21,17 @@ vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: vi.fn(),
 }));
 
+vi.mock('@kit/supabase/external-api-keys', () => ({
+  readExternalApiKey: vi.fn(),
+}));
+
 const mockedDecrypt = vi.mocked(decrypt);
 const mockedGetSupabaseServerClient = vi.mocked(getSupabaseServerClient);
+const mockedReadKey = vi.mocked(readExternalApiKey);
+
+function storedKey(encryptedKey: string) {
+  return { provider: 'any', encrypted_key: encryptedKey, is_active: true };
+}
 
 describe('Config Loader', () => {
   // Store original env
@@ -60,10 +70,7 @@ describe('Config Loader', () => {
     describe('BYOK key loading', () => {
       it('should load and decrypt BYOK key from database', async () => {
         // Mock database returns encrypted key
-        mockSingle.mockResolvedValue({
-          data: { encrypted_key: 'encrypted-byok-key' },
-          error: null,
-        });
+        mockedReadKey.mockResolvedValue(storedKey('encrypted-byok-key'));
         mockedDecrypt.mockResolvedValue('decrypted-api-key');
 
         const config = await loadVoiceProviderConfig(
@@ -73,33 +80,29 @@ describe('Config Loader', () => {
 
         expect(config.apiKey).toBe('decrypted-api-key');
         expect(mockedDecrypt).toHaveBeenCalledWith('encrypted-byok-key');
-        expect(mockFrom).toHaveBeenCalledWith('external_api_keys');
+        expect(mockedReadKey).toHaveBeenCalled();
       });
 
       it('should query with correct filters', async () => {
-        mockSingle.mockResolvedValue({
-          data: { encrypted_key: 'encrypted-key' },
-          error: null,
-        });
+        mockedReadKey.mockResolvedValue(storedKey('encrypted-key'));
         mockedDecrypt.mockResolvedValue('api-key');
 
         await loadVoiceProviderConfig('account-456', 'playht');
 
         // Verify the query chain was called with correct parameters
-        expect(mockSelect).toHaveBeenCalledWith('encrypted_key');
-        expect(mockEq).toHaveBeenCalledWith('account_id', 'account-456');
-        expect(mockEq).toHaveBeenCalledWith('provider', 'playht');
-        expect(mockEq).toHaveBeenCalledWith('is_active', true);
+        // KB-84: the access-checked helper, on the caller's client
+        expect(mockedReadKey).toHaveBeenCalledWith(
+          mockClient,
+          'account-456',
+          'playht',
+        );
       });
     });
 
     describe('Platform key fallback (non-ElevenLabs only)', () => {
       it('should use platform key when no BYOK key exists for supported providers', async () => {
         // Mock database returns no key (PGRST116 error)
-        mockSingle.mockResolvedValue({
-          data: null,
-          error: { code: 'PGRST116', message: 'no rows found' },
-        });
+        mockedReadKey.mockResolvedValue(null);
         process.env.PLAYHT_API_KEY = 'platform-playht-key';
 
         const config = await loadVoiceProviderConfig('account-123', 'playht');
@@ -109,10 +112,7 @@ describe('Config Loader', () => {
       });
 
       it('should use correct env var for non-ElevenLabs providers', async () => {
-        mockSingle.mockResolvedValue({
-          data: null,
-          error: { code: 'PGRST116', message: 'no rows found' },
-        });
+        mockedReadKey.mockResolvedValue(null);
 
         // Test each provider's env var mapping (ElevenLabs excluded - uses stored keys only)
         const providers = [
@@ -134,10 +134,7 @@ describe('Config Loader', () => {
     describe('ElevenLabs requires stored keys', () => {
       it('should throw when no stored key for ElevenLabs', async () => {
         // Mock database returns no key
-        mockSingle.mockResolvedValue({
-          data: null,
-          error: { code: 'PGRST116', message: 'no rows found' },
-        });
+        mockedReadKey.mockResolvedValue(null);
         // Note: No env fallback for ElevenLabs
 
         await expect(
@@ -148,10 +145,7 @@ describe('Config Loader', () => {
 
     describe('PlayHT userId', () => {
       it('should include userId for PlayHT provider', async () => {
-        mockSingle.mockResolvedValue({
-          data: null,
-          error: { code: 'PGRST116', message: 'no rows found' },
-        });
+        mockedReadKey.mockResolvedValue(null);
         process.env.PLAYHT_API_KEY = 'playht-key';
         process.env.PLAYHT_USER_ID = 'playht-user-123';
 
@@ -165,10 +159,7 @@ describe('Config Loader', () => {
     describe('Error handling', () => {
       it('should throw NoAPIKeyError when no key is available', async () => {
         // No BYOK key in database
-        mockSingle.mockResolvedValue({
-          data: null,
-          error: { code: 'PGRST116', message: 'no rows found' },
-        });
+        mockedReadKey.mockResolvedValue(null);
         // No platform key in env for deepgram
         delete process.env.DEEPGRAM_API_KEY;
 
@@ -178,10 +169,7 @@ describe('Config Loader', () => {
       });
 
       it('should include provider name in NoAPIKeyError', async () => {
-        mockSingle.mockResolvedValue({
-          data: null,
-          error: { code: 'PGRST116', message: 'no rows found' },
-        });
+        mockedReadKey.mockResolvedValue(null);
 
         try {
           await loadVoiceProviderConfig('account-123', 'playht');
@@ -193,10 +181,7 @@ describe('Config Loader', () => {
       });
 
       it('should throw on database error (non-PGRST116)', async () => {
-        mockSingle.mockResolvedValue({
-          data: null,
-          error: { code: 'PGRST500', message: 'Internal server error' },
-        });
+        mockedReadKey.mockRejectedValue(new Error('Internal server error'));
 
         await expect(
           loadVoiceProviderConfig('account-123', 'elevenlabs'),
