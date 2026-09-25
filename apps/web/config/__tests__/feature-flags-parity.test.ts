@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-
 import { describe, expect, it } from 'vitest';
 
 /**
@@ -21,7 +20,9 @@ const ENV_FILES = ['.env', '.env.development', '.env.test', '.env.production'];
 
 function sstDefault(variable: string) {
   const match = read(path.join(ROOT, 'sst.config.ts')).match(
-    new RegExp(`${variable}:\\s*process\\.env\\.${variable}\\s*\\|\\|\\s*'(true|false)'`),
+    new RegExp(
+      `${variable}:\\s*process\\.env\\.${variable}\\s*\\|\\|\\s*'(true|false)'`,
+    ),
   );
 
   return match?.[1];
@@ -41,7 +42,9 @@ function envFileValues(variable: string) {
       .split('\n')
       .find((l) => l.startsWith(`${variable}=`));
 
-    return line ? [{ file, value: line.slice(variable.length + 1).trim() }] : [];
+    return line
+      ? [{ file, value: line.slice(variable.length + 1).trim() }]
+      : [];
   });
 }
 
