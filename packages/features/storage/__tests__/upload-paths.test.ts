@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   accountImagePath,
+  episodeThumbnailFolder,
   episodeThumbnailPath,
   isUploadPath,
   projectCoverPath,
+  projectIntroFolder,
   projectIntroPath,
   publishVideoPath,
   shotVideoPath,
@@ -83,6 +85,37 @@ describe('the builders', () => {
   it('name the avatar after the account, which the bucket policy requires', () => {
     expect(accountImagePath(ACCOUNT, 'image/jpeg')).toBe(`${ACCOUNT}.jpg`);
     expect(accountImagePath(ACCOUNT, 'IMAGE/PNG')).toBe(`${ACCOUNT}.png`);
+  });
+});
+
+// KB-90: the intro and thumbnail actions accept only a key inside these
+// folders, so every key the uploaders build must lie inside them.
+describe('the folders the save actions check', () => {
+  it('hold every intro the builder makes', () => {
+    for (const language of ['en', 'pt BR/x']) {
+      expect(
+        projectIntroPath(PROJECT, language, 'video/mp4', NOW).startsWith(
+          projectIntroFolder(PROJECT),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it('hold every episode thumbnail the builder makes', () => {
+    expect(
+      episodeThumbnailPath(EPISODE, 'hi', 'png', NOW).startsWith(
+        episodeThumbnailFolder(EPISODE),
+      ),
+    ).toBe(true);
+  });
+
+  it('end in a slash, so one id is not a prefix of another', () => {
+    expect(projectIntroFolder(PROJECT)).toBe(
+      `projects/${PROJECT}/assets/intros/`,
+    );
+    expect(episodeThumbnailFolder(EPISODE)).toBe(
+      `episodes/${EPISODE}/thumbnails/`,
+    );
   });
 });
 

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { enhanceAction } from '@kit/next/actions';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -345,7 +346,7 @@ export const updateShotAction = enhanceAction(
  * Soft deletes a shot and reorders remaining shots to close the gap
  * Cancels any in-progress generation job
  */
-export const deleteShotAction = enhanceAction(
+const deleteShot = enhanceAction(
   async (data): Promise<DeleteShotResponse> => {
     const logger = await getLogger();
     const ctx = { name: 'shots.delete', shotId: data.shotId };
@@ -377,6 +378,29 @@ export const deleteShotAction = enhanceAction(
       throw new Error('Shot not found');
     }
 
+    const now = new Date().toISOString();
+
+    // Soft delete shot
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: deleted, error: deleteError } = await (client as any)
+      .from('shots')
+      .update({ deleted_at: now })
+      .eq('id', data.shotId)
+      .is('deleted_at', null)
+      .select('id');
+
+    if (deleteError) {
+      logger.error({ ...ctx, error: deleteError }, 'Failed to delete shot');
+      throw new Error(`Failed to delete shot: ${deleteError.message}`);
+    }
+
+    // RLS filters a refused update to no rows, without an error (KB-61).
+    // Before the job is cancelled: a refused delete changes nothing.
+    requireAffectedRows(
+      deleted,
+      "The shot wasn't deleted: it's already gone, or you can't delete it. Reload the page.",
+    );
+
     // Cancel generation job if exists and in progress
     if (shot.generation_job_id) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -393,20 +417,6 @@ export const deleteShotAction = enhanceAction(
           .update({ status: 'cancelled' })
           .eq('id', shot.generation_job_id);
       }
-    }
-
-    const now = new Date().toISOString();
-
-    // Soft delete shot
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: deleteError } = await (client as any)
-      .from('shots')
-      .update({ deleted_at: now })
-      .eq('id', data.shotId);
-
-    if (deleteError) {
-      logger.error({ ...ctx, error: deleteError }, 'Failed to delete shot');
-      throw new Error(`Failed to delete shot: ${deleteError.message}`);
     }
 
     // Reorder remaining shots to close gap
@@ -442,3 +452,5 @@ export const deleteShotAction = enhanceAction(
   },
   { schema: DeleteShotSchema },
 );
+
+export const deleteShotAction = returnRefusals(deleteShot);

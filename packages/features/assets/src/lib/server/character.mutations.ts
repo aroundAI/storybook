@@ -10,7 +10,7 @@ import { revalidatePath } from 'next/cache';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
@@ -503,7 +503,7 @@ export const listCharactersAction = enhanceAction(
  * Delete a character (soft delete via assets.deleted_at)
  * character_details will cascade due to FK constraint
  */
-export const deleteCharacterAction = enhanceAction(
+const deleteCharacter = enhanceAction(
   async (data) => {
     const logger = await getLogger();
     const ctx = { name: 'character.delete', assetId: data.assetId };
@@ -522,13 +522,13 @@ export const deleteCharacterAction = enhanceAction(
 
     if (inUse) {
       logger.warn(ctx, 'Cannot delete character that is in use');
-      throw new Error(
-        'Cannot delete character that is in use by dialogue lines',
+      throw new ActionRefusal(
+        'This character is used by dialogue in an episode, so it cannot be deleted.',
       );
     }
 
     // Soft delete by setting deleted_at
-    const { error } = await client
+    const { data: deleted, error } = await client
       .from('assets')
       .update({ deleted_at: new Date().toISOString() } as Record<
         string,
@@ -536,12 +536,19 @@ export const deleteCharacterAction = enhanceAction(
       >)
       .eq('id', data.assetId)
       .eq('type', 'character')
-      .is('deleted_at', null);
+      .is('deleted_at', null)
+      .select('id');
 
     if (error) {
       logger.error({ ...ctx, error }, 'Failed to delete character');
       throw new Error(`Failed to delete character: ${error.message}`);
     }
+
+    // RLS filters a refused update to no rows, without an error (KB-61)
+    requireAffectedRows(
+      deleted,
+      "The character wasn't deleted: it's already gone, or you can't delete it. Reload the page.",
+    );
 
     logger.info(ctx, 'Character deleted successfully');
 
@@ -555,3 +562,5 @@ export const deleteCharacterAction = enhanceAction(
     schema: DeleteCharacterSchema,
   },
 );
+
+export const deleteCharacterAction = returnRefusals(deleteCharacter);

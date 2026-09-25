@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -338,7 +338,7 @@ export const updateSeasonAction = returnRefusals(updateSeason);
  * - Sets season_id to NULL for all episodes in the season
  * - Creates audit log entry
  */
-export const deleteSeasonAction = enhanceAction(
+const deleteSeason = enhanceAction(
   async (data): Promise<DeleteSeasonResponse> => {
     const logger = await getLogger();
     const ctx = { name: 'seasons.delete', seasonId: data.seasonId };
@@ -378,11 +378,14 @@ export const deleteSeasonAction = enhanceAction(
 
       // Soft delete season
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: seasonError } = await (client as any)
+      const { data: deletedSeason, error: seasonError } = await (
+        client as any
+      )
         .from('seasons')
         .update({ deleted_at: now })
         .eq('id', data.seasonId)
-        .is('deleted_at', null);
+        .is('deleted_at', null)
+        .select('id');
 
       if (seasonError) {
         logger.error(
@@ -391,6 +394,13 @@ export const deleteSeasonAction = enhanceAction(
         );
         throw new Error('Failed to delete season');
       }
+
+      // RLS filters a refused update to no rows, without an error (KB-61).
+      // Before the cascade: a refused season keeps its episodes.
+      requireAffectedRows(
+        deletedSeason,
+        "The season wasn't deleted: it's already gone, or you can't delete it. Reload the page.",
+      );
 
       // Cascade soft-delete all episodes in this season
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -494,3 +504,5 @@ export const deleteSeasonAction = enhanceAction(
     schema: DeleteSeasonSchema,
   },
 );
+
+export const deleteSeasonAction = returnRefusals(deleteSeason);

@@ -2,6 +2,7 @@ import type { SupabaseClient, User } from '@supabase/supabase-js';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createAuditLog } from '@kit/audit-logs/server';
 import { unwrap } from '@kit/next/action-result';
 
 import {
@@ -453,20 +454,53 @@ describe('Project Mutations', () => {
       mockSingle.mockResolvedValue({ data: mockProject, error: null });
 
       mockDelete.mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ error: null }),
+        eq: vi.fn().mockReturnValue({
+          select: vi
+            .fn()
+            .mockResolvedValue({ data: [{ id: PROJECT_ID }], error: null }),
+        }),
       });
 
       const result = await deleteProjectAction({ id: PROJECT_ID });
 
-      expect(result).toEqual({ success: true });
+      expect(result).toEqual({ ok: true, data: { success: true } });
       expect(mockDelete).toHaveBeenCalled();
+    });
+
+    // KB-61: RLS lets only the owner delete, and filters anyone else's
+    // delete to no rows with no error. That was reported, and audited, as
+    // a deletion.
+    it('refuses, and records nothing, when the delete removed no row', async () => {
+      mockSingle.mockResolvedValue({
+        data: { id: PROJECT_ID, account_id: ACCOUNT_ID, name: 'Test' },
+        error: null,
+      });
+      mockDelete.mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          select: vi.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+      });
+      vi.mocked(createAuditLog).mockClear();
+
+      const result = await deleteProjectAction({ id: PROJECT_ID });
+
+      expect(result).toEqual({
+        ok: false,
+        error:
+          "The project wasn't deleted: it's already gone, or only its owner can delete it. Reload the page.",
+      });
+      expect(createAuditLog).not.toHaveBeenCalled();
     });
 
     it('should throw error when deletion fails', async () => {
       mockSingle.mockResolvedValue({ data: {}, error: null });
 
       mockDelete.mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ error: { message: 'Cannot delete' } }),
+        eq: vi.fn().mockReturnValue({
+          select: vi
+            .fn()
+            .mockResolvedValue({ error: { message: 'Cannot delete' } }),
+        }),
       });
 
       await expect(deleteProjectAction({ id: PROJECT_ID })).rejects.toThrow(
@@ -800,7 +834,11 @@ describe('Project Mutations', () => {
 
       mockDelete.mockReturnValue({
         eq: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: null }),
+          eq: vi.fn().mockReturnValue({
+            select: vi
+              .fn()
+              .mockResolvedValue({ data: [{ id: 'm' }], error: null }),
+          }),
         }),
       });
     });
@@ -811,16 +849,35 @@ describe('Project Mutations', () => {
         user_id: MEMBER_USER_ID,
       });
 
-      expect(result).toEqual({ success: true });
+      expect(result).toEqual({ ok: true, data: { success: true } });
       expect(mockDelete).toHaveBeenCalled();
+    });
+
+    it('refuses when the delete removed no row (KB-61)', async () => {
+      mockDelete.mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        }),
+      });
+
+      const result = await removeProjectMemberAction({
+        project_id: PROJECT_ID,
+        user_id: MEMBER_USER_ID,
+      });
+
+      expect(result).toMatchObject({ ok: false });
     });
 
     it('should throw error when removal fails', async () => {
       mockDelete.mockReturnValue({
         eq: vi.fn().mockReturnValue({
-          eq: vi
-            .fn()
-            .mockResolvedValue({ error: { message: 'Cannot remove owner' } }),
+          eq: vi.fn().mockReturnValue({
+            select: vi
+              .fn()
+              .mockResolvedValue({ error: { message: 'Cannot remove owner' } }),
+          }),
         }),
       });
 

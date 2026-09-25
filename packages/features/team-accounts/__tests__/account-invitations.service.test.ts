@@ -56,15 +56,32 @@ describe('AccountInvitationsService', () => {
   });
 
   describe('deleteInvitation', () => {
+    // KB-61: RLS filters a refused delete to no rows, with no error
+    it('refuses when the delete removed no row', async () => {
+      const service = createAccountInvitationsService(mockClient as any);
+
+      mockClient.from.mockReturnValue({
+        delete: vi.fn().mockReturnThis(),
+        match: vi.fn(() => ({
+          select: (): Promise<QueryResult> =>
+            Promise.resolve({ data: [], error: null }),
+        })),
+      } as any);
+
+      await expect(
+        service.deleteInvitation({ invitationId: 123 }),
+      ).rejects.toThrow("The invitation wasn't removed");
+    });
+
     it('should delete invitation successfully', async () => {
       const service = createAccountInvitationsService(mockClient as any);
 
       mockClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        match: vi.fn(
-          (): Promise<QueryResult> =>
-            Promise.resolve({ data: null, error: null }),
-        ),
+        match: vi.fn(() => ({
+          select: (): Promise<QueryResult> =>
+            Promise.resolve({ data: [{ id: 123 }], error: null }),
+        })),
       } as any);
 
       await service.deleteInvitation({ invitationId: 123 });
@@ -78,9 +95,10 @@ describe('AccountInvitationsService', () => {
 
       mockClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        match: vi.fn(
-          (): Promise<QueryResult> => Promise.resolve({ data: null, error }),
-        ),
+        match: vi.fn(() => ({
+          select: (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error }),
+        })),
       } as any);
 
       await expect(

@@ -42,6 +42,7 @@ export {
 export {
   deleteOwnedObject,
   ownedAudioAssetLocation,
+  ownedStorageKey,
   storageKeyFromPublicUrl,
 } from './storage-key';
 export type { OwnedDeleteResult } from './storage-key';

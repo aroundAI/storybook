@@ -9,7 +9,7 @@ import { mapRowToAsset } from '@kit/assets';
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
@@ -1040,16 +1040,26 @@ const deleteEpisode = enhanceAction(
 
     // Soft delete episode
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: episodeError } = await (client as any)
+    const { data: deletedEpisode, error: episodeError } = await (
+      client as any
+    )
       .from('episodes')
       .update({ deleted_at: now })
       .eq('id', data.episodeId)
-      .is('deleted_at', null);
+      .is('deleted_at', null)
+      .select('id');
 
     if (episodeError) {
       logger.error({ ...ctx, error: episodeError }, 'Failed to delete episode');
       throw new Error('Failed to delete episode');
     }
+
+    // RLS filters a refused update to no rows, without an error (KB-61).
+    // Before the shots and the audit log: a refused delete changes nothing.
+    requireAffectedRows(
+      deletedEpisode,
+      "The episode wasn't deleted: it's already gone, or you can't delete it. Reload the page.",
+    );
 
     // Hard delete related shots (shots table doesn't have deleted_at column)
     // TODO: Add deleted_at column to shots table in FILM-303 for soft delete consistency

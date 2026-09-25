@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { createOtpApi } from '@kit/otp';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -18,7 +19,7 @@ import { createAccountMembersService } from '../services/account-members.service
  * @name removeMemberFromAccountAction
  * @description Removes a member from an account.
  */
-export const removeMemberFromAccountAction = enhanceAction(
+const removeMemberFromAccount = enhanceAction(
   async ({ accountId, userId }, user) => {
     const client = getSupabaseServerClient();
     const service = createAccountMembersService(client);
@@ -71,6 +72,10 @@ export const removeMemberFromAccountAction = enhanceAction(
     schema: RemoveMemberSchema,
     auth: true,
   },
+);
+
+export const removeMemberFromAccountAction = returnRefusals(
+  removeMemberFromAccount,
 );
 
 /**

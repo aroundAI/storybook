@@ -40,6 +40,28 @@ export function storageKeyFromPublicUrl(
   }
 }
 
+/** Whether `key` lies inside `folder`, read as a folder: `a/b` holds `a/b/c`, not `a/bc` */
+function isInFolder(key: string, folder: string) {
+  return key.startsWith(folder.endsWith('/') ? folder : `${folder}/`);
+}
+
+/**
+ * The key behind `url` when this adapter issued it for `bucket` and it lies
+ * inside `folder`; otherwise null. What an action may store as a row's file
+ * (KB-90) — the same rule `deleteOwnedObject` deletes by, so a row can only
+ * ever name a file its own delete may remove.
+ */
+export function ownedStorageKey(
+  storage: StorageAdapter,
+  bucket: string,
+  url: string,
+  folder: string,
+): string | null {
+  const key = storageKeyFromPublicUrl(storage, bucket, url);
+
+  return key && isInFolder(key, folder) ? key : null;
+}
+
 export type OwnedDeleteResult =
   | { deleted: true; key: string }
   | {
@@ -66,9 +88,7 @@ export async function deleteOwnedObject(
     return { deleted: false, reason: 'foreign-url' };
   }
 
-  const folder = ownPrefix.endsWith('/') ? ownPrefix : `${ownPrefix}/`;
-
-  if (!key.startsWith(folder)) {
+  if (!isInFolder(key, ownPrefix)) {
     return { deleted: false, reason: 'outside-prefix' };
   }
 
