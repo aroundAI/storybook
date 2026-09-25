@@ -22,16 +22,6 @@
       "pattern": "story-ideation"
     },
     {
-      "name": "Sandbox: KNOWN_BROKEN stays quiet when KB-107 is fixed",
-      "kind": "unit",
-      "file": "packages/features/prompt-engine/src/lib/server/llm-executor.ts",
-      "find": "      if (!Array.isArray(value)) {\n        throw new Error(`Value for key \"${wrapperKey}\" is not an array`);\n      }\n",
-      "replace": "",
-      "cwd": "apps/vendor-sandbox",
-      "test": "__tests__/every-prompt.test.ts",
-      "pattern": "canon-extraction"
-    },
-    {
       "name": "Sandbox: one group of a prompt's text is enough to claim it",
       "kind": "unit",
       "file": "apps/vendor-sandbox/src/llm/prompts.ts",

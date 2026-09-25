@@ -1,0 +1,25 @@
+{
+  "feature": "KB-107",
+  "mutations": [
+    {
+      "name": "a prompt's wrapper_key names an object again: the round trip fails",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/prompts/canon-roles/canon-extraction.json",
+      "find": "        \"schema_for_llm\": \"{ extraction: ",
+      "replace": "        \"wrapper_key\": \"extraction\",\n        \"schema_for_llm\": \"{ extraction: ",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/every-prompt.test.ts",
+      "pattern": "canon-extraction"
+    },
+    {
+      "name": "a prompt's wrapper_key names an object again: the format guard catches it",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/prompts/canon-roles/canon-extraction.json",
+      "find": "        \"schema_for_llm\": \"{ extraction: ",
+      "replace": "        \"wrapper_key\": \"extraction\",\n        \"schema_for_llm\": \"{ extraction: ",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/prompt-format.test.ts",
+      "pattern": "wrapper_key names an array"
+    }
+  ]
+}

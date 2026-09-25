@@ -41,24 +41,7 @@ vi.mock('@kit/supabase/lambda-admin-client', () => ({
  * its known bug and the exact error. When one starts passing, this test
  * fails: take it out of the list and mark the KB fixed.
  */
-const KNOWN_BROKEN: Record<string, { kb: string; error: RegExp }> = {
-  'canon-extraction': {
-    kb: 'KB-107',
-    error: /Value for key "extraction" is not an array/,
-  },
-  'documentary/fact-checker-role': {
-    kb: 'KB-107',
-    error: /Value for key "fact_check" is not an array/,
-  },
-  'documentary/researcher-role': {
-    kb: 'KB-107',
-    error: /Value for key "research" is not an array/,
-  },
-  'movie/act-context-extraction': {
-    kb: 'KB-107',
-    error: /Value for key "bridge" is not an array/,
-  },
-};
+const KNOWN_BROKEN: Record<string, { kb: string; error: RegExp }> = {};
 
 const ajv = new Ajv({ allErrors: true, strict: false });
 
