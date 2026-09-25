@@ -22,7 +22,10 @@ import type {
 import { createEmptyEntities } from '../../../types/external-context';
 import { ArchiveOrgProvider } from '../providers/archive-org-provider';
 import type { BaseExternalProvider } from '../providers/base-provider';
-import { NewsAPIProvider } from '../providers/newsapi-provider';
+import {
+  NewsAPIProvider,
+  type NewsAPISource,
+} from '../providers/newsapi-provider';
 import { SemanticScholarProvider } from '../providers/semantic-scholar-provider';
 
 type Json =
@@ -77,6 +80,14 @@ export function rowToExternalContent(
 // AGGREGATOR
 // =============================================================================
 
+/** NewsAPI's id for a source row, from its seeded `config.source_id`. */
+function newsapiSourceId(config: unknown): string | null {
+  if (!config || typeof config !== 'object') return null;
+
+  const value = (config as Record<string, unknown>).source_id;
+  return typeof value === 'string' && value ? value : null;
+}
+
 /** TTL for singleton re-initialisation (5 minutes). */
 const REINIT_TTL_MS = 5 * 60 * 1000;
 
@@ -97,7 +108,7 @@ export class ExternalContextAggregator {
 
     const { data: sources, error } = await supabase
       .from('external_sources')
-      .select('id, category, provider_type, credibility_tier')
+      .select('id, category, provider_type, credibility_tier, config')
       .eq('is_active', true)
       // Built-ins only. This instance is cached for the whole process, built
       // from whichever caller's RLS view arrived first, so a team's or a
@@ -120,22 +131,52 @@ export class ExternalContextAggregator {
     this.providers.clear();
     this.providersByCategory.clear();
 
+    // Every NewsAPI source is served by one provider, so one search is one
+    // NewsAPI request and each article is credited to its own row (KB-125).
+    const newsapi: NewsAPISource[] = [];
+
     for (const source of sources ?? []) {
+      if (source.provider_type === 'newsapi') {
+        const newsapiId = newsapiSourceId(source.config);
+
+        if (newsapiId) {
+          newsapi.push({
+            id: source.id,
+            newsapiId,
+            credibilityTier: (source.credibility_tier ??
+              'tier_3') as CredibilityTier,
+          });
+        } else {
+          console.warn(
+            `[context-aggregator] NewsAPI source ${source.id} has no config.source_id; skipped`,
+          );
+        }
+        continue;
+      }
+
       const provider = this.createProvider(source);
       if (provider) {
-        this.providers.set(source.id, provider);
-
-        const existing =
-          this.providersByCategory.get(source.category as SourceCategory) ?? [];
-        existing.push(provider);
-        this.providersByCategory.set(
-          source.category as SourceCategory,
-          existing,
-        );
+        this.register(source.id, source.category as SourceCategory, provider);
       }
     }
 
+    if (newsapi.length > 0) {
+      this.register('newsapi', 'news', new NewsAPIProvider(newsapi));
+    }
+
     this.initializedAt = Date.now();
+  }
+
+  private register(
+    key: string,
+    category: SourceCategory,
+    provider: ExternalContextProvider,
+  ) {
+    this.providers.set(key, provider);
+
+    const existing = this.providersByCategory.get(category) ?? [];
+    existing.push(provider);
+    this.providersByCategory.set(category, existing);
   }
 
   /** Whether the singleton has gone stale and should re-initialize. */
@@ -230,8 +271,6 @@ export class ExternalContextAggregator {
     const tier = (source.credibility_tier ?? 'tier_3') as CredibilityTier;
 
     switch (source.provider_type) {
-      case 'newsapi':
-        return new NewsAPIProvider(source.id, tier);
       case 'semantic_scholar':
         return new SemanticScholarProvider(source.id, tier);
       case 'archive_org':
