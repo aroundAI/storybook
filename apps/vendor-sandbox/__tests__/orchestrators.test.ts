@@ -118,22 +118,12 @@ const SCENES = [1, 2, 3].map((number) => ({
  * known bug. Every failure seen must be listed, and every listed one must
  * still happen: when a KB is fixed, this fails until the entry goes.
  */
-const KNOWN_TOOL_FAILURES = [
-  {
-    kb: 'KB-116',
-    orchestrator: 'season-orchestrator',
-    tool: 'evaluateSeasonArc',
-    error:
-      /Missing required variables for prompt quality-evaluation\/story-quality: title, story_text/,
-  },
-  {
-    kb: 'KB-116',
-    orchestrator: 'translation-orchestrator',
-    tool: 'verifyTranslation',
-    error:
-      /Missing required variables for prompt quality-evaluation\/story-quality: title, story_text/,
-  },
-];
+const KNOWN_TOOL_FAILURES: Array<{
+  kb: string;
+  orchestrator: string;
+  tool: string;
+  error: RegExp;
+}> = [];
 
 const knownFailure = (orchestrator: string, tool: string) =>
   KNOWN_TOOL_FAILURES.find(
@@ -287,6 +277,9 @@ describe('the studio orchestrators, against the sandbox', () => {
 
     expect(result.success, result.error).toBe(true);
     expect(result.episodes.length).toBeGreaterThan(0);
+    // KB-116: the arc score comes from an evaluation, within its 0-1 range.
+    expect(result.arcScore).toBeGreaterThanOrEqual(0);
+    expect(result.arcScore).toBeLessThanOrEqual(1);
   });
 
   it('season: a run whose outliner step fails is a failure, not a season', async () => {
@@ -319,6 +312,13 @@ describe('the studio orchestrators, against the sandbox', () => {
       expect(result.success).toBe(false);
       expect(result.episodes).toEqual([]);
       expect(result.error).toMatch(/Season Outliner produced no episodes/);
+      // The sandbox saw the tool fail, as the runner reported it back.
+      expect(sandbox.state.agentToolFailures.slice(recorded)).toContainEqual(
+        expect.objectContaining({
+          orchestrator: 'season-orchestrator',
+          tool: 'generateSeasonOutline',
+        }),
+      );
     } finally {
       // The failures this test caused on purpose are not the app's.
       sandbox.state.agentToolFailures.splice(recorded);
@@ -378,6 +378,8 @@ describe('the studio orchestrators, against the sandbox', () => {
 
     expect(result.success, result.error).toBe(true);
     expect(result.translations).toHaveLength(3);
+    expect(result.verificationScore).toBeGreaterThanOrEqual(0);
+    expect(result.verificationScore).toBeLessThanOrEqual(1);
   });
 
   it('let nothing leave the machine', () => {
