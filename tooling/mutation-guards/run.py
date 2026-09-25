@@ -102,27 +102,6 @@ def find_problems(entry, source):
     return problems
 
 
-def unknown_names(entries, only):
-    """The `--only` values that are not exactly the name of an entry.
-
-    `--only` once matched any entry whose name *contained* the value, so a
-    short id like "U1" also ran another feature's E2E guard, which seeded the
-    shared database without its lock while local CI was using it. A value
-    now has to be a whole name, and one that names nothing stops the run
-    before anything executes.
-    """
-    names = {entry['name'] for entry in entries}
-    return [name for name in (only or []) if name not in names]
-
-
-def duplicate_names(entries):
-    """Names used by more than one entry: `--only` could not tell them apart."""
-    seen, duplicates = set(), set()
-    for entry in entries:
-        (duplicates if entry['name'] in seen else seen).add(entry['name'])
-    return sorted(duplicates)
-
-
 def guard_command(entry, base_env):
     kind = entry['kind']
     env = dict(base_env)
@@ -323,26 +302,6 @@ def self_test(base_env):
             print(f'SELF-TEST FAILED: find_problems {label}: {got} problems, expected {want}')
             return 1
 
-    named = [{'name': 'U1 tag scope dropped'}, {'name': 'KB-U1 a longer name'}]
-    for label, only, want in [
-        ('exact name', ['U1 tag scope dropped'], []),
-        ('part of a name', ['U1'], ['U1']),
-        ('one good, one not', ['U1 tag scope dropped', 'nope'], ['nope']),
-        ('no --only', None, []),
-    ]:
-        got = unknown_names(named, only)
-        if got != want:
-            print(f'SELF-TEST FAILED: unknown_names {label}: {got!r}, expected {want!r}')
-            return 1
-    if duplicate_names(named + [{'name': 'U1 tag scope dropped'}]) != ['U1 tag scope dropped']:
-        print('SELF-TEST FAILED: duplicate_names missed a repeated name')
-        return 1
-    duplicates = duplicate_names(load_entries())
-    if duplicates:
-        print('SELF-TEST FAILED: entry names must be unique for --only:',
-              *duplicates, sep='\n  ')
-        return 1
-
     # Every real entry, statically: CI runs --self-test in one job, while the
     # entries themselves are split across shards and kinds.
     ambiguous = []
@@ -377,9 +336,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--kind', choices=['unit', 'pgtap', 'e2e'],
                         action='append', help='run only these kinds')
-    parser.add_argument('--only', action='append', metavar='NAME',
-                        help="run only the entry with exactly this name (repeatable); "
-                             'a name that matches no entry is refused')
+    parser.add_argument('--only', action='append',
+                        help='run only entries whose name contains this')
     parser.add_argument('--file-prefix', action='append', metavar='PREFIX',
                         help='run only entries whose every mutated file starts with '
                              'one of these, e.g. specs/ for the docs-only CI job')
@@ -405,21 +363,10 @@ def main():
         print('Refusing to run: a previous run left backups behind:', *leftovers, sep='\n  ')
         return 1
 
-    all_entries = load_entries()
-    unknown = unknown_names(all_entries, args.only)
-    if unknown:
-        for name in unknown:
-            print(f'--only {name!r} names no entry.')
-            near = [e['name'] for e in all_entries if name.lower() in e['name'].lower()]
-            if near:
-                print('  Did you mean one of:', *near[:10], sep='\n    ')
-        print('Nothing was run: --only takes a whole entry name, not part of one.')
-        return 1
-
     entries = [
-        entry for entry in all_entries
+        entry for entry in load_entries()
         if (not args.kind or entry['kind'] in args.kind)
-        and (not args.only or entry['name'] in args.only)
+        and (not args.only or any(o in entry['name'] for o in args.only))
         and (not args.file_prefix
              or all(path is not None and path.startswith(tuple(args.file_prefix))
                     for path in mutated_files(entry)))

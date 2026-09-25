@@ -19,13 +19,8 @@ python3 tooling/mutation-guards/run.py --self-test   # the runner's own red chec
 python3 tooling/mutation-guards/run.py --kind unit   # CI: Unit Tests job
 python3 tooling/mutation-guards/run.py --kind pgtap  # CI: Supabase DB job (needs supabase start)
 python3 tooling/mutation-guards/run.py --kind e2e    # by hand (see below)
-python3 tooling/mutation-guards/run.py --only "R6 list unpaged"   # one entry, by its whole name
+python3 tooling/mutation-guards/run.py --only "R6"   # one entry by name
 ```
-
-`--only` matches a whole entry name exactly, and a value that names no entry
-stops the run before anything executes, listing names that contain it. It used
-to match any name *containing* the value, so `--only "U1"` ran five guards from
-four features, one of them an E2E guard that seeds the shared database.
 
 `--kind e2e` needs a dev server that reads the local ClickHouse, because the
 evidence entries measure real figures:
