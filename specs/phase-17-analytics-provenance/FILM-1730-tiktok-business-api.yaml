@@ -21,15 +21,15 @@ summary: >
   creator on a TikTok Business account. Split from FILM-1712 §4 (owner
   decision, 2026-09-22) because it is its own integration with its own
   approval, not a metric-list change. It owns the four FILM-1703 capability
-  matrix entries currently parked on a FILM-1712 placeholder. Two gates
+  matrix entries, which parked on a FILM-1712 placeholder until this file existed. Two gates
   block it that no code can open: the developer app (not held) and the
   creator's account type, which the owner is treating as a 50-50 split
   between business and personal/creator TikTok channels — so the existing
   Display API path stays first-class rather than a fallback.
 acceptance_criteria:
   - text: "The four TikTok matrix entries name FILM-1730 in blockedBy (can land immediately, ahead of everything else)"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/clickhouse/src/lib/data-provenance.ts — watch_time, traffic_sources, reach and geography × tiktok; pinned by 'the TikTok Business gaps are owned by FILM-1730' and the structural rule 'a TikTok Business gap is blocked by the TikTok Business integration' in packages/clickhouse/__tests__/data-provenance.test.ts; mutation guard 'A TikTok Business gap goes back to the FILM-1712 placeholder' (tooling/mutation-guards/film-1703.json)"
   - text: "Business section of the capability reference re-verified against the endpoint's own reference page, cited, dated; auth, scopes, limits, pagination and time semantics recorded"
     met: false
     reason: "not yet implemented — DRAFT; reference section last verified 2026-09-14, blocked on developers.tiktok.com refusing connections on 2026-09-21"
@@ -88,18 +88,21 @@ notes: |
   2026-09-22).
 
   It already has a hole waiting for it. FILM-1703's capability matrix
-  carries four TikTok entries at level: 'not_ingested' whose blockedBy is
+  carries four TikTok entries at level: 'not_ingested'. Their blockedBy was
   'FILM-1712' — a placeholder, because the matrix's own guard requires
-  blockedBy to name a spec that exists and this one did not:
+  blockedBy to name a spec that exists and this one did not. Since
+  2026-09-25 it is 'FILM-1730', and a structural rule stops a TikTok
+  Business entry reaching for the placeholder again:
 
   | Metric family | What the Business API supplies | Matrix today |
   |---|---|---|
-  | watch_time | total_time_watched, average_time_watched, full_video_watched_rate | not_ingested, blocked by FILM-1712 (placeholder) |
+  | watch_time | total_time_watched, average_time_watched, full_video_watched_rate | not_ingested, blocked by FILM-1730 |
   | traffic_sources | impression_sources | same |
   | reach | reach | same |
   | geography | audience_countries | same |
 
-  The first change this spec makes is to point those four at FILM-1730.
+  The first change this spec makes is to point those four at FILM-1730
+  (done 2026-09-25, with FILM-1703's completion).
 
   ## 2. What the surface gives, and what it never will
 

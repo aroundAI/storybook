@@ -55,7 +55,7 @@
       "name": "TikTok traffic sources flipped to native with no integration behind it",
       "kind": "unit",
       "file": "packages/clickhouse/src/lib/data-provenance.ts",
-      "find": "      level: 'not_ingested',\n      table: null,\n      blockedBy: 'FILM-1712',\n      ...TIKTOK_BUSINESS,\n      note: 'TikTok does report where views came from,",
+      "find": "      level: 'not_ingested',\n      table: null,\n      blockedBy: 'FILM-1730',\n      ...TIKTOK_BUSINESS,\n      note: 'TikTok does report where views came from,",
       "replace": "      level: 'native',\n      table: 'video_traffic_sources',\n      ...TIKTOK_BUSINESS,\n      note: 'TikTok does report where views came from,",
       "cwd": "packages/clickhouse",
       "test": "__tests__/data-provenance.test.ts",
@@ -150,6 +150,46 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/capability-matrix-reference.test.ts",
       "pattern": "cites fields wherever it claims"
+    },
+    {
+      "name": "A TikTok Business gap goes back to the FILM-1712 placeholder",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "      blockedBy: 'FILM-1730',\n      ...TIKTOK_BUSINESS,\n      note: 'TikTok does report how many people a video reached",
+      "replace": "      blockedBy: 'FILM-1712',\n      ...TIKTOK_BUSINESS,\n      note: 'TikTok does report how many people a video reached",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "a TikTok Business gap is blocked by the TikTok Business integration"
+    },
+    {
+      "name": "YouTube revenue drops its pending verification and reads as seen working",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "      access: 'authorised',\n      pendingVerification: {\n        owner: 'FILM-1725',",
+      "replace": "      access: 'authorised',\n      pendingVerificationDropped: {\n        owner: 'FILM-1725',",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "authorised says whether it was seen working"
+    },
+    {
+      "name": "YouTube revenue is blocked by FILM-1711, which only writes Postgres",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "      blockedBy: 'FILM-1726',",
+      "replace": "      blockedBy: 'FILM-1711',",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "YouTube revenue is requested"
+    },
+    {
+      "name": "A surface claims a live verification nobody recorded",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "  access: 'authorised',\n  pendingVerification: YOUTUBE_LIVE_SYNC,\n  availability: 'included',\n  window: { maxAgeDays: null,",
+      "replace": "  access: 'authorised',\n  verified: { on: '2026-09-25', how: 'assumed' },\n  pendingVerification: undefined,\n  availability: 'included',\n  window: { maxAgeDays: null,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "claims no live verification it cannot cite"
     }
   ]
 }

@@ -3,7 +3,7 @@ title: "Data Provenance Capability Model"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: PARTIAL
+status: DONE
 effort: M
 dependencies:
   - spec_id: "FILM-1721"
@@ -47,9 +47,6 @@ acceptance_criteria:
   - text: "The declared derivation for a platform is consistent with the `metric_source` values actually observed for it"
     met: true
     evidence: "§5c reconciliation against VideoMetric.metric_source"
-  - text: "No consumer restates a platform list that the matrix could have told it"
-    met: false
-    reason: "not met here, by design: this spec ships no UI (§1, §6), so the matrix has no consumer yet. The seven hardcoded claims are FILM-1701's to remove and FILM-1705's to derive; see remaining"
   - text: "Every entry carries capability, access, availability and window"
     met: true
     evidence: null
@@ -59,6 +56,9 @@ acceptance_criteria:
   - text: "`unknown` availability is never a default and always names its owner and question"
     met: true
     evidence: null
+  - text: "`authorised` never stands for 'seen working': every authorised entry carries `verified` (a date and how) or `pendingVerification` (an owner and the question), enforced in the type"
+    met: true
+    evidence: "§12: AccessAxis in packages/clickhouse/src/lib/data-provenance.ts; the rule 'authorised says whether it was seen working, with evidence or an owner' and three @ts-expect-error cases in data-provenance.test.ts; mutation guards 'YouTube revenue drops its pending verification…' and 'A surface claims a live verification nobody recorded'"
   - text: "`DataWindow.anchoredOn` is explicit, so a job-creation-anchored window is not confused with a publish-anchored one"
     met: true
     evidence: null
@@ -71,19 +71,12 @@ acceptance_criteria:
   - text: "Instagram `watch_time` is `not_ingested` with `blockedBy` naming FILM-1712 — never `unsupported`, because Instagram documents it"
     met: true
     evidence: "§2 correction, 2026-09-21: ig_reels_avg_watch_time and ig_reels_video_view_total_time are documented for Instagram REELS and simply never requested"
-  - text: "YouTube `revenue` is `scope_missing` naming FILM-1711 for a YPP creator, and `account_type_gated` for a non-YPP one — never `native` while the monetary scope is absent"
+  - text: "YouTube `revenue` is never `native` while nothing writes it; its access is our configuration's state for a YPP creator and `account_type_gated` for a non-YPP one; and it does not claim to have been seen working until someone has"
     met: true
-    evidence: "§1 correction, 2026-09-21: yt-analytics-monetary.readonly is not requested; since 2026-09-09 the revenue metrics are additionally YouTube Partner Program members only"
+    evidence: "§12, 2026-09-25: FILM-1711 now requests yt-analytics-monetary.readonly, so access is `authorised` with `pendingVerification` owned by FILM-1725 (Checks F and G), and `blockedBy` is FILM-1726, which decides whether revenue reaches ClickHouse. Pinned by 'YouTube revenue is requested (FILM-1711), unverified, and not ingested' in packages/clickhouse/__tests__/data-provenance.test.ts"
   - text: "When FILM-1712 or FILM-1711 lands, the entry moves to `native` in the same change that starts writing the data; the writer-binding test (§5b) fails a change that does one without the other"
     met: true
     evidence: "§5b writer-binding test design: a change that starts writing the data without flipping the matrix entry to native fails CI, in either direction"
-remaining:
-  - criterion: "No consumer restates a platform list that the matrix could have told it"
-    reason: "This spec ships no UI (§1, §6), so the matrix has no consumer yet. The seven hardcoded claims (overview/views-card.tsx:38-39 among them; FILM-1705 §1 lists all seven) are removed by FILM-1701 and derived from the matrix by FILM-1705."
-    closed_by: "FILM-1705"
-  - criterion: "blockedBy on the four TikTok Business-API entries (watch_time, traffic_sources, reach, geography) names the correct spec"
-    reason: "Moves from the placeholder FILM-1712 to FILM-1730 in the first change made after PR #285 merges. It cannot move earlier: the structural test requires the id to resolve to a spec file that exists on this branch, and FILM-1730's file does not yet."
-    closed_by: "FILM-1730"
 open_questions: []
 notes: |
   ## 1. Overview
@@ -430,12 +423,12 @@ notes: |
   `not_ingested` (`audience_countries`, Business API). The TikTok branch of
   `buildAudienceRows` is now dead code; removing it is not this spec's.
 
-  **TikTok's Business-API entries name FILM-1712 as their blocker, as a
+  **TikTok's Business-API entries named FILM-1712 as their blocker, as a
   placeholder.** FILM-1712 §4 describes that integration and recommends splitting
-  it into its own spec. Owner decision, 2026-09-22: that spec is **FILM-1730**
-  (PR #285). Its file does not exist on this branch and the suite requires
-  `blockedBy` to resolve to a spec that exists, so the four entries keep
-  `FILM-1712` here — see §11.
+  it into its own spec. Owner decision, 2026-09-22: that spec is **FILM-1730**.
+  Its file did not exist when this spec was built, and the suite requires
+  `blockedBy` to resolve to a spec that exists. Since 2026-09-25 the four entries
+  name FILM-1730 — see §12.
 
   **Every entry carries a `reference`** — the `##` section of
   `docs/platform-capability-reference.md` it was read from, and for every level
@@ -473,10 +466,7 @@ notes: |
   Every guard has a recorded red check: `tooling/mutation-guards/film-1703.json`,
   which CI's Unit Tests job runs.
 
-  ## 11. Remaining
-
-  Status is `🟡 PARTIAL`, not done, because one acceptance criterion is open.
-  What is left, and who closes it:
+  ## 11. For downstream authors
 
   **For downstream authors (FILM-1705, 1711, 1726): a consumer that knows
   the creator's account type must call `accessFor(family, platform,
@@ -484,6 +474,62 @@ notes: |
   *our* half of the state and can never be `account_type_gated`; reading it
   directly tells a non-YPP creator, or a creator on a personal TikTok account, to
   reconnect for something reconnecting cannot give them.
+
+  ## 12. Completion, 2026-09-25
+
+  Three corrections and one hand-off, which together took the spec from
+  PARTIAL to DONE.
+
+  **The last criterion was retired into FILM-1705.** It read "No consumer
+  restates a platform list that the matrix could have told it", closed by
+  FILM-1705. FILM-1705 depends on this spec, so this spec could not finish
+  before the spec waiting on it. That is a cycle, not remaining work. FILM-1705
+  already carried the same rule ("`grep` finds no platform name in a
+  user-facing string outside `data-provenance.ts`…"). Coordinator decision,
+  2026-09-25: FILM-1705's criterion was widened to name the five sites still on
+  main (file:line), and the criterion was removed from this spec. Nothing is
+  claimed met that is not. The rule now lives only where the consumers are
+  built.
+
+  **TikTok Business gaps name FILM-1730.** See §10. A structural rule now
+  keys on the TikTok Business account gate, so a new entry cannot reach
+  for the placeholder again. The two Instagram FILM-1712 entries (watch time,
+  reach) are FILM-1712's and stay.
+
+  **`authorised` stopped meaning "seen working".** `AccessState` documented
+  `authorised` as "scope held AND verified against a live account", and
+  YouTube revenue carried it. But nobody has seen Google grant
+  `yt-analytics-monetary.readonly` or seen revenue come back (FILM-1725 Checks
+  F and G have not run). "Cannot measure" is not "measured", so the claim was
+  split in the type. `authorised` now says our config asks and no vendor review
+  is known to block it. Every authorised entry also carries exactly one of
+  `verified: { on, how }` or `pendingVerification: { owner, question }`, and
+  the compiler rejects an entry with neither or both. Today no entry is
+  `verified`. YouTube Analytics, YouTube Reporting and the Instagram user node
+  are pending on the owner, because rows in local and CI ClickHouse come from
+  fixtures and prove the pipeline, not the scope. The owner was asked whether
+  any of the three had been seen working against a real account, and answered
+  on 2026-09-25: **"Not yet."** None of the three has been checked against a
+  real account. YouTube revenue is pending on FILM-1725. When a live check is
+  recorded, the entry gets its date and how in the same change.
+
+  Access here is our configuration's, never one connection's. A YouTube
+  connection made before FILM-1711 does not hold the monetary scope.
+  `resolveAnalyticsAccess` (publishing, FILM-1711) answers that from the
+  scopes recorded at the callback. `accessFor` says so. The two vocabularies
+  are joined by FILM-1705 (lead filed 2026-09-25).
+
+  **YouTube revenue's blocker is FILM-1726, not FILM-1711.** FILM-1711 writes
+  Postgres `revenue_records`. None of its remaining work writes
+  `video_metrics.revenue_cents`, which every sync path sets to 0. Whether
+  revenue reaches ClickHouse at all is FILM-1726's open question (Postgres or
+  new `video_metrics` columns), so it is the spec this entry waits on.
+
+  Live check, 2026-09-25: `pnpm --filter @kit/clickhouse migrate` then
+  `verify` against a throwaway ClickHouse 24.8.14.39 container, first with
+  origin/main's module and then with this change's. Both runs had 95 passed
+  and 0 failed, and all twelve `provenance:` lines were identical, because no
+  level changed.
 feature:
   database:
     tables: []
