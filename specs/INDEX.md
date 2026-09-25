@@ -545,7 +545,7 @@ See [phase-15-deep-analytics/README.md](./phase-15-deep-analytics/README.md) for
 | FILM-1506 | [video-dim-deep-dive-queries](./phase-15-deep-analytics/FILM-1506-video-dim-deep-dive-queries.yaml) | 🟡 PARTIAL | L | FILM-1502, FILM-1504, FILM-1505 |
 | FILM-1507 | [content-taxonomy](./phase-15-deep-analytics/FILM-1507-content-taxonomy.yaml) | 🟡 PARTIAL | M | FILM-1506 |
 | FILM-1508 | [revenue-mix-alerts](./phase-15-deep-analytics/FILM-1508-revenue-mix-alerts.yaml) | ✅ DONE | M | FILM-1506 |
-| FILM-1509 | [experiment-log](./phase-15-deep-analytics/FILM-1509-experiment-log.yaml) | 🟡 PARTIAL | M | FILM-1502 |
+| FILM-1509 | [experiment-log](./phase-15-deep-analytics/FILM-1509-experiment-log.yaml) | 🗑️ RETIRED (28fba0ca; folded into FILM-1610) | M | FILM-1502 |
 | FILM-1510 | [hook-lab](./phase-15-deep-analytics/FILM-1510-hook-lab.yaml) | 🗑️ RETIRED (removed; FILM-CC-04 KB-9, KB-10; redesigned as FILM-1724) | L | FILM-1505, FILM-1506, FILM-1507, FILM-1301 |
 | FILM-1511 | [deep-analytics-ui-reports](./phase-15-deep-analytics/FILM-1511-deep-analytics-ui-reports.yaml) | 🟡 PARTIAL | L | FILM-1504, FILM-1505, FILM-1506, FILM-1507, FILM-1508 |
 
@@ -566,7 +566,7 @@ See [phase-16-workbook-parity/README.md](./phase-16-workbook-parity/README.md) f
 | FILM-1606 | [segment-performance](./phase-16-workbook-parity/FILM-1606-segment-performance.yaml) | ✅ DONE | L | FILM-1603, FILM-1605 |
 | FILM-1608 | [ypp-targets-settings](./phase-16-workbook-parity/FILM-1608-ypp-targets-settings.yaml) | ✅ DONE | M | FILM-1602 |
 | FILM-1609 | [revenue-mix-completion](./phase-16-workbook-parity/FILM-1609-revenue-mix-completion.yaml) | ✅ DONE | S | FILM-1601 |
-| FILM-1610 | [experiment-log-notes](./phase-16-workbook-parity/FILM-1610-experiment-log-notes.yaml) | ✅ DONE | M | FILM-1602, FILM-1603, FILM-1605 |
+| FILM-1610 | [experiment-log-notes](./phase-16-workbook-parity/FILM-1610-experiment-log-notes.yaml) | ✅ DONE (Change log; FILM-1509 folded in, KB-7/KB-8 2026-09-24) | M | FILM-1602, FILM-1603, FILM-1605 |
 | FILM-1611 | [deep-dive-channel-selector](./phase-16-workbook-parity/FILM-1611-deep-dive-channel-selector.yaml) | ✅ DONE | M | FILM-1606, FILM-1608, FILM-1609 |
 | FILM-1615 | [video-log-table](./phase-16-workbook-parity/FILM-1615-video-log-table.yaml) | ✅ DONE | M | FILM-1603, FILM-1611; FILM-1610 soft (note editor) |
 | FILM-1616 | [weekly-diagnostics-retention](./phase-16-workbook-parity/FILM-1616-weekly-diagnostics-retention.yaml) | ✅ DONE | M | FILM-1602; FILM-1710 or the duration-free fallback (see note) |
@@ -706,13 +706,13 @@ reason when not.
 | 12. Scale | 2 | 0 | 0 | 0 | 0 | 2 |
 | 13. Hook Opt | 2 | 0 | 0 | 0 | 2 | 0 |
 | 14. Edit Suite v2 | 1 | 0 | 0 | 0 | 1 | 0 |
-| 15. Deep Analytics | 11 | 0 | 5 | 0 | 1 | 5 |
+| 15. Deep Analytics | 11 | 0 | 4 | 0 | 2 | 5 |
 | 16. Workbook Parity | 17 | 0 | 2 | 0 | 0 | 15 |
 | 17. Analytics Provenance | 30 | 20 | 5 | 2 | 0 | 3 |
 | 18. Vendor Sandbox | 5 | 4 | 0 | 0 | 0 | 1 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **231** | **26** | **80** | **2** | **49** | **74** |
+| **TOTAL** | **231** | **26** | **79** | **2** | **50** | **74** |
 
 No column for In Progress: no PR is open.
 
@@ -725,7 +725,7 @@ No column for In Progress: no PR is open.
 | Canon (Ph 10–11) | 29 | 6 | 21 | 2 | 0 |
 | Scale & Hooks (Ph 12–13) | 4 | 2 | 0 | 2 | 0 |
 | Edit Suite v2 (Ph 14) | 1 | 0 | 0 | 1 | 0 |
-| Deep Analytics (Ph 15) | 11 | 5 | 5 | 1 | 0 |
+| Deep Analytics (Ph 15) | 11 | 5 | 4 | 2 | 0 |
 | Workbook Parity (Ph 16) | 17 | 15 | 2 | 0 | 0 |
 | Provenance & Signal (Ph 17) | 30 | 3 | 5 | 0 | 22 |
 | Vendor Sandbox (Ph 18) | 5 | 1 | 0 | 0 | 4 |
