@@ -98,6 +98,10 @@ export default defineConfig({
         __dirname,
         '../../packages/supabase/src/auth-callback.service.ts',
       ),
+      '@kit/prompt-engine/render-template': path.resolve(
+        __dirname,
+        '../../packages/features/prompt-engine/src/lib/render-template.ts',
+      ),
       '@kit/prompt-engine/llm-job-target': path.resolve(
         __dirname,
         '../../packages/features/prompt-engine/src/lib/server/llm-job-target.ts',
