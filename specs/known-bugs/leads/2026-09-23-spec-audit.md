@@ -54,4 +54,4 @@ proved it wrong. Paths abbreviated with `…/studio/` are under
 - Each uncached news search calls NewsAPI once per active source (12 seeded) with identical parameters — `packages/features/episodes/src/lib/server/services/context-aggregator.ts:229`
 - `/sitemap.xml` has two handlers — `apps/web/app/sitemap.ts:13`, `apps/web/app/sitemap.xml/route.ts:16`
 - Two status colours fail WCAG AA 4.5:1 on small badges — `apps/web/styles/shadcn-ui.css:51`, `:55`
-- The live Suno dialogs need `SUNO_API_KEY`, which `sst.config.ts` does not pass to the server (production config not checked, by rule) — `packages/features/audio-generation/src/server/music-actions.ts:83`
+- ~~The live Suno dialogs need `SUNO_API_KEY`, which `sst.config.ts` does not pass to the server (production config not checked, by rule) — `packages/features/audio-generation/src/server/music-actions.ts:83`~~ **Closed by FILM-514:** the dialogs, the actions and the key read are deleted; the Regenerate path it led to is KB-110

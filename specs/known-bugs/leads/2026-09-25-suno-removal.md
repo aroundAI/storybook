@@ -2,7 +2,7 @@
 
 Read in the code while removing the two music vendors; not reproduced.
 
-- **Closed:** the 2026-09-23 spec-audit lead "The live Suno dialogs need `SUNO_API_KEY`, which `sst.config.ts` does not pass to the server" is closed by FILM-514: the dialogs, the actions and the key read are deleted. Strike it in `leads/2026-09-23-spec-audit.md` once that file is on `main` (#356).
+- **Closed:** the 2026-09-23 spec-audit lead "The live Suno dialogs need `SUNO_API_KEY`" is struck in `leads/2026-09-23-spec-audit.md`: FILM-514 deleted the dialogs, the actions and the key read.
 - The package `AudioStudio` (`packages/features/audio-generation/src/components/AudioStudio.tsx`) is exported from `@kit/audio-generation/components` and rendered by no page; the live Audio Studio is `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/`. It and its dialogue-side components may be dead in the same way `MusicTrackList` was.
 - No spec owns ElevenLabs music (`elevenlabs-music-actions.ts`, `core/elevenlabs-music-core.ts`, the music half of `audio-asset-actions.ts`). FILM-504 was the music-generation spec and described only the retired vendor.
 - `generateMusicElevenLabsAction` answers a repeated prompt from the asset library (`findOrCreateAudioAsset`), so a "regenerate" routed through it would return the same audio. A real regenerate for a finished music track needs a force-new option.
