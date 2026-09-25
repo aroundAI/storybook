@@ -53,9 +53,14 @@ test.describe('FILM-1616 — weekly diagnostics', () => {
     // Outside the card grid, not one of its cards. The framing is the
     // point: these cards answer "what should we make next", and a low-CTR
     // flag read as a content verdict is the opposite of a breakage check.
+    // Asked of every grid on the tab, not one: the YPP progress list is a
+    // grid too, and appears once its (empty, ClickHouse-off) read resolves,
+    // so a single-grid locator raced it and failed strict mode.
     await expect(
-      page.locator('[data-test="deep-dive-tab"] .grid'),
-    ).not.toContainText("This week's uploads");
+      page.locator('[data-test="deep-dive-tab"] .grid', {
+        hasText: "This week's uploads",
+      }),
+    ).toHaveCount(0);
   });
 
   test("refuses another account's publish where its own is allowed", async ({
