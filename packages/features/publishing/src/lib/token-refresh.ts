@@ -181,6 +181,7 @@ async function doEnsureValidToken(
   // 3. Check if we have a refresh token
   if (!connection.refresh_token_encrypted) {
     await markConnectionInactive(connectionId);
+    await sendReauthNotification(connection.account_id, connection.platform);
     return { valid: false, error: 'NO_REFRESH_TOKEN', requiresReauth: true };
   }
 
@@ -253,18 +254,20 @@ async function doEnsureValidToken(
     // The access token is valid either way. But a vendor that rotates refresh
     // tokens (X, TikTok) has already retired the one we hold, so the next
     // refresh of this connection will fail - say so now (KB-15).
+    const logger = await getLogger();
+    const refreshCtx = {
+      name: 'token-refresh',
+      platform: connection.platform,
+      connectionId,
+      refreshTokenRotated: Boolean(refreshed.refreshToken),
+    };
     if (persistError) {
-      const logger = await getLogger();
       logger.error(
-        {
-          name: 'token-refresh',
-          platform: connection.platform,
-          connectionId,
-          refreshTokenRotated: Boolean(refreshed.refreshToken),
-          error: persistError,
-        },
+        { ...refreshCtx, error: persistError },
         'Refreshed tokens were not stored',
       );
+    } else {
+      logger.info(refreshCtx, `Refreshed ${connection.platform} token`);
     }
 
     return { valid: true, accessToken: refreshed.accessToken };
@@ -658,8 +661,9 @@ export function formatPlatformName(platform: Platform | string): string {
 }
 
 /**
- * Sends a notification to the user when re-authentication is required.
- * This is a stub - integrate with your notification system.
+ * Tells the connection's account that it must reconnect, in the in-app
+ * notifications, with a link to its platforms page. A notification that
+ * cannot be written is logged; the refresh result stands either way.
  */
 async function sendReauthNotification(
   accountId: string,
@@ -667,23 +671,33 @@ async function sendReauthNotification(
 ): Promise<void> {
   const logger = await getLogger();
   const ctx = { name: 'token-refresh.reauth', accountId, platform };
+  const client = getSupabaseServerAdminClient();
 
-  // Log for now - integrate with @kit/notifications when available
-  logger.info(
-    ctx,
-    `Re-auth required for account ${accountId}, platform ${platform}`,
-  );
+  const { data: account } = await client
+    .from('accounts')
+    .select('slug')
+    .eq('id', accountId)
+    .maybeSingle();
 
-  // TODO: Integrate with notification system
-  // await sendNotification(accountId, {
-  //   type: 'platform_reauth_required',
-  //   title: `${formatPlatformName(platform)} connection expired`,
-  //   body: 'Please reconnect your account to continue publishing.',
-  //   action: {
-  //     label: 'Reconnect',
-  //     url: `/settings/platforms?reconnect=${platform}`,
-  //   },
-  // });
+  // `pathsConfig.app.accountPlatforms` in apps/web, which this package
+  // cannot import.
+  const link = account?.slug
+    ? `/home/${account.slug}/settings/platforms`
+    : null;
+
+  const { error } = await client.from('notifications').insert({
+    account_id: accountId,
+    type: 'warning',
+    body: `Your ${formatPlatformName(platform)} connection has expired. Reconnect it to keep publishing.`,
+    link,
+  });
+
+  if (error) {
+    logger.error({ ...ctx, error }, 'Re-auth notification was not stored');
+    return;
+  }
+
+  logger.info(ctx, `Re-auth required for ${platform}; account notified`);
 }
 
 /**

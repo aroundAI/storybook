@@ -46,7 +46,7 @@ acceptance_criteria:
     evidence: "KB-29: refresh takes the app credentials from the lookup connect and the callback use (`packages/features/publishing/src/lib/token-refresh.ts:389`, `apps/web/app/api/platforms/connect/tiktok/route.ts:90`, `apps/web/app/api/platforms/callback/tiktok/route.ts:106`); the rotated refresh token is stored (`packages/features/publishing/__tests__/token-refresh.test.ts:466`)"
   - text: "Token refresh updates both access and refresh tokens"
     met: true
-    evidence: "`packages/features/publishing/src/lib/token-refresh.ts:235`, `packages/features/publishing/src/lib/token-refresh.ts:242`"
+    evidence: "`packages/features/publishing/src/lib/token-refresh.ts:236`, `packages/features/publishing/src/lib/token-refresh.ts:243`"
   - text: "Disconnect revokes token at TikTok"
     met: true
     evidence: "`packages/features/publishing/src/oauth/tiktok/revoke.ts` (moved from `disconnect.ts` by KB-22)"
@@ -70,7 +70,7 @@ test_plan:
       reason: "not met — only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)"
     - text: "Test token refresh with rotation"
       met: true
-      evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:466` — drives `ensureValidToken` against a local TikTok listener and asserts the stored rotated token (KB-29)"
+      evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:482` — drives `ensureValidToken` against a local TikTok listener and asserts the stored rotated token (KB-29)"
     - text: "Test disconnect flow"
       met: false
       reason: "not met — no test found"

@@ -73,10 +73,10 @@ test_plan:
       reason: "not met — only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)"
     - text: "Test token refresh"
       met: true
-      evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:440`"
+      evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:456`"
     - text: "Test Instagram-Page linking"
       met: false
-      reason: "not met — callback linking untested; only refresh's use of `linked_page_id` is (`packages/features/publishing/__tests__/token-refresh.test.ts:442`)"
+      reason: "not met — callback linking untested; only refresh's use of `linked_page_id` is (`packages/features/publishing/__tests__/token-refresh.test.ts:458`)"
   e2e: []
 remaining:
   - criterion: "Consent screen shows correct permissions"
