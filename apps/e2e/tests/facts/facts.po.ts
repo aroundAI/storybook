@@ -12,6 +12,7 @@ import {
   uniqueStamp,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { visible } from '../utils/visible';
 
 const SERVICE_ROLE_KEY =
   process.env.E2E_SUPABASE_SERVICE_ROLE_KEY ??
@@ -94,15 +95,12 @@ export class FactsPageObject {
     ).toBeVisible();
   }
 
-  /**
-   * The card on screen. While a streamed page is still being swapped in, the
-   * server's copy of the list can sit hidden in the DOM beside it, and a
-   * strict locator then finds two of every card.
-   */
+  /** The card on screen, not React's hidden streamed copy (`utils/visible.ts`). */
   card(fact: SeededFact): Locator {
-    return this.page
-      .locator(`[data-test="fact-card"][data-fact-id="${fact.id}"]`)
-      .filter({ visible: true });
+    return visible(
+      this.page,
+      `[data-test="fact-card"][data-fact-id="${fact.id}"]`,
+    );
   }
 
   status(fact: SeededFact): Locator {

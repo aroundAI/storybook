@@ -10,6 +10,7 @@ import {
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 const SERVICE_ROLE_KEY =
   process.env.E2E_SUPABASE_SERVICE_ROLE_KEY ??
@@ -97,10 +98,8 @@ export const SCENARIOS: RefusalScenario[] = [
       await signInAs(page, team);
 
       await page.goto(`/home/${team.slug}/studio/projects/new`);
-      await page
-        .locator('[data-test="project-name-input"]')
-        .fill('Harbour Lights');
-      await page.locator('[data-test="create-project-submit"]').click();
+      await byTest(page, 'project-name-input').fill('Harbour Lights');
+      await byTest(page, 'create-project-submit').click();
     },
   },
   {
@@ -116,22 +115,16 @@ export const SCENARIOS: RefusalScenario[] = [
       await page.goto(
         `${studio(team, project.slug)}/episodes/${episode.slug}/ideation`,
       );
-      await page
-        .locator('[data-test="episode-actions-trigger"]')
-        .first()
-        .waitFor();
+      await byTest(page, 'episode-actions-trigger').first().waitFor();
 
       // The other tab: the episode goes while this page still shows it.
       await updateRows('episodes', `id=eq.${episode.id}`, {
         deleted_at: new Date().toISOString(),
       });
 
-      await page
-        .locator('[data-test="episode-actions-trigger"]')
-        .first()
-        .click();
-      await page.locator('[data-test="episode-delete-item"]').click();
-      await page.locator('[data-test="episode-delete-confirm"]').click();
+      await byTest(page, 'episode-actions-trigger').first().click();
+      await byTest(page, 'episode-delete-item').click();
+      await byTest(page, 'episode-delete-confirm').click();
     },
   },
   {
@@ -153,18 +146,16 @@ export const SCENARIOS: RefusalScenario[] = [
       await page.goto(`${studio(team, project.slug)}/assets`);
       await page.getByRole('tab', { name: /Locations/ }).click();
 
-      const card = page
-        .locator('[data-test="asset-card"]')
-        .filter({ hasText: 'The Harbour' });
+      const card = byTest(page, 'asset-card').filter({
+        hasText: 'The Harbour',
+      });
 
       await card.hover();
-      await card.locator('[data-test="asset-card-menu"]').click();
-      await page.locator('[data-test="asset-card-edit"]').click();
+      await byTest(card, 'asset-card-menu').click();
+      await byTest(page, 'asset-card-edit').click();
 
-      await page
-        .locator('[data-test="location-name-input"]')
-        .fill('The Old Library');
-      await page.locator('[data-test="location-submit"]').click();
+      await byTest(page, 'location-name-input').fill('The Old Library');
+      await byTest(page, 'location-submit').click();
     },
   },
   {
@@ -209,7 +200,7 @@ export const SCENARIOS: RefusalScenario[] = [
       await page.goto(
         `${studio(team, project.slug)}/episodes/${episode.slug}/audio-studio`,
       );
-      await page.locator('[data-test="generate-all-dialogue"]').click();
+      await byTest(page, 'generate-all-dialogue').click();
     },
   },
   {
@@ -260,7 +251,7 @@ export const SCENARIOS: RefusalScenario[] = [
       await signInAs(page, team);
       await page.goto(`/home/${team.slug}/studio/analytics/tags`);
 
-      const form = page.locator('[data-test="create-tag-form"]');
+      const form = byTest(page, 'create-tag-form');
       const label = form.getByPlaceholder('e.g. Process explainer');
       const submit = form.getByRole('button', { name: 'Add tag' });
 

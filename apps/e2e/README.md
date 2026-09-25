@@ -161,7 +161,12 @@ test('authenticated user can access dashboard', async ({ authenticatedPage }) =>
 
 ### Best Practices
 
-1. **Use data-test attributes**: Target elements with specific test attributes
+1. **Use data-test attributes**: Target elements with specific test attributes,
+   through `byTest(page, id)` from `tests/utils/visible.ts`. Every `/home`
+   page streams in under a `loading.tsx`, and for a moment React can hold a
+   hidden copy of the content (`<div hidden id="S:n">`) beside the one on
+   screen. A bare `[data-test=…]` then matches twice and strict mode fails
+   the test at once.
 2. **Wait for network idle**: Ensure async operations complete
 3. **Clean up test data**: Remove test data after each test
 4. **Use page object model**: Organize tests with reusable page classes
