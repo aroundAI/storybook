@@ -80,6 +80,83 @@
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/semantic-episodes.test.ts",
       "pattern": "when a step fails"
+    },
+    {
+      "name": "P1 Related earlier episodes never reach the prompt",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/utils/previous-episodes.ts",
+      "find": "    ...related.map((row) => toPrevious(row, 'related')),\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/previous-episodes.test.ts",
+      "pattern": "similar earlier episode into the story prompt"
+    },
+    {
+      "name": "P2 The previous-episode window ignores the memory horizon",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/utils/context-builder.ts",
+      "find": "        horizon: effectiveMemoryHorizon(episode.project.metadata).memoryHorizon,\n",
+      "replace": "        horizon: 3,\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/previous-episodes.test.ts",
+      "pattern": "the memory horizon sets"
+    },
+    {
+      "name": "P3 News gets previous episodes",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/utils/previous-episodes.ts",
+      "find": "  if (projectType === 'news' || horizon < 1) return null;\n",
+      "replace": "  if (horizon < 1) return null;\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/previous-episodes.test.ts",
+      "pattern": "news"
+    },
+    {
+      "name": "P4 Semantic search runs for callers that did not opt in",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/utils/context-builder.ts",
+      "find": "        semantic: options.semanticContext\n",
+      "replace": "        semantic: true\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/previous-episodes.test.ts",
+      "pattern": "not opted in"
+    },
+    {
+      "name": "P5 Previous-episode titles reach the prompt unsanitised",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/utils/context-builder.ts",
+      "find": "\"${sanitizeForPrompt(ep.title)}\"",
+      "replace": "\"${ep.title}\"",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/previous-episodes.test.ts",
+      "pattern": "sanitises episode text"
+    },
+    {
+      "name": "D1 match_episode_embeddings answers across projects",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/episode-embeddings-kb35.test.sql",
+      "sql": "create or replace function public.match_episode_embeddings(query_embedding vector(1024), target_project_id uuid, candidate_episode_ids uuid[], embedding_model text, match_count integer default 3, min_similarity double precision default 0.5) returns table (episode_id uuid, similarity double precision) language sql stable security invoker set search_path = public, extensions as $$ select ee.episode_id, 1 - (ee.embedding <=> query_embedding) from public.episode_embeddings ee join public.episodes e on e.id = ee.episode_id where e.deleted_at is null and ee.episode_id = any (candidate_episode_ids) and ee.model = embedding_model and ee.embedding is not null and 1 - (ee.embedding <=> query_embedding) >= min_similarity order by ee.embedding <=> query_embedding, ee.episode_id limit greatest(match_count, 0) $$;"
+    },
+    {
+      "name": "D2 A signed-in user can execute match_episode_embeddings",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/episode-embeddings-kb35.test.sql",
+      "sql": "grant execute on function public.match_episode_embeddings(vector, uuid, uuid[], text, integer, double precision) to authenticated;"
+    },
+    {
+      "name": "D3 The unheard pg_notify trigger is back",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/episode-embeddings-kb35.test.sql",
+      "sql": "create function public.trigger_generate_episode_embeddings() returns trigger language plpgsql as $$ begin perform pg_notify('generate_embedding', new.id::text); return new; end $$; create trigger episode_embedding_trigger after insert or update of story_data on public.episodes for each row execute function public.trigger_generate_episode_embeddings();"
+    },
+    {
+      "name": "B1 The semantic module imports server-only and cannot load in the worker",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/utils/semantic-episodes.ts",
+      "find": "import { createHash } from 'node:crypto';\n",
+      "replace": "import 'server-only';\nimport { createHash } from 'node:crypto';\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/semantic-bundle.test.ts"
     }
   ]
 }

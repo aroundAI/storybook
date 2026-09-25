@@ -60,7 +60,11 @@ describe('contentHash and episodesNeedingEmbedding (KB-35)', () => {
       ['e2', contentHash('voyage-3-large', 'two, before an edit')],
     ]);
 
-    const needed = episodesNeedingEmbedding(candidates, stored, 'voyage-3-large');
+    const needed = episodesNeedingEmbedding(
+      candidates,
+      stored,
+      'voyage-3-large',
+    );
 
     expect(needed.map((c) => c.episodeId)).toEqual(['e2', 'e3']);
     expect(needed[0]!.hash).toBe(contentHash('voyage-3-large', 'two'));
@@ -68,12 +72,15 @@ describe('contentHash and episodesNeedingEmbedding (KB-35)', () => {
 
   it('selects everything again when the model changes', () => {
     const stored = new Map(
-      candidates.map((c) => [c.episodeId, contentHash('voyage-3-large', c.document)]),
+      candidates.map((c) => [
+        c.episodeId,
+        contentHash('voyage-3-large', c.document),
+      ]),
     );
 
-    expect(episodesNeedingEmbedding(candidates, stored, 'voyage-3-large')).toEqual(
-      [],
-    );
+    expect(
+      episodesNeedingEmbedding(candidates, stored, 'voyage-3-large'),
+    ).toEqual([]);
     expect(
       episodesNeedingEmbedding(candidates, stored, 'voyage-large-2'),
     ).toHaveLength(3);

@@ -688,6 +688,10 @@ export default $config({
         ...(process.env.GEMINI_API_KEY && {
           GEMINI_API_KEY: process.env.GEMINI_API_KEY,
         }),
+        // Semantic previous-episode context (KB-35); unset = sequential only
+        ...(process.env.VOYAGE_API_KEY && {
+          VOYAGE_API_KEY: process.env.VOYAGE_API_KEY,
+        }),
         ...(process.env.DEEPSEEK_API_KEY && {
           DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY,
         }),
