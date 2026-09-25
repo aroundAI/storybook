@@ -256,7 +256,6 @@ export async function processAudioCueGeneration(
     if (finalInserts.length > 0) {
       const { error: insertError } = await supabase
         .from('audio_cues')
-        // @ts-expect-error KB-92: shots.scene_number is nullable, audio_cues.scene_number is NOT NULL; one sceneless shot fails the whole insert
         .insert(finalInserts);
 
       if (insertError) {

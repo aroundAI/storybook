@@ -186,7 +186,7 @@ export const MusicTimeline = React.forwardRef<
           id: string;
           cue_type: string;
           prompt: string;
-          scene_number: number;
+          scene_number: number | null;
           start_offset_seconds: number | null;
           duration_seconds: number | null;
           status: string | null;
@@ -217,7 +217,7 @@ export const MusicTimeline = React.forwardRef<
                   ? 'processing'
                   : ('failed' as const),
           metadata: {
-            sceneNumber: c.scene_number,
+            sceneNumber: c.scene_number ?? undefined,
             prompt: c.prompt,
             isCue: true,
           },
@@ -263,7 +263,7 @@ export const MusicTimeline = React.forwardRef<
           id: string;
           cue_type: string;
           prompt: string;
-          scene_number: number;
+          scene_number: number | null;
           start_offset_seconds: number | null;
           duration_seconds: number | null;
           status: string | null;
@@ -293,7 +293,7 @@ export const MusicTimeline = React.forwardRef<
                   ? 'processing'
                   : ('failed' as const),
           metadata: {
-            sceneNumber: c.scene_number,
+            sceneNumber: c.scene_number ?? undefined,
             prompt: c.prompt,
             isCue: true,
           },

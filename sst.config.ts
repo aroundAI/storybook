@@ -574,11 +574,8 @@ export default $config({
       handler: 'apps/web/websocket/default.handler',
       link: [connectionsTable],
       environment: {
+        // No database access: admin checks read the connection record (KB-91)
         CONNECTIONS_TABLE_NAME: connectionsTable.name,
-        // Required for admin checks and DB queries in collaborative editing
-        NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-        SUPABASE_SERVICE_ROLE_KEY:
-          process.env.SUPABASE_SERVICE_ROLE_KEY || '',
       },
       transform: {
         function: {
@@ -591,7 +588,7 @@ export default $config({
           resources: [kmsKey.arn],
         },
         {
-          // Permission to post WebSocket messages (broadcast, send-to-user)
+          // Permission to post WebSocket messages (broadcast, replies)
           actions: ['execute-api:ManageConnections'],
           resources: ['*'],
         },
@@ -601,8 +598,6 @@ export default $config({
           '@aws-sdk/client-dynamodb',
           '@aws-sdk/lib-dynamodb',
           '@aws-sdk/client-apigatewaymanagementapi',
-          '@supabase/supabase-js',
-          'ws',
         ],
       },
     });

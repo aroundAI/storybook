@@ -130,6 +130,7 @@ export function AudioStudioHeader({
             </span>
           </button>
           <button
+            data-test="audio-tab-sfx"
             onClick={() => setActiveTab('sfx')}
             className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
               activeTab === 'sfx'

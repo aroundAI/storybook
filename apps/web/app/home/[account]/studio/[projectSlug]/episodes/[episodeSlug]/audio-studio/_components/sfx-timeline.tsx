@@ -47,7 +47,7 @@ interface SfxTimelineProps {
 
 interface AudioCue {
   id: string;
-  scene_number: number;
+  scene_number: number | null;
   cue_type: 'sfx' | 'ambient' | 'music';
   prompt: string;
   start_offset_seconds: number | null;
@@ -473,8 +473,13 @@ export const SfxTimeline = React.forwardRef<
                         <p className="truncate text-xs font-medium text-gray-700 dark:text-gray-200">
                           {cue.prompt}
                         </p>
-                        <p className="truncate text-[10px] text-gray-500 dark:text-gray-400">
-                          Scene {cue.scene_number} | {cue.cue_type}
+                        <p
+                          data-test="sfx-cue-meta"
+                          className="truncate text-[10px] text-gray-500 dark:text-gray-400"
+                        >
+                          {cue.scene_number !== null &&
+                            `Scene ${cue.scene_number} | `}
+                          {cue.cue_type}
                           {cue.duration_seconds &&
                             ` | ${formatTime(cue.duration_seconds)}`}
                         </p>

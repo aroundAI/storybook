@@ -146,6 +146,10 @@ export default defineConfig({
         __dirname,
         '../../packages/features/episodes/src/agent/season-orchestrator.ts',
       ),
+      '@kit/episodes/agent/audio-cue-orchestrator': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/agent/audio-cue-orchestrator.ts',
+      ),
       '@kit/episodes/lib': path.resolve(
         __dirname,
         '../../packages/features/episodes/src/lib/index.ts',

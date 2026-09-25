@@ -7,10 +7,6 @@ import { z } from 'zod';
  * to prevent malformed data, oversized payloads, and injection attacks.
  */
 
-// UUID validation regex pattern
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 // Maximum message size: 256KB
 const MAX_MESSAGE_SIZE = 256 * 1024;
 
@@ -18,19 +14,6 @@ const MAX_MESSAGE_SIZE = 256 * 1024;
 const baseMessageSchema = z.object({
   action: z.string().min(1).max(50),
   channel: z.string().max(255).optional(),
-});
-
-/**
- * Send-to-User Message Schema
- * Validates messages sent to specific users
- */
-export const sendToUserMessageSchema = baseMessageSchema.extend({
-  action: z.literal('send-to-user'),
-  targetUserId: z
-    .string()
-    .regex(UUID_REGEX, 'Invalid UUID format for targetUserId'),
-  message: z.string().max(10000).optional(),
-  data: z.record(z.unknown()).optional(),
 });
 
 /**
@@ -74,7 +57,6 @@ export const pingMessageSchema = z.object({
  * Union of all possible message types
  */
 export const websocketMessageSchema = z.union([
-  sendToUserMessageSchema,
   broadcastMessageSchema,
   subscribeMessageSchema,
   unsubscribeMessageSchema,
@@ -125,7 +107,6 @@ export function validateWebSocketMessage(
 /**
  * Type exports for TypeScript
  */
-export type SendToUserMessage = z.infer<typeof sendToUserMessageSchema>;
 export type BroadcastMessage = z.infer<typeof broadcastMessageSchema>;
 export type SubscribeMessage = z.infer<typeof subscribeMessageSchema>;
 export type UnsubscribeMessage = z.infer<typeof unsubscribeMessageSchema>;

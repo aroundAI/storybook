@@ -1,0 +1,41 @@
+{
+  "feature": "FILM-CC-04 KB-91 KB-92",
+  "mutations": [
+    {
+      "name": "KB-91 send-to-user accepted again by message validation",
+      "kind": "unit",
+      "file": "apps/web/websocket/schemas/websocket-messages.schema.ts",
+      "find": "  unsubscribeMessageSchema,\n  pingMessageSchema,\n]);",
+      "replace": "  unsubscribeMessageSchema,\n  pingMessageSchema,\n  baseMessageSchema.extend({ action: z.literal('send-to-user') }),\n]);",
+      "cwd": "apps/web",
+      "test": "websocket/__tests__/default.test.ts",
+      "pattern": "refuses send-to-user like any unknown action"
+    },
+    {
+      "name": "KB-92 a cue on a sceneless shot given a made-up scene 0",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/audio-cue-generation.ts",
+      "find": "          scene_number: sceneNum,\n",
+      "replace": "          scene_number: sceneNum ?? 0,\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/audio-cue-generation.test.ts",
+      "pattern": "saves a cue on a sceneless shot"
+    },
+    {
+      "name": "KB-92 a cue on a sceneless shot dropped",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/audio-cue-generation.ts",
+      "find": "        if (sceneNum === undefined) {",
+      "replace": "        if (sceneNum === undefined || sceneNum === null) {",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/audio-cue-generation.test.ts",
+      "pattern": "saves a cue on a sceneless shot"
+    },
+    {
+      "name": "KB-92 audio_cues.scene_number NOT NULL again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/audio-cue-scene-optional.test.sql",
+      "sql": "alter table public.audio_cues alter column scene_number set not null;"
+    }
+  ]
+}
