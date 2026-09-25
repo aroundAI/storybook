@@ -7,13 +7,15 @@ import { type Sandbox, createSandbox } from '../src/sandbox';
 export async function startSandbox(seed = 1803) {
   const sandbox = await createSandbox({
     seed,
-    ports: { control: 0, gemini: 0 },
+    ports: { control: 0, openai: 0, gemini: 0, elevenlabs: 0 },
   });
 
   vi.stubEnv('NODE_ENV', 'test');
   vi.stubEnv('VENDOR_SANDBOX', '1');
   vi.stubEnv('AWS_LAMBDA_FUNCTION_NAME', '');
   vi.stubEnv('VENDOR_URL_GEMINI', sandbox.urls.gemini);
+  vi.stubEnv('VENDOR_URL_OPENAI', sandbox.urls.openai);
+  vi.stubEnv('VENDOR_URL_ELEVENLABS', sandbox.urls.elevenlabs);
   vi.stubEnv('GEMINI_API_KEY', 'sandbox-local-key');
   vi.stubEnv('GEMINI_VERTEXAI', '');
 

@@ -184,6 +184,9 @@ importers:
       '@kit/agent':
         specifier: workspace:*
         version: link:../../packages/agent
+      '@kit/audio-generation':
+        specifier: workspace:*
+        version: link:../../packages/features/audio-generation
       '@kit/episodes':
         specifier: workspace:*
         version: link:../../packages/features/episodes

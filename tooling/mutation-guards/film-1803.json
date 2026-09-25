@@ -166,6 +166,46 @@
       "cwd": "apps/vendor-sandbox",
       "test": "__tests__/coverage.test.ts",
       "pattern": "agent the sandbox has no script for"
+    },
+    {
+      "name": "Sandbox: MP3s come out half as long",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/audio/mp3.ts",
+      "find": "  return Math.max(1, Math.round(seconds / FRAME_SECONDS));",
+      "replace": "  return Math.max(1, Math.round(seconds / FRAME_SECONDS / 2));",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/audio.test.ts",
+      "pattern": "sound effect"
+    },
+    {
+      "name": "Sandbox: speech ignores how long the line is",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/vendors/elevenlabs.ts",
+      "find": "      return audio(speechSeconds(text), summarise(text));",
+      "replace": "      return audio(speechSeconds('Hi.'), summarise(text));",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/audio.test.ts",
+      "pattern": "speaks a line"
+    },
+    {
+      "name": "Sandbox: an unknown voice is spoken anyway",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/vendors/elevenlabs.ts",
+      "find": "      if (!voices.some((v) => v.voice_id === tts[1])) {",
+      "replace": "      if (tts[1] === 'never') {",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/audio.test.ts",
+      "pattern": "does not exist"
+    },
+    {
+      "name": "Sandbox: the undocumented music path is served",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/vendors/elevenlabs.ts",
+      "find": "    if (method === 'POST' && path === '/v1/music') {",
+      "replace": "    if (method === 'POST' && path.startsWith('/v1/music')) {",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/audio.test.ts",
+      "pattern": "undocumented path"
     }
   ]
 }
