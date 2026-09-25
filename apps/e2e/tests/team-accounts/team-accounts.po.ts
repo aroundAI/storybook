@@ -3,7 +3,7 @@ import { Page, expect } from '@playwright/test';
 import { AuthPageObject } from '../authentication/auth.po';
 import { OtpPo } from '../utils/otp.po';
 import { seedTeamAccount } from '../utils/seed';
-import { signInAs } from '../utils/session';
+import { isSignedInLanding, signInAs } from '../utils/session';
 
 export class TeamAccountsPageObject {
   private readonly page: Page;
@@ -34,9 +34,9 @@ export class TeamAccountsPageObject {
 
     await signInAs(this.page, team);
 
-    // Sign-in lands on the personal account. The dialog this replaced left
-    // callers on the team, and every helper they call next navigates by the
-    // team sidebar — Members, Settings, Billing — none of which exist here.
+    // Sign-in lands on the person's first team, which need not be this one.
+    // The dialog this replaced left callers on the team, and every helper they
+    // call next navigates by the team sidebar — Members, Settings, Billing.
     await this.page.goto(`/home/${team.slug}`);
     await this.page.waitForURL(`**/home/${team.slug}`);
 
@@ -160,7 +160,19 @@ export class TeamAccountsPageObject {
         '[data-test="delete-team-form-confirm-button"]',
       );
 
-      const response = this.page.waitForURL('**/home');
+      // Deleting sends the person home, which redirects to another team or
+      // to create-team (KB-99): anywhere signed in but the deleted team.
+      const deleted = new URL(this.page.url()).pathname
+        .split('/')
+        .slice(0, 3)
+        .join('/');
+
+      const response = this.page.waitForURL(
+        (url) =>
+          isSignedInLanding(url) &&
+          url.pathname !== deleted &&
+          !url.pathname.startsWith(`${deleted}/`),
+      );
 
       return Promise.all([click, response]);
     }).toPass();

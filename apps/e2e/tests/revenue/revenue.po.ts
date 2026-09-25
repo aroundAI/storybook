@@ -2,6 +2,7 @@ import { Locator, Page, expect } from '@playwright/test';
 
 import { AuthPageObject } from '../authentication/auth.po';
 import { seedTeamAccount } from '../utils/seed';
+import { waitForSignedIn } from '../utils/session';
 
 /**
  * The manual revenue entry form.
@@ -47,7 +48,7 @@ export class RevenuePageObject {
       password: account.password,
     });
 
-    await this.page.waitForURL('**/home');
+    await waitForSignedIn(this.page);
     await this.goToRevenue(account.slug);
 
     return account;

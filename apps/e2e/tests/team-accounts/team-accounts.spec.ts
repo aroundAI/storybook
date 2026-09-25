@@ -2,6 +2,7 @@ import { Page, expect, test } from '@playwright/test';
 
 import { InvitationsPageObject } from '../invitations/invitations.po';
 import { TeamAccountsPageObject } from './team-accounts.po';
+import { waitForSignedIn } from '../utils/session';
 
 // Helper function to set up a team with a member
 async function setupTeamWithMember(page: Page, memberRole = 'member') {
@@ -61,7 +62,7 @@ async function setupTeamWithMember(page: Page, memberRole = 'member') {
     password: 'password',
   });
 
-  await page.waitForURL('/home');
+  await waitForSignedIn(page);
 
   // Navigate to the team members page
   await page.goto(`/home/${slug}/members`);
@@ -306,7 +307,8 @@ test.describe('Team Account Security', () => {
     // 4. Attempt to access the team page with User B
     await userBPage.goto(`/home/${teamSlug}`);
 
-    // Check that we're not on the team page anymore (should redirect)
-    await expect(userBPage).toHaveURL(`/home`);
+    // Not a member: the team page sends them home, and home sends someone
+    // with no team to create one (KB-99).
+    await expect(userBPage).toHaveURL(`/home/teams/create`);
   });
 });

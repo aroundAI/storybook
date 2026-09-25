@@ -17,7 +17,7 @@ import { AuthPageObject } from '../authentication/auth.po';
 export async function signInAs(
   page: Page,
   user: { email: string; password: string },
-  landing = '/home',
+  landing?: string,
 ) {
   const auth = new AuthPageObject(page);
 
@@ -25,5 +25,24 @@ export async function signInAs(
 
   await auth.signIn({ email: user.email, password: user.password });
 
-  await page.waitForURL(`**${landing}`);
+  if (landing) {
+    await page.waitForURL(`**${landing}`);
+  } else {
+    await waitForSignedIn(page);
+  }
+}
+
+/**
+ * Where a signed-in person settles: a page under `/home/<something>`.
+ *
+ * Not `/home` itself. The product is team accounts only (KB-99), so `/home`
+ * only redirects: to the person's first team, or to `/home/teams/create`
+ * when they have none. Waiting for `/home` waits for a URL that never stays.
+ */
+export function isSignedInLanding(url: URL) {
+  return /^\/home\/[^/]+/.test(url.pathname);
+}
+
+export async function waitForSignedIn(page: Page) {
+  await page.waitForURL(isSignedInLanding);
 }
