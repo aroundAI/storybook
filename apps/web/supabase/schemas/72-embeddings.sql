@@ -27,7 +27,12 @@ create table if not exists public.episode_embeddings (
   episode_id uuid primary key references public.episodes(id) on delete cascade,
   premise_embedding vector(1024),
   story_embedding vector(1024),
-  updated_at timestamp default now()
+  updated_at timestamp default now(),
+  -- KB-35: written by the LLM worker on read, keyed by content_hash; the
+  -- two columns above predate it and have no writer.
+  embedding vector(1024),
+  content_hash text,
+  model text
 );
 
 alter table public.episode_embeddings enable row level security;
@@ -78,3 +83,44 @@ revoke all on public.character_embeddings from authenticated, anon;
 
 grant select on public.episode_embeddings to authenticated;
 grant select on public.character_embeddings to authenticated;
+
+/*
+ * KB-35: the most similar of a window of episodes to a query, within one
+ * project and one model. Service role only (the LLM worker).
+ */
+create or replace function public.match_episode_embeddings(
+  query_embedding vector(1024),
+  target_project_id uuid,
+  candidate_episode_ids uuid[],
+  embedding_model text,
+  match_count integer default 3,
+  min_similarity double precision default 0.5
+)
+returns table (episode_id uuid, similarity double precision)
+language sql
+stable
+security invoker
+set search_path = public, extensions
+as $$
+  select
+    ee.episode_id,
+    1 - (ee.embedding <=> query_embedding) as similarity
+  from public.episode_embeddings ee
+  join public.episodes e on e.id = ee.episode_id
+  where e.project_id = target_project_id
+    and e.deleted_at is null
+    and ee.episode_id = any (candidate_episode_ids)
+    and ee.model = embedding_model
+    and ee.embedding is not null
+    and 1 - (ee.embedding <=> query_embedding) >= min_similarity
+  order by ee.embedding <=> query_embedding, ee.episode_id
+  limit greatest(match_count, 0);
+$$;
+
+revoke all on function public.match_episode_embeddings(
+  vector, uuid, uuid[], text, integer, double precision
+) from public, anon, authenticated;
+
+grant execute on function public.match_episode_embeddings(
+  vector, uuid, uuid[], text, integer, double precision
+) to service_role;
