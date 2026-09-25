@@ -382,6 +382,27 @@ experiment logged by mistake can only be started and concluded. The
 table and the actions already hold the rules (the lifecycle trigger,
 `assertEditable`), so a UI needs no new server work.
 
+> **Fixed (2026-09-24), #352.** Reproduced first on `52ed2ade`: the three
+> actions had no caller outside `server/index.ts` and their tests. The change
+> dialog now offers **Edit** (every field while planned; once started, the
+> metric, window, videos, hypothesis and expectation are locked from the same
+> `frozenFields` list the action and the table use), **Abandon** (planned or
+> running, with an optional reason and the local date) and **Delete**.
+>
+> - [x] Edit sends only what changed (`lib/experiment-edit.ts`, unit-tested),
+>   and a second edit saves its own values, not the first's
+>   (`apps/e2e/tests/experiments/experiments-manage.spec.ts`, "editing one
+>   change and then another")
+> - [x] Delete **only while planned or abandoned** — owner decision,
+>   2026-09-24. A running change is abandoned first; a concluded one is the
+>   record. Held by the table (`20260924143141_change-log-tags-and-delete-scope.sql`,
+>   `analytics-experiments-rls.test.sql`: red before, 4 failures), the action
+>   (`assertCanDelete`, returned as a value) and the page (the button is hidden)
+> - [x] A refusal reaches the page in its own words on a production build, and
+>   the dialog then re-reads the change instead of offering moves for the
+>   state it left (found by the delete-refusal spec, watched red)
+> - [x] The lifecycle guard, freeze trigger and link policies are unchanged
+
 ---
 
 ## KB-8 — An experiment's baseline misses days not yet ingested
@@ -396,6 +417,30 @@ M days"), so nothing is misreported, but the figure is less complete than
 it could be. Option: measure the baseline window again at conclusion,
 when it is fully ingested, and keep both. That changes what the baseline
 means, so it needs a decision first.
+
+> **Decided (owner, 2026-09-24):** re-measure at conclusion and keep both; the
+> page shows both, labelled, each with "data on N of M days", and **draws no
+> headline comparison** between them.
+>
+> **Fixed (2026-09-24), #352.** `concludeExperimentAction` measures the
+> baseline window again and stores it as `result_metrics.baselineRemeasured`
+> — written once, by the conclusion, which the lifecycle trigger already
+> allows. The start's baseline is never rewritten. A metric with no window
+> (`views_at_30d`) is not re-measured.
+>
+> - [x] Measured against the local ClickHouse
+>   (`experiments-manage-evidence.spec.ts`): baseline at start **6.0%, data on
+>   2 of 30 days**; the late day arrives; at conclusion the same window reads
+>   **4.5%, data on 3 of 30 days** — hand-computed 120/2,000 and 180/4,000
+> - [x] Unit: the re-measure covers the baseline window, skips an
+>   age-bounded metric and an unwatched change, and never writes
+>   `baseline_metrics` (each seen red under its mutation)
+>
+> **Still true, and disclosed rather than fixed:** the *result* window has
+> the same late-days gap at conclusion, and cannot be measured again without a
+> later write. The page says "data on N of M days" for it too. And production
+> runs with ClickHouse off, so there every watched value is "no data" either
+> way.
 
 ---
 
@@ -4492,6 +4537,59 @@ it. Then delete the `@ts-expect-error KB-92` line.
 
 ---
 
+## KB-93 — A Change log entry accepted a tag from another account
+
+**Severity:** Low — a tag label, not figures, and only for a user who belongs
+to both accounts. **Found:** KB-7's planning (the first UI to link tags),
+2026-09-24. **Fixed** in #352.
+
+`experiment_tags_create` checked access to the experiment only, so a tag from
+any account the caller could see could be linked — the hole
+`experiment_publishes` had until FILM-1610 review B5, in its sibling table.
+
+**Reproduced** on the local database in a rolled-back transaction, acting as
+`authenticated` through RLS for a user in two team accounts: the insert
+succeeded, and the linked row read experiment account `5deaa894…`, tag account
+`f2f2f2f2…aa`.
+
+- [x] The insert policy requires the tag's account to be the change's
+  (`20260924143141_change-log-tags-and-delete-scope.sql`)
+- [x] `experiment-tags-account-rls.test.sql`: own tag linked, foreign tag
+  `42501` for a user in both accounts, outsider `42501` — red before the
+  migration (2 of 5), and a mutation guard restores the old policy and
+  requires it to fail
+- [x] The class sweep found one sibling, `publish_tags` — KB-98
+
+---
+
+## KB-98 — `publish_tags` accepts a tag from any account
+
+**Severity:** Low. It needs the other account's tag id (a UUID), and the
+foreign tag lands on the caller's own video. **Found:** KB-93's class sweep,
+2026-09-24. **Not fixed** — outside the Change log tickets.
+
+`publish_tags_create` (`20260827102452_content-taxonomy.sql:77`) checks that
+the caller can reach the *publish*, and never looks at the tag. A foreign key
+does not run RLS, so any tag id is accepted, including one from an account the
+caller does not belong to.
+
+**Reproduced** on the local database in a rolled-back transaction, acting as
+`authenticated` through RLS for a user who is **not** a member of the tag's
+account: `insert into publish_tags` on the user's own publish with the other
+account's tag succeeded (`foreign-account tag on own publish | 1`).
+
+**Why it matters beyond the row:** `dim-sync.ts:213` reads `publish_tags`
+with the admin client and writes each tag's `dimension:slug` into the
+caller's `video_dim.tags` in ClickHouse, which has no RLS. So another
+account's tag slug would be copied into this account's analytics, and
+grouped by in tag medians.
+
+**Proposed fix:** the same shape as KB-93 — the insert policy joins
+`content_tags` and requires `t.account_id` to equal the publish's project
+account; a pgTAP test for a user in both accounts and for an outsider.
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
@@ -4554,6 +4652,9 @@ it. Then delete the `@ts-expect-error KB-92` line.
 | KB-60, KB-42 | Any signed-in user could read every column of a public account (its email, owner, budget and usage), and ask any account's budget status or whether an id existed; public pages now read a six-column view, and the budget check answers members only. KB-59's test login is guarded, not changed (owner decision) | #346 |
 | KB-34 | The WebSocket handlers, which authenticate every realtime connection, were in no tsconfig; 133 type errors, none a defect, and an RPC no migration creates (KB-91) | #339 |
 | KB-66 | The workers' Supabase clients were untyped, so no query was checked against the schema; typed, they matched it, apart from an audio-cue insert (KB-92) and an unguarded metadata spread | #339 |
+| KB-7 | The Change log had no way to edit, abandon or delete an entry; delete is now allowed only while planned or abandoned, by the table as well | #352 |
+| KB-8 | A baseline never picked up the days that had not arrived at the start; it is measured again at conclusion and both are shown | #352 |
+| KB-93 | A Change log entry accepted a tag from another account, for a user in both | #352 |
 
 ---
 
