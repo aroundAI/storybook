@@ -84,6 +84,8 @@ create policy "publish_tags_create" on public.publish_tags for insert
       join public.projects pr on pr.id = e.project_id
       where p.id = publish_id
         and public.has_account_access(pr.account_id)
+        -- KB-98: the tag must be the video's account's
+        and public.tag_in_account(tag_id, pr.account_id)
     )
   );
 
@@ -120,3 +122,28 @@ as $$
 $$;
 
 grant execute on function public.count_tagged_publishes(uuid) to authenticated;
+
+-- KB-98 (20260925120329): whether a tag belongs to an account, for the
+-- policies that link one. SECURITY DEFINER: an ownership fact, the same for
+-- every caller, not tied to content_tags' read policy.
+create or replace function public.tag_in_account(tag_id uuid, account_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.content_tags t
+     where t.id = tag_in_account.tag_id
+       and t.account_id = tag_in_account.account_id
+  );
+$$;
+
+revoke all on function public.tag_in_account(uuid, uuid) from public, anon;
+grant execute on function public.tag_in_account(uuid, uuid) to authenticated, service_role;
+
+-- A tag stays in its account (keep_account_id: 32-platform-connections.sql)
+create trigger content_tags_keep_account
+  before update of account_id on public.content_tags
+  for each row execute function public.keep_account_id('tag');

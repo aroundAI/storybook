@@ -1248,9 +1248,12 @@ create policy "publishes_create" on public.publishes for insert
     exists (
       select 1 from public.episodes e
       join public.project_members pm on pm.project_id = e.project_id
+      join public.projects pr on pr.id = e.project_id
       where e.id = publishes.episode_id
       and pm.user_id = auth.uid()
       and pm.role in ('owner', 'admin', 'member')
+      -- KB-98: the channel must be the project's account's
+      and public.connection_in_account(publishes.platform_connection_id, pr.account_id)
     )
   );
 
@@ -1262,6 +1265,18 @@ create policy "publishes_update" on public.publishes for update
       where e.id = publishes.episode_id
       and pm.user_id = auth.uid()
       and pm.role in ('owner', 'admin', 'member')
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.episodes e
+      join public.project_members pm on pm.project_id = e.project_id
+      join public.projects pr on pr.id = e.project_id
+      where e.id = publishes.episode_id
+      and pm.user_id = auth.uid()
+      and pm.role in ('owner', 'admin', 'member')
+      -- KB-98: a publish cannot be repointed at another account's channel
+      and public.connection_in_account(publishes.platform_connection_id, pr.account_id)
     )
   );
 

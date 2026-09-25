@@ -104,3 +104,11 @@ CREATE OR REPLACE TRIGGER social_posts_updated_at
   BEFORE UPDATE ON public.social_posts
   FOR EACH ROW
   EXECUTE FUNCTION extensions.moddatetime('updated_at');
+
+-- KB-98 (20260925120329): the channel must be the post's account's, for
+-- every role — the same shape as analytics_experiments_connection_account_fkey.
+ALTER TABLE public.social_posts
+  ADD CONSTRAINT social_posts_connection_account_fkey
+  FOREIGN KEY (platform_connection_id, account_id)
+  REFERENCES public.platform_connections (id, account_id)
+  ON DELETE SET NULL (platform_connection_id);

@@ -5254,6 +5254,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "social_posts_connection_account_fkey"
+            columns: ["platform_connection_id", "account_id"]
+            isOneToOne: false
+            referencedRelation: "platform_connections"
+            referencedColumns: ["id", "account_id"]
+          },
+          {
             foreignKeyName: "social_posts_platform_connection_id_fkey"
             columns: ["platform_connection_id"]
             isOneToOne: false
@@ -5822,6 +5829,10 @@ export type Database = {
         }
         Returns: Json
       }
+      connection_in_account: {
+        Args: { account_id: string; connection_id: string }
+        Returns: boolean
+      }
       count_tagged_publishes: {
         Args: { target_account_id: string }
         Returns: number
@@ -6332,6 +6343,10 @@ export type Database = {
         Returns: Database["public"]["Enums"]["verification_status_enum"]
       }
       soft_delete_episode: { Args: { p_episode_id: string }; Returns: boolean }
+      tag_in_account: {
+        Args: { account_id: string; tag_id: string }
+        Returns: boolean
+      }
       team_account_workspace: {
         Args: { account_slug: string }
         Returns: {
