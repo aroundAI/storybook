@@ -707,3 +707,44 @@ describe('content-type strategies in the builder (FILM-1111)', () => {
     expect(info).toHaveBeenCalledWith(expect.stringContaining('sources=1'));
   });
 });
+
+describe('thread last-active episode for CANON_007 (KB-72)', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  it('carries the latest episode each thread was opened or touched in', async () => {
+    const fake = createFakeCanonClient({
+      ...projectRow({ projectType: 'series' }),
+      episodes: episodes(40, 48, 52, 55, 58, 59),
+      narrative_threads: {
+        rows: [
+          thread(
+            't-hot',
+            'T-hot',
+            40,
+            [40, 48, 52, 55],
+            '2026-09-01T00:00:00Z',
+          ),
+          thread('t-new', 'T-new', 58, [58, 59], '2026-09-01T00:00:00Z'),
+          thread('t-gone', 'T-gone', 7, [7], '2026-09-01T00:00:00Z'),
+        ],
+      },
+    });
+
+    const context = await buildMemoryContext(fake.client, {
+      projectId: PROJECT_ID,
+      episodeNumber: 60,
+    });
+
+    expect(
+      Object.fromEntries(
+        context.activeThreads.map((t) => [
+          t.threadName,
+          t.lastActiveEpisodeNumber,
+        ]),
+      ),
+    ).toEqual({ 'T-new': 59, 'T-hot': 55, 'T-gone': undefined });
+  });
+});

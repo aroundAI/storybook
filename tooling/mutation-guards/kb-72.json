@@ -1,0 +1,55 @@
+{
+  "feature": "KB-72",
+  "mutations": [
+    {
+      "name": "M1 CANON_007 counts touched episodes instead of the last-active number",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/continuity-validator.ts",
+      "find": "    const episodesSinceTouch = currentEpisode - thread.lastActiveEpisodeNumber;\n",
+      "replace": "    const episodesSinceTouch =\n      currentEpisode - (thread.episodesTouched ?? []).length;\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/continuity-validator.test.ts",
+      "pattern": "touched in the previous episode"
+    },
+    {
+      "name": "M2 The builder drops the thread's last-active episode number",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/memory-context-builder.ts",
+      "find": "        item: thread,\n        id: thread.id,\n        episode: thread.lastActiveEpisodeNumber,\n",
+      "replace": "        item: { ...thread, lastActiveEpisodeNumber: undefined },\n        id: thread.id,\n        episode: thread.lastActiveEpisodeNumber,\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/memory-context-builder.test.ts",
+      "pattern": "last-active episode for CANON_007"
+    },
+    {
+      "name": "M3 checkContinuity returns canon strings unsanitised",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/continuity-skill.ts",
+      "find": "validatePlotSkeleton(plotSkeleton, memoryContext);\n\n        return toolSuccess(\n          sanitizeStrings({\n",
+      "replace": "validatePlotSkeleton(plotSkeleton, memoryContext);\n\n        return toolSuccess(\n          ({\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/continuity-skill.test.ts",
+      "pattern": "is sanitised \\(KB-72\\) checkContinuity"
+    },
+    {
+      "name": "M4 checkSceneContinuity returns canon strings unsanitised",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/continuity-skill.ts",
+      "find": "validateSceneBlocks(scenes, memoryContext);\n\n        return toolSuccess(\n          sanitizeStrings({\n",
+      "replace": "validateSceneBlocks(scenes, memoryContext);\n\n        return toolSuccess(\n          ({\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/continuity-skill.test.ts",
+      "pattern": "checkSceneContinuity"
+    },
+    {
+      "name": "M5 sanitizeStrings passes strings through untouched",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/sanitize-for-prompt.ts",
+      "find": "  if (typeof value === 'string') return sanitizeForPrompt(value) as T;\n",
+      "replace": "  if (typeof value === 'string') return value;\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/continuity-skill.test.ts",
+      "pattern": "buildMemoryContext"
+    }
+  ]
+}

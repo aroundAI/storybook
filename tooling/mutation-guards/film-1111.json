@@ -85,8 +85,8 @@
       "name": "S3 Fact text reaches the agent unsanitised",
       "kind": "unit",
       "file": "packages/features/episodes/src/agent/skills/continuity-skill.ts",
-      "find": "            claim: sanitizeForPrompt(source.claim),\n",
-      "replace": "            claim: source.claim,\n",
+      "find": "          sanitizeStrings({\n            summary: `Loaded memory context:",
+      "replace": "          ({\n            summary: `Loaded memory context:",
       "cwd": "packages/features/episodes",
       "test": "__tests__/continuity-skill.test.ts",
       "pattern": "sanitised fact text"

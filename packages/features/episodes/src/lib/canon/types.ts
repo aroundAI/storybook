@@ -111,6 +111,11 @@ export interface NarrativeThread {
   updatedAt: string;
   openedEpisode?: EpisodeRef;
   resolvedEpisode?: EpisodeRef;
+  /**
+   * The latest episode number the thread was opened or touched in. Set by
+   * the memory context builder; undefined when none of its episodes resolve.
+   */
+  lastActiveEpisodeNumber?: number;
 }
 
 export type NarrativeThreadType =

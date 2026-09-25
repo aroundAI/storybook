@@ -56,7 +56,7 @@ acceptance_criteria:
     reason: "unverified — items past a category cap are dropped (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:123`); no test exercises overflow"
   - text: "Formats context for prompt injection"
     met: true
-    evidence: "packages/features/episodes/src/lib/canon/memory-context-builder.ts:765"
+    evidence: "packages/features/episodes/src/lib/canon/memory-context-builder.ts:772"
   - text: "**New**: Formats context for UI display (Memory Context Preview)"
     met: false
     reason: "not met — never imported or rendered (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/memory-context-preview.tsx:55`; only commit: 88a122b0)"
@@ -85,6 +85,7 @@ remaining:
 open_questions: []
 notes: |
   Priority (source frontmatter): high
+  KB-72 (2026-09-25): each active thread carries `lastActiveEpisodeNumber`, the number FILM-1111 already resolved for ranking, so ranking and CANON_007 read the same value (`__tests__/memory-context-builder.test.ts`).
   library.file_path is the file the audit evidence cites; the source's own "File Location" section (packages/features/episodes/src/lib/services/memory-context-builder.ts) is kept below.
 
   ## Overview
