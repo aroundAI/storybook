@@ -44,7 +44,7 @@ acceptance_criteria:
   - text: "An attribute common to winners and comparable losers is not reported as a finding"
     met: false
     reason: "not yet implemented — spec status is DRAFT, unaudited"
-  - text: "Claim strength is explicit, and causal requires an experiment reference"
+  - text: "Claim strength is explicit, and causal requires a reference to a concluded Change log entry (FILM-1610) or a concluded channel experiment (FILM-1724), and names which kind backs it"
     met: false
     reason: "not yet implemented — spec status is DRAFT, unaudited"
   - text: "Observed and adjusted lift both survive to the raw layer"
@@ -85,7 +85,7 @@ feature:
     - "Genome v1: observable attributes (duration, hook type, opening visual, first sentence, face present, text present, cuts per minute, scene changes, question in first 3s, result-first) on existing tag infrastructure"
     - "Genome v2: semantic attributes (curiosity, novelty, utility, relatability, identity, surprise, aspiration, controversy, humour, authority), creative templates, hypothesis generation, experiment linkage, causal evidence"
     - "Discriminating-attribute comparison: successful comparables vs unsuccessful comparables, not merely correlated attributes"
-    - "Three claim strengths: observed, controlled_association, causal (causal gated on analytics_experiments)"
+    - "Three claim strengths: observed, controlled_association, causal (causal gated on a concluded Change log entry (FILM-1610) or a concluded channel experiment (FILM-1724); the claim names which)"
     - "Evidence object: level, n, cohort n, comparable definition, claim strength, observed and adjusted lift, shrinkage factor, both comparable sets, source rows, MetricProvenance"
 notes: |
   ## Overview
@@ -184,10 +184,14 @@ notes: |
   |---|---|---|
   | `observed` | "Videos tagged identity had 1.7x typical transmission" | a cross-tab |
   | `controlled_association` | "Among comparable videos, identity is associated with 1.7x" | same platform, format family, duration band, topic, creator; one attribute varying |
-  | `causal` | "Changing the framing increased transmission" | only from an experiment |
+  | `causal` | "Changing the framing increased transmission" | only from a concluded Change log entry (FILM-1610) or a concluded channel experiment (FILM-1724), named by kind |
 
   The third is the one people will trust for creative decisions, so it is
-  gated on `analytics_experiments` and reachable by no other path.
+  gated on a concluded Change log entry (FILM-1610) or a concluded channel experiment (FILM-1724), and reachable by no other path. The claim names
+  which kind backs it, because they answer different questions: a Change log
+  entry compares the same published videos before and after a change (a
+  title, a thumbnail); a channel experiment compares styles across new
+  uploads. Decided by the owner, 2026-09-24.
 
   ## Evidence, and why "come back in seven months" is unacceptable
 
@@ -271,8 +275,9 @@ notes: |
   The statistics are pure and belong in unit tests. The decisive ones: the
   failing control — an attribute present in 71% of winners and 68% of
   comparable losers must produce no finding; n=2 at +180% must rank below
-  n=100 at +35%; a `causal` claim constructed without an experiment
-  reference must not compile; a recommendation constructed without an
+  n=100 at +35%; a `causal` claim constructed without a reference to a
+  concluded Change log entry or channel experiment, typed by which kind it
+  is, must not compile; a recommendation constructed without an
   `Evidence` must not compile; confounded input — two attributes that
   always co-occur must not both be reported as independent findings.
 

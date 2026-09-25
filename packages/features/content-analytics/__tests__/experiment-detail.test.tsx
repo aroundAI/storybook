@@ -202,3 +202,112 @@ describe('ExperimentDetail — coverage (C2, C3)', () => {
     );
   });
 });
+
+describe('ExperimentDetail — the baseline measured twice (KB-8, owner decision)', () => {
+  const partial = (value: number, days: number): WatchedValue => ({
+    ...(measured('ctr', value) as Extract<
+      WatchedValue,
+      { status: 'measured' }
+    >),
+    window: { start: '2026-05-02', end: '2026-06-30' },
+    daysWithData: days,
+    windowDays: 60,
+  });
+
+  it('shows the start baseline and the re-measured one, each labelled, each with its days', () => {
+    render(
+      <ExperimentDetail
+        experiment={experiment({
+          metric_watched: 'ctr',
+          baseline_metrics: { totals: TOTALS, watched: partial(0.04, 57) },
+          result_metrics: {
+            totals: TOTALS,
+            watched: measured('ctr', 0.05),
+            baselineRemeasured: partial(0.042, 60),
+          },
+        })}
+      />,
+    );
+
+    const atStart = byTest('experiment-watched-baseline');
+    const again = byTest('experiment-watched-baseline-remeasured');
+
+    expect(atStart.textContent).toContain('measured at the start');
+    expect(atStart.textContent).toContain('4.0%');
+    expect(atStart.textContent).toContain('data on 57 of 60 days');
+
+    expect(again.textContent).toContain('measured again at conclusion');
+    expect(again.textContent).toContain('4.2%');
+    // Stated even when every day has data: the two are read side by side.
+    expect(again.textContent).toContain('data on 60 of 60 days');
+  });
+
+  it('draws no comparison between the two baselines', () => {
+    render(
+      <ExperimentDetail
+        experiment={experiment({
+          metric_watched: 'ctr',
+          baseline_metrics: { totals: TOTALS, watched: partial(0.04, 57) },
+          result_metrics: {
+            totals: TOTALS,
+            watched: measured('ctr', 0.05),
+            baselineRemeasured: partial(0.042, 60),
+          },
+        })}
+      />,
+    );
+
+    // Exactly the three measured figures, and no fourth derived from two of
+    // them: the owner chose no headline comparison.
+    const figures =
+      byTest('experiment-watched').textContent?.match(/[+−-]?\d+(\.\d+)?%/g) ??
+      [];
+    expect(figures).toEqual(['4.0%', '4.2%', '5.0%']);
+  });
+
+  it('shows one baseline, as before, when the change was concluded before the re-measure existed', () => {
+    render(
+      <ExperimentDetail
+        experiment={experiment({
+          metric_watched: 'ctr',
+          baseline_metrics: { totals: TOTALS, watched: measured('ctr', 0.04) },
+          result_metrics: { totals: TOTALS, watched: measured('ctr', 0.05) },
+        })}
+      />,
+    );
+
+    expect(
+      document.querySelector(
+        '[data-test="experiment-watched-baseline-remeasured"]',
+      ),
+    ).toBeNull();
+  });
+});
+
+describe('ExperimentDetail — tags (FILM-1509 remaining, now FILM-1610)', () => {
+  it('lists the linked tags by label', () => {
+    render(
+      <ExperimentDetail
+        experiment={experiment({
+          tags: [
+            {
+              tag_id: 't1',
+              content_tags: { dimension: 'topic', slug: 'a', label: 'Cooking' },
+            },
+            {
+              tag_id: 't2',
+              content_tags: {
+                dimension: 'format',
+                slug: 'b',
+                label: 'Tutorial',
+              },
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(byTest('experiment-detail-tags').textContent).toContain('Cooking');
+    expect(byTest('experiment-detail-tags').textContent).toContain('Tutorial');
+  });
+});

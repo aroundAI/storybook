@@ -228,7 +228,12 @@ vi.mock('@kit/supabase/server-client', () => ({
           eq: (_: string, id: string) => {
             state.deletedExperiments.push(id);
             const result = { error: state.cleanupError };
-            return {
+            const deleted = {
+              // The delete action conditions its write on the status (KB-7).
+              in: (column: string, values: unknown[]) => {
+                if (column === 'status') state.statusGuards.push(values);
+                return deleted;
+              },
               select: async () => ({
                 data: state.rowStillMatches ? [{ id }] : [],
                 error: null,
@@ -238,6 +243,7 @@ vi.mock('@kit/supabase/server-client', () => ({
                 reject?: (reason: unknown) => unknown,
               ) => Promise.resolve(result).then(resolve, reject),
             };
+            return deleted;
           },
         }),
       };
@@ -844,7 +850,7 @@ describe('a write that changed nothing is not reported as done (round 5, H8)', (
     expect(await deleteAction({ experimentId: 'e1' })).toEqual({
       ok: false,
       error:
-        'Nothing was deleted: the change was not found, or you cannot delete it.',
+        'Nothing was deleted: the change was not found, was started since you opened it, or you cannot delete it. Reload and try again.',
     });
   });
 
@@ -896,5 +902,110 @@ describe('the expectation is fixed once started (round 5, H3)', () => {
     expect(
       await updateAction({ experimentId: 'e1', title: 'Renamed' }),
     ).toEqual({ ok: true, data: { success: true } });
+  });
+});
+
+describe('delete only while planned or abandoned (KB-7, owner decision)', () => {
+  it('refuses a running change as a value, and deletes nothing', async () => {
+    state.experiment.status = 'running';
+
+    expect(await deleteAction({ experimentId: 'e1' })).toEqual({
+      ok: false,
+      error:
+        'Only a planned or abandoned change can be deleted; this one is running. Abandon it first to stop it and keep its record.',
+    });
+    expect(state.deletedExperiments).toEqual([]);
+  });
+
+  it('refuses a concluded change, which is the record the log keeps', async () => {
+    state.experiment.status = 'concluded';
+
+    const result = await deleteAction({ experimentId: 'e1' });
+
+    expect(result.ok).toBe(false);
+    expect(state.deletedExperiments).toEqual([]);
+  });
+
+  it('deletes only if the row is still planned or abandoned when written', async () => {
+    state.experiment.status = 'abandoned';
+
+    expect(await deleteAction({ experimentId: 'e1' })).toEqual({
+      ok: true,
+      data: { success: true },
+    });
+    expect(state.statusGuards).toEqual([['planned', 'abandoned']]);
+  });
+});
+
+describe('the baseline is measured again at conclusion (KB-8, owner decision)', () => {
+  beforeEach(() => {
+    state.experiment.status = 'running';
+    state.experiment.started_at = '2026-07-01';
+  });
+
+  it('re-measures the baseline window and keeps it beside the result', async () => {
+    await concludeExperimentAction({
+      experimentId: 'e1',
+      actualOutcome: 'CTR rose',
+      outcomeStatus: 'confirmed',
+      endedAt: '2026-09-13',
+    });
+
+    // The same 60 days before the start the start measured.
+    expect(resolveWatchedMetric).toHaveBeenCalledWith(
+      expect.objectContaining({
+        window: { start: '2026-05-02', end: '2026-06-30' },
+      }),
+    );
+
+    const written = state.updates[0]!;
+    expect(written.result_metrics).toHaveProperty('baselineRemeasured');
+    expect(
+      (written.result_metrics as { baselineRemeasured: { metric: string } })
+        .baselineRemeasured.metric,
+    ).toBe('ctr');
+  });
+
+  it('never rewrites the baseline taken at the start', async () => {
+    await concludeExperimentAction({
+      experimentId: 'e1',
+      actualOutcome: 'CTR rose',
+      outcomeStatus: 'confirmed',
+      endedAt: '2026-09-13',
+    });
+
+    expect(state.updates[0]).not.toHaveProperty('baseline_metrics');
+  });
+
+  it('does not re-measure an age-bounded metric, which has no window', async () => {
+    state.experiment.metric_watched = 'views_at_30d';
+
+    await concludeExperimentAction({
+      experimentId: 'e1',
+      actualOutcome: 'Same',
+      outcomeStatus: 'inconclusive',
+      endedAt: '2026-09-13',
+    });
+
+    expect(resolveWatchedMetric).toHaveBeenCalledTimes(1);
+    expect(state.updates[0]!.result_metrics).not.toHaveProperty(
+      'baselineRemeasured',
+    );
+  });
+
+  it('does not re-measure when no metric is watched', async () => {
+    state.experiment.metric_watched = null;
+
+    await concludeExperimentAction({
+      experimentId: 'e1',
+      actualOutcome: 'Same',
+      outcomeStatus: 'inconclusive',
+      endedAt: '2026-09-13',
+    });
+
+    expect(resolveWatchedMetric).not.toHaveBeenCalled();
+    expect(state.updates[0]!.result_metrics).not.toHaveProperty(
+      'baselineRemeasured',
+    );
   });
 });

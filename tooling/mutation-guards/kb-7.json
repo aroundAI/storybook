@@ -1,0 +1,143 @@
+{
+  "feature": "FILM-CC-04 KB-7, KB-8, KB-93 (Change log management)",
+  "mutations": [
+    {
+      "name": "KB-93 tag link policy back to experiment access only",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/experiment-tags-account-rls.test.sql",
+      "sql": "alter policy experiment_tags_create on public.experiment_tags with check (exists (select 1 from public.analytics_experiments e where e.id = experiment_id and public.has_account_access(e.account_id)));"
+    },
+    {
+      "name": "KB-7 delete allowed in every state again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/analytics-experiments-rls.test.sql",
+      "sql": "alter policy analytics_experiments_delete on public.analytics_experiments using (public.has_account_access(account_id));"
+    },
+    {
+      "name": "FILM-1610 isolation: read policy opened to everyone",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/analytics-experiments-rls.test.sql",
+      "sql": "alter policy analytics_experiments_read on public.analytics_experiments using (true);"
+    },
+    {
+      "name": "FILM-1610 isolation: update policy opened to everyone",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/analytics-experiments-rls.test.sql",
+      "sql": "alter policy analytics_experiments_read on public.analytics_experiments using (true); alter policy analytics_experiments_update on public.analytics_experiments using (true);"
+    },
+    {
+      "name": "KB-7 delete action no longer checks the status",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "      assertCanDelete(context.status);\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "pattern": "refuses a running change as a value"
+    },
+    {
+      "name": "KB-7 delete write no longer conditioned on the status",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "        .in('status', ['planned', 'abandoned'])\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "pattern": "still planned or abandoned when written"
+    },
+    {
+      "name": "KB-8 re-measure also runs for an age-bounded metric",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "        isWatchedMetricKey(metric) &&\n        WATCHED_METRICS[metric].windowed\n",
+      "replace": "        isWatchedMetricKey(metric)\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "pattern": "age-bounded"
+    },
+    {
+      "name": "KB-8 baseline not measured again at conclusion",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "        result.baselineRemeasured = await resolveWatchedMetric({",
+      "replace": "        void await resolveWatchedMetric({",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-actions.test.ts",
+      "pattern": "keeps it beside the result"
+    },
+    {
+      "name": "KB-7 edit sends frozen fields after start",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/experiment-edit.ts",
+      "find": "  const open = (field: keyof ExperimentUpdate) => !frozen.includes(field);",
+      "replace": "  const open = (_field: keyof ExperimentUpdate) => frozen.length >= 0;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-edit.test.ts",
+      "pattern": "frozen field once started"
+    },
+    {
+      "name": "KB-7 edit compares links by order",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/experiment-edit.ts",
+      "find": "  a.length === b.length && a.every((id) => b.includes(id));",
+      "replace": "  a.length === b.length && a.every((id, index) => b[index] === id);",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-edit.test.ts",
+      "pattern": "as sets"
+    },
+    {
+      "name": "KB-7 E2E edit form opens empty, not on the change",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/experiments/experiment-form.tsx",
+      "find": "    defaultValues: initialValues ?? emptyValues(accountId, projectId),",
+      "replace": "    defaultValues: emptyValues(accountId, projectId),",
+      "spec": "tests/experiments/experiments-manage.spec.ts",
+      "grep": "editing one change and then another"
+    },
+    {
+      "name": "KB-7 E2E locked fields not locked",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/experiments/experiment-form.tsx",
+      "find": "  const locked = frozenFields(editing ? status : 'planned');",
+      "replace": "  const locked = frozenFields('planned');",
+      "spec": "tests/experiments/experiments-manage.spec.ts",
+      "grep": "locks what its baseline measured"
+    },
+    {
+      "name": "KB-7 E2E Delete offered in every state",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/analytics/experiments/_components/experiments-client.tsx",
+      "find": "                {canDelete(experiment.status) ? (",
+      "replace": "                {true ? (",
+      "spec": "tests/experiments/experiments-manage.spec.ts",
+      "grep": "offers no Delete"
+    },
+    {
+      "name": "FILM-1610 E2E status filter not read from the URL",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/analytics/experiments/_components/experiments-client.tsx",
+      "find": "    searchParams.get('status'),\n",
+      "replace": "    null,\n",
+      "spec": "tests/experiments/experiments-manage.spec.ts",
+      "grep": "keeps it across a reload"
+    },
+    {
+      "name": "FILM-1610 E2E filtered empty list claims an empty log",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/experiments/experiment-list.tsx",
+      "find": "  if (experiments.length === 0 && statusFilter) {",
+      "replace": "  if (experiments.length === 0 && statusFilter && false) {",
+      "spec": "tests/experiments/experiments-manage.spec.ts",
+      "grep": "says when none match"
+    },
+    {
+      "name": "KB-7 E2E a refused action no longer re-reads the change",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/analytics/experiments/_components/experiments-client.tsx",
+      "find": "      void Promise.all([refresh(), detailQuery.refetch()]);\n",
+      "replace": "",
+      "spec": "tests/experiments/experiments-manage.spec.ts",
+      "grep": "says why, and keeps it"
+    }
+  ]
+}

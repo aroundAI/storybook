@@ -37,6 +37,14 @@ export interface ExperimentMetricSnapshot {
   watched?: WatchedValue | null;
   /** Result snapshots only: days from start to end. */
   resultAfterDays?: number;
+  /** Result snapshots only (KB-8): the baseline window, measured again. */
+  baselineRemeasured?: WatchedValue;
+}
+
+/** A linked tag as getExperimentAction returns it. */
+export interface ExperimentTagLink {
+  tag_id: string;
+  content_tags: { dimension: string; slug: string; label: string } | null;
 }
 
 interface ExperimentDetailProps {
@@ -58,6 +66,7 @@ interface ExperimentDetailProps {
     review_window_days?: number;
     review_due_at?: string | null;
     notes?: string | null;
+    tags?: ExperimentTagLink[];
   };
   /** Loading state */
   isLoading?: boolean;
@@ -94,8 +103,14 @@ function formatWindow(window: DateWindow | null): string {
  */
 function WatchedCoverage({
   watched,
+  showDays = false,
 }: {
   watched: Extract<WatchedValue, { status: 'measured' }>;
+  /**
+   * State the days even when every day has data. The two baselines are read
+   * side by side (KB-8), and "57 of 60" means little beside a silent 60.
+   */
+  showDays?: boolean;
 }) {
   // Snapshots written before coverage was recorded have neither field.
   const daysWithData = watched.daysWithData ?? null;
@@ -119,6 +134,10 @@ function WatchedCoverage({
         <span data-test={'watched-partial-coverage'}>
           {` · data on ${daysWithData} of ${windowDays} days`}
         </span>
+      ) : showDays && daysWithData !== null && windowDays !== null ? (
+        <span data-test={'watched-full-coverage'}>
+          {` · data on ${daysWithData} of ${windowDays} days`}
+        </span>
       ) : null}
       {daily !== null ? ` · ${daily.toFixed(1)} per day` : null}
     </span>
@@ -131,12 +150,14 @@ function WatchedSide({
   watched,
   testId,
   notYet,
+  showDays = false,
 }: {
   label: string;
   watched: WatchedValue | null | undefined;
   testId: string;
   /** What to say when this side has not been captured yet. */
   notYet: string;
+  showDays?: boolean;
 }) {
   return (
     <div className={'flex flex-col gap-1'} data-test={testId}>
@@ -152,7 +173,7 @@ function WatchedSide({
           >
             {formatWatchedValue(watched.value, watched.unit)}
           </span>
-          <WatchedCoverage watched={watched} />
+          <WatchedCoverage watched={watched} showDays={showDays} />
         </>
       ) : (
         // A reason, never a zero: "no data" and "measured zero" are different
@@ -224,6 +245,10 @@ export function ExperimentDetail({
     resultMetric !== undefined &&
     baselineMetric !== resultMetric;
   const resultAfterDays = experiment.result_metrics?.resultAfterDays;
+  const remeasured = experiment.result_metrics?.baselineRemeasured;
+  const tags = (experiment.tags ?? []).flatMap((link) =>
+    link.content_tags ? [{ id: link.tag_id, ...link.content_tags }] : [],
+  );
 
   return (
     <div className={'flex flex-col gap-6'}>
@@ -257,6 +282,18 @@ export function ExperimentDetail({
             <Badge variant={'outline'} data-test={'experiment-detail-category'}>
               {categoryLabel(experiment.category)}
             </Badge>
+          </div>
+        ) : null}
+        {tags.length > 0 ? (
+          <div
+            className={'flex flex-wrap gap-1.5'}
+            data-test={'experiment-detail-tags'}
+          >
+            {tags.map((tag) => (
+              <Badge key={tag.id} variant={'secondary'}>
+                {tag.label}
+              </Badge>
+            ))}
           </div>
         ) : null}
         {experiment.category && BAKED_IN_CATEGORIES.has(experiment.category) ? (
@@ -330,12 +367,37 @@ export function ExperimentDetail({
             </p>
           ) : null}
           <div className={'grid gap-3 rounded-lg border p-3 sm:grid-cols-2'}>
-            <WatchedSide
-              label={'Before the change'}
-              watched={experiment.baseline_metrics?.watched}
-              testId={'experiment-watched-baseline'}
-              notYet={'Measured at the start.'}
-            />
+            {remeasured ? (
+              // KB-8: the start's baseline lacked the days that had not
+              // arrived yet; the same window measured at conclusion has
+              // them. Both are shown and neither is preferred — the owner
+              // chose no headline comparison between them (2026-09-24).
+              <div className={'flex flex-col gap-3'}>
+                <WatchedSide
+                  label={'Before the change — measured at the start'}
+                  watched={experiment.baseline_metrics?.watched}
+                  testId={'experiment-watched-baseline'}
+                  notYet={'Measured at the start.'}
+                  showDays
+                />
+                <WatchedSide
+                  label={
+                    'Before the change — the same days, measured again at conclusion'
+                  }
+                  watched={remeasured}
+                  testId={'experiment-watched-baseline-remeasured'}
+                  notYet={''}
+                  showDays
+                />
+              </div>
+            ) : (
+              <WatchedSide
+                label={'Before the change'}
+                watched={experiment.baseline_metrics?.watched}
+                testId={'experiment-watched-baseline'}
+                notYet={'Measured at the start.'}
+              />
+            )}
             <WatchedSide
               label={'Since the change'}
               watched={experiment.result_metrics?.watched}

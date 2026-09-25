@@ -111,8 +111,12 @@ create policy "analytics_experiments_create" on public.analytics_experiments for
 create policy "analytics_experiments_update" on public.analytics_experiments for update
   to authenticated using (public.has_account_access(account_id));
 
+-- Deleted only while planned or abandoned (KB-7, 20260924143141).
 create policy "analytics_experiments_delete" on public.analytics_experiments for delete
-  to authenticated using (public.has_account_access(account_id));
+  to authenticated using (
+    public.has_account_access(account_id)
+    and status in ('planned', 'abandoned')
+  );
 
 -- Join tables authorize through their parent experiment
 create policy "experiment_publishes_read" on public.experiment_publishes for select
@@ -161,12 +165,16 @@ create policy "experiment_tags_read" on public.experiment_tags for select
     )
   );
 
+-- A tag must belong to the change's account (KB-93, 20260924143141).
 create policy "experiment_tags_create" on public.experiment_tags for insert
   to authenticated with check (
     exists (
-      select 1 from public.analytics_experiments e
-      where e.id = experiment_id
-        and public.has_account_access(e.account_id)
+      select 1
+        from public.analytics_experiments e
+        join public.content_tags t on t.id = experiment_tags.tag_id
+       where e.id = experiment_tags.experiment_id
+         and public.has_account_access(e.account_id)
+         and t.account_id = e.account_id
     )
   );
 

@@ -159,6 +159,19 @@ notes: |
   - FILM-1610 Change log: stays the tool for thumbnail and title swaps on
     published videos. Its per-video queries, folds, lifecycle trigger and
     refusal handling (withRefusals) are reused, not copied.
+    **The Change log's baseline and delete rules do not carry over by
+    default.** The owner decided two of them on 2026-09-24 (KB-7, KB-8) for
+    before/after windows only: a baseline is measured again at conclusion and
+    both are shown with no headline comparison, and an entry is deleted only
+    while planned or abandoned. A channel experiment measures each video at
+    the same age rather than over a window before a start date, so the
+    re-measure question may not arise in the same form; whether a style
+    experiment can be deleted once videos are assigned is its own decision.
+    Decide both here when this spec is designed — reuse the lifecycle trigger,
+    not these two answers.
+  - FILM-1717, FILM-1718, FILM-1719: a causal claim may be backed by a
+    concluded Change log entry or a concluded channel experiment, and names
+    which kind (owner, 2026-09-24).
   - FILM-1717 Content genome: concluded channel experiments are the
     strongest evidence it can use, because the styles were varied on purpose.
     How it consumes them is decided there.
