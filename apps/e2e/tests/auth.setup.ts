@@ -2,6 +2,7 @@ import { expect, test as setup } from '@playwright/test';
 
 import { AuthPageObject } from './authentication/auth.po';
 import { SUPER_ADMIN, SUPER_ADMIN_STORAGE_STATE } from './utils/super-admin';
+import { waitForSignedIn } from './utils/session';
 
 /**
  * Signs in as the super-admin once and saves the session for every admin test.
@@ -37,7 +38,7 @@ setup('authenticate as super-admin', async ({ page }) => {
 
   await expect(async () => {
     await auth.submitMFAVerification(SUPER_ADMIN.mfaKey);
-    await page.waitForURL('**/home');
+    await waitForSignedIn(page);
   }).toPass({ intervals: [1000, 5000, 15_000, 30_000, 35_000] });
 
   // Proves the session is actually AAL2 before it is saved. Landing on /home

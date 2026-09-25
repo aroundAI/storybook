@@ -12,6 +12,7 @@ import {
   uniqueStamp,
 } from '../utils/seed';
 import { SUPER_ADMIN_STORAGE_STATE } from '../utils/super-admin';
+import { waitForSignedIn } from '../utils/session';
 
 test.describe('Admin Auth flow without MFA', () => {
   test('will return a 404 for non-admin users', async ({ page }) => {
@@ -24,7 +25,7 @@ test.describe('Admin Auth flow without MFA', () => {
       password: 'testingpassword',
     });
 
-    await page.waitForURL('/home');
+    await waitForSignedIn(page);
 
     await page.goto('/admin');
 
@@ -41,7 +42,7 @@ test.describe('Admin Auth flow without MFA', () => {
       password: 'testingpassword',
     });
 
-    await page.waitForURL('/home');
+    await waitForSignedIn(page);
 
     await page.goto('/admin');
 
@@ -185,7 +186,7 @@ test.describe('Admin', () => {
       await withSignedOutPage(browser, async (signedOut) => {
         await signIn(signedOut, testUser);
 
-        await signedOut.waitForURL('/home');
+        await waitForSignedIn(signedOut);
       });
     });
 
@@ -200,7 +201,7 @@ test.describe('Admin', () => {
       await page.getByRole('button', { name: 'Impersonate User' }).click();
 
       // Should redirect to home and be logged in as the user
-      await page.waitForURL('/home');
+      await waitForSignedIn(page);
     });
 
     test('delete user flow', async ({ page }) => {

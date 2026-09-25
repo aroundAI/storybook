@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { AuthPageObject } from './auth.po';
+import { waitForSignedIn } from '../utils/session';
 
 test.describe('Auth flow', () => {
   test.describe.configure({ mode: 'serial' });
@@ -29,7 +30,7 @@ test.describe('Auth flow', () => {
 
     await auth.visitConfirmEmailLink(email);
 
-    await page.waitForURL('**/home');
+    await waitForSignedIn(page);
   });
 
   test('will sign-in with the correct credentials', async ({ page }) => {
@@ -43,7 +44,7 @@ test.describe('Auth flow', () => {
       password: 'password',
     });
 
-    await page.waitForURL('**/home');
+    await waitForSignedIn(page);
 
     expect(page.url()).toContain('/home');
 
@@ -115,7 +116,7 @@ test.describe('Last auth method tracking', () => {
     });
 
     await auth.visitConfirmEmailLink(testEmail);
-    await page.waitForURL('**/home');
+    await waitForSignedIn(page);
 
     // Sign out
     await auth.signOut();
@@ -169,7 +170,7 @@ test.describe('Last auth method tracking', () => {
       password: 'password123',
     });
 
-    await page.waitForURL('**/home');
+    await waitForSignedIn(page);
 
     // Sign out and check the method is still tracked
     await auth.signOut();
