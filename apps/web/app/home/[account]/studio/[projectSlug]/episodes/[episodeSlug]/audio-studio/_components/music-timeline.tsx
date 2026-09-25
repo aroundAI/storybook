@@ -504,24 +504,28 @@ export const MusicTimeline = React.forwardRef<
       if (selectedTrack.id.startsWith('cue-')) {
         // Update Cue
         const cueId = selectedTrack.id.replace('cue-', '');
-        await updateAudioCueAction({
-          cueId,
-          prompt: editPrompt.trim(),
-        });
+        await unwrap(
+          updateAudioCueAction({
+            cueId,
+            prompt: editPrompt.trim(),
+          }),
+        );
       } else {
         // Update Track
-        await updateAudioTrackAction({
-          trackId: selectedTrack.id,
-          prompt: editPrompt.trim(),
-        });
+        await unwrap(
+          updateAudioTrackAction({
+            trackId: selectedTrack.id,
+            prompt: editPrompt.trim(),
+          }),
+        );
       }
       toast.success('Music prompt updated');
       setIsEditModalOpen(false);
       setSelectedTrack(null);
       void fetchTracks();
       onRefresh?.();
-    } catch {
-      toast.error('Failed to update music prompt');
+    } catch (error) {
+      toast.error(refusalMessage(error, 'Failed to update music prompt'));
     } finally {
       setIsSaving(false);
     }

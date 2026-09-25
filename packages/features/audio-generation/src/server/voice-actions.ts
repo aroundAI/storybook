@@ -7,7 +7,7 @@ import { z } from 'zod';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { getStorageAdapter } from '@kit/storage';
@@ -195,10 +195,11 @@ const generateDialogueVoice = enhanceAction(
 
     // 9. Update status to 'generating'
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: statusError } = await (client as any)
+    const { data: generating, error: statusError } = await (client as any)
       .from('dialogue_lines')
       .update({ status: 'generating' })
-      .eq('id', data.dialogueLineId);
+      .eq('id', data.dialogueLineId)
+      .select('id');
 
     if (statusError) {
       logger.error(
@@ -207,6 +208,11 @@ const generateDialogueVoice = enhanceAction(
       );
       throw new Error('Failed to update dialogue status');
     }
+
+    requireAffectedRows(
+      generating,
+      "You can't generate audio for this dialogue line.",
+    );
 
     // Create generation job record
     const idempotencyKey = `voice-${data.dialogueLineId}-${uuidv4()}`;
@@ -552,10 +558,22 @@ export const generateDialogueVoiceAsyncAction = enhanceAction(
     try {
       // 5. Update status to 'generating' (queued for background)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (client as any)
+      const { data: generating, error: generatingError } = await (client as any)
         .from('dialogue_lines')
         .update({ status: 'generating' })
-        .eq('id', data.dialogueLineId);
+        .eq('id', data.dialogueLineId)
+        .select('id');
+
+      if (generatingError) {
+        throw new Error(
+          `Failed to update dialogue_lines: ${generatingError.message}`,
+        );
+      }
+
+      requireAffectedRows(
+        generating,
+        "You can't generate audio for this dialogue line.",
+      );
 
       // 6. Enqueue voice job for background processing via dedicated voice queue
       const { queueVoiceJob } = await import(
@@ -870,15 +888,18 @@ const updateDialogueText = enhanceAction(
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = await (client as any)
+    const { data: updated, error: updateError } = await (client as any)
       .from('dialogue_lines')
       .update(updatePayload)
-      .eq('id', data.dialogueLineId);
+      .eq('id', data.dialogueLineId)
+      .select('id');
 
     if (updateError) {
       logger.error({ ...ctx, error: updateError }, 'Failed to update dialogue');
       throw new Error('Failed to update dialogue text');
     }
+
+    requireAffectedRows(updated, "You can't change this dialogue line.");
 
     logger.info(ctx, 'Dialogue text updated successfully');
 
@@ -928,10 +949,11 @@ export const updateDialogueTimingAction = enhanceAction(
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = await (client as any)
+    const { data: updated, error: updateError } = await (client as any)
       .from('dialogue_lines')
       .update(updatePayload)
-      .eq('id', data.dialogueLineId);
+      .eq('id', data.dialogueLineId)
+      .select('id');
 
     if (updateError) {
       logger.error(
@@ -940,6 +962,8 @@ export const updateDialogueTimingAction = enhanceAction(
       );
       throw new Error('Failed to update dialogue timing');
     }
+
+    requireAffectedRows(updated, "You can't change this dialogue line.");
 
     return { success: true, dialogueLineId: data.dialogueLineId };
   },

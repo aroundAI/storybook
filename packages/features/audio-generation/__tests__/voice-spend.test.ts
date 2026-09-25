@@ -121,9 +121,15 @@ const readable: Record<string, Row[]> = {
 function query(table: string) {
   let rows: Row[] = [...(readable[table] ?? [])];
   let writing = false;
+  // A write answers with its rows only when it asks for them (.select()),
+  // as PostgREST does: the rows the filters still match (KB-105).
+  let selected = false;
 
   const builder = {
-    select: () => builder,
+    select: () => {
+      selected = true;
+      return builder;
+    },
     eq: (column: string, value: unknown) => {
       rows = rows.filter((row) => row[column] === value);
       return builder;
@@ -146,9 +152,10 @@ function query(table: string) {
         : { data: null, error: { message: 'not found' } },
     maybeSingle: async () => ({ data: rows[0] ?? null, error: null }),
     then: <R>(resolve: (value: { data: Row[] | null; error: null }) => R) =>
-      Promise.resolve({ data: writing ? null : rows, error: null }).then(
-        resolve,
-      ),
+      Promise.resolve({
+        data: writing && !selected ? null : rows,
+        error: null,
+      }).then(resolve),
   };
 
   return builder;
