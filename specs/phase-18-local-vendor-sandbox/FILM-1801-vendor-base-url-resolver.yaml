@@ -64,7 +64,7 @@ notes: |
   | YouTube Data / Analytics / Reporting | SDK defaults in googleapis and @googleapis/youtube — never given rootUrl |
   | ElevenLabs, PlayHT, Suno, Udio | audio-generation/src/lib/constants.ts and providers accept a baseUrl option that config-loader.ts never fills; ElevenLabs is also hardcoded in apps/web/lambda/voice-worker, apps/web/lambda/llm-worker and server actions |
   | DeepSeek | packages/llm/src/providers/deepseek.ts passes a hardcoded baseURL, which beats OPENAI_BASE_URL |
-  | Voyage, OpenAI embeddings (raw) | packages/features/embeddings/src/voyage-client.ts, audio-generation/src/lib/audio-embedding.ts |
+  | Voyage, OpenAI embeddings (raw) | apps/web/lambda/llm-worker/utils/voyage-embedder.ts, audio-generation/src/lib/audio-embedding.ts |
 
   This spec makes every one of them resolvable through one function, overridable in
   local development only.
