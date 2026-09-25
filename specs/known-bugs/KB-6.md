@@ -79,7 +79,7 @@ fix removed, so only that job can see it). The 27 client files:
 `voice-profile-editor`, `CharacterEditor`, `use-assets`,
 `use-character-assets` (the last two also *branched* on
 `error.message.includes('in use')`, which cannot match in production);
-`DialogueList`, `LipSyncEditor`, `MusicTrackList`, `VoiceAssignment`,
+`DialogueList`, `LipSyncEditor` (file since deleted, FILM-513), `MusicTrackList`, `VoiceAssignment`,
 `VoiceCloningEditor`; the three audio-library dialogs; the audio-studio
 dialogs, timeline and hooks; `generate-all-sound-modal`;
 `publish-screen`, `publish-hub`, `upload-only-mode`, both social-posts
