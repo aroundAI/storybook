@@ -11,6 +11,13 @@ export interface FailureRule {
   count: number;
 }
 
+/** A tool the model called that came back failed, as the runner reported it. */
+export interface AgentToolFailure {
+  orchestrator: string;
+  tool: string;
+  error: string;
+}
+
 export interface UnrecognisedRequest {
   vendor: string;
   at: string;
@@ -23,6 +30,7 @@ export class SandboxState {
   readonly catalog: CatalogPrompt[];
   readonly unplaced = new Set<string>();
   readonly unrecognised: UnrecognisedRequest[] = [];
+  readonly agentToolFailures: AgentToolFailure[] = [];
   failures: FailureRule[] = [];
   seed: number;
   quality: Quality;
@@ -49,6 +57,7 @@ export class SandboxState {
     this.ledger.clear();
     this.unplaced.clear();
     this.unrecognised.length = 0;
+    this.agentToolFailures.length = 0;
     this.failures = [];
   }
 
