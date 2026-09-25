@@ -40,7 +40,10 @@ export async function GET(request: NextRequest) {
     .limit(50);
 
   const target = new URL(
-    connectFailurePath(chooseAccountSlug(teams ?? [], params.account)),
+    connectFailurePath(
+      chooseAccountSlug(teams ?? [], params.account),
+      (teams ?? []).length > 0,
+    ),
     appOrigin(request),
   );
 

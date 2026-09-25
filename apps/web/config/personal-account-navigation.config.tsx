@@ -18,12 +18,16 @@ const routes = [
         Icon: <Home className={iconClasses} />,
         end: true,
       },
-      {
-        label: 'common:routes.projects',
-        path: pathsConfig.app.personalAccountProjects,
-        Icon: <FolderKanban className={iconClasses} />,
-      },
-    ],
+      // Personal projects exist only with personal accounts on; otherwise the
+      // page redirects to the user's team (KB-99).
+      featureFlagsConfig.enablePersonalAccounts
+        ? {
+            label: 'common:routes.projects',
+            path: pathsConfig.app.personalAccountProjects,
+            Icon: <FolderKanban className={iconClasses} />,
+          }
+        : undefined,
+    ].filter((route) => !!route),
   },
   {
     label: 'common:routes.settings',

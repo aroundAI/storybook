@@ -10,6 +10,7 @@ import {
   LogOut,
   MessageCircleQuestion,
   Shield,
+  UserCog,
 } from 'lucide-react';
 
 import { JWTUserData } from '@kit/supabase/types';
@@ -49,6 +50,7 @@ export function PersonalAccountDropdown({
 
   paths: {
     home: string;
+    settings: string;
   };
 
   features: {
@@ -160,6 +162,20 @@ export function PersonalAccountDropdown({
 
             <span>
               <Trans i18nKey={'common:routes.home'} />
+            </span>
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem asChild>
+          <Link
+            className={'s-full flex cursor-pointer items-center space-x-2'}
+            href={paths.settings}
+            data-test={'account-dropdown-settings'}
+          >
+            <UserCog className={'h-5'} />
+
+            <span>
+              <Trans i18nKey={'common:routes.profileSettings'} />
             </span>
           </Link>
         </DropdownMenuItem>
