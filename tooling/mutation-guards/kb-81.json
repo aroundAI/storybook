@@ -5,8 +5,8 @@
       "name": "M1 Code above cited lines moves, and the specs still name the old lines",
       "kind": "unit",
       "file": "packages/features/publishing/src/lib/token-refresh.ts",
-      "find": "import ",
-      "replace": "// planted by the KB-81 mutation guard\nimport ",
+      "find": "import 'server-only';",
+      "replace": "// planted by the KB-81 mutation guard\nimport 'server-only';",
       "cwd": "packages/shared",
       "test": "__tests__/spec-citation-drift.test.ts",
       "pattern": "no citation has moved"

@@ -55,8 +55,8 @@
       "cwd": "packages/features/episodes",
       "test": "__tests__/canon-event-actions.test.ts",
       "name": "KB-17 add action throws the RLS refusal instead of returning it",
-      "find": "    if (error?.code === INSUFFICIENT_PRIVILEGE) {\n      throw new ActionRefusal(CANON_WRITE_REFUSAL);\n    }\n\n",
-      "replace": ""
+      "find": "        metadata: (data.metadata ?? null) as Json,\n        created_by: user.id,\n      })\n      .select()\n      .single();\n\n    if (error?.code === INSUFFICIENT_PRIVILEGE) {\n      throw new ActionRefusal(CANON_WRITE_REFUSAL);\n    }\n\n",
+      "replace": "        metadata: (data.metadata ?? null) as Json,\n        created_by: user.id,\n      })\n      .select()\n      .single();\n\n"
     },
     {
       "kind": "unit",

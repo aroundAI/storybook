@@ -53,6 +53,7 @@ export type {
   VideoReachDaily,
   VideoSnapshot,
   VideoTrafficSource,
+  YouTubeVideoMetric,
 } from './types';
 
 export { formatDateStr } from './utils';

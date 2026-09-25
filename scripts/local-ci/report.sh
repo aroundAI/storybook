@@ -1,6 +1,7 @@
 #!/bin/bash
 # report.sh <pr> <worktree> <outdir> [mode-note]
 set -u; PR=$1; WT=$2; OUT=$3; NOTE=${4:-}
+. "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 cd "$WT"; SHA=$(git rev-parse HEAD); MAIN=$(git rev-parse origin/main); BASE=$(git merge-base HEAD origin/main)
 rows=$(cat "$OUT"/static.rows "$OUT"/services.rows 2>/dev/null)
 failed=$(printf '%s\n' "$rows" | grep -c '^❌' || true)
@@ -13,7 +14,7 @@ total=$(printf '%s\n' "$rows" | grep -c '|' || true)
   echo "| | |"; echo "|---|---|"
   echo "| Commit tested | \`$SHA\` (this PR's head) |"
   echo "| Based on | \`$MAIN\` (origin/main when tested; merge-base \`${BASE:0:8}\`) |"
-  echo "| Environment | local Supabase (CLI 2.117.0, as CI) + ClickHouse 24.8; production build served on :3000 |"
+  echo "| Environment | local Supabase (CLI 2.117.0, as CI) + ClickHouse 24.8; production build served on :$WEB_PORT${LANE_SFX:+ (lane B)} |"
   echo "| Finished | $(date -u '+%Y-%m-%d %H:%M UTC') |"
   echo
   echo "| Result | Job | Step | Time |"; echo "|---|---|---|---|"

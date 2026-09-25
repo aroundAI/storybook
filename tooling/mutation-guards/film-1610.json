@@ -434,8 +434,8 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-actions.test.ts",
       "name": "G1 refusal thrown again (production hides it)",
-      "find": "      if (error instanceof ActionRefusal) {\n        return { ok: false, error: error.message };\n      }",
-      "replace": "      if (error instanceof ActionRefusal) {\n        throw error;\n      }",
+      "find": "      unstable_rethrow(error);\n\n      if (error instanceof ActionRefusal) {\n        return { ok: false, error: error.message };\n      }",
+      "replace": "      unstable_rethrow(error);\n\n      if (error instanceof ActionRefusal) {\n        throw error;\n      }",
       "pattern": "returns a refusal with its own wording"
     },
     {

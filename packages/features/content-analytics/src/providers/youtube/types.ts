@@ -122,6 +122,13 @@ export interface YouTubeDailyMetrics {
   averageViewDuration: number;
   subscribersGained: number;
   /**
+   * The three the Reporting ingest also writes (KB-94). The sync's row
+   * replaces the Reporting row whole, so it must carry them too.
+   */
+  dislikes: number;
+  averageViewPercentage: number;
+  subscribersLost: number;
+  /**
    * Engaged views, from their own query (KB-50). Null when YouTube did not
    * report the day or that query failed — never zero for "unknown".
    */

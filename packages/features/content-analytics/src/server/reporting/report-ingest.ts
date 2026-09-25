@@ -13,9 +13,9 @@ import {
 import type {
   ChannelDaily,
   ChannelReachDaily,
-  VideoMetric,
   VideoReachDaily,
   VideoTrafficSource,
+  YouTubeVideoMetric,
 } from '@kit/clickhouse/server';
 import { getLogger } from '@kit/shared/logger';
 import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
@@ -541,7 +541,9 @@ async function ingestReportCsv(
     rows.map((r) => r.youtubeVideoId),
   );
 
-  const metricRows: VideoMetric[] = [];
+  // Typed so this row and the Analytics-API sync's must carry the same
+  // columns: the later of the two replaces the other whole (KB-94).
+  const metricRows: YouTubeVideoMetric[] = [];
   const channelRows = new Map<string, ChannelDaily>();
   let unmatched = 0;
 

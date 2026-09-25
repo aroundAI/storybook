@@ -28,6 +28,25 @@ import type {
 } from './types';
 
 /**
+ * The per-day metrics of the core daily query. All documented as valid on
+ * `dimensions=day` + `filters=video==ID` (docs/platform-capability-reference.md).
+ */
+const DAILY_METRICS = [
+  'views',
+  'likes',
+  'dislikes',
+  'comments',
+  'shares',
+  'estimatedMinutesWatched',
+  'averageViewDuration',
+  'averageViewPercentage',
+  'subscribersGained',
+  'subscribersLost',
+] as const;
+
+type DailyMetric = (typeof DAILY_METRICS)[number];
+
+/**
  * Error thrown when the YouTube connection is missing the analytics scope.
  * This occurs when users connected their YouTube account before analytics
  * features were added (FILM-801).
@@ -295,7 +314,14 @@ export class YouTubeAnalyticsProvider {
   }
 
   /**
-   * Fetches daily metrics breakdown
+   * Fetches daily metrics breakdown.
+   *
+   * Every metric the Reporting ingest also writes to `video_metrics` is asked
+   * for here, because the row built from this answer replaces the Reporting
+   * row whole (KB-94). Read by column name, and refused rather than defaulted
+   * when a metric is missing: a 0 written here would land over a figure the
+   * Reporting ingest measured. A refusal fails this video's sync, which the
+   * next hourly run retries.
    */
   private async fetchDailyMetrics(
     videoId: string,
@@ -307,8 +333,7 @@ export class YouTubeAnalyticsProvider {
         ids: 'channel==MINE',
         startDate,
         endDate,
-        metrics:
-          'views,likes,comments,shares,estimatedMinutesWatched,averageViewDuration,subscribersGained',
+        metrics: DAILY_METRICS.join(','),
         dimensions: 'day',
         filters: `video==${videoId}`,
         sort: 'day',
@@ -316,19 +341,47 @@ export class YouTubeAnalyticsProvider {
       this.fetchDailyEngagedViews(videoId, startDate, endDate),
     ]);
 
-    return ((response.data.rows as Array<[string, ...number[]]>) ?? []).map(
-      (row) => ({
-        date: row[0],
-        views: row[1] ?? 0,
-        likes: row[2] ?? 0,
-        comments: row[3] ?? 0,
-        shares: row[4] ?? 0,
-        estimatedMinutesWatched: row[5] ?? 0,
-        averageViewDuration: row[6] ?? 0,
-        subscribersGained: row[7] ?? 0,
-        engagedViews: engaged?.get(row[0]) ?? null,
-      }),
-    );
+    const rows = (response.data.rows as unknown[][] | undefined) ?? [];
+    if (rows.length === 0) return [];
+
+    const headers = (response.data.columnHeaders ?? []).map((h) => h.name);
+    const indexOf = (name: string) => {
+      const index = headers.indexOf(name);
+      if (index < 0) {
+        throw new Error(`YouTube daily report has no ${name} column`);
+      }
+      return index;
+    };
+    const dayIndex = indexOf('day');
+    const metricIndex = Object.fromEntries(
+      DAILY_METRICS.map((name) => [name, indexOf(name)]),
+    ) as Record<DailyMetric, number>;
+
+    return rows.map((row) => {
+      const date = String(row[dayIndex]);
+      const value = (name: DailyMetric) => {
+        const cell = row[metricIndex[name]];
+        if (typeof cell !== 'number' || !Number.isFinite(cell)) {
+          throw new Error(`YouTube daily report has no ${name} for ${date}`);
+        }
+        return cell;
+      };
+
+      return {
+        date,
+        views: value('views'),
+        likes: value('likes'),
+        dislikes: value('dislikes'),
+        comments: value('comments'),
+        shares: value('shares'),
+        estimatedMinutesWatched: value('estimatedMinutesWatched'),
+        averageViewDuration: value('averageViewDuration'),
+        averageViewPercentage: value('averageViewPercentage'),
+        subscribersGained: value('subscribersGained'),
+        subscribersLost: value('subscribersLost'),
+        engagedViews: engaged?.get(date) ?? null,
+      };
+    });
   }
 
   /**

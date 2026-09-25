@@ -45,6 +45,7 @@ parallel shards (`--shard 1/3` … `3/3`): the E2E guards together outgrew a
 | `STAYED GREEN` | The test passed with its fix removed. | The test no longer checks what it claims. Fix the test |
 | `MISSING` | The mutation's target text is not in the file. | The code moved. Update `find` to the new code — deliberately a failure, so a refactor cannot quietly orphan a guard |
 | `NOT GREEN` | The test fails even on the real code. | Fix the test first; a failure under mutation would prove nothing |
+| `AMBIGUOUS` | A `find` matches more than once in its file (counted after the entry's earlier edits), or an edit names a `file` other than the entry's. Checked before any test runs, and for every entry by `--self-test`. | Extend `find` with surrounding lines until it names one place. The runner used to mutate the first match, which after a rebase can be another copy of the line (#350) |
 
 Any outcome but `RED` fails the run.
 
