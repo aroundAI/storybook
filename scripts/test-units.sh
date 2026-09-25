@@ -46,4 +46,3 @@ pnpm --filter @kit/clickhouse --fail-if-no-match test
 pnpm --filter @kit/content-analytics --fail-if-no-match test
 pnpm --filter @kit/publishing --fail-if-no-match test
 pnpm --filter @kit/storage --fail-if-no-match test
-pnpm --filter vendor-sandbox --fail-if-no-match test

@@ -63,7 +63,7 @@ notes: |
   | Token refresh | A near-expiry token is refreshed by the real cron route; X, which has no refresh path today, is recorded as a known gap, not asserted to work |
   | Publish | An episode published to a sandbox channel gets a vendor ID and reaches published through the vendor's status sequence |
   | Sync to dashboard | After the analytics sync, the dashboard shows exactly what the ledger says was served — per platform, including the zero-versus-absent distinctions phase 17 cares about |
-  | Studio pipeline | Ideation → story → screenplay → shot list → audio, for every stage FILM-1803's inline-vs-enqueued list (its §4) marks reachable |
+  | Studio pipeline | Ideation → story → screenplay → shot list → audio, for every stage FILM-1803's inline-vs-enqueued list marks reachable |
   | Vendor errors | With POST /__sandbox/fail, a rate limit, an expired token and a 5xx each produce the product's intended message, not a blank or a crash |
 
   ## 3. Asserting against random data

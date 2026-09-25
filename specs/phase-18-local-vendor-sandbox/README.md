@@ -41,7 +41,7 @@ FILM-1801 ─→ FILM-1805 (local models + SDK base URLs) ── the LLM rows of
 |------|--------|--------|--------|
 | [FILM-1801](./FILM-1801-vendor-base-url-resolver.yaml) | ✅ DONE | L | One resolver for every vendor host; env overrides in local dev only; fails closed in production; a guard against new hardcoded hosts |
 | [FILM-1802](./FILM-1802-social-platform-sandbox.yaml) | DRAFT | XL | YouTube, TikTok, Meta (Facebook + Instagram), X, LinkedIn: OAuth, refresh, publishing, analytics — stateful, randomized, growing over time |
-| [FILM-1803](./FILM-1803-ai-generation-sandbox.yaml) | PARTIAL | L | The AI vendors the app still calls: Gemini (every prompt and agent), ElevenLabs (voice, sound effects, music), and the settings key checks. Every prompt answered in its own shape; the studio stages are enqueued and wait for a local queue |
+| [FILM-1803](./FILM-1803-ai-generation-sandbox.yaml) | DRAFT | L | LLM (OpenAI, Anthropic, Gemini), audio (ElevenLabs, PlayHT, Suno, Udio, Sync Labs), embeddings (Voyage, OpenAI) |
 | [FILM-1804](./FILM-1804-sandbox-backed-e2e-flows.yaml) | DRAFT | L | Connect, publish, sync-to-dashboard, token refresh, and one pass through the studio pipeline — asserted against the sandbox's ledger |
 | [FILM-1805](./FILM-1805-local-models-and-sdk-base-urls.yaml) | PARTIAL (Half A done) | M | The SDKs' own base-URL env vars (`OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`, `GOOGLE_GEMINI_BASE_URL`) closed by passing the resolver's URL explicitly; the `local` provider retargeted to Ollama, gated to dev/test, and a `LLM_FORCE_PROVIDER=local` switch that runs all 29 prompts on it. Closes FILM-CC-04 KB-21 with FILM-513 |
 
