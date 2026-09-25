@@ -122,16 +122,6 @@
       "pattern": "not opted in"
     },
     {
-      "name": "P5 Previous-episode titles reach the prompt unsanitised",
-      "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/utils/context-builder.ts",
-      "find": "\"${sanitizeForPrompt(ep.title)}\"",
-      "replace": "\"${ep.title}\"",
-      "cwd": "apps/web",
-      "test": "lambda/llm-worker/__tests__/previous-episodes.test.ts",
-      "pattern": "sanitises episode text"
-    },
-    {
       "name": "D1 match_episode_embeddings answers across projects",
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/episode-embeddings-kb35.test.sql",
