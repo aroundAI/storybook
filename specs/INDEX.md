@@ -602,7 +602,7 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1710 | [asset-duration](./phase-17-analytics-provenance/FILM-1710-asset-duration.yaml) | 🟡 PARTIAL | M | FILM-1711 (TikTok leg only) |
 | FILM-1711 | [analytics-authorisation](./phase-17-analytics-provenance/FILM-1711-analytics-authorisation.yaml) | 🟡 PARTIAL | L | FILM-1721 |
 | FILM-1712 | [metric-recovery](./phase-17-analytics-provenance/FILM-1712-metric-recovery.yaml) | DRAFT | L | FILM-1711, FILM-1721 |
-| FILM-1713 | [normalised-measures-velocity](./phase-17-analytics-provenance/FILM-1713-normalised-measures-velocity.yaml) | DRAFT | M | FILM-1722 |
+| FILM-1713 | [normalised-measures-velocity](./phase-17-analytics-provenance/FILM-1713-normalised-measures-velocity.yaml) | DRAFT | M | FILM-1722 (registry, on main) |
 | FILM-1714 | [signal-model](./phase-17-analytics-provenance/FILM-1714-signal-model.yaml) | DRAFT | M | FILM-1703, FILM-1713, FILM-1716 |
 | FILM-1715 | [self-benchmarking](./phase-17-analytics-provenance/FILM-1715-self-benchmarking.yaml) | DRAFT | M | FILM-1703, FILM-1713, FILM-1716, FILM-1721 |
 | FILM-1716 | [format-families](./phase-17-analytics-provenance/FILM-1716-format-families.yaml) | DRAFT | M | FILM-1710 |

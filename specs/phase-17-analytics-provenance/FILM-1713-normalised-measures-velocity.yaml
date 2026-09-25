@@ -7,7 +7,7 @@ status: DRAFT
 effort: M
 dependencies:
   - spec_id: "FILM-1722"
-    note: null
+    note: "the registry, comparableAcross and viewsDenominatorFor, all on main; FILM-1722 stays PARTIAL only for criteria this spec (and FILM-1715, FILM-1707) close"
 summary: >
   Raw counts are not comparable between videos. A normalised measure — a rate
   against a denominator — is the layer everything above this depends on, and
