@@ -52,7 +52,7 @@ acceptance_criteria:
     evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:218`"
   - text: "`generateVoice()` throws error for invalid voice ID"
     met: true
-    evidence: "`packages/features/audio-generation/__tests__/http.test.ts:168` (a \"Bad voice id\" 422 throws, not retried); `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:227`"
+    evidence: "`packages/features/audio-generation/__tests__/http.test.ts:170` (a \"Bad voice id\" 422 throws, not retried); `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:227`"
   - text: "`listVoices()` returns all available voices from ElevenLabs"
     met: true
     evidence: "named `getVoices()`; `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:283`"
@@ -70,7 +70,7 @@ acceptance_criteria:
     evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:448`, `:470`"
   - text: "Provider retries failed requests with exponential backoff (max 5 retries)"
     met: true
-    evidence: "`packages/features/audio-generation/src/lib/http.ts:36` (5 attempts by default); `packages/features/audio-generation/__tests__/http.test.ts:87`, `:110`"
+    evidence: "`packages/features/audio-generation/src/lib/http.ts:36` (5 attempts by default); `packages/features/audio-generation/__tests__/http.test.ts:89`, `:110`"
   - text: "Provider handles rate limit errors gracefully"
     met: false
     reason: "not met — a 429 counts as a permanent 4xx and is thrown at once (`packages/features/audio-generation/src/lib/http.ts:72`, since `b7f7cb53`); the spec wants backoff"

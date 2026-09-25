@@ -40,6 +40,21 @@ test.describe('FILM-514 evidence', () => {
         number: 1,
         title: 'The Harbour',
         slug: `film514ev-${uniqueStamp().slice(0, 8)}`,
+        // The Audio Studio stays locked until a scene has dialogue.
+        screenplay_data: {
+          title: 'The Harbour',
+          scenes: [
+            {
+              number: 1,
+              heading: 'EXT. HARBOUR - DUSK',
+              location: 'Harbour',
+              timeOfDay: 'dusk',
+              description: 'Boats come in.',
+              estimatedDuration: 30,
+              dialogue: [{ character: 'Ava', text: 'The boats are late.' }],
+            },
+          ],
+        },
       },
       service,
     );

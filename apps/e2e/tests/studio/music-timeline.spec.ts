@@ -50,6 +50,8 @@ async function seedMusicEpisode() {
             timeOfDay: 'dusk',
             description: 'Boats come in.',
             estimatedDuration: 30,
+            // The Audio Studio stays locked until a scene has dialogue.
+            dialogue: [{ character: 'Ava', text: 'The boats are late.' }],
           },
         ],
       },

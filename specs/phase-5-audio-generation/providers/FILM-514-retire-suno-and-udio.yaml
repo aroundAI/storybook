@@ -23,11 +23,11 @@ summary: >
   no Suno data (owner, 2026-09-25).
 acceptance_criteria:
   - text: "The Music timeline has no \"Generate for Scene\" or \"Add Cue\" button; both dialogs deleted"
-    met: false
-    reason: "pending the local E2E run"
+    met: true
+    evidence: "`apps/e2e/tests/studio/music-timeline.spec.ts` failed on main at the Generate for Scene assertion (received 1), 2 passed on the branch (CI=1, dev server)"
   - text: "Regenerate is offered only on a music cue; a finished non-cue track can still be deleted (KB-110)"
-    met: false
-    reason: "pending the local E2E run"
+    met: true
+    evidence: "`apps/e2e/tests/studio/music-timeline.spec.ts`; on main, Regenerate on a finished ElevenLabs-shaped track added a failed \"Scene 1 Music\" track (SUNO_API_KEY not configured); guard E1 RED"
   - text: "The Suno and Udio providers, the six Suno-backed server actions, the music half of the provider registry, factory and config loader, and both vendor URLs are deleted; typecheck and the package tests green"
     met: true
     evidence: "`pnpm typecheck` 48/48 tasks; `@kit/audio-generation` 402 passed, 8 skipped; `@kit/film-studio-schemas` 173 passed; `@kit/shared` vendor tests 73 passed"
