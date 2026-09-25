@@ -104,12 +104,13 @@ graph TD
         FILM-108 --> FILM-501[ElevenLabs Provider]
         FILM-501 --> FILM-502b[Audio Provider Factory]
         FILM-502b --> FILM-501b[PlayHT Provider]
-        FILM-108 --> FILM-509[Suno Provider]
+        FILM-108 --> FILM-509[Suno Provider - retired]
         FILM-509 --> FILM-502b
-        FILM-502b --> FILM-509b[Udio Provider]
+        FILM-502b --> FILM-509b[Udio Provider - retired]
         FILM-501 --> FILM-502[Voice Generation]
         FILM-502 --> FILM-503[Batch Dialogue]
-        FILM-504[Music Generation]
+        FILM-504[Music Generation - retired]
+        FILM-509 --> FILM-514[Retire Suno and Udio]
         FILM-502 --> FILM-505[AudioStudio]
         FILM-503 --> FILM-506[DialogueList]
         FILM-206 --> FILM-507[VoiceAssignment]
@@ -387,7 +388,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-411 | [generation-progress](./phase-4-video-generation/components/FILM-411-generation-progress.yaml) | 🗑️ RETIRED (5b88db3a) | M | FILM-408 |
 | FILM-412 | [cost-tracking](./phase-4-video-generation/lib/FILM-412-cost-tracking.yaml) | 🗑️ RETIRED (5b88db3a) | M | FILM-405 |
 
-### Phase 5: Audio Generation (16 specs)
+### Phase 5: Audio Generation (17 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -396,16 +397,17 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-502 | [voice-generation-action](./phase-5-audio-generation/server/FILM-502-voice-generation-action.yaml) | 🟡 PARTIAL | M | FILM-501 |
 | FILM-502b | [audio-provider-factory](./phase-5-audio-generation/providers/FILM-502b-audio-provider-factory.yaml) | ✅ DONE | M | FILM-501, FILM-509 |
 | FILM-503 | [batch-dialogue-action](./phase-5-audio-generation/server/FILM-503-batch-dialogue-action.yaml) | 🟡 PARTIAL | M | FILM-502 |
-| FILM-504 | [music-generation-action](./phase-5-audio-generation/server/FILM-504-music-generation-action.yaml) | 🟡 PARTIAL | M | FILM-509 |
+| FILM-504 | [music-generation-action](./phase-5-audio-generation/server/FILM-504-music-generation-action.yaml) | 🗑️ RETIRED (FILM-514) | M | FILM-509 |
 | FILM-505 | [audio-studio](./phase-5-audio-generation/components/FILM-505-audio-studio.yaml) | 🟡 PARTIAL | L | FILM-502 |
 | FILM-506 | [dialogue-list](./phase-5-audio-generation/components/FILM-506-dialogue-list.yaml) | 🗑️ RETIRED (f7cdfa21) | M | FILM-503 |
 | FILM-507 | [voice-assignment](./phase-5-audio-generation/components/FILM-507-voice-assignment.yaml) | 🗑️ RETIRED (f7cdfa21) | M | FILM-206, FILM-506 |
 | FILM-508 | [audio-player](./phase-5-audio-generation/components/FILM-508-audio-player.yaml) | 🗑️ RETIRED (f7cdfa21) | M | - |
-| FILM-509 | [suno-provider](./phase-5-audio-generation/providers/FILM-509-suno-provider.yaml) | 🟡 PARTIAL | M | FILM-108 |
-| FILM-509b | [udio-provider](./phase-5-audio-generation/providers/FILM-509b-udio-provider.yaml) | ✅ DONE | M | FILM-108, FILM-502b |
+| FILM-509 | [suno-provider](./phase-5-audio-generation/providers/FILM-509-suno-provider.yaml) | 🗑️ RETIRED (FILM-514) | M | FILM-108 |
+| FILM-509b | [udio-provider](./phase-5-audio-generation/providers/FILM-509b-udio-provider.yaml) | 🗑️ RETIRED (FILM-514) | M | FILM-108, FILM-502b |
 | FILM-510 | [voice-cloning](./phase-5-audio-generation/providers/FILM-510-voice-cloning.yaml) | 🗑️ RETIRED (05ec0ae9) | L | FILM-501 |
 | FILM-511 | [lip-sync](./phase-5-audio-generation/providers/FILM-511-lip-sync.yaml) | 🗑️ RETIRED (FILM-513) | L | FILM-502 |
 | FILM-513 | [retire-lip-sync](./phase-5-audio-generation/providers/FILM-513-retire-lip-sync.yaml) | ✅ DONE | M | FILM-1801 for the resolver entry only |
+| FILM-514 | [retire-suno-and-udio](./phase-5-audio-generation/providers/FILM-514-retire-suno-and-udio.yaml) | ✅ DONE | M | - |
 | FILM-512 | [multi-language-dubbing](./phase-5-audio-generation/providers/FILM-512-multi-language-dubbing.yaml) | 🗑️ RETIRED (5b88db3a) | L | FILM-502, FILM-510 |
 
 ### Phase 6: Edit Suite (8 specs)
@@ -708,7 +710,7 @@ reason when not.
 | 2. Assets | 9 | 0 | 6 | 0 | 3 | 0 |
 | 3. Episodes | 14 | 0 | 7 | 0 | 3 | 4 |
 | 4. Video Gen | 14 | 0 | 2 | 0 | 12 | 0 |
-| 5. Audio Gen | 16 | 0 | 6 | 0 | 6 | 4 |
+| 5. Audio Gen | 17 | 0 | 4 | 0 | 9 | 4 |
 | 6. Edit Suite | 8 | 0 | 0 | 0 | 6 | 2 |
 | 7. Publishing | 16 | 0 | 7 | 0 | 3 | 6 |
 | 8. Analytics | 10 | 0 | 7 | 0 | 0 | 3 |
@@ -724,7 +726,7 @@ reason when not.
 | 18. Vendor Sandbox | 6 | 3 | 2 | 0 | 0 | 1 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **232** | **23** | **80** | **2** | **50** | **77** |
+| **TOTAL** | **233** | **23** | **78** | **2** | **53** | **77** |
 
 No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose PR is open keeps the status it has on `main`.
 
@@ -732,7 +734,7 @@ No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose 
 
 | Scope | Total | Done | Partial | Retired | Draft / Deferred |
 |-------|-------|------|---------|---------|------------------|
-| MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 92 | 30 | 31 | 31 | 0 |
+| MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 93 | 30 | 29 | 34 | 0 |
 | Post-MVP (Ph 6–9) | 40 | 13 | 15 | 12 | 0 |
 | Canon (Ph 10–11) | 29 | 6 | 21 | 2 | 0 |
 | Scale & Hooks (Ph 12–13) | 4 | 2 | 0 | 2 | 0 |

@@ -12,14 +12,6 @@ export const VOICE_PROVIDERS = {
   GOOGLE: 'google',
 } as const;
 
-// Music provider names
-export const MUSIC_PROVIDERS = {
-  SUNO: 'suno',
-  UDIO: 'udio',
-  MUBERT: 'mubert',
-  BEATOVEN: 'beatoven',
-} as const;
-
 // Audio types
 export const AUDIO_TYPES = {
   VOICE: 'voice',
@@ -174,55 +166,6 @@ export const PLAYHT = {
   COST_PER_1000_CHARS: 20, // cents ($0.20)
 } as const;
 
-// Suno specific constants
-export const SUNO = {
-  BASE_URL: vendorUrl('suno'),
-  MAX_DURATION: 240, // 4 minutes
-  COST_PER_GENERATION: 50, // cents ($0.50)
-  SUPPORTED_GENRES: [
-    'pop',
-    'rock',
-    'electronic',
-    'cinematic',
-    'orchestral',
-    'jazz',
-    'ambient',
-    'hip-hop',
-  ],
-} as const;
-
-// Udio specific constants
-export const UDIO = {
-  BASE_URL: `${vendorUrl('udio')}/v1`,
-  MAX_DURATION: 120, // 2 minutes (shorter than Suno)
-  MIN_DURATION: 15,
-  SUPPORTED_DURATIONS: [15, 30, 60, 120],
-  MAX_PROMPT_LENGTH: 500,
-  COST_PER_GENERATION: 40, // cents ($0.40)
-  COST_PER_EXTENSION: 20, // cents ($0.20)
-  MAX_EXTENSIONS_PER_SONG: 5,
-  EXTENSION_DURATION: 30, // seconds per extension
-  TYPICAL_PROCESSING_TIME: 60, // seconds
-  SUPPORTED_GENRES: [
-    'pop',
-    'rock',
-    'electronic',
-    'cinematic',
-    'orchestral',
-    'jazz',
-    'ambient',
-    'hip-hop',
-    'metal',
-    'country',
-  ],
-  RATE_LIMITS: {
-    REQUESTS_PER_MINUTE: 10,
-    CONCURRENT_REQUESTS: 3,
-    DAILY_LIMIT: 100,
-    TIMEOUT: 180000, // 3 minutes
-  },
-} as const;
-
 // Provider display names
 export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   elevenlabs: 'ElevenLabs',
@@ -230,8 +173,4 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   deepgram: 'Deepgram',
   azure: 'Azure TTS',
   google: 'Google Cloud TTS',
-  suno: 'Suno',
-  udio: 'Udio',
-  mubert: 'Mubert',
-  beatoven: 'Beatoven',
 } as const;

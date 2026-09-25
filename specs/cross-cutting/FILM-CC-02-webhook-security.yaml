@@ -8,7 +8,7 @@ audited: "2026-09-23"
 effort: M
 dependencies: []
 summary: |
-  External providers (Kling, ElevenLabs, Suno) send webhooks to notify us when generation jobs complete. Without proper signature verification, attackers could forge webhook payloads to:
+  External providers (Kling, ElevenLabs) send webhooks to notify us when generation jobs complete. Without proper signature verification, attackers could forge webhook payloads to:
   - Mark jobs as complete with malicious URLs
   - Trigger incorrect cost calculations
   - Bypass rate limits by faking completions
@@ -17,7 +17,6 @@ cross_cutting_concern:
   applies_to:
     - "Kling"
     - "ElevenLabs"
-    - "Suno"
   rules:
     - "Signature Verification: Verify HMAC signature before processing"
     - "Constant-Time Comparison: Prevent timing attacks"

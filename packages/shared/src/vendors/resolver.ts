@@ -49,8 +49,6 @@ export const VENDORS = {
   voyage: 'https://api.voyageai.com',
   elevenlabs: 'https://api.elevenlabs.io',
   playht: 'https://api.play.ht',
-  suno: 'https://api.suno.ai',
-  udio: 'https://api.udio.com',
   piapi: 'https://api.piapi.ai',
   'brave-search': 'https://api.search.brave.com',
   'semantic-scholar': 'https://api.semanticscholar.org',

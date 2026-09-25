@@ -3,7 +3,7 @@ title: "Suno Music Provider"
 phase: 5
 phase_name: "Audio Generation"
 category: provider
-status: PARTIAL
+status: RETIRED
 audited: "2026-09-23"
 effort: M
 dependencies:
@@ -82,10 +82,18 @@ test_plan:
       met: false
       reason: "not met — no test found; the live music actions check no budget"
   e2e: []
-remaining:
-  - criterion: "Rate limits enforced (5/min, 2 concurrent, 50/day)"
-    reason: "`getRateLimits()` (`packages/features/audio-generation/src/providers/suno.ts:126`) is read by nothing, so no limit applies to the live music actions (`packages/features/audio-generation/src/server/music-actions.ts:82`)"
-    closed_by: "unassigned"
+retirement:
+  commit: null
+  date: "2026-09-25"
+  what_happened: >
+    Retired by owner decision on 2026-09-25 (FILM-514): "We don't use it in our
+    product right now. If we need it then we would do it from scratch later." Suno
+    was unreachable on the deployed app: SUNO_API_KEY was in no deployment
+    configuration, so every Suno action wrote a failed audio track. The provider,
+    its registry entry, its actions, its API-key card and its vendor URL were
+    deleted; a repo-scan test keeps the name out. Production held no Suno data
+    (owner, 2026-09-25). Music is generated with ElevenLabs.
+  replacement: null
 open_questions: []
 notes: |
   ## Metadata

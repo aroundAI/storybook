@@ -31,7 +31,7 @@ export async function generateMetadata() {
 
 async function PrivacyPolicyPage() {
   const { t } = await createI18nServerInstance();
-  const lastUpdated = 'September 22, 2026';
+  const lastUpdated = 'September 25, 2026';
   const companyName = 'Around AI Limited';
   const productName = 'StoryBook';
   const contactEmail = 'privacy@storybook.digital';
@@ -435,7 +435,7 @@ async function PrivacyPolicyPage() {
                       Music Generation
                     </p>
                     <p className="text-sm text-slate-600 dark:text-slate-400">
-                      Suno
+                      ElevenLabs
                     </p>
                   </div>
                 </div>

@@ -10,8 +10,7 @@ export type VoiceProviderName =
   | 'deepgram'
   | 'azure'
   | 'google';
-export type MusicProviderName = 'suno' | 'udio' | 'mubert' | 'beatoven';
-export type AudioProvider = VoiceProviderName | MusicProviderName;
+export type AudioProvider = VoiceProviderName;
 export type AudioType = 'voice' | 'music' | 'sfx';
 
 // Voice types
@@ -133,17 +132,6 @@ export interface VoiceProviderMetadata {
   };
 }
 
-export interface MusicProviderMetadata {
-  name: MusicProviderName;
-  displayName: string;
-  description: string;
-  maxDuration: number; // seconds
-  supportsVocals: boolean;
-  supportsInstrumental: boolean;
-  supportedGenres: string[];
-  costPerGeneration: number; // in cents
-}
-
 // Audio generation job types
 export interface AudioGenerationJob {
   id: string;
@@ -179,7 +167,7 @@ export interface ProjectAudioSettings {
   };
   voice_provider?: VoiceProviderName;
   sfx_provider?: 'elevenlabs';
-  music_provider?: MusicProviderName;
+  music_provider?: 'elevenlabs';
 }
 
 export interface VoiceProviderFactoryOptions
@@ -187,11 +175,6 @@ export interface VoiceProviderFactoryOptions
   provider?: VoiceProviderName;
   modelOverride?: string;
   projectAudioSettings?: ProjectAudioSettings | null;
-}
-
-export interface MusicProviderFactoryOptions
-  extends AudioProviderFactoryOptions {
-  provider?: MusicProviderName;
 }
 
 // List voices params

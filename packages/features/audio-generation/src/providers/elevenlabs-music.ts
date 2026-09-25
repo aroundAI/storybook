@@ -4,7 +4,7 @@
  * Uses ElevenLabs Eleven Music API for AI music composition.
  * API: elevenlabs.music.compose(prompt, music_length_ms)
  *
- * Note: Unlike Suno, ElevenLabs returns the audio directly (streaming),
+ * Note: ElevenLabs returns the audio directly (streaming),
  * not a job ID. We handle this by treating completed immediately.
  */
 import { vendorUrl } from '@kit/shared/vendors';

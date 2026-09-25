@@ -1,17 +1,12 @@
-import { ELEVENLABS, PLAYHT, SUNO, UDIO } from '../lib/constants';
+import { ELEVENLABS, PLAYHT } from '../lib/constants';
 import type {
-  MusicProviderConfig,
-  MusicProviderMetadata,
-  MusicProviderName,
   VoiceProviderConfig,
   VoiceProviderMetadata,
   VoiceProviderName,
 } from '../lib/types';
-import type { MusicGenerationProvider, VoiceGenerationProvider } from './base';
+import type { VoiceGenerationProvider } from './base';
 import { ElevenLabsProvider } from './elevenlabs';
 import { PlayHTProvider } from './playht';
-import { SunoProvider } from './suno';
-import { UdioProvider } from './udio';
 
 /**
  * Voice provider registry entry containing metadata and factory function
@@ -19,14 +14,6 @@ import { UdioProvider } from './udio';
 export interface VoiceProviderRegistryEntry {
   metadata: VoiceProviderMetadata;
   factory: (config: VoiceProviderConfig) => VoiceGenerationProvider;
-}
-
-/**
- * Music provider registry entry containing metadata and factory function
- */
-export interface MusicProviderRegistryEntry {
-  metadata: MusicProviderMetadata;
-  factory: (config: MusicProviderConfig) => MusicGenerationProvider;
 }
 
 /**
@@ -84,48 +71,6 @@ VOICE_PROVIDER_REGISTRY.set('playht', {
 // - Deepgram
 // - Azure
 // - Google
-
-/**
- * Music provider registry containing metadata and factories for all music providers
- */
-const MUSIC_PROVIDER_REGISTRY = new Map<
-  MusicProviderName,
-  MusicProviderRegistryEntry
->();
-
-// Register Suno provider
-MUSIC_PROVIDER_REGISTRY.set('suno', {
-  metadata: {
-    name: 'suno',
-    displayName: 'Suno',
-    description: 'Full song generation with AI vocals and lyrics',
-    maxDuration: SUNO.MAX_DURATION,
-    supportsVocals: true,
-    supportsInstrumental: true,
-    supportedGenres: [...SUNO.SUPPORTED_GENRES],
-    costPerGeneration: SUNO.COST_PER_GENERATION,
-  },
-  factory: (config: MusicProviderConfig) => new SunoProvider(config),
-});
-
-// Register Udio provider
-MUSIC_PROVIDER_REGISTRY.set('udio', {
-  metadata: {
-    name: 'udio',
-    displayName: 'Udio',
-    description: 'High-quality AI music with vocals and extensions',
-    maxDuration: UDIO.MAX_DURATION,
-    supportsVocals: true,
-    supportsInstrumental: true,
-    supportedGenres: [...UDIO.SUPPORTED_GENRES],
-    costPerGeneration: UDIO.COST_PER_GENERATION,
-  },
-  factory: (config: MusicProviderConfig) => new UdioProvider(config),
-});
-
-// Additional music providers will be added when implemented:
-// - Mubert
-// - Beatoven
 
 // =============================================================================
 // Voice Provider Registry Functions
@@ -200,79 +145,4 @@ export function registerVoiceProvider(
   factory: (config: VoiceProviderConfig) => VoiceGenerationProvider,
 ): void {
   VOICE_PROVIDER_REGISTRY.set(name, { metadata, factory });
-}
-
-// =============================================================================
-// Music Provider Registry Functions
-// =============================================================================
-
-/**
- * Get a music provider registry entry by name
- */
-export function getMusicProviderEntry(
-  name: MusicProviderName,
-): MusicProviderRegistryEntry | undefined {
-  return MUSIC_PROVIDER_REGISTRY.get(name);
-}
-
-/**
- * Get metadata for a specific music provider
- */
-export function getMusicProviderMetadata(
-  providerName: MusicProviderName,
-): MusicProviderMetadata | null {
-  const entry = MUSIC_PROVIDER_REGISTRY.get(providerName);
-  return entry?.metadata ?? null;
-}
-
-/**
- * Get metadata for all registered music providers
- */
-export function getAllMusicProviderMetadata(): MusicProviderMetadata[] {
-  return Array.from(MUSIC_PROVIDER_REGISTRY.values()).map(
-    (entry) => entry.metadata,
-  );
-}
-
-/**
- * Get all registered music provider names
- */
-export function getRegisteredMusicProviderNames(): MusicProviderName[] {
-  return Array.from(MUSIC_PROVIDER_REGISTRY.keys());
-}
-
-/**
- * Check if a music provider is registered
- */
-export function isMusicProviderRegistered(
-  name: string,
-): name is MusicProviderName {
-  return MUSIC_PROVIDER_REGISTRY.has(name as MusicProviderName);
-}
-
-/**
- * Create a music provider instance from the registry
- * This is a low-level function - prefer createAccountMusicProvider for production use
- */
-export function createMusicProviderFromRegistry(
-  name: MusicProviderName,
-  config: MusicProviderConfig,
-): MusicGenerationProvider {
-  const entry = MUSIC_PROVIDER_REGISTRY.get(name);
-  if (!entry) {
-    throw new Error(`Music provider not found: ${name}`);
-  }
-  return entry.factory(config);
-}
-
-/**
- * Register a new music provider (for extensibility/testing)
- * Use with caution - prefer using built-in providers
- */
-export function registerMusicProvider(
-  name: MusicProviderName,
-  metadata: MusicProviderMetadata,
-  factory: (config: MusicProviderConfig) => MusicGenerationProvider,
-): void {
-  MUSIC_PROVIDER_REGISTRY.set(name, { metadata, factory });
 }

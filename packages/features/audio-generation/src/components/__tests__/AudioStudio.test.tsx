@@ -16,31 +16,11 @@ describe('AudioStudio', () => {
     });
   });
 
-  describe('MusicTrackList exports', () => {
-    // Note: Component tests require @kit/ui mocking - skipped for unit tests
-    it.skip('should export MusicTrackList component', async () => {
-      const module = await import('../MusicTrackList');
-      expect(module).toHaveProperty('MusicTrackList');
-      expect(typeof module.MusicTrackList).toBe('function');
-    });
-
-    it.skip('should export MusicTrackListProps type', async () => {
-      // Type is exported - checking module shape
-      const module = await import('../MusicTrackList');
-      expect(module).toBeDefined();
-    });
-  });
-
   describe('Index exports', () => {
     // Note: These tests require @kit/ui mocking - component imports may fail
     it.skip('should export AudioStudio from index', async () => {
       const components = await import('../index');
       expect(components).toHaveProperty('AudioStudio');
-    });
-
-    it.skip('should export MusicTrackList from index', async () => {
-      const components = await import('../index');
-      expect(components).toHaveProperty('MusicTrackList');
     });
   });
 
@@ -108,7 +88,7 @@ describe('AudioStudio', () => {
   });
 });
 
-describe('MusicTrackList', () => {
+describe('Music track formatting', () => {
   describe('Duration formatting', () => {
     // Test the formatDuration utility behavior
     function formatDuration(seconds: number | null): string {
@@ -166,7 +146,7 @@ describe('MusicTrackList', () => {
       expect(DEFAULT_DURATION).toBe(60);
     });
 
-    it('should be within Suno max duration (240s)', () => {
+    it('should be within the 240s music duration cap', () => {
       expect(DEFAULT_DURATION).toBeLessThanOrEqual(240);
     });
   });

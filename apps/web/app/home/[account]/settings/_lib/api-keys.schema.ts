@@ -1,13 +1,13 @@
 import { z } from 'zod';
 
-// Valid providers from database constraint
+// Providers a key can be saved for: a subset of the external_api_keys check
+// constraint, which still admits a retired vendor's stored rows (FILM-514).
 export const ApiKeyProviders = [
   'kling',
   'runway',
   'hailuo',
   'elevenlabs',
   'playht',
-  'suno',
   'claude',
   'openai',
   'gemini',

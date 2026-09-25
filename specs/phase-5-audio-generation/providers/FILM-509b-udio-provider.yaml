@@ -3,7 +3,7 @@ title: "Udio Music Generation Provider"
 phase: 5
 phase_name: "Audio Generation"
 category: provider
-status: DONE
+status: RETIRED
 audited: "2026-09-23"
 effort: M
 dependencies:
@@ -99,6 +99,18 @@ test_plan:
       met: false
       reason: "not met — no test found; no Udio webhook exists, as the item says"
   e2e: []
+retirement:
+  commit: null
+  date: "2026-09-25"
+  what_happened: >
+    Retired by owner decision on 2026-09-25 (FILM-514), with Suno. Udio was
+    registered in the music provider registry, but no page or action ever reached
+    it (only tests called the registry's music functions) and UDIO_API_KEY was in
+    no deployment configuration. The provider, its constants, its vendor URL and
+    the now-empty music half of the provider registry, factory and config loader
+    were deleted; a repo-scan test keeps the name out. Music is generated with
+    ElevenLabs.
+  replacement: null
 open_questions: []
 notes: |
   ## Metadata

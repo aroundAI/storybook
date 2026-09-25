@@ -9,17 +9,7 @@ export const VoiceProviderNameSchema = z.enum([
   'google',
 ]);
 
-export const MusicProviderNameSchema = z.enum([
-  'suno',
-  'udio',
-  'mubert',
-  'beatoven',
-]);
-
-export const AudioProviderSchema = z.union([
-  VoiceProviderNameSchema,
-  MusicProviderNameSchema,
-]);
+export const AudioProviderSchema = VoiceProviderNameSchema;
 
 export const AudioTypeSchema = z.enum(['voice', 'music', 'sfx']);
 
@@ -70,7 +60,6 @@ export const GenerateVoiceSchema = z.object({
 
 export const GenerateMusicSchema = z.object({
   episodeId: z.string().uuid(),
-  provider: MusicProviderNameSchema.optional(),
   request: MusicGenerationRequestSchema,
 });
 
@@ -166,7 +155,6 @@ export const CloneStatusSchema = z.enum([
 
 // Infer types from schemas
 export type VoiceProviderNameType = z.infer<typeof VoiceProviderNameSchema>;
-export type MusicProviderNameType = z.infer<typeof MusicProviderNameSchema>;
 export type AudioProviderType = z.infer<typeof AudioProviderSchema>;
 export type AudioTypeSchemaType = z.infer<typeof AudioTypeSchema>;
 export type VoiceSettingsSchemaType = z.infer<typeof VoiceSettingsSchema>;

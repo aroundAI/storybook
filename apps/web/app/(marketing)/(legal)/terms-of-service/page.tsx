@@ -27,7 +27,7 @@ export async function generateMetadata() {
 
 async function TermsOfServicePage() {
   const { t } = await createI18nServerInstance();
-  const lastUpdated = 'September 22, 2026';
+  const lastUpdated = 'September 25, 2026';
   const companyName = 'Around AI Limited';
   const productName = 'StoryBook';
   const contactEmail = 'legal@storybook.digital';
@@ -123,7 +123,7 @@ async function TermsOfServicePage() {
                 },
                 {
                   title: 'Audio Production',
-                  desc: 'AI voice synthesis and music generation via ElevenLabs, PlayHT, Suno',
+                  desc: 'AI voice synthesis and music generation via ElevenLabs, PlayHT',
                 },
                 {
                   title: 'Publishing',

@@ -20,7 +20,7 @@ export const PhysicalAttributesSchema = z.object({
 // Voice Settings
 export const VoiceSettingsSchema = z.object({
   voiceId: z.string().optional(),
-  provider: z.enum(['elevenlabs', 'suno']).optional(),
+  provider: z.enum(['elevenlabs']).optional(),
   stability: z.number().min(0).max(1).default(0.5),
   similarityBoost: z.number().min(0).max(1).default(0.75),
   style: z.number().min(0).max(1).default(0.0),

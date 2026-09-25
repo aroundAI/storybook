@@ -22,7 +22,6 @@ import {
 } from '../server/dialogue-queries';
 import { AudioPlayer } from './AudioPlayer';
 import { DialogueList } from './DialogueList';
-import { MusicTrackList } from './MusicTrackList';
 import { VoiceAssignmentPanel } from './VoiceAssignment';
 import type { VoiceAssignmentCharacter } from './VoiceAssignment';
 
@@ -90,7 +89,6 @@ export function AudioStudio({
   const [selectedAudioUrl, setSelectedAudioUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playingLineId, setPlayingLineId] = useState<string | null>(null);
-  const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
 
   // Voice settings state
   const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>(
@@ -141,14 +139,6 @@ export function AudioStudio({
   const handleDialoguePlay = useCallback((audioUrl: string, lineId: string) => {
     setSelectedAudioUrl(audioUrl);
     setPlayingLineId(lineId);
-    setPlayingTrackId(null);
-    setIsPlaying(true);
-  }, []);
-
-  const handleMusicPlay = useCallback((audioUrl: string, trackId: string) => {
-    setSelectedAudioUrl(audioUrl);
-    setPlayingTrackId(trackId);
-    setPlayingLineId(null);
     setIsPlaying(true);
   }, []);
 
@@ -343,13 +333,10 @@ export function AudioStudio({
                   </p>
                 </div>
               ) : (
-                <MusicTrackList
-                  episodeId={episodeId}
-                  tracks={musicData?.tracks ?? []}
-                  onPlay={handleMusicPlay}
-                  onPause={handlePause}
-                  playingTrackId={playingTrackId}
-                />
+                <p className="py-12 text-center text-muted-foreground">
+                  {musicData?.tracks?.length ?? 0} music track(s). Music is
+                  generated from the music cues of this episode.
+                </p>
               )}
             </TabsContent>
 
