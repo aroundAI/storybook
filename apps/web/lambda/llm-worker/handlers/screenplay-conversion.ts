@@ -9,6 +9,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { ScreenplayScene } from '@kit/episodes/agent/screenplay-orchestrator';
+import { sanitizeForPrompt, sanitizeStrings } from '@kit/episodes/lib';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database, Json } from '@kit/supabase/database';
 
@@ -81,7 +82,11 @@ export async function processScreenplayConversion(
       throw new Error(`Episode not found: ${episodeError?.message}`);
     }
 
-    const storyData = episode.story_data as Record<string, unknown> | null;
+    // Read for the model only (this handler never writes story_data back):
+    // defused once, here (KB-101)
+    const storyData = sanitizeStrings(
+      episode.story_data as Record<string, unknown> | null,
+    );
     if (!storyData?.fullStory) {
       throw new Error('Episode must have a story generated first');
     }
@@ -150,8 +155,10 @@ export async function processScreenplayConversion(
         `enrichment: tone=${!!tone}, acts=${!!actBreakdown.act1}, themes=${themes.length}, keyEvents=${keyEvents.length}`,
     );
 
-    const projectMetadata =
-      (episode.project?.metadata as Record<string, unknown>) || {};
+    const projectMetadata = sanitizeStrings(
+      (episode.project?.metadata as Record<string, unknown>) || {},
+    );
+    const promptTitle = sanitizeForPrompt(episode.title);
 
     // Import content scaling utilities from local Lambda utils (avoids server-only issues)
     const { calculateContentScaling } = await import(
@@ -187,7 +194,7 @@ export async function processScreenplayConversion(
 
     const orchestratorResult = await runScreenplayOrchestrator({
       episodeId: data.episodeId,
-      episodeTitle: episode.title,
+      episodeTitle: promptTitle,
       episodeNumber: episode.number ?? 1,
       genre: (projectMetadata.genre as string) || 'general',
       targetAudience: (projectMetadata.targetAudience as string) || 'general',
@@ -259,7 +266,8 @@ export async function processScreenplayConversion(
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
 
-      const screenplayText = orchestratorResult.scenes
+      // Model output from this run, going back to a model
+      const screenplayText = sanitizeStrings(orchestratorResult.scenes)
         .map(
           (scene) =>
             `${scene.heading}\n${scene.description}\n${(scene.action ?? []).join('\n')}`,
@@ -277,7 +285,7 @@ export async function processScreenplayConversion(
         templateSlug: 'quality-evaluation/screenplay-quality',
         variables: {
           screenplay_content: screenplayText,
-          context_hint: `Episode "${episode.title}" — target: ${Math.round(targetDuration / 60)} minutes, genre: ${projectMetadata.genre ?? 'general'}`,
+          context_hint: `Episode "${promptTitle}" — target: ${Math.round(targetDuration / 60)} minutes, genre: ${projectMetadata.genre ?? 'general'}`,
           target_scene_count: targetSceneRange,
         },
         context: {

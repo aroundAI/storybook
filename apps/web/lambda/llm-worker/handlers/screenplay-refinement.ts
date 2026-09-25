@@ -7,6 +7,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { sanitizeForPrompt, sanitizeStrings } from '@kit/episodes/lib';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database, Json } from '@kit/supabase/database';
 
@@ -109,11 +110,12 @@ export async function processScreenplayRefinement(
     }>({
       templateSlug: 'screenplay-refinement',
       variables: {
-        current_screenplay: JSON.stringify(screenplayData),
-        story_text: (storyData?.fullStory as string) ?? '',
+        // Stored text and the user's feedback, defused for the model (KB-101)
+        current_screenplay: JSON.stringify(sanitizeStrings(screenplayData)),
+        story_text: sanitizeForPrompt((storyData?.fullStory as string) ?? ''),
         characters: charactersContext || 'No characters defined.',
         locations: locationsContext || 'No locations defined.',
-        feedback: data.feedback,
+        feedback: sanitizeForPrompt(data.feedback),
       },
     });
 

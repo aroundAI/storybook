@@ -10,6 +10,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { ReelSceneAnalysis } from '@kit/episodes/agent/shot-orchestrator';
+import { sanitizeForPrompt, sanitizeStrings } from '@kit/episodes/lib';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database, Json } from '@kit/supabase/database';
 
@@ -138,14 +139,15 @@ export async function processShotGeneration(
 
     const orchestratorResult = await runShotOrchestrator({
       episodeId: data.episodeId,
-      episodeTitle: episode.title,
+      // Stored title and screenplay, defused for the model (KB-101)
+      episodeTitle: sanitizeForPrompt(episode.title),
       genre: episodeContext.genre ?? 'general',
       targetAudience: episodeContext.targetAudience ?? 'general',
       visualStyle: episodeContext.visualStyle ?? 'cinematic',
       accountId: data.accountId,
       // Map screenplay scenes — screenplay_data stores action lines in `description` (string),
       // not in a separate `action` array. Derive action from description when absent.
-      scenes: scenes.map((s, idx) => {
+      scenes: sanitizeStrings(scenes).map((s, idx) => {
         const raw = s as unknown as Record<string, unknown>;
         const hasStoredAction =
           Array.isArray(raw['action']) &&

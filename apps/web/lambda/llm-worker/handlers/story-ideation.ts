@@ -10,6 +10,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { sanitizeForPrompt } from '@kit/episodes/lib';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
@@ -84,7 +85,10 @@ export async function processStoryIdeation(
 
   const orchestratorResult = await runIdeationOrchestrator({
     episodeId: data.episodeId,
-    premise: data.premise || episodeContext.premise,
+    // Payload text is the user's: defused before the model sees it (KB-101)
+    premise: data.premise
+      ? sanitizeForPrompt(data.premise)
+      : episodeContext.premise,
     numberOfIdeas: data.numberOfIdeas || 3,
     genre: episodeContext.genre ?? 'general',
     targetAudience: episodeContext.targetAudience ?? 'general',

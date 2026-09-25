@@ -13,6 +13,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { sanitizeForPrompt, sanitizeStrings } from '@kit/episodes/lib';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database, Json } from '@kit/supabase/database';
 
@@ -281,15 +282,19 @@ export async function processStoryGeneration(
     // Format thread candidates for the orchestrator
     const threadCandidatesContext = data.threadCandidates?.length
       ? data.threadCandidates
-          .map((t) => `- ${t.action.toUpperCase()}: "${t.threadName}"`)
+          .map(
+            (t) =>
+              `- ${t.action.toUpperCase()}: "${sanitizeForPrompt(t.threadName)}"`,
+          )
           .join('\n')
       : undefined;
 
     const orchestratorResult = await runStoryOrchestrator(
       {
         episodeId: data.episodeId,
-        episodeTitle: data.title,
-        episodeLogline: data.logline,
+        // Payload text is the user's: defused before the model sees it (KB-101)
+        episodeTitle: sanitizeForPrompt(data.title),
+        episodeLogline: sanitizeForPrompt(data.logline),
         genre: episodeContext.genre ?? 'general',
         targetAudience: episodeContext.targetAudience ?? 'general',
         targetDurationSeconds: data.targetDuration,
@@ -306,9 +311,11 @@ export async function processStoryGeneration(
         verifiedFacts: factsContext || undefined,
         recurringElementsContext: recurringElementContext,
         threadCandidatesContext,
-        ideationThemes: data.themes,
-        ideationHook: data.hook,
-        visualDirection: data.visualDirection,
+        ...sanitizeStrings({
+          ideationThemes: data.themes,
+          ideationHook: data.hook,
+          visualDirection: data.visualDirection,
+        }),
       },
       supabase,
     );

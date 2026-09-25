@@ -154,6 +154,22 @@ export default defineConfig({
         __dirname,
         '../../packages/features/episodes/src/agent/audio-cue-orchestrator.ts',
       ),
+      '@kit/episodes/agent/ideation-orchestrator': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/agent/ideation-orchestrator.ts',
+      ),
+      '@kit/episodes/agent/story-orchestrator': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/agent/story-orchestrator.ts',
+      ),
+      '@kit/episodes/agent/screenplay-orchestrator': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/agent/screenplay-orchestrator.ts',
+      ),
+      '@kit/episodes/agent/shot-orchestrator': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/agent/shot-orchestrator.ts',
+      ),
       '@kit/episodes/lib': path.resolve(
         __dirname,
         '../../packages/features/episodes/src/lib/index.ts',

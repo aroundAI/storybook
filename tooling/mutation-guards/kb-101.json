@@ -50,6 +50,76 @@
       "cwd": "packages/features/episodes",
       "test": "src/lib/__tests__/sanitize-for-prompt.test.ts",
       "pattern": "chat-template tokens"
+    },
+    {
+      "name": "X1 The ideation premise reaches the model raw",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/story-ideation.ts",
+      "find": "      ? sanitizeForPrompt(data.premise)\n",
+      "replace": "      ? data.premise\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
+      "pattern": "story ideation"
+    },
+    {
+      "name": "X2 The story logline reaches the model raw",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/story-generation.ts",
+      "find": "        episodeLogline: sanitizeForPrompt(data.logline),\n",
+      "replace": "        episodeLogline: data.logline,\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
+      "pattern": "story generation"
+    },
+    {
+      "name": "X3 Refinement feedback reaches the model raw",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/story-refinement.ts",
+      "find": "        feedback: sanitizeForPrompt(data.feedback),\n        season_context:",
+      "replace": "        feedback: data.feedback,\n        season_context:",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
+      "pattern": "story refinement"
+    },
+    {
+      "name": "X4 The stored screenplay reaches the refinement model raw",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/screenplay-refinement.ts",
+      "find": "        current_screenplay: JSON.stringify(sanitizeStrings(screenplayData)),\n",
+      "replace": "        current_screenplay: JSON.stringify(screenplayData),\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
+      "pattern": "screenplay refinement"
+    },
+    {
+      "name": "X5 The stored story reaches the screenplay model raw",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts",
+      "find": "    const storyData = sanitizeStrings(\n      episode.story_data as Record<string, unknown> | null,\n    );\n",
+      "replace": "    const storyData = episode.story_data as Record<string, unknown> | null;\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
+      "pattern": "screenplay conversion"
+    },
+    {
+      "name": "X6 Stored screenplay scenes reach the shot model raw",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/shot-generation.ts",
+      "find": "      scenes: sanitizeStrings(scenes).map((s, idx) => {\n",
+      "replace": "      scenes: scenes.map((s, idx) => {\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
+      "pattern": "shot generation"
+    },
+    {
+      "name": "X7 A handler that calls an executor goes unaccounted for",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
+      "find": "  'translate-dialogue.ts',\n];",
+      "replace": "];",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
+      "pattern": "accounted for"
     }
   ]
 }
