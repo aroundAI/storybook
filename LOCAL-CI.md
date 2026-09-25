@@ -99,6 +99,10 @@ LANE=B scripts/local-ci/pipeline.sh 352  # lane B, at the same time
   byte-identical to the commands before lanes existed.
 - **Both stacks use the same demo JWT secret**, so the anon and service-role
   keys in `.env.test` are valid for both (checked, not assumed).
+- **Static stages run one at a time across both lanes** (`.local-ci/static.lock`,
+  taken by `pipeline.sh`); only service stages overlap. Running both lanes'
+  static stages next to an E2E suite starved the Mac: tests timed out on
+  unchanged code (Vitest worker RPC, a 5s test timeout).
 - **Memory:** lane B's stack takes about 1.7 GB. Run lane B only when Docker
   has room for it beside lane A. `lane-b.sh status` shows the figure.
 - **Teammates stay on lane A** unless told otherwise: `LANE=B` on a teammate's
