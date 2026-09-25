@@ -93,6 +93,11 @@ test.describe('Profile settings with team accounts only (KB-100)', () => {
     await expect(page).toHaveURL('/home/teams/create');
     await captureIfAsked(page, 'kb99-03-no-team-lands-on-create');
 
+    // The create-team dialog opens on arrival; closing it is the person's
+    // first move if they came for something else.
+    await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
     await userMenu(page).click();
     await page.locator('[data-test="account-dropdown-settings"]').click();
     await page.waitForURL('**/home/settings');

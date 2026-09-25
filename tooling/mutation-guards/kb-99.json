@@ -37,6 +37,15 @@
       "replace": "",
       "spec": "tests/account/profile-settings.spec.ts",
       "grep": "opens Profile settings from the user menu"
+    },
+    {
+      "name": "E3 The create-team dialog opens over a connect failure",
+      "kind": "e2e",
+      "file": "apps/web/app/home/teams/create/page.tsx",
+      "find": "          <CreateTeamPrompt openOnLoad={!failure} />",
+      "replace": "          <CreateTeamPrompt />",
+      "spec": "tests/platform-connections/connect-failure.spec.ts",
+      "grep": "no team lands on create-team"
     }
   ]
 }
