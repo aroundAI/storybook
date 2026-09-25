@@ -1,0 +1,85 @@
+{
+  "feature": "KB-35",
+  "mutations": [
+    {
+      "name": "V1 An embedder is built without a Voyage key",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/utils/voyage-embedder.ts",
+      "find": "  if (!apiKey) return null;\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/voyage-embedder.test.ts",
+      "pattern": "without a key"
+    },
+    {
+      "name": "V2 A Voyage vector of the wrong length is accepted",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/utils/voyage-embedder.ts",
+      "find": "        embedding.length !== VOYAGE_EMBEDDING_DIMENSIONS ||\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/voyage-embedder.test.ts",
+      "pattern": "wrong length"
+    },
+    {
+      "name": "V3 Fewer Voyage vectors than inputs are accepted",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/utils/voyage-embedder.ts",
+      "find": "    if (vectors.length !== texts.length) {\n",
+      "replace": "    if (false) {\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/voyage-embedder.test.ts",
+      "pattern": "too few vectors"
+    },
+    {
+      "name": "V4 Voyage vectors keep response order, not input order",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/utils/voyage-embedder.ts",
+      "find": "    .sort((a, b) => a.index - b.index)\n",
+      "replace": "    .sort(() => 0)\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/voyage-embedder.test.ts",
+      "pattern": "input order"
+    },
+    {
+      "name": "V5 A failed Voyage request carries its raw error text",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/utils/voyage-embedder.ts",
+      "find": "        `request failed: ${error instanceof Error ? error.name : 'unknown'}`,\n",
+      "replace": "        `request failed: ${String(error)}`,\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/voyage-embedder.test.ts",
+      "pattern": "does not carry the key"
+    },
+    {
+      "name": "H1 The embedding hash ignores the model",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/utils/semantic-episodes.ts",
+      "find": "  return createHash('sha256').update(`${model}\\n${document}`).digest('hex');\n",
+      "replace": "  return createHash('sha256').update(document).digest('hex');\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/semantic-episodes.test.ts",
+      "pattern": "model"
+    },
+    {
+      "name": "H2 An edited episode is not re-embedded",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/utils/semantic-episodes.ts",
+      "find": "      (candidate) => storedHashes.get(candidate.episodeId) !== candidate.hash,\n",
+      "replace": "      (candidate) => !storedHashes.has(candidate.episodeId),\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/semantic-episodes.test.ts",
+      "pattern": "missing or changed"
+    },
+    {
+      "name": "F1 A failed semantic step fails the job",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/utils/semantic-episodes.ts",
+      "find": "    return fallback;\n  }\n}\n",
+      "replace": "    throw error;\n  }\n}\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/semantic-episodes.test.ts",
+      "pattern": "when a step fails"
+    }
+  ]
+}
