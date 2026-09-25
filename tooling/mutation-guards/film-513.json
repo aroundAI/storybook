@@ -1,0 +1,31 @@
+{
+  "feature": "FILM-513",
+  "mutations": [
+    {
+      "name": "FILM-513 U1 the synclabs vendor is back in the resolver",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/resolver.ts",
+      "find": "  udio: 'https://api.udio.com',\n",
+      "replace": "  udio: 'https://api.udio.com',\n  synclabs: 'https://api.synclabs.so',\n",
+      "cwd": "apps/web",
+      "test": "test/film-513-lip-sync-retired.test.ts",
+      "pattern": "names lip-sync"
+    },
+    {
+      "name": "FILM-513 U2 a Wav2Lip base-URL override is read again",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/lib/constants.ts",
+      "find": "// Provider display names\n",
+      "replace": "export const WAV2LIP_BASE = process.env.WAV2LIP_API_URL;\n\n// Provider display names\n",
+      "cwd": "apps/web",
+      "test": "test/film-513-lip-sync-retired.test.ts",
+      "pattern": "names lip-sync"
+    },
+    {
+      "name": "FILM-513 P1 lip_sync_jobs exists again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/lip-sync-retired.test.sql",
+      "sql": "create table public.lip_sync_jobs (id uuid primary key);"
+    }
+  ]
+}
