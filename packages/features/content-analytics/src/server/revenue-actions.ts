@@ -4,6 +4,7 @@ import 'server-only';
 
 import { queryTotalsByVideoIds } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -470,7 +471,7 @@ export const deleteManualRevenueAction = enhanceAction(
  * Get revenue projection based on historical data.
  * Calculates estimated monthly and yearly revenue with confidence levels.
  */
-export const getRevenueProjectionAction = enhanceAction(
+const getRevenueProjection = enhanceAction(
   async function (data): Promise<RevenueProjection[]> {
     const client = getSupabaseServerClient();
     const { accountId, asOf } = data;
@@ -501,6 +502,8 @@ export const getRevenueProjectionAction = enhanceAction(
     schema: GetRevenueProjectionSchema,
   },
 );
+
+export const getRevenueProjectionAction = returnRefusals(getRevenueProjection);
 
 /**
  * Get revenue time series data for charts.

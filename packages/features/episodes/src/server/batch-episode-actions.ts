@@ -257,7 +257,7 @@ export const batchCreateEpisodesAction = returnRefusals(
  * Uses surrounding episodes for narrative continuity when regenerating.
  * In production, queues via SQS for background processing.
  */
-export const regenerateEpisodeOutlineAction = enhanceAction(
+const regenerateEpisodeOutline = enhanceAction(
   async (
     data,
   ): Promise<{
@@ -314,4 +314,8 @@ export const regenerateEpisodeOutlineAction = enhanceAction(
     return { success: true, queued: true };
   },
   { schema: RegenerateEpisodeOutlineSchema },
+);
+
+export const regenerateEpisodeOutlineAction = returnRefusals(
+  regenerateEpisodeOutline,
 );

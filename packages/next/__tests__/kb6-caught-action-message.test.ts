@@ -7,6 +7,7 @@ import {
   findCaughtActionMessageReads,
   refusingActionsIn,
 } from './caught-action-message';
+import { findThrownRefusals } from './thrown-refusals';
 
 const REPO = join(__dirname, '..', '..', '..');
 const ROOTS = ['apps/web/app', 'packages'];
@@ -26,10 +27,7 @@ const SKIPPED = new Set([
  * An entry that no longer offends fails the run, so the list can only
  * shrink — delete the line in the pull request that fixes the file.
  */
-const KNOWN: Record<string, string> = {
-  'packages/features/content-analytics/src/components/manual-revenue-form.tsx':
-    'KB-12 (open PR rewrites this form)',
-};
+const KNOWN: Record<string, string> = {};
 
 function sourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -92,6 +90,20 @@ describe('KB-6: a caught server-action error is never read for its message', () 
     expect(
       bare,
       'A refusal is a value now: without unwrap(…) the caller reads "refused" as "done"',
+    ).toEqual([]);
+  });
+
+  it('no exported server action throws a refusal: each one returns it (returnRefusals / withRefusals)', () => {
+    const thrown = findThrownRefusals(
+      sources.map(({ path, source }) => ({
+        path: relative(REPO, path),
+        source,
+      })),
+    ).map(({ file, line, action }) => `${file}:${line} ${action}`);
+
+    expect(
+      thrown,
+      'Rename the enhanceAction to an inner const and export returnRefusals(inner); callers unwrap(…)',
     ).toEqual([]);
   });
 
@@ -259,7 +271,7 @@ describe('what the scan flags, and what it leaves alone', () => {
     ).toEqual([]);
   });
 
-  it('leaves refusalMessage alone: it is how a refusal is read', () => {
+  it('leaves refusalMessage alone: it is how a refusal is read (server half below)', () => {
     expect(
       scan(`
         async function run() {

@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -59,7 +60,7 @@ export interface LanguageInsightsResult {
  *
  * In production, queues via SQS for background processing.
  */
-export const generateLanguageInsightsAction = enhanceAction(
+const generateLanguageInsights = enhanceAction(
   async function ({
     projectId,
   }): Promise<LanguageInsightsResult & { queued?: boolean }> {
@@ -154,4 +155,8 @@ export const generateLanguageInsightsAction = enhanceAction(
     auth: true,
     schema: GenerateLanguageInsightsSchema,
   },
+);
+
+export const generateLanguageInsightsAction = returnRefusals(
+  generateLanguageInsights,
 );

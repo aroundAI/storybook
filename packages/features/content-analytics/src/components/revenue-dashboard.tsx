@@ -12,6 +12,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
+import { unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Skeleton } from '@kit/ui/skeleton';
@@ -105,7 +106,7 @@ export function RevenueDashboard({
     isError: projectionIsError,
   } = useQuery({
     queryKey: ['revenue-projection', accountId, asOf] as const,
-    queryFn: () => getRevenueProjectionAction({ accountId, asOf }),
+    queryFn: () => unwrap(getRevenueProjectionAction({ accountId, asOf })),
   });
 
   // Fetch time series data

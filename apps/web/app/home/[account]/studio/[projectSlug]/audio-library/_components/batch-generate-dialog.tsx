@@ -18,7 +18,7 @@ import {
   X,
 } from 'lucide-react';
 
-import { refusalMessage } from '@kit/next/action-result';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import {
@@ -127,17 +127,21 @@ export function BatchGenerateDialog({
 
         try {
           if (audioType === 'music') {
-            await generateMusicAssetAction({
-              projectId,
-              prompt: items[i]!.prompt,
-              duration: items[i]!.duration,
-            });
+            await unwrap(
+              generateMusicAssetAction({
+                projectId,
+                prompt: items[i]!.prompt,
+                duration: items[i]!.duration,
+              }),
+            );
           } else {
-            await generateSfxAssetAction({
-              projectId,
-              prompt: items[i]!.prompt,
-              duration: items[i]!.duration,
-            });
+            await unwrap(
+              generateSfxAssetAction({
+                projectId,
+                prompt: items[i]!.prompt,
+                duration: items[i]!.duration,
+              }),
+            );
           }
 
           setItems((prev) =>

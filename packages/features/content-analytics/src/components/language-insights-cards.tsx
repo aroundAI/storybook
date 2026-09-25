@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 
 import type { LanguageDimension } from '@kit/clickhouse';
+import { unwrap } from '@kit/next/action-result';
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
@@ -191,7 +192,9 @@ export function LanguageInsightsCard({ projectId }: LanguageInsightsCardProps) {
 
   const { mutate: generateInsights, isPending } = useMutation({
     mutationFn: async () => {
-      const result = await generateLanguageInsightsAction({ projectId });
+      const result = await unwrap(
+        generateLanguageInsightsAction({ projectId }),
+      );
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((result as any)?.queued) {
         toast.info('Generating insights in background...');

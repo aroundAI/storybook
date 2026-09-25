@@ -11,6 +11,7 @@
  */
 import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -27,7 +28,7 @@ import type { GenerateShotListResponse, ScreenplayData } from '../../types';
  *
  * Results are delivered via WebSocket when processing completes.
  */
-export const generateShotListAction = enhanceAction(
+const generateShotList = enhanceAction(
   async (
     data,
   ): Promise<GenerateShotListResponse | { success: true; queued: true }> => {
@@ -134,3 +135,5 @@ export const generateShotListAction = enhanceAction(
   },
   { schema: GenerateShotListSchema },
 );
+
+export const generateShotListAction = returnRefusals(generateShotList);

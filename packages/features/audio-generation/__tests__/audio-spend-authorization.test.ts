@@ -253,7 +253,7 @@ describe('generateMusicAssetAction (audio library)', () => {
         prompt: 'Calm piano',
         duration: 30,
       }),
-    ).rejects.toThrow('Project not found');
+    ).resolves.toEqual({ ok: false, error: 'Project not found' });
     expectNothingSpent();
   });
 
@@ -285,7 +285,7 @@ describe('generateSfxAssetAction (audio library)', () => {
         prompt: 'Door slam',
         duration: 5,
       }),
-    ).rejects.toThrow('Project not found');
+    ).resolves.toEqual({ ok: false, error: 'Project not found' });
     expectNothingSpent();
   });
 

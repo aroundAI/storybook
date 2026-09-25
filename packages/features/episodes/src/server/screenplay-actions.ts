@@ -2,6 +2,7 @@
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import type { Screenplay } from '@kit/prompt-engine/schemas';
 import { getLogger } from '@kit/shared/logger';
@@ -140,7 +141,7 @@ function _extractDialogueLines(
  *
  * In production, queues via SQS for background processing.
  */
-export const convertToScreenplayAction = enhanceAction(
+const convertToScreenplay = enhanceAction(
   async (
     data,
   ): Promise<{
@@ -274,3 +275,5 @@ export const convertToScreenplayAction = enhanceAction(
     schema: ConvertToScreenplaySchema,
   },
 );
+
+export const convertToScreenplayAction = returnRefusals(convertToScreenplay);

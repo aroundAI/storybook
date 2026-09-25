@@ -461,7 +461,7 @@ const GenerateSfxSchema = z.object({
  * Generate music using ElevenLabs Music API
  * Creates asset record, generates audio, uploads to storage, updates record
  */
-export const generateMusicAssetAction = enhanceAction(
+const generateMusicAsset = enhanceAction(
   async (data): Promise<AudioAsset> => {
     const logger = await getLogger();
     const ctx = { name: 'audioAsset.generateMusic', projectId: data.projectId };
@@ -597,10 +597,12 @@ export const generateMusicAssetAction = enhanceAction(
   { schema: GenerateMusicSchema },
 );
 
+export const generateMusicAssetAction = returnRefusals(generateMusicAsset);
+
 /**
  * Generate SFX using ElevenLabs Sound Effects API
  */
-export const generateSfxAssetAction = enhanceAction(
+const generateSfxAsset = enhanceAction(
   async (data): Promise<AudioAsset> => {
     const logger = await getLogger();
     const ctx = { name: 'audioAsset.generateSfx', projectId: data.projectId };
@@ -724,6 +726,8 @@ export const generateSfxAssetAction = enhanceAction(
   },
   { schema: GenerateSfxSchema },
 );
+
+export const generateSfxAssetAction = returnRefusals(generateSfxAsset);
 
 // =============================================================================
 // Uploaded files (KB-73)

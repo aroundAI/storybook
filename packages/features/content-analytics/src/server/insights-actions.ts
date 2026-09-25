@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -93,7 +94,7 @@ interface _InsightsLLMOutput {
  * Uses LLM to analyze analytics data and provide actionable recommendations.
  * In production, queues via SQS for background processing.
  */
-export const generateInsightsAction = enhanceAction(
+const generateInsights = enhanceAction(
   async function ({
     projectId,
     analytics,
@@ -164,3 +165,5 @@ export const generateInsightsAction = enhanceAction(
     schema: GenerateInsightsSchema,
   },
 );
+
+export const generateInsightsAction = returnRefusals(generateInsights);
