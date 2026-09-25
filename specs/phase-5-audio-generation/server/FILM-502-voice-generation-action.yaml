@@ -56,7 +56,7 @@ acceptance_criteria:
     reason: "no longer true — no budget check on the live single-line path, so nothing refuses"
   - text: "`generateDialogueVoiceAction` increments account usage after successful generation"
     met: true
-    evidence: "voice-worker counts each generated line on the payload's (authorised) account (`apps/web/lambda/voice-worker/voice-generation.ts:253`), and the sync action through `recordVoiceSpend` (`packages/features/audio-generation/src/server/voice-queries.ts:91`); tests `apps/web/lambda/voice-worker/__tests__/voice-spend.test.ts`, `packages/features/audio-generation/__tests__/voice-spend.test.ts` — KB-83"
+    evidence: "voice-worker counts each generated line on the payload's (authorised) account (`apps/web/lambda/voice-worker/voice-generation.ts:254`), and the sync action through `recordVoiceSpend` (`packages/features/audio-generation/src/server/voice-queries.ts:91`); tests `apps/web/lambda/voice-worker/__tests__/voice-spend.test.ts`, `packages/features/audio-generation/__tests__/voice-spend.test.ts` — KB-83"
   - text: "`generateDialogueVoiceAction` records cost in generation_jobs table"
     met: false
     reason: "no longer true — no `generation_jobs` row is created or updated; voice-worker's `markJob*` calls, which filtered on `reference_type='episode'` and matched nothing, were removed by KB-14 (#309)"

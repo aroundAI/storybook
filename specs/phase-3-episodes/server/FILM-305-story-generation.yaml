@@ -38,7 +38,7 @@ acceptance_criteria:
     reason: "unverified — runtime timing of an async agent job; needs a timed run"
   - text: "`generateFullStoryAction` generates 500-1000 word story"
     met: false
-    reason: "retired — length now scales with target duration (`apps/web/lambda/llm-worker/handlers/story-generation.ts:251`)"
+    reason: "retired — length now scales with target duration (`apps/web/lambda/llm-worker/handlers/story-generation.ts:253`)"
   - text: "`generateFullStoryAction` updates episode.story_data"
     met: true
     evidence: null
