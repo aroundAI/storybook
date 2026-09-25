@@ -51,7 +51,7 @@ acceptance_criteria:
     evidence: "Changed by KB-22: disconnect wipes the stored tokens and keeps the row, so the channel's records survive — `disconnect_platform_connection` (`apps/web/supabase/migrations/20260923140320_kb22-disconnect-keeps-records.sql`)"
   - text: "State/nonce prevents CSRF attacks"
     met: true
-    evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:84`; `apps/e2e/tests/platform-connections/connect-failure.spec.ts:156`"
+    evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:84`; `apps/e2e/tests/platform-connections/connect-failure.spec.ts:168`"
   - text: "Expired states are rejected"
     met: true
     evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:90`"
@@ -59,10 +59,10 @@ test_plan:
   unit:
     - text: "Test state encoding/decoding"
       met: true
-      evidence: "`apps/e2e/tests/platform-connections/connect-failure.spec.ts:126`, `apps/e2e/tests/platform-connections/connect-failure.spec.ts:172`"
+      evidence: "`apps/e2e/tests/platform-connections/connect-failure.spec.ts:138`, `apps/e2e/tests/platform-connections/connect-failure.spec.ts:184`"
     - text: "Test nonce generation and validation"
       met: false
-      reason: "not met — validation only (`apps/e2e/tests/platform-connections/connect-failure.spec.ts:156`); nothing tests nonce generation"
+      reason: "not met — validation only (`apps/e2e/tests/platform-connections/connect-failure.spec.ts:168`); nothing tests nonce generation"
   integration:
     - text: "Test OAuth flow with mocked Google endpoints"
       met: false
