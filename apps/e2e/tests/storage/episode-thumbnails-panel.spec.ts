@@ -80,7 +80,10 @@ async function openPublish(page: Page, slug: string) {
     `/home/${team.slug}/studio/${project.slug}/episodes/${slug}/publish`,
   );
 
+  // Exactly one panel: while a navigation settles the screen can briefly
+  // render twice (see intro-thumbnail-upload.spec.ts), so wait for one.
   const panel = page.locator('[data-test="episode-thumbnails"]');
+  await expect(panel).toHaveCount(1);
   await expect(panel).toBeVisible();
   await expect(panel.locator('[data-test="thumbnails-loading"]')).toHaveCount(
     0,
