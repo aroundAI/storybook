@@ -296,7 +296,7 @@ afterEach(() => {
 });
 
 /** A global row exactly as `/admin/platforms` writes it. */
-async function seedGlobalCredentials(platform: 'youtube' | 'meta') {
+async function seedGlobalCredentials(platform: 'youtube' | 'meta' | 'tiktok') {
   fakeDb.tables.oauth_app_credentials = [
     ...(fakeDb.tables.oauth_app_credentials ?? []),
     {
@@ -499,6 +499,108 @@ describe('refresh uses the credentials connect uses (KB-29)', () => {
   });
 });
 
+describe('a TikTok app saved at /admin/platforms (KB-36)', () => {
+  const tiktokForm = (clientKey: string, clientSecret: string) => ({
+    client_key: clientKey,
+    client_secret: clientSecret,
+    refresh_token: 'old-refresh-token',
+    grant_type: 'refresh_token',
+  });
+
+  it('refreshes with the saved TikTok app when no env keys are set', async () => {
+    vi.stubEnv('TIKTOK_CLIENT_KEY', '');
+    vi.stubEnv('TIKTOK_CLIENT_SECRET', '');
+    await seedGlobalCredentials('tiktok');
+    await seedExpiredConnection('tiktok');
+
+    const result = await tokenRefresh.ensureValidToken('conn-tiktok');
+
+    expect(result).toEqual({ valid: true, accessToken: 'new-access-token' });
+    expect(requests).toHaveLength(1);
+    expect(Object.fromEntries(requests[0]!.form)).toEqual(
+      tiktokForm('global-tiktok-client-id', 'global-tiktok-client-secret'),
+    );
+  });
+
+  it('prefers the saved TikTok app to the env keys', async () => {
+    await seedGlobalCredentials('tiktok');
+    await seedExpiredConnection('tiktok');
+
+    await tokenRefresh.ensureValidToken('conn-tiktok');
+
+    expect(requests).toHaveLength(1);
+    expect(Object.fromEntries(requests[0]!.form)).toEqual(
+      tiktokForm('global-tiktok-client-id', 'global-tiktok-client-secret'),
+    );
+  });
+
+  it('treats a saved TikTok app it cannot decrypt as not configured, without falling back to env', async () => {
+    fakeDb.tables.oauth_app_credentials = [
+      {
+        platform: 'tiktok',
+        client_id: 'global-tiktok-client-id',
+        client_secret_encrypted: 'not-a-ciphertext',
+      },
+    ];
+    await seedExpiredConnection('tiktok');
+
+    const result = await tokenRefresh.ensureValidToken('conn-tiktok');
+
+    expect(result).toEqual({
+      valid: false,
+      error: 'APP_NOT_CONFIGURED',
+      requiresReauth: false,
+    });
+    expect(requests).toHaveLength(0);
+    expect(storedConnection().is_active).toBe(true);
+  });
+
+  it('configures every app the admin page offers from a saved row alone', async () => {
+    const { SAVED_CREDENTIAL_APPS } = await import('../src/oauth/apps');
+    const { getOAuthAppCredentials } = await import(
+      '../src/server/oauth-app-credentials'
+    );
+    vi.stubEnv('TIKTOK_CLIENT_KEY', '');
+    vi.stubEnv('TIKTOK_CLIENT_SECRET', '');
+
+    for (const app of SAVED_CREDENTIAL_APPS) {
+      await seedGlobalCredentials(app);
+      expect(await getOAuthAppCredentials(app), app).toEqual({
+        clientId: `global-${app}-client-id`,
+        clientSecret: `global-${app}-client-secret`,
+      });
+    }
+  });
+
+  it('tells the admin page where each app is configured from, without a secret', async () => {
+    const { getSavedCredentialAppSources } = await import(
+      '../src/server/oauth-app-credentials'
+    );
+
+    // tiktok: env only; meta: nothing; youtube: saved
+    await seedGlobalCredentials('youtube');
+    expect(await getSavedCredentialAppSources()).toEqual({
+      youtube: 'saved',
+      tiktok: 'env',
+      meta: 'none',
+    });
+
+    await seedGlobalCredentials('tiktok');
+    fakeDb.tables.oauth_app_credentials!.push({
+      platform: 'meta',
+      client_id: 'global-meta-client-id',
+      client_secret_encrypted: 'not-a-ciphertext',
+    });
+    const sources = await getSavedCredentialAppSources();
+    expect(sources).toEqual({
+      youtube: 'saved',
+      tiktok: 'saved',
+      meta: 'unreadable',
+    });
+    expect(JSON.stringify(sources)).not.toContain('secret');
+  });
+});
+
 describe('a refresh that cannot happen', () => {
   it('leaves the connection active when the app is not configured, and says which source is missing', async () => {
     await seedExpiredConnection('youtube');
@@ -536,7 +638,8 @@ describe('a refresh that cannot happen', () => {
     const [context, message] = logged.error.at(-1)!;
     expect(context).toMatchObject({
       app: 'tiktok',
-      credentialSource: 'TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET',
+      credentialSource:
+        "oauth_app_credentials['tiktok'] or TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET",
     });
     expect(JSON.stringify([context, message])).not.toContain(
       'env-tiktok-client-key',
