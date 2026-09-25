@@ -46,6 +46,8 @@ const BUCKET_LITERALS = [
   /uploadWithPresignedUrl\(\s*[^,()]+,\s*['"]([^'"]+)['"]/g,
   // KB-54's helpers take (storage, bucket, url, …)
   /\b(?:deleteOwnedObject|storageKeyFromPublicUrl)\(\s*[^,()]+,\s*['"]([^'"]+)['"]/g,
+  // KB-57's gate takes (client, storage, bucket, key, …)
+  /\bwriteProjectObject\(\s*[^,()]+,\s*[^,()]+,\s*['"]([^'"]+)['"]/g,
   /\b[A-Z_]*BUCKET[A-Z_]*\s*=\s*['"]([^'"]+)['"]/g,
 ];
 

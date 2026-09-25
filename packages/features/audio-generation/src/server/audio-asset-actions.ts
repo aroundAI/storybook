@@ -541,13 +541,18 @@ export const generateMusicAssetAction = enhanceAction(
       }
 
       // Upload to storage
-      const fileName = `music/${asset.id}.mp3`;
-      const { getStorageAdapter } = await import('@kit/storage');
-      // audio-assets is server-write-only on Supabase (KB-55); on R2 the
-      // client is ignored.
+      const { getStorageAdapter, writeProjectObject } = await import(
+        '@kit/storage'
+      );
+      const { generatedAudioPath } = await import('@kit/storage/upload-paths');
+      const fileName = generatedAudioPath(data.projectId, 'music', asset.id);
+      // audio-assets is server-write-only on Supabase (KB-55): the service
+      // role writes it once the caller is checked on the key (KB-57).
       const storage = getStorageAdapter(getSupabaseServerAdminClient());
 
-      const uploadResult = await storage.upload(
+      const uploadResult = await writeProjectObject(
+        client,
+        storage,
         STORAGE_BUCKETS.audioAssets,
         fileName,
         result.audioBuffer,
@@ -670,13 +675,18 @@ export const generateSfxAssetAction = enhanceAction(
       }
 
       // Upload to storage
-      const fileName = `sfx/${asset.id}.mp3`;
-      const { getStorageAdapter } = await import('@kit/storage');
-      // audio-assets is server-write-only on Supabase (KB-55); on R2 the
-      // client is ignored.
+      const { getStorageAdapter, writeProjectObject } = await import(
+        '@kit/storage'
+      );
+      const { generatedAudioPath } = await import('@kit/storage/upload-paths');
+      const fileName = generatedAudioPath(data.projectId, 'sfx', asset.id);
+      // audio-assets is server-write-only on Supabase (KB-55): the service
+      // role writes it once the caller is checked on the key (KB-57).
       const storage = getStorageAdapter(getSupabaseServerAdminClient());
 
-      const uploadResult = await storage.upload(
+      const uploadResult = await writeProjectObject(
+        client,
+        storage,
         STORAGE_BUCKETS.audioAssets,
         fileName,
         result.audioBuffer,

@@ -42,6 +42,14 @@ export {
 export { deleteOwnedObject, storageKeyFromPublicUrl } from './storage-key';
 export type { OwnedDeleteResult } from './storage-key';
 
+// The project check every server-side write goes through (KB-57)
+export {
+  StorageWriteRefused,
+  canWriteProjectKey,
+  writeProjectObject,
+} from './project-write';
+export type { ProjectKeyClient } from './project-write';
+
 // Adapters (for direct instantiation if needed)
 export { LocalStorageAdapter } from './adapters/local';
 export { SupabaseStorageAdapter } from './adapters/supabase';

@@ -9,6 +9,9 @@ import {
   getStorageAdapter,
 } from '@kit/storage';
 
+// Writes go through `writeProjectObject` in `@kit/storage` (KB-57); this
+// module reads, deletes and builds URLs.
+
 /**
  * Storage bucket for project assets
  */
@@ -45,22 +48,6 @@ function getAdapter(client?: StorageClient): StorageAdapter {
 
   cachedAdapter = getStorageAdapter(client);
   return cachedAdapter;
-}
-
-/**
- * Upload a file to storage
- *
- * Uses the configured storage adapter (local or Supabase based on STORAGE_PROVIDER)
- */
-export async function uploadToStorage(
-  client: StorageClient,
-  bucket: string,
-  path: string,
-  buffer: Buffer,
-  options: UploadOptions,
-): Promise<UploadResult> {
-  const adapter = getAdapter(client);
-  return adapter.upload(bucket, path, buffer, options);
 }
 
 /**

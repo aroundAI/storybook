@@ -7,6 +7,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { getLogger } from '@kit/shared/logger';
+import { generatedAudioPath } from '@kit/storage/upload-paths';
 
 import { ElevenLabsMusicProvider } from '../../providers/elevenlabs-music';
 import {
@@ -40,8 +41,12 @@ export interface GenerateMusicCoreInput {
   timelineStartSeconds?: number;
   /** ElevenLabs API key (decrypted) - passed from handler to avoid server-only import */
   apiKey: string;
-  /** Optional upload function for Lambda environments (avoids @kit/storage server-only import) */
-  uploadFn?: UploadFn;
+  /**
+   * Writes the file. The worker passes its R2 upload, which checks the key
+   * against the job's authorised target (KB-57); there is no user session
+   * here for `writeProjectObject` to check.
+   */
+  uploadFn: UploadFn;
 }
 
 export interface GenerateMusicCoreResult {
@@ -59,30 +64,17 @@ export interface GenerateMusicCoreResult {
 // =============================================================================
 
 async function uploadAudioToStorage(
-  supabase: SupabaseClient,
   projectId: string,
   assetId: string,
   audioBuffer: Buffer,
-  uploadFn?: UploadFn,
+  uploadFn: UploadFn,
 ): Promise<{ url: string; path: string }> {
-  const fileName = `${assetId}.mp3`;
-  const storagePath = `${projectId}/music/${fileName}`;
-
-  // Use injected upload function if provided (Lambda-safe)
-  if (uploadFn) {
-    return uploadFn('audio', storagePath, audioBuffer, 'audio/mpeg');
-  }
-
-  // Default: use @kit/storage (for Next.js server actions)
-  const { getStorageAdapter } = await import('@kit/storage');
-  const storage = getStorageAdapter(supabase);
-
-  const { url } = await storage.upload('audio', storagePath, audioBuffer, {
-    contentType: 'audio/mpeg',
-    upsert: true,
-  });
-
-  return { url, path: storagePath };
+  return uploadFn(
+    'audio',
+    generatedAudioPath(projectId, 'music', assetId),
+    audioBuffer,
+    'audio/mpeg',
+  );
 }
 
 // =============================================================================
@@ -185,7 +177,6 @@ export async function generateMusicElevenLabsCore(
 
     // 3. Upload to storage
     const { url, path } = await uploadAudioToStorage(
-      input.supabase,
       input.projectId,
       asset.id,
       audioBuffer,

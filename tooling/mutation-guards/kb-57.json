@@ -1,0 +1,65 @@
+{
+  "feature": "KB-57",
+  "mutations": [
+    {
+      "name": "KB-57 U1 the gate writes without asking can_write_project_storage",
+      "kind": "unit",
+      "file": "packages/features/storage/src/project-write.ts",
+      "find": "  if (!(await canWriteProjectKey(client, key))) {\n    throw new StorageWriteRefused(key, 'not-writer');",
+      "replace": "  if (!key) {\n    throw new StorageWriteRefused(key, 'not-writer');",
+      "cwd": "packages/features/storage",
+      "test": "__tests__/project-write.test.ts",
+      "pattern": "refuses a key the caller cannot write"
+    },
+    {
+      "name": "KB-57 U2 the gate writes a key that names no project",
+      "kind": "unit",
+      "file": "packages/features/storage/src/project-write.ts",
+      "find": "  if (!storageKeyScope(key)) {\n    throw new StorageWriteRefused(key, 'no-scope');",
+      "replace": "  if (!key) {\n    throw new StorageWriteRefused(key, 'no-scope');",
+      "cwd": "packages/features/storage",
+      "test": "__tests__/project-write.test.ts",
+      "pattern": "names no project without asking"
+    },
+    {
+      "name": "KB-57 U3 any first segment is read as a project id",
+      "kind": "unit",
+      "file": "packages/features/storage/src/upload-paths.ts",
+      "find": "  return UUID.test(first) ? { projectId: first.toLowerCase() } : null;",
+      "replace": "  return { projectId: first.toLowerCase() };",
+      "cwd": "packages/features/storage",
+      "test": "__tests__/project-keys.test.ts",
+      "pattern": "used to build name nothing"
+    },
+    {
+      "name": "KB-57 U4 dialogue audio back at a key with no project",
+      "kind": "unit",
+      "file": "packages/features/storage/src/upload-paths.ts",
+      "find": "  return `episodes/${episodeId}/dialogue/${dialogueLineId}_${now}.mp3`;",
+      "replace": "  return `dialogue/${episodeId}/${dialogueLineId}_${now}.mp3`;",
+      "cwd": "packages/features/storage",
+      "test": "__tests__/project-keys.test.ts",
+      "pattern": "names its project or episode"
+    },
+    {
+      "name": "KB-57 U5 a writer uploads around the gate",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/voice-actions.ts",
+      "find": "      const { url: audioUrl } = await writeProjectObject(\n        client,\n        storage,\n        'audio',\n        audioPath,",
+      "replace": "      const { url: audioUrl } = await storage.upload(\n        'audio',\n        audioPath,",
+      "cwd": "apps/web",
+      "test": "app/api/storage/__tests__/storage-writes-gated.test.ts",
+      "pattern": "no write call outside"
+    },
+    {
+      "name": "KB-57 U6 presign signs project assets without the shared check",
+      "kind": "unit",
+      "file": "apps/web/app/api/storage/presign/route.ts",
+      "find": "    canWrite: canWriteProjectKey,",
+      "replace": "    canWrite: async () => true,",
+      "cwd": "apps/web",
+      "test": "app/api/storage/__tests__/storage-writes-gated.test.ts",
+      "pattern": "makes its check"
+    }
+  ]
+}

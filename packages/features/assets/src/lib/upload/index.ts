@@ -11,7 +11,6 @@ export {
 } from './image-processor';
 
 export {
-  uploadToStorage,
   getPublicUrl,
   deleteFromStorage,
   bucketExists,

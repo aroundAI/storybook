@@ -61,6 +61,8 @@ vi.mock('@kit/storage', () => ({
   getStorageAdapter: () => ({
     upload: async () => ({ url: 'https://audio.test/asset.mp3' }),
   }),
+  // The gate is @kit/storage's own test; here it passes the write through
+  writeProjectObject: async () => ({ url: 'https://audio.test/asset.mp3' }),
 }));
 
 vi.mock('../src/server/project-audio-settings', () => ({
