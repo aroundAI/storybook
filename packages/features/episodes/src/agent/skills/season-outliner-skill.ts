@@ -20,6 +20,11 @@ function neighbouringFrom(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
+/** The verified facts the job carried (KB-71), or none. */
+function verifiedFactsFrom(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
 interface EpisodeOutline {
   number: number;
   title: string;
@@ -99,13 +104,17 @@ const generateSeasonOutlineTool = createTool({
           starting_number: startingNumber,
           genre,
           style,
-          existing_characters: existingCharacters,
-          existing_locations: existingLocations,
+          // The template's own names (KB-126): under the old ones the data
+          // went nowhere and the model was sent `{{characters}}`
+          characters: existingCharacters,
+          locations: existingLocations,
           recurring_element: recurringElements,
           // From the job, not the LLM's tool arguments (KB-121)
           surrounding_episodes: neighbouringFrom(
             context?._neighbouringEpisodes,
           ),
+          // From the job, not the LLM's tool arguments
+          verified_facts: verifiedFactsFrom(context?._verifiedFacts),
         },
         context: {
           name: 'agent.seasonOutliner.generateSeasonOutline',

@@ -133,6 +133,8 @@ export async function runSeasonOrchestrator(
       {
         accountId: input.accountId,
         _neighbouringEpisodes: input.neighbouringEpisodes,
+        // The outliner's template reads the facts itself (KB-126)
+        _verifiedFacts: input.verifiedFacts,
       },
     );
 

@@ -52,7 +52,7 @@
       }
     }
   ],
-  "user_prompt": "Generate {{episode_count}} episode outlines for a season based on this premise:\n\n**Season Premise**: {{season_premise}}\n\n**Genre**: {{genre}}\n**Style**: {{style}}\n\n**Characters**:\n{{characters}}\n\n**Locations**:\n{{locations}}\n\nStarting episode number: {{starting_number}}\n\n{{surrounding_episodes}}\n\nFor each episode, provide:\n1. **number**: Episode number (starting from {{starting_number}})\n2. **title**: A compelling, memorable title\n3. **premise**: One-sentence hook (what happens in this episode)\n4. **mainPlot**: 2-3 sentence plot summary\n5. **characterFocus**: Array of character names featured prominently\n6. **arcPosition**: Position in story arc (setup, rising, midpoint, climax, resolution)\n\nEnsure:\n- Each episode title is unique and evocative\n- Episodes build on each other narratively\n- Story structure matches arc positions\n- Character focus is distributed across the season\n- Each episode is visually compelling for video production\n\nReturn JSON matching this structure:\n```json\n{\n  \"episodes\": [\n    {\n      \"number\": 1,\n      \"title\": \"string\",\n      \"premise\": \"string\",\n      \"mainPlot\": \"string\",\n      \"characterFocus\": [\"string\"],\n      \"arcPosition\": \"setup|rising|midpoint|climax|resolution\"\n    }\n  ]\n}\n```",
+  "user_prompt": "Generate {{episode_count}} episode outlines for a season based on this premise:\n\n**Season Premise**: {{season_premise}}\n\n**Genre**: {{genre}}\n**Style**: {{style}}\n\n**Characters**:\n{{characters}}\n\n**Locations**:\n{{locations}}\n\nStarting episode number: {{starting_number}}\n\n{{recurring_element}}\n\n{{verified_facts}}\n\n{{surrounding_episodes}}\n\nFor each episode, provide:\n1. **number**: Episode number (starting from {{starting_number}})\n2. **title**: A compelling, memorable title\n3. **premise**: One-sentence hook (what happens in this episode)\n4. **mainPlot**: 2-3 sentence plot summary\n5. **characterFocus**: Array of character names featured prominently\n6. **arcPosition**: Position in story arc (setup, rising, midpoint, climax, resolution)\n\nEnsure:\n- Each episode title is unique and evocative\n- Episodes build on each other narratively\n- Story structure matches arc positions\n- Character focus is distributed across the season\n- Each episode is visually compelling for video production\n\nReturn JSON matching this structure:\n```json\n{\n  \"episodes\": [\n    {\n      \"number\": 1,\n      \"title\": \"string\",\n      \"premise\": \"string\",\n      \"mainPlot\": \"string\",\n      \"characterFocus\": [\"string\"],\n      \"arcPosition\": \"setup|rising|midpoint|climax|resolution\"\n    }\n  ]\n}\n```",
   "variables": {
     "season_premise": {
       "type": "text",
@@ -98,6 +98,11 @@
       "type": "text",
       "required": false,
       "description": "Regenerating one episode: the outlines around it and the writer's note (KB-121). Empty for a full season."
+    },
+    "recurring_element": {
+      "type": "text",
+      "required": false,
+      "description": "Recurring story elements, pre-formatted by formatRecurringElementsForPrompt (KB-126)"
     }
   },
   "output": {

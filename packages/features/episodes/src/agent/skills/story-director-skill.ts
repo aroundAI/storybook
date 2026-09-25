@@ -104,26 +104,29 @@ const generateStoryTool = createTool({
       ),
   }),
 
-  execute: async ({
-    title,
-    logline,
-    genre,
-    targetAudience,
-    targetDurationSeconds,
-    contentStyle,
-    characters,
-    locations,
-    seasonContext,
-    previousEpisodes,
-    visualStyle,
-    ideationThemes,
-    ideationHook,
-    visualDirection,
-    viralGoals,
-    revisionInstructions,
-    existingStoryText,
-    recurringElements,
-  }) => {
+  execute: async (
+    {
+      title,
+      logline,
+      genre,
+      targetAudience,
+      targetDurationSeconds,
+      contentStyle,
+      characters,
+      locations,
+      seasonContext,
+      previousEpisodes,
+      visualStyle,
+      ideationThemes,
+      ideationHook,
+      visualDirection,
+      viralGoals,
+      revisionInstructions,
+      existingStoryText,
+      recurringElements,
+    },
+    context,
+  ) => {
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
 
@@ -188,15 +191,21 @@ const generateStoryTool = createTool({
           season_context: seasonContext ?? '',
           previous_episodes: previousEpisodes ?? '',
           visual_style: visualStyle ?? '',
-          style: 'balanced',
           recurring_element: recurringElements ?? '',
           canon_context: '',
           plot_beats: '',
           ideation_themes: ideationThemes ?? '',
           ideation_hook: ideationHook ?? '',
           visual_direction: visualDirection ?? '',
-          // Inject viral goals if provided
-          ...(viralGoals ? { viral_goals: viralGoals } : {}),
+          // The Orchestrator's viral goals (KB-126: never read before)
+          viral_goals: viralGoals
+            ? `**Viral Storytelling Goals**: ${viralGoals}`
+            : '',
+          // From the job, not the LLM's tool arguments (KB-126)
+          verified_facts:
+            typeof context?._verifiedFacts === 'string'
+              ? context._verifiedFacts
+              : '',
         },
         context: {
           name: 'agent.storyDirector.generateStory',
