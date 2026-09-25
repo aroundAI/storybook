@@ -2,7 +2,6 @@
 -- Compilations Schema
 -- ==================================
 -- Compilations are derived videos assembled from segments of existing episodes.
--- They use the Edit Suite for timeline editing and the FFmpeg render worker for output.
 
 -- Compilation types
 create type public.compilation_type as enum (
@@ -33,9 +32,6 @@ create table if not exists public.compilations (
   output_url text,           -- Final rendered video URL
   thumbnail_url text,
   duration_seconds integer,  -- Calculated total duration
-  
-  -- Edit Suite integration
-  edit_project_id uuid references public.edit_projects(id) on delete set null,
   
   -- Chapter markers for YouTube Chapters
   chapters jsonb not null default '[]'::jsonb,

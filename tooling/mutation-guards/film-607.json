@@ -8,18 +8,6 @@
       "sql": "create function public.batch_assemble_edit_project(p_episode_id uuid) returns void language sql as 'select null::void';"
     },
     {
-      "name": "R2 authenticated may insert into an edit table again",
-      "kind": "pgtap",
-      "test": "apps/web/supabase/tests/database/edit-suite-retired.test.sql",
-      "sql": "grant insert on public.edit_tracks to authenticated;"
-    },
-    {
-      "name": "R2 a write policy is back on an edit table",
-      "kind": "pgtap",
-      "test": "apps/web/supabase/tests/database/edit-suite-retired.test.sql",
-      "sql": "create policy \"edit_tracks_update\" on public.edit_tracks for update to authenticated using (true);"
-    },
-    {
       "name": "W1 the Edit Suite tab is back in the episode workspace",
       "kind": "unit",
       "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx",

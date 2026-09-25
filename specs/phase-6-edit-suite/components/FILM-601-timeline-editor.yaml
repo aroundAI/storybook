@@ -126,7 +126,7 @@ retirement:
     its queues. Exploration found the editor had never persisted an edit (KB-62: the save
     function was never granted to signed-in users) nor finished a server render (KB-32),
     and its Browser Export upload built its storage path from the edit project's id, which
-    the presign route refuses. Its tables are kept read-only until FILM-608. Kept as a
+    the presign route refuses. Its tables were kept read-only, then dropped by FILM-608. Kept as a
     record; not outstanding work.
   replacement: null
 open_questions:

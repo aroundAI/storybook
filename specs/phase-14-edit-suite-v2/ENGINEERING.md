@@ -6,7 +6,7 @@ audited: 2026-09-23
 
 # Phase 14: Edit Suite v2 — Engineering Specification
 
-> **Retired 2026-09-23 (FILM-607).** The owner retired the whole Edit Suite: barely used, a dedicated editor does the job better, and any future editor is to be redesigned from scratch rather than restored from this document. `packages/features/edit-suite/`, its route, the render worker and its queues were deleted; the edit tables are kept read-only until FILM-608. Kept as a record of the design; not outstanding work.
+> **Retired 2026-09-23 (FILM-607).** The owner retired the whole Edit Suite: barely used, a dedicated editor does the job better, and any future editor is to be redesigned from scratch rather than restored from this document. `packages/features/edit-suite/`, its route, the render worker and its queues were deleted; the edit tables were kept read-only, then dropped by FILM-608. Kept as a record of the design; not outstanding work.
 
 > **Status:** 🗑️ RETIRED (FILM-607); was 🟡 PARTIAL (audit 2026-09-23), before that ✅ Done  
 > **Owner:** Engineering  
