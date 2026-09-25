@@ -1,7 +1,7 @@
 # Leads from FILM-1803, the AI generation sandbox (2026-09-25)
 
 Read, not reproduced. The rule for leads is in [the README](../README.md#leads).
-KB-106 and KB-107 came out of the same work and were reproduced.
+KB-106, KB-107, KB-115 and KB-116 came out of the same work and were reproduced.
 
 **AI vendors and the studio pipeline (FILM-1803 exploration, 2026-09-25)**
 - The settings page's API-key validator still offers **PiAPI (Kling)**, the video-generation vendor whose feature was retired on purpose: `apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts:223`, `apps/web/app/home/[account]/settings/_lib/api-keys.schema.ts`
@@ -10,3 +10,4 @@ KB-106 and KB-107 came out of the same work and were reproduced.
 - The privacy policy and terms still name PlayHT and Suno as processors (`apps/web/app/(marketing)/(legal)/privacy-policy/page.tsx:430`, `terms-of-service/page.tsx:126`). Suno is being removed from the product (2026-09-25); PlayHT is not offered
 - The llm-worker's executor, `executeLLMForLambda` (`apps/web/lambda/llm-worker/llm-utils.ts`), never validates a reply against the prompt's Zod schema. Four handlers call it directly (`story-refinement`, `screenplay-refinement`, `season-analysis`, `asset-creation`), so a malformed reply there is caught only by whatever the handler happens to read. The orchestrators' skills use the package `executeLLM`, which does validate: the two copies disagree
 - Two prompt registries hold overlapping lists: `@kit/prompt-engine`'s (27 prompts) and the llm-worker's (`apps/web/lambda/llm-worker/prompt-registry.ts`, 14 distinct prompts under 30 keys, including `story-refinement` and `screenplay-refinement`, which the package registry lacks). A prompt added to one is missing from the other
+- Two agents have no caller at all: `runContentOrchestrator` (`packages/features/episodes/src/agent/orchestrator.ts`, agent `content-orchestrator`) and `runAgentStoryGeneration` (`packages/features/episodes/src/server/agent-story-generation.ts`, agent `story-generator`). The sandbox has no script for either; `apps/vendor-sandbox/__tests__/coverage.test.ts` lists them as unreachable

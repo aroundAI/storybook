@@ -1,7 +1,15 @@
 import type http from 'node:http';
 
 import { type Handler, parseJson, sendJson } from '../http';
-import { summarise } from '../ledger';
+import { type LedgerEntry, summarise } from '../ledger';
+import {
+  finalAnswer,
+  isAgentRequest,
+  readConversation,
+  toolCall,
+  toolsInPrompt,
+} from '../llm/agents/protocol';
+import { nextMove, scriptFor } from '../llm/agents/scripts';
 import {
   UNRECOGNISED_RESPONSE,
   identify,
@@ -165,11 +173,53 @@ export function geminiHandler(state: SandboxState): Handler {
       .map((c) => textOf(c))
       .join('\n\n');
 
-    const identified = identify(systemPrompt, state.catalog);
+    const agent = isAgentRequest(systemPrompt)
+      ? scriptFor(systemPrompt)
+      : undefined;
+    const identified = agent
+      ? undefined
+      : identify(systemPrompt, state.catalog);
+    let ledgerIdentity: LedgerEntry['identified'];
     let reply: string;
     let unplaced: string[] = [];
 
-    if (identified.kind === 'prompt') {
+    if (agent) {
+      const turns = request.contents.map((c) => ({
+        role: c.role === 'model' ? ('model' as const) : ('user' as const),
+        text: textOf(c),
+      }));
+      const conversation = readConversation(turns);
+      const latest = conversation.calls.at(-1);
+      if (latest?.result?.success === false) {
+        const failure = {
+          orchestrator: agent.name,
+          tool: latest.tool,
+          error: String(latest.result.error ?? 'unknown error'),
+        };
+        state.agentToolFailures.push(failure);
+        console.warn(
+          `[sandbox] ${failure.orchestrator}: tool ${failure.tool} failed: ${failure.error}`,
+        );
+      }
+      const move = nextMove(agent, {
+        conversation,
+        tools: toolsInPrompt(systemPrompt),
+        rng: state.nextRng(),
+      });
+      reply =
+        move.kind === 'tool_call'
+          ? toolCall(
+              move.tool,
+              move.params,
+              `Following the ${agent.name} steps: ${move.tool} next.`,
+            )
+          : finalAnswer(
+              move.result,
+              'Every step has run; the quality checks passed.',
+            );
+      ledgerIdentity = { kind: 'agent', key: agent.name, step: move.step };
+    } else if (identified?.kind === 'prompt') {
+      ledgerIdentity = { kind: 'prompt', key: identified.key };
       const prompt = state.catalog.find((p) => p.key === identified.key)!;
       const response = respondToPrompt(
         prompt,
@@ -188,6 +238,7 @@ export function geminiHandler(state: SandboxState): Handler {
         }
       }
     } else {
+      ledgerIdentity = { kind: 'unrecognised' };
       reply = UNRECOGNISED_RESPONSE;
       state.unrecognised.push({
         vendor: VENDOR,
@@ -250,10 +301,7 @@ export function geminiHandler(state: SandboxState): Handler {
       path,
       keyPresent: true,
       status: 200,
-      identified:
-        identified.kind === 'prompt'
-          ? { kind: 'prompt', key: identified.key }
-          : { kind: 'unrecognised' },
+      identified: ledgerIdentity,
       requestSummary: summarise(userPrompt),
       responseSummary: summarise(reply),
       bytes,

@@ -109,6 +109,63 @@
       "cwd": "apps/vendor-sandbox",
       "test": "__tests__/control.test.ts",
       "pattern": "loopback only"
+    },
+    {
+      "name": "Sandbox: an orchestrator script skips its evaluator",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/llm/agents/scripts.ts",
+      "find": "      tool: 'evaluateIdeas',",
+      "replace": "      tool: 'evaluateIdeasLater',",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/orchestrators.test.ts",
+      "pattern": "ideation"
+    },
+    {
+      "name": "Sandbox: an orchestrator is not recognised",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/llm/agents/scripts.ts",
+      "find": "  signature: 'You are the Ideation Pipeline Director',",
+      "replace": "  signature: 'You are the Ideation Director',",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/orchestrators.test.ts",
+      "pattern": "ideation"
+    },
+    {
+      "name": "Sandbox: failed agent tools go unrecorded",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/vendors/gemini.ts",
+      "find": "      if (latest?.result?.success === false) {",
+      "replace": "      if (latest?.result?.success === 'never') {",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/orchestrators.test.ts"
+    },
+    {
+      "name": "Sandbox: tool results are not read back",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/llm/agents/protocol.ts",
+      "find": "    const result = returned ? parseJsonObject(returned[2] ?? '') : null;",
+      "replace": "    const result = null;",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/orchestrators.test.ts"
+    },
+    {
+      "name": "Sandbox: KNOWN_TOOL_FAILURES stays quiet when KB-116 is fixed",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/season-arc-evaluator-skill.ts",
+      "find": "          content: episodes,",
+      "replace": "          title: seasonPremise,\n          story_text: episodes,\n          content: episodes,",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/orchestrators.test.ts"
+    },
+    {
+      "name": "Sandbox: an unscripted agent is answered as if it were known",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/vendors/gemini.ts",
+      "find": "      ledgerIdentity = { kind: 'unrecognised' };",
+      "replace": "      ledgerIdentity = { kind: 'agent' };",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/coverage.test.ts",
+      "pattern": "agent the sandbox has no script for"
     }
   ]
 }
