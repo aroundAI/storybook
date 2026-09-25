@@ -219,6 +219,8 @@ export function geminiHandler(state: SandboxState): Handler {
             );
       ledgerIdentity = { kind: 'agent', key: agent.name, step: move.step };
     } else if (identified?.kind === 'prompt') {
+      const injected = state.takeFailure(VENDOR, path, identified.key);
+      if (injected) return fail(injected.status, undefined, true);
       ledgerIdentity = { kind: 'prompt', key: identified.key };
       const prompt = state.catalog.find((p) => p.key === identified.key)!;
       const response = respondToPrompt(

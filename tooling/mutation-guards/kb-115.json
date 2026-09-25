@@ -1,0 +1,45 @@
+{
+  "feature": "KB-115",
+  "mutations": [
+    {
+      "name": "the outliner reads .episodes off the array again: the season run",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/season-outliner-skill.ts",
+      "find": "      const episodes = result.data;\n",
+      "replace": "      const episodes = (result.data as unknown as { episodes: typeof result.data }).episodes;\n",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/orchestrators.test.ts",
+      "pattern": "season: outlines and evaluates"
+    },
+    {
+      "name": "the outliner reads .episodes off the array again: the caller-shape guard",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/season-outliner-skill.ts",
+      "find": "      const episodes = result.data;\n",
+      "replace": "      const episodes = result.data.episodes;\n",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/prompt-format.test.ts",
+      "pattern": "reads nothing the prompt does not return"
+    },
+    {
+      "name": "a season run with no outlined episodes reports success",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/season-orchestrator.ts",
+      "find": "  if (episodes.length === 0) {\n",
+      "replace": "  if (episodes.length < 0) {\n",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/orchestrators.test.ts",
+      "pattern": "a run whose outliner step fails"
+    },
+    {
+      "name": "another caller reads a field its prompt does not return",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/server/services/producer-service.ts",
+      "find": "      rundown: result.data.rundown ?? [],",
+      "replace": "      rundown: result.data.segments ?? [],",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/prompt-format.test.ts",
+      "pattern": "reads nothing the prompt does not return"
+    }
+  ]
+}

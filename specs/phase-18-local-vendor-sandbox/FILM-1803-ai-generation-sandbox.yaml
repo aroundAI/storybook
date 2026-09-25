@@ -44,7 +44,7 @@ acceptance_criteria:
     evidence: "coverage.test.ts reads every prompt file on disk and names any without a generator; mutation guard 'a prompt without a generator goes unnoticed' is red"
   - text: "(New 2026-09-25) The seven studio orchestrators the llm-worker runs complete against the sandbox"
     met: true
-    evidence: "apps/vendor-sandbox/__tests__/orchestrators.test.ts — ideation, story (plain, documentary, movie), screenplay, season, shot, audio cues and translation, run for real with the sandbox as the model; the tool failures inside them are KB-115 and KB-116, listed in KNOWN_TOOL_FAILURES. The two agents with no caller are listed in coverage.test.ts"
+    evidence: "apps/vendor-sandbox/__tests__/orchestrators.test.ts — ideation, story (plain, documentary, movie), screenplay, season, shot, audio cues and translation, run for real with the sandbox as the model; the tool failures inside them are KB-116's, listed in KNOWN_TOOL_FAILURES (KB-115's are fixed). The two agents with no caller are listed in coverage.test.ts"
   - text: "Audio responses are valid files of roughly the requested duration"
     met: false
     reason: "not yet — the ElevenLabs stand-in is a later PR"
@@ -142,7 +142,9 @@ notes: |
   What driving them found (reproduced, filed):
   - KB-115: the season outliner reads `.episodes` from the array executeLLM
     has already unwrapped, so its step always fails, and season outlines come
-    from the director's unvalidated final answer.
+    from the director's unvalidated final answer. Fixed: the outliner reads the
+    array, a failed outliner fails the run, and prompt-format.test.ts checks
+    that every caller reads the shape its prompt returns.
   - KB-116: the season-arc evaluator and the translation verifier call
     story-quality without the variables it requires.
 

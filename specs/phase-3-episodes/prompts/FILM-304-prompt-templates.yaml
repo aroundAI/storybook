@@ -34,7 +34,7 @@ prompt_template:
 acceptance_criteria:
   - text: "All four JSON template files are valid JSON"
     met: true
-    evidence: "`packages/features/prompt-engine/__tests__/prompt-format.test.ts:107`; the fourth is now `scene-shot-generation.json` (`shot-list-generation.json` went in 2f23eb4e)"
+    evidence: "`packages/features/prompt-engine/__tests__/prompt-format.test.ts:108`; the fourth is now `scene-shot-generation.json` (`shot-list-generation.json` went in 2f23eb4e)"
   - text: "Templates follow @kit/prompt-engine schema"
     met: true
     evidence: "`packages/features/prompt-engine/__tests__/story-generation-templates.test.ts:21`; `scene-shot-generation.json` also passes `safeValidatePromptTemplate` (run 2026-09-23)"
@@ -70,10 +70,10 @@ acceptance_criteria:
     reason: "unverified — LLM behaviour; off-schema output is rejected (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:626`), but no run measures how often"
   - text: "JSON files are properly formatted"
     met: true
-    evidence: "`packages/features/prompt-engine/__tests__/prompt-format.test.ts:107` (valid JSON, trailing newline)"
+    evidence: "`packages/features/prompt-engine/__tests__/prompt-format.test.ts:108` (valid JSON, trailing newline)"
   - text: "No hardcoded provider-specific syntax"
     met: true
-    evidence: "no chat markers (`Human:`, `[INST]`, `<|im_start|>`) in the four; `packages/features/prompt-engine/__tests__/prompt-format.test.ts:204`"
+    evidence: "no chat markers (`Human:`, `[INST]`, `<|im_start|>`) in the four; `packages/features/prompt-engine/__tests__/prompt-format.test.ts:205`"
 test_plan:
   unit: []
   integration: []

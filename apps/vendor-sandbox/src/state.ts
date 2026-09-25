@@ -7,6 +7,8 @@ import { requestRng } from './rng';
 export interface FailureRule {
   vendor: string;
   pathIncludes?: string;
+  /** Only calls identified as this prompt (a registry key). */
+  prompt?: string;
   status: number;
   count: number;
 }
@@ -61,13 +63,17 @@ export class SandboxState {
     this.failures = [];
   }
 
-  /** The failure injected for this call, if any, consuming one use of it. */
-  takeFailure(vendor: string, path: string) {
+  /**
+   * The failure injected for this call, if any, consuming one use of it. A
+   * rule naming a prompt matches only once the call is identified as it.
+   */
+  takeFailure(vendor: string, path: string, prompt?: string) {
     const rule = this.failures.find(
       (f) =>
         f.vendor === vendor &&
         f.count > 0 &&
-        (!f.pathIncludes || path.includes(f.pathIncludes)),
+        (!f.pathIncludes || path.includes(f.pathIncludes)) &&
+        f.prompt === prompt,
     );
     if (!rule) return undefined;
     rule.count -= 1;
