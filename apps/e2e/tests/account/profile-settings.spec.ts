@@ -41,7 +41,9 @@ test.describe('Profile settings with team accounts only (KB-100)', () => {
       page.locator('[data-test="update-account-name-form"]'),
     ).toBeVisible();
 
-    const nameInput = page.locator('[data-test="update-account-name-form"] input');
+    const nameInput = page.locator(
+      '[data-test="update-account-name-form"] input',
+    );
     const save = page.locator('[data-test="update-account-name-form"] button');
 
     await nameInput.fill('First Name');

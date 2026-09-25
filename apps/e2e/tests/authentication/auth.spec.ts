@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
-import { AuthPageObject } from './auth.po';
 import { waitForSignedIn } from '../utils/session';
+import { AuthPageObject } from './auth.po';
 
 test.describe('Auth flow', () => {
   test.describe.configure({ mode: 'serial' });

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
-import { AuthPageObject } from './auth.po';
 import { isSignedInLanding, waitForSignedIn } from '../utils/session';
+import { AuthPageObject } from './auth.po';
 
 const newPassword = (Math.random() * 10000).toString();
 

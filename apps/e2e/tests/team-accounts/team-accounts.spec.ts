@@ -1,8 +1,8 @@
 import { Page, expect, test } from '@playwright/test';
 
 import { InvitationsPageObject } from '../invitations/invitations.po';
-import { TeamAccountsPageObject } from './team-accounts.po';
 import { waitForSignedIn } from '../utils/session';
+import { TeamAccountsPageObject } from './team-accounts.po';
 
 // Helper function to set up a team with a member
 async function setupTeamWithMember(page: Page, memberRole = 'member') {

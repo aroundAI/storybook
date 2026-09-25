@@ -1,8 +1,8 @@
 import { expect, test as setup } from '@playwright/test';
 
 import { AuthPageObject } from './authentication/auth.po';
-import { SUPER_ADMIN, SUPER_ADMIN_STORAGE_STATE } from './utils/super-admin';
 import { waitForSignedIn } from './utils/session';
+import { SUPER_ADMIN, SUPER_ADMIN_STORAGE_STATE } from './utils/super-admin';
 
 /**
  * Signs in as the super-admin once and saves the session for every admin test.
