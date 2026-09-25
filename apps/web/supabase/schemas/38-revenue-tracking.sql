@@ -180,12 +180,13 @@ create policy "revenue_records_read" on public.revenue_records for select
       account_id is not null
       and public.has_account_access(account_id)
     )
-    or exists (
-      select 1 from public.publishes pub
+    -- An uncorrelated set, built once per query rather than walked per row
+    -- (KB-13: 20260925132423_kb13-revenue-read-policy-once.sql)
+    or publish_id in (
+      select pub.id from public.publishes pub
       join public.episodes e on e.id = pub.episode_id
       join public.projects p on p.id = e.project_id
-      where pub.id = revenue_records.publish_id
-      and (
+      where
         exists(
           select 1 from public.accounts a
           where a.id = p.account_id
@@ -194,7 +195,6 @@ create policy "revenue_records_read" on public.revenue_records for select
         )
         or
         public.has_role_on_account(p.account_id)
-      )
     )
   );
 
