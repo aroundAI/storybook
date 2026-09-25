@@ -197,6 +197,35 @@
       "cwd": "apps/vendor-sandbox",
       "test": "__tests__/audio.test.ts",
       "pattern": "undocumented path"
+    },
+    {
+      "name": "Sandbox: start_sandbox backgrounds the whole cd-and-start list again",
+      "kind": "unit",
+      "file": "scripts/lib/vendor-sandbox.sh",
+      "find": "    cd \"$root/apps/vendor-sandbox\" || exit 1\n    nohup ./node_modules/.bin/tsx src/main.ts < /dev/null > \"$dir/sandbox.log\" 2>&1 &\n",
+      "replace": "    cd \"$root/apps/vendor-sandbox\" &&\n      nohup ./node_modules/.bin/tsx src/main.ts > \"$dir/sandbox.log\" 2>&1 &\n",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/local-env.test.ts",
+      "pattern": "returns promptly"
+    },
+    {
+      "name": "Sandbox: an earlier local.env block is left in place and another appended",
+      "kind": "unit",
+      "file": "scripts/lib/vendor-sandbox.sh",
+      "find": "    '$0==s{skip=1; next} $0==e{skip=0; next} !skip' \"$file\")",
+      "replace": "    '1' \"$file\")",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/local-env.test.ts"
+    },
+    {
+      "name": "Sandbox: the egress guard lets everything through",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/scripts/egress-guard.mjs",
+      "find": "      return target.local ? original.apply(this, args) : refuse(target.label);",
+      "replace": "      return original.apply(this, args);",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/local-env.test.ts",
+      "pattern": "refuses a public host"
     }
   ]
 }

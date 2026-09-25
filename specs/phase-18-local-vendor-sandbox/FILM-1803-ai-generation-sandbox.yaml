@@ -26,7 +26,7 @@ summary: >
 acceptance_criteria:
   - text: "(Narrowed 2026-09-25) With local.env loaded, no inline AI action a user can trigger reaches a real AI vendor"
     met: false
-    reason: "not yet — local-env.sh wiring and the live run are the last PR, after FILM-1805 Half A (#360)"
+    reason: "in part. Live run 2026-09-25 (apps/e2e/tests/sandbox/ai-sandbox-evidence.spec.ts, app with local.env's sandbox block and an egress guard): the ElevenLabs key check (401 then 200), saving the key, an 8 s sound effect (the browser measured it within 0.3 s) and music all went to the sandbox, and the only refused connection was npx's own npm registry check, never a vendor. The Gemini inline flows (social-post variants, canon validation, asset description) are proven through the real executeLLM over HTTP to the sandbox (every-prompt.test.ts) but were not yet driven in the browser"
   - text: "Each of the 16 Zod-declared prompts gets output that passes the app's own schemaFn.parse"
     met: true
     evidence: "apps/vendor-sandbox/__tests__/every-prompt.test.ts — through the real executeLLM (which validates) and executeLLMForLambda (parsed with the executor's own compile), over HTTP to the sandbox via the real Gemini client"
@@ -59,7 +59,7 @@ acceptance_criteria:
     evidence: "apps/vendor-sandbox/__tests__/corpus.test.ts — every prompt × 200 seeds through findPlaceholders (src/corpus/placeholder.ts, shared with FILM-1802), and no string field left to a generic sentence"
 remaining:
   - criterion: "With local.env loaded, no inline AI action a user can trigger reaches a real AI vendor"
-    reason: "local-env.sh wiring and the live run with an egress guard"
+    reason: "the Gemini inline flows still to be driven in the browser with the egress guard"
     closed_by: "FILM-1803"
 open_questions: []
 notes: |
@@ -224,8 +224,13 @@ notes: |
   - gemini-wire.test.ts: the real @google/genai SDK against the stand-in,
     plain and streamed, with the vendor's key and quota errors.
   - tooling/mutation-guards/film-1803.json: every guard seen red.
-  - Later: drive the inline flows in §4 in the local app with local.env
-    loaded and an egress guard, and show the ledger and the pages.
+  - local-env.sh up starts the sandbox (scripts/lib/vendor-sandbox.sh, by
+    pid, detached) and rewrites local.env's vendor-sandbox block on every run;
+    other stand-ins add lines through scripts/lib/vendor-sandbox-env.d/.
+  - apps/vendor-sandbox/scripts/egress-guard.mjs, preloaded into the app for a
+    verification run, refuses and logs any non-loopback connection.
+  - ai-sandbox-evidence.spec.ts drives the ElevenLabs flows in the browser and
+    compares the page with the ledger. Still to add: the Gemini inline flows.
 
   ## 8. Risk
 

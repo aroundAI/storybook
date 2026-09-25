@@ -1,0 +1,2 @@
+# Each *.sh here prints lines for the vendor-sandbox block in local.env.
+# See ensure_sandbox_env in ../vendor-sandbox.sh.
