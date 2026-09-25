@@ -1,0 +1,75 @@
+{
+  "feature": "KB-126",
+  "mutations": [
+    {
+      "name": "PV1 the outliner sends characters under the old name",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/season-outliner-skill.ts",
+      "find": "          characters: existingCharacters,\n",
+      "replace": "          existing_characters: existingCharacters,\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/prompt-variables-callers.test.ts",
+      "pattern": "the season outliner"
+    },
+    {
+      "name": "PV2 the class test misses a key the template does not declare",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/season-outliner-skill.ts",
+      "find": "          characters: existingCharacters,\n",
+      "replace": "          existing_characters: existingCharacters,\n          characters: existingCharacters,\n",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/prompt-variables.test.ts",
+      "pattern": "season-outliner-skill"
+    },
+    {
+      "name": "PV3 the outliner gets no verified facts",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/season-outliner-skill.ts",
+      "find": "          verified_facts: verifiedFactsFrom(context?._verifiedFacts),\n",
+      "replace": "          verified_facts: '',\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/prompt-variables-callers.test.ts",
+      "pattern": "the season outliner"
+    },
+    {
+      "name": "PV4 the story director gets no verified facts",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/story-director-skill.ts",
+      "find": "            typeof context?._verifiedFacts === 'string'\n",
+      "replace": "            typeof context?._verifiedFacts === 'number'\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/prompt-variables-callers.test.ts",
+      "pattern": "the story director"
+    },
+    {
+      "name": "PV5 regeneration does not say which ideas",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/ideation-director-skill.ts",
+      "find": "          weak_indices: weakIndices\n",
+      "replace": "          weak_indices: false\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/prompt-variables-callers.test.ts",
+      "pattern": "which ideas to regenerate"
+    },
+    {
+      "name": "PV6 one asset's description misses the instructions its template requires",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/server/mutations/asset-link-actions.ts",
+      "find": "      type_instructions:\n        item.type === 'character'\n",
+      "replace": "      type_instruction:\n        item.type === 'character'\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/prompt-variables-callers.test.ts",
+      "pattern": "sidebar gets a description"
+    },
+    {
+      "name": "PV7 a template uses a placeholder it does not declare",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/prompts/story-generation/story-ideation.json",
+      "find": "{{recurring_element}}\\n\\n{{weak_indices}}\\n\\n",
+      "replace": "{{recurring_element}}\\n\\n{{weak_ideas}}\\n\\n",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/prompt-variables.test.ts",
+      "pattern": "declares every placeholder"
+    }
+  ]
+}

@@ -30,7 +30,7 @@ acceptance_criteria:
     reason: "no longer true — removed from the handler in d5f6dbdc; only the story agent's optional tool calls it (`packages/features/episodes/src/agent/skills/continuity-skill.ts:58`)"
   - text: "Memory context is injected into prompt variables"
     met: false
-    reason: "no longer true — the story prompt gets `canon_context: ''` (`packages/features/episodes/src/agent/skills/story-director-skill.ts:193`) since d5f6dbdc"
+    reason: "no longer true — the story prompt gets `canon_context: ''` (`packages/features/episodes/src/agent/skills/story-director-skill.ts:195`) since d5f6dbdc"
   - text: "Story generation prompt template includes canon sections"
     met: true
     evidence: null

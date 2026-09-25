@@ -49,6 +49,53 @@ const BatchCreateUnlinkedSchema = z.object({
   storyContext: z.string().max(50000),
 });
 
+const CHARACTER_INSTRUCTIONS =
+  'Write a 4-6 sentence description including: Physical appearance (approximate age, ethnicity/skin tone, build, hair color/style, eye color, distinguishing features like scars or tattoos). Clothing and style (what they wear in this story). Demeanor and expression (how they carry themselves, typical body language). Their role and significance. Be specific — commit to physical details based on what the text states or implies from the setting/time period.';
+
+const LOCATION_INSTRUCTIONS =
+  'Write a 3-5 sentence description including: Physical environment (size, architecture, materials, colors, lighting). Atmosphere and mood (sounds, smells, temperature). Notable features (landmarks, furniture, natural elements). How this place functions in the story. Be vivid and specific for environment concept art generation.';
+
+/**
+ * One description from the story text (KB-126). Both actions call this: the
+ * single-asset one used to send `role` and `arc`, which the template does not
+ * read, and not `type_instructions`, which it requires — so every call threw,
+ * was caught, and the sidebar's "extract description" came back empty.
+ * Not exported: every export of a 'use server' file is an endpoint (KB-58).
+ */
+async function describeAsset(
+  item: {
+    name: string;
+    type: 'character' | 'location';
+    role?: string;
+    arc?: string;
+  },
+  storyContext: string,
+  context: { name: string; accountId: string },
+): Promise<string> {
+  const { executeLLM } = await import('@kit/prompt-engine/server');
+
+  const extraParts: string[] = [];
+  if (item.role) extraParts.push(`Known role: ${item.role}`);
+  if (item.arc) extraParts.push(`Character arc: ${item.arc}`);
+
+  const result = await executeLLM<{ description: string }>({
+    templateSlug: 'story-generation/extract-asset-description',
+    variables: {
+      name: item.name,
+      type: item.type,
+      extra_context: extraParts.join('. '),
+      type_instructions:
+        item.type === 'character'
+          ? CHARACTER_INSTRUCTIONS
+          : LOCATION_INSTRUCTIONS,
+      story_context: storyContext.slice(0, 10000),
+    },
+    context,
+  });
+
+  return result.data.description;
+}
+
 /**
  * Extracts a concise description for a character or location from story text.
  * Uses LLM (extract-asset-description template) — gracefully returns empty
@@ -64,26 +111,14 @@ export const extractDescriptionAction = enhanceAction(
     }
 
     try {
-      const { executeLLM } = await import('@kit/prompt-engine/server');
-
-      const result = await executeLLM<{ description: string }>({
-        templateSlug: 'story-generation/extract-asset-description',
-        variables: {
-          name: data.name,
-          type: data.type,
-          role: data.role ?? '',
-          arc: data.arc ?? '',
-          story_context: data.storyContext.slice(0, 10000),
-        },
-        context: {
-          name: 'extract-asset-description',
-          accountId: user.id,
-        },
+      const description = await describeAsset(data, data.storyContext, {
+        name: 'extract-asset-description',
+        accountId: user.id,
       });
 
       return {
         success: true as const,
-        data: { description: result.data.description },
+        data: { description },
       };
     } catch (err) {
       console.error('[extractDescription] LLM extraction failed:', err);
@@ -206,40 +241,13 @@ export const batchCreateUnlinkedAction = enhanceAction(
 
     if (itemsToCreate.length > 0) {
       // 3. Extract descriptions in parallel via LLM
-      const { executeLLM } = await import('@kit/prompt-engine/server');
-
-      const CHARACTER_INSTRUCTIONS =
-        'Write a 4-6 sentence description including: Physical appearance (approximate age, ethnicity/skin tone, build, hair color/style, eye color, distinguishing features like scars or tattoos). Clothing and style (what they wear in this story). Demeanor and expression (how they carry themselves, typical body language). Their role and significance. Be specific — commit to physical details based on what the text states or implies from the setting/time period.';
-
-      const LOCATION_INSTRUCTIONS =
-        'Write a 3-5 sentence description including: Physical environment (size, architecture, materials, colors, lighting). Atmosphere and mood (sounds, smells, temperature). Notable features (landmarks, furniture, natural elements). How this place functions in the story. Be vivid and specific for environment concept art generation.';
-
       const descriptionResults = await Promise.allSettled(
         itemsToCreate.map(async (item) => {
           try {
-            const extraParts: string[] = [];
-            if (item.role) extraParts.push(`Known role: ${item.role}`);
-            if (item.arc) extraParts.push(`Character arc: ${item.arc}`);
-
-            const result = await executeLLM<{ description: string }>({
-              templateSlug: 'story-generation/extract-asset-description',
-              variables: {
-                name: item.name,
-                type: item.type,
-                extra_context: extraParts.join('. '),
-                type_instructions:
-                  item.type === 'character'
-                    ? CHARACTER_INSTRUCTIONS
-                    : LOCATION_INSTRUCTIONS,
-                story_context: data.storyContext.slice(0, 10000),
-              },
-              context: {
-                name: 'batch-extract-description',
-                accountId: user.id,
-              },
+            return await describeAsset(item, data.storyContext, {
+              name: 'batch-extract-description',
+              accountId: user.id,
             });
-
-            return result.data.description;
           } catch (err) {
             console.error(
               `[batchCreate] LLM extraction failed for "${item.name}":`,

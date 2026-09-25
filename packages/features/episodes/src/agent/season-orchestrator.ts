@@ -128,7 +128,11 @@ export async function runSeasonOrchestrator(
       {
         userPrompt: buildSeasonPrompt(input),
       },
-      { accountId: input.accountId },
+      {
+        accountId: input.accountId,
+        // The outliner's template reads the facts itself (KB-126)
+        _verifiedFacts: input.verifiedFacts,
+      },
     );
 
   if (!result.success || !result.data) {

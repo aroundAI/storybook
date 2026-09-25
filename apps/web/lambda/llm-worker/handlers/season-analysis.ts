@@ -93,7 +93,7 @@ function formatFactsForSeasonPrompt(facts: ExternalFact[]): string {
  */
 export async function processSeasonAnalysis(
   payload: Record<string, unknown>,
-  _supabase: SupabaseClient<Database>,
+  supabase: SupabaseClient<Database>,
 ): Promise<{ success: boolean; data: AnalysisResult }> {
   const { projectId, roadmap, externalFacts } =
     // SQS payload: cast, not validated (KB-33).
@@ -109,12 +109,30 @@ export async function processSeasonAnalysis(
       ? formatFactsForSeasonPrompt(externalFacts)
       : '';
 
+  // The project's recurring elements: the template has a place for them,
+  // and nothing filled it (KB-126)
+  const { data: project } = await supabase
+    .from('projects')
+    .select('metadata')
+    .eq('id', projectId)
+    .single();
+  const projectMetadata = (project?.metadata as Record<string, unknown>) || {};
+  const { formatRecurringElementsForPrompt } = await import(
+    '../utils/context-builder'
+  );
+  const recurringElement = formatRecurringElementsForPrompt(
+    Array.isArray(projectMetadata.recurringElements)
+      ? projectMetadata.recurringElements
+      : [],
+  );
+
   // Use Lambda-safe LLM executor
   const { data: result } = await executeLLMForLambda<AnalysisResult>({
     templateSlug: 'season-generation',
     variables: {
       roadmap,
       verified_facts: verifiedFacts,
+      recurring_element: recurringElement,
     },
   });
 
