@@ -46,14 +46,14 @@ const videoInfo = await provider.getVideoInfo('abc123xyz');
 
 ```typescript
 import type {
+  DemographicData,
+  GeographyData,
+  RetentionData,
+  TrafficSourceData,
   YouTubeAnalyticsInput,
   YouTubeAnalyticsResult,
-  YouTubeTotals,
   YouTubeDailyMetrics,
-  RetentionData,
-  DemographicData,
-  TrafficSourceData,
-  GeographyData,
+  YouTubeTotals,
 } from '@kit/content-analytics/providers/youtube';
 ```
 
@@ -92,13 +92,13 @@ const accountStats = await provider.getAccountAnalytics();
 
 ```typescript
 import type {
+  TikTokAccountAnalytics,
   TikTokAnalyticsInput,
   TikTokAnalyticsResult,
-  TikTokTotals,
-  TikTokDailyMetrics,
   TikTokAudienceData,
+  TikTokDailyMetrics,
+  TikTokTotals,
   TikTokTrafficSource,
-  TikTokAccountAnalytics,
 } from '@kit/content-analytics/providers/tiktok';
 ```
 
@@ -145,7 +145,7 @@ are not interchangeable, and neither falls back to the other.
   FILM-1711). **Instagram has no duration field** and is never asked.
 - **Unknown is a state, not a zero.** Read a duration through `AssetDuration`
   (`lib/asset-duration.ts`): `{ known: true, seconds } | { known: false, reason:
-  'duration_unknown' }`. `retentionAtSeconds` and `detectRetentionCliff` take
+'duration_unknown' }`. `retentionAtSeconds` and `detectRetentionCliff` take
   one, not a number, so an episode's duration cannot be passed by mistake.
 
 ```bash
@@ -164,12 +164,14 @@ DIM_SYNC_LOCAL_STACK=1 pnpm --filter @kit/content-analytics test dim-sync.local-
 
 Sourced in [docs/platform-capability-reference.md](../../../docs/platform-capability-reference.md);
 the figures previously here (1000/day, 200/day) had no citation.
+
 - Batch requests where possible
 - Cache responses to reduce API calls
 
 ## OAuth Scopes Required
 
 The YouTube connection must include these scopes:
+
 - `youtube.readonly` - For video metadata
 - `yt-analytics.readonly` - For analytics data (added in FILM-801)
 - `yt-analytics-monetary.readonly` - For the three revenue metrics (FILM-1711).
@@ -180,16 +182,16 @@ The YouTube connection must include these scopes:
 
 ## Error Handling
 
-| Error | Behavior |
-|-------|----------|
+| Error                        | Behavior                                                                |
+| ---------------------------- | ----------------------------------------------------------------------- |
 | `YouTubeAnalyticsScopeError` | Thrown when connection is missing analytics scope - user must reconnect |
-| `quotaExceeded` | Throws error - caller should queue for later |
-| `forbidden` | Throws error - token may need re-auth |
-| `notFound` | Throws error for getVideoInfo, returns undefined for optional fields |
-| Missing data | Returns `undefined` for optional fields (retention, demographics) |
-| `TikTokAnalyticsScopeError` | Thrown when TikTok connection is missing required scopes |
-| `TikTokVideoNotFoundError` | Thrown when video is not found |
-| `TikTokRateLimitError` | Thrown when rate limited - retry later |
+| `quotaExceeded`              | Throws error - caller should queue for later                            |
+| `forbidden`                  | Throws error - token may need re-auth                                   |
+| `notFound`                   | Throws error for getVideoInfo, returns undefined for optional fields    |
+| Missing data                 | Returns `undefined` for optional fields (retention, demographics)       |
+| `TikTokAnalyticsScopeError`  | Thrown when TikTok connection is missing required scopes                |
+| `TikTokVideoNotFoundError`   | Thrown when video is not found                                          |
+| `TikTokRateLimitError`       | Thrown when rate limited - retry later                                  |
 
 ### Handling Scope Errors
 
@@ -223,7 +225,10 @@ import {
 } from '@kit/content-analytics/providers/instagram';
 
 // Create provider with access token and Instagram account ID
-const provider = createInstagramInsightsProvider(accessToken, instagramAccountId);
+const provider = createInstagramInsightsProvider(
+  accessToken,
+  instagramAccountId,
+);
 
 // Fetch insights for a Reel or Video
 const insights = await provider.getMediaInsights({
@@ -243,11 +248,11 @@ const accountInsights = await provider.getAccountInsights('week');
 
 ```typescript
 import type {
+  InstagramAccountInsights,
+  InstagramAudienceData,
   InstagramInsightsInput,
   InstagramInsightsResult,
   InstagramTotals,
-  InstagramAudienceData,
-  InstagramAccountInsights,
 } from '@kit/content-analytics/providers/instagram';
 ```
 
@@ -261,19 +266,19 @@ import type {
 
 ### Error Handling
 
-| Error | Behavior |
-|-------|----------|
+| Error                         | Behavior                                                                     |
+| ----------------------------- | ---------------------------------------------------------------------------- |
 | `InstagramInsightsScopeError` | Thrown when connection is missing insights permissions - user must reconnect |
-| `OAuthException` | Token expired - trigger re-auth |
-| Media not found | Content deleted - throws error |
-| Missing data | Returns `undefined` for optional fields (audience) |
+| `OAuthException`              | Token expired - trigger re-auth                                              |
+| Media not found               | Content deleted - throws error                                               |
+| Missing data                  | Returns `undefined` for optional fields (audience)                           |
 
 ### Handling Scope Errors
 
 ```typescript
 import {
-  createInstagramInsightsProvider,
   InstagramInsightsScopeError,
+  createInstagramInsightsProvider,
 } from '@kit/content-analytics/providers/instagram';
 
 try {
@@ -281,7 +286,9 @@ try {
 } catch (error) {
   if (error instanceof InstagramInsightsScopeError) {
     // Prompt user to reconnect their Instagram account
-    showReconnectDialog('Please reconnect your Instagram account to enable analytics.');
+    showReconnectDialog(
+      'Please reconnect your Instagram account to enable analytics.',
+    );
   }
   throw error;
 }

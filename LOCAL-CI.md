@@ -1,10 +1,8 @@
 # Local CI and the merge train
 
-How to verify and merge pull requests **without GitHub Actions**: when the
-Actions minutes run out, when Actions is down, or when a run would cost money
-you don't want to spend. First used 2026-09-24/25, when the org hit its
-50,000-minute limit: twelve PRs (#338–#352, #354) were verified with these
-scripts and merged in one day.
+How to verify and merge pull requests **without GitHub Actions**. First used
+2026-09-24/25, when the org hit its 50,000-minute limit: twelve PRs
+(#338–#352, #354) were verified with these scripts and merged in one day.
 
 The scripts are in [`scripts/local-ci/`](scripts/local-ci/). Their working
 state (runs, logs, the lock, the train log) is written to `.local-ci/` in the
@@ -34,7 +32,7 @@ same commands:
 | 🧪 Unit guards (4 shards) | the 4 shards, 2 at a time, each on a copy-on-write clone (`cp -cR`) of the worktree |
 | 🐘 Supabase DB | schema drift, start-script test, `supabase db reset` from the PR's tree, types-current, the two PostgREST verifiers, pgTAP, database mutation guards |
 | 🗄️ ClickHouse SQL | migrate and verify against the local ClickHouse |
-| ⚫️ Test | `build:test`, `next start -p 3000`, `supabase:test`, Playwright with **`CI=1`** (1 worker, 3 retries) |
+| ⚫️ Test | `build:test`, `next start -p 3000`, `supabase:test`, Playwright (see Gotchas for `CI=1`) |
 | 🧬 E2E evidence | a second `build:test` with ClickHouse on, the KB-58 action-manifest guard, the evidence specs |
 
 Not run, as on a PR in CI: 🧬 E2E guards (push to `main` only) and 📚 Docs
@@ -59,9 +57,9 @@ suite (~11 min at one worker) and the guards (~5 min).
 | `static.sh <pr> <worktree> <out>` | The jobs that need no shared service. |
 | `services.sh <pr> <worktree> <out>` | The jobs on the shared Supabase, ClickHouse and port 3000. Holds the database lock while it runs. |
 | `report.sh <pr> <worktree> <out> [note]` | Writes `report.md`: the commit tested, the `main` it's based on, and one row per step. This is the PR comment. |
-| `rebase-pr.sh <pr>` | Rebases the PR onto `origin/main`. Resolves conflicts in `specs/INDEX.md` by re-merging the PR's own changes onto main's, then recounts INDEX's Progress Tracker, By scope table and `(N specs)` headings from the spec files with `pnpm specs:index --write` (committed only when it changes something). The known-bugs register is one file per KB (`specs/known-bugs/`), so it needs no re-merge; a PR still editing the old single file (`FILM-CC-04-known-bugs.md`, now a stub) is ported with `scripts/specs/split-known-bugs.ts --port`. Re-points moved spec citations when `pnpm specs:citations` exists. Stops on any code conflict. |
+| `rebase-pr.sh <pr>` | Rebases the PR onto `origin/main`, resolving conflicts in `specs/INDEX.md`, known-bugs registers, and spec citations. Stops on any code conflict. |
 | `reverify.sh <pr>` | After a green full run: rebases, then re-checks. If the PR's own code patch is unchanged (same `git patch-id`, the rule in `scripts/ci/code-patch-unchanged.sh`), it runs only the **📚 Docs checks** set, as CI does since #353. Otherwise it runs the full suite. Pushes with a lease and posts the report. |
-| `train.sh <pr>…` | The merge train. For each PR in order: wait for its full report, stop if it isn't green, re-verify on the current `main`, then `gh pr merge --squash --match-head-commit <verified sha>`. Stops and waits for a human on any failure. |
+| `train.sh <pr>…` | The merge train (see The process, step 3). For each PR in order: wait for its full report, stop if it isn't green, re-verify on the current `main`, then merge. Stops and waits for a human on any failure. |
 | `status.sh` | One-screen summary: runs, the lock holder, the train's last line. |
 | `dblock.sh acquire\|release <name>` | FIFO lock on the shared database, ClickHouse and port 3000. Anything that resets or reads the local DB takes it, teammates included. |
 | `remerge-index.py` | The `INDEX.md` re-merge `rebase-pr.sh` uses: a single checked 3-way merge. Count cells get the PR's change added on top of main's number, not one side's value, and `rebase-pr.sh` then recounts them from the files, which corrects the arithmetic if it was wrong. |
@@ -75,9 +73,10 @@ suite (~11 min at one worker) and the guards (~5 min).
    failures this wave were flakes already on `main`, or bugs in the local setup.
 3. **Merge.** `scripts/local-ci/train.sh <pr>…`, in merge order. The train
    merges only the exact commit it verified, on the `main` it verified against.
-4. **Rebase just before merging, one PR at a time.** Each merge conflicts
-   every other open PR on the shared records, so rebasing them all up front
-   gets thrown away.
+4. **Rebase one PR at a time, just before merging.** Each merge conflicts every
+   other open PR on the shared records (`specs/INDEX.md`, known-bugs files,
+   cited spec code), so rebasing all up front gets discarded. `rebase-pr.sh`
+   resolves these conflicts, updates index counts, and re-points citations.
 
 ## Rules
 
