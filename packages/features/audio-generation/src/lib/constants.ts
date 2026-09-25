@@ -223,42 +223,6 @@ export const UDIO = {
   },
 } as const;
 
-// Lip sync provider names
-export const LIP_SYNC_PROVIDERS = {
-  SYNCLABS: 'synclabs',
-  WAV2LIP: 'wav2lip',
-} as const;
-
-// SyncLabs specific constants
-export const SYNCLABS = {
-  BASE_URL: `${vendorUrl('synclabs')}/v2`,
-  COST_PER_JOB: 10, // cents ($0.10)
-  PROCESSING_TIME: {
-    FAST: 60,
-    STANDARD: 120,
-    HIGH: 240,
-  },
-  RATE_LIMITS: {
-    REQUESTS_PER_MINUTE: 30,
-    CONCURRENT_REQUESTS: 5,
-  },
-} as const;
-
-// Wav2Lip specific constants
-export const WAV2LIP = {
-  BASE_URL: process.env.WAV2LIP_API_URL || 'http://localhost:8000',
-  COST_PER_JOB: 5, // cents ($0.05)
-  PROCESSING_TIME: {
-    FAST: 30,
-    STANDARD: 60,
-    HIGH: 120,
-  },
-  RATE_LIMITS: {
-    REQUESTS_PER_MINUTE: 10,
-    CONCURRENT_REQUESTS: 2,
-  },
-} as const;
-
 // Provider display names
 export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   elevenlabs: 'ElevenLabs',
@@ -270,6 +234,4 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   udio: 'Udio',
   mubert: 'Mubert',
   beatoven: 'Beatoven',
-  synclabs: 'SyncLabs',
-  wav2lip: 'Wav2Lip',
 } as const;
