@@ -44,7 +44,6 @@
     "user_prompt": "I'm creating documentary content about: {{topic}}\n\nPremise/Angle: {{premise}}\n\n## EXISTING VERIFIED FACTS:\n{{existing_facts}}\n\n## CLAIMS I WANT TO MAKE:\n{{target_claims}}\n\nIdentify all factual claims needed for this content. For each claim, tell me if it's already verified or needs sourcing.",
     "output": {
         "type": "object",
-        "wrapper_key": "research",
-        "schema_for_llm": "{\n  \"topic_summary\": \"Brief summary of what we're researching\",\n  \"claims\": [{\n    \"claim\": \"The factual statement\",\n    \"category\": \"physics|biology|history|etc\",\n    \"matched_fact_id\": \"uuid or null\",\n    \"confidence\": \"verified|needs_source\",\n    \"priority\": \"critical|important|nice_to_have\",\n    \"suggested_search\": \"Research query for Google Scholar or similar\"\n  }],\n  \"research_gaps\": [\"Topics needing more research\"],\n  \"recommended_sources\": [\"Types of sources to consult\"]\n}"
+        "schema_for_llm": "{\n  \"research\": {\n    \"topic_summary\": \"Brief summary of what we're researching\",\n    \"claims\": [{\n      \"claim\": \"The factual statement\",\n      \"category\": \"physics|biology|history|etc\",\n      \"matched_fact_id\": \"uuid or null\",\n      \"confidence\": \"verified|needs_source\",\n      \"priority\": \"critical|important|nice_to_have\",\n      \"suggested_search\": \"Research query for Google Scholar or similar\"\n    }],\n    \"research_gaps\": [\"Topics needing more research\"],\n    \"recommended_sources\": [\"Types of sources to consult\"]\n  }\n}"
     }
 }
