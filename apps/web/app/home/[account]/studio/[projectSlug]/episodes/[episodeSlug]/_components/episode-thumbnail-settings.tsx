@@ -21,6 +21,7 @@ import {
 import {
   type EpisodeThumbnail,
   deleteEpisodeThumbnailAction,
+  getEpisodeThumbnailsAction,
   setDefaultThumbnailAction,
   uploadEpisodeThumbnailAction,
 } from '@kit/episodes/server';
@@ -110,6 +111,16 @@ export function EpisodeThumbnailSettings({
     );
   };
 
+  // After a refusal the list may be stale (removed or replaced in another
+  // tab): read it again rather than keep showing what is no longer there.
+  const reloadThumbnails = async () => {
+    const result = await getEpisodeThumbnailsAction({ episodeId });
+
+    if (result.success && result.thumbnails) {
+      onThumbnailsChange(result.thumbnails);
+    }
+  };
+
   return (
     <Card data-test="episode-thumbnails">
       <CardHeader>
@@ -171,6 +182,7 @@ export function EpisodeThumbnailSettings({
                 onRemoved={handleThumbnailRemoved}
                 onReplaced={handleThumbnailSaved}
                 onDefaultSet={handleDefaultSet}
+                onRefused={reloadThumbnails}
               />
             ))}
           </div>
@@ -190,6 +202,7 @@ interface ThumbnailCardProps {
   onRemoved: (id: string) => void;
   onReplaced: (thumbnail: EpisodeThumbnail) => void;
   onDefaultSet: (id: string) => void;
+  onRefused: () => Promise<void>;
 }
 
 function ThumbnailCard({
@@ -198,6 +211,7 @@ function ThumbnailCard({
   onRemoved,
   onReplaced,
   onDefaultSet,
+  onRefused,
 }: ThumbnailCardProps) {
   const [isRemoving, startRemoveTransition] = useTransition();
   const [isSettingDefault, startDefaultTransition] = useTransition();
@@ -219,6 +233,7 @@ function ThumbnailCard({
           onRemoved(thumbnail.id);
         } else {
           toast.error(result.error || 'Failed to remove thumbnail');
+          await onRefused();
         }
       } catch {
         toast.error('Failed to remove thumbnail');

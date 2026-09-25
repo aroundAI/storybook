@@ -287,6 +287,10 @@ test.describe('Episode thumbnails panel (KB-89, KB-61)', () => {
       ),
     ).toBeVisible();
 
+    // The refusal re-reads the list: the card for a row that is gone goes
+    await expect(panel.locator('[data-test="thumbnail-en"]')).toHaveCount(0);
+    await expect(panel.locator('[data-test="thumbnails-empty"]')).toBeVisible();
+
     if (evidence) {
       await page.screenshot({ path: `${OUT}/kb89-05-already-gone.png` });
     }

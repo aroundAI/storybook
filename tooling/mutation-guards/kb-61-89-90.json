@@ -137,6 +137,15 @@
       "replace": "        throw new Error('Thumbnail not found');",
       "spec": "tests/storage/episode-thumbnails-panel.spec.ts",
       "grep": "already gone says so"
+    },
+    {
+      "name": "KB-89 E2E a refused remove keeps showing the stale card",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-thumbnail-settings.tsx",
+      "find": "          await onRefused();\n",
+      "replace": "",
+      "spec": "tests/storage/episode-thumbnails-panel.spec.ts",
+      "grep": "already gone says so"
     }
   ]
 }
