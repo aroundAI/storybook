@@ -72,10 +72,10 @@ test_plan:
   unit:
     - text: "Test schedule calculation"
       met: true
-      evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:334` (`getSyncSchedule` tiers)"
+      evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:380` (`getSyncSchedule` tiers)"
     - text: "Test age-based sync frequency"
       met: true
-      evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:338` (the 30–90 and >90 day tiers only)"
+      evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:384` (the 30–90 and >90 day tiers only)"
   integration:
     - text: "Test sync flow with mocked providers"
       met: false
