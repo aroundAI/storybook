@@ -99,8 +99,9 @@ suite (~11 min at one worker) and the guards (~5 min).
   `lib.sh` puts `apps/web/node_modules/.bin` first on `PATH`.
 - **zsh doesn't word-split `$var`.** Loop over file lists with `while read`.
 - **The guards mutate files in place,** so each shard needs its own tree. The
-  runner mutates the first match of its `find` text, so after a rebase a guard
-  can hit an earlier copy of the same line: keep `find` texts unique.
+  runner refuses a `find` text that matches more than once (`AMBIGUOUS`),
+  because a rebase can add an earlier copy of the same line; `--self-test`
+  checks every entry for it.
 - **Docker sometimes fails to remove pg_prove's container** after the tests
   pass. `tooling/mutation-guards/run.py` reads pg_prove's own `Result:` line (#350).
 - **Citations drift** (KB-81, #349): after a rebase that moves cited code, run
