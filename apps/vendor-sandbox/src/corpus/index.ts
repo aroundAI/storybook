@@ -178,12 +178,15 @@ const RULES: Array<[RegExp, Filler]> = [
  * post. Any other field is placed by its own name only - a parent named
  * `shots` must not turn a shot's `characters` into camera directions.
  */
-const GENERIC_FIELD = /^(text|content|value|label|item|entry|body)$/;
+const GENERIC_FIELD = /^(text|content|value|label|item|entry|body|name)$/;
 
 const PARENT_RULES: Array<[RegExp, Filler]> = [
   [/dialog|line|script|speech|transcript/, pick(corpus.dialogue)],
   [/beat/, pick(corpus.beatLabels)],
   [/variant|post|caption|social/, pick(corpus.postTexts)],
+  [/organi[sz]ation|compan/, pick(corpus.organizations)],
+  [/event/, pick(corpus.events)],
+  [/location|place|venue/, (rng, cast) => rng.pick(cast.locations)],
 ];
 
 const FIELD_OF_PATH = (path: readonly string[]) =>

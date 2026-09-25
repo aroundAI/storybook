@@ -105,7 +105,7 @@ export async function runResearchPhase(
 
   // Run researcher LLM
   const result = await executeLLM<ResearchLLMResponse>({
-    templateSlug: 'researcher-role',
+    templateSlug: 'documentary/researcher-role',
     variables: {
       topic: sanitizeForPrompt(topic),
       premise: sanitizeForPrompt(premise ?? ''),
