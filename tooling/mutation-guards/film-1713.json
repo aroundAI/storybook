@@ -1,0 +1,204 @@
+{
+  "feature": "FILM-1713",
+  "mutations": [
+    {
+      "name": "NM1 The episode total re-inlines the engagement formula",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "displayedEngagementRatePercent({",
+      "replace": "((totalLikes + totalComments + totalShares) / totalViews) * 100 + 0 * ({",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/engagement-rate-one-definition.test.ts",
+      "pattern": "computed inline nowhere else"
+    },
+    {
+      "name": "NM2 The publish row re-inlines the engagement formula",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "displayedEngagementRatePercent(stats)",
+      "replace": "((stats.likes + stats.comments + stats.shares) / stats.views) * 100",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/engagement-rate-one-definition.test.ts",
+      "pattern": "computed inline nowhere else"
+    },
+    {
+      "name": "NM3 The account dashboard re-inlines the engagement formula",
+      "file": "packages/features/content-analytics/src/server/account-dashboard-actions.ts",
+      "find": "displayedEngagementRatePercent(stats)",
+      "replace": "((stats.likes + stats.comments + stats.shares) / stats.views) * 100",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/engagement-rate-one-definition.test.ts",
+      "pattern": "computed inline nowhere else"
+    },
+    {
+      "name": "NM4 The language total re-inlines the engagement formula",
+      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
+      "find": "displayedEngagementRatePercent(stats)",
+      "replace": "((stats.likes + stats.comments + stats.shares) / stats.views) * 100",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/engagement-rate-one-definition.test.ts",
+      "pattern": "computed inline nowhere else"
+    },
+    {
+      "name": "NM5 The language entry re-inlines the engagement formula",
+      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
+      "find": "displayedEngagementRatePercent(entry)",
+      "replace": "((entry.likes + entry.comments + entry.shares) / entry.views) * 100",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/engagement-rate-one-definition.test.ts",
+      "pattern": "computed inline nowhere else"
+    },
+    {
+      "name": "NM6 The long-form split re-inlines the engagement formula",
+      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
+      "find": "displayedEngagementRatePercent(longForm)",
+      "replace": "((longForm.likes + longForm.comments + longForm.shares) / longForm.views) * 100",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/engagement-rate-one-definition.test.ts",
+      "pattern": "computed inline nowhere else"
+    },
+    {
+      "name": "NM7 The shorts split re-inlines the engagement formula",
+      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
+      "find": "displayedEngagementRatePercent(shorts)",
+      "replace": "((shorts.likes + shorts.comments + shorts.shares) / shorts.views) * 100",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/engagement-rate-one-definition.test.ts",
+      "pattern": "computed inline nowhere else"
+    },
+    {
+      "name": "NM8 The company dashboard re-inlines the engagement formula",
+      "file": "packages/features/content-analytics/src/components/company-dashboard.tsx",
+      "find": "displayedEngagementRatePercent(data.totals)",
+      "replace": "(((data.totals.likes + data.totals.comments + data.totals.shares) / data.totals.views) * 100)",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/engagement-rate-one-definition.test.ts",
+      "pattern": "computed inline nowhere else"
+    },
+    {
+      "name": "NM20 The per-episode rollup re-inlines the engagement formula",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "const epEngagement = displayedEngagementRatePercent({",
+      "replace": "const epEngagement = ((epLikes + epComments + epShares) / epViews) * 100 + 0 * Number({",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/engagement-rate-one-definition.test.ts",
+      "pattern": "computed inline nowhere else"
+    },
+    {
+      "name": "NM9 A save rate is computed where the platform reports no saves",
+      "file": "packages/clickhouse/src/lib/measures.ts",
+      "find": "  if (needs) {\n    const missing",
+      "replace": "  if (needs && false) {\n    const missing",
+      "pattern": "is not reported, not 0",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/measures.test.ts"
+    },
+    {
+      "name": "NM10 A zero denominator yields 0 instead of a named absence",
+      "file": "packages/clickhouse/src/lib/measures.ts",
+      "find": "  return denominator > 0 ? numerator / denominator : null;",
+      "replace": "  return denominator > 0 ? numerator / denominator : 0;",
+      "pattern": "zero denominator",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/measures.test.ts"
+    },
+    {
+      "name": "NM11 The Instagram views fallback is stamped as preferred",
+      "file": "packages/clickhouse/src/lib/measures.ts",
+      "find": "  const isFallback = PREFERRED_DENOMINATOR[platform] === 'reach';",
+      "replace": "  const isFallback = false;",
+      "pattern": "marked as the fallback",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/measures.test.ts"
+    },
+    {
+      "name": "NM12 An Instagram Reel is assumed to report follows",
+      "file": "packages/clickhouse/src/lib/measures.ts",
+      "find": "    if (cell.mediaSurfaces.includes(mediaSurface)) {",
+      "replace": "    if (false) {",
+      "pattern": "on an Instagram Reel",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/measures.test.ts"
+    },
+    {
+      "name": "NM13 An unknown Instagram surface is assumed reported",
+      "file": "packages/clickhouse/src/lib/measures.ts",
+      "find": "    if (mediaSurface === undefined) {\n      return { reason: 'media_surface_unknown', input };",
+      "replace": "    if (false) {\n      return { reason: 'media_surface_unknown', input };",
+      "pattern": "surface is not known",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/measures.test.ts"
+    },
+    {
+      "name": "NM14 An unknown asset duration yields a figure",
+      "file": "packages/clickhouse/src/lib/measures.ts",
+      "find": "    input.assetDurationSeconds == null\n      ? null",
+      "replace": "    input.assetDurationSeconds == null\n      ? input.avgViewDurationSeconds",
+      "pattern": "duration_unknown when",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/measures.test.ts"
+    },
+    {
+      "name": "NM15 Too few velocities read as stable",
+      "file": "packages/clickhouse/src/lib/velocity.ts",
+      "find": "  if (velocities.length < 2) return 'not_enough_points';",
+      "replace": "  if (velocities.length < 2) return 'stable';",
+      "pattern": "not_enough_points with fewer",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/velocity.test.ts"
+    },
+    {
+      "name": "NM16 Velocities from different age buckets are compared",
+      "file": "packages/clickhouse/src/lib/velocity.ts",
+      "find": "  if (a.bucket !== b.bucket) {",
+      "replace": "  if (false) {",
+      "pattern": "different age buckets",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/velocity.test.ts"
+    },
+    {
+      "name": "NM17 A missing day is spread into one velocity",
+      "file": "packages/clickhouse/src/lib/velocity.ts",
+      "find": "    if (point.ageDays - previous.ageDays !== 1) {",
+      "replace": "    if (false) {",
+      "pattern": "missing day",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/velocity.test.ts"
+    },
+    {
+      "name": "NM18 Stalled collapses into decelerating",
+      "file": "packages/clickhouse/src/lib/velocity.ts",
+      "find": "  if (peak === 0 || today <= STALLED_SHARE_OF_PEAK * peak) return 'stalled';",
+      "replace": "  if (peak === 0) return 'stalled';",
+      "pattern": "stalled from decelerating",
+      "kind": "unit",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/velocity.test.ts"
+    },
+    {
+      "name": "NM19 YouTube saves claimed as reported against the reference",
+      "file": "packages/clickhouse/src/lib/measures.ts",
+      "find": "  youtube: {\n    saves: {\n      support: 'not_reported',\n      candidates: NO_SAVES,\n      absentFrom: [\n        'youtube/analytics-metrics',",
+      "replace": "  youtube: {\n    saves: {\n      support: 'not_reported',\n      candidates: [...NO_SAVES, 'likes'],\n      absentFrom: [\n        'youtube/analytics-metrics',",
+      "kind": "unit",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/measure-input-sources.test.ts"
+    }
+  ]
+}
