@@ -11,6 +11,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 
 import { vendorUrl } from '@kit/shared/vendors';
+import type { Database } from '@kit/supabase/database';
 
 import { uploadToR2 } from '../llm-worker/utils/r2-storage';
 
@@ -95,7 +96,7 @@ async function decrypt(encryptedBase64: string): Promise<string> {
 // =============================================================================
 
 async function getAccountElevenLabsApiKey(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
   accountId: string,
 ): Promise<string> {
   const { data: storedKey, error } = await supabase
@@ -138,7 +139,7 @@ interface DialogueVoiceResult {
 
 export async function processDialogueVoiceGeneration(
   payload: unknown,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<DialogueVoiceResult> {
   const data = DialogueVoiceGenerationPayloadSchema.parse(payload);
 

@@ -25,6 +25,8 @@ import {
 import type { SQSBatchResponse, SQSEvent } from 'aws-lambda';
 import ws from 'ws';
 
+import type { Database } from '@kit/supabase/database';
+
 // Initialize DynamoDB client
 const ddbClient = new DynamoDBClient({});
 const ddb = DynamoDBDocumentClient.from(ddbClient);
@@ -68,7 +70,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
   );
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,

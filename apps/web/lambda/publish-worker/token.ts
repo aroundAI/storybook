@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { isWithinRefreshWindow } from '@kit/publishing/lib/token-expiry';
+import type { Database } from '@kit/supabase/database';
 
 import { decrypt } from './crypto';
 
@@ -15,12 +16,12 @@ import { decrypt } from './crypto';
  */
 export async function checkConnectionToken(
   connectionId: string,
-  client: SupabaseClient,
+  client: SupabaseClient<Database>,
   now: Date = new Date(),
 ): Promise<{
   valid: boolean;
   accessToken?: string;
-  platformAccountId?: string;
+  platformAccountId?: string | null;
   error?: string;
 }> {
   // Get platform connection

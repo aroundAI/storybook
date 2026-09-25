@@ -14,6 +14,7 @@ import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import ws from 'ws';
 
 import type { PublishJobMessage } from '@kit/publishing/lib/job-types';
+import type { Database } from '@kit/supabase/database';
 
 const sqsClient = new SQSClient({});
 
@@ -31,7 +32,7 @@ if (!PUBLISH_QUEUE_URL) {
   throw new Error('PUBLISH_QUEUE_URL environment variable not configured');
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,

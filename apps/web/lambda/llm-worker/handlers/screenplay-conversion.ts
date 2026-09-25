@@ -9,6 +9,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { ScreenplayScene } from '@kit/episodes/agent/screenplay-orchestrator';
+import type { Database, Json } from '@kit/supabase/database';
 
 import {
   markJobCompleted,
@@ -57,7 +58,7 @@ interface ScreenplayConversionResult {
 
 export async function processScreenplayConversion(
   payload: Record<string, unknown>,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<ScreenplayConversionResult> {
   // SQS payload: cast, not validated (KB-33).
   const data = payload as unknown as ScreenplayConversionPayload;
@@ -170,7 +171,9 @@ export async function processScreenplayConversion(
 
     // Get target duration and content style
     const targetDuration =
-      episode.target_duration_seconds || storyData.targetDuration || 300;
+      episode.target_duration_seconds ||
+      (storyData.targetDuration as number | undefined) ||
+      300;
     const contentStyle = (data.contentStyle ||
       storyData.contentStyle ||
       'dialogue-heavy') as ContentStyle;
@@ -400,7 +403,7 @@ export async function processScreenplayConversion(
     const { data: updatedEpisode, error: updateError } = await supabase
       .from('episodes')
       .update({
-        screenplay_data: screenplayData,
+        screenplay_data: screenplayData as unknown as Json,
         status: 'storyboard',
         updated_at: new Date().toISOString(),
       })

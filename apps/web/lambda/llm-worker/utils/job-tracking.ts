@@ -8,6 +8,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Database } from '@kit/supabase/database';
+
 // The job types the worker tracks. Each must be allowed by the
 // generation_jobs_job_type_check constraint (latest:
 // 20260923025438_generation_jobs_refinement_job_types.sql), or every
@@ -31,7 +33,7 @@ export type GenerationJobStatus =
  * Mark a job as processing when Lambda starts execution
  */
 export async function markJobProcessing(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
   episodeId: string,
   jobType: GenerationJobType,
 ): Promise<void> {
@@ -62,7 +64,7 @@ export async function markJobProcessing(
  * Mark a job as completed when Lambda finishes successfully
  */
 export async function markJobCompleted(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
   episodeId: string,
   jobType: GenerationJobType,
   metadata?: Record<string, unknown>,
@@ -97,7 +99,7 @@ export async function markJobCompleted(
  * Mark a job as failed when Lambda encounters an error
  */
 export async function markJobFailed(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
   episodeId: string,
   jobType: GenerationJobType,
   errorMessage: string,

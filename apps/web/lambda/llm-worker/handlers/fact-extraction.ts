@@ -6,6 +6,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Database } from '@kit/supabase/database';
+
 interface FactExtractionPayload {
   content: string;
   projectId: string;
@@ -41,7 +43,7 @@ interface FactExtractionResult {
 
 export async function processFactExtraction(
   payload: Record<string, unknown>,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<FactExtractionResult> {
   // SQS payload: cast, not validated (KB-33).
   const data = payload as unknown as FactExtractionPayload;

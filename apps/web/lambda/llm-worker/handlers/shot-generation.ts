@@ -10,6 +10,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { ReelSceneAnalysis } from '@kit/episodes/agent/shot-orchestrator';
+import type { Database, Json } from '@kit/supabase/database';
 
 import {
   markJobCompleted,
@@ -58,7 +59,7 @@ interface ShotGenerationResult {
 
 export async function processShotGeneration(
   payload: Record<string, unknown>,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<ShotGenerationResult> {
   // SQS payload: cast, not validated (KB-33).
   const data = payload as unknown as ShotGenerationPayload;
@@ -277,12 +278,12 @@ export async function processShotGeneration(
       camera_direction: string | null;
       status: string;
       shorts_candidate: boolean;
-      shorts_metadata: Record<string, unknown> | null;
-      generation_metadata: Record<string, unknown>;
+      shorts_metadata: Json | null;
+      generation_metadata: Json;
       // OpenClaw Shot Intelligence
       transition_type: string | null;
       frame_strategy: string | null;
-      primary_subject: Record<string, unknown> | null;
+      primary_subject: Json | null;
       first_frame_description: string | null;
       last_frame_description: string | null;
       location_area: string | null;
@@ -306,7 +307,7 @@ export async function processShotGeneration(
 
       // Build shorts_metadata for ALL shots (not just candidates) so the sidebar
       // can show viral intelligence and "not a candidate" reasoning for every scene.
-      const shortsMetadata: Record<string, unknown> | null = sceneAnalysis
+      const shortsMetadata: Json | null = sceneAnalysis
         ? {
             viralScore: sceneAnalysis.viralScore,
             hookType: sceneAnalysis.hookType ?? shot.metadata.hookType,

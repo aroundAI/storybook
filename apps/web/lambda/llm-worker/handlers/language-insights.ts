@@ -6,6 +6,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Database } from '@kit/supabase/database';
+
 interface LanguageInsightsPayload {
   projectId: string;
   /** The project's account, stamped by queueLlmJob from its target (KB-31). */
@@ -40,7 +42,7 @@ interface LanguageInsightsResult {
 
 export async function processLanguageInsights(
   payload: Record<string, unknown>,
-  _supabase: SupabaseClient,
+  _supabase: SupabaseClient<Database>,
 ): Promise<LanguageInsightsResult> {
   // SQS payload: cast, not validated (KB-33).
   const data = payload as unknown as LanguageInsightsPayload;

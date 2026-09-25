@@ -422,7 +422,7 @@ describe('WebSocket Default Handler', () => {
       await handler(event);
 
       const sentData = JSON.parse(
-        mockPostToConnectionCommand.mock.calls[0][0].Data,
+        mockPostToConnectionCommand.mock.calls[0]![0].Data,
       );
 
       expect(sentData.type).toBe('pong');
@@ -576,7 +576,7 @@ describe('WebSocket Default Handler', () => {
       await handler(event);
 
       const sentData = JSON.parse(
-        mockPostToConnectionCommand.mock.calls[0][0].Data,
+        mockPostToConnectionCommand.mock.calls[0]![0].Data,
       );
 
       expect(sentData.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/); // ISO format
@@ -607,7 +607,7 @@ describe('WebSocket Default Handler', () => {
       await handler(event);
 
       const sentData = JSON.parse(
-        mockPostToConnectionCommand.mock.calls[0][0].Data,
+        mockPostToConnectionCommand.mock.calls[0]![0].Data,
       );
 
       expect(sentData.type).toBe('notification');

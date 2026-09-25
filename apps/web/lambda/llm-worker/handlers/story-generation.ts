@@ -13,6 +13,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Database, Json } from '@kit/supabase/database';
+
 import { commitStoryCanon } from '../utils/commit-story-canon';
 import {
   buildEpisodeContext,
@@ -55,7 +57,7 @@ interface NewLocation {
  * Tags newly created asset IDs onto the episode's metadata.
  */
 async function autoCreateNewAssets(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
   projectId: string,
   episodeId: string,
   newCharacters: NewCharacter[],
@@ -230,7 +232,7 @@ interface StoryGenerationResult {
 
 export async function processStoryGeneration(
   payload: Record<string, unknown>,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<StoryGenerationResult> {
   // SQS payload: cast, not validated (KB-33).
   const data = payload as unknown as StoryGenerationPayload;
@@ -455,7 +457,7 @@ export async function processStoryGeneration(
     const { data: updatedEpisode, error: updateError } = await supabase
       .from('episodes')
       .update({
-        story_data: storyData,
+        story_data: storyData as Json,
         status: 'story',
         target_duration_seconds: data.targetDuration,
         updated_at: new Date().toISOString(),

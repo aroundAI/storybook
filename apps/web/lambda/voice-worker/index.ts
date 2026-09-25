@@ -25,6 +25,8 @@ import {
 import type { SQSBatchResponse, SQSEvent } from 'aws-lambda';
 import ws from 'ws';
 
+import type { Database } from '@kit/supabase/database';
+
 // Initialize DynamoDB client
 const ddbClient = new DynamoDBClient({});
 const ddb = DynamoDBDocumentClient.from(ddbClient);
@@ -68,7 +70,15 @@ if (!supabaseUrl || !supabaseServiceKey) {
   );
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+/** `increment_batch_progress` returns jsonb of this shape (20260527094643_increment_batch_progress_rpc.sql). */
+type BatchProgress = {
+  is_complete: boolean;
+  completed?: number;
+  failed?: number;
+  total?: number;
+};
+
+const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
@@ -207,13 +217,13 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
             // Success — handle batch vs single-line
             if (payload.batchJobId) {
               // Batch mode: increment progress via RPC
-              const { data: batchStatus } = await supabase.rpc(
+              const { data: batchStatus } = (await supabase.rpc(
                 'increment_batch_progress',
                 {
                   p_batch_job_id: payload.batchJobId,
                   p_status: 'completed',
                 },
-              );
+              )) as { data: BatchProgress | null };
 
               console.log(
                 `[Voice Worker] Batch ${payload.batchJobId} progress updated`,
@@ -289,13 +299,13 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
         if (payload.batchJobId) {
           // Batch mode: mark as failed in batch progress
           try {
-            const { data: batchStatus } = await supabase.rpc(
+            const { data: batchStatus } = (await supabase.rpc(
               'increment_batch_progress',
               {
                 p_batch_job_id: payload.batchJobId,
                 p_status: 'failed',
               },
-            );
+            )) as { data: BatchProgress | null };
 
             // If batch is complete (all items processed, some failed), notify user
             if (batchStatus?.is_complete) {

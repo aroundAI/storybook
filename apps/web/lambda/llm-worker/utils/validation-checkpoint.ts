@@ -14,6 +14,7 @@ import {
   validateSceneBlocks,
 } from '@kit/episodes/lib/canon/continuity-validator';
 import { buildMemoryContext } from '@kit/episodes/lib/canon/memory-context-builder';
+import type { Database } from '@kit/supabase/database';
 
 // Re-export types consumers need
 export type EnforcementLevel = 'strict' | 'flexible';
@@ -28,7 +29,7 @@ export interface ValidationCheckpointConfig {
   /** Episode number for the memory context scope */
   episodeNumber: number;
   /** Supabase client for database access */
-  supabase: SupabaseClient;
+  supabase: SupabaseClient<Database>;
 }
 
 export interface ValidationCheckpointResult {

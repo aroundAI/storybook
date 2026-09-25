@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Database } from '@kit/supabase/database';
+
 /**
  * Episode type for Lambda handlers
  */
@@ -63,7 +65,7 @@ export interface EpisodeWithShots extends Episode {
  */
 export async function getEpisodesByProject(
   projectId: string,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
@@ -95,7 +97,7 @@ export async function getEpisodesByProject(
  */
 export async function getEpisodeMetadataByProject(
   projectId: string,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
@@ -127,7 +129,10 @@ export async function getEpisodeMetadataByProject(
 /**
  * Get a single episode by ID (excluding soft-deleted)
  */
-export async function getEpisode(episodeId: string, supabase: SupabaseClient) {
+export async function getEpisode(
+  episodeId: string,
+  supabase: SupabaseClient<Database>,
+) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('episodes')
@@ -158,7 +163,7 @@ export async function getEpisode(episodeId: string, supabase: SupabaseClient) {
  */
 export async function getEpisodeWithShots(
   episodeId: string,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ) {
   // Fetch episode with season info
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -215,7 +220,7 @@ export async function getEpisodeWithShots(
  */
 export async function getNextEpisodeNumber(
   projectId: string,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
@@ -241,7 +246,7 @@ export async function getNextEpisodeNumber(
  */
 export async function getEpisodeCount(
   projectId: string,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { count, error } = await (supabase as any)
@@ -265,7 +270,7 @@ export async function getEpisodeCount(
  */
 export async function getShotsByEpisode(
   episodeId: string,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
@@ -294,7 +299,10 @@ export async function getShotsByEpisode(
 /**
  * Get a single shot by ID
  */
-export async function getShot(shotId: string, supabase: SupabaseClient) {
+export async function getShot(
+  shotId: string,
+  supabase: SupabaseClient<Database>,
+) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)
     .from('shots')
@@ -325,7 +333,7 @@ export async function getShot(shotId: string, supabase: SupabaseClient) {
 export async function getShotsByScene(
   episodeId: string,
   sceneNumber: number,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase as any)

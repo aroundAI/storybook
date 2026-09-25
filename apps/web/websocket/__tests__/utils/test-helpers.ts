@@ -2,17 +2,19 @@
  * Test helpers for WebSocket Lambda handlers
  */
 import type {
-  APIGatewayEventRequestContextV2,
+  APIGatewayEventWebsocketRequestContextV2,
   APIGatewayProxyWebsocketEventV2,
 } from 'aws-lambda';
+
+import type { WebsocketConnectEvent } from '../../connect';
 
 /**
  * Create a mock WebSocket connect event
  */
 export function createMockConnectEvent(
-  overrides?: Partial<APIGatewayProxyWebsocketEventV2>,
-): APIGatewayProxyWebsocketEventV2 {
-  const defaultEvent: APIGatewayProxyWebsocketEventV2 = {
+  overrides?: Partial<WebsocketConnectEvent>,
+): WebsocketConnectEvent {
+  const defaultEvent: WebsocketConnectEvent = {
     headers: {
       Authorization: 'Bearer mock-jwt-token',
     },
@@ -34,7 +36,7 @@ export function createMockConnectEvent(
       apiId: 'test-api-id',
       extendedRequestId: 'test-extended-request-id',
       requestTime: new Date().toISOString(),
-    } as APIGatewayEventRequestContextV2,
+    } as APIGatewayEventWebsocketRequestContextV2,
     isBase64Encoded: false,
   };
 
@@ -48,7 +50,6 @@ export function createMockDisconnectEvent(
   connectionId = 'test-connection-id',
 ): APIGatewayProxyWebsocketEventV2 {
   return {
-    headers: {},
     requestContext: {
       routeKey: '$disconnect',
       connectionId,
@@ -67,7 +68,7 @@ export function createMockDisconnectEvent(
       apiId: 'test-api-id',
       extendedRequestId: 'test-extended-request-id',
       requestTime: new Date().toISOString(),
-    } as APIGatewayEventRequestContextV2,
+    } as APIGatewayEventWebsocketRequestContextV2,
     isBase64Encoded: false,
   };
 }
@@ -80,7 +81,6 @@ export function createMockMessageEvent(
   connectionId = 'test-connection-id',
 ): APIGatewayProxyWebsocketEventV2 {
   return {
-    headers: {},
     body: JSON.stringify(body),
     requestContext: {
       routeKey: '$default',
@@ -100,7 +100,7 @@ export function createMockMessageEvent(
       apiId: 'test-api-id',
       extendedRequestId: 'test-extended-request-id',
       requestTime: new Date().toISOString(),
-    } as APIGatewayEventRequestContextV2,
+    } as APIGatewayEventWebsocketRequestContextV2,
     isBase64Encoded: false,
   };
 }

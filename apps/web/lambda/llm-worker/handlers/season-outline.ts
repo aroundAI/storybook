@@ -9,6 +9,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Database } from '@kit/supabase/database';
+
 /** Facts offered to one outline; the prompt asks for every one to be placed. */
 const MAX_OUTLINE_FACTS = 100;
 
@@ -55,7 +57,7 @@ interface SeasonOutlineResult {
 
 export async function processSeasonOutline(
   payload: Record<string, unknown>,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<SeasonOutlineResult> {
   // SQS payload: cast, not validated (KB-33).
   const data = payload as unknown as SeasonOutlinePayload;
@@ -106,22 +108,12 @@ export async function processSeasonOutline(
 
   const existingCharacters =
     characters.length > 0
-      ? characters
-          .map(
-            (c: { name: string; description?: string }) =>
-              `- ${c.name}: ${c.description || ''}`,
-          )
-          .join('\n')
+      ? characters.map((c) => `- ${c.name}: ${c.description || ''}`).join('\n')
       : 'No characters defined yet.';
 
   const existingLocations =
     locations.length > 0
-      ? locations
-          .map(
-            (l: { name: string; description?: string }) =>
-              `- ${l.name}: ${l.description || ''}`,
-          )
-          .join('\n')
+      ? locations.map((l) => `- ${l.name}: ${l.description || ''}`).join('\n')
       : 'No locations defined yet.';
 
   // KB-71: the type is `metadata.projectType`, read the one way every other

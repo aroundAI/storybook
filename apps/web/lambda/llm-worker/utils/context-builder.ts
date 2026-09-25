@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { resolveProjectType } from '@kit/episodes/lib';
 import type { ProjectType } from '@kit/film-studio-schemas/project';
+import type { Database } from '@kit/supabase/database';
 
 /** StoryData interface for episode story content */
 export interface StoryData {
@@ -164,7 +165,7 @@ export interface EpisodeContext {
  */
 export async function buildEpisodeContext(
   episodeId: string,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<EpisodeContext> {
   const client = supabase;
 
@@ -429,7 +430,7 @@ export async function buildEpisodeContext(
  */
 async function fetchEpisodeFacts(
   episodeId: string,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<EpisodeContext['verifiedFacts']> {
   const { data, error } = await supabase
     .from('episode_facts')
@@ -516,7 +517,7 @@ RULES:
  */
 export async function fetchAllProjectCharacters(
   projectId: string,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<EpisodeContext['characters']> {
   const { data, error } = await supabase
     .from('assets')
@@ -575,7 +576,7 @@ interface CharacterMetadata {
  */
 export async function fetchCharactersByIds(
   characterIds: string[],
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<EpisodeContext['characters']> {
   if (characterIds.length === 0) return [];
 
@@ -637,7 +638,7 @@ interface LocationMetadata {
  */
 export async function fetchLocationsByIds(
   locationIds: string[],
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<EpisodeContext['locations']> {
   if (locationIds.length === 0) return [];
 
@@ -695,7 +696,7 @@ function buildPlotSummary(storyData: StoryData | null): string {
 async function fetchSequentialEpisodes(
   seasonId: string | null,
   currentNumber: number,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<EpisodeContext['previousEpisodes']> {
   if (!seasonId) return [];
 
@@ -1384,7 +1385,7 @@ export interface SceneFilteredContext {
  */
 export async function buildGlobalShotContext(
   episodeId: string,
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
 ): Promise<GlobalShotContext> {
   const client = supabase;
 

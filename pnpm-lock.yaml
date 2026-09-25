@@ -463,6 +463,9 @@ importers:
       happy-dom:
         specifier: ^18.0.1
         version: 18.0.1
+      jose:
+        specifier: 6.2.12
+        version: 6.2.12
       pino-pretty:
         specifier: 13.0.0
         version: 13.0.0
