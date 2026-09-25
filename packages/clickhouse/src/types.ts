@@ -68,6 +68,26 @@ export interface VideoMetric {
 }
 
 /**
+ * A YouTube `video_metrics` row. Two writers share its key — the Reporting
+ * ingest and the Analytics-API sync/backfill — and the later row replaces the
+ * whole row, so a column one of them leaves out is erased from the other's
+ * figure (KB-50, KB-94). Both return this type, which makes every column they
+ * share required: leaving one out is a type error, not a silent zero.
+ */
+export type YouTubeVideoMetric = VideoMetric &
+  Required<
+    Pick<
+      VideoMetric,
+      | 'subscribers_lost'
+      | 'metric_source'
+      | 'avg_view_duration_seconds'
+      | 'avg_view_percentage'
+      | 'dislikes'
+      | 'engaged_views'
+    >
+  > & { platform: 'youtube' };
+
+/**
  * One point of a lifetime audience-retention curve. Latest fetch wins per
  * (video, elapsed_ratio).
  */

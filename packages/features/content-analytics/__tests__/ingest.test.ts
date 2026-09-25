@@ -127,6 +127,9 @@ describe('latestDataDate', () => {
     estimatedMinutesWatched: 0,
     averageViewDuration: 0,
     subscribersGained: 0,
+    dislikes: 0,
+    averageViewPercentage: 0,
+    subscribersLost: 0,
   });
 
   it('finds the latest date regardless of order', () => {
@@ -155,6 +158,9 @@ describe('buildYouTubeDailyRows', () => {
           estimatedMinutesWatched: 30,
           averageViewDuration: 18,
           subscribersGained: 1,
+          dislikes: 0,
+          averageViewPercentage: 40,
+          subscribersLost: 0,
         },
         {
           date: '2026-06-14',
@@ -165,6 +171,9 @@ describe('buildYouTubeDailyRows', () => {
           estimatedMinutesWatched: 75.5,
           averageViewDuration: 18.1,
           subscribersGained: 3,
+          dislikes: 1,
+          averageViewPercentage: 41,
+          subscribersLost: 1,
         },
       ],
       extraMetricsJson: '{"retention":true}',
@@ -201,6 +210,9 @@ describe('buildYouTubeDailyRows', () => {
       estimatedMinutesWatched: 0,
       averageViewDuration: 0,
       subscribersGained: 0,
+      dislikes: 0,
+      averageViewPercentage: 0,
+      subscribersLost: 0,
       engagedViews,
     });
 
@@ -234,6 +246,40 @@ describe('buildYouTubeDailyRows', () => {
         ['2025-04-23', null],
         ['2025-04-24', 9],
       ]);
+    });
+  });
+
+  // KB-94. Same key, same rule: the Reporting ingest writes dislikes,
+  // subscribers lost and average percentage viewed, so this writer must too,
+  // or its row lands later and replaces those figures with the column default.
+  it('carries the columns the Reporting ingest also writes (KB-94)', () => {
+    const [row] = buildYouTubeDailyRows({
+      projectId: '550e8400-e29b-41d4-a716-446655440000',
+      videoId: 'publish-1',
+      dailyData: [
+        {
+          date: '2026-09-20',
+          views: 401,
+          likes: 20,
+          comments: 3,
+          shares: 1,
+          estimatedMinutesWatched: 300,
+          averageViewDuration: 45,
+          subscribersGained: 5,
+          dislikes: 2,
+          averageViewPercentage: 45.5,
+          subscribersLost: 1,
+          engagedViews: 331,
+        },
+      ],
+      extraMetricsJson: '{}',
+    });
+
+    expect(row).toMatchObject({
+      dislikes: 2,
+      avg_view_percentage: 45.5,
+      subscribers_lost: 1,
+      subscribers_gained: 5,
     });
   });
 });

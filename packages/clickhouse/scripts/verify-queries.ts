@@ -69,7 +69,11 @@ import {
   queryViewsForVideos,
   queryWatchWindowTotals,
 } from '../src/server';
-import type { AnalyticsPlatform, VideoMetric } from '../src/types';
+import type {
+  AnalyticsPlatform,
+  VideoMetric,
+  YouTubeVideoMetric,
+} from '../src/types';
 
 const PROJECT = '550e8400-e29b-41d4-a716-446655440000';
 const ACCOUNT = '550e8400-e29b-41d4-a716-446655440000';
@@ -726,6 +730,136 @@ async function assertions() {
       if (got !== want) throw new Error(`expected ${want}, got ${got}`);
 
       return 'both write orders keep a figure; unreported stays null';
+    },
+  );
+
+  await step(
+    'assert: dislikes, subscribers lost and AVP survive the other video_metrics writer (KB-94)',
+    async () => {
+      // KB-50's shape, for the three columns the Analytics-API sync used to
+      // leave to their DEFAULT 0: measured on main, the sync's row turned a
+      // Reporting 2 / 1 / 45.5 into 0 / 0 / 0. Rows are `YouTubeVideoMetric`,
+      // the type both writers now return, so each carries every column.
+      // Both write orders, a restatement by a later sync, and a repair — a
+      // zeroed row from before the fix superseded by a backfill row.
+      const client = getClickHouseClient();
+      const project = '94949494-9494-4494-8494-949494949494';
+      const base = Math.floor(Date.now() / 1000);
+      const at = (offset: number) =>
+        new Date((base + offset) * 1000)
+          .toISOString()
+          .slice(0, 19)
+          .replace('T', ' ');
+      const row = (
+        video: string,
+        source: YouTubeVideoMetric['metric_source'],
+        [dislikes, lost, avp]: [number, number, number],
+        offset: number,
+      ): YouTubeVideoMetric & { inserted_at: string } => ({
+        project_id: project,
+        video_id: video,
+        platform: 'youtube',
+        metric_date: '2026-09-20',
+        views: 400,
+        likes: 20,
+        comments: 3,
+        shares: 1,
+        saves: 0,
+        watch_time_seconds: 18000,
+        revenue_cents: 0,
+        subscribers_gained: 5,
+        subscribers_lost: lost,
+        metric_source: source,
+        avg_view_duration_seconds: 45,
+        avg_view_percentage: avp,
+        dislikes,
+        engaged_views: 330,
+        extra_metrics: '{}',
+        inserted_at: at(offset),
+      });
+      // What main's sync wrote: the three keys absent, so the defaults.
+      const zeroed = (video: string, offset: number) => {
+        const {
+          dislikes: _d,
+          subscribers_lost: _l,
+          avg_view_percentage: _p,
+          ...rest
+        } = row(video, 'analytics_api', [0, 0, 0], offset);
+        return rest as VideoMetric;
+      };
+
+      await client.command({
+        query: `ALTER TABLE video_metrics DELETE WHERE project_id = {project:UUID}`,
+        query_params: { project },
+        clickhouse_settings: { mutations_sync: '2' },
+      });
+
+      for (const values of [
+        [row('report-then-sync', 'reporting_api', [2, 1, 45.5], 0)],
+        [row('report-then-sync', 'analytics_api', [3, 1, 46], 1)],
+        [row('sync-then-report', 'analytics_api', [3, 1, 46], 0)],
+        [row('sync-then-report', 'reporting_api', [2, 1, 45.5], 1)],
+        [row('restated', 'analytics_api', [3, 1, 46], 0)],
+        [row('restated', 'analytics_api', [4, 2, 47], 1)],
+        [row('repaired', 'reporting_api', [2, 1, 45.5], 0)],
+        [zeroed('repaired', 1)],
+        [row('repaired', 'backfill', [3, 1, 46], 2)],
+      ]) {
+        await insertVideoMetrics(values);
+      }
+
+      const result = await client.query({
+        query: `
+          SELECT video_id, metric_source, dislikes, subscribers_lost,
+                 avg_view_percentage
+          FROM video_metrics FINAL
+          WHERE project_id = {project:UUID}
+          ORDER BY video_id`,
+        query_params: { project },
+        format: 'JSONEachRow',
+      });
+
+      const got = JSON.stringify(await result.json());
+      const want = JSON.stringify([
+        {
+          video_id: 'repaired',
+          metric_source: 'backfill',
+          dislikes: 3,
+          subscribers_lost: 1,
+          avg_view_percentage: 46,
+        },
+        {
+          video_id: 'report-then-sync',
+          metric_source: 'analytics_api',
+          dislikes: 3,
+          subscribers_lost: 1,
+          avg_view_percentage: 46,
+        },
+        {
+          video_id: 'restated',
+          metric_source: 'analytics_api',
+          dislikes: 4,
+          subscribers_lost: 2,
+          avg_view_percentage: 47,
+        },
+        {
+          video_id: 'sync-then-report',
+          metric_source: 'reporting_api',
+          dislikes: 2,
+          subscribers_lost: 1,
+          avg_view_percentage: 45.5,
+        },
+      ]);
+
+      await client.command({
+        query: `ALTER TABLE video_metrics DELETE WHERE project_id = {project:UUID}`,
+        query_params: { project },
+        clickhouse_settings: { mutations_sync: '2' },
+      });
+
+      if (got !== want) throw new Error(`expected ${want}, got ${got}`);
+
+      return 'both write orders, a restatement and a repair keep measured figures';
     },
   );
 

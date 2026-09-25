@@ -1,0 +1,55 @@
+{
+  "feature": "KB-94",
+  "mutations": [
+    {
+      "name": "KB-94 the sync's row leaves dislikes to the column default again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/ingest.ts",
+      "find": "    dislikes: day.dislikes,\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/ingest.test.ts",
+      "pattern": "carries the columns the Reporting ingest also writes"
+    },
+    {
+      "name": "KB-94 the sync's row leaves subscribers lost to the column default again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/ingest.ts",
+      "find": "    subscribers_lost: day.subscribersLost,\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/ingest.test.ts",
+      "pattern": "carries the columns the Reporting ingest also writes"
+    },
+    {
+      "name": "KB-94 the daily query stops asking for average percentage viewed",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
+      "find": "  'averageViewPercentage',\n  'subscribersGained',\n",
+      "replace": "  'subscribersGained',\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/youtube-analytics.test.ts",
+      "pattern": "asks for dislikes, average percentage viewed and subscribers lost by day"
+    },
+    {
+      "name": "KB-94 the daily answer is read by position instead of column name",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
+      "find": "      const index = headers.indexOf(name);\n",
+      "replace": "      const index = ['day', ...DAILY_METRICS].indexOf(name);\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/youtube-analytics.test.ts",
+      "pattern": "reads each metric by its column name, not its position"
+    },
+    {
+      "name": "KB-94 a figure YouTube did not send is written as 0 instead of refused",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
+      "find": "        if (typeof cell !== 'number' || !Number.isFinite(cell)) {\n",
+      "replace": "        if (typeof cell !== 'number' || !Number.isFinite(cell)) {\n          return 0;\n        }\n        if (false) {\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/youtube-analytics.test.ts",
+      "pattern": "refuses a day whose figure is null"
+    }
+  ]
+}

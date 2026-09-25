@@ -33,6 +33,30 @@ vi.mock('googleapis', () => {
   };
 });
 
+// The daily query's columns, as YouTube names them in `columnHeaders`.
+const DAILY_HEADERS = [
+  'day',
+  'views',
+  'likes',
+  'dislikes',
+  'comments',
+  'shares',
+  'estimatedMinutesWatched',
+  'averageViewDuration',
+  'averageViewPercentage',
+  'subscribersGained',
+  'subscribersLost',
+];
+
+// views, likes, dislikes, comments, shares, minutes, avd, avp, gained, lost
+const CORE_DAY = [400, 20, 2, 5, 1, 300, 45, 45.5, 5, 1];
+
+function dailyAnswer(rows: unknown[][], headers = DAILY_HEADERS) {
+  return {
+    data: { columnHeaders: headers.map((name) => ({ name })), rows },
+  };
+}
+
 describe('YouTubeAnalyticsProvider', () => {
   let provider: YouTubeAnalyticsProvider;
   let mockReportsQuery: ReturnType<typeof vi.fn>;
@@ -83,10 +107,19 @@ describe('YouTubeAnalyticsProvider', () => {
 
   describe('getVideoAnalytics', () => {
     it('should fetch all analytics in parallel', async () => {
-      // Setup mock responses for all API calls
-      mockReportsQuery.mockResolvedValue({
-        data: { rows: [[1000, 50, 2, 25, 10, 5000, 180, 45.5, 20, 5, 12.5]] },
-      });
+      // Setup mock responses for all API calls. The daily query answers
+      // with no rows: its shape is covered in 'daily metrics' below.
+      mockReportsQuery.mockImplementation(
+        ({ dimensions }: { dimensions?: string }) =>
+          Promise.resolve({
+            data: {
+              rows:
+                dimensions === 'day'
+                  ? []
+                  : [[1000, 50, 2, 25, 10, 5000, 180, 45.5, 20, 5, 12.5]],
+            },
+          }),
+      );
 
       const result = await provider.getVideoAnalytics({
         videoId: 'test-video-id',
@@ -106,16 +139,18 @@ describe('YouTubeAnalyticsProvider', () => {
     const TOTALS_ROW = [1000, 50, 2, 25, 10, 5000, 180, 45.5, 20, 5];
 
     function answerByMetrics(revenue: () => Promise<unknown>) {
-      mockReportsQuery.mockImplementation(({ metrics }: { metrics: string }) =>
-        metrics.includes('estimatedRevenue')
-          ? revenue()
-          : Promise.resolve({
-              data: {
-                rows: metrics.startsWith('views,likes,dislikes')
-                  ? [TOTALS_ROW]
-                  : [],
-              },
-            }),
+      mockReportsQuery.mockImplementation(
+        ({ metrics, dimensions }: { metrics: string; dimensions?: string }) =>
+          metrics.includes('estimatedRevenue')
+            ? revenue()
+            : Promise.resolve({
+                data: {
+                  rows:
+                    !dimensions && metrics.startsWith('views,likes,dislikes')
+                      ? [TOTALS_ROW]
+                      : [],
+                },
+              }),
       );
     }
 
@@ -230,21 +265,17 @@ describe('YouTubeAnalyticsProvider', () => {
   // KB-50. Engaged views travel in their own query, like revenue: a refusal
   // of that one metric must cost that one metric, not the day's views.
   describe('daily engaged views', () => {
-    const CORE_DAY = [400, 20, 5, 2, 30, 60, 3];
-
     function answerDaily(engaged: () => Promise<unknown>) {
       mockReportsQuery.mockImplementation(
         ({ metrics, dimensions }: { metrics: string; dimensions?: string }) => {
           if (metrics === 'engagedViews') return engaged();
           if (dimensions === 'day') {
-            return Promise.resolve({
-              data: {
-                rows: [
-                  ['2026-09-20', ...CORE_DAY],
-                  ['2026-09-21', ...CORE_DAY],
-                ],
-              },
-            });
+            return Promise.resolve(
+              dailyAnswer([
+                ['2026-09-20', ...CORE_DAY],
+                ['2026-09-21', ...CORE_DAY],
+              ]),
+            );
           }
           return Promise.resolve({ data: { rows: [] } });
         },
@@ -300,6 +331,102 @@ describe('YouTubeAnalyticsProvider', () => {
 
       expect(result.dailyData).toHaveLength(2);
       expect(result.dailyData.every((d) => d.engagedViews === null)).toBe(true);
+    });
+  });
+
+  // KB-94. The row built from this answer replaces the Reporting ingest's row
+  // whole, so it must carry every column that one writes — and never a 0 for
+  // a figure YouTube did not send, which would land over a measured one.
+  describe('daily metrics', () => {
+    const from = new Date('2026-09-20');
+    const to = new Date('2026-09-20');
+
+    function answerDailyWith(answer: unknown) {
+      mockReportsQuery.mockImplementation(
+        ({ metrics, dimensions }: { metrics: string; dimensions?: string }) =>
+          Promise.resolve(
+            dimensions === 'day' && metrics !== 'engagedViews'
+              ? answer
+              : { data: { rows: [] } },
+          ),
+      );
+    }
+
+    it('asks for dislikes, average percentage viewed and subscribers lost by day', async () => {
+      answerDailyWith(dailyAnswer([]));
+
+      await provider.getDailyMetrics('vid', from, to);
+
+      const core = mockReportsQuery.mock.calls
+        .map(([params]) => params as { metrics: string; dimensions?: string })
+        .find((p) => p.dimensions === 'day' && p.metrics !== 'engagedViews');
+
+      expect(core?.metrics.split(',')).toEqual(
+        expect.arrayContaining([
+          'dislikes',
+          'averageViewPercentage',
+          'subscribersLost',
+        ]),
+      );
+    });
+
+    it('reads each metric by its column name, not its position', async () => {
+      // YouTube's own order is not the one asked for: shuffle it.
+      const shuffled = [...DAILY_HEADERS].reverse();
+      const byName = Object.fromEntries(
+        DAILY_HEADERS.map((name, i) => [
+          name,
+          i === 0 ? '2026-09-20' : CORE_DAY[i - 1],
+        ]),
+      );
+      answerDailyWith(
+        dailyAnswer([shuffled.map((name) => byName[name])], shuffled),
+      );
+
+      const [day] = await provider.getDailyMetrics('vid', from, to);
+
+      expect(day).toMatchObject({
+        date: '2026-09-20',
+        views: 400,
+        likes: 20,
+        dislikes: 2,
+        comments: 5,
+        shares: 1,
+        estimatedMinutesWatched: 300,
+        averageViewDuration: 45,
+        averageViewPercentage: 45.5,
+        subscribersGained: 5,
+        subscribersLost: 1,
+      });
+    });
+
+    it('refuses an answer that is missing a metric, rather than writing 0', async () => {
+      const without = DAILY_HEADERS.filter((h) => h !== 'subscribersLost');
+      answerDailyWith(
+        dailyAnswer([['2026-09-20', ...CORE_DAY.slice(0, 9)]], without),
+      );
+
+      await expect(provider.getDailyMetrics('vid', from, to)).rejects.toThrow(
+        'YouTube daily report has no subscribersLost column',
+      );
+    });
+
+    it('refuses a day whose figure is null, rather than writing 0', async () => {
+      const day: unknown[] = ['2026-09-20', ...CORE_DAY];
+      day[DAILY_HEADERS.indexOf('averageViewPercentage')] = null;
+      answerDailyWith(dailyAnswer([day]));
+
+      await expect(provider.getDailyMetrics('vid', from, to)).rejects.toThrow(
+        'YouTube daily report has no averageViewPercentage for 2026-09-20',
+      );
+    });
+
+    it('returns no days for an empty answer, headers or not', async () => {
+      answerDailyWith({ data: {} });
+
+      await expect(provider.getDailyMetrics('vid', from, to)).resolves.toEqual(
+        [],
+      );
     });
   });
 
