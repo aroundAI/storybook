@@ -62,7 +62,7 @@ test_plan:
       reason: "not met — no test found"
     - text: "Test connection mapping (DB → PlatformConnection interface)"
       met: false
-      reason: "not met — the page's `getConnectionsAction` mapping is untested; `getConnectedPlatformsAction`'s is (`packages/features/publishing/__tests__/connection-actions.test.ts:98`)"
+      reason: "not met — the page's `getConnectionsAction` mapping is untested; `getConnectedPlatformsAction`'s is (`packages/features/publishing/__tests__/connection-actions.test.ts:129`)"
     - text: "Test schema validation for server actions"
       met: false
       reason: "not met — no test found"
@@ -75,7 +75,7 @@ test_plan:
       reason: "not met — no test found"
     - text: "Test refresh token mutation (calls ensureValidToken)"
       met: false
-      reason: "not met — no test of `refreshConnectionAction`; `ensureValidToken` itself is tested (`packages/features/publishing/__tests__/token-refresh.test.ts:119`)"
+      reason: "not met — no test of `refreshConnectionAction`; `ensureValidToken` itself is tested (`packages/features/publishing/__tests__/token-refresh.test.ts:381`)"
   e2e: []
   manual:
     - text: "Page loads at `/home/[account]/settings/platforms`"

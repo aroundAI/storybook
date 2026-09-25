@@ -2,15 +2,13 @@
  * Storage Adapter Factory
  *
  * Creates the appropriate storage adapter based on configuration.
- * Supports multiple providers: local, supabase, r2, b2
+ * Two providers: R2 (production and staging) and Supabase (local dev and CI).
  * Supports smart routing based on content type.
  */
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { B2StorageAdapter } from './adapters/b2';
-import { LocalStorageAdapter } from './adapters/local';
 import { R2StorageAdapter } from './adapters/r2';
 import { SupabaseStorageAdapter } from './adapters/supabase';
 import {
@@ -21,28 +19,32 @@ import {
 import type { StorageAdapter } from './types';
 
 /**
- * Available storage provider types
+ * The providers `STORAGE_PROVIDER` may name. `scripts/deploy.sh` refuses any
+ * other value before a deploy (KB-70); keep its list the same.
  */
-export type StorageProvider = 'local' | 'supabase' | 'r2' | 'b2';
+export const STORAGE_PROVIDERS = ['supabase', 'r2'] as const;
+
+export type StorageProvider = (typeof STORAGE_PROVIDERS)[number];
+
+function isStorageProvider(value: string): value is StorageProvider {
+  return (STORAGE_PROVIDERS as readonly string[]).includes(value);
+}
 
 /**
- * Get the configured storage provider from environment
+ * The configured storage provider. Unset means Supabase, as in local dev and
+ * CI. Any other value throws: `s3` used to fall back to Supabase silently,
+ * though no S3 adapter exists (KB-70).
  */
 export function getStorageProvider(): StorageProvider {
-  const provider = process.env.STORAGE_PROVIDER?.toLowerCase();
+  const raw = process.env.STORAGE_PROVIDER;
+  if (!raw) return 'supabase';
 
-  switch (provider) {
-    case 'local':
-      return 'local';
-    case 'r2':
-      return 'r2';
-    case 'b2':
-      return 'b2';
-    case 'supabase':
-    default:
-      // Default to supabase for backward compatibility
-      return 'supabase';
-  }
+  const provider = raw.toLowerCase();
+  if (isStorageProvider(provider)) return provider;
+
+  throw new Error(
+    `Unknown STORAGE_PROVIDER "${raw}": expected one of ${STORAGE_PROVIDERS.join(', ')} (KB-70)`,
+  );
 }
 
 /**
@@ -53,26 +55,15 @@ function createAdapterForProvider(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabaseClient?: SupabaseClient<any, any, any>,
 ): StorageAdapter {
-  switch (provider) {
-    case 'local':
-      return new LocalStorageAdapter();
+  if (provider === 'r2') return new R2StorageAdapter();
 
-    case 'r2':
-      return new R2StorageAdapter();
-
-    case 'b2':
-      return new B2StorageAdapter();
-
-    case 'supabase':
-    default:
-      if (!supabaseClient) {
-        throw new Error(
-          'Supabase client is required for supabase storage provider. ' +
-            'Either pass a client or set STORAGE_PROVIDER to local, r2, or b2.',
-        );
-      }
-      return new SupabaseStorageAdapter(supabaseClient);
+  if (!supabaseClient) {
+    throw new Error(
+      'Supabase client is required for supabase storage provider. ' +
+        'Either pass a client or set STORAGE_PROVIDER to r2.',
+    );
   }
+  return new SupabaseStorageAdapter(supabaseClient);
 }
 
 /**
@@ -164,22 +155,8 @@ export function getStorageAdapterForPath(
 }
 
 /**
- * Check if local storage is enabled
- */
-export function isLocalStorageEnabled(): boolean {
-  return getStorageProvider() === 'local';
-}
-
-/**
  * Check if R2 storage is enabled
  */
 export function isR2StorageEnabled(): boolean {
   return getStorageProvider() === 'r2';
-}
-
-/**
- * Check if B2 storage is enabled
- */
-export function isB2StorageEnabled(): boolean {
-  return getStorageProvider() === 'b2';
 }

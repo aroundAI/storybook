@@ -22,7 +22,7 @@ summary: >
 acceptance_criteria:
   - text: "Report jobs auto-created for every active YouTube connection (rows in `youtube_report_jobs`)"
     met: true
-    evidence: "fake vendor, real Postgres (owner decision D6): four rows after two runs, `packages/features/content-analytics/__tests__/report-ingest.local-stack.test.ts:240`; production bundle against a local fixture Reporting API, FILM-1504 PR. Created even while ClickHouse is off: `packages/features/content-analytics/__tests__/report-ingest-run.test.ts:365`"
+    evidence: "fake vendor, real Postgres (owner decision D6): four rows after two runs, `packages/features/content-analytics/__tests__/report-ingest.local-stack.test.ts:240`; production bundle against a local fixture Reporting API, FILM-1504 PR. Created even while ClickHouse is off: `packages/features/content-analytics/__tests__/report-ingest-run.test.ts:389`"
   - text: "CSV parsers handle fixture files for all four report types, including header-only (empty) reports"
     met: true
     evidence: "Google's documented headers for all five shapes the ingest reads (`channel_basic_a3`, `channel_combined_a3`, `channel_traffic_source_a3`, `channel_reach_basic_a1`, `channel_reach_combined_a1`) in `packages/features/content-analytics/__tests__/fixtures/youtube-reporting/`; `packages/features/content-analytics/__tests__/csv-parsers.test.ts:170`, header-only and empty `:318`"
@@ -31,10 +31,10 @@ acceptance_criteria:
     evidence: "fake vendor, real ClickHouse (owner decision D6): `packages/features/content-analytics/__tests__/report-ingest.local-stack.test.ts:311` (one row per video/day after four deliveries), `:294`"
   - text: "Unmatched channel videos aggregate into `channel_daily` (counted + logged, never dropped silently)"
     met: true
-    evidence: "core residual in `channel_daily`, reach residual in its own `channel_reach_daily` (migration `packages/clickhouse/src/migrations/011_channel_reach_residual.ts`), so neither report erases the other: `packages/features/content-analytics/__tests__/report-ingest.local-stack.test.ts:257`, `:276`, CI `packages/clickhouse/scripts/verify-queries.ts:572`; logged per report `packages/features/content-analytics/__tests__/report-ingest-run.test.ts:485`. Unmatched traffic-source rows are counted, not stored: no residual table has a source column"
+    evidence: "core residual in `channel_daily`, reach residual in its own `channel_reach_daily` (migration `packages/clickhouse/src/migrations/011_channel_reach_residual.ts`), so neither report erases the other: `packages/features/content-analytics/__tests__/report-ingest.local-stack.test.ts:257`, `:276`, CI `packages/clickhouse/scripts/verify-queries.ts:573`; logged per report `packages/features/content-analytics/__tests__/report-ingest-run.test.ts:485`. Unmatched traffic-source rows are counted, not stored: no residual table has a source column"
   - text: "Watermark (`last_report_created_after`) advances; already-ingested reports are skipped"
     met: true
-    evidence: "saved per report, never inside a run of equal createTimes, held while ClickHouse is off or a report is refused: `packages/features/content-analytics/__tests__/report-ingest-run.test.ts:392`, `:415`, `:365`, `:463`. The skip is YouTube's documented `createdAfter` filter (developers.google.com/youtube/reporting/v1/reports); the production-bundle run's second pass sent it and downloaded nothing, against a fake that applies it"
+    evidence: "saved per report, never inside a run of equal createTimes, held while ClickHouse is off or a report is refused: `packages/features/content-analytics/__tests__/report-ingest-run.test.ts:416`, `:415`, `:365`, `:463`. The skip is YouTube's documented `createdAfter` filter (developers.google.com/youtube/reporting/v1/reports); the production-bundle run's second pass sent it and downloaded nothing, against a fake that applies it"
   - text: "One video/day cross-checked against YouTube Studio (views, impressions, CTR)"
     met: false
     reason: "unverified — a manual check against YouTube Studio on a real channel, by the owner after the FILM-1503 cutover. It also settles the CTR unit: Google's definition says both 'percentage' and 'clicks divided by impressions'; the ingest assumes a ratio and refuses any report with a CTR above 1"

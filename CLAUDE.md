@@ -50,7 +50,7 @@ This platform supports **vendor-agnostic deployment** via SST (Serverless Stack)
 - **Database**: Supabase PostgreSQL (excellent DX, includes connection pooling)
 - **Authentication**: Supabase Auth (OAuth, MFA, magic links built-in)
 - **Hosting**: AWS Lambda via SST + OpenNext 3.8.0
-- **Storage**: AWS S3 (cheaper at scale, ~$0.023/GB)
+- **Storage**: Cloudflare R2 (zero egress; `STORAGE_PROVIDER` accepts only `r2` and `supabase`)
 - **Email**: Resend (free tier: 3K emails/month) or AWS SES (production scale)
 - **Queue**: AWS SQS (pay-per-use, $1/month typical)
 - **Cache**: Upstash Redis (serverless, 10K commands/day free)
@@ -66,7 +66,7 @@ This platform supports **vendor-agnostic deployment** via SST (Serverless Stack)
 # Example: Switch from Supabase to full AWS stack
 DATABASE_PROVIDER=postgresql  # Was: supabase
 AUTH_PROVIDER=cognito        # Was: supabase
-STORAGE_PROVIDER=s3          # Was: supabase
+STORAGE_PROVIDER=r2          # Was: supabase
 EMAIL_PROVIDER=ses           # Was: resend
 QUEUE_PROVIDER=sqs
 CACHE_PROVIDER=redis
@@ -195,8 +195,11 @@ When adding new database features, ALWAYS follow this exact order:
 
 **The database is built from `apps/web/supabase/migrations/`.** `supabase db
 reset --help` says so in as many words: *"Resets the local database to current
-migrations."* `apps/web/supabase/schemas/` feeds `db diff` and nothing else — no
-test, no CI job and no reset reads it.
+migrations."* `apps/web/supabase/schemas/` is read by nothing: `config.toml`
+points `schema_paths` at a glob that matches no file, so `db diff` stops with
+"no files matched pattern" (KB-4). Deleting `schema_paths` would not do it — the
+CLI then reads `supabase/schemas/` by default — and `db reset --experimental`
+would build from it instead of `migrations/`.
 
 And it has been left behind. Measured 2026-09-16:
 

@@ -27,22 +27,22 @@ oauth_flow:
 acceptance_criteria:
   - text: "Connect button redirects to Google consent screen"
     met: true
-    evidence: "`apps/web/app/api/platforms/connect/youtube/route.ts:115`; driven in `apps/e2e/tests/platform-connections/analytics-access.spec.ts:162`"
+    evidence: "`apps/web/app/api/platforms/connect/youtube/route.ts:107`; driven in `apps/e2e/tests/platform-connections/analytics-access.spec.ts:162`"
   - text: "Consent screen shows correct app name and scopes"
     met: false
     reason: "unverified — Google renders it; needs a consent run with the owner's Google app"
   - text: "Callback exchanges code for tokens successfully"
     met: false
-    reason: "unverified — exchange at `apps/web/app/api/platforms/callback/youtube/route.ts:105`; only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)"
+    reason: "unverified — exchange at `apps/web/app/api/platforms/callback/youtube/route.ts:107`; only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)"
   - text: "Channel info is retrieved and stored"
     met: true
-    evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:158`, `apps/web/app/api/platforms/callback/youtube/route.ts:238`"
+    evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:160`, `apps/web/app/api/platforms/callback/youtube/route.ts:240`"
   - text: "Tokens are encrypted before storage"
     met: true
-    evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:232`"
+    evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:234`"
   - text: "Multiple channels per user are supported"
     met: true
-    evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:199`; `apps/web/app/api/platforms/youtube/save-channel/route.ts:94`"
+    evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:201`; `apps/web/app/api/platforms/youtube/save-channel/route.ts:94`"
   - text: "Disconnect revokes token at Google"
     met: true
     evidence: "`packages/features/publishing/src/oauth/youtube/revoke.ts` (moved from `disconnect.ts` by KB-22)"
@@ -51,10 +51,10 @@ acceptance_criteria:
     evidence: "Changed by KB-22: disconnect wipes the stored tokens and keeps the row, so the channel's records survive — `disconnect_platform_connection` (`apps/web/supabase/migrations/20260923140320_kb22-disconnect-keeps-records.sql`)"
   - text: "State/nonce prevents CSRF attacks"
     met: true
-    evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:79`; `apps/e2e/tests/platform-connections/connect-failure.spec.ts:156`"
+    evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:84`; `apps/e2e/tests/platform-connections/connect-failure.spec.ts:156`"
   - text: "Expired states are rejected"
     met: true
-    evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:85`"
+    evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:90`"
 test_plan:
   unit:
     - text: "Test state encoding/decoding"
@@ -69,7 +69,7 @@ test_plan:
       reason: "not met — only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)"
     - text: "Test token refresh flow"
       met: true
-      evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:345` — drives `ensureValidToken` against a local Google token listener with the global app (KB-29)"
+      evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:420` — drives `ensureValidToken` against a local Google token listener with the global app (KB-29)"
     - text: "Test disconnect flow"
       met: false
       reason: "not met — no test found"

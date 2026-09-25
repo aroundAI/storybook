@@ -106,8 +106,13 @@ port = 55327
 backend = "postgres"
 
 [db.migrations]
+# KB-4: schemas/ is partial documentation, not a source; the database is built
+# from migrations/. Without schema_paths the CLI reads supabase/schemas/ anyway,
+# so this glob deliberately matches nothing: `supabase db diff` stops with
+# "no files matched pattern" instead of proposing to drop the tables schemas/
+# is missing.
 schema_paths = [
-  "./schemas/*.sql",
+  "./schemas-are-not-a-db-diff-source--KB-4/*.sql",
 ]
 
 [db.seed]

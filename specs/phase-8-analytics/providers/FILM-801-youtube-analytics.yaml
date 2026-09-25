@@ -45,34 +45,34 @@ provider:
 acceptance_criteria:
   - text: "Fetches total views, likes, comments, shares"
     met: true
-    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:193`"
+    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:194`"
   - text: "Fetches watch time and average duration"
     met: true
-    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:199`"
+    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:200`"
   - text: "Fetches daily metrics breakdown"
     met: true
-    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:299`"
+    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:300`"
   - text: "Fetches audience retention curve"
     met: true
-    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:335`"
+    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:385`"
   - text: "Fetches demographic data (age/gender)"
     met: true
-    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:364`"
+    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:414`"
   - text: "Fetches traffic source breakdown"
     met: true
-    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:413`"
+    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:463`"
   - text: "Fetches geographic breakdown"
     met: true
-    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:440`"
+    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:490`"
   - text: "Fetches estimated revenue (if available)"
     met: true
-    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:235` (own query, only with `yt-analytics-monetary.readonly`; FILM-1711)"
+    evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:236` (own query, only with `yt-analytics-monetary.readonly`; FILM-1711)"
   - text: "Handles API rate limits gracefully"
     met: true
     evidence: "`packages/features/content-analytics/src/server/analytics-sync-cron.ts:177` (per-platform limiter), test `packages/features/content-analytics/__tests__/youtube-analytics.test.ts:199`"
   - text: "Normalizes data to common format"
     met: true
-    evidence: "`packages/features/content-analytics/src/server/analytics-sync-cron.ts:839`"
+    evidence: "`packages/features/content-analytics/src/server/analytics-sync-cron.ts:840`"
 test_plan:
   unit:
     - text: "Test date formatting"
@@ -90,7 +90,7 @@ test_plan:
       evidence: "`packages/features/content-analytics/__tests__/youtube-analytics.test.ts:85`"
     - text: "Test error handling"
       met: true
-      evidence: "`packages/features/content-analytics/__tests__/youtube-analytics.test.ts:388`"
+      evidence: "`packages/features/content-analytics/__tests__/youtube-analytics.test.ts:461`"
   e2e: []
 open_questions: []
 notes: |-

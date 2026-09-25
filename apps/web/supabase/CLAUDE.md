@@ -44,7 +44,8 @@ The database is built from `migrations/`, not from `schemas/`. As of 2026-09-16
 `schemas/` is missing **33 of the database's 99 tables**, so a `db diff` against
 it would generate SQL to drop them. See the root `CLAUDE.md` for the full
 measurement; the short version is that `schemas/` is partial documentation and
-`migrations/` is the truth.
+`migrations/` is the truth. `config.toml` points `schema_paths` at a glob that
+matches nothing, so `db diff` refuses instead (KB-4).
 
 ### Writing a migration
 

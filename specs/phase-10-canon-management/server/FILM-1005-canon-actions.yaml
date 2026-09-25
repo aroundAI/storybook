@@ -94,7 +94,7 @@ server_action:
 acceptance_criteria:
   - text: "All CRUD actions implemented with proper typing"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:187, packages/features/episodes/src/server/canon-actions.ts:514"
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:206, packages/features/episodes/src/server/canon-actions.ts:568"
   - text: "Authorization checks on all actions via RLS"
     met: true
     evidence: "apps/web/supabase/migrations/20260924181028_kb76-77-63-canon-write-scope.sql:60 — thread, world-state, summary, act-bridge, sequel-context, character-state and state-delta writes need `can_write_project`, with the author pinned (KB-76/77, tested by apps/web/supabase/tests/database/canon-write-scope.test.sql); immutable events by KB-17 (apps/web/supabase/migrations/20260923075604_kb17-immutable-events-immutable.sql); `commit_canon_changes` by KB-27 (apps/web/supabase/migrations/20260923044106_kb27-canon-write-scope.sql); `updateCanonSettingsAction` writes `projects` under `projects_update` (`can_edit_project`: owner or admin); every read is on `has_account_access`"
@@ -106,25 +106,25 @@ acceptance_criteria:
     reason: "not met — deltas only for character states (`packages/features/episodes/src/server/canon-actions.ts:388`; a refused delta now fails the action, KB-77); nothing reads `state_deltas`"
   - text: "Input validation with comprehensive Zod schemas"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:40"
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:45"
   - text: "Error handling with specific error classes"
     met: false
-    reason: "not met — no canon error classes exist; actions throw `Error` or `ActionRefusal` (`packages/features/episodes/src/server/canon-actions.ts:200`)"
+    reason: "not met — no canon error classes exist; actions throw `Error` or `ActionRefusal` (`packages/features/episodes/src/server/canon-actions.ts:219`)"
   - text: "Optimistic locking for concurrent updates"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:575, apps/web/supabase/migrations/20260129194541_add_narrative_threads_version.sql:4"
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:629, apps/web/supabase/migrations/20260129194541_add_narrative_threads_version.sql:4"
   - text: "Batch operations for efficient multi-record updates"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:1231"
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:1294"
   - text: "Rollback support for failed transactions"
     met: true
     evidence: "apps/web/supabase/migrations/20260130004332_add_commit_canon_changes_function.sql:5"
   - text: "**New**: Dashboard query actions for Canon Settings page"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:663"
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:717"
   - text: "**New**: Canon extraction actions for Publish page"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:1013"
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:1076"
   - text: "Unit tests for conflict detection"
     met: false
     reason: "not met — no test found"

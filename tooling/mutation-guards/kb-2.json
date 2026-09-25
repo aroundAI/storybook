@@ -1,0 +1,55 @@
+{
+  "feature": "KB-2",
+  "mutations": [
+    {
+      "name": "M1 A failed db push lets the deploy through again",
+      "kind": "unit",
+      "file": "scripts/deploy.sh",
+      "find": "                fail_deploy \"supabase db push failed (exit code: $PUSH_EXIT_CODE)\" \\\n                    \"Fix the migration and re-run; db push applies only what is not yet applied\"",
+      "replace": "                echo \"push failed\"",
+      "cwd": "packages/shared",
+      "test": "__tests__/deploy-fail-closed.test.ts",
+      "pattern": "supabase db push fails"
+    },
+    {
+      "name": "M2 A failed link lets the deploy through again",
+      "kind": "unit",
+      "file": "scripts/deploy.sh",
+      "find": "            fail_deploy \"supabase link failed (exit code: $LINK_EXIT_CODE)\"\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/deploy-fail-closed.test.ts",
+      "pattern": "supabase link fails"
+    },
+    {
+      "name": "M3 No project ref skips migrations and deploys again",
+      "kind": "unit",
+      "file": "scripts/deploy.sh",
+      "find": "if [ -z \"$SUPABASE_PROJECT_REF\" ]; then\n    fail_deploy",
+      "replace": "if false; then\n    fail_deploy",
+      "cwd": "packages/shared",
+      "test": "__tests__/deploy-fail-closed.test.ts",
+      "pattern": "SUPABASE_PROJECT_REF is not set"
+    },
+    {
+      "name": "M4 No supabase CLI skips migrations and deploys again",
+      "kind": "unit",
+      "file": "scripts/deploy.sh",
+      "find": "        fail_deploy \"Supabase CLI not installed, so migrations cannot be applied\" \\\n            \"Install it with: npm install -g supabase\"",
+      "replace": "        echo \"Skipping migrations\"",
+      "cwd": "packages/shared",
+      "test": "__tests__/deploy-fail-closed.test.ts",
+      "pattern": "supabase CLI is not installed"
+    },
+    {
+      "name": "M5 A failed ClickHouse migration continues the deploy again",
+      "kind": "unit",
+      "file": "scripts/deploy.sh",
+      "find": "                fail_deploy \"ClickHouse migration ${MIGRATION_NAME} failed\" \\\n                    \"With CLICKHOUSE_ENABLED=true the app reads tables these migrations create\"",
+      "replace": "                echo \"continuing without ClickHouse\"",
+      "cwd": "packages/shared",
+      "test": "__tests__/deploy-fail-closed.test.ts",
+      "pattern": "ClickHouse migration fails"
+    }
+  ]
+}

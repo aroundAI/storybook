@@ -36,7 +36,7 @@ acceptance_criteria:
     evidence: null
   - text: "UI shows research results with stats"
     met: false
-    reason: "no longer true — no research-phase UI exists or ever did; results stay inside the story agent (`packages/features/episodes/src/agent/story-orchestrator.ts:283`)"
+    reason: "no longer true — no research-phase UI exists or ever did; results stay inside the story agent (`packages/features/episodes/src/agent/story-orchestrator.ts:290`)"
   - text: "Cannot proceed to generation if critical claims unverified"
     met: false
     reason: "no longer true — only an instruction to the agent (`packages/features/episodes/src/agent/skills/researcher-skill.ts:123`); no code blocks generation"

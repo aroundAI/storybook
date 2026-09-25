@@ -486,7 +486,7 @@ COGNITO_USER_POOL_ID=us-east-1_xxxxx
 COGNITO_CLIENT_ID=xxxxx
 COGNITO_CLIENT_SECRET=xxxxx
 
-STORAGE_PROVIDER=s3
+STORAGE_PROVIDER=r2
 S3_BUCKET=my-saas-storage
 
 EMAIL_PROVIDER=ses  # or 'resend' for easier setup
@@ -627,7 +627,7 @@ AUTH_PROVIDER=supabase
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 
 # Use S3 for storage (cheaper at scale)
-STORAGE_PROVIDER=s3
+STORAGE_PROVIDER=r2
 S3_BUCKET=my-saas-storage
 
 # Use Resend for email (free tier - 3K/month)
@@ -644,7 +644,7 @@ SQS_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/123/my-queue
 
 - **Frontend**: Vercel (or AWS CloudFront)
 - **Database**: Supabase
-- **Storage**: AWS S3
+- **Storage**: Cloudflare R2
 - **Email**: Resend
 - **Queue**: AWS SQS
 - **Cache**: Upstash Redis
@@ -1343,7 +1343,7 @@ The platform's vendor-agnostic architecture allows switching providers without c
 3. **Parallel Run** (write to both, read from S3):
    ```bash
    # Update environment
-   STORAGE_PROVIDER=s3
+   STORAGE_PROVIDER=r2
    S3_BUCKET=my-saas-storage
 
    # Keep Supabase config active for fallback

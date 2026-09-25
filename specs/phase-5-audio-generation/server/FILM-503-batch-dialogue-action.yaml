@@ -54,7 +54,7 @@ acceptance_criteria:
     evidence: null
   - text: "`batchGenerateDialogueAction` uses voice profiles when available"
     met: false
-    reason: "retired — `voice_profiles` was dropped in `05ec0ae9`; voices come from `character_details.elevenlabs_voice_id` (`packages/features/audio-generation/src/server/batch-actions.ts:110`)"
+    reason: "retired — `voice_profiles` was dropped in `05ec0ae9`; voices come from `character_details.elevenlabs_voice_id` (`packages/features/audio-generation/src/server/batch-actions.ts:99`)"
   - text: "`batchGenerateDialogueAction` supports manual voice assignments"
     met: true
     evidence: null
@@ -63,7 +63,7 @@ acceptance_criteria:
     evidence: null
   - text: "`getBatchStatusAction` returns accurate progress"
     met: false
-    reason: "no longer true — voice-worker adds a failure on every SQS attempt (`apps/web/lambda/voice-worker/index.ts:291`; 3 receives, `sst.config.ts:463`), since `b7f7cb53`"
+    reason: "no longer true — voice-worker adds a failure on every SQS attempt (`apps/web/lambda/voice-worker/index.ts:293`; 3 receives, `sst.config.ts:463`), since `b7f7cb53`"
   - text: "`getBatchStatusAction` calculates percentage correctly"
     met: true
     evidence: null
@@ -72,7 +72,7 @@ acceptance_criteria:
     evidence: null
   - text: "`getBatchStatusAction` includes all errors"
     met: false
-    reason: "no longer true — voice-worker never passes `p_error` to `increment_batch_progress` (`apps/web/lambda/voice-worker/index.ts:291`), so `errors` stays empty"
+    reason: "no longer true — voice-worker never passes `p_error` to `increment_batch_progress` (`apps/web/lambda/voice-worker/index.ts:293`), so `errors` stays empty"
   - text: "`retryFailedDialogueAction` retries only failed lines"
     met: true
     evidence: null
@@ -81,13 +81,13 @@ acceptance_criteria:
     evidence: null
   - text: "`cancelBatchAction` stops processing"
     met: false
-    reason: "no longer true — queued lines still run; voice-worker never checks the batch's status (`apps/web/lambda/voice-worker/index.ts:198`), since `b7f7cb53`"
+    reason: "no longer true — queued lines still run; voice-worker never checks the batch's status (`apps/web/lambda/voice-worker/index.ts:200`), since `b7f7cb53`"
   - text: "`cancelBatchAction` marks job as cancelled"
     met: false
     reason: "no longer true — `increment_batch_progress` overwrites `cancelled` once the queued lines finish (`apps/web/supabase/migrations/20260527094643_increment_batch_progress_rpc.sql:64`)"
   - text: "Batch processing continues on individual failures"
     met: true
-    evidence: "one SQS message per line, settled independently (`apps/web/lambda/voice-worker/index.ts:180`)"
+    evidence: "one SQS message per line, settled independently (`apps/web/lambda/voice-worker/index.ts:182`)"
   - text: "Batch processing respects overwriteExisting flag"
     met: true
     evidence: null
@@ -102,13 +102,13 @@ acceptance_criteria:
     evidence: "one `UPDATE … RETURNING` per line (`apps/web/supabase/migrations/20260527094643_increment_batch_progress_rpc.sql:24`)"
   - text: "Batch job is resumable after server restart (deferred - requires queue system)"
     met: true
-    evidence: "lines are SQS messages processed by `apps/web/lambda/voice-worker` (`packages/features/audio-generation/src/server/batch-actions.ts:344`); the studio resumes polling an active batch on load (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/use-batch-generation.ts:113`)"
+    evidence: "lines are SQS messages processed by `apps/web/lambda/voice-worker` (`packages/features/audio-generation/src/server/batch-actions.ts:327`); the studio resumes polling an active batch on load (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/use-batch-generation.ts:113`)"
   - text: "All errors logged with context"
     met: true
     evidence: null
   - text: "TypeScript compiles without errors"
     met: true
-    evidence: "`pnpm typecheck` runs `web`'s `typecheck`, whose second half is `tsc --noEmit -p lambda/tsconfig.json` (`apps/web/package.json:23`); that config includes every worker file (`apps/web/lambda/tsconfig.json:23`) and CI's TypeScript job runs it (`.github/workflows/workflow.yml:45`) — KB-14, #309. Passes on `main` at `b21bd33e` (KB-80), with `@kit/audio-generation`'s own `tsc --noEmit`; voice-worker, where the lines run since `b7f7cb53`, is in the lambda program"
+    evidence: "`pnpm typecheck` runs `web`'s `typecheck`, whose second half is `tsc --noEmit -p lambda/tsconfig.json` (`apps/web/package.json:23`); that config includes every worker file (`apps/web/lambda/tsconfig.json:23`) and CI's TypeScript job runs it (`.github/workflows/workflow.yml:94`) — KB-14, #309. Passes on `main` at `b21bd33e` (KB-80), with `@kit/audio-generation`'s own `tsc --noEmit`; voice-worker, where the lines run since `b7f7cb53`, is in the lambda program"
   - text: "No ESLint warnings"
     met: true
     evidence: "CI run 35779959194 (`main` at `6dfa35a4`): `@kit/audio-generation:lint` and `web:lint` (covers `lambda/`) executed with no output"
@@ -118,7 +118,7 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "`getBatchStatusAction` returns accurate progress"
-    reason: "a failed line is redelivered up to 3 times (`sst.config.ts:463`) and each attempt adds a failure (`apps/web/lambda/voice-worker/index.ts:291`), so a batch can count as complete while lines are still queued"
+    reason: "a failed line is redelivered up to 3 times (`sst.config.ts:463`) and each attempt adds a failure (`apps/web/lambda/voice-worker/index.ts:293`), so a batch can count as complete while lines are still queued"
     closed_by: "unassigned"
   - criterion: "`getBatchStatusAction` includes all errors"
     reason: "voice-worker never passes `p_error`, so `batch_generation_jobs.errors` stays empty"

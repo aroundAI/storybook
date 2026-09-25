@@ -32,13 +32,13 @@ acceptance_criteria:
     evidence: null
   - text: "`generateStoryIdeasAction` calculates cost accurately"
     met: false
-    reason: "no longer true — the ideation result reports `costCents: 0` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:131`); only per-call analytics carry cost"
+    reason: "no longer true — the ideation result reports `costCents: 0` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:132`); only per-call analytics carry cost"
   - text: "`generateStoryIdeasAction` completes within 15 seconds"
     met: false
     reason: "unverified — runtime timing of an async agent job; needs a timed run"
   - text: "`generateFullStoryAction` generates 500-1000 word story"
     met: false
-    reason: "retired — length now scales with target duration (`apps/web/lambda/llm-worker/handlers/story-generation.ts:251`)"
+    reason: "retired — length now scales with target duration (`apps/web/lambda/llm-worker/handlers/story-generation.ts:253`)"
   - text: "`generateFullStoryAction` updates episode.story_data"
     met: true
     evidence: null
@@ -50,7 +50,7 @@ acceptance_criteria:
     evidence: null
   - text: "`generateFullStoryAction` handles optimistic locking"
     met: false
-    reason: "no longer true — version checked only when queueing (`packages/features/episodes/src/server/story-actions.ts:182`); the worker's write drops the guard (f64c9648)"
+    reason: "no longer true — version checked only when queueing (`packages/features/episodes/src/server/story-actions.ts:184`); the worker's write drops the guard (f64c9648)"
   - text: "`generateFullStoryAction` completes within 30 seconds"
     met: false
     reason: "unverified — runtime timing of an async agent job; needs a timed run"
@@ -74,10 +74,10 @@ acceptance_criteria:
     evidence: null
   - text: "Tracks costs accurately"
     met: false
-    reason: "unverified — per-call cost is logged (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:666`) from `packages/llm/src/pricing.ts`; rates not checked against vendor prices"
+    reason: "unverified — per-call cost is logged (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:677`) from `packages/llm/src/pricing.ts`; rates not checked against vendor prices"
   - text: "TypeScript compiles without errors"
     met: true
-    evidence: "`pnpm typecheck` runs `web`'s `typecheck`, whose second half is `tsc --noEmit -p lambda/tsconfig.json` (`apps/web/package.json:23`); that config includes every worker file (`apps/web/lambda/tsconfig.json:23`) and CI's TypeScript job runs it (`.github/workflows/workflow.yml:45`) — KB-14, #309. Passes on `main` at `b21bd33e` (KB-80), with `@kit/episodes`' own `tsc --noEmit`; `handlers/story-ideation.ts` and `handlers/story-generation.ts` are in the lambda program"
+    evidence: "`pnpm typecheck` runs `web`'s `typecheck`, whose second half is `tsc --noEmit -p lambda/tsconfig.json` (`apps/web/package.json:23`); that config includes every worker file (`apps/web/lambda/tsconfig.json:23`) and CI's TypeScript job runs it (`.github/workflows/workflow.yml:94`) — KB-14, #309. Passes on `main` at `b21bd33e` (KB-80), with `@kit/episodes`' own `tsc --noEmit`; `handlers/story-ideation.ts` and `handlers/story-generation.ts` are in the lambda program"
   - text: "No ESLint warnings"
     met: false
     reason: "unverified — linting is outside the audit rules; settle with `pnpm --filter @kit/episodes lint`"
@@ -87,10 +87,10 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "`generateStoryIdeasAction` calculates cost accurately"
-    reason: "the ideation result hardcodes `costCents: 0` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:131`)"
+    reason: "the ideation result hardcodes `costCents: 0` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:132`)"
     closed_by: "unassigned"
   - criterion: "`generateFullStoryAction` handles optimistic locking"
-    reason: "the version guard was dropped from the worker's write (f64c9648, 669b66e3) because the orchestrator bumps `version` mid-run (`apps/web/lambda/llm-worker/handlers/story-generation.ts:471`)"
+    reason: "the version guard was dropped from the worker's write (f64c9648, 669b66e3) because the orchestrator bumps `version` mid-run (`apps/web/lambda/llm-worker/handlers/story-generation.ts:464`)"
     closed_by: "owner"
 open_questions: []
 notes: |

@@ -52,7 +52,7 @@ acceptance_criteria:
     evidence: null
   - text: "Stores daily snapshots - Upserts to `content_analytics` with `(publish_id, snapshot_date)` unique key"
     met: true
-    evidence: "now ClickHouse `video_snapshots` (`packages/features/content-analytics/src/server/analytics-sync-cron.ts:829`); `content_analytics` was dropped in 947c7ae9"
+    evidence: "now ClickHouse `video_snapshots` (`packages/features/content-analytics/src/server/analytics-sync-cron.ts:830`); `content_analytics` was dropped in 947c7ae9"
   - text: "Updates existing snapshots - Uses Supabase upsert with `onConflict`"
     met: true
     evidence: "now `ReplacingMergeTree(fetched_at)` ordered by `snapshot_date` (`packages/clickhouse/src/migrations/002_metrics_v2.ts:59`)"
@@ -72,17 +72,17 @@ test_plan:
   unit:
     - text: "Test schedule calculation"
       met: true
-      evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:284` (`getSyncSchedule` tiers)"
+      evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:334` (`getSyncSchedule` tiers)"
     - text: "Test age-based sync frequency"
       met: true
-      evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:288` (the 30–90 and >90 day tiers only)"
+      evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:338` (the 30–90 and >90 day tiers only)"
   integration:
     - text: "Test sync flow with mocked providers"
       met: false
-      reason: "not met — no test found; only publish selection is tested (`packages/features/content-analytics/__tests__/sync-unauthorised-connections.test.ts:82`)"
+      reason: "not met — no test found; only publish selection is tested (`packages/features/content-analytics/__tests__/sync-unauthorised-connections.test.ts:83`)"
     - text: "Test error handling and retry"
       met: true
-      evidence: "`packages/features/content-analytics/__tests__/sync-authorisation.test.ts:76` (a publish given up on after five failures, and when it is retried)"
+      evidence: "`packages/features/content-analytics/__tests__/sync-authorisation.test.ts:80` (a publish given up on after five failures, and when it is retried)"
   e2e: []
 open_questions: []
 notes: |-

@@ -110,7 +110,7 @@ remaining:
       A scan of every `<Button size="icon">` found 39 of 84 with no aria-label, title,
       sr-only or visible text, and 6 more whose label depends on a runtime expression,
       e.g.
-      `apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/audio-asset-card.tsx:146`
+      `apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/audio-asset-card.tsx:147`
     closed_by: "unassigned"
   - criterion: "Modals trap focus appropriately"
     reason: >

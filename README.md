@@ -467,8 +467,8 @@ pnpm dev
 
 This starts:
 - Next.js dev server on `http://localhost:3003`
-- Supabase local instance on `http://localhost:54321`
-- Email testing on `http://localhost:54325`
+- Supabase local instance on `http://localhost:55321`
+- Email testing on `http://localhost:55324`
 
 ### **Database Management**
 

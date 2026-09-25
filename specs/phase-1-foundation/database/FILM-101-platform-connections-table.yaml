@@ -98,7 +98,7 @@ acceptance_criteria:
     evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:213"
   - text: "Unique constraint on (account_id, platform, platform_account_id)"
     met: true
-    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:227; OAuth upserts depend on it (apps/web/app/api/platforms/callback/youtube/route.ts:265)"
+    evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:227; OAuth upserts depend on it (apps/web/app/api/platforms/callback/youtube/route.ts:267)"
   - text: "Platform enum constraint enforced"
     met: true
     evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:226"
@@ -137,7 +137,7 @@ test_plan:
       evidence: "packages/features/content-analytics/__tests__/subscriber-series-actions.test.ts:152 (the inactive channel is excluded)"
     - text: "Update tokens after refresh"
       met: true
-      evidence: "packages/features/publishing/__tests__/token-refresh.test.ts:355 (Meta; X is never refreshed, KB-15)"
+      evidence: "packages/features/publishing/__tests__/token-refresh.test.ts:461 (Meta); packages/features/publishing/__tests__/token-refresh.test.ts:596 (X, refreshed since KB-15)"
     - text: "Deactivate connection (set is_active = FALSE)"
       met: false
       reason: "not met — no test found"

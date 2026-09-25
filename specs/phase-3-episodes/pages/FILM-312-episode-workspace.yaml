@@ -27,7 +27,7 @@ acceptance_criteria:
     evidence: null
   - text: "Four tabs display (Story, Visuals, Audio, Edit)"
     met: false
-    reason: "retired — superseded by seven stage tabs, Ideation to Publish (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:29`)"
+    reason: "retired — superseded by seven stage tabs, Ideation to Publish (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:28`)"
   - text: "Story Studio tab is fully functional"
     met: false
     reason: "unverified — no Playwright spec drives the story stages (ideation, story, screenplay)"
@@ -39,7 +39,7 @@ acceptance_criteria:
     evidence: null
   - text: "Active tab persists in URL query params"
     met: false
-    reason: "retired — the tab is the route path now (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:159`)"
+    reason: "retired — the tab is the route path now (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:150`)"
   - text: "Quick actions menu displays options"
     met: true
     evidence: null
@@ -79,7 +79,7 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "Accessibility (keyboard navigation, ARIA labels)"
-    reason: "the icon-only back link has no accessible name (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-header.tsx:55`); the tab bar sets no `aria-current` or tab roles (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:159`)"
+    reason: "the icon-only back link has no accessible name (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-header.tsx:55`); the tab bar sets no `aria-current` or tab roles (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:150`)"
     closed_by: "unassigned"
 open_questions: []
 notes: |
