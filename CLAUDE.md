@@ -277,6 +277,9 @@ with any file Prettier would change, so an unformatted push is a red build.
   (`scripts/ci/code-patch-unchanged.sh`). Touch any code line in the same
   push and the full suite runs. The PR's code on top of the *new* main is
   then first fully tested by the push-to-`main` run.
+- **No Actions minutes?** [LOCAL-CI.md](LOCAL-CI.md) is the process: the same
+  jobs run locally (`scripts/local-ci/`) and a merge train merges only the
+  exact commit it verified.
 - **Use the script, not a bare `npx prettier`.** The script runs each
   package's own `format` with the shared config; a one-off run from one
   directory is how formatting used to differ by which file a run started

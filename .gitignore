@@ -97,3 +97,6 @@ cdk.context.json
 node-compile-cache/
 
 gha-creds-*.json
+
+# local CI state (LOCAL-CI.md)
+.local-ci/
