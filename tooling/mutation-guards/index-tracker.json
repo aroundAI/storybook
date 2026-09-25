@@ -1,0 +1,54 @@
+{
+  "feature": "INDEX tracker (task #15)",
+  "mutations": [
+    {
+      "name": "I1 A retired spec's INDEX cell no longer matches its file",
+      "kind": "unit",
+      "file": "specs/INDEX.md",
+      "find": "| FILM-401 | [kling-provider](./phase-4-video-generation/providers/FILM-401-kling-provider.yaml) | 🗑️ RETIRED (5b88db3a) |",
+      "replace": "| FILM-401 | [kling-provider](./phase-4-video-generation/providers/FILM-401-kling-provider.yaml) | 🟡 PARTIAL (5b88db3a) |",
+      "cwd": "packages/shared",
+      "test": "__tests__/spec-index-tracker.test.ts",
+      "pattern": "has no disagreement on the repo"
+    },
+    {
+      "name": "I2 The recount counts YAML files only (the #337/#343 false drift)",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/spec-index/tracker.ts",
+      "find": "      counts[fileStatus]++;\n",
+      "replace": "      if (/\\.ya?ml$/.test(row.link)) counts[fileStatus]++;\n",
+      "cwd": "packages/shared",
+      "test": "__tests__/spec-index-tracker.test.ts"
+    },
+    {
+      "name": "I3 A spec YAML with no INDEX row goes unreported (#307 to #335)",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/spec-index/tracker.ts",
+      "find": "    if (!listed.has(link)) {",
+      "replace": "    if (!listed.has(link) && link === '') {",
+      "cwd": "packages/shared",
+      "test": "__tests__/spec-index-tracker.test.ts",
+      "pattern": "dead link"
+    },
+    {
+      "name": "I4 A status cell is not compared with its file",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/spec-index/tracker.ts",
+      "find": "      if (cellStatus !== fileStatus) {",
+      "replace": "      if (cellStatus !== fileStatus && row.id === '') {",
+      "cwd": "packages/shared",
+      "test": "__tests__/spec-index-tracker.test.ts",
+      "pattern": "disagrees with its file"
+    },
+    {
+      "name": "I5 The known-bugs register is counted as a spec",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/spec-index/tracker.ts",
+      "find": "the register row links ${REGISTER.links.join(' or ')}`,\n          );\n        }\n        continue;\n",
+      "replace": "the register row links ${REGISTER.links.join(' or ')}`,\n          );\n        }\n",
+      "cwd": "packages/shared",
+      "test": "__tests__/spec-index-tracker.test.ts",
+      "pattern": "has no disagreement on the repo"
+    }
+  ]
+}

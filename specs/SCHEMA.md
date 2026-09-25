@@ -257,3 +257,7 @@ list is more useful to a reader than a paragraph.
   RETIRED. When you fix a KB or finish a spec, `git grep 'closed_by: "<ID>"'`
   and reconcile every hit against the code. Enforced by
   `packages/shared/__tests__/spec-closed-by-drift.test.ts` (KB-80).
+- Every task spec has exactly one row in [INDEX.md](./INDEX.md), whose Status
+  cell names the file's `status`, and INDEX's counts are the sums of those
+  rows. Enforced by `packages/shared/__tests__/spec-index-tracker.test.ts`;
+  `pnpm specs:index --write` rewrites the counts.

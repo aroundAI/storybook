@@ -41,6 +41,7 @@
     "env:generate": "turbo gen env",
     "env:validate": "turbo gen validate-env",
     "specs:citations": "tsx packages/shared/__tests__/spec-citations/cli.ts",
+    "specs:index": "tsx packages/shared/__tests__/spec-index/cli.ts",
     "sst": "sst",
     "sst:deploy": "sst deploy",
     "sst:dev": "sst dev",
