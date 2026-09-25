@@ -62,9 +62,47 @@ suite (~11 min at one worker) and the guards (~5 min).
 | `rebase-pr.sh <pr>` | Rebases the PR onto `origin/main`. Resolves conflicts in `specs/INDEX.md` by re-merging the PR's own changes onto main's, then recounts INDEX's Progress Tracker, By scope table and `(N specs)` headings from the spec files with `pnpm specs:index --write` (committed only when it changes something). The known-bugs register is one file per KB (`specs/known-bugs/`), so it needs no re-merge; a PR still editing the old single file (`FILM-CC-04-known-bugs.md`, now a stub) is ported with `scripts/specs/split-known-bugs.ts --port`. Re-points moved spec citations when `pnpm specs:citations` exists. Stops on any code conflict. |
 | `reverify.sh <pr>` | After a green full run: rebases, then re-checks. If the PR's own code patch is unchanged (same `git patch-id`, the rule in `scripts/ci/code-patch-unchanged.sh`), it runs only the **📚 Docs checks** set, as CI does since #353. Otherwise it runs the full suite. Pushes with a lease and posts the report. |
 | `train.sh <pr>…` | The merge train. For each PR in order: wait for its full report, stop if it isn't green, re-verify on the current `main`, then `gh pr merge --squash --match-head-commit <verified sha>`. Stops and waits for a human on any failure. |
-| `status.sh` | One-screen summary: runs, the lock holder, the train's last line. |
-| `dblock.sh acquire\|release <name>` | FIFO lock on the shared database, ClickHouse and port 3000. Anything that resets or reads the local DB takes it, teammates included. |
+| `status.sh` | One-screen summary: runs, each lane's lock holder and queue length, the train's last line. |
+| `dblock.sh acquire\|release <name>` | FIFO lock on one lane's database, ClickHouse and web port (`LANE=B` for lane B). Anything that resets or reads the local DB takes it, teammates included. Local CI for a PR (`localci-*`) goes to the front of the queue. |
+| `lane.sh` | Sourced by every script: the lane's ports, lock and hosts. |
+| `lane-b.sh up\|down\|status` | Starts, stops or reports lane B's stack. |
 | `remerge-index.py` | The `INDEX.md` re-merge `rebase-pr.sh` uses: a single checked 3-way merge. Count cells get the PR's change added on top of main's number, not one side's value, and `rebase-pr.sh` then recounts them from the files, which corrects the arithmetic if it was wrong. |
+
+## Lanes: two PRs at once
+
+One full run holds the database and the web port for about 20 minutes, so one
+stack verifies about two PRs an hour. A second stack doubles that.
+
+| | Lane A (default) | Lane B |
+|---|---|---|
+| Supabase | project `storybook`, 55321–55327 | project `storybook-b`, 55420–55429 |
+| ClickHouse | `storybook-clickhouse`, 8123 | `storybook-clickhouse-b`, 18123 (capped at 2 GB) |
+| Web app | :3000 | :3001 |
+| Lock | `.local-ci/db.lock`, `lockq/` | `.local-ci/db-b.lock`, `lockq-b/` |
+| Started by | `./scripts/local-env.sh up` | `scripts/local-ci/lane-b.sh up` |
+
+```bash
+scripts/local-ci/lane-b.sh up            # once; about a minute
+scripts/local-ci/pipeline.sh 351         # lane A
+LANE=B scripts/local-ci/pipeline.sh 352  # lane B, at the same time
+```
+
+- **Lane B is environment only.** The Supabase CLI reads `SUPABASE_<SECTION>_<KEY>`
+  over `config.toml` (`SUPABASE_PROJECT_ID`, `SUPABASE_API_PORT`,
+  `SUPABASE_LOCAL_SMTP_PORT`, …), so lane B runs each PR's own
+  `apps/web/supabase` (migrations, seeds, and the pgTAP files the guards mutate
+  in place) and leaves its worktree clean. The app's `NEXT_PUBLIC_*` hosts are
+  baked in at build, so lane B builds with its own; the E2E suite reads
+  `E2E_SUPABASE_URL`, `MAILBOX_URL`, `CLICKHOUSE_HOST` and `PLAYWRIGHT_BASE_URL`.
+  `local.env` holds lane A's hosts, so lane B re-applies its own after loading it.
+- **Lane A is unchanged.** It exports nothing, and every command it runs is
+  byte-identical to the commands before lanes existed.
+- **Both stacks use the same demo JWT secret**, so the anon and service-role
+  keys in `.env.test` are valid for both (checked, not assumed).
+- **Memory:** lane B's stack takes about 1.7 GB. Run lane B only when Docker
+  has room for it beside lane A. `lane-b.sh status` shows the figure.
+- **Teammates stay on lane A** unless told otherwise: `LANE=B` on a teammate's
+  `dblock.sh` would take lane B's lock, not lane A's.
 
 ## The process
 
