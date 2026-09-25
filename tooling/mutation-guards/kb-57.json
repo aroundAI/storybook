@@ -60,6 +60,16 @@
       "cwd": "apps/web",
       "test": "app/api/storage/__tests__/storage-writes-gated.test.ts",
       "pattern": "makes its check"
+    },
+    {
+      "name": "KB-57 U7 a worker writes R2 outside its authorised target",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/utils/r2-storage.ts",
+      "find": "  if (!keyInTarget(path, target)) {",
+      "replace": "  if (!path) {",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/r2-upload-target.test.ts",
+      "pattern": "refuses"
     }
   ]
 }

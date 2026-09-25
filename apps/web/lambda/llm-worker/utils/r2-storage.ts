@@ -6,6 +6,8 @@
  */
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
+import { keyInTarget } from '@kit/storage/upload-paths';
+
 // Singleton S3 client
 let s3Client: S3Client | null = null;
 
@@ -39,13 +41,23 @@ export interface R2UploadResult {
   path: string;
 }
 
+/** What the job's producer authorised: the only place its files may go */
+export interface R2UploadTarget {
+  projectId?: string;
+  episodeId?: string;
+}
+
 /**
- * Upload a file to R2 storage
+ * Upload a file to R2 storage, at a key inside `target` (KB-57). A worker
+ * has no user session for `writeProjectObject` to check; its producer
+ * authorised the target, and the key must lie in it. Throws before R2 is
+ * called otherwise.
  *
  * @param bucket - Logical bucket name (used as path prefix)
  * @param path - File path within bucket
  * @param data - File buffer
  * @param contentType - MIME type
+ * @param target - The project or episode the job was authorised for
  * @returns Public URL and path
  */
 export async function uploadToR2(
@@ -53,7 +65,14 @@ export async function uploadToR2(
   path: string,
   data: Buffer,
   contentType: string,
+  target: R2UploadTarget,
 ): Promise<R2UploadResult> {
+  if (!keyInTarget(path, target)) {
+    throw new Error(
+      `R2 key ${bucket}/${path} is outside its authorised target`,
+    );
+  }
+
   const client = getR2Client();
   const bucketName = process.env.R2_BUCKET_NAME;
   const publicUrl = process.env.R2_PUBLIC_URL;

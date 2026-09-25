@@ -8,6 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { z } from 'zod';
 
+import type { UploadFn } from '@kit/audio-generation/server-core';
 import type { Database } from '@kit/supabase/database';
 
 import { uploadToR2 } from '../utils/r2-storage';
@@ -154,6 +155,12 @@ export async function processAudioFileGeneration(
   );
 
   try {
+    // Files go only inside the project the job was authorised for (KB-57)
+    const projectUpload: UploadFn = (bucket, path, body, contentType) =>
+      uploadToR2(bucket, path, body, contentType, {
+        projectId: data.projectId,
+      });
+
     // Fetch API key from external_api_keys via project → account lookup
     const apiKey = await getProjectElevenLabsApiKey(supabase, data.projectId);
 
@@ -178,7 +185,7 @@ export async function processAudioFileGeneration(
         durationSeconds: Math.min(data.durationSeconds, 300),
         timelineStartSeconds: data.startOffsetSeconds,
         apiKey,
-        uploadFn: uploadToR2,
+        uploadFn: projectUpload,
       });
 
       result = {
@@ -201,7 +208,7 @@ export async function processAudioFileGeneration(
         durationSeconds: Math.min(data.durationSeconds, 22),
         timelineStartSeconds: data.startOffsetSeconds,
         apiKey,
-        uploadFn: uploadToR2,
+        uploadFn: projectUpload,
       });
 
       result = {
