@@ -405,7 +405,8 @@ test.describe('FILM-1617 — evidence', () => {
     await page
       .context()
       .addCookies([{ name: 'theme', value: 'dark', url: page.url() }]);
-    await page.reload();
+    // The tab is client state: a reload lands on Overview, so go back.
+    await deepDive.goToDeepDive(team.slug, project.slug);
     await expect(
       page.locator('[data-test="subscriber-series"]:visible'),
     ).toBeVisible({ timeout: 60_000 });
