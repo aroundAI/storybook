@@ -13,6 +13,9 @@ select makerkit.set_identifier('primary_owner', 'test@storybook.dev');
 set local role postgres;
 
 select set_config('kb.account', makerkit.get_account_id_by_slug('storybook')::text, true);
+-- Projects record their creator from the JWT
+select set_config('request.jwt.claims',
+  json_build_object('sub', tests.get_supabase_uid('primary_owner'), 'role', 'authenticated')::text, true);
 
 -- q = e1. `vec(a, b)` is a 1024-dimension vector starting (a, b, 0, …).
 create function pg_temp.vec(a real, b real) returns vector
@@ -59,6 +62,11 @@ returns setof uuid language sql as $$
     ]::uuid[],
     'voyage-3-large', n, floor)
 $$;
+
+-- The roles below call these helpers; the function under test is what
+-- decides whether they get through.
+grant execute on function pg_temp.vec(real, real), pg_temp.match(integer, double precision)
+  to authenticated, service_role;
 
 -- Machinery removed
 select hasnt_trigger('public', 'episodes', 'episode_embedding_trigger',

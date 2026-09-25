@@ -1726,19 +1726,28 @@ export type Database = {
       }
       episode_embeddings: {
         Row: {
+          content_hash: string | null
+          embedding: string | null
           episode_id: string
+          model: string | null
           premise_embedding: string | null
           story_embedding: string | null
           updated_at: string | null
         }
         Insert: {
+          content_hash?: string | null
+          embedding?: string | null
           episode_id: string
+          model?: string | null
           premise_embedding?: string | null
           story_embedding?: string | null
           updated_at?: string | null
         }
         Update: {
+          content_hash?: string | null
+          embedding?: string | null
           episode_id?: string
+          model?: string | null
           premise_embedding?: string | null
           story_embedding?: string | null
           updated_at?: string | null
@@ -5889,6 +5898,20 @@ export type Database = {
           similarity: number
         }[]
       }
+      match_episode_embeddings: {
+        Args: {
+          candidate_episode_ids: string[]
+          embedding_model: string
+          match_count?: number
+          min_similarity?: number
+          query_embedding: string
+          target_project_id: string
+        }
+        Returns: {
+          episode_id: string
+          similarity: number
+        }[]
+      }
       plan_dialogue_timeline: { Args: { p_updates: Json }; Returns: number }
       purge_connection_vendor_rows: {
         Args: { p_connection_id: string }
@@ -5931,22 +5954,6 @@ export type Database = {
           description: string
           name: string
           similarity: number
-        }[]
-      }
-      search_similar_episodes: {
-        Args: {
-          exclude_episode_id: string
-          match_count?: number
-          match_threshold?: number
-          query_embedding: string
-          target_season_id: string
-        }
-        Returns: {
-          episode_id: string
-          number: number
-          similarity: number
-          story_summary: string
-          title: string
         }[]
       }
       set_fact_verification: {
