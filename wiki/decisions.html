@@ -137,12 +137,12 @@
         <!-- Decision 4: Scene-by-Scene Shot Generation -->
         <h2>4. Why Scene-by-Scene Shot Generation?</h2>
         <div class="callout info">
-          <strong>Decision:</strong> Generate shots scene-by-scene with filtered context, not monolithically for the whole screenplay.
+          <strong>Decision:</strong> Generate shots scene by scene, in parallel, not monolithically for the whole screenplay.
         </div>
         <div class="stats-row">
           <div class="stat-card">
-            <div class="stat-value">50-80%</div>
-            <div class="stat-label">Token Savings</div>
+            <div class="stat-value">1 call</div>
+            <div class="stat-label">Per Scene</div>
           </div>
           <div class="stat-card">
             <div class="stat-value">Parallel</div>
@@ -156,12 +156,11 @@
         <div class="data-example">
           <h3>How It Works</h3>
           <ol>
-            <li><strong>Build global context once</strong> — Character registry (15+ attributes per character) + location registry</li>
-            <li><strong>For each scene</strong> — <code>filterContextForScene()</code> extracts ONLY the characters and locations that appear in that scene</li>
-            <li><strong>Generate shots</strong> — LLM receives focused, relevant context instead of the entire screenplay</li>
-            <li><strong>Aggregate</strong> — Assign global sequence numbers across all scenes</li>
+            <li><strong>Build the episode context once</strong> — every character (15+ attributes) and location, VEO formatted</li>
+            <li><strong>For each scene, in parallel</strong> — the Shot Director calls <code>scene-shot-generation</code> with that scene only (batches of 5; 3 above 15 scenes)</li>
+            <li><strong>Number</strong> — shots are numbered in order across all scenes</li>
           </ol>
-          <p><strong>Why monolithic fails:</strong> A 30-minute video has ~45 scenes. Sending ALL character descriptions and ALL location descriptions for every scene wastes 50-80% of the token budget on irrelevant context. Scene-by-scene gives the LLM exactly what it needs.</p>
+          <p><strong>Why monolithic fails:</strong> A 30-minute video has ~45 scenes; one prompt for all of them hits output limits. Per scene, each call stays small. Each call still carries the full character and location context: filtering it per scene was part of an older pipeline and is not what ships today (KB-122).</p>
         </div>
 
         <!-- Decision 5: Canon System -->

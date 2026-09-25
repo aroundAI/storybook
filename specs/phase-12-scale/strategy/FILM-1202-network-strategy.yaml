@@ -242,9 +242,8 @@ notes: |
   | Negative | Exclude subtitles, captions, watermarks |
 
   **Code References:**
-  - Context builder: `packages/features/episodes/src/server/context-builder.ts`
+  - Context builder: `apps/web/lambda/llm-worker/utils/context-builder.ts` (VEO formatters); per-scene shots: `packages/features/episodes/src/agent/skills/shot-director-skill.ts`
   - Shot generation prompt: `packages/features/prompt-engine/src/prompts/story-generation/scene-shot-generation.json`
-  - Shot list prompt: `packages/features/prompt-engine/src/prompts/story-generation/shot-list-generation.json`
 
   ### 5.4 Multi-Language Dubbing (FILM-512)
 

@@ -200,71 +200,26 @@ const result = await generateShotListAction({
 
 ## Scene-by-Scene Shot Generation
 
-The shot list generation uses a scalable scene-by-scene pipeline:
+Shots are generated one scene at a time, in parallel. `generateShotListAction`
+(and the bulk actions) queue a `shot-generation` job; the LLM worker runs it:
 
 ```
-                        SCENE-BY-SCENE SHOT GENERATION PIPELINE
-
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│                                                                                          │
-│   1. BUILD GLOBAL CONTEXT (Once)                                                         │
-│   ┌────────────────────────────────────────────────────────────────────────────────┐    │
-│   │   buildGlobalShotContext(episodeId)                                             │    │
-│   │   ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐                │    │
-│   │   │ Character       │  │ Location        │  │ Episode         │                │    │
-│   │   │ Registry        │  │ Registry        │  │ Metadata        │                │    │
-│   │   └─────────────────┘  └─────────────────┘  └─────────────────┘                │    │
-│   └────────────────────────────────────────────────────────────────────────────────┘    │
-│                                              │                                           │
-│                                              ▼                                           │
-│   2. PROCESS EACH SCENE SEQUENTIALLY                                                     │
-│   ┌────────────────────────────────────────────────────────────────────────────────┐    │
-│   │   for each scene in screenplay.scenes:                                          │    │
-│   │   ┌──────────────────────────────────────────────────────────────────────┐     │    │
-│   │   │  filterContextForScene(scene, globalContext)                          │     │    │
-│   │   │  ├── extractSceneCharacters(scene) → Filter character registry        │     │    │
-│   │   │  ├── extractSceneLocation(scene) → Filter location registry           │     │    │
-│   │   │  └── Result: 50-80% TOKEN SAVINGS                                     │     │    │
-│   │   └──────────────────────────────────────────────────────────────────────┘     │    │
-│   │                                              │                                  │    │
-│   │                                              ▼                                  │    │
-│   │   ┌──────────────────────────────────────────────────────────────────────┐     │    │
-│   │   │  executeLLM('scene-shot-generation', variables)                       │     │    │
-│   │   │  Output: shots[], sceneSummary (for next scene context)               │     │    │
-│   │   └──────────────────────────────────────────────────────────────────────┘     │    │
-│   └────────────────────────────────────────────────────────────────────────────────┘    │
-│                                              │                                           │
-│                                              ▼                                           │
-│   3. AGGREGATE & STORE RESULTS                                                           │
-│   ┌────────────────────────────────────────────────────────────────────────────────┐    │
-│   │   aggregateSceneResults() → batchCreateShotsAction() → shots table             │    │
-│   └────────────────────────────────────────────────────────────────────────────────┘    │
-│                                                                                          │
-└──────────────────────────────────────────────────────────────────────────────────────────┘
+processShotGeneration            apps/web/lambda/llm-worker/handlers/shot-generation.ts
+  buildEpisodeContext() → formatCharactersForVeoPrompt() / formatLocationsForVeoPrompt()
+  runShotOrchestrator()          src/agent/shot-orchestrator.ts
+    Reel Scout     analyzeScenes        short-form candidate scenes
+    Shot Director  generateShots        src/agent/skills/shot-director-skill.ts
+                   executeLLM('scene-shot-generation') once per scene,
+                   in parallel batches of 5 (3 when there are more than 15 scenes),
+                   Promise.allSettled per batch; shots numbered in order
+    Shot Quality   evaluateShotQuality  post-generation quality gate
+  replaces the episode's rows in the shots table
 ```
 
-### Context Builder Functions
-
-```typescript
-import {
-  buildGlobalShotContext,
-  filterContextForScene,
-  extractSceneCharacters,
-  formatSceneForPrompt,
-} from '@kit/episodes/server';
-
-// Build global context once
-const globalContext = await buildGlobalShotContext(episodeId);
-
-// Filter for each scene (50-80% token savings)
-const sceneContext = filterContextForScene(scene, globalContext);
-
-// Extract characters from dialogue
-const characters = extractSceneCharacters(scene);
-
-// Format scene for LLM prompt
-const sceneText = formatSceneForPrompt(scene);
-```
+Every scene prompt carries the episode's full character and location
+context. The older in-process pipeline (`buildGlobalShotContext`,
+`filterContextForScene`, `aggregateSceneResults`) was replaced by this job
+in `e2d42522`; its leftover copy was deleted in KB-122.
 
 ## VEO 3.1 Integration
 

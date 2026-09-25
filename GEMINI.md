@@ -676,27 +676,36 @@ The platform uses a multi-stage AI-powered content generation pipeline for creat
 
 ### Scene-by-Scene Shot Generation
 
-Shot lists are generated using a scalable scene-by-scene pipeline (not monolithic):
+Shot lists are generated scene by scene, in parallel. Screenplay generation
+queues a `shot-generation` job (`generateShotListAction` or the bulk
+actions), and the LLM worker runs it through the Shot Orchestrator:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│   1. BUILD GLOBAL CONTEXT (once)                                                │
-│      buildGlobalShotContext() → Character Registry + Location Registry          │
+│   1. CONTEXT (once)  apps/web/lambda/llm-worker/handlers/shot-generation.ts     │
+│      buildEpisodeContext() → formatCharactersForVeoPrompt() / …LocationsFor…    │
 ├─────────────────────────────────────────────────────────────────────────────────┤
-│   2. FOR EACH SCENE:                                                            │
-│      filterContextForScene() → Extract only scene-relevant characters/locations │
-│      executeLLM('scene-shot-generation') → Generate VEO 3.1 shots               │
-│      Result: 50-80% TOKEN SAVINGS per scene                                     │
+│   2. SHOT ORCHESTRATOR  runShotOrchestrator() — three agent skills:             │
+│      Reel Scout (analyzeScenes)       → short-form candidate scenes             │
+│      Shot Director (generateShots)    → executeLLM('scene-shot-generation')     │
+│        once per scene, in parallel batches of 5 (3 above 15 scenes),            │
+│        Promise.allSettled so one failed scene does not fail the batch;          │
+│        shots numbered in order across scenes                                    │
+│      Shot Quality (evaluateShotQuality) → post-generation quality gate          │
 ├─────────────────────────────────────────────────────────────────────────────────┤
-│   3. AGGREGATE RESULTS                                                          │
-│      aggregateSceneResults() → Assign global sequence numbers                   │
-│      batchCreateShotsAction() → Store in shots table                            │
+│   3. STORE  the handler replaces the episode's shots in the shots table         │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
+Every scene prompt carries the episode's full character and location
+context; there is no per-scene context filtering (KB-122).
+
 **Key files**:
-- `packages/features/episodes/src/server/context-builder.ts` - Context building and filtering
-- `packages/features/episodes/src/lib/server/mutations/shot-list-actions.ts` - Shot generation
+- `apps/web/lambda/llm-worker/handlers/shot-generation.ts` - The job: context, orchestrator, storage
+- `packages/features/episodes/src/agent/shot-orchestrator.ts` - Reel Scout → Shot Director → Shot Quality
+- `packages/features/episodes/src/agent/skills/shot-director-skill.ts` - Per-scene parallel shot generation
+- `apps/web/lambda/llm-worker/utils/context-builder.ts` - Episode context and VEO formatters
+- `packages/features/episodes/src/lib/server/mutations/shot-list-actions.ts` - Queues the job
 - `packages/features/prompt-engine/src/prompts/story-generation/scene-shot-generation.json`
 
 ### VEO 3.1 Prompt Structure
