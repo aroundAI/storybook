@@ -99,10 +99,10 @@ export class ExternalContextAggregator {
       .from('external_sources')
       .select('id, category, provider_type, credibility_tier')
       .eq('is_active', true)
-      // Shared sources only. This instance is cached for the whole process,
-      // built from whichever caller's RLS view arrived first, so a
-      // project's own sources (KB-26) must never enter it.
-      .is('project_id', null);
+      // Built-ins only. This instance is cached for the whole process, built
+      // from whichever caller's RLS view arrived first, so a team's or a
+      // project's own sources (KB-26, KB-37) must never enter it.
+      .eq('is_builtin', true);
 
     if (error) {
       console.error(

@@ -8,10 +8,19 @@
  */
 import { z } from 'zod';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { returnRefusals } from '@kit/next/refusals';
+import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import {
+  PROJECT_SOURCE_REFUSAL,
+  SOURCE_EXISTS_REFUSAL,
+  SOURCE_REMOVE_REFUSAL,
+  TEAM_SOURCE_REFUSAL,
+} from '../lib/research-source-refusals';
+import { canWriteProject } from '../lib/server/project-write-access';
 import {
   getContextAggregator,
   rowToExternalContent,
@@ -45,19 +54,63 @@ const SearchExternalContentSchema = z.object({
 const ListSourcesSchema = z.object({
   category: z.enum(SOURCE_CATEGORIES).optional(),
   activeOnly: z.boolean().optional(),
-  /** Shared sources plus this project's uploads; shared only when absent. */
+  /** Built-ins plus this project's team's and this project's own; built-ins only when absent. */
   projectId: z.string().uuid().optional(),
 });
 
+type ServerClient = ReturnType<typeof getSupabaseServerClient<Database>>;
+
+/** Who a source belongs to (KB-37). */
+export type SourceKind = 'builtin' | 'team' | 'project';
+
+/** The team a project belongs to, as the caller sees it (RLS). */
+async function projectTeam(client: ServerClient, projectId: string) {
+  const { data, error } = await client
+    .from('projects')
+    .select('account_id')
+    .eq('id', projectId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to read the project: ${error.message}`);
+  }
+
+  return data?.account_id ?? null;
+}
+
 /**
- * PostgREST filter for "shared, or uploaded into this project" (KB-26). RLS
- * already hides other people's projects; this also keeps the caller's own
- * other projects out of this project's hub.
+ * PostgREST filter for the sources a project's hub shows: built-ins, the
+ * project's team's own, and the project's own (KB-26, KB-37). RLS already
+ * hides other teams' and projects' rows; this also keeps the caller's other
+ * teams and projects out of this project's hub.
  */
-function sharedOrProject(projectId: string | undefined) {
-  return projectId
-    ? `project_id.is.null,project_id.eq.${projectId}`
-    : 'project_id.is.null';
+function hubSources(projectId: string | undefined, teamId: string | null) {
+  if (!projectId) return 'is_builtin.eq.true';
+
+  const team = teamId ? `,and(project_id.is.null,account_id.eq.${teamId})` : '';
+
+  return `is_builtin.eq.true,project_id.eq.${projectId}${team}`;
+}
+
+async function isTeamOwner(client: ServerClient, teamId: string) {
+  const { data, error } = await client.rpc('has_role_on_account', {
+    account_id: teamId,
+    account_role: 'owner',
+  });
+
+  if (error) {
+    throw new Error(`has_role_on_account failed: ${error.message}`);
+  }
+
+  return data === true;
+}
+
+function sourceKind(row: {
+  is_builtin: boolean;
+  project_id: string | null;
+}): SourceKind {
+  if (row.is_builtin) return 'builtin';
+  return row.project_id ? 'project' : 'team';
 }
 
 // =============================================================================
@@ -97,19 +150,24 @@ export const searchExternalContentAction = enhanceAction(
 // =============================================================================
 
 /**
- * List registered external sources, optionally filtered by category.
+ * List the sources a project's hub shows, optionally filtered by category.
+ * Each row says whose it is (`kind`) and whether the caller may remove it
+ * (`canRemove`), by the same rules as RLS (KB-37).
  */
 export const listExternalSourcesAction = enhanceAction(
   async (data: z.infer<typeof ListSourcesSchema>) => {
     const supabase = getSupabaseServerClient();
     const activeOnly = data.activeOnly ?? true;
+    const teamId = data.projectId
+      ? await projectTeam(supabase, data.projectId)
+      : null;
 
     let query = supabase
       .from('external_sources')
       .select(
-        'id, name, slug, description, website_url, api_endpoint, category, provider_type, credibility_tier, is_active, project_id, created_at, updated_at',
+        'id, name, slug, description, website_url, api_endpoint, category, provider_type, credibility_tier, is_active, is_builtin, account_id, project_id, created_at, updated_at',
       )
-      .or(sharedOrProject(data.projectId))
+      .or(hubSources(data.projectId, teamId))
       .order('category')
       .order('name');
 
@@ -131,7 +189,22 @@ export const listExternalSourcesAction = enhanceAction(
       throw new Error(`Failed to list sources: ${error.message}`);
     }
 
-    return sources ?? [];
+    const [mayWriteProject, ownsTeam] = await Promise.all([
+      data.projectId ? canWriteProject(supabase, data.projectId) : false,
+      teamId ? isTeamOwner(supabase, teamId) : false,
+    ]);
+
+    return (sources ?? []).map((row) => {
+      const kind = sourceKind(row);
+
+      return {
+        ...row,
+        kind,
+        canRemove:
+          (kind === 'project' && mayWriteProject) ||
+          (kind === 'team' && ownsTeam),
+      };
+    });
   },
   {
     auth: true,
@@ -207,10 +280,19 @@ export const getExternalContentByIdAction = enhanceAction(
 );
 
 // =============================================================================
-// SOURCE CRUD ACTIONS (FILM-1140)
+// SOURCE ACTIONS (FILM-1140; KB-37)
 // =============================================================================
+//
+// Sources belong to a team (KB-37): a team source is managed by the team's
+// owners, a project source by the project's writers, and built-ins only by
+// migrations. Every write goes through the caller's own client, so RLS on
+// `external_sources` is the rule; the checks here only say why, as a value.
 
 const AddSourceSchema = z.object({
+  /** The project whose hub the source is added from. */
+  projectId: z.string().uuid(),
+  /** This project only, or every project of the project's team. */
+  scope: z.enum(['project', 'team']),
   name: z.string().min(1).max(200),
   slug: z.string().min(1).max(100),
   description: z.string().optional(),
@@ -221,47 +303,38 @@ const AddSourceSchema = z.object({
   credibilityTier: z.enum(['tier_1', 'tier_2', 'tier_3']).optional(),
 });
 
-/**
- * Verify the authenticated user is an owner of at least one account.
- * Only account owners can modify the global source registry.
- * This follows the same pattern as account_oauth_apps RLS policies.
- */
-async function requireAccountOwner() {
-  const supabase = getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    throw new Error('Authentication required');
-  }
-
-  const { count } = await supabase
-    .from('accounts_memberships')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .eq('account_role', 'owner');
-
-  if (!count || count === 0) {
-    throw new Error('Only account owners can manage global sources');
-  }
-
-  return user;
-}
+/** Postgres error codes these actions turn into refusals. */
+const UNIQUE_VIOLATION = '23505';
+const INSUFFICIENT_PRIVILEGE = '42501';
 
 /**
- * Add a new external source to the registry.
- * Uses admin client since RLS only allows service_role writes.
- * Requires account membership for authorization.
+ * Add a source to a project, or to the project's team. RLS refuses anyone
+ * else; the checks first say why.
  */
-export const addExternalSourceAction = enhanceAction(
+const addExternalSource = enhanceAction(
   async (data: z.infer<typeof AddSourceSchema>) => {
-    await requireAccountOwner();
-    const supabase = getSupabaseServerAdminClient();
+    const supabase = getSupabaseServerClient();
+
+    let owner: { project_id: string } | { account_id: string };
+
+    if (data.scope === 'project') {
+      if (!(await canWriteProject(supabase, data.projectId))) {
+        throw new ActionRefusal(PROJECT_SOURCE_REFUSAL);
+      }
+      owner = { project_id: data.projectId };
+    } else {
+      const teamId = await projectTeam(supabase, data.projectId);
+
+      if (!teamId || !(await isTeamOwner(supabase, teamId))) {
+        throw new ActionRefusal(TEAM_SOURCE_REFUSAL);
+      }
+      owner = { account_id: teamId };
+    }
 
     const { data: source, error } = await supabase
       .from('external_sources')
       .insert({
+        ...owner,
         name: data.name,
         slug: data.slug,
         description: data.description ?? null,
@@ -273,6 +346,16 @@ export const addExternalSourceAction = enhanceAction(
       })
       .select()
       .single();
+
+    if (error?.code === UNIQUE_VIOLATION) {
+      throw new ActionRefusal(SOURCE_EXISTS_REFUSAL);
+    }
+
+    if (error?.code === INSUFFICIENT_PRIVILEGE) {
+      throw new ActionRefusal(
+        data.scope === 'team' ? TEAM_SOURCE_REFUSAL : PROJECT_SOURCE_REFUSAL,
+      );
+    }
 
     if (error) {
       throw new Error(`Failed to add source: ${error.message}`);
@@ -286,69 +369,39 @@ export const addExternalSourceAction = enhanceAction(
   },
 );
 
-const UpdateSourceSchema = z.object({
-  sourceId: z.string().uuid(),
-  name: z.string().min(1).max(200).optional(),
-  description: z.string().optional(),
-  websiteUrl: z.string().url().optional(),
-  credibilityTier: z.enum(['tier_1', 'tier_2', 'tier_3']).optional(),
-  isActive: z.boolean().optional(),
-});
-
-/**
- * Update an existing external source.
- * Requires account membership for authorization.
- */
-export const updateExternalSourceAction = enhanceAction(
-  async (data: z.infer<typeof UpdateSourceSchema>) => {
-    await requireAccountOwner();
-    const supabase = getSupabaseServerAdminClient();
-
-    const updates: Record<string, unknown> = {};
-    if (data.name !== undefined) updates.name = data.name;
-    if (data.description !== undefined) updates.description = data.description;
-    if (data.websiteUrl !== undefined) updates.website_url = data.websiteUrl;
-    if (data.credibilityTier !== undefined)
-      updates.credibility_tier = data.credibilityTier;
-    if (data.isActive !== undefined) updates.is_active = data.isActive;
-
-    const { error } = await supabase
-      .from('external_sources')
-      .update(updates)
-      .eq('id', data.sourceId);
-
-    if (error) {
-      throw new Error(`Failed to update source: ${error.message}`);
-    }
-
-    return { success: true };
-  },
-  {
-    auth: true,
-    schema: UpdateSourceSchema,
-  },
-);
+export const addExternalSourceAction = returnRefusals(addExternalSource);
 
 const DeleteSourceSchema = z.object({
   sourceId: z.string().uuid(),
 });
 
 /**
- * Soft-delete a source by setting is_active = false.
- * Requires account membership for authorization.
+ * Deactivate a source (`is_active = false`). RLS matches only a source the
+ * caller may change: their team's (as an owner) or their project's (as a
+ * writer). A built-in, another team's source or a guessed id matches no row,
+ * and that is the refusal.
  */
-export const deleteExternalSourceAction = enhanceAction(
+const deleteExternalSource = enhanceAction(
   async (data: z.infer<typeof DeleteSourceSchema>) => {
-    await requireAccountOwner();
-    const supabase = getSupabaseServerAdminClient();
+    const supabase = getSupabaseServerClient();
 
-    const { error } = await supabase
+    const { data: rows, error } = await supabase
       .from('external_sources')
       .update({ is_active: false })
-      .eq('id', data.sourceId);
+      .eq('id', data.sourceId)
+      .eq('is_builtin', false)
+      .select('id');
+
+    if (error?.code === INSUFFICIENT_PRIVILEGE) {
+      throw new ActionRefusal(SOURCE_REMOVE_REFUSAL);
+    }
 
     if (error) {
-      throw new Error(`Failed to delete source: ${error.message}`);
+      throw new Error(`Failed to remove source: ${error.message}`);
+    }
+
+    if (!rows?.length) {
+      throw new ActionRefusal(SOURCE_REMOVE_REFUSAL);
     }
 
     return { success: true };
@@ -359,23 +412,27 @@ export const deleteExternalSourceAction = enhanceAction(
   },
 );
 
+export const deleteExternalSourceAction = returnRefusals(deleteExternalSource);
+
 /**
  * Get counts of sources and facts for sidebar badge.
  *
- * `sources` counts the shared registry plus this project's uploads (KB-26);
- * `apiSources` counts shared provider sources, which uploads never are.
- * `facts` is filtered by project.
+ * `sources` counts what the project's hub lists: built-ins, the team's own
+ * and the project's own (KB-26, KB-37). `apiSources` counts the built-in
+ * provider sources, the only ones the aggregator searches. `facts` is
+ * filtered by project.
  */
 export const getResearchCountsAction = enhanceAction(
   async (data: { projectId: string }) => {
     const supabase = getSupabaseServerClient();
+    const teamId = await projectTeam(supabase, data.projectId);
 
     const [sourcesResult, factsResult, apiSourcesResult] = await Promise.all([
       supabase
         .from('external_sources')
         .select('id', { count: 'exact', head: true })
         .eq('is_active', true)
-        .or(sharedOrProject(data.projectId)),
+        .or(hubSources(data.projectId, teamId)),
       supabase
         .from('verified_facts')
         .select('id', { count: 'exact', head: true })
@@ -384,6 +441,7 @@ export const getResearchCountsAction = enhanceAction(
         .from('external_sources')
         .select('id', { count: 'exact', head: true })
         .eq('is_active', true)
+        .eq('is_builtin', true)
         .in('provider_type', ['newsapi', 'semantic_scholar', 'custom_api']),
     ]);
 

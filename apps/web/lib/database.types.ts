@@ -2708,6 +2708,7 @@ export type Database = {
       }
       external_sources: {
         Row: {
+          account_id: string | null
           api_endpoint: string | null
           api_key_env: string | null
           bias_label: string | null
@@ -2720,6 +2721,7 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean | null
+          is_builtin: boolean
           logo_url: string | null
           name: string
           peer_reviewed: boolean | null
@@ -2732,6 +2734,7 @@ export type Database = {
           website_url: string | null
         }
         Insert: {
+          account_id?: string | null
           api_endpoint?: string | null
           api_key_env?: string | null
           bias_label?: string | null
@@ -2744,6 +2747,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_builtin?: boolean
           logo_url?: string | null
           name: string
           peer_reviewed?: boolean | null
@@ -2756,6 +2760,7 @@ export type Database = {
           website_url?: string | null
         }
         Update: {
+          account_id?: string | null
           api_endpoint?: string | null
           api_key_env?: string | null
           bias_label?: string | null
@@ -2768,6 +2773,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_builtin?: boolean
           logo_url?: string | null
           name?: string
           peer_reviewed?: boolean | null
@@ -2780,6 +2786,34 @@ export type Database = {
           website_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "external_sources_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_sources_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "public_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_sources_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_sources_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "external_sources_project_id_fkey"
             columns: ["project_id"]

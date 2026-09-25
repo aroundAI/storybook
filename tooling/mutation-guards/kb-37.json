@@ -1,0 +1,69 @@
+{
+  "feature": "KB-37",
+  "mutations": [
+    {
+      "name": "KB-37 a team-wide source no longer needs a team owner",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/external-context-actions.ts",
+      "find": "      if (!teamId || !(await isTeamOwner(supabase, teamId))) {\n",
+      "replace": "      if (!teamId) {\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/research-source-ownership.test.ts",
+      "pattern": "refuses a team-wide source from someone who is not an owner"
+    },
+    {
+      "name": "KB-37 a project source no longer needs a project writer",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/external-context-actions.ts",
+      "find": "      if (!(await canWriteProject(supabase, data.projectId))) {\n        throw new ActionRefusal(PROJECT_SOURCE_REFUSAL);\n",
+      "replace": "      if (false) {\n        throw new ActionRefusal(PROJECT_SOURCE_REFUSAL);\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/research-source-ownership.test.ts",
+      "pattern": "refuses, as a value, a project source"
+    },
+    {
+      "name": "KB-37 removing a source that matched no row reports success",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/external-context-actions.ts",
+      "find": "    if (!rows?.length) {\n      throw new ActionRefusal(SOURCE_REMOVE_REFUSAL);\n",
+      "replace": "    if (rows === null) {\n      throw new ActionRefusal(SOURCE_REMOVE_REFUSAL);\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/research-source-ownership.test.ts",
+      "pattern": "refuses when RLS matched nothing"
+    },
+    {
+      "name": "KB-37 the aggregator loads non-built-in sources again",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/server/services/context-aggregator.ts",
+      "find": "      .eq('is_builtin', true);\n",
+      "replace": "      .is('project_id', null);\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/research-upload-access.test.ts",
+      "pattern": "loads built-ins only"
+    },
+    {
+      "name": "KB-37 a team member who is not an owner may add a team source",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/external-sources-ownership-rls.test.sql",
+      "sql": "drop policy external_sources_insert on public.external_sources; create policy external_sources_insert on public.external_sources for insert to authenticated with check (not is_builtin and account_id is not null and ((project_id is null and public.has_role_on_account(account_id)) or (project_id is not null and public.can_write_project(project_id))));"
+    },
+    {
+      "name": "KB-37 the project-team trigger is dropped",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/external-sources-ownership-rls.test.sql",
+      "sql": "drop trigger external_sources_project_team on public.external_sources;"
+    },
+    {
+      "name": "KB-37 a source with no team and no project is readable again (KB-26's shared rule)",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/external-sources-ownership-rls.test.sql",
+      "sql": "drop policy external_sources_read on public.external_sources; create policy external_sources_read on public.external_sources for select to authenticated using ((is_active and (is_builtin or (account_id is null and project_id is null))) or (project_id is null and account_id is not null and public.has_role_on_account(account_id)) or (project_id is not null and public.can_write_project(project_id)));"
+    },
+    {
+      "name": "KB-37 the read policy hides a team's own inactive rows (deactivating fails)",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/external-sources-ownership-rls.test.sql",
+      "sql": "drop policy external_sources_read on public.external_sources; create policy external_sources_read on public.external_sources for select to authenticated using (is_active and (is_builtin or (project_id is null and account_id is not null and public.has_role_on_account(account_id)) or (project_id is not null and public.can_write_project(project_id))));"
+    }
+  ]
+}

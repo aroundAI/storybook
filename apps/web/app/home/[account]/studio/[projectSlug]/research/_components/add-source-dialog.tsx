@@ -6,6 +6,7 @@ import { Loader2, Shield } from 'lucide-react';
 
 import { SOURCE_CATEGORIES } from '@kit/episodes';
 import { addExternalSourceAction } from '@kit/episodes/server';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -31,6 +32,9 @@ interface AddSourceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSourceAdded: () => void;
+  projectId: string;
+  /** Team owners may add a source for every project of the team (KB-37). */
+  canAddTeamSources: boolean;
 }
 
 const PROVIDER_TYPES = [
@@ -46,8 +50,11 @@ export function AddSourceDialog({
   open,
   onOpenChange,
   onSourceAdded,
+  projectId,
+  canAddTeamSources,
 }: AddSourceDialogProps) {
   const [isPending, startTransition] = useTransition();
+  const [scope, setScope] = useState<'project' | 'team'>('project');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
@@ -73,16 +80,20 @@ export function AddSourceDialog({
 
     startTransition(async () => {
       try {
-        await addExternalSourceAction({
-          name: name.trim(),
-          slug: generateSlug(name),
-          description: description.trim() || undefined,
-          websiteUrl: websiteUrl.trim() || undefined,
-          apiEndpoint: apiEndpoint.trim() || undefined,
-          category: category as (typeof SOURCE_CATEGORIES)[number],
-          providerType: providerType || 'manual',
-          credibilityTier: credibilityTier as 'tier_1' | 'tier_2' | 'tier_3',
-        });
+        await unwrap(
+          addExternalSourceAction({
+            projectId,
+            scope: canAddTeamSources ? scope : 'project',
+            name: name.trim(),
+            slug: generateSlug(name),
+            description: description.trim() || undefined,
+            websiteUrl: websiteUrl.trim() || undefined,
+            apiEndpoint: apiEndpoint.trim() || undefined,
+            category: category as (typeof SOURCE_CATEGORIES)[number],
+            providerType: providerType || 'manual',
+            credibilityTier: credibilityTier as 'tier_1' | 'tier_2' | 'tier_3',
+          }),
+        );
 
         toast.success('Source added successfully');
         onSourceAdded();
@@ -96,8 +107,9 @@ export function AddSourceDialog({
         setProviderType('manual');
         setCredibilityTier('tier_3');
         setApiEndpoint('');
-      } catch {
-        toast.error('Failed to add source');
+        setScope('project');
+      } catch (error) {
+        toast.error(refusalMessage(error, 'Failed to add source'));
       }
     });
   };
@@ -117,12 +129,33 @@ export function AddSourceDialog({
             <Label htmlFor="source-name">Name *</Label>
             <Input
               id="source-name"
+              data-test="add-source-name"
               placeholder="e.g., Reuters, Nature, Wikipedia"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
             />
           </div>
+
+          {canAddTeamSources && (
+            <div className="space-y-2">
+              <Label htmlFor="source-scope">Who can use it</Label>
+              <Select
+                value={scope}
+                onValueChange={(value) => setScope(value as 'project' | 'team')}
+              >
+                <SelectTrigger id="source-scope" data-test="add-source-scope">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="project">This project</SelectItem>
+                  <SelectItem value="team">
+                    Every project in the team
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="source-description">Description</Label>
@@ -150,7 +183,7 @@ export function AddSourceDialog({
             <div className="space-y-2">
               <Label>Category *</Label>
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
+                <SelectTrigger data-test="add-source-category">
                   <SelectValue placeholder="Select..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -238,6 +271,7 @@ export function AddSourceDialog({
             </Button>
             <Button
               type="submit"
+              data-test="add-source-submit"
               disabled={isPending || !name.trim() || !category}
             >
               {isPending ? (
