@@ -3,173 +3,217 @@ title: "AI Generation Sandbox"
 phase: 18
 phase_name: "Local Vendor Sandbox"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: L
 dependencies:
   - spec_id: "FILM-1801"
     note: null
+  - spec_id: "FILM-1805"
+    note: "Half A (#360): the Gemini client follows VENDOR_URL_GEMINI"
 summary: >
-  Local stand-ins for the AI vendors the studio pipeline calls — LLM
-  (OpenAI, Anthropic, Gemini), TTS/music (ElevenLabs, PlayHT, Suno, Udio),
-  lip-sync (Sync Labs) and embeddings (Voyage) — so ideation, story,
-  screenplay, shot list and audio can run end to end on a laptop without API
-  spend or keys, with outputs random but always consumable by the next
-  stage. Runs in the same process as FILM-1802, on its own ports. The hard
-  part is LLM output: the pipeline validates what the LLM returns against
-  each prompt's own schema (16 Zod, 4 JSON Schema, 7 schema_for_llm-only, 2
-  with nothing), so the sandbox must generate the right shape for the prompt
-  that asked, with values filled from a shared corpus matched by field name.
+  Local stand-ins for the AI vendors the app still calls - Gemini (every
+  prompt and every agent), ElevenLabs (voice, sound effects and music) and the
+  API-key checks in settings - so every AI action a user can trigger inline
+  runs on a laptop without keys or spend, with output that is random but
+  always the shape the next stage reads. The studio stages themselves
+  (ideation, story, screenplay, shot list, audio cues, dialogue voice,
+  translation) are all enqueued to SQS and run only in the llm-worker and
+  voice-worker Lambdas, so this spec makes them ready for a local queue - every
+  prompt and orchestrator answered and tested - and a separate spec runs them.
+  The hard part is LLM output: each prompt's reply is generated from that
+  prompt's own schema (16 Zod, 4 JSON Schema) or a hand-written template (9),
+  with values from a shared corpus matched by field name.
 acceptance_criteria:
-  - text: "With local.env loaded, no studio flow reaches a real AI vendor"
+  - text: "(Narrowed 2026-09-25) With local.env loaded, no inline AI action a user can trigger reaches a real AI vendor"
     met: false
-    reason: "not yet implemented — DRAFT"
+    reason: "not yet — local-env.sh wiring and the live run are the last PR, after FILM-1805 Half A (#360)"
   - text: "Each of the 16 Zod-declared prompts gets output that passes the app's own schemaFn.parse"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "apps/vendor-sandbox/__tests__/every-prompt.test.ts — through the real executeLLM (which validates) and executeLLMForLambda (parsed with the executor's own compile), over HTTP to the sandbox via the real Gemini client"
   - text: "Each of the 4 JSON-Schema prompts gets output valid against its schema"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "every-prompt.test.ts — ajv against the prompt's own schema, through both executors"
   - text: "Each of the 9 schema-less prompts has a template, and its output parses through the app's path"
     met: false
-    reason: "not yet implemented — DRAFT"
+    reason: "all nine have templates (apps/vendor-sandbox/src/llm/generate/templates.ts) and dialogue-translation parses through both executors, but the app's own path cannot carry the other eight: KB-106 (they cannot be rendered) and, behind it, KB-107 (four wrapper_key prompts). They are KNOWN_BROKEN in every-prompt.test.ts, which fails when either is fixed"
   - text: "An unrecognised prompt is answered and logged as unrecognised, never silently"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "apps/vendor-sandbox/__tests__/coverage.test.ts — 200 '{}', ledger identified: unrecognised, a warning starting UNRECOGNISED PROMPT"
   - text: "A new prompt file added without a generator fails a sandbox test, not a demo"
+    met: true
+    evidence: "coverage.test.ts reads every prompt file on disk and names any without a generator; mutation guard 'a prompt without a generator goes unnoticed' is red"
+  - text: "(New 2026-09-25) The nine studio orchestrators run to success against the sandbox"
     met: false
-    reason: "not yet implemented — DRAFT"
+    reason: "not yet — the agent-protocol driver is the next PR"
   - text: "Audio responses are valid files of roughly the requested duration"
     met: false
-    reason: "not yet implemented — DRAFT"
-  - text: "Embeddings have the real model's dimension, and identical input gives the identical vector within a run"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    reason: "not yet — the ElevenLabs stand-in is a later PR"
+  - text: "(Restated 2026-09-25) Embeddings get no stand-in, because nothing in the app calls an embeddings or transcription API"
+    met: true
+    evidence: "2026-09-25: the exports of packages/features/embeddings/src/voyage-client.ts, audio-generation/src/lib/audio-embedding.ts and packages/llm/src/transcription.ts have no callers outside their own modules (§3)"
   - text: "The inline-vs-enqueued list per studio stage exists and is linked from FILM-1804"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "§4 below; FILM-1804's studio-pipeline row points at it"
   - text: "No generated title, character, location or line of dialogue matches a placeholder pattern — the same test as FILM-1802's, over a large sample"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "apps/vendor-sandbox/__tests__/corpus.test.ts — every prompt × 200 seeds through findPlaceholders (src/corpus/placeholder.ts, shared with FILM-1802), and no string field left to a generic sentence"
+remaining:
+  - criterion: "With local.env loaded, no inline AI action a user can trigger reaches a real AI vendor"
+    reason: "local-env.sh wiring and the live run with an egress guard"
+    closed_by: "FILM-1803"
+  - criterion: "Each of the 9 schema-less prompts has a template, and its output parses through the app's path"
+    reason: "eight of the nine fail in the app's own loader and executor"
+    closed_by: "KB-106; KB-107"
+  - criterion: "The nine studio orchestrators run to success against the sandbox"
+    reason: "agent-protocol driver not built yet"
+    closed_by: "FILM-1803"
+  - criterion: "Audio responses are valid files of roughly the requested duration"
+    reason: "ElevenLabs stand-in not built yet"
+    closed_by: "FILM-1803"
 open_questions: []
 notes: |
   ## 1. Overview
 
-  Local stand-ins for the AI vendors the studio pipeline calls, so ideation, story,
-  screenplay, shot list and audio can be run end to end on a laptop — without API
-  spend, without keys, and with outputs that are random but always consumable by the
-  next stage. It runs in the same process as FILM-1802, on its own ports.
+  Local stand-ins for the AI vendors the app still calls, so every AI action a
+  user can trigger inline runs on a laptop - without API spend, without keys,
+  and with outputs that are random but always consumable by the next stage. It
+  runs in the same process as FILM-1802 (apps/vendor-sandbox, built here
+  first), on its own ports:
 
   | Port | Serves | How the app reaches it |
   |---|---|---|
-  | 4110 | OpenAI-compatible: chat completions, Whisper transcription, embeddings | OPENAI_BASE_URL — honoured by the openai SDK today |
-  | 4111 | Anthropic-compatible: messages | ANTHROPIC_BASE_URL — honoured by @anthropic-ai/sdk today |
-  | 4112 | Gemini-compatible: generateContent | GOOGLE_GEMINI_BASE_URL — honoured by @google/genai today |
-  | 4113 | ElevenLabs, PlayHT, Suno, Udio | FILM-1801 (their baseUrl option exists but is unwired) |
-  | 4114 | Sync Labs lip-sync | SYNCLABS_BASE_URL — honoured today |
-  | 4115 | Voyage embeddings | FILM-1801 |
+  | 4100 | Control API, ledger and status page (FILM-1802 §6) | — |
+  | 4110 | OpenAI: GET /v1/models only, the settings page's key check | VENDOR_URL_OPENAI |
+  | 4112 | Gemini: generateContent, streamGenerateContent, models list | VENDOR_URL_GEMINI (FILM-1805 Half A, #360) |
+  | 4113 | ElevenLabs: text to speech, voices, account, models, music, sound effects | VENDOR_URL_ELEVENLABS |
 
-  DeepSeek goes through FILM-1801 because it hardcodes a baseURL that beats
-  OPENAI_BASE_URL.
-
-  Note (2026-09-22): the 4110–4112 rows above will change. FILM-1805
-  closes the SDKs' own env-var overrides, so the app reaches those ports through
-  VENDOR_URL_OPENAI / VENDOR_URL_ANTHROPIC / VENDOR_URL_GEMINI (FILM-1801's
-  scheme) instead — and DeepSeek is no longer the odd one out. Row 4114 (Sync Labs)
-  goes away with FILM-513 (retire lip-sync).
-  This spec's implementer updates the table; the rest of the body is unaffected.
+  Every address is reached through FILM-1801's gate (NODE_ENV development or
+  test, VENDOR_SANDBOX=1, not a Lambda, a local address). No SDK's own
+  base-URL variable is used: FILM-1805 Half A closed them.
 
   ## 2. The hard part: LLM output the app will accept
 
-  Random prose is easy. The pipeline, though, parses and validates what the LLM
-  returns, so random output must be the right shape for the prompt that asked.
-  Measured across the 29 prompt files in
+  The pipeline parses what the LLM returns, so random output must be the right
+  shape for the prompt that asked. Measured across the 29 prompt files in
   packages/features/prompt-engine/src/prompts/:
 
   | Output declared as | Prompts | How the sandbox generates |
   |---|---|---|
-  | schema: { type: 'zod', definition } | 16 | Compile the definition exactly as llm-executor.ts does (it evaluates the string with z in scope, then schemaFn.parse), and generate data from that schema. The output passes the app's own validation by construction |
+  | schema: { type: 'zod', definition } | 16 | Compile the definition exactly as llm-executor.ts does, generate from the compiled schema, and check the result against it before sending |
   | A JSON Schema object | 4 | Generate from the JSON Schema |
-  | Only schema_for_llm (a human-readable string) | 7 | Hand-written per-slug template |
-  | Nothing | 2 | Hand-written per-slug template |
+  | Only schema_for_llm (a human-readable string) | 7 | Hand-written per-prompt template: a Zod schema of what the caller reads |
+  | Nothing | 2 | Hand-written per-prompt template |
 
-  None of the nine without a machine-readable schema has an example_output to fall
-  back on, so the templates are real work: nine small generators, each checked by
-  feeding its output through the same parsing path the app uses.
+  Shape from the schema, values from the corpus. The schema decides the
+  shape and the shared corpus (apps/vendor-sandbox/src/corpus) fills the
+  values, matched by field name: a title gets a show title, a character a
+  name from that response's cast, dialogue a line of dialogue, an enum one of
+  its members. A string field no rule places is reported, and the corpus test
+  fails on it, so the rules grow with the schemas.
 
-  Shape from the schema, values from the corpus. A schema says a field is a string;
-  filled naively, it becomes a random token. So the schema decides the shape and the
-  shared corpus fills the values, matched by field name and enum — a title gets a
-  realistic show title, a characterName a character name, dialogue a line of
-  dialogue, an enum one of its members. A string field the corpus cannot place is
-  logged, so coverage of the corpus grows with the schemas rather than decaying into
-  tokens.
+  Identifying the prompt. A request carries the rendered prompt, not its
+  slug. The sandbox recognises each prompt by the literal text between its
+  {{variables}}, one group per system-prompt part: the package loader sorts
+  parts by `order` and the llm-worker's renderer does not, so groups may come
+  in any order. Every prompt is recognised as itself and nothing else, as each
+  executor renders it (identify.test.ts). A request that matches nothing gets
+  '{}', a ledger flag and a loud warning.
 
-  Identifying the prompt. The request carries the rendered prompt, not the slug.
-  The sandbox loads the same prompt files at start and matches a request to a slug by
-  its system prompt, before variable substitution. A request that matches nothing is
-  answered with a generic response and logged loudly, so a new prompt without a
-  generator is noticed rather than silently fed nonsense.
+  Two registries. `@kit/prompt-engine` registers 27 prompts; the llm-worker
+  Lambda has its own registry with two more (story-refinement,
+  screenplay-refinement). The sandbox reads every prompt file on disk, and
+  every-prompt.test.ts runs each prompt through the executor that uses it.
 
-  Content. Text is drawn from a small checked-in corpus, randomized per run, with
-  the requested structure — character names consistent within one generated story,
-  scene counts matching what the screenplay asked for. It needs to be coherent enough
-  for the next stage to consume and for a screenshot to look like the product. It
-  does not need to be good writing, but it must read like a real creator's work:
-  realistic show titles, character names, locations and dialogue from the shared
-  corpus (the phase README's "Looks real, is fictional"), never Character 1,
-  Scene A, Lorem ipsum or Generated story 4.
+  What building it found (reproduced, filed):
+  - KB-106: eight prompt files use a bare `system_prompt` string, and the
+    package loader reads only `system_prompts[]`, so those eight throw before
+    any LLM call - canon validation, the news services, the documentary roles
+    and the act-context bridge.
+  - KB-107: behind it, four wrapper_key prompts are unwrapped by executeLLM
+    only when the value is an array, while every caller reads an object.
 
-  ## 3. Audio and embeddings
+  ## 3. Vendors: what the app still calls (2026-09-25)
 
-  - TTS and music (ElevenLabs, PlayHT, Suno, Udio) return a short valid audio file
-    of roughly the requested duration, with the voice and metadata the request named,
-    so waveform, duration and timeline code paths all run. The files are generated
-    locally (silence or a tone); nothing is downloaded.
-  - Voice cloning returns a new voice ID that later TTS calls accept.
-  - Lip-sync returns a job that completes after a short delay with a valid video
-    URL served by the sandbox.
-  - Embeddings return vectors of the dimension the real model returns, random but
-    stable for identical input within a run, so similarity search behaves.
+  Each vendor the first draft listed was checked against what a mounted page
+  or a worker can reach:
 
-  ## 4. What this cannot reach
+  | Vendor | Reachable? | Here |
+  |---|---|---|
+  | Gemini | Yes: all 29 prompts pin gemini / gemini-3.5-flash; the agent runner defaults to it; settings key check | Built (4112) |
+  | ElevenLabs | Yes: dialogue TTS (voice-worker), audio-library music and sound effects, voices, account and model checks | Stand-in on 4113 |
+  | OpenAI | Only settings' key check (GET /v1/models). Chat is reached only through loadConfigFromEnv, whose two users (ContinuityChecker, the element-prompt module) nothing mounts or imports | /v1/models only (4110) |
+  | Anthropic, DeepSeek | No prompt, agent or call site selects them | None |
+  | Voyage, OpenAI embeddings, Whisper | Their exports have no callers | None |
+  | PlayHT, Udio | Registry only; PlayHT is shown "Coming Soon", disabled | None |
+  | Voice cloning | VoiceCloningEditor is mounted nowhere | None |
+  | Sync Labs | Retired by FILM-513 | None |
+  | Suno | Being removed from the product (owner, 2026-09-25) | None |
 
-  - Video generation. There is no video-generation client:
-    packages/features/jobs/src/workers/manager.ts:44-50 is a stub. Nothing to point at
-    a sandbox until one exists.
-  - SQS-backed workers. The LLM, voice and render lambdas consume SQS queues with no
-    local equivalent, and their senders fail without queue URLs. Studio actions that
-    enqueue rather than call inline are out of reach until a local queue exists. The
-    first task under this spec is to list, per studio stage, whether it calls inline or
-    enqueues — that list decides what FILM-1804 can drive.
-  - Quality. Nothing here says whether a real model would produce good output. The
-    sandbox exercises the pipeline, not the prompts.
+  ## 4. Inline or enqueued, per studio stage
 
-  ## 5. Out of scope
+  Only an inline call can reach the sandbox from a local app today. Every
+  enqueued one throws "LLM_JOBS_QUEUE_URL not configured"
+  (prompt-engine/src/lib/server/sqs-helper.ts) or its voice-queue equivalent
+  before any vendor is called. FILM-1804 drives only the inline rows until a
+  local queue exists.
+
+  | Stage | UI action | Path | Vendor | Local today |
+  |---|---|---|---|---|
+  | Ideation | generateStoryIdeasAction | queueLlmJob('story-ideation') → llm-worker story-ideation → runIdeationOrchestrator | Gemini | Enqueued |
+  | Story | generateFullStoryAction | queueLlmJob('story-generation') → runStoryOrchestrator | Gemini | Enqueued |
+  | Story | refineStoryAction | queueLlmJob → story-refinement handler | Gemini | Enqueued |
+  | Story | validateContentInlineAction | executeLLM('canon-extraction') | Gemini | Inline (fails today: KB-106) |
+  | Screenplay | convertToScreenplayAction | queueLlmJob → runScreenplayOrchestrator | Gemini | Enqueued |
+  | Shot list | generateShotListAction | queueLlmJob → runShotOrchestrator | Gemini | Enqueued |
+  | Audio cues | generateAudioCuesAction, generateAudioForCueAction | queueLlmJob → audio-cue-generation / audio-file-generation | Gemini, ElevenLabs | Enqueued |
+  | Dialogue voice | generateDialogueVoiceAsyncAction, batchGenerateDialogueAction | queueVoiceJob(s) → voice-worker | ElevenLabs | Enqueued |
+  | Translation | translateDialogueToLanguageAction | queueLlmJob → runTranslationOrchestrator | Gemini | Enqueued |
+  | Audio library | generateMusicAssetAction, generateSfxAssetAction | ElevenLabs music and sound-effects providers | ElevenLabs | Inline |
+  | Season and bulk | analyzeSeasonRoadmapAction, batchGenerate*, batchConvertScreenplaysAction, batchCreateAssetsAction | queueLlmJob | Gemini | Enqueued |
+  | Episode create | createEpisodeWithContextAction | queueLlmJob, on one branch | Gemini | Enqueued branch only |
+  | Asset sidebar | extractDescriptionAction | executeLLM('story-generation/extract-asset-description') | Gemini | Inline |
+  | Social posts | variant generation (social-post-actions.ts) | executeLLM('linkedin-post-generation') | Gemini | Inline |
+  | Settings | API-key validation | fetch to each vendor's key-check endpoint | ElevenLabs, OpenAI, Gemini | Inline |
+
+  The music cue actions in the audio studio (Suno) are left out: Suno is being
+  removed.
+
+  ## 5. What this cannot reach
+
+  - The studio stages, until a local queue runs the llm-worker and
+    voice-worker handlers (a separate spec). What this spec delivers for them
+    is readiness: every prompt and every orchestrator is answered and tested.
+  - Video generation: retired; there is no client.
+  - Quality. Nothing here says whether a real model would produce good output.
+    The sandbox exercises the pipeline, not the prompts. For real model output
+    locally, FILM-1805 Half B (Ollama) is the path.
+
+  ## 6. Out of scope
 
   - Social platforms — FILM-1802.
-  - Research APIs (Brave, NewsAPI, Semantic Scholar, archive.org, Crossref): not AI
-    generation. A later spec, if wanted.
+  - Research APIs (Brave, NewsAPI, Semantic Scholar, archive.org, Crossref).
   - Evaluating prompt quality or model choice.
 
   ## 7. Verification
 
-  - A sandbox test loads every prompt file, generates a response for each, and runs it
-    through the prompt engine's parsing and validation. All 29 must pass.
-  - Drive ideation → story → screenplay → shot list in the local app with local.env
-    loaded, and confirm no request left the machine: the sandbox ledger shows every
-    call, and nothing is sent to a real vendor host.
+  - every-prompt.test.ts: every prompt through the executor that uses it, over
+    HTTP to the sandbox, with nothing mocked but a usage-log write, and any
+    request leaving the machine refused and recorded.
+  - gemini-wire.test.ts: the real @google/genai SDK against the stand-in,
+    plain and streamed, with the vendor's key and quota errors.
+  - tooling/mutation-guards/film-1803.json: every guard seen red.
+  - Later: drive the inline flows in §4 in the local app with local.env
+    loaded and an egress guard, and show the ledger and the pages.
 
   ## 8. Risk
 
-  Schema drift. A prompt's schema changes and its generator does not. For the 16
-  Zod prompts this cannot happen, because the sandbox compiles the same definition the
-  executor validates with. For the 13 others, the every-prompt test in §7 is the
-  guard.
+  Schema drift. For the 16 Zod prompts it cannot happen: the sandbox compiles
+  the definition the executor validates with. The other 13 are guarded by the
+  every-prompt test.
 
-  Shared trust boundary. The sandbox evaluates schema definitions the same way the
-  executor does. The definitions are checked-in files, so this is the same trust the
-  app already extends to them — but if prompt templates ever become editable from the
-  UI, both need revisiting together.
+  Shared trust boundary. The sandbox evaluates schema definitions the way the
+  executor does. They are checked-in files, so this is the same trust the app
+  already extends to them; nothing from a request is evaluated.
 feature:
   database: null
   queries: []
