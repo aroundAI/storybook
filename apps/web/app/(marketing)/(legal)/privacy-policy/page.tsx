@@ -518,7 +518,10 @@ async function PrivacyPolicyPage() {
             title="5. Data Retention"
             color="amber"
           >
-            <div className="grid gap-3 md:grid-cols-2">
+            <div
+              className="grid gap-3 md:grid-cols-2"
+              data-test="privacy-retention-table"
+            >
               {[
                 {
                   label: 'Account Data',
@@ -533,6 +536,11 @@ async function PrivacyPolicyPage() {
                 {
                   label: 'Analytics',
                   period: 'Until you ask — see 1.4',
+                  color: 'purple',
+                },
+                {
+                  label: 'Report Files',
+                  period: 'Until you ask',
                   color: 'purple',
                 },
                 {

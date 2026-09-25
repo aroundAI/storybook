@@ -19,7 +19,11 @@ import type {
   ReportMetric,
   ReportSummary,
 } from '@kit/content-analytics/lib/report-types';
-import { storeReport } from '@kit/content-analytics/server/report-storage';
+import {
+  deleteOrphanedReportFiles,
+  scheduledReportPath,
+  storeReport,
+} from '@kit/content-analytics/server/report-storage';
 import { getMailer } from '@kit/mailers';
 import { enhanceRouteHandler } from '@kit/next/routes';
 import { getLogger } from '@kit/shared/logger';
@@ -137,15 +141,32 @@ export const GET = enhanceRouteHandler(
         }
       }
 
+      // A deleted account's report files go with it (KB-74), whichever way
+      // the account was deleted. Never at the cost of the reports above.
+      let reportFiles: { removed: number; failed: number } | null = null;
+
+      try {
+        reportFiles = await deleteOrphanedReportFiles(adminClient);
+      } catch (error) {
+        logger.error(
+          {
+            ...ctx,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          },
+          'Removing deleted accounts’ report files failed',
+        );
+      }
+
       const duration = Date.now() - startTime;
       logger.info(
-        { ...ctx, ...results, durationMs: duration },
+        { ...ctx, ...results, reportFiles, durationMs: duration },
         'Scheduled reports job completed',
       );
 
       return NextResponse.json({
         success: true,
         ...results,
+        reportFiles,
         durationMs: duration,
       });
     } catch (error) {
@@ -557,7 +578,11 @@ async function processScheduledReport(
 
   const { url: downloadUrl } = await storeReport(
     adminClient,
-    `scheduled/${report.id}/${Date.now()}-${filename}`,
+    scheduledReportPath(
+      report.account_id as string,
+      report.id as string,
+      filename,
+    ),
     { buffer, contentType, cacheControl: '86400' },
     604800,
   );

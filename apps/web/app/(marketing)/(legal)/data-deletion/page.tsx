@@ -153,6 +153,12 @@ async function DataDeletionPage() {
                   statistics described in section 1, which are held in a
                   separate analytics store.
                 </li>
+                <li data-test="deletion-account-reports">
+                  Within 7 calendar days it also removes the account&apos;s
+                  report files: the reports you exported and the ones your
+                  schedules emailed. Otherwise we keep them until you ask us to
+                  delete them.
+                </li>
                 <li>
                   If deleting fails, or you can no longer sign in, email us and
                   we will delete the account for you.

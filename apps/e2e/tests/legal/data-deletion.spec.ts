@@ -177,4 +177,21 @@ test.describe('Nothing on either page is still waiting on a decision', () => {
     await expect(howLong).toContainText('7 calendar days');
     await expect(howLong).toContainText('30 calendar days');
   });
+
+  // KB-74: report files are kept until asked, and go with the account
+  test('both pages say how long report files are kept', async ({ page }) => {
+    await page.goto('/privacy-policy');
+
+    await expect(
+      page
+        .locator('[data-test="privacy-retention-table"] > div')
+        .filter({ hasText: 'Report Files' }),
+    ).toContainText('Until you ask');
+
+    await page.goto('/data-deletion');
+
+    await expect(
+      page.locator('[data-test="deletion-account-reports"]'),
+    ).toContainText('report files');
+  });
 });
