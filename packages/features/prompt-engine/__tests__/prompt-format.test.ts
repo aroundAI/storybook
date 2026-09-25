@@ -2,6 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import { loadAndRenderPrompt } from '../src/lib/server/prompt-loader';
+import { PROMPT_REGISTRY } from '../src/lib/server/prompt-registry';
+
 /**
  * Prompt Format Validation Tests
  *
@@ -184,34 +187,18 @@ describe('Prompt Template Format Validation', () => {
       expect(errors).toEqual([]);
     });
 
-    it('should have required fields: identifier and at least one prompt', () => {
-      // All templates should have an identifier (slug or id)
-      const hasSlug = typeof template.slug === 'string';
-      const hasId = typeof template.id === 'string';
-      expect(hasSlug || hasId).toBe(true);
-
-      // All templates should have at least one prompt (standard or canon-role format)
-      const hasUserPrompt = typeof template.user_prompt === 'string';
-      const hasSystemPrompt = typeof template.system_prompt === 'string';
-      const hasSystemPrompts =
-        Array.isArray(template.system_prompts) &&
-        template.system_prompts.length > 0;
-      const sysPromptObj = template.systemPrompt as
-        | Record<string, unknown>
-        | undefined;
-      const usrPromptObj = template.userPrompt as
-        | Record<string, unknown>
-        | undefined;
-      const hasCanonUserPrompt = typeof usrPromptObj?.template === 'string';
-      const hasCanonSystemPrompt = typeof sysPromptObj?.template === 'string';
-
-      expect(
-        hasUserPrompt ||
-          hasSystemPrompt ||
-          hasSystemPrompts ||
-          hasCanonUserPrompt ||
-          hasCanonSystemPrompt,
-      ).toBe(true);
+    it('should have the fields the loader reads: slug, system_prompts[], user_prompt, variables', () => {
+      // KB-106. This used to accept a bare `system_prompt` string as a second
+      // format, which the loader has never read: eight files in that format
+      // threw on every call. The test now asks for exactly what
+      // `loadAndRenderPrompt` uses, and the block below runs the loader too.
+      expect(typeof template.slug).toBe('string');
+      expect(typeof template.user_prompt).toBe('string');
+      expect('system_prompt' in template).toBe(false);
+      expect(Array.isArray(template.system_prompts)).toBe(true);
+      expect((template.system_prompts as unknown[]).length).toBeGreaterThan(0);
+      expect(typeof template.variables).toBe('object');
+      expect(template.variables).not.toBeNull();
     });
     it('should only use {{variable}} format for interpolation in prompts', () => {
       const promptTexts = extractPromptTexts(template);
@@ -230,5 +217,107 @@ describe('Prompt Template Format Validation', () => {
         }
       }
     });
+  });
+});
+
+/**
+ * KB-106: the format test must not drift from the loader again, so it runs
+ * the loader. Every registered prompt renders, with every variable it
+ * declares, into a system prompt and a user prompt.
+ */
+describe('every registered prompt renders through the real loader', () => {
+  it.each(Object.keys(PROMPT_REGISTRY))('%s', async (key) => {
+    const template = PROMPT_REGISTRY[key]!;
+    const variables = Object.fromEntries(
+      Object.keys(template.variables).map((name) => [name, `value of ${name}`]),
+    );
+
+    const rendered = await loadAndRenderPrompt(key, variables);
+
+    expect(rendered.systemPrompt.trim().length).toBeGreaterThan(0);
+    expect(rendered.userPrompt.trim().length).toBeGreaterThan(0);
+    for (const name of Object.keys(variables)) {
+      expect(rendered.systemPrompt + rendered.userPrompt).not.toContain(
+        `{{${name}}}`,
+      );
+    }
+  });
+});
+
+/**
+ * KB-106's sibling: a caller naming a slug no registry holds fails with
+ * "Prompt template not found" on every call. Every literal `templateSlug`
+ * must name a key in the registry of the executor that file uses - the
+ * package's for `executeLLM`, the llm-worker's for `executeLLMForLambda`.
+ */
+describe('every templateSlug names a registered prompt', () => {
+  const REPO = path.resolve(__dirname, '../../../..');
+  const ROOTS = ['packages', 'apps/web'];
+  const SKIP = new Set([
+    'node_modules',
+    '.next',
+    '.turbo',
+    'dist',
+    'coverage',
+    '__tests__',
+  ]);
+  const LAMBDA_REGISTRY = path.join(
+    REPO,
+    'apps/web/lambda/llm-worker/prompt-registry.ts',
+  );
+
+  function sources(dir: string): string[] {
+    return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      if (SKIP.has(entry.name)) return [];
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) return sources(full);
+      return /\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)
+        ? [full]
+        : [];
+    });
+  }
+
+  const lambdaKeys = new Set(
+    [
+      ...fs
+        .readFileSync(LAMBDA_REGISTRY, 'utf-8')
+        .split('PROMPT_REGISTRY')[1]!
+        .matchAll(/^\s*'([^']+)':/gm),
+    ].map((m) => m[1]!),
+  );
+  const packageKeys = new Set(Object.keys(PROMPT_REGISTRY));
+
+  const calls = ROOTS.flatMap((root) => sources(path.join(REPO, root))).flatMap(
+    (file) => {
+      const source = fs.readFileSync(file, 'utf-8');
+      const lambda = source.includes('executeLLMForLambda');
+      const pkg = /\bexecuteLLM\b/.test(source);
+      // Comment lines hold examples (`@example … templateSlug: '…'`), not calls.
+      const code = source
+        .split('\n')
+        .filter((line) => !/^\s*(\*|\/\/)/.test(line))
+        .join('\n');
+      return [...code.matchAll(/templateSlug:\s*'([^']+)'/g)].map((m) => ({
+        file: path.relative(REPO, file),
+        slug: m[1]!,
+        keys: new Set([
+          ...(pkg ? packageKeys : []),
+          ...(lambda ? lambdaKeys : []),
+        ]),
+      }));
+    },
+  );
+
+  it('finds the callers, so an empty result means clean and not unread', () => {
+    expect(lambdaKeys.size).toBeGreaterThan(10);
+    expect(calls.length).toBeGreaterThan(20);
+  });
+
+  it('names no slug its executor cannot load', () => {
+    const unregistered = calls
+      .filter((call) => !call.keys.has(call.slug))
+      .map((call) => `${call.file}: '${call.slug}'`);
+
+    expect(unregistered).toEqual([]);
   });
 });

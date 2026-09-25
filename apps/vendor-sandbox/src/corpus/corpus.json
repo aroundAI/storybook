@@ -394,5 +394,13 @@
     "Mystery episodes earn more shares than slice-of-life ones of the same length.",
     "Thumbnails with a character's face outperform wide landscape frames.",
     "Captions in the viewer's language lift completion on longer episodes."
+  ],
+  "events": [
+    "the Harbor Lights festival",
+    "the town hall vote on the ferry route",
+    "the lighthouse centenary",
+    "the spring regatta",
+    "the reopening of the paper mill",
+    "the night market on Canal Road"
   ]
 }

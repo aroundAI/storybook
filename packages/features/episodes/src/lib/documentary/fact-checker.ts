@@ -131,7 +131,7 @@ export async function runFactCheck(
 
   // Run fact-checker LLM
   const result = await executeLLM<FactCheckLLMResponse>({
-    templateSlug: 'fact-checker-role',
+    templateSlug: 'documentary/fact-checker-role',
     variables: {
       content: sanitizeForPrompt(content),
       verified_facts: sanitizeForPrompt(verifiedFactsText),

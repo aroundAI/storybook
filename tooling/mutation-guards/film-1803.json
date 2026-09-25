@@ -22,14 +22,14 @@
       "pattern": "story-ideation"
     },
     {
-      "name": "Sandbox: KNOWN_BROKEN stays quiet when KB-106 is fixed",
+      "name": "Sandbox: KNOWN_BROKEN stays quiet when KB-107 is fixed",
       "kind": "unit",
-      "file": "packages/features/prompt-engine/src/lib/server/prompt-loader.ts",
-      "find": "  const systemPrompt = template.system_prompts\n",
-      "replace": "  const systemPrompt = (template.system_prompts ?? [{ slug: '', name: '', content: (template as unknown as { system_prompt: string }).system_prompt, layer_type: '', scope: '', order: 0 }])\n",
+      "file": "packages/features/prompt-engine/src/lib/server/llm-executor.ts",
+      "find": "      if (!Array.isArray(value)) {\n        throw new Error(`Value for key \"${wrapperKey}\" is not an array`);\n      }\n",
+      "replace": "",
       "cwd": "apps/vendor-sandbox",
       "test": "__tests__/every-prompt.test.ts",
-      "pattern": "news-generation/topic-summary"
+      "pattern": "canon-extraction"
     },
     {
       "name": "Sandbox: one group of a prompt's text is enough to claim it",

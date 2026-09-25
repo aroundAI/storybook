@@ -164,20 +164,14 @@ const anchor = z.object({
 /** `news-generation/entity-extraction` → `lib/server/services/entity-extractor.ts`. */
 const entities = z.object({
   people: z.array(z.object({ name: z.string(), role: z.string().optional() })),
-  organizations: z
-    .array(z.object({ organization: z.string(), type: z.string().optional() }))
-    .transform((items) =>
-      items.map(({ organization, type }) => ({ name: organization, type })),
-    ),
+  organizations: z.array(
+    z.object({ name: z.string(), type: z.string().optional() }),
+  ),
   locations: z.array(
     z.object({ name: z.string(), type: z.enum(['city', 'country', 'region']) }),
   ),
   topics: z.array(z.string()),
-  events: z
-    .array(z.object({ event: z.string(), date: z.string().optional() }))
-    .transform((items) =>
-      items.map(({ event, date }) => ({ name: event, date })),
-    ),
+  events: z.array(z.object({ name: z.string(), date: z.string().optional() })),
 });
 
 /** `news-generation/producer-role` → `lib/server/services/producer-service.ts` (EpisodeRundown). */

@@ -1,0 +1,55 @@
+{
+  "feature": "KB-106",
+  "mutations": [
+    {
+      "name": "a prompt file goes back to the format the loader cannot read",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/prompts/news-generation/topic-summary.json",
+      "find": "    \"system_prompts\": [",
+      "replace": "    \"system_prompt_parts\": [",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/prompt-format.test.ts",
+      "pattern": "renders through the real loader"
+    },
+    {
+      "name": "the format test accepts a file the loader cannot read",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/prompts/news-generation/topic-summary.json",
+      "find": "    \"system_prompts\": [",
+      "replace": "    \"system_prompt_parts\": [",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/prompt-format.test.ts",
+      "pattern": "fields the loader reads"
+    },
+    {
+      "name": "a prompt without variables",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/prompts/movie/act-context-extraction.json",
+      "find": "    \"variables\": {",
+      "replace": "    \"variables_unused\": {",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/prompt-format.test.ts",
+      "pattern": "renders through the real loader"
+    },
+    {
+      "name": "a caller names a slug no registry holds",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/documentary/fact-checker.ts",
+      "find": "    templateSlug: 'documentary/fact-checker-role',",
+      "replace": "    templateSlug: 'fact-checker-role',",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/prompt-format.test.ts",
+      "pattern": "names no slug"
+    },
+    {
+      "name": "the slug scan reads examples in comments as calls",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/__tests__/prompt-format.test.ts",
+      "find": "      .filter((line) => !/^\\s*(\\*|\\/\\/)/.test(line))\n",
+      "replace": "",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/prompt-format.test.ts",
+      "pattern": "names no slug"
+    }
+  ]
+}

@@ -35,7 +35,7 @@ acceptance_criteria:
     evidence: "every-prompt.test.ts — ajv against the prompt's own schema, through both executors"
   - text: "Each of the 9 schema-less prompts has a template, and its output parses through the app's path"
     met: false
-    reason: "all nine have templates (apps/vendor-sandbox/src/llm/generate/templates.ts) and dialogue-translation parses through both executors, but the app's own path cannot carry the other eight: KB-106 (they cannot be rendered) and, behind it, KB-107 (four wrapper_key prompts). They are KNOWN_BROKEN in every-prompt.test.ts, which fails when either is fixed"
+    reason: "all nine have templates (apps/vendor-sandbox/src/llm/generate/templates.ts); five (dialogue-translation and the four news-generation prompts) parse through the app's path since KB-106 was fixed. The four wrapper_key prompts cannot, whatever the reply: KB-107. They are KNOWN_BROKEN in every-prompt.test.ts, which fails when KB-107 is fixed"
   - text: "An unrecognised prompt is answered and logged as unrecognised, never silently"
     met: true
     evidence: "apps/vendor-sandbox/__tests__/coverage.test.ts — 200 '{}', ledger identified: unrecognised, a warning starting UNRECOGNISED PROMPT"
@@ -62,8 +62,8 @@ remaining:
     reason: "local-env.sh wiring and the live run with an egress guard"
     closed_by: "FILM-1803"
   - criterion: "Each of the 9 schema-less prompts has a template, and its output parses through the app's path"
-    reason: "eight of the nine fail in the app's own loader and executor"
-    closed_by: "KB-106; KB-107"
+    reason: "the four wrapper_key prompts fail in the app's own executor"
+    closed_by: "KB-107"
   - criterion: "The nine studio orchestrators run to success against the sandbox"
     reason: "agent-protocol driver not built yet"
     closed_by: "FILM-1803"
@@ -128,7 +128,8 @@ notes: |
   - KB-106: eight prompt files use a bare `system_prompt` string, and the
     package loader reads only `system_prompts[]`, so those eight throw before
     any LLM call - canon validation, the news services, the documentary roles
-    and the act-context bridge.
+    and the act-context bridge. Fixed: the files now use `system_prompts[]`,
+    and prompt-format.test.ts renders every prompt through the real loader.
   - KB-107: behind it, four wrapper_key prompts are unwrapped by executeLLM
     only when the value is an array, while every caller reads an object.
 
@@ -162,7 +163,7 @@ notes: |
   | Ideation | generateStoryIdeasAction | queueLlmJob('story-ideation') → llm-worker story-ideation → runIdeationOrchestrator | Gemini | Enqueued |
   | Story | generateFullStoryAction | queueLlmJob('story-generation') → runStoryOrchestrator | Gemini | Enqueued |
   | Story | refineStoryAction | queueLlmJob → story-refinement handler | Gemini | Enqueued |
-  | Story | validateContentInlineAction | executeLLM('canon-extraction') | Gemini | Inline (fails today: KB-106) |
+  | Story | validateContentInlineAction | executeLLM('canon-extraction') | Gemini | Inline (fails today: KB-107) |
   | Screenplay | convertToScreenplayAction | queueLlmJob → runScreenplayOrchestrator | Gemini | Enqueued |
   | Shot list | generateShotListAction | queueLlmJob → runShotOrchestrator | Gemini | Enqueued |
   | Audio cues | generateAudioCuesAction, generateAudioForCueAction | queueLlmJob → audio-cue-generation / audio-file-generation | Gemini, ElevenLabs | Enqueued |
