@@ -1,0 +1,10 @@
+{
+  "extends": "@kit/tsconfig/base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "types": ["node"],
+    "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
+  },
+  "include": ["playwright.config.ts", "tests/**/*.ts"],
+  "exclude": ["node_modules", "test-results", "playwright-report"]
+}

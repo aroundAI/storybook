@@ -19,7 +19,7 @@ const capture = process.env.CAPTURE_EVIDENCE === '1';
 test('the create-project form creates a project, then refuses the same name', async ({
   page,
 }) => {
-  const team = await seedTeamAccount('kb58-create');
+  const team = await seedTeamAccount({ emailPrefix: 'kb58-create' });
   const name = `Night Ferry ${uniqueStamp()}`;
 
   await signInAs(page, team);
