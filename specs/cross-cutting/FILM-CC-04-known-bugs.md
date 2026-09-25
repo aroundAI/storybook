@@ -2463,7 +2463,7 @@ is public; decide whether viewers see emails.
 ## KB-42 — Any signed-in user can read any account's budget status
 
 **Severity:** Low — one boolean and an existence oracle. **Found:** KB-27's
-class sweep, 2026-09-23. **Open.**
+class sweep, 2026-09-23. **Fixed** in #346 (see *Fixed*).
 
 `check_account_budget`
 (`apps/web/supabase/migrations/20251211090557_add-account-budget-tracking.sql:57`,
@@ -2485,8 +2485,25 @@ for "no such account" as for "not yours".
 
 ### Acceptance criteria
 
-- [ ] pgTAP, red first: a stranger is refused for another account and for a non-existent id alike; a member gets the answer
-- [ ] Voice generation's budget check still passes for a member
+- [x] pgTAP, red first: a stranger is refused for another account and for a non-existent id alike; a member gets the answer — `apps/web/supabase/tests/database/account-budget-access.test.sql` (red on `main`: 2 of 10 ran, both failed — `true` for another account, and `Account not found` raised for an unknown id)
+- [x] Voice generation's budget check still passes for a member — the three callers (`voice-actions.ts:182`, `:665`, `batch-actions.ts:268`) use the session client for an account the caller reached through RLS; the member cases (within and over budget) are in the same file
+
+### Fixed (#346)
+
+`20260924223914_kb60-kb42-account-exposure.sql` replaces the function. It
+answers only a caller with `has_account_access(p_account_id)`, or the service
+role, and returns `false` to anyone else, for "not yours" and "no such
+account" alike. It returns `false` rather than raising because the caller
+(`voice-queries.ts:67-72`) lets generation through when the RPC errors. That
+fail-open is recorded as a lead, not changed here. Mutation guards:
+`tooling/mutation-guards/kb-60-42-59.json`.
+
+The first version of the fix still answered a stranger, and the pgTAP case
+caught it. `auth.role()` is NULL when the claims carry no `role`,
+`false or NULL = 'service_role'` is NULL, and `if not NULL` does not refuse.
+The role is now coalesced. A case with no role claim and a case with
+PostgREST's `authenticated` role pin both, and a mutation removing the
+coalesce goes red.
 
 ---
 
@@ -3226,15 +3243,82 @@ which FILM-607 is retiring.
 policy there is `to authenticated`, so `set role myfriends` sees 0
 connection rows (and 0 `accounts`). It is not a way around KB-43. Nothing
 was changed.
+**Reconfirmed (owner, 2026-09-24):** keep it as it is, and add only a CI guard. **Guarded** in #346; the role is unchanged, so the entry stays open.
+
+### Measured (local database, 2026-09-24, logged in as `myfriends` with the committed password)
+
+| Question | Answer |
+|---|---|
+| Can it log in? | Yes. `rolcanlogin` true; not superuser, no BYPASSRLS, no CREATEROLE |
+| Relations it can `SELECT` | 91, by the migration's grant and its `ALTER DEFAULT PRIVILEGES` (so every future public table too) |
+| Rows it can see | **0 in all 91** (a DO-block `count(*)` over each). No public table has RLS off, and the only policies that reach it (`TO public`: `audio_cues`, `verified_facts`) test the caller, who is nobody for a direct login |
+| SECURITY DEFINER functions it can run | 0, in any schema |
+| `auth` tables | USAGE on the schema, SELECT on none |
+
+So "can read every public table" is not true today: it reads nothing, and only
+because every table has RLS. A table shipped without RLS would be readable by
+it the same day, through the default privileges. Whether the role exists in
+production has not been checked: that needs production credentials. The owner
+can run `select rolname, rolcanlogin from pg_roles where rolname = 'myfriends'`.
+Found alongside it: `net.http_delete` is executable by every role (see *Leads*).
+
+### Guard (#346)
+
+`apps/web/supabase/tests/database/readonly-viewer-reach.test.sql` fails if the
+role gains an attribute, if a public relation it can read is neither an RLS
+table nor a `security_invoker` view (`public_accounts`, KB-60, is the one
+reviewed exception), if a SELECT policy reaches it without testing the caller,
+or if it can run a definer function in `public` or `kit`. The last three checks
+were seen red by `tooling/mutation-guards/kb-60-42-59.json`: a new table
+without RLS, a `TO public using (true)` policy, and a definer function granted
+to PUBLIC. The role-attribute check was not mutated, because altering a role's
+attributes in a test was not shown to be permitted to `postgres` here.
 
 ---
 
 ## KB-60 — "Allow public read of public accounts" exposes every column, including email
 
-**Found:** KB-41 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
-**Open.**
+**Found:** KB-41 (2026-09-23). **Filed by the lead from the teammate's report; reproduced 2026-09-24.**
+**Fixed** in #346 (see *Fixed*).
 
 The "Allow public read of public accounts" policy exposes every column of a public personal account, including its email. Low.
+
+### Reproduced (local database, 2026-09-24, rolled-back transaction, a stranger's claims with `aal1`)
+
+| Read, as a signed-in user with no role on the account | Result |
+|---|---|
+| `select id, email, primary_owner_user_id, monthly_budget_cents, current_usage_cents from accounts where id = <public personal account>` | 1 row, with the owner's email and user id |
+| `select count(*) from accounts where email is not null and public_profile->>'is_public' = 'true'` | 1: the emails are enumerable |
+
+The same read with no `aal` claim returns nothing, because the restrictive
+`restrict_mfa_accounts` policy refuses it. A real password session carries
+`aal1`, so tests must set it (the makerkit helper does).
+
+### Who reads public accounts (listed before the fix)
+
+- `packages/features/public-sharing/src/server/public-queries.ts`:
+  `getPublicCompany` (`id, name, slug, picture_url, public_profile`), the
+  `account:accounts!inner(id, name, slug)` embeds of `getPublicProject`,
+  `getPublicProjects`, `getPublicEpisode` and `getPublicEpisodes`, and
+  `getSitemapData` (`slug, updated_at`, and embeds `slug`).
+- Their callers: `apps/web/app/(public)/[...slug]/page.tsx` and `apps/web/app/sitemap.ts`.
+- Every other read of `accounts` is by a member of the account.
+- Readers today are signed-in users only: logged-out visitors are refused at
+  the schema before any policy runs (KB-88).
+
+### Fixed (#346)
+
+`20260924223914_kb60-kb42-account-exposure.sql` drops the policy and adds
+`public.public_accounts`. This view returns `id, name, slug, picture_url,
+public_profile, updated_at` for team accounts whose profile is public, and
+nothing else. It runs with its owner's rights, so its columns and `WHERE` are
+the whole exposure. It is `security_barrier` and read only: a simple view is
+automatically updatable, and this one would update `accounts` past its RLS.
+The public queries read the view (`public-queries.ts`: seven places). A
+signed-in stranger now reads no row of anyone else's account from `accounts`.
+
+- [x] pgTAP, red first: a stranger reads nothing of a public team, a private team or a public personal account from `accounts`; the view has exactly its six columns and rows; it cannot be written; members still read their own email — `apps/web/supabase/tests/database/public-accounts-exposure.test.sql` (red on `main`: tests 1, 2, 5, 6, 7 failed — both emails read, the extra policy present, the view missing)
+- [x] The public company, project and episode pages still render for a signed-in stranger, and a private team is still a 404 — `apps/e2e/tests/public-sharing/public-pages.spec.ts` (screenshots in the PR). Green on a dev server and on a production build (`build:test` + `next start`). On `main` it fails first at the raw read: the stranger gets the team's email back through the API
 
 ---
 
@@ -4235,6 +4319,51 @@ voice and nothing else.
 
 ---
 
+## KB-88 — Public sharing pages are a 404 for anyone not signed in
+
+**Severity:** Medium — no data is exposed, but the feature does not work for
+its audience. Every `/@company` page, and the project and episode pages under
+it, is a 404 to a visitor who is not signed in, and so to search engines; the
+sitemap has no public URLs for them either. **Found:** KB-60's planning,
+2026-09-24. **Open** — scheduled by the lead, not fixed in the KB-60 PR.
+
+`anon` has no USAGE on schema `public`: the baseline grants it only to
+`authenticated` and `service_role` (`20221215192558_schema.sql:77-80`), and no
+later migration grants it. So PostgREST refuses every anonymous read before
+any policy runs, including the `TO anon` public-read policies on `projects`
+and `episodes` (`20260108120000_public_sharing_rls.sql`). The public queries
+turn any error into `null`, so the page calls `notFound()`. This contradicts
+`specs/PRD-public-sharing.md` ("Basic rendering without auth").
+
+### Reproduced (local stack, 2026-09-24)
+
+| Request | Result |
+|---|---|
+| `GET /rest/v1/accounts?select=id,name,slug&public_profile->>is_public=eq.true` with the anon key | `401 {"code":"42501","message":"permission denied for schema public"}` |
+| `select count(*) from public.accounts` as `anon` (SQL) | `ERROR: permission denied for schema public` |
+| A public team (`public_profile.is_public`, a public project and a released episode, seeded by `apps/e2e/tests/public-sharing/public-pages.spec.ts`), opened **signed in** as a stranger on a production build (`build:test` + `next start`) | `200`, the company page renders |
+| The same `/@<slug>`, **logged out**, same build | `404` |
+| `/sitemap.xml`, same build | the team's slug does not appear |
+
+### Proposed fix
+
+Grant `anon` USAGE on `public` and SELECT on exactly what public pages read:
+`public_accounts` (KB-60 made it; it already holds the grant), and `projects`
+and `episodes` through their public-read policies. First sweep every `anon`
+table grant. `anon` holds every privilege on `accounts`, and a write privilege
+on 64 of the 86 public tables (measured 2026-09-25, on `main` after #338, #342 and #348), by Supabase's defaults.
+Today only the missing schema USAGE hides them, so
+granting USAGE without revoking those first would open writes wherever a
+policy permits them.
+
+### Acceptance criteria
+
+- [ ] pgTAP, red first: `anon` can read the public rows of `public_accounts`, `projects` and `episodes`, and nothing else in `public`; `anon` holds no write privilege on any public table
+- [ ] Playwright, red first: a logged-out visitor sees the company, project and episode pages; `/sitemap.xml` lists them
+- [ ] The PRD's "Basic rendering without auth" line is true of the code
+
+---
+
 ## Fixed
 
 | ID | Bug | Fixed in |
@@ -4294,6 +4423,7 @@ voice and nothing else.
 | KB-23 | A second currency for the same day, scope and category overwrote the first; deleting one would have taken both | #345 |
 | KB-24 | The revenue projection ended at the server's UTC date while entries are dated in the browser's, so east of UTC a just-saved figure projected to 0; its trend split moved with the server's hour | #345 |
 | KB-83 | Voice spend was never counted (the RPC refused the caller's client, and the voice worker never called it), and an account's owner could set its usage to any value directly; usage now moves only through the server | #351 |
+| KB-60, KB-42 | Any signed-in user could read every column of a public account (its email, owner, budget and usage), and ask any account's budget status or whether an id existed; public pages now read a six-column view, and the budget check answers members only. KB-59's test login is guarded, not changed (owner decision) | #346 |
 
 ---
 
@@ -4359,3 +4489,7 @@ proved it wrong. Paths abbreviated with `…/studio/` are under
 - A regenerated story may be generated and checked against the canon it is about to replace: `commitStoryCanon` clears the episode's generated canon only *after* the new story is written (`apps/web/lambda/llm-worker/handlers/story-generation.ts:493`), and the memory builder loads every event of the project (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:149-156`). So the last generation's events for the same episode may feed the continuity context of their own replacement
 - Regenerating re-applies thread *progress* and *resolve* to threads other episodes opened: `version` is bumped again and the resolution is appended to `payoffs` a second time on every regeneration. The KB-78 clear touches only threads the episode opened — `apps/web/lambda/llm-worker/utils/commit-story-canon.ts` (`commitNarrativeThreadsViaLLM`, the `progress` and `resolve` branches)
 - Reset to stage `story` keeps the story and deletes all of its canon, generated and hand-added ("Canon cleanup (same as draft)"), so the story is left with no canon until it is regenerated — `packages/features/episodes/src/server/actions.ts:1987-2023`. canon-rls is moving the single-episode resets onto `bulk_reset_episodes_to_stage` (KB-77); check there
+**Account exposure (from KB-59, KB-60 and KB-42, 2026-09-24)**
+- `net.http_delete` has a NULL ACL, so PUBLIC can execute it, and `net` grants USAGE to PUBLIC. Any role with a direct SQL login, such as KB-59's `myfriends`, can have the database send outbound HTTP DELETE requests. PostgREST does not expose `net`, so only direct logins reach it. Measured locally (pg_net 0.20.4) from the catalog, not called. Production's ACL may differ and has not been checked
+- The voice budget check fails open: any RPC error is logged at warn and the generation proceeds — `packages/features/audio-generation/src/server/voice-queries.ts:67-72`. KB-42 made the RPC return `false` to strangers rather than raise, so its own refusal cannot take this path
+- The public-read policies on `projects` and `episodes` (`20260108120000_public_sharing_rls.sql`) expose every column of a public or unlisted row to any signed-in user, not only what the public pages render. Among them: `projects.created_by`/`updated_by` (user ids), `audio_settings`, `metadata`; `episodes.story_data`, `screenplay_data`, `shot_list`, `metadata`, `viral_quality`, `master_video_asset_id`, and `deleted_at` (soft-deleted episodes of a public project stay readable). `select * from projects where visibility = 'unlisted'` also lists every "link-only" project. The KB-60 shape (a view with the public columns) would fit both; the pages select `*` today, so they need narrowing with it
