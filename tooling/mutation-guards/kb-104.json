@@ -1,0 +1,65 @@
+{
+  "feature": "KB-104",
+  "mutations": [
+    {
+      "name": "A1 the publish action takes any thumbnail again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "          !ownedEpisodeThumbnail(platform.thumbnailUrl, episodeId),",
+      "replace": "          !platform.thumbnailUrl,",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-thumbnail-ownership.test.ts",
+      "pattern": "refuses"
+    },
+    {
+      "name": "A2 a retried publish sends its stored thumbnail unchecked",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "          thumbnailUrl:\n            ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id) ??\n            ownedEpisodeThumbnail(episode.thumbnail_url, publish.episode_id),\n          platformSpecific,",
+      "replace": "          thumbnailUrl: publish.thumbnail_url ?? episode.thumbnail_url,\n          platformSpecific,",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-thumbnail-ownership.test.ts",
+      "pattern": "publish-actions.ts uses ownedEpisodeThumbnail"
+    },
+    {
+      "name": "C1 the scheduled-publish cron sends its stored thumbnail unchecked",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/jobs/process-scheduled-publishes.ts",
+      "find": "          thumbnailUrl:\n            ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id) ??\n            ownedEpisodeThumbnail(episode.thumbnail_url, publish.episode_id),\n          platformSpecific: publish.metadata ?? {},",
+      "replace": "          thumbnailUrl: publish.thumbnail_url ?? episode.thumbnail_url,\n          platformSpecific: publish.metadata ?? {},",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-thumbnail-ownership.test.ts",
+      "pattern": "process-scheduled-publishes.ts uses ownedEpisodeThumbnail"
+    },
+    {
+      "name": "W1 the publish worker fetches the job's thumbnail unchecked",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/index.ts",
+      "find": "    const thumbnailUrl = ownedEpisodeThumbnail(job.thumbnailUrl, job.episodeId);",
+      "replace": "    const thumbnailUrl = job.thumbnailUrl;",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-thumbnail-ownership.test.ts",
+      "pattern": "publish-worker/index.ts uses ownedEpisodeThumbnail"
+    },
+    {
+      "name": "P1 a URL on any host counts as the app's own",
+      "kind": "unit",
+      "file": "packages/features/storage/src/public-url.ts",
+      "find": "    if (!withoutQuery.startsWith(base)) {",
+      "replace": "    if (!withoutQuery.includes('/project-assets/')) {",
+      "cwd": "packages/features/storage",
+      "test": "__tests__/public-url.test.ts",
+      "pattern": "refuses"
+    },
+    {
+      "name": "P2 the Supabase public prefix drifts from what the adapter issues",
+      "kind": "unit",
+      "file": "packages/features/storage/src/public-url.ts",
+      "find": "    ? `${withoutTrailingSlash(supabaseUrl)}/storage/v1/object/public/${bucket}/`",
+      "replace": "    ? `${withoutTrailingSlash(supabaseUrl)}/storage/v1/object/${bucket}/`",
+      "cwd": "packages/features/storage",
+      "test": "__tests__/public-url.test.ts",
+      "pattern": "Supabase"
+    }
+  ]
+}

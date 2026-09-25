@@ -12,40 +12,19 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { R2StorageAdapter } from './adapters/r2';
 import { SupabaseStorageAdapter } from './adapters/supabase';
 import {
+  STORAGE_PROVIDERS,
+  type StorageProvider,
+  getStorageProvider,
+} from './public-url';
+import {
   getProviderForContentType,
   getProviderForPath,
   isSmartRoutingEnabled,
 } from './routing';
 import type { StorageAdapter } from './types';
 
-/**
- * The providers `STORAGE_PROVIDER` may name. `scripts/deploy.sh` refuses any
- * other value before a deploy (KB-70); keep its list the same.
- */
-export const STORAGE_PROVIDERS = ['supabase', 'r2'] as const;
-
-export type StorageProvider = (typeof STORAGE_PROVIDERS)[number];
-
-function isStorageProvider(value: string): value is StorageProvider {
-  return (STORAGE_PROVIDERS as readonly string[]).includes(value);
-}
-
-/**
- * The configured storage provider. Unset means Supabase, as in local dev and
- * CI. Any other value throws: `s3` used to fall back to Supabase silently,
- * though no S3 adapter exists (KB-70).
- */
-export function getStorageProvider(): StorageProvider {
-  const raw = process.env.STORAGE_PROVIDER;
-  if (!raw) return 'supabase';
-
-  const provider = raw.toLowerCase();
-  if (isStorageProvider(provider)) return provider;
-
-  throw new Error(
-    `Unknown STORAGE_PROVIDER "${raw}": expected one of ${STORAGE_PROVIDERS.join(', ')} (KB-70)`,
-  );
-}
+export { STORAGE_PROVIDERS, getStorageProvider };
+export type { StorageProvider };
 
 /**
  * Create a storage adapter for a specific provider

@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { STORAGE_BUCKETS } from './buckets';
+import { isInFolder, keyUnderPrefix } from './public-url';
 import type { StorageAdapter } from './types';
 import { isAudioLibraryPath } from './upload-paths';
 
@@ -20,29 +21,10 @@ export function storageKeyFromPublicUrl(
   url: string,
 ): string | null {
   try {
-    const base = storage.getPublicUrl(bucket, '');
-    const prefix = base.endsWith('/') ? base : `${base}/`;
-    const withoutQuery = url.split(/[?#]/)[0] ?? '';
-
-    if (!withoutQuery.startsWith(prefix)) {
-      return null;
-    }
-
-    const key = decodeURI(withoutQuery.slice(prefix.length));
-
-    if (!key || key.split('/').some((part) => part === '' || part === '..')) {
-      return null;
-    }
-
-    return key;
+    return keyUnderPrefix(storage.getPublicUrl(bucket, ''), url);
   } catch {
     return null;
   }
-}
-
-/** Whether `key` lies inside `folder`, read as a folder: `a/b` holds `a/b/c`, not `a/bc` */
-function isInFolder(key: string, folder: string) {
-  return key.startsWith(folder.endsWith('/') ? folder : `${folder}/`);
 }
 
 /**
