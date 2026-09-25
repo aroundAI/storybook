@@ -294,6 +294,13 @@ requireAffectedRows(
   `.update({ deleted_at })` without a `.select()`. The exceptions (service
   role, cleanup nobody sees, replace-sets, cascades) are listed there with
   their reason.
+- **Plain updates too (KB-105).** An update whose success is shown, or that
+  gates a paid call or a queued job, follows the same rule.
+  `__tests__/kb105-unchecked-updates.test.ts` fails on any unchecked
+  `.update()` not listed there with its reason. Upserts are exempt: one that
+  RLS refuses raises instead of being filtered. In client code, import the
+  helper from `@kit/next/affected-rows` (`@kit/next/refusals` is
+  `server-only`).
 
 ### Server Actions with Error Handling
 
