@@ -137,6 +137,16 @@ FILM-1610 (#264) already fixed the same defect on
 
 ## KB-2 — `scripts/deploy.sh` deploys even when migrations fail
 
+> **Fixed (2026-09-24), #349.** It failed open at five points, not three: also
+> with no `SUPABASE_PROJECT_REF` (it skipped migrations and deployed), and when
+> a ClickHouse migration failed ("continuing deployment without ClickHouse").
+> Each now stops before the build with `❌ … — not deploying`;
+> `DEPLOY_SKIP_MIGRATIONS=1` skips migrations deliberately and says so.
+> Reproduced by running the script: `packages/shared/__tests__/deploy-fail-closed.test.ts`
+> runs it under bash with stubbed `aws`/`pnpm`/`supabase`/`npx` and an empty
+> environment; on `main` all five cases exited 0 and called
+> `pnpm sst deploy`. Mutation guards `tooling/mutation-guards/kb-2.json`.
+
 **Severity:** Low — deploys work today (`pnpm deploy:production`), and the
 risk is only on a failed migration. **Found:** FILM-1610 review, round 3.
 
@@ -239,6 +249,16 @@ rationed.
 
 ## KB-4 — `config.toml` still points `db diff` at `schemas/`
 
+> **Fixed (2026-09-24), #349.** The proposed fix below would have done nothing:
+> with no `schema_paths`, CLI 2.117.0 walks `supabase/schemas/` by default
+> (`internal/db/diff/diff.go`, `loadDeclaredSchemas`), which is where ours
+> lives. `schema_paths` is also read by `db reset --experimental`, which builds
+> from it instead of `migrations/`. It now names a glob that matches nothing,
+> so `db diff` stops with "no files matched pattern"; the database is built
+> from `migrations/` as before. Guard:
+> `packages/shared/__tests__/local-supabase-config.test.ts` (red on `main`: the
+> glob matched 50 files). Not proved by running `db diff`, by rule.
+
 **Severity:** Low. **Found:** the `db diff` removal (#265).
 
 `apps/web/supabase/config.toml` sets `schema_paths = ["./schemas/*.sql"]`.
@@ -253,6 +273,13 @@ reads it.
 ---
 
 ## KB-5 — README gives the wrong local Supabase ports
+
+> **Fixed (2026-09-24), #349.** Also stale:
+> `apps/web/content/documentation/authentication/configuration.mdoc` (InBucket
+> on 54324) and, in code, `packages/mcp-server/src/tools/database.ts`, whose
+> database tool defaulted to `127.0.0.1:54322`. A guard in
+> `packages/shared/__tests__/local-supabase-config.test.ts` fails any local
+> 54xxx/55xxx port in docs or dev tooling that `config.toml` does not set.
 
 **Severity:** Low. **Found:** the `db diff` removal (#265).
 
@@ -3525,6 +3552,21 @@ The SSRF guard in `ffmpeg-render.ts` (`:166-170`) proceeded when its DNS lookup 
 
 ## KB-70 — `STORAGE_PROVIDER=s3` in the config templates silently means Supabase
 
+> **Fixed (2026-09-24), #349.** Owner decision (2026-09-24): production and
+> staging store on R2, and the code supports exactly `r2` and `supabase`.
+> `getStorageProvider()` accepts those two, treats unset as `supabase` (local
+> dev and CI) and throws on anything else (`s3`, `local`, `b2`). It reached
+> every deploy, not only template ones: `sst.config.ts` defaulted
+> `STORAGE_PROVIDER` to `'s3'`; it now defaults to `'r2'`. `scripts/deploy.sh`
+> refuses an unknown value before migrating or building. The root templates
+> and every doc that set `s3` now say `r2`. `@kit/storage`'s tests were not in
+> `scripts/test-units.sh`, so they never ran in CI; they do now.
+>
+> **For the owner:** confirm the deployed `STORAGE_PROVIDER` is `r2`, and make
+> the same one-line edit (`STORAGE_PROVIDER=s3` → `STORAGE_PROVIDER=r2`) in
+> `deployment/config/production.env.example:55`, `staging.env.example:54` and
+> `tailorist.env.example:58` in the config submodule.
+
 **Severity:** Low. It bites only a deploy made from a template, but then
 without warning. **Found:** KB-38 (2026-09-23), by reading. **Open.**
 
@@ -3545,8 +3587,8 @@ store every upload in Supabase Storage and log nothing.
 
 ### Acceptance criteria
 
-- [ ] Unit, red first: `getStorageProvider()` rejects `s3` and any other unknown value
-- [ ] No template sets a provider the factory does not know
+- [x] Unit, red first: `getStorageProvider()` rejects `s3` and any other unknown value — `packages/features/storage/__tests__/storage-provider.test.ts` (8 of 14 red on `main`)
+- [x] No template sets a provider the factory does not know — same file; the three submodule templates are the owner's edit above
 
 ---
 
@@ -4041,8 +4083,18 @@ voice-worker and both story handlers) and marked met; mutation guards
 
 ## KB-81 — `path:line` citations in specs drift when code moves
 
-**Found:** KB-80 (2026-09-23). **Filed by the lead from the teammate's report; not reproduced here.**
-**Open.**
+> **Fixed (2026-09-24), #349.** Much larger than recorded. Of 958 citations in
+> the non-retired specs, **193 had moved and 10 pointed at lines whose text had
+> changed** (four of those already off by one, at a blank line, when #307
+> wrote them). `packages/shared/__tests__/spec-citation-drift.test.ts` now
+> dates each citation by the commit that last wrote its spec line
+> (`git blame`) and follows the cited line from there to the working tree
+> (`git diff -U0`), failing on any that moved, changed, vanished or run past
+> its file. `pnpm specs:citations --fix` rewrote the 193 exactly; the 10 were
+> re-read by hand. `audited:` dates were not bumped — a line-number fix is not
+> a re-audit. Mutation guards `tooling/mutation-guards/kb-81.json`.
+
+**Found:** KB-80 (2026-09-23).
 
 Spec `evidence` and `reason` citations name a `path:line`, and nothing checks them: when code moves, they point at the wrong line (FILM-502 and FILM-503 after #309, where about 15 shifted). A citation checker would close it.
 
@@ -4655,6 +4707,7 @@ account; a pgTAP test for a user in both accounts and for an outsider.
 | KB-7 | The Change log had no way to edit, abandon or delete an entry; delete is now allowed only while planned or abandoned, by the table as well | #352 |
 | KB-8 | A baseline never picked up the days that had not arrived at the start; it is measured again at conclusion and both are shown | #352 |
 | KB-93 | A Change log entry accepted a tag from another account, for a user in both | #352 |
+| KB-2, KB-4, KB-5, KB-70, KB-81 | `deploy.sh` deployed when migrations failed; `db diff` could still read the partial `schemas/`; docs and the MCP tool named old local ports; `STORAGE_PROVIDER=s3` (templates and the SST default) silently meant Supabase; 203 spec citations pointed at moved or changed code | #349 |
 
 ---
 
@@ -4708,6 +4761,13 @@ proved it wrong. Paths abbreviated with `…/studio/` are under
 - *(Found while fixing KB-30, 2026-09-24.)* Project and episode publishing defaults are saved and never applied: project settings and the platforms page write `project_publishing_configs` (default tags, title suffix, description template, enabled) and `episode_publishing_configs`, and nothing on the publish path reads either — checked with a plain `grep -r` over `…/studio/episodes/`, `publish-actions.ts` and `src/jobs/`, with a positive control — `packages/features/publishing/src/server/project-publishing-actions.ts`, `episode-publishing-actions.ts`
 - *(Found while fixing KB-30.)* A real YouTube playlist id is refused: `playlistIds` is validated as `z.array(z.string().uuid())`, and YouTube playlist ids are not UUIDs — `packages/features/publishing/src/lib/schemas/publish.schema.ts:24`
 - *(Found while fixing KB-30.)* A YouTube upload's privacy depends on which path sends it: an immediate publish and a retry are always `public`; the in-app scheduled-publish cron sends `metadata.privacy`, else **`private`**; the SST scheduled-publish lambda sends `metadata.privacy`, else `public`. Nothing sets `metadata.privacy`, so a scheduled publish processed by the in-app cron would go up private — `packages/features/publishing/src/jobs/process-scheduled-publishes.ts` (`uploadToPlatform`), `apps/web/lambda/publish-worker/handlers/youtube.ts:41`. Which scheduler runs in production decides whether this bites; KB-30 kept each path's behaviour as it was
+
+**Infrastructure and records (2026-09-24, from KB-2/KB-70/KB-81)**
+- `scripts/deploy.sh` hides `apps/web/.env.local` as `.env.local.bak` during the build and restores it after; a failed build exits (`set -e`) before the restore, leaving it hidden — `scripts/deploy.sh`, "Build Application"
+- `apps/web/lib/infrastructure/` is a second provider parser (`s3`, `cognito`, …) that nothing outside its own test calls — `apps/web/lib/infrastructure/config.ts:21`
+- CLAUDE.md's "Vendor Agnosticism" describes `@kit/providers-*` packages that do not exist (`ls packages`), and the templates set other providers (`cognito`, `sendgrid`, `bullmq`) that may be as unimplemented as `s3` was — the KB-70 class for other `*_PROVIDER` variables
+- With `STORAGE_PROVIDER` limited to `r2` and `supabase`, local-filesystem storage cannot be selected: `apps/web/app/api/storage/[...path]/route.ts` and the `=== 'local'` branch in `apps/web/app/api/projects/[projectId]/shots/[shotId]/upload/route.ts` are dead, as is smart routing (`isSmartRoutingEnabled`, `STORAGE_PROVIDER=smart|auto`, whose adapters have no caller) — `packages/features/storage/src/routing.ts`
+- FILM-1004's "Prioritizes content by scoring algorithm" says `calculatePriority` is never called; since #325 `rankByPriority` calls it (`packages/features/episodes/src/lib/canon/memory-strategies.ts:318`), so the criterion needs re-grading
 
 **Facts, news and the rest**
 - Fact search passes raw input to `to_tsquery`, so a trailing space likely breaks the page, and the claim query cannot use its full-text index — `packages/features/episodes/src/server/fact-actions.ts:298`
