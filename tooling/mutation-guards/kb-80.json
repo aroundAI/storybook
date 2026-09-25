@@ -22,14 +22,44 @@
       "pattern": "no open item waits"
     },
     {
-      "name": "M3 A KB marked Fixed in its entry loses its Fixed-table row",
+      "name": "M3 A KB whose entry says Fixed goes back to open in its front matter",
       "kind": "unit",
-      "file": "specs/cross-cutting/FILM-CC-04-known-bugs.md",
-      "find": "| KB-14 | The lambdas were not typechecked",
-      "replace": "| — | The lambdas were not typechecked",
+      "file": "specs/known-bugs/KB-14.md",
+      "find": "id: KB-14\ntitle: \"The lambdas are not typechecked\"\nstatus: fixed\n",
+      "replace": "id: KB-14\ntitle: \"The lambdas are not typechecked\"\nstatus: open\n",
+      "cwd": "packages/shared",
+      "test": "__tests__/known-bugs-register.test.ts",
+      "pattern": "every file is a valid entry"
+    },
+    {
+      "name": "M4 A fixed KB loses the PR it was fixed in",
+      "kind": "unit",
+      "file": "specs/known-bugs/KB-14.md",
+      "find": "fixed_in: [\"#309\"]\n",
+      "replace": "fixed_in: []\n",
+      "cwd": "packages/shared",
+      "test": "__tests__/known-bugs-register.test.ts",
+      "pattern": "every file is a valid entry"
+    },
+    {
+      "name": "M5 A KB file carries another KB's id",
+      "kind": "unit",
+      "file": "specs/known-bugs/KB-14.md",
+      "find": "---\nid: KB-14\n",
+      "replace": "---\nid: KB-15\n",
+      "cwd": "packages/shared",
+      "test": "__tests__/known-bugs-register.test.ts",
+      "pattern": "every file is a valid entry"
+    },
+    {
+      "name": "M6 The records guard stops reading fixed from the front matter",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/known-bugs/register.ts",
+      "find": "      .filter((bug) => bug.status === 'fixed')\n      .map((bug) => [\n",
+      "replace": "      .filter(() => false)\n      .map((bug) => [\n",
       "cwd": "packages/shared",
       "test": "__tests__/spec-closed-by-drift.test.ts",
-      "pattern": "Fixed-table row"
+      "pattern": "no open item waits"
     }
   ]
 }

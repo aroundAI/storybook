@@ -66,8 +66,8 @@ jobs:
           echo "$result" >> "$GITHUB_OUTPUT"
 
       # A push that changed only prose since a green run keeps that run's
-      # verdict for the code: typically a rebase whose one conflict was a row
-      # appended to specs/cross-cutting/FILM-CC-04-known-bugs.md. It applies
+      # verdict for the code: typically a rebase whose one conflict was in the
+      # records (specs/INDEX.md, a specs/known-bugs/ file). It applies
       # only when all three hold, and anything else runs the full suite:
       #   1. the previous head can be fetched;
       #   2. the PR's code patch (its diff from the merge-base, non-docs paths
