@@ -3,6 +3,27 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 
 select plan(8);
 
+-- KB-99: the product is team accounts only; someone working alone is a team
+-- of one. A fixture that used to sit on a user's personal account sits on a
+-- team that user owns instead, with the owner membership a team always has.
+create function pg_temp.solo_team(identifier text) returns uuid
+language plpgsql security definer as $$
+declare
+  team uuid := md5('kb99-solo:' || identifier)::uuid;
+begin
+  insert into public.accounts (id, name, is_personal_account, primary_owner_user_id)
+  values (team, identifier || ' (team of one)', false, tests.get_supabase_uid(identifier))
+  on conflict (id) do nothing;
+
+  insert into public.accounts_memberships (user_id, account_id, account_role)
+  values (tests.get_supabase_uid(identifier), team, 'owner')
+  on conflict do nothing;
+
+  return team;
+end;
+$$;
+grant execute on function pg_temp.solo_team(text) to authenticated;
+
 -- KB-52's class guard. The defect was one policy written with no FOR and no
 -- TO clause and a constant-true expression: it read like a service-role
 -- policy and applied to every role. service_role bypasses RLS, so a
@@ -80,7 +101,7 @@ select set_config('kb52.shape_owner', tests.get_supabase_uid('kb52_shape_owner')
 
 insert into public.social_posts (id, account_id, raw_notes, created_by)
 values ('52000000-0000-4000-8000-0000000000a1',
-        current_setting('kb52.shape_owner')::uuid, 'kb52 shape probe',
+        pg_temp.solo_team('kb52_shape_owner'), 'kb52 shape probe',
         current_setting('kb52.shape_owner')::uuid);
 
 insert into public.nonces (id, client_token, nonce, user_id, purpose, expires_at)
@@ -92,7 +113,7 @@ select makerkit.authenticate_as('kb52_shape_owner');
 select is(
   (select count(*)::int from public.social_posts where id = '52000000-0000-4000-8000-0000000000a1'),
   1,
-  'social_posts: the personal account owner still reads their own post'
+  'social_posts: the account owner still reads their own post'
 );
 
 select is(

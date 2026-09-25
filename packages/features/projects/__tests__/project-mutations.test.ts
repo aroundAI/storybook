@@ -1,5 +1,7 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 
+import { readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAuditLog } from '@kit/audit-logs/server';
@@ -13,6 +15,7 @@ import {
   updateProjectAction,
   updateProjectMemberAction,
 } from '../src/lib/server/project.mutations';
+import { TEAM_ONLY } from '../src/lib/team-only';
 
 // Mock dependencies
 vi.mock('@kit/shared/logger', () => ({
@@ -224,6 +227,43 @@ describe('Project Mutations', () => {
       });
       expect(JSON.stringify(result)).not.toContain(
         'projects_account_id_slug_key',
+      );
+    });
+
+    // KB-99: the product is team accounts only, and the database refuses a
+    // project on a personal account. The person gets the database's own
+    // sentence, as a value, not a redacted throw.
+    it('returns a personal account as the team-only refusal', async () => {
+      mockSingle.mockResolvedValue({
+        data: null,
+        error: {
+          code: '23514',
+          message: TEAM_ONLY,
+          details: 'projects.account_id names a personal account',
+        },
+      });
+
+      const result = await createProjectAction({
+        account_id: ACCOUNT_ID,
+        name: 'Mine',
+        slug: 'mine',
+      });
+
+      expect(result).toEqual({ ok: false, error: TEAM_ONLY });
+    });
+
+    it('says what the migration says', () => {
+      const migrations = path.resolve(
+        __dirname,
+        '../../../../apps/web/supabase/migrations',
+      );
+      const file = readdirSync(migrations).find((name) =>
+        name.endsWith('_kb99-team-account-guard.sql'),
+      );
+
+      expect(file).toBeDefined();
+      expect(readFileSync(path.join(migrations, file!), 'utf8')).toContain(
+        `message = '${TEAM_ONLY}'`,
       );
     });
 

@@ -25,6 +25,7 @@ import {
   UpdateProjectMemberSchema,
   UpdateProjectSchema,
 } from '../schemas/project.schema';
+import { TEAM_ONLY, TEAM_ONLY_CODE } from '../team-only';
 import type {
   AddProjectMemberParams,
   CreateProjectParams,
@@ -77,6 +78,11 @@ const createProject = enhanceAction(
     if (projectError) {
       if (projectError.code === UNIQUE_VIOLATION) {
         throw new ActionRefusal(SLUG_TAKEN);
+      }
+
+      // A personal account (KB-99): the database refuses it, and says why.
+      if (projectError.code === TEAM_ONLY_CODE) {
+        throw new ActionRefusal(TEAM_ONLY);
       }
 
       logger.error({ ...ctx, error: projectError }, 'Failed to create project');

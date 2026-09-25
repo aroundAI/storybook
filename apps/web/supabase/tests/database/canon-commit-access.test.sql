@@ -5,6 +5,27 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 -- instead of reading as a nearly-passing suite.
 select plan(27);
 
+-- KB-99: the product is team accounts only; someone working alone is a team
+-- of one. A fixture that used to sit on a user's personal account sits on a
+-- team that user owns instead, with the owner membership a team always has.
+create function pg_temp.solo_team(identifier text) returns uuid
+language plpgsql security definer as $$
+declare
+  team uuid := md5('kb99-solo:' || identifier)::uuid;
+begin
+  insert into public.accounts (id, name, is_personal_account, primary_owner_user_id)
+  values (team, identifier || ' (team of one)', false, tests.get_supabase_uid(identifier))
+  on conflict (id) do nothing;
+
+  insert into public.accounts_memberships (user_id, account_id, account_role)
+  values (tests.get_supabase_uid(identifier), team, 'owner')
+  on conflict do nothing;
+
+  return team;
+end;
+$$;
+grant execute on function pg_temp.solo_team(text) to authenticated;
+
 -- commit_canon_changes is SECURITY DEFINER, so row-level security does not
 -- apply inside it: every access rule has to be in the function. Before
 -- KB-27 there was none, and any signed-in user could add permanent canon to,
@@ -20,9 +41,7 @@ select plan(27);
 --       the creator trigger); kb27_viewer is a project viewer; kb27_teammate
 --       has no project row until T4b. E is P's episode.
 --   U   team account of kb27_rival, with project PU and episode EU.
---   S   kb27_solo's project on their personal account, episode F. The
---       creator's owner row is the only way a personal-account owner can
---       write: personal accounts have no membership row.
+--   S   kb27_solo's project on their team of one (KB-99), episode F.
 --   kb27_stranger has only a personal account.
 --
 -- Every case uses its own event key and resets E's metadata first, so a
@@ -59,7 +78,7 @@ select makerkit.authenticate_as('kb27_solo');
 set local role postgres;
 
 insert into public.projects (id, account_id, name, status)
-values ('27270000-0000-4000-8000-000000000005', tests.get_supabase_uid('kb27_solo'), 'KB-27 S', 'active');
+values ('27270000-0000-4000-8000-000000000005', pg_temp.solo_team('kb27_solo'), 'KB-27 S', 'active');
 
 insert into public.accounts_memberships (user_id, account_id, account_role)
 values
@@ -210,12 +229,14 @@ select is(
 );
 
 -- ==================================
--- T5: a personal-account owner, on their own project
+-- T5: a team-of-one owner, on their own project
 -- ==================================
 select is(
-  (select count(*) from public.accounts_memberships where account_id = tests.get_supabase_uid('kb27_solo')),
-  0::bigint,
-  'T5 precondition: the personal account has no membership row'
+  (select count(*) from public.accounts_memberships
+    where account_id = pg_temp.solo_team('kb27_solo')
+      and user_id = tests.get_supabase_uid('kb27_solo') and account_role = 'owner'),
+  1::bigint,
+  'T5 precondition: kb27_solo owns their team of one'
 );
 
 select makerkit.authenticate_as('kb27_solo');
@@ -223,7 +244,7 @@ select makerkit.authenticate_as('kb27_solo');
 select lives_ok(
   $$ select public.commit_canon_changes('27270000-0000-4000-8000-000000000005', '27270000-0000-4000-8000-000000000006',
        1, 1, '[{"type":"timeline","eventKey":"t5:solo","description":"personal"}]', 'Solo summary', 0.50) $$,
-  'T5: a personal-account owner commits to their own project'
+  'T5: a team-of-one owner commits to their own project'
 );
 
 set local role postgres;

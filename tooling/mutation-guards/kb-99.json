@@ -46,6 +46,34 @@
       "replace": "          <CreateTeamPrompt />",
       "spec": "tests/platform-connections/connect-failure.spec.ts",
       "grep": "no team lands on create-team"
+    },
+    {
+      "name": "DB1 KB-99 projects lose the team-account guard",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/team-accounts-only.test.sql",
+      "sql": "drop trigger require_team_account on public.projects;"
+    },
+    {
+      "name": "DB2 KB-99 scheduled_reports lose the team-account guard",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/team-accounts-only.test.sql",
+      "sql": "drop trigger require_team_account on public.scheduled_reports;"
+    },
+    {
+      "name": "DB3 KB-99 projects_create admits a personal account owner again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/team-accounts-only.test.sql",
+      "sql": "drop policy projects_create on public.projects; create policy projects_create on public.projects for insert to authenticated with check (exists (select 1 from public.accounts where accounts.id = projects.account_id and primary_owner_user_id = auth.uid() and is_personal_account = true) or public.has_role_on_account(account_id));"
+    },
+    {
+      "name": "U4 KB-99 createProject throws the check violation instead of returning it",
+      "kind": "unit",
+      "file": "packages/features/projects/src/lib/server/project.mutations.ts",
+      "find": "      if (projectError.code === TEAM_ONLY_CODE) {\n        throw new ActionRefusal(TEAM_ONLY);\n      }\n",
+      "replace": "",
+      "cwd": "packages/features/projects",
+      "test": "__tests__/project-mutations.test.ts",
+      "pattern": "team-only refusal"
     }
   ]
 }

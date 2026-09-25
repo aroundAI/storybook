@@ -3,6 +3,27 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 
 select plan(11);
 
+-- KB-99: the product is team accounts only; someone working alone is a team
+-- of one. A fixture that used to sit on a user's personal account sits on a
+-- team that user owns instead, with the owner membership a team always has.
+create function pg_temp.solo_team(identifier text) returns uuid
+language plpgsql security definer as $$
+declare
+  team uuid := md5('kb99-solo:' || identifier)::uuid;
+begin
+  insert into public.accounts (id, name, is_personal_account, primary_owner_user_id)
+  values (team, identifier || ' (team of one)', false, tests.get_supabase_uid(identifier))
+  on conflict (id) do nothing;
+
+  insert into public.accounts_memberships (user_id, account_id, account_role)
+  values (tests.get_supabase_uid(identifier), team, 'owner')
+  on conflict do nothing;
+
+  return team;
+end;
+$$;
+grant execute on function pg_temp.solo_team(text) to authenticated;
+
 -- KB-41. `get_project_members` is SECURITY DEFINER, so row-level security
 -- does not apply inside it, and it checked nothing: any signed-in user got
 -- any project's members with their names and emails, public or private.
@@ -22,12 +43,12 @@ select makerkit.authenticate_as('kb41_owner');
 select public.create_team_account('KB41 Team');
 select set_config('kb41.team', makerkit.get_account_id_by_slug('kb41-team')::text, true);
 
--- P1 public and P2 private on the team; P3 on the owner's personal account.
+-- P1 public and P2 private on the team; P3 on the owner's team of one.
 -- Created as the owner so the creator trigger gives them the owner row.
 insert into public.projects (id, account_id, name, slug, status, visibility)
   values ('41410000-0000-4000-8000-000000000001', current_setting('kb41.team')::uuid, 'Public', 'kb41-public', 'active', 'public'),
          ('41410000-0000-4000-8000-000000000002', current_setting('kb41.team')::uuid, 'Private', 'kb41-private', 'active', 'private'),
-         ('41410000-0000-4000-8000-000000000003', tests.get_supabase_uid('kb41_owner'), 'Personal', 'kb41-personal', 'active', 'private');
+         ('41410000-0000-4000-8000-000000000003', pg_temp.solo_team('kb41_owner'), 'Personal', 'kb41-personal', 'active', 'private');
 
 -- The stranger has a team and a project of their own, so "belongs to some
 -- account" is not mistaken for "belongs to this one".
@@ -63,7 +84,7 @@ select is_empty(
 
 select is_empty(
   $$ select * from public.get_project_members('41410000-0000-4000-8000-000000000003') $$,
-  'A stranger gets nothing for another user''s personal-account project'
+  'A stranger gets nothing for another user''s team-of-one project'
 );
 
 select results_eq(
@@ -98,7 +119,7 @@ select results_eq(
 select results_eq(
   $$ select user_email::text, role::text from public.get_project_members('41410000-0000-4000-8000-000000000003') $$,
   $$ values ('kb41-owner@storybook.dev', 'owner') $$,
-  'A personal account''s owner lists the members of its project'
+  'A team-of-one owner lists the members of its project'
 );
 
 select makerkit.authenticate_as('kb41_mate');

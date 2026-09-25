@@ -5,6 +5,27 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 -- plan mismatch instead of reading as a nearly-passing suite.
 select plan(155);
 
+-- KB-99: the product is team accounts only; someone working alone is a team
+-- of one. A fixture that used to sit on a user's personal account sits on a
+-- team that user owns instead, with the owner membership a team always has.
+create function pg_temp.solo_team(identifier text) returns uuid
+language plpgsql security definer as $$
+declare
+  team uuid := md5('kb99-solo:' || identifier)::uuid;
+begin
+  insert into public.accounts (id, name, is_personal_account, primary_owner_user_id)
+  values (team, identifier || ' (team of one)', false, tests.get_supabase_uid(identifier))
+  on conflict (id) do nothing;
+
+  insert into public.accounts_memberships (user_id, account_id, account_role)
+  values (tests.get_supabase_uid(identifier), team, 'owner')
+  on conflict do nothing;
+
+  return team;
+end;
+$$;
+grant execute on function pg_temp.solo_team(text) to authenticated;
+
 -- Seven canon tables took writes on has_role_on_account: every account
 -- member, project viewers and members with no project row included, while
 -- personal-account owners (no membership row) were shut out. Five had one
@@ -28,9 +49,9 @@ select plan(155);
 --       kb76_teammate have account roles. P, P2, P3 are T's projects:
 --       kb76_member is a member and kb76_viewer a viewer of P; kb76_teammate
 --       has no project row. E and E2 are P's episodes, A its character.
---   S   kb76_solo's personal project (episode F, character AS); S2 their
+--   S   kb76_solo's project on their team of one (episode F, character AS); S2 their
 --       second project, a readable sequel parent.
---   X   kb76_stranger's personal project (episode EX, character AX).
+--   X   kb76_stranger's project on their team of one (episode EX, character AX).
 
 select tests.create_supabase_user('kb76_owner', 'kb76-owner@storybook.dev');
 select tests.create_supabase_user('kb76_member', 'kb76-member@storybook.dev');
@@ -54,14 +75,14 @@ select makerkit.authenticate_as('kb76_solo');
 set local role postgres;
 
 insert into public.projects (id, account_id, name, status) values
-  ('76760000-0000-4000-8000-000000000005', tests.get_supabase_uid('kb76_solo'), 'KB-76 S', 'active'),
-  ('76760000-0000-4000-8000-00000000000d', tests.get_supabase_uid('kb76_solo'), 'KB-76 S2', 'active');
+  ('76760000-0000-4000-8000-000000000005', pg_temp.solo_team('kb76_solo'), 'KB-76 S', 'active'),
+  ('76760000-0000-4000-8000-00000000000d', pg_temp.solo_team('kb76_solo'), 'KB-76 S2', 'active');
 
 select makerkit.authenticate_as('kb76_stranger');
 set local role postgres;
 
 insert into public.projects (id, account_id, name, status)
-values ('76760000-0000-4000-8000-000000000008', tests.get_supabase_uid('kb76_stranger'), 'KB-76 X', 'active');
+values ('76760000-0000-4000-8000-000000000008', pg_temp.solo_team('kb76_stranger'), 'KB-76 X', 'active');
 
 insert into public.accounts_memberships (user_id, account_id, account_role) values
   (tests.get_supabase_uid('kb76_member'), '76760000-0000-4000-8000-00000000000a', 'member'),
@@ -215,7 +236,7 @@ select makerkit.authenticate_as('kb76_solo');
 select lives_ok(
   kb76.ins(t, '76760000-0000-4000-8000-000000000005', '76760000-0000-4000-8000-000000000006',
            '76760000-0000-4000-8000-000000000007', '76760000-0000-4000-8000-00000000000d'),
-  'I: a personal-account owner inserts ' || t || ' in their own project') from kb76.canon order by ord;
+  'I: a team-of-one owner inserts ' || t || ' in their own project') from kb76.canon order by ord;
 
 select is(
   (select count(*) from public.narrative_threads where project_id = '76760000-0000-4000-8000-000000000005'),

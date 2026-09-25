@@ -5,6 +5,27 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 -- instead of reading as a nearly-passing suite.
 select plan(39);
 
+-- KB-99: the product is team accounts only; someone working alone is a team
+-- of one. A fixture that used to sit on a user's personal account sits on a
+-- team that user owns instead, with the owner membership a team always has.
+create function pg_temp.solo_team(identifier text) returns uuid
+language plpgsql security definer as $$
+declare
+  team uuid := md5('kb99-solo:' || identifier)::uuid;
+begin
+  insert into public.accounts (id, name, is_personal_account, primary_owner_user_id)
+  values (team, identifier || ' (team of one)', false, tests.get_supabase_uid(identifier))
+  on conflict (id) do nothing;
+
+  insert into public.accounts_memberships (user_id, account_id, account_role)
+  values (tests.get_supabase_uid(identifier), team, 'owner')
+  on conflict do nothing;
+
+  return team;
+end;
+$$;
+grant execute on function pg_temp.solo_team(text) to authenticated;
+
 -- An immutable event is canon the continuity validator treats as fixed.
 -- Before KB-17 one FOR ALL policy on has_role_on_account, with no WITH
 -- CHECK, let any account member (project viewers and members not on the
@@ -25,8 +46,8 @@ select plan(39);
 --       owner row comes from the creator trigger, kb17_member is a project
 --       member, kb17_viewer a project viewer, kb17_teammate has no project
 --       row. E is P's episode.
---   S   kb17_solo's project on their personal account, episode F.
---   X   kb17_stranger's personal project, episode EX.
+--   S   kb17_solo's project on their team of one, episode F.
+--   X   kb17_stranger's project on their team of one, episode EX.
 --   kb17_author wrote the event that I6 deletes them from.
 --
 -- Every case works on its own event key, so a case cannot pass or fail
@@ -53,13 +74,13 @@ select makerkit.authenticate_as('kb17_solo');
 set local role postgres;
 
 insert into public.projects (id, account_id, name, status)
-values ('17170000-0000-4000-8000-000000000005', tests.get_supabase_uid('kb17_solo'), 'KB-17 S', 'active');
+values ('17170000-0000-4000-8000-000000000005', pg_temp.solo_team('kb17_solo'), 'KB-17 S', 'active');
 
 select makerkit.authenticate_as('kb17_stranger');
 set local role postgres;
 
 insert into public.projects (id, account_id, name, status)
-values ('17170000-0000-4000-8000-000000000007', tests.get_supabase_uid('kb17_stranger'), 'KB-17 X', 'active');
+values ('17170000-0000-4000-8000-000000000007', pg_temp.solo_team('kb17_stranger'), 'KB-17 X', 'active');
 
 insert into public.accounts_memberships (user_id, account_id, account_role)
 values
@@ -131,7 +152,7 @@ select makerkit.authenticate_as('kb17_stranger');
 select is((select count(*) from public.immutable_events where event_key = 'i1:seen'), 0::bigint, 'I1: someone outside the account reads nothing');
 
 select makerkit.authenticate_as('kb17_solo');
-select is((select count(*) from public.immutable_events where event_key = 'i1:solo'), 1::bigint, 'I1: a personal-account owner reads their own project''s canon');
+select is((select count(*) from public.immutable_events where event_key = 'i1:solo'), 1::bigint, 'I1: a team-of-one owner reads their own project''s canon');
 
 -- ==================================
 -- I2: who inserts, as whom, where
@@ -199,7 +220,7 @@ select lives_ok(
        (project_id, event_type, event_key, established_in, season, episode_number, description, created_by)
      values ('17170000-0000-4000-8000-000000000005', 'death', 'i2:solo', '17170000-0000-4000-8000-000000000006',
              1, 1, 'Solo canon, added', auth.uid()) $$,
-  'I2: a personal-account owner adds canon to their own project'
+  'I2: a team-of-one owner adds canon to their own project'
 );
 
 select makerkit.authenticate_as('kb17_member');
@@ -358,7 +379,7 @@ select is(pg_temp.events('i7:stranger'), 1::bigint, 'I7: someone outside the acc
 select makerkit.authenticate_as('kb17_solo');
 delete from public.immutable_events where event_key = 'i7:solo';
 set local role postgres;
-select is(pg_temp.events('i7:solo'), 0::bigint, 'I7: a personal-account owner deletes their own canon');
+select is(pg_temp.events('i7:solo'), 0::bigint, 'I7: a team-of-one owner deletes their own canon');
 
 -- ==================================
 -- I8: the RPC writes events the same way (KB-27 §19 i)
