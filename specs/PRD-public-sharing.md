@@ -847,7 +847,7 @@ async function getPublicEpisodes(): Promise<SitemapEntry[]> {
 ### Phase 1: Foundation (Week 1-2)
 - [x] Database migrations for visibility, slugs, video_links — *audit:* `apps/web/supabase/migrations/20260107202214_public-sharing.sql:19` (`localized_videos` at :58)
 - [x] Public page routes: `/@{slug}`, `/@{slug}/{project}`, `/@{slug}/{project}/e/{episode}` — *audit:* `apps/web/app/(public)/[...slug]/page.tsx:114` (project :130, episode :150)
-- [x] Basic rendering without auth — *audit:* `/@*` is only rate-limited (`apps/web/middleware.ts:233`); anon read policies in `apps/web/supabase/migrations/20260108120000_public_sharing_rls.sql:28`
+- [ ] Basic rendering without auth — *audit (2026-09-24):* not true. `/@*` is only rate-limited (`apps/web/middleware.ts:233`), and anon read policies exist (`apps/web/supabase/migrations/20260108120000_public_sharing_rls.sql:28`), but `anon` has no USAGE on schema `public`, so every public page is a 404 to a visitor who is not signed in: FILM-CC-04 KB-88. Accounts are read through the `public_accounts` view since KB-60
 
 ### Phase 2: SEO/OGP (Week 2-3)
 - [x] OpenGraph meta tags for all pages — *audit:* `packages/features/public-sharing/src/lib/metadata.ts:38` (:67, :109); tested in `packages/features/public-sharing/src/lib/__tests__/metadata.test.ts:15`

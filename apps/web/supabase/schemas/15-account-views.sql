@@ -124,3 +124,23 @@ $$ language plpgsql;
 grant
 execute on function public.team_account_workspace (text) to authenticated,
 service_role;
+
+-- VIEW "public_accounts" (KB-60, migration 20260924223914):
+-- the public fields of public team accounts, for public pages. Owner-rights
+-- view: accounts itself is readable by members only, so this select list and
+-- WHERE are the whole exposure. Read only.
+create view public.public_accounts
+with (security_barrier = true) as
+select
+  id,
+  name,
+  slug,
+  picture_url,
+  public_profile,
+  updated_at
+from public.accounts
+where not is_personal_account
+  and coalesce((public_profile ->> 'is_public')::boolean, false);
+
+revoke all on public.public_accounts from public, anon, authenticated, service_role;
+grant select on public.public_accounts to anon, authenticated, service_role;

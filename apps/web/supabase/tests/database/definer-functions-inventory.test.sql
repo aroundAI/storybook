@@ -43,7 +43,7 @@ select results_eq(
        ('public.can_write_project'),
        -- can_write_project of the path's project (KB-28)
        ('public.can_write_project_storage'),
-       -- NONE: any account's budget status: KB-42, open
+       -- has_account_access or the service role; false for anyone else (KB-42)
        ('public.check_account_budget'),
        -- episode in the project and can_write_project (KB-27)
        ('public.commit_canon_changes'),
