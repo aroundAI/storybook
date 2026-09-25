@@ -192,8 +192,7 @@ import { generateShotListAction } from '@kit/episodes/server';
 const result = await generateShotListAction({
   episodeId: 'uuid',
   shotDurationMin: 5,
-  shotDurationMax: 8,
-  videoProvider: 'veo-3.1',
+  shotDurationMax: 8, // every shot is kept between these (KB-120)
 });
 // Returns: { success: true, shots: GeneratedShot[], metadata: {...} }
 ```

@@ -21,7 +21,7 @@ type Row = Record<string, unknown>;
 const PROJECT = '22222222-2222-4222-8222-222222222222';
 
 const orchestratorInputs = vi.hoisted(
-  () => [] as Array<{ verifiedFacts?: string }>,
+  () => [] as Array<{ verifiedFacts?: string; neighbouringEpisodes?: string }>,
 );
 
 vi.mock('@kit/episodes/agent/season-orchestrator', () => ({
@@ -189,5 +189,45 @@ describe('season outline facts (KB-71)', () => {
     expect(facts).not.toContain('<system>');
     expect(facts).not.toContain('IGNORE PREVIOUS');
     expect(facts).toContain('the moon is far');
+  });
+});
+
+describe('single-episode regeneration (KB-121)', () => {
+  it('hands the orchestrator the neighbouring outlines and the writer’s note', async () => {
+    await processSeasonOutline(
+      {
+        projectId: PROJECT,
+        seasonPremise: 'A season',
+        episodeCount: 1,
+        startingNumber: 3,
+        accountId: '11111111-1111-4111-8111-111111111111',
+        userId: '77777777-7777-4777-8777-777777777777',
+        surroundingEpisodes: [
+          {
+            number: 2,
+            title: 'The Leak',
+            premise: 'Maya finds the memo.',
+            mainPlot: 'She tells the wrong person.',
+            arcPosition: 'rising',
+          },
+        ],
+        additionalContext: 'Keep Maya sympathetic.',
+      },
+      fakeClient({
+        projects: [{ id: PROJECT, name: 'P', metadata: {} }],
+        assets: [],
+      }),
+    );
+
+    const neighbours = orchestratorInputs.at(-1)?.neighbouringEpisodes;
+
+    expect(neighbours).toContain('"The Leak"');
+    expect(neighbours).toContain('Keep Maya sympathetic.');
+  });
+
+  it('hands it nothing for a full season', async () => {
+    await outline({}, []);
+
+    expect(orchestratorInputs.at(-1)?.neighbouringEpisodes).toBeUndefined();
   });
 });

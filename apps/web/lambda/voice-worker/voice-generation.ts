@@ -10,6 +10,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { z } from 'zod';
 
+import { QueuedJobRefused } from '@kit/prompt-engine/llm-job-target';
 import { vendorUrl } from '@kit/shared/vendors';
 import { dialogueAudioPath } from '@kit/storage/upload-paths';
 import type { Database } from '@kit/supabase/database';
@@ -138,7 +139,12 @@ interface DialogueVoiceResult {
   error?: string;
 }
 
-export class DialogueLineRefused extends Error {
+/**
+ * A refusal, not a fault: the worker acknowledges it like any refused job
+ * (`QueuedJobRefused`, #384) rather than retrying it into the dead-letter
+ * queue.
+ */
+export class DialogueLineRefused extends QueuedJobRefused {
   override readonly name = 'DialogueLineRefused';
 }
 

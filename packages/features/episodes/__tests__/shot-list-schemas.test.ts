@@ -25,7 +25,6 @@ describe('Shot List Schemas', () => {
         // Check defaults are applied
         expect(result.data.shotDurationMin).toBe(5);
         expect(result.data.shotDurationMax).toBe(8);
-        expect(result.data.videoProvider).toBe('veo-3.1');
       }
     });
 
@@ -34,7 +33,6 @@ describe('Shot List Schemas', () => {
         ...validInput,
         shotDurationMin: 3,
         shotDurationMax: 10,
-        videoProvider: 'runway',
         provider: 'anthropic',
         model: 'claude-3-sonnet',
       });
@@ -81,22 +79,21 @@ describe('Shot List Schemas', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should accept all valid video providers', () => {
-      ['veo-3.1', 'kling', 'runway', 'luma'].forEach((provider) => {
-        const result = GenerateShotListSchema.safeParse({
-          ...validInput,
-          videoProvider: provider,
-        });
-        expect(result.success).toBe(true);
-      });
-    });
-
-    it('should reject invalid video provider', () => {
+    it('should reject a range whose maximum is below its minimum (KB-120)', () => {
       const result = GenerateShotListSchema.safeParse({
         ...validInput,
-        videoProvider: 'invalid-provider',
+        shotDurationMin: 8,
+        shotDurationMax: 5,
       });
       expect(result.success).toBe(false);
+    });
+
+    it('no longer takes a video provider: in-app video generation is retired (KB-120)', () => {
+      const result = GenerateShotListSchema.safeParse({
+        ...validInput,
+        videoProvider: 'runway',
+      });
+      expect(result.success && 'videoProvider' in result.data).toBe(false);
     });
 
     it('should accept all valid LLM providers', () => {

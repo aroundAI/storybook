@@ -78,13 +78,38 @@ const ScreenplayConversion = z.object({
   version: z.number(),
 });
 
-const ShotGeneration = z.object({
-  accountId,
-  projectId: id,
-  episodeId: id,
-  userId,
-  version: z.number(),
-});
+/** How long one generated shot may run, in seconds (KB-120). */
+export const SHOT_DURATION_LIMITS = { min: 3, max: 10 } as const;
+export const DEFAULT_SHOT_DURATION = { min: 5, max: 8 } as const;
+
+const shotSeconds = z
+  .number()
+  .min(SHOT_DURATION_LIMITS.min)
+  .max(SHOT_DURATION_LIMITS.max);
+
+/** A shot's length, held to the range the job asked for. */
+export function clampShotDuration(
+  seconds: number,
+  range: { min: number; max: number },
+): number {
+  if (!Number.isFinite(seconds)) return range.max;
+  return Math.min(range.max, Math.max(range.min, seconds));
+}
+
+const ShotGeneration = z
+  .object({
+    accountId,
+    projectId: id,
+    episodeId: id,
+    userId,
+    version: z.number(),
+    shotDurationMin: shotSeconds.default(DEFAULT_SHOT_DURATION.min),
+    shotDurationMax: shotSeconds.default(DEFAULT_SHOT_DURATION.max),
+  })
+  .refine((job) => job.shotDurationMin <= job.shotDurationMax, {
+    message: 'must not be less than shotDurationMin',
+    path: ['shotDurationMax'],
+  });
 
 const SeasonAnalysis = z.object({
   accountId,
@@ -103,6 +128,16 @@ const SeasonAnalysis = z.object({
     .optional(),
 });
 
+/** An outline the season already has, given as context (KB-121). */
+const NeighbouringEpisode = z.object({
+  number: z.number().int().positive(),
+  title: z.string(),
+  premise: z.string(),
+  mainPlot: z.string(),
+  characterFocus: z.array(z.string()).optional(),
+  arcPosition: z.string(),
+});
+
 const SeasonOutline = z.object({
   accountId,
   projectId: id,
@@ -113,6 +148,9 @@ const SeasonOutline = z.object({
   startingNumber: z.number().int(),
   genre: z.string().optional(),
   style: z.string().optional(),
+  // Regenerating one episode: the outlines around it, and the user's note
+  surroundingEpisodes: z.array(NeighbouringEpisode).max(24).optional(),
+  additionalContext: z.string().max(500).optional(),
 });
 
 const BatchTranslateMetadata = z.object({

@@ -305,6 +305,9 @@ const regenerateEpisodeOutline = enhanceAction(
         seasonPremise: data.seasonPremise,
         episodeCount: 1,
         startingNumber: data.episodeNumber,
+        // The episode is written to fit between these (KB-121)
+        surroundingEpisodes: data.surroundingEpisodes,
+        additionalContext: data.additionalContext,
         userId: user.id,
       },
     });

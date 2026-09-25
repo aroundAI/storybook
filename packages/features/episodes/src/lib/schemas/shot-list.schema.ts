@@ -1,5 +1,15 @@
 import { z } from 'zod';
 
+import {
+  DEFAULT_SHOT_DURATION,
+  SHOT_DURATION_LIMITS,
+} from '@kit/prompt-engine/llm-job-payloads';
+
+const shotSeconds = z
+  .number()
+  .min(SHOT_DURATION_LIMITS.min)
+  .max(SHOT_DURATION_LIMITS.max);
+
 // ============================================================================
 // Boundary Validation Schemas (for parsing raw DB JSONB fields)
 // ============================================================================
@@ -55,16 +65,20 @@ export const ShotMetadataSchema = z
 /**
  * Schema for generating a shot list from screenplay/story
  */
-export const GenerateShotListSchema = z.object({
-  episodeId: z.string().uuid(),
-  shotDurationMin: z.number().min(3).max(10).default(5),
-  shotDurationMax: z.number().min(3).max(10).default(8),
-  videoProvider: z
-    .enum(['veo-3.1', 'kling', 'runway', 'luma'])
-    .default('veo-3.1'),
-  provider: z.enum(['anthropic', 'openai', 'google']).optional(),
-  model: z.string().optional(),
-});
+export const GenerateShotListSchema = z
+  .object({
+    episodeId: z.string().uuid(),
+    // The shot generator keeps every shot in this range (KB-120). The limits
+    // and defaults are the LLM job's, so the action and the worker agree.
+    shotDurationMin: shotSeconds.default(DEFAULT_SHOT_DURATION.min),
+    shotDurationMax: shotSeconds.default(DEFAULT_SHOT_DURATION.max),
+    provider: z.enum(['anthropic', 'openai', 'google']).optional(),
+    model: z.string().optional(),
+  })
+  .refine((input) => input.shotDurationMin <= input.shotDurationMax, {
+    message: 'must not be less than shotDurationMin',
+    path: ['shotDurationMax'],
+  });
 
 /**
  * Shot type enum matching prompt template output

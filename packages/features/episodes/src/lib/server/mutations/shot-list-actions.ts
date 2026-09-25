@@ -121,6 +121,8 @@ const generateShotList = enhanceAction(
       payload: {
         episodeId: data.episodeId,
         version: episode.version,
+        shotDurationMin: data.shotDurationMin,
+        shotDurationMax: data.shotDurationMax,
         accountId,
         userId: user.id,
         projectId: episode.project_id,

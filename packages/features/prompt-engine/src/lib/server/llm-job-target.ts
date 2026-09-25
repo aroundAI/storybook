@@ -245,7 +245,7 @@ export function chainedLlmJobTarget(parent: {
 
 /** Why a worker will not run a job it was handed. */
 export class QueuedJobRefused extends Error {
-  override readonly name = 'QueuedJobRefused';
+  override readonly name: string = 'QueuedJobRefused';
 }
 
 interface WorkerFilterBuilder extends QueryResult {
