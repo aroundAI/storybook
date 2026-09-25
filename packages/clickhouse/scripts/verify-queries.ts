@@ -1056,7 +1056,7 @@ async function assertions() {
           platform: 'instagram',
           saves: 4,
           watch_time_seconds: null,
-          subscribers_gained: 3,
+          subscribers_gained: null,
           metric_source: 'snapshot_delta',
         },
       ]);
@@ -1127,7 +1127,7 @@ async function assertions() {
       const flags = [
         { saves: false, watch_time_seconds: true, subscribers_gained: true },
         { saves: false, watch_time_seconds: false, subscribers_gained: false },
-        { saves: true, watch_time_seconds: false, subscribers_gained: true },
+        { saves: true, watch_time_seconds: false, subscribers_gained: false },
       ];
       const want = JSON.stringify({
         totals: flags,

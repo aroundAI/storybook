@@ -5,8 +5,9 @@
  * - TikTok: saves have no creator-auth surface, watch time is Business API
  *   only, and there are no per-video follower gains. All three were stored
  *   as 0.
- * - Instagram: Reels watch time is documented but never requested
- *   (FILM-1712). It was stored as 0. Saves and follows are measured.
+ * - Instagram: Reels watch time and follows are never requested
+ *   (FILM-1712), so watch time and follower gains were stored as 0. Saves
+ *   are measured.
  * - YouTube: there is no saves metric. It was stored as 0.
  *
  * The three columns were created by 002 with no DEFAULT, so there is none to
@@ -59,7 +60,7 @@ const STATEMENTS = [
     WHERE platform = 'tiktok'
     SETTINGS mutations_sync = 2`,
   `ALTER TABLE video_metrics
-    UPDATE watch_time_seconds = NULL
+    UPDATE watch_time_seconds = NULL, subscribers_gained = NULL
     WHERE platform = 'instagram'
     SETTINGS mutations_sync = 2`,
   `ALTER TABLE video_metrics

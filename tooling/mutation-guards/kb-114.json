@@ -70,6 +70,16 @@
       "cwd": "packages/clickhouse",
       "test": "__tests__/subscriber-scenarios.test.ts",
       "pattern": "never presents a day between counts as measured"
+    },
+    {
+      "name": "KB-114 the Instagram row writes its unrequested follows as gains again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/ingest.ts",
+      "find": "    platform: 'instagram',\n    saves: input.delta.saves,\n    watch_time_seconds: null,\n    subscribers_gained: null,\n",
+      "replace": "    platform: 'instagram',\n    saves: input.delta.saves,\n    watch_time_seconds: null,\n    subscribers_gained: input.delta.subscribers_gained as unknown as null,\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/ingest.test.ts",
+      "pattern": "keeps Instagram saves, and writes its watch time and follower gains as null"
     }
   ]
 }

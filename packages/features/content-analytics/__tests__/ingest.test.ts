@@ -319,7 +319,7 @@ describe('buildSnapshotDeltaRow', () => {
   });
 
   // KB-114. TikTok reports no saves, watch time or per-video follower gains.
-  // Instagram reports saves and follows, and we never request watch time.
+  // Instagram reports saves; its watch time and follows are never requested.
   const delta = {
     views: 1000,
     likes: 50,
@@ -347,11 +347,11 @@ describe('buildSnapshotDeltaRow', () => {
     });
   });
 
-  it('keeps Instagram saves and follows, and writes its watch time as null', () => {
+  it('keeps Instagram saves, and writes its watch time and follower gains as null', () => {
     expect(build('instagram')).toMatchObject({
       saves: 3,
       watch_time_seconds: null,
-      subscribers_gained: 7,
+      subscribers_gained: null,
     });
   });
 });

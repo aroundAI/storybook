@@ -178,7 +178,8 @@ export function buildYouTubeDailyRows(input: {
  * - TikTok: saves have no creator-auth surface, watch time is Business API
  *   only, and there are no per-video follower gains (KB-114).
  * - Instagram: Reels watch time is documented but never requested
- *   (FILM-1712). Saves and follows are measured.
+ *   (FILM-1712), and neither are follows, so follower gains are not
+ *   measured either. Saves are.
  */
 type NeverMeasuredBySnapshot = {
   subscribers_lost: null;
@@ -200,7 +201,7 @@ export type SnapshotDeltaMetric = VideoMetric &
         platform: 'instagram';
         saves: number;
         watch_time_seconds: null;
-        subscribers_gained: number;
+        subscribers_gained: null;
       }
   );
 
@@ -244,7 +245,7 @@ export function buildSnapshotDeltaRow(input: {
     platform: 'instagram',
     saves: input.delta.saves,
     watch_time_seconds: null,
-    subscribers_gained: input.delta.subscribers_gained,
+    subscribers_gained: null,
   };
 }
 
