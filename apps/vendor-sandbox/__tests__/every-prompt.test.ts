@@ -24,7 +24,7 @@ import {
  * parse the reply exactly as they do in production. Only usage logging -
  * a Supabase write - is stubbed. Two executors exist and both are run:
  *
- * - `executeLLM` (`@kit/prompt-engine`), for the 27 prompts in its registry;
+ * - `executeLLM` (`@kit/prompt-engine`), for the 29 prompts in its registry;
  * - `executeLLMForLambda` (the llm-worker), where every studio stage runs.
  *   It never validates against a prompt's Zod schema, so this test does,
  *   with the executor's own compile.
@@ -92,7 +92,7 @@ function assertShape(prompt: CatalogPrompt, data: unknown, full: unknown) {
 
 describe('the catalog', () => {
   it('holds every prompt file, each with a generator', () => {
-    expect(catalog).toHaveLength(29);
+    expect(catalog).toHaveLength(31);
     for (const prompt of catalog) {
       expect(generatorKindOf(prompt), prompt.key).not.toBeNull();
     }

@@ -50,8 +50,10 @@ import linkedinPostGeneration from '../../prompts/publishing/linkedin-post-gener
 import ideaQuality from '../../prompts/quality-evaluation/idea-quality.json';
 import reelScout from '../../prompts/quality-evaluation/reel-scout.json';
 import screenplayQuality from '../../prompts/quality-evaluation/screenplay-quality.json';
+import seasonArc from '../../prompts/quality-evaluation/season-arc.json';
 import shotQuality from '../../prompts/quality-evaluation/shot-quality.json';
 import storyQuality from '../../prompts/quality-evaluation/story-quality.json';
+import translationQuality from '../../prompts/quality-evaluation/translation-quality.json';
 import extractAssetDescription from '../../prompts/story-generation/extract-asset-description.json';
 import sceneShotGeneration from '../../prompts/story-generation/scene-shot-generation.json';
 import screenplayConversion from '../../prompts/story-generation/screenplay-conversion.json';
@@ -103,6 +105,9 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   'quality-evaluation/shot-quality': shotQuality as unknown as PromptTemplate,
   'quality-evaluation/story-quality': storyQuality as unknown as PromptTemplate,
   'quality-evaluation/idea-quality': ideaQuality as unknown as PromptTemplate,
+  'quality-evaluation/season-arc': seasonArc as unknown as PromptTemplate,
+  'quality-evaluation/translation-quality':
+    translationQuality as unknown as PromptTemplate,
 
   // Canon Roles
   'canon-extraction': canonExtraction as unknown as PromptTemplate,

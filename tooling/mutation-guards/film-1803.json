@@ -149,15 +149,6 @@
       "test": "__tests__/orchestrators.test.ts"
     },
     {
-      "name": "Sandbox: KNOWN_TOOL_FAILURES stays quiet when KB-116 is fixed",
-      "kind": "unit",
-      "file": "packages/features/episodes/src/agent/skills/season-arc-evaluator-skill.ts",
-      "find": "          content: episodes,",
-      "replace": "          title: seasonPremise,\n          story_text: episodes,\n          content: episodes,",
-      "cwd": "apps/vendor-sandbox",
-      "test": "__tests__/orchestrators.test.ts"
-    },
-    {
       "name": "Sandbox: an unscripted agent is answered as if it were known",
       "kind": "unit",
       "file": "apps/vendor-sandbox/src/vendors/gemini.ts",
