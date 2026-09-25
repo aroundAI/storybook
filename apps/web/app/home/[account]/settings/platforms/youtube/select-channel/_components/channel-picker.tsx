@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 
 import { Check, Loader2, Youtube } from 'lucide-react';
 
+import { navigateWithFallback } from '@kit/next/navigation';
 import { Button } from '@kit/ui/button';
 import { Card, CardContent } from '@kit/ui/card';
 import { toast } from '@kit/ui/sonner';
@@ -55,7 +56,8 @@ export function ChannelPicker({ channels, accountSlug }: ChannelPickerProps) {
 
         const data = await response.json();
         toast.success(`Connected ${data.channelName}!`);
-        router.push(
+        navigateWithFallback(
+          router,
           `/home/${accountSlug}/settings/platforms?success=youtube_connected&channel=${encodeURIComponent(data.channelName)}`,
         );
       } catch (error) {
