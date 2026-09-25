@@ -4,10 +4,8 @@ import { Trans } from '@kit/ui/trans';
 import { PlatformConnectFailure } from '~/components/platform-connect-failure';
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { withI18n } from '~/lib/i18n/with-i18n';
-import {
-  connectFailurePath,
-  readConnectFailure,
-} from '~/lib/platforms/connect-failure';
+import pathsConfig from '~/config/paths.config';
+import { readConnectFailure } from '~/lib/platforms/connect-failure';
 
 // local imports
 import { HomeLayoutPageHeader } from './_components/home-page-header';
@@ -42,7 +40,7 @@ async function UserHomePage(props: UserHomePageProps) {
           <div className="max-w-4xl">
             <PlatformConnectFailure
               failure={failure}
-              dismissHref={connectFailurePath(null)}
+              dismissHref={pathsConfig.app.home}
             />
           </div>
         )}

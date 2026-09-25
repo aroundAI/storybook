@@ -176,8 +176,25 @@ describe('connectFailurePath', () => {
     'a\\b',
     'a b',
     'a%2Fb',
-  ])('is /home for a slug that could leave its path segment: %s', (slug) => {
-    expect(connectFailurePath(slug)).toBe('/home');
+  ])(
+    'is profile settings for a slug that could leave its path segment: %s',
+    (slug) => {
+      expect(connectFailurePath(slug)).toBe('/home/settings');
+    },
+  );
+
+  // KB-99: `/home` redirects to a team and drops the query, so it can no
+  // longer be where an unplaced failure is shown.
+  it('is the create-team page for someone with no team', () => {
+    expect(connectFailurePath(null, false)).toBe('/home/teams/create');
+    expect(connectFailurePath('//evil.example', false)).toBe(
+      '/home/teams/create',
+    );
+  });
+
+  it('never falls back to /home', () => {
+    expect(connectFailurePath(null)).not.toBe('/home');
+    expect(connectFailurePath(null, false)).not.toBe('/home');
   });
 });
 

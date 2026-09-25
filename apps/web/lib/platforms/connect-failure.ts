@@ -249,21 +249,35 @@ export function connectFailureQuery(failure: ConnectFailure) {
 // What `kit.slugify` can produce.
 const ACCOUNT_SLUG = /^[a-z0-9_-]{1,128}$/i;
 
+/** Where a person with no team lands: they are sent to create one. */
+export const NO_TEAM_FAILURE_PATH = '/home/teams/create';
+
+/** Their own profile page, reachable whatever workspace they are in. */
+export const NO_CHOSEN_TEAM_FAILURE_PATH = '/home/settings';
+
 /**
- * Where a failure is shown: the account's platforms page, or the personal
- * home page when no account could be chosen. A path built from constants and
- * a slug that can only be one path segment — never from a parameter.
+ * Where a failure is shown: the account's platforms page; when no account
+ * could be chosen, profile settings (several teams, none more likely) or the
+ * create-team page (no team at all). Both are pages that render the message:
+ * `/home` no longer does, because with personal accounts off it redirects to
+ * a team and drops the query (KB-99). A path built from constants and a slug
+ * that can only be one path segment — never from a parameter.
  */
-export function connectFailurePath(accountSlug: string | null) {
-  return accountSlug && ACCOUNT_SLUG.test(accountSlug)
-    ? `/home/${accountSlug}/settings/platforms`
-    : '/home';
+export function connectFailurePath(
+  accountSlug: string | null,
+  hasTeams = true,
+) {
+  if (accountSlug && ACCOUNT_SLUG.test(accountSlug)) {
+    return `/home/${accountSlug}/settings/platforms`;
+  }
+
+  return hasTeams ? NO_CHOSEN_TEAM_FAILURE_PATH : NO_TEAM_FAILURE_PATH;
 }
 
 /**
  * The workspace the connect was for; failing that, the only one this person
  * has. With several and no hint there is no right answer, so none is chosen
- * and the message is shown on the personal home page instead.
+ * and the message is shown on the person's profile page instead.
  */
 export function chooseAccountSlug(
   teams: Array<{ id: string | null; slug: string | null }>,
