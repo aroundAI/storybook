@@ -1,0 +1,35 @@
+{
+  "feature": "KB-111",
+  "mutations": [
+    {
+      "name": "KB-111 the view-weighted fold counts an unmeasured video's views again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/watched-metrics.ts",
+      "find": "    if (row.value === null || row.views <= 0) continue;\n",
+      "replace": "    if (row.views <= 0) continue;\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/watched-metrics.test.ts",
+      "pattern": "leaves out a video whose platform does not measure the figure"
+    },
+    {
+      "name": "KB-111 the net-subscriber fold treats unmeasured losses as none",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/watched-metrics.ts",
+      "find": "(row): row is { gained: number; lost: number } => row.lost !== null,",
+      "replace": "(row): row is { gained: number; lost: number } => true,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/watched-metrics.test.ts",
+      "pattern": "leaves out a video whose losses were not measured"
+    },
+    {
+      "name": "KB-111 the TikTok/Instagram row writes a 0 for average percentage viewed",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/ingest.ts",
+      "find": "    avg_view_percentage: null,\n",
+      "replace": "    avg_view_percentage: 0 as unknown as null,\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/ingest.test.ts",
+      "pattern": "writes the four columns neither platform measures as null"
+    }
+  ]
+}

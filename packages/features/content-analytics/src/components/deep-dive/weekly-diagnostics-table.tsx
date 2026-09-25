@@ -22,7 +22,8 @@ export interface DiagnosticRow {
   impressions: number;
   /** Click-through rate, 0..1. */
   ctr: number;
-  avgViewDurationSeconds: number;
+  /** Null when the platform does not measure it (KB-111). */
+  avgViewDurationSeconds: number | null;
   /** Set when the retention curve shows a sharp early drop. */
   cliff?: { position: number; drop: number; seconds?: number } | null;
 }
@@ -40,8 +41,8 @@ interface WeeklyDiagnosticsTableProps {
   isLoading?: boolean;
 }
 
-function formatDuration(seconds: number): string {
-  if (seconds <= 0) return '—';
+function formatDuration(seconds: number | null): string {
+  if (seconds === null || seconds <= 0) return '—';
   const mins = Math.floor(seconds / 60);
   const secs = Math.round(seconds % 60);
   return `${mins}:${String(secs).padStart(2, '0')}`;

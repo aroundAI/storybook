@@ -436,4 +436,99 @@ test.describe('Experiment log — evidence', () => {
     expect(readings['Thirty-day views']).toContain('100');
     expect(readings['Thirty-day views']).toContain('1 of 2 videos had data');
   });
+
+  // KB-111. A TikTok video does not measure average percentage viewed. Its
+  // row stored 0, and pooled with a YouTube video at 45.5% over 400 views,
+  // 1,000 TikTok views at "0%" read as a measured 13.0% over 2 videos.
+  test('leaves a figure the platform does not measure out of the average', async ({
+    page,
+  }) => {
+    test.skip(
+      !process.env.CLICKHOUSE_EVIDENCE,
+      'Set CLICKHOUSE_EVIDENCE=1 with a server reading the local ClickHouse.',
+    );
+
+    const log = new ExperimentsPageObject(page);
+    const team = await log.setup();
+    const [youtubeVideo, tiktokVideo] = team.publishIds;
+
+    const date = new Date();
+    date.setUTCDate(date.getUTCDate() - 10);
+    const day = date.toISOString().slice(0, 10);
+
+    const base = {
+      project_id: team.projectId,
+      metric_date: day,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      saves: 0,
+      watch_time_seconds: 0,
+      revenue_cents: 0,
+      extra_metrics: '{}',
+    };
+
+    await insertClickHouse('video_metrics', [
+      {
+        ...base,
+        video_id: youtubeVideo,
+        platform: 'youtube',
+        views: 400,
+        subscribers_gained: 0,
+        subscribers_lost: 0,
+        avg_view_duration_seconds: 45,
+        avg_view_percentage: 45.5,
+        dislikes: 0,
+        metric_source: 'reporting_api',
+      },
+      {
+        ...base,
+        video_id: tiktokVideo,
+        platform: 'tiktok',
+        views: 1000,
+        subscribers_gained: 0,
+        subscribers_lost: null,
+        avg_view_duration_seconds: null,
+        avg_view_percentage: null,
+        dislikes: null,
+        metric_source: 'snapshot_delta',
+      },
+    ]);
+
+    await log.field('experiment-title').fill('Hook rewrite');
+    await log.field('experiment-change').fill('Unmeasured evidence');
+    await log.choose(
+      'experiment-metric',
+      'experiment-metric-option-avg_view_percentage',
+    );
+    await log.linkVideo(youtubeVideo!);
+    await log.linkVideo(tiktokVideo!);
+    await log.field('experiment-review-window').fill('30');
+    await log.submitAndWaitForReset();
+
+    const [row] = await readRows<{ id: string }>(
+      'analytics_experiments',
+      `select=id&account_id=eq.${team.accountId}&title=eq.Hook%20rewrite`,
+    );
+    await page
+      .locator(`[data-test="experiment-row-${row!.id}"]:visible`)
+      .click();
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+
+    const side = page.locator('[data-test="experiment-watched-baseline"]');
+    await expect(
+      page.locator('[data-test="experiment-watched-baseline-value"]'),
+    ).toBeVisible();
+    const reading = await side.textContent();
+
+    console.log('UNMEASURED_READING', JSON.stringify(reading));
+
+    await page.screenshot({
+      path: `${OUT}/07-unmeasured-left-out.png`,
+      fullPage: true,
+    });
+
+    expect(reading).toContain('45.5%');
+    expect(reading).toContain('1 of 2 videos had data');
+  });
 });

@@ -49,14 +49,19 @@ export interface VideoMetric {
    */
   revenue_cents: number;
   subscribers_gained: number;
+  /**
+   * The four below are **null when the platform does not measure them**
+   * (migration 013, KB-111) — TikTok and Instagram report none of them.
+   * Never 0 for "not measured": a 0 is read as a measurement and pooled.
+   */
   /** Gross losses. Net movement is gained - lost. */
-  subscribers_lost?: number;
+  subscribers_lost?: number | null;
   metric_source?: MetricSource;
-  /** Per-day average view duration in seconds (0 when unknown). */
-  avg_view_duration_seconds?: number;
-  /** Per-day average view percentage 0-100 (0 when unknown). */
-  avg_view_percentage?: number;
-  dislikes?: number;
+  /** Per-day average view duration in seconds. */
+  avg_view_duration_seconds?: number | null;
+  /** Per-day average view percentage 0-100. */
+  avg_view_percentage?: number | null;
+  dislikes?: number | null;
   /**
    * YouTube engaged views: the view-counting methodology before 2026-08-27,
    * continuous across that change (migration 012, KB-50). **Null means not
@@ -73,19 +78,25 @@ export interface VideoMetric {
  * whole row, so a column one of them leaves out is erased from the other's
  * figure (KB-50, KB-94). Both return this type, which makes every column they
  * share required: leaving one out is a type error, not a silent zero.
+ *
+ * YouTube measures all four of the KB-111 columns, so here they are numbers,
+ * never null: a null from either writer would replace the other's figure.
  */
-export type YouTubeVideoMetric = VideoMetric &
-  Required<
-    Pick<
-      VideoMetric,
-      | 'subscribers_lost'
-      | 'metric_source'
-      | 'avg_view_duration_seconds'
-      | 'avg_view_percentage'
-      | 'dislikes'
-      | 'engaged_views'
-    >
-  > & { platform: 'youtube' };
+export type YouTubeVideoMetric = Omit<
+  VideoMetric,
+  | 'subscribers_lost'
+  | 'avg_view_duration_seconds'
+  | 'avg_view_percentage'
+  | 'dislikes'
+> & {
+  platform: 'youtube';
+  metric_source: MetricSource;
+  subscribers_lost: number;
+  avg_view_duration_seconds: number;
+  avg_view_percentage: number;
+  dislikes: number;
+  engaged_views: number | null;
+};
 
 /**
  * One point of a lifetime audience-retention curve. Latest fetch wins per

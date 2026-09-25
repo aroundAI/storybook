@@ -292,16 +292,20 @@ export function foldCtr(
 /**
  * A per-video average pooled across videos, weighted by each video's views
  * in the same window — what the per-video figure is itself weighted by.
+ *
+ * A video whose figure is null is left out entirely — of the weight and of
+ * the coverage. Its platform does not measure it (KB-111), and counting its
+ * views against a 0 once turned 45.5% into a "measured" 13%.
  */
 export function foldViewWeighted(
-  rows: Array<{ value: number; views: number }>,
+  rows: Array<{ value: number | null; views: number }>,
 ): FoldResult {
   let weighted = 0;
   let views = 0;
   let covered = 0;
 
   for (const row of rows) {
-    if (row.views <= 0) continue;
+    if (row.value === null || row.views <= 0) continue;
     weighted += row.value * row.views;
     views += row.views;
     covered += 1;
@@ -346,15 +350,25 @@ export function foldTrafficShare(
   };
 }
 
-/** Net subscribers summed across the videos that have data in the window. */
+/**
+ * Net subscribers summed across the videos that have data in the window.
+ *
+ * Only videos whose losses were measured: a net is gained minus lost, and a
+ * video with no measured loss (TikTok, Instagram — KB-111) has no net.
+ * `coveredVideos` says how many carried one.
+ */
 export function foldNetSubscribers(
-  rows: Array<{ gained: number; lost: number }>,
+  rows: Array<{ gained: number; lost: number | null }>,
 ): FoldResult {
-  if (rows.length === 0) return NO_DATA;
+  const measured = rows.filter(
+    (row): row is { gained: number; lost: number } => row.lost !== null,
+  );
 
-  const value = rows.reduce((sum, row) => sum + row.gained - row.lost, 0);
+  if (measured.length === 0) return NO_DATA;
 
-  return { status: 'measured', value, coveredVideos: rows.length };
+  const value = measured.reduce((sum, row) => sum + row.gained - row.lost, 0);
+
+  return { status: 'measured', value, coveredVideos: measured.length };
 }
 
 /**

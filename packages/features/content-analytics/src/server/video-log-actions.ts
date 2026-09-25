@@ -81,8 +81,9 @@ export interface VideoLogRow {
   ingestLagDays: number | null;
   impressions: number;
   ctr: number;
-  avgViewDurationSeconds: number;
-  avgViewPercentage: number;
+  /** Null when the platform does not measure it (KB-111). */
+  avgViewDurationSeconds: number | null;
+  avgViewPercentage: number | null;
   /**
    * Lifetime revenue per currency, largest first (FILM-1615). Never one
    * summed figure: revenue can be recorded in any currency, and adding
@@ -213,8 +214,8 @@ export const getVideoLogAction = enhanceAction(
         ingestLagDays: row.ingestLagDays,
         impressions: metrics?.impressions ?? 0,
         ctr: metrics?.impressionsCtr ?? 0,
-        avgViewDurationSeconds: metrics?.avgViewDurationSeconds ?? 0,
-        avgViewPercentage: metrics?.avgViewPercentage ?? 0,
+        avgViewDurationSeconds: metrics?.avgViewDurationSeconds ?? null,
+        avgViewPercentage: metrics?.avgViewPercentage ?? null,
         revenue: revenueByPublish.get(row.videoId) ?? [],
         analyticsNote: notesByPublish.get(row.videoId)?.note ?? null,
         analyticsNoteUpdatedAt:

@@ -4,6 +4,7 @@ import type { YouTubeAnalyticsResult } from '../src/providers/youtube/types';
 import {
   buildAudienceRows,
   buildRetentionPoints,
+  buildSnapshotDeltaRow,
   buildYouTubeDailyRows,
   computeSnapshotDelta,
   computeYouTubeWindow,
@@ -280,6 +281,38 @@ describe('buildYouTubeDailyRows', () => {
       avg_view_percentage: 45.5,
       subscribers_lost: 1,
       subscribers_gained: 5,
+    });
+  });
+});
+
+// KB-111. TikTok and Instagram report none of these four; a 0 was pooled
+// with YouTube's figures as if measured.
+describe('buildSnapshotDeltaRow', () => {
+  it('writes the four columns neither platform measures as null, not 0', () => {
+    const row = buildSnapshotDeltaRow({
+      projectId: '550e8400-e29b-41d4-a716-446655440000',
+      videoId: 'publish-tt',
+      platform: 'tiktok',
+      metricDate: '2026-09-20',
+      delta: {
+        views: 1000,
+        likes: 50,
+        comments: 4,
+        shares: 2,
+        saves: 3,
+        watch_time_seconds: 0,
+        subscribers_gained: 7,
+      },
+      extraMetricsJson: '{}',
+    });
+
+    expect(row).toMatchObject({
+      views: 1000,
+      metric_source: 'snapshot_delta',
+      subscribers_lost: null,
+      avg_view_duration_seconds: null,
+      avg_view_percentage: null,
+      dislikes: null,
     });
   });
 });
