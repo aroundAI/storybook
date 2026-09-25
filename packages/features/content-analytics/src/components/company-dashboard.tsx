@@ -12,6 +12,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
+import { displayedEngagementRatePercent } from '@kit/clickhouse';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Progress } from '@kit/ui/progress';
 import { Skeleton } from '@kit/ui/skeleton';
@@ -102,7 +103,7 @@ export function CompanyDashboard({
           title="Avg Engagement"
           value={
             data.totals.views > 0
-              ? `${(((data.totals.likes + data.totals.comments + data.totals.shares) / data.totals.views) * 100).toFixed(1)}%`
+              ? `${displayedEngagementRatePercent(data.totals).toFixed(1)}%`
               : '0%'
           }
         />
