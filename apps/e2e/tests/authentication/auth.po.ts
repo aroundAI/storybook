@@ -20,7 +20,22 @@ export class AuthPageObject {
   }
 
   async signOut() {
-    await this.page.click('[data-test="account-dropdown-trigger"]');
+    // Someone with no team lands on create-team, whose dialog opens on
+    // arrival, covers the user menu and ignores Escape (KB-99). A person
+    // closes it with Cancel first. It can open a moment after load, so this
+    // retries.
+    await expect(async () => {
+      const dialog = this.page.getByRole('dialog', { name: 'Create Team' });
+
+      if (await dialog.isVisible()) {
+        await dialog.getByRole('button', { name: 'Cancel' }).click();
+      }
+
+      await this.page.click('[data-test="account-dropdown-trigger"]', {
+        timeout: 5_000,
+      });
+    }).toPass({ timeout: 30_000 });
+
     await this.page.click('[data-test="account-dropdown-sign-out"]');
   }
 

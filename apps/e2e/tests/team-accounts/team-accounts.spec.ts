@@ -197,15 +197,17 @@ test.describe('Team Account Deletion', () => {
     const teamAccounts = new TeamAccountsPageObject(page);
     const params = teamAccounts.createTeamName();
 
-    const { email } = await teamAccounts.setup(params);
+    const { email, slug } = await teamAccounts.setup(params);
     await teamAccounts.goToSettings();
 
     await teamAccounts.deleteAccount(email);
-    await teamAccounts.openAccountsSelector();
 
-    await expect(
-      teamAccounts.getTeamFromSelector(params.teamName),
-    ).not.toBeVisible();
+    // It was their only team, so home sends them to create one (KB-99), and
+    // the deleted team's page is gone.
+    await expect(page).toHaveURL('/home/teams/create');
+
+    await page.goto(`/home/${slug}`);
+    await expect(page).toHaveURL('/home/teams/create');
   });
 });
 
