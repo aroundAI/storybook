@@ -56,13 +56,14 @@ export function widestStep(anchors: Array<{ roundingStep: number }>): number {
  */
 export function lastEvidenceDate(
   anchors: Array<{ snapshotDate: string }>,
-  deltas: Array<{ metricDate: string }>,
+  deltas: Array<{ metricDate: string; measured?: boolean }>,
 ): string | null {
   let last: string | null = null;
 
   for (const date of [
     ...anchors.map((a) => a.snapshotDate),
-    ...deltas.map((d) => d.metricDate),
+    // A day whose movement was not measured (KB-114) is not evidence.
+    ...deltas.filter((d) => d.measured !== false).map((d) => d.metricDate),
   ]) {
     if (last === null || date > last) last = date;
   }

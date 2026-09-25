@@ -2,6 +2,7 @@ import { Page, expect, test } from '@playwright/test';
 
 import {
   SCENARIO_TODAY,
+  SNAPSHOTS_ONLY_COUNTS,
   SUBSCRIBER_SCENARIOS,
 } from '../../../../packages/clickhouse/src/testing/subscriber-scenarios';
 import {
@@ -129,17 +130,21 @@ test.describe('FILM-1617 — evidence', () => {
           rounding_step: a.roundingStep,
         })),
       );
+      // channel_daily holds measured movement only. A day whose movement
+      // was not measured (the TikTok scenario, KB-114) has no row here.
       await insertClickHouse(
         'channel_daily',
-        scenario.deltas.map((d) => ({
-          connection_id: connectionId,
-          metric_date: shift(d.metricDate),
-          views: 0,
-          watch_time_seconds: 0,
-          engaged_views: 0,
-          subscribers_gained: Math.max(0, d.net),
-          subscribers_lost: Math.max(0, -d.net),
-        })),
+        scenario.deltas
+          .filter((d) => d.measured !== false)
+          .map((d) => ({
+            connection_id: connectionId,
+            metric_date: shift(d.metricDate),
+            views: 0,
+            watch_time_seconds: 0,
+            engaged_views: 0,
+            subscribers_gained: Math.max(0, d.net),
+            subscribers_lost: Math.max(0, -d.net),
+          })),
       );
     }
 
@@ -298,5 +303,117 @@ test.describe('FILM-1617 — evidence', () => {
         2,
       ),
     );
+  });
+
+  /**
+   * KB-114, option a (decided 2026-09-25). A TikTok channel reports no daily
+   * gains or losses: the curve joins its recorded follower counts with
+   * straight lines, marks every count, and calls the days between them
+   * reconstructed. Every recorded count on screen is read back and checked
+   * against what was seeded; a day between two counts is read off the
+   * tooltip and checked against the straight line.
+   */
+  test('draws a TikTok channel between its recorded follower counts', async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+
+    const team = await seedTeamAccount();
+    const project = await seedProject(team, { name: 'TikTok Followers' });
+    const connectionId = await seedYouTubeConnection(
+      team.accountId,
+      'TikTok Channel',
+      { platform: 'tiktok' },
+    );
+
+    await seedPublishedEpisode(project.id, connectionId, {
+      number: 1,
+      platform: 'tiktok',
+    });
+
+    const seeded = SNAPSHOTS_ONLY_COUNTS.map(([date, count]) => ({
+      date: shift(date),
+      count,
+    }));
+
+    await insertClickHouse(
+      'channel_subscribers',
+      seeded.map((s) => ({
+        connection_id: connectionId,
+        snapshot_date: s.date,
+        subscriber_count: s.count,
+        rounding_step: 0,
+      })),
+    );
+
+    const deepDive = new DeepDivePageObject(page);
+
+    await signInAs(page, team);
+    await deepDive.goToDeepDive(team.slug, project.slug);
+
+    const points = page.locator(
+      '[data-test="subscriber-snapshot-point"]:visible',
+    );
+    await expect(points).toHaveCount(seeded.length);
+
+    const card = cardAround(page, 'subscriber-series');
+    await card.scrollIntoViewIfNeeded();
+
+    // Every recorded count, as drawn.
+    const drawn = await points.evaluateAll((els) =>
+      els.map((el) => ({
+        date: el.getAttribute('data-date'),
+        count: Number(el.getAttribute('data-count')),
+      })),
+    );
+
+    // A day between the first two counts, off the tooltip: hover halfway
+    // between their points.
+    const [first, second] = [
+      await points.nth(0).boundingBox(),
+      await points.nth(1).boundingBox(),
+    ];
+    await page.mouse.move(
+      (first!.x + second!.x) / 2 + first!.width / 2,
+      (first!.y + second!.y) / 2 + first!.height / 2,
+    );
+    const tooltip = page
+      .getByText('reconstructed from follower snapshots', { exact: false })
+      .filter({ hasNotText: 'Lighter dotted line' })
+      .first();
+    await expect(tooltip).toBeVisible();
+    const tooltipText = await tooltip
+      .locator('xpath=ancestor::div[contains(@class, "shadow-xl")][1]')
+      .textContent();
+
+    await card.screenshot({
+      path: `${OUT}/30-tiktok-between-snapshots-light.png`,
+    });
+
+    const legend = await texts(
+      page,
+      '[data-test="subscriber-source-legend"] li',
+    );
+
+    // The same card in the dark theme.
+    await page.mouse.move(0, 0);
+    await page
+      .context()
+      .addCookies([{ name: 'theme', value: 'dark', url: page.url() }]);
+    await page.reload();
+    await expect(points).toHaveCount(seeded.length);
+    await cardAround(page, 'subscriber-series').scrollIntoViewIfNeeded();
+    await cardAround(page, 'subscriber-series').screenshot({
+      path: `${OUT}/31-tiktok-between-snapshots-dark.png`,
+    });
+
+    console.log(
+      'SNAPSHOT_FIGURES',
+      JSON.stringify({ seeded, drawn, tooltipText, legend }, null, 2),
+    );
+
+    expect(drawn).toEqual(seeded);
+    expect(tooltipText).toContain('reconstructed from follower snapshots');
+    expect(legend.join(' ')).toContain('A follower count recorded that day');
   });
 });

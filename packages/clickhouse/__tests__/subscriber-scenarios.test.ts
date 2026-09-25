@@ -11,9 +11,11 @@ import {
 import {
   SCENARIO_TODAY,
   SCENARIO_WINDOW_FROM,
+  SNAPSHOTS_ONLY_COUNTS,
   SUBSCRIBER_SCENARIOS,
   type ScenarioId,
   type SubscriberScenario,
+  scenarioById,
 } from '../src/testing/subscriber-scenarios';
 
 /**
@@ -120,6 +122,14 @@ const EXPECTED: Record<ScenarioId, Expected> = {
     lastDataDate: null,
     latest: null,
   },
+  // Its daily rows run to yesterday but carry no measured movement: they are
+  // not evidence, so the curve and the latest level end at the last recorded
+  // count, Sep 14 (KB-114).
+  'snapshots-only': {
+    lastPoint: '2026-09-14',
+    lastDataDate: '2026-09-14',
+    latest: '2026-09-14',
+  },
 };
 
 describe('subscriber scenarios', () => {
@@ -171,6 +181,54 @@ describe('subscriber scenarios', () => {
       for (const point of series.points) {
         expect(point.date >= window.from && point.date <= window.to).toBe(true);
       }
+    });
+  });
+
+  // KB-114, option a (decided 2026-09-25). A channel with no measured daily
+  // movement: every recorded count exactly, straight lines between them,
+  // nothing before the first or after the last, never a measured movement.
+  describe('snapshots-only, figure by figure', () => {
+    const scenario = scenarioById('snapshots-only');
+    const { points } = buildSubscriberSeries(inputsOf(scenario), window);
+    const byDate = new Map(points.map((p) => [p.date, p]));
+
+    it('shows every recorded count exactly, as measured', () => {
+      for (const [date, count] of SNAPSHOTS_ONLY_COUNTS) {
+        expect(byDate.get(date)).toEqual({
+          date,
+          level: count,
+          source: 'snapshot',
+        });
+      }
+    });
+
+    it('draws a straight line between two counts, labelled as such', () => {
+      // 1,000 on Aug 20 → 1,070 on Aug 27: 10 a day.
+      expect(byDate.get('2026-08-23')).toEqual({
+        date: '2026-08-23',
+        level: 1_030,
+        source: 'between_snapshots',
+      });
+      // 1,070 on Aug 27 → 1,105 on Sep 3: 5 a day.
+      expect(byDate.get('2026-08-30')?.level).toBe(1_085);
+      // 1,105 on Sep 3 → 1,210 on Sep 10: 15 a day.
+      expect(byDate.get('2026-09-06')?.level).toBe(1_150);
+    });
+
+    it('never presents a day between counts as measured', () => {
+      const recorded = new Set(SNAPSHOTS_ONLY_COUNTS.map(([date]) => date));
+
+      for (const point of points) {
+        expect(point.source).toBe(
+          recorded.has(point.date) ? 'snapshot' : 'between_snapshots',
+        );
+      }
+    });
+
+    it('draws nothing before the first count or after the last', () => {
+      expect(points[0]?.date).toBe('2026-08-20');
+      expect(points.at(-1)?.date).toBe('2026-09-14');
+      expect(points).toHaveLength(26);
     });
   });
 

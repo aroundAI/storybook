@@ -15,13 +15,18 @@ import type { SubscriberSource } from './subscriber-series';
  *
  * `constrained` and `clamped` only occur on days with an anchor, so they are
  * measured days whose figure the platform rounded — every YouTube snapshot
- * above 1,000. Only `interpolated` is reconstructed.
+ * above 1,000. `interpolated` and `between_snapshots` are reconstructed: the
+ * first from measured daily movement, the second — for a channel whose
+ * platform reports none (KB-114) — as a straight line between two recorded
+ * follower counts.
  */
 export const SUBSCRIBER_SOURCE_LABEL: Record<SubscriberSource, string> = {
   snapshot: 'measured',
   constrained: 'measured, rounded by the platform',
   clamped: 'measured, held to the edge of the platform’s rounded figure',
   interpolated: 'reconstructed from daily movement, no snapshot that day',
+  between_snapshots:
+    'reconstructed from follower snapshots — a straight line between two recorded counts, not measured that day',
 };
 
 /**
@@ -33,13 +38,15 @@ export const SUBSCRIBER_SOURCE_LABEL: Record<SubscriberSource, string> = {
  * the fourth drew a capture gap in a total as measured.
  */
 export function isMeasuredSource(source: SubscriberSource): boolean {
-  return source !== 'interpolated';
+  return source !== 'interpolated' && source !== 'between_snapshots';
 }
 
 // Least to most measured. A reconstructed part makes any combination
 // reconstructed; among measured parts, the one furthest from an exact
 // snapshot wins.
 const SOURCE_ORDER: readonly SubscriberSource[] = [
+  // Weakest: no movement measured at all, only a line between two counts.
+  'between_snapshots',
   'interpolated',
   'clamped',
   'constrained',

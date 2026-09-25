@@ -1825,7 +1825,14 @@ export async function querySubscriberDeltas(input: {
   connectionIds: string[];
   from: string;
   to: string;
-}): Promise<Array<{ connectionId: string; metricDate: string; net: number }>> {
+}): Promise<
+  Array<{
+    connectionId: string;
+    metricDate: string;
+    net: number;
+    measured: boolean;
+  }>
+> {
   if (input.connectionIds.length === 0 || !isClickHouseEnabled()) {
     return [];
   }
@@ -1837,17 +1844,19 @@ export async function querySubscriberDeltas(input: {
       SELECT
         connection_id,
         metric_date,
-        sum(net) as net
+        sum(net) as net,
+        min(measured) as measured
       FROM (
         SELECT
           toString(connection_id) as connection_id,
           toString(metric_date)   as metric_date,
           -- TikTok and Instagram rows carry no measured loss (NULL, KB-111),
-          -- and TikTok no measured gain (KB-114). Without ifNull the whole
-          -- net goes NULL and the day silently falls back to channel_daily's
-          -- leg alone. What the series should show instead is KB-114's open
-          -- product question; until it is answered it reads as it always has.
-          toInt64(ifNull(sum(gained), 0) - ifNull(sum(lost), 0)) as net
+          -- and TikTok no measured gain (KB-114). ifNull keeps the net a
+          -- number; \`measured\` says whether it is a movement at all, and
+          -- reconstructSeries ignores the day when it is not.
+          toInt64(ifNull(sum(gained), 0) - ifNull(sum(lost), 0)) as net,
+          toUInt8(countIf(gained IS NOT NULL) > 0
+            AND countIf(lost IS NOT NULL) > 0) as measured
         FROM (
           SELECT
             d.connection_id      as connection_id,
@@ -1869,7 +1878,9 @@ export async function querySubscriberDeltas(input: {
         SELECT
           toString(connection_id) as connection_id,
           toString(metric_date)   as metric_date,
-          toInt64(sum(gained) - sum(lost)) as net
+          toInt64(sum(gained) - sum(lost)) as net,
+          -- YouTube's Reporting ingest writes both columns, always.
+          toUInt8(1) as measured
         FROM (
           SELECT
             connection_id,
@@ -1898,12 +1909,14 @@ export async function querySubscriberDeltas(input: {
     connection_id: string;
     metric_date: string;
     net: number;
+    measured: number;
   }>();
 
   return rows.map((row) => ({
     connectionId: row.connection_id,
     metricDate: row.metric_date,
     net: Number(row.net),
+    measured: Number(row.measured) === 1,
   }));
 }
 

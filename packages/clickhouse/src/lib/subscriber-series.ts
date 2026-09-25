@@ -18,6 +18,12 @@ export interface SubscriberDelta {
   metricDate: string;
   /** gained − lost for the day, already netted by the query. */
   net: number;
+  /**
+   * False when the day's gains or losses were not measured (TikTok reports
+   * neither per video, Instagram no losses; KB-114). Such a `net` is not a
+   * movement, and `reconstructSeries` ignores it. Absent means measured.
+   */
+  measured?: boolean;
 }
 
 /**
@@ -32,7 +38,13 @@ export type SubscriberSource =
   | 'snapshot'
   | 'interpolated'
   | 'constrained'
-  | 'clamped';
+  | 'clamped'
+  /**
+   * A day between two snapshots of a channel with no measured daily
+   * movement (KB-114, decision 2026-09-25): a straight line between the two
+   * recorded counts, not a measured gain or loss.
+   */
+  | 'between_snapshots';
 
 export interface SubscriberPoint {
   date: string;
@@ -96,8 +108,17 @@ export function reconstructSeries(
     a.snapshotDate < b.snapshotDate ? -1 : 1,
   );
 
+  const measuredDeltas = deltas.filter((d) => d.measured !== false);
+
+  // No measured movement at all (TikTok, Instagram): the only facts are the
+  // recorded counts, so draw straight lines between them and say so, rather
+  // than walk a flat line labelled as daily movement (KB-114, option a).
+  if (measuredDeltas.length === 0) {
+    return betweenSnapshots(sortedAnchors, range);
+  }
+
   const anchorByDate = new Map(sortedAnchors.map((a) => [a.snapshotDate, a]));
-  const netByDate = new Map(deltas.map((d) => [d.metricDate, d.net]));
+  const netByDate = new Map(measuredDeltas.map((d) => [d.metricDate, d.net]));
 
   const first = sortedAnchors[0]!;
   const firstBand = bandOf(first);
@@ -189,4 +210,57 @@ export function reconstructSeries(
   return eachDay(range.from, range.to)
     .map((d) => points.get(d))
     .filter((p): p is SubscriberPoint => p !== undefined);
+}
+
+/**
+ * A series from snapshots alone (KB-114, option a, decided 2026-09-25).
+ *
+ * Each recorded count is a point: its exact figure, or a rounded one's floor
+ * as the seed rule above does. Days between two of them lie on the straight
+ * line joining them, rounded to a whole follower, and are marked
+ * `between_snapshots`. Nothing is drawn before the first snapshot or after
+ * the last: with no movement measured, there is no basis to extend either
+ * way.
+ */
+function betweenSnapshots(
+  sortedAnchors: SubscriberAnchor[],
+  range: { from: string; to: string },
+): SubscriberPoint[] {
+  const points: SubscriberPoint[] = [];
+
+  const recorded = (anchor: SubscriberAnchor): SubscriberPoint => ({
+    date: anchor.snapshotDate,
+    level: bandOf(anchor).low,
+    source: anchor.roundingStep > 0 ? 'clamped' : 'snapshot',
+  });
+
+  for (const [index, anchor] of sortedAnchors.entries()) {
+    const start = recorded(anchor);
+    points.push(start);
+
+    const nextAnchor = sortedAnchors[index + 1];
+    if (!nextAnchor) break;
+
+    const end = recorded(nextAnchor);
+    const span = daysBetween(start.date, end.date);
+
+    for (let step = 1; step < span; step++) {
+      points.push({
+        date: addDays(start.date, step),
+        level: Math.round(
+          start.level + ((end.level - start.level) * step) / span,
+        ),
+        source: 'between_snapshots',
+      });
+    }
+  }
+
+  return points.filter((p) => p.date >= range.from && p.date <= range.to);
+}
+
+function daysBetween(from: string, to: string): number {
+  return Math.round(
+    (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) /
+      86_400_000,
+  );
 }

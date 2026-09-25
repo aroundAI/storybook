@@ -221,35 +221,56 @@ export function SubscriberSeriesCard({
               measured days, broken wherever a day was reconstructed from
               movement alone — so a capture gap shows as dashed.
             */}
-            {lines.map((line) => (
-              <Line
-                key={`${line.key}-all`}
-                dataKey={line.key}
-                name={line.name}
-                type={'monotone'}
-                stroke={`var(--color-${line.key})`}
-                strokeWidth={1.5}
-                strokeDasharray={'4 4'}
-                strokeOpacity={0.7}
-                isAnimationActive={false}
-                dot={false}
-                activeDot={false}
-              />
-            ))}
-            {lines.map((line) => (
-              <Line
-                key={`${line.key}-measured`}
-                dataKey={measuredKey(line.key)}
-                name={line.name}
-                type={'monotone'}
-                stroke={`var(--color-${line.key})`}
-                strokeWidth={2}
-                connectNulls={false}
-                isAnimationActive={false}
-                dot={<PointDot lineKey={line.key} />}
-                activeDot={false}
-              />
-            ))}
+            {lines.map((line) => {
+              const between = isSnapshotOnly(line);
+
+              return (
+                <Line
+                  key={`${line.key}-all`}
+                  dataKey={line.key}
+                  name={line.name}
+                  // Between snapshots the line *is* a straight line between
+                  // two counts (KB-114); a curve would imply movement.
+                  type={between ? 'linear' : 'monotone'}
+                  stroke={`var(--color-${line.key})`}
+                  strokeWidth={1.5}
+                  strokeDasharray={between ? '2 4' : '4 4'}
+                  strokeOpacity={between ? 0.45 : 0.7}
+                  isAnimationActive={false}
+                  dot={false}
+                  activeDot={false}
+                />
+              );
+            })}
+            {lines.map((line) =>
+              isSnapshotOnly(line) ? (
+                // No solid stroke at all: nothing between two counts was
+                // measured, even on consecutive days. A point per count.
+                <Line
+                  key={`${line.key}-measured`}
+                  dataKey={measuredKey(line.key)}
+                  name={line.name}
+                  stroke={'transparent'}
+                  connectNulls={false}
+                  isAnimationActive={false}
+                  dot={<SnapshotDot lineKey={line.key} />}
+                  activeDot={false}
+                />
+              ) : (
+                <Line
+                  key={`${line.key}-measured`}
+                  dataKey={measuredKey(line.key)}
+                  name={line.name}
+                  type={'monotone'}
+                  stroke={`var(--color-${line.key})`}
+                  strokeWidth={2}
+                  connectNulls={false}
+                  isAnimationActive={false}
+                  dot={<PointDot lineKey={line.key} />}
+                  activeDot={false}
+                />
+              ),
+            )}
           </LineChart>
         </ChartContainer>
       ) : null}
@@ -273,7 +294,9 @@ export function SubscriberSeriesCard({
         </ul>
       ) : null}
 
-      {lines.length > 0 ? <SourceLegend /> : null}
+      {lines.length > 0 ? (
+        <SourceLegend snapshotOnly={lines.some(isSnapshotOnly)} />
+      ) : null}
 
       {withoutData.length > 0 && !showingTotal ? (
         <ul
@@ -360,12 +383,79 @@ function PointDot(props: {
   return null;
 }
 
-function SourceLegend() {
+/**
+ * A line with any day reconstructed between snapshots: its channel reports no
+ * daily gains and losses (TikTok, Instagram; KB-114). Decided 2026-09-25:
+ * draw straight lines between the counts actually recorded, mark each count,
+ * and never present a day between them as a measured movement.
+ */
+function isSnapshotOnly(line: ChartLine): boolean {
+  return line.points.some((p) => p.source === 'between_snapshots');
+}
+
+/**
+ * One recorded follower count on a snapshot-only line. Carries its date and
+ * count so the figures on screen can be read back and checked against what
+ * was recorded.
+ */
+function SnapshotDot(props: {
+  cx?: number;
+  cy?: number;
+  payload?: ChartRow;
+  value?: number | null;
+  lineKey: string;
+}) {
+  const { cx, cy, payload, value, lineKey } = props;
+
+  if (cx === undefined || cy === undefined || !payload) return null;
+  if (typeof value !== 'number') return null;
+
+  return (
+    <circle
+      cx={cx}
+      cy={cy}
+      r={3.5}
+      fill={`var(--color-${lineKey})`}
+      stroke={'var(--background)'}
+      strokeWidth={1}
+      data-test={'subscriber-snapshot-point'}
+      data-date={payload.date}
+      data-count={value}
+    />
+  );
+}
+
+function SourceLegend({ snapshotOnly }: { snapshotOnly: boolean }) {
   return (
     <ul
       className={'flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground'}
       data-test={'subscriber-source-legend'}
     >
+      {snapshotOnly ? (
+        <>
+          <li
+            className={'flex items-center gap-1.5'}
+            data-test={'subscriber-legend-snapshot-point'}
+          >
+            <span
+              className={'inline-block size-2 rounded-full bg-foreground'}
+            />
+            A follower count recorded that day
+          </li>
+          <li
+            className={'flex items-center gap-1.5'}
+            data-test={'subscriber-legend-between-snapshots'}
+          >
+            <span
+              className={
+                'inline-block w-4 border-t border-dotted border-foreground opacity-60'
+              }
+            />
+            Lighter dotted line — reconstructed from follower snapshots; this
+            platform reports no daily gains or losses
+          </li>
+        </>
+      ) : null}
       <li className={'flex items-center gap-1.5'}>
         <span className={'inline-block h-0.5 w-4 bg-foreground'} />
         Solid — a snapshot that day

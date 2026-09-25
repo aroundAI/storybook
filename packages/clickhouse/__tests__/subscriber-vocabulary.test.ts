@@ -22,15 +22,18 @@ const SOURCES: SubscriberSource[] = [
   'constrained',
   'clamped',
   'interpolated',
+  'between_snapshots',
 ];
 
 // The spec's rule (§3), stated independently: only a day without a snapshot
-// is reconstructed.
+// is reconstructed — from daily movement, or, for a channel with none
+// measured, as a line between two snapshots (KB-114).
 const measuredBySpec: Record<SubscriberSource, boolean> = {
   snapshot: true,
   constrained: true,
   clamped: true,
   interpolated: false,
+  between_snapshots: false,
 };
 
 describe('subscriber vocabulary', () => {
@@ -65,6 +68,12 @@ describe('subscriber vocabulary', () => {
       // Clamped only when a part is.
       if (combined === 'clamped') {
         expect(a === 'clamped' || b === 'clamped').toBe(true);
+      }
+
+      // A line between snapshots is the weakest claim: any total with one
+      // in it is one (KB-114).
+      if (a === 'between_snapshots' || b === 'between_snapshots') {
+        expect(combined).toBe('between_snapshots');
       }
     });
   });

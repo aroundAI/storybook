@@ -30,6 +30,46 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/raw-export-generator.test.ts",
       "pattern": "leaves a figure the platform does not measure blank"
+    },
+    {
+      "name": "KB-114 the series walks unmeasured TikTok rows as daily movement again",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/subscriber-series.ts",
+      "find": "  const measuredDeltas = deltas.filter((d) => d.measured !== false);\n",
+      "replace": "  const measuredDeltas = deltas;\n",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/subscriber-scenarios.test.ts",
+      "pattern": "snapshots-only, figure by figure"
+    },
+    {
+      "name": "KB-114 a day between snapshots counts as measured",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/subscriber-vocabulary.ts",
+      "find": "  return source !== 'interpolated' && source !== 'between_snapshots';\n",
+      "replace": "  return source !== 'interpolated';\n",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/subscriber-vocabulary.test.ts",
+      "pattern": "between_snapshots"
+    },
+    {
+      "name": "KB-114 unmeasured rows extend a snapshot-only curve past its last count",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/subscriber-levels-core.ts",
+      "find": "    ...deltas.filter((d) => d.measured !== false).map((d) => d.metricDate),\n",
+      "replace": "    ...deltas.map((d) => d.metricDate),\n",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/subscriber-scenarios.test.ts",
+      "pattern": "snapshots-only"
+    },
+    {
+      "name": "KB-114 a day between snapshots is labelled as a snapshot",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/subscriber-series.ts",
+      "find": "        source: 'between_snapshots',\n",
+      "replace": "        source: 'snapshot',\n",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/subscriber-scenarios.test.ts",
+      "pattern": "never presents a day between counts as measured"
     }
   ]
 }

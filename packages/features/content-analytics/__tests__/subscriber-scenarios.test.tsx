@@ -347,12 +347,55 @@ describe('presentation found in the all-scenarios evidence', () => {
   });
 
   it('shows no line legend when nothing is drawn', () => {
-    renderCard(ALL.map((s) => s.id));
+    // Every state but the TikTok one, whose single channel is a TikTok
+    // total of its own and so draws a line.
+    renderCard(ALL.filter((s) => s.platform !== 'tiktok').map((s) => s.id));
     showTotal();
 
     expect(
       document.querySelector('[data-test="subscriber-source-legend"]'),
     ).toBeNull();
+  });
+});
+
+// KB-114, option a (decided 2026-09-25): a channel whose platform reports
+// no daily movement is drawn between its recorded counts, and says so.
+describe('a channel drawn between its snapshots', () => {
+  it('explains the points and the line between them', () => {
+    renderCard(['snapshots-only']);
+
+    expect(
+      document.querySelector(
+        '[data-test="subscriber-legend-between-snapshots"]',
+      )?.textContent,
+    ).toContain('reconstructed from follower snapshots');
+    expect(
+      document.querySelector('[data-test="subscriber-legend-snapshot-point"]')
+        ?.textContent,
+    ).toContain('A follower count recorded that day');
+  });
+
+  it('does not explain snapshot lines on a chart without one', () => {
+    renderCard(['healthy-exact']);
+
+    expect(
+      document.querySelector(
+        '[data-test="subscriber-legend-between-snapshots"]',
+      ),
+    ).toBeNull();
+  });
+
+  it('puts no solid stroke under the line: nothing between counts is measured', () => {
+    const series = seriesOf(scenarioById('snapshots-only'));
+    const { rows } = toChartData([
+      { key: 'line', name: 'TikTok', points: series.points },
+    ]);
+    const between = rows.filter((r) => r.line__source === 'between_snapshots');
+
+    expect(between.length).toBeGreaterThan(0);
+    for (const row of between) {
+      expect(row.line__measured).toBeNull();
+    }
   });
 });
 

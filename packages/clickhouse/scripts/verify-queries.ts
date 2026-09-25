@@ -636,12 +636,13 @@ async function assertions() {
 
       const got = JSON.stringify({
         watch: watch.watchTimeSeconds,
-        net: deltas.map((d) => d.net),
+        net: deltas.map((d) => [d.net, d.measured]),
         reach: await reach.json(),
       });
       const want = JSON.stringify({
         watch: 1800,
-        net: [2],
+        // channel_daily holds YouTube's gains and losses: a measured movement.
+        net: [[2, true]],
         reach: [{ impressions: '4000', ctr: 0.055 }],
       });
 
@@ -1037,6 +1038,7 @@ async function assertions() {
           saves: null,
           watch_time_seconds: 600,
           subscribers_gained: 2,
+          subscribers_lost: 1,
           metric_source: 'reporting_api',
         },
         {
@@ -1059,9 +1061,53 @@ async function assertions() {
         },
       ]);
 
+      // One connection per video, so the subscriber movement read can say
+      // per platform whether a day's movement was measured at all.
+      const connectionOf = {
+        [youtube]: '11411411-0000-4000-8000-00000000000a',
+        [tiktok]: '11411411-0000-4000-8000-00000000000b',
+        [instagram]: '11411411-0000-4000-8000-00000000000c',
+      };
+      await insertVideoDims(
+        (['youtube', 'tiktok', 'instagram'] as const).map((platform) => {
+          const videoId = `kb114-${platform}`;
+          return {
+            video_id: videoId,
+            project_id: project,
+            account_id: project,
+            episode_id: project,
+            connection_id: connectionOf[videoId]!,
+            platform,
+            content_type: 'short',
+            language: 'en',
+            channel_language: 'en',
+            title: videoId,
+            published_at: '2026-09-01 00:00:00',
+            episode_duration_seconds: 60,
+            asset_duration_seconds: null,
+            tags: [],
+          };
+        }),
+      );
+
       const ids = [youtube, tiktok, instagram];
       const totals = await queryTotalsByVideoIds(ids);
       const daily = await queryDailyStats({ videoIds: ids });
+      const movement = await querySubscriberDeltas({
+        connectionIds: ids.map((id) => connectionOf[id]!),
+        from: '2026-09-20',
+        to: '2026-09-20',
+      });
+      const measuredMovement = ids.map(
+        (id) =>
+          movement.find((d) => d.connectionId === connectionOf[id])?.measured,
+      );
+
+      await client.command({
+        query: `ALTER TABLE video_dim DELETE WHERE project_id = {project:UUID}`,
+        query_params: { project },
+        clickhouse_settings: { mutations_sync: '2' },
+      });
 
       await client.command({
         query: `ALTER TABLE video_metrics DELETE WHERE project_id = {project:UUID}`,
@@ -1076,6 +1122,7 @@ async function assertions() {
         ),
         youtubeWatch: totals.get(youtube)?.watch_time_seconds,
         instagramSaves: totals.get(instagram)?.saves,
+        measuredMovement,
       });
       const flags = [
         { saves: false, watch_time_seconds: true, subscribers_gained: true },
@@ -1087,6 +1134,9 @@ async function assertions() {
         daily: flags,
         youtubeWatch: 600,
         instagramSaves: 4,
+        // TikTok measures neither gains nor losses, Instagram no losses: a
+        // day's movement for either is not a movement (KB-114).
+        measuredMovement: [true, false, false],
       });
 
       if (got !== want) throw new Error(`expected ${want}, got ${got}`);
