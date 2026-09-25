@@ -15,6 +15,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { updateEpisodeVisibilityAction } from '@kit/public-sharing/server/visibility-actions';
 import { Button } from '@kit/ui/button';
 import {
@@ -136,15 +137,19 @@ export function EpisodeVisibilitySettings({
   const onSubmit = (values: EpisodeVisibilityFormValues) => {
     startTransition(async () => {
       try {
-        await updateEpisodeVisibilityAction({
-          episodeId,
-          visibility: values.visibility,
-          publicSlug: values.public_slug || undefined,
-        });
+        await unwrap(
+          updateEpisodeVisibilityAction({
+            episodeId,
+            visibility: values.visibility,
+            publicSlug: values.public_slug || undefined,
+          }),
+        );
         toast.success('Episode visibility updated');
         router.refresh();
-      } catch {
-        toast.error('Failed to update episode visibility');
+      } catch (error) {
+        toast.error(
+          refusalMessage(error, 'Failed to update episode visibility'),
+        );
       }
     });
   };

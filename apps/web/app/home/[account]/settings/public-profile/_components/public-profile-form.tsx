@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { updatePublicProfileAction } from '@kit/public-sharing/server/visibility-actions';
 import { Button } from '@kit/ui/button';
 import {
@@ -107,14 +108,16 @@ export function PublicProfileSettingsForm({
   const onSubmit = (values: PublicProfileFormValues) => {
     startTransition(async () => {
       try {
-        await updatePublicProfileAction({
-          accountId,
-          publicProfile: values,
-        });
+        await unwrap(
+          updatePublicProfileAction({
+            accountId,
+            publicProfile: values,
+          }),
+        );
         toast.success('Public profile updated');
         router.refresh();
-      } catch {
-        toast.error('Failed to update public profile');
+      } catch (error) {
+        toast.error(refusalMessage(error, 'Failed to update public profile'));
       }
     });
   };

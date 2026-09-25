@@ -52,7 +52,7 @@ acceptance_criteria:
     evidence: null
   - text: "updateCharacterAction updates both asset and details atomically"
     met: false
-    reason: "not met — the asset update commits first (packages/features/assets/src/lib/server/character.mutations.ts:267); a failed details upsert (:353) leaves it applied"
+    reason: "not met — the asset update commits first (packages/features/assets/src/lib/server/character.mutations.ts:267); a failed details upsert (:356) leaves it applied"
   - text: "updateCharacterAction preserves unmodified fields"
     met: true
     evidence: null
@@ -98,7 +98,7 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "Update is atomic"
-    reason: "updateCharacterAction commits the assets update (packages/features/assets/src/lib/server/character.mutations.ts:267) before upserting character_details (:353), and never reverts the first when the second fails"
+    reason: "updateCharacterAction commits the assets update (packages/features/assets/src/lib/server/character.mutations.ts:267) before upserting character_details (:356), and never reverts the first when the second fails"
     closed_by: "unassigned"
 open_questions: []
 notes: |

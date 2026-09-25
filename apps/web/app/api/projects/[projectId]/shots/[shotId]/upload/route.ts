@@ -213,7 +213,7 @@ export const POST = enhanceRouteHandler(
 
     // 4. Update shot with video and thumbnail URLs
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = await (client as any)
+    const { data: updated, error: updateError } = await (client as any)
       .from('shots')
       .update({
         video_url: videoUrl,
@@ -229,13 +229,23 @@ export const POST = enhanceRouteHandler(
           uploaded_at: new Date().toISOString(),
         },
       })
-      .eq('id', shotId);
+      .eq('id', shotId)
+      .select('id');
 
     if (updateError) {
       logger.error({ ...ctx, error: updateError }, 'Failed to update shot');
       return NextResponse.json(
         { error: 'Failed to update shot record' },
         { status: 500 },
+      );
+    }
+
+    // KB-105: RLS answers a refused update with no rows and no error.
+    if (!updated?.length) {
+      logger.warn(ctx, 'Shot update matched no row the caller may change');
+      return NextResponse.json(
+        { error: "You can't change this shot." },
+        { status: 403 },
       );
     }
 

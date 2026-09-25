@@ -108,15 +108,31 @@ describe('AccountInvitationsService', () => {
   });
 
   describe('updateInvitation', () => {
+    // KB-105: RLS filters a refused update to no rows, with no error
+    it('refuses when the update changed no row', async () => {
+      const service = createAccountInvitationsService(mockClient as any);
+
+      mockClient.from.mockReturnValue({
+        update: vi.fn().mockReturnThis(),
+        match: vi.fn(() => ({
+          select: (): Promise<QueryResult> =>
+            Promise.resolve({ data: [], error: null }),
+        })),
+      } as any);
+
+      await expect(
+        service.updateInvitation({ invitationId: 123, role: 'admin' }),
+      ).rejects.toThrow("You can't change this invitation.");
+    });
     it('should update invitation role successfully', async () => {
       const service = createAccountInvitationsService(mockClient as any);
 
       mockClient.from.mockReturnValue({
         update: vi.fn().mockReturnThis(),
-        match: vi.fn(
-          (): Promise<QueryResult> =>
-            Promise.resolve({ data: null, error: null }),
-        ),
+        match: vi.fn(() => ({
+          select: (): Promise<QueryResult> =>
+            Promise.resolve({ data: [{ id: 123 }], error: null }),
+        })),
       } as any);
 
       await service.updateInvitation({
@@ -133,9 +149,10 @@ describe('AccountInvitationsService', () => {
 
       mockClient.from.mockReturnValue({
         update: vi.fn().mockReturnThis(),
-        match: vi.fn(
-          (): Promise<QueryResult> => Promise.resolve({ data: null, error }),
-        ),
+        match: vi.fn(() => ({
+          select: (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error }),
+        })),
       } as any);
 
       await expect(
@@ -379,15 +396,31 @@ describe('AccountInvitationsService', () => {
   });
 
   describe('renewInvitation', () => {
+    // KB-105: RLS filters a refused update to no rows, with no error
+    it('refuses when the update changed no row', async () => {
+      const service = createAccountInvitationsService(mockClient as any);
+
+      mockClient.from.mockReturnValue({
+        update: vi.fn().mockReturnThis(),
+        match: vi.fn(() => ({
+          select: (): Promise<QueryResult> =>
+            Promise.resolve({ data: [], error: null }),
+        })),
+      } as any);
+
+      await expect(service.renewInvitation(123)).rejects.toThrow(
+        "You can't renew this invitation.",
+      );
+    });
     it('should renew invitation by extending expiration', async () => {
       const service = createAccountInvitationsService(mockClient as any);
 
       mockClient.from.mockReturnValue({
         update: vi.fn().mockReturnThis(),
-        match: vi.fn(
-          (): Promise<QueryResult> =>
-            Promise.resolve({ data: null, error: null }),
-        ),
+        match: vi.fn(() => ({
+          select: (): Promise<QueryResult> =>
+            Promise.resolve({ data: [{ id: 123 }], error: null }),
+        })),
       } as any);
 
       await service.renewInvitation(123);
@@ -401,9 +434,10 @@ describe('AccountInvitationsService', () => {
 
       mockClient.from.mockReturnValue({
         update: vi.fn().mockReturnThis(),
-        match: vi.fn(
-          (): Promise<QueryResult> => Promise.resolve({ data: null, error }),
-        ),
+        match: vi.fn(() => ({
+          select: (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error }),
+        })),
       } as any);
 
       await expect(service.renewInvitation(123)).rejects.toThrow(
@@ -419,10 +453,10 @@ describe('AccountInvitationsService', () => {
         update: vi.fn((data: any) => {
           capturedExpiresAt = data.expires_at;
           return {
-            match: vi.fn(
-              (): Promise<QueryResult> =>
-                Promise.resolve({ data: null, error: null }),
-            ),
+            match: vi.fn(() => ({
+              select: (): Promise<QueryResult> =>
+                Promise.resolve({ data: [{ id: 123 }], error: null }),
+            })),
           };
         }),
       } as any);

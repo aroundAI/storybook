@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 
+import { requireAffectedRows } from '@kit/next/affected-rows';
 import { Database } from '@kit/supabase/database';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 
@@ -11,15 +12,19 @@ export function useUpdateAccountData(accountId: string) {
   const mutationKey = ['account:data', accountId];
 
   const mutationFn = async (data: UpdateData) => {
-    const response = await client.from('accounts').update(data).match({
-      id: accountId,
-    });
+    const response = await client
+      .from('accounts')
+      .update(data)
+      .match({
+        id: accountId,
+      })
+      .select('id');
 
     if (response.error) {
       throw response.error;
     }
 
-    return response.data;
+    return requireAffectedRows(response.data, "Your account wasn't changed.");
   };
 
   return useMutation({

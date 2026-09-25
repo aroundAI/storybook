@@ -16,6 +16,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { updateProjectVisibilityAction } from '@kit/public-sharing/server/visibility-actions';
 import { Button } from '@kit/ui/button';
 import {
@@ -125,15 +126,19 @@ export function ProjectVisibilitySettings({
   const onSubmit = (values: VisibilityFormValues) => {
     startTransition(async () => {
       try {
-        await updateProjectVisibilityAction({
-          projectId,
-          visibility: values.visibility,
-          publicSlug: values.public_slug || 'default',
-        });
+        await unwrap(
+          updateProjectVisibilityAction({
+            projectId,
+            visibility: values.visibility,
+            publicSlug: values.public_slug || 'default',
+          }),
+        );
         toast.success('Visibility settings updated');
         router.refresh();
-      } catch {
-        toast.error('Failed to update visibility settings');
+      } catch (error) {
+        toast.error(
+          refusalMessage(error, 'Failed to update visibility settings'),
+        );
       }
     });
   };
