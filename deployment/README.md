@@ -182,6 +182,14 @@ EMAIL_SENDER=noreply@yourdomain.com
 STORAGE_PROVIDER=r2
 QUEUE_PROVIDER=sqs
 REALTIME_PROVIDER=websocket
+
+# Analytics scopes (FILM-1711). The platforms whose connect requests ask for
+# the analytics scopes: youtube, tiktok, meta. Unset = none, the request made
+# before FILM-1711, which is safe for publishing. Add a platform only after its
+# consent-screen check passes (docs/vendor-review-runbook.md, Part 1); a vendor
+# that rejects an unapproved scope would otherwise break connecting, and
+# publishing, on that platform.
+ANALYTICS_SCOPES_ENABLED=youtube,meta
 ```
 
 ### Configuration Files

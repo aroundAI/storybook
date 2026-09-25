@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { connectScopes } from '@kit/publishing/oauth/analytics-scope-switch';
 import {
   YOUTUBE_OAUTH_CONFIG,
   YouTubeOAuthState,
 } from '@kit/publishing/oauth/youtube';
+import { analyticsScopesEnabled } from '@kit/publishing/server/analytics-scope-switch';
 import { getOAuthAppCredentials } from '@kit/publishing/server/oauth-app-credentials';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -98,7 +100,11 @@ export async function GET(request: NextRequest) {
     client_id: credentials.clientId,
     redirect_uri: `${appUrl}/api/platforms/callback/youtube`,
     response_type: 'code',
-    scope: YOUTUBE_OAUTH_CONFIG.scopes.join(' '),
+    scope: connectScopes(
+      'youtube',
+      YOUTUBE_OAUTH_CONFIG.scopes,
+      analyticsScopesEnabled(),
+    ).join(' '),
     access_type: 'offline',
     prompt: 'consent', // Force consent to get refresh token
     state: encodedState,

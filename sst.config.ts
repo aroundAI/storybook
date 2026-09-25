@@ -966,6 +966,13 @@ export default $config({
         }),
         ...(sesConfigSetName && { AWS_SES_CONFIG_SET: sesConfigSetName }),
 
+        // FILM-1711: the platforms whose connect requests carry the analytics
+        // scopes. Unset is none — the pre-FILM-1711, publishing-safe request.
+        // Turn each on after its consent-screen check (vendor-review-runbook).
+        ...(process.env.ANALYTICS_SCOPES_ENABLED && {
+          ANALYTICS_SCOPES_ENABLED: process.env.ANALYTICS_SCOPES_ENABLED,
+        }),
+
         // Infrastructure providers (use AWS for production)
         // Production and staging store on R2; `s3` has no adapter (KB-70).
         STORAGE_PROVIDER: process.env.STORAGE_PROVIDER || 'r2',
