@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Linkedin } from 'lucide-react';
 
 import { refusalMessage, unwrap } from '@kit/next/action-result';
+import { navigateWithFallback } from '@kit/next/navigation';
 import { NotesInput, PostsList } from '@kit/publishing/components/social-posts';
 import {
   createSocialPostAction,
@@ -75,7 +76,10 @@ export function SocialPostsDashboard({
         router.refresh();
 
         // Navigate to the new post detail page
-        router.push(`/home/${accountSlug}/social-posts/${result.postId}`);
+        navigateWithFallback(
+          router,
+          `/home/${accountSlug}/social-posts/${result.postId}`,
+        );
       } catch (error) {
         toast.error('Failed to create post', {
           description: refusalMessage(error, 'Unknown error'),
@@ -151,7 +155,10 @@ export function SocialPostsDashboard({
           const result = await unwrap(regenerateVariantsAction({ postId }));
           toast.success(`Regenerated ${result.variantCount} new variants`);
           router.refresh();
-          router.push(`/home/${accountSlug}/social-posts/${postId}`);
+          navigateWithFallback(
+            router,
+            `/home/${accountSlug}/social-posts/${postId}`,
+          );
         } catch (error) {
           toast.error('Failed to regenerate', {
             description: refusalMessage(error, 'Unknown error'),

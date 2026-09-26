@@ -10,6 +10,7 @@ import type { z } from 'zod';
 
 import type { TargetPlatform } from '@kit/film-studio-schemas/project';
 import { refusalMessage, unwrap } from '@kit/next/action-result';
+import { navigateWithFallback } from '@kit/next/navigation';
 import { uploadProjectCover } from '@kit/storage/client';
 import { Button } from '@kit/ui/button';
 import {
@@ -257,7 +258,10 @@ export function CreateFilmProjectForm({
         }
 
         // 3. Redirect to the new project using slug
-        router.push(`/home/${accountSlug}/studio/${projectSlug ?? projectId}`);
+        navigateWithFallback(
+          router,
+          `/home/${accountSlug}/studio/${projectSlug ?? projectId}`,
+        );
       } catch (error) {
         toast.error(refusalMessage(error, 'Failed to create project'));
       }

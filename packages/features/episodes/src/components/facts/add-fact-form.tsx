@@ -10,6 +10,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { generateAPACitation } from '@kit/episodes';
+import { navigateWithFallback } from '@kit/next/navigation';
 import { vendorUrl } from '@kit/shared/vendors';
 import { Button } from '@kit/ui/button';
 import {
@@ -195,7 +196,7 @@ export function AddFactForm({ projectId, basePath }: AddFactFormProps) {
         });
 
         toast.success('Fact added successfully');
-        router.push(basePath);
+        navigateWithFallback(router, basePath);
         router.refresh();
       } catch {
         toast.error('Failed to add fact');

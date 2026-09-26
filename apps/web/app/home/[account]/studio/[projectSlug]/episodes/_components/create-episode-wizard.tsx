@@ -25,6 +25,7 @@ import {
   getProjectFactsForWizardAction,
 } from '@kit/episodes/server/actions';
 import { refusalMessage, unwrap } from '@kit/next/action-result';
+import { navigateWithFallback } from '@kit/next/navigation';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { Checkbox } from '@kit/ui/checkbox';
@@ -284,7 +285,8 @@ export function CreateEpisodeWizard({
 
           // Navigate to the episode
           const targetPage = autoGenerate ? 'story' : 'ideation';
-          router.push(
+          navigateWithFallback(
+            router,
             `/home/${account}/studio/${projectSlug}/episodes/${result.data.slug ?? result.data.id}/${targetPage}`,
           );
         }
