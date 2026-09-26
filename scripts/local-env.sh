@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# Local environment: Supabase + ClickHouse on this machine.
+# Local environment: Supabase, ClickHouse and the vendor sandbox on this
+# machine.
 #
 # Exists because the analytics pipeline could not be observed at all
 # otherwise. Production runs with CLICKHOUSE_ENABLED=false, where every read
@@ -9,13 +10,15 @@
 # server rejects outright can pass CI and reach main — which is exactly what
 # happened.
 #
-#   ./scripts/local-env.sh up       start both, apply migrations
+#   ./scripts/local-env.sh up       start all three, apply migrations
 #   ./scripts/local-env.sh verify   run every ClickHouse query for real
 #   ./scripts/local-env.sh status
 #   ./scripts/local-env.sh down
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=lib/vendor-sandbox.sh
+. "$ROOT/scripts/lib/vendor-sandbox.sh"
 ENV_FILE="$ROOT/deployment/config/local.env"
 CH_CONTAINER="storybook-clickhouse"
 
@@ -138,10 +141,14 @@ case "${1:-}" in
     echo "    $(curl -s 'http://localhost:8123/?user=default&password=local&query=SELECT%20version()')"
 
     write_env_file
+    ensure_sandbox_env "$ENV_FILE"
 
     echo "==> ClickHouse migrations"
     load_env
     (cd "$ROOT" && pnpm --filter @kit/clickhouse migrate)
+
+    echo "==> Vendor sandbox (AI vendors, FILM-1803)"
+    start_sandbox "$ROOT"
 
     echo
     echo "Ready. Env file: deployment/config/local.env"
@@ -175,9 +182,12 @@ case "${1:-}" in
     load_env
     echo "ClickHouse: $(curl -s "http://localhost:8123/?user=$CLICKHOUSE_USER&password=$CLICKHOUSE_PASSWORD&query=SELECT%20version()" || echo 'down')"
     (cd "$ROOT/apps/web" && supabase status 2>&1 | head -3)
+    sandbox_status "$ROOT"
     ;;
 
   down)
+    echo "==> Vendor sandbox"
+    stop_sandbox "$ROOT"
     echo "==> ClickHouse"
     docker rm -f "$CH_CONTAINER" > /dev/null 2>&1 || true
     echo "==> Supabase"

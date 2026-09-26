@@ -22,7 +22,7 @@ acceptance_criteria:
     reason: "no longer true — `contentType` is never set (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:285`); a generic \"Research Sources\" section shows instead"
   - text: "Banner shows linked sources summary"
     met: false
-    reason: "no longer true — the source count is every active global source (`packages/features/episodes/src/server/external-context-actions.ts:375`), not the project's"
+    reason: "no longer true — the source count is every active global source (`packages/features/episodes/src/server/external-context-actions.ts:432`), not the project's"
   - text: "Warning shown when factual content has no sources"
     met: false
     reason: "no longer true — not gated on content type, and the 12 seeded global sources always count as sources (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:347`)"
@@ -31,7 +31,7 @@ acceptance_criteria:
     evidence: null
   - text: "External facts passed to season analysis"
     met: false
-    reason: "unverified — only `verified` facts are sent (`packages/features/episodes/src/server/external-context-actions.ts:415`); since KB-18 (#314) they can exist, but no season analysis has been driven with one"
+    reason: "unverified — only `verified` facts are sent (`packages/features/episodes/src/server/external-context-actions.ts:473`); since KB-18 (#314) they can exist, but no season analysis has been driven with one"
   - text: "Memory context includes external facts"
     met: true
     evidence: null
@@ -54,7 +54,7 @@ remaining:
     reason: >
       The "sources" badge is `getResearchCountsAction().sources`, a count of
       every active row in the global `external_sources` registry
-      (`packages/features/episodes/src/server/external-context-actions.ts:375`);
+      (`packages/features/episodes/src/server/external-context-actions.ts:432`);
       projects have no linked sources in the data model
     closed_by: "unassigned"
   - criterion: "Warning shown when factual content has no sources"
