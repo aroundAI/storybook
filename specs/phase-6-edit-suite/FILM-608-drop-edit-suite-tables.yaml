@@ -3,7 +3,7 @@ title: "Drop the retired Edit Suite tables"
 phase: 6
 phase_name: "Edit Suite"
 category: database_table
-status: DRAFT
+status: DONE
 effort: S
 dependencies:
   - spec_id: "FILM-607"
@@ -18,37 +18,36 @@ summary: >
   repo guard proves no Edit Suite identifier remains anywhere.
 acceptance_criteria:
   - text: "Before the drop, the owner runs the read-only production row-count query from FILM-607's EDD §31 (`specs/plans/FILM-607-edd.md`) and records the counts here; if any table has rows, the owner decides whether to export them first (keep-until-asked, KB-20), and the decision is recorded"
-    met: false
-    reason: "open — DRAFT; needs the owner, who alone reads production"
-  - text: "A hand-written migration in the Hook Lab style (`20260919193447_remove-hook-lab.sql`) refuses to drop, raising with every table's count, while any of the six tables has rows, unless the recorded export step is acknowledged in the migration (a named constant set by the PR that records the owner's decision)"
-    met: false
-    reason: "open — DRAFT, not yet implemented"
+    met: true
+    evidence: "Owner, 2026-09-25, read production: edit_projects 1, edit_tracks 2, edit_clips 11, edit_keyframes 11, edit_transitions 0, dialogue_sync_groups 0; edit_projects with render_status <> 'none' 0; compilations with edit_project_id set 0. Decision: discard, owner-approved, no export. Recorded in the migration header (apps/web/supabase/migrations/20260925101152_film608-drop-edit-suite-tables.sql:8-13)"
+  - text: "A hand-written migration in the Hook Lab style (`20260919193447_remove-hook-lab.sql`) refuses to drop, raising with every table's count, while any of the six tables holds more rows than the owner acknowledged. The acknowledgement is a named constant of per-table counts (EDD A1, approved 2026-09-25), set by the PR that records the owner's decision, so it cannot drop a database holding rows nobody has read"
+    met: true
+    evidence: "apps/web/supabase/migrations/20260925101152_film608-drop-edit-suite-tables.sql:22-57 — `acknowledged` = the owner's counts; a table above its count raises P0001 naming all six"
   - text: "The migration drops `compilations.edit_project_id` (and its foreign key), then `edit_keyframes`, `edit_transitions`, `edit_clips`, `dialogue_sync_groups`, `edit_tracks` and `edit_projects` with their read policies, grants, indexes (including `idx_edit_clips_language`) and timestamp triggers; `edit_projects.render_*` go with their table"
-    met: false
-    reason: "open — DRAFT, not yet implemented"
+    met: true
+    evidence: "apps/web/supabase/migrations/20260925101152_film608-drop-edit-suite-tables.sql:60-71 — one `drop table` over all six, no cascade (the edit_clips/dialogue_sync_groups FK cycle resolves in one statement); pgTAP D1–D3 green"
   - text: "The guard's refusal is seen: a row inserted locally makes the migration raise; the row removed, it applies"
-    met: false
-    reason: "open — DRAFT, not yet implemented"
+    met: true
+    evidence: "Local, 2026-09-25, against the acknowledged counts: 2 edit_projects rows (1 acknowledged) → `migration up` exit 1, `FILM-608: … (edit_projects=2, edit_tracks=0, …)` (P0001), table still there with 2 rows; one row removed (1 = acknowledged) → exit 0, table gone"
   - text: "`apps/web/supabase/schemas/36-edit-suite.sql` deleted, and `schemas/56-compilations.sql`'s `edit_project_id` column and its Edit Suite comment removed"
-    met: false
-    reason: "open — DRAFT, not yet implemented"
+    met: true
+    evidence: "36-edit-suite.sql deleted; apps/web/supabase/schemas/56-compilations.sql:4-5,33-36 — the Edit Suite sentence and the edit_project_id column removed"
   - text: "Types regenerated (never hand-edited); no `edit_*` table or `dialogue_sync_groups` in either `database.types.ts`; `check:types-current` and `check:schema-drift` green"
-    met: false
-    reason: "open — DRAFT, not yet implemented"
+    met: true
+    evidence: "`pnpm supabase:web:typegen`: −394 lines in each copy, deletions only, byte-identical copies, 0 Edit Suite names; check:types-current exit 0, check:schema-drift exit 0"
   - text: "pgTAP, red on the pre-drop schema: `hasnt_table` for all six tables and `hasnt_column('public', 'compilations', 'edit_project_id')`; FILM-607's read-only assertions in `edit-suite-retired.test.sql` replaced by these"
-    met: false
-    reason: "open — DRAFT, not yet implemented"
+    met: true
+    evidence: "apps/web/supabase/tests/database/edit-suite-retired.test.sql:28-35 (D1, D2), apps/web/supabase/tests/database/edit-suite-retired.test.sql:37-68 (D3 policies, indexes, triggers), apps/web/supabase/tests/database/edit-suite-retired.test.sql:70-81 (D4 neighbours kept); red on the pre-drop schema (tests 6–15 failed), 25/25 green on a fresh database with every migration"
   - text: "FILM-607's repo guard is extended with the six table names, `render_status`/`render_url` on `edit_projects`, and `36-edit-suite`, and scans the whole repository except migration history, specs and plans; red before the drop, green after; mutation-guard entries seen RED"
-    met: false
-    reason: "open — DRAFT, not yet implemented"
+    met: true
+    evidence: "apps/web/test/film-607-edit-suite-retired.test.ts:23-51 names, apps/web/test/film-607-edit-suite-retired.test.ts:53-61 every top-level directory except .git/.claude/.local-ci/node_modules/specs, generated types no longer skipped; red before (51+51 findings in the two types files, 133 in 36-edit-suite.sql, 2 in 56-compilations.sql), green after; tooling/mutation-guards/film-608.json D1, D2, G2 RED, and FILM-607's R1, W1, G1 still RED (its R2 entries removed: they cannot apply once the tables are gone)"
 test_plan:
   unit:
-    - {text: "Repo guard (FILM-607's, extended) names every remaining reference before the drop", met: false, reason: "open — DRAFT"}
+    - {text: "Repo guard (FILM-607's, extended) names every remaining reference before the drop", met: true, evidence: "apps/web/test/film-607-edit-suite-retired.test.ts — red on the pre-drop tree (4 files), green after"}
   integration:
-    - {text: "pgTAP hasnt_table ×6, hasnt_column compilations.edit_project_id; guard refusal seen on a seeded row", met: false, reason: "open — DRAFT"}
+    - {text: "pgTAP hasnt_table ×6, hasnt_column compilations.edit_project_id; guard refusal seen on a seeded row", met: true, evidence: "apps/web/supabase/tests/database/edit-suite-retired.test.sql red then green; refusal seen with 2 rows against an acknowledged 1"}
   e2e: []
-open_questions:
-  - "Production row counts, and whether the owner wants any rows exported before the drop"
+open_questions: []
 database_table:
   table_name: "edit_projects, edit_tracks, edit_clips, edit_keyframes, edit_transitions, dialogue_sync_groups (dropped)"
   migration: "apps/web/supabase/migrations/20260219083555_edit-suite-v2.sql"

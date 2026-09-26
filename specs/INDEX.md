@@ -254,10 +254,10 @@ graph TD
 ```
 
 ### Phase 6: Edit Suite
-Retired 2026-09-23 (FILM-607). The only open work is FILM-608, dropping the kept tables.
+Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved discard, 2026-09-25). No open work.
 ```
 1. FILM-607 (Retire the Edit Suite)
-2. FILM-608 (Drop the retired Edit Suite tables) - after the owner reads production
+2. FILM-608 (Drop the retired Edit Suite tables)
 ```
 
 ### Phase 7: Publishing
@@ -419,7 +419,7 @@ Retired 2026-09-23 (FILM-607). The only open work is FILM-608, dropping the kept
 | FILM-605 | [auto-captions](./phase-6-edit-suite/components/FILM-605-auto-captions.yaml) | 🗑️ RETIRED (5f44d0e1) | L | FILM-601 |
 | FILM-606 | [transitions-library](./phase-6-edit-suite/components/FILM-606-transitions-library.yaml) | 🗑️ RETIRED (5f44d0e1) | M | FILM-601 |
 | FILM-607 | [retire-edit-suite](./phase-6-edit-suite/FILM-607-retire-edit-suite.yaml) | ✅ DONE | M | KB-28, KB-27 for coordination only |
-| FILM-608 | [drop-edit-suite-tables](./phase-6-edit-suite/FILM-608-drop-edit-suite-tables.yaml) | DRAFT | S | FILM-607 |
+| FILM-608 | [drop-edit-suite-tables](./phase-6-edit-suite/FILM-608-drop-edit-suite-tables.yaml) | ✅ DONE | S | FILM-607 |
 
 ### Phase 7: Publishing (16 specs)
 
@@ -708,7 +708,7 @@ reason when not.
 | 3. Episodes | 14 | 0 | 7 | 0 | 3 | 4 |
 | 4. Video Gen | 14 | 0 | 2 | 0 | 12 | 0 |
 | 5. Audio Gen | 16 | 1 | 6 | 0 | 6 | 3 |
-| 6. Edit Suite | 8 | 1 | 0 | 0 | 6 | 1 |
+| 6. Edit Suite | 8 | 0 | 0 | 0 | 6 | 2 |
 | 7. Publishing | 16 | 0 | 7 | 0 | 3 | 6 |
 | 8. Analytics | 10 | 0 | 7 | 0 | 0 | 3 |
 | 9. Integration | 6 | 0 | 1 | 0 | 3 | 2 |
@@ -723,7 +723,7 @@ reason when not.
 | 18. Vendor Sandbox | 5 | 2 | 2 | 0 | 0 | 1 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **231** | **24** | **80** | **2** | **50** | **75** |
+| **TOTAL** | **231** | **23** | **80** | **2** | **50** | **76** |
 
 No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose PR is open keeps the status it has on `main`.
 
@@ -732,7 +732,7 @@ No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose 
 | Scope | Total | Done | Partial | Retired | Draft / Deferred |
 |-------|-------|------|---------|---------|------------------|
 | MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 92 | 29 | 31 | 31 | 1 |
-| Post-MVP (Ph 6–9) | 40 | 12 | 15 | 12 | 1 |
+| Post-MVP (Ph 6–9) | 40 | 13 | 15 | 12 | 0 |
 | Canon (Ph 10–11) | 29 | 6 | 21 | 2 | 0 |
 | Scale & Hooks (Ph 12–13) | 4 | 2 | 0 | 2 | 0 |
 | Edit Suite v2 (Ph 14) | 1 | 0 | 0 | 1 | 0 |

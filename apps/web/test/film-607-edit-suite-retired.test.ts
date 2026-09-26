@@ -3,18 +3,20 @@ import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /**
- * FILM-607. The Edit Suite is retired (owner, 2026-09-23). This fails if any
- * of its names comes back in application or infrastructure code: the
+ * FILM-607 and FILM-608. The Edit Suite is retired (owner, 2026-09-23). This
+ * fails if any of its names comes back anywhere in the repository: the
  * package, the route, the render worker and its queues, the five database
- * functions, the collaborative-editing WebSocket messages.
+ * functions, the collaborative-editing WebSocket messages, and (FILM-608)
+ * the six tables, `compilations.edit_project_id` and the schema file.
  *
  * Migration history is excluded because it is history: the migrations that
- * created these objects stay, and the ones that removed them name them. The
- * generated types are excluded because they are generated from the
- * database, which pgTAP checks directly. Specs and plans describe the
- * retirement, so they are not scanned either.
+ * created these objects stay, and the ones that removed them name them.
+ * Specs and plans describe the retirement, so they are not scanned either.
+ * The generated types are scanned: once the tables are dropped, a types
+ * file that still lists them was not regenerated.
  *
- * FILM-608 extends this list with the six edit tables once they are dropped.
+ * `render_status` and `render_url` were columns of `edit_projects`. If a
+ * future feature needs either name, narrow the entry rather than skip it.
  */
 const REPO = join(__dirname, '..', '..', '..');
 
@@ -36,10 +38,27 @@ export const RETIRED_NAMES = [
   "'edit-operation'",
   "'cursor-update'",
   'render-status-changed',
+  'edit_projects',
+  'edit_tracks',
+  'edit_clips',
+  'edit_keyframes',
+  'edit_transitions',
+  'dialogue_sync_groups',
+  'edit_project_id',
+  'render_status',
+  'render_url',
+  '36-edit-suite',
 ];
 
-const ROOTS = ['apps', 'packages', 'tooling', 'scripts', '.github'];
-const FILES = ['sst.config.ts', 'package.json', 'turbo.json', 'pnpm-lock.yaml'];
+// Every top-level directory is scanned except these: version control, other
+// worktrees and local tool state, and the specs, which record the retirement.
+const SKIPPED_ROOTS = new Set([
+  '.git',
+  '.claude',
+  '.local-ci',
+  'node_modules',
+  'specs',
+]);
 
 const SKIPPED_DIRECTORIES = new Set([
   'node_modules',
@@ -53,12 +72,11 @@ const SKIPPED_DIRECTORIES = new Set([
 ]);
 
 const SKIPPED_FILES = new Set([
-  'apps/web/lib/database.types.ts',
-  'packages/supabase/src/database.types.ts',
-  // This file, and the pgTAP test and guards that prove the functions gone.
+  // This file, and the pgTAP test and guards that prove the objects gone.
   'apps/web/test/film-607-edit-suite-retired.test.ts',
   'apps/web/supabase/tests/database/edit-suite-retired.test.sql',
   'tooling/mutation-guards/film-607.json',
+  'tooling/mutation-guards/film-608.json',
 ]);
 
 const SOURCE = /\.(ts|tsx|js|mjs|cjs|json|sql|ya?ml|sh|py)$/;
@@ -102,10 +120,16 @@ describe('FILM-607: the Edit Suite stays retired', () => {
   });
 
   it('no application or infrastructure file names the Edit Suite', () => {
-    const files = [
-      ...ROOTS.flatMap((root) => sourceFiles(join(REPO, root))),
-      ...FILES.map((file) => join(REPO, file)),
-    ]
+    const files = readdirSync(REPO, { withFileTypes: true })
+      .flatMap((entry) => {
+        const path = join(REPO, entry.name);
+
+        if (entry.isDirectory()) {
+          return SKIPPED_ROOTS.has(entry.name) ? [] : sourceFiles(path);
+        }
+
+        return SOURCE.test(entry.name) ? [path] : [];
+      })
       .map((path) => relative(REPO, path))
       .filter((path) => !SKIPPED_FILES.has(path))
       .map((path) => ({

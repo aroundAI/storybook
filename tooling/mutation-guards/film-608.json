@@ -1,0 +1,27 @@
+{
+  "feature": "FILM-608",
+  "mutations": [
+    {
+      "name": "D1 an Edit Suite table exists again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/edit-suite-retired.test.sql",
+      "sql": "create table public.edit_projects (id uuid primary key);"
+    },
+    {
+      "name": "D2 compilations.edit_project_id is back",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/edit-suite-retired.test.sql",
+      "sql": "alter table public.compilations add column edit_project_id uuid;"
+    },
+    {
+      "name": "G2 the compilations schema file names an Edit Suite column again",
+      "kind": "unit",
+      "file": "apps/web/supabase/schemas/56-compilations.sql",
+      "find": "  -- Chapter markers for YouTube Chapters\n",
+      "replace": "  edit_project_id uuid,\n  -- Chapter markers for YouTube Chapters\n",
+      "cwd": "apps/web",
+      "test": "test/film-607-edit-suite-retired.test.ts",
+      "pattern": "names the Edit Suite"
+    }
+  ]
+}
