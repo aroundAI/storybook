@@ -1,0 +1,74 @@
+{
+  "slug": "translation-quality",
+  "name": "Translation Quality Gate",
+  "version": 1,
+  "category": "quality-evaluation",
+  "description": "Compare translated dialogue with the original for meaning, emotional tone, cultural fit and (when required) timing. Returns an overall score (0-1), the lines that diverge, cultural issues, timing violations and a pass/revise verdict. Used by the Translation Verifier (KB-116).",
+  "exported_at": "2026-09-25T00:00:00.000Z",
+  "llm": {
+    "provider": "gemini",
+    "model": "gemini-3.5-flash",
+    "max_tokens": 3000,
+    "temperature": 0.2,
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "system_prompts": [
+    {
+      "slug": "role",
+      "name": "Dubbing Director",
+      "content": "You are a dubbing director checking translated dialogue before it is voiced. You compare each translated line with its original and judge whether a viewer would hear the same meaning, the same emotion and a natural line in their own language. Be specific about which line and why.",
+      "layer_type": "role",
+      "scope": "template",
+      "order": 1
+    },
+    {
+      "slug": "evaluation-framework",
+      "name": "Translation Criteria",
+      "content": "TRANSLATION CRITERIA:\n\n- Semantic fidelity: does each translated line convey the same meaning?\n- Emotional tone: is the character's emotion preserved?\n- Cultural appropriateness: are idioms and references adapted rather than translated word for word?\n- Timing: when timing is constrained, a translated line must stay within 20% of the original's syllable or word count.\n\nDIVERGENT LINES: every line that fails a criterion, with its 0-based index, the original, the translation, what is wrong and a severity (critical = meaning lost or wrong, warning = tone or cultural slip, minor = style).\n\nTIMING VIOLATIONS: the 0-based indices of lines outside the timing limit (empty when timing is unconstrained).\n\nOVERALL SCORE: 0 to 1. VERDICT: \"pass\" if overallScore >= 0.8 and no divergent line is critical; otherwise \"revise\".",
+      "layer_type": "constraints",
+      "scope": "template",
+      "order": 2
+    },
+    {
+      "slug": "format",
+      "name": "JSON Output Format",
+      "content": "Respond with valid JSON matching the schema exactly. Do not include any text outside the JSON.",
+      "layer_type": "format",
+      "scope": "template",
+      "order": 3
+    }
+  ],
+  "user_prompt": "Verify this translation into {{target_language}}.\n\n**Timing**: {{timing_rule}}\n\n## Original Lines (English)\n{{original_lines}}\n\n## Translated Lines ({{target_language}})\n{{translated_lines}}",
+  "variables": {
+    "original_lines": {
+      "type": "string",
+      "required": true,
+      "description": "The original lines, numbered"
+    },
+    "translated_lines": {
+      "type": "string",
+      "required": true,
+      "description": "The translated lines, numbered"
+    },
+    "target_language": {
+      "type": "string",
+      "required": true,
+      "description": "The language translated into"
+    },
+    "timing_rule": {
+      "type": "string",
+      "required": true,
+      "description": "Whether lip-sync timing constrains the translation"
+    }
+  },
+  "output": {
+    "type": "object",
+    "schema": {
+      "type": "zod",
+      "definition": "z.object({ overallScore: z.number().min(0).max(1), divergentLines: z.array(z.object({ lineIndex: z.number().int().min(0), original: z.string(), translated: z.string(), issue: z.string(), severity: z.enum(['critical', 'warning', 'minor']) })), culturalIssues: z.array(z.string()), timingViolations: z.array(z.number().int().min(0)), verdict: z.enum(['pass', 'revise']) })"
+    },
+    "schema_for_llm": "{ overallScore: number (0-1), divergentLines: [{ lineIndex: number, original: string, translated: string, issue: string, severity: 'critical' | 'warning' | 'minor' }], culturalIssues: string[], timingViolations: number[], verdict: 'pass' | 'revise' }"
+  }
+}

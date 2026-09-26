@@ -120,6 +120,7 @@ const RULES: Array<[RegExp, Filler]> = [
     /dialogue|^lines?$|quote|utterance|spoken|shotline|signatureline|catchphrase/,
     pick(corpus.dialogue),
   ],
+  [/^(original|translated)$/, pick(corpus.dialogue)],
   [/parenthetical/, pick(corpus.parentheticals)],
   [
     /heading|slugline/,

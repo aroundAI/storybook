@@ -1,0 +1,69 @@
+{
+  "slug": "season-arc",
+  "name": "Season Arc Quality Gate",
+  "version": 1,
+  "category": "quality-evaluation",
+  "description": "Evaluate a season's episode outlines for arc progression, conflict diversity and character arc coherence. Returns per-dimension scores (0-1), the episodes that weaken the arc with a fix for each, and a pass/revise verdict. Used by the Season Arc Evaluator (KB-116).",
+  "exported_at": "2026-09-25T00:00:00.000Z",
+  "llm": {
+    "provider": "gemini",
+    "model": "gemini-3.5-flash",
+    "max_tokens": 3000,
+    "temperature": 0.2,
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "system_prompts": [
+    {
+      "slug": "role",
+      "name": "Showrunner",
+      "content": "You are a showrunner reviewing the episode outlines for one season before any episode is written. You judge the season as a whole: whether it builds, whether its episodes are distinct, and whether its characters change in ways that feel earned. Be specific. A weak episode caught now costs one outline; caught later it costs a script.",
+      "layer_type": "role",
+      "scope": "template",
+      "order": 1
+    },
+    {
+      "slug": "evaluation-framework",
+      "name": "3-Dimension Arc Framework",
+      "content": "SEASON ARC FRAMEWORK - score each dimension from 0 to 1:\n\n1. ARC PROGRESSION (arcProgression)\n   Do the stakes escalate across the season? Early episodes should establish, middle episodes complicate, late episodes resolve. 1 = a clear rising arc, 0 = interchangeable episodes in any order.\n\n2. CONFLICT DIVERSITY (conflictDiversity)\n   Does each episode have its own central tension? 1 = every conflict distinct, 0 = the same conflict repeated.\n\n3. CHARACTER ARC COHERENCE (characterArcCoherence)\n   Do the characters' arcs track logically from episode to episode? 1 = growth that is earned and consistent, 0 = characters reset or contradict themselves.\n\nOVERALL ARC SCORE (overallArcScore): the average of the three.\n\nWEAK EPISODES: every episode that pulls the arc down, with its number, what is wrong, and a specific fix.\n\nVERDICT: \"pass\" if overallArcScore >= 0.7 and no episode is weak on its own; otherwise \"revise\".",
+      "layer_type": "constraints",
+      "scope": "template",
+      "order": 2
+    },
+    {
+      "slug": "format",
+      "name": "JSON Output Format",
+      "content": "Respond with valid JSON matching the schema exactly. Do not include any text outside the JSON.",
+      "layer_type": "format",
+      "scope": "template",
+      "order": 3
+    }
+  ],
+  "user_prompt": "Evaluate this season's arc.\n\n**Season Premise**: {{season_premise}}\n**Genre**: {{genre}}\n\n**Episode Outlines (JSON):**\n{{episodes}}",
+  "variables": {
+    "episodes": {
+      "type": "string",
+      "required": true,
+      "description": "JSON array of the season's episode outlines"
+    },
+    "genre": {
+      "type": "string",
+      "required": true,
+      "description": "Content genre"
+    },
+    "season_premise": {
+      "type": "string",
+      "required": true,
+      "description": "The overarching season premise"
+    }
+  },
+  "output": {
+    "type": "object",
+    "schema": {
+      "type": "zod",
+      "definition": "z.object({ overallArcScore: z.number().min(0).max(1), arcProgression: z.number().min(0).max(1), conflictDiversity: z.number().min(0).max(1), characterArcCoherence: z.number().min(0).max(1), weakEpisodes: z.array(z.object({ episodeNumber: z.number().int().min(1), issue: z.string(), suggestion: z.string() })), verdict: z.enum(['pass', 'revise']), summary: z.string() })"
+    },
+    "schema_for_llm": "{ overallArcScore: number (0-1), arcProgression: number (0-1), conflictDiversity: number (0-1), characterArcCoherence: number (0-1), weakEpisodes: [{ episodeNumber: number, issue: string, suggestion: string }], verdict: 'pass' | 'revise', summary: string }"
+  }
+}

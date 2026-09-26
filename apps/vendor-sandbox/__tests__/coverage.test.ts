@@ -45,8 +45,9 @@ describe('every prompt has a generator', () => {
     const counts = { zod: 0, 'json-schema': 0, template: 0 };
     for (const prompt of catalog) counts[generatorKindOf(prompt)!] += 1;
 
-    // FILM-1803 §2: 16 Zod, 4 JSON Schema, and 9 with neither.
-    expect(counts).toEqual({ zod: 16, 'json-schema': 4, template: 9 });
+    // FILM-1803 §2: 16 Zod, 4 JSON Schema and 9 with neither, plus the two
+    // evaluation prompts KB-116 added (Zod).
+    expect(counts).toEqual({ zod: 18, 'json-schema': 4, template: 9 });
   });
 });
 

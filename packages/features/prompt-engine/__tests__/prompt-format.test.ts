@@ -550,10 +550,7 @@ describe('every caller reads the shape its prompt returns', () => {
    * Readings that are wrong today and recorded, each with its KB. When one is
    * fixed, this fails until the entry goes.
    */
-  const KNOWN_WRONG_READS: Record<string, string> = {
-    'packages/features/episodes/src/agent/skills/season-arc-evaluator-skill.ts: quality-evaluation/story-quality':
-      'KB-116',
-  };
+  const KNOWN_WRONG_READS: Record<string, string> = {};
 
   function wrongReads() {
     return calls.flatMap((call) => {

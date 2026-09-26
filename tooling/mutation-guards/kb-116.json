@@ -1,0 +1,33 @@
+{
+  "feature": "KB-116",
+  "mutations": [
+    {
+      "name": "the arc evaluator calls story-quality again",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/season-arc-evaluator-skill.ts",
+      "find": "        templateSlug: 'quality-evaluation/season-arc',",
+      "replace": "        templateSlug: 'quality-evaluation/story-quality',",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/orchestrators.test.ts"
+    },
+    {
+      "name": "the translation verifier calls story-quality again",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/translation-verifier-skill.ts",
+      "find": "        templateSlug: 'quality-evaluation/translation-quality',",
+      "replace": "        templateSlug: 'quality-evaluation/story-quality',",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/orchestrators.test.ts"
+    },
+    {
+      "name": "the arc evaluator reads what story-quality does not return",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/season-arc-evaluator-skill.ts",
+      "find": "        templateSlug: 'quality-evaluation/season-arc',",
+      "replace": "        templateSlug: 'quality-evaluation/story-quality',",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/prompt-format.test.ts",
+      "pattern": "reads nothing the prompt does not return"
+    }
+  ]
+}

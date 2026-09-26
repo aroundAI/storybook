@@ -321,7 +321,7 @@ const season: OrchestratorScript = {
     const review = last(s, 'evaluateSeasonArc');
     return {
       episodes: [],
-      arcScore: num(review?.overallScore ?? review?.arcScore, 0.84),
+      arcScore: num(review?.overallArcScore, 0.84),
       arcSummary: sentence(s),
     };
   },

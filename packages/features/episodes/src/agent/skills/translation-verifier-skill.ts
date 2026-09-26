@@ -59,29 +59,15 @@ const verifyTranslationTool = createTool({
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
 
-      const verificationContent = [
-        `## Original Lines (English)`,
-        originalLines,
-        ``,
-        `## Translated Lines (${targetLanguage})`,
-        translatedLines,
-        ``,
-        `## Evaluation Criteria`,
-        `- Semantic fidelity: does each translated line convey the same meaning?`,
-        `- Emotional tone: is the character's emotion preserved?`,
-        `- Cultural appropriateness: are idioms and references culturally adapted?`,
-        preserveTiming
-          ? `- Timing compliance: are translations within ±20% of original syllable/word count?`
-          : `- Timing: not constrained`,
-        ``,
-        `Return verdict "pass" if overallScore >= 0.8, otherwise "revise".`,
-      ].join('\n');
-
       const result = await executeLLM<TranslationVerification>({
-        templateSlug: 'quality-evaluation/story-quality',
+        templateSlug: 'quality-evaluation/translation-quality',
         variables: {
-          story_content: verificationContent,
-          context_hint: `Translation verification: ${targetLanguage} | Timing: ${preserveTiming ? 'constrained' : 'unconstrained'}`,
+          original_lines: originalLines,
+          translated_lines: translatedLines,
+          target_language: targetLanguage,
+          timing_rule: preserveTiming
+            ? 'Constrained for lip-sync: within 20% of the original length'
+            : 'Unconstrained: a natural translation is preferred',
         },
         context: {
           name: 'agent.translation.verifyTranslation',

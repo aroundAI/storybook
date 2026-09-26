@@ -21,7 +21,7 @@ summary: >
   voice-worker Lambdas, so this spec makes them ready for a local queue - every
   prompt and orchestrator answered and tested - and a separate spec runs them.
   The hard part is LLM output: each prompt's reply is generated from that
-  prompt's own schema (16 Zod, 4 JSON Schema) or a hand-written template (9),
+  prompt's own schema (18 Zod, 4 JSON Schema) or a hand-written template (9),
   with values from a shared corpus matched by field name.
 acceptance_criteria:
   - text: "(Narrowed 2026-09-25) With local.env loaded, no inline AI action a user can trigger reaches a real AI vendor"
@@ -44,7 +44,7 @@ acceptance_criteria:
     evidence: "coverage.test.ts reads every prompt file on disk and names any without a generator; mutation guard 'a prompt without a generator goes unnoticed' is red"
   - text: "(New 2026-09-25) The seven studio orchestrators the llm-worker runs complete against the sandbox"
     met: true
-    evidence: "apps/vendor-sandbox/__tests__/orchestrators.test.ts — ideation, story (plain, documentary, movie), screenplay, season, shot, audio cues and translation, run for real with the sandbox as the model; the tool failures inside them are KB-116's, listed in KNOWN_TOOL_FAILURES (KB-115's are fixed). The two agents with no caller are listed in coverage.test.ts"
+    evidence: "apps/vendor-sandbox/__tests__/orchestrators.test.ts — ideation, story (plain, documentary, movie), screenplay, season, shot, audio cues and translation, run for real with the sandbox as the model; the tool failures inside them were KB-115's and KB-116's, both since fixed; KNOWN_TOOL_FAILURES is empty. The two agents with no caller are listed in coverage.test.ts"
   - text: "Audio responses are valid files of roughly the requested duration"
     met: true
     evidence: "apps/vendor-sandbox/__tests__/audio.test.ts — the app's own ElevenLabs voice and sound-effect providers against the stand-in; each MP3's duration, measured from its frames, is within 2% of what was asked (speech: about 150 words a minute)"
@@ -143,7 +143,9 @@ notes: |
     array, a failed outliner fails the run, and prompt-format.test.ts checks
     that every caller reads the shape its prompt returns.
   - KB-116: the season-arc evaluator and the translation verifier call
-    story-quality without the variables it requires.
+    story-quality without the variables it requires. Fixed: each calls a prompt of
+    its own (quality-evaluation/season-arc, quality-evaluation/translation-quality),
+    which brings the prompt files to 31, 18 of them Zod.
 
   ## 3. Vendors: what the app still calls (2026-09-25)
 
