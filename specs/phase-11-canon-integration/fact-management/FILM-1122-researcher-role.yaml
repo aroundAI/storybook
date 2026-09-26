@@ -24,7 +24,7 @@ acceptance_criteria:
     evidence: null
   - text: "`runResearchPhase` function works correctly"
     met: false
-    reason: "no longer true — no caller; its slug `researcher-role` (`packages/features/episodes/src/lib/documentary/researcher.ts:108`) is not a registry key (`documentary/researcher-role`)"
+    reason: "no longer true — no caller. Its slug was unregistered until KB-106's fix pointed it at `documentary/researcher-role` (`packages/features/episodes/src/lib/documentary/researcher.ts:108`); nothing calls it still"
   - text: "Claims correctly matched to existing verified facts"
     met: false
     reason: "no longer true — the live researcher skill returns the LLM's matches unvalidated (`packages/features/episodes/src/agent/skills/researcher-skill.ts:74`); facts can be verified since KB-18 (#314), so this is now the only gap"
@@ -43,11 +43,10 @@ acceptance_criteria:
 remaining:
   - criterion: "`runResearchPhase` function works correctly"
     reason: >
-      Nothing calls it, and its `templateSlug: 'researcher-role'`
-      (`packages/features/episodes/src/lib/documentary/researcher.ts:108`) is
-      not a key in `PROMPT_REGISTRY`, which registers
-      `documentary/researcher-role`
-      (`packages/features/prompt-engine/src/lib/server/prompt-registry.ts:113`).
+      Nothing calls it. Its `templateSlug`
+      (`packages/features/episodes/src/lib/documentary/researcher.ts:108`) now
+      names the registered `documentary/researcher-role` (KB-106's fix), so
+      a caller would reach the prompt.
       The role runs instead as an agent skill
       (`packages/features/episodes/src/agent/skills/researcher-skill.ts`) for
       documentary/educational stories

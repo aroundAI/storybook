@@ -39,7 +39,7 @@ export async function buildActContextBridge(
   const supabase = getSupabaseServerClient();
 
   const extraction = await executeLLM<{ bridge: ActContextBridge }>({
-    templateSlug: 'act-context-extraction',
+    templateSlug: 'movie/act-context-extraction',
     variables: {
       act_content: actContent,
       act_number: actNumber,

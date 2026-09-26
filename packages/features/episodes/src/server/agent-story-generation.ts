@@ -57,7 +57,7 @@ const generateStoryTool = createTool({
       const sceneCountMax = Math.max(5, Math.ceil(minutesDuration));
 
       const result = await executeLLM({
-        templateSlug: 'story-generation/story-generation',
+        templateSlug: 'story-generation',
         variables: {
           title,
           logline,
