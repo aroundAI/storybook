@@ -43,7 +43,7 @@ acceptance_criteria:
     evidence: "`apps/web/app/api/platforms/callback/tiktok/route.ts:187`"
   - text: "Refresh token rotation is handled correctly"
     met: true
-    evidence: "KB-29: refresh takes the app credentials from the lookup connect and the callback use (`packages/features/publishing/src/lib/token-refresh.ts:389`, `apps/web/app/api/platforms/connect/tiktok/route.ts:90`, `apps/web/app/api/platforms/callback/tiktok/route.ts:106`); the rotated refresh token is stored (`packages/features/publishing/__tests__/token-refresh.test.ts:466`)"
+    evidence: "KB-29: refresh takes the app credentials from the lookup connect and the callback use (`packages/features/publishing/src/lib/token-refresh.ts:392`, `apps/web/app/api/platforms/connect/tiktok/route.ts:90`, `apps/web/app/api/platforms/callback/tiktok/route.ts:106`); the rotated refresh token is stored (`packages/features/publishing/__tests__/token-refresh.test.ts:482`)"
   - text: "Token refresh updates both access and refresh tokens"
     met: true
     evidence: "`packages/features/publishing/src/lib/token-refresh.ts:236`, `packages/features/publishing/src/lib/token-refresh.ts:243`"
