@@ -32,7 +32,7 @@ acceptance_criteria:
     reason: "unverified — a ship-time diff; the cron exists (`sst.config.ts:1306`); a diff needs AWS credentials"
   - text: "A due scheduled report is generated + emailed within an hour in deployed infra"
     met: false
-    reason: "unverified — deployed-infra outcome; wiring present: `sst.config.ts:1306` → `apps/web/app/api/reports/scheduled/route.ts:572`"
+    reason: "unverified — deployed-infra outcome; wiring present: `sst.config.ts:1306` → `apps/web/app/api/reports/scheduled/route.ts:597`"
 open_questions: []
 feature:
   database:
