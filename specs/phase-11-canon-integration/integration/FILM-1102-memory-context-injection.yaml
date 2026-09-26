@@ -60,6 +60,7 @@ remaining:
 open_questions: []
 notes: |
   KB-72 (2026-09-25): the continuity tools are the only path by which canon reaches the story agent, and every string they return now passes `sanitizeForPrompt` (`sanitizeStrings` in `continuity-skill.ts`); before, only verified facts did.
+  KB-35 (2026-09-25): separate from the canon memory context this spec covers, the story and story-refinement prompts' "Previous Episodes" block now follows the memory horizon (project-wide, across seasons; none for news) and adds earlier episodes similar to the one being written, by Voyage embeddings (`apps/web/lambda/llm-worker/utils/previous-episodes.ts`). No criterion here changes: canon memory still reaches the story only through the continuity tool.
   Priority (source frontmatter): critical
 
   ## Overview

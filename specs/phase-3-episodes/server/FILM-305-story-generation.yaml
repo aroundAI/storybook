@@ -38,7 +38,7 @@ acceptance_criteria:
     reason: "unverified — runtime timing of an async agent job; needs a timed run"
   - text: "`generateFullStoryAction` generates 500-1000 word story"
     met: false
-    reason: "retired — length now scales with target duration (`apps/web/lambda/llm-worker/handlers/story-generation.ts:253`)"
+    reason: "retired — length now scales with target duration (`apps/web/lambda/llm-worker/handlers/story-generation.ts:256`)"
   - text: "`generateFullStoryAction` updates episode.story_data"
     met: true
     evidence: null
@@ -90,7 +90,7 @@ remaining:
     reason: "the ideation result hardcodes `costCents: 0` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:132`)"
     closed_by: "unassigned"
   - criterion: "`generateFullStoryAction` handles optimistic locking"
-    reason: "the version guard was dropped from the worker's write (f64c9648, 669b66e3) because the orchestrator bumps `version` mid-run (`apps/web/lambda/llm-worker/handlers/story-generation.ts:464`)"
+    reason: "the version guard was dropped from the worker's write (f64c9648, 669b66e3) because the orchestrator bumps `version` mid-run (`apps/web/lambda/llm-worker/handlers/story-generation.ts:467`)"
     closed_by: "owner"
 open_questions: []
 notes: |
