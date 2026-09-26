@@ -40,6 +40,7 @@ vi.mock('../src/providers/youtube', () => ({
 }));
 
 const SUPABASE = 'https://abcdefghijklmnop.supabase.co';
+const ACCOUNT = '11111111-1111-4111-8111-111111111111';
 const BASE = `${SUPABASE}/storage/v1/object/public/project-assets`;
 const CONNECTION = '00000000-0000-4000-8000-0000000000c1';
 const EPISODE = '00000000-0000-4000-8000-0000000000e1';
@@ -85,6 +86,7 @@ function table(name: string) {
             final_video_url: null,
             thumbnail_url: null,
             project_id: 'p',
+            project: { account_id: ACCOUNT },
             localized_videos: { en: 'https://cdn.example.com/en.mp4' },
             shorts_groups: [],
             public_slug: 'slug',
@@ -106,6 +108,12 @@ function table(name: string) {
       }
       return Promise.resolve({ data: { id: 'publish-1' }, error: null });
     },
+    // KB-109: the channel belongs to the episode's account
+    maybeSingle: () =>
+      Promise.resolve({
+        data: name === 'platform_connections' ? { account_id: ACCOUNT } : null,
+        error: null,
+      }),
     then: (resolve: (value: unknown) => void) =>
       resolve({ data: null, error: null }),
   };

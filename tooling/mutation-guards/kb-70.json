@@ -4,7 +4,7 @@
     {
       "name": "M1 An unknown STORAGE_PROVIDER falls back to supabase again",
       "kind": "unit",
-      "file": "packages/features/storage/src/factory.ts",
+      "file": "packages/features/storage/src/public-url.ts",
       "find": "  throw new Error(\n    `Unknown STORAGE_PROVIDER",
       "replace": "  return 'supabase';\n  throw new Error(\n    `Unknown STORAGE_PROVIDER",
       "cwd": "packages/features/storage",
@@ -25,8 +25,8 @@
       "name": "M3 sst.config.ts defaults STORAGE_PROVIDER to s3 again",
       "kind": "unit",
       "file": "sst.config.ts",
-      "find": "process.env.STORAGE_PROVIDER || 'r2'",
-      "replace": "process.env.STORAGE_PROVIDER || 's3'",
+      "find": "        // Production and staging store on R2; `s3` has no adapter (KB-70).\n        STORAGE_PROVIDER: process.env.STORAGE_PROVIDER || 'r2',",
+      "replace": "        // Production and staging store on R2; `s3` has no adapter (KB-70).\n        STORAGE_PROVIDER: process.env.STORAGE_PROVIDER || 's3',",
       "cwd": "packages/features/storage",
       "test": "__tests__/storage-provider.test.ts",
       "pattern": "defaults the deployed"
