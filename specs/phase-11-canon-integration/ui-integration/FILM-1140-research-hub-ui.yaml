@@ -21,27 +21,29 @@ acceptance_criteria:
     reason: "no longer true — no edit in the hub (`updateExternalSourceAction` has no caller); sources are global, not per project"
   - text: "Facts list shows extracted facts with verification toggle"
     met: false
-    reason: "no longer true — the Facts tab only links out (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/research-hub-page.tsx:274`) to the Fact Library, where verifying now works (KB-18, #314) — but the hub itself lists no facts and has no toggle"
+    reason: "no longer true — the Facts tab only links out (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/research-hub-page.tsx:298`) to the Fact Library, where verifying now works (KB-18, #314) — but the hub itself lists no facts and has no toggle"
   - text: "Empty state guides user based on content type"
     met: false
-    reason: "no longer true — one generic empty state (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/research-hub-page.tsx:193`); content type never read"
+    reason: "no longer true — one generic empty state (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/research-hub-page.tsx:206`); content type never read"
   - text: "Source counts show in sidebar nav item"
     met: false
     reason: "no longer true — the sources half filters `external_content` by `project_id`, a column it lacks (`apps/web/app/home/[account]/studio/[projectSlug]/layout.tsx:84`)"
   - text: "Proper loading and error states"
     met: false
-    reason: "no longer true — shows \"No sources configured\" until the client fetch returns (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/research-hub-page.tsx:189`)"
+    reason: "no longer true — shows \"No sources configured\" until the client fetch returns (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/research-hub-page.tsx:202`)"
   - text: "Mobile responsive layout"
     met: false
-    reason: "unverified — responsive classes present (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/research-hub-page.tsx:135`); needs a phone-width screenshot"
+    reason: "unverified — responsive classes present (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/research-hub-page.tsx:148`); needs a phone-width screenshot"
 remaining:
   - criterion: "Sources list shows all project sources with CRUD"
     reason: >
       The hub lists and soft-deletes sources and adds them via
-      `AddSourceDialog`, but offers no edit; `updateExternalSourceAction`
-      (`packages/features/episodes/src/server/external-context-actions.ts:302`)
-      has no caller. `external_sources` is global by design
-      (`external-context-actions.ts:351`), so there are no "project sources"
+      `AddSourceDialog`, but offers no edit: there is no update action
+      (KB-37, #398, removed `updateExternalSourceAction`, which had no
+      caller). Sources are no longer global: since #398 each is a built-in,
+      a team source or a project source
+      (`packages/features/episodes/src/server/external-context-actions.ts:318`),
+      so "project sources" now exist, and editing them is the missing part
     closed_by: "unassigned"
   - criterion: "Facts list shows extracted facts with verification toggle"
     reason: >

@@ -19,7 +19,7 @@ acceptance_criteria:
     reason: "unverified — parsers wired (`packages/features/episodes/src/lib/server/pdf-extractor.ts:58`, `:77`); no test uploads a file; read-only audit"
   - text: "URL fetch extracts text content"
     met: false
-    reason: "unverified — HTML stripping at `packages/features/episodes/src/server/source-upload-actions.ts:191`; no test; needs a live fetch"
+    reason: "unverified — HTML stripping at `packages/features/episodes/src/server/source-upload-actions.ts:192`; no test; needs a live fetch"
   - text: "API sources can be configured with categories"
     met: true
     evidence: null
@@ -49,7 +49,7 @@ remaining:
   - criterion: "Progress shown during extraction"
     reason: >
       Content over 500 characters is queued to the LLM worker
-      (`packages/features/episodes/src/server/source-upload-actions.ts:244`);
+      (`packages/features/episodes/src/server/source-upload-actions.ts:245`);
       the dialog then shows "complete" and toasts "Extracted 0 fact(s)"
       (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/upload-source-dialog.tsx:247`).
       The progress banner

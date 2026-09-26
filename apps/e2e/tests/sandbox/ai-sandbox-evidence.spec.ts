@@ -53,7 +53,7 @@ test.describe('AI sandbox — inline flows (FILM-1803)', () => {
     page,
   }) => {
     test.setTimeout(180_000);
-    const team = await seedTeamAccount('ai-sandbox');
+    const team = await seedTeamAccount({ emailPrefix: 'ai-sandbox' });
     const project = await seedProject(team, {
       name: 'Harbor Lights Diner',
       slug: `harbor-lights-${Date.now()}`,
