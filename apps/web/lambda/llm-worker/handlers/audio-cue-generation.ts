@@ -10,7 +10,6 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-
 import { sanitizeStrings } from '@kit/episodes/lib';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';

@@ -266,6 +266,7 @@ describe('executor inputs carry no raw project text (KB-101)', () => {
     await run(() =>
       processBatchTranslateMetadata(
         {
+          accountId: IDS.accountId,
           items: [
             {
               id: 'i1',
@@ -329,7 +330,8 @@ describe('executor inputs carry no raw project text (KB-101)', () => {
     await run(() =>
       processSeasonAnalysis(
         {
-          projectId: 'p1',
+          accountId: IDS.accountId,
+          projectId: IDS.projectId,
           roadmap: P,
           externalFacts: [
             { id: 'f1', claim: P, source_citation: P, category: P },
