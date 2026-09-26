@@ -3,8 +3,8 @@ title: "OAuth Token Refresh"
 phase: null
 phase_name: "Cross-Cutting Concern"
 category: cross_cutting_concern
-status: PARTIAL
-audited: "2026-09-23"
+status: DONE
+audited: "2026-09-25"
 effort: M
 dependencies:
   - spec_id: "FILM-101j"
@@ -40,14 +40,14 @@ acceptance_criteria:
     met: true
     evidence: "KB-15: in the web app, `ensureValidToken` refreshes every platform before handing a token out (token-refresh.test.ts, 'X refresh (KB-15)'). The publish worker does not refresh, by design (owner decision, KB-15 D2): a second refresher would race the cron for rotating refresh tokens. It refuses what the app would refresh first, with the same `isWithinRefreshWindow` (apps/web/lambda/publish-worker/__tests__/token.test.ts), and SQS redelivers after the cron, which now leaves every token ≥ 30 minutes from expiry"
   - text: "Failed refresh marks connection as inactive"
-    met: false
-    reason: "unverified — needs a unit test; the failure path's `markConnectionInactive` (`packages/features/publishing/src/lib/token-refresh.ts:315`) is untested"
+    met: true
+    evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:562` and `:640` assert `is_active` false after a refused refresh; both go red with the `markConnectionInactive` call (`packages/features/publishing/src/lib/token-refresh.ts:318`) commented out (2026-09-25)"
   - text: "Failed refresh sends user notification"
-    met: false
-    reason: "not met — `sendReauthNotification` is a stub that only logs (`packages/features/publishing/src/lib/token-refresh.ts:662`)"
+    met: true
+    evidence: "`sendReauthNotification` writes an in-app `warning` notification for the connection's account (`packages/features/publishing/src/lib/token-refresh.ts:697`), on a refused refresh and on a missing refresh token; `packages/features/publishing/__tests__/token-refresh.test.ts:759`, `:776`; guards CC3-1, CC3-2"
   - text: "Notification includes reconnect link"
-    met: false
-    reason: "not met — the link exists only in a commented-out call (`packages/features/publishing/src/lib/token-refresh.ts:684`)"
+    met: true
+    evidence: "the notification links to `/home/<account slug>/settings/platforms` (`packages/features/publishing/src/lib/token-refresh.ts:694`), the page `pathsConfig.app.accountPlatforms` names; `packages/features/publishing/__tests__/token-refresh.test.ts:759`; guard CC3-3"
   - text: "Background job refreshes tokens expiring within 1 hour"
     met: true
     evidence: "KB-15: it selected an hour ahead but refreshed only inside the 5-minute buffer, on every platform; it now refreshes what it selects (`CRON_REFRESH_WINDOW_MS`). token-refresh.test.ts, 'refreshExpiringTokens'; the real-DB run is in the KB-15 PR"
@@ -55,8 +55,8 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "All refresh attempts are logged"
-    met: false
-    reason: "not met — a successful on-demand refresh returns unlogged (`packages/features/publishing/src/lib/token-refresh.ts:270`); only failures and the cron job log"
+    met: true
+    evidence: "a stored refresh logs at info (`packages/features/publishing/src/lib/token-refresh.ts:270`), one that could not be stored at error, and every failure path already logged; `packages/features/publishing/__tests__/token-refresh.test.ts:815`; guard CC3-5"
 test_plan:
   unit:
     - text: "Test valid token returns immediately"
@@ -72,15 +72,15 @@ test_plan:
       met: true
       evidence: null
     - text: "Test failed refresh marks connection inactive"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "packages/features/publishing/__tests__/token-refresh.test.ts:562"
     - text: "Test notification sent on failure"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "packages/features/publishing/__tests__/token-refresh.test.ts:759"
   integration:
     - text: "Test full refresh flow with mocked OAuth endpoints"
       met: true
-      evidence: "packages/features/publishing/__tests__/token-refresh.test.ts:440"
+      evidence: "packages/features/publishing/__tests__/token-refresh.test.ts:456"
     - text: "Test cron job processes multiple connections"
       met: true
       evidence: "packages/features/publishing/__tests__/token-refresh.test.ts, 'refreshExpiringTokens' — two platforms in the window, one outside it (KB-15)"
@@ -88,16 +88,6 @@ test_plan:
       met: false
       reason: "not met — no test found"
   e2e: []
-remaining:
-  - criterion: "Failed refresh sends user notification"
-    reason: "`sendReauthNotification` only logs; the `@kit/notifications` call is a TODO (`packages/features/publishing/src/lib/token-refresh.ts:662`)"
-    closed_by: "unassigned"
-  - criterion: "Notification includes reconnect link"
-    reason: "The reconnect URL is inside the commented-out call (`packages/features/publishing/src/lib/token-refresh.ts:684`)"
-    closed_by: "unassigned"
-  - criterion: "All refresh attempts are logged"
-    reason: "A successful on-demand refresh returns without a log line (`packages/features/publishing/src/lib/token-refresh.ts:270`)"
-    closed_by: "unassigned"
 open_questions:
   - "[ ] Should we implement retry with exponential backoff for refresh failures? (non-blocking)"
   - "[ ] Should we support per-connection refresh token rotation? (non-blocking)"
@@ -106,7 +96,7 @@ notes: |
   - **Priority:** P1 (High)
   - **Effort:** M (4-8 hours)
   - **Blocks:** FILM-705, FILM-706, FILM-707 (OAuth flows), FILM-701-704 (Publishing providers)
-  - **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ Complete)
+  - **Status:** ✅ DONE (2026-09-25: re-auth notification and success logging; audit 2026-09-23 had it PARTIAL)
   - **Implemented:** 2025-12-05
   - **PR:** [#6](https://github.com/aroundAI/storybook/pull/6)
 

@@ -1,0 +1,55 @@
+{
+  "feature": "FILM-CC-03",
+  "mutations": [
+    {
+      "name": "CC3-1 A refused refresh sends no notification",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/token-refresh.ts",
+      "find": "    // 7. Send notification to user\n    await sendReauthNotification(connection.account_id, connection.platform);",
+      "replace": "    // 7. Send notification to user",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "notifies the team, with a link to its platforms page"
+    },
+    {
+      "name": "CC3-2 A connection with no refresh token sends no notification",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/token-refresh.ts",
+      "find": "    await sendReauthNotification(connection.account_id, connection.platform);\n    return { valid: false, error: 'NO_REFRESH_TOKEN', requiresReauth: true };",
+      "replace": "    return { valid: false, error: 'NO_REFRESH_TOKEN', requiresReauth: true };",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "notifies the team when the connection has no refresh token"
+    },
+    {
+      "name": "CC3-3 The notification carries no reconnect link",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/token-refresh.ts",
+      "find": "    ? `/home/${account.slug}/settings/platforms`",
+      "replace": "    ? null",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "notifies the team, with a link to its platforms page"
+    },
+    {
+      "name": "CC3-4 A failed notification write is not logged",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/token-refresh.ts",
+      "find": "    logger.error({ ...ctx, error }, 'Re-auth notification was not stored');",
+      "replace": "    void ctx;",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "still reports the failed refresh when the notification cannot be written"
+    },
+    {
+      "name": "CC3-5 A successful refresh goes unlogged",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/token-refresh.ts",
+      "find": "      logger.info(refreshCtx, `Refreshed ${connection.platform} token`);",
+      "replace": "      void refreshCtx;",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "logs a refresh that succeeds"
+    }
+  ]
+}

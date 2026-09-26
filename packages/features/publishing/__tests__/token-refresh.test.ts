@@ -34,7 +34,10 @@ const { fakeDb, logged } = vi.hoisted(() => {
   const tables: Record<string, Row[]> = {};
   const updates: Array<{ table: string; patch: Row }> = [];
   /** Returned by the update that stores refreshed tokens, when set. */
-  const failures: { tokenWrite: unknown } = { tokenWrite: null };
+  const failures: { tokenWrite: unknown; insert: unknown } = {
+    tokenWrite: null,
+    insert: null,
+  };
 
   interface Result {
     data: unknown;
@@ -42,7 +45,7 @@ const { fakeDb, logged } = vi.hoisted(() => {
   }
 
   class Query {
-    private op: 'select' | 'update' = 'select';
+    private op: 'select' | 'update' | 'insert' = 'select';
     private patch: Row = {};
     private returning = false;
     private readonly filters: Array<(row: Row) => boolean> = [];
@@ -58,6 +61,12 @@ const { fakeDb, logged } = vi.hoisted(() => {
     update(patch: Row) {
       this.op = 'update';
       this.patch = patch;
+      return this;
+    }
+
+    insert(row: Row) {
+      this.op = 'insert';
+      this.patch = row;
       return this;
     }
 
@@ -103,6 +112,12 @@ const { fakeDb, logged } = vi.hoisted(() => {
         this.filters.every((matches) => matches(row)),
       );
 
+      if (this.op === 'insert') {
+        if (failures.insert) return { data: null, error: failures.insert };
+        (tables[this.table] ??= []).push({ ...this.patch });
+        return { data: null, error: null };
+      }
+
       if (this.op === 'update') {
         if (failures.tokenWrite && 'access_token_encrypted' in this.patch) {
           return { data: null, error: failures.tokenWrite };
@@ -144,6 +159,7 @@ const { fakeDb, logged } = vi.hoisted(() => {
         for (const key of Object.keys(tables)) delete tables[key];
         updates.length = 0;
         failures.tokenWrite = null;
+        failures.insert = null;
       },
     },
     logged,
@@ -827,5 +843,95 @@ describe('refreshExpiringTokens', () => {
     expect(await decrypted('refresh_token_encrypted', twitter)).toBe(
       'x-rotated-refresh-token-1',
     );
+  });
+});
+
+/**
+ * FILM-CC-03. A connection that needs reconnecting tells its team where to
+ * do it, and a refresh that works is logged like one that fails.
+ */
+describe('a connection that needs reconnecting', () => {
+  beforeEach(() => {
+    fakeDb.tables.accounts = [{ id: 'account-1', slug: 'acme-films' }];
+  });
+
+  function notifications() {
+    return fakeDb.tables.notifications ?? [];
+  }
+
+  it('notifies the team, with a link to its platforms page, when the vendor refuses the refresh token', async () => {
+    await seedGlobalCredentials('youtube');
+    await seedExpiredConnection('youtube');
+    vendorStatus = 400;
+
+    await tokenRefresh.ensureValidToken('conn-youtube');
+
+    expect(notifications()).toEqual([
+      {
+        account_id: 'account-1',
+        type: 'warning',
+        body: 'Your YouTube connection has expired. Reconnect it to keep publishing.',
+        link: '/home/acme-films/settings/platforms',
+      },
+    ]);
+  });
+
+  it('notifies the team when the connection has no refresh token to use', async () => {
+    await seedExpiredConnection('linkedin');
+    storedConnection().refresh_token_encrypted = null;
+
+    const result = await tokenRefresh.ensureValidToken('conn-linkedin');
+
+    expect(result).toMatchObject({ error: 'NO_REFRESH_TOKEN' });
+    expect(storedConnection().is_active).toBe(false);
+    expect(notifications()).toHaveLength(1);
+    expect(notifications()[0]).toMatchObject({
+      body: 'Your LinkedIn connection has expired. Reconnect it to keep publishing.',
+      link: '/home/acme-films/settings/platforms',
+    });
+  });
+
+  it('does not ask the team to reconnect when the app is not configured', async () => {
+    vi.stubEnv('TWITTER_CLIENT_SECRET', '');
+    await seedExpiredConnection('twitter');
+
+    await tokenRefresh.ensureValidToken('conn-twitter');
+
+    expect(notifications()).toEqual([]);
+  });
+
+  it('still reports the failed refresh when the notification cannot be written', async () => {
+    await seedExpiredConnection('twitter');
+    vendorStatus = 400;
+    fakeDb.failures.insert = { message: 'insert refused' };
+
+    const result = await tokenRefresh.ensureValidToken('conn-twitter');
+
+    expect(result).toMatchObject({ error: 'REFRESH_FAILED' });
+    expect(
+      logged.error.some(
+        ([, message]) => message === 'Re-auth notification was not stored',
+      ),
+    ).toBe(true);
+  });
+
+  it('logs a refresh that succeeds', async () => {
+    await seedExpiredConnection('tiktok');
+
+    await tokenRefresh.ensureValidToken('conn-tiktok');
+
+    const entry = logged.info.find(
+      ([context]) => context.name === 'token-refresh',
+    );
+    expect(entry).toEqual([
+      {
+        name: 'token-refresh',
+        platform: 'tiktok',
+        connectionId: 'conn-tiktok',
+        refreshTokenRotated: true,
+      },
+      'Refreshed tiktok token',
+    ]);
+    expect(notifications()).toEqual([]);
   });
 });
