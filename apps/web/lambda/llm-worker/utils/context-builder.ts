@@ -5,7 +5,7 @@ import { z } from 'zod';
 import {
   effectiveMemoryHorizon,
   resolveProjectType,
-  sanitizeForPrompt,
+  sanitizeStrings,
 } from '@kit/episodes/lib';
 import type { ProjectType } from '@kit/film-studio-schemas/project';
 import type { Database } from '@kit/supabase/database';
@@ -375,7 +375,9 @@ export async function buildEpisodeContext(
     );
   }
 
-  return {
+  // Everything below is project text on its way to a prompt: sanitised
+  // here, once, so every formatter and handler reads it defused (KB-101).
+  return sanitizeStrings({
     premise: storyData.premise ?? episode.description ?? '',
     synopsis: storyData.synopsis,
     episodeNumber: episode.number,
@@ -443,7 +445,7 @@ export async function buildEpisodeContext(
       }
       return undefined;
     })(),
-  };
+  });
 }
 
 /**
@@ -803,13 +805,12 @@ export function formatPreviousEpisodesForPrompt(
   return `**Previous Episodes (for continuity)**:
 ${episodes
   .map((ep) => {
-    // Episode text is project text: sanitised before the prompt (KB-101)
     const label = ep.relation === 'related' ? ' (related earlier episode)' : '';
-    let entry = `- Episode ${ep.number}${label}: "${sanitizeForPrompt(ep.title)}"
-  Plot: ${sanitizeForPrompt(ep.summary)}`;
+    let entry = `- Episode ${ep.number}${label}: "${ep.title}"
+  Plot: ${ep.summary}`;
 
     if (ep.keyEvents && ep.keyEvents.length > 0) {
-      entry += `\n  Key Events: ${ep.keyEvents.map(sanitizeForPrompt).join('; ')}`;
+      entry += `\n  Key Events: ${ep.keyEvents.join('; ')}`;
     }
 
     return entry;
@@ -1366,7 +1367,7 @@ export async function buildGlobalShotContext(
   const client = supabase;
 
   // 1. Fetch episode with project metadata
-  const { data: episode, error: episodeError } = await client
+  const { data: row, error: episodeError } = await client
     .from('episodes')
     .select(
       `
@@ -1386,11 +1387,15 @@ export async function buildGlobalShotContext(
     // Many-to-one embed: an object, not the array the untyped client infers.
     .overrideTypes<{ project: { id: string; metadata: unknown } | null }>();
 
-  if (episodeError || !episode) {
+  if (episodeError || !row) {
     throw new Error(
       `Episode not found (${episodeId}): ${episodeError?.message || 'No data returned'}`,
     );
   }
+
+  // Project text, sanitised as it is read (KB-101); the registries and
+  // negative prompt below are this file's own templates.
+  const episode = sanitizeStrings(row);
 
   const metadata =
     (episode.metadata as {
@@ -1407,11 +1412,15 @@ export async function buildGlobalShotContext(
 
   // 2. Fetch tagged characters
   const characterIds = metadata.character_ids ?? [];
-  const characters = await fetchCharactersByIds(characterIds, supabase);
+  const characters = sanitizeStrings(
+    await fetchCharactersByIds(characterIds, supabase),
+  );
 
   // 3. Fetch tagged locations
   const locationIds = metadata.location_ids ?? [];
-  const locations = await fetchLocationsByIds(locationIds, supabase);
+  const locations = sanitizeStrings(
+    await fetchLocationsByIds(locationIds, supabase),
+  );
 
   // 4. Build character registry with VEO descriptions
   const characterRegistry: CharacterRegistryEntry[] = characters.map(
@@ -1572,12 +1581,14 @@ export function formatSceneForPrompt(scene: {
     parenthetical?: string;
   }>;
 }): string {
-  const timeOfDay = scene.timeOfDay?.toUpperCase() ?? 'DAY';
-  let text = `${scene.heading ?? `INT./EXT. ${scene.location.toUpperCase()} - ${timeOfDay}`}\n\n`;
+  // A screenplay scene, not the sanitised context: sanitised here (KB-101)
+  const safe = sanitizeStrings(scene);
+  const timeOfDay = safe.timeOfDay?.toUpperCase() ?? 'DAY';
+  let text = `${safe.heading ?? `INT./EXT. ${safe.location.toUpperCase()} - ${timeOfDay}`}\n\n`;
 
-  text += `${scene.description}\n\n`;
+  text += `${safe.description}\n\n`;
 
-  for (const line of scene.dialogue) {
+  for (const line of safe.dialogue) {
     text += `${line.character.toUpperCase()}\n`;
     if (line.parenthetical) {
       text += `(${line.parenthetical})\n`;
