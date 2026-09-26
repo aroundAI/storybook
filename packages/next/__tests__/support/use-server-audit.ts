@@ -80,7 +80,6 @@ export const NEVER_REGISTERED = new Set([
   'getAccountElevenLabsApiKey',
   'getProjectElevenLabsApiKey',
   'loadVoiceProviderConfig',
-  'loadMusicProviderConfig',
   'processScheduledPublishes',
 ]);
 

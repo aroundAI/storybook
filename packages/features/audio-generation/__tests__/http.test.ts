@@ -15,12 +15,14 @@ describe('HTTP Utilities', () => {
 
     it('should handle non-Error objects', () => {
       const result = formatProviderError(
-        'Suno',
+        'ElevenLabs Music',
         'generateMusic',
         'string error',
       );
 
-      expect(result.message).toBe('Suno generateMusic failed: Unknown error');
+      expect(result.message).toBe(
+        'ElevenLabs Music generateMusic failed: Unknown error',
+      );
     });
 
     it('should handle null/undefined errors', () => {

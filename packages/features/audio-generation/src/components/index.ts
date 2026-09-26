@@ -38,7 +38,6 @@ export {
 export { DialogueList, type DialogueListProps } from './DialogueList';
 
 // Music track list component (FILM-505)
-export { MusicTrackList, type MusicTrackListProps } from './MusicTrackList';
 
 // Audio Studio - main workspace (FILM-505)
 export { AudioStudio, type AudioStudioProps } from './AudioStudio';

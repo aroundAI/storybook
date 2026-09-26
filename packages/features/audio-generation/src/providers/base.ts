@@ -69,7 +69,7 @@ export interface VoiceGenerationProvider {
 
 /**
  * Music generation provider interface
- * Implement this interface for music providers (Suno, Udio, etc.)
+ * Implement this interface for music providers (ElevenLabs Music)
  */
 export interface MusicGenerationProvider {
   readonly name: string;

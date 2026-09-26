@@ -73,7 +73,7 @@ export const StudioProjectSettingsSchema = z.object({
   // Default episode duration in seconds (60-7200, i.e., 1 min to 2 hours)
   defaultEpisodeDuration: z.number().int().min(60).max(7200).default(300),
   defaultProvider: z.enum(['kling', 'runway', 'luma']).default('kling'),
-  audioProvider: z.enum(['elevenlabs', 'suno']).optional(),
+  audioProvider: z.enum(['elevenlabs']).optional(),
   // Genre for story/screenplay generation
   genre: GenreSchema.optional(),
   // Content style affects dialogue density

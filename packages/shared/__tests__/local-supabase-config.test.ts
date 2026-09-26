@@ -53,6 +53,12 @@ describe('docs name the local Supabase ports config.toml sets (KB-5)', () => {
     ].map((m) => m[1]),
   );
 
+  // Local CI's lane B runs a second stack on ports it exports over config.toml
+  const laneB = readFileSync(join(REPO, 'scripts/local-ci/lane.sh'), 'utf8');
+  for (const m of laneB.matchAll(/\bSUPABASE_[A-Z0-9_]*PORT=(\d+)/g)) {
+    configured.add(m[1]);
+  }
+
   it('reads the ports from config.toml', () => {
     expect(configured).toContain('55321');
   });

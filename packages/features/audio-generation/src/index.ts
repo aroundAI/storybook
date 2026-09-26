@@ -2,13 +2,13 @@
  * @kit/audio-generation
  *
  * Audio generation package for voice synthesis and music generation.
- * Provides abstraction layer for ElevenLabs, PlayHT, Suno, and other providers.
+ * Provides abstraction layer for ElevenLabs, PlayHT and other providers.
  *
  * Prefer granular subpath imports for better tree-shaking:
  *
  * @example
  * // Import providers
- * import { ElevenLabsProvider, SunoProvider } from '@kit/audio-generation/providers';
+ * import { ElevenLabsProvider } from '@kit/audio-generation/providers';
  *
  * // Import types and schemas
  * import type { Voice, VoiceGenerationRequest } from '@kit/audio-generation/types';

@@ -1,6 +1,5 @@
 // Actions only: client components import this barrel, so a `server-only`
 // library re-exported here would be bundled for the browser (KB-58).
-export * from './actions';
 export * from './voice-actions';
 export * from './voice-clone-actions';
 export * from './voice-profile-actions';

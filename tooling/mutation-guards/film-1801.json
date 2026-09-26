@@ -105,8 +105,8 @@
       "name": "Production stops reporting the overrides it ignores",
       "kind": "unit",
       "file": "packages/shared/src/vendors/resolver.ts",
-      "find": "    .filter((name) => !vendorSandboxEnabled(env) || !known.has(name))",
-      "replace": "    .filter((name) => !known.has(name))",
+      "find": "          (!vendorSandboxEnabled(env) || !known.has(name))),\n",
+      "replace": "          !known.has(name)),\n",
       "cwd": "packages/shared",
       "test": "__tests__/vendor-url-resolver.test.ts",
       "pattern": "names every VENDOR_URL_"

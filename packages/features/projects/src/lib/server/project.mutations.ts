@@ -560,7 +560,7 @@ const UpdateProjectAudioSettingsSchema = z.object({
       .enum(['elevenlabs', 'playht', 'azure', 'google'])
       .optional(),
     sfx_provider: z.enum(['elevenlabs']).optional(),
-    music_provider: z.enum(['suno', 'udio', 'elevenlabs']).optional(),
+    music_provider: z.enum(['elevenlabs']).optional(),
   }),
 });
 

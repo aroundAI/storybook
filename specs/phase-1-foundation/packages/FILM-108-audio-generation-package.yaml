@@ -57,16 +57,16 @@ acceptance_criteria:
     evidence: "packages/features/audio-generation/package.json:23"
   - text: "Zod schemas validate correctly"
     met: true
-    evidence: "packages/features/audio-generation/__tests__/schemas.test.ts:16"
+    evidence: "packages/features/audio-generation/__tests__/schemas.test.ts:15"
   - text: "Provider interfaces are properly defined"
     met: true
     evidence: "packages/features/audio-generation/src/providers/base.ts:20, :74"
   - text: "Both providers implement base interfaces"
     met: true
-    evidence: "packages/features/audio-generation/src/providers/elevenlabs.ts:23, packages/features/audio-generation/src/providers/suno.ts:15"
+    evidence: "packages/features/audio-generation/src/providers/elevenlabs.ts:23, packages/features/audio-generation/src/providers/elevenlabs-music.ts:49 (the music provider since FILM-514 retired Suno and Udio)"
   - text: "Can be imported by other packages"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/add-music-cue-dialog.tsx:7"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/music-timeline.tsx:33"
 test_plan:
   unit:
     - text: "Package can be imported from other workspace packages"
@@ -77,19 +77,19 @@ test_plan:
       reason: "not met — no test found"
     - text: "Provider interface methods are defined"
       met: true
-      evidence: "packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:23, packages/features/audio-generation/__tests__/suno.test.ts:6"
+      evidence: "packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:23"
     - text: "Zod schemas validate valid voice requests"
       met: true
-      evidence: "packages/features/audio-generation/__tests__/schemas.test.ts:96"
+      evidence: "packages/features/audio-generation/__tests__/schemas.test.ts:81"
     - text: "Zod schemas validate valid music requests"
       met: true
       evidence: "packages/features/audio-generation/__tests__/music-schemas.test.ts:11"
     - text: "Zod schemas reject invalid input"
       met: true
-      evidence: "packages/features/audio-generation/__tests__/schemas.test.ts:28"
+      evidence: "packages/features/audio-generation/__tests__/schemas.test.ts:27"
     - text: "Constants are accessible"
       met: true
-      evidence: "packages/features/audio-generation/__tests__/constants.test.ts:23"
+      evidence: "packages/features/audio-generation/__tests__/constants.test.ts:20"
   integration: []
   e2e: []
 open_questions: []

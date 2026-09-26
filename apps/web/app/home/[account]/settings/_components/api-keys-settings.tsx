@@ -94,14 +94,6 @@ const PROVIDERS: Provider[] = [
     keyFormat: 'API key',
   },
   {
-    id: 'suno',
-    name: 'Suno',
-    description: 'AI music generation',
-    category: 'audio',
-    docsUrl: 'https://suno.ai/developers',
-    keyFormat: 'API key',
-  },
-  {
     id: 'openai',
     name: 'OpenAI',
     description: 'GPT models for story generation',

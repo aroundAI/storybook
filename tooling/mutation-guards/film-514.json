@@ -1,0 +1,54 @@
+{
+  "feature": "FILM-514",
+  "mutations": [
+    {
+      "name": "G1 the Suno vendor URL is declared again",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/resolver.ts",
+      "find": "  playht: 'https://api.play.ht',\n",
+      "replace": "  playht: 'https://api.play.ht',\n  suno: 'https://api.suno.ai',\n",
+      "cwd": "apps/web",
+      "test": "test/film-514-music-vendors-retired.test.ts",
+      "pattern": "names them"
+    },
+    {
+      "name": "G2 the Udio vendor URL is declared again",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/resolver.ts",
+      "find": "  playht: 'https://api.play.ht',\n",
+      "replace": "  playht: 'https://api.play.ht',\n  udio: 'https://api.udio.com',\n",
+      "cwd": "apps/web",
+      "test": "test/film-514-music-vendors-retired.test.ts",
+      "pattern": "names them"
+    },
+    {
+      "name": "K1 a Suno API key can be saved again",
+      "kind": "unit",
+      "file": "apps/web/app/home/[account]/settings/_lib/api-keys.schema.ts",
+      "find": "  'playht',\n  'claude',\n",
+      "replace": "  'playht',\n  's' + 'uno',\n  'claude',\n",
+      "cwd": "apps/web",
+      "test": "app/home/[account]/settings/_lib/__tests__/api-keys.schema.test.ts",
+      "pattern": "retired music vendor"
+    },
+    {
+      "name": "K2 the retired vendor is a film-studio audio provider again",
+      "kind": "unit",
+      "file": "packages/features/film-studio-schemas/src/audio.ts",
+      "find": "export const AudioProviderSchema = z.enum(['elevenlabs']);",
+      "replace": "export const AudioProviderSchema = z.enum(['elevenlabs', 'suno']);",
+      "cwd": "packages/features/film-studio-schemas",
+      "test": "__tests__/audio.test.ts",
+      "pattern": "retired music provider"
+    },
+    {
+      "name": "E1 Regenerate offered on a finished non-cue music track again",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/music-timeline.tsx",
+      "find": "            {selectedTrack.id.startsWith('cue-') && (",
+      "replace": "            {selectedTrack.id.length > 0 && (",
+      "spec": "tests/studio/music-timeline.spec.ts",
+      "grep": "cannot be regenerated"
+    }
+  ]
+}

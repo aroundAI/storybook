@@ -3,7 +3,7 @@ title: "Music Generation Server Action"
 phase: 5
 phase_name: "Audio Generation"
 category: server_action
-status: PARTIAL
+status: RETIRED
 audited: "2026-09-23"
 effort: M
 dependencies:
@@ -97,19 +97,20 @@ test_plan:
   unit: []
   integration: []
   e2e: []
-remaining:
-  - criterion: "Creates a `generation_jobs` record; all actions track in `generation_jobs`"
-    reason: "the live actions track status in `audio_tracks.metadata` (`packages/features/audio-generation/src/server/music-actions.ts:230`) — which is what this spec's own Functional Requirement 4 and reference code describe; these two criteria follow the replaced implementation; for the owner: decide whether music still needs a `generation_jobs` row"
-    closed_by: "owner"
-  - criterion: "Calculates progress percentage"
-    reason: "Suno's `progress` is relayed as-is (`packages/features/audio-generation/src/server/music-actions.ts:592`)"
-    closed_by: "unassigned"
-  - criterion: "Records cost after completion"
-    reason: "no cost is written on completion; only an estimate at submit (`packages/features/audio-generation/src/server/music-actions.ts:286`)"
-    closed_by: "unassigned"
-  - criterion: "Cancels pending jobs"
-    reason: "the live music path has no cancel"
-    closed_by: "unassigned"
+retirement:
+  commit: null
+  date: "2026-09-25"
+  what_happened: >
+    Retired with Suno on 2026-09-25 (FILM-514). Every action this spec describes
+    called Suno: `generateMusicAction`, `getMusicJobStatusAction` and
+    `cancelMusicGenerationAction` (never mounted), and their successors
+    `generateSceneMusicAction`, `generateMusicCueAction` and
+    `pollMusicStatusAction` behind the Music timeline's "Generate for Scene" and
+    "Add Cue" buttons, which failed on the deployed app. All six and both buttons
+    were deleted. Music is generated with ElevenLabs: music cues through
+    `generateAudioForCueAction`, and the episode and asset-library paths through
+    the replacement below.
+  replacement: "packages/features/audio-generation/src/server/elevenlabs-music-actions.ts"
 open_questions: []
 notes: |
   ## Checklist structure in the source (added in the YAML conversion)

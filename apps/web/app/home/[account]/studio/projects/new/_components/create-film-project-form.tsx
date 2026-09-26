@@ -150,7 +150,6 @@ const AUDIO_PROVIDERS = [
     label: 'ElevenLabs',
     description: 'Natural voice synthesis',
   },
-  { value: 'suno', label: 'Suno', description: 'Music and audio generation' },
 ] as const;
 
 const CONTENT_RATINGS = [

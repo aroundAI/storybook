@@ -318,7 +318,6 @@ interface ErrorResponse {
 | Runway | video_gen3 | 100 |
 | Hailuo | video | 40 |
 | ElevenLabs | per 1000 chars | 30 |
-| Suno | music_full | 50 |
 
 ---
 

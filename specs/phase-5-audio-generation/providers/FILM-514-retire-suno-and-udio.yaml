@@ -1,0 +1,82 @@
+spec_id: "FILM-514"
+title: "Retire Suno and Udio"
+phase: 5
+phase_name: "Audio Generation"
+category: feature
+status: DONE
+audited: "2026-09-25"
+effort: M
+dependencies: []
+summary: >
+  The owner decided on 2026-09-25 to remove Suno from the product ("We don't use it in
+  our product right now. If we need it then we would do it from scratch later.") and then
+  Udio with it. Music generation stays: ElevenLabs makes every music track the product
+  keeps (music cues through the audio worker, the episode's bulk generate and the audio
+  library), and none of that touched either vendor. Suno sat behind the Music timeline's
+  "Generate for Scene" and "Add Cue" buttons and its Regenerate for non-cue tracks, all of
+  which failed on the deployed app because SUNO_API_KEY is in no deployment configuration.
+  Udio was registered in the music provider registry and reached by nothing but tests.
+  This spec deletes both vendors, the buttons and actions that reached Suno, the API-key
+  card, the enums that named them, the empty music half of the provider registry, and
+  their mentions in the legal pages and docs, and adds a repo-scan test that fails if
+  either name returns. No table or column changed and no data was deleted: production held
+  no Suno data (owner, 2026-09-25).
+acceptance_criteria:
+  - text: "The Music timeline has no \"Generate for Scene\" or \"Add Cue\" button; both dialogs deleted"
+    met: true
+    evidence: "`apps/e2e/tests/studio/music-timeline.spec.ts` failed on main at the Generate for Scene assertion (received 1), 2 passed on the branch (CI=1, dev server)"
+  - text: "Regenerate is offered only on a music cue; a finished non-cue track can still be deleted (KB-110)"
+    met: true
+    evidence: "`apps/e2e/tests/studio/music-timeline.spec.ts`; on main, Regenerate on a finished ElevenLabs-shaped track added a failed \"Scene 1 Music\" track (SUNO_API_KEY not configured); guard E1 RED"
+  - text: "The Suno and Udio providers, the six Suno-backed server actions, the music half of the provider registry, factory and config loader, and both vendor URLs are deleted; typecheck and the package tests green"
+    met: true
+    evidence: "`pnpm typecheck` 48/48 tasks; `@kit/audio-generation` 402 passed, 8 skipped; `@kit/film-studio-schemas` 173 passed; `@kit/shared` vendor tests 73 passed"
+  - text: "No enum admits either vendor: API-key providers, the film-studio audio and voice provider schemas, the project audio settings; each refusal unit-tested red first"
+    met: true
+    evidence: "`apps/web/app/home/[account]/settings/_lib/__tests__/api-keys.schema.test.ts` (1 failed on main); `packages/features/film-studio-schemas/__tests__/audio.test.ts`, `asset.test.ts` (2 failed on main); guards K1, K2 RED"
+  - text: "A repo-scan test fails if either name appears in apps, packages, tooling, scripts, .github, deployment, sst.config.ts, package.json, turbo.json, pnpm-lock.yaml or README.md (migration history, generated types and the kept constraint's schema mirror excepted); red on main"
+    met: true
+    evidence: "`apps/web/test/film-514-music-vendors-retired.test.ts` named 38 files (336 lines) on main, green after; its control case rejects `sunos`, `audio` and `studio`; guards G1, G2 RED"
+  - text: "Privacy Policy names ElevenLabs for music generation, the Terms name no retired vendor, and both Last updated dates are 2026-09-25 (owner, 2026-09-25)"
+    met: true
+    evidence: "`apps/web/app/(marketing)/(legal)/privacy-policy/page.tsx`, `apps/web/app/(marketing)/(legal)/terms-of-service/page.tsx`; scan"
+  - text: "FILM-509, FILM-504 and FILM-509b RETIRED with a retirement block; INDEX updated"
+    met: true
+    evidence: "the three spec files and `specs/INDEX.md`"
+open_questions: []
+feature:
+  database:
+    tables: []
+    columns_added: []
+    kept:
+      - "`external_api_keys_provider_check` still admits `suno`; the app neither saves nor reads it. The owner reported no Suno rows in production, so tightening the constraint is safe but was left out of a removal PR"
+  queries: []
+  actions:
+    - {name: "generateSceneMusicAction, generateMusicCueAction, pollMusicStatusAction (deleted; Suno)", file: "packages/features/audio-generation/src/server/music-actions.ts"}
+    - {name: "generateMusicAction, getMusicJobStatusAction, cancelMusicGenerationAction (deleted with the file; Suno, never mounted)", file: "packages/features/audio-generation/src/server/actions.ts"}
+    - {name: "updateAudioTrackAction (kept; vendor-neutral)", file: "packages/features/audio-generation/src/server/music-actions.ts"}
+  ui:
+    - {component: "MusicTimeline: two header buttons, both dialogs, the 5-second poll and non-cue Regenerate removed", file: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/music-timeline.tsx"}
+    - {component: "ApiKeysSettings: the Suno card removed", file: "apps/web/app/home/[account]/settings/_components/api-keys-settings.tsx"}
+    - {component: "CreateFilmProjectForm: the Suno audio provider option removed", file: "apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx"}
+    - {component: "MusicTrackList (deleted; mounted only by the package AudioStudio, which no page renders)", file: "packages/features/audio-generation/src/components/MusicTrackList.tsx"}
+  provider_integration: null
+notes: |
+  ## What music generation is now
+
+  | Path | Where |
+  |---|---|
+  | Music cues from the shot list, generated and regenerated | `generateAudioForCueAction` in `packages/features/audio-generation/src/server/audio-cue-actions.ts`, then the audio worker and the project's ElevenLabs key |
+  | Episode bulk generate | `generateMusicElevenLabsAction` from `packages/features/audio-generation/src/server/episode-audio-actions.ts` |
+  | Audio library | `generateMusicAssetAction` in `packages/features/audio-generation/src/server/audio-asset-actions.ts` |
+
+  A finished music track has no Regenerate: `generateMusicElevenLabsAction` answers a
+  repeated prompt from the asset library, so pointing Regenerate at it would return the
+  same audio. A real regenerate needs a force-new option there, which is new work.
+
+  ## Records
+
+  - KB-110 (Regenerate on a finished ElevenLabs track called Suno and added a failed track) is fixed here.
+  - The spec-audit lead "The live Suno dialogs need `SUNO_API_KEY`" is closed by this spec.
+  - KB-97 (music and SFX budget) no longer covers `music-actions.ts` or `actions.ts`; the ElevenLabs paths remain in it.
+  - FILM-1803 and the phase-18 README still list Suno and Udio as sandbox stand-ins; ai-sandbox owns those files.

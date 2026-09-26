@@ -30,7 +30,7 @@ acceptance_criteria:
     evidence: "youtube-data/youtube-analytics/youtube-reporting VENDORS entries; rootUrl also passed per call on both uploads (mediaUrl is not rewritten by rootUrl alone) — youtube-root-url.test.ts in @kit/publishing and @kit/content-analytics"
   - text: "DeepSeek's hardcoded baseURL and the audio providers' unwired baseUrl are replaced by the resolver"
     met: true
-    evidence: "VENDORS entries for deepseek, elevenlabs, playht, suno, udio in packages/shared/src/vendors/resolver.ts"
+    evidence: "VENDORS entries for deepseek, elevenlabs, playht in packages/shared/src/vendors/resolver.ts (suno and udio were removed with their providers, FILM-514)"
   - text: "OAuth authorize, token, refresh and revoke URLs all resolve through it, for all five social platforms"
     met: true
     evidence: null
@@ -185,13 +185,13 @@ notes: |
   Shipped names. @kit/shared/vendors now exports VENDORS, Vendor,
   vendorUrl(vendor, env?), vendorUrlEnvName(vendor), vendorSandboxEnabled(env?)
   and ignoredVendorOverrides(env?), from resolver.ts. The override for a vendor
-  is VENDOR_URL_ + its name upper-cased with - as _. The 28 names
-  (29 shipped; synclabs was removed with lip-sync by FILM-513):
+  is VENDOR_URL_ + its name upper-cased with - as _. The 26 names
+  (29 shipped; FILM-513 removed synclabs with lip-sync, FILM-514 removed suno and udio):
 
   meta-graph, meta-graph-video, meta-oauth, tiktok, tiktok-oauth, x-api,
   x-oauth, linkedin-api, linkedin-oauth, google-oauth, google-token,
   youtube-data, youtube-analytics, youtube-reporting, gemini, openai,
-  deepseek, voyage, elevenlabs, playht, suno, udio, piapi,
+  deepseek, voyage, elevenlabs, playht, piapi,
   brave-search, semantic-scholar, newsapi, archive-org, crossref.
 
   Four places where §2's sketch was wrong, and what shipped instead.

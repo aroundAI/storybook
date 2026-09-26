@@ -12,11 +12,8 @@ import {
   MAX_TEXT_LENGTH,
   MUSIC_GENRES,
   MUSIC_MOODS,
-  MUSIC_PROVIDERS,
   PLAYHT,
   PROVIDER_DISPLAY_NAMES,
-  SUNO,
-  UDIO,
   VOICE_PROVIDERS,
 } from '../src/lib/constants';
 
@@ -29,15 +26,6 @@ describe('Audio Generation Constants', () => {
         DEEPGRAM: 'deepgram',
         AZURE: 'azure',
         GOOGLE: 'google',
-      });
-    });
-
-    it('should define all music providers', () => {
-      expect(MUSIC_PROVIDERS).toEqual({
-        SUNO: 'suno',
-        UDIO: 'udio',
-        MUBERT: 'mubert',
-        BEATOVEN: 'beatoven',
       });
     });
   });
@@ -130,29 +118,6 @@ describe('Audio Generation Constants', () => {
     });
   });
 
-  describe('Suno Constants', () => {
-    it('should have max duration', () => {
-      expect(SUNO.MAX_DURATION).toBe(240); // 4 minutes
-    });
-
-    it('should have supported genres', () => {
-      expect(SUNO.SUPPORTED_GENRES).toContain('cinematic');
-      expect(SUNO.SUPPORTED_GENRES).toContain('orchestral');
-      expect(SUNO.SUPPORTED_GENRES).toContain('electronic');
-    });
-  });
-
-  describe('Udio Constants', () => {
-    it('should have max duration', () => {
-      expect(UDIO.MAX_DURATION).toBe(120); // 2 minutes (per FILM-509b spec)
-    });
-
-    it('should have supported genres', () => {
-      expect(UDIO.SUPPORTED_GENRES).toContain('metal');
-      expect(UDIO.SUPPORTED_GENRES).toContain('country');
-    });
-  });
-
   describe('Music Genres and Moods', () => {
     it('should have common music genres', () => {
       expect(MUSIC_GENRES).toContain('cinematic');
@@ -174,8 +139,6 @@ describe('Audio Generation Constants', () => {
     it('should have display names for all providers', () => {
       expect(PROVIDER_DISPLAY_NAMES.elevenlabs).toBe('ElevenLabs');
       expect(PROVIDER_DISPLAY_NAMES.playht).toBe('PlayHT');
-      expect(PROVIDER_DISPLAY_NAMES.suno).toBe('Suno');
-      expect(PROVIDER_DISPLAY_NAMES.udio).toBe('Udio');
     });
   });
 });

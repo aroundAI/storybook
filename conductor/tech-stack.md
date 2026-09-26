@@ -26,7 +26,7 @@
 ## AI & Media Generation
 - **@kit/llm:** Unified client for switching between OpenAI, Anthropic, Gemini, and Local providers.
 - **Video Generation:** Integration with Kling, Runway, and Hailuo AI.
-- **Audio Generation:** ElevenLabs for voice cloning and Suno/PlayHT for music/speech.
+- **Audio Generation:** ElevenLabs for voice, voice cloning and music; PlayHT for speech.
 
 ## Development Tools
 - **PNPM:** Fast, disk-space-efficient package manager.

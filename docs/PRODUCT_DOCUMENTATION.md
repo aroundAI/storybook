@@ -401,7 +401,7 @@ You'll be taken to the episode studio with 7 production tabs.
 
 4. **Music Tracks**
    - Add background music
-   - Suno AI music generation
+   - ElevenLabs music generation from music cues
    - Manual upload option
 
 5. **Sound Effects**

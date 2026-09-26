@@ -46,7 +46,7 @@ export type AudioTrackStatus =
  * Metadata stored in the JSONB column for audio tracks
  */
 export interface AudioTrackMetadata {
-  /** Provider used for generation (e.g., 'suno', 'elevenlabs', 'uploaded') */
+  /** Provider used for generation (e.g., 'elevenlabs', 'uploaded') */
   provider?: string;
   /** Music genre */
   genre?: string;

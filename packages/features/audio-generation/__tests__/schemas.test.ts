@@ -7,7 +7,6 @@ import {
   GenerateVoiceSchema,
   GetVoicesSchema,
   MusicGenerationRequestSchema,
-  MusicProviderNameSchema,
   VoiceGenerationRequestSchema,
   VoiceProviderNameSchema,
   VoiceSettingsSchema,
@@ -29,20 +28,6 @@ describe('Audio Generation Schemas', () => {
       expect(VoiceProviderNameSchema.safeParse('invalid').success).toBe(false);
       expect(VoiceProviderNameSchema.safeParse('').success).toBe(false);
       expect(VoiceProviderNameSchema.safeParse(null).success).toBe(false);
-    });
-  });
-
-  describe('MusicProviderNameSchema', () => {
-    it('should accept valid music providers', () => {
-      expect(MusicProviderNameSchema.safeParse('suno').success).toBe(true);
-      expect(MusicProviderNameSchema.safeParse('udio').success).toBe(true);
-      expect(MusicProviderNameSchema.safeParse('mubert').success).toBe(true);
-      expect(MusicProviderNameSchema.safeParse('beatoven').success).toBe(true);
-    });
-
-    it('should reject invalid providers', () => {
-      expect(MusicProviderNameSchema.safeParse('spotify').success).toBe(false);
-      expect(MusicProviderNameSchema.safeParse('').success).toBe(false);
     });
   });
 
@@ -258,7 +243,6 @@ describe('Audio Generation Schemas', () => {
   describe('GenerateMusicSchema', () => {
     const validInput = {
       episodeId: '123e4567-e89b-12d3-a456-426614174000',
-      provider: 'suno',
       request: {
         prompt: 'Epic battle music',
         duration: 60,
@@ -272,16 +256,7 @@ describe('Audio Generation Schemas', () => {
 
     it('should reject missing episodeId', () => {
       const result = GenerateMusicSchema.safeParse({
-        provider: 'suno',
         request: validInput.request,
-      });
-      expect(result.success).toBe(false);
-    });
-
-    it('should reject invalid provider', () => {
-      const result = GenerateMusicSchema.safeParse({
-        ...validInput,
-        provider: 'spotify',
       });
       expect(result.success).toBe(false);
     });

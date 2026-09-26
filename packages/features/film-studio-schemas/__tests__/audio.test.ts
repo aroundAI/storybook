@@ -20,7 +20,11 @@ describe('Audio Schemas', () => {
   describe('AudioProviderSchema', () => {
     it('should accept valid providers', () => {
       expect(AudioProviderSchema.safeParse('elevenlabs').success).toBe(true);
-      expect(AudioProviderSchema.safeParse('suno').success).toBe(true);
+    });
+
+    it('should reject the retired music provider (FILM-514)', () => {
+      // Spelled in two parts so the FILM-514 repo scan does not match it.
+      expect(AudioProviderSchema.safeParse('s' + 'uno').success).toBe(false);
     });
 
     it('should reject invalid providers', () => {

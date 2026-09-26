@@ -4,7 +4,7 @@ import { URLSchema, UUIDSchema } from './common';
 import { GenerationStatusSchema } from './video';
 
 // Audio Provider
-export const AudioProviderSchema = z.enum(['elevenlabs', 'suno']);
+export const AudioProviderSchema = z.enum(['elevenlabs']);
 
 // Audio Type
 export const AudioTypeSchema = z.enum(['voice', 'music', 'sfx', 'ambient']);

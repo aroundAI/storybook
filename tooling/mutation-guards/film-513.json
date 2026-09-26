@@ -5,8 +5,8 @@
       "name": "FILM-513 U1 the synclabs vendor is back in the resolver",
       "kind": "unit",
       "file": "packages/shared/src/vendors/resolver.ts",
-      "find": "  udio: 'https://api.udio.com',\n",
-      "replace": "  udio: 'https://api.udio.com',\n  synclabs: 'https://api.synclabs.so',\n",
+      "find": "  playht: 'https://api.play.ht',\n",
+      "replace": "  playht: 'https://api.play.ht',\n  synclabs: 'https://api.synclabs.so',\n",
       "cwd": "apps/web",
       "test": "test/film-513-lip-sync-retired.test.ts",
       "pattern": "names lip-sync"

@@ -15,7 +15,6 @@ import {
   Music,
   Pause,
   Play,
-  Plus,
   RefreshCw,
   Trash2,
 } from 'lucide-react';
@@ -27,23 +26,16 @@ import type {
 import {
   deleteAudioTrackAction,
   generateAudioForCueAction,
-  generateMusicCueAction,
-  generateSceneMusicAction,
   getAudioCuesAction,
   getAudioTracksAction,
-  pollMusicStatusAction,
   updateAudioCueAction,
   updateAudioTrackAction,
 } from '@kit/audio-generation/server';
-import { unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
 import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
-
-import { AddMusicCueDialog } from './add-music-cue-dialog';
-import { GenerateSceneMusicDialog } from './generate-scene-music-dialog';
 
 export interface MusicTimelineStats {
   total: number;
@@ -86,11 +78,7 @@ interface MusicTrack {
     sceneNumber?: number;
     prompt?: string;
     isCue?: boolean;
-    providerJobId?: string;
     error?: string;
-    genre?: string;
-    mood?: string;
-    instrumentalOnly?: boolean;
   } | null;
 }
 
@@ -128,10 +116,7 @@ export const MusicTimeline = React.forwardRef<
 ) {
   const [tracks, setTracks] = useState<MusicTrack[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isPolling, setIsPolling] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
-  const [showSceneDialog, setShowSceneDialog] = useState(false);
-  const [showCueDialog, setShowCueDialog] = useState(false);
   const [selectedTrack, setSelectedTrack] = useState<MusicTrack | null>(null);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -323,43 +308,6 @@ export const MusicTimeline = React.forwardRef<
     }
   }, [audioGenStatus, audioGenResult, audioGenError, fetchTracks, onRefresh]);
 
-  // Poll for processing tracks
-  useEffect(() => {
-    const processingTracks = tracks.filter((t) => t.status === 'processing');
-    if (processingTracks.length === 0) return;
-
-    const pollInterval = setInterval(async () => {
-      setIsPolling(true);
-      let hasChanges = false;
-
-      for (const track of processingTracks) {
-        try {
-          const result = await pollMusicStatusAction({ trackId: track.id });
-          if (result.status !== 'processing') {
-            hasChanges = true;
-            if (result.status === 'completed') {
-              toast.success(`Music track "${track.name}" is ready`);
-            } else if (result.status === 'failed') {
-              toast.error(
-                `Music generation failed: ${result.error ?? 'Unknown error'}`,
-              );
-            }
-          }
-        } catch (error) {
-          console.error('Failed to poll track status:', error);
-        }
-      }
-
-      if (hasChanges) {
-        void fetchTracks();
-        onRefresh?.();
-      }
-      setIsPolling(false);
-    }, 5000);
-
-    return () => clearInterval(pollInterval);
-  }, [tracks, fetchTracks, onRefresh]);
-
   // Report stats to parent
   useEffect(() => {
     if (!onStatsChange) return;
@@ -378,42 +326,28 @@ export const MusicTimeline = React.forwardRef<
       return;
     }
 
-    const pendingTracks = tracks.filter((t) => t.status === 'pending');
-    if (pendingTracks.length === 0) {
-      toast.info('No pending music tracks to generate');
+    // Only cues can be generated: every music track is already a finished
+    // file (FILM-514).
+    const pendingCues = tracks.filter(
+      (t) => t.status === 'pending' && t.id.startsWith('cue-'),
+    );
+    if (pendingCues.length === 0) {
+      toast.info('No pending music cues to generate');
       return;
     }
 
-    toast.info(
-      `Queuing ${pendingTracks.length} music track(s) for generation...`,
-    );
+    toast.info(`Queuing ${pendingCues.length} music cue(s) for generation...`);
 
-    for (const track of pendingTracks) {
-      if (track.id.startsWith('cue-')) {
-        const cueId = track.id.replace('cue-', '');
-        try {
-          await generateAudioForCueAction({ cueId });
-        } catch {
-          toast.error(`Failed to queue: ${track.name ?? 'music cue'}`);
-        }
-      } else {
-        try {
-          await generateMusicCueAction({
-            episodeId,
-            prompt: track.metadata?.prompt ?? 'Music',
-            duration: track.durationSeconds ?? 30,
-            timelineStartSeconds: track.timelineStartSeconds,
-            name: track.name ?? undefined,
-            genre: track.metadata?.genre,
-            mood: track.metadata?.mood,
-            instrumentalOnly: track.metadata?.instrumentalOnly,
-          });
-        } catch {
-          toast.error(`Failed to queue: ${track.name ?? 'music track'}`);
-        }
+    for (const track of pendingCues) {
+      try {
+        await generateAudioForCueAction({
+          cueId: track.id.replace('cue-', ''),
+        });
+      } catch {
+        toast.error(`Failed to queue: ${track.name ?? 'music cue'}`);
       }
     }
-  }, [tracks, audioSettings, episodeId]);
+  }, [tracks, audioSettings]);
 
   // Expose generateAll via ref
   useImperativeHandle(
@@ -538,85 +472,34 @@ export const MusicTimeline = React.forwardRef<
     }
   };
 
-  const handleRegenerateTrack = async (track: MusicTrack) => {
-    if (isRegenerating) return;
+  // Only a cue can be regenerated. A music track is a finished ElevenLabs
+  // file whose prompt the asset library would answer with the same audio,
+  // and the only action that regenerated one called a retired vendor
+  // (FILM-514).
+  const handleRegenerateCue = async (track: MusicTrack) => {
+    if (isRegenerating || !track.id.startsWith('cue-')) return;
 
-    if (track.id.startsWith('cue-')) {
-      const cueId = track.id.replace('cue-', '');
-
-      if (!audioSettings?.elevenlabs?.music_model) {
-        toast.error('Music model not selected in project settings');
-        return;
-      }
-
-      setIsRegenerating(true);
-      try {
-        const result = await generateAudioForCueAction({ cueId });
-        if (result.status === 'queued') {
-          toast.info('Music generation started...');
-          // Don't call handleGenerationComplete - WebSocket will notify when complete
-        } else {
-          toast.error(result.error ?? 'Failed to queue music regeneration');
-        }
-      } catch {
-        toast.error('Failed to regenerate music');
-      } finally {
-        setIsRegenerating(false);
-      }
+    if (!audioSettings?.elevenlabs?.music_model) {
+      toast.error('Music model not selected in project settings');
       return;
     }
 
     setIsRegenerating(true);
     try {
-      const isSceneMusic =
-        Boolean(track.metadata?.sceneNumber) && !track.metadata?.isCue;
-
-      let success = false;
-
-      if (isSceneMusic && track.metadata?.sceneNumber) {
-        const result = await unwrap(
-          generateSceneMusicAction({
-            episodeId,
-            sceneNumber: track.metadata.sceneNumber,
-            genre: track.metadata.genre,
-            mood: track.metadata.mood,
-            instrumentalOnly: track.metadata.instrumentalOnly,
-            prompt: track.metadata.prompt,
-          }),
-        );
-        success = result.success;
+      const result = await generateAudioForCueAction({
+        cueId: track.id.replace('cue-', ''),
+      });
+      if (result.status === 'queued') {
+        toast.info('Music generation started...');
+        // WebSocket notifies on completion
       } else {
-        const result = await generateMusicCueAction({
-          episodeId,
-          prompt: track.metadata?.prompt ?? 'Music Cue',
-          duration: track.durationSeconds ?? 30,
-          timelineStartSeconds: track.timelineStartSeconds,
-          name: track.name ?? undefined,
-          genre: track.metadata?.genre,
-          mood: track.metadata?.mood,
-          instrumentalOnly: track.metadata?.instrumentalOnly,
-        });
-        success = result.success;
+        toast.error(result.error ?? 'Failed to queue music regeneration');
       }
-
-      if (success) {
-        await deleteAudioTrackAction({ trackId: track.id });
-        toast.success('Music regeneration started');
-        handleGenerationComplete();
-      } else {
-        toast.error('Failed to start regeneration');
-      }
-    } catch (error) {
-      console.error('Failed to regenerate music:', error);
+    } catch {
       toast.error('Failed to regenerate music');
     } finally {
       setIsRegenerating(false);
     }
-  };
-
-  const handleGenerationComplete = () => {
-    void fetchTracks();
-    onRefresh?.();
   };
 
   if (isLoading) {
@@ -649,29 +532,6 @@ export const MusicTimeline = React.forwardRef<
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Music Tracks ({tracks.length})
           </span>
-          {isPolling && (
-            <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowSceneDialog(true)}
-            className="gap-1.5"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Generate for Scene
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowCueDialog(true)}
-            className="gap-1.5"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Add Cue
-          </Button>
         </div>
       </div>
 
@@ -719,7 +579,7 @@ export const MusicTimeline = React.forwardRef<
                 <Music className="mx-auto mb-3 h-12 w-12 opacity-30" />
                 <p>No music tracks yet</p>
                 <p className="mt-1 text-sm">
-                  Generate music for a scene or add a cue manually
+                  Music cues from the shot list appear here
                 </p>
               </div>
             </div>
@@ -856,16 +716,19 @@ export const MusicTimeline = React.forwardRef<
             >
               <Edit3 className="h-4 w-4" /> Edit Prompt
             </button>
-            <button
-              onClick={() => handleRegenerateTrack(selectedTrack)}
-              disabled={isRegenerating}
-              className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-700/50"
-            >
-              <RefreshCw
-                className={cn('h-4 w-4', isRegenerating && 'animate-spin')}
-              />
-              {isRegenerating ? 'Generating...' : 'Regenerate'}
-            </button>
+            {selectedTrack.id.startsWith('cue-') && (
+              <button
+                data-test="music-track-regenerate"
+                onClick={() => handleRegenerateCue(selectedTrack)}
+                disabled={isRegenerating}
+                className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-700/50"
+              >
+                <RefreshCw
+                  className={cn('h-4 w-4', isRegenerating && 'animate-spin')}
+                />
+                {isRegenerating ? 'Generating...' : 'Regenerate'}
+              </button>
+            )}
             <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
             <button
               onClick={() => {
@@ -916,23 +779,6 @@ export const MusicTimeline = React.forwardRef<
           </div>
         </>
       )}
-
-      {/* Dialogs */}
-      <GenerateSceneMusicDialog
-        open={showSceneDialog}
-        onOpenChange={setShowSceneDialog}
-        episodeId={episodeId}
-        scenes={scenes}
-        onSuccess={handleGenerationComplete}
-      />
-
-      <AddMusicCueDialog
-        open={showCueDialog}
-        onOpenChange={setShowCueDialog}
-        episodeId={episodeId}
-        totalDuration={effectiveDuration}
-        onSuccess={handleGenerationComplete}
-      />
     </div>
   );
 });

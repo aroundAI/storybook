@@ -1511,6 +1511,8 @@ Body:
 
 #### Music: Suno AI
 
+> **Retired 2026-09-25 (FILM-514).** The owner retired Suno and Udio; this section is kept as history. Music is generated with ElevenLabs.
+
 | Attribute | Detail |
 |-----------|--------|
 | **Website** | https://suno.ai |

@@ -12,7 +12,7 @@ dependencies:
   - spec_id: "FILM-501"
     note: "ElevenLabs"
   - spec_id: "FILM-509"
-    note: "Suno"
+    note: "Suno (retired, FILM-514)"
 summary: >
   The Audio Provider Factory implements a registry pattern for voice and music generation
   providers, enabling dynamic provider selection based on user preferences or system
@@ -31,8 +31,8 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "`createMusicProvider()` returns configured provider instance"
-    met: true
-    evidence: null
+    met: false
+    reason: "no longer true — FILM-514 retired Suno and Udio, the only music providers, and removed the music half of the registry, factory and config loader; ElevenLabs music is constructed directly (`packages/features/audio-generation/src/server/elevenlabs-music-actions.ts`)"
   - text: "Factory uses cached instance on subsequent calls"
     met: true
     evidence: null
@@ -46,31 +46,31 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "`getMusicProviderMetadata()` returns correct metadata"
-    met: true
-    evidence: null
+    met: false
+    reason: "no longer true — FILM-514 retired Suno and Udio, the only music providers, and removed the music half of the registry, factory and config loader; ElevenLabs music is constructed directly (`packages/features/audio-generation/src/server/elevenlabs-music-actions.ts`)"
   - text: "`getAvailableVoiceProviders()` returns only configured providers"
     met: true
     evidence: null
   - text: "`getAvailableMusicProviders()` returns only configured providers"
-    met: true
-    evidence: null
+    met: false
+    reason: "no longer true — FILM-514 retired Suno and Udio, the only music providers, and removed the music half of the registry, factory and config loader; ElevenLabs music is constructed directly (`packages/features/audio-generation/src/server/elevenlabs-music-actions.ts`)"
   - text: "`clearAudioProviderCache()` invalidates cached instances"
     met: true
-    evidence: "exists as `clearProviderCache()` and `clearAccountProviderCache()` (`packages/features/audio-generation/src/providers/factory.ts:141`, `:408`); tested at `packages/features/audio-generation/__tests__/factory.test.ts:353`, `:497`"
+    evidence: "exists as `clearProviderCache()` and `clearAccountProviderCache()` (`packages/features/audio-generation/src/providers/factory.ts:83`, `:408`); tested at `packages/features/audio-generation/__tests__/factory.test.ts:198`, `:497`"
   - text: "`registerVoiceProvider()` allows adding new providers at runtime"
     met: true
     evidence: null
   - text: "`registerMusicProvider()` allows adding new providers at runtime"
-    met: true
-    evidence: null
+    met: false
+    reason: "no longer true — FILM-514 retired Suno and Udio, the only music providers, and removed the music half of the registry, factory and config loader; ElevenLabs music is constructed directly (`packages/features/audio-generation/src/server/elevenlabs-music-actions.ts`)"
 test_plan:
   unit:
     - text: "Test voice provider creation with valid config"
       met: true
       evidence: null
     - text: "Test music provider creation with valid config"
-      met: true
-      evidence: null
+      met: false
+      reason: "no longer true — FILM-514 retired Suno and Udio, the only music providers, and removed the music half of the registry, factory and config loader; ElevenLabs music is constructed directly (`packages/features/audio-generation/src/server/elevenlabs-music-actions.ts`)"
     - text: "Test cache behavior (same instance returned)"
       met: true
       evidence: null
@@ -111,14 +111,14 @@ test_plan:
       met: true
       evidence: null
     - text: "Test loadMusicProviderConfig BYOK key loading"
-      met: true
-      evidence: null
+      met: false
+      reason: "no longer true — FILM-514 retired Suno and Udio, the only music providers, and removed the music half of the registry, factory and config loader; ElevenLabs music is constructed directly (`packages/features/audio-generation/src/server/elevenlabs-music-actions.ts`)"
     - text: "Test loadMusicProviderConfig platform key fallback"
-      met: true
-      evidence: null
+      met: false
+      reason: "no longer true — FILM-514 retired Suno and Udio, the only music providers, and removed the music half of the registry, factory and config loader; ElevenLabs music is constructed directly (`packages/features/audio-generation/src/server/elevenlabs-music-actions.ts`)"
     - text: "Test loadMusicProviderConfig database error handling"
-      met: true
-      evidence: null
+      met: false
+      reason: "no longer true — FILM-514 retired Suno and Udio, the only music providers, and removed the music half of the registry, factory and config loader; ElevenLabs music is constructed directly (`packages/features/audio-generation/src/server/elevenlabs-music-actions.ts`)"
     - text: "Test hasVoiceProviderApiKey BYOK detection"
       met: true
       evidence: null

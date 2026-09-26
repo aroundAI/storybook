@@ -104,10 +104,10 @@ test_plan:
   integration:
     - text: "Retrieve active key for account+provider"
       met: true
-      evidence: "packages/features/audio-generation/__tests__/config-loader.test.ts:85"
+      evidence: "packages/features/audio-generation/__tests__/config-loader.test.ts:79"
     - text: "Inactive keys are excluded from queries"
       met: true
-      evidence: "packages/features/audio-generation/__tests__/config-loader.test.ts:85 (asserts the is_active filter)"
+      evidence: "packages/features/audio-generation/__tests__/config-loader.test.ts:79 (asserts the is_active filter)"
     - text: "Update last_used_at on key retrieval"
       met: false
       reason: "not met — no test found; no code updates it"
@@ -127,7 +127,7 @@ test_plan:
       reason: "not met — no test found"
     - text: "Missing key for provider (falls back to platform key)"
       met: true
-      evidence: "packages/features/audio-generation/__tests__/config-loader.test.ts:103"
+      evidence: "packages/features/audio-generation/__tests__/config-loader.test.ts:97"
     - text: "Multiple accounts with same provider (different keys)"
       met: false
       reason: "not met — no test found"
@@ -178,7 +178,7 @@ notes: |
   - `hailuo` - Hailuo video generation
   - `elevenlabs` - ElevenLabs voice synthesis
   - `playht` - Play.ht voice synthesis
-  - `suno` - Suno music generation
+  - `suno` - Suno music generation (retired, FILM-514: the app no longer saves or reads it; the constraint still admits it)
   - `claude` - Anthropic Claude (for story/screenplay)
   - `openai` - OpenAI GPT (for story/screenplay)
   - `gemini` - Google Gemini (for story/screenplay)

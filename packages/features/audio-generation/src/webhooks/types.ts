@@ -62,7 +62,7 @@ export interface PlayHTWebhookPayload extends AudioGenerationWebhookPayload {
 }
 
 /**
- * Suno/Udio music generation webhook payload
+ * Music generation webhook payload
  */
 export interface MusicGenerationWebhookPayload
   extends AudioGenerationWebhookPayload {

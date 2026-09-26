@@ -32,7 +32,7 @@ StoryBook is the complete AI-powered film studio for creators and production tea
 #### 🎙️ Audio Tab
 - **Dialogue Extraction**: Pull character lines from screenplay
 - **Voice Cloning**: ElevenLabs/PlayHT character voices
-- **Music & SFX**: Suno music generation + shared SFX library
+- **Music & SFX**: ElevenLabs music generation + shared SFX library
 
 #### 🚀 Publish Tab
 - **Multi-Platform Publishing**: YouTube, TikTok, Instagram, Facebook, Twitter, LinkedIn

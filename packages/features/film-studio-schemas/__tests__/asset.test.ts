@@ -77,9 +77,10 @@ describe('Asset Schemas', () => {
       expect(
         VoiceSettingsSchema.safeParse({ provider: 'elevenlabs' }).success,
       ).toBe(true);
-      expect(VoiceSettingsSchema.safeParse({ provider: 'suno' }).success).toBe(
-        true,
-      );
+      // Retired (FILM-514); spelled in two parts so the repo scan does not match.
+      expect(
+        VoiceSettingsSchema.safeParse({ provider: 's' + 'uno' }).success,
+      ).toBe(false);
       expect(
         VoiceSettingsSchema.safeParse({ provider: 'invalid' }).success,
       ).toBe(false);

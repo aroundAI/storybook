@@ -108,7 +108,6 @@ describe('Music Generation Schemas', () => {
     it('should validate a valid generate music action request', () => {
       const validRequest = {
         episodeId: '550e8400-e29b-41d4-a716-446655440000',
-        provider: 'suno',
         request: {
           prompt: 'Epic battle music',
           duration: 60,
@@ -122,47 +121,6 @@ describe('Music Generation Schemas', () => {
     it('should require episodeId to be a valid UUID', () => {
       const invalidRequest = {
         episodeId: 'not-a-uuid',
-        request: {
-          prompt: 'Epic battle music',
-          duration: 60,
-        },
-      };
-
-      const result = GenerateMusicSchema.safeParse(invalidRequest);
-      expect(result.success).toBe(false);
-    });
-
-    it('should allow provider to be optional', () => {
-      const validRequest = {
-        episodeId: '550e8400-e29b-41d4-a716-446655440000',
-        request: {
-          prompt: 'Epic battle music',
-          duration: 60,
-        },
-      };
-
-      const result = GenerateMusicSchema.safeParse(validRequest);
-      expect(result.success).toBe(true);
-    });
-
-    it('should validate provider is a valid music provider', () => {
-      const validRequest = {
-        episodeId: '550e8400-e29b-41d4-a716-446655440000',
-        provider: 'suno',
-        request: {
-          prompt: 'Epic battle music',
-          duration: 60,
-        },
-      };
-
-      const result = GenerateMusicSchema.safeParse(validRequest);
-      expect(result.success).toBe(true);
-    });
-
-    it('should reject invalid provider names', () => {
-      const invalidRequest = {
-        episodeId: '550e8400-e29b-41d4-a716-446655440000',
-        provider: 'invalid-provider',
         request: {
           prompt: 'Epic battle music',
           duration: 60,
