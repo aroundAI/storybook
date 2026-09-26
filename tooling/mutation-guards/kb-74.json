@@ -1,0 +1,45 @@
+{
+  "feature": "KB-74",
+  "mutations": [
+    {
+      "name": "KB-74 U1 a live account's report files are removed too",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/report-storage.ts",
+      "find": "    .filter((id) => !live.has(id.toLowerCase()))",
+      "replace": "    .filter((id) => Boolean(id))",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/report-files.test.ts",
+      "pattern": "keeps a live account"
+    },
+    {
+      "name": "KB-74 U2 the cleanup reads only the first page of a folder",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/report-storage.ts",
+      "find": "    if (!data || data.length < LIST_PAGE) return entries;",
+      "replace": "    return entries;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/report-files.test.ts",
+      "pattern": "pages past the first 100"
+    },
+    {
+      "name": "KB-74 U3 scheduled reports filed where no account can be traced",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/report-storage.ts",
+      "find": "  return `exports/${accountId}/scheduled/${reportId}/${now}-${filename}`;",
+      "replace": "  return `scheduled/${reportId}/${now}-${filename}`;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/report-files.test.ts",
+      "pattern": "own folder"
+    },
+    {
+      "name": "KB-74 U4 the cron never runs the cleanup",
+      "kind": "unit",
+      "file": "apps/web/app/api/reports/scheduled/route.ts",
+      "find": "        reportFiles = await deleteOrphanedReportFiles(adminClient);",
+      "replace": "        reportFiles = { removed: 0, failed: 0 };",
+      "cwd": "apps/web",
+      "test": "app/api/reports/scheduled/__tests__/report-files-cleanup.test.ts",
+      "pattern": "runs the cleanup"
+    }
+  ]
+}

@@ -18,6 +18,7 @@ can no longer be renewed.
 | Account deleted | the database (`vendor_data_purges_on_delete`) | none — check it ran (below) |
 | YouTube disconnected in the app | the database (`vendor_data_purges_on_disconnect`), runs after 1 hour | none — check it ran |
 | A request by email | **the operator**: one insert | B |
+| A request to delete report files only | **the operator**, in the Storage dashboard | B2 |
 | YouTube revoked at Google / token cannot be renewed | **the operator**, by hand, until KB-29 lands (owner decision D5) | D |
 
 Each queued row runs within the hour after `run_after` and records what it
@@ -57,6 +58,18 @@ holds a table they do not name:
 says which videos were a connection's — including after its account is
 deleted and the Postgres rows are gone.
 
+**Report files (Supabase Storage, private `reports` bucket).** CSV and PDF
+reports: exports and scheduled reports, which hold per-video revenue. They are
+kept until the account asks (KB-74, owner decision 2026-09-25, following the
+decision above), and deleting the account is asking. Every report file sits
+under its account's folder, `exports/<ACCOUNT_ID>/…`; scheduled reports written
+before KB-74 are at `scheduled/<REPORT_ID>/…`, tied to the account only by
+their `scheduled_reports` row. The hourly scheduled-reports cron
+(`/api/reports/scheduled`) removes the folder of an account that no longer
+exists, and a pre-KB-74 folder whose schedule no longer exists. Its response
+carries `reportFiles: { removed, failed }` (`null` if it could not check which
+accounts exist, when it deletes nothing).
+
 ## Procedures
 
 Run Postgres statements in the Supabase SQL editor for the deployment (service
@@ -84,6 +97,24 @@ select connection_id, platform, completed_at, last_error, result
    `packages/clickhouse/src/purge.ts` (`purgeStatements`): every per-video
    table by `video_id IN (the connection's publish ids)`, every per-channel
    table by `connection_id`, `video_dim` last.
+3. Report files: nothing to run. Within the hour the scheduled-reports cron
+   removes the account's report files. Check (both should return no rows):
+
+```sql
+select name from storage.objects
+ where bucket_id = 'reports' and name like 'exports/<ACCOUNT_ID>/%';
+
+-- pre-KB-74 scheduled reports: their schedules went with the account
+select o.name from storage.objects o
+ where o.bucket_id = 'reports' and o.name like 'scheduled/%'
+   and not exists (select 1 from public.scheduled_reports r
+                    where r.id::text = split_part(o.name, '/', 2));
+```
+
+   Rows still there after an hour mean the cron is failing: look for
+   `Removing deleted accounts’ report files failed` in its log. Delete them by
+   hand from the dashboard (Storage → `reports`), never with SQL on
+   `storage.objects`, which would leave the files themselves behind.
 
 ### B. "Delete only what you got from <platform>"
 
@@ -100,6 +131,22 @@ select connection_id, platform, completed_at, last_error, result
    To stop collecting as well, ask the creator to disconnect it (or do it for
    them): the purge deletes what is held, and a live connection would collect
    again at the next sync.
+
+### B2. "Delete my reports" — the account stays
+
+Report files are not platform data, so no purge row is involved. In the
+dashboard for the deployment, open Storage → `reports` and delete the folder
+`exports/<ACCOUNT_ID>`. For scheduled reports written before KB-74, also delete
+`scheduled/<REPORT_ID>` for each of the account's schedules:
+
+```sql
+select id, name from public.scheduled_reports where account_id = '<ACCOUNT_ID>';
+```
+
+Then run the checks in A step 3 with the account id: both return no rows.
+The account's schedules keep running and will write new reports; if the
+request covers those too, delete the schedules (the creator can, in the
+analytics dashboard's Export Reports dialog) before the files.
 
 ### C. A YouTube connection was disconnected in the app — within 7 days
 

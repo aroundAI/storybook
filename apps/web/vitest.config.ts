@@ -170,11 +170,38 @@ export default defineConfig({
         __dirname,
         '../../packages/features/assets/src/lib/index.ts',
       ),
-      // The workers' SDK copy, as lambda/tsconfig.json's `paths` reads it:
-      // SST installs it into the bundle, so apps/web does not depend on it
-      '@aws-sdk/client-s3': path.resolve(
+      // The scheduled-reports cron's imports (KB-74's route test mocks them)
+      '@kit/content-analytics/lib/csv-generator': path.resolve(
         __dirname,
-        '../../packages/features/storage/node_modules/@aws-sdk/client-s3',
+        '../../packages/features/content-analytics/src/lib/csv-generator.ts',
+      ),
+      '@kit/content-analytics/lib/pdf-generator': path.resolve(
+        __dirname,
+        '../../packages/features/content-analytics/src/lib/pdf-generator.tsx',
+      ),
+      '@kit/content-analytics/server/report-storage': path.resolve(
+        __dirname,
+        '../../packages/features/content-analytics/src/server/report-storage.ts',
+      ),
+      '@kit/content-analytics/lib/raw-export-generator': path.resolve(
+        __dirname,
+        '../../packages/features/content-analytics/src/lib/raw-export-generator.ts',
+      ),
+      '@kit/content-analytics/lib/video-log-cells': path.resolve(
+        __dirname,
+        '../../packages/features/content-analytics/src/lib/video-log-cells.ts',
+      ),
+      '@kit/content-analytics/server': path.resolve(
+        __dirname,
+        '../../packages/features/content-analytics/src/server/index.ts',
+      ),
+      '@kit/clickhouse/server': path.resolve(
+        __dirname,
+        '../../packages/clickhouse/src/server/index.ts',
+      ),
+      '@kit/clickhouse': path.resolve(
+        __dirname,
+        '../../packages/clickhouse/src/index.ts',
       ),
       '@kit/storage/buckets': path.resolve(
         __dirname,
