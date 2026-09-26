@@ -5528,6 +5528,10 @@ export type Database = {
         Args: { p_publish_ids: string[] }
         Returns: string[]
       }
+      episode_in_account: {
+        Args: { account_id: string; episode_id: string }
+        Returns: boolean
+      }
       get_account_invitations: {
         Args: { account_slug: string }
         Returns: {
@@ -5966,6 +5970,14 @@ export type Database = {
         }[]
       }
       plan_dialogue_timeline: { Args: { p_updates: Json }; Returns: number }
+      project_in_account: {
+        Args: { account_id: string; project_id: string }
+        Returns: boolean
+      }
+      publish_in_account: {
+        Args: { account_id: string; publish_id: string }
+        Returns: boolean
+      }
       purge_connection_vendor_rows: {
         Args: { p_connection_id: string }
         Returns: Json

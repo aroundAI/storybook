@@ -51,6 +51,10 @@ select results_eq(
        ('public.connection_in_account'),
        -- project_members owner/admin/member
        ('public.create_character_with_details'),
+       -- no caller check: answers only whether the episode id belongs to the
+       -- account id, both supplied by the caller — an oracle to someone who
+       -- already holds both UUIDs, and no row data (KB-113)
+       ('public.episode_in_account'),
        -- personal owner or has_role_on_account
        ('public.get_account_projects'),
        -- predicate about the caller
@@ -77,6 +81,14 @@ select results_eq(
        ('public.is_project_owner'),
        -- requires the caller's own membership of the account
        ('public.is_team_member'),
+       -- no caller check: answers only whether the project id belongs to the
+       -- account id, both supplied by the caller — an oracle to someone who
+       -- already holds both UUIDs, and no row data (KB-113)
+       ('public.project_in_account'),
+       -- no caller check: answers only whether the publish id belongs to the
+       -- account id, both supplied by the caller — an oracle to someone who
+       -- already holds both UUIDs, and no row data (KB-113)
+       ('public.publish_in_account'),
        -- can_edit_project (project owner/admin) of the fact's project (KB-18)
        ('public.set_fact_verification'),
        -- project_members owner/admin

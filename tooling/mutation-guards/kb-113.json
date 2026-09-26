@@ -1,0 +1,53 @@
+{
+  "feature": "KB-113 (a task, change or moved row naming another account's object)",
+  "mutations": [
+    {
+      "name": "KB-113 manual_tasks insert ignores the video and episode",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/account-scoped-links-rls.test.sql",
+      "sql": "alter policy manual_tasks_create on public.manual_tasks with check (public.has_account_access(account_id));"
+    },
+    {
+      "name": "KB-113 manual_tasks update ignores the video and episode",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/account-scoped-links-rls.test.sql",
+      "sql": "alter policy manual_tasks_update on public.manual_tasks with check (public.has_account_access(account_id));"
+    },
+    {
+      "name": "KB-113 Change log insert ignores the project",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/account-scoped-links-rls.test.sql",
+      "sql": "alter policy analytics_experiments_create on public.analytics_experiments with check (public.has_account_access(account_id));"
+    },
+    {
+      "name": "KB-113 Change log update ignores the project",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/account-scoped-links-rls.test.sql",
+      "sql": "alter policy analytics_experiments_update on public.analytics_experiments with check (public.has_account_access(account_id));"
+    },
+    {
+      "name": "KB-113 projects can move account again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/account-scoped-links-rls.test.sql",
+      "sql": "drop trigger projects_keep_account on public.projects;"
+    },
+    {
+      "name": "KB-113 Change log entries can move account again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/account-scoped-links-rls.test.sql",
+      "sql": "drop trigger analytics_experiments_keep_account on public.analytics_experiments;"
+    },
+    {
+      "name": "KB-113 episodes can move to another account's project",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/account-scoped-links-rls.test.sql",
+      "sql": "drop trigger episodes_keep_account on public.episodes;"
+    },
+    {
+      "name": "KB-113 publishes can move to another account's episode",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/account-scoped-links-rls.test.sql",
+      "sql": "drop trigger publishes_keep_account on public.publishes;"
+    }
+  ]
+}
