@@ -45,8 +45,8 @@
       "name": "O5 the shares card grows a breakdown default again",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/components/overview/shares-card.tsx",
-      "find": "export function SharesCard({ shares }: SharesCardProps) {",
-      "replace": "export function SharesCard({ shares, breakdown }: SharesCardProps & { breakdown?: { direct: number; copyLink: number } }) {\n  const shareBreakdown = breakdown || { direct: 83, copyLink: 17 };",
+      "find": "export function SharesCard({ shares, platforms }: SharesCardProps) {",
+      "replace": "export function SharesCard({ shares, platforms, breakdown }: SharesCardProps & { breakdown?: { direct: number; copyLink: number } }) {\n  const shareBreakdown = breakdown || { direct: 83, copyLink: 17 };",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/no-literal-fallbacks-overview.test.ts",
       "pattern": "never falls back to an object literal of figures"
@@ -55,8 +55,8 @@
       "name": "O6 the revenue card prints a projection nobody computed",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/components/overview/revenue-card.tsx",
-      "find": "      footer=\"Revenue recorded against this project’s videos. Channel-level income is on the account’s Revenue tab.\"",
-      "replace": "      footer=\"Projection: $10k by month end\"",
+      "find": "      metricFamily=\"recorded\"\n      claim={claim}\n",
+      "replace": "      metricFamily=\"recorded\"\n      claim={claim}\n      footer=\"Projection: $10k by month end\"\n",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/no-literal-fallbacks-overview.test.ts",
       "pattern": "prints no literal footer that is not a denominator or a caveat"
@@ -75,8 +75,8 @@
       "name": "O8 the platform split footer sounds insightful again",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/components/overview/platform-split-card.tsx",
-      "find": "      footer={\n        totalViews > 0\n          ? `Share of ${formatNumber(totalViews)} views by platform.`\n          : undefined\n      }",
-      "replace": "      footer=\"Dominant performance on short-form\"",
+      "find": "      claim={platformSplitClaim(platforms)}\n",
+      "replace": "      claim={platformSplitClaim(platforms)}\n      footer=\"Dominant performance on short-form\"\n",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/no-literal-fallbacks-overview.test.ts",
       "pattern": "prints no literal footer that is not a denominator or a caveat"
