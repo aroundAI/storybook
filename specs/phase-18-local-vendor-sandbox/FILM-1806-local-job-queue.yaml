@@ -1,0 +1,99 @@
+spec_id: "FILM-1806"
+title: "Local Job Queue"
+phase: 18
+phase_name: "Local Vendor Sandbox"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-1801"
+    note: "the same development-only gate, vendorSandboxEnabled()"
+  - spec_id: "FILM-1803"
+    note: "the AI sandbox answers every prompt and orchestrator the workers call"
+summary: >
+  Runs the llm-worker and voice-worker locally, so every studio stage -
+  ideation, story, screenplay, shot list, audio cues, dialogue voice and
+  translation - works end to end on a laptop against the FILM-1803 AI
+  sandbox. The motivation is the owner's: generating the user guides from
+  full local runs of the product. Today every one of those stages is
+  enqueued to SQS and runs only in a Lambda, so on a laptop each throws
+  "LLM_JOBS_QUEUE_URL not configured" before any work starts. A local queue,
+  started by local-env.sh, takes the same messages and runs the same
+  handlers, under FILM-1801's development-only gate so production can never
+  send to it.
+acceptance_criteria:
+  - text: "With local.env loaded, every studio stage in FILM-1803 §4 marked Enqueued completes in the local app, against the AI sandbox"
+    met: false
+    reason: "not yet implemented — DRAFT"
+  - text: "local-env.sh up starts the queue and its worker runner; status and down include them"
+    met: false
+    reason: "not yet implemented — DRAFT"
+  - text: "The messages are the ones production sends (queueLlmJob, queueVoiceJob[s]), and the handlers that run are the llm-worker's and voice-worker's own, unchanged"
+    met: false
+    reason: "not yet implemented — DRAFT"
+  - text: "The local queue is used only under vendorSandboxEnabled(); in production, and in any Lambda, the queue URL cannot point at it, and a set override is logged as ignored"
+    met: false
+    reason: "not yet implemented — DRAFT"
+  - text: "A handler that throws is visible: the job's status reaches failed in the app, and the runner logs the message and error; nothing is retried forever"
+    met: false
+    reason: "not yet implemented — DRAFT"
+  - text: "A FILM-1804 flow drives ideation → story → screenplay → shot list → audio in the browser and reads each stage's result off the page"
+    met: false
+    reason: "not yet implemented — DRAFT"
+open_questions:
+  - "Emulator or in-process runner? An SQS emulator (ElasticMQ in Docker, beside ClickHouse) keeps SQS semantics - visibility timeout, redelivery, a dead-letter queue - and lets the handlers run as they do in the Lambda. An in-process runner (the queue helpers call the handler directly in dev) needs no container but skips those semantics and runs worker code inside the Next server. Recommendation: the emulator, with a small poller process that invokes the handlers."
+  - "How the SDK is pointed at it: an explicit endpoint passed to SQSClient from a resolver entry (VENDOR_URL_SQS), not the AWS SDK's own AWS_ENDPOINT_URL* variables, which are read in any environment - the class FILM-1805 closed for the LLM SDKs."
+notes: |
+  ## 1. Why this exists
+
+  FILM-1803 made every AI vendor the app calls answerable locally, and found
+  that it is not enough to run the studio: each stage is enqueued, not called
+  (FILM-1803 §4). queueLlmJob (packages/features/prompt-engine/src/lib/server/sqs-helper.ts)
+  throws "LLM_JOBS_QUEUE_URL not configured" without a queue; queueVoiceJob
+  and queueVoiceJobs (packages/features/audio-generation/src/server/voice-queue-helper.ts)
+  do the same for dialogue voice. So a laptop cannot generate a single story,
+  screenplay or shot list, and cannot produce the full runs the user guides
+  are to be written from.
+
+  FILM-1803 made the workers' side ready: every prompt and the seven
+  orchestrators the llm-worker runs are answered by the sandbox and proved
+  through the real executors and agent runner. What is missing is the
+  delivery: a queue the app can send to locally, and something that runs the
+  handlers.
+
+  ## 2. The shape (proposed, see open questions)
+
+  - local-env.sh up starts an SQS-compatible emulator (ElasticMQ) on a local
+    port with two queues named as sst.config.ts names them, and a small
+    runner process that long-polls both and invokes
+    apps/web/lambda/llm-worker/index.ts and apps/web/lambda/voice-worker/index.ts
+    with SQS-shaped events, deleting a message on success and leaving it for
+    redelivery (then the dead-letter queue) on failure.
+  - The queue helpers resolve their URL as today (SST Resource, then the
+    environment), and additionally, only under vendorSandboxEnabled(), the
+    local emulator's queue URLs; the SQS client gets the emulator endpoint
+    explicitly from a resolver entry. Outside the gate, nothing changes.
+  - The runner's environment is local.env: the worker handlers reach the AI
+    sandbox through FILM-1801's resolver like the app does, and local
+    Supabase for rows and storage.
+
+  ## 3. Out of scope
+
+  - The other Lambdas (publish, analytics sync, token refresh, email, reports):
+    their local runs belong with FILM-1802's social sandbox.
+  - Scale, ordering guarantees beyond what SQS itself gives, and cost.
+
+  ## 4. Verification
+
+  - A unit test per helper: under production settings, with any override set,
+    the message goes nowhere local (red first, as FILM-1801 and FILM-1805 did).
+  - A FILM-1804 flow through every enqueued stage, with the pages read back
+    against the AI sandbox's ledger.
+  - The failure path: an injected sandbox failure makes a stage fail visibly in
+    the app, and the message ends in the dead-letter queue.
+feature:
+  database: null
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null
