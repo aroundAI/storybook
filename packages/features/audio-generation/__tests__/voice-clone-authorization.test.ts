@@ -41,6 +41,21 @@ vi.mock('@kit/shared/logger', () => ({
   }),
 }));
 vi.mock('@kit/shared/crypto', () => ({ decrypt: () => 'decrypted-key' }));
+// Every key read goes through KB-84's helper; its own access check is its test's
+vi.mock('@kit/supabase/external-api-keys', () => ({
+  readExternalApiKey: async (
+    _client: unknown,
+    accountId: string,
+    provider: string,
+  ) => {
+    state.keyReads += 1;
+    return (
+      rows.external_api_keys?.find(
+        (row) => row.account_id === accountId && row.provider === provider,
+      ) ?? null
+    );
+  },
+}));
 vi.mock('@kit/supabase/require-user', () => ({
   requireUser: async () => ({ data: { id: CALLER }, error: null }),
 }));
