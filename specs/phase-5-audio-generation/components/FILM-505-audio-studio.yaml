@@ -66,7 +66,7 @@ acceptance_criteria:
     reason: "retired — the timeline redesign (`e737c138`) plays a clip from its block's popover (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:268`); there is no player panel"
   - text: "Play/pause controls work"
     met: false
-    reason: "unverified — no test; music and SFX blocks toggle play and pause (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/music-timeline.tsx:803`), dialogue blocks only play"
+    reason: "unverified — no test; music and SFX blocks toggle play and pause (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/music-timeline.tsx:807`), dialogue blocks only play"
   - text: "Batch generate button triggers batch action"
     met: true
     evidence: "`apps/e2e/tests/refusals/refusals.po.ts:212` clicks `generate-all-dialogue` and receives the batch action's refusal"

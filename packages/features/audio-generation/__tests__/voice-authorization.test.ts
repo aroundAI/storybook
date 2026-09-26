@@ -34,6 +34,8 @@ type Row = Record<string, unknown>;
 const state = vi.hoisted(() => ({
   readable: {} as Record<string, Array<Record<string, unknown>>>,
   writable: new Set<string>(),
+  // KB-105: tables whose updates RLS filters to no rows, with no error
+  filteredWrites: new Set<string>(),
   inserts: [] as string[],
   updates: [] as string[],
   keyReads: [] as string[],
@@ -127,9 +129,15 @@ vi.mock('@aws-sdk/client-sqs', () => {
 function query(table: string) {
   let rows: Row[] = [...(state.readable[table] ?? [])];
   let writing = false;
+  // A write answers with its rows only when it asks for them (.select()),
+  // as PostgREST does: the rows the filters still match (KB-105).
+  let selected = false;
 
   const builder = {
-    select: () => builder,
+    select: () => {
+      selected = true;
+      return builder;
+    },
     eq: (column: string, value: unknown) => {
       rows = rows.filter((row) => row[column] === value);
       return builder;
@@ -154,6 +162,7 @@ function query(table: string) {
     update: () => {
       writing = true;
       state.updates.push(table);
+      if (state.filteredWrites.has(table)) rows = [];
       return builder;
     },
     single: async () =>
@@ -162,9 +171,10 @@ function query(table: string) {
         : { data: null, error: { message: 'not found' } },
     maybeSingle: async () => ({ data: rows[0] ?? null, error: null }),
     then: <R>(resolve: (value: { data: Row[] | null; error: null }) => R) =>
-      Promise.resolve({ data: writing ? null : rows, error: null }).then(
-        resolve,
-      ),
+      Promise.resolve({
+        data: writing && !selected ? null : rows,
+        error: null,
+      }).then(resolve),
   };
 
   return builder;
@@ -245,6 +255,7 @@ beforeEach(() => {
     ],
   };
   state.writable = new Set([B_PROJECT]);
+  state.filteredWrites = new Set();
   state.inserts = [];
   state.updates = [];
   state.keyReads = [];
@@ -315,6 +326,25 @@ describe('generateDialogueVoiceAction (one line, sync)', () => {
     expect(result).toMatchObject({ ok: true, data: { status: 'completed' } });
     expect(state.keyReads).toEqual([B_ACCOUNT]);
     expect(state.vendorCalls).toBe(1);
+  });
+
+  // KB-105: the 'generating' write gates the paid call. If RLS filters it to
+  // no rows, nothing is spent and the refusal says so.
+  it('refuses, and spends nothing, when the generating write changes no row', async () => {
+    const { generateDialogueVoiceAction } = await import(
+      '../src/server/voice-actions'
+    );
+    state.filteredWrites = new Set(['dialogue_lines']);
+
+    const result = await generateDialogueVoiceAction({
+      dialogueLineId: B_LINE,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "You can't generate audio for this dialogue line.",
+    });
+    expect(state.vendorCalls).toBe(0);
   });
 });
 

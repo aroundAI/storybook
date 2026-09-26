@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -433,7 +433,7 @@ export const cancelMusicGenerationAction = enhanceAction(
 
     // Mark job as cancelled
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (client as any)
+    const { data: cancelled, error: cancelledError } = await (client as any)
       .from('generation_jobs')
       .update({
         status: 'cancelled',
@@ -441,7 +441,16 @@ export const cancelMusicGenerationAction = enhanceAction(
         error_code: 'USER_CANCELLED',
         completed_at: new Date().toISOString(),
       })
-      .eq('id', data.jobId);
+      .eq('id', data.jobId)
+      .select('id');
+
+    if (cancelledError) {
+      throw new Error(
+        `Failed to update generation_jobs: ${cancelledError.message}`,
+      );
+    }
+
+    requireAffectedRows(cancelled, "You can't cancel this generation job.");
 
     logger.info(ctx, 'Music generation job cancelled');
     revalidatePath('/home/[account]/studio/[projectId]/episodes', 'page');
