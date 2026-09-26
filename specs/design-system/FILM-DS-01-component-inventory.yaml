@@ -3,8 +3,8 @@ title: "Component Inventory"
 phase: null
 phase_name: "Design System"
 category: design_guideline
-status: PARTIAL
-audited: "2026-09-23"
+status: DONE
+audited: "2026-09-25"
 effort: S
 dependencies: []
 summary: >
@@ -16,8 +16,8 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "Each component has clear ownership (package)"
-    met: false
-    reason: "no longer true — §2 owners stale: ShotGrid/ShotCard in apps/web, the timeline gone (5f44d0e1, then the Edit Suite in FILM-607), VideoPlayer in @kit/public-sharing; §3–4 name none"
+    met: true
+    evidence: "design_guideline.patterns names, for each of the 15 new components, the file that owns it or why none does (re-audited 2026-09-25), e.g. `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx:16`, `packages/features/public-sharing/src/components/video-player.tsx:28`"
   - text: "Effort estimates are provided for planning"
     met: true
     evidence: null
@@ -27,16 +27,6 @@ acceptance_criteria:
   - text: "No duplicate components across packages"
     met: true
     evidence: null
-remaining:
-  - criterion: "Each component has clear ownership (package)"
-    reason: >
-      §2's owners no longer match the code: ShotGrid/ShotCard live in
-      `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/`,
-      the timeline is gone (the Edit Suite was retired, FILM-607), VideoPlayer
-      in `packages/features/public-sharing/src/components/video-player.tsx`. §3–§4 name
-      no package. CharacterCard, GenerationStatusBadge, ProgressRing and PromptEditor
-      were never built (placeholder comments removed in 18906820)
-    closed_by: "unassigned"
 open_questions:
   - "Should we create a `@kit/studio-ui` package for shared studio components? (non-blocking)"
   - "Should `TimelineEditor` be extracted to its own package for reuse? (post-MVP)"
@@ -47,7 +37,8 @@ design_guideline:
     - "@kit/episodes"
     - "@kit/audio-generation"
     - "@kit/assets"
-    - "@kit/film-studio"
+    - "@kit/public-sharing"
+    - "apps/web (studio routes)"
   patterns:
     - "Reusable from @kit/ui (no modification): `Card`, `CardHeader`, `CardContent` — Asset cards, episode cards, shot cards"
     - "Reusable from @kit/ui (no modification): `Button`, `IconButton` — All actions and CTAs"
@@ -70,21 +61,21 @@ design_guideline:
     - "Reusable from @kit/ui (no modification): `DropdownMenu` — Action menus"
     - "Reusable from @kit/ui (no modification): `ScrollArea` — Scrollable containers"
     - "Reusable from @kit/ui (no modification): `Separator` — Visual dividers"
-    - "New high-complexity component: `TimelineEditor` — Multi-track video/audio timeline with scrubbing (effort XL, package @kit/episodes)"
-    - "New high-complexity component: `ShotGrid` — Draggable grid with generation overlays (effort L, package @kit/episodes)"
-    - "New high-complexity component: `WaveformVisualizer` — Audio waveform with playhead sync (effort M, package @kit/audio-generation)"
-    - "New high-complexity component: `VideoPlayer` — Custom player with frame-accurate seeking (effort M, package @kit/episodes)"
-    - "New high-complexity component: `CharacterCard` — Reference images + element prompt preview (effort M, package @kit/assets)"
-    - "Medium-complexity extension: `GenerationStatusBadge` — base `Badge`; extension: Animated states, progress ring (effort S)"
-    - "Medium-complexity extension: `ProgressRing` — base New (SVG); extension: Circular progress for jobs (effort S)"
-    - "Medium-complexity extension: `AssetPicker` — base `Dialog` + `Combobox`; extension: Modal with preview, search (effort M)"
-    - "Medium-complexity extension: `PromptEditor` — base `Textarea`; extension: Token counter, variables (effort M)"
-    - "Medium-complexity extension: `CostEstimate` — base `Badge`; extension: Credits display, warnings (effort S)"
-    - "Low-complexity composition: `StudioSidebar` — `Nav` + `Badge` + `Tooltip` (effort S)"
-    - "Low-complexity composition: `EpisodeCard` — `Card` + `Badge` + `Progress` + menu (effort S)"
-    - "Low-complexity composition: `PipelineProgress` — `Steps` + `Progress` + status (effort S)"
-    - "Low-complexity composition: `ShotCard` — `Card` + `Badge` + overlay + menu (effort S)"
-    - "Low-complexity composition: `DialogueLine` — `Card` + `Avatar` + play button (effort S)"
+    - "New high-complexity component: `TimelineEditor` — Multi-track video/audio timeline with scrubbing (effort XL, package @kit/episodes). Now: retired with the Edit Suite (FILM-607); no owner"
+    - "New high-complexity component: `ShotGrid` — Draggable grid with generation overlays (effort L, package @kit/episodes). Now: owned by the app: `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx:16` (no drag or generation overlays; in-app video generation was retired)"
+    - "New high-complexity component: `WaveformVisualizer` — Audio waveform with playhead sync (effort M, package @kit/audio-generation). Now: built as `Waveform` in @kit/audio-generation (`packages/features/audio-generation/src/components/Waveform.tsx:35`), used by `apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/audio-asset-card.tsx`"
+    - "New high-complexity component: `VideoPlayer` — Custom player with frame-accurate seeking (effort M, package @kit/episodes). Now: owned by @kit/public-sharing (`packages/features/public-sharing/src/components/video-player.tsx:28`)"
+    - "New high-complexity component: `CharacterCard` — Reference images + element prompt preview (effort M, package @kit/assets). Now: not built; characters render as @kit/assets `AssetCard` (`packages/features/assets/src/components/asset-card.tsx:150`)"
+    - "Medium-complexity extension: `GenerationStatusBadge` — base `Badge`; extension: Animated states, progress ring (effort S). Now: not built; it badged video-generation jobs, retired with in-app video generation (5b88db3a)"
+    - "Medium-complexity extension: `ProgressRing` — base New (SVG); extension: Circular progress for jobs (effort S). Now: not built; it showed video-generation job progress, retired with in-app video generation (5b88db3a)"
+    - "Medium-complexity extension: `AssetPicker` — base `Dialog` + `Combobox`; extension: Modal with preview, search (effort M). Now: owned by @kit/audio-generation (`packages/features/audio-generation/src/components/AssetPicker.tsx:50`); exported, no app caller"
+    - "Medium-complexity extension: `PromptEditor` — base `Textarea`; extension: Token counter, variables (effort M). Now: not built; shot prompts are edited in a plain `Textarea` in the app (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-details-sidebar.tsx:1336`)"
+    - "Medium-complexity extension: `CostEstimate` — base `Badge`; extension: Credits display, warnings (effort S). Now: not built; no component shows a per-action cost estimate"
+    - "Low-complexity composition: `StudioSidebar` — `Nav` + `Badge` + `Tooltip` (effort S). Now: owned by the app: `apps/web/app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx:154`"
+    - "Low-complexity composition: `EpisodeCard` — `Card` + `Badge` + `Progress` + menu (effort S). Now: owned by the app: `apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/episode-card.tsx:34`"
+    - "Low-complexity composition: `PipelineProgress` — `Steps` + `Progress` + status (effort S). Now: built as the stage tabs `EpisodeWorkspaceTabs`, owned by the app: `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:100`"
+    - "Low-complexity composition: `ShotCard` — `Card` + `Badge` + overlay + menu (effort S). Now: owned by the app: `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:272`"
+    - "Low-complexity composition: `DialogueLine` — `Card` + `Avatar` + play button (effort S). Now: no single-line component; the app renders lines in `DialogueTimeline` (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:105`); @kit/audio-generation `DialogueList` is exported with no app caller"
     - "Each feature package exports components from a single entry point (`src/components/index.ts`)"
   file_path: null
 notes: |
