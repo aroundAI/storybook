@@ -616,7 +616,7 @@ export type Database = {
           id: string
           is_loopable: boolean | null
           prompt: string
-          scene_number: number
+          scene_number: number | null
           start_offset_seconds: number | null
           status: string | null
         }
@@ -630,7 +630,7 @@ export type Database = {
           id?: string
           is_loopable?: boolean | null
           prompt: string
-          scene_number: number
+          scene_number?: number | null
           start_offset_seconds?: number | null
           status?: string | null
         }
@@ -644,7 +644,7 @@ export type Database = {
           id?: string
           is_loopable?: boolean | null
           prompt?: string
-          scene_number?: number
+          scene_number?: number | null
           start_offset_seconds?: number | null
           status?: string | null
         }

@@ -79,7 +79,7 @@ interface AssetRow {
 interface AudioCueRow {
   id: string;
   episode_id: string;
-  scene_number: number;
+  scene_number: number | null;
   cue_type: string;
   prompt: string;
   start_offset_seconds: number;
