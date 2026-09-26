@@ -205,7 +205,7 @@ select throws_ok(
 select lives_ok(
   $$ insert into public.external_sources (name, slug, project_id, category, provider_type, credibility_tier)
      values ('Reuters', 'reuters', current_setting('kb26.p')::uuid, 'research', 'manual', 'tier_3')
-     on conflict (project_id, slug) do update set website_url = excluded.website_url $$,
+     on conflict (account_id, project_id, slug) do update set website_url = excluded.website_url $$,
   'An upload named like a shared source makes a project-local row (the upload''s upsert target)');
 
 select is(

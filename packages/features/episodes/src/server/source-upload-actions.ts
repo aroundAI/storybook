@@ -67,8 +67,9 @@ const uploadSourceContent = enhanceAction(
       .replace(/^-|-$/g, '')
       .slice(0, 100);
 
-    // Keyed per project: another project's source, or a shared one such as
-    // "reuters", is never matched, so never overwritten.
+    // Keyed per owner: another project's or team's source, or a built-in such
+    // as "reuters", is never matched, so never overwritten. `account_id` is
+    // the project's team, set by a trigger before the conflict check (KB-37).
     const { data: source, error: sourceError } = await admin
       .from('external_sources')
       .upsert(
@@ -81,7 +82,7 @@ const uploadSourceContent = enhanceAction(
           credibility_tier: 'tier_3',
           website_url: data.sourceUrl ?? null,
         },
-        { onConflict: 'project_id,slug' },
+        { onConflict: 'account_id,project_id,slug' },
       )
       .select('id')
       .single();

@@ -167,7 +167,7 @@ describe('uploadSourceContentAction', () => {
       table: 'external_sources',
       op: 'upsert',
       payload: { slug: 'interview-notes', project_id: PROJECT },
-      options: { onConflict: 'project_id,slug' },
+      options: { onConflict: 'account_id,project_id,slug' },
     });
     expect(content).toMatchObject({
       table: 'external_content',
@@ -220,9 +220,9 @@ describe('extractFactsFromContentAction', () => {
 });
 
 describe('ExternalContextAggregator.initialize', () => {
-  it('loads shared sources only, never a project upload source', async () => {
+  it('loads built-ins only, never a team, project or pre-fix source (KB-37)', async () => {
     await new ExternalContextAggregator().initialize();
 
-    expect(state.sourceFilters).toContainEqual(['is', 'project_id', null]);
+    expect(state.sourceFilters).toContainEqual(['eq', 'is_builtin', true]);
   });
 });

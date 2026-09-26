@@ -22,6 +22,7 @@ import {
   getResearchCountsAction,
   listExternalSourcesAction,
 } from '@kit/episodes/server';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import {
@@ -41,9 +42,20 @@ interface ResearchHubPageProps {
   projectId: string;
   projectSlug: string;
   account: string;
+  /** Whether the viewer owns the project's team, so may add team-wide sources. */
+  canAddTeamSources: boolean;
 }
 
+/** Whose a source is (KB-37), as the list action says. */
+const KIND_LABELS: Record<string, string> = {
+  builtin: 'Built-in',
+  team: 'Team',
+  project: 'This project',
+};
+
 interface Source {
+  kind: 'builtin' | 'team' | 'project';
+  canRemove: boolean;
   id: string;
   name: string;
   slug: string;
@@ -83,6 +95,7 @@ export function ResearchHubPage({
   projectId,
   projectSlug,
   account,
+  canAddTeamSources,
 }: ResearchHubPageProps) {
   const [isPending, startTransition] = useTransition();
   const [sources, setSources] = useState<Source[]>([]);
@@ -120,11 +133,11 @@ export function ResearchHubPage({
   const handleDeleteSource = (sourceId: string) => {
     startTransition(async () => {
       try {
-        await deleteExternalSourceAction({ sourceId });
+        await unwrap(deleteExternalSourceAction({ sourceId }));
         toast.success('Source removed');
         loadData();
-      } catch {
-        toast.error('Failed to remove source');
+      } catch (error) {
+        toast.error(refusalMessage(error, 'Failed to remove source'));
       }
     });
   };
@@ -217,6 +230,13 @@ export function ResearchHubPage({
                         <Badge variant="outline" className="text-xs capitalize">
                           {source.category}
                         </Badge>
+                        <Badge
+                          variant="secondary"
+                          className="text-xs"
+                          data-test="research-source-kind"
+                        >
+                          {KIND_LABELS[source.kind] ?? source.kind}
+                        </Badge>
                         {source.credibility_tier && (
                           <span
                             className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${CREDIBILITY_COLORS[source.credibility_tier] ?? ''}`}
@@ -244,14 +264,18 @@ export function ResearchHubPage({
                           </a>
                         </Button>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteSource(source.id)}
-                        disabled={isPending}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                      {source.canRemove && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Remove ${source.name}`}
+                          data-test="research-source-remove"
+                          onClick={() => handleDeleteSource(source.id)}
+                          disabled={isPending}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -303,6 +327,8 @@ export function ResearchHubPage({
         open={showAddSource}
         onOpenChange={setShowAddSource}
         onSourceAdded={loadData}
+        projectId={projectId}
+        canAddTeamSources={canAddTeamSources}
       />
 
       {/* Upload Source Dialog */}
