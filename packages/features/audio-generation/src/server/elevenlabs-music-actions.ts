@@ -72,16 +72,22 @@ async function uploadAudioToStorage(
   audioBuffer: Buffer,
 ): Promise<{ url: string; path: string }> {
   // Dynamic import to avoid circular dependency
-  const { getStorageAdapter } = await import('@kit/storage');
+  const { getStorageAdapter, writeProjectObject } = await import(
+    '@kit/storage'
+  );
+  const { generatedAudioPath } = await import('@kit/storage/upload-paths');
 
-  const fileName = `${assetId}.mp3`;
-  const storagePath = `${projectId}/music/${fileName}`;
+  const storagePath = generatedAudioPath(projectId, 'music', assetId);
   const storage = getStorageAdapter(client);
 
-  const { url } = await storage.upload('audio', storagePath, audioBuffer, {
-    contentType: 'audio/mpeg',
-    upsert: true,
-  });
+  const { url } = await writeProjectObject(
+    client,
+    storage,
+    'audio',
+    storagePath,
+    audioBuffer,
+    { contentType: 'audio/mpeg', upsert: true },
+  );
 
   return {
     url,

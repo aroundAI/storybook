@@ -170,6 +170,12 @@ export default defineConfig({
         __dirname,
         '../../packages/features/assets/src/lib/index.ts',
       ),
+      // The workers' SDK copy, as lambda/tsconfig.json's `paths` reads it:
+      // SST installs it into the bundle, so apps/web does not depend on it
+      '@aws-sdk/client-s3': path.resolve(
+        __dirname,
+        '../../packages/features/storage/node_modules/@aws-sdk/client-s3',
+      ),
       '@kit/storage/buckets': path.resolve(
         __dirname,
         '../../packages/features/storage/src/buckets.ts',

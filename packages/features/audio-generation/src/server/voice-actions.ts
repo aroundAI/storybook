@@ -10,7 +10,8 @@ import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
-import { getStorageAdapter } from '@kit/storage';
+import { getStorageAdapter, writeProjectObject } from '@kit/storage';
+import { dialogueAudioPath, voicePreviewPath } from '@kit/storage/upload-paths';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -286,12 +287,13 @@ const generateDialogueVoice = enhanceAction(
         throw new Error('Voice generation did not return audio data');
       }
 
-      // 12. Upload to storage (timestamp ensures regeneration bypasses CDN cache)
-      const timestamp = Date.now();
-      const audioPath = `dialogue/${episodeId}/${data.dialogueLineId}_${timestamp}.mp3`;
+      // 12. Upload to storage, under the episode the line was authorised on
+      const audioPath = dialogueAudioPath(episodeId, data.dialogueLineId);
       const storage = getStorageAdapter(adminClient);
 
-      const { url: audioUrl } = await storage.upload(
+      const { url: audioUrl } = await writeProjectObject(
+        client,
+        storage,
         'audio',
         audioPath,
         result.audioBuffer,
@@ -730,10 +732,12 @@ const generateVoiceFromText = enhanceAction(
       }
 
       // 8. Upload to temporary storage location (local or Supabase based on STORAGE_PROVIDER)
-      const tempPath = `temp/${user.id}/${Date.now()}.mp3`;
+      const tempPath = voicePreviewPath(data.episodeId, user.id);
       const storage = getStorageAdapter(adminClient);
 
-      const { url: audioUrl } = await storage.upload(
+      const { url: audioUrl } = await writeProjectObject(
+        client,
+        storage,
         'audio',
         tempPath,
         result.audioBuffer,

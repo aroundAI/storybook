@@ -11,6 +11,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 
 import { vendorUrl } from '@kit/shared/vendors';
+import { dialogueAudioPath } from '@kit/storage/upload-paths';
 import type { Database } from '@kit/supabase/database';
 
 import { uploadToR2 } from '../llm-worker/utils/r2-storage';
@@ -212,14 +213,14 @@ export async function processDialogueVoiceGeneration(
     // 5. Get audio buffer
     const audioBuffer = Buffer.from(await response.arrayBuffer());
 
-    // 6. Upload to R2 storage (timestamp ensures regeneration bypasses CDN cache)
-    const timestamp = Date.now();
-    const audioPath = `dialogue/${data.episodeId}/${data.dialogueLineId}_${timestamp}.mp3`;
+    // 6. Upload to R2, inside the authorised episode (KB-57)
+    const audioPath = dialogueAudioPath(data.episodeId, data.dialogueLineId);
     const { url: audioUrl } = await uploadToR2(
       'audio',
       audioPath,
       audioBuffer,
       'audio/mpeg',
+      { episodeId: data.episodeId },
     );
 
     // 7. Calculate duration estimate (rough: ~150 words per minute)

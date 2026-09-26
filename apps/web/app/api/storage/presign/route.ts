@@ -34,7 +34,7 @@ import {
   uploadCategoryForType,
 } from '@kit/assets/upload-validation';
 import { getLogger } from '@kit/shared/logger';
-import { getStorageAdapter } from '@kit/storage';
+import { canWriteProjectKey, getStorageAdapter } from '@kit/storage';
 import {
   ACCOUNT_IMAGE_BUCKET,
   PROJECT_ASSETS_BUCKET,
@@ -45,8 +45,24 @@ import {
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import type { Database } from '~/lib/database.types';
+
 const MAX_EXPIRES_IN = 3600; // 1 hour max
 const DEFAULT_EXPIRES_IN = 900; // 15 minutes default
+
+type ServerClient = ReturnType<typeof getSupabaseServerClient<Database>>;
+
+async function canWriteAccountImage(client: ServerClient, path: string) {
+  const { data, error } = await client.rpc('can_write_account_image', {
+    path,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data === true;
+}
 
 /**
  * The buckets the app's uploaders send, and what each admits. On R2 each
@@ -55,7 +71,8 @@ const DEFAULT_EXPIRES_IN = 900; // 15 minutes default
  * that produce them (KB-39, KB-53).
  *
  * `canWrite` is the SQL rule the bucket's own policy applies, asked as the
- * caller: project writers for project-assets (KB-28); for account_image, the
+ * caller: project writers for project-assets (KB-28, through the one check
+ * every server-side write uses, KB-57); for account_image, the
  * account itself or a member with `settings.manage` (KB-53). `upsert` lets
  * the URL replace an existing object: only avatars, which keep one key per
  * account.
@@ -64,18 +81,18 @@ const BUCKET_RULES: Record<
   UploadBucket,
   {
     types: readonly string[];
-    canWrite: 'can_write_project_storage' | 'can_write_account_image';
+    canWrite: (client: ServerClient, path: string) => Promise<boolean>;
     upsert: boolean;
   }
 > = {
   [PROJECT_ASSETS_BUCKET]: {
     types: ALLOWED_PROJECT_ASSET_TYPES,
-    canWrite: 'can_write_project_storage',
+    canWrite: canWriteProjectKey,
     upsert: false,
   },
   [ACCOUNT_IMAGE_BUCKET]: {
     types: UPLOAD_CONSTRAINTS.image.allowedTypes,
-    canWrite: 'can_write_account_image',
+    canWrite: canWriteAccountImage,
     upsert: true,
   },
 };
@@ -162,16 +179,7 @@ export async function POST(request: NextRequest) {
     // The same rule the bucket's policies apply. For a project: owner, admin
     // or member of the project the path names; being able to read a public
     // project is not enough.
-    const { data: canWrite, error: permissionError } = await client.rpc(
-      rule.canWrite,
-      { path },
-    );
-
-    if (permissionError) {
-      throw permissionError;
-    }
-
-    if (!canWrite) {
+    if (!(await rule.canWrite(client, path))) {
       return bucket === ACCOUNT_IMAGE_BUCKET
         ? refuse(
             'account-image-not-owner',

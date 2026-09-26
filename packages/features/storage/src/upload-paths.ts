@@ -225,3 +225,80 @@ export function isAudioLibraryPath(projectId: string, path: string): boolean {
 
   return rule.test(path) && isUploadPath(PROJECT_ASSETS_BUCKET, path);
 }
+
+/**
+ * What a storage key belongs to, read from the key alone (KB-57). It follows
+ * `kit.get_project_id_from_path`, the function every project storage policy
+ * runs, except that an `episodes/<id>` key is returned as the episode: which
+ * project that is needs the database. Anything else, including a key holding
+ * `..` or an empty segment, belongs to nothing, and nothing can write it.
+ */
+export type StorageKeyScope = { projectId: string } | { episodeId: string };
+
+export function storageKeyScope(key: string): StorageKeyScope | null {
+  const parts = key.split('/');
+
+  if (parts.length < 2 || parts.some((part) => part === '' || part === '..')) {
+    return null;
+  }
+
+  const [first, second] = parts as [string, string];
+
+  if (first === 'projects') {
+    return UUID.test(second) ? { projectId: second.toLowerCase() } : null;
+  }
+
+  if (first === 'episodes') {
+    return UUID.test(second) ? { episodeId: second.toLowerCase() } : null;
+  }
+
+  return UUID.test(first) ? { projectId: first.toLowerCase() } : null;
+}
+
+/**
+ * Whether `key` lies in the project or episode a job was authorised for.
+ * For writers with no user session (the workers), whose target was checked
+ * by the producer. An episode key needs an episode target, and a project key
+ * a project target.
+ */
+export function keyInTarget(
+  key: string,
+  target: { projectId?: string; episodeId?: string },
+): boolean {
+  const scope = storageKeyScope(key);
+
+  if (!scope) return false;
+
+  if ('projectId' in scope) {
+    return scope.projectId === target.projectId?.toLowerCase();
+  }
+
+  return scope.episodeId === target.episodeId?.toLowerCase();
+}
+
+/** A dialogue line's generated audio. The time keeps a regeneration off the CDN's cached copy. */
+export function dialogueAudioPath(
+  episodeId: string,
+  dialogueLineId: string,
+  now = Date.now(),
+) {
+  return `episodes/${episodeId}/dialogue/${dialogueLineId}_${now}.mp3`;
+}
+
+/** A voice preview, heard once in the voice picker */
+export function voicePreviewPath(
+  episodeId: string,
+  userId: string,
+  now = Date.now(),
+) {
+  return `episodes/${episodeId}/previews/${userId}-${now}.mp3`;
+}
+
+/** Generated SFX or music, in the `audio` or `audio-assets` bucket */
+export function generatedAudioPath(
+  projectId: string,
+  kind: 'sfx' | 'music',
+  assetId: string,
+) {
+  return `projects/${projectId}/${kind}/${assetId}.mp3`;
+}
