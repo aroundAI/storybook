@@ -41,7 +41,7 @@ import {
   analyzeSeasonRoadmapAction,
   generateSeasonEpisodesAction,
 } from '@kit/episodes/server/season-generation';
-import { refusalMessage } from '@kit/next/action-result';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import {
@@ -471,7 +471,7 @@ export function SeasonGeneratorDialog({
         ...data,
         externalFacts: verifiedFacts.length > 0 ? verifiedFacts : undefined,
       };
-      const result = await analyzeSeasonRoadmapAction(enrichedData);
+      const result = await unwrap(analyzeSeasonRoadmapAction(enrichedData));
       // Job is always queued to Lambda - WebSocket will deliver result
       if (result?.success && result?.queued) {
         toast.info(

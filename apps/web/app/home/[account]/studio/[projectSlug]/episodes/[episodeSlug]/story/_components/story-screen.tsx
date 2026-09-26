@@ -16,6 +16,7 @@ import {
 import { RefinementChat, SidebarAssetList } from '@kit/episodes/components';
 import { convertToScreenplayAction } from '@kit/episodes/server';
 import type { EpisodeWithShots } from '@kit/episodes/types';
+import { unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
@@ -101,10 +102,12 @@ export function StoryScreen({
   const handleConvertToScreenplay = () => {
     setIsGenerating(true); // Set generating state at start
     triggerLlm(async () => {
-      const result = await convertToScreenplayAction({
-        episodeId: episode.id,
-        contentStyle: storyData?.contentStyle,
-      });
+      const result = await unwrap(
+        convertToScreenplayAction({
+          episodeId: episode.id,
+          contentStyle: storyData?.contentStyle,
+        }),
+      );
       // If local dev (synchronous), process immediately
       if (result.success && result.data) {
         toast.success(

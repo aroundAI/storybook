@@ -116,7 +116,10 @@ describe.each(actions)('$name', ({ run }) => {
   it('queues nothing for a project the caller can read but not write', async () => {
     state.writable = false;
 
-    await expect(run()).rejects.toThrow('Project not found');
+    await expect(run()).resolves.toEqual({
+      ok: false,
+      error: 'Project not found',
+    });
     expect(state.sent).toEqual([]);
   });
 

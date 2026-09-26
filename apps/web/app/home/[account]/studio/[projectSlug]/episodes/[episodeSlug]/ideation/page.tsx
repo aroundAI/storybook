@@ -10,6 +10,7 @@ import {
   generateFullStoryAction,
   getActiveThreadsAction,
 } from '@kit/episodes/server';
+import { unwrap } from '@kit/next/action-result';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 
@@ -101,19 +102,21 @@ export default function IdeationPage() {
   const handleComplete = async (selection: RefinedStoryIdea) => {
     setIsGenerating(true);
     triggerLlm(async () => {
-      const result = await generateFullStoryAction({
-        episodeId: episode.id,
-        version: episode.version,
-        title: selection.title,
-        logline: selection.logline,
-        targetDuration: selection.targetDuration,
-        contentStyle: selection.contentStyle,
-        themes: selection.themes.length > 0 ? selection.themes : undefined,
-        hook: selection.hook || undefined,
-        visualDirection: selection.visualPotential || undefined,
-        threadCandidates:
-          threadCandidates.length > 0 ? threadCandidates : undefined,
-      });
+      const result = await unwrap(
+        generateFullStoryAction({
+          episodeId: episode.id,
+          version: episode.version,
+          title: selection.title,
+          logline: selection.logline,
+          targetDuration: selection.targetDuration,
+          contentStyle: selection.contentStyle,
+          themes: selection.themes.length > 0 ? selection.themes : undefined,
+          hook: selection.hook || undefined,
+          visualDirection: selection.visualPotential || undefined,
+          threadCandidates:
+            threadCandidates.length > 0 ? threadCandidates : undefined,
+        }),
+      );
 
       if (result && 'queued' in result && result.queued) {
         toast.info('Generating story in background... This may take a minute.');

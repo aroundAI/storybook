@@ -128,6 +128,38 @@ export const SCENARIOS: RefusalScenario[] = [
     },
   },
   {
+    // KB-6, the remainder: one of the ten actions that threw a refusal
+    // unwrapped until now (convertToScreenplayAction). Its text reaches the
+    // page through triggerLlm's error state, not the generic sentence.
+    area: 'episodes',
+    name: 'converting a story to a screenplay after another tab deleted the episode',
+    message: 'Episode not found',
+    run: async (page) => {
+      const { team, project } = await teamWithProject(page);
+      const episode = await seedEpisode(project.id, {
+        story_data: {
+          title: 'The Lighthouse',
+          fullStory: 'Ava climbs the lighthouse stairs as the storm arrives.',
+        },
+      });
+
+      await page.goto(
+        `${studio(team, project.slug)}/episodes/${episode.slug}/story`,
+      );
+      const convert = page.getByRole('button', {
+        name: /Convert to Screenplay/,
+      });
+      await convert.waitFor();
+
+      // The other tab: the episode goes while this page still shows it.
+      await updateRows('episodes', `id=eq.${episode.id}`, {
+        deleted_at: new Date().toISOString(),
+      });
+
+      await convert.click();
+    },
+  },
+  {
     area: 'assets',
     name: 'renaming a location to a name already taken',
     message:

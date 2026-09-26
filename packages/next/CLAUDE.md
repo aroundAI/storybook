@@ -248,9 +248,10 @@ try {
   value.)
 - **Never read `error.message` of an error caught around a server action**,
   to show it or to branch on it. `refusalMessage(error, fallback)` is the
-  reader. `__tests__/kb6-caught-action-message.test.ts` fails on either
-  half: a caught message being read, or a wrapped action called without
-  `unwrap`.
+  reader. `__tests__/kb6-caught-action-message.test.ts` fails on any of
+  three: a caught message being read, a wrapped action called without
+  `unwrap`, or an exported `enhanceAction` that can throw an `ActionRefusal`
+  (followed through helpers and aliases by `__tests__/thrown-refusals.ts`).
 - **Assert the wording on a production build** —
   `apps/e2e/tests/refusals/action-refusals.spec.ts`. "An error is visible"
   passes on the generic sentence too.

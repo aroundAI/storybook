@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -62,7 +63,7 @@ interface _AnalysisResult {
  * Queues the roadmap analysis LLM call for background processing via Lambda.
  * Results are delivered via WebSocket.
  */
-export const analyzeSeasonRoadmapAction = enhanceAction(
+const analyzeSeasonRoadmap = enhanceAction(
   async (data) => {
     const logger = await getLogger();
     const ctx = { name: 'season.analyze', projectId: data.projectId };
@@ -102,6 +103,8 @@ export const analyzeSeasonRoadmapAction = enhanceAction(
   },
   { schema: AnalyzeSeasonSchema },
 );
+
+export const analyzeSeasonRoadmapAction = returnRefusals(analyzeSeasonRoadmap);
 
 /**
  * Generate Season Episodes

@@ -14,6 +14,7 @@ import {
   Users,
 } from 'lucide-react';
 
+import { unwrap } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
@@ -28,10 +29,14 @@ interface AIInsightsProps {
   analytics: AggregateAnalytics | null;
 }
 
+/** What the action returns once a refusal is unwrapped (KB-6) */
+type InsightsData = Extract<
+  Awaited<ReturnType<typeof generateInsightsAction>>,
+  { ok: true }
+>['data'];
+
 export function AIInsights({ projectId, analytics }: AIInsightsProps) {
-  const [wsInsights, setWsInsights] = useState<Awaited<
-    ReturnType<typeof generateInsightsAction>
-  > | null>(null);
+  const [wsInsights, setWsInsights] = useState<InsightsData | null>(null);
 
   // WebSocket for async LLM results (uses shared provider from layout)
   const {
@@ -39,7 +44,7 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
     result: llmResult,
     error: llmError,
   } = useLlmJob<{
-    insights: Awaited<ReturnType<typeof generateInsightsAction>>;
+    insights: InsightsData;
   }>('analytics-insights');
 
   // Handle async WebSocket result
@@ -65,7 +70,9 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
   } = useQuery({
     queryKey: ['ai-insights', projectId, analytics?.totals?.views],
     queryFn: async () => {
-      const result = await generateInsightsAction({ projectId, analytics });
+      const result = await unwrap(
+        generateInsightsAction({ projectId, analytics }),
+      );
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((result as any)?.queued) {
         toast.info('Generating insights in background...');

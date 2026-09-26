@@ -1,14 +1,35 @@
 ---
 id: KB-6
 title: "Server-action error messages are replaced in production"
-status: partial
-fixed_in: ["#264 (round 4)", "#296", "#303 (re-land of #299)"]
-fixed_summary: "Experiment log and note refusals replaced in production; Projects and episodes/studio refusals replaced in production; shared `returnRefusals` helper and guard; Assets, audio, publishing, analytics, edit-suite and admin refusals replaced in production"
+status: fixed
+fixed_in: ["#264 (round 4)", "#296", "#303 (re-land of #299)", "#412"]
+fixed_summary: "Experiment log and note refusals replaced in production; Projects and episodes/studio refusals replaced in production; shared `returnRefusals` helper and guard; Assets, audio, publishing, analytics, edit-suite and admin refusals replaced in production; ten more exported actions threw a refusal unwrapped (audio library, AI insights, revenue projection, season, shot list, story, screenplay), and the manual revenue form showed a caught message"
 severity: Medium
 found: 2026-09-19
 ---
 
 ## KB-6 — Server-action error messages are replaced in production
+
+> **Fixed (2026-09-25), #412: the remainder.** The client scan only saw
+> files that read a caught message, so an action that *threw* its refusal
+> was invisible to it wherever the caller showed a fallback instead. A
+> server-side scan (`packages/next/__tests__/thrown-refusals.ts`) now reads
+> every `enhanceAction` export and follows refusals through helpers and
+> other actions by name. It found ten exported actions that could throw an
+> `ActionRefusal` in production:
+> - `generateMusicAssetAction` and `generateSfxAssetAction` (audio library);
+> - `generateInsightsAction` and `generateLanguageInsightsAction`;
+> - `getRevenueProjectionAction`, whose refusal comes only through `callerTodayOr`;
+> - `analyzeSeasonRoadmapAction`, `generateShotListAction` and
+>   `regenerateEpisodeOutlineAction`;
+> - `convertToScreenplayAction` and `generateFullStoryAction`.
+>
+> Each is now `returnRefusals(inner)`, and its 11 client call sites `unwrap`.
+> `manual-revenue-form.tsx` reads a crash through `refusalMessage`, and
+> `KNOWN` is empty. The guard fails on any new exported action that can throw
+> a refusal, including one re-exported under an alias. A production-build
+> scenario (converting a story whose episode another tab deleted) asserts
+> "Episode not found".
 
 **Severity:** Medium. **Found:** FILM-1610 review, round 4 (#264).
 
@@ -91,12 +112,8 @@ analytics) on the production build. It also found that the location
 editor could never save a location without an image (`fileUrl: ''`
 against `.url().optional()` — the FILM-1609 class); fixed in the same PR.
 
-**Remaining** — named in `KNOWN` in the guard test, which fails if the
-file is fixed without being removed from it:
-
-- `packages/features/content-analytics/src/components/manual-revenue-form.tsx`
-  — deferred while KB-12 owned the file; KB-12 merged in #293, so it is now
-  unowned and still open.
+**Remaining:** none. `manual-revenue-form.tsx` was fixed in #412, and
+`KNOWN` in the guard test is empty.
 
 **No change needed** (the error never crossed a server action):
 `channel-picker.tsx`, `research/_components/upload-source-dialog.tsx`,

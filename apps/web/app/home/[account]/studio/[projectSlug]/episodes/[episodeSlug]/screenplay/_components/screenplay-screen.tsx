@@ -18,6 +18,7 @@ import type {
   ScreenplayData,
   ScreenplayScene,
 } from '@kit/episodes/types';
+import { unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
@@ -170,12 +171,14 @@ export function ScreenplayScreen({
   const handleGenerateShotList = () => {
     setIsGenerating(true); // Set generating state at start
     triggerLlm(async () => {
-      const result = await generateShotListAction({
-        episodeId: episode.id,
-        shotDurationMin: 5,
-        shotDurationMax: 8,
-        videoProvider: 'veo-3.1',
-      });
+      const result = await unwrap(
+        generateShotListAction({
+          episodeId: episode.id,
+          shotDurationMin: 5,
+          shotDurationMax: 8,
+          videoProvider: 'veo-3.1',
+        }),
+      );
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((result as any)?.queued) {
         toast.info(

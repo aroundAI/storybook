@@ -10,7 +10,7 @@ import { useTransition } from 'react';
 
 import { Loader2, Music, Sparkles, Volume2 } from 'lucide-react';
 
-import { refusalMessage } from '@kit/next/action-result';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -92,21 +92,25 @@ export function GenerateAudioDialog({
           await import('@kit/audio-generation/server');
 
         if (audioType === 'music') {
-          await generateMusicAssetAction({
-            projectId,
-            prompt: prompt.trim(),
-            name: name.trim() || undefined,
-            duration: Number(duration),
-            genre: genre || undefined,
-            mood: mood || undefined,
-          });
+          await unwrap(
+            generateMusicAssetAction({
+              projectId,
+              prompt: prompt.trim(),
+              name: name.trim() || undefined,
+              duration: Number(duration),
+              genre: genre || undefined,
+              mood: mood || undefined,
+            }),
+          );
         } else {
-          await generateSfxAssetAction({
-            projectId,
-            prompt: prompt.trim(),
-            name: name.trim() || undefined,
-            duration: Number(duration),
-          });
+          await unwrap(
+            generateSfxAssetAction({
+              projectId,
+              prompt: prompt.trim(),
+              name: name.trim() || undefined,
+              duration: Number(duration),
+            }),
+          );
         }
 
         onOpenChange(false);

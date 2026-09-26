@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { unwrap } from '@kit/next/action-result';
+
 import { generateLanguageInsightsAction } from '../src/server/language-insights-actions';
 
 /**
@@ -65,9 +67,11 @@ vi.mock('../src/server/language-analytics', () => ({
 }));
 
 const run = () =>
-  generateLanguageInsightsAction({
-    projectId: '550e8400-e29b-41d4-a716-446655440000',
-  });
+  unwrap(
+    generateLanguageInsightsAction({
+      projectId: '550e8400-e29b-41d4-a716-446655440000',
+    }),
+  );
 
 beforeEach(() => {
   mocks.queueLlmJob.mockClear();

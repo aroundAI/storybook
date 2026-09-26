@@ -110,6 +110,46 @@
       "cwd": "packages/next",
       "test": "__tests__/kb6-caught-action-message.test.ts",
       "pattern": "no client file shows or branches on the message"
+    },
+    {
+      "name": "KB-6 S1 a refusing action is exported bare again, under an alias",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/audio-asset-actions.ts",
+      "find": "export const generateSfxAssetAction = returnRefusals(generateSfxAsset);",
+      "replace": "export const generateSfxAssetAction = generateSfxAsset;",
+      "cwd": "packages/next",
+      "test": "__tests__/kb6-caught-action-message.test.ts",
+      "pattern": "no exported server action throws a refusal"
+    },
+    {
+      "name": "KB-6 S2 an action refusing only through a helper (callerTodayOr) is exported bare",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/revenue-actions.ts",
+      "find": "export const getRevenueProjectionAction = returnRefusals(getRevenueProjection);",
+      "replace": "export const getRevenueProjectionAction = getRevenueProjection;",
+      "cwd": "packages/next",
+      "test": "__tests__/kb6-caught-action-message.test.ts",
+      "pattern": "no exported server action throws a refusal"
+    },
+    {
+      "name": "KB-6 S3 the scan stops following refusals into helpers",
+      "kind": "unit",
+      "file": "packages/next/__tests__/thrown-refusals.ts",
+      "find": "      if (reaches) {\n        throwers.add(definition);",
+      "replace": "      if (reaches && false) {\n        throwers.add(definition);",
+      "cwd": "packages/next",
+      "test": "__tests__/thrown-refusals.test.ts",
+      "pattern": "helper in another file"
+    },
+    {
+      "name": "KB-6 C1 a client calls a refusing action without unwrap (a refusal reads as done)",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/ai-insights.tsx",
+      "find": "      const result = await unwrap(\n        generateInsightsAction({ projectId, analytics }),\n      );",
+      "replace": "      const result = await generateInsightsAction({ projectId, analytics });",
+      "cwd": "packages/next",
+      "test": "__tests__/kb6-caught-action-message.test.ts",
+      "pattern": "every call to an action that returns its refusals is unwrapped"
     }
   ]
 }

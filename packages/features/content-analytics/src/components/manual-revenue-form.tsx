@@ -9,6 +9,7 @@ import { CalendarIcon } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import { refusalMessage } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import { Calendar } from '@kit/ui/calendar';
 import {
@@ -153,9 +154,10 @@ export function ManualRevenueForm({
       setAmountText('');
       onSuccess?.();
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to add revenue entry',
-      );
+      // A crash, never a refusal (those come back as values above): its
+      // message is a generic sentence in production and a database detail on
+      // a dev server, neither of them for the page (KB-6)
+      toast.error(refusalMessage(error, 'Failed to add revenue entry'));
     }
   }
 

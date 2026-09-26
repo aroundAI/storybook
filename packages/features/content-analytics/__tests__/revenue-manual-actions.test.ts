@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { unwrap } from '@kit/next/action-result';
+
 import {
   addManualRevenueAction,
   deleteManualRevenueAction,
@@ -233,10 +235,12 @@ describe('getRevenueProjectionAction (KB-24)', () => {
     vi.useFakeTimers({ now: LATE_UTC, toFake: ['Date'] });
     streamed = [{ record_date: '2026-09-25', currency: 'EUR', cents: 5000 }];
 
-    const [projection] = await getRevenueProjectionAction({
-      accountId: ACCOUNT,
-      asOf: '2026-09-25',
-    });
+    const [projection] = await unwrap(
+      getRevenueProjectionAction({
+        accountId: ACCOUNT,
+        asOf: '2026-09-25',
+      }),
+    );
 
     expect(ranges).toEqual([{ from: '2026-08-26', to: '2026-09-25' }]);
     // 5000 on one day × 30.
@@ -261,10 +265,12 @@ describe('getRevenueProjectionAction (KB-24)', () => {
       { record_date: '2026-09-09', currency: 'USD', cents: 2000 },
     ];
 
-    const [projection] = await getRevenueProjectionAction({
-      accountId: ACCOUNT,
-      asOf: '2026-09-24',
-    });
+    const [projection] = await unwrap(
+      getRevenueProjectionAction({
+        accountId: ACCOUNT,
+        asOf: '2026-09-24',
+      }),
+    );
 
     // Second half 2000 against first half 1000: +100% × 50 = +50.
     expect(
@@ -275,10 +281,12 @@ describe('getRevenueProjectionAction (KB-24)', () => {
   it("falls back to the server's UTC date for a date that cannot be today anywhere", async () => {
     vi.useFakeTimers({ now: LATE_UTC, toFake: ['Date'] });
 
-    await getRevenueProjectionAction({
-      accountId: ACCOUNT,
-      asOf: '2026-10-30',
-    });
+    await unwrap(
+      getRevenueProjectionAction({
+        accountId: ACCOUNT,
+        asOf: '2026-10-30',
+      }),
+    );
 
     expect(ranges).toEqual([{ from: '2026-08-25', to: '2026-09-24' }]);
   });
@@ -286,7 +294,7 @@ describe('getRevenueProjectionAction (KB-24)', () => {
   it("uses the server's UTC date when the caller sends none", async () => {
     vi.useFakeTimers({ now: LATE_UTC, toFake: ['Date'] });
 
-    await getRevenueProjectionAction({ accountId: ACCOUNT });
+    await unwrap(getRevenueProjectionAction({ accountId: ACCOUNT }));
 
     expect(ranges).toEqual([{ from: '2026-08-25', to: '2026-09-24' }]);
   });

@@ -119,7 +119,7 @@ export const generateStoryIdeasAction = returnRefusals(
  * Uses the story-generation prompt template to create a 500-1000 word narrative.
  * In production, queues via SQS for background processing.
  */
-export const generateFullStoryAction = enhanceAction(
+const generateFullStory = enhanceAction(
   async (
     data,
   ): Promise<{
@@ -271,3 +271,5 @@ export const generateFullStoryAction = enhanceAction(
     schema: GenerateFullStorySchema,
   },
 );
+
+export const generateFullStoryAction = returnRefusals(generateFullStory);
