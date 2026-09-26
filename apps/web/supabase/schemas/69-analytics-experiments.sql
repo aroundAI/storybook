@@ -106,10 +106,23 @@ create policy "analytics_experiments_read" on public.analytics_experiments for s
   to authenticated using (public.has_account_access(account_id));
 
 create policy "analytics_experiments_create" on public.analytics_experiments for insert
-  to authenticated with check (public.has_account_access(account_id));
+  to authenticated with check (
+    public.has_account_access(account_id)
+    -- KB-113: the project must be the change's account's
+    and public.project_in_account(project_id, account_id)
+  );
 
 create policy "analytics_experiments_update" on public.analytics_experiments for update
-  to authenticated using (public.has_account_access(account_id));
+  to authenticated using (public.has_account_access(account_id))
+  with check (
+    public.has_account_access(account_id)
+    and public.project_in_account(project_id, account_id)
+  );
+
+-- A change stays in its account (KB-113); keep_account_id is KB-98's.
+create trigger analytics_experiments_keep_account
+  before update of account_id on public.analytics_experiments
+  for each row execute function public.keep_account_id('change');
 
 -- Deleted only while planned or abandoned (KB-7, 20260924143141).
 create policy "analytics_experiments_delete" on public.analytics_experiments for delete

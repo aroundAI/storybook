@@ -72,11 +72,19 @@ create policy "manual_tasks_read" on public.manual_tasks for select
 create policy "manual_tasks_create" on public.manual_tasks for insert
   to authenticated with check (
     public.has_account_access(account_id)
+    -- KB-113: the video and episode must be the task's account's
+    and public.publish_in_account(publish_id, account_id)
+    and public.episode_in_account(episode_id, account_id)
   );
 
 create policy "manual_tasks_update" on public.manual_tasks for update
   to authenticated using (
     public.has_account_access(account_id)
+  )
+  with check (
+    public.has_account_access(account_id)
+    and public.publish_in_account(publish_id, account_id)
+    and public.episode_in_account(episode_id, account_id)
   );
 
 create policy "manual_tasks_delete" on public.manual_tasks for delete
