@@ -485,8 +485,9 @@ function checkReferenceViolation(
 /**
  * CANON_007: Connectivity Failure
  * Checks if narrative threads are stale (untouched for many episodes).
- * Open threads are NORMAL — only flag threads that haven't been progressed
- * in 5+ episodes, as they may be genuinely forgotten.
+ * Open threads are NORMAL — only flag threads whose last active episode
+ * (`lastActiveEpisodeNumber`, by number) is 5+ episodes before this one, as
+ * they may be genuinely forgotten.
  */
 function checkConnectivityFailure(
   skeleton: PlotSkeleton,
@@ -501,17 +502,12 @@ function checkConnectivityFailure(
     if (promises.length === 0) continue;
 
     const payoffs = thread.payoffs ?? [];
-    const episodesTouched = thread.episodesTouched ?? [];
 
-    // Estimate last-touched episode number from the opened episode + touched count
-    const openedEpNumber =
-      (thread as unknown as { openedEpisodeNumber?: number })
-        .openedEpisodeNumber ?? 0;
-    const lastTouchedEp =
-      episodesTouched.length > 0
-        ? openedEpNumber + episodesTouched.length
-        : openedEpNumber;
-    const episodesSinceTouch = currentEpisode - lastTouchedEp;
+    // Unknown is not stale: a thread whose episodes do not resolve is not
+    // flagged (KB-72).
+    if (thread.lastActiveEpisodeNumber === undefined) continue;
+
+    const episodesSinceTouch = currentEpisode - thread.lastActiveEpisodeNumber;
 
     // Only flag if thread is stale AND has no payoffs
     if (payoffs.length === 0 && episodesSinceTouch >= staleThreshold) {

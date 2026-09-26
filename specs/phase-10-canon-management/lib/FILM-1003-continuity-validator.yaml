@@ -45,10 +45,10 @@ acceptance_criteria:
     reason: "unverified — no test drives any checkpoint; the Lambda paths import `server-only` via the context builder and likely skip"
   - text: "Integration with story-actions.ts"
     met: false
-    reason: "retired — superseded: STORY validation runs as the story agent's `checkContinuity` tool (`packages/features/episodes/src/agent/skills/continuity-skill.ts:176`), d5f6dbdc"
+    reason: "retired — superseded: STORY validation runs as the story agent's `checkContinuity` tool (`packages/features/episodes/src/agent/skills/continuity-skill.ts:179`), d5f6dbdc"
   - text: "Unit tests with >80% coverage"
     met: false
-    reason: "not met — no test found for `continuity-validator.ts`"
+    reason: "not met — 61% of statements, 70% of branches (v8, whole `@kit/episodes` suite, 2026-09-25); `__tests__/continuity-validator.test.ts` covers CANON_007 only (KB-72)"
   - text: "Performance: single validation < 500ms"
     met: false
     reason: "unverified — needs a timed run; no benchmark exists"
@@ -67,7 +67,7 @@ remaining:
     reason: "Causality Break (rule 3) and standalone-episode Connectivity (rule 7) are not implemented; codes 003/005 check knowledge and world facts instead, and 007 holds the thread-orphan check"
     closed_by: "owner"
   - criterion: "Unit tests with >80% coverage"
-    reason: "No test imports `continuity-validator.ts`"
+    reason: "61.25% statements, 69.86% branches, 80% functions (v8, 2026-09-25); only CANON_007 has a direct test (KB-72), the rest are reached through the continuity skill's tests"
     closed_by: "unassigned"
   - criterion: "Audit logging for all validations"
     reason: "No persisted record; only a console count at the SCREENPLAY checkpoint"
@@ -75,6 +75,7 @@ remaining:
 open_questions: []
 notes: |
   Priority (source frontmatter): high
+  KB-72 (2026-09-25): CANON_007 judges a thread stale from `lastActiveEpisodeNumber` (the latest episode it was opened or touched in, resolved by the memory context builder) and skips a thread whose episodes do not resolve. Before, it read a field that does not exist and called a thread touched in the previous episode "untouched for 58 episodes".
   library.file_path is the file the audit evidence cites; the source's own "File Location" section (packages/features/episodes/src/lib/services/continuity-validator.ts) is kept below.
 
   ## Overview

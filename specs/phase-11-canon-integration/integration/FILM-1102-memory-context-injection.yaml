@@ -42,7 +42,7 @@ acceptance_criteria:
     evidence: null
   - text: "Logs show memory context token usage"
     met: false
-    reason: "no longer true — the handler's log went in d5f6dbdc; the agent tool returns `tokensUsed` unlogged (`packages/features/episodes/src/agent/skills/continuity-skill.ts:105`)"
+    reason: "no longer true — the handler's log went in d5f6dbdc; the agent tool returns `tokensUsed` unlogged (`packages/features/episodes/src/agent/skills/continuity-skill.ts:107`)"
   - text: "Generated stories reference established facts appropriately"
     met: false
     reason: "unverified — story prompt receives empty `canon_context` since d5f6dbdc; no test or recorded run checks stories"
@@ -59,6 +59,7 @@ remaining:
     closed_by: "owner"
 open_questions: []
 notes: |
+  KB-72 (2026-09-25): the continuity tools are the only path by which canon reaches the story agent, and every string they return now passes `sanitizeForPrompt` (`sanitizeStrings` in `continuity-skill.ts`); before, only verified facts did.
   Priority (source frontmatter): critical
 
   ## Overview

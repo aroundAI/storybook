@@ -663,15 +663,22 @@ export async function buildMemoryContext(
     ...characters.flatMap((c) => c.currentStates.map((s) => s.episodeId)),
   ]);
 
+  // The same number ranks the thread and tells CANON_007 when it was last
+  // active (KB-72), so the two cannot disagree.
+  const threadsWithLastActive = threads.map((thread) => ({
+    ...thread,
+    lastActiveEpisodeNumber: latestEpisode(
+      [thread.openedAt, ...(thread.episodesTouched ?? [])],
+      episodeNumbers,
+    ),
+  }));
+
   const activeThreads = fitToBudget(
     rankByPriority(
-      threads.map((thread) => ({
+      threadsWithLastActive.map((thread) => ({
         item: thread,
         id: thread.id,
-        episode: latestEpisode(
-          [thread.openedAt, ...(thread.episodesTouched ?? [])],
-          episodeNumbers,
-        ),
+        episode: thread.lastActiveEpisodeNumber,
         mentions: thread.episodesTouched?.length,
       })),
       episodeNumber,

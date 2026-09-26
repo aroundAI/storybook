@@ -16,7 +16,7 @@ import type { Skill } from '@kit/agent';
 import { createTool, toolError, toolSuccess } from '@kit/agent';
 
 import type { CanonReadClient } from '../../lib/canon/memory-context-builder';
-import { sanitizeForPrompt } from '../../lib/sanitize-for-prompt';
+import { sanitizeStrings } from '../../lib/sanitize-for-prompt';
 
 export interface ContinuitySkillDeps {
   /** Client the canon is read with: the worker's own in the Lambda */
@@ -61,49 +61,52 @@ export function createContinuitySkill(deps: ContinuitySkillDeps): Skill {
           memoryHorizon,
         });
 
-        return toolSuccess({
-          summary: `Loaded memory context: ${context.immutableEvents.length} immutable events, ${context.characterStates.length} characters, ${context.activeThreads.length} threads, ${context.recentSummaries.length} summaries, ${context.sources.length} verified sources`,
-          immutableEvents: context.immutableEvents.map(
-            (e: {
-              eventKey: string;
-              eventType: string;
-              description: string;
-            }) => ({
-              eventKey: e.eventKey,
-              type: e.eventType,
-              description: e.description,
-            }),
-          ),
-          characterStates: context.characterStates.map((c) => ({
-            name: c.characterName,
-            constraints: c.constraints,
-            arc: c.arc ?? '',
-          })),
-          activeThreads: context.activeThreads.map(
-            (t: {
-              threadName: string;
-              status: string;
-              threadType: string;
-            }) => ({
-              name: t.threadName,
-              status: t.status,
-              type: t.threadType,
-            }),
-          ),
-          worldState: context.worldState
-            ? {
-                location: context.worldState.location,
-                activeConflicts: context.worldState.activeConflicts,
-              }
-            : null,
-          // Verified facts come from uploaded documents: the least trusted
-          // text in the context, so it is sanitised before the model sees it.
-          sources: context.sources.map((source) => ({
-            claim: sanitizeForPrompt(source.claim),
-            citation: source.citation ? sanitizeForPrompt(source.citation) : '',
-          })),
-          tokensUsed: context.metadata.totalTokensUsed,
-        });
+        // Canon is written by earlier generations and by members, and verified
+        // facts come from uploads: every string is sanitised before the model
+        // sees it (FILM-1111, KB-72).
+        return toolSuccess(
+          sanitizeStrings({
+            summary: `Loaded memory context: ${context.immutableEvents.length} immutable events, ${context.characterStates.length} characters, ${context.activeThreads.length} threads, ${context.recentSummaries.length} summaries, ${context.sources.length} verified sources`,
+            immutableEvents: context.immutableEvents.map(
+              (e: {
+                eventKey: string;
+                eventType: string;
+                description: string;
+              }) => ({
+                eventKey: e.eventKey,
+                type: e.eventType,
+                description: e.description,
+              }),
+            ),
+            characterStates: context.characterStates.map((c) => ({
+              name: c.characterName,
+              constraints: c.constraints,
+              arc: c.arc ?? '',
+            })),
+            activeThreads: context.activeThreads.map(
+              (t: {
+                threadName: string;
+                status: string;
+                threadType: string;
+              }) => ({
+                name: t.threadName,
+                status: t.status,
+                type: t.threadType,
+              }),
+            ),
+            worldState: context.worldState
+              ? {
+                  location: context.worldState.location,
+                  activeConflicts: context.worldState.activeConflicts,
+                }
+              : null,
+            sources: context.sources.map((source) => ({
+              claim: source.claim,
+              citation: source.citation ?? '',
+            })),
+            tokensUsed: context.metadata.totalTokensUsed,
+          }),
+        );
       } catch (error) {
         return toolError(
           `Failed to build memory context: ${(error as Error).message}`,
@@ -175,17 +178,19 @@ export function createContinuitySkill(deps: ContinuitySkillDeps): Skill {
 
         const result = validatePlotSkeleton(plotSkeleton, memoryContext);
 
-        return toolSuccess({
-          valid: result.valid,
-          summary: result.summary,
-          violations: result.violations.map((v) => ({
-            code: v.code,
-            severity: v.severity,
-            message: v.message,
-            suggestion: v.suggestion ?? '',
-          })),
-          passedRules: result.passedRules,
-        });
+        return toolSuccess(
+          sanitizeStrings({
+            valid: result.valid,
+            summary: result.summary,
+            violations: result.violations.map((v) => ({
+              code: v.code,
+              severity: v.severity,
+              message: v.message,
+              suggestion: v.suggestion ?? '',
+            })),
+            passedRules: result.passedRules,
+          }),
+        );
       } catch (error) {
         return toolError(
           `Continuity check failed: ${(error as Error).message}`,
@@ -229,16 +234,18 @@ export function createContinuitySkill(deps: ContinuitySkillDeps): Skill {
 
         const result = validateSceneBlocks(scenes, memoryContext);
 
-        return toolSuccess({
-          valid: result.valid,
-          summary: result.summary,
-          violations: result.violations.map((v) => ({
-            code: v.code,
-            severity: v.severity,
-            message: v.message,
-            suggestion: v.suggestion ?? '',
-          })),
-        });
+        return toolSuccess(
+          sanitizeStrings({
+            valid: result.valid,
+            summary: result.summary,
+            violations: result.violations.map((v) => ({
+              code: v.code,
+              severity: v.severity,
+              message: v.message,
+              suggestion: v.suggestion ?? '',
+            })),
+          }),
+        );
       } catch (error) {
         return toolError(
           `Scene continuity check failed: ${(error as Error).message}`,

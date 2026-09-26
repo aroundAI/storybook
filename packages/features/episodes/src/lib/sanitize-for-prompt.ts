@@ -32,3 +32,26 @@ export function sanitizeForPrompt(input: string): string {
 
   return result;
 }
+
+/**
+ * Applies `sanitizeForPrompt` to every string in a plain value — nested
+ * objects and arrays included — and leaves everything else as it is. For a
+ * tool result about to reach a model: sanitising the whole result, rather
+ * than chosen fields, cannot miss a field added later (KB-72).
+ */
+export function sanitizeStrings<T>(value: T): T {
+  if (typeof value === 'string') return sanitizeForPrompt(value) as T;
+
+  if (Array.isArray(value)) return value.map(sanitizeStrings) as T;
+
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entry]) => [
+        key,
+        sanitizeStrings(entry),
+      ]),
+    ) as T;
+  }
+
+  return value;
+}
