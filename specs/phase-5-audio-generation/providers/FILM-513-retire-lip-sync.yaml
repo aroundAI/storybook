@@ -3,7 +3,7 @@ title: "Retire Lip-Sync (SyncLabs, Wav2Lip)"
 phase: 5
 phase_name: "Audio Generation"
 category: provider
-status: DRAFT
+status: DONE
 effort: M
 dependencies:
   - spec_id: "FILM-1801"
@@ -23,31 +23,37 @@ provider:
   webhooks: []
 acceptance_criteria:
   - text: "Migration drops `lip_sync_jobs` and **refuses if the table has rows** — the refusal seen by inserting one row locally, running the migration, watching it raise, removing the row, running again"
-    met: false
-    reason: "open — not yet done; the spec is DRAFT and was not audited"
+    met: true
+    evidence: "apps/web/supabase/migrations/20260925101920_drop-lip-sync-jobs.sql:13-25; refusal and drop transcripts in the FILM-513 PR body. Owner approved the drop 2026-09-25 with 0 production rows"
   - text: "Types regenerated (`check:types-current` green); `lip_sync_jobs` absent from `database.types.ts`"
-    met: false
-    reason: "open — not yet done; the spec is DRAFT and was not audited"
+    met: true
+    evidence: "apps/web/lib/database.types.ts and packages/supabase/src/database.types.ts regenerated with the pinned CLI; both scanned by apps/web/test/film-513-lip-sync-retired.test.ts"
   - text: "Every file in §2 deleted; `pnpm typecheck`, `lint`, and `@kit/audio-generation` tests green"
-    met: false
-    reason: "open — not yet done; the spec is DRAFT and was not audited"
+    met: true
+    evidence: "Deleted, plus the barrel line in src/providers/index.ts that §2 missed; typecheck 48/48, @kit/audio-generation 20 files / 441 tests"
   - text: "Guard test red on `main` (names every §2 file), green after; pgTAP `hasnt_table` red-then-green; both in `tooling/mutation-guards/film-513.json`"
-    met: false
-    reason: "open — not yet done; the spec is DRAFT and was not audited"
+    met: true
+    evidence: "apps/web/test/film-513-lip-sync-retired.test.ts, apps/web/supabase/tests/database/lip-sync-retired.test.sql, tooling/mutation-guards/film-513.json (U1, U2, P1)"
   - text: "Zero occurrences of the four env names, `synclabs`, `wav2lip`, `lip_sync_jobs` in `packages/` and `apps/` source (migration history excepted)"
-    met: false
-    reason: "open — not yet done; the spec is DRAFT and was not audited"
+    met: true
+    evidence: "apps/web/test/film-513-lip-sync-retired.test.ts scans apps, packages, tooling, scripts, .github, deployment and the root config files"
   - text: "`synclabs` removed from `VENDORS` and FILM-1801 §5 (stacked on #291 if unmerged); `vendor-api-versions.test.ts` green"
-    met: false
-    reason: "open — not yet done; the spec is DRAFT and was not audited"
+    met: true
+    evidence: "packages/shared/src/vendors/resolver.ts (FILM-1801 had merged, so not stacked); FILM-1801 §5 now lists 28 names; vendor-api-versions.test.ts 6/6"
   - text: "§4.5 documents updated; FILM-511 marked RETIRED"
-    met: false
-    reason: "open — not yet done; the spec is DRAFT and was not audited"
+    met: true
+    evidence: "FILM-511 retirement text, FILM-1803 (row 4114 and the lip-sync stand-in removed), FILM-1801 §9, phase-18 README, KB-21 (partial), KB-6 annotation, INDEX"
   - text: "PR body states that nothing user-visible changes and why no screenshots"
-    met: false
-    reason: "open — not yet done; the spec is DRAFT and was not audited"
+    met: true
+    evidence: "The FILM-513 PR body"
 open_questions: []
 notes: |
+  > **Done (2026-09-25).** The owner approved the drop on 2026-09-25;
+  > production held 0 rows in `lip_sync_jobs` that day. The migration keeps its
+  > refuse-if-any-rows guard regardless. FILM-1801 had merged, so §4.4 landed in
+  > the same PR rather than stacked on #291. KB-21 is now `partial`; FILM-1805
+  > carries the rest.
+
   ## 1. Why this exists
 
   FILM-511 shipped a lip-sync library in one commit
@@ -148,7 +154,7 @@ notes: |
 
   ### 4.4 The resolver entry (needs FILM-1801)
 
-  `packages/shared/src/vendors/resolver.ts:54` on the FILM-1801 branch declares
+  `packages/shared/src/vendors/resolver.ts` on the FILM-1801 branch declared
   `synclabs: 'https://api.synclabs.so'`. Once the provider is gone that entry is
   an unused vendor, and `vendor-api-versions.test.ts:132` derives its host rules
   from `VENDORS`, so **remove the entry and the last `api.synclabs.so` literal
@@ -164,7 +170,7 @@ notes: |
   | `FILM-511` | `status: 🗑️ RETIRED (FILM-513)`, one line under the title saying why |
   | `FILM-1803` | remove port-table row 4114 (Sync Labs) and the paragraph "Lip-sync returns a job that completes after a short delay…" (`:78-79`) |
   | `FILM-1801` §9 | strike `SYNCLABS_BASE_URL`, `WAV2LIP_API_URL` from "Left alone, deliberately" |
-  | `specs/phase-18-local-vendor-sandbox/README.md:17-18` | remove "lip-sync (`SYNCLABS_BASE_URL`, `WAV2LIP_API_URL`)" from "Overridable today" |
+  | `specs/phase-18-local-vendor-sandbox/README.md` | remove "lip-sync (`SYNCLABS_BASE_URL`, `WAV2LIP_API_URL`)" from "Overridable today" |
   | `FILM-CC-04` | KB-21: the two variables → "closed by FILM-513"; KB-6's triage list: `LipSyncEditor.tsx` row → "file deleted (FILM-513)" |
   | `specs/INDEX.md` | FILM-511 row → RETIRED; FILM-513 row added; phase-5 count |
 
