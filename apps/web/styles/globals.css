@@ -26,6 +26,20 @@
 @source "../../../packages/cms/*/src/**/*.{ts,tsx}";
 @source "../{app,components,config,lib}/**/*.{ts,tsx}";
 
+/*
+ * DM Sans's metric-matched fallback (lib/fonts.ts): Arial, sized so text
+ * takes the same space before DM Sans loads. These are the values
+ * next/font/google generated for DM Sans, kept when the font was bundled.
+ */
+@font-face {
+  font-family: 'DM Sans Fallback';
+  src: local('Arial');
+  ascent-override: 94.9%;
+  descent-override: 29.66%;
+  line-gap-override: 0%;
+  size-adjust: 104.53%;
+}
+
 /* variants - update the below if you add a new variant */
 @variant dark (&:where(.dark, .dark *));
 
