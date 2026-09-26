@@ -120,12 +120,6 @@ const SCENES = [1, 2, 3].map((number) => ({
  */
 const KNOWN_TOOL_FAILURES = [
   {
-    kb: 'KB-115',
-    orchestrator: 'season-orchestrator',
-    tool: 'generateSeasonOutline',
-    error: /Cannot read properties of undefined \(reading 'length'\)/,
-  },
-  {
     kb: 'KB-116',
     orchestrator: 'season-orchestrator',
     tool: 'evaluateSeasonArc',
@@ -292,11 +286,42 @@ describe('the studio orchestrators, against the sandbox', () => {
     });
 
     expect(result.success, result.error).toBe(true);
-    // KB-115: the outliner step always fails, so the episodes come only from
-    // the director's final answer - which the sandbox, following the prompt,
-    // does not invent.
-    if (!knownFailure('season-orchestrator', 'generateSeasonOutline')) {
-      expect(result.episodes.length).toBeGreaterThan(0);
+    expect(result.episodes.length).toBeGreaterThan(0);
+  });
+
+  it('season: a run whose outliner step fails is a failure, not a season', async () => {
+    const recorded = sandbox.state.agentToolFailures.length;
+    await fetch(`${sandbox.urls.control}/__sandbox/fail`, {
+      method: 'POST',
+      body: JSON.stringify({
+        vendor: 'gemini',
+        prompt: 'season-outline',
+        status: 400,
+        count: 1,
+      }),
+    });
+
+    try {
+      const result = await runSeasonOrchestrator({
+        projectId: PROJECT,
+        accountId: ACCOUNT,
+        seasonPremise:
+          'A summer of letters from a lighthouse nobody has lit in years',
+        episodeCount: 4,
+        startingNumber: 1,
+        genre: 'cozy mystery',
+        style: 'cinematic',
+        existingCharacters: CHARACTERS,
+        existingLocations: LOCATIONS,
+        recurringElements: '',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.episodes).toEqual([]);
+      expect(result.error).toMatch(/Season Outliner produced no episodes/);
+    } finally {
+      // The failures this test caused on purpose are not the app's.
+      sandbox.state.agentToolFailures.splice(recorded);
     }
   });
 

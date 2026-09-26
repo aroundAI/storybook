@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import { loadAndRenderPrompt } from '../src/lib/server/prompt-loader';
 import { PROMPT_REGISTRY } from '../src/lib/server/prompt-registry';
+import type { PromptTemplate } from '../src/lib/types';
 
 /**
  * Prompt Format Validation Tests
@@ -361,5 +362,241 @@ describe('a wrapper_key names an array', () => {
     expect(field, `${key} is not an array in the schema`).toBeInstanceOf(
       z.ZodArray,
     );
+  });
+});
+
+/**
+ * KB-115, the other side of KB-107: a caller must read the shape its prompt
+ * actually returns. The executors hand back the value under a `wrapper_key`
+ * - the bare array - and otherwise the whole object, so a caller may read
+ * only that object's top-level keys, and nothing at all off an array or a
+ * string. Every call site with a literal slug is checked: each
+ * `<result>.data.<field>` and each destructure straight off `<result>.data`.
+ */
+describe('every caller reads the shape its prompt returns', () => {
+  const REPO = path.resolve(__dirname, '../../../..');
+  const ROOTS = ['packages', 'apps/web'];
+  const SKIP = new Set([
+    'node_modules',
+    '.next',
+    '.turbo',
+    'dist',
+    'coverage',
+    '__tests__',
+  ]);
+  const LAMBDA_REGISTRY_FILE = path.join(
+    REPO,
+    'apps/web/lambda/llm-worker/prompt-registry.ts',
+  );
+
+  function sources(dir: string): string[] {
+    return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      if (SKIP.has(entry.name)) return [];
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) return sources(full);
+      return /\.tsx?$/.test(entry.name) && !/\.test\.tsx?$/.test(entry.name)
+        ? [full]
+        : [];
+    });
+  }
+
+  /** The llm-worker's keys, mapped to the file each imports, read from its source. */
+  function lambdaTemplates() {
+    const source = fs.readFileSync(LAMBDA_REGISTRY_FILE, 'utf-8');
+    const imports = new Map(
+      [...source.matchAll(/^import (\w+) from '([^']+\.json)';/gm)].map((m) => [
+        m[1]!,
+        m[2]!,
+      ]),
+    );
+    const templates = new Map<string, PromptTemplate>();
+    for (const m of source
+      .split('PROMPT_REGISTRY')[1]!
+      .matchAll(/^\s*'([^']+)':\s*(\w+) as/gm)) {
+      const file = imports.get(m[2]!);
+      if (file) {
+        templates.set(
+          m[1]!,
+          JSON.parse(
+            fs.readFileSync(
+              path.resolve(path.dirname(LAMBDA_REGISTRY_FILE), file),
+              'utf-8',
+            ),
+          ) as PromptTemplate,
+        );
+      }
+    }
+    return templates;
+  }
+
+  type Returned =
+    | { kind: 'string' }
+    | { kind: 'array' }
+    | { kind: 'object'; keys: string[] }
+    | { kind: 'unknown' };
+
+  /** The top-level keys a human-readable `schema_for_llm` describes. */
+  function keysOfSchemaText(text: string) {
+    const keys: string[] = [];
+    let depth = 0;
+    let token = '';
+    for (const char of text) {
+      if (char === '{' || char === '[') depth++;
+      else if (char === '}' || char === ']') depth--;
+      else if (depth === 1 && char === ':') {
+        const key = /["']?(\w+)["']?\s*$/.exec(token)?.[1];
+        if (key) keys.push(key);
+      }
+      token = char === ',' || char === '{' ? '' : token + char;
+    }
+    return keys;
+  }
+
+  function returnedBy(template: PromptTemplate): Returned {
+    const output = template.output;
+    if (output?.type === 'text') return { kind: 'string' };
+    if (output?.wrapper_key) return { kind: 'array' };
+
+    const schema = output?.schema as
+      | { type?: string; definition?: string; properties?: object }
+      | undefined;
+    if (schema?.type === 'zod') {
+      const compiled = eval(`(function(z) { return ${schema.definition}; })`)(
+        z,
+      ) as z.ZodTypeAny;
+      return compiled instanceof z.ZodObject
+        ? { kind: 'object', keys: Object.keys(compiled.shape as object) }
+        : { kind: 'array' };
+    }
+    if (schema?.properties)
+      return { kind: 'object', keys: Object.keys(schema.properties) };
+    if (output?.schema_for_llm)
+      return { kind: 'object', keys: keysOfSchemaText(output.schema_for_llm) };
+    return { kind: 'unknown' };
+  }
+
+  const lambda = lambdaTemplates();
+  const CALL =
+    /(?:const|let)\s+(\w+)\s*(?::[^=]+)?=\s*await\s+(executeLLM(?:ForLambda)?)\s*(?:<[\s\S]*?>)?\(\s*\{([\s\S]*?)\}\s*\)/g;
+
+  const calls = ROOTS.flatMap((root) => sources(path.join(REPO, root))).flatMap(
+    (file) => {
+      const source = fs
+        .readFileSync(file, 'utf-8')
+        .split('\n')
+        .filter((line) => !/^\s*(\*|\/\/)/.test(line))
+        .join('\n');
+
+      return [...source.matchAll(CALL)].flatMap((m) => {
+        const slug = /templateSlug:\s*'([^']+)'/.exec(m[3]!)?.[1];
+        if (!slug) return [];
+        const template =
+          m[2] === 'executeLLMForLambda'
+            ? lambda.get(slug)
+            : PROMPT_REGISTRY[slug];
+        if (!template) return [];
+
+        const variable = m[1]!;
+        const fields = [
+          ...[
+            ...source.matchAll(
+              new RegExp(`\\b${variable}\\.data(?:\\?\\.|\\.)(\\w+)`, 'g'),
+            ),
+          ].map((r) => r[1]!),
+          ...[
+            ...source.matchAll(
+              new RegExp(
+                `\\{([^{}]*)\\}\\s*=\\s*${variable}\\.data(?![.?\\w])`,
+                'g',
+              ),
+            ),
+          ].flatMap((r) =>
+            r[1]!
+              .split(',')
+              .map((part) => part.trim().split(/[:=\s]/)[0]!)
+              .filter(Boolean),
+          ),
+        ];
+
+        return [
+          {
+            file: path.relative(REPO, file),
+            slug,
+            returned: returnedBy(template),
+            fields: [...new Set(fields)],
+          },
+        ];
+      });
+    },
+  );
+
+  const ARRAY_OR_STRING_MEMBERS = new Set([
+    'length',
+    'map',
+    'filter',
+    'forEach',
+    'slice',
+    'some',
+    'every',
+    'find',
+    'reduce',
+    'join',
+    'split',
+    'trim',
+    'includes',
+  ]);
+
+  /**
+   * Readings that are wrong today and recorded, each with its KB. When one is
+   * fixed, this fails until the entry goes.
+   */
+  const KNOWN_WRONG_READS: Record<string, string> = {
+    'packages/features/episodes/src/agent/skills/season-arc-evaluator-skill.ts: quality-evaluation/story-quality':
+      'KB-116',
+  };
+
+  function wrongReads() {
+    return calls.flatMap((call) => {
+      const { returned } = call;
+      const wrong =
+        returned.kind === 'object'
+          ? call.fields.filter((f) => !returned.keys.includes(f))
+          : returned.kind === 'array' || returned.kind === 'string'
+            ? call.fields.filter((f) => !ARRAY_OR_STRING_MEMBERS.has(f))
+            : [];
+      return wrong.length > 0
+        ? [
+            `${call.file}: ${call.slug} returns ${returned.kind === 'object' ? `{ ${returned.keys.join(', ')} }` : `a bare ${returned.kind}`}, read as .${wrong.join(', .')}`,
+          ]
+        : [];
+    });
+  }
+
+  it('finds the callers and knows what each prompt returns', () => {
+    expect(calls.length).toBeGreaterThan(25);
+    expect(
+      calls
+        .filter((c) => c.returned.kind === 'unknown')
+        .map((c) => `${c.file}: ${c.slug}`),
+    ).toEqual([]);
+  });
+
+  it('reads nothing the prompt does not return', () => {
+    const unexpected = wrongReads().filter(
+      (line) =>
+        !Object.keys(KNOWN_WRONG_READS).some((known) => line.startsWith(known)),
+    );
+    expect(unexpected).toEqual([]);
+  });
+
+  it('still finds each recorded wrong read, until its KB is fixed', () => {
+    const found = wrongReads();
+    const stale = Object.entries(KNOWN_WRONG_READS)
+      .filter(([known]) => !found.some((line) => line.startsWith(known)))
+      .map(([known, kb]) => `${kb}: ${known}`);
+    expect(
+      stale,
+      'fixed? remove it from KNOWN_WRONG_READS and mark the KB',
+    ).toEqual([]);
   });
 });
