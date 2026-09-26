@@ -1748,6 +1748,9 @@ importers:
       '@kit/eslint-config':
         specifier: workspace:*
         version: link:../../../tooling/eslint
+      '@kit/next':
+        specifier: workspace:*
+        version: link:../../next
       '@kit/prettier-config':
         specifier: workspace:*
         version: link:../../../tooling/prettier

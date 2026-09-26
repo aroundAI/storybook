@@ -90,7 +90,8 @@ class AccountInvitationsService {
       })
       .match({
         id: params.invitationId,
-      });
+      })
+      .select('id');
 
     if (error) {
       logger.error(
@@ -103,6 +104,8 @@ class AccountInvitationsService {
 
       throw error;
     }
+
+    requireAffectedRows(data, "You can't change this invitation.");
 
     logger.info(ctx, 'Invitation successfully updated');
 
@@ -283,7 +286,8 @@ class AccountInvitationsService {
       })
       .match({
         id: invitationId,
-      });
+      })
+      .select('id');
 
     if (error) {
       logger.error(
@@ -296,6 +300,8 @@ class AccountInvitationsService {
 
       throw error;
     }
+
+    requireAffectedRows(data, "You can't renew this invitation.");
 
     logger.info(ctx, 'Invitation successfully renewed');
 

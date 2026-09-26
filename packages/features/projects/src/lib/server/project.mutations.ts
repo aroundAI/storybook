@@ -619,15 +619,21 @@ const updateProjectAudioSettings = enhanceAction(
     }
 
     // Update audio_settings column
-    const { error } = await client
+    const { data: updated, error } = await client
       .from('projects')
       .update({ audio_settings: data.audioSettings as Json })
-      .eq('id', data.projectId);
+      .eq('id', data.projectId)
+      .select('id');
 
     if (error) {
       logger.error({ ...ctx, error }, 'Failed to update audio settings');
       throw new Error(`Failed to update audio settings: ${error.message}`);
     }
+
+    requireAffectedRows(
+      updated,
+      "You can't change this project's audio settings.",
+    );
 
     logger.info(ctx, 'Audio settings updated successfully');
 

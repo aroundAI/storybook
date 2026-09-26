@@ -16,6 +16,7 @@
     "./actions": "./src/actions/index.ts",
     "./action-result": "./src/refusals/action-result.ts",
     "./navigation": "./src/navigation/navigate-with-fallback.ts",
+    "./affected-rows": "./src/refusals/affected-rows.ts",
     "./refusals": "./src/refusals/with-refusals.ts",
     "./routes": "./src/routes/index.ts"
   },

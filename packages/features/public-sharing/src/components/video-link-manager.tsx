@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 
 import { Facebook, Plus, Trash2, Youtube } from 'lucide-react';
 
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { updateLocalizedVideosAction } from '@kit/public-sharing/server/visibility-actions';
 import { Button } from '@kit/ui/button';
 import {
@@ -150,14 +151,16 @@ export function VideoLinkManager({
   const saveVideos = () => {
     startTransition(async () => {
       try {
-        await updateLocalizedVideosAction({
-          episodeId,
-          localizedVideos: videos,
-        });
+        await unwrap(
+          updateLocalizedVideosAction({
+            episodeId,
+            localizedVideos: videos,
+          }),
+        );
         toast.success('Video links saved');
         router.refresh();
-      } catch {
-        toast.error('Failed to save video links');
+      } catch (error) {
+        toast.error(refusalMessage(error, 'Failed to save video links'));
       }
     });
   };

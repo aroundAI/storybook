@@ -105,13 +105,13 @@ describe('AccountInvitationsService', () => {
       });
 
       mockUpdate.mockReturnValue({
-        match: mockMatch,
+        match: (filter: unknown) => ({ select: () => mockMatch(filter) }),
       });
     });
 
     it('should update invitation role successfully', async () => {
       mockMatch.mockResolvedValue({
-        data: { id: INVITATION_ID, role: 'admin' },
+        data: [{ id: INVITATION_ID, role: 'admin' }],
         error: null,
       });
 
@@ -122,7 +122,7 @@ describe('AccountInvitationsService', () => {
 
       expect(mockFrom).toHaveBeenCalledWith('invitations');
       expect(mockUpdate).toHaveBeenCalledWith({ role: 'admin' });
-      expect(result).toEqual({ id: INVITATION_ID, role: 'admin' });
+      expect(result).toEqual([{ id: INVITATION_ID, role: 'admin' }]);
     });
 
     it('should update to different roles', async () => {
@@ -133,10 +133,12 @@ describe('AccountInvitationsService', () => {
 
         mockFrom.mockReturnValue({
           update: mockUpdate.mockReturnValue({
-            match: mockMatch.mockResolvedValue({
-              data: { id: INVITATION_ID, role },
-              error: null,
-            }),
+            match:
+              (mockMatch.mockResolvedValue({
+                data: [{ id: INVITATION_ID, role }],
+                error: null,
+              }),
+              (filter: unknown) => ({ select: () => mockMatch(filter) })),
           }),
         });
 
@@ -145,7 +147,7 @@ describe('AccountInvitationsService', () => {
           role,
         });
 
-        expect(result).toEqual({ id: INVITATION_ID, role });
+        expect(result).toEqual([{ id: INVITATION_ID, role }]);
       }
     });
 
@@ -497,7 +499,7 @@ describe('AccountInvitationsService', () => {
       });
 
       mockUpdate.mockReturnValue({
-        match: mockMatch,
+        match: (filter: unknown) => ({ select: () => mockMatch(filter) }),
       });
     });
 
@@ -505,7 +507,7 @@ describe('AccountInvitationsService', () => {
       const sevenDaysFromNow = formatISO(addDays(new Date(), 7));
 
       mockMatch.mockResolvedValue({
-        data: { id: INVITATION_ID, expires_at: sevenDaysFromNow },
+        data: [{ id: INVITATION_ID, expires_at: sevenDaysFromNow }],
         error: null,
       });
 
@@ -541,7 +543,7 @@ describe('AccountInvitationsService', () => {
 
       mockMatch.mockImplementation((params) => {
         return Promise.resolve({
-          data: { id: params.id },
+          data: [{ id: params.id }],
           error: null,
         });
       });
@@ -597,10 +599,9 @@ describe('AccountInvitationsService', () => {
           }),
         }),
         update: mockUpdate.mockReturnValue({
-          match: mockMatch.mockResolvedValue({
-            data: { id: 1 },
-            error: null,
-          }),
+          match:
+            (mockMatch.mockResolvedValue({ data: [{ id: 1 }], error: null }),
+            (filter: unknown) => ({ select: () => mockMatch(filter) })),
         }),
         delete: mockDelete.mockReturnValue({
           match: () => ({
@@ -637,10 +638,12 @@ describe('AccountInvitationsService', () => {
     it('should handle concurrent invitation operations', async () => {
       mockFrom.mockReturnValue({
         update: mockUpdate.mockReturnValue({
-          match: mockMatch.mockResolvedValue({
-            data: { id: INVITATION_ID },
-            error: null,
-          }),
+          match:
+            (mockMatch.mockResolvedValue({
+              data: [{ id: INVITATION_ID }],
+              error: null,
+            }),
+            (filter: unknown) => ({ select: () => mockMatch(filter) })),
         }),
       });
 

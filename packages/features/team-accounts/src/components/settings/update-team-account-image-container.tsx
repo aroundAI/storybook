@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 
 import { useTranslation } from 'react-i18next';
 
+import { requireAffectedRows } from '@kit/next/affected-rows';
 import { uploadAvatar } from '@kit/storage/client';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { ImageUploader } from '@kit/ui/image-uploader';
@@ -39,25 +40,31 @@ export function UpdateTeamAccountImage(props: {
           const result = await uploadAvatar(file, props.account.id);
 
           // Update the account record with new picture URL
-          return client
+          const { data } = await client
             .from('accounts')
             .update({
               picture_url: result.url,
             })
             .eq('id', props.account.id)
+            .select('id')
             .throwOnError();
+
+          requireAffectedRows(data, "The team picture wasn't changed.");
         };
 
         createToaster(promise);
       } else {
         const promise = async () => {
-          await client
+          const { data } = await client
             .from('accounts')
             .update({
               picture_url: null,
             })
             .eq('id', props.account.id)
+            .select('id')
             .throwOnError();
+
+          requireAffectedRows(data, "The team picture wasn't changed.");
         };
 
         createToaster(promise);

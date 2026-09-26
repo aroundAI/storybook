@@ -264,12 +264,13 @@ const updateCharacter = enhanceAction(
 
     // Update asset if there are changes
     if (Object.keys(assetUpdates).length > 1) {
-      const { error: assetError } = await client
+      const { data: updatedAssets, error: assetError } = await client
         .from('assets')
         .update(assetUpdates)
         .eq('id', data.assetId)
         .eq('type', 'character')
-        .is('deleted_at', null);
+        .is('deleted_at', null)
+        .select('id');
 
       if (assetError) {
         if (assetError.code === '23505' && data.name !== undefined) {
@@ -281,6 +282,8 @@ const updateCharacter = enhanceAction(
         logger.error({ ...ctx, error: assetError }, 'Failed to update asset');
         throw new Error(`Failed to update character: ${assetError.message}`);
       }
+
+      requireAffectedRows(updatedAssets, "You can't change this character.");
     }
 
     // Build character_details updates
