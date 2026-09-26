@@ -7,6 +7,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { sanitizeForPrompt, sanitizeStrings } from '@kit/episodes/lib';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database, Json } from '@kit/supabase/database';
 
@@ -118,10 +119,12 @@ export async function processStoryRefinement(
     }>({
       templateSlug: 'story-refinement',
       variables: {
-        current_story: JSON.stringify(storyData),
+        // The stored story and the user's feedback, defused for the model;
+        // storyData itself stays as stored (it is the undo copy) (KB-101)
+        current_story: JSON.stringify(sanitizeStrings(storyData)),
         characters: charactersContext || 'No characters defined.',
         locations: locationsContext || 'No locations defined.',
-        feedback: data.feedback,
+        feedback: sanitizeForPrompt(data.feedback),
         season_context: seasonContext + directionNotes,
         previous_episodes: previousEpisodesContext,
       },

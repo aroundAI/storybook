@@ -35,7 +35,7 @@ acceptance_criteria:
     evidence: null
   - text: "Handles optimistic locking"
     met: false
-    reason: "no longer true — the action sends the stored version and the worker's write drops the guard (`apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:398`, 669b66e3)"
+    reason: "no longer true — the action sends the stored version and the worker's write drops the guard (`apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:406`, 669b66e3)"
   - text: "Completes within 30 seconds"
     met: false
     reason: "unverified — runtime timing of an async agent job; needs a timed run"
@@ -48,7 +48,7 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "Handles optimistic locking"
-    reason: "no version guard on the worker's write since 669b66e3 (`apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:398`); the action takes no client version (`packages/features/episodes/src/lib/schemas.ts:305`)"
+    reason: "no version guard on the worker's write since 669b66e3 (`apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:406`); the action takes no client version (`packages/features/episodes/src/lib/schemas.ts:305`)"
     closed_by: "owner"
 open_questions: []
 notes: |
