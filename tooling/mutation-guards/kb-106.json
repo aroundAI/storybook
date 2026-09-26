@@ -45,8 +45,8 @@
       "name": "the slug scan reads examples in comments as calls",
       "kind": "unit",
       "file": "packages/features/prompt-engine/__tests__/prompt-format.test.ts",
-      "find": "      .filter((line) => !/^\\s*(\\*|\\/\\/)/.test(line))\n",
-      "replace": "",
+      "find": "      const code = source\n        .split('\\n')\n        .filter((line) => !/^\\s*(\\*|\\/\\/)/.test(line))\n",
+      "replace": "      const code = source\n        .split('\\n')\n",
       "cwd": "packages/features/prompt-engine",
       "test": "__tests__/prompt-format.test.ts",
       "pattern": "names no slug"
