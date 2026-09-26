@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { sanitizeForPrompt, sanitizeStrings } from '@kit/episodes/lib';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
@@ -140,7 +141,8 @@ export async function processAssetCreation(
   }
 
   // 4. Build screenplay context for LLM
-  const storyContext = buildScreenplayContext(scenes);
+  // The stored screenplay, defused for the model (KB-101)
+  const storyContext = buildScreenplayContext(sanitizeStrings(scenes));
 
   // 5. Query existing assets in the project
   const allNames = [...characterNames, ...locationNames];
@@ -192,7 +194,8 @@ export async function processAssetCreation(
           const result = await executeLLMForLambda<{ description: string }>({
             templateSlug: 'story-generation/extract-asset-description',
             variables: {
-              name: item.name,
+              // The asset keeps its name as written; the model sees it defused
+              name: sanitizeForPrompt(item.name),
               type: item.type,
               extra_context: '',
               type_instructions:

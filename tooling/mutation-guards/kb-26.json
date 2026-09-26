@@ -25,7 +25,7 @@
       "name": "KB26 U3 Upload sources keyed by slug alone again",
       "kind": "unit",
       "file": "packages/features/episodes/src/server/source-upload-actions.ts",
-      "find": "{ onConflict: 'project_id,slug' }",
+      "find": "{ onConflict: 'account_id,project_id,slug' }",
       "replace": "{ onConflict: 'slug' }",
       "cwd": "packages/features/episodes",
       "test": "__tests__/research-upload-access.test.ts",
@@ -45,11 +45,11 @@
       "name": "KB26 U5 Aggregator singleton loads project sources too",
       "kind": "unit",
       "file": "packages/features/episodes/src/lib/server/services/context-aggregator.ts",
-      "find": "      .is('project_id', null);",
+      "find": "      .eq('is_builtin', true);",
       "replace": "      ;",
       "cwd": "packages/features/episodes",
       "test": "__tests__/research-upload-access.test.ts",
-      "pattern": "loads shared sources only"
+      "pattern": "loads built-ins only"
     },
     {
       "name": "KB26 P1 Upload content readable by every signed-in user again",

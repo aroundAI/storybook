@@ -9,6 +9,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { sanitizeForPrompt, sanitizeStrings } from '@kit/episodes/lib';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
@@ -61,7 +62,11 @@ export async function processSeasonOutline(
     .eq('id', data.projectId)
     .single();
 
-  const projectMetadata = (project?.metadata as Record<string, unknown>) || {};
+  // Read for the model only (this handler writes no project row): defused
+  // once, here, with the characters and locations below (KB-101)
+  const projectMetadata = sanitizeStrings(
+    (project?.metadata as Record<string, unknown>) || {},
+  );
 
   // Extract recurring elements from project metadata
   const recurringElements = Array.isArray(projectMetadata.recurringElements)
@@ -91,8 +96,8 @@ export async function processSeasonOutline(
       .limit(10),
   ]);
 
-  const characters = charactersResult.data || [];
-  const locations = locationsResult.data || [];
+  const characters = sanitizeStrings(charactersResult.data || []);
+  const locations = sanitizeStrings(locationsResult.data || []);
 
   const existingCharacters =
     characters.length > 0
@@ -106,8 +111,9 @@ export async function processSeasonOutline(
 
   // KB-71: the type is `metadata.projectType`, read the one way every other
   // reader does. Only `verified` facts go in (owner decision, 2026-09-24).
-  const { getContentTypeConfig, resolveProjectType, sanitizeForPrompt } =
-    await import('@kit/episodes/lib');
+  const { getContentTypeConfig, resolveProjectType } = await import(
+    '@kit/episodes/lib'
+  );
   const { projectType } = resolveProjectType(project?.metadata);
   let verifiedFactsFormatted = '';
 
@@ -169,11 +175,13 @@ export async function processSeasonOutline(
 
   const orchestratorResult = await runSeasonOrchestrator({
     projectId: data.projectId,
-    seasonPremise: data.seasonPremise,
+    seasonPremise: sanitizeForPrompt(data.seasonPremise),
     episodeCount: data.episodeCount,
     startingNumber: data.startingNumber,
-    genre: data.genre || (projectMetadata.genre as string) || 'general',
-    style: data.style || 'cinematic',
+    genre: data.genre
+      ? sanitizeForPrompt(data.genre)
+      : (projectMetadata.genre as string) || 'general',
+    style: data.style ? sanitizeForPrompt(data.style) : 'cinematic',
     accountId: data.accountId,
     existingCharacters,
     existingLocations,

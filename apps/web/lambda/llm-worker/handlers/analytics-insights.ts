@@ -6,6 +6,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { sanitizeStrings } from '@kit/episodes/lib';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
@@ -92,7 +93,12 @@ export async function processAnalyticsInsights(
     const result = await executeLLM<InsightsLLMOutput>({
       templateSlug: 'insights-generation',
       variables: {
-        analytics_data: JSON.stringify(analyticsSummary, null, 2),
+        // Titles and platform names from the payload, defused (KB-101)
+        analytics_data: JSON.stringify(
+          sanitizeStrings(analyticsSummary),
+          null,
+          2,
+        ),
       },
       context: {
         name: 'generate-analytics-insights',

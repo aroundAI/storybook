@@ -46,8 +46,20 @@ vi.mock('@kit/episodes/agent/screenplay-orchestrator', () => ({
     };
   }),
 }));
+vi.mock('@kit/episodes/agent/audio-cue-orchestrator', () => ({
+  runAudioCueOrchestrator: recordAndStop('audio cue orchestrator'),
+}));
+vi.mock('@kit/episodes/agent/translation-orchestrator', () => ({
+  runTranslationOrchestrator: recordAndStop('translation orchestrator'),
+}));
+vi.mock('@kit/episodes/agent/season-orchestrator', () => ({
+  runSeasonOrchestrator: recordAndStop('season orchestrator'),
+}));
 vi.mock('@kit/prompt-engine/server', () => ({
-  executeLLM: recordAndStop('screenplay quality evaluation'),
+  executeLLM: vi.fn(async (input: { templateSlug: string }) => {
+    seen[input.templateSlug] = input;
+    throw STOP;
+  }),
 }));
 vi.mock('../llm-utils', () => ({
   executeLLMForLambda: vi.fn(async (input: { templateSlug: string }) => {
@@ -150,7 +162,7 @@ describe('executor inputs carry no raw project text (KB-101)', () => {
 
     expectSanitised(seen['screenplay orchestrator'], 'screenplay orchestrator');
     expectSanitised(
-      seen['screenplay quality evaluation'],
+      seen['quality-evaluation/screenplay-quality'],
       'screenplay quality evaluation',
     );
   });
@@ -163,6 +175,193 @@ describe('executor inputs carry no raw project text (KB-101)', () => {
 
     expectSanitised(seen['shot orchestrator'], 'shot orchestrator');
   });
+  it('fact extraction: the uploaded document, its title and citation', async () => {
+    const { processFactExtraction } = await import(
+      '../handlers/fact-extraction'
+    );
+    await run(() =>
+      processFactExtraction(
+        { ...IDS, content: P, sourceTitle: P, sourceCitation: P },
+        fakeClient(),
+      ),
+    );
+
+    expectSanitised(
+      seen['documentary/fact-extraction'],
+      'documentary/fact-extraction',
+    );
+  });
+
+  it('analytics insights: content titles and platforms in the payload', async () => {
+    const { processAnalyticsInsights } = await import(
+      '../handlers/analytics-insights'
+    );
+    await run(() =>
+      processAnalyticsInsights(
+        {
+          ...IDS,
+          analytics: {
+            totals: {
+              views: 10,
+              likes: 1,
+              comments: 1,
+              shares: 1,
+              watchTimeSeconds: 1,
+              subscribersGained: 1,
+              revenueCents: 1,
+              contentCount: 1,
+            },
+            platformMetrics: [
+              { platform: P, views: 1, likes: 1, comments: 1, shares: 1 },
+            ],
+            topContent: [
+              {
+                id: 'v1',
+                title: P,
+                views: 1,
+                likes: 1,
+                engagementRate: 1,
+                platform: P,
+              },
+            ],
+            audience: { note: P },
+            contentCount: 1,
+            avgEngagementRate: 1,
+          },
+        },
+        fakeClient(),
+      ),
+    );
+
+    expectSanitised(seen['insights-generation'], 'insights-generation');
+  });
+
+  it('language insights: languages, platforms, shorts and geography', async () => {
+    const { processLanguageInsights } = await import(
+      '../handlers/language-insights'
+    );
+    await run(() =>
+      processLanguageInsights(
+        {
+          ...IDS,
+          languagePerformance: [
+            { language: P, views: 1, likes: 1, comments: 1, engagementRate: 1 },
+          ],
+          platformMatrix: [{ platform: P }],
+          contentType: { label: P },
+          shorts: [{ title: P }],
+          geography: { region: P },
+        },
+        fakeClient(),
+      ),
+    );
+
+    expectSanitised(seen['language-insights'], 'language-insights');
+  });
+
+  it('batch metadata translation: titles and descriptions', async () => {
+    const { processBatchTranslateMetadata } = await import(
+      '../handlers/batch-translate-metadata'
+    );
+    await run(() =>
+      processBatchTranslateMetadata(
+        {
+          accountId: IDS.accountId,
+          items: [
+            {
+              id: 'i1',
+              targetLanguage: 'es',
+              title: P,
+              description: P,
+              contentType: 'full-video',
+            },
+          ],
+        },
+        fakeClient(),
+      ),
+    );
+
+    expectSanitised(
+      seen['batch-translate-metadata'],
+      'batch-translate-metadata',
+    );
+  });
+
+  it('asset creation: names and the screenplay context', async () => {
+    const { processAssetCreation } = await import('../handlers/asset-creation');
+    await run(() => processAssetCreation({ ...IDS }, fakeClient()));
+
+    expectSanitised(
+      seen['story-generation/extract-asset-description'],
+      'extract-asset-description',
+    );
+  });
+
+  it('audio cues: the stored shots', async () => {
+    const { processAudioCueGeneration } = await import(
+      '../handlers/audio-cue-generation'
+    );
+    await run(() => processAudioCueGeneration({ ...IDS }, fakeClient()));
+
+    expectSanitised(seen['audio cue orchestrator'], 'audio cue orchestrator');
+  });
+
+  it('dialogue translation: the stored lines and audience', async () => {
+    const { processTranslateDialogue } = await import(
+      '../handlers/translate-dialogue'
+    );
+    await run(() =>
+      processTranslateDialogue(
+        { ...IDS, targetLanguage: 'es', preserveTiming: true },
+        fakeClient(),
+      ),
+    );
+
+    expectSanitised(
+      seen['translation orchestrator'],
+      'translation orchestrator',
+    );
+  });
+
+  it('season analysis: the roadmap and the facts in the payload', async () => {
+    const { processSeasonAnalysis } = await import(
+      '../handlers/season-analysis'
+    );
+    await run(() =>
+      processSeasonAnalysis(
+        {
+          accountId: IDS.accountId,
+          projectId: IDS.projectId,
+          roadmap: P,
+          externalFacts: [
+            { id: 'f1', claim: P, source_citation: P, category: P },
+          ],
+        },
+        fakeClient(),
+      ),
+    );
+
+    expectSanitised(seen['season-generation'], 'season-generation');
+  });
+
+  it('season outline: the premise, genre, style and the project text', async () => {
+    const { processSeasonOutline } = await import('../handlers/season-outline');
+    await run(() =>
+      processSeasonOutline(
+        {
+          ...IDS,
+          seasonPremise: P,
+          episodeCount: 3,
+          startingNumber: 1,
+          genre: P,
+          style: P,
+        },
+        fakeClient(),
+      ),
+    );
+
+    expectSanitised(seen['season orchestrator'], 'season orchestrator');
+  });
 });
 
 /**
@@ -171,25 +370,23 @@ describe('executor inputs carry no raw project text (KB-101)', () => {
  * this until someone decides which.
  */
 const COVERED = [
-  'screenplay-conversion.ts',
-  'screenplay-refinement.ts',
-  'shot-generation.ts',
-  'story-generation.ts',
-  'story-ideation.ts',
-  'story-refinement.ts',
-];
-// specs/known-bugs/leads/2026-09-25-kb-101.md, "handlers not yet covered"
-const NOT_YET_COVERED = [
   'analytics-insights.ts',
   'asset-creation.ts',
   'audio-cue-generation.ts',
   'batch-translate-metadata.ts',
   'fact-extraction.ts',
   'language-insights.ts',
+  'screenplay-conversion.ts',
+  'screenplay-refinement.ts',
   'season-analysis.ts',
   'season-outline.ts',
+  'shot-generation.ts',
+  'story-generation.ts',
+  'story-ideation.ts',
+  'story-refinement.ts',
   'translate-dialogue.ts',
 ];
+const NOT_YET_COVERED: string[] = [];
 
 describe('every executor-calling handler is accounted for (KB-101)', () => {
   it('is covered, or named as not yet covered', () => {

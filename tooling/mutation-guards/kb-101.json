@@ -90,6 +90,96 @@
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
       "pattern": "accounted for"
+    },
+    {
+      "name": "Y1 An uploaded document reaches the fact-extraction model raw",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/fact-extraction.ts",
+      "find": "    variables: sanitizeStrings({\n      content: data.content,",
+      "replace": "    variables: ({\n      content: data.content,",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
+      "pattern": "fact extraction"
+    },
+    {
+      "name": "Y2 Analytics titles reach the insights model raw",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/analytics-insights.ts",
+      "find": "          sanitizeStrings(analyticsSummary),\n",
+      "replace": "          analyticsSummary,\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
+      "pattern": "analytics insights"
+    },
+    {
+      "name": "Y3 Language data reaches the insights model raw",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/language-insights.ts",
+      "find": "JSON.stringify(sanitizeStrings(languageData), null, 2)",
+      "replace": "JSON.stringify(languageData, null, 2)",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
+      "pattern": "language insights"
+    },
+    {
+      "name": "Y4 Metadata to translate reaches the model raw",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/batch-translate-metadata.ts",
+      "find": "JSON.stringify(sanitizeStrings(itemsForPrompt), null, 2)",
+      "replace": "JSON.stringify(itemsForPrompt, null, 2)",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
+      "pattern": "batch metadata"
+    },
+    {
+      "name": "Y5 The screenplay reaches the asset-description model raw",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/asset-creation.ts",
+      "find": "buildScreenplayContext(sanitizeStrings(scenes))",
+      "replace": "buildScreenplayContext(scenes)",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
+      "pattern": "asset creation"
+    },
+    {
+      "name": "Y6 Stored shots reach the audio cue model raw",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/audio-cue-generation.ts",
+      "find": "    const shotsJson = sanitizeStrings(\n",
+      "replace": "    const shotsJson = (\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
+      "pattern": "audio cues"
+    },
+    {
+      "name": "Y7 Stored dialogue reaches the translation model raw",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/translate-dialogue.ts",
+      "find": "\"${sanitizeForPrompt(l.text)}\"",
+      "replace": "\"${l.text}\"",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
+      "pattern": "dialogue translation"
+    },
+    {
+      "name": "Y8 The roadmap reaches the season model raw",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/season-analysis.ts",
+      "find": "      roadmap: sanitizeForPrompt(roadmap),\n",
+      "replace": "      roadmap,\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
+      "pattern": "season analysis"
+    },
+    {
+      "name": "Y9 The season premise reaches the outline model raw",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/season-outline.ts",
+      "find": "    seasonPremise: sanitizeForPrompt(data.seasonPremise),\n",
+      "replace": "    seasonPremise: data.seasonPremise,\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
+      "pattern": "season outline"
     }
   ]
 }

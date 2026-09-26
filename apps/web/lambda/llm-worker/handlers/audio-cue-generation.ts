@@ -10,6 +10,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { sanitizeStrings } from '@kit/episodes/lib';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
@@ -57,16 +58,19 @@ export async function processAudioCueGeneration(
     }
 
     // 2. Prepare shot data for orchestrator
-    const shotsJson = shots.map((s) => ({
-      seq: s.sequence_number,
-      duration: s.duration_seconds,
-      audioDesc:
-        (s.generation_metadata as ShotGenerationMetadata | null)?.veoPrompt
-          ?.audio || 'No audio description',
-      action:
-        (s.generation_metadata as ShotGenerationMetadata | null)?.action ||
-        s.scene_description,
-    }));
+    // Stored shot text, defused for the model (KB-101)
+    const shotsJson = sanitizeStrings(
+      shots.map((s) => ({
+        seq: s.sequence_number,
+        duration: s.duration_seconds,
+        audioDesc:
+          (s.generation_metadata as ShotGenerationMetadata | null)?.veoPrompt
+            ?.audio || 'No audio description',
+        action:
+          (s.generation_metadata as ShotGenerationMetadata | null)?.action ||
+          s.scene_description,
+      })),
+    );
 
     // Calculate total episode duration
     const totalDurationSeconds = shots.reduce(

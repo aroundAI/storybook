@@ -6,6 +6,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { sanitizeStrings } from '@kit/episodes/lib';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
@@ -46,11 +47,13 @@ export async function processFactExtraction(
 
   const result = await executeLLM<FactExtractionLLMOutput>({
     templateSlug: 'documentary/fact-extraction',
-    variables: {
+    // An uploaded document: the least trusted text in the product, defused
+    // for the model; the stored facts keep the source as given (KB-101)
+    variables: sanitizeStrings({
       content: data.content,
       source_title: data.sourceTitle,
       source_citation: data.sourceCitation ?? data.sourceTitle,
-    },
+    }),
     context: {
       name: 'fact-extraction',
       accountId: data.accountId,

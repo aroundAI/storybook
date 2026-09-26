@@ -170,6 +170,14 @@ export default defineConfig({
         __dirname,
         '../../packages/features/episodes/src/agent/shot-orchestrator.ts',
       ),
+      '@kit/episodes/agent/audio-cue-orchestrator': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/agent/audio-cue-orchestrator.ts',
+      ),
+      '@kit/episodes/agent/translation-orchestrator': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/agent/translation-orchestrator.ts',
+      ),
       '@kit/episodes/lib': path.resolve(
         __dirname,
         '../../packages/features/episodes/src/lib/index.ts',

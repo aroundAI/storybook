@@ -8,6 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { z } from 'zod';
 
+import { sanitizeStrings } from '@kit/episodes/lib';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
@@ -77,7 +78,8 @@ export async function processLanguageInsights(
     const result = await executeLLM<LanguageInsightsLLMOutput>({
       templateSlug: 'language-insights',
       variables: {
-        language_data: JSON.stringify(languageData, null, 2),
+        // Languages, titles and places from the payload, defused (KB-101)
+        language_data: JSON.stringify(sanitizeStrings(languageData), null, 2),
       },
       context: {
         name: 'generate-language-insights',
