@@ -592,7 +592,7 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 |---------|------|--------|--------|--------------|
 | FILM-1701 | [audience-truth-up](./phase-17-analytics-provenance/FILM-1701-audience-truth-up.yaml) | ✅ DONE | M | - |
 | FILM-1702 | [language-dimension-reconciliation](./phase-17-analytics-provenance/FILM-1702-language-dimension-reconciliation.yaml) | ✅ DONE | L | FILM-1606 |
-| FILM-1703 | [provenance-capability-model](./phase-17-analytics-provenance/FILM-1703-provenance-capability-model.yaml) | 🟡 PARTIAL | M | FILM-1721 |
+| FILM-1703 | [provenance-capability-model](./phase-17-analytics-provenance/FILM-1703-provenance-capability-model.yaml) | ✅ DONE | M | FILM-1721 |
 | FILM-1704 | [observed-coverage](./phase-17-analytics-provenance/FILM-1704-observed-coverage.yaml) | DRAFT | M | FILM-1703 |
 | FILM-1705 | [provenance-surfaces](./phase-17-analytics-provenance/FILM-1705-provenance-surfaces.yaml) | DRAFT | L | FILM-1701, FILM-1703, FILM-1704, FILM-1706 |
 | FILM-1706 | [analytics-card-shell](./phase-17-analytics-provenance/FILM-1706-analytics-card-shell.yaml) | DRAFT | M | FILM-1703 |
@@ -719,11 +719,11 @@ reason when not.
 | 14. Edit Suite v2 | 1 | 0 | 0 | 0 | 1 | 0 |
 | 15. Deep Analytics | 11 | 0 | 4 | 0 | 2 | 5 |
 | 16. Workbook Parity | 17 | 0 | 2 | 0 | 0 | 15 |
-| 17. Analytics Provenance | 30 | 20 | 5 | 2 | 0 | 3 |
+| 17. Analytics Provenance | 30 | 20 | 4 | 2 | 0 | 4 |
 | 18. Vendor Sandbox | 5 | 2 | 2 | 0 | 0 | 1 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **231** | **24** | **81** | **2** | **50** | **74** |
+| **TOTAL** | **231** | **24** | **80** | **2** | **50** | **75** |
 
 No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose PR is open keeps the status it has on `main`.
 
@@ -738,7 +738,7 @@ No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose 
 | Edit Suite v2 (Ph 14) | 1 | 0 | 0 | 1 | 0 |
 | Deep Analytics (Ph 15) | 11 | 5 | 4 | 2 | 0 |
 | Workbook Parity (Ph 16) | 17 | 15 | 2 | 0 | 0 |
-| Provenance & Signal (Ph 17) | 30 | 3 | 5 | 0 | 22 |
+| Provenance & Signal (Ph 17) | 30 | 4 | 4 | 0 | 22 |
 | Vendor Sandbox (Ph 18) | 5 | 1 | 2 | 0 | 2 |
 | Public Sharing | 2 | 1 | 1 | 0 | 0 |
 

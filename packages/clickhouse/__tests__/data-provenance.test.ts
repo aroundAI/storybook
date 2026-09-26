@@ -94,6 +94,8 @@ interface LooseEntry {
   blockedBy?: unknown;
   access?: unknown;
   accessSince?: unknown;
+  verified?: { on?: unknown; how?: unknown };
+  pendingVerification?: { owner?: unknown; question?: unknown };
   availability?: unknown;
   unknownOwner?: unknown;
   unknownQuestion?: unknown;
@@ -139,6 +141,10 @@ const SPECS = sourceFiles(join(REPO, 'specs'), ['.md', '.yaml']).map(repoPath);
 /** A well-formed entry of each level, to break one rule at a time. */
 const AXES = {
   access: 'authorised',
+  pendingVerification: {
+    owner: 'owner',
+    question: 'Does it work against a real account?',
+  },
   availability: 'included',
   window: { maxAgeDays: null, anchoredOn: 'request_date' },
   note: 'The platform reports this for each day.',
@@ -286,6 +292,55 @@ const RULES: Array<{
     broken: { ...NATIVE, access: 'review_pending' },
   },
   {
+    // `authorised` says our config asks and nothing on the vendor's side is
+    // known to stand in the way. Whether anyone has seen it work is a
+    // separate claim, and "cannot measure" is not "measured": every
+    // authorised entry says which, with evidence or with an owner.
+    rule: 'authorised says whether it was seen working, with evidence or an owner',
+    applies: ({ access }) => access === 'authorised',
+    holds: ({ verified, pendingVerification }) =>
+      verified !== undefined
+        ? pendingVerification === undefined &&
+          isText(verified.on) &&
+          /^\d{4}-\d{2}-\d{2}$/.test(verified.on) &&
+          isText(verified.how)
+        : pendingVerification !== undefined &&
+          isText(pendingVerification.question) &&
+          (pendingVerification.owner === 'owner' ||
+            (typeof pendingVerification.owner === 'string' &&
+              /^FILM-\d+$/.test(pendingVerification.owner) &&
+              SPECS.some((spec) =>
+                spec.includes(`/${pendingVerification.owner as string}-`),
+              ))),
+    broken: { ...NATIVE, pendingVerification: undefined },
+  },
+  {
+    rule: 'only authorised carries a verification',
+    applies: ({ access }) => access !== 'authorised',
+    holds: ({ verified, pendingVerification }) =>
+      verified === undefined && pendingVerification === undefined,
+    broken: { ...NATIVE, access: 'review_required' },
+  },
+  {
+    // FILM-1730 is the TikTok Business API integration. FILM-1712 stood in
+    // for it until its spec existed; a new entry must not reach for the
+    // placeholder again.
+    rule: 'a TikTok Business gap is blocked by the TikTok Business integration',
+    applies: ({ level, accountGate }) =>
+      level === 'not_ingested' &&
+      accountGate?.requirement === 'a TikTok Business account',
+    holds: ({ blockedBy }) => blockedBy === 'FILM-1730',
+    broken: {
+      ...NOT_INGESTED,
+      access: 'review_required',
+      pendingVerification: undefined,
+      accountGate: {
+        requirement: 'a TikTok Business account',
+        note: 'Switch to a Business account.',
+      },
+    },
+  },
+  {
     rule: 'unknown availability names its owner and its question',
     applies: ({ availability }) => availability === 'unknown',
     holds: ({ unknownOwner, unknownQuestion }) =>
@@ -411,15 +466,52 @@ describe('what the platform cannot do is kept apart from what we have not done',
     );
   });
 
-  it('YouTube revenue is authorised (FILM-1711) but still not ingested', () => {
-    // The scope moved from missing to authorised in code; ClickHouse
-    // ingestion is a separate axis and stays not_ingested until something
-    // replaces the literal 0 every sync path writes to revenue_cents.
-    expect(capabilityFor('revenue', 'youtube')).toMatchObject({
+  it('YouTube revenue is requested (FILM-1711), unverified, and not ingested', () => {
+    // FILM-1711 added the scope to our config, so access is no longer
+    // `scope_missing`. Nobody has seen it granted or seen revenue come back
+    // (FILM-1725 Checks F and G), so it is pending, not verified. Whether
+    // revenue ever lands in ClickHouse is FILM-1726's question — FILM-1711
+    // writes Postgres `revenue_records` only.
+    const revenue = capabilityFor('revenue', 'youtube');
+
+    expect(revenue).toMatchObject({
       level: 'not_ingested',
       access: 'authorised',
-      blockedBy: 'FILM-1711',
+      blockedBy: 'FILM-1726',
+      pendingVerification: { owner: 'FILM-1725' },
     });
+    expect(revenue).not.toHaveProperty('verified');
+  });
+
+  it('the TikTok Business gaps are owned by FILM-1730, the Instagram ones by FILM-1712', () => {
+    for (const family of [
+      'watch_time',
+      'traffic_sources',
+      'reach',
+      'geography',
+    ] as const) {
+      expect(capabilityFor(family, 'tiktok').blockedBy, family).toBe(
+        'FILM-1730',
+      );
+    }
+
+    for (const family of ['watch_time', 'reach'] as const) {
+      expect(capabilityFor(family, 'instagram').blockedBy, family).toBe(
+        'FILM-1712',
+      );
+    }
+  });
+
+  it('claims no live verification it cannot cite', () => {
+    // Every authorised entry is pending until someone records when and how
+    // it was seen working against a real account. Asked 2026-09-25; the
+    // owner's answer for YouTube Analytics, YouTube Reporting and the
+    // Instagram user node: "Not yet".
+    const verified = ENTRIES.filter(
+      ({ entry }) => entry?.verified !== undefined,
+    ).map(({ id }) => id);
+
+    expect(verified).toEqual([]);
   });
 
   it('daily engagement is true-daily on YouTube and a fetch-day delta elsewhere', () => {
@@ -450,6 +542,7 @@ describe('the invariants are in the type, not only in this suite', () => {
   // PlatformCapability until a malformed entry is accepted fails typecheck.
   const axes = {
     access: 'authorised',
+    pendingVerification: { owner: 'owner', question: 'Seen working?' },
     availability: 'included',
     window: { maxAgeDays: null, anchoredOn: 'request_date' },
     note: 'The platform reports this for each day.',
@@ -483,6 +576,12 @@ describe('the invariants are in the type, not only in this suite', () => {
     { ...measured, access: 'review_pending' },
     // @ts-expect-error account_type_gated is the creator's, never static
     { ...measured, access: 'account_type_gated' },
+    // @ts-expect-error authorised says whether it was seen working
+    { ...measured, pendingVerification: undefined },
+    // @ts-expect-error and says it once, not both ways
+    { ...measured, verified: { on: '2026-09-25', how: 'a live sync' } },
+    // @ts-expect-error only authorised carries a verification
+    { ...measured, access: 'review_required' },
     // @ts-expect-error unknown availability names its owner and question
     { ...measured, availability: 'unknown' },
     // @ts-expect-error a window says what it is anchored on

@@ -92,7 +92,9 @@ export {
   unclaimedPlatforms,
 } from './lib/data-provenance';
 export type {
+  AccessPendingVerification,
   AccessState,
+  AccessVerified,
   AccountTypeGate,
   Availability,
   CapabilityCitation,

@@ -111,7 +111,7 @@ export type DerivationMethod =
  * is missing. Each state has a different owner and a different sentence.
  */
 export type AccessState =
-  | 'authorised' // scope held AND verified against a live account
+  | 'authorised' // our config asks and no vendor review blocks it; see AccessVerified
   | 'scope_missing' // the scope exists; our OAuth config does not ask
   | 'review_required' // App Review / audit needed before we may ask
   | 'review_pending'
@@ -124,6 +124,27 @@ export type AccessState =
  * carries it as `accountGate` and `accessFor` resolves it per creator.
  */
 export type OurAccessState = Exclude<AccessState, 'account_type_gated'>;
+
+/**
+ * Whether an `authorised` surface has been seen working against a real
+ * account. `authorised` alone says our OAuth config asks for the scope and
+ * nothing on the vendor's side is known to stand in the way; that is a claim
+ * about our configuration, not a measurement. "Cannot measure" is not
+ * "measured", so every authorised entry carries exactly one of these.
+ */
+export interface AccessVerified {
+  /** ISO date it was seen working. */
+  on: string;
+  /** How: the account, environment and what came back. */
+  how: string;
+}
+
+export interface AccessPendingVerification {
+  /** A spec id, or `'owner'` when only the owner can answer. */
+  owner: string;
+  /** What has to be seen before this can say `verified`. */
+  question: string;
+}
 
 /** Whether we can obtain it commercially. */
 export type Availability = 'included' | 'metered' | 'tier_gated' | 'unknown';
@@ -196,10 +217,28 @@ type LevelAxis =
       blockedBy: null;
     };
 
+type NoVerification = {
+  verified?: undefined;
+  pendingVerification?: undefined;
+};
+
 type AccessAxis =
-  | { access: 'authorised' | 'scope_missing' | 'review_required' }
+  | {
+      access: 'authorised';
+      verified: AccessVerified;
+      pendingVerification?: undefined;
+    }
+  | {
+      access: 'authorised';
+      verified?: undefined;
+      pendingVerification: AccessPendingVerification;
+    }
+  | ({ access: 'scope_missing' | 'review_required' } & NoVerification)
   // ISO date the review was submitted, or refused.
-  | { access: 'review_pending' | 'review_denied'; accessSince: string };
+  | ({
+      access: 'review_pending' | 'review_denied';
+      accessSince: string;
+    } & NoVerification);
 
 type AvailabilityAxis =
   | { availability: 'included' | 'metered' | 'tier_gated' }
@@ -248,9 +287,22 @@ export type PlatformCapability = LevelAxis &
 type SurfaceAxes = AccessAxis &
   AvailabilityAxis & { window: DataWindow; accountGate?: AccountTypeGate };
 
+/**
+ * Pending on the owner, not on a vendor check: YouTube rows arrive in local
+ * and CI ClickHouse from fixtures, which proves the pipeline, not the scope.
+ * Asked 2026-09-25; the owner's answer: "Not yet" — no real channel has been
+ * seen syncing. It becomes `verified` with the date and how once one has.
+ */
+const YOUTUBE_LIVE_SYNC = {
+  owner: 'owner',
+  question:
+    'Has a real YouTube channel, connected outside production, been seen syncing through this API, and when?',
+} as const satisfies AccessPendingVerification;
+
 /** Analytics API. "authorised, except revenue" per the reference summary. */
 const YOUTUBE_ANALYTICS = {
   access: 'authorised',
+  pendingVerification: YOUTUBE_LIVE_SYNC,
   availability: 'included',
   window: { maxAgeDays: null, anchoredOn: 'request_date' },
 } as const satisfies SurfaceAxes;
@@ -258,6 +310,7 @@ const YOUTUBE_ANALYTICS = {
 /** Reporting API. Backfill is 30 days from job creation, permanently. */
 const YOUTUBE_REPORTING = {
   access: 'authorised',
+  pendingVerification: YOUTUBE_LIVE_SYNC,
   availability: 'included',
   window: { maxAgeDays: 30, anchoredOn: 'job_creation' },
 } as const satisfies SurfaceAxes;
@@ -314,11 +367,18 @@ const INSTAGRAM_ACCOUNT = {
 } as const satisfies SurfaceAxes;
 
 /**
- * The IG User node, read with `instagram_basic` — which we hold, and which
- * the connect callback exercises against every account it links.
+ * The IG User node, read with `instagram_basic` — which we request, and
+ * which the connect callback exercises against every account it links. That
+ * callback running against a real account is what would verify it. Asked
+ * 2026-09-25; the owner's answer: "Not yet".
  */
 const INSTAGRAM_USER = {
   access: 'authorised',
+  pendingVerification: {
+    owner: 'owner',
+    question:
+      'Has a real Instagram account, connected outside production, been seen returning followers_count, and when?',
+  },
   availability: 'included',
   window: { maxAgeDays: null, anchoredOn: 'request_date' },
 } as const satisfies SurfaceAxes;
@@ -387,13 +447,11 @@ export const CAPABILITY_MATRIX: Record<
       },
     },
     // Same level as Instagram and not the same price: this one is a second
-    // integration. FILM-1730 (TikTok Business API) will own it once #285
-    // merges; until that file exists here FILM-1712 is a placeholder, because
-    // the suite requires `blockedBy` to resolve to a spec.
+    // integration, FILM-1730 (TikTok Business API).
     tiktok: {
       level: 'not_ingested',
       table: null,
-      blockedBy: 'FILM-1712',
+      blockedBy: 'FILM-1730',
       ...TIKTOK_BUSINESS,
       note: 'TikTok does report watch time, through a separate Business integration we have not built yet, so no TikTok watch time is shown.',
       reference: {
@@ -424,17 +482,25 @@ export const CAPABILITY_MATRIX: Record<
 
   revenue: {
     // `yt-analytics-monetary.readonly` is now requested (FILM-1711), so
-    // `access` moved off `scope_missing` — but that is the OAuth axis, not
-    // ClickHouse ingestion: `video_metrics.revenue_cents` is still written
-    // as a literal 0 by every sync path (KB-12), and `level` stays
-    // `not_ingested` until something replaces that with a real value.
-    // FILM-1711's own pipeline writes to Postgres `revenue_records`
-    // (`source = 'api'`), a different store from what this axis describes.
+    // `access` moved off `scope_missing`. Nobody has seen Google grant it or
+    // seen revenue come back (FILM-1725 Checks F and G), so it is pending.
+    // A connection made before FILM-1711 does not hold it at all; that is
+    // per connection, and `resolveAnalyticsAccess` (publishing) answers it.
+    //
+    // `level` is ClickHouse ingestion, a separate axis:
+    // `video_metrics.revenue_cents` is still a literal 0 on every sync path,
+    // and FILM-1711's pipeline writes Postgres `revenue_records` instead.
+    // Whether revenue ever lands in ClickHouse is FILM-1726's decision.
     youtube: {
       level: 'not_ingested',
       table: null,
-      blockedBy: 'FILM-1711',
+      blockedBy: 'FILM-1726',
       access: 'authorised',
+      pendingVerification: {
+        owner: 'FILM-1725',
+        question:
+          'Checks F and G: does Google grant yt-analytics-monetary.readonly on the consent screen, and does a Partner Program channel then return non-zero revenue?',
+      },
       accountGate: YOUTUBE_PARTNER_PROGRAM,
       availability: 'included',
       window: YOUTUBE_ANALYTICS.window,
@@ -481,12 +547,11 @@ export const CAPABILITY_MATRIX: Record<
     },
     // Our gap, not TikTok's, twice over: the Business app we have not
     // registered, and the mapping from `impression_sources` to traffic groups
-    // we have not written. As with watch time, FILM-1730 will own it once
-    // #285 merges; FILM-1712 is the placeholder until then.
+    // we have not written. FILM-1730 owns both.
     tiktok: {
       level: 'not_ingested',
       table: null,
-      blockedBy: 'FILM-1712',
+      blockedBy: 'FILM-1730',
       ...TIKTOK_BUSINESS,
       note: 'TikTok does report where views came from, through a separate Business integration we have not built yet, so traffic sources cover YouTube only.',
       reference: {
@@ -553,7 +618,7 @@ export const CAPABILITY_MATRIX: Record<
     tiktok: {
       level: 'not_ingested',
       table: null,
-      blockedBy: 'FILM-1712',
+      blockedBy: 'FILM-1730',
       ...TIKTOK_BUSINESS,
       note: 'TikTok does report how many people a video reached, through a separate Business integration we have not built yet, so reach covers YouTube only.',
       reference: {
@@ -665,7 +730,7 @@ export const CAPABILITY_MATRIX: Record<
     tiktok: {
       level: 'not_ingested',
       table: null,
-      blockedBy: 'FILM-1712',
+      blockedBy: 'FILM-1730',
       ...TIKTOK_BUSINESS,
       note: 'TikTok does report viewers’ countries, through a separate Business integration we have not built yet, so no TikTok geography is shown.',
       reference: {
@@ -780,6 +845,12 @@ export function platformsWithData(family: MetricFamily): AnalyticsPlatform[] {
  * `account_type_gated` whatever our own state is: nothing we ship changes
  * their answer, and telling them to reconnect would be false. One who does
  * meet it — or an entry with no gate — gets our state.
+ *
+ * "Our state" is our configuration's, not their connection's: a connection
+ * made before a scope was added does not hold it. Whether one connection
+ * holds a scope is `resolveAnalyticsAccess`'s answer (publishing), from the
+ * scopes recorded at its callback. And `authorised` is not "seen working" —
+ * read `verified` / `pendingVerification` on the entry for that.
  */
 export function accessFor(
   family: MetricFamily,
