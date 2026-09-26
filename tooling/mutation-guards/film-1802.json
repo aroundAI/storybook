@@ -1,0 +1,95 @@
+{
+  "feature": "FILM-1802",
+  "mutations": [
+    {
+      "name": "S1 dailies read past now, so they stop summing to the total",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/growth.ts",
+      "find": "      value: at(day + DAY_MS) - at(day),",
+      "replace": "      value: cumulative(day + DAY_MS) - cumulative(day),",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/social-growth.test.ts",
+      "pattern": "sum to its total"
+    },
+    {
+      "name": "S2 the decaying curve falls instead of rising",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/growth.ts",
+      "find": "    case 'decaying':\n      return 1 - Math.exp(-days / 4);",
+      "replace": "    case 'decaying':\n      return Math.exp(-days / 4) * (days < 1 ? days : 1);",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/social-growth.test.ts",
+      "pattern": "never falls"
+    },
+    {
+      "name": "S3 the run's seed is ignored",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/state.ts",
+      "find": "  let hash = 0x811c9dc5 ^ seed;",
+      "replace": "  let hash = 0x811c9dc5 ^ (seed & 0);",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/social-state.test.ts",
+      "pattern": "two seeds give different runs"
+    },
+    {
+      "name": "S4 a token works for scopes it was never granted",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/state.ts",
+      "find": "    if (missing.length > 0) return { ok: false, reason: 'scope', missing };",
+      "replace": "    if (missing.length > 99) return { ok: false, reason: 'scope', missing };",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/social-state.test.ts",
+      "pattern": "refuses the rest by name"
+    },
+    {
+      "name": "S5 the ledger records a token request's secrets",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/server.ts",
+      "find": "          ? summarise(redactSecrets(body.toString('utf8')))",
+      "replace": "          ? summarise(body.toString('utf8'))",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/social-server.test.ts",
+      "pattern": "without its secrets"
+    },
+    {
+      "name": "S6 the ledger's object filter is ignored",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/ledger.ts",
+      "find": "      .filter((e) => !filter.object || e.object === filter.object)",
+      "replace": "      .filter((e) => e !== undefined)",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/social-server.test.ts",
+      "pattern": "filters by object"
+    },
+    {
+      "name": "S7 a figure may land on a round sentinel",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/state.ts",
+      "find": "    return avoidSentinel(\n      metric === 'views'",
+      "replace": "    return Number(\n      metric === 'views'",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/social-realism.test.ts",
+      "pattern": "no figure is a round sentinel"
+    },
+    {
+      "name": "S8 seed-credentials writes to any Supabase",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/seed-credentials.ts",
+      "find": "  if (!LOOPBACK.has(host)) {",
+      "replace": "  if (!LOOPBACK.has(host) && host === 'never') {",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/social-setup.test.ts",
+      "pattern": "refuses a Supabase that is not on this machine"
+    },
+    {
+      "name": "S9 an app call names the real TikTok host, bypassing the resolver",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/tiktok/config.ts",
+      "find": "  tokenUrl: `${vendorUrl('tiktok')}/v2/oauth/token/`,",
+      "replace": "  tokenUrl: `https://open.tiktokapis.com/v2/oauth/token/`,",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "has no vendor host or version literal"
+    }
+  ]
+}

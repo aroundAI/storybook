@@ -7,7 +7,17 @@ import { type Sandbox, createSandbox } from '../src/sandbox';
 export async function startSandbox(seed = 1803) {
   const sandbox = await createSandbox({
     seed,
-    ports: { control: 0, openai: 0, gemini: 0, elevenlabs: 0 },
+    ports: {
+      control: 0,
+      openai: 0,
+      gemini: 0,
+      elevenlabs: 0,
+      meta: 0,
+      tiktok: 0,
+      google: 0,
+      x: 0,
+      linkedin: 0,
+    },
   });
 
   vi.stubEnv('NODE_ENV', 'test');

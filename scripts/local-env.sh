@@ -147,8 +147,13 @@ case "${1:-}" in
     load_env
     (cd "$ROOT" && pnpm --filter @kit/clickhouse migrate)
 
-    echo "==> Vendor sandbox (AI vendors, FILM-1803)"
+    echo "==> Vendor sandbox (AI vendors FILM-1803, social platforms FILM-1802)"
     start_sandbox "$ROOT"
+
+    # YouTube and Meta read their OAuth client from oauth_app_credentials,
+    # encrypted with the app's key; the others read the env block above.
+    echo "==> Sandbox OAuth clients (FILM-1802)"
+    (cd "$ROOT/apps/vendor-sandbox" && pnpm --silent seed-credentials)
 
     echo
     echo "Ready. Env file: deployment/config/local.env"

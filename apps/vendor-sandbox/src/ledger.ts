@@ -23,6 +23,8 @@ export interface LedgerEntry {
   bytes?: number;
   durationMs?: number;
   injectedFailure?: boolean;
+  /** The social object the call was about (FILM-1802: a video or post id). */
+  object?: string;
   unplacedFields?: string[];
   error?: string;
 }
@@ -54,10 +56,11 @@ export class Ledger {
     return full;
   }
 
-  /** Newest first, optionally one vendor's and after an id. */
-  list(filter: { vendor?: string; sinceId?: number } = {}) {
+  /** Newest first, optionally one vendor's, one object's, and after an id. */
+  list(filter: { vendor?: string; object?: string; sinceId?: number } = {}) {
     return this.entries
       .filter((e) => !filter.vendor || e.vendor === filter.vendor)
+      .filter((e) => !filter.object || e.object === filter.object)
       .filter((e) => filter.sinceId === undefined || e.id > filter.sinceId)
       .reverse();
   }
