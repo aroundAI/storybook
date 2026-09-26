@@ -3,6 +3,7 @@
  * those is an endpoint anyone can call. No `server-only` either: the LLM
  * worker Lambda imports this, and `server-only` throws outside Next.
  */
+import { renderTemplate } from '../render-template';
 import type { RenderedPrompt } from '../types';
 import { PROMPT_REGISTRY } from './prompt-registry';
 
@@ -42,28 +43,13 @@ export async function loadAndRenderPrompt(
     );
   }
 
-  // Validate required variables are provided
-  const missingVars: string[] = [];
-  for (const [varName, varDef] of Object.entries(template.variables)) {
-    if (varDef.required && !(varName in variables)) {
-      missingVars.push(varName);
-    }
-  }
-
-  if (missingVars.length > 0) {
-    throw new Error(
-      `Missing required variables for prompt ${slug}: ${missingVars.join(', ')}`,
-    );
-  }
-
-  // Interpolate variables in user prompt
-  const userPrompt = interpolateVariables(template.user_prompt, variables);
-
-  // Compose system prompts (sort by order, interpolate variables, then concatenate)
-  const systemPrompt = template.system_prompts
-    .sort((a, b) => a.order - b.order)
-    .map((sp) => interpolateVariables(sp.content, variables))
-    .join('\n\n');
+  // One renderer for both executors: an unfilled or undeclared
+  // placeholder is an error, not a literal left in the text (KB-126)
+  const { systemPrompt, userPrompt } = renderTemplate(
+    slug,
+    template,
+    variables,
+  );
 
   // Return rendered prompt
   return {
@@ -80,27 +66,4 @@ export async function loadAndRenderPrompt(
     version: template.version,
     slug: template.slug,
   };
-}
-
-/**
- * Interpolate variables into template string
- * Replaces {{variable_name}} with actual values
- *
- * @param template - Template string with {{variable}} placeholders
- * @param variables - Object with variable values
- * @returns String with variables replaced
- */
-function interpolateVariables(
-  template: string,
-  variables: Record<string, unknown>,
-): string {
-  let result = template;
-
-  for (const [key, value] of Object.entries(variables)) {
-    const placeholder = `{{${key}}}`;
-    const replacement = String(value);
-    result = result.replaceAll(placeholder, replacement);
-  }
-
-  return result;
 }

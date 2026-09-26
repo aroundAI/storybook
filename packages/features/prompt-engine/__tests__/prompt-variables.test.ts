@@ -254,12 +254,15 @@ describe('prompt variables (KB-126)', () => {
 
       expect(unknown, `keys ${call.slug} does not declare`).toEqual([]);
 
-      if (call.open) return;
+      // Both executors now refuse an unfilled placeholder at run time, so a
+      // key sent only sometimes, or one this scan cannot see, is a failure
+      // waiting to happen: send every key, every time
+      expect(call.open, 'a spread or computed key').toBe(false);
+      expect(call.sometimes, 'keys sent only sometimes').toEqual([]);
 
       const unfilled = placeholdersIn(templateText(template!)).filter(
         (name) =>
           !call.keys.includes(name) &&
-          !call.sometimes.includes(name) &&
           template!.variables[name]?.default === undefined,
       );
 
