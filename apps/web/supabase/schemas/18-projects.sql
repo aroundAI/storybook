@@ -456,3 +456,23 @@ create trigger add_project_owner
 after insert on public.projects
 for each row
 execute function public.add_project_creator_as_owner();
+
+-- KB-113 (20260926153937): whether a project is null or belongs to an
+-- account, for rows that name one. SECURITY DEFINER: an ownership fact.
+create or replace function public.project_in_account(project_id uuid, account_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select project_in_account.project_id is null
+      or exists (
+           select 1 from public.projects p
+            where p.id = project_in_account.project_id
+              and p.account_id = project_in_account.account_id
+         );
+$$;
+
+revoke all on function public.project_in_account(uuid, uuid) from public, anon;
+grant execute on function public.project_in_account(uuid, uuid) to authenticated, service_role;

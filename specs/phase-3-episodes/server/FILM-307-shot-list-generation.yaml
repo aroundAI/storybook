@@ -43,7 +43,7 @@ acceptance_criteria:
     evidence: null
   - text: "Supports both screenplay_data and story_data as input sources (fallback)"
     met: false
-    reason: "retired — eb3b01f0 moved to per-scene processing, which needs a screenplay (`packages/features/episodes/src/lib/server/mutations/shot-list-actions.ts:76`)"
+    reason: "retired — eb3b01f0 moved to per-scene processing, which needs a screenplay (`packages/features/episodes/src/lib/server/mutations/shot-list-actions.ts:77`)"
 remaining:
   - criterion: "Handles optimistic locking"
     reason: "no version guard on the worker's write since 669b66e3 (`apps/web/lambda/llm-worker/handlers/shot-generation.ts:446`)"

@@ -20,7 +20,15 @@ vendor's developer console; it cannot be done from the repository.
 PR #289, then a submission checklist per vendor with drafted justifications and
 screencast shot lists. This file stays the tracker — what is submitted, and when.
 
-**Decision, 2026-09-22 (owner):** #289 merges as it is, with no per-platform switch.
+**Update, 2026-09-25 (lead):** there is now a per-platform switch.
+`ANALYTICS_SCOPES_ENABLED` (server-only: `youtube`, `tiktok`, `meta`) names the
+platforms whose connect requests carry the new scopes; **unset is none**, the
+pre-#289 request. A platform is added only after its consent-screen check passes,
+so a no-go on one platform no longer holds the deploy. While a platform is off,
+Settings → Platforms says its analytics are not requested yet, with no reconnect
+button (`not_requested`).
+
+**Decision, 2026-09-22 (owner), superseded in part above:** #289 merges as it is, with no per-platform switch.
 Before it is deployed, the owner checks each vendor console and tries one staging
 connect per platform (runbook, Part 1 — which is how FILM-1725 Check F gets run). The
 submissions below are the owner's to make; the *Owner* column says "unassigned" only

@@ -27,7 +27,7 @@ acceptance_criteria:
     reason: "unverified — the prompt asks for all three types; nothing checks the output; no test"
   - text: "Balance checker identifies bias distribution"
     met: false
-    reason: "not met — `checkSourceBalanceAction` feeds articles with no bias label (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:94`); every distribution is `unknown`"
+    reason: "not met — `checkSourceBalanceAction` feeds articles with no bias label (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:131`); every distribution is `unknown`"
   - text: "Server actions are authenticated"
     met: true
     evidence: "packages/features/episodes/src/server/news-actions.ts:82, :115"
@@ -37,7 +37,7 @@ remaining:
       `checkSourceBalance` counts `article.biasLabel`
       (`packages/features/episodes/src/lib/server/services/anchor-service.ts:143`),
       but the articles `checkSourceBalanceAction` passes it never carry one
-      (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:94`),
+      (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:131`),
       so it always reports every source as `unknown` — the same missing labels
       as FILM-1132
     closed_by: "FILM-1132"

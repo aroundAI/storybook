@@ -199,6 +199,56 @@
       "replace": "{access.entries.length > 0 && (",
       "spec": "tests/platform-connections/analytics-access.spec.ts",
       "grep": "outside the Partner Program is not told to reconnect"
+    },
+    {
+      "name": "S1 A switched-off platform's connect request still names the new scopes",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/analytics-scope-switch.ts",
+      "find": "  if (enabled.has(platform)) return [...configScopes];",
+      "replace": "  if (enabled.size >= 0) return [...configScopes];",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/analytics-scope-switch.test.ts",
+      "pattern": "pre-FILM-1711 scopes when a platform is off"
+    },
+    {
+      "name": "S2 An unset ANALYTICS_SCOPES_ENABLED turns every platform on",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/analytics-scope-switch.ts",
+      "find": "  const tokens = (raw ?? '')",
+      "replace": "  const tokens = (raw || 'youtube,tiktok,meta')",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/analytics-scope-switch.test.ts",
+      "pattern": "is none when unset or empty"
+    },
+    {
+      "name": "S3 A scope we do not request is offered as a reconnect",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/analytics-scopes.ts",
+      "find": "        state: withheld\n          ? 'not_requested'",
+      "replace": "        state: withheld && false\n          ? 'not_requested'",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/analytics-scope-switch.test.ts",
+      "pattern": "not requested, with no reconnect"
+    },
+    {
+      "name": "S4 The TikTok connect route ignores the switch",
+      "kind": "unit",
+      "file": "apps/web/app/api/platforms/connect/tiktok/route.ts",
+      "find": "    scope: connectScopes(\n      'tiktok',\n      TIKTOK_OAUTH_CONFIG.scopes,\n      analyticsScopesEnabled(),\n    ).join(','),",
+      "replace": "    scope: TIKTOK_OAUTH_CONFIG.scopes.join(','),",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/analytics-scope-switch.test.ts",
+      "pattern": "the tiktok connect route"
+    },
+    {
+      "name": "S5 The web function is deployed without ANALYTICS_SCOPES_ENABLED",
+      "kind": "unit",
+      "file": "sst.config.ts",
+      "find": "          ANALYTICS_SCOPES_ENABLED: process.env.ANALYTICS_SCOPES_ENABLED,",
+      "replace": "          ANALYTICS_SCOPES_OFF: process.env.ANALYTICS_SCOPES_ENABLED,",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/analytics-scope-switch.test.ts",
+      "pattern": "deployed environment"
     }
   ]
 }

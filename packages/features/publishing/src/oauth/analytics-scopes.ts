@@ -1,3 +1,8 @@
+import {
+  ALL_ANALYTICS_SCOPES_ENABLED,
+  type AnalyticsScopeSwitch,
+  isScopeWithheld,
+} from './analytics-scope-switch';
 import { META_OAUTH_CONFIG } from './meta/config';
 import { TIKTOK_OAUTH_CONFIG } from './tiktok/config';
 import { TWITTER_OAUTH_CONFIG } from './twitter/config';
@@ -268,6 +273,9 @@ export function parseMetaGrantedPermissions(body: unknown): string[] {
  * - `scope_missing`: the creator can fix it now, by reconnecting.
  * - `review_pending`: we asked the vendor; nobody can grant it until they
  *   answer, so there is no reconnect prompt.
+ * - `not_requested`: our connect request leaves the scope out for now
+ *   (`ANALYTICS_SCOPES_ENABLED`), so reconnecting would grant nothing. No
+ *   prompt; the owner turns the platform on.
  * - `account_type_gated`: the scope is held and the vendor still refuses,
  *   because of the kind of account it is. Only the creator can change that.
  * - `no_provider`: nothing reads this platform yet.
@@ -280,6 +288,7 @@ export type AnalyticsAccessState =
   | 'unknown'
   | 'scope_missing'
   | 'review_pending'
+  | 'not_requested'
   | 'account_type_gated'
   | 'no_provider';
 
@@ -325,6 +334,12 @@ export function resolveAnalyticsAccess(input: {
   platform: string;
   grantedScopes: readonly string[] | null | undefined;
   metadata?: unknown;
+  /**
+   * Which platforms' connect requests carry the analytics scopes
+   * (`analyticsScopesEnabled()`, server-only). Required, so no caller can
+   * offer a reconnect that would ask for the same scopes again.
+   */
+  scopesEnabled: AnalyticsScopeSwitch;
 }): AnalyticsAccess | null {
   if (!isAnalyticsAuthPlatform(input.platform)) return null;
 
@@ -352,9 +367,17 @@ export function resolveAnalyticsAccess(input: {
     }
 
     if (missingScopes.length > 0) {
+      const withheld = missingScopes.some((scope) =>
+        isScopeWithheld(input.platform, scope, input.scopesEnabled),
+      );
+
       return {
         ...base,
-        state: canBeGranted(requirement) ? 'scope_missing' : 'review_pending',
+        state: withheld
+          ? 'not_requested'
+          : canBeGranted(requirement)
+            ? 'scope_missing'
+            : 'review_pending',
       };
     }
 
@@ -405,9 +428,13 @@ export function videoSyncAuthorisation(input: {
   grantedScopes: readonly string[] | null | undefined;
 }): 'authorised' | 'not_authorised' | 'unknown' {
   const requirementId = VIDEO_SYNC_REQUIREMENT[input.platform];
-  const state = resolveAnalyticsAccess(input)?.entries.find(
-    (entry) => entry.requirementId === requirementId,
-  )?.state;
+  // Any switch gives the same answer here: the switch only chooses among the
+  // ways of *not* holding a scope, and all of them are `not_authorised` below
+  // (asserted in analytics-scope-switch.test.ts). So the sync needs no setting.
+  const state = resolveAnalyticsAccess({
+    ...input,
+    scopesEnabled: ALL_ANALYTICS_SCOPES_ENABLED,
+  })?.entries.find((entry) => entry.requirementId === requirementId)?.state;
 
   if (state === 'authorised' || state === 'unknown') return state;
 

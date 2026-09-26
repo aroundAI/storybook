@@ -1719,3 +1719,97 @@ as $$
 $$;
 
 grant execute on function public.editable_publish_ids(uuid[]) to authenticated;
+
+-- KB-113 (20260926153937): whether an episode or publish is null or belongs
+-- to an account, for rows that name one. SECURITY DEFINER: ownership facts.
+create or replace function public.episode_in_account(episode_id uuid, account_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select episode_in_account.episode_id is null
+      or exists (
+           select 1
+             from public.episodes e
+             join public.projects p on p.id = e.project_id
+            where e.id = episode_in_account.episode_id
+              and p.account_id = episode_in_account.account_id
+         );
+$$;
+
+create or replace function public.publish_in_account(publish_id uuid, account_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select publish_in_account.publish_id is null
+      or exists (
+           select 1
+             from public.publishes pub
+             join public.episodes e on e.id = pub.episode_id
+             join public.projects p on p.id = e.project_id
+            where pub.id = publish_in_account.publish_id
+              and p.account_id = publish_in_account.account_id
+         );
+$$;
+
+revoke all on function public.episode_in_account(uuid, uuid) from public, anon;
+revoke all on function public.publish_in_account(uuid, uuid) from public, anon;
+grant execute on function public.episode_in_account(uuid, uuid) to authenticated, service_role;
+grant execute on function public.publish_in_account(uuid, uuid) to authenticated, service_role;
+
+-- An episode or publish moves only within its account (signed-in callers).
+create or replace function public.keep_episode_account()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if auth.uid() is not null
+     and new.project_id is distinct from old.project_id
+     and not public.project_in_account(
+           new.project_id,
+           (select p.account_id from public.projects p where p.id = old.project_id)
+         ) then
+    raise exception 'An episode cannot move to another account''s project'
+      using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+create or replace function public.keep_publish_account()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if auth.uid() is not null
+     and new.episode_id is distinct from old.episode_id
+     and not public.episode_in_account(
+           new.episode_id,
+           (select p.account_id
+              from public.episodes e
+              join public.projects p on p.id = e.project_id
+             where e.id = old.episode_id)
+         ) then
+    raise exception 'A publish cannot move to another account''s episode'
+      using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger episodes_keep_account
+  before update of project_id on public.episodes
+  for each row execute function public.keep_episode_account();
+
+create trigger publishes_keep_account
+  before update of episode_id on public.publishes
+  for each row execute function public.keep_publish_account();

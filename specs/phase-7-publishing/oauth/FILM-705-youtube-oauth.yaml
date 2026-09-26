@@ -27,7 +27,7 @@ oauth_flow:
 acceptance_criteria:
   - text: "Connect button redirects to Google consent screen"
     met: true
-    evidence: "`apps/web/app/api/platforms/connect/youtube/route.ts:107`; driven in `apps/e2e/tests/platform-connections/analytics-access.spec.ts:162`"
+    evidence: "`apps/web/app/api/platforms/connect/youtube/route.ts:113`; driven in `apps/e2e/tests/platform-connections/analytics-access.spec.ts:162`"
   - text: "Consent screen shows correct app name and scopes"
     met: false
     reason: "unverified — Google renders it; needs a consent run with the owner's Google app"

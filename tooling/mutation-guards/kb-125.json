@@ -1,0 +1,35 @@
+{
+  "feature": "KB-125",
+  "mutations": [
+    {
+      "name": "KB-125 NewsAPI is asked without the sources filter",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/server/providers/newsapi-provider.ts",
+      "find": "    url.searchParams.set('sources', [...this.byNewsapiId.keys()].join(','));\n",
+      "replace": "",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/newsapi-one-request.test.ts",
+      "pattern": "asks NewsAPI once"
+    },
+    {
+      "name": "KB-125 one NewsAPI provider per row again",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/server/services/context-aggregator.ts",
+      "find": "    if (newsapi.length > 0) {\n      this.register('newsapi', 'news', new NewsAPIProvider(newsapi));\n    }\n",
+      "replace": "    for (const source of newsapi) {\n      this.register(source.id, 'news', new NewsAPIProvider([source]));\n    }\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/newsapi-one-request.test.ts",
+      "pattern": "asks NewsAPI once"
+    },
+    {
+      "name": "KB-125 every article is credited to the first NewsAPI source",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/server/providers/newsapi-provider.ts",
+      "find": "      const source = article.source.id\n        ? this.byNewsapiId.get(article.source.id)\n        : undefined;\n",
+      "replace": "      const source = [...this.byNewsapiId.values()][0];\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/newsapi-one-request.test.ts",
+      "pattern": "attributes each article"
+    }
+  ]
+}
