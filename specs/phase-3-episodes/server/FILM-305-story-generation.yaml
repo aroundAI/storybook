@@ -4,7 +4,7 @@ phase: 3
 phase_name: "Episodes"
 category: server_action
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-25"
 effort: L
 dependencies:
   - spec_id: "FILM-301"
@@ -79,8 +79,8 @@ acceptance_criteria:
     met: true
     evidence: "`pnpm typecheck` runs `web`'s `typecheck`, whose second half is `tsc --noEmit -p lambda/tsconfig.json` (`apps/web/package.json:23`); that config includes every worker file (`apps/web/lambda/tsconfig.json:23`) and CI's TypeScript job runs it (`.github/workflows/workflow.yml:94`) — KB-14, #309. Passes on `main` at `b21bd33e` (KB-80), with `@kit/episodes`' own `tsc --noEmit`; `handlers/story-ideation.ts` and `handlers/story-generation.ts` are in the lambda program"
   - text: "No ESLint warnings"
-    met: false
-    reason: "unverified — linting is outside the audit rules; settle with `pnpm --filter @kit/episodes lint`"
+    met: true
+    evidence: "`pnpm --filter @kit/episodes lint` exits 0 with no output, and eslint --max-warnings 0 over packages/features/episodes/src/server/story-actions.ts: 0 errors, 0 warnings (run 2026-09-25 on 2dd2fb26)"
 test_plan:
   unit: []
   integration: []
