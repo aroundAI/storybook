@@ -6,7 +6,9 @@ import { listen, urlOf } from './http';
 import type { Quality } from './llm/generate/context';
 import { drawSeed } from './rng';
 import { SandboxState } from './state';
+import { elevenLabsHandler } from './vendors/elevenlabs';
 import { geminiHandler } from './vendors/gemini';
+import { openAiHandler } from './vendors/openai';
 
 /**
  * Default ports (FILM-1803 §1). One process, one origin per vendor, as in
@@ -14,7 +16,9 @@ import { geminiHandler } from './vendors/gemini';
  */
 export const DEFAULT_PORTS = {
   control: 4100,
+  openai: 4110,
   gemini: 4112,
+  elevenlabs: 4113,
 } as const;
 
 export type PortName = keyof typeof DEFAULT_PORTS;
@@ -53,6 +57,11 @@ export async function createSandbox(
 
   try {
     servers.gemini = await listen(geminiHandler(state), ports.gemini);
+    servers.openai = await listen(openAiHandler(state), ports.openai);
+    servers.elevenlabs = await listen(
+      elevenLabsHandler(state, () => urlOf(servers.elevenlabs)),
+      ports.elevenlabs,
+    );
     servers.control = await listen(
       controlHandler(state, boundPorts),
       ports.control,
