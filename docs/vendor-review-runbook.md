@@ -78,14 +78,21 @@ the results table at the end of this part, and in
 
 ## The go / no-go rule
 
-> **If an authorise request naming an unapproved scope is rejected outright on a
-> platform, do not deploy #289 until that platform's review has passed.**
+> **Each platform's new scopes are off until you turn them on.**
+> `ANALYTICS_SCOPES_ENABLED` (server-only; `youtube`, `tiktok`, `meta`) lists the
+> platforms whose connect requests carry them. **Unset is none**: the deploy
+> ships the request production made before #289, which is safe for publishing.
+> After a platform's check below passes, add it to the setting and redeploy (or
+> update the environment). **If an authorise request naming an unapproved scope is
+> rejected outright on a platform, leave that platform out** until its review has
+> passed — the rest of the deploy is not held for it.
 
 Rejected outright means you never reach a consent screen you can accept, or you are
 sent back without a connection. It is a no-go because the same OAuth request carries
 the publishing scopes: if connecting breaks, publishing breaks with it.
 
-A consent screen that **works but omits** the new scope is a **go**. #289 records what
+A consent screen that **works but omits** the new scope is a **go** for that
+platform (add it to `ANALYTICS_SCOPES_ENABLED`). #289 records what
 was granted rather than what was asked for, so the connection will correctly show its
 analytics as not yet authorised, and publishing is untouched.
 

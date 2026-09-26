@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { connectScopes } from '@kit/publishing/oauth/analytics-scope-switch';
 import {
   TIKTOK_OAUTH_CONFIG,
   TikTokOAuthState,
   generateCodeChallenge,
   generateCodeVerifier,
 } from '@kit/publishing/oauth/tiktok';
+import { analyticsScopesEnabled } from '@kit/publishing/server/analytics-scope-switch';
 import { getOAuthAppCredentials } from '@kit/publishing/server/oauth-app-credentials';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -92,7 +94,11 @@ export async function GET(request: NextRequest) {
     client_key: credentials.clientId,
     redirect_uri: `${appUrl}/api/platforms/callback/tiktok`,
     response_type: 'code',
-    scope: TIKTOK_OAUTH_CONFIG.scopes.join(','), // TikTok uses comma-separated
+    scope: connectScopes(
+      'tiktok',
+      TIKTOK_OAUTH_CONFIG.scopes,
+      analyticsScopesEnabled(),
+    ).join(','), // TikTok uses comma-separated
     state: encodedState,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',

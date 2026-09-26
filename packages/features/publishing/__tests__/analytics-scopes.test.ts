@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { ALL_ANALYTICS_SCOPES_ENABLED } from '../src/oauth/analytics-scope-switch';
 import {
   ANALYTICS_SCOPE_REQUIREMENTS,
   REQUESTED_SCOPES,
@@ -71,6 +72,7 @@ describe('parseMetaGrantedPermissions', () => {
 describe('resolveAnalyticsAccess', () => {
   it('asks an existing YouTube connection to reconnect for revenue, and only revenue', () => {
     const access = resolveAnalyticsAccess({
+      scopesEnabled: ALL_ANALYTICS_SCOPES_ENABLED,
       platform: 'youtube',
       grantedScopes: YOUTUBE_LEGACY,
     });
@@ -86,6 +88,7 @@ describe('resolveAnalyticsAccess', () => {
 
   it('is fully authorised once the monetary scope is granted', () => {
     const access = resolveAnalyticsAccess({
+      scopesEnabled: ALL_ANALYTICS_SCOPES_ENABLED,
       platform: 'youtube',
       grantedScopes: [...YOUTUBE_LEGACY, `${G}yt-analytics-monetary.readonly`],
     });
@@ -96,6 +99,7 @@ describe('resolveAnalyticsAccess', () => {
 
   it('tells a missing scope from a channel outside the Partner Program', () => {
     const access = resolveAnalyticsAccess({
+      scopesEnabled: ALL_ANALYTICS_SCOPES_ENABLED,
       platform: 'youtube',
       grantedScopes: [...YOUTUBE_LEGACY, `${G}yt-analytics-monetary.readonly`],
       metadata: { analytics_account_gated: ['youtube.revenue'] },
@@ -113,6 +117,7 @@ describe('resolveAnalyticsAccess', () => {
 
   it('does not read an account gate into a connection that lacks the scope', () => {
     const access = resolveAnalyticsAccess({
+      scopesEnabled: ALL_ANALYTICS_SCOPES_ENABLED,
       platform: 'youtube',
       grantedScopes: YOUTUBE_LEGACY,
       metadata: { analytics_account_gated: ['youtube.revenue'] },
@@ -123,10 +128,12 @@ describe('resolveAnalyticsAccess', () => {
 
   it('offers no reconnect while the vendor has not approved the scope', () => {
     const tiktok = resolveAnalyticsAccess({
+      scopesEnabled: ALL_ANALYTICS_SCOPES_ENABLED,
       platform: 'tiktok',
       grantedScopes: ['user.info.basic', 'video.upload'],
     });
     const instagram = resolveAnalyticsAccess({
+      scopesEnabled: ALL_ANALYTICS_SCOPES_ENABLED,
       platform: 'instagram',
       grantedScopes: ['instagram_basic', 'instagram_content_publish'],
     });
@@ -142,6 +149,7 @@ describe('resolveAnalyticsAccess', () => {
 
   it('needs all three Facebook Login permissions for Instagram insights', () => {
     const access = resolveAnalyticsAccess({
+      scopesEnabled: ALL_ANALYTICS_SCOPES_ENABLED,
       platform: 'instagram',
       grantedScopes: ['instagram_basic', 'instagram_manage_insights'],
     });
@@ -156,6 +164,7 @@ describe('resolveAnalyticsAccess', () => {
   it('reports no recorded grant as unknown, never as missing', () => {
     for (const grantedScopes of [null, undefined, []]) {
       const access = resolveAnalyticsAccess({
+        scopesEnabled: ALL_ANALYTICS_SCOPES_ENABLED,
         platform: 'youtube',
         grantedScopes,
       });
@@ -170,6 +179,7 @@ describe('resolveAnalyticsAccess', () => {
   it('says a platform has no provider rather than that it is unauthorised', () => {
     expect(
       resolveAnalyticsAccess({
+        scopesEnabled: ALL_ANALYTICS_SCOPES_ENABLED,
         platform: 'facebook',
         grantedScopes: ['pages_show_list'],
       }),
@@ -182,7 +192,11 @@ describe('resolveAnalyticsAccess', () => {
 
   it('has nothing to say about a platform with no analytics requirement', () => {
     expect(
-      resolveAnalyticsAccess({ platform: 'linkedin', grantedScopes: [] }),
+      resolveAnalyticsAccess({
+        scopesEnabled: ALL_ANALYTICS_SCOPES_ENABLED,
+        platform: 'linkedin',
+        grantedScopes: [],
+      }),
     ).toBeNull();
   });
 });

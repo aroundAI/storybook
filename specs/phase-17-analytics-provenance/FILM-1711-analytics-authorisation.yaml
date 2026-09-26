@@ -77,8 +77,8 @@ acceptance_criteria:
     met: true
     evidence: null
 remaining:
-  - criterion: "Check F before the deploy: each vendor's consent screen accepts the newly requested scopes (TikTok with production credentials especially)"
-    reason: "Must run before the deploy that carries #289, not after: if TikTok (or Meta) rejects an authorise request naming an unapproved scope, connecting that platform breaks for everyone, publishing included. docs/vendor-review-runbook.md Part 1; result recorded in docs/vendor-review-status.md and FILM-1725 §3c"
+  - criterion: "Check F per platform, then the platform turned on: each vendor's consent screen accepts the newly requested scopes (TikTok with production credentials especially), and only then is the platform added to ANALYTICS_SCOPES_ENABLED"
+    reason: "The new scopes ship switched off: ANALYTICS_SCOPES_ENABLED (server-only; youtube, tiktok, meta) is unset in production, so the deploy carries the pre-#289 request and cannot break connecting or publishing. Each platform is turned on after its Check F passes (docs/vendor-review-runbook.md Part 1); a no-go leaves that platform off until its review passes and holds nothing else. Until a platform is on, its analytics show as not_requested, never zero"
     closed_by: "FILM-1725"
   - criterion: "Deployed: production runs #289"
     reason: "Merged 2026-09-22; production's migrations stop at 20260831113625 (d8c635c1, 2026-08-31), so its code is inferred to predate #289. #289 has no migration of its own, so only the deployed commit shows it. See Deployment in notes"
@@ -397,10 +397,13 @@ notes: |
   on main; production still calls v18/v19 until the same deploy.
 
   **The order at that deploy** (owner):
-  1. FILM-1725 **Check F** — `docs/vendor-review-runbook.md` Part 1 — before
-     deploying. A no-go on a platform holds the deploy for that platform's
-     review.
-  2. Deploy.
+  1. Deploy with `ANALYTICS_SCOPES_ENABLED` unset: every connect request is
+     the pre-#289 one, and each platform's new analytics read as
+     `not_requested` (switch added 2026-09-25, `oauth/analytics-scope-switch.ts`).
+  2. FILM-1725 **Check F** per platform — `docs/vendor-review-runbook.md`
+     Part 1 — on staging with the platform switched on; on a go, add it to
+     `ANALYTICS_SCOPES_ENABLED` in production. A no-go leaves that platform
+     off until its review passes.
   3. FILM-1725 Check D (Meta refresh on the pinned version) and Check G
      (reconnect YouTube; revenue with and without the scope).
   4. Submit the Meta and TikTok reviews (Part 2 of the runbook); on
