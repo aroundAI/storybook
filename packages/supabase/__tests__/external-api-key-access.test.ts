@@ -27,7 +27,6 @@ const READS_CIPHERTEXT_WITH_SERVICE_ROLE = new Set([
   // The workers: createClient with SUPABASE_SERVICE_ROLE_KEY (index.ts).
   'apps/web/lambda/voice-worker/voice-generation.ts',
   'apps/web/lambda/llm-worker/handlers/audio-file-generation.ts',
-  'apps/web/lambda/llm-worker/handlers/dialogue-voice-generation.ts',
 ]);
 
 const KEYS_CHAIN =

@@ -917,7 +917,7 @@ create policy "shared_resources_delete" on public.shared_resources for delete
 -- ==================================
 -- Every role on the account reads which providers are configured; only
 -- account owners add, replace or remove a key (KB-84, owner decision
--- 2026-09-25; 20260925121457_kb84-external-api-key-grants.sql).
+-- 2026-09-25; 20260926134054_kb84-external-api-key-grants.sql).
 
 create or replace function public.can_manage_account_api_keys(p_account_id uuid)
 returns boolean
