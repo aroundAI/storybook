@@ -330,7 +330,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-DS-01 | [component-inventory](./design-system/FILM-DS-01-component-inventory.yaml) | 🟡 PARTIAL | M | - |
+| FILM-DS-01 | [component-inventory](./design-system/FILM-DS-01-component-inventory.yaml) | ✅ DONE | M | - |
 | FILM-DS-02 | [design-tokens](./design-system/FILM-DS-02-design-tokens.yaml) | 🗑️ RETIRED (5f44d0e1) | S | - |
 | FILM-DS-03 | [interaction-patterns](./design-system/FILM-DS-03-interaction-patterns.yaml) | 🟡 PARTIAL | M | FILM-DS-01 |
 | FILM-DS-04 | [accessibility](./design-system/FILM-DS-04-accessibility.yaml) | 🟡 PARTIAL | M | FILM-DS-01 |
@@ -706,7 +706,7 @@ reason when not.
 |-------|-------|-------|---------|----------|---------|------|
 | 1. Foundation | 26 | 0 | 4 | 0 | 5 | 17 |
 | Cross-Cutting | 3 | 0 | 1 | 0 | 1 | 1 |
-| Design System | 5 | 0 | 4 | 0 | 1 | 0 |
+| Design System | 5 | 0 | 3 | 0 | 1 | 1 |
 | 2. Assets | 9 | 0 | 6 | 0 | 3 | 0 |
 | 3. Episodes | 14 | 0 | 7 | 0 | 3 | 4 |
 | 4. Video Gen | 14 | 0 | 2 | 0 | 12 | 0 |
@@ -726,7 +726,7 @@ reason when not.
 | 18. Vendor Sandbox | 6 | 3 | 2 | 0 | 0 | 1 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **233** | **22** | **77** | **2** | **53** | **79** |
+| **TOTAL** | **233** | **22** | **76** | **2** | **53** | **80** |
 
 No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose PR is open keeps the status it has on `main`.
 
@@ -734,7 +734,7 @@ No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose 
 
 | Scope | Total | Done | Partial | Retired | Draft / Deferred |
 |-------|-------|------|---------|---------|------------------|
-| MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 93 | 31 | 28 | 34 | 0 |
+| MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 93 | 32 | 27 | 34 | 0 |
 | Post-MVP (Ph 6–9) | 40 | 13 | 15 | 12 | 0 |
 | Canon (Ph 10–11) | 29 | 6 | 21 | 2 | 0 |
 | Scale & Hooks (Ph 12–13) | 4 | 2 | 0 | 2 | 0 |
