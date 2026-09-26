@@ -9,6 +9,7 @@ import { useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
+import { DeleteAudioAssetDialog } from './delete-audio-asset-dialog';
 import {
   type AudioAsset,
   AudioAssetGrid,
@@ -30,9 +31,11 @@ export function AudioLibraryClient({
     dialog: 'generate' | 'upload' | null;
     /** Uploaded here, shown before the server list catches up */
     added: AudioAsset[];
-    /** Hidden here; nothing deletes them yet */
-    hidden: string[];
-  }>({ dialog: null, added: [], hidden: [] });
+    /** Deleted on the server, dropped before the refresh arrives (KB-95) */
+    deleted: string[];
+    /** The asset whose Delete is being confirmed */
+    confirming: AudioAsset | null;
+  }>({ dialog: null, added: [], deleted: [], confirming: null });
 
   // The server list is the source of truth, so `router.refresh()` shows what
   // it brings. Holding the list in state from `initialAssets` ignored every
@@ -41,14 +44,24 @@ export function AudioLibraryClient({
   const assets = [
     ...state.added.filter((asset) => !serverIds.has(asset.id)),
     ...initialAssets,
-  ].filter((asset) => !state.hidden.includes(asset.id));
+  ].filter((asset) => !state.deleted.includes(asset.id));
 
   const setDialog = (dialog: 'generate' | 'upload' | null) =>
     setState((prev) => ({ ...prev, dialog }));
 
-  const handleDelete = async (assetId: string) => {
-    // TODO: Call delete action
-    setState((prev) => ({ ...prev, hidden: [...prev.hidden, assetId] }));
+  const handleDelete = (assetId: string) =>
+    setState((prev) => ({
+      ...prev,
+      confirming: assets.find((asset) => asset.id === assetId) ?? null,
+    }));
+
+  const handleDeleted = (assetId: string) => {
+    setState((prev) => ({
+      ...prev,
+      confirming: null,
+      deleted: [...prev.deleted, assetId],
+    }));
+    router.refresh();
   };
 
   const handleUploaded = (asset: AudioAsset) => {
@@ -77,6 +90,12 @@ export function AudioLibraryClient({
         onOpenChange={(open) => setDialog(open ? 'upload' : null)}
         projectId={projectId}
         onSuccess={handleUploaded}
+      />
+
+      <DeleteAudioAssetDialog
+        asset={state.confirming}
+        onClose={() => setState((prev) => ({ ...prev, confirming: null }))}
+        onDeleted={handleDeleted}
       />
     </>
   );
