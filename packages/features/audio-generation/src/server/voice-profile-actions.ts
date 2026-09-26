@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -217,10 +217,11 @@ const saveVoiceProfile = enhanceAction(
 
     // Update character_details with the ElevenLabs voice ID directly
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = await (client as any)
+    const { data: updated, error: updateError } = await (client as any)
       .from('character_details')
       .update({ elevenlabs_voice_id: data.providerVoiceId })
-      .eq('asset_id', data.characterAssetId);
+      .eq('asset_id', data.characterAssetId)
+      .select('asset_id');
 
     if (updateError) {
       logger.error(
@@ -229,6 +230,8 @@ const saveVoiceProfile = enhanceAction(
       );
       throw new Error('Failed to save voice profile');
     }
+
+    requireAffectedRows(updated, "You can't change this character's voice.");
 
     logger.info(
       { ...ctx, voiceId: data.providerVoiceId },
@@ -273,10 +276,11 @@ export const deleteVoiceProfileAction = enhanceAction(
 
     // Clear elevenlabs_voice_id from character_details
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = await (client as any)
+    const { data: updated, error: updateError } = await (client as any)
       .from('character_details')
       .update({ elevenlabs_voice_id: null })
-      .eq('asset_id', data.characterAssetId);
+      .eq('asset_id', data.characterAssetId)
+      .select('asset_id');
 
     if (updateError) {
       logger.error(
@@ -285,6 +289,8 @@ export const deleteVoiceProfileAction = enhanceAction(
       );
       throw new Error('Failed to remove voice assignment');
     }
+
+    requireAffectedRows(updated, "You can't change this character's voice.");
 
     logger.info(ctx, 'Voice profile deleted successfully');
 
@@ -321,10 +327,18 @@ export const bulkAssignVoiceAction = enhanceAction(
 
     // Batch update all characters in a single query
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = await (client as any)
+    const { data: updatedRows, error: updateError } = await (client as any)
       .from('character_details')
       .update({ elevenlabs_voice_id: data.providerVoiceId })
-      .in('asset_id', data.characterAssetIds);
+      .in('asset_id', data.characterAssetIds)
+      .select('asset_id');
+
+    // KB-105: RLS leaves out the rows it refused, with no error.
+    const updatedIds = new Set(
+      ((updatedRows ?? []) as Array<{ asset_id: string }>).map(
+        (row) => row.asset_id,
+      ),
+    );
 
     const results: BulkAssignVoiceResponse['results'] = [];
     let assignedCount = 0;
@@ -345,8 +359,17 @@ export const bulkAssignVoiceAction = enhanceAction(
       }
     } else {
       for (const characterAssetId of data.characterAssetIds) {
-        results.push({ characterAssetId, success: true });
-        assignedCount++;
+        if (updatedIds.has(characterAssetId)) {
+          results.push({ characterAssetId, success: true });
+          assignedCount++;
+        } else {
+          results.push({
+            characterAssetId,
+            success: false,
+            error: "You can't change this character's voice.",
+          });
+          failedCount++;
+        }
       }
     }
 
@@ -503,10 +526,18 @@ const autoAssignVoices = enhanceAction(
 
     for (const [voiceId, assetIds] of byVoiceId) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: updateError } = await (client as any)
+      const { data: updatedRows, error: updateError } = await (client as any)
         .from('character_details')
         .update({ elevenlabs_voice_id: voiceId })
-        .in('asset_id', assetIds);
+        .in('asset_id', assetIds)
+        .select('asset_id');
+
+      // KB-105: RLS leaves out the rows it refused, with no error.
+      const updatedIds = new Set(
+        ((updatedRows ?? []) as Array<{ asset_id: string }>).map(
+          (row) => row.asset_id,
+        ),
+      );
 
       for (const assetId of assetIds) {
         const mapping = voiceMap.get(assetId)!;
@@ -516,6 +547,13 @@ const autoAssignVoices = enhanceAction(
             assignedVoiceId: null,
             assignedVoiceName: null,
             reason: `Failed to save: ${updateError.message}`,
+          });
+        } else if (!updatedIds.has(assetId)) {
+          results.push({
+            characterAssetId: assetId,
+            assignedVoiceId: null,
+            assignedVoiceName: null,
+            reason: "You can't change this character's voice.",
           });
         } else {
           results.push({

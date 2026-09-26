@@ -16,6 +16,7 @@ import {
   getAudioCuesAction,
   updateAudioCueAction,
 } from '@kit/audio-generation/server';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
 import { Skeleton } from '@kit/ui/skeleton';
@@ -214,17 +215,19 @@ export const SfxTimeline = React.forwardRef<
 
     setIsSaving(true);
     try {
-      await updateAudioCueAction({
-        cueId: selectedCue.id,
-        prompt: editPrompt.trim(),
-      });
+      await unwrap(
+        updateAudioCueAction({
+          cueId: selectedCue.id,
+          prompt: editPrompt.trim(),
+        }),
+      );
       toast.success('SFX prompt updated');
       setIsEditModalOpen(false);
       setSelectedCue(null);
       void fetchCues();
       onRefresh?.();
-    } catch {
-      toast.error('Failed to update SFX prompt');
+    } catch (error) {
+      toast.error(refusalMessage(error, 'Failed to update SFX prompt'));
     } finally {
       setIsSaving(false);
     }

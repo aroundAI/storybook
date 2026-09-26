@@ -38,12 +38,18 @@ const DEAD = 'no caller in the repo';
 
 // Checked in the per-package KB-105 pull requests that follow this one;
 // each removes its lines.
-const PENDING_AUDIO = 'KB-105: converted in the audio-generation pull request';
 const PENDING_EPISODES = 'KB-105: converted in the episodes pull request';
 const PENDING_PUBLISHING = 'KB-105: converted in the publishing pull request';
 // Owned by another open pull request (2026-09-25); it adopts
 // requireAffectedRows and removes its line.
 const TAG_SCOPE = 'teammate tag-scope';
+// The clone gate (start) and the clone removal are in functions #393 rewrites;
+// it adopts requireAffectedRows there and lowers this count by two.
+const VOICE_CLONE_PR =
+  'KB-105: the two checks are left to #393, which rewrites these functions';
+// #371 retires lip sync and deletes this file; its line goes with it.
+const LIP_SYNC_RETIRED =
+  'KB-105: lip sync is retired by #371, which deletes this file';
 
 const KNOWN: Record<string, [number, string]> = {
   'apps/web/app/api/reports/scheduled/route.ts | scheduled_reports | update': [
@@ -78,29 +84,27 @@ const KNOWN: Record<string, [number, string]> = {
   'packages/features/audio-generation/src/lib/audio-embedding.ts | audio_assets | update':
     [1, BOOKKEEPING],
   'packages/features/audio-generation/src/server/actions.ts | generation_jobs | update':
-    [4, `${FAILURE_MARK} + ${PENDING_AUDIO} + ${RECORDS_RESULT}`],
+    [3, `${FAILURE_MARK} + ${RECORDS_RESULT}`],
   'packages/features/audio-generation/src/server/audio-asset-actions.ts | audio_assets | update':
     [1, BOOKKEEPING],
   'packages/features/audio-generation/src/server/audio-cue-actions.ts | audio_cues | update':
-    [5, `${FAILURE_MARK} + ${JUST_INSERTED} + ${PENDING_AUDIO}`],
+    [3, `${FAILURE_MARK} + ${JUST_INSERTED}`],
   'packages/features/audio-generation/src/server/batch-actions.ts | batch_generation_jobs | update':
-    [3, `${CLEANUP} + ${PENDING_AUDIO}`],
+    [1, CLEANUP],
   'packages/features/audio-generation/src/server/core/audio-asset-core.ts | audio_assets | update':
     [1, BOOKKEEPING],
   'packages/features/audio-generation/src/server/lip-sync-actions.ts | lip_sync_jobs | update':
     [3, `${FAILURE_MARK} + ${RECORDS_RESULT}`],
   'packages/features/audio-generation/src/server/lip-sync-actions.ts | shots | update':
-    [1, PENDING_AUDIO],
+    [1, LIP_SYNC_RETIRED],
   'packages/features/audio-generation/src/server/music-actions.ts | audio_tracks | update':
-    [7, `${FAILURE_MARK} + ${PENDING_AUDIO} + ${RECORDS_RESULT}`],
+    [6, `${FAILURE_MARK} + ${RECORDS_RESULT}`],
   'packages/features/audio-generation/src/server/voice-actions.ts | dialogue_lines | update':
-    [8, `${FAILURE_MARK} + ${PENDING_AUDIO} + ${RECORDS_RESULT}`],
+    [4, `${FAILURE_MARK} + ${RECORDS_RESULT}`],
   'packages/features/audio-generation/src/server/voice-actions.ts | generation_jobs | update':
     [4, `${FAILURE_MARK} + ${RECORDS_RESULT}`],
   'packages/features/audio-generation/src/server/voice-clone-actions.ts | voice_profiles | update':
-    [4, `${FAILURE_MARK} + ${PENDING_AUDIO} + ${RECORDS_RESULT}`],
-  'packages/features/audio-generation/src/server/voice-profile-actions.ts | character_details | update':
-    [4, PENDING_AUDIO],
+    [4, `${FAILURE_MARK} + ${RECORDS_RESULT} + ${VOICE_CLONE_PR}`],
   'packages/features/content-analytics/src/server/analytics-sync-cron.ts | platform_connections | update':
     [1, ADMIN],
   'packages/features/content-analytics/src/server/analytics-sync-cron.ts | publishes | update':
