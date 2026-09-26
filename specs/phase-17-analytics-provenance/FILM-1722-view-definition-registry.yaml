@@ -297,19 +297,21 @@ notes: |
   sign-off before implementation, not after".
 
   A sweep on 2026-09-22 found these computing a comparison or a per-view rate
-  over video_metrics.views with no knowledge of the boundary. Today is 26 days
-  after 2026-08-27, so every one of them with a YouTube window of 28 days or
-  more is currently spanning it:
+  over video_metrics.views with no knowledge of the boundary. Re-swept on
+  2026-09-25 (29 days after 2026-08-27, so every YouTube window of 28 days or
+  more spans it); none of them yet reads the registry. The one production
+  reader is ingest, which dates `engaged_views` from it
+  (packages/features/content-analytics/src/server/ingest.ts:115).
 
   | Site | What it compares |
   |---|---|
-  | computeCohortGrowth → getCohortCurvesAction → cohort-curves-chart.tsx | cohort median views against the previous cohort — the literal "cohort median, growth figure" of §5 |
-  | account-dashboard-actions.ts previousPeriodTotals → company-dashboard.tsx | period-over-period totals |
-  | language-analytics.ts viewsChange → language-analytics-cards.tsx | views vs the previous period, per language |
-  | queryRollingViews, queryMedianViewsPerVideo, queryBackCatalogShare | view series and medians over long windows |
-  | performance-chart.tsx, language-trend-chart.tsx (and comparison-chart.tsx, which overlays whatever current/previous series it is handed) | views over time, drawn straight across the boundary |
-  | engagement rate in aggregation-queries.ts, language-analytics.ts, account-dashboard-actions.ts | (likes + comments + shares) / views — among the duplicate sites FILM-1713 §2 collapses |
-  | RPM in revenue-actions.ts, lib/segment-stats.ts | revenue per thousand views |
+  | computeCohortGrowth (packages/clickhouse/src/lib/cohort-growth.ts:72) → getCohortCurvesAction (packages/features/content-analytics/src/server/deep-dive-actions.ts:184) → deep-dive/cohort-curves-chart.tsx | cohort median views against the previous cohort — the literal "cohort median, growth figure" of §5 |
+  | previousPeriodTotals (packages/features/content-analytics/src/server/account-dashboard-actions.ts:218, :257) → company-dashboard.tsx:42 | period-over-period totals |
+  | viewsChange (packages/features/content-analytics/src/server/language-analytics.ts:295) → language-analytics-cards.tsx:137 | views vs the previous period, per language |
+  | queryMedianViewsPerVideo (packages/clickhouse/src/queries-advanced.ts:273), queryRollingViews (:378), queryBackCatalogShare (:566) | view series and medians over long windows |
+  | performance-chart.tsx, language-trend-chart.tsx, comparison-chart.tsx (packages/features/content-analytics/src/components/) | views over time, drawn straight across the boundary |
+  | engagement rate: packages/features/content-analytics/src/server/aggregation-queries.ts:36, account-dashboard-actions.ts:197, language-analytics.ts:63 | (likes + comments + shares) / views — among the duplicate sites FILM-1713 §2 collapses |
+  | RPM: packages/features/content-analytics/src/server/revenue-actions.ts:39, packages/clickhouse/src/lib/segment-stats.ts:61 | revenue per thousand views |
 
   Who adopts it:
 
@@ -324,6 +326,34 @@ notes: |
   the 2026-08-27 YouTube boundary waits for FILM-1707/FILM-1719 and FILM-1713/
   FILM-1715. It does not ship separately. Until then the cohort curves go on
   computing growth across the boundary, as §11 records.
+
+  ## 13. What adopters call (2026-09-25)
+
+  Two registry additions so adoption is one call per site, not a
+  re-derivation of §5 at each:
+
+  - `viewsDenominatorFor(platform, from, to, { format? })` — the one place a
+    views denominator is chosen. `views` when the range is one definition;
+    the stored continuous alternative (`engaged_views`, `video_metrics`,
+    migration 012) when a change falls inside the range and the alternative
+    covers all of it, with `instead` saying which change it bridges;
+    otherwise `kind: 'suppressed'` with the registry's reason and date,
+    carrying the alternative with `coversRange: false` where it starts too
+    late. It never returns a number, and the `column` type is bound to
+    `VideoMetric`'s keys. Built on `comparableAcross`, and a test holds the
+    two to agreement across every platform. `STORED_ALTERNATIVES` lists which
+    alternatives ingest actually keeps; an alternative the registry knows but
+    nothing stores is suppressed, not offered.
+  - `aliases` on an organic definition: Instagram's `total_views_count`
+    (Media node) resolves to `instagram.total_views` (insights metric) —
+    "one number reached two ways", and view-definition-sources.test.ts
+    requires the reference to name the alias and the field on one line.
+
+  Guards: tooling/mutation-guards/film-1722.json (VD1–VD5). FILM-1713 and
+  FILM-1715 adopt `viewsDenominatorFor`; FILM-1707/1719 adopt
+  `viewDefinitionChangesBetween` for charts. This spec stays PARTIAL until
+  they do (§12).
+
 feature:
   database: null
   queries:
@@ -335,6 +365,9 @@ feature:
       file: "packages/clickhouse/src/lib/view-definitions.ts"
     - name: "viewDefinitionChangesBetween"
       purpose: "The definition-change boundaries within a date range, for chart markers"
+      file: "packages/clickhouse/src/lib/view-definitions.ts"
+    - name: "viewsDenominatorFor"
+      purpose: "Which video_metrics column a views figure over a range may use (views or engaged_views), under which definitions, or the named reason it may not be computed; never a number"
       file: "packages/clickhouse/src/lib/view-definitions.ts"
   actions: []
   ui: []

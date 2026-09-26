@@ -71,6 +71,9 @@ acceptance_criteria:
   - text: "A video excluded from the cohort denominator is also suppressed on the numerator side"
     met: false
     reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "A cohort median, growth figure or benchmark whose window crosses a view-definition change is computed on the continuous alternative where it covers the window, and otherwise suppressed with `view_definition_changed` and the date — both via `viewsDenominatorFor` (FILM-1722)"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT; handed on by FILM-1722 §11–§13"
 open_questions: []
 feature:
   database: null

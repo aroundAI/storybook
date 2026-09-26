@@ -13,7 +13,7 @@
  * `docs/platform-capability-reference.md`; the binding test lives in
  * `@kit/content-analytics` beside the one that parses that document.
  */
-import type { AnalyticsPlatform } from '../types';
+import type { AnalyticsPlatform, VideoMetric } from '../types';
 
 /**
  * Deliberately wider than `AnalyticsPlatform`. Facebook's four concurrent
@@ -95,6 +95,12 @@ export type ViewDefinition = ViewDefinitionFacts &
         availability: 'organic';
         /** The provider's own field name. */
         field: string;
+        /**
+         * Other spellings the vendor uses for this same number, e.g. a Media
+         * node field beside its insights metric. Each must be named with
+         * `field` on one line of the capability reference.
+         */
+        aliases?: readonly string[];
         /** The field-index block in the capability reference that documents `field`. */
         surface: string;
       }
@@ -269,6 +275,8 @@ export const VIEW_DEFINITIONS: readonly ViewDefinition[] = [
     id: 'instagram.total_views',
     platform: 'instagram',
     field: 'total_views',
+    // "The two names for each aggregate are one number reached two ways"
+    aliases: ['total_views_count'],
     surface: 'instagram/media-insights-2026',
     availability: 'organic',
     label: 'Total views (all surfaces, boosted placements and replays)',
@@ -513,7 +521,11 @@ function seriesFor(
     return onPlatform.filter((entry) => entry.role === 'views_column');
   }
 
-  const direct = onPlatform.filter((entry) => entry.field === field);
+  const direct = onPlatform.filter(
+    (entry) =>
+      entry.availability === 'organic' &&
+      (entry.field === field || (entry.aliases ?? []).includes(field)),
+  );
 
   if (direct.length === 0) {
     throw new RangeError(
@@ -716,4 +728,113 @@ export function comparableAcross(
   }
 
   return { comparable: true, definition };
+}
+
+/** The `video_metrics` columns a views denominator can be read from. */
+export type ViewsColumn = Extract<keyof VideoMetric, 'views' | 'engaged_views'>;
+
+/**
+ * Continuous alternatives that are stored, and where. An alternative the
+ * registry knows but ingest does not keep cannot be read, so it is not here
+ * and a range needing it is suppressed.
+ */
+const STORED_ALTERNATIVES: Readonly<Record<string, ViewsColumn>> = {
+  'youtube.engagedViews': 'engaged_views',
+};
+
+/**
+ * Which series a views figure over `from`–`to` may be computed on, and under
+ * which definitions, or why it may not be computed at all. Never a number:
+ * the caller reads the column it is given and stamps the definitions on
+ * what it computes (FILM-1713), or shows the reason in place of a figure.
+ */
+export type ViewsDenominator =
+  | {
+      kind: 'column';
+      column: ViewsColumn;
+      /** What the figure was measured under; two for a pooled YouTube figure between format changes. */
+      definitions: readonly ViewDefinition[];
+      /** Present when `views` could not be used: the change the alternative bridges. */
+      instead?: {
+        reason: 'view_definition_changed';
+        changedOn: string;
+        changes: readonly ViewDefinitionChange[];
+      };
+    }
+  | {
+      kind: 'suppressed';
+      reason: 'view_definition_changed';
+      changedOn: string;
+      changes: readonly ViewDefinitionChange[];
+      /** Offered with `coversRange: false` where it exists but starts too late. */
+      continuousAlternative: ContinuousAlternative | null;
+    }
+  | { kind: 'suppressed'; reason: 'no_single_view_definition' }
+  | {
+      kind: 'suppressed';
+      reason: 'not_defined_for_whole_range';
+      definedFrom: string;
+    };
+
+function definitionsOf(
+  lookup: ViewDefinitionLookup,
+): readonly ViewDefinition[] {
+  if (lookup.kind === 'single') return [lookup.definition];
+  if (lookup.kind === 'by_format') return [lookup.shorts, lookup.other];
+  return [];
+}
+
+/**
+ * The one place a views denominator is chosen (FILM-1722): `views` when the
+ * range is one definition, the stored continuous alternative when a change
+ * falls inside it and the alternative covers the whole range, and otherwise
+ * the registry's own reason, unchanged.
+ */
+export function viewsDenominatorFor(
+  platform: PlatformId,
+  from: string,
+  to: string,
+  options: Pick<ViewDefinitionOptions, 'format'> = {},
+): ViewsDenominator {
+  const comparability = comparableAcross(platform, from, to, options);
+
+  if (comparability.comparable) {
+    return {
+      kind: 'column',
+      column: 'views',
+      definitions: definitionsOf(comparability.definition),
+    };
+  }
+
+  if (comparability.reason !== 'view_definition_changed') {
+    return comparability.reason === 'no_single_view_definition'
+      ? { kind: 'suppressed', reason: 'no_single_view_definition' }
+      : {
+          kind: 'suppressed',
+          reason: 'not_defined_for_whole_range',
+          definedFrom: comparability.definedFrom,
+        };
+  }
+
+  const { changedOn, changes, continuousAlternative } = comparability;
+  const column = continuousAlternative
+    ? STORED_ALTERNATIVES[continuousAlternative.definition.id]
+    : undefined;
+
+  if (continuousAlternative?.coversRange && column) {
+    return {
+      kind: 'column',
+      column,
+      definitions: [continuousAlternative.definition],
+      instead: { reason: 'view_definition_changed', changedOn, changes },
+    };
+  }
+
+  return {
+    kind: 'suppressed',
+    reason: 'view_definition_changed',
+    changedOn,
+    changes,
+    continuousAlternative,
+  };
 }

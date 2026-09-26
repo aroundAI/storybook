@@ -7,6 +7,7 @@ import {
   comparableAcross,
   viewDefinitionAt,
   viewDefinitionChangesBetween,
+  viewsDenominatorFor,
 } from '../src/lib/view-definitions';
 
 function definition(id: string): ViewDefinition {
@@ -532,5 +533,131 @@ describe('viewDefinitionChangesBetween', () => {
     expect(
       viewDefinitionChangesBetween('youtube', '2026-08-27', '2026-09-22'),
     ).toEqual([]);
+  });
+});
+
+describe('field aliases (FILM-1722)', () => {
+  it('resolves total_views_count to the same definition as total_views', () => {
+    expect(
+      viewDefinitionAt('instagram', '2026-05-01', {
+        field: 'total_views_count',
+      }),
+    ).toEqual({
+      kind: 'single',
+      definition: definition('instagram.total_views'),
+    });
+  });
+
+  it('resolves the two spellings to the same series across a range', () => {
+    expect(
+      comparableAcross('instagram', '2026-05-01', '2026-09-01', {
+        field: 'total_views_count',
+      }),
+    ).toEqual(
+      comparableAcross('instagram', '2026-05-01', '2026-09-01', {
+        field: 'total_views',
+      }),
+    );
+  });
+});
+
+describe('viewsDenominatorFor (FILM-1722)', () => {
+  it('reads views where the range is one definition', () => {
+    const result = viewsDenominatorFor('youtube', '2026-08-28', '2026-09-20');
+
+    expect(result).toMatchObject({ kind: 'column', column: 'views' });
+    expect(
+      result.kind === 'column' && result.definitions.map((d) => d.id),
+    ).toEqual(['youtube.views.2026-08-27']);
+  });
+
+  it('reads engaged_views across the 2026-08-27 change, which it covers', () => {
+    const result = viewsDenominatorFor('youtube', '2026-08-01', '2026-09-20');
+
+    expect(result).toMatchObject({
+      kind: 'column',
+      column: 'engaged_views',
+      instead: { reason: 'view_definition_changed', changedOn: '2026-08-27' },
+    });
+    expect(
+      result.kind === 'column' && result.definitions.map((d) => d.id),
+    ).toEqual(['youtube.engagedViews']);
+  });
+
+  it('refuses a range the alternative does not cover, and says from when it does', () => {
+    const result = viewsDenominatorFor('youtube', '2025-01-01', '2025-12-01');
+
+    expect(result).toMatchObject({
+      kind: 'suppressed',
+      reason: 'view_definition_changed',
+      changedOn: '2025-03-31',
+      continuousAlternative: {
+        field: 'engagedViews',
+        coversRange: false,
+      },
+    });
+    expect(result).not.toHaveProperty('column');
+  });
+
+  it('names both definitions of a pooled YouTube figure between the two changes', () => {
+    const result = viewsDenominatorFor('youtube', '2025-07-01', '2025-08-01');
+
+    expect(result).toMatchObject({ kind: 'column', column: 'views' });
+    expect(
+      result.kind === 'column' && result.definitions.map((d) => d.id),
+    ).toEqual(['youtube.views.shorts.2025-03-31', 'youtube.views.legacy']);
+  });
+
+  it('refuses Facebook, which has no single view definition', () => {
+    expect(viewsDenominatorFor('facebook', '2026-01-01', '2026-02-01')).toEqual(
+      { kind: 'suppressed', reason: 'no_single_view_definition' },
+    );
+  });
+
+  it('reads views on a platform with no change in range', () => {
+    expect(
+      viewsDenominatorFor('tiktok', '2024-01-01', '2026-09-20'),
+    ).toMatchObject({
+      kind: 'column',
+      column: 'views',
+      definitions: [{ id: 'tiktok.display.view_count' }],
+    });
+  });
+
+  it('never returns a number, and agrees with comparableAcross everywhere', () => {
+    const ranges: Array<[string, string]> = [
+      ['2024-01-01', '2024-06-01'],
+      ['2025-01-01', '2025-12-01'],
+      ['2025-04-24', '2025-06-30'],
+      ['2025-07-01', '2026-08-26'],
+      ['2026-08-01', '2026-09-20'],
+      ['2026-08-27', '2026-09-20'],
+    ];
+
+    for (const platform of PLATFORM_IDS) {
+      for (const [from, to] of ranges) {
+        const result = viewsDenominatorFor(platform, from, to);
+        const comparability = comparableAcross(platform, from, to);
+
+        expect(
+          Object.values(result).some((value) => typeof value === 'number'),
+        ).toBe(false);
+
+        if (comparability.comparable) {
+          expect(result, `${platform} ${from}..${to}`).toMatchObject({
+            kind: 'column',
+            column: 'views',
+          });
+        } else {
+          const covered =
+            comparability.reason === 'view_definition_changed' &&
+            comparability.continuousAlternative?.coversRange === true;
+
+          expect(result.kind, `${platform} ${from}..${to}`).toBe(
+            covered ? 'column' : 'suppressed',
+          );
+        }
+      }
+    }
   });
 });

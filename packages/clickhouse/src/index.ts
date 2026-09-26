@@ -153,6 +153,7 @@ export {
   comparableAcross,
   viewDefinitionAt,
   viewDefinitionChangesBetween,
+  viewsDenominatorFor,
 } from './lib/view-definitions';
 export type {
   ContinuousAlternative,
@@ -166,4 +167,6 @@ export type {
   ViewDefinitionLookup,
   ViewDefinitionOptions,
   ViewFormat,
+  ViewsColumn,
+  ViewsDenominator,
 } from './lib/view-definitions';
