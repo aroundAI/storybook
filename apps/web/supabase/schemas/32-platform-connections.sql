@@ -144,3 +144,44 @@ COMMENT ON TABLE public.platform_connections IS 'OAuth connections to publishing
 COMMENT ON COLUMN public.platform_connections.access_token_encrypted IS 'Encrypted OAuth access token';
 COMMENT ON COLUMN public.platform_connections.refresh_token_encrypted IS 'Encrypted OAuth refresh token';
 COMMENT ON COLUMN public.platform_connections.metadata IS 'Platform-specific metadata (e.g., channel info, avatar URL)';
+
+-- KB-98 (20260925120329): whether a channel is null or belongs to an
+-- account, for every policy on a row that names one. SECURITY DEFINER: an
+-- ownership fact, the same for every caller.
+CREATE OR REPLACE FUNCTION public.connection_in_account(connection_id uuid, account_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  select connection_in_account.connection_id is null
+      or exists (
+           select 1 from public.platform_connections c
+            where c.id = connection_in_account.connection_id
+              and c.account_id = connection_in_account.account_id
+         );
+$$;
+
+REVOKE ALL ON FUNCTION public.connection_in_account(uuid, uuid) FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.connection_in_account(uuid, uuid) TO authenticated, service_role;
+
+-- A channel (and its tokens) stays in its account; signed-in callers only.
+CREATE OR REPLACE FUNCTION public.keep_account_id()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+begin
+  if auth.uid() is not null and new.account_id is distinct from old.account_id then
+    raise exception 'A % cannot move to another account', tg_argv[0]
+      using errcode = '42501';
+  end if;
+
+  return new;
+end;
+$$;
+
+CREATE TRIGGER platform_connections_keep_account
+  BEFORE UPDATE OF account_id ON public.platform_connections
+  FOR EACH ROW EXECUTE FUNCTION public.keep_account_id('channel');

@@ -1,5 +1,7 @@
 'use server';
 
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 import { z } from 'zod';
 
 import { querySegmentPerformance } from '@kit/clickhouse/server';
@@ -7,6 +9,7 @@ import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
 import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
+import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
@@ -19,6 +22,7 @@ import {
   TagDimensionSchema,
   UpdateTagSchema,
 } from '../lib/schemas/taxonomy.schema';
+import { tagScopeRefusal } from '../lib/tag-scope';
 import { resolveTagMinSample } from '../lib/ypp-targets';
 import { upsertVideoDims } from './dim-sync';
 import { assertScopeAccess } from './scope-access';
@@ -145,11 +149,64 @@ export const listTagsAction = enhanceAction(
 );
 
 /**
+ * Refuses tags from another account than the videos' (KB-98), before any
+ * existing tag is cleared. Read through the caller's client, so RLS decides
+ * what is visible and the rule in `tagScopeRefusal` decides the rest.
+ */
+async function assertTagsInPublishAccount(
+  client: SupabaseClient<Database>,
+  publishIds: string[],
+  tagIds: string[],
+): Promise<void> {
+  const publishes = await fetchAllByIds<{
+    id: string;
+    episodes: { projects: { account_id: string } };
+  }>(
+    publishIds,
+    (chunk, from, to) =>
+      client
+        .from('publishes')
+        .select('id, episodes!inner(projects!inner(account_id))')
+        .in('id', chunk)
+        .order('id')
+        .range(from, to),
+    'publishes to tag',
+  );
+
+  const tags = await fetchAllByIds<{ id: string; account_id: string }>(
+    tagIds,
+    (chunk, from, to) =>
+      client
+        .from('content_tags')
+        .select('id, account_id')
+        .in('id', chunk)
+        .order('id')
+        .range(from, to),
+    'tags to assign',
+  );
+
+  const refusal = tagScopeRefusal({
+    publishIds,
+    tagIds,
+    publishAccounts: new Map(
+      publishes.map((row) => [row.id, row.episodes.projects.account_id]),
+    ),
+    tagAccounts: new Map(tags.map((row) => [row.id, row.account_id])),
+  });
+
+  if (refusal) {
+    throw new ActionRefusal(refusal);
+  }
+}
+
+/**
  * Replaces the full tag set on one publish.
  */
-export const setPublishTagsAction = enhanceAction(
+const setPublishTags = enhanceAction(
   async ({ publishId, tagIds }) => {
     const client = getSupabaseServerClient();
+
+    await assertTagsInPublishAccount(client, [publishId], tagIds);
 
     const { error: deleteError } = await client
       .from('publish_tags')
@@ -179,13 +236,17 @@ export const setPublishTagsAction = enhanceAction(
   { schema: SetPublishTagsSchema, auth: true },
 );
 
+export const setPublishTagsAction = returnRefusals(setPublishTags);
+
 /**
  * Applies tags across many publishes — the backfill path for tagging an
  * existing library.
  */
-export const bulkTagPublishesAction = enhanceAction(
+const bulkTagPublishes = enhanceAction(
   async ({ publishIds, tagIds, replace }) => {
     const client = getSupabaseServerClient();
+
+    await assertTagsInPublishAccount(client, publishIds, tagIds);
 
     if (replace) {
       const { error } = await client
@@ -217,6 +278,8 @@ export const bulkTagPublishesAction = enhanceAction(
   },
   { schema: BulkTagPublishesSchema, auth: true },
 );
+
+export const bulkTagPublishesAction = returnRefusals(bulkTagPublishes);
 
 /**
  * Tags currently assigned to a set of publishes, for the content table

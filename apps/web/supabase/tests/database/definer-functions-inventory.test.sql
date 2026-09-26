@@ -45,6 +45,10 @@ select results_eq(
        ('public.can_write_project_storage'),
        -- episode in the project and can_write_project (KB-27)
        ('public.commit_canon_changes'),
+       -- no caller check: answers only whether the channel id belongs to the
+       -- account id, both supplied by the caller — an oracle to someone who
+       -- already holds both UUIDs, and no row data (KB-98)
+       ('public.connection_in_account'),
        -- project_members owner/admin/member
        ('public.create_character_with_details'),
        -- personal owner or has_role_on_account
@@ -77,6 +81,10 @@ select results_eq(
        ('public.set_fact_verification'),
        -- project_members owner/admin
        ('public.soft_delete_episode'),
+       -- no caller check: answers only whether the tag id belongs to the
+       -- account id, both supplied by the caller — an oracle to someone who
+       -- already holds both UUIDs, and no row data (KB-98)
+       ('public.tag_in_account'),
        -- project_members owner/admin/member
        ('public.update_episode_with_lock'),
        -- can_write_project (KB-28)
