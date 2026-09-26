@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 import { loadAndRenderPrompt } from '../src/lib/server/prompt-loader';
 import { PROMPT_REGISTRY } from '../src/lib/server/prompt-registry';
@@ -319,5 +320,46 @@ describe('every templateSlug names a registered prompt', () => {
       .map((call) => `${call.file}: '${call.slug}'`);
 
     expect(unregistered).toEqual([]);
+  });
+});
+
+/**
+ * KB-107. `executeLLM` treats `output.wrapper_key` as the key of an array
+ * and throws for anything else, while four prompts used it for an object
+ * their callers read whole - no reply could satisfy both. A wrapper_key is
+ * allowed only where the prompt's own Zod schema says that key is an array.
+ */
+describe('a wrapper_key names an array', () => {
+  const wrapped = Object.entries(PROMPT_REGISTRY).filter(
+    ([, template]) => template.output?.wrapper_key,
+  );
+
+  it('finds the prompts that use one', () => {
+    expect(wrapped.length).toBeGreaterThan(0);
+  });
+
+  it.each(wrapped)('%s', (_key, template) => {
+    const { wrapper_key: key, schema } = template.output!;
+
+    expect(
+      schema?.type,
+      `${key}: a wrapper_key needs a Zod schema to check it against`,
+    ).toBe('zod');
+
+    const compiled = eval(`(function(z) { return ${schema!.definition}; })`)(
+      z,
+    ) as z.ZodTypeAny;
+    const shape = (compiled as z.AnyZodObject).shape as Record<
+      string,
+      z.ZodTypeAny
+    >;
+    let field = shape[key!];
+    while (field && !(field instanceof z.ZodArray) && 'unwrap' in field) {
+      field = (field as z.ZodOptional<z.ZodTypeAny>).unwrap();
+    }
+
+    expect(field, `${key} is not an array in the schema`).toBeInstanceOf(
+      z.ZodArray,
+    );
   });
 });

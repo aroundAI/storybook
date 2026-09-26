@@ -122,6 +122,8 @@ const researcher = z.object({
 /** `movie/act-context-extraction` → `agent/skills/act-context-skill.ts` reads `data.bridge`. */
 const actContext = z.object({
   bridge: z.object({
+    actNumber: z.number().int().min(1).max(5),
+    actTitle: z.string(),
     characterStates: z.array(
       z.object({
         name: z.string(),

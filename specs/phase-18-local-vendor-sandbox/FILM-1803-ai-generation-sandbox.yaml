@@ -34,8 +34,8 @@ acceptance_criteria:
     met: true
     evidence: "every-prompt.test.ts — ajv against the prompt's own schema, through both executors"
   - text: "Each of the 9 schema-less prompts has a template, and its output parses through the app's path"
-    met: false
-    reason: "all nine have templates (apps/vendor-sandbox/src/llm/generate/templates.ts); five (dialogue-translation and the four news-generation prompts) parse through the app's path since KB-106 was fixed. The four wrapper_key prompts cannot, whatever the reply: KB-107. They are KNOWN_BROKEN in every-prompt.test.ts, which fails when KB-107 is fixed"
+    met: true
+    evidence: "apps/vendor-sandbox/src/llm/generate/templates.ts; every-prompt.test.ts runs all nine through the executor that uses them since KB-106 (#366) and KB-107 (#369) were fixed"
   - text: "An unrecognised prompt is answered and logged as unrecognised, never silently"
     met: true
     evidence: "apps/vendor-sandbox/__tests__/coverage.test.ts — 200 '{}', ledger identified: unrecognised, a warning starting UNRECOGNISED PROMPT"
@@ -61,9 +61,6 @@ remaining:
   - criterion: "With local.env loaded, no inline AI action a user can trigger reaches a real AI vendor"
     reason: "local-env.sh wiring and the live run with an egress guard"
     closed_by: "FILM-1803"
-  - criterion: "Each of the 9 schema-less prompts has a template, and its output parses through the app's path"
-    reason: "the four wrapper_key prompts fail in the app's own executor"
-    closed_by: "KB-107"
   - criterion: "The nine studio orchestrators run to success against the sandbox"
     reason: "agent-protocol driver not built yet"
     closed_by: "FILM-1803"
@@ -131,7 +128,8 @@ notes: |
     and the act-context bridge. Fixed: the files now use `system_prompts[]`,
     and prompt-format.test.ts renders every prompt through the real loader.
   - KB-107: behind it, four wrapper_key prompts are unwrapped by executeLLM
-    only when the value is an array, while every caller reads an object.
+    only when the value is an array, while every caller reads an object. Fixed: the four prompts ask for the
+    wrapper their callers read, and no longer set wrapper_key.
 
   ## 3. Vendors: what the app still calls (2026-09-25)
 
@@ -163,7 +161,7 @@ notes: |
   | Ideation | generateStoryIdeasAction | queueLlmJob('story-ideation') → llm-worker story-ideation → runIdeationOrchestrator | Gemini | Enqueued |
   | Story | generateFullStoryAction | queueLlmJob('story-generation') → runStoryOrchestrator | Gemini | Enqueued |
   | Story | refineStoryAction | queueLlmJob → story-refinement handler | Gemini | Enqueued |
-  | Story | validateContentInlineAction | executeLLM('canon-extraction') | Gemini | Inline (fails today: KB-107) |
+  | Story | validateContentInlineAction | executeLLM('canon-extraction') | Gemini | Inline |
   | Screenplay | convertToScreenplayAction | queueLlmJob → runScreenplayOrchestrator | Gemini | Enqueued |
   | Shot list | generateShotListAction | queueLlmJob → runShotOrchestrator | Gemini | Enqueued |
   | Audio cues | generateAudioCuesAction, generateAudioForCueAction | queueLlmJob → audio-cue-generation / audio-file-generation | Gemini, ElevenLabs | Enqueued |

@@ -34,6 +34,6 @@
     },
     "output": {
         "type": "object",
-        "wrapper_key": "bridge"
+        "schema_for_llm": "{ bridge: { actNumber: number, actTitle: string, characterStates: [{ name: string, isAlive: boolean, emotionalState: string, location: string }], openThreads: string[], resolvedThreads: string[], promises: string[], currentLocation: { name: string, presentCharacters: string[] }, toneVector: { [dimension: string]: number (0-1) }, stakesLevel: number (1-10), tensionLevel: number (1-10), carryForwardContext: string } }"
     }
 }
