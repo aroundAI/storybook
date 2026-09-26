@@ -786,6 +786,15 @@ export default $config({
         // WebSocket configuration
         CONNECTIONS_TABLE_NAME: connectionsTable.name,
         WEBSOCKET_ENDPOINT: websocket.managementEndpoint,
+
+        // Storage: what the app's public URLs look like, so a thumbnail is
+        // sent only when it is one of the episode's own uploads (KB-104).
+        // The same values the web app reads; unset R2_PUBLIC_URL on R2 means
+        // every thumbnail is dropped rather than fetched.
+        STORAGE_PROVIDER: process.env.STORAGE_PROVIDER || 'r2',
+        ...(process.env.R2_PUBLIC_URL && {
+          R2_PUBLIC_URL: process.env.R2_PUBLIC_URL,
+        }),
       },
       nodejs: {
         install: [

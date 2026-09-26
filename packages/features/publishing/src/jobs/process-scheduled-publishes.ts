@@ -3,6 +3,7 @@ import 'server-only';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
+import { ownedEpisodeThumbnail } from '../lib/owned-thumbnail';
 import { ensureValidToken } from '../lib/token-refresh';
 import type { Platform } from '../lib/types';
 import type { YouTubeChannelDeclaration } from '../lib/youtube-declaration';
@@ -369,7 +370,10 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
           title: publish.title ?? '',
           description: publish.description ?? '',
           tags: publish.tags ?? [],
-          thumbnailUrl: publish.thumbnail_url ?? episode.thumbnail_url,
+          // KB-104: the row is writable by any project writer
+          thumbnailUrl:
+            ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id) ??
+            ownedEpisodeThumbnail(episode.thumbnail_url, publish.episode_id),
           platformSpecific: publish.metadata ?? {},
         },
       );

@@ -31,6 +31,7 @@ import type {
   PublishJobMessage,
   SocialTextPostJobMessage,
 } from '@kit/publishing/lib/job-types';
+import { ownedEpisodeThumbnail } from '@kit/publishing/lib/owned-thumbnail';
 import type { YouTubeChannelDeclaration } from '@kit/publishing/lib/youtube-declaration';
 import { LINKEDIN_REST_VERSION, vendorUrl } from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
@@ -277,6 +278,19 @@ async function processPublish(job: PublishJobMessage): Promise<void> {
 
   // 1. The publish row's own connection, of the episode's account (KB-109)
   await publishJobConnection(supabase, job);
+
+  // KB-104: the handlers download the thumbnail and send it to the channel,
+  // and it comes from a row any project writer can update. Only one of the
+  // episode's own uploads goes; anything else is dropped, not fetched.
+  if (job.thumbnailUrl) {
+    const thumbnailUrl = ownedEpisodeThumbnail(job.thumbnailUrl, job.episodeId);
+    if (!thumbnailUrl) {
+      console.warn(
+        `[Publish Worker] Dropped a thumbnail that is not one of episode ${job.episodeId}'s uploads (publish ${job.publishId})`,
+      );
+    }
+    job.thumbnailUrl = thumbnailUrl ?? undefined;
+  }
 
   // 2. Get valid access token
   const tokenResult = await checkConnectionToken(

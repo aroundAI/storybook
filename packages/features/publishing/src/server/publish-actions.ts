@@ -19,6 +19,7 @@ import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { DeleteJobMessage } from '../lib/job-types';
+import { ownedEpisodeThumbnail } from '../lib/owned-thumbnail';
 import {
   GetPublishStatusSchema,
   PublishToAllSchema,
@@ -26,7 +27,6 @@ import {
 } from '../lib/schemas/publish.schema';
 import { TAKEDOWN_REFUSAL, canTakeDown, projectRoleOf } from '../lib/takedown';
 import type { Platform, PublishResult } from '../lib/types';
-import { validateContentUrl } from '../lib/url-validation';
 import {
   type YouTubeChannelDeclaration,
   type YouTubeDeclaration,
@@ -210,6 +210,27 @@ const publishToAllHandler = enhanceAction(
       );
     }
 
+    // KB-104: a thumbnail is downloaded and sent to the channel, so only one
+    // of this episode's own uploads may be named. Checked before anything is
+    // written, so a refused publish leaves no row behind.
+    if (
+      platforms.some(
+        (platform) =>
+          platform.thumbnailUrl &&
+          !ownedEpisodeThumbnail(platform.thumbnailUrl, episodeId),
+      )
+    ) {
+      throw new ActionRefusal(
+        "That thumbnail isn't one of this episode's uploads. Choose one of the episode's thumbnails.",
+      );
+    }
+
+    // The episode's own thumbnail, when it is one of its uploads
+    const episodeThumbnail = ownedEpisodeThumbnail(
+      episode.thumbnail_url,
+      episodeId,
+    );
+
     // KB-30: every YouTube upload declares an audience and a category the
     // creator chose. Resolve them all before anything is written, so a
     // publish nobody declared leaves no row behind.
@@ -270,7 +291,7 @@ const publishToAllHandler = enhanceAction(
               title: platform.title,
               description: platform.description,
               tags: platform.tags,
-              thumbnail_url: platform.thumbnailUrl ?? episode.thumbnail_url,
+              thumbnail_url: platform.thumbnailUrl ?? episodeThumbnail,
               status: useServerScheduling ? 'scheduled' : 'publishing',
               scheduled_at: platform.scheduledAt ?? null,
               metadata: {
@@ -364,10 +385,7 @@ const publishToAllHandler = enhanceAction(
           );
           const finalVideoUrl = needsTunnel ? getTunnelUrl(videoUrl) : videoUrl;
 
-          // Validate URLs for SSRF protection (skip in development with tunnel)
-          const safeThumbnailUrl = validateContentUrl(
-            platform.thumbnailUrl ?? episode.thumbnail_url,
-          );
+          const thumbnailUrl = platform.thumbnailUrl ?? episodeThumbnail;
 
           // Upload to platform (immediately or with native scheduling)
           const uploadResult = await uploadToPlatform(
@@ -379,7 +397,7 @@ const publishToAllHandler = enhanceAction(
               title: platform.title,
               description: platform.description,
               tags: platform.tags,
-              thumbnailUrl: safeThumbnailUrl,
+              thumbnailUrl,
               scheduledAt: platform.scheduledAt
                 ? new Date(platform.scheduledAt)
                 : undefined,
@@ -662,7 +680,9 @@ const retryPublish = enhanceAction(
           title: publish.title ?? '',
           description: publish.description ?? '',
           tags: publish.tags ?? [],
-          thumbnailUrl: publish.thumbnail_url ?? episode.thumbnail_url,
+          thumbnailUrl:
+            ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id) ??
+            ownedEpisodeThumbnail(episode.thumbnail_url, publish.episode_id),
           platformSpecific,
         },
         connection,

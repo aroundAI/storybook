@@ -99,7 +99,7 @@ acceptance_criteria:
     reason: "unverified — visual"
   - text: "Accessible (keyboard navigation, ARIA labels)"
     met: false
-    reason: "not met — dialogue blocks are clickable `div`s with no role, tabIndex or key handler (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:456`)"
+    reason: "not met — dialogue blocks are clickable `div`s with no role, tabIndex or key handler (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:458`)"
   - text: "TypeScript compiles without errors"
     met: true
     evidence: "CI run 35779959194 (`main` at `6dfa35a4`): `web:typecheck` executed clean; these files are unchanged since"
@@ -115,7 +115,7 @@ remaining:
     reason: "no key handler anywhere under the live `audio-studio/` route"
     closed_by: "unassigned"
   - criterion: "Accessible (keyboard navigation, ARIA labels)"
-    reason: "dialogue blocks are clickable `div`s with no role, tabIndex or key handler (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:456`); the studio has two `aria-label`s in all"
+    reason: "dialogue blocks are clickable `div`s with no role, tabIndex or key handler (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:458`); the studio has two `aria-label`s in all"
     closed_by: "unassigned"
 open_questions: []
 notes: |
