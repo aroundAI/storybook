@@ -41,7 +41,7 @@ acceptance_criteria:
     evidence: null
   - text: "Raw CSV ships real impressions, top traffic source and tags"
     met: false
-    reason: "not met — source and tags are per-day, but every daily row carries the video's period-total impressions (`apps/web/app/api/reports/scheduled/route.ts:539`), as shipped in d8c635c1"
+    reason: "not met — source and tags are per-day, but every daily row carries the video's period-total impressions (`apps/web/app/api/reports/scheduled/route.ts:549`), as shipped in d8c635c1"
 remaining:
   - criterion: "Raw CSV ships real impressions"
     reason: "Each per-day row's `impressions` is the video's total for the whole report period (`queryQualityMetricsForVideos`, `apps/web/app/api/reports/scheduled/route.ts:269,517`), so summing the column multiplies it by the day count; per-day figures exist in `video_reach_daily` but are not read. CTR and AVD are likewise period rates on daily rows (`:518-519`)"
