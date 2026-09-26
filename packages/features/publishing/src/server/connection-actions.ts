@@ -22,6 +22,7 @@ import { resolveAnalyticsAccess } from '../oauth/analytics-scopes';
 import { isRevokeConfirmed } from '../oauth/revoke-request';
 import { revokeAtVendor } from '../oauth/revokers';
 import type { ConnectionStatus, PlatformType } from '../types';
+import { analyticsScopesEnabled } from './analytics-scope-switch';
 import { resolveFollowerCounts } from './follower-counts';
 
 // ============================================================================
@@ -63,6 +64,8 @@ export const getConnectionsAction = enhanceAction(
         .map((conn) => conn.id),
     );
 
+    const scopesEnabled = analyticsScopesEnabled();
+
     return (
       connections?.map((conn) => {
         const connWithLanguage = conn as typeof conn & { language?: string };
@@ -92,6 +95,7 @@ export const getConnectionsAction = enhanceAction(
             platform: conn.platform,
             grantedScopes: conn.scopes,
             metadata: conn.metadata,
+            scopesEnabled,
           }),
           tokenExpiresAt: conn.token_expires_at,
           disconnectedAt: conn.disconnected_at ?? null,

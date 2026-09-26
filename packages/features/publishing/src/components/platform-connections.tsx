@@ -922,6 +922,14 @@ function AnalyticsAccessReason({
           values={{ platform: platformName }}
         />
       );
+    case 'not_requested':
+      return (
+        <Trans
+          i18nKey="platforms:analyticsAccess.reason.not_requested"
+          defaults="We don't ask {platform} for this yet. It is switched on once {platform}'s side has been checked. Nothing for you to do, and reconnecting will not change it."
+          values={{ platform: platformName }}
+        />
+      );
     case 'account_type_gated':
       return <>{entry.resolution}</>;
     case 'unknown':
