@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { decrypt } from '@kit/shared/crypto';
+import { readExternalApiKey } from '@kit/supabase/external-api-keys';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { VoiceProviderConfig, VoiceProviderName } from '../lib/types';
@@ -35,20 +36,19 @@ export async function loadVoiceProviderConfig(
   accountId: string,
   providerName: VoiceProviderName,
 ): Promise<VoiceProviderConfig> {
-  const client = getSupabaseServerClient();
+  // Try to get user's BYOK key first (KB-84: access-checked admin read)
+  let userKey;
 
-  // Try to get user's BYOK key first
-  const { data: userKey, error } = await client
-    .from('external_api_keys')
-    .select('encrypted_key')
-    .eq('account_id', accountId)
-    .eq('provider', providerName)
-    .eq('is_active', true)
-    .single();
-
-  // PGRST116 = "no rows found" which is expected when no BYOK key exists
-  if (error && error.code !== 'PGRST116') {
-    throw new Error(`Failed to load voice provider config: ${error.message}`);
+  try {
+    userKey = await readExternalApiKey(
+      getSupabaseServerClient(),
+      accountId,
+      providerName,
+    );
+  } catch (error) {
+    throw new Error(
+      `Failed to load voice provider config: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 
   let apiKey: string;

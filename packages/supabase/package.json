@@ -21,6 +21,7 @@
     "./browser-client": "./src/clients/browser-client.ts",
     "./check-requires-mfa": "./src/check-requires-mfa.ts",
     "./require-user": "./src/require-user.ts",
+    "./external-api-keys": "./src/external-api-keys.ts",
     "./hooks/*": "./src/hooks/*.ts",
     "./database": "./src/database.types.ts",
     "./auth": "./src/auth.ts",

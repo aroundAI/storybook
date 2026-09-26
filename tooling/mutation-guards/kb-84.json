@@ -1,0 +1,100 @@
+{
+  "feature": "KB-84",
+  "mutations": [
+    {
+      "name": "K1 key read skips the account-access check",
+      "kind": "unit",
+      "file": "packages/supabase/src/external-api-keys.ts",
+      "find": "  if (!(await hasAccountAccess(client, accountId))) {\n    return [];\n  }",
+      "replace": "  if (!(await Promise.resolve(true))) {\n    return [];\n  }",
+      "cwd": "packages/supabase",
+      "test": "__tests__/external-api-keys.test.ts",
+      "pattern": "reads nothing with the admin client for a caller without access"
+    },
+    {
+      "name": "K2 key save skips the owner check",
+      "kind": "unit",
+      "file": "packages/supabase/src/external-api-keys.ts",
+      "find": "  const refused = await ownerCheckFailure(client, row.account_id);",
+      "replace": "  const refused = null as ApiKeyWriteFailure | null;",
+      "cwd": "packages/supabase",
+      "test": "__tests__/external-api-keys.test.ts",
+      "pattern": "writes nothing for a member who is not an owner"
+    },
+    {
+      "name": "K3 key removal skips the owner check",
+      "kind": "unit",
+      "file": "packages/supabase/src/external-api-keys.ts",
+      "find": "  const refused = await ownerCheckFailure(client, accountId);",
+      "replace": "  const refused = null as ApiKeyWriteFailure | null;",
+      "cwd": "packages/supabase",
+      "test": "__tests__/external-api-keys.test.ts",
+      "pattern": "deletes nothing for a member who is not an owner"
+    },
+    {
+      "name": "K4 owner rule widened to any role on the account",
+      "kind": "unit",
+      "file": "packages/supabase/src/external-api-keys.ts",
+      "find": "      account_id: accountId,\n      account_role: 'owner',\n    }),",
+      "replace": "      account_id: accountId,\n    }),",
+      "cwd": "packages/supabase",
+      "test": "__tests__/external-api-keys.test.ts",
+      "pattern": "is true for a member holding the owner role"
+    },
+    {
+      "name": "K5 a key reader goes back to the member's client",
+      "kind": "unit",
+      "file": "packages/features/assets/src/lib/server/voice.actions.ts",
+      "find": "  const apiKeyRecord = await readExternalApiKey(\n    getSupabaseServerClient(),\n    accountId,\n    'elevenlabs',\n  );",
+      "replace": "  const { data: apiKeyRecord } = await getSupabaseServerClient()\n    .from('external_api_keys')\n    .select('encrypted_key')\n    .eq('account_id', accountId)\n    .maybeSingle();\n  void readExternalApiKey;",
+      "cwd": "packages/supabase",
+      "test": "__tests__/external-api-key-access.test.ts",
+      "pattern": "only the helper and the service-key workers select the ciphertext"
+    },
+    {
+      "name": "K6 a member's key list decrypts the ciphertext",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts",
+      "find": "    if (!canManage) {\n      const { data: rows, error } = await client",
+      "replace": "    if (canManage === null) {\n      const { data: rows, error } = await client",
+      "spec": "tests/account/api-keys.spec.ts",
+      "grep": "a member sees which providers are connected"
+    },
+    {
+      "name": "K7 key controls shown to every role",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/settings/_components/api-keys-settings.tsx",
+      "find": "            {canManage && (\n              <Button\n                variant=\"outline\"",
+      "replace": "            {(canManage || true) && (\n              <Button\n                variant=\"outline\"",
+      "spec": "tests/account/api-keys.spec.ts",
+      "grep": "a member sees which providers are connected"
+    },
+    {
+      "name": "K11 the key save upserts on the member's own client",
+      "kind": "e2e",
+      "file": "packages/supabase/src/external-api-keys.ts",
+      "find": "  const { error } = await getSupabaseServerAdminClient()\n    .from('external_api_keys')\n    .upsert(row, { onConflict: 'account_id,provider' });",
+      "replace": "  const { error } = await client\n    .from('external_api_keys')\n    .upsert(row, { onConflict: 'account_id,provider' });",
+      "spec": "tests/account/api-keys.spec.ts",
+      "grep": "an owner adds a key, replaces it, and removes it"
+    },
+    {
+      "name": "DB K8 members read the ciphertext again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/external-api-key-grants.test.sql",
+      "sql": "grant select on public.external_api_keys to authenticated;"
+    },
+    {
+      "name": "DB K9 any role on the account may update a key",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/external-api-key-grants.test.sql",
+      "sql": "drop policy \"external_api_keys_update\" on public.external_api_keys; create policy \"external_api_keys_update\" on public.external_api_keys for update to authenticated using (public.has_account_access(account_id));"
+    },
+    {
+      "name": "DB K10 the owner rule answers any role on the account",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/external-api-key-grants.test.sql",
+      "sql": "create or replace function public.can_manage_account_api_keys(p_account_id uuid) returns boolean language sql stable set search_path = '' as $$ select public.has_account_access(p_account_id) $$;"
+    }
+  ]
+}

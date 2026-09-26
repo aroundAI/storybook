@@ -5365,6 +5365,10 @@ export type Database = {
         Args: { target_project_id: string }
         Returns: boolean
       }
+      can_manage_account_api_keys: {
+        Args: { p_account_id: string }
+        Returns: boolean
+      }
       can_perform_project_action: {
         Args: {
           action: Database["public"]["Enums"]["project_action"]

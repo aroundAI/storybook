@@ -12,7 +12,7 @@ import {
   XCircle,
 } from 'lucide-react';
 
-import { refusalMessage } from '@kit/next/action-result';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
@@ -127,10 +127,13 @@ export function ApiKeysSettings({ accountSlug }: ApiKeysSettingsProps) {
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: savedKeys, isLoading } = useQuery({
+  const { data: overview, isLoading } = useQuery({
     queryKey: ['api-keys', accountSlug],
     queryFn: () => getApiKeysAction({ accountSlug }),
   });
+
+  const savedKeys = overview?.keys;
+  const canManage = overview?.canManage ?? false;
 
   const categories = [
     { id: 'video', label: 'Video Generation' },
@@ -147,7 +150,15 @@ export function ApiKeysSettings({ accountSlug }: ApiKeysSettingsProps) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-test="api-keys-settings">
+      {!canManage && (
+        <p
+          className="text-sm text-muted-foreground"
+          data-test="api-keys-owners-only"
+        >
+          Only account owners can add, replace or remove API keys.
+        </p>
+      )}
       {categories.map((category) => (
         <div key={category.id} className="space-y-4">
           <h2 className="text-lg font-semibold">{category.label}</h2>
@@ -163,6 +174,7 @@ export function ApiKeysSettings({ accountSlug }: ApiKeysSettingsProps) {
                     key={provider.id}
                     provider={provider}
                     savedKey={savedKey}
+                    canManage={canManage}
                     onEdit={() => setEditingProvider(provider)}
                   />
                 );
@@ -172,7 +184,7 @@ export function ApiKeysSettings({ accountSlug }: ApiKeysSettingsProps) {
         </div>
       ))}
 
-      {editingProvider && (
+      {canManage && editingProvider && (
         <ApiKeyDialog
           provider={editingProvider}
           accountSlug={accountSlug}
@@ -195,12 +207,18 @@ export function ApiKeysSettings({ accountSlug }: ApiKeysSettingsProps) {
 interface ProviderCardProps {
   provider: Provider;
   savedKey?: ApiKeyInfo;
+  canManage: boolean;
   onEdit: () => void;
 }
 
-function ProviderCard({ provider, savedKey, onEdit }: ProviderCardProps) {
+function ProviderCard({
+  provider,
+  savedKey,
+  canManage,
+  onEdit,
+}: ProviderCardProps) {
   return (
-    <Card>
+    <Card data-test={`api-key-card-${provider.id}`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div>
@@ -210,21 +228,30 @@ function ProviderCard({ provider, savedKey, onEdit }: ProviderCardProps) {
             </CardDescription>
           </div>
           {savedKey ? (
-            <Badge variant={savedKey.isActive ? 'default' : 'secondary'}>
+            <Badge
+              variant={savedKey.isActive ? 'default' : 'secondary'}
+              data-test="api-key-status"
+            >
               {savedKey.isActive ? 'Connected' : 'Inactive'}
             </Badge>
           ) : (
-            <Badge variant="outline">Not configured</Badge>
+            <Badge variant="outline" data-test="api-key-status">
+              Not configured
+            </Badge>
           )}
         </div>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between">
-          {savedKey ? (
+          {savedKey?.lastFourChars ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Key className="h-4 w-4" />
-              <span>{'••••••' + savedKey.lastFourChars}</span>
+              <span data-test="api-key-last-four">
+                {'••••••' + savedKey.lastFourChars}
+              </span>
             </div>
+          ) : savedKey ? (
+            <span className="text-sm text-muted-foreground">Key saved</span>
           ) : (
             <span className="text-sm text-muted-foreground">No key saved</span>
           )}
@@ -238,9 +265,16 @@ function ProviderCard({ provider, savedKey, onEdit }: ProviderCardProps) {
                 <ExternalLink className="h-4 w-4" />
               </a>
             </Button>
-            <Button variant="outline" size="sm" onClick={onEdit}>
-              {savedKey ? 'Update' : 'Add Key'}
-            </Button>
+            {canManage && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onEdit}
+                data-test="api-key-edit"
+              >
+                {savedKey ? 'Update' : 'Add Key'}
+              </Button>
+            )}
           </div>
         </div>
       </CardContent>
@@ -275,11 +309,13 @@ function ApiKeyDialog({
 
   const saveMutation = useMutation({
     mutationFn: () =>
-      saveApiKeyAction({
-        accountSlug,
-        provider: provider.id,
-        apiKey: formState.apiKey,
-      }),
+      unwrap(
+        saveApiKeyAction({
+          accountSlug,
+          provider: provider.id,
+          apiKey: formState.apiKey,
+        }),
+      ),
     onSuccess: () => {
       toast.success('API key saved successfully');
       onSave();
@@ -294,10 +330,12 @@ function ApiKeyDialog({
 
   const deleteMutation = useMutation({
     mutationFn: () =>
-      deleteApiKeyAction({
-        accountSlug,
-        provider: provider.id,
-      }),
+      unwrap(
+        deleteApiKeyAction({
+          accountSlug,
+          provider: provider.id,
+        }),
+      ),
     onSuccess: () => {
       toast.success('API key removed successfully');
       onSave();
@@ -356,6 +394,7 @@ function ApiKeyDialog({
             <div className="flex gap-2">
               <Input
                 id="api-key"
+                data-test="api-key-input"
                 type="password"
                 placeholder={`Enter your ${provider.name} API key`}
                 value={formState.apiKey}
@@ -369,6 +408,7 @@ function ApiKeyDialog({
               />
               <Button
                 variant="outline"
+                data-test="api-key-test"
                 onClick={validateKey}
                 disabled={
                   !formState.apiKey ||
@@ -389,7 +429,7 @@ function ApiKeyDialog({
           </div>
 
           {formState.error && (
-            <Alert variant="destructive">
+            <Alert variant="destructive" data-test="api-key-error">
               <AlertDescription>{formState.error}</AlertDescription>
             </Alert>
           )}
@@ -420,6 +460,7 @@ function ApiKeyDialog({
             {existingKey && (
               <Button
                 variant="destructive"
+                data-test="api-key-remove"
                 onClick={() => deleteMutation.mutate()}
                 disabled={deleteMutation.isPending}
               >
@@ -433,6 +474,7 @@ function ApiKeyDialog({
               Cancel
             </Button>
             <Button
+              data-test="api-key-save"
               onClick={() => saveMutation.mutate()}
               disabled={
                 !formState.apiKey ||

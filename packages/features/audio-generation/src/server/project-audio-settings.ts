@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { decrypt } from '@kit/shared/crypto';
+import { readExternalApiKey } from '@kit/supabase/external-api-keys';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { ProjectAudioSettings } from '../lib/types';
@@ -26,29 +27,26 @@ export async function getProjectAccountId(projectId: string): Promise<string> {
 }
 
 /**
- * Get ElevenLabs API key for an account from external_api_keys table
+ * The account's active ElevenLabs key, decrypted. The one reader of it in the
+ * app (KB-84): the key row is read by `readExternalApiKey`, which checks the
+ * caller's account access before its admin read.
  * Throws if no API key is configured - requires explicit setup
  */
 export async function getAccountElevenLabsApiKey(
   accountId: string,
 ): Promise<string> {
-  const client = getSupabaseServerClient();
+  const storedKey = await readExternalApiKey(
+    getSupabaseServerClient(),
+    accountId,
+    'elevenlabs',
+  );
 
-  const { data: storedKey, error } = await client
-    .from('external_api_keys')
-    .select('encrypted_key, is_active')
-    .eq('account_id', accountId)
-    .eq('provider', 'elevenlabs')
-    .eq('is_active', true)
-    .single();
-
-  if (error || !storedKey?.encrypted_key) {
+  if (!storedKey?.encrypted_key) {
     throw new Error(
       'ElevenLabs API key not configured. Please add your API key in Settings → API Keys.',
     );
   }
 
-  // Decrypt the stored key before returning
   return await decrypt(storedKey.encrypted_key);
 }
 

@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { enhanceAction } from '@kit/next/actions';
 import { decrypt } from '@kit/shared/crypto';
 import { vendorUrl } from '@kit/shared/vendors';
+import { readExternalApiKey } from '@kit/supabase/external-api-keys';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
@@ -37,15 +38,13 @@ const GetElevenLabsVoicesSchema = z.object({
  * Throws if no API key is configured - requires explicit setup
  */
 async function getAccountElevenLabsApiKey(accountId: string): Promise<string> {
-  const client = getSupabaseServerClient();
-
-  const { data: apiKeyRecord } = await client
-    .from('external_api_keys')
-    .select('encrypted_key')
-    .eq('account_id', accountId)
-    .eq('provider', 'elevenlabs')
-    .eq('is_active', true)
-    .single();
+  // accountId comes from the browser; readExternalApiKey checks the caller's
+  // access to it before its admin read (KB-84).
+  const apiKeyRecord = await readExternalApiKey(
+    getSupabaseServerClient(),
+    accountId,
+    'elevenlabs',
+  );
 
   if (!apiKeyRecord?.encrypted_key) {
     throw new Error(

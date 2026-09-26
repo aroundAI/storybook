@@ -37,8 +37,15 @@ export const ValidateApiKeySchema = z.object({
 
 export interface ApiKeyInfo {
   provider: ApiKeyProvider;
-  lastFourChars: string;
+  /** Owners only; null for every other role on the account (KB-84). */
+  lastFourChars: string | null;
   isActive: boolean;
+}
+
+export interface ApiKeysOverview {
+  /** Whether the viewer may add, replace or remove keys: account owners. */
+  canManage: boolean;
+  keys: ApiKeyInfo[];
 }
 
 export interface ValidationResult {

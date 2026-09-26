@@ -2,9 +2,17 @@
 
 import 'server-only';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { decrypt, encrypt } from '@kit/shared/crypto';
 import { vendorUrl } from '@kit/shared/vendors';
+import {
+  canManageExternalApiKeys,
+  readExternalApiKeys,
+  removeExternalApiKey,
+  storeExternalApiKey,
+} from '@kit/supabase/external-api-keys';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
@@ -15,8 +23,8 @@ import {
   ValidateApiKeySchema,
 } from '../api-keys.schema';
 import type {
-  ApiKeyInfo,
   ApiKeyProvider,
+  ApiKeysOverview,
   ValidationResult,
 } from '../api-keys.schema';
 
@@ -38,54 +46,73 @@ async function getAccountIdFromSlug(slug: string): Promise<string> {
   return data.id;
 }
 
+const OWNERS_ONLY = 'Only account owners can add, replace or remove API keys.';
+
+function isKnownProvider(provider: string): provider is ApiKeyProvider {
+  return ApiKeyProviders.includes(provider as ApiKeyProvider);
+}
+
+async function lastFourOf(encryptedKey: string) {
+  try {
+    return { lastFourChars: (await decrypt(encryptedKey)).slice(-4) };
+  } catch {
+    // A key that no longer decrypts is listed, as corrupted and inactive.
+    return { lastFourChars: '****', corrupted: true };
+  }
+}
+
 /**
- * Fetches all API keys for an account (returns masked keys)
+ * The account's configured providers. Every role on the account sees which
+ * providers are connected; only an owner, who can replace the key, sees its
+ * last four characters (KB-84, owner decision 2026-09-25) — so a member's
+ * list never reads the ciphertext at all.
  */
 export const getApiKeysAction = enhanceAction(
-  async (data): Promise<ApiKeyInfo[]> => {
+  async (data): Promise<ApiKeysOverview> => {
     const client = getSupabaseServerClient();
     const accountId = await getAccountIdFromSlug(data.accountSlug);
+    const canManage = await canManageExternalApiKeys(client, accountId);
 
-    const { data: keys, error } = await client
-      .from('external_api_keys')
-      .select('provider, encrypted_key, is_active')
-      .eq('account_id', accountId);
+    if (!canManage) {
+      const { data: rows, error } = await client
+        .from('external_api_keys')
+        .select('provider, is_active')
+        .eq('account_id', accountId)
+        .order('provider');
 
-    if (error) {
-      throw error;
+      if (error) {
+        throw error;
+      }
+
+      return {
+        canManage,
+        keys: rows.flatMap(({ provider, is_active }) =>
+          isKnownProvider(provider)
+            ? [{ provider, lastFourChars: null, isActive: is_active }]
+            : [],
+        ),
+      };
     }
 
-    // Decrypt keys in parallel and validate provider types
-    const results = (
-      await Promise.all(
-        (keys ?? []).map(async (key) => {
-          if (
-            !key.provider ||
-            !ApiKeyProviders.includes(key.provider as ApiKeyProvider)
-          ) {
-            return null;
-          }
+    const stored = await readExternalApiKeys(client, accountId);
 
-          try {
-            const decryptedKey = await decrypt(key.encrypted_key);
-            return {
-              provider: key.provider as ApiKeyProvider,
-              lastFourChars: decryptedKey.slice(-4),
-              isActive: key.is_active,
-            };
-          } catch {
-            // If decryption fails, still include the key but indicate it's corrupted
-            return {
-              provider: key.provider as ApiKeyProvider,
-              lastFourChars: '****',
-              isActive: false,
-            };
-          }
-        }),
-      )
-    ).filter((result): result is ApiKeyInfo => result !== null);
+    const keys = await Promise.all(
+      stored.flatMap(({ provider, encrypted_key, is_active }) =>
+        isKnownProvider(provider)
+          ? [
+              lastFourOf(encrypted_key).then(
+                ({ lastFourChars, corrupted }) => ({
+                  provider,
+                  lastFourChars,
+                  isActive: corrupted ? false : is_active,
+                }),
+              ),
+            ]
+          : [],
+      ),
+    );
 
-    return results;
+    return { canManage, keys };
   },
   {
     schema: GetApiKeysSchema,
@@ -94,63 +121,73 @@ export const getApiKeysAction = enhanceAction(
 );
 
 /**
- * Saves (creates or updates) an API key for a provider
+ * Saves (creates or replaces) an API key for a provider; account owners only.
  */
-export const saveApiKeyAction = enhanceAction(
-  async (data) => {
-    const client = getSupabaseServerClient();
-    const accountId = await getAccountIdFromSlug(data.accountSlug);
-    const encryptedKey = await encrypt(data.apiKey);
+export const saveApiKeyAction = returnRefusals(
+  enhanceAction(
+    async (data) => {
+      const client = getSupabaseServerClient();
+      const accountId = await getAccountIdFromSlug(data.accountSlug);
 
-    const { error } = await client.from('external_api_keys').upsert(
-      {
+      const { error } = await storeExternalApiKey(client, {
         account_id: accountId,
         provider: data.provider,
-        encrypted_key: encryptedKey,
+        encrypted_key: await encrypt(data.apiKey),
         is_active: true,
         last_used_at: null,
-      },
-      {
-        onConflict: 'account_id,provider',
-      },
-    );
+      });
 
-    if (error) {
-      throw error;
-    }
+      if (error?.branch === 'api_key_owner_check' && !error.cause) {
+        throw new ActionRefusal(OWNERS_ONLY);
+      }
 
-    return { success: true };
-  },
-  {
-    schema: SaveApiKeySchema,
-    auth: true,
-  },
+      if (error) {
+        throw new Error(`Could not save the API key (${error.branch})`, {
+          cause: error.cause,
+        });
+      }
+
+      return { success: true };
+    },
+    {
+      schema: SaveApiKeySchema,
+      auth: true,
+    },
+  ),
 );
 
 /**
- * Deletes an API key for a provider
+ * Deletes an API key for a provider; account owners only.
  */
-export const deleteApiKeyAction = enhanceAction(
-  async (data) => {
-    const client = getSupabaseServerClient();
-    const accountId = await getAccountIdFromSlug(data.accountSlug);
+export const deleteApiKeyAction = returnRefusals(
+  enhanceAction(
+    async (data) => {
+      const client = getSupabaseServerClient();
+      const accountId = await getAccountIdFromSlug(data.accountSlug);
 
-    const { error } = await client
-      .from('external_api_keys')
-      .delete()
-      .eq('account_id', accountId)
-      .eq('provider', data.provider);
+      const { error } = await removeExternalApiKey(
+        client,
+        accountId,
+        data.provider,
+      );
 
-    if (error) {
-      throw error;
-    }
+      if (error?.branch === 'api_key_owner_check' && !error.cause) {
+        throw new ActionRefusal(OWNERS_ONLY);
+      }
 
-    return { success: true };
-  },
-  {
-    schema: DeleteApiKeySchema,
-    auth: true,
-  },
+      if (error) {
+        throw new Error(`Could not remove the API key (${error.branch})`, {
+          cause: error.cause,
+        });
+      }
+
+      return { success: true };
+    },
+    {
+      schema: DeleteApiKeySchema,
+      auth: true,
+    },
+  ),
 );
 
 /**
