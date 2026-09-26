@@ -84,6 +84,14 @@ const EXPECTED: Record<ScenarioId, Expected> = {
     stale: true,
     detail: ['no newer data since Jun 30, 2025'],
   },
+  // The last recorded count, as measured: the chip never shows a day
+  // between snapshots (KB-114).
+  'snapshots-only': {
+    short: '1.3K',
+    stale: false,
+    detail: ['1,260 followers', 'Measured', 'as of Sep 14, 2026'],
+    notDetail: ['reconstructed'],
+  },
 };
 
 describe('follower count scenarios', () => {

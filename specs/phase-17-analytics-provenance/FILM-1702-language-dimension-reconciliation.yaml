@@ -65,7 +65,7 @@ notes: |
   `dim-sync.ts:47,163` selects it and writes it to `video_dim.language`, so it is
   the value every ClickHouse query can filter on — `buildDimConditions`
   (`queries-advanced.ts:139-142`) supports `scope.language`, and the raw CSV
-  export uses it (`apps/web/app/api/reports/scheduled/route.ts:393`).
+  export uses it (`apps/web/app/api/reports/scheduled/route.ts:398`).
 
   **Source B — `platform_connections.language`.** `varchar(5) NOT NULL DEFAULT
   'en'`, added by `20251223150000_add_platform_connection_language.sql:14-15` and

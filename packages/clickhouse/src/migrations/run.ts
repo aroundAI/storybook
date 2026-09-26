@@ -20,6 +20,7 @@ import { migration as m010 } from './010_video_dim_channel_language';
 import { migration as m011 } from './011_channel_reach_residual';
 import { migration as m012 } from './012_video_metrics_engaged_views';
 import { migration as m013 } from './013_unmeasured_is_null';
+import { migration as m014 } from './014_unmeasured_counters_null';
 import type { ClickHouseMigration } from './migration-types';
 
 const MIGRATIONS: ClickHouseMigration[] = [
@@ -36,6 +37,7 @@ const MIGRATIONS: ClickHouseMigration[] = [
   m011,
   m012,
   m013,
+  m014,
 ];
 
 const MIGRATION_TABLE = `

@@ -215,6 +215,10 @@ export default defineConfig({
         __dirname,
         '../../packages/features/content-analytics/src/lib/csv-generator.ts',
       ),
+      '@kit/content-analytics/lib/report-summary': path.resolve(
+        __dirname,
+        '../../packages/features/content-analytics/src/lib/report-summary.ts',
+      ),
       '@kit/content-analytics/lib/pdf-generator': path.resolve(
         __dirname,
         '../../packages/features/content-analytics/src/lib/pdf-generator.tsx',

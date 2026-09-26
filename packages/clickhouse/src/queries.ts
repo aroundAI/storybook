@@ -20,6 +20,8 @@ import type {
   DailyPlatformBreakdown,
   DailyPlatformMetricsRow,
   DailyStats,
+  MeasuredColumns,
+  PerVideoTotals,
   PlatformBreakdown,
   QueryFilters,
   SnapshotTotals,
@@ -358,7 +360,7 @@ export async function queryPlatformBreakdown(
  */
 export async function queryPerVideoTotals(
   filters: QueryFilters & { videoIds: string[] },
-): Promise<Map<string, AggregatedTotals>> {
+): Promise<Map<string, PerVideoTotals>> {
   if (fitsOneChunk(filters.videoIds)) return queryPerVideoTotalsSingle(filters);
 
   return mergeMapsByChunk(filters.videoIds, (chunk) =>
@@ -536,7 +538,7 @@ async function queryPlatformBreakdownSingle(
  */
 async function queryPerVideoTotalsSingle(
   filters: QueryFilters & { videoIds: string[] },
-): Promise<Map<string, AggregatedTotals>> {
+): Promise<Map<string, PerVideoTotals>> {
   if (!isClickHouseEnabled()) return new Map();
   assertScopedFilters(filters);
   const client = getClickHouseClient();
@@ -552,7 +554,12 @@ async function queryPerVideoTotalsSingle(
       sum(saves) as saves,
       sum(watch_time_seconds) as watch_time_seconds,
       sum(revenue_cents) as revenue_cents,
-      sum(subscribers_gained) as subscribers_gained
+      sum(subscribers_gained) as subscribers_gained,
+      -- \`count(col)\` must read the column, not the \`sum(col) AS col\` alias
+      -- above it; prefer_column_name_to_alias below makes it (KB-114).
+      count(saves) > 0 as saves_measured,
+      count(watch_time_seconds) > 0 as watch_time_seconds_measured,
+      count(subscribers_gained) > 0 as subscribers_gained_measured
     FROM video_daily_stats
     ${clause}
     GROUP BY video_id
@@ -562,10 +569,13 @@ async function queryPerVideoTotalsSingle(
     query,
     query_params: params,
     format: 'JSONEachRow',
+    clickhouse_settings: { prefer_column_name_to_alias: 1 },
   });
 
-  const rows = await result.json<AggregatedTotals & { video_id: string }>();
-  const map = new Map<string, AggregatedTotals>();
+  const rows = await result.json<
+    AggregatedTotals & { video_id: string } & MeasuredFlagsRow
+  >();
+  const map = new Map<string, PerVideoTotals>();
 
   for (const row of rows) {
     map.set(row.video_id, {
@@ -573,10 +583,13 @@ async function queryPerVideoTotalsSingle(
       likes: Number(row.likes),
       comments: Number(row.comments),
       shares: Number(row.shares),
+      // A sum over only NULLs is NULL; Number(null) is 0, and `measured`
+      // says whether that 0 is one (KB-114).
       saves: Number(row.saves),
       watch_time_seconds: Number(row.watch_time_seconds),
       revenue_cents: Number(row.revenue_cents),
       subscribers_gained: Number(row.subscribers_gained),
+      measured: measuredFlags(row),
     });
   }
 
@@ -691,7 +704,12 @@ async function queryDailyStatsSingle(
       sum(saves) as saves,
       sum(watch_time_seconds) as watch_time_seconds,
       sum(revenue_cents) as revenue_cents,
-      sum(subscribers_gained) as subscribers_gained
+      sum(subscribers_gained) as subscribers_gained,
+      -- \`count(col)\` must read the column, not the \`sum(col) AS col\` alias
+      -- above it; prefer_column_name_to_alias below makes it (KB-114).
+      count(saves) > 0 as saves_measured,
+      count(watch_time_seconds) > 0 as watch_time_seconds_measured,
+      count(subscribers_gained) > 0 as subscribers_gained_measured
     FROM (SELECT * FROM video_daily_stats ${clause})
     GROUP BY project_id, video_id, platform, metric_date
     ORDER BY metric_date DESC
@@ -701,9 +719,10 @@ async function queryDailyStatsSingle(
     query,
     query_params: params,
     format: 'JSONEachRow',
+    clickhouse_settings: { prefer_column_name_to_alias: 1 },
   });
 
-  const rows = await result.json<DailyStats>();
+  const rows = await result.json<DailyStats & MeasuredFlagsRow>();
 
   return rows.map((row) => ({
     project_id: row.project_id,
@@ -718,7 +737,23 @@ async function queryDailyStatsSingle(
     watch_time_seconds: Number(row.watch_time_seconds),
     revenue_cents: Number(row.revenue_cents),
     subscribers_gained: Number(row.subscribers_gained),
+    measured: measuredFlags(row),
   }));
+}
+
+/** The `<col>_measured` flags the per-video and daily reads select. */
+interface MeasuredFlagsRow {
+  saves_measured: number | boolean;
+  watch_time_seconds_measured: number | boolean;
+  subscribers_gained_measured: number | boolean;
+}
+
+function measuredFlags(row: MeasuredFlagsRow): MeasuredColumns {
+  return {
+    saves: Boolean(Number(row.saves_measured)),
+    watch_time_seconds: Boolean(Number(row.watch_time_seconds_measured)),
+    subscribers_gained: Boolean(Number(row.subscribers_gained_measured)),
+  };
 }
 
 /**
@@ -841,7 +876,7 @@ export async function queryTotalsByVideoIds(
      */
     projectIds?: string[];
   },
-): Promise<Map<string, AggregatedTotals>> {
+): Promise<Map<string, PerVideoTotals>> {
   if (videoIds.length === 0 || !isClickHouseEnabled()) return new Map();
 
   const filters: QueryFilters & { videoIds: string[] } = {

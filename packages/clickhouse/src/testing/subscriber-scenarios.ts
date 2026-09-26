@@ -31,13 +31,14 @@ export type ScenarioId =
   | 'active-stopped-before-window'
   | 'disconnected-in-window'
   | 'disconnected-before-window'
-  | 'disconnected-never-measured';
+  | 'disconnected-never-measured'
+  | 'snapshots-only';
 
 export interface SubscriberScenario {
   id: ScenarioId;
   connectionId: string;
   name: string;
-  platform: 'youtube' | 'facebook';
+  platform: 'youtube' | 'facebook' | 'tiktok';
   isActive: boolean;
   anchors: SubscriberAnchor[];
   deltas: SubscriberDelta[];
@@ -94,6 +95,34 @@ function history(options: {
 }
 
 const YESTERDAY = addDays(SCENARIO_TODAY, -1);
+
+/**
+ * The `snapshots-only` channel's recorded follower counts, weekly. Exported
+ * so a surface's test can check its figures against what was recorded.
+ * Uneven on purpose: 70, then 35, then 105 a week, so a straight line
+ * between each pair is distinguishable from one line across them all. The
+ * last count is four days old while the daily rows run to yesterday, as a
+ * weekly capture beside a daily sync leaves them: the unmeasured days after
+ * it must not extend the curve.
+ */
+export const SNAPSHOTS_ONLY_COUNTS: ReadonlyArray<[string, number]> = [
+  ['2026-08-20', 1_000],
+  ['2026-08-27', 1_070],
+  ['2026-09-03', 1_105],
+  ['2026-09-10', 1_210],
+  ['2026-09-14', 1_260],
+];
+
+/** A day's row with no measured movement: as a TikTok video's would be. */
+function dailyUnmeasured(from: string, to: string): SubscriberDelta[] {
+  const deltas: SubscriberDelta[] = [];
+
+  for (let day = from; day <= to; day = addDays(day, 1)) {
+    deltas.push({ metricDate: day, net: 0, measured: false });
+  }
+
+  return deltas;
+}
 
 function scenario(
   id: ScenarioId,
@@ -235,6 +264,21 @@ export const SUBSCRIBER_SCENARIOS: SubscriberScenario[] = [
     name: 'Retired Unmeasured',
     platform: 'youtube',
     isActive: false,
+  }),
+  // TikTok reports no per-video gains or losses (KB-114): a follower count a
+  // week, and daily rows whose movement was never measured. Decided
+  // 2026-09-25: straight lines between the recorded counts, labelled as
+  // reconstructed, never as daily movement.
+  scenario('snapshots-only', {
+    name: 'TikTok Channel',
+    platform: 'tiktok',
+    isActive: true,
+    anchors: SNAPSHOTS_ONLY_COUNTS.map(([snapshotDate, subscriberCount]) => ({
+      snapshotDate,
+      subscriberCount,
+      roundingStep: 0,
+    })),
+    deltas: dailyUnmeasured('2026-08-21', YESTERDAY),
   }),
 ];
 

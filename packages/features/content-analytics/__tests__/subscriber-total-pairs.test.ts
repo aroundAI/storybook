@@ -21,14 +21,16 @@ import { sumByPlatform } from '../src/lib/subscriber-series-sum';
  *
  * The Total merges channels, so its bugs live in combinations: round eight
  * found a capture gap summed with a rounded channel drawn as measured — a
- * pair no hand-picked row had tried. This runs all 78 pairs, each state
- * with itself included, against rules stated here independently of the
- * code under test.
+ * pair no hand-picked row had tried. This runs every pair — 91 since the
+ * snapshots-only state (KB-114) — each state with itself included, against
+ * rules stated here independently of the code under test.
  */
 
 // The spec's rule (§3.1), stated independently of the implementation: only
-// a day with no snapshot is reconstructed.
-const isMeasured = (source: SubscriberSource) => source !== 'interpolated';
+// a day with no snapshot is reconstructed — from daily movement, or as a line
+// between two snapshots where none was measured (KB-114).
+const isMeasured = (source: SubscriberSource) =>
+  source !== 'interpolated' && source !== 'between_snapshots';
 
 const window = { from: SCENARIO_WINDOW_FROM, to: SCENARIO_TODAY };
 
@@ -59,8 +61,8 @@ const PAIRS = SUBSCRIBER_SCENARIOS.flatMap((a, i) =>
 );
 
 describe('every pair of states, summed', () => {
-  it('covers all 78 pairs', () => {
-    expect(PAIRS).toHaveLength(78);
+  it('covers all 91 pairs', () => {
+    expect(PAIRS).toHaveLength(91);
   });
 
   it.each(PAIRS.map(([a, b]) => [`${a.id} + ${b.id}`, a, b] as const))(

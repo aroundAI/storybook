@@ -281,6 +281,8 @@ describe('buildYouTubeDailyRows', () => {
       avg_view_percentage: 45.5,
       subscribers_lost: 1,
       subscribers_gained: 5,
+      // YouTube has no saves metric (KB-114): not measured, never 0.
+      saves: null,
     });
   });
 });
@@ -313,6 +315,43 @@ describe('buildSnapshotDeltaRow', () => {
       avg_view_duration_seconds: null,
       avg_view_percentage: null,
       dislikes: null,
+    });
+  });
+
+  // KB-114. TikTok reports no saves, watch time or per-video follower gains.
+  // Instagram reports saves; its watch time and follows are never requested.
+  const delta = {
+    views: 1000,
+    likes: 50,
+    comments: 4,
+    shares: 2,
+    saves: 3,
+    watch_time_seconds: 0,
+    subscribers_gained: 7,
+  };
+  const build = (platform: 'tiktok' | 'instagram') =>
+    buildSnapshotDeltaRow({
+      projectId: '550e8400-e29b-41d4-a716-446655440000',
+      videoId: `publish-${platform}`,
+      platform,
+      metricDate: '2026-09-20',
+      delta,
+      extraMetricsJson: '{}',
+    });
+
+  it('writes TikTok saves, watch time and follower gains as null', () => {
+    expect(build('tiktok')).toMatchObject({
+      saves: null,
+      watch_time_seconds: null,
+      subscribers_gained: null,
+    });
+  });
+
+  it('keeps Instagram saves, and writes its watch time and follower gains as null', () => {
+    expect(build('instagram')).toMatchObject({
+      saves: 3,
+      watch_time_seconds: null,
+      subscribers_gained: null,
     });
   });
 });

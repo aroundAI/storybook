@@ -1,0 +1,85 @@
+{
+  "feature": "KB-114",
+  "mutations": [
+    {
+      "name": "KB-114 the TikTok row writes 0 saves, watch time and follower gains again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/ingest.ts",
+      "find": "      platform: 'tiktok',\n      saves: null,\n      watch_time_seconds: null,\n      subscribers_gained: null,\n",
+      "replace": "      platform: 'tiktok',\n      saves: 0 as unknown as null,\n      watch_time_seconds: 0 as unknown as null,\n      subscribers_gained: 0 as unknown as null,\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/ingest.test.ts",
+      "pattern": "writes TikTok saves, watch time and follower gains as null"
+    },
+    {
+      "name": "KB-114 a report total counts unmeasured rows as 0",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/export-coverage.ts",
+      "find": "    if (v === null) continue;\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/report-exports-not-measured.test.ts",
+      "pattern": "totals a figure over the videos that measure it"
+    },
+    {
+      "name": "KB-114 an export cell prints 0 for a figure the platform does not measure",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/export-coverage.ts",
+      "find": "  return value === null ? '' : format(value);\n",
+      "replace": "  return format(value ?? 0);\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/raw-export-generator.test.ts",
+      "pattern": "leaves a figure the platform does not measure blank"
+    },
+    {
+      "name": "KB-114 the series walks unmeasured TikTok rows as daily movement again",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/subscriber-series.ts",
+      "find": "  const measuredDeltas = deltas.filter((d) => d.measured !== false);\n",
+      "replace": "  const measuredDeltas = deltas;\n",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/subscriber-scenarios.test.ts",
+      "pattern": "snapshots-only, figure by figure"
+    },
+    {
+      "name": "KB-114 a day between snapshots counts as measured",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/subscriber-vocabulary.ts",
+      "find": "  return source !== 'interpolated' && source !== 'between_snapshots';\n",
+      "replace": "  return source !== 'interpolated';\n",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/subscriber-vocabulary.test.ts",
+      "pattern": "between_snapshots"
+    },
+    {
+      "name": "KB-114 unmeasured rows extend a snapshot-only curve past its last count",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/subscriber-levels-core.ts",
+      "find": "    ...deltas.filter((d) => d.measured !== false).map((d) => d.metricDate),\n",
+      "replace": "    ...deltas.map((d) => d.metricDate),\n",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/subscriber-scenarios.test.ts",
+      "pattern": "snapshots-only"
+    },
+    {
+      "name": "KB-114 a day between snapshots is labelled as a snapshot",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/subscriber-series.ts",
+      "find": "        source: 'between_snapshots',\n",
+      "replace": "        source: 'snapshot',\n",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/subscriber-scenarios.test.ts",
+      "pattern": "never presents a day between counts as measured"
+    },
+    {
+      "name": "KB-114 the Instagram row writes its unrequested follows as gains again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/ingest.ts",
+      "find": "    platform: 'instagram',\n    saves: input.delta.saves,\n    watch_time_seconds: null,\n    subscribers_gained: null,\n",
+      "replace": "    platform: 'instagram',\n    saves: input.delta.saves,\n    watch_time_seconds: null,\n    subscribers_gained: input.delta.subscribers_gained as unknown as null,\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/ingest.test.ts",
+      "pattern": "keeps Instagram saves, and writes its watch time and follower gains as null"
+    }
+  ]
+}

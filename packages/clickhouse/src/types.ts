@@ -35,8 +35,12 @@ export interface VideoMetric {
   likes: number;
   comments: number;
   shares: number;
-  saves: number;
-  watch_time_seconds: number;
+  /**
+   * Null where the platform does not measure it (migration 014, KB-114):
+   * saves on YouTube and TikTok, watch time on TikTok and Instagram.
+   */
+  saves: number | null;
+  watch_time_seconds: number | null;
   /**
    * **US dollars, or zero** — this table has no currency column (KB-12).
    * Every reader prints it as dollars, which holds only because every
@@ -48,7 +52,8 @@ export interface VideoMetric {
    * writers, so a new one cannot make it quietly untrue.
    */
   revenue_cents: number;
-  subscribers_gained: number;
+  /** Null for TikTok, which reports no per-video follower gains (KB-114). */
+  subscribers_gained: number | null;
   /**
    * The four below are **null when the platform does not measure them**
    * (migration 013, KB-111) — TikTok and Instagram report none of them.
@@ -84,6 +89,9 @@ export interface VideoMetric {
  */
 export type YouTubeVideoMetric = Omit<
   VideoMetric,
+  | 'saves'
+  | 'watch_time_seconds'
+  | 'subscribers_gained'
   | 'subscribers_lost'
   | 'avg_view_duration_seconds'
   | 'avg_view_percentage'
@@ -91,6 +99,10 @@ export type YouTubeVideoMetric = Omit<
 > & {
   platform: 'youtube';
   metric_source: MetricSource;
+  /** YouTube has no saves metric (KB-114): not measured, never 0. */
+  saves: null;
+  watch_time_seconds: number;
+  subscribers_gained: number;
   subscribers_lost: number;
   avg_view_duration_seconds: number;
   avg_view_percentage: number;
@@ -305,6 +317,24 @@ export interface DailyStats {
   watch_time_seconds: number;
   revenue_cents: number;
   subscribers_gained: number;
+  /** Which of the sometimes-unmeasured sums had any measured row (KB-114). */
+  measured: MeasuredColumns;
+}
+
+/**
+ * The summed columns a platform may not measure (KB-114). The sum beside
+ * each reads 0 when none of its rows measured it; this says whether that 0
+ * is a measurement. `count(col) > 0` in SQL, since `count` skips NULL.
+ */
+export interface MeasuredColumns {
+  saves: boolean;
+  watch_time_seconds: boolean;
+  subscribers_gained: boolean;
+}
+
+/** Per-video totals, with which columns were measured at all. */
+export interface PerVideoTotals extends AggregatedTotals {
+  measured: MeasuredColumns;
 }
 
 /**

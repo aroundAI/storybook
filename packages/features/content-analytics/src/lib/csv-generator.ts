@@ -1,8 +1,13 @@
+import { coverageLabel, measuredCell, measuredHeader } from './export-coverage';
+import type { Coverage } from './export-coverage';
 import { formatCurrency, formatDuration, formatNumber } from './format';
+import { calculateReportSummary } from './report-summary';
 import type { AnalyticsDataRow, ReportMetric } from './report-types';
 
 /**
- * Metric to CSV column mapping
+ * Metric to CSV column mapping. A column a platform may not measure has a
+ * blank cell for that row, and a header that says what a blank means
+ * (KB-111, KB-114).
  */
 const METRIC_COLUMNS: Record<
   ReportMetric,
@@ -10,15 +15,15 @@ const METRIC_COLUMNS: Record<
 > = {
   views: { header: 'Views', getValue: (r) => String(r.views) },
   watchTime: {
-    header: 'Watch Time (seconds)',
-    getValue: (r) => String(r.watchTimeSeconds),
+    header: measuredHeader('Watch Time (seconds)'),
+    getValue: (r) => measuredCell(r.watchTimeSeconds),
   },
   likes: { header: 'Likes', getValue: (r) => String(r.likes) },
   comments: { header: 'Comments', getValue: (r) => String(r.comments) },
   shares: { header: 'Shares', getValue: (r) => String(r.shares) },
   subscribers: {
-    header: 'Subscribers Gained',
-    getValue: (r) => String(r.subscribersGained),
+    header: measuredHeader('Subscribers Gained'),
+    getValue: (r) => measuredCell(r.subscribersGained),
   },
   revenue: {
     header: 'Revenue (USD)',
@@ -33,9 +38,11 @@ const METRIC_COLUMNS: Record<
     getValue: (r) => (r.ctr > 0 ? `${(r.ctr * 100).toFixed(2)}%` : ''),
   },
   avgViewDuration: {
-    header: 'Avg View Duration (s)',
+    header: measuredHeader('Avg View Duration (s)'),
     getValue: (r) =>
-      r.avgViewDurationSeconds > 0 ? r.avgViewDurationSeconds.toFixed(1) : '',
+      r.avgViewDurationSeconds !== null && r.avgViewDurationSeconds > 0
+        ? r.avgViewDurationSeconds.toFixed(1)
+        : '',
   },
 };
 
@@ -61,7 +68,9 @@ export function generateCSV(
   metrics: ReportMetric[],
 ): string {
   const baseHeaders = ['Date', 'Platform', 'Project', 'Content'];
-  const metricHeaders = metrics.map((m) => METRIC_COLUMNS[m].header);
+  const metricHeaders = metrics.map((m) =>
+    escapeCSVValue(METRIC_COLUMNS[m].header),
+  );
   const headers = [...baseHeaders, ...metricHeaders];
 
   const rows = data.map((row) => {
@@ -91,62 +100,59 @@ export function generateSummaryCSV(
   metrics: ReportMetric[],
   dateRange: { start: Date; end: Date },
 ): string {
-  const totals = data.reduce(
-    (acc, row) => ({
-      views: acc.views + row.views,
-      likes: acc.likes + row.likes,
-      comments: acc.comments + row.comments,
-      shares: acc.shares + row.shares,
-      watchTimeSeconds: acc.watchTimeSeconds + row.watchTimeSeconds,
-      subscribersGained: acc.subscribersGained + row.subscribersGained,
-      revenueCents: acc.revenueCents + row.revenueCents,
-    }),
-    {
-      views: 0,
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      watchTimeSeconds: 0,
-      subscribersGained: 0,
-      revenueCents: 0,
-    },
-  );
+  const totals = calculateReportSummary(data);
 
   const summary = [
     'Analytics Report Summary',
     `Date Range: ${dateRange.start.toISOString().split('T')[0]} to ${dateRange.end.toISOString().split('T')[0]}`,
     `Total Records: ${data.length}`,
     '',
-    'Metric,Total,Formatted',
+    'Metric,Total,Formatted,Coverage',
   ];
 
   if (metrics.includes('views')) {
-    summary.push(`Views,${totals.views},${formatNumber(totals.views)}`);
+    summary.push(
+      `Views,${totals.totalViews},${formatNumber(totals.totalViews)},`,
+    );
   }
   if (metrics.includes('likes')) {
-    summary.push(`Likes,${totals.likes},${formatNumber(totals.likes)}`);
+    summary.push(
+      `Likes,${totals.totalLikes},${formatNumber(totals.totalLikes)},`,
+    );
   }
   if (metrics.includes('comments')) {
     summary.push(
-      `Comments,${totals.comments},${formatNumber(totals.comments)}`,
+      `Comments,${totals.totalComments},${formatNumber(totals.totalComments)},`,
     );
   }
   if (metrics.includes('shares')) {
-    summary.push(`Shares,${totals.shares},${formatNumber(totals.shares)}`);
+    summary.push(
+      `Shares,${totals.totalShares},${formatNumber(totals.totalShares)},`,
+    );
   }
   if (metrics.includes('watchTime')) {
     summary.push(
-      `Watch Time (seconds),${totals.watchTimeSeconds},${formatDuration(totals.watchTimeSeconds)}`,
+      measuredSummaryLine(
+        'Watch Time (seconds)',
+        totals.totalWatchTimeSeconds,
+        formatDuration,
+        totals.coverage.watchTime,
+      ),
     );
   }
   if (metrics.includes('subscribers')) {
     summary.push(
-      `Subscribers,${totals.subscribersGained},${formatNumber(totals.subscribersGained)}`,
+      measuredSummaryLine(
+        'Subscribers',
+        totals.totalSubscribers,
+        formatNumber,
+        totals.coverage.subscribers,
+      ),
     );
   }
   if (metrics.includes('revenue')) {
     summary.push(
-      `Revenue (cents),${totals.revenueCents},${formatCurrency(totals.revenueCents / 100)}`,
+      `Revenue (cents),${totals.totalRevenueCents},${formatCurrency(totals.totalRevenueCents / 100)},`,
     );
   }
 
@@ -157,4 +163,22 @@ export function generateSummaryCSV(
   const detailedCSV = generateCSV(data, metrics);
 
   return [...summary, detailedCSV].join('\n');
+}
+
+/**
+ * A summary line for a figure some rows may not measure: blank total and
+ * "not measured by the platform" when none did, else the total over the rows
+ * that did and, when partial, how many (decision #33, A).
+ */
+function measuredSummaryLine(
+  label: string,
+  value: number | null,
+  format: (v: number) => string,
+  coverage: Coverage,
+): string {
+  if (value === null) {
+    return `${label},,,not measured by the platform`;
+  }
+
+  return `${label},${value},${format(value)},${coverageLabel(coverage)}`;
 }

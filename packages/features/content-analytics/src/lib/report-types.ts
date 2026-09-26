@@ -1,5 +1,6 @@
 import type { z } from 'zod';
 
+import type { Coverage } from './export-coverage';
 import type {
   BrandingSchema,
   DatePresetSchema,
@@ -91,16 +92,20 @@ export interface AnalyticsDataRow {
   likes: number;
   comments: number;
   shares: number;
-  watchTimeSeconds: number;
-  subscribersGained: number;
+  /**
+   * Null when the platform does not measure it (KB-114): TikTok and
+   * Instagram watch time, TikTok follower gains. Never 0 for that.
+   */
+  watchTimeSeconds: number | null;
+  subscribersGained: number | null;
   revenueCents: number;
   retentionData: Record<string, number> | null;
   /** Thumbnail impressions (YouTube Reporting API). */
   impressions: number;
   /** Click-through rate on impressions, 0..1. */
   ctr: number;
-  /** Average view duration in seconds. */
-  avgViewDurationSeconds: number;
+  /** Average view duration in seconds; null when not measured (KB-111). */
+  avgViewDurationSeconds: number | null;
 }
 
 /**
@@ -111,8 +116,21 @@ export interface ReportSummary {
   totalLikes: number;
   totalComments: number;
   totalShares: number;
-  totalWatchTimeSeconds: number;
-  totalSubscribers: number;
+  /**
+   * Over the rows that measure it, and null when none do. `coverage` says
+   * how many that was (decision #33, A; KB-111, KB-114).
+   */
+  totalWatchTimeSeconds: number | null;
+  totalSubscribers: number | null;
+  /** View-weighted over the rows that measure it. */
+  avgViewDurationSeconds: number | null;
+  /** Impression-weighted click-through rate, 0..1, over rows with impressions. */
+  ctr: number | null;
+  coverage: {
+    watchTime: Coverage;
+    subscribers: Coverage;
+    avgViewDuration: Coverage;
+  };
   totalRevenueCents: number;
   contentCount: number;
   platformBreakdown: Record<string, number>;

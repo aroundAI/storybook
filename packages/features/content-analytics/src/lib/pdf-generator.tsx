@@ -9,6 +9,12 @@ import {
 } from '@react-pdf/renderer';
 import { format } from 'date-fns';
 
+import {
+  NOT_MEASURED_LEGEND,
+  NOT_MEASURED_MARK,
+  coverageLabel,
+} from './export-coverage';
+import type { Coverage } from './export-coverage';
 import { formatCurrency, formatDuration, formatNumber } from './format';
 import type {
   AnalyticsDataRow,
@@ -17,6 +23,7 @@ import type {
   ReportMetric,
   ReportSummary,
 } from './report-types';
+import { formatWatchedValue } from './watched-metrics';
 
 const styles = StyleSheet.create({
   page: {
@@ -90,6 +97,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#111827',
   },
+  metricCoverage: {
+    fontSize: 8,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  legend: {
+    fontSize: 8,
+    color: '#6b7280',
+  },
   table: {
     marginTop: 10,
   },
@@ -155,30 +171,52 @@ const METRIC_DISPLAY: Record<
   revenue: { label: 'Revenue', format: (v) => formatCurrency(v / 100) },
   retention: { label: 'Avg Retention', format: (v) => `${v.toFixed(1)}%` },
   ctr: { label: 'CTR', format: (v) => `${v.toFixed(2)}%` },
-  avgViewDuration: { label: 'Avg Duration', format: formatDuration },
+  // m:ss — formatDuration rounds to minutes, so 45s printed as "0m".
+  avgViewDuration: {
+    label: 'Avg Duration',
+    format: (v) => formatWatchedValue(v, 'seconds'),
+  },
 };
 
 /**
- * Get metric value from summary
+ * A summary card's figure, and how many videos it covers when some do not
+ * measure it. Null is "not measured" and prints as the legend's mark —
+ * never a 0 (KB-111, KB-114). Retention has no summary figure.
  */
-function getMetricValue(summary: ReportSummary, metric: ReportMetric): number {
+function getMetricValue(
+  summary: ReportSummary,
+  metric: ReportMetric,
+): { value: number | null; coverage?: Coverage } {
   switch (metric) {
     case 'views':
-      return summary.totalViews;
+      return { value: summary.totalViews };
     case 'likes':
-      return summary.totalLikes;
+      return { value: summary.totalLikes };
     case 'comments':
-      return summary.totalComments;
+      return { value: summary.totalComments };
     case 'shares':
-      return summary.totalShares;
+      return { value: summary.totalShares };
     case 'watchTime':
-      return summary.totalWatchTimeSeconds;
+      return {
+        value: summary.totalWatchTimeSeconds,
+        coverage: summary.coverage.watchTime,
+      };
     case 'subscribers':
-      return summary.totalSubscribers;
+      return {
+        value: summary.totalSubscribers,
+        coverage: summary.coverage.subscribers,
+      };
     case 'revenue':
-      return summary.totalRevenueCents;
-    default:
-      return 0;
+      return { value: summary.totalRevenueCents };
+    case 'ctr':
+      return { value: summary.ctr === null ? null : summary.ctr * 100 };
+    case 'avgViewDuration':
+      return {
+        value: summary.avgViewDurationSeconds,
+        coverage: summary.coverage.avgViewDuration,
+      };
+    case 'retention':
+      return { value: null };
   }
 }
 
@@ -206,6 +244,15 @@ function AnalyticsReportDocument({
   const startDate = format(dateRange.start, 'MMM d, yyyy');
   const endDate = format(dateRange.end, 'MMM d, yyyy');
 
+  const cards = metrics
+    .slice(0, 6)
+    .map((metric) => ({ metric, ...getMetricValue(summary, metric) }));
+  const needsLegend = cards.some(
+    ({ value, coverage }) =>
+      value === null ||
+      (coverage !== undefined && coverage.measured < coverage.total),
+  );
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -232,17 +279,25 @@ function AnalyticsReportDocument({
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Summary</Text>
           <View style={styles.metricsGrid}>
-            {metrics.slice(0, 6).map((metric) => {
+            {cards.map(({ metric, value, coverage }) => {
               const config = METRIC_DISPLAY[metric];
-              const value = getMetricValue(summary, metric);
+              const partial = coverage ? coverageLabel(coverage) : '';
               return (
                 <View key={metric} style={styles.metricCard}>
                   <Text style={styles.metricLabel}>{config.label}</Text>
-                  <Text style={styles.metricValue}>{config.format(value)}</Text>
+                  <Text style={styles.metricValue}>
+                    {value === null ? NOT_MEASURED_MARK : config.format(value)}
+                  </Text>
+                  {partial ? (
+                    <Text style={styles.metricCoverage}>{partial}</Text>
+                  ) : null}
                 </View>
               );
             })}
           </View>
+          {needsLegend ? (
+            <Text style={styles.legend}>{NOT_MEASURED_LEGEND}</Text>
+          ) : null}
         </View>
 
         {/* Platform Breakdown */}
