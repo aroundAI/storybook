@@ -52,6 +52,8 @@ export interface ShotOrchestratorInput {
   locationsVeoContext: string;
   // Recurring story elements (pre-formatted)
   recurringElementsContext?: string;
+  /** How long each shot may run, in seconds (KB-120) */
+  shotDuration?: { min: number; max: number };
 }
 
 export interface GeneratedShotResult {
@@ -170,7 +172,11 @@ export async function runShotOrchestrator(
       {
         userPrompt: buildShotPrompt(input),
       },
-      { accountId: input.accountId, _scenesContext: input.scenes },
+      {
+        accountId: input.accountId,
+        _scenesContext: input.scenes,
+        _shotDuration: input.shotDuration,
+      },
     );
 
   // Log the full agent result for diagnostics

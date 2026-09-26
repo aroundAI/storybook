@@ -15,6 +15,11 @@ import { z } from 'zod';
 import type { Skill } from '@kit/agent';
 import { createTool, toolError, toolSuccess } from '@kit/agent';
 
+/** The neighbouring outlines the job carried, or none. */
+function neighbouringFrom(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
 interface EpisodeOutline {
   number: number;
   title: string;
@@ -97,6 +102,10 @@ const generateSeasonOutlineTool = createTool({
           existing_characters: existingCharacters,
           existing_locations: existingLocations,
           recurring_element: recurringElements,
+          // From the job, not the LLM's tool arguments (KB-121)
+          surrounding_episodes: neighbouringFrom(
+            context?._neighbouringEpisodes,
+          ),
         },
         context: {
           name: 'agent.seasonOutliner.generateSeasonOutline',

@@ -48,6 +48,8 @@ export interface SeasonOrchestratorInput {
   existingLocations: string;
   recurringElements: string;
   verifiedFacts?: string;
+  /** Regenerating one episode: the outlines around it (KB-121) */
+  neighbouringEpisodes?: string;
 }
 
 interface SeasonOrchestratorOutput {
@@ -128,7 +130,10 @@ export async function runSeasonOrchestrator(
       {
         userPrompt: buildSeasonPrompt(input),
       },
-      { accountId: input.accountId },
+      {
+        accountId: input.accountId,
+        _neighbouringEpisodes: input.neighbouringEpisodes,
+      },
     );
 
   if (!result.success || !result.data) {

@@ -146,6 +146,10 @@ export default defineConfig({
         __dirname,
         '../../packages/features/episodes/src/lib/server/pdf-extractor.ts',
       ),
+      '@kit/episodes/agent/shot-orchestrator': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/agent/shot-orchestrator.ts',
+      ),
       '@kit/episodes/agent/season-orchestrator': path.resolve(
         __dirname,
         '../../packages/features/episodes/src/agent/season-orchestrator.ts',

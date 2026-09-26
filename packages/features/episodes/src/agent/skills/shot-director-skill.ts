@@ -18,6 +18,21 @@ import { z } from 'zod';
 
 import type { Skill } from '@kit/agent';
 import { createTool, toolError, toolSuccess } from '@kit/agent';
+import {
+  DEFAULT_SHOT_DURATION,
+  clampShotDuration,
+} from '@kit/prompt-engine/llm-job-payloads';
+
+const ShotDurationContextSchema = z.object({
+  min: z.number(),
+  max: z.number(),
+});
+
+/** The range the job asked for, or the default when none came with it. */
+function shotDurationFrom(value: unknown): { min: number; max: number } {
+  const parsed = ShotDurationContextSchema.safeParse(value);
+  return parsed.success ? parsed.data : { ...DEFAULT_SHOT_DURATION };
+}
 
 const generateShotsTool = createTool({
   name: 'generateShots',
@@ -91,6 +106,9 @@ const generateShotsTool = createTool({
 
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
+
+      // The job's shot length, not the LLM's choice of tool arguments (KB-120)
+      const shotDuration = shotDurationFrom(context?._shotDuration);
 
       // Merge LLM-provided sparse scenes with full context data
       const fullScenes = context?._scenesContext ?? scenes;
@@ -219,6 +237,8 @@ const generateShotsTool = createTool({
                 previous_scene_summary: '',
                 reel_note: reelNote,
                 recurring_element: recurringElements ?? '',
+                shot_duration_min: shotDuration.min,
+                shot_duration_max: shotDuration.max,
               },
               context: {
                 name: 'agent.shotDirector.generateShots',
@@ -230,6 +250,7 @@ const generateShotsTool = createTool({
             // but the Zod schema expects snake_case (e.g. "two_shot")
             const normalizedShots = result.data.shots.map((shot) => ({
               ...shot,
+              duration: clampShotDuration(shot.duration, shotDuration),
               sceneNumber: scene.number,
               frameStrategy: shot.frameStrategy?.replace(/-/g, '_'),
               transitionType: shot.transitionType?.replace(/-/g, '_'),

@@ -111,9 +111,11 @@ export async function processSeasonOutline(
 
   // KB-71: the type is `metadata.projectType`, read the one way every other
   // reader does. Only `verified` facts go in (owner decision, 2026-09-24).
-  const { getContentTypeConfig, resolveProjectType } = await import(
-    '@kit/episodes/lib'
-  );
+  const {
+    formatNeighbouringEpisodes,
+    getContentTypeConfig,
+    resolveProjectType,
+  } = await import('@kit/episodes/lib');
   const { projectType } = resolveProjectType(project?.metadata);
   let verifiedFactsFormatted = '';
 
@@ -187,6 +189,11 @@ export async function processSeasonOutline(
     existingLocations,
     recurringElements: recurringElementFormatted,
     verifiedFacts: verifiedFactsFormatted || undefined,
+    neighbouringEpisodes:
+      formatNeighbouringEpisodes(
+        data.surroundingEpisodes,
+        data.additionalContext,
+      ) || undefined,
   });
 
   if (!orchestratorResult.success) {

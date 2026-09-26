@@ -1,0 +1,95 @@
+{
+  "feature": "KB-118 (acknowledged), KB-120, KB-121",
+  "mutations": [
+    {
+      "name": "RA1 a refused dialogue line is retried into the dead-letter queue",
+      "kind": "unit",
+      "file": "apps/web/lambda/voice-worker/voice-generation.ts",
+      "find": "export class DialogueLineRefused extends QueuedJobRefused {",
+      "replace": "export class DialogueLineRefused extends Error {",
+      "cwd": "apps/web",
+      "test": "lambda/voice-worker/__tests__/refusal-acknowledged.test.ts",
+      "pattern": "is acknowledged, not sent back for retries"
+    },
+    {
+      "name": "SD1 generated shots are not held to the job's range",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/shot-director-skill.ts",
+      "find": "              duration: clampShotDuration(shot.duration, shotDuration),\n",
+      "replace": "",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/shot-duration.test.ts",
+      "pattern": "holds every generated shot"
+    },
+    {
+      "name": "SD2 the shot prompt is not told the range",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/shot-director-skill.ts",
+      "find": "                shot_duration_min: shotDuration.min,\n",
+      "replace": "",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/shot-duration.test.ts",
+      "pattern": "asks the prompt"
+    },
+    {
+      "name": "SD3 the shot-list action drops the range",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/server/mutations/shot-list-actions.ts",
+      "find": "        shotDurationMin: data.shotDurationMin,\n        shotDurationMax: data.shotDurationMax,\n",
+      "replace": "",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/llm-job-authorization.test.ts",
+      "pattern": "shot-length range the caller chose"
+    },
+    {
+      "name": "SD4 the shot handler does not pass the range on",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/shot-generation.ts",
+      "find": "      shotDuration: {\n        min: data.shotDurationMin,\n        max: data.shotDurationMax,\n      },\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/shot-duration-handler.test.ts",
+      "pattern": "shot-length range"
+    },
+    {
+      "name": "NE1 regeneration drops the neighbouring outlines",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/batch-episode-actions.ts",
+      "find": "        surroundingEpisodes: data.surroundingEpisodes,\n",
+      "replace": "",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/llm-job-authorization.test.ts",
+      "pattern": "neighbouring outlines and the note"
+    },
+    {
+      "name": "NE2 the job schema strips the neighbouring outlines",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/lib/llm-job-payloads.ts",
+      "find": "  surroundingEpisodes: z.array(NeighbouringEpisode).max(24).optional(),\n",
+      "replace": "",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/neighbouring-episodes.test.ts",
+      "pattern": "travel with the queued job"
+    },
+    {
+      "name": "NE3 the season-outline handler does not pass them on",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/season-outline.ts",
+      "find": "    neighbouringEpisodes:\n",
+      "replace": "    ignoredNeighbouringEpisodes:\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/season-outline-facts.test.ts",
+      "pattern": "neighbouring outlines and the writer"
+    },
+    {
+      "name": "NE4 the outline prompt is not given them",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/season-outliner-skill.ts",
+      "find": "          surrounding_episodes: neighbouringFrom(\n            context?._neighbouringEpisodes,\n          ),\n",
+      "replace": "          surrounding_episodes: '',\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/neighbouring-episodes.test.ts",
+      "pattern": "reach the outline prompt"
+    }
+  ]
+}

@@ -183,6 +183,10 @@ export async function processShotGeneration(
       charactersVeoContext: charactersFormatted,
       locationsVeoContext: locationsFormatted,
       recurringElementsContext: recurringElementsFormatted,
+      shotDuration: {
+        min: data.shotDurationMin,
+        max: data.shotDurationMax,
+      },
     });
 
     console.log(

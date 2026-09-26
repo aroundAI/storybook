@@ -176,7 +176,6 @@ export function ScreenplayScreen({
           episodeId: episode.id,
           shotDurationMin: 5,
           shotDurationMax: 8,
-          videoProvider: 'veo-3.1',
         }),
       );
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

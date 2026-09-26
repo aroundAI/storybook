@@ -349,7 +349,6 @@ const producers: Array<{
         episodeId,
         shotDurationMin: 5,
         shotDurationMax: 8,
-        videoProvider: 'veo-3.1',
       }),
   },
   {
@@ -431,5 +430,50 @@ describe.each(producers)('$name', ({ run }) => {
 
     expect(state.sent).toHaveLength(1);
     expect(state.sent[0]!.payload.accountId).toBe(B_ACCOUNT);
+  });
+});
+
+describe('what the producers send (KB-120, KB-121)', () => {
+  it('shot generation sends the shot-length range the caller chose', async () => {
+    const { generateShotListAction } = await import(
+      '../src/lib/server/mutations/shot-list-actions'
+    );
+
+    await generateShotListAction({
+      episodeId: B_EPISODE,
+      shotDurationMin: 4,
+      shotDurationMax: 6,
+    });
+
+    expect(state.sent[0]!.payload).toMatchObject({
+      shotDurationMin: 4,
+      shotDurationMax: 6,
+    });
+  });
+
+  it('single-episode regeneration sends the neighbouring outlines and the note', async () => {
+    const { regenerateEpisodeOutlineAction } = await import(
+      '../src/server/batch-episode-actions'
+    );
+    const neighbour = {
+      number: 1,
+      title: 'Pilot',
+      premise: 'Maya starts at the firm.',
+      mainPlot: 'She notices the numbers do not add up, and says nothing.',
+      arcPosition: 'setup' as const,
+    };
+
+    await regenerateEpisodeOutlineAction({
+      projectId: B_PROJECT,
+      episodeNumber: 2,
+      seasonPremise: 'A season premise of some length',
+      surroundingEpisodes: [neighbour],
+      additionalContext: 'Keep Maya sympathetic.',
+    });
+
+    expect(state.sent[0]!.payload).toMatchObject({
+      surroundingEpisodes: [neighbour],
+      additionalContext: 'Keep Maya sympathetic.',
+    });
   });
 });
