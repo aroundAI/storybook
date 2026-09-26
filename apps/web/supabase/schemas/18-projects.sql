@@ -457,7 +457,7 @@ after insert on public.projects
 for each row
 execute function public.add_project_creator_as_owner();
 
--- KB-113 (20260925131738): whether a project is null or belongs to an
+-- KB-113 (20260926153937): whether a project is null or belongs to an
 -- account, for rows that name one. SECURITY DEFINER: an ownership fact.
 create or replace function public.project_in_account(project_id uuid, account_id uuid)
 returns boolean

@@ -29,7 +29,7 @@ acceptance_criteria:
     evidence: null
   - text: "Stories include balanced perspectives (left, center, right)"
     met: false
-    reason: "no longer true — articles never carry a bias label (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:94`), so every article lands in `center`"
+    reason: "no longer true — articles never carry a bias label (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:131`), so every article lands in `center`"
   - text: "Entity extraction merges across articles"
     met: true
     evidence: null
@@ -46,9 +46,10 @@ remaining:
       items to `center`
       (`packages/features/episodes/src/types/news-sources.ts:35`).
       `NewsAPIProvider` never sets `biasLabel`
-      (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:94`),
-      and the aggregator loads sources without `bias_label` or `config`
-      (`packages/features/episodes/src/lib/server/services/context-aggregator.ts:100`),
+      (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:131`),
+      and the aggregator loads sources without `bias_label` (it loads
+      `config` since KB-125, #400, for the NewsAPI id)
+      (`packages/features/episodes/src/lib/server/services/context-aggregator.ts:111`),
       so the seeded outlets' labels never reach an article. Left and right are
       always empty
     closed_by: "unassigned"

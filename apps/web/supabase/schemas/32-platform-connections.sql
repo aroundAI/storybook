@@ -186,7 +186,7 @@ CREATE TRIGGER platform_connections_keep_account
   BEFORE UPDATE OF account_id ON public.platform_connections
   FOR EACH ROW EXECUTE FUNCTION public.keep_account_id('channel');
 
--- KB-113 (20260925131738): the same freeze for a project, next to
+-- KB-113 (20260926153937): the same freeze for a project, next to
 -- keep_account_id.
 CREATE TRIGGER projects_keep_account
   BEFORE UPDATE OF account_id ON public.projects

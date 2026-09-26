@@ -1720,7 +1720,7 @@ $$;
 
 grant execute on function public.editable_publish_ids(uuid[]) to authenticated;
 
--- KB-113 (20260925131738): whether an episode or publish is null or belongs
+-- KB-113 (20260926153937): whether an episode or publish is null or belongs
 -- to an account, for rows that name one. SECURITY DEFINER: ownership facts.
 create or replace function public.episode_in_account(episode_id uuid, account_id uuid)
 returns boolean

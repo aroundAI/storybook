@@ -30,15 +30,15 @@ acceptance_criteria:
     evidence: null
   - text: "Entities stored in `external_content.entities` JSONB"
     met: false
-    reason: "no longer true — the cache stores the providers' empty entities (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:108`); extracted entities are never written back"
+    reason: "no longer true — the cache stores the providers' empty entities (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:145`); extracted entities are never written back"
 remaining:
   - criterion: "Entities stored in `external_content.entities` JSONB"
     reason: >
       All three providers set `entities: createEmptyEntities()`
-      (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:108`,
+      (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:145`,
       `semantic-scholar-provider.ts:109`, `archive-org-provider.ts:91`), and
       the cache writes what they return
-      (`packages/features/episodes/src/lib/server/services/context-aggregator.ts:332`).
+      (`packages/features/episodes/src/lib/server/services/context-aggregator.ts:371`).
       `extractEntitiesFromArticle` runs only in memory for clustering
       (`news-story-service.ts:184`); nothing persists its result
     closed_by: "unassigned"
