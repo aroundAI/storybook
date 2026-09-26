@@ -46,7 +46,7 @@ acceptance_criteria:
     evidence: null
   - text: "Responsive on mobile (sidebar collapses)"
     met: false
-    reason: "unverified — visual; the sidebar collapses by a toggle (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/screenplay/_components/screenplay-screen.tsx:295`), untested at phone width"
+    reason: "unverified — visual; the sidebar collapses by a toggle (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/screenplay/_components/screenplay-screen.tsx:294`), untested at phone width"
 open_questions: []
 notes: |
   ## Source header
