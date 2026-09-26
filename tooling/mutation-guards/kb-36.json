@@ -1,0 +1,45 @@
+{
+  "feature": "KB-36",
+  "mutations": [
+    {
+      "name": "KB-36 TikTok drops out of the apps saved at /admin/platforms",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/oauth-app-credentials.ts",
+      "find": "  return (SAVED_CREDENTIAL_APPS as readonly OAuthApp[]).includes(app);\n",
+      "replace": "  return app !== 'tiktok' && (SAVED_CREDENTIAL_APPS as readonly OAuthApp[]).includes(app);\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "refreshes with the saved TikTok app when no env keys are set"
+    },
+    {
+      "name": "KB-36 env keys are tried before the saved TikTok row",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/oauth-app-credentials.ts",
+      "find": "  if (isSavedCredentialApp(app)) {\n    const saved = await readSavedCredentials(app);\n",
+      "replace": "  if (readEnvCredentials(app)) return readEnvCredentials(app);\n  if (isSavedCredentialApp(app)) {\n    const saved = await readSavedCredentials(app);\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "prefers the saved TikTok app to the env keys"
+    },
+    {
+      "name": "KB-36 an undecryptable saved row falls back to env",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/oauth-app-credentials.ts",
+      "find": "    if (saved.kind === 'unreadable') return null;\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "treats a saved TikTok app it cannot decrypt as not configured"
+    },
+    {
+      "name": "KB-36 the admin page reports a saved row without checking it can be read",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/oauth-app-credentials.ts",
+      "find": "      if (saved.kind !== 'absent') return [app, saved.kind] as const;\n",
+      "replace": "      if (saved.kind !== 'absent') return [app, 'saved'] as const;\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "tells the admin page where each app is configured from"
+    }
+  ]
+}

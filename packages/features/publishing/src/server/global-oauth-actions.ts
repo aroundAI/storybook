@@ -10,16 +10,18 @@ import { enhanceAction } from '@kit/next/actions';
 import { encrypt } from '@kit/shared/crypto';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { SAVED_CREDENTIAL_APPS, type SavedCredentialApp } from '../oauth/apps';
+
 export interface GlobalOAuthApp {
   id: string;
-  platform: 'youtube' | 'tiktok' | 'meta';
+  platform: SavedCredentialApp;
   clientId: string;
   createdAt: string;
   updatedAt: string;
 }
 
 const SaveGlobalOAuthAppSchema = z.object({
-  platform: z.enum(['youtube', 'tiktok', 'meta']),
+  platform: z.enum(SAVED_CREDENTIAL_APPS),
   clientId: z.string().min(1, 'Client ID is required'),
   clientSecret: z.string().min(1, 'Client Secret is required'),
 });
@@ -59,7 +61,7 @@ export const saveGlobalOAuthAppAction = enhanceAction(
 );
 
 const DeleteGlobalOAuthAppSchema = z.object({
-  platform: z.enum(['youtube', 'tiktok', 'meta']),
+  platform: z.enum(SAVED_CREDENTIAL_APPS),
 });
 
 /**

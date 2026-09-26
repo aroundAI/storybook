@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 
 import { AdminGuard } from '@kit/admin/components/admin-guard';
 import { GlobalOAuthAppConfig } from '@kit/publishing/components';
+import { getSavedCredentialAppSources } from '@kit/publishing/server/oauth-app-credentials';
 import { getGlobalOAuthApps } from '@kit/publishing/server/queries';
 import { PageBody, PageHeader } from '@kit/ui/page';
 
@@ -16,8 +17,10 @@ async function AdminPlatformsPage() {
   const protocol = host.includes('localhost') ? 'http' : 'https';
   const appUrl = `${protocol}://${host}`;
 
-  // Fetch existing global OAuth apps
-  const existingApps = await getGlobalOAuthApps();
+  const [existingApps, sources] = await Promise.all([
+    getGlobalOAuthApps(),
+    getSavedCredentialAppSources(),
+  ]);
 
   return (
     <>
@@ -28,7 +31,11 @@ async function AdminPlatformsPage() {
 
       <PageBody>
         <div className="flex max-w-4xl flex-1 flex-col">
-          <GlobalOAuthAppConfig existingApps={existingApps} appUrl={appUrl} />
+          <GlobalOAuthAppConfig
+            existingApps={existingApps}
+            sources={sources}
+            appUrl={appUrl}
+          />
         </div>
       </PageBody>
     </>

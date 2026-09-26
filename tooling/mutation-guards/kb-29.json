@@ -12,11 +12,11 @@
       "pattern": "YouTube refreshes with the global app"
     },
     {
-      "name": "YouTube credentials move to env, away from the table connect reads",
+      "name": "YouTube credentials stop coming from the table connect reads",
       "kind": "unit",
-      "file": "packages/features/publishing/src/server/oauth-app-credentials.ts",
-      "find": "  youtube: { kind: 'table' },\n",
-      "replace": "  youtube: {\n    kind: 'env',\n    clientId: 'YOUTUBE_CLIENT_ID',\n    clientSecret: 'YOUTUBE_CLIENT_SECRET',\n  },\n",
+      "file": "packages/features/publishing/src/oauth/apps.ts",
+      "find": "export const SAVED_CREDENTIAL_APPS = ['youtube', 'tiktok', 'meta'] as const;\n",
+      "replace": "export const SAVED_CREDENTIAL_APPS = ['tiktok', 'meta'] as const;\n",
       "cwd": "packages/features/publishing",
       "test": "__tests__/token-refresh.test.ts",
       "pattern": "YouTube refreshes with the global app"
@@ -25,8 +25,8 @@
       "name": "An env app counts as configured without its secret",
       "kind": "unit",
       "file": "packages/features/publishing/src/server/oauth-app-credentials.ts",
-      "find": "    return clientId && clientSecret ? { clientId, clientSecret } : null;\n",
-      "replace": "    return clientId ? { clientId, clientSecret: clientSecret ?? '' } : null;\n",
+      "find": "  return clientId && clientSecret ? { clientId, clientSecret } : null;\n",
+      "replace": "  return clientId ? { clientId, clientSecret: clientSecret ?? '' } : null;\n",
       "cwd": "packages/features/publishing",
       "test": "__tests__/token-refresh.test.ts",
       "pattern": "names the env variables when an env-backed app is not configured"

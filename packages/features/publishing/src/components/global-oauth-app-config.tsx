@@ -28,6 +28,11 @@ import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { toast } from '@kit/ui/sonner';
 
+import {
+  SAVED_CREDENTIAL_APPS,
+  type SavedCredentialApp,
+  type SavedCredentialSource,
+} from '../oauth/apps';
 import { saveGlobalOAuthAppAction } from '../server/global-oauth-actions';
 import type { GlobalOAuthApp } from '../server/global-oauth-actions';
 
@@ -38,7 +43,7 @@ const TikTokIcon = ({ className }: { className?: string }) => (
 );
 
 interface PlatformOAuthConfig {
-  id: 'youtube' | 'tiktok' | 'meta';
+  id: SavedCredentialApp;
   name: string;
   icon: React.ComponentType<{ className?: string }>;
   color: string;
@@ -48,8 +53,11 @@ interface PlatformOAuthConfig {
   setupSteps: string[];
 }
 
-const PLATFORMS: PlatformOAuthConfig[] = [
-  {
+/** One card per `SAVED_CREDENTIAL_APPS` entry: a missing or extra key fails typecheck. */
+const PLATFORMS: {
+  [App in SavedCredentialApp]: PlatformOAuthConfig & { id: App };
+} = {
+  youtube: {
     id: 'youtube',
     name: 'YouTube',
     icon: Youtube,
@@ -65,7 +73,7 @@ const PLATFORMS: PlatformOAuthConfig[] = [
       'Copy Client ID and Client Secret',
     ],
   },
-  {
+  tiktok: {
     id: 'tiktok',
     name: 'TikTok',
     icon: TikTokIcon,
@@ -79,7 +87,7 @@ const PLATFORMS: PlatformOAuthConfig[] = [
       'Copy Client Key and Client Secret',
     ],
   },
-  {
+  meta: {
     id: 'meta',
     name: 'Meta (Instagram/Facebook)',
     icon: Facebook,
@@ -94,29 +102,31 @@ const PLATFORMS: PlatformOAuthConfig[] = [
       'Copy App ID and App Secret',
     ],
   },
-];
+};
 
 interface GlobalOAuthAppConfigProps {
   existingApps?: GlobalOAuthApp[];
+  sources: Record<SavedCredentialApp, SavedCredentialSource>;
   appUrl: string;
 }
 
 export function GlobalOAuthAppConfig({
   existingApps = [],
+  sources,
   appUrl,
 }: GlobalOAuthAppConfigProps) {
   return (
     <div className="space-y-6">
-      {PLATFORMS.map((platform) => {
-        const existingApp = existingApps.find(
-          (a) => a.platform === platform.id,
-        );
+      {SAVED_CREDENTIAL_APPS.map((app) => {
+        const platform = PLATFORMS[app];
+        const existingApp = existingApps.find((a) => a.platform === app);
         return (
           <GlobalPlatformCredentialsCard
-            key={platform.id}
+            key={app}
             platform={platform}
             existingApp={existingApp}
-            redirectUri={`${appUrl}/api/platforms/callback/${platform.id}`}
+            source={sources[app]}
+            redirectUri={`${appUrl}/api/platforms/callback/${app}`}
           />
         );
       })}
@@ -124,15 +134,63 @@ export function GlobalOAuthAppConfig({
   );
 }
 
+const SOURCE_LABELS: Record<
+  SavedCredentialSource,
+  { text: string; className: string }
+> = {
+  saved: {
+    text: 'Saved here',
+    className: 'text-green-600 dark:text-green-400',
+  },
+  env: {
+    text: 'From environment variables',
+    className: 'text-green-600 dark:text-green-400',
+  },
+  unreadable: {
+    text: 'Saved, but cannot be read. Save it again',
+    className: 'text-destructive',
+  },
+  none: {
+    text: 'Not configured',
+    className: 'text-amber-600 dark:text-amber-400',
+  },
+};
+
+/** Which credentials connect and refresh use right now (KB-36). */
+function CredentialSourceLabel({
+  app,
+  source,
+}: {
+  app: SavedCredentialApp;
+  source: SavedCredentialSource;
+}) {
+  const label = SOURCE_LABELS[source];
+
+  return (
+    <span
+      data-test={`oauth-app-source-${app}`}
+      data-source={source}
+      className={`flex items-center gap-1 ${label.className}`}
+    >
+      {source === 'saved' || source === 'env' ? (
+        <Check className="h-3 w-3" />
+      ) : null}
+      {label.text}
+    </span>
+  );
+}
+
 interface GlobalPlatformCredentialsCardProps {
   platform: PlatformOAuthConfig;
   existingApp?: GlobalOAuthApp;
+  source: SavedCredentialSource;
   redirectUri: string;
 }
 
 function GlobalPlatformCredentialsCard({
   platform,
   existingApp,
+  source,
   redirectUri,
 }: GlobalPlatformCredentialsCardProps) {
   const [isPending, startTransition] = useTransition();
@@ -180,15 +238,7 @@ function GlobalPlatformCredentialsCard({
             <div>
               <CardTitle className="text-lg">{platform.name}</CardTitle>
               <CardDescription>
-                {isConfigured ? (
-                  <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
-                    <Check className="h-3 w-3" /> Configured
-                  </span>
-                ) : (
-                  <span className="text-amber-600 dark:text-amber-400">
-                    Not configured
-                  </span>
-                )}
+                <CredentialSourceLabel app={platform.id} source={source} />
               </CardDescription>
             </div>
           </div>
@@ -242,6 +292,7 @@ function GlobalPlatformCredentialsCard({
             </Label>
             <Input
               id={`${platform.id}-client-id`}
+              data-test={`oauth-app-client-id-${platform.id}`}
               value={clientId}
               onChange={(e) => setClientId(e.target.value)}
               placeholder={`Enter ${platform.clientIdLabel}`}
@@ -255,6 +306,7 @@ function GlobalPlatformCredentialsCard({
             <div className="relative mt-1">
               <Input
                 id={`${platform.id}-client-secret`}
+                data-test={`oauth-app-client-secret-${platform.id}`}
                 type={showSecret ? 'text' : 'password'}
                 value={clientSecret}
                 onChange={(e) => setClientSecret(e.target.value)}
@@ -282,6 +334,7 @@ function GlobalPlatformCredentialsCard({
         {/* Save Button */}
         <div className="flex justify-end">
           <Button
+            data-test={`oauth-app-save-${platform.id}`}
             onClick={handleSave}
             disabled={isPending || !clientId || !clientSecret}
           >

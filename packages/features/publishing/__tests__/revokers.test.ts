@@ -27,6 +27,20 @@ vi.mock('@kit/shared/crypto', () => ({
   }),
 }));
 
+// No app is saved at /admin/platforms here, so TikTok resolves to its env
+// keys (KB-36: a saved row would come first).
+vi.mock('@kit/supabase/server-admin-client', () => ({
+  getSupabaseServerAdminClient: () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: async () => ({ data: null, error: null }),
+        }),
+      }),
+    }),
+  }),
+}));
+
 interface Seen {
   method: string;
   path: string;
