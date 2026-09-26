@@ -17,6 +17,8 @@ import { processAudioCueGeneration } from '../handlers/audio-cue-generation';
 type Row = Record<string, unknown>;
 
 const EPISODE = '33333333-3333-4333-8333-333333333333';
+const PROJECT = '22222222-2222-4222-8222-222222222222';
+const ACCOUNT = '11111111-1111-4111-8111-111111111111';
 
 vi.mock('../utils/job-tracking', () => ({
   markJobProcessing: vi.fn(),
@@ -84,7 +86,7 @@ describe('processAudioCueGeneration (KB-92)', () => {
     ]);
 
     const result = await processAudioCueGeneration(
-      { episodeId: EPISODE, projectId: 'p', accountId: 'a' },
+      { episodeId: EPISODE, projectId: PROJECT, accountId: ACCOUNT },
       client,
     );
 
