@@ -3,7 +3,7 @@ title: "@kit/episodes Package"
 phase: 1
 phase_name: "Foundation"
 category: package
-status: PARTIAL
+status: DONE
 audited: "2026-09-23"
 effort: S
 dependencies: []
@@ -48,8 +48,8 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "All exports work correctly"
-    met: false
-    reason: "no longer true — `./server/context-builder` (`packages/features/episodes/package.json:20`) points at a file deleted in `e2d42522`"
+    met: true
+    evidence: "packages/features/episodes/package.json — every one of the 26 export paths names an existing file (checked 2026-09-25); the dead `./server/context-builder` entry was removed in KB-122"
   - text: "TypeScript types exported and accessible"
     met: true
     evidence: null
@@ -69,7 +69,7 @@ test_plan:
       evidence: null
     - text: "All export paths are accessible"
       met: false
-      reason: "not met — no test found; and `./server/context-builder` resolves to nothing"
+      reason: "not met — no test found"
     - text: "Zod schemas validate valid episode data"
       met: true
       evidence: null
@@ -84,10 +84,6 @@ test_plan:
       reason: "not met — no test found; no consumer uses the constants in `packages/features/episodes/src/lib/constants.ts`"
   integration: []
   e2e: []
-remaining:
-  - criterion: "All exports work correctly"
-    reason: "`./server/context-builder` in `packages/features/episodes/package.json:20` maps to `src/server/context-builder.ts`, deleted in `e2d42522` (2026-01-18; the builder now lives in `apps/web/lambda/llm-worker/utils/context-builder.ts`). Nothing imports the path, so the fix is deleting the entry."
-    closed_by: "unassigned"
 open_questions: []
 notes: |
   ## Metadata not held in typed fields

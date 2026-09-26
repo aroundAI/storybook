@@ -56,10 +56,10 @@
 
             <!-- Step 1: Build Global Context -->
             <rect x="30" y="20" width="660" height="130" rx="14" fill="url(#step1Grad)" stroke="rgba(139,92,246,0.3)" stroke-width="1.5"/>
-            <text x="60" y="48" fill="#c4b5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="14">STEP 1 — BUILD GLOBAL CONTEXT (once)</text>
-            <text x="60" y="72" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="12">buildGlobalShotContext()</text>
-            <text x="60" y="100" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">→ Character Registry (15+ attributes: age, ethnicity, hair, eyes, build, clothing)</text>
-            <text x="60" y="120" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">→ Location Registry (all scene-level settings with visual descriptions)</text>
+            <text x="60" y="48" fill="#c4b5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="14">STEP 1 — EPISODE CONTEXT (once, shot-generation job)</text>
+            <text x="60" y="72" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="12">buildEpisodeContext()</text>
+            <text x="60" y="100" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">→ formatCharactersForVeoPrompt(): 15+ attributes per character</text>
+            <text x="60" y="120" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">→ formatLocationsForVeoPrompt(): visual description per location</text>
 
             <!-- Arrow 1→2 -->
             <path d="M360 150 L360 180" stroke="rgba(139,92,246,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
@@ -67,15 +67,15 @@
 
             <!-- Step 2: For Each Scene -->
             <rect x="30" y="190" width="660" height="155" rx="14" fill="url(#step2Grad)" stroke="rgba(59,130,246,0.3)" stroke-width="1.5"/>
-            <text x="60" y="218" fill="#93c5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="14">STEP 2 — FOR EACH SCENE</text>
-            <text x="60" y="245" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="12">filterContextForScene()</text>
-            <text x="325" y="245" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">→ Extract only scene-relevant characters &amp; locations</text>
+            <text x="60" y="218" fill="#93c5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="14">STEP 2 — SHOT DIRECTOR: EACH SCENE, IN PARALLEL</text>
+            <text x="60" y="245" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="12">batches of 5 scenes</text>
+            <text x="325" y="245" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">→ 3 when there are more than 15 scenes; allSettled</text>
             <text x="60" y="270" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="12">executeLLM('scene-shot-generation')</text>
             <text x="370" y="270" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">→ Generate VEO 3.1 shots for this scene</text>
 
             <!-- Token savings badge -->
             <rect x="60" y="295" width="260" height="32" rx="16" fill="rgba(16,185,129,0.15)" stroke="rgba(16,185,129,0.3)" stroke-width="1"/>
-            <text x="80" y="316" fill="#34d399" font-family="Outfit, sans-serif" font-weight="700" font-size="13">⚡ Result: 50–80% TOKEN SAVINGS</text>
+            <text x="80" y="316" fill="#34d399" font-family="Outfit, sans-serif" font-weight="700" font-size="13">Reel Scout first · Shot Quality after</text>
 
             <!-- Loop indicator -->
             <rect x="580" y="210" width="90" height="28" rx="14" fill="rgba(59,130,246,0.15)" stroke="rgba(59,130,246,0.3)" stroke-width="1"/>
@@ -87,22 +87,22 @@
 
             <!-- Step 3: Aggregate -->
             <rect x="30" y="385" width="660" height="115" rx="14" fill="url(#step3Grad)" stroke="rgba(16,185,129,0.3)" stroke-width="1.5"/>
-            <text x="60" y="413" fill="#6ee7b7" font-family="Outfit, sans-serif" font-weight="700" font-size="14">STEP 3 — AGGREGATE RESULTS</text>
-            <text x="60" y="440" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="12">aggregateSceneResults()</text>
-            <text x="300" y="440" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">→ Assign global sequence numbers across all scenes</text>
-            <text x="60" y="465" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="12">batchCreateShotsAction()</text>
-            <text x="300" y="465" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">→ Store all shots in the database</text>
+            <text x="60" y="413" fill="#6ee7b7" font-family="Outfit, sans-serif" font-weight="700" font-size="14">STEP 3 — NUMBER AND STORE</text>
+            <text x="60" y="440" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="12">shotNumber = 1…n</text>
+            <text x="300" y="440" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">→ Shots numbered in order across all scenes</text>
+            <text x="60" y="465" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="12">shot-generation handler</text>
+            <text x="300" y="465" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">→ Replaces the episode's rows in the shots table</text>
           </svg>
         </div>
 
-        <h3>Step 1 — Build Global Context</h3>
-        <p>Called <strong>once per generation run</strong>. The function <code>buildGlobalShotContext()</code> queries the project's character and location registries, building a comprehensive context object that includes:</p>
+        <h3>Step 1 — Episode Context</h3>
+        <p>Called <strong>once per shot-generation job</strong> (<code>apps/web/lambda/llm-worker/handlers/shot-generation.ts</code>). <code>buildEpisodeContext()</code> loads the episode's characters and locations, and the VEO formatters turn them into the context every scene prompt receives:</p>
         <div class="grid-2">
           <div class="card animate-in">
             <div class="card-header">
               <div class="card-icon purple">👥</div>
               <div>
-                <div class="card-title">Character Registry</div>
+                <div class="card-title">Characters</div>
                 <div class="card-subtitle">15+ physical attributes per character</div>
               </div>
             </div>
@@ -112,7 +112,7 @@
             <div class="card-header">
               <div class="card-icon blue">📍</div>
               <div>
-                <div class="card-title">Location Registry</div>
+                <div class="card-title">Locations</div>
                 <div class="card-subtitle">Visual descriptions for every setting</div>
               </div>
             </div>
@@ -120,12 +120,12 @@
           </div>
         </div>
 
-        <h3>Step 2 — Process Each Scene</h3>
-        <p>For each scene in the screenplay, <code>filterContextForScene()</code> extracts <em>only</em> the characters and locations that appear in that scene. This filtered context is sent to the LLM alongside the scene's dialogue and action lines, producing a list of shots tailored to that scene.</p>
-        <p>Because each scene only receives its own slice of context — not the entire project registry — token usage drops by <strong>50–80%</strong> compared to a monolithic approach.</p>
+        <h3>Step 2 — Shot Director, Scene by Scene</h3>
+        <p>The Shot Orchestrator (<code>packages/features/episodes/src/agent/shot-orchestrator.ts</code>) runs three skills: Reel Scout picks short-form candidate scenes, the Shot Director generates shots, and Shot Quality checks them. The Shot Director (<code>shot-director-skill.ts</code>) calls <code>scene-shot-generation</code> <strong>once per scene</strong>, in parallel batches of 5 (3 when an episode has more than 15 scenes), with <code>Promise.allSettled</code> so one failed scene does not fail its batch.</p>
+        <p>Every scene prompt carries the episode's <strong>full</strong> character and location context; there is no per-scene context filtering (KB-122).</p>
 
-        <h3>Step 3 — Aggregate &amp; Persist</h3>
-        <p><code>aggregateSceneResults()</code> takes all per-scene shot arrays and assigns globally sequential shot numbers (e.g., Scene 1 shots 1–6, Scene 2 shots 7–12). Then <code>batchCreateShotsAction()</code> writes them to the <code>shots</code> table in a single batch insert.</p>
+        <h3>Step 3 — Number &amp; Store</h3>
+        <p>Shots are numbered in order across all scenes (Scene 1 shots 1–6, Scene 2 shots 7–12), and the handler replaces the episode's rows in the <code>shots</code> table.</p>
 
         <!-- ═══ Section 3: 7-Component VEO 3.1 Prompt ═══ -->
         <h2>The 7-Component VEO 3.1 Prompt</h2>
@@ -486,11 +486,10 @@ No subtitles, no captions, no watermarks, no text overlay."</span></code></pre>
   };
 }</code></pre>
 
-        <!-- ═══ Section 7: Token Savings Callout ═══ -->
-        <div class="callout success">
-          <div class="callout-title">⚡ 50–80% Token Savings vs Monolithic</div>
-          <p>The monolithic approach sends the <em>entire</em> screenplay + <em>all</em> characters + <em>all</em> locations in a single LLM call. For a 7-scene episode with 12 characters and 8 locations, that's ~15,000 tokens of context repeated for every shot.</p>
-          <p>The scene-by-scene pipeline sends only the 2–3 characters and 1–2 locations relevant to each scene. A typical scene uses ~3,000 tokens of context — an <strong>80% reduction</strong>. Over an entire episode, this compounds into massive cost savings without sacrificing output quality.</p>
+        <!-- ═══ Section 7: Context Size Callout ═══ -->
+        <div class="callout info">
+          <div class="callout-title">Context per scene</div>
+          <p>Each scene is its own LLM call, so a long screenplay never has to fit in one prompt. Each call still carries the episode's full character and location context. Sending only each scene's characters and locations would shrink it further, but that was never measured and is not what ships today (KB-122).</p>
         </div>
 
         <!-- ═══ Section 8: LLM Configuration ═══ -->

@@ -190,16 +190,15 @@ The platform uses a 5-stage content generation pipeline where each stage builds 
 │  │  ┌─────────────────────────────────────────────────────────────────────────────┐  │ │
 │  │  │  INPUT:                                                                      │  │ │
 │  │  │  • screenplay_data.scenes from previous stage                                │  │ │
-│  │  │  • Character registry with reference images                                  │  │ │
-│  │  │  • Location registry with reference images                                   │  │ │
+│  │  │  • The episode's characters (VEO formatted)                                  │  │ │
+│  │  │  • The episode's locations (VEO formatted)                                   │  │ │
 │  │  │                                                                              │  │ │
 │  │  │  PROCESS: (See Scene-by-Scene Shot Generation section below)                 │  │ │
-│  │  │  • buildGlobalShotContext(episodeId) → global registries + metadata          │  │ │
-│  │  │  • For each scene:                                                           │  │ │
-│  │  │    - filterContextForScene(scene, globalContext) → 50-80% token savings      │  │ │
-│  │  │    - executeLLM('scene-shot-generation', { filteredContext, scene })         │  │ │
-│  │  │  • aggregateSceneResults() → unified shot list                               │  │ │
-│  │  │  • batchCreateShotsAction() → persist to shots table                         │  │ │
+│  │  │  • shot-generation job (LLM worker): buildEpisodeContext() + VEO formatters  │  │ │
+│  │  │  • runShotOrchestrator(): Reel Scout → Shot Director → Shot Quality          │  │ │
+│  │  │  • Shot Director: executeLLM('scene-shot-generation') once per scene,        │  │ │
+│  │  │    in parallel batches of 5 (3 above 15 scenes); shots numbered in order     │  │ │
+│  │  │  • the handler replaces the episode's rows in the shots table                │  │ │
 │  │  │                                                                              │  │ │
 │  │  │  OUTPUT → episodes.shot_list (JSONB) + shots table:                          │  │ │
 │  │  │  ┌───────────────────────────────────────────────────────────────────────┐   │  │ │
@@ -266,158 +265,34 @@ The platform uses a 5-stage content generation pipeline where each stage builds 
 
 ## Scene-by-Scene Shot Generation
 
-This is the core innovation for scalable shot list generation. Instead of processing the entire screenplay at once (which hits token limits), we process each scene individually with filtered context.
+Shots are generated one scene at a time, in parallel, so a long screenplay
+never has to fit in one prompt. The path, as it runs today:
 
 ```
-                        SCENE-BY-SCENE SHOT GENERATION PIPELINE
-┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│                                                                                          │
-│   ┌──────────────────────────────────────────────────────────────────────────────────┐  │
-│   │  1. BUILD GLOBAL CONTEXT (Once per episode)                                       │  │
-│   │  ┌────────────────────────────────────────────────────────────────────────────┐  │  │
-│   │  │  buildGlobalShotContext(episodeId): GlobalShotContext                       │  │  │
-│   │  │                                                                             │  │  │
-│   │  │  ┌─────────────────────────────────────────────────────────────────────┐   │  │  │
-│   │  │  │  GlobalShotContext = {                                              │   │  │  │
-│   │  │  │    characterRegistry: CharacterRegistryEntry[],                     │   │  │  │
-│   │  │  │    //  name, role, physicalDescription, personality, referenceImage │   │  │  │
-│   │  │  │                                                                     │   │  │  │
-│   │  │  │    locationRegistry: LocationRegistryEntry[],                       │   │  │  │
-│   │  │  │    //  name, description, atmosphere, referenceImage                │   │  │  │
-│   │  │  │                                                                     │   │  │  │
-│   │  │  │    episodeMetadata: {                                               │   │  │  │
-│   │  │  │      title, genre, targetDuration, contentStyle                     │   │  │  │
-│   │  │  │    },                                                               │   │  │  │
-│   │  │  │                                                                     │   │  │  │
-│   │  │  │    referenceImages: {                                               │   │  │  │
-│   │  │  │      characters: { name, url }[],                                   │   │  │  │
-│   │  │  │      locations: { name, url }[]                                     │   │  │  │
-│   │  │  │    }                                                                │   │  │  │
-│   │  │  │  }                                                                  │   │  │  │
-│   │  │  └─────────────────────────────────────────────────────────────────────┘   │  │  │
-│   │  └────────────────────────────────────────────────────────────────────────────┘  │  │
-│   └──────────────────────────────────────────────────────────────────────────────────┘  │
-│                                              │                                           │
-│                                              ▼                                           │
-│   ┌──────────────────────────────────────────────────────────────────────────────────┐  │
-│   │  2. PROCESS EACH SCENE SEQUENTIALLY                                              │  │
-│   │                                                                                   │  │
-│   │     for (scene of screenplay.scenes) {                                           │  │
-│   │   ┌────────────────────────────────────────────────────────────────────────────┐ │  │
-│   │   │  2a. FILTER CONTEXT FOR SCENE (Token Optimization)                         │ │  │
-│   │   │  ┌──────────────────────────────────────────────────────────────────────┐  │ │  │
-│   │   │  │  filterContextForScene(scene, globalContext): SceneFilteredContext   │  │ │  │
-│   │   │  │                                                                       │  │ │  │
-│   │   │  │  BEFORE FILTERING:                    AFTER FILTERING:                │  │ │  │
-│   │   │  │  ┌─────────────────────┐              ┌─────────────────────┐         │  │ │  │
-│   │   │  │  │ All 12 characters   │     ───►     │ 2-3 scene chars    │         │  │ │  │
-│   │   │  │  │ All 8 locations     │              │ 1 scene location   │         │  │ │  │
-│   │   │  │  │ ~4000 tokens        │              │ ~800 tokens        │         │  │ │  │
-│   │   │  │  └─────────────────────┘              └─────────────────────┘         │  │ │  │
-│   │   │  │                                                                       │  │ │  │
-│   │   │  │  TOKEN SAVINGS: 50-80%                                                │  │ │  │
-│   │   │  │                                                                       │  │ │  │
-│   │   │  │  Filtering Logic:                                                     │  │ │  │
-│   │   │  │  • extractSceneCharacters(scene) → names from dialogue + description │  │ │  │
-│   │   │  │  • Match against characterRegistry                                    │  │ │  │
-│   │   │  │  • Extract location from scene.heading                                │  │ │  │
-│   │   │  │  • Match against locationRegistry                                     │  │ │  │
-│   │   │  └──────────────────────────────────────────────────────────────────────┘  │ │  │
-│   │   └────────────────────────────────────────────────────────────────────────────┘ │  │
-│   │                                              │                                    │  │
-│   │                                              ▼                                    │  │
-│   │   ┌────────────────────────────────────────────────────────────────────────────┐ │  │
-│   │   │  2b. GENERATE SHOTS FOR SCENE (LLM Call)                                   │ │  │
-│   │   │  ┌──────────────────────────────────────────────────────────────────────┐  │ │  │
-│   │   │  │  executeLLM('scene-shot-generation', {                               │  │ │  │
-│   │   │  │    scene_number,                                                     │  │ │  │
-│   │   │  │    total_scenes,                                                     │  │ │  │
-│   │   │  │    characters: formatFilteredCharactersForPrompt(sceneContext),      │  │ │  │
-│   │   │  │    locations: formatFilteredLocationsForPrompt(sceneContext),        │  │ │  │
-│   │   │  │    episode_metadata: JSON.stringify(sceneContext.episodeMetadata),   │  │ │  │
-│   │   │  │    previous_scene_summary,    // Narrative bridge                    │  │ │  │
-│   │   │  │    scene_content: formatSceneForPrompt(scene)                        │  │ │  │
-│   │   │  │  })                                                                  │  │ │  │
-│   │   │  │                                                                      │  │ │  │
-│   │   │  │  OUTPUT: SceneShotGenerationOutput                                   │  │ │  │
-│   │   │  │  ┌────────────────────────────────────────────────────────────────┐  │  │ │  │
-│   │   │  │  │  {                                                             │  │  │ │  │
-│   │   │  │  │    shots: [                                                    │  │  │ │  │
-│   │   │  │  │      {                                                         │  │  │ │  │
-│   │   │  │  │        shotNumber, shotType, cameraDirection,                  │  │  │ │  │
-│   │   │  │  │        description, action, prompt, characters,                │  │  │ │  │
-│   │   │  │  │        duration, metadata, veoPrompt, dialogueTiming           │  │  │ │  │
-│   │   │  │  │      }                                                         │  │  │ │  │
-│   │   │  │  │    ],                                                          │  │  │ │  │
-│   │   │  │  │    sceneSummary: string  // Used as context for next scene     │  │  │ │  │
-│   │   │  │  │  }                                                             │  │  │ │  │
-│   │   │  │  └────────────────────────────────────────────────────────────────┘  │  │ │  │
-│   │   │  └──────────────────────────────────────────────────────────────────────┘  │ │  │
-│   │   └────────────────────────────────────────────────────────────────────────────┘ │  │
-│   │                                              │                                    │  │
-│   │                                              ▼                                    │  │
-│   │   ┌────────────────────────────────────────────────────────────────────────────┐ │  │
-│   │   │  2c. COLLECT RESULT & UPDATE CONTEXT                                       │ │  │
-│   │   │  ┌──────────────────────────────────────────────────────────────────────┐  │ │  │
-│   │   │  │  sceneResults.push({                                                 │  │ │  │
-│   │   │  │    sceneNumber,                                                      │  │ │  │
-│   │   │  │    shots: result.data.shots,                                         │  │ │  │
-│   │   │  │    sceneSummary: result.data.sceneSummary                            │  │ │  │
-│   │   │  │  });                                                                 │  │ │  │
-│   │   │  │                                                                      │  │ │  │
-│   │   │  │  // Use this summary as context for NEXT scene (narrative bridge)   │  │ │  │
-│   │   │  │  previousSceneSummary = result.data.sceneSummary;                    │  │ │  │
-│   │   │  └──────────────────────────────────────────────────────────────────────┘  │ │  │
-│   │   └────────────────────────────────────────────────────────────────────────────┘ │  │
-│   │     }  // end for loop                                                           │  │
-│   └──────────────────────────────────────────────────────────────────────────────────┘  │
-│                                              │                                           │
-│                                              ▼                                           │
-│   ┌──────────────────────────────────────────────────────────────────────────────────┐  │
-│   │  3. AGGREGATE RESULTS (Reduce Phase)                                             │  │
-│   │  ┌────────────────────────────────────────────────────────────────────────────┐  │  │
-│   │  │  aggregateSceneResults(sceneResults, globalContext)                         │  │  │
-│   │  │                                                                             │  │  │
-│   │  │  OPERATIONS:                                                                │  │  │
-│   │  │  • Assign global sequenceNumbers (1, 2, 3... across all scenes)             │  │  │
-│   │  │  • Attach referenceImages to each shot based on character/location names    │  │  │
-│   │  │  • Calculate metadata totals (totalShots, totalDuration, shotTypes)         │  │  │
-│   │  │  • Prepare BatchShotDefinition[] for database insertion                     │  │  │
-│   │  │                                                                             │  │  │
-│   │  │  OUTPUT:                                                                    │  │  │
-│   │  │  ┌───────────────────────────────────────────────────────────────────────┐  │  │  │
-│   │  │  │  {                                                                    │  │  │  │
-│   │  │  │    generatedShots: AggregatedShot[],   // Full shot data              │  │  │  │
-│   │  │  │    shotsToCreate: BatchShotDefinition[], // For DB insertion          │  │  │  │
-│   │  │  │    totalShots: number,                                                │  │  │  │
-│   │  │  │    metadata: {                                                        │  │  │  │
-│   │  │  │      totalDuration, shotTypes, locations, characters                  │  │  │  │
-│   │  │  │    }                                                                  │  │  │  │
-│   │  │  │  }                                                                    │  │  │  │
-│   │  │  └───────────────────────────────────────────────────────────────────────┘  │  │  │
-│   │  └────────────────────────────────────────────────────────────────────────────┘  │  │
-│   └──────────────────────────────────────────────────────────────────────────────────┘  │
-│                                              │                                           │
-│                                              ▼                                           │
-│   ┌──────────────────────────────────────────────────────────────────────────────────┐  │
-│   │  4. PERSIST RESULTS                                                              │  │
-│   │  ┌────────────────────────────────────────────────────────────────────────────┐  │  │
-│   │  │  // Insert individual shots into shots table                                │  │  │
-│   │  │  await batchCreateShotsAction({                                             │  │  │
-│   │  │    episodeId,                                                               │  │  │
-│   │  │    shots: aggregated.shotsToCreate                                          │  │  │
-│   │  │  });                                                                        │  │  │
-│   │  │                                                                             │  │  │
-│   │  │  // Update episode with shot_list metadata (JSONB)                          │  │  │
-│   │  │  await client.from('episodes').update({                                     │  │  │
-│   │  │    shot_list: shotListData,                                                 │  │  │
-│   │  │    updated_at: new Date().toISOString()                                     │  │  │
-│   │  │  }).eq('id', episodeId);                                                    │  │  │
-│   │  └────────────────────────────────────────────────────────────────────────────┘  │  │
-│   └──────────────────────────────────────────────────────────────────────────────────┘  │
-│                                                                                          │
-└──────────────────────────────────────────────────────────────────────────────────────────┘
+ generateShotListAction / bulk actions          (packages/features/episodes/…/shot-list-actions.ts)
+        │  queue `shot-generation` (SQS)
+        ▼
+ processShotGeneration                          (apps/web/lambda/llm-worker/handlers/shot-generation.ts)
+        │  buildEpisodeContext() → formatCharactersForVeoPrompt() / formatLocationsForVeoPrompt()
+        │  screenplay_data.scenes (stored screenplay)
+        ▼
+ runShotOrchestrator                            (packages/features/episodes/src/agent/shot-orchestrator.ts)
+   ├─ Reel Scout     analyzeScenes        → short-form candidate scenes
+   ├─ Shot Director  generateShots        (…/agent/skills/shot-director-skill.ts)
+   │     for each batch of 5 scenes (3 when there are more than 15):
+   │       Promise.allSettled( executeLLM('scene-shot-generation', one scene) )
+   │     one failed scene does not fail the batch; shots numbered in order
+   └─ Shot Quality   evaluateShotQuality  → post-generation quality gate
+        │
+        ▼
+ the handler replaces the episode's rows in the shots table
 ```
+
+Every scene prompt carries the episode's **full** character and location
+context. There is no per-scene context filtering: an older in-process
+pipeline did that (`buildGlobalShotContext`, `filterContextForScene`,
+`aggregateSceneResults`) and was replaced by the job above in `e2d42522`;
+its leftover copy in the worker was deleted in KB-122.
 
 ### Why Scene-by-Scene?
 
@@ -831,111 +706,24 @@ The Audio Studio handles dialogue generation, voice assignment, and music integr
 
 ## Context Builder System
 
-The context builder system optimizes LLM token usage by filtering global context to only scene-relevant entities.
+`apps/web/lambda/llm-worker/utils/context-builder.ts` builds the context
+every LLM worker handler starts from:
 
-```
-                              CONTEXT BUILDER FUNCTIONS
-┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│                                                                                         │
-│   ┌─────────────────────────────────────────────────────────────────────────────────┐  │
-│   │  buildGlobalShotContext(episodeId): GlobalShotContext                            │  │
-│   │  ──────────────────────────────────────────────────────────────────────────────  │  │
-│   │  Loads all data needed for shot generation ONCE per episode:                     │  │
-│   │                                                                                  │  │
-│   │  • Fetches episode with story_data                                               │  │
-│   │  • Extracts character registry from story_data.characters                        │  │
-│   │  • Fetches location registry from project settings or story_data                 │  │
-│   │  • Loads character/location reference images from asset library                  │  │
-│   │  • Builds episode metadata (title, genre, duration, style)                       │  │
-│   │                                                                                  │  │
-│   │  This is called ONCE at the start of shot generation.                            │  │
-│   └─────────────────────────────────────────────────────────────────────────────────┘  │
-│                                                                                         │
-│   ┌─────────────────────────────────────────────────────────────────────────────────┐  │
-│   │  filterContextForScene(scene, globalContext): SceneFilteredContext               │  │
-│   │  ──────────────────────────────────────────────────────────────────────────────  │  │
-│   │  Reduces context to ONLY entities appearing in this specific scene:              │  │
-│   │                                                                                  │  │
-│   │  Input Scene:                          Filtered Output:                          │  │
-│   │  ┌──────────────────────────┐          ┌──────────────────────────┐             │  │
-│   │  │ Scene 3: INT. KITCHEN    │          │ SceneFilteredContext {   │             │  │
-│   │  │                          │          │   characters: [          │             │  │
-│   │  │ ELENA enters, followed   │   ───▶   │     Elena,               │             │  │
-│   │  │ by MARCUS.               │          │     Marcus               │             │  │
-│   │  │                          │          │   ],                     │             │  │
-│   │  │ ELENA: "We need to talk" │          │   locations: [           │             │  │
-│   │  │ MARCUS: "I know."        │          │     Kitchen              │             │  │
-│   │  └──────────────────────────┘          │   ],                     │             │  │
-│   │                                         │   episodeMetadata: {...} │             │  │
-│   │  Global Context (12 chars, 8 locs)      │ }                        │             │  │
-│   │  ┌──────────────────────────┐          │                          │             │  │
-│   │  │ • Elena                  │          │ TOKEN SAVINGS: ~75%      │             │  │
-│   │  │ • Marcus                 │          └──────────────────────────┘             │  │
-│   │  │ • Sofia                  │                                                    │  │
-│   │  │ • David                  │                                                    │  │
-│   │  │ • Narrator               │                                                    │  │
-│   │  │ • Kitchen                │                                                    │  │
-│   │  │ • Living Room            │                                                    │  │
-│   │  │ • Office                 │                                                    │  │
-│   │  │ • ...8 more              │                                                    │  │
-│   │  └──────────────────────────┘                                                    │  │
-│   └─────────────────────────────────────────────────────────────────────────────────┘  │
-│                                                                                         │
-│   ┌─────────────────────────────────────────────────────────────────────────────────┐  │
-│   │  extractSceneCharacters(scene): string[]                                         │  │
-│   │  ──────────────────────────────────────────────────────────────────────────────  │  │
-│   │  Extracts character names from:                                                  │  │
-│   │  • scene.dialogue[].character - Direct dialogue attribution                      │  │
-│   │  • scene.description - Character names in action lines                           │  │
-│   │  • Uses NLP-style extraction for uppercase names                                 │  │
-│   └─────────────────────────────────────────────────────────────────────────────────┘  │
-│                                                                                         │
-│   ┌─────────────────────────────────────────────────────────────────────────────────┐  │
-│   │  formatFilteredCharactersForPrompt(context): string                              │  │
-│   │  ──────────────────────────────────────────────────────────────────────────────  │  │
-│   │  Formats filtered characters for LLM prompt with VEO-optimized descriptions:    │  │
-│   │                                                                                  │  │
-│   │  Output Format:                                                                  │  │
-│   │  ┌──────────────────────────────────────────────────────────────────────────┐   │  │
-│   │  │  CHARACTER REGISTRY (Scene-Relevant):                                    │   │  │
-│   │  │                                                                          │   │  │
-│   │  │  1. ELENA (Protagonist)                                                  │   │  │
-│   │  │     Physical: 35-year-old Hispanic woman, long curly black hair,         │   │  │
-│   │  │               warm brown eyes, athletic build                            │   │  │
-│   │  │     Personality: Determined, empathetic, quick-witted                    │   │  │
-│   │  │     Reference Image: [URL if available]                                  │   │  │
-│   │  │                                                                          │   │  │
-│   │  │  2. MARCUS (Supporting)                                                  │   │  │
-│   │  │     Physical: 40-year-old Caucasian man, salt-and-pepper hair,           │   │  │
-│   │  │               blue eyes, tall and lean                                   │   │  │
-│   │  │     Personality: Reserved, analytical, secretly caring                   │   │  │
-│   │  │     Reference Image: [URL if available]                                  │   │  │
-│   │  └──────────────────────────────────────────────────────────────────────────┘   │  │
-│   └─────────────────────────────────────────────────────────────────────────────────┘  │
-│                                                                                         │
-│   ┌─────────────────────────────────────────────────────────────────────────────────┐  │
-│   │  formatSceneForPrompt(scene): string                                             │  │
-│   │  ──────────────────────────────────────────────────────────────────────────────  │  │
-│   │  Formats screenplay scene for LLM processing:                                    │  │
-│   │                                                                                  │  │
-│   │  Output Format:                                                                  │  │
-│   │  ┌──────────────────────────────────────────────────────────────────────────┐   │  │
-│   │  │  === SCENE 3 ===                                                         │   │  │
-│   │  │  INT. KITCHEN - NIGHT                                                    │   │  │
-│   │  │                                                                          │   │  │
-│   │  │  DESCRIPTION:                                                            │   │  │
-│   │  │  Elena enters the dimly lit kitchen, her footsteps echoing...            │   │  │
-│   │  │                                                                          │   │  │
-│   │  │  DIALOGUE:                                                               │   │  │
-│   │  │  ELENA: We need to talk about what happened.                             │   │  │
-│   │  │  MARCUS: (sighs) I know. I've been dreading this moment.                 │   │  │
-│   │  │                                                                          │   │  │
-│   │  │  ESTIMATED DURATION: 45 seconds                                          │   │  │
-│   │  └──────────────────────────────────────────────────────────────────────────┘   │  │
-│   └─────────────────────────────────────────────────────────────────────────────────┘  │
-│                                                                                         │
-└─────────────────────────────────────────────────────────────────────────────────────────┘
-```
+- `buildEpisodeContext(episodeId, client, options?)` reads the episode, its
+  season and project, tagged characters and locations, verified and linked
+  facts, recurring elements, and the previous episodes in the memory
+  horizon's window (with related earlier episodes for story generation and
+  refinement, KB-35). It returns everything **sanitised** for prompts
+  (`sanitizeStrings`, KB-101).
+- The `format*ForPrompt` functions turn that context into prompt blocks:
+  characters, locations, previous episodes, recurring elements, beats,
+  facts, and the VEO 3.1 formatters (`formatCharactersForVeoPrompt`,
+  `formatLocationsForVeoPrompt`) used by shot generation.
+
+Project text that a handler reads itself, or takes from the job payload,
+is sanitised where it is handed to the model (KB-101). Both rules are
+guarded by `__tests__/prompt-sanitising.test.ts` and
+`__tests__/executor-inputs-sanitised.test.ts`.
 
 ---
 
@@ -1115,7 +903,10 @@ SCORE (Series Continuity and Recall Engine) maintains narrative consistency acro
 | Component | File Location |
 |-----------|---------------|
 | Shot List Generation | `packages/features/episodes/src/lib/server/mutations/shot-list-actions.ts` |
-| Context Builder | `packages/features/episodes/src/server/context-builder.ts` |
+| Shot Generation Job | `apps/web/lambda/llm-worker/handlers/shot-generation.ts` |
+| Shot Orchestrator | `packages/features/episodes/src/agent/shot-orchestrator.ts` |
+| Shot Director (per-scene) | `packages/features/episodes/src/agent/skills/shot-director-skill.ts` |
+| Context Builder | `apps/web/lambda/llm-worker/utils/context-builder.ts` |
 | Shot Schemas | `packages/features/episodes/src/lib/schemas/shot-list.schema.ts` |
 | Types | `packages/features/episodes/src/lib/types.ts` |
 | Duration Scaling | `packages/features/episodes/src/lib/duration-scaling.ts` |
@@ -1126,10 +917,9 @@ SCORE (Series Continuity and Recall Engine) maintains narrative consistency acro
 
 | Function | Purpose |
 |----------|---------|
-| `generateShotListAction()` | Main entry point for shot generation |
-| `buildGlobalShotContext()` | Build once, use for all scenes |
-| `filterContextForScene()` | 50-80% token savings per scene |
-| `aggregateSceneResults()` | Combine scene results with sequencing |
+| `generateShotListAction()` | Queues the shot-generation job |
+| `runShotOrchestrator()` | Reel Scout → Shot Director → Shot Quality |
+| `buildEpisodeContext()` | Episode context for every worker handler, sanitised |
 | `executeLLM()` | Type-safe prompt execution |
 | `calculateContentScaling()` | Duration-based content parameters |
 

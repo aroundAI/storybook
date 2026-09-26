@@ -346,7 +346,7 @@ You'll be taken to the episode studio with 7 production tabs.
 **Features:**
 
 1. **AI Shot Generation**
-   - Scene-by-scene processing (50-80% token savings)
+   - Scene-by-scene processing, scenes in parallel
    - Click **"Generate Shot List"**
    - Configure:
      - Shot duration (min/max seconds)

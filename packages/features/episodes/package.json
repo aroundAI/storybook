@@ -17,7 +17,6 @@
     "./components": "./src/components/index.ts",
     "./server": "./src/server/index.ts",
     "./server/actions": "./src/server/actions.ts",
-    "./server/context-builder": "./src/server/context-builder.ts",
     "./server/season-generation": "./src/lib/server/mutations/season-generation-actions.ts",
     "./lib": "./src/lib/index.ts",
     "./schemas": "./src/lib/schemas.ts",

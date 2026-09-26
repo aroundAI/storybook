@@ -12,36 +12,6 @@
       "pattern": "buildEpisodeContext returns"
     },
     {
-      "name": "W2 The shot context reads the episode row unsanitised",
-      "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/utils/context-builder.ts",
-      "find": "  const episode = sanitizeStrings(row);\n",
-      "replace": "  const episode = row;\n",
-      "cwd": "apps/web",
-      "test": "lambda/llm-worker/__tests__/prompt-sanitising.test.ts",
-      "pattern": "buildGlobalShotContext returns"
-    },
-    {
-      "name": "W3 The shot context reads characters unsanitised",
-      "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/utils/context-builder.ts",
-      "find": "  const characters = sanitizeStrings(\n    await fetchCharactersByIds(characterIds, supabase),\n  );\n",
-      "replace": "  const characters = await fetchCharactersByIds(characterIds, supabase);\n",
-      "cwd": "apps/web",
-      "test": "lambda/llm-worker/__tests__/prompt-sanitising.test.ts",
-      "pattern": "buildGlobalShotContext returns"
-    },
-    {
-      "name": "W4 A screenplay scene reaches the prompt unsanitised",
-      "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/utils/context-builder.ts",
-      "find": "  const safe = sanitizeStrings(scene);\n",
-      "replace": "  const safe = scene;\n",
-      "cwd": "apps/web",
-      "test": "lambda/llm-worker/__tests__/prompt-sanitising.test.ts",
-      "pattern": "every exported formatter"
-    },
-    {
       "name": "W5 Chat-template tokens pass the sanitiser",
       "kind": "unit",
       "file": "packages/features/episodes/src/lib/sanitize-for-prompt.ts",

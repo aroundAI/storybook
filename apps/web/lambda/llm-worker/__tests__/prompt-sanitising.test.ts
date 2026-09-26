@@ -5,8 +5,8 @@ import { sanitizeForPrompt } from '@kit/episodes/lib';
 import * as builder from '../utils/context-builder';
 import { P, expectSanitised, fakeClient } from './helpers/injected-rows';
 
-// KB-101. Project text reaches the worker's prompts through the two context
-// builders and the formatters over them. Every row below carries an
+// KB-101. Project text reaches the worker's prompts through the context
+// builder and the formatters over it. Every row below carries an
 // injection payload in every text column the builders read; nothing any
 // builder returns, and nothing any exported formatter prints, may carry it
 // raw. The formatter list is checked against the module's exports, so a new
@@ -28,29 +28,8 @@ describe('project text in the worker prompts is sanitised (KB-101)', () => {
     expect(context.characters[0]!.name).toBe(sanitizeForPrompt(`${P} c1`));
   });
 
-  it('buildGlobalShotContext returns no raw project text', async () => {
-    const global = await builder.buildGlobalShotContext('e5', fakeClient());
-
-    expectSanitised(
-      [global.characterRegistry, global.locationRegistry, global.episode],
-      'buildGlobalShotContext',
-    );
-  });
-
   it('every exported formatter prints no raw project text', async () => {
     const context = await builder.buildEpisodeContext('e5', fakeClient());
-    const global = await builder.buildGlobalShotContext('e5', fakeClient());
-    const characterName = global.characterRegistry[0]!.name;
-    const locationName = global.locationRegistry[0]!.name;
-    const scene = {
-      number: 1,
-      heading: P,
-      location: locationName,
-      timeOfDay: P,
-      description: P,
-      dialogue: [{ character: characterName, text: P, parenthetical: P }],
-    };
-    const filtered = builder.filterContextForScene(scene, global);
 
     const formatters: Record<string, () => string> = {
       formatVerifiedFactsForPrompt: () =>
@@ -74,15 +53,6 @@ describe('project text in the worker prompts is sanitised (KB-101)', () => {
         builder.formatLocationForVeoPrompt(context.locations[0]!),
       formatLocationsForVeoPrompt: () =>
         builder.formatLocationsForVeoPrompt(context.locations),
-      formatSceneForPrompt: () => builder.formatSceneForPrompt(scene),
-      formatFilteredCharactersForPrompt: () =>
-        builder.formatFilteredCharactersForPrompt(filtered, [characterName]),
-      formatCharactersMinimal: () =>
-        builder.formatCharactersMinimal(filtered, [characterName]),
-      formatLocationsMinimal: () =>
-        builder.formatLocationsMinimal(filtered, locationName),
-      formatFilteredLocationsForPrompt: () =>
-        builder.formatFilteredLocationsForPrompt(filtered, locationName),
       formatFactsForPrompt: () =>
         builder.formatFactsForPrompt(context.episodeFacts),
     };
