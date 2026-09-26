@@ -96,8 +96,11 @@ const KNOWN: Record<string, [number, string]> = {
 
   // Owned by another open pull request (2026-09-25); it adopts
   // requireAffectedRows and removes its line.
-  'apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts | external_api_keys | delete':
-    [1, 'teammate api-keys'],
+  // KB-84 (#390) moved it from api-keys-actions.ts into removeExternalApiKey.
+  'packages/supabase/src/external-api-keys.ts | external_api_keys | delete': [
+    1,
+    'teammate api-keys',
+  ],
   'packages/features/content-analytics/src/server/taxonomy-actions.ts | content_tags | delete':
     [1, 'teammate tag-scope'],
   'packages/features/content-analytics/src/server/report-actions.ts | scheduled_reports | delete':

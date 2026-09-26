@@ -51,7 +51,7 @@ acceptance_criteria:
     reason: "not met — no AI thumbnail code anywhere"
   - text: "Set thumbnail as primary for episode"
     met: true
-    evidence: "the episode's default thumbnail, set from the thumbnails panel on the publish screen (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-thumbnail-settings.tsx:333`, mounted at `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1451`, KB-89); E2E `apps/e2e/tests/storage/episode-thumbnails-panel.spec.ts`"
+    evidence: "the episode's default thumbnail, set from the thumbnails panel on the publish screen (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-thumbnail-settings.tsx:334`, mounted at `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1451`, KB-89); E2E `apps/e2e/tests/storage/episode-thumbnails-panel.spec.ts`"
   - text: "Download thumbnails"
     met: false
     reason: "not met — no reachable download: only the never-rendered `UploadOnlyMode` has one (`packages/features/publishing/src/components/upload-only-mode.tsx:197`); the publish screen previews and uploads only (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/video-card.tsx:88`)"

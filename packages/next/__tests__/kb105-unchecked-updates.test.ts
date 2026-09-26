@@ -47,9 +47,6 @@ const TAG_SCOPE = 'teammate tag-scope';
 // it adopts requireAffectedRows there and lowers this count by two.
 const VOICE_CLONE_PR =
   'KB-105: the two checks are left to #393, which rewrites these functions';
-// #371 retires lip sync and deletes this file; its line goes with it.
-const LIP_SYNC_RETIRED =
-  'KB-105: lip sync is retired by #371, which deletes this file';
 
 const KNOWN: Record<string, [number, string]> = {
   'apps/web/app/api/reports/scheduled/route.ts | scheduled_reports | update': [
@@ -61,8 +58,6 @@ const KNOWN: Record<string, [number, string]> = {
     ADMIN,
   ],
   'apps/web/lambda/llm-worker/handlers/audio-file-generation.ts | audio_cues | update':
-    [3, ADMIN],
-  'apps/web/lambda/llm-worker/handlers/dialogue-voice-generation.ts | dialogue_lines | update':
     [3, ADMIN],
   'apps/web/lambda/llm-worker/handlers/shot-generation.ts | episodes | update':
     [1, ADMIN],
@@ -83,8 +78,6 @@ const KNOWN: Record<string, [number, string]> = {
     [2, ADMIN],
   'packages/features/audio-generation/src/lib/audio-embedding.ts | audio_assets | update':
     [1, BOOKKEEPING],
-  'packages/features/audio-generation/src/server/actions.ts | generation_jobs | update':
-    [3, `${FAILURE_MARK} + ${RECORDS_RESULT}`],
   'packages/features/audio-generation/src/server/audio-asset-actions.ts | audio_assets | update':
     [1, BOOKKEEPING],
   'packages/features/audio-generation/src/server/audio-cue-actions.ts | audio_cues | update':
@@ -93,12 +86,6 @@ const KNOWN: Record<string, [number, string]> = {
     [1, CLEANUP],
   'packages/features/audio-generation/src/server/core/audio-asset-core.ts | audio_assets | update':
     [1, BOOKKEEPING],
-  'packages/features/audio-generation/src/server/lip-sync-actions.ts | lip_sync_jobs | update':
-    [3, `${FAILURE_MARK} + ${RECORDS_RESULT}`],
-  'packages/features/audio-generation/src/server/lip-sync-actions.ts | shots | update':
-    [1, LIP_SYNC_RETIRED],
-  'packages/features/audio-generation/src/server/music-actions.ts | audio_tracks | update':
-    [6, `${FAILURE_MARK} + ${RECORDS_RESULT}`],
   'packages/features/audio-generation/src/server/voice-actions.ts | dialogue_lines | update':
     [4, `${FAILURE_MARK} + ${RECORDS_RESULT}`],
   'packages/features/audio-generation/src/server/voice-actions.ts | generation_jobs | update':
@@ -153,8 +140,6 @@ const KNOWN: Record<string, [number, string]> = {
     [1, PENDING_EPISODES],
   'packages/features/episodes/src/server/continuity-actions.ts | episodes | update':
     [1, PENDING_EPISODES],
-  'packages/features/episodes/src/server/external-context-actions.ts | external_sources | update':
-    [2, ADMIN],
   'packages/features/episodes/src/server/thumbnail-actions.ts | episode_thumbnails | update':
     [3, `${PENDING_EPISODES} + ${SET_BEFORE}`],
   'packages/features/episodes/src/server/timeline-actions.ts | dialogue_lines | update':
@@ -171,7 +156,7 @@ const KNOWN: Record<string, [number, string]> = {
     [1, BOOKKEEPING],
   'packages/features/publishing/src/server/publish-actions.ts | publishes | update':
     [
-      8,
+      7,
       `${FAILURE_MARK} + ${JUST_INSERTED} + ${PENDING_PUBLISHING} + ${RECORDS_RESULT}`,
     ],
   'packages/features/publishing/src/server/social-post-actions.ts | social_posts | update':

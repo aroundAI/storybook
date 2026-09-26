@@ -71,7 +71,7 @@ acceptance_criteria:
     reason: "no longer true — voice-worker parses `overwriteExisting` (`apps/web/lambda/voice-worker/voice-generation.ts:33`) but never reads it; the async action never checks existing audio"
   - text: "`generateDialogueVoiceAction` reverts status if job creation fails"
     met: true
-    evidence: "the async action reverts to `pending` when queueing fails (`packages/features/audio-generation/src/server/voice-actions.ts:578`)"
+    evidence: "the async action reverts to `pending` when queueing fails (`packages/features/audio-generation/src/server/voice-actions.ts:596`)"
   - text: "`generateVoiceFromTextAction` generates audio for raw text"
     met: false
     reason: "retired — no caller: only the unmounted package `VoiceAssignment` imports it (`packages/features/audio-generation/src/components/VoiceAssignment.tsx:44`); voices are chosen in the character editor (FILM-205)"
@@ -89,13 +89,13 @@ acceptance_criteria:
     reason: "retired — `generateVoiceFromTextAction` has no caller (see above)"
   - text: "Both actions enforce authentication via `requireUser`"
     met: true
-    evidence: "the live async action, `packages/features/audio-generation/src/server/voice-actions.ts:437`"
+    evidence: "the live async action, `packages/features/audio-generation/src/server/voice-actions.ts:443`"
   - text: "Both actions validate audioBuffer before upload"
     met: false
     reason: "no longer true — voice-worker uploads the response body without checking it (`apps/web/lambda/voice-worker/voice-generation.ts:245`)"
   - text: "Both actions enforce RLS policies (via Supabase client)"
     met: true
-    evidence: "the async action reads the line through the user's client (`packages/features/audio-generation/src/server/voice-actions.ts:450`) before queueing; the worker then runs as service role"
+    evidence: "the async action reads the line through the user's client (`packages/features/audio-generation/src/server/voice-actions.ts:456`) before queueing; the worker then runs as service role"
   - text: "Actions complete within 60 seconds (timeout configured)"
     met: false
     reason: "unverified — runtime timing; the action only queues, and the worker's limit is 5 minutes (`sst.config.ts:907`)"
@@ -107,7 +107,7 @@ acceptance_criteria:
     reason: "no longer true — no job row or key on the live path; an SQS redelivery generates and uploads again"
   - text: "All errors logged with context"
     met: true
-    evidence: "`packages/features/audio-generation/src/server/voice-actions.ts:569`; `apps/web/lambda/voice-worker/voice-generation.ts:311`"
+    evidence: "`packages/features/audio-generation/src/server/voice-actions.ts:587`; `apps/web/lambda/voice-worker/voice-generation.ts:311`"
   - text: "API keys never exposed in logs (uses env var)"
     met: true
     evidence: "the key now comes from `external_api_keys` (`apps/web/lambda/voice-worker/voice-generation.ts:206`) and is used only in the request header (`:222`)"

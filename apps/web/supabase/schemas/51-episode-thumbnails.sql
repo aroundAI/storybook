@@ -111,7 +111,7 @@ create policy "episode_thumbnails_update" on public.episode_thumbnails for updat
   );
 
 -- Delete policy: anyone who can write the project (owner, admin, member),
--- as for adding and replacing (KB-89, 20260925104159)
+-- as for adding and replacing (KB-89, 20260926155852)
 create policy "episode_thumbnails_delete" on public.episode_thumbnails for delete
   to authenticated using (
     exists (
