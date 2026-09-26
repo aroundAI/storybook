@@ -211,6 +211,26 @@ describe('qualityStates (EDD F-3)', () => {
     });
   });
 
+  // KB-111: a TikTok or Instagram video reads null, not 0.
+  it('says not reported for a figure the platform does not measure', () => {
+    const states = qualityStates(
+      row({
+        lifetimeViews: 5_000,
+        avgViewDurationSeconds: null,
+        avgViewPercentage: null,
+      }),
+    );
+
+    expect(states.avgViewDuration).toEqual({
+      kind: 'none',
+      reason: 'not-reported',
+    });
+    expect(states.avgViewPercentage).toEqual({
+      kind: 'none',
+      reason: 'not-reported',
+    });
+  });
+
   it('refuses an average view duration or percentage over no views', () => {
     const states = qualityStates(row({ lifetimeViews: 0 }));
 

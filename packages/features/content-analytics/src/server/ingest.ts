@@ -5,6 +5,7 @@ import type {
   RetentionCurvePoint,
   SnapshotTotals,
   VideoAudienceRow,
+  VideoMetric,
   YouTubeVideoMetric,
 } from '@kit/clickhouse';
 import { VIEW_DEFINITIONS, formatDateStr } from '@kit/clickhouse';
@@ -164,6 +165,45 @@ export function buildYouTubeDailyRows(input: {
     engaged_views: engagedViewsFor(day),
     extra_metrics: day.date === latest ? input.extraMetricsJson : '{}',
   }));
+}
+
+/**
+ * A TikTok/Instagram `video_metrics` row: the lifetime-counter delta for one
+ * day. Neither platform reports subscribers lost, average view duration,
+ * average percentage viewed or dislikes on any surface we ingest, so the type
+ * pins those four to `null` — not measured (KB-111). A 0 there was read as a
+ * measurement and pooled with YouTube's figures.
+ */
+export type SnapshotDeltaMetric = VideoMetric & {
+  platform: 'tiktok' | 'instagram';
+  subscribers_lost: null;
+  avg_view_duration_seconds: null;
+  avg_view_percentage: null;
+  dislikes: null;
+};
+
+export function buildSnapshotDeltaRow(input: {
+  projectId: string;
+  videoId: string;
+  platform: 'tiktok' | 'instagram';
+  metricDate: string;
+  delta: CumulativeTotals;
+  extraMetricsJson: string;
+}): SnapshotDeltaMetric {
+  return {
+    project_id: input.projectId,
+    video_id: input.videoId,
+    platform: input.platform,
+    metric_date: input.metricDate,
+    ...input.delta,
+    revenue_cents: 0,
+    subscribers_lost: null,
+    avg_view_duration_seconds: null,
+    avg_view_percentage: null,
+    dislikes: null,
+    metric_source: 'snapshot_delta',
+    extra_metrics: input.extraMetricsJson,
+  };
 }
 
 /**

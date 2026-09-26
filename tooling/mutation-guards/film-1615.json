@@ -225,8 +225,8 @@
       "name": "R-6 an average of exactly zero reported as measured",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/lib/video-log-cells.ts",
-      "find": "    return value > 0 ? { kind: 'value', value } : notReported;",
-      "replace": "    return { kind: 'value', value };",
+      "find": "    return value !== null && value > 0 ? { kind: 'value', value } : notReported;",
+      "replace": "    return value !== null ? { kind: 'value', value } : notReported;",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/video-log-cells.test.ts",
       "pattern": "average of exactly zero"

@@ -32,7 +32,8 @@ interface DiagnosticRow {
   views: number;
   impressions: number;
   ctr: number;
-  avgViewDurationSeconds: number;
+  /** Null when the platform does not measure it (KB-111). */
+  avgViewDurationSeconds: number | null;
   cliff?: { position: number; drop: number; seconds?: number } | null;
 }
 
@@ -155,7 +156,7 @@ export const getWeeklyDiagnosticsAction = withRefusals(
             views: totals.get(publish.id)?.views ?? 0,
             impressions: metrics?.impressions ?? 0,
             ctr: metrics?.impressionsCtr ?? 0,
-            avgViewDurationSeconds: metrics?.avgViewDurationSeconds ?? 0,
+            avgViewDurationSeconds: metrics?.avgViewDurationSeconds ?? null,
             // Detected, never stored: nothing writes a `has_cliff` column
             // that could go stale against a re-fetched curve. A video with
             // no curve is `null` — not a flat zero, which would render as a

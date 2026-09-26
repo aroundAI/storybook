@@ -156,6 +156,10 @@
         {
           "find": "queryNetSubscribersForVideos({ videoIds, projectIds }),",
           "replace": "(async (_: unknown) => new Map())({ videoIds, projectIds }),"
+        },
+        {
+          "find": "      const net = await queryNetSubscribersForVideos({\n",
+          "replace": "      const net = await (async (_: unknown) => new Map())({\n"
         }
       ]
     },

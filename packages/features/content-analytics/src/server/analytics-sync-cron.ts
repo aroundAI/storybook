@@ -10,11 +10,7 @@ import {
   insertVideoSnapshots,
   queryLatestSnapshots,
 } from '@kit/clickhouse/server';
-import type {
-  SnapshotTotals,
-  VideoMetric,
-  VideoSnapshot,
-} from '@kit/clickhouse/server';
+import type { SnapshotTotals, VideoSnapshot } from '@kit/clickhouse/server';
 import { getLogger } from '@kit/shared/logger';
 import { fetchAllByIds } from '@kit/shared/pagination';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -41,6 +37,7 @@ import type { AssetDurationCandidate } from './asset-duration-sync';
 import {
   buildAudienceRows,
   buildRetentionPoints,
+  buildSnapshotDeltaRow,
   buildYouTubeDailyRows,
   computeSnapshotDelta,
   computeYouTubeWindow,
@@ -803,20 +800,16 @@ async function ingestCumulativeSnapshot(
   };
 
   if (shouldWriteMetricRow(writeContext)) {
-    const delta = computeSnapshotDelta(currentTotals, baseline);
-
-    const metric: VideoMetric = {
-      project_id: projectId,
-      video_id: publish.id,
-      platform,
-      metric_date: snapshotDeltaMetricDate(writeContext),
-      ...delta,
-      revenue_cents: 0,
-      metric_source: 'snapshot_delta',
-      extra_metrics: JSON.stringify(normalizedData.raw_data ?? {}),
-    };
-
-    await insertVideoMetrics([metric]);
+    await insertVideoMetrics([
+      buildSnapshotDeltaRow({
+        projectId,
+        videoId: publish.id,
+        platform,
+        metricDate: snapshotDeltaMetricDate(writeContext),
+        delta: computeSnapshotDelta(currentTotals, baseline),
+        extraMetricsJson: JSON.stringify(normalizedData.raw_data ?? {}),
+      }),
+    ]);
   }
 
   const snapshot: VideoSnapshot = {

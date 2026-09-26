@@ -135,6 +135,24 @@ describe('foldViewWeighted', () => {
       reason: 'no_data',
     });
   });
+
+  // KB-111. A TikTok video does not measure average percentage viewed; its
+  // views weighted against a 0 turned 45.5% into a "measured" 13%.
+  it('leaves out a video whose platform does not measure the figure', () => {
+    expect(
+      foldViewWeighted([
+        { value: 45.5, views: 400 },
+        { value: null, views: 1000 },
+      ]),
+    ).toEqual({ status: 'measured', value: 45.5, coveredVideos: 1 });
+  });
+
+  it('is unmeasured when no video measures the figure', () => {
+    expect(foldViewWeighted([{ value: null, views: 1000 }])).toEqual({
+      status: 'unmeasured',
+      reason: 'no_data',
+    });
+  });
 });
 
 describe('foldTrafficShare', () => {
@@ -181,6 +199,23 @@ describe('foldNetSubscribers', () => {
 
   it('is unmeasured when no video has data, rather than a net of zero', () => {
     expect(foldNetSubscribers([])).toEqual({
+      status: 'unmeasured',
+      reason: 'no_data',
+    });
+  });
+
+  // KB-111. Instagram reports gains and no losses: its "net" would be gains.
+  it('leaves out a video whose losses were not measured', () => {
+    expect(
+      foldNetSubscribers([
+        { gained: 30, lost: 4 },
+        { gained: 50, lost: null },
+      ]),
+    ).toEqual({ status: 'measured', value: 26, coveredVideos: 1 });
+  });
+
+  it('is unmeasured when no video measured its losses', () => {
+    expect(foldNetSubscribers([{ gained: 50, lost: null }])).toEqual({
       status: 'unmeasured',
       reason: 'no_data',
     });

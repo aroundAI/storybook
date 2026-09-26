@@ -273,10 +273,14 @@ export interface VideoQualityMetrics {
   impressions: number;
   /** View-weighted click-through rate, 0..1. */
   impressionsCtr: number;
-  /** View-weighted average view duration, seconds. */
-  avgViewDurationSeconds: number;
-  /** View-weighted average view percentage, 0..100. */
-  avgViewPercentage: number;
+  /**
+   * View-weighted average view duration, seconds. Null when no day in the
+   * window carries it — the platform does not measure it (KB-111), or there
+   * were no views — never 0.
+   */
+  avgViewDurationSeconds: number | null;
+  /** View-weighted average view percentage, 0..100. Null as above. */
+  avgViewPercentage: number | null;
 }
 
 /**
@@ -416,26 +420,30 @@ async function queryQualityMetricsForVideosSingle(input: {
       video_id,
       sum(impressions) as impressions,
       sum(ctr_weighted) as ctr_weighted,
-      sum(views) as views,
+      sum(avd_views) as avd_views,
       sum(avd_weighted) as avd_weighted,
+      sum(avp_views) as avp_views,
       sum(avp_weighted) as avp_weighted
     FROM (
       SELECT
         video_id,
         impressions,
         impressions_ctr * impressions as ctr_weighted,
-        0 as views, 0 as avd_weighted, 0 as avp_weighted
+        0 as avd_views, 0 as avd_weighted, 0 as avp_views, 0 as avp_weighted
       FROM video_reach_daily FINAL
       WHERE video_id IN {videoIds: Array(String)} ${where}
 
       UNION ALL
 
+      -- Each average is weighted by the views of the days that carry it: a
+      -- NULL (not measured, KB-111) adds nothing to either side.
       SELECT
         video_id,
         0 as impressions, 0 as ctr_weighted,
-        views,
-        avg_view_duration_seconds * views as avd_weighted,
-        avg_view_percentage * views as avp_weighted
+        if(isNull(avg_view_duration_seconds), 0, views) as avd_views,
+        ifNull(avg_view_duration_seconds * views, 0) as avd_weighted,
+        if(isNull(avg_view_percentage), 0, views) as avp_views,
+        ifNull(avg_view_percentage * views, 0) as avp_weighted
       FROM video_daily_stats
       WHERE video_id IN {videoIds: Array(String)} ${where}
     )
@@ -452,21 +460,30 @@ async function queryQualityMetricsForVideosSingle(input: {
     video_id: string;
     impressions: number;
     ctr_weighted: number;
-    views: number;
+    avd_views: number;
     avd_weighted: number;
+    avp_views: number;
     avp_weighted: number;
   }>();
 
+  const weighted = (sum: number, views: number) =>
+    views > 0 ? sum / views : null;
+
   for (const row of rows) {
     const impressions = Number(row.impressions);
-    const views = Number(row.views);
 
     result.set(row.video_id, {
       impressions,
       impressionsCtr:
         impressions > 0 ? Number(row.ctr_weighted) / impressions : 0,
-      avgViewDurationSeconds: views > 0 ? Number(row.avd_weighted) / views : 0,
-      avgViewPercentage: views > 0 ? Number(row.avp_weighted) / views : 0,
+      avgViewDurationSeconds: weighted(
+        Number(row.avd_weighted),
+        Number(row.avd_views),
+      ),
+      avgViewPercentage: weighted(
+        Number(row.avp_weighted),
+        Number(row.avp_views),
+      ),
     });
   }
 
@@ -476,7 +493,11 @@ async function queryQualityMetricsForVideosSingle(input: {
 /** Subscribers a video gained and lost over a window. */
 export interface VideoSubscriberTotals {
   gained: number;
-  lost: number;
+  /**
+   * Null when no day in the window measured losses (TikTok and Instagram
+   * report none, KB-111). Then the net is not known — gained alone is not it.
+   */
+  lost: number | null;
 }
 
 /**
@@ -550,16 +571,18 @@ async function queryNetSubscribersForVideosSingle(input: {
     format: 'JSONEachRow',
   });
 
+  // `sum` over only NULLs is NULL on ClickHouse 24.8 (measured, KB-111), so a
+  // video with no measured loss comes back with `lost: null`.
   const rows = await response.json<{
     video_id: string;
     gained: number;
-    lost: number;
+    lost: number | null;
   }>();
 
   for (const row of rows) {
     result.set(row.video_id, {
       gained: Number(row.gained),
-      lost: Number(row.lost),
+      lost: row.lost === null ? null : Number(row.lost),
     });
   }
 

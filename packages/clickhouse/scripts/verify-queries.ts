@@ -864,6 +864,122 @@ async function assertions() {
   );
 
   await step(
+    'assert: a figure the platform does not measure is null, not 0 (KB-111)',
+    async () => {
+      // Measured on main: a TikTok video "measured" an average percentage
+      // viewed of 0, and pooled with a YouTube video at 45.5% it read 13%.
+      // After migration 013 the four columns are Nullable with no default,
+      // the view reads NULL, and the per-video readers return null for it.
+      const client = getClickHouseClient();
+      const project = '11111111-1111-4111-8111-111111111111';
+      const youtube = 'kb111-youtube';
+      const tiktok = 'kb111-tiktok';
+
+      const columns = await client.query({
+        query: `
+          SELECT name, type, default_kind
+          FROM system.columns
+          WHERE database = currentDatabase() AND name IN
+            ('avg_view_duration_seconds', 'avg_view_percentage', 'dislikes', 'subscribers_lost')
+            AND table IN ('video_metrics', 'video_daily_stats')
+          ORDER BY table, name`,
+        format: 'JSONEachRow',
+      });
+      const shapes = (
+        await columns.json<{
+          name: string;
+          type: string;
+          default_kind: string;
+        }>()
+      ).filter((c) => !c.type.startsWith('Nullable(') || c.default_kind !== '');
+      if (shapes.length > 0) {
+        throw new Error(
+          `not Nullable-without-default: ${JSON.stringify(shapes)}`,
+        );
+      }
+
+      await client.command({
+        query: `ALTER TABLE video_metrics DELETE WHERE project_id = {project:UUID}`,
+        query_params: { project },
+        clickhouse_settings: { mutations_sync: '2' },
+      });
+
+      const base = {
+        project_id: project,
+        metric_date: '2026-09-20',
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        saves: 0,
+        watch_time_seconds: 0,
+        revenue_cents: 0,
+        extra_metrics: '{}',
+      };
+      await insertVideoMetrics([
+        {
+          ...base,
+          video_id: youtube,
+          platform: 'youtube',
+          views: 400,
+          subscribers_gained: 5,
+          subscribers_lost: 1,
+          avg_view_duration_seconds: 45,
+          avg_view_percentage: 45.5,
+          dislikes: 2,
+          metric_source: 'reporting_api',
+        },
+        // As buildSnapshotDeltaRow writes it: the four explicitly null.
+        {
+          ...base,
+          video_id: tiktok,
+          platform: 'tiktok',
+          views: 1000,
+          subscribers_gained: 7,
+          subscribers_lost: null,
+          avg_view_duration_seconds: null,
+          avg_view_percentage: null,
+          dislikes: null,
+          metric_source: 'snapshot_delta',
+        },
+      ]);
+
+      const quality = await queryQualityMetricsForVideos({
+        videoIds: [youtube, tiktok],
+      });
+      const net = await queryNetSubscribersForVideos({
+        videoIds: [youtube, tiktok],
+      });
+
+      await client.command({
+        query: `ALTER TABLE video_metrics DELETE WHERE project_id = {project:UUID}`,
+        query_params: { project },
+        clickhouse_settings: { mutations_sync: '2' },
+      });
+
+      const got = JSON.stringify({
+        youtube: [
+          quality.get(youtube)?.avgViewPercentage,
+          quality.get(youtube)?.avgViewDurationSeconds,
+          net.get(youtube),
+        ],
+        tiktok: [
+          quality.get(tiktok)?.avgViewPercentage,
+          quality.get(tiktok)?.avgViewDurationSeconds,
+          net.get(tiktok),
+        ],
+      });
+      const want = JSON.stringify({
+        youtube: [45.5, 45, { gained: 5, lost: 1 }],
+        tiktok: [null, null, { gained: 7, lost: null }],
+      });
+
+      if (got !== want) throw new Error(`expected ${want}, got ${got}`);
+
+      return 'Nullable, no default; YouTube measured, TikTok null';
+    },
+  );
+
+  await step(
     'assert: an unknown asset duration is null, not zero (FILM-1710)',
     async () => {
       // The Short was cut from a 22-minute episode. Its own duration is 45s,

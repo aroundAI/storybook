@@ -18,8 +18,9 @@ export interface VideoLogCellRow {
   lifetimeViews: number;
   impressions: number;
   ctr: number;
-  avgViewDurationSeconds: number;
-  avgViewPercentage: number;
+  /** Null when the platform does not measure it (KB-111). */
+  avgViewDurationSeconds: number | null;
+  avgViewPercentage: number | null;
 }
 
 /**
@@ -129,10 +130,10 @@ export function qualityStates(row: VideoLogCellRow): {
   };
   const notReported: QualityState = { kind: 'none', reason: 'not-reported' };
 
-  const overViews = (value: number): QualityState => {
+  const overViews = (value: number | null): QualityState => {
     if (row.lifetimeViews === 0) return noViews;
 
-    return value > 0 ? { kind: 'value', value } : notReported;
+    return value !== null && value > 0 ? { kind: 'value', value } : notReported;
   };
 
   return {
