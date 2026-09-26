@@ -37,6 +37,7 @@ vi.mock('../src/providers/youtube', () => ({
 
 const CONNECTION = '00000000-0000-4000-8000-0000000000c1';
 const EPISODE = '00000000-0000-4000-8000-0000000000e1';
+const ACCOUNT = '00000000-0000-4000-8000-0000000000a1';
 
 let channel: {
   id: string;
@@ -70,6 +71,7 @@ function table(name: string) {
             public_slug: 'slug',
             title: 'Episode',
             number: 1,
+            project: { account_id: ACCOUNT },
           },
           error: null,
         });
@@ -82,6 +84,9 @@ function table(name: string) {
       }
       return Promise.resolve({ data: { id: 'publish-1' }, error: null });
     },
+    // KB-109: the channel is the episode's account's
+    maybeSingle: () =>
+      Promise.resolve({ data: { account_id: ACCOUNT }, error: null }),
     then: (resolve: (value: unknown) => void) =>
       resolve({ data: null, error: null }),
   };

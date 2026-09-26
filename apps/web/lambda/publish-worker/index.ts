@@ -36,6 +36,11 @@ import { LINKEDIN_REST_VERSION, vendorUrl } from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
 
 import { mergeFailureMetadata } from './failure-metadata';
+import {
+  PublishJobRefused,
+  deleteJobTarget,
+  publishJobConnection,
+} from './job-guard';
 import { checkConnectionToken } from './token';
 
 // Initialize DynamoDB client
@@ -270,7 +275,10 @@ async function processPublish(job: PublishJobMessage): Promise<void> {
     `[Publish Worker] Processing publish ${job.publishId} to ${job.platform}`,
   );
 
-  // 1. Get valid access token
+  // 1. The publish row's own connection, of the episode's account (KB-109)
+  await publishJobConnection(supabase, job);
+
+  // 2. Get valid access token
   const tokenResult = await checkConnectionToken(
     job.platformConnectionId,
     supabase,
@@ -317,16 +325,31 @@ async function processPublish(job: PublishJobMessage): Promise<void> {
 /**
  * Process a single delete job
  */
-async function processDelete(job: DeleteJobMessage): Promise<void> {
-  console.log(
-    `[Publish Worker] Processing delete ${job.publishId} from ${job.platform}`,
-  );
+async function processDelete(message: DeleteJobMessage): Promise<void> {
+  console.log(`[Publish Worker] Processing delete ${message.publishId}`);
+
+  // The row says what to delete, and whether this user may (KB-47): the
+  // message's platform, video and connection are not read
+  const target = await deleteJobTarget(supabase, message);
+
+  if (!target) {
+    console.log(
+      `[Publish Worker] Publish ${message.publishId} is already gone, nothing to delete`,
+    );
+    return;
+  }
+
+  const job: DeleteJobMessage = {
+    ...message,
+    platform: target.platform as DeleteJobMessage['platform'],
+    platformContentId: target.platformContentId,
+    platformConnectionId: target.platformConnectionId ?? '',
+  };
 
   // 1. Get valid access token
-  const tokenResult = await checkConnectionToken(
-    job.platformConnectionId,
-    supabase,
-  );
+  const tokenResult = target.platformConnectionId
+    ? await checkConnectionToken(target.platformConnectionId, supabase)
+    : { valid: false as const, error: 'The publish has no connection' };
   if (!tokenResult.valid) {
     // If token invalid, we might still want to delete the record locally
     // but warn about platform deletion failure
@@ -584,6 +607,11 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
               notifyError,
             );
           }
+        }
+
+        // A refusal is an answer: acknowledged, so SQS does not ask again
+        if (error instanceof PublishJobRefused) {
+          return { itemIdentifier: record.messageId, status: 'refused' };
         }
 
         throw error; // Re-throw to be caught by Promise.allSettled

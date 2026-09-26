@@ -9,22 +9,11 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
 /** Facts offered to one outline; the prompt asks for every one to be placed. */
 const MAX_OUTLINE_FACTS = 100;
-
-interface SeasonOutlinePayload {
-  projectId: string;
-  seasonId?: string;
-  seasonPremise: string;
-  episodeCount: number;
-  startingNumber: number;
-  genre?: string;
-  style?: string;
-  accountId: string;
-  userId: string;
-}
 
 interface EpisodeOutline {
   number: number;
@@ -59,8 +48,7 @@ export async function processSeasonOutline(
   payload: Record<string, unknown>,
   supabase: SupabaseClient<Database>,
 ): Promise<SeasonOutlineResult> {
-  // SQS payload: cast, not validated (KB-33).
-  const data = payload as unknown as SeasonOutlinePayload;
+  const data = parseLlmJobPayload('season-outline', payload);
 
   console.log(
     `[Season Outline] Starting AGENTIC pipeline for ${data.episodeCount} episodes`,

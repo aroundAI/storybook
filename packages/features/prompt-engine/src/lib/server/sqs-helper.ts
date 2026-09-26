@@ -6,6 +6,11 @@
  */
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 
+import {
+  type LlmJobPayloadInput,
+  type LlmJobType,
+  parseLlmJobPayload,
+} from '../llm-job-payloads';
 import type { LlmJobTarget } from './llm-job-target';
 
 // Initialize SQS client
@@ -31,27 +36,7 @@ function getQueueUrl(): string {
   return process.env.LLM_JOBS_QUEUE_URL || '';
 }
 
-/**
- * LLM Job types for type safety
- */
-export type LlmJobType =
-  | 'season-analysis'
-  | 'season-outline'
-  | 'story-ideation'
-  | 'story-generation'
-  | 'story-refinement'
-  | 'screenplay-conversion'
-  | 'screenplay-refinement'
-  | 'shot-generation'
-  | 'publish-metadata'
-  | 'batch-translate-metadata'
-  | 'analytics-insights'
-  | 'language-insights'
-  | 'translate-dialogue'
-  | 'audio-cue-generation'
-  | 'audio-file-generation'
-  | 'fact-extraction'
-  | 'asset-creation';
+export type { LlmJobType };
 
 /**
  * Queue an LLM job for background processing
@@ -67,6 +52,8 @@ export type LlmJobType =
  * The payload's `accountId`, `projectId` and `episodeId` are the target's:
  * `accountId` is always stamped from it, and a payload naming a different
  * project or episode is a programming error, thrown before anything is sent.
+ * `userId` is stamped from `params.userId`. The result is parsed with the job
+ * type's schema (`../llm-job-payloads`), which the worker also uses.
  *
  * @example
  * ```typescript
@@ -81,13 +68,18 @@ export type LlmJobType =
  * return { queued: true };
  * ```
  */
-export async function queueLlmJob(params: {
-  jobType: LlmJobType;
+export async function queueLlmJob<T extends LlmJobType>(params: {
+  jobType: T;
   userId: string;
   target: LlmJobTarget;
-  payload: Record<string, unknown>;
+  payload: LlmJobPayloadInput<T>;
 }): Promise<void> {
-  const payload = payloadForTarget(params.target, params.payload);
+  // The handler parses with the same schema: a payload it would refuse is
+  // refused here, before anything is sent (KB-33)
+  const payload = parseLlmJobPayload(params.jobType, {
+    ...payloadForTarget(params.target, params.payload),
+    userId: params.userId,
+  });
   const queueUrl = getQueueUrl();
 
   if (!queueUrl) {

@@ -151,7 +151,7 @@ let error;
 try {
   const { processSeasonOutline } = await import('./season-outline.mjs');
   await processSeasonOutline(
-    { projectId: 'p', seasonPremise: 'x', episodeCount: 1, startingNumber: 1, accountId: 'a', userId: 'u' },
+    { projectId: '44444444-4444-4444-8444-444444444444', seasonPremise: 'x', episodeCount: 1, startingNumber: 1, accountId: '11111111-1111-4111-8111-111111111111', userId: '77777777-7777-4777-8777-777777777777' },
     client,
   );
 } catch (e) {

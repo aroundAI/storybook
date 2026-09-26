@@ -242,3 +242,111 @@ export function chainedLlmJobTarget(parent: {
     episodeId: parent.episodeId,
   });
 }
+
+/** Why a worker will not run a job it was handed. */
+export class QueuedJobRefused extends Error {
+  override readonly name = 'QueuedJobRefused';
+}
+
+interface WorkerFilterBuilder extends QueryResult {
+  eq(column: string, value: string): WorkerFilterBuilder;
+  maybeSingle(): QueryResult;
+}
+
+interface WorkerClient {
+  from(relation: 'episodes' | 'projects'): {
+    select(columns: string): WorkerFilterBuilder;
+  };
+  rpc(
+    fn: 'can_user_write_project',
+    args: { target_user_id: string; target_project_id: string },
+  ): QueryResult;
+}
+
+/**
+ * A worker's own check on a job it is about to run (KB-49), on the
+ * service-role key. The producer authorised the job as the caller (KB-31);
+ * this asks the same rule again, for the user the job names, when it runs,
+ * so a role revoked after queueing, or a target a producer forged, does not
+ * run.
+ *
+ * Throws `QueuedJobRefused` for a job that must not run, and a plain `Error`
+ * when the question could not be asked: a failed read is never a "no".
+ */
+export async function assertQueuedJobAccess(
+  adminClient: LlmJobAuthzClient,
+  job: {
+    userId: string;
+    accountId: string;
+    projectId?: string;
+    episodeId?: string;
+  },
+): Promise<void> {
+  const client = adminClient as WorkerClient;
+  let projectId = job.projectId;
+
+  if (job.episodeId) {
+    const { data, error } = await client
+      .from('episodes')
+      .select('project_id, deleted_at')
+      .eq('id', job.episodeId)
+      .maybeSingle();
+
+    if (error) throw new Error(`Failed to read episode: ${error.message}`);
+
+    const episode = data as {
+      project_id?: string;
+      deleted_at?: string | null;
+    } | null;
+
+    if (!episode?.project_id || episode.deleted_at) {
+      throw new QueuedJobRefused('The episode no longer exists');
+    }
+
+    if (projectId && episode.project_id !== projectId) {
+      throw new QueuedJobRefused("The episode is not in the job's project");
+    }
+
+    projectId = episode.project_id;
+  }
+
+  if (!projectId) {
+    // A job on the caller's own text is billed to their personal account
+    if (job.accountId !== job.userId) {
+      throw new QueuedJobRefused('The job names no project');
+    }
+
+    return;
+  }
+
+  const { data: project, error: projectError } = await client
+    .from('projects')
+    .select('account_id')
+    .eq('id', projectId)
+    .maybeSingle();
+
+  if (projectError) {
+    throw new Error(`Failed to read project: ${projectError.message}`);
+  }
+
+  const owner = (project as { account_id?: string } | null)?.account_id;
+
+  if (owner !== job.accountId) {
+    throw new QueuedJobRefused("The job's account does not own its project");
+  }
+
+  const { data: canWrite, error } = await client.rpc('can_user_write_project', {
+    target_user_id: job.userId,
+    target_project_id: projectId,
+  });
+
+  if (error) {
+    throw new Error(`Failed to check project write access: ${error.message}`);
+  }
+
+  if (canWrite !== true) {
+    throw new QueuedJobRefused(
+      'You no longer have write access to this project',
+    );
+  }
+}

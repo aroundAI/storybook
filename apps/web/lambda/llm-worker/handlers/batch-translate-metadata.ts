@@ -6,21 +6,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
-
-interface TranslationItem {
-  id: string;
-  contentType: 'full-video' | 'shorts-group';
-  title: string;
-  description: string;
-  targetLanguage: string;
-  groupId?: string;
-  groupName?: string;
-}
-
-interface BatchTranslatePayload {
-  items: TranslationItem[];
-}
 
 interface TranslatedItem {
   id: string;
@@ -42,8 +29,7 @@ export async function processBatchTranslateMetadata(
   payload: Record<string, unknown>,
   _supabase: SupabaseClient<Database>,
 ): Promise<BatchTranslateResult> {
-  // SQS payload: cast, not validated (KB-33).
-  const data = payload as unknown as BatchTranslatePayload;
+  const data = parseLlmJobPayload('batch-translate-metadata', payload);
 
   console.log(`[Batch Translate] Processing ${data.items.length} items`);
 

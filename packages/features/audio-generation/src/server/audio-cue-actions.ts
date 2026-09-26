@@ -9,6 +9,7 @@
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { AudioCueTypeSchema } from '@kit/prompt-engine/llm-job-payloads';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -269,6 +270,18 @@ export const generateAudioForCueAction = enhanceAction(
 
     const { projectId } = target;
 
+    // The worker generates only these; any other type would be refused
+    // there, after the cue was marked generating (KB-33)
+    const cueType = AudioCueTypeSchema.safeParse(cue.cue_type);
+
+    if (!cueType.success) {
+      return {
+        success: false,
+        status: 'failed',
+        error: `Cannot generate audio for a ${cue.cue_type} cue`,
+      };
+    }
+
     try {
       // 1. Update cue status to 'generating'
       await client
@@ -287,7 +300,7 @@ export const generateAudioForCueAction = enhanceAction(
           cueId: data.cueId,
           projectId,
           episodeId: cue.episode_id,
-          cueType: cue.cue_type,
+          cueType: cueType.data,
           prompt: cue.prompt,
           durationSeconds: cue.duration_seconds ?? 60,
           startOffsetSeconds: cue.start_offset_seconds ?? 0,

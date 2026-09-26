@@ -9,6 +9,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { ScreenplayScene } from '@kit/episodes/agent/screenplay-orchestrator';
+import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database, Json } from '@kit/supabase/database';
 
 import {
@@ -16,16 +17,6 @@ import {
   markJobFailed,
   markJobProcessing,
 } from '../utils/job-tracking';
-
-interface ScreenplayConversionPayload {
-  episodeId: string;
-  dialogueStyle?: string;
-  contentStyle?: string;
-  version: number;
-  accountId: string;
-  userId: string;
-  projectId: string;
-}
 
 interface ScreenplayOutput {
   screenplay: {
@@ -60,8 +51,7 @@ export async function processScreenplayConversion(
   payload: Record<string, unknown>,
   supabase: SupabaseClient<Database>,
 ): Promise<ScreenplayConversionResult> {
-  // SQS payload: cast, not validated (KB-33).
-  const data = payload as unknown as ScreenplayConversionPayload;
+  const data = parseLlmJobPayload('screenplay-conversion', payload);
 
   console.log(
     `[Screenplay Conversion] Processing for episode ${data.episodeId}`,

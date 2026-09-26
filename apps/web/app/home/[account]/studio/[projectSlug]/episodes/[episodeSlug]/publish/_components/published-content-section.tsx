@@ -46,8 +46,9 @@ interface PublishedContentSectionProps {
   loadingPublishes: boolean;
   fetchingPublishes: boolean;
   onRefresh: () => void;
-  onDeleteAll: () => void;
-  onUnpublish: (
+  /** Absent for a caller who may not take videos down (KB-47) */
+  onDeleteAll?: () => void;
+  onUnpublish?: (
     publishId: string,
     platform: string,
     channelName: string,
@@ -98,15 +99,18 @@ export function PublishedContentSection({
                 className={`h-4 w-4 ${fetchingPublishes ? 'animate-spin' : ''}`}
               />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-red-500 hover:bg-red-50 hover:text-red-700"
-              onClick={onDeleteAll}
-              title="Clear All"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            {onDeleteAll && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-red-500 hover:bg-red-50 hover:text-red-700"
+                onClick={onDeleteAll}
+                title="Clear All"
+                data-test="publish-delete-all"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -198,17 +202,20 @@ export function PublishedContentSection({
                     <ExternalLink className="h-4 w-4" />
                   </Button>
                 )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-red-500 hover:bg-red-50 hover:text-red-700"
-                  onClick={() =>
-                    onUnpublish(pub.id, pub.platform, pub.channelName)
-                  }
-                  title="Delete from platform"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {onUnpublish && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-500 hover:bg-red-50 hover:text-red-700"
+                    onClick={() =>
+                      onUnpublish(pub.id, pub.platform, pub.channelName)
+                    }
+                    title="Delete from platform"
+                    data-test="publish-unpublish"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
           ))}

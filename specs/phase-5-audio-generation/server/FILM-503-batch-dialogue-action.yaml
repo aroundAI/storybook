@@ -63,7 +63,7 @@ acceptance_criteria:
     evidence: null
   - text: "`getBatchStatusAction` returns accurate progress"
     met: false
-    reason: "no longer true — voice-worker adds a failure on every SQS attempt (`apps/web/lambda/voice-worker/index.ts:293`; 3 receives, `sst.config.ts:463`), since `b7f7cb53`"
+    reason: "no longer true — voice-worker adds a failure on every SQS attempt (`apps/web/lambda/voice-worker/index.ts:306`; 3 receives, `sst.config.ts:463`), since `b7f7cb53`"
   - text: "`getBatchStatusAction` calculates percentage correctly"
     met: true
     evidence: null
@@ -72,7 +72,7 @@ acceptance_criteria:
     evidence: null
   - text: "`getBatchStatusAction` includes all errors"
     met: false
-    reason: "no longer true — voice-worker never passes `p_error` to `increment_batch_progress` (`apps/web/lambda/voice-worker/index.ts:293`), so `errors` stays empty"
+    reason: "no longer true — voice-worker never passes `p_error` to `increment_batch_progress` (`apps/web/lambda/voice-worker/index.ts:306`), so `errors` stays empty"
   - text: "`retryFailedDialogueAction` retries only failed lines"
     met: true
     evidence: null
@@ -81,13 +81,13 @@ acceptance_criteria:
     evidence: null
   - text: "`cancelBatchAction` stops processing"
     met: false
-    reason: "no longer true — queued lines still run; voice-worker never checks the batch's status (`apps/web/lambda/voice-worker/index.ts:200`), since `b7f7cb53`"
+    reason: "no longer true — queued lines still run; voice-worker never checks the batch's status (`apps/web/lambda/voice-worker/index.ts:204`), since `b7f7cb53`"
   - text: "`cancelBatchAction` marks job as cancelled"
     met: false
     reason: "no longer true — `increment_batch_progress` overwrites `cancelled` once the queued lines finish (`apps/web/supabase/migrations/20260527094643_increment_batch_progress_rpc.sql:64`)"
   - text: "Batch processing continues on individual failures"
     met: true
-    evidence: "one SQS message per line, settled independently (`apps/web/lambda/voice-worker/index.ts:182`)"
+    evidence: "one SQS message per line, settled independently (`apps/web/lambda/voice-worker/index.ts:186`)"
   - text: "Batch processing respects overwriteExisting flag"
     met: true
     evidence: null
@@ -118,7 +118,7 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "`getBatchStatusAction` returns accurate progress"
-    reason: "a failed line is redelivered up to 3 times (`sst.config.ts:463`) and each attempt adds a failure (`apps/web/lambda/voice-worker/index.ts:293`), so a batch can count as complete while lines are still queued"
+    reason: "a failed line is redelivered up to 3 times (`sst.config.ts:463`) and each attempt adds a failure (`apps/web/lambda/voice-worker/index.ts:306`), so a batch can count as complete while lines are still queued"
     closed_by: "unassigned"
   - criterion: "`getBatchStatusAction` includes all errors"
     reason: "voice-worker never passes `p_error`, so `batch_generation_jobs.errors` stays empty"

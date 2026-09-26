@@ -10,6 +10,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { ReelSceneAnalysis } from '@kit/episodes/agent/shot-orchestrator';
+import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database, Json } from '@kit/supabase/database';
 
 import {
@@ -17,14 +18,6 @@ import {
   markJobFailed,
   markJobProcessing,
 } from '../utils/job-tracking';
-
-interface ShotGenerationPayload {
-  episodeId: string;
-  version: number;
-  accountId: string;
-  userId: string;
-  projectId: string;
-}
 
 interface ScreenplayScene {
   number: number;
@@ -61,8 +54,7 @@ export async function processShotGeneration(
   payload: Record<string, unknown>,
   supabase: SupabaseClient<Database>,
 ): Promise<ShotGenerationResult> {
-  // SQS payload: cast, not validated (KB-33).
-  const data = payload as unknown as ShotGenerationPayload;
+  const data = parseLlmJobPayload('shot-generation', payload);
 
   console.log(`[Shot Generation] Processing for episode ${data.episodeId}`);
 
@@ -508,7 +500,6 @@ export async function processShotGeneration(
         episodeId: data.episodeId,
         projectId: data.projectId,
         accountId: data.accountId,
-        version: data.version,
       },
     });
 

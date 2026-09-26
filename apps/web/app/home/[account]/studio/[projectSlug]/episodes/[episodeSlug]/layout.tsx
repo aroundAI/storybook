@@ -19,6 +19,8 @@ import type {
   StoryData,
   TransitionType,
 } from '@kit/episodes/types';
+import { canTakeDown, projectRoleOf } from '@kit/publishing/lib/takedown';
+import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { withI18n } from '~/lib/i18n/with-i18n';
@@ -272,6 +274,13 @@ async function EpisodeWorkspaceLayout({
     projectMetadata: (project.metadata as Record<string, unknown>) ?? {},
   };
 
+  // Who may take a published video down: the same list the unpublish
+  // actions and the publish worker check (KB-47)
+  const { data: user } = await requireUser(client);
+  const takedownRole = user
+    ? await projectRoleOf(client, project.id, user.id)
+    : null;
+
   return (
     <EpisodeContextProvider
       episode={episode}
@@ -281,6 +290,7 @@ async function EpisodeWorkspaceLayout({
       accountId={project.account_id ?? ''}
       projectName={project.name ?? 'Project'}
       projectMetadata={project.metadata as Record<string, unknown> | null}
+      canTakeDown={canTakeDown(takedownRole)}
     >
       <div className="flex h-full flex-col bg-[#F5F5F7] dark:bg-[#0A0A0A]">
         <EpisodeWorkspaceHeader />

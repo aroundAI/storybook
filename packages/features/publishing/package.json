@@ -52,7 +52,8 @@
     "./lib/youtube-declaration": "./src/lib/youtube-declaration.ts",
     "./lib/schemas/youtube-declaration": "./src/lib/schemas/youtube-declaration.schema.ts",
     "./lib/platforms": "./src/lib/platforms.ts",
-    "./lib/token-expiry": "./src/lib/token-expiry.ts"
+    "./lib/token-expiry": "./src/lib/token-expiry.ts",
+    "./lib/takedown": "./src/lib/takedown.ts"
   },
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.968.0",

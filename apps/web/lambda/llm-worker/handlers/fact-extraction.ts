@@ -6,17 +6,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
-
-interface FactExtractionPayload {
-  content: string;
-  projectId: string;
-  /** The project's account, stamped by queueLlmJob from its target (KB-31). */
-  accountId: string;
-  sourceTitle: string;
-  sourceCitation?: string;
-  userId: string;
-}
 
 interface ExtractedFact {
   claim: string;
@@ -45,8 +36,7 @@ export async function processFactExtraction(
   payload: Record<string, unknown>,
   supabase: SupabaseClient<Database>,
 ): Promise<FactExtractionResult> {
-  // SQS payload: cast, not validated (KB-33).
-  const data = payload as unknown as FactExtractionPayload;
+  const data = parseLlmJobPayload('fact-extraction', payload);
 
   console.log(
     `[Fact Extraction] Starting extraction for project ${data.projectId}`,

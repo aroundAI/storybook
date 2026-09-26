@@ -6,25 +6,12 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { z } from 'zod';
+
+import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
-interface LanguageInsightsPayload {
-  projectId: string;
-  /** The project's account, stamped by queueLlmJob from its target (KB-31). */
-  accountId: string;
-  languagePerformance: Array<{
-    language: string;
-    views: number;
-    likes: number;
-    comments: number;
-    engagementRate: number;
-  }>;
-  platformMatrix: Array<Record<string, unknown>>;
-  contentType: Record<string, unknown>;
-  shorts: Array<Record<string, unknown>>;
-  geography: Record<string, unknown>;
-  userId: string;
-}
+const LanguageRowSchema = z.object({ language: z.string(), views: z.number() });
 
 interface LanguageInsightsResult {
   success: boolean;
@@ -44,8 +31,7 @@ export async function processLanguageInsights(
   payload: Record<string, unknown>,
   _supabase: SupabaseClient<Database>,
 ): Promise<LanguageInsightsResult> {
-  // SQS payload: cast, not validated (KB-33).
-  const data = payload as unknown as LanguageInsightsPayload;
+  const data = parseLlmJobPayload('language-insights', payload);
 
   console.log(`[Language Insights] Processing for project ${data.projectId}`);
 
@@ -117,10 +103,14 @@ export async function processLanguageInsights(
   } catch (error) {
     console.error('[Language Insights] Error:', error);
 
-    // Fallback with basic insights
-    const topLang = data.languagePerformance.reduce(
+    // Fallback with basic insights, from the rows that say which language
+    const rows = data.languagePerformance.flatMap((row) => {
+      const parsed = LanguageRowSchema.safeParse(row);
+      return parsed.success ? [parsed.data] : [];
+    });
+    const topLang = rows.reduce<{ language: string; views: number }>(
       (best, curr) => (curr.views > best.views ? curr : best),
-      data.languagePerformance[0]!,
+      rows[0] ?? { language: 'unknown', views: 0 },
     );
 
     return {

@@ -1,15 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
 import { executeLLMForLambda } from '../llm-utils';
-
-interface AssetCreationPayload {
-  episodeId: string;
-  projectId: string;
-  accountId: string;
-  userId: string;
-}
 
 interface AssetCreationResult {
   success: boolean;
@@ -76,8 +70,7 @@ export async function processAssetCreation(
   payload: Record<string, unknown>,
   supabase: SupabaseClient<Database>,
 ): Promise<AssetCreationResult> {
-  // SQS payload: cast, not validated (KB-33).
-  const data = payload as unknown as AssetCreationPayload;
+  const data = parseLlmJobPayload('asset-creation', payload);
 
   console.log(
     `[Asset Creation] Processing for episode ${data.episodeId}, project ${data.projectId}`,

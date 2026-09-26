@@ -18,6 +18,7 @@
     "./server": "./src/lib/server/index.ts",
     "./llm-job-target": "./src/lib/server/llm-job-target.ts",
     "./prompt-registry": "./src/lib/server/prompt-registry.ts",
+    "./llm-job-payloads": "./src/lib/llm-job-payloads.ts",
     "./types": "./src/lib/types.ts",
     "./validation": "./src/lib/validation/index.ts",
     "./schemas": "./src/schemas/index.ts"
