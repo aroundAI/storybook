@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { unwrap } from '@kit/next/action-result';
+
 /**
  * KB-31, audio producers: a job is queued only on a target whose project the
  * caller can write to (KB-28's `can_write_project`, asked as the caller).
@@ -78,9 +80,15 @@ vi.mock('@kit/prompt-engine/server', async () => {
 function query(table: string) {
   let rows: Row[] = [...(state.readable[table] ?? [])];
   let writing = false;
+  // A write answers with its rows only when it asks for them (.select()),
+  // as PostgREST does: the rows the filters still match (KB-105).
+  let selected = false;
 
   const builder = {
-    select: () => builder,
+    select: () => {
+      selected = true;
+      return builder;
+    },
     eq: (column: string, value: unknown) => {
       rows = rows.filter((row) => row[column] === value);
       return builder;
@@ -113,7 +121,7 @@ function query(table: string) {
       resolve: (value: { data: Row[] | null; error: null; count: number }) => R,
     ) =>
       Promise.resolve({
-        data: writing ? null : rows,
+        data: writing && !selected ? null : rows,
         error: null,
         count: rows.length,
       }).then(resolve),
@@ -239,7 +247,7 @@ describe('generateAudioForCueAction', () => {
       '../src/server/audio-cue-actions'
     );
 
-    const result = await generateAudioForCueAction({ cueId: A_CUE });
+    const result = await unwrap(generateAudioForCueAction({ cueId: A_CUE }));
 
     expect(result).toMatchObject({ success: false, status: 'failed' });
     expect(state.updates).toEqual([]);
@@ -251,7 +259,7 @@ describe('generateAudioForCueAction', () => {
       '../src/server/audio-cue-actions'
     );
 
-    await generateAudioForCueAction({ cueId: B_CUE });
+    await unwrap(generateAudioForCueAction({ cueId: B_CUE }));
 
     expect(state.sent).toHaveLength(1);
     expect(state.sent[0]!.payload).toMatchObject({

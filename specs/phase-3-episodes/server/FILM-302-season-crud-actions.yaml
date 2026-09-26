@@ -64,7 +64,7 @@ acceptance_criteria:
     evidence: null
   - text: "`deleteSeasonAction` sets episodes' season_id to NULL"
     met: false
-    reason: "retired — replaced in 5ddb6752 (#229): deleting a season soft-deletes its episodes and shots (`packages/features/episodes/src/lib/server/mutations/season-actions.ts:395`)"
+    reason: "retired — replaced in 5ddb6752 (#229): deleting a season soft-deletes its episodes and shots (`packages/features/episodes/src/lib/server/mutations/season-actions.ts:403`)"
   - text: "All actions enforce authentication"
     met: true
     evidence: null

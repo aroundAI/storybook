@@ -1,6 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState, useTransition } from 'react';
+import {
+  type Dispatch,
+  type SetStateAction,
+  useEffect,
+  useState,
+  useTransition,
+} from 'react';
 
 import {
   Check,
@@ -19,6 +25,22 @@ import {
   setDefaultThumbnailAction,
   uploadEpisodeThumbnailAction,
 } from '@kit/episodes/server';
+import { unwrap } from '@kit/next/action-result';
+import {
+  PROJECT_ASSETS_BUCKET,
+  episodeThumbnailPath,
+  fileExtension,
+} from '@kit/storage/upload-paths';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@kit/ui/alert-dialog';
 import { Button } from '@kit/ui/button';
 import {
   Card,
@@ -42,12 +64,22 @@ import { toast } from '@kit/ui/sonner';
 
 import { uploadWithPresignedUrl } from '~/lib/presigned-upload';
 
+/** YouTube's limit, and so the publish screen's (KB-89: one limit, not two) */
+export const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024;
+
 // ============================================================================
 // Types
 // ============================================================================
 
 interface EpisodeThumbnailSettingsProps {
   episodeId: string;
+  /**
+   * The episode's thumbnails, owned by the publish screen: its per-language
+   * video slots read the same list, so the two cannot disagree (KB-89).
+   * `null` while it loads.
+   */
+  thumbnails: EpisodeThumbnail[] | null;
+  onThumbnailsChange: Dispatch<SetStateAction<EpisodeThumbnail[]>>;
 }
 
 // ============================================================================
@@ -56,98 +88,85 @@ interface EpisodeThumbnailSettingsProps {
 
 export function EpisodeThumbnailSettings({
   episodeId,
+  thumbnails,
+  onThumbnailsChange,
 }: EpisodeThumbnailSettingsProps) {
-  const [thumbnails, setThumbnails] = useState<EpisodeThumbnail[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  // Load thumbnails on mount
-  useEffect(() => {
-    async function loadThumbnails() {
-      try {
-        const result = await getEpisodeThumbnailsAction({ episodeId });
-        if (result.success && result.thumbnails) {
-          setThumbnails(result.thumbnails);
-        }
-      } catch (error) {
-        console.error('Failed to load thumbnails:', error);
-        toast.error('Failed to load thumbnails');
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    void loadThumbnails();
-  }, [episodeId]);
-
-  const handleThumbnailAdded = useCallback((newThumbnail: EpisodeThumbnail) => {
-    setThumbnails((prev) => {
-      // Replace existing thumbnail for same language or add new
-      const filtered = prev.filter((t) => t.language !== newThumbnail.language);
-      return [...filtered, newThumbnail].sort((a, b) =>
-        a.language.localeCompare(b.language),
-      );
-    });
+  const handleThumbnailSaved = (saved: EpisodeThumbnail) => {
+    onThumbnailsChange((prev) =>
+      [...prev.filter((t) => t.language !== saved.language), saved].sort(
+        (a, b) => a.language.localeCompare(b.language),
+      ),
+    );
     setIsAddDialogOpen(false);
-  }, []);
+  };
 
-  const handleThumbnailDeleted = useCallback((deletedId: string) => {
-    setThumbnails((prev) => prev.filter((t) => t.id !== deletedId));
-  }, []);
+  const handleThumbnailRemoved = (removedId: string) => {
+    onThumbnailsChange((prev) => prev.filter((t) => t.id !== removedId));
+  };
 
-  const handleDefaultSet = useCallback((thumbnailId: string) => {
-    setThumbnails((prev) =>
-      prev.map((t) => ({
-        ...t,
-        isDefault: t.id === thumbnailId,
-      })),
+  const handleDefaultSet = (thumbnailId: string) => {
+    onThumbnailsChange((prev) =>
+      prev.map((t) => ({ ...t, isDefault: t.id === thumbnailId })),
     );
-  }, []);
+  };
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Episode Thumbnails</CardTitle>
-          <CardDescription>Loading thumbnails...</CardDescription>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
-  }
+  // After a refusal the list may be stale (removed or replaced in another
+  // tab): read it again rather than keep showing what is no longer there.
+  const reloadThumbnails = async () => {
+    const result = await getEpisodeThumbnailsAction({ episodeId });
+
+    if (result.success && result.thumbnails) {
+      onThumbnailsChange(result.thumbnails);
+    }
+  };
 
   return (
-    <Card>
+    <Card data-test="episode-thumbnails">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div>
             <CardTitle>Episode Thumbnails</CardTitle>
             <CardDescription>
-              Upload different thumbnails for each language. These will be
-              automatically used when publishing to match the video language.
+              One thumbnail per language, used when publishing a video in that
+              language. A language without its own uses the default.
             </CardDescription>
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" variant="outline">
+              <Button
+                size="sm"
+                variant="outline"
+                data-test="thumbnail-add"
+                disabled={thumbnails === null}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Thumbnail
               </Button>
             </DialogTrigger>
             <AddThumbnailDialog
               episodeId={episodeId}
-              existingLanguages={thumbnails.map((t) => t.language)}
-              onSuccess={handleThumbnailAdded}
+              existingLanguages={(thumbnails ?? []).map((t) => t.language)}
+              onSuccess={handleThumbnailSaved}
               onClose={() => setIsAddDialogOpen(false)}
             />
           </Dialog>
         </div>
       </CardHeader>
       <CardContent>
-        {thumbnails.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
+        {thumbnails === null ? (
+          <div
+            className="flex items-center justify-center py-8"
+            data-test="thumbnails-loading"
+          >
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : thumbnails.length === 0 ? (
+          <div
+            className="flex flex-col items-center justify-center py-8 text-center"
+            data-test="thumbnails-empty"
+          >
             <ImageIcon className="mb-4 h-12 w-12 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
               No thumbnails uploaded yet. Click &quot;Add Thumbnail&quot; to
@@ -161,9 +180,10 @@ export function EpisodeThumbnailSettings({
                 key={thumbnail.id}
                 thumbnail={thumbnail}
                 episodeId={episodeId}
-                onDeleted={handleThumbnailDeleted}
-                onReplaced={handleThumbnailAdded}
+                onRemoved={handleThumbnailRemoved}
+                onReplaced={handleThumbnailSaved}
                 onDefaultSet={handleDefaultSet}
+                onRefused={reloadThumbnails}
               />
             ))}
           </div>
@@ -180,41 +200,48 @@ export function EpisodeThumbnailSettings({
 interface ThumbnailCardProps {
   thumbnail: EpisodeThumbnail;
   episodeId: string;
-  onDeleted: (id: string) => void;
+  onRemoved: (id: string) => void;
   onReplaced: (thumbnail: EpisodeThumbnail) => void;
   onDefaultSet: (id: string) => void;
+  onRefused: () => Promise<void>;
 }
 
 function ThumbnailCard({
   thumbnail,
   episodeId,
-  onDeleted,
+  onRemoved,
   onReplaced,
   onDefaultSet,
+  onRefused,
 }: ThumbnailCardProps) {
-  const [isDeleting, startDeleteTransition] = useTransition();
+  const [isRemoving, startRemoveTransition] = useTransition();
   const [isSettingDefault, startDefaultTransition] = useTransition();
   const [isReplaceDialogOpen, setIsReplaceDialogOpen] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
-  const handleDelete = () => {
-    startDeleteTransition(async () => {
+  const label = thumbnail.languageLabel || thumbnail.language;
+
+  const handleRemove = () => {
+    startRemoveTransition(async () => {
       try {
-        const result = await deleteEpisodeThumbnailAction({
-          thumbnailId: thumbnail.id,
-          episodeId,
-        });
+        const result = await unwrap(
+          deleteEpisodeThumbnailAction({
+            thumbnailId: thumbnail.id,
+            episodeId,
+          }),
+        );
 
         if (result.success) {
-          toast.success(
-            `Deleted ${thumbnail.languageLabel || thumbnail.language} thumbnail`,
-          );
-          onDeleted(thumbnail.id);
+          toast.success(`Removed the ${label} thumbnail`);
+          onRemoved(thumbnail.id);
         } else {
-          toast.error(result.error || 'Failed to delete thumbnail');
+          toast.error(result.error || 'Failed to remove thumbnail');
+          await onRefused();
         }
-      } catch (error) {
-        console.error('Delete failed:', error);
-        toast.error('Failed to delete thumbnail');
+      } catch {
+        toast.error('Failed to remove thumbnail');
+      } finally {
+        setIsConfirmOpen(false);
       }
     });
   };
@@ -230,15 +257,12 @@ function ThumbnailCard({
         });
 
         if (result.success) {
-          toast.success(
-            `Set ${thumbnail.languageLabel || thumbnail.language} as default`,
-          );
+          toast.success(`Set ${label} as default`);
           onDefaultSet(thumbnail.id);
         } else {
           toast.error(result.error || 'Failed to set default');
         }
-      } catch (error) {
-        console.error('Set default failed:', error);
+      } catch {
         toast.error('Failed to set default');
       }
     });
@@ -252,33 +276,41 @@ function ThumbnailCard({
   };
 
   return (
-    <div className="group relative overflow-hidden rounded-lg border">
-      {/* Thumbnail Preview */}
+    <div
+      className="group relative overflow-hidden rounded-lg border"
+      data-test={`thumbnail-${thumbnail.language}`}
+    >
       <div className="aspect-video w-full overflow-hidden bg-muted">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={thumbnail.thumbnailUrl}
-          alt={`${thumbnail.languageLabel || thumbnail.language} thumbnail`}
+          alt={`${label} thumbnail`}
           className="h-full w-full object-cover"
         />
       </div>
 
-      {/* Default Badge */}
       {thumbnail.isDefault && (
-        <div className="absolute top-2 left-2 flex items-center gap-1 rounded bg-primary px-2 py-1 text-xs font-medium text-primary-foreground">
+        <div
+          className="absolute top-2 left-2 flex items-center gap-1 rounded bg-primary px-2 py-1 text-xs font-medium text-primary-foreground"
+          data-test="thumbnail-default"
+        >
           <Star className="h-3 w-3" />
           Default
         </div>
       )}
 
-      {/* Overlay Actions */}
-      <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+      {/* Shown on hover, and whenever a control inside has focus */}
+      <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/60 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
         <Dialog
           open={isReplaceDialogOpen}
           onOpenChange={setIsReplaceDialogOpen}
         >
           <DialogTrigger asChild>
-            <Button size="sm" variant="secondary">
+            <Button
+              size="sm"
+              variant="secondary"
+              data-test={`thumbnail-replace-${thumbnail.language}`}
+            >
               <Upload className="mr-1 h-3 w-3" />
               Replace
             </Button>
@@ -288,8 +320,8 @@ function ThumbnailCard({
             existingLanguages={[]}
             prefillLanguage={thumbnail.language}
             prefillLabel={thumbnail.languageLabel || undefined}
-            onSuccess={(newThumbnail) => {
-              onReplaced(newThumbnail);
+            onSuccess={(saved) => {
+              onReplaced(saved);
               setIsReplaceDialogOpen(false);
             }}
             onClose={() => setIsReplaceDialogOpen(false)}
@@ -301,6 +333,7 @@ function ThumbnailCard({
             variant="secondary"
             onClick={handleSetDefault}
             disabled={isSettingDefault}
+            data-test={`thumbnail-set-default-${thumbnail.language}`}
           >
             {isSettingDefault ? (
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -315,10 +348,12 @@ function ThumbnailCard({
         <Button
           size="sm"
           variant="destructive"
-          onClick={handleDelete}
-          disabled={isDeleting}
+          onClick={() => setIsConfirmOpen(true)}
+          disabled={isRemoving}
+          aria-label={`Remove the ${label} thumbnail`}
+          data-test={`thumbnail-remove-${thumbnail.language}`}
         >
-          {isDeleting ? (
+          {isRemoving ? (
             <Loader2 className="h-3 w-3 animate-spin" />
           ) : (
             <Trash2 className="h-3 w-3" />
@@ -326,10 +361,37 @@ function ThumbnailCard({
         </Button>
       </div>
 
-      {/* Info */}
+      <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove the {label} thumbnail?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The image file is deleted too.
+              {thumbnail.isDefault
+                ? ' It is the default, so languages without their own thumbnail will have none.'
+                : ' Videos in this language will use the default thumbnail.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRemoving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isRemoving}
+              data-test="thumbnail-remove-confirm"
+              onClick={(event) => {
+                // Stay open until the action answers
+                event.preventDefault();
+                handleRemove();
+              }}
+            >
+              {isRemoving ? 'Removing…' : 'Remove'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="p-3">
         <h4 className="font-medium">
-          {thumbnail.languageLabel || thumbnail.language}
+          {label}
           <span className="ml-2 text-xs text-muted-foreground">
             ({thumbnail.language})
           </span>
@@ -386,23 +448,21 @@ function AddThumbnailDialog({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         toast.error('Please select an image file');
         return;
       }
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('File size must be less than 5MB');
+      if (file.size > MAX_THUMBNAIL_BYTES) {
+        toast.error(
+          `Thumbnail must be under 2MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB`,
+        );
         return;
       }
       setSelectedFile(file);
 
-      // Create preview
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
 
-      // Get dimensions
       const img = new Image();
       img.onload = () => {
         setImageDimensions({ width: img.width, height: img.height });
@@ -414,7 +474,9 @@ function AddThumbnailDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!language.trim()) {
+    const code = language.trim().toLowerCase();
+
+    if (!code) {
       toast.error('Please enter a language code');
       return;
     }
@@ -424,10 +486,9 @@ function AddThumbnailDialog({
       return;
     }
 
-    // Check if language already exists (unless replacing)
-    if (!isReplacing && existingLanguages.includes(language.toLowerCase())) {
+    if (!isReplacing && existingLanguages.includes(code)) {
       toast.error(
-        `A thumbnail for "${language}" already exists. Use "Replace" to update it.`,
+        `A thumbnail for "${code}" already exists. Use "Replace" to update it.`,
       );
       return;
     }
@@ -436,48 +497,49 @@ function AddThumbnailDialog({
     setUploadProgress(0);
 
     try {
-      // 1. Upload file to R2 via presigned URL
-      const timestamp = Date.now();
-      const ext = selectedFile.name.split('.').pop() || 'jpg';
-      const storagePath = `episodes/${episodeId}/thumbnails/${language.toLowerCase()}-${timestamp}.${ext}`;
-
       setUploadProgress(30);
 
+      // The path the publish screen's upload uses, and the folder the save
+      // action accepts (KB-90)
       const uploadResult = await uploadWithPresignedUrl(
         selectedFile,
-        'project-assets',
-        storagePath,
+        PROJECT_ASSETS_BUCKET,
+        episodeThumbnailPath(
+          episodeId,
+          code,
+          fileExtension(selectedFile.name, 'jpg'),
+        ),
       );
 
       setUploadProgress(70);
 
-      // 2. Save to database
-      const result = await uploadEpisodeThumbnailAction({
-        episodeId,
-        language: language.toLowerCase(),
-        languageLabel: languageLabel.trim() || undefined,
-        thumbnailUrl: uploadResult.url,
-        fileName: selectedFile.name,
-        fileSizeBytes: selectedFile.size,
-        mimeType: selectedFile.type,
-        width: imageDimensions?.width,
-        height: imageDimensions?.height,
-      });
+      const result = await unwrap(
+        uploadEpisodeThumbnailAction({
+          episodeId,
+          language: code,
+          languageLabel: languageLabel.trim() || undefined,
+          thumbnailUrl: uploadResult.url,
+          fileName: selectedFile.name,
+          fileSizeBytes: selectedFile.size,
+          mimeType: selectedFile.type,
+          width: imageDimensions?.width,
+          height: imageDimensions?.height,
+        }),
+      );
 
       setUploadProgress(100);
 
       if (result.success && result.thumbnail) {
         toast.success(
           isReplacing
-            ? `Replaced ${languageLabel || language} thumbnail`
-            : `Added ${languageLabel || language} thumbnail`,
+            ? `Replaced ${languageLabel || code} thumbnail`
+            : `Added ${languageLabel || code} thumbnail`,
         );
         onSuccess(result.thumbnail);
       } else {
         toast.error(result.error || 'Failed to save thumbnail');
       }
-    } catch (error) {
-      console.error('Upload failed:', error);
+    } catch {
       toast.error('Failed to upload thumbnail');
     } finally {
       setIsUploading(false);
@@ -485,7 +547,7 @@ function AddThumbnailDialog({
     }
   };
 
-  // Cleanup preview URL
+  // Revoke the preview's object URL when it changes or the dialog closes
   useEffect(() => {
     return () => {
       if (previewUrl) {
@@ -509,11 +571,11 @@ function AddThumbnailDialog({
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          {/* Language Code */}
           <div className="grid gap-2">
-            <Label htmlFor="language">Language Code</Label>
+            <Label htmlFor="thumbnail-language">Language Code</Label>
             <Input
-              id="language"
+              id="thumbnail-language"
+              data-test="thumbnail-language"
               placeholder="e.g., en, hi, es, it"
               value={language}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -527,11 +589,10 @@ function AddThumbnailDialog({
             </p>
           </div>
 
-          {/* Language Label */}
           <div className="grid gap-2">
-            <Label htmlFor="label">Display Name (Optional)</Label>
+            <Label htmlFor="thumbnail-label">Display Name (Optional)</Label>
             <Input
-              id="label"
+              id="thumbnail-label"
               placeholder="e.g., English, Hindi, Italian"
               value={languageLabel}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -541,22 +602,21 @@ function AddThumbnailDialog({
             />
           </div>
 
-          {/* File Upload */}
           <div className="grid gap-2">
-            <Label htmlFor="image">Thumbnail Image</Label>
+            <Label htmlFor="thumbnail-image">Thumbnail Image</Label>
             <Input
-              id="image"
+              id="thumbnail-image"
+              data-test="thumbnail-file"
               type="file"
               accept="image/*"
               onChange={handleFileChange}
               disabled={isUploading}
             />
             <p className="text-xs text-muted-foreground">
-              Recommended: 1280×720 (16:9). Max 5MB. PNG/JPG/WebP.
+              Recommended: 1280×720 (16:9). Max 2MB. PNG/JPG/WebP.
             </p>
           </div>
 
-          {/* Preview */}
           {previewUrl && (
             <div className="space-y-2">
               <Label>Preview</Label>
@@ -568,16 +628,15 @@ function AddThumbnailDialog({
                   className="h-full w-full object-contain"
                 />
               </div>
-              {imageDimensions && (
+              {imageDimensions && selectedFile && (
                 <p className="text-xs text-muted-foreground">
                   {imageDimensions.width}×{imageDimensions.height} •{' '}
-                  {(selectedFile!.size / 1024).toFixed(1)} KB
+                  {(selectedFile.size / 1024).toFixed(1)} KB
                 </p>
               )}
             </div>
           )}
 
-          {/* Upload Progress */}
           {isUploading && (
             <div className="space-y-2">
               <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -604,6 +663,7 @@ function AddThumbnailDialog({
           </Button>
           <Button
             type="submit"
+            data-test="thumbnail-submit"
             disabled={isUploading || !selectedFile || !language}
           >
             {isUploading ? (

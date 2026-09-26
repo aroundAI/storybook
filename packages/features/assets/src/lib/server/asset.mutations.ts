@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
@@ -340,19 +340,26 @@ const deleteAsset = enhanceAction(
 
     // Soft delete by setting deleted_at
     // Note: deleted_at column added in migration 20251207161156_add-assets-deleted-at.sql
-    const { error } = await client
+    const { data: deleted, error } = await client
       .from('assets')
       .update({ deleted_at: new Date().toISOString() } as Record<
         string,
         unknown
       >)
       .eq('id', data.assetId)
-      .is('deleted_at', null);
+      .is('deleted_at', null)
+      .select('id');
 
     if (error) {
       logger.error({ ...ctx, error }, 'Failed to delete asset');
       throw new Error(`Failed to delete asset: ${error.message}`);
     }
+
+    // RLS filters a refused update to no rows, without an error (KB-61)
+    requireAffectedRows(
+      deleted,
+      "The asset wasn't deleted: it's already gone, or you can't delete it. Reload the page.",
+    );
 
     logger.info(ctx, 'Asset deleted successfully');
 

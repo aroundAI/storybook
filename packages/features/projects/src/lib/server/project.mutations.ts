@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
@@ -221,7 +221,7 @@ export const updateProjectAction = returnRefusals(updateProject);
 /**
  * Delete a project
  */
-export const deleteProjectAction = enhanceAction(
+const deleteProject = enhanceAction(
   async (data: { id: string }) => {
     const logger = await getLogger();
     const ctx = { name: 'projects.delete', projectId: data.id };
@@ -248,12 +248,23 @@ export const deleteProjectAction = enhanceAction(
       .eq('id', data.id)
       .single();
 
-    const { error } = await client.from('projects').delete().eq('id', data.id);
+    const { data: deleted, error } = await client
+      .from('projects')
+      .delete()
+      .eq('id', data.id)
+      .select('id');
 
     if (error) {
       logger.error({ ...ctx, error }, 'Failed to delete project');
       throw new Error(`Failed to delete project: ${error.message}`);
     }
+
+    // RLS filters a refused delete to no rows, without an error (KB-61).
+    // Before the audit log: a refused delete is not recorded as one.
+    requireAffectedRows(
+      deleted,
+      "The project wasn't deleted: it's already gone, or only its owner can delete it. Reload the page.",
+    );
 
     logger.info(ctx, 'Project deleted successfully');
 
@@ -289,6 +300,8 @@ export const deleteProjectAction = enhanceAction(
     schema: DeleteProjectSchema,
   },
 );
+
+export const deleteProjectAction = returnRefusals(deleteProject);
 
 /**
  * Add a member to a project
@@ -467,7 +480,7 @@ export const updateProjectMemberAction = enhanceAction(
 /**
  * Remove a member from a project
  */
-export const removeProjectMemberAction = enhanceAction(
+const removeProjectMember = enhanceAction(
   async (data: RemoveProjectMemberParams) => {
     const logger = await getLogger();
     const ctx = { name: 'projects.removeMember', projectId: data.project_id };
@@ -495,16 +508,23 @@ export const removeProjectMemberAction = enhanceAction(
       .eq('user_id', data.user_id)
       .single();
 
-    const { error } = await client
+    const { data: removed, error } = await client
       .from('project_members')
       .delete()
       .eq('project_id', data.project_id)
-      .eq('user_id', data.user_id);
+      .eq('user_id', data.user_id)
+      .select('id');
 
     if (error) {
       logger.error({ ...ctx, error }, 'Failed to remove project member');
       throw new Error(`Failed to remove project member: ${error.message}`);
     }
+
+    // RLS filters a refused delete to no rows, without an error (KB-61)
+    requireAffectedRows(
+      removed,
+      "The member wasn't removed: they're no longer on the project, or you can't remove them. Reload the page.",
+    );
 
     logger.info(
       { ...ctx, userId: data.user_id },
@@ -544,6 +564,8 @@ export const removeProjectMemberAction = enhanceAction(
     schema: RemoveProjectMemberSchema,
   },
 );
+
+export const removeProjectMemberAction = returnRefusals(removeProjectMember);
 
 const UpdateProjectAudioSettingsSchema = z.object({
   projectId: z.string().uuid(),
@@ -597,15 +619,21 @@ const updateProjectAudioSettings = enhanceAction(
     }
 
     // Update audio_settings column
-    const { error } = await client
+    const { data: updated, error } = await client
       .from('projects')
       .update({ audio_settings: data.audioSettings as Json })
-      .eq('id', data.projectId);
+      .eq('id', data.projectId)
+      .select('id');
 
     if (error) {
       logger.error({ ...ctx, error }, 'Failed to update audio settings');
       throw new Error(`Failed to update audio settings: ${error.message}`);
     }
+
+    requireAffectedRows(
+      updated,
+      "You can't change this project's audio settings.",
+    );
 
     logger.info(ctx, 'Audio settings updated successfully');
 

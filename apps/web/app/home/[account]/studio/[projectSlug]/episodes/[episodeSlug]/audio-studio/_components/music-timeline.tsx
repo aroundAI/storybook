@@ -31,6 +31,7 @@ import {
   updateAudioCueAction,
   updateAudioTrackAction,
 } from '@kit/audio-generation/server';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
 import { Skeleton } from '@kit/ui/skeleton';
@@ -340,9 +341,11 @@ export const MusicTimeline = React.forwardRef<
 
     for (const track of pendingCues) {
       try {
-        await generateAudioForCueAction({
-          cueId: track.id.replace('cue-', ''),
-        });
+        await unwrap(
+          generateAudioForCueAction({
+            cueId: track.id.replace('cue-', ''),
+          }),
+        );
       } catch {
         toast.error(`Failed to queue: ${track.name ?? 'music cue'}`);
       }
@@ -438,24 +441,28 @@ export const MusicTimeline = React.forwardRef<
       if (selectedTrack.id.startsWith('cue-')) {
         // Update Cue
         const cueId = selectedTrack.id.replace('cue-', '');
-        await updateAudioCueAction({
-          cueId,
-          prompt: editPrompt.trim(),
-        });
+        await unwrap(
+          updateAudioCueAction({
+            cueId,
+            prompt: editPrompt.trim(),
+          }),
+        );
       } else {
         // Update Track
-        await updateAudioTrackAction({
-          trackId: selectedTrack.id,
-          prompt: editPrompt.trim(),
-        });
+        await unwrap(
+          updateAudioTrackAction({
+            trackId: selectedTrack.id,
+            prompt: editPrompt.trim(),
+          }),
+        );
       }
       toast.success('Music prompt updated');
       setIsEditModalOpen(false);
       setSelectedTrack(null);
       void fetchTracks();
       onRefresh?.();
-    } catch {
-      toast.error('Failed to update music prompt');
+    } catch (error) {
+      toast.error(refusalMessage(error, 'Failed to update music prompt'));
     } finally {
       setIsSaving(false);
     }
@@ -463,12 +470,12 @@ export const MusicTimeline = React.forwardRef<
 
   const handleDeleteTrack = async (track: MusicTrack) => {
     try {
-      await deleteAudioTrackAction({ trackId: track.id });
+      await unwrap(deleteAudioTrackAction({ trackId: track.id }));
       toast.success('Music track deleted');
       void fetchTracks();
       onRefresh?.();
-    } catch {
-      toast.error('Failed to delete track');
+    } catch (error) {
+      toast.error(refusalMessage(error, 'Failed to delete track'));
     }
   };
 
@@ -486,9 +493,11 @@ export const MusicTimeline = React.forwardRef<
 
     setIsRegenerating(true);
     try {
-      const result = await generateAudioForCueAction({
-        cueId: track.id.replace('cue-', ''),
-      });
+      const result = await unwrap(
+        generateAudioForCueAction({
+          cueId: track.id.replace('cue-', ''),
+        }),
+      );
       if (result.status === 'queued') {
         toast.info('Music generation started...');
         // WebSocket notifies on completion

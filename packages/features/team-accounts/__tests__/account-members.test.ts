@@ -74,8 +74,9 @@ describe('AccountMembersService', () => {
       delete: mockDelete,
     });
 
+    // The delete ends in .select() (KB-61); mockMatch still sees the filter
     mockDelete.mockReturnValue({
-      match: mockMatch,
+      match: (filter: unknown) => ({ select: () => mockMatch(filter) }),
     });
 
     // Setup default chain for admin update operation
@@ -100,7 +101,7 @@ describe('AccountMembersService', () => {
   describe('removeMemberFromAccount', () => {
     it('should remove member from account successfully', async () => {
       mockMatch.mockResolvedValue({
-        data: null,
+        data: [{ user_id: 'removed' }],
         error: null,
       });
 
@@ -119,7 +120,7 @@ describe('AccountMembersService', () => {
 
     it('should decrease seat count after removing member', async () => {
       mockMatch.mockResolvedValue({
-        data: null,
+        data: [{ user_id: 'removed' }],
         error: null,
       });
 
@@ -163,7 +164,7 @@ describe('AccountMembersService', () => {
 
     it('should handle concurrent member removals', async () => {
       mockMatch.mockResolvedValue({
-        data: null,
+        data: [{ user_id: 'removed' }],
         error: null,
       });
 
@@ -184,7 +185,7 @@ describe('AccountMembersService', () => {
 
     it('should handle valid UUID formats', async () => {
       mockMatch.mockResolvedValue({
-        data: null,
+        data: [{ user_id: 'removed' }],
         error: null,
       });
 
@@ -516,7 +517,7 @@ describe('AccountMembersService', () => {
 
       // Remove member
       mockMatch.mockResolvedValue({
-        data: null,
+        data: [{ user_id: 'removed' }],
         error: null,
       });
 

@@ -59,15 +59,36 @@ describe('AccountMembersService', () => {
   });
 
   describe('removeMemberFromAccount', () => {
+    // KB-61: RLS filters a refused delete to no rows, with no error
+    it('refuses, and keeps the seat, when the delete removed no row', async () => {
+      const service = createAccountMembersService(mockClient as any);
+
+      mockClient.from.mockReturnValue({
+        delete: vi.fn().mockReturnThis(),
+        match: vi.fn(() => ({
+          select: (): Promise<QueryResult> =>
+            Promise.resolve({ data: [], error: null }),
+        })),
+      } as any);
+
+      await expect(
+        service.removeMemberFromAccount({
+          accountId: 'acc-123',
+          userId: 'user-456',
+        }),
+      ).rejects.toThrow("The member wasn't removed");
+      expect(mockDecreaseSeats).not.toHaveBeenCalled();
+    });
+
     it('should remove member successfully', async () => {
       const service = createAccountMembersService(mockClient as any);
 
       mockClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        match: vi.fn(
-          (): Promise<QueryResult> =>
-            Promise.resolve({ data: null, error: null }),
-        ),
+        match: vi.fn(() => ({
+          select: (): Promise<QueryResult> =>
+            Promise.resolve({ data: [{ user_id: 'user-456' }], error: null }),
+        })),
       } as any);
 
       await service.removeMemberFromAccount({
@@ -85,9 +106,10 @@ describe('AccountMembersService', () => {
 
       mockClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        match: vi.fn(
-          (): Promise<QueryResult> => Promise.resolve({ data: null, error }),
-        ),
+        match: vi.fn(() => ({
+          select: (): Promise<QueryResult> =>
+            Promise.resolve({ data: null, error }),
+        })),
       } as any);
 
       await expect(
@@ -106,10 +128,10 @@ describe('AccountMembersService', () => {
 
       mockClient.from.mockReturnValue({
         delete: vi.fn().mockReturnThis(),
-        match: vi.fn(
-          (): Promise<QueryResult> =>
-            Promise.resolve({ data: null, error: null }),
-        ),
+        match: vi.fn(() => ({
+          select: (): Promise<QueryResult> =>
+            Promise.resolve({ data: [{ user_id: 'user-456' }], error: null }),
+        })),
       } as any);
 
       await service.removeMemberFromAccount({

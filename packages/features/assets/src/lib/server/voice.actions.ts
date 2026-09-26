@@ -5,6 +5,7 @@ import 'server-only';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { decrypt } from '@kit/shared/crypto';
 import { vendorUrl } from '@kit/shared/vendors';
 import { readExternalApiKey } from '@kit/supabase/external-api-keys';
@@ -120,24 +121,31 @@ const AssignVoiceToCharacterSchema = z.object({
 /**
  * Save voice profile assignment to a character
  */
-export const assignVoiceToCharacterAction = enhanceAction(
+const assignVoiceToCharacter = enhanceAction(
   async ({ characterId, voiceAssetId }) => {
     const client = getSupabaseServerClient();
 
     // Update character_details with voice assignment
     // Note: characterId is the asset_id (PK of character_details)
-    const { error } = await client
+    const { data, error } = await client
       .from('character_details')
       .update({ elevenlabs_voice_id: voiceAssetId })
-      .eq('asset_id', characterId);
+      .eq('asset_id', characterId)
+      .select('asset_id');
 
     if (error) {
       throw new Error(`Failed to assign voice: ${error.message}`);
     }
+
+    requireAffectedRows(data, "You can't change this character's voice.");
 
     return { success: true };
   },
   {
     schema: AssignVoiceToCharacterSchema,
   },
+);
+
+export const assignVoiceToCharacterAction = returnRefusals(
+  assignVoiceToCharacter,
 );

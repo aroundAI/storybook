@@ -50,8 +50,8 @@ acceptance_criteria:
     met: false
     reason: "not met — no AI thumbnail code anywhere"
   - text: "Set thumbnail as primary for episode"
-    met: false
-    reason: "not met — `setDefaultThumbnailAction` exists (`packages/features/episodes/src/server/thumbnail-actions.ts:464`); its only UI is unmounted since baa752eb"
+    met: true
+    evidence: "the episode's default thumbnail, set from the thumbnails panel on the publish screen (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-thumbnail-settings.tsx:334`, mounted at `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1451`, KB-89); E2E `apps/e2e/tests/storage/episode-thumbnails-panel.spec.ts`"
   - text: "Download thumbnails"
     met: false
     reason: "not met — no reachable download: only the never-rendered `UploadOnlyMode` has one (`packages/features/publishing/src/components/upload-only-mode.tsx:197`); the publish screen previews and uploads only (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/video-card.tsx:88`)"
@@ -96,9 +96,6 @@ remaining:
   - criterion: "AI generation from a prompt"
     reason: "Never built"
     closed_by: "owner"
-  - criterion: "Set thumbnail as primary"
-    reason: "The action exists; its only UI (`episode-thumbnail-settings.tsx`) has been unmounted since baa752eb (2026-01-06)"
-    closed_by: "unassigned"
   - criterion: "Download thumbnails"
     reason: "Not reachable: the only thumbnail download is in the never-rendered `UploadOnlyMode` (`packages/features/publishing/src/components/upload-only-mode.tsx:197`; see FILM-713)"
     closed_by: "owner"

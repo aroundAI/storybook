@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { MAX_MEMORY_HORIZON, MIN_MEMORY_HORIZON } from '@kit/episodes/lib';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 const UpdateCanonSettingsSchema = z.object({
@@ -51,17 +51,23 @@ const updateCanonSettings = enhanceAction(
     };
 
     // Update project
-    const { error: updateError } = await client
+    const { data: updated, error: updateError } = await client
       .from('projects')
       .update({
         metadata: updatedMetadata,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', data.projectId);
+      .eq('id', data.projectId)
+      .select('id');
 
     if (updateError) {
       throw new Error('Failed to update canon settings');
     }
+
+    requireAffectedRows(
+      updated,
+      "You can't change this project's canon settings.",
+    );
 
     return { success: true };
   },

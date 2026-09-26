@@ -110,14 +110,13 @@ create policy "episode_thumbnails_update" on public.episode_thumbnails for updat
     )
   );
 
--- Delete policy: project admins/owners can delete
+-- Delete policy: anyone who can write the project (owner, admin, member),
+-- as for adding and replacing (KB-89, 20260926155852)
 create policy "episode_thumbnails_delete" on public.episode_thumbnails for delete
   to authenticated using (
     exists (
       select 1 from public.episodes e
-      join public.project_members pm on pm.project_id = e.project_id
       where e.id = episode_thumbnails.episode_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin')
+      and public.can_write_project(e.project_id)
     )
   );

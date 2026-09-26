@@ -9,6 +9,7 @@
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { AudioCueTypeSchema } from '@kit/prompt-engine/llm-job-payloads';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { requireUser } from '@kit/supabase/require-user';
@@ -216,7 +217,7 @@ export const processAudioCuesAction = enhanceAction(
  *
  * Used when user clicks "Generate" on a pending cue
  */
-export const generateAudioForCueAction = enhanceAction(
+const generateAudioForCue = enhanceAction(
   async (
     data,
   ): Promise<{
@@ -286,10 +287,19 @@ export const generateAudioForCueAction = enhanceAction(
 
     try {
       // 1. Update cue status to 'generating'
-      await client
+      const { data: generating, error: generatingError } = await client
         .from('audio_cues')
         .update({ status: 'generating' })
-        .eq('id', data.cueId);
+        .eq('id', data.cueId)
+        .select('id');
+
+      if (generatingError) {
+        throw new Error(
+          `Failed to update audio_cues: ${generatingError.message}`,
+        );
+      }
+
+      requireAffectedRows(generating, "You can't generate audio for this cue.");
 
       // 2. Enqueue LLM job for background processing
       const { queueLlmJob } = await import('@kit/prompt-engine/server');
@@ -332,6 +342,8 @@ export const generateAudioForCueAction = enhanceAction(
     }),
   },
 );
+
+export const generateAudioForCueAction = returnRefusals(generateAudioForCue);
 
 /**
  * Get audio cues for an episode
@@ -384,36 +396,41 @@ export const getAudioCuesAction = enhanceAction(
 /**
  * Update audio cue details
  */
-export const updateAudioCueAction = enhanceAction(
-  async (data) => {
-    const client = getSupabaseServerClient();
+export const updateAudioCueAction = returnRefusals(
+  enhanceAction(
+    async (data) => {
+      const client = getSupabaseServerClient();
 
-    const updateData: Record<string, unknown> = {};
-    if (data.prompt !== undefined) updateData.prompt = data.prompt;
-    if (data.startOffset !== undefined)
-      updateData.start_offset_seconds = data.startOffset;
-    if (data.duration !== undefined)
-      updateData.duration_seconds = data.duration;
+      const updateData: Record<string, unknown> = {};
+      if (data.prompt !== undefined) updateData.prompt = data.prompt;
+      if (data.startOffset !== undefined)
+        updateData.start_offset_seconds = data.startOffset;
+      if (data.duration !== undefined)
+        updateData.duration_seconds = data.duration;
 
-    const { error } = await client
-      .from('audio_cues')
-      .update(updateData)
-      .eq('id', data.cueId);
+      const { data: updated, error } = await client
+        .from('audio_cues')
+        .update(updateData)
+        .eq('id', data.cueId)
+        .select('id');
 
-    if (error) {
-      throw new Error(`Failed to update audio cue: ${error.message}`);
-    }
+      if (error) {
+        throw new Error(`Failed to update audio cue: ${error.message}`);
+      }
 
-    return { success: true };
-  },
-  {
-    schema: z.object({
-      cueId: z.string().uuid(),
-      prompt: z.string().min(1).optional(),
-      startOffset: z.number().min(0).optional(),
-      duration: z.number().min(0.1).optional(),
-    }),
-  },
+      requireAffectedRows(updated, "You can't change this audio cue.");
+
+      return { success: true };
+    },
+    {
+      schema: z.object({
+        cueId: z.string().uuid(),
+        prompt: z.string().min(1).optional(),
+        startOffset: z.number().min(0).optional(),
+        duration: z.number().min(0.1).optional(),
+      }),
+    },
+  ),
 );
 
 /**

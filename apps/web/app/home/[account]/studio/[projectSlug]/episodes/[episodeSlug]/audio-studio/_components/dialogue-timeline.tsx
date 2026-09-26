@@ -295,10 +295,12 @@ export function DialogueTimeline({
     setSelectedDialogue(null);
 
     try {
-      const result = await generateDialogueVoiceAsyncAction({
-        dialogueLineId: dialogueId,
-        overwriteExisting: true,
-      });
+      const result = await unwrap(
+        generateDialogueVoiceAsyncAction({
+          dialogueLineId: dialogueId,
+          overwriteExisting: true,
+        }),
+      );
 
       if (result.status === 'queued') {
         toast.success('Voice generation started');

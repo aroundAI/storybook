@@ -4,7 +4,9 @@ import 'server-only';
 
 import { z } from 'zod';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -73,13 +75,15 @@ export const getAvailableLanguagesAction = enhanceAction(
  * Delete all translated dialogue lines for a specific language
  * Guards against deleting English (source) dialogue
  */
-export const deleteLanguageTranslationAction = enhanceAction(
+const deleteLanguageTranslation = enhanceAction(
   async (data: {
     episodeId: string;
     language: string;
   }): Promise<{ deletedCount: number }> => {
     if (data.language === 'en') {
-      throw new Error('Cannot delete English source dialogue');
+      throw new ActionRefusal(
+        'English is the source dialogue, so it cannot be deleted.',
+      );
     }
 
     const client = getSupabaseServerClient();
@@ -89,18 +93,29 @@ export const deleteLanguageTranslationAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error, count } = await (client as any)
+    const {
+      data: deleted,
+      error,
+      count,
+    } = await client
       .from('dialogue_lines')
       .delete({ count: 'exact' })
       .eq('episode_id', data.episodeId)
-      .eq('language', data.language);
+      .eq('language', data.language)
+      .select('id');
 
     if (error) {
       throw new Error(`Failed to delete translations: ${error.message}`);
     }
 
-    return { deletedCount: count ?? 0 };
+    // RLS filters a refused delete to no rows, without an error (KB-61).
+    // The count stays the figure shown: the returned rows are capped.
+    requireAffectedRows(
+      deleted,
+      "No translations were deleted: they're already gone, or you can't delete them. Reload the page.",
+    );
+
+    return { deletedCount: count ?? deleted.length };
   },
   {
     schema: z.object({
@@ -108,6 +123,10 @@ export const deleteLanguageTranslationAction = enhanceAction(
       language: z.string().min(2).max(5),
     }),
   },
+);
+
+export const deleteLanguageTranslationAction = returnRefusals(
+  deleteLanguageTranslation,
 );
 
 /**

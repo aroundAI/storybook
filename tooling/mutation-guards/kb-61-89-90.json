@@ -1,0 +1,151 @@
+{
+  "feature": "FILM-CC-04 KB-61, KB-89, KB-90 (honest deletes; the thumbnails panel; intros and thumbnails keep to their own folder)",
+  "mutations": [
+    {
+      "name": "KB-61 helper passes a write that changed no row",
+      "kind": "unit",
+      "file": "packages/next/src/refusals/affected-rows.ts",
+      "find": "  if (!rows || rows.length === 0) {",
+      "replace": "  if (!rows) {",
+      "cwd": "packages/next",
+      "test": "__tests__/affected-rows.test.ts"
+    },
+    {
+      "name": "KB-61 scan no longer sees a delete with no select",
+      "kind": "unit",
+      "file": "packages/next/__tests__/unchecked-deletes.ts",
+      "find": "    if (!table || after.includes('.select(')) continue;",
+      "replace": "    if (!table || after.length >= 0) continue;",
+      "cwd": "packages/next",
+      "test": "__tests__/kb61-unchecked-deletes.test.ts"
+    },
+    {
+      "name": "KB-61 guard: the social post delete stops selecting what it removed",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/social-post-actions.ts",
+      "find": "      .eq('id', input.postId)\n      .select('id');",
+      "replace": "      .eq('id', input.postId);",
+      "cwd": "packages/next",
+      "test": "__tests__/kb61-unchecked-deletes.test.ts"
+    },
+    {
+      "name": "KB-61 thumbnail delete no longer checks what it removed",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/thumbnail-actions.ts",
+      "find": "      requireAffectedRows(\n        deleted,\n        INTRO_THUMBNAIL_REFUSALS.thumbnailNotDeleted,\n      );",
+      "replace": "",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/replacement-deletes.test.ts",
+      "pattern": "keeps the file, and says so, when the delete removed no row"
+    },
+    {
+      "name": "KB-61 thumbnail file deleted before its row again",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/thumbnail-actions.ts",
+      "find": "      // The row first: a member passes canEditEpisode but not the table's",
+      "replace": "      await removeThumbnailFile(\n        getStorageAdapter(client),\n        thumbnail.thumbnail_url,\n        data.episodeId,\n        ctx,\n      );\n      // The row first: a member passes canEditEpisode but not the table's",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/replacement-deletes.test.ts",
+      "pattern": "keeps the file, and says so, when the delete removed no row"
+    },
+    {
+      "name": "KB-61 intro delete no longer checks what it removed",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/intro-actions.ts",
+      "find": "      requireAffectedRows(deleted, INTRO_THUMBNAIL_REFUSALS.introNotDeleted);",
+      "replace": "",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/replacement-deletes.test.ts",
+      "pattern": "deleting an intro that removes no row"
+    },
+    {
+      "name": "KB-61 project delete refused by RLS reported and audited as done",
+      "kind": "unit",
+      "file": "packages/features/projects/src/lib/server/project.mutations.ts",
+      "find": "    requireAffectedRows(\n      deleted,\n      \"The project wasn't deleted",
+      "replace": "    ((..._: unknown[]) => undefined)(\n      deleted,\n      \"The project wasn't deleted",
+      "cwd": "packages/features/projects",
+      "test": "__tests__/project-mutations.test.ts",
+      "pattern": "records nothing, when the delete removed no row"
+    },
+    {
+      "name": "KB-61 team member removal refused by RLS reported as done",
+      "kind": "unit",
+      "file": "packages/features/team-accounts/src/server/services/account-members.service.ts",
+      "find": "    requireAffectedRows(\n      data,\n      \"The member wasn't removed: they're no longer on the team",
+      "replace": "    ((..._: unknown[]) => undefined)(\n      data,\n      \"The member wasn't removed: they're no longer on the team",
+      "cwd": "packages/features/team-accounts",
+      "test": "__tests__/account-members.service.test.ts",
+      "pattern": "keeps the seat, when the delete removed no row"
+    },
+    {
+      "name": "KB-90 thumbnail saved from outside its episode's thumbnails folder",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/thumbnail-actions.ts",
+      "find": "          episodeThumbnailFolder(data.episodeId),",
+      "replace": "          'episodes/',",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/replacement-deletes.test.ts",
+      "pattern": "refuses a thumbnail from"
+    },
+    {
+      "name": "KB-90 intro saved from outside its project's intros folder",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/intro-actions.ts",
+      "find": "        projectIntroFolder(data.projectId),",
+      "replace": "        'projects/',",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/replacement-deletes.test.ts",
+      "pattern": "refuses an intro from"
+    },
+    {
+      "name": "KB-90 ownedStorageKey ignores the folder",
+      "kind": "unit",
+      "file": "packages/features/storage/src/storage-key.ts",
+      "find": "  return key && isInFolder(key, folder) ? key : null;",
+      "replace": "  return key;",
+      "cwd": "packages/features/storage",
+      "test": "__tests__/storage-key.test.ts",
+      "pattern": "ownedStorageKey"
+    },
+    {
+      "name": "KB-89 thumbnail delete policy back to owners and admins",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/episode-thumbnails-delete-rls.test.sql",
+      "sql": "alter policy episode_thumbnails_delete on public.episode_thumbnails using (exists (select 1 from public.episodes e join public.project_members pm on pm.project_id = e.project_id where e.id = episode_thumbnails.episode_id and pm.user_id = auth.uid() and pm.role in ('owner', 'admin')));"
+    },
+    {
+      "name": "KB-89 thumbnail delete policy opened to everyone",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/episode-thumbnails-delete-rls.test.sql",
+      "sql": "alter policy episode_thumbnails_delete on public.episode_thumbnails using (true);"
+    },
+    {
+      "name": "KB-89 E2E panel keeps its own list apart from the video slots",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx",
+      "find": "              onThumbnailsChange={setEpisodeThumbnails}",
+      "replace": "              onThumbnailsChange={() => undefined}",
+      "spec": "tests/storage/episode-thumbnails-panel.spec.ts",
+      "grep": "the video slots agree throughout"
+    },
+    {
+      "name": "KB-61 E2E removing a thumbnail already gone reads as a generic failure",
+      "kind": "e2e",
+      "file": "packages/features/episodes/src/server/thumbnail-actions.ts",
+      "find": "        throw new ActionRefusal(INTRO_THUMBNAIL_REFUSALS.thumbnailNotDeleted);",
+      "replace": "        throw new Error('Thumbnail not found');",
+      "spec": "tests/storage/episode-thumbnails-panel.spec.ts",
+      "grep": "already gone says so"
+    },
+    {
+      "name": "KB-89 E2E a refused remove keeps showing the stale card",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-thumbnail-settings.tsx",
+      "find": "          await onRefused();\n",
+      "replace": "",
+      "spec": "tests/storage/episode-thumbnails-panel.spec.ts",
+      "grep": "already gone says so"
+    }
+  ]
+}

@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -439,7 +439,7 @@ export const getBatchStatusAction = enhanceAction(
  *
  * @throws {Error} If job not found or no failed lines to retry
  */
-export const retryFailedDialogueAction = enhanceAction(
+const retryFailedDialogue = enhanceAction(
   async (
     data: RetryFailedDialogueSchemaType,
   ): Promise<RetryFailedDialogueResult> => {
@@ -522,7 +522,7 @@ export const retryFailedDialogueAction = enhanceAction(
 
     // 4. Reset job status for retry (reset failed count, preserve completed)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (client as any)
+    const { data: retried, error: retriedError } = await (client as any)
       .from('batch_generation_jobs')
       .update({
         status: 'processing',
@@ -532,7 +532,16 @@ export const retryFailedDialogueAction = enhanceAction(
         completed_at: null,
         errors: [],
       })
-      .eq('id', data.batchJobId);
+      .eq('id', data.batchJobId)
+      .select('id');
+
+    if (retriedError) {
+      throw new Error(
+        `Failed to update batch_generation_jobs: ${retriedError.message}`,
+      );
+    }
+
+    requireAffectedRows(retried, "You can't retry this batch.");
 
     // 5. Dispatch failed lines to voice queue
     const voiceJobs = linesToRetry.map((line) => {
@@ -577,6 +586,8 @@ export const retryFailedDialogueAction = enhanceAction(
   },
 );
 
+export const retryFailedDialogueAction = returnRefusals(retryFailedDialogue);
+
 /**
  * Cancel a batch generation job
  *
@@ -620,13 +631,22 @@ const cancelBatch = enhanceAction(
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (client as any)
+    const { data: cancelled, error: cancelledError } = await (client as any)
       .from('batch_generation_jobs')
       .update({
         status: 'cancelled',
         completed_at: new Date().toISOString(),
       })
-      .eq('id', data.batchJobId);
+      .eq('id', data.batchJobId)
+      .select('id');
+
+    if (cancelledError) {
+      throw new Error(
+        `Failed to update batch_generation_jobs: ${cancelledError.message}`,
+      );
+    }
+
+    requireAffectedRows(cancelled, "You can't cancel this batch.");
 
     logger.info(ctx, 'Batch job cancelled');
 

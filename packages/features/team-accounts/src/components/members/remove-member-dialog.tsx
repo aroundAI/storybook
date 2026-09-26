@@ -1,5 +1,6 @@
 import { useState, useTransition } from 'react';
 
+import { unwrap } from '@kit/next/action-result';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import {
   AlertDialog,
@@ -65,7 +66,7 @@ function RemoveMemberForm({
   const onMemberRemoved = () => {
     startTransition(async () => {
       try {
-        await removeMemberFromAccountAction({ accountId, userId });
+        await unwrap(removeMemberFromAccountAction({ accountId, userId }));
 
         setIsOpen(false);
       } catch {

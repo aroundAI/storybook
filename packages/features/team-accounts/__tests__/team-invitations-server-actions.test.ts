@@ -286,7 +286,7 @@ describe('team-invitations-server-actions', () => {
 
         const result = await deleteInvitationAction(data);
 
-        expect(result).toEqual({ success: true });
+        expect(result).toEqual({ ok: true, data: { success: true } });
         expect(mockDeleteInvitation).toHaveBeenCalledWith(data);
       });
 

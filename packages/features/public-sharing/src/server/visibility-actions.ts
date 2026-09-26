@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 // Update Public Profile Schema
@@ -32,40 +33,51 @@ const UpdatePublicProfileSchema = z.object({
   }),
 });
 
-export const updatePublicProfileAction = enhanceAction(
-  async (data, user) => {
-    const client = getSupabaseServerClient();
+export const updatePublicProfileAction = returnRefusals(
+  enhanceAction(
+    async (data, user) => {
+      const client = getSupabaseServerClient();
 
-    // Check if user is owner or admin of the account
-    const { data: membership } = await client
-      .from('accounts_memberships')
-      .select('account_role')
-      .eq('account_id', data.accountId)
-      .eq('user_id', user.id)
-      .single();
+      // Check if user is owner or admin of the account
+      const { data: membership } = await client
+        .from('accounts_memberships')
+        .select('account_role')
+        .eq('account_id', data.accountId)
+        .eq('user_id', user.id)
+        .single();
 
-    if (!membership || !['owner', 'admin'].includes(membership.account_role)) {
-      throw new Error(
-        'Unauthorized: You do not have permission to update this profile.',
+      if (
+        !membership ||
+        !['owner', 'admin'].includes(membership.account_role)
+      ) {
+        throw new Error(
+          'Unauthorized: You do not have permission to update this profile.',
+        );
+      }
+
+      const { data: updated, error } = await client
+        .from('accounts')
+        .update({ public_profile: data.publicProfile })
+        .eq('id', data.accountId)
+        .select('id');
+
+      if (error) {
+        throw new Error(`Failed to update public profile: ${error.message}`);
+      }
+
+      requireAffectedRows(
+        updated,
+        "You can't change this account's public profile.",
       );
-    }
 
-    const { error } = await client
-      .from('accounts')
-      .update({ public_profile: data.publicProfile })
-      .eq('id', data.accountId);
-
-    if (error) {
-      throw new Error(`Failed to update public profile: ${error.message}`);
-    }
-
-    revalidatePath('/', 'layout');
-    return { success: true };
-  },
-  {
-    schema: UpdatePublicProfileSchema,
-    auth: true,
-  },
+      revalidatePath('/', 'layout');
+      return { success: true };
+    },
+    {
+      schema: UpdatePublicProfileSchema,
+      auth: true,
+    },
+  ),
 );
 
 // Update Project Visibility Schema
@@ -85,28 +97,38 @@ const UpdateProjectVisibilitySchema = z.object({
     .optional(),
 });
 
-export const updateProjectVisibilityAction = enhanceAction(
-  async (data) => {
-    const client = getSupabaseServerClient();
-    const { error } = await client
-      .from('projects')
-      .update({
-        visibility: data.visibility,
-        public_slug: data.publicSlug,
-        seo_metadata: data.seoMetadata ?? {},
-      })
-      .eq('id', data.projectId);
+export const updateProjectVisibilityAction = returnRefusals(
+  enhanceAction(
+    async (data) => {
+      const client = getSupabaseServerClient();
+      const { data: updated, error } = await client
+        .from('projects')
+        .update({
+          visibility: data.visibility,
+          public_slug: data.publicSlug,
+          seo_metadata: data.seoMetadata ?? {},
+        })
+        .eq('id', data.projectId)
+        .select('id');
 
-    if (error) {
-      throw new Error(`Failed to update project visibility: ${error.message}`);
-    }
+      if (error) {
+        throw new Error(
+          `Failed to update project visibility: ${error.message}`,
+        );
+      }
 
-    return { success: true };
-  },
-  {
-    schema: UpdateProjectVisibilitySchema,
-    auth: true,
-  },
+      requireAffectedRows(
+        updated,
+        "You can't change this project's visibility.",
+      );
+
+      return { success: true };
+    },
+    {
+      schema: UpdateProjectVisibilitySchema,
+      auth: true,
+    },
+  ),
 );
 
 // Update Localized Videos Schema
@@ -145,30 +167,38 @@ const UpdateLocalizedVideosSchema = z.object({
     .optional(),
 });
 
-export const updateEpisodePublicSettingsAction = enhanceAction(
-  async (data) => {
-    const client = getSupabaseServerClient();
+export const updateEpisodePublicSettingsAction = returnRefusals(
+  enhanceAction(
+    async (data) => {
+      const client = getSupabaseServerClient();
 
-    const { error } = await client
-      .from('episodes')
-      .update({
-        public_slug: data.publicSlug,
-        visibility: data.visibility,
-        localized_videos: data.localizedVideos,
-        seo_metadata: data.seoMetadata ?? {},
-      })
-      .eq('id', data.episodeId);
+      const { data: updated, error } = await client
+        .from('episodes')
+        .update({
+          public_slug: data.publicSlug,
+          visibility: data.visibility,
+          localized_videos: data.localizedVideos,
+          seo_metadata: data.seoMetadata ?? {},
+        })
+        .eq('id', data.episodeId)
+        .select('id');
 
-    if (error) {
-      throw new Error(`Failed to update episode settings: ${error.message}`);
-    }
+      if (error) {
+        throw new Error(`Failed to update episode settings: ${error.message}`);
+      }
 
-    return { success: true };
-  },
-  {
-    schema: UpdateLocalizedVideosSchema,
-    auth: true,
-  },
+      requireAffectedRows(
+        updated,
+        "You can't change this episode's public settings.",
+      );
+
+      return { success: true };
+    },
+    {
+      schema: UpdateLocalizedVideosSchema,
+      auth: true,
+    },
+  ),
 );
 
 // Separate Episode Visibility Action (simpler)
@@ -183,31 +213,41 @@ const UpdateEpisodeVisibilitySchema = z.object({
     .optional(),
 });
 
-export const updateEpisodeVisibilityAction = enhanceAction(
-  async (data) => {
-    const client = getSupabaseServerClient();
-    const updateData: Record<string, unknown> = {
-      visibility: data.visibility,
-    };
-    if (data.publicSlug) {
-      updateData.public_slug = data.publicSlug;
-    }
+export const updateEpisodeVisibilityAction = returnRefusals(
+  enhanceAction(
+    async (data) => {
+      const client = getSupabaseServerClient();
+      const updateData: Record<string, unknown> = {
+        visibility: data.visibility,
+      };
+      if (data.publicSlug) {
+        updateData.public_slug = data.publicSlug;
+      }
 
-    const { error } = await client
-      .from('episodes')
-      .update(updateData)
-      .eq('id', data.episodeId);
+      const { data: updated, error } = await client
+        .from('episodes')
+        .update(updateData)
+        .eq('id', data.episodeId)
+        .select('id');
 
-    if (error) {
-      throw new Error(`Failed to update episode visibility: ${error.message}`);
-    }
+      if (error) {
+        throw new Error(
+          `Failed to update episode visibility: ${error.message}`,
+        );
+      }
 
-    return { success: true };
-  },
-  {
-    schema: UpdateEpisodeVisibilitySchema,
-    auth: true,
-  },
+      requireAffectedRows(
+        updated,
+        "You can't change this episode's visibility.",
+      );
+
+      return { success: true };
+    },
+    {
+      schema: UpdateEpisodeVisibilitySchema,
+      auth: true,
+    },
+  ),
 );
 
 // Separate Localized Videos Action
@@ -234,25 +274,33 @@ const UpdateLocalizedVideosOnlySchema = z.object({
   ),
 });
 
-export const updateLocalizedVideosAction = enhanceAction(
-  async (data) => {
-    const client = getSupabaseServerClient();
+export const updateLocalizedVideosAction = returnRefusals(
+  enhanceAction(
+    async (data) => {
+      const client = getSupabaseServerClient();
 
-    const { error } = await client
-      .from('episodes')
-      .update({
-        localized_videos: data.localizedVideos,
-      })
-      .eq('id', data.episodeId);
+      const { data: updated, error } = await client
+        .from('episodes')
+        .update({
+          localized_videos: data.localizedVideos,
+        })
+        .eq('id', data.episodeId)
+        .select('id');
 
-    if (error) {
-      throw new Error(`Failed to update localized videos: ${error.message}`);
-    }
+      if (error) {
+        throw new Error(`Failed to update localized videos: ${error.message}`);
+      }
 
-    return { success: true };
-  },
-  {
-    schema: UpdateLocalizedVideosOnlySchema,
-    auth: true,
-  },
+      requireAffectedRows(
+        updated,
+        "You can't change this episode's video links.",
+      );
+
+      return { success: true };
+    },
+    {
+      schema: UpdateLocalizedVideosOnlySchema,
+      auth: true,
+    },
+  ),
 );

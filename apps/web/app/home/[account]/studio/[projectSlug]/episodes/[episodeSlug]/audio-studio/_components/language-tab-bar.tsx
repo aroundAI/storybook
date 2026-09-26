@@ -9,6 +9,7 @@ import {
   deleteLanguageTranslationAction,
   translateDialogueToLanguageAction,
 } from '@kit/audio-generation/server';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -147,10 +148,12 @@ export function LanguageTabBar({
   const handleDeleteLanguage = async (lang: SupportedLanguage) => {
     setDeletingLang(lang);
     try {
-      const result = await deleteLanguageTranslationAction({
-        episodeId,
-        language: lang,
-      });
+      const result = await unwrap(
+        deleteLanguageTranslationAction({
+          episodeId,
+          language: lang,
+        }),
+      );
       toast.success(
         `Deleted ${result.deletedCount} ${LANG_INFO[lang].name} translations`,
       );
@@ -159,7 +162,7 @@ export function LanguageTabBar({
       }
       onLanguageAdded?.();
     } catch (error) {
-      toast.error(`Failed to delete: ${(error as Error).message}`);
+      toast.error(refusalMessage(error, 'Failed to delete translations'));
     } finally {
       setDeletingLang(null);
     }

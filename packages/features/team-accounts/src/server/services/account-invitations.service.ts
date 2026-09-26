@@ -5,6 +5,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { addDays, formatISO } from 'date-fns';
 import { z } from 'zod';
 
+import { requireAffectedRows } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { Database } from '@kit/supabase/database';
 
@@ -47,13 +48,20 @@ class AccountInvitationsService {
       .delete()
       .match({
         id: params.invitationId,
-      });
+      })
+      .select('id');
 
     if (error) {
       logger.error(ctx, `Failed to remove invitation`);
 
       throw error;
     }
+
+    // RLS filters a refused delete to no rows, without an error (KB-61)
+    requireAffectedRows(
+      data,
+      "The invitation wasn't removed: it's already gone, or you can't remove it. Reload the page.",
+    );
 
     logger.info(ctx, 'Invitation successfully removed');
 
@@ -82,7 +90,8 @@ class AccountInvitationsService {
       })
       .match({
         id: params.invitationId,
-      });
+      })
+      .select('id');
 
     if (error) {
       logger.error(
@@ -95,6 +104,8 @@ class AccountInvitationsService {
 
       throw error;
     }
+
+    requireAffectedRows(data, "You can't change this invitation.");
 
     logger.info(ctx, 'Invitation successfully updated');
 
@@ -275,7 +286,8 @@ class AccountInvitationsService {
       })
       .match({
         id: invitationId,
-      });
+      })
+      .select('id');
 
     if (error) {
       logger.error(
@@ -288,6 +300,8 @@ class AccountInvitationsService {
 
       throw error;
     }
+
+    requireAffectedRows(data, "You can't renew this invitation.");
 
     logger.info(ctx, 'Invitation successfully renewed');
 

@@ -24,8 +24,9 @@ vi.mock('@kit/next/actions', () => ({
         const dataToValidate = args[0];
         options.schema.parse(dataToValidate);
       }
-      // Call handler with all args
-      return handler(...args);
+      // Call handler with all args; an action wrapped in returnRefusals
+      // passes only `data`, so the user comes from withUser (below)
+      return handler(args[0], args[1] ?? actingUser.current);
     };
   },
 }));
@@ -142,11 +143,18 @@ vi.mock('@kit/otp', () => ({
  * exported actions carry the real wrapper's type, which takes only `data`,
  * so calling them with a user needs that wider view stated explicitly.
  */
+const actingUser: { current?: { id: string } } = {};
+
 function withUser<A extends (...args: never[]) => unknown>(action: A) {
-  return action as unknown as (
+  const call = action as unknown as (
     data: Parameters<A>[0],
     user?: { id: string },
   ) => Promise<unknown>;
+
+  return (data: Parameters<A>[0], user?: { id: string }) => {
+    actingUser.current = user;
+    return call(data, user);
+  };
 }
 
 describe('team-members-server-actions', () => {
@@ -178,7 +186,7 @@ describe('team-members-server-actions', () => {
           user,
         );
 
-        expect(result).toEqual({ success: true });
+        expect(result).toEqual({ ok: true, data: { success: true } });
         expect(mockRemoveMemberFromAccount).toHaveBeenCalledWith({
           accountId: data.accountId,
           userId: data.userId,
