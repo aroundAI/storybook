@@ -19,6 +19,8 @@
   },
   "devDependencies": {
     "@google/genai": "^1.34.0",
+    "@kit/agent": "workspace:*",
+    "@kit/episodes": "workspace:*",
     "@kit/eslint-config": "workspace:*",
     "@kit/llm": "workspace:*",
     "@kit/prettier-config": "workspace:*",

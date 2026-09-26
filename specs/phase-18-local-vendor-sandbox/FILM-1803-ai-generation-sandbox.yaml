@@ -42,9 +42,9 @@ acceptance_criteria:
   - text: "A new prompt file added without a generator fails a sandbox test, not a demo"
     met: true
     evidence: "coverage.test.ts reads every prompt file on disk and names any without a generator; mutation guard 'a prompt without a generator goes unnoticed' is red"
-  - text: "(New 2026-09-25) The nine studio orchestrators run to success against the sandbox"
-    met: false
-    reason: "not yet — the agent-protocol driver is the next PR"
+  - text: "(New 2026-09-25) The seven studio orchestrators the llm-worker runs complete against the sandbox"
+    met: true
+    evidence: "apps/vendor-sandbox/__tests__/orchestrators.test.ts — ideation, story (plain, documentary, movie), screenplay, season, shot, audio cues and translation, run for real with the sandbox as the model; the tool failures inside them are KB-115 and KB-116, listed in KNOWN_TOOL_FAILURES. The two agents with no caller are listed in coverage.test.ts"
   - text: "Audio responses are valid files of roughly the requested duration"
     met: false
     reason: "not yet — the ElevenLabs stand-in is a later PR"
@@ -60,9 +60,6 @@ acceptance_criteria:
 remaining:
   - criterion: "With local.env loaded, no inline AI action a user can trigger reaches a real AI vendor"
     reason: "local-env.sh wiring and the live run with an egress guard"
-    closed_by: "FILM-1803"
-  - criterion: "The nine studio orchestrators run to success against the sandbox"
-    reason: "agent-protocol driver not built yet"
     closed_by: "FILM-1803"
   - criterion: "Audio responses are valid files of roughly the requested duration"
     reason: "ElevenLabs stand-in not built yet"
@@ -130,6 +127,24 @@ notes: |
   - KB-107: behind it, four wrapper_key prompts are unwrapped by executeLLM
     only when the value is an array, while every caller reads an object. Fixed: the four prompts ask for the
     wrapper their callers read, and no longer set wrapper_key.
+
+  Driving the orchestrators. The studio stages run as agents
+  (packages/agent/src/runner.ts): the model answers each turn with a tool call
+  or a final answer, and tool results come back as user turns. The sandbox
+  recognises each of the seven orchestrators the llm-worker runs by the first
+  line of its system prompt and plays it from a short script
+  (apps/vendor-sandbox/src/llm/agents/scripts.ts): the tools in the order its
+  prompt prescribes, with parameters taken from its user prompt and earlier
+  results, which the runner validates against each tool's own schema. Each tool
+  then calls executeLLM, which the prompt generators answer. A tool that fails
+  inside a run is recorded and shown on the status page.
+
+  What driving them found (reproduced, filed):
+  - KB-115: the season outliner reads `.episodes` from the array executeLLM
+    has already unwrapped, so its step always fails, and season outlines come
+    from the director's unvalidated final answer.
+  - KB-116: the season-arc evaluator and the translation verifier call
+    story-quality without the variables it requires.
 
   ## 3. Vendors: what the app still calls (2026-09-25)
 

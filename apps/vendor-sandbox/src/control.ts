@@ -39,6 +39,7 @@ function statusPage(state: SandboxState, ports: Record<string, number>) {
     .join(', ')}.</p>
 <p>Calls: ${[...counts].map(([v, n]) => `${escapeHtml(v)} ${n}`).join(', ') || 'none yet'}.</p>
 <p class="${unrecognised > 0 ? 'bad' : ''}">Unrecognised prompts: ${unrecognised}</p>
+${state.agentToolFailures.length > 0 ? `<p class="bad">Agent tool failures: ${state.agentToolFailures.map((f) => escapeHtml(`${f.orchestrator} → ${f.tool}: ${f.error}`)).join('; ')}</p>` : ''}
 ${state.unplaced.size > 0 ? `<p>String fields with no corpus rule: ${[...state.unplaced].map(escapeHtml).join(', ')}</p>` : ''}
 <table><caption>Latest 50 calls (full list: <a href="/__sandbox/ledger">/__sandbox/ledger</a>)</caption>
 <thead><tr><th>#</th><th>At</th><th>Vendor</th><th>Request</th><th>Identified as</th><th>Status</th></tr></thead>
@@ -85,6 +86,7 @@ export function controlHandler(
         prompts: state.catalog.map((p) => p.key),
         failures: state.failures,
         unrecognised: state.unrecognised,
+        agentToolFailures: state.agentToolFailures,
         unplaced: [...state.unplaced],
       });
       return;

@@ -38,12 +38,6 @@ const BASE_URL_OPTION = /\bbase(?:URL|Url)\s*[:,}\n]/;
 const BASE_URL_ENV_READ =
   /process\.env(?:\.([A-Z0-9_]*_BASE_URL)\b|\[\s*['"`]([A-Z0-9_]*_BASE_URL)['"`]\s*\])/g;
 
-/**
- * Reads that are someone else's to remove, each with the spec that removes
- * it. FILM-513 deletes lip-sync, and with it SYNCLABS_BASE_URL.
- */
-const TOLERATED_ENV_READS = new Map([['SYNCLABS_BASE_URL', 'FILM-513']]);
-
 function sourceFiles(path: string): string[] {
   const absolute = join(REPO, path);
 
@@ -96,7 +90,6 @@ function baseUrlEnvReads() {
 
     return [...source.matchAll(BASE_URL_ENV_READ)]
       .map((match) => ({ match, name: match[1] ?? match[2] ?? '' }))
-      .filter(({ name }) => !TOLERATED_ENV_READS.has(name))
       .map(
         ({ match, name }) =>
           `${file}:${lineOf(source, match.index)} reads ${name} - a vendor host comes from vendorUrl()`,

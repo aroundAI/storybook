@@ -405,7 +405,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-509b | [udio-provider](./phase-5-audio-generation/providers/FILM-509b-udio-provider.yaml) | ✅ DONE | M | FILM-108, FILM-502b |
 | FILM-510 | [voice-cloning](./phase-5-audio-generation/providers/FILM-510-voice-cloning.yaml) | 🗑️ RETIRED (05ec0ae9) | L | FILM-501 |
 | FILM-511 | [lip-sync](./phase-5-audio-generation/providers/FILM-511-lip-sync.yaml) | 🗑️ RETIRED (FILM-513) | L | FILM-502 |
-| FILM-513 | [retire-lip-sync](./phase-5-audio-generation/providers/FILM-513-retire-lip-sync.yaml) | DRAFT | M | FILM-1801 for the resolver entry only |
+| FILM-513 | [retire-lip-sync](./phase-5-audio-generation/providers/FILM-513-retire-lip-sync.yaml) | ✅ DONE | M | FILM-1801 for the resolver entry only |
 | FILM-512 | [multi-language-dubbing](./phase-5-audio-generation/providers/FILM-512-multi-language-dubbing.yaml) | 🗑️ RETIRED (5b88db3a) | L | FILM-502, FILM-510 |
 
 ### Phase 6: Edit Suite (8 specs)
@@ -707,7 +707,7 @@ reason when not.
 | 2. Assets | 9 | 0 | 6 | 0 | 3 | 0 |
 | 3. Episodes | 14 | 0 | 7 | 0 | 3 | 4 |
 | 4. Video Gen | 14 | 0 | 2 | 0 | 12 | 0 |
-| 5. Audio Gen | 16 | 1 | 6 | 0 | 6 | 3 |
+| 5. Audio Gen | 16 | 0 | 6 | 0 | 6 | 4 |
 | 6. Edit Suite | 8 | 0 | 0 | 0 | 6 | 2 |
 | 7. Publishing | 16 | 0 | 7 | 0 | 3 | 6 |
 | 8. Analytics | 10 | 0 | 7 | 0 | 0 | 3 |
@@ -723,7 +723,7 @@ reason when not.
 | 18. Vendor Sandbox | 5 | 2 | 2 | 0 | 0 | 1 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **231** | **23** | **80** | **2** | **50** | **76** |
+| **TOTAL** | **231** | **22** | **80** | **2** | **50** | **77** |
 
 No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose PR is open keeps the status it has on `main`.
 
@@ -731,7 +731,7 @@ No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose 
 
 | Scope | Total | Done | Partial | Retired | Draft / Deferred |
 |-------|-------|------|---------|---------|------------------|
-| MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 92 | 29 | 31 | 31 | 1 |
+| MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 92 | 30 | 31 | 31 | 0 |
 | Post-MVP (Ph 6–9) | 40 | 13 | 15 | 12 | 0 |
 | Canon (Ph 10–11) | 29 | 6 | 21 | 2 | 0 |
 | Scale & Hooks (Ph 12–13) | 4 | 2 | 0 | 2 | 0 |
