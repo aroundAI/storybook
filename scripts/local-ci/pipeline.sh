@@ -6,7 +6,10 @@ cd $R; git fetch -q origin
 for pr in "$@"; do
   br=$(gh pr view $pr --json headRefName --jq .headRefName); sha=$(gh pr view $pr --json headRefOid --jq .headRefOid)
   wt=$(git worktree list | grep "\[$br\]" | awk '{print $1}')
-  [ -n "$wt" ] || { echo "#$pr: no worktree for $br"; exit 1; }
+  if [ -z "$wt" ]; then
+    wt=$STATE/worktrees/pr-$pr
+    git worktree add -q -B "$br" "$wt" "origin/$br" || { echo "#$pr: failed to create worktree for $br"; exit 1; }
+  fi
   [ "$(git -C "$wt" rev-parse HEAD)" = "$sha" ] || { echo "#$pr: worktree HEAD differs from the PR head $sha"; exit 1; }
   [ -z "$(git -C "$wt" status --porcelain --untracked-files=no)" ] || { echo "#$pr: worktree has changes"; exit 1; }
   rm -rf "$STATE/runs/$pr"; mkdir -p "$STATE/runs/$pr"; echo "$wt" > "$STATE/runs/$pr/worktree"
