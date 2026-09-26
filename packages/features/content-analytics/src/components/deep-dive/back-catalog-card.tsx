@@ -2,6 +2,8 @@
 
 import { Skeleton } from '@kit/ui/skeleton';
 
+import type { CardClaim } from '../overview/card-claim';
+
 /** One bucket from getBackCatalogAction. */
 export interface BackCatalogEntry {
   bucket: string;
@@ -13,10 +15,41 @@ export interface BackCatalogEntry {
 interface BackCatalogCardProps {
   /** Monthly buckets in chronological order */
   buckets: BackCatalogEntry[];
-  /** Age in days that separates back catalog from new content */
-  ageDays?: number;
   /** Loading state */
   isLoading?: boolean;
+}
+
+/**
+ * The newest month's back-catalog share, and which way it has moved since
+ * the first month shown.
+ */
+export function backCatalogClaim(
+  buckets: readonly BackCatalogEntry[],
+): CardClaim {
+  const latest = buckets[buckets.length - 1];
+  const first = buckets[0];
+
+  if (!latest || !first) {
+    return {
+      figure: null,
+      noFigure: 'Not enough history yet.',
+      sentence: 'Back catalog and new uploads cannot be told apart yet.',
+    };
+  }
+
+  const trend = latest.share - first.share;
+
+  return {
+    figure: `${Math.round(latest.share * 100)}%`,
+    sentence:
+      buckets.length < 3
+        ? 'Needs a few more months before the trend means anything.'
+        : trend > 0.05
+          ? 'Climbing — the catalog is compounding.'
+          : trend < -0.05
+            ? 'Falling — recent uploads carry more of the load than the catalog does.'
+            : 'Flat — the catalog is not compounding yet; the evergreen assumption may need revisiting.',
+  };
 }
 
 /**
@@ -28,36 +61,19 @@ interface BackCatalogCardProps {
  */
 export function BackCatalogCard({
   buckets,
-  ageDays = 90,
   isLoading = false,
 }: BackCatalogCardProps) {
   if (isLoading) {
     return <BackCatalogCardSkeleton />;
   }
 
+  // The claim above says there is not enough history yet.
   if (buckets.length === 0) {
-    return (
-      <p className={'text-sm text-muted-foreground'}>
-        Not enough history yet to separate back catalog from new uploads.
-      </p>
-    );
+    return null;
   }
-
-  const latest = buckets[buckets.length - 1]!;
-  const first = buckets[0]!;
-  const trend = latest.share - first.share;
 
   return (
     <div className={'flex flex-col gap-4'}>
-      <div className={'flex items-baseline gap-2'}>
-        <span className={'text-2xl font-semibold'}>
-          {Math.round(latest.share * 100)}%
-        </span>
-        <span className={'text-sm text-muted-foreground'}>
-          from videos over {ageDays} days old
-        </span>
-      </div>
-
       <div className={'flex items-end gap-1'} style={{ height: 72 }}>
         {buckets.map((bucket) => (
           <div
@@ -73,16 +89,6 @@ export function BackCatalogCard({
           </div>
         ))}
       </div>
-
-      <p className={'text-xs text-muted-foreground'}>
-        {buckets.length < 3
-          ? 'Needs a few more months before the trend means anything.'
-          : trend > 0.05
-            ? 'Climbing — the catalog is compounding.'
-            : trend < -0.05
-              ? 'Falling — recent uploads carry more of the load than the catalog does.'
-              : 'Flat — the catalog is not compounding yet; the evergreen assumption may need revisiting.'}
-      </p>
     </div>
   );
 }

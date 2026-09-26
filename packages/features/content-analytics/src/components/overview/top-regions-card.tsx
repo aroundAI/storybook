@@ -4,6 +4,7 @@ import { Globe } from 'lucide-react';
 
 import { formatPercent } from '../../lib/format';
 import { AnalyticsCard } from './analytics-card';
+import { topRegionClaim } from './card-claim';
 
 interface Region {
   country: string;
@@ -60,38 +61,35 @@ export function TopRegionsCard({ regions }: TopRegionsCardProps) {
       title="Top Regions"
       icon={Globe}
       description="Geographic distribution of viewers"
-      footer="Based on platform geography data"
+      metricFamily="geography"
+      claim={topRegionClaim(regions)}
       data-test="overview-top-regions"
     >
       <div className="flex flex-1 flex-col justify-center space-y-3">
-        {topRegions.length > 0 ? (
-          topRegions.map((region) => (
-            <div
-              key={region.country}
-              className="flex items-center justify-between text-sm"
-              data-test={`region-row-${region.country}`}
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-lg">
-                  {getCountryFlag(region.country)}
-                </span>
-                <span className="font-medium text-gray-900 dark:text-white">
-                  {region.country}
+        {topRegions.length > 0
+          ? topRegions.map((region) => (
+              <div
+                key={region.country}
+                className="flex items-center justify-between text-sm"
+                data-test={`region-row-${region.country}`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">
+                    {getCountryFlag(region.country)}
+                  </span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {region.country}
+                  </span>
+                </div>
+                <span
+                  className="font-extrabold text-gray-900 dark:text-white"
+                  data-test="region-share"
+                >
+                  {formatPercent(region.percentage)}
                 </span>
               </div>
-              <span
-                className="font-extrabold text-gray-900 dark:text-white"
-                data-test="region-share"
-              >
-                {formatPercent(region.percentage)}
-              </span>
-            </div>
-          ))
-        ) : (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            No geographic data available yet.
-          </p>
-        )}
+            ))
+          : null}
       </div>
     </AnalyticsCard>
   );

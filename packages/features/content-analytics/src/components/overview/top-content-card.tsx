@@ -5,8 +5,11 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import { Trophy } from 'lucide-react';
 
+import type { AnalyticsPlatform } from '@kit/clickhouse';
+
 import { formatNumber, formatPercent } from '../../lib/format';
 import { AnalyticsCard } from './analytics-card';
+import { topContentClaim } from './card-claim';
 
 interface TopContentItem {
   id: string;
@@ -19,6 +22,8 @@ interface TopContentItem {
 }
 
 interface TopContentCardProps {
+  /** The platforms the figure covers, for "where this comes from". */
+  platforms?: readonly AnalyticsPlatform[];
   /** Top performing content items */
   content: TopContentItem[];
   /** Callback when "View All" is clicked */
@@ -32,7 +37,11 @@ const PLATFORM_BADGE_STYLES: Record<string, string> = {
     'bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 text-white',
 };
 
-export function TopContentCard({ content, onViewAll }: TopContentCardProps) {
+export function TopContentCard({
+  content,
+  onViewAll,
+  platforms,
+}: TopContentCardProps) {
   const items = content.slice(0, 2); // Show max 2 items
 
   return (
@@ -40,20 +49,24 @@ export function TopContentCard({ content, onViewAll }: TopContentCardProps) {
       title="Top Performing Content"
       icon={Trophy}
       description="Best performing videos by views"
+      metricFamily="engagement"
+      platforms={platforms}
+      claim={topContentClaim(content)}
       colSpan={2}
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-base font-semibold text-gray-500 dark:text-gray-400" />
-        {onViewAll && (
+      footer={
+        onViewAll && (
           <button
+            type="button"
             onClick={onViewAll}
-            className="text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
+            className="font-medium text-primary hover:underline"
           >
             View All
           </button>
-        )}
-      </div>
-      <div className="mt-2 flex-1 overflow-hidden">
+        )
+      }
+      data-test="overview-top-content"
+    >
+      <div className="flex-1 overflow-hidden">
         <div className="space-y-3">
           {items.map((item) => (
             <div

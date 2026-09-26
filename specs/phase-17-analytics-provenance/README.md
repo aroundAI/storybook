@@ -108,7 +108,7 @@ thing that would read the column, through `getRetentionCurveAction`.
 | [FILM-1703](./FILM-1703-provenance-capability-model.yaml) | ✅ DONE | M | The capability matrix and the tests that stop it drifting from the writers |
 | [FILM-1704](./FILM-1704-observed-coverage.yaml) | DRAFT | M | One query answering what data exists for this project in this window |
 | [FILM-1705](./FILM-1705-provenance-surfaces.yaml) | DRAFT | L | Card chip, coverage strip, filter dimming |
-| [FILM-1706](./FILM-1706-analytics-card-shell.yaml) | DRAFT | M | Semantic tokens, progressive disclosure, required `metricFamily` |
+| [FILM-1706](./FILM-1706-analytics-card-shell.yaml) | ✅ DONE | M | Semantic tokens, progressive disclosure, required `metricFamily` |
 | [FILM-1707](./FILM-1707-six-tab-adoption.yaml) | DRAFT | L | All six tabs on one shell, and the Deep Dive scope decision |
 | [FILM-1708](./FILM-1708-traffic-drill-down-colour-ramp.yaml) | DRAFT | M | Group → native source drill-down; eight distinguishable colours |
 | [FILM-1709](./FILM-1709-platform-filter-completion.yaml) | DRAFT | L | The filter reaching the four tabs it currently ignores |

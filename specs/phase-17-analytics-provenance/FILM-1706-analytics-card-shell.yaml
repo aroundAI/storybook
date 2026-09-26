@@ -3,7 +3,7 @@ title: "Analytics Card Shell v2"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: DRAFT
+status: DONE
 effort: M
 dependencies:
   - spec_id: "FILM-1703"
@@ -22,35 +22,35 @@ summary: >
   cannot compile without declaring what it shows.
 acceptance_criteria:
   - text: "No raw Tailwind palette colour remains in the shell; it passes the `packages/ui/CLAUDE.md` dark-mode rule"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/features/content-analytics/src/components/overview/analytics-card.tsx on bg-card / text-card-foreground / border-border / text-muted-foreground; __tests__/analytics-card-tokens.test.ts scans it (seen red on main: `from-indigo-50`); mutation guard 'The shell paints with a raw palette colour again'"
   - text: "The shell renders correctly in light and dark without hand-written `dark:` colour pairs"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "analytics-card-tokens.test.ts (red on main: `dark:from-`); apps/e2e/tests/analytics/card-shell.spec.ts compares every card's computed background and border with a `bg-card border-border` probe under each theme, on Overview and Deep Dive, and asserts the two themes differ; screenshots from card-shell-evidence.spec.ts"
   - text: "`metricFamily` is required, so a new card cannot be added without declaring what it shows"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "typed `MetricFamily | MetricFamily[] | 'recorded' | 'generated'` (owner decision Q2, §10) and required; @ts-expect-error cases in __tests__/analytics-card-shell.test.tsx, seen red under tsc with the prop made optional; analytics-card-tokens.test.ts checks every `<AnalyticsCard` call site declares it"
   - text: "No caller passes `h-auto` to escape a default height"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "the shell has no default height and no `className` prop at all, so the escape does not compile (@ts-expect-error, red under tsc with the prop restored); analytics-card-tokens.test.ts, red on main with the 7 Deep Dive callers; mutation guard 'A Deep Dive card escapes the shell by class again'"
   - text: "`variant=\"gradient\"` is gone and no card is emphasised by painting it"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "prop deleted (@ts-expect-error, red under tsc with it restored); analytics-card-tokens.test.ts 'has no gradient variant'; the AI card's `New` badge went with it"
   - text: "Every card has one figure and one plain-language sentence; none relies on the reader inferring the point from the chart"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "as decided (owner, Q1): one figure, or a stated reason there is none, shown on the card. `CardClaim` in components/overview/card-claim.ts makes the reason required by type; builders per card, with hand-computed figures and a no-causal-words check over every branch in __tests__/card-claims.test.ts; figures read off the page against seeded ClickHouse rows in card-shell-evidence.spec.ts"
   - text: "Caveats are reachable in two interactions at most, and are in the DOM for browser find"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "one click on Details; the region stays in the DOM as `hidden=\"until-found\"` and opens on `beforematch` (§10: Radix's CollapsibleContent renders nothing while closed). analytics-card-shell.test.tsx and card-shell.spec.ts; caveat completeness in card-claims.test.ts and card-shell.spec.ts; mutation guards 'Closed details drop their caveats from the DOM', 'Find-in-page no longer opens the details', 'The traffic breakdown loses its Studio caveat'"
   - text: "The disclosure is keyboard-operable and announces its state"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "Radix CollapsibleTrigger (a button with aria-expanded and aria-controls); card-shell.spec.ts focuses it, opens with Enter, closes with Space, and asserts aria-expanded each way"
   - text: "Figures use `tabular-nums` and do not shift width on refetch"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "card-shell.spec.ts renders $1,111 and $8,888 and asserts equal widths within 0.5px and computed `font-variant-numeric: tabular-nums`; mutation guard 'The figure loses its tabular digits'"
   - text: "A card with a disclosure is visually distinguishable from one without, before clicking"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "a visible Details trigger and `hover:bg-accent/30` only on cards with details (`hover:shadow-md` is gone from all); analytics-card-shell.test.tsx and card-shell.spec.ts assert the two go together on every card"
 open_questions: []
 notes: |
   ## 1. Overview
@@ -201,6 +201,79 @@ notes: |
   are the product. Moving them behind a disclosure is only an improvement if they
   remain complete, reachable and discoverable; a card whose details are empty has
   failed this spec, not passed it.
+
+  ## 10. As built (2026-09-25)
+
+  Decisions the spec left open or found out of date, each recorded so it can
+  be disagreed with.
+
+  **One figure, or a stated reason there is none (owner, Q1).** Four cards
+  have no single honest figure: Upload cohorts (a comparison of curves),
+  Subscribers and the Partner Programme card (per channel, and pooling is
+  exactly what they refuse to do), and the AI card (not a measurement).
+  Inventing one would be a composite. `CardClaim` is
+  `{ figure, sentence } | { figure: null, noFigure, sentence }`, so a card
+  cannot drop its figure without the reason, and the card shows it. A
+  figure that could not be read is the same shape — "Could not be read." —
+  never a 0: Views, Likes, Comments and Shares took `totals?.x || 0` and now
+  take `null` (part of KB-16's remaining list).
+
+  **`metricFamily` is `MetricFamily | MetricFamily[] | 'recorded' | 'generated'`
+  (owner, Q2).** Revenue reads Postgres `revenue_records`, which the
+  matrix (a description of platform APIs) has no row for, so it declares
+  `recorded`; the Partner Programme card spans `channel_totals` and
+  `watch_time`. Still required.
+
+  **The AI card is not AI today.** Its one caller never passes a model's
+  reading, so the card showed a template restating this page's figures under
+  "AI Performance Insight". It now says so: titled "Performance summary",
+  family `engagement`, no figure ("Nothing new is measured here."). A model's
+  summary, when one is passed, gets the old title and `generated`. The
+  summary is rendered as text: it went through `dangerouslySetInnerHTML`.
+  That never fired — only digits reached it — but the card is exported with
+  `summary: string` (Q4; leads file 2026-09-25-film-1706).
+
+  **The disclosure's region is ours, not Radix's.** `CollapsibleContent`
+  renders `isOpen && children`, so closed content was never in the DOM and
+  browser find could not reach it. Radix keeps the trigger (`aria-expanded`,
+  keyboard); the region is rendered `hidden` and upgraded to
+  `hidden="until-found"` after mount, with a `beforematch` listener to open
+  it. React renders `hidden` only as a boolean, which is why the upgrade is
+  an effect. Browsers without `until-found` still have the text in the DOM.
+
+  **"Where this comes from" is the matrix's own sentences**, one per platform
+  that has the data, narrowed to the platforms a card covers — the
+  project's platforms with views on Overview, the channels in scope on Deep
+  Dive — so a YouTube-only project reads nothing about TikTok. Uncovered
+  platforms are FILM-1705's coverage copy. "How it's computed" is the card's
+  own statistic (a median, a share), supplied by the card, because the
+  platform's derivation is already in its note.
+
+  **`LATEST_BUCKET_CAVEAT` stays in the card, moved into Details (owner, Q3).**
+  No caveat registry; that is FILM-1705's if it wants one.
+
+  **Two footers were deleted, not moved:** "Aggregated across all platforms"
+  on Likes and Comments stayed put when the filter deselected platforms, and
+  is exactly the restatement FILM-1705's criterion 2 names.
+
+  **One sentence was softened.** Below 60%, the Browse + Suggested card said
+  views "still come mostly from Search and external sources", which a share
+  below 60% does not establish (the rest may be Shorts or playlists). It now
+  says the week is "short of recommended-channel territory".
+
+  **The Deep Dive failure states say it once.** Where `QueryState` already
+  shows the card's failure (`median-error` and the rest), the claim says the
+  general thing — "Could not be read." and "a fetch failure, not an absence
+  of data" — rather than repeating it.
+
+  **Card bodies keep some raw colours** (platform bars, badges, the
+  sparkline's variables). The criteria are the shell's; the bodies are
+  recorded as a lead rather than restyled here.
+
+  **Component tests render the real `@kit/ui`.** `vitest.config.ts` points
+  React at this package's copy, so `@kit/ui` sources resolve their JSX
+  runtime and the disclosure is tested through Radix's own trigger rather
+  than a stub.
 feature:
   database:
     tables: []

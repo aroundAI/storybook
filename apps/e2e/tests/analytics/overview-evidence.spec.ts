@@ -52,7 +52,7 @@ async function measure(page: Page, overview: OverviewPageObject) {
   return {
     metricRow: between(text, 'Export', 'Overview Content'),
     platformSplit: between(grid, 'Platform Split', 'Comments'),
-    comments: between(grid, 'Comments', 'AI Performance Insight'),
+    comments: between(grid, 'Comments', 'Performance summary'),
     shares: between(grid, 'Shares', 'Top Performing Content'),
     revenue: between(grid, 'Revenue', 'Top Regions'),
     revenueCards: await texts('[data-test="overview-revenue"]'),
@@ -83,7 +83,7 @@ test.describe('Overview truth — evidence (KB-16)', () => {
       await overview.goToOverview(fixture);
 
       // 200,000 views on the one video, in the metric row.
-      await expect(page.getByText('200.0K').first()).toBeVisible();
+      await expect(page.getByText('200,000').first()).toBeVisible();
 
       // The grid renders all at once after its queries land, and the only
       // Recharts surface (Performance Over Time) is below the fold of this

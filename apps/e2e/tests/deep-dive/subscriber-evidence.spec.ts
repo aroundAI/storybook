@@ -78,7 +78,7 @@ async function insertClickHouse(
 function cardAround(page: Page, dataTest: string) {
   return page
     .locator(`[data-test="${dataTest}"]:visible`)
-    .locator('xpath=ancestor::div[contains(@class, "rounded-2xl")][1]');
+    .locator('xpath=ancestor::section[1]');
 }
 
 async function texts(page: Page, selector: string): Promise<string[]> {

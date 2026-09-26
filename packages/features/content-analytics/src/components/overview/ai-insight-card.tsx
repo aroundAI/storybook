@@ -3,10 +3,22 @@
 import { ArrowRight, CheckCircle, Lightbulb, Sparkles } from 'lucide-react';
 
 import { AnalyticsCard } from './analytics-card';
+import type { CardClaim } from './card-claim';
 
 interface AIInsightCardProps {
-  /** Summary text with highlights */
+  /**
+   * Plain text, rendered as text. This was markup passed to
+   * `dangerouslySetInnerHTML`; its one caller only ever built it from two
+   * formatted numbers, but a model's reading handed to it would have run
+   * whatever the model wrote.
+   */
   summary: string;
+  /**
+   * Who wrote `summary`. `page` when it restates this page's own figures —
+   * the only case today, since nothing passes the grid a model's reading —
+   * and the card then says so rather than calling it AI.
+   */
+  author?: 'model' | 'page';
   /** Key insights/bullets */
   insights?: Array<{
     type: 'success' | 'opportunity';
@@ -16,50 +28,76 @@ interface AIInsightCardProps {
   onViewReport?: () => void;
 }
 
+const BY_AUTHOR = {
+  model: {
+    title: 'AI Performance Insight',
+    metricFamily: 'generated',
+    claim: {
+      figure: null,
+      noFigure: 'Not a measurement.',
+      sentence: 'A language model’s reading of the figures on this page.',
+    },
+  },
+  page: {
+    title: 'Performance summary',
+    metricFamily: 'engagement',
+    claim: {
+      figure: null,
+      noFigure: 'Nothing new is measured here.',
+      sentence: 'A restatement of the figures on this page.',
+    },
+  },
+} as const satisfies Record<
+  'model' | 'page',
+  { title: string; metricFamily: 'generated' | 'engagement'; claim: CardClaim }
+>;
+
 export function AIInsightCard({
   summary,
+  author = 'model',
   insights = [],
   onViewReport,
 }: AIInsightCardProps) {
+  const { title, metricFamily, claim } = BY_AUTHOR[author];
+
   return (
     <AnalyticsCard
-      title="AI Performance Insight"
+      title={title}
       icon={Sparkles}
-      badge="New"
-      variant="gradient"
+      metricFamily={metricFamily}
+      claim={claim}
       colSpan={2}
+      footer={
+        onViewReport && (
+          <button
+            type="button"
+            onClick={onViewReport}
+            className="flex items-center font-semibold text-primary hover:underline"
+          >
+            View full report
+            <ArrowRight className="ml-1 size-4" />
+          </button>
+        )
+      }
+      data-test="overview-ai-insight"
     >
-      <div className="flex-1 overflow-hidden">
-        <p
-          className="text-sm leading-relaxed text-gray-900 dark:text-gray-100"
-          dangerouslySetInnerHTML={{ __html: summary }}
-        />
-        {insights.length > 0 && (
-          <ul className="mt-3 space-y-1">
-            {insights.map((insight, index) => (
-              <li
-                key={index}
-                className="flex items-start text-xs text-gray-700 dark:text-gray-300"
-              >
-                {insight.type === 'success' ? (
-                  <CheckCircle className="mt-0.5 mr-1.5 h-4 w-4 flex-shrink-0 text-green-500" />
-                ) : (
-                  <Lightbulb className="mt-0.5 mr-1.5 h-4 w-4 flex-shrink-0 text-orange-500" />
-                )}
-                {insight.text}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      {onViewReport && (
-        <button
-          onClick={onViewReport}
-          className="mt-2 flex items-center text-xs font-semibold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
-        >
-          View full report
-          <ArrowRight className="ml-1 h-4 w-4" />
-        </button>
+      <p className="text-sm leading-relaxed">{summary}</p>
+      {insights.length > 0 && (
+        <ul className="mt-3 space-y-1">
+          {insights.map((insight, index) => (
+            <li
+              key={index}
+              className="flex items-start text-xs text-muted-foreground"
+            >
+              {insight.type === 'success' ? (
+                <CheckCircle className="mt-0.5 mr-1.5 size-4 shrink-0 text-primary" />
+              ) : (
+                <Lightbulb className="mt-0.5 mr-1.5 size-4 shrink-0 text-primary" />
+              )}
+              {insight.text}
+            </li>
+          ))}
+        </ul>
       )}
     </AnalyticsCard>
   );
