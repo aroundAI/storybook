@@ -36,7 +36,7 @@ acceptance_criteria:
     reason: "not met — never built: `packages/features/publishing/src/components/thumbnail-generator.tsx` never existed; the only frame extraction was the edit suite timeline's, for display, retired with FILM-607"
   - text: "Face detection prioritizes frames with faces"
     met: false
-    reason: "not met — no working face detection: the only `detectFacesAction` is a lip-sync stub that returns nothing (`packages/features/audio-generation/src/server/lip-sync-actions.ts:104`)"
+    reason: "not met — no working face detection: the only `detectFacesAction` was a lip-sync stub that returned nothing, deleted with lip-sync by FILM-513"
   - text: "Platform-specific sizes (YouTube 1280x720, TikTok 1080x1920, Instagram 1080x1080)"
     met: false
     reason: "not met — thumbnails are stored one per language (`episode_thumbnails`, `apps/web/supabase/migrations/20260103042141_add_episode_thumbnails.sql`); no per-platform sizes"

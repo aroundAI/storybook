@@ -312,7 +312,7 @@ notes: |
   |---|---|
   | FILM-1803-ai-generation-sandbox.md port table rows 4110–4112 | "How the app reaches it": OPENAI_BASE_URL / ANTHROPIC_BASE_URL / GOOGLE_GEMINI_BASE_URL → VENDOR_URL_OPENAI / VENDOR_URL_ANTHROPIC / VENDOR_URL_GEMINI (FILM-1801's scheme). Its DeepSeek note becomes moot — all four LLM vendors go through vendorUrl() |
   | FILM-1801-vendor-base-url-resolver.md §9 | strike the three SDK variables and LOCAL_API_URL from "Left alone, deliberately" |
-  | specs/phase-18-local-vendor-sandbox/README.md:17-18 | "Overridable today" no longer lists the LLM SDKs |
+  | specs/phase-18-local-vendor-sandbox/README.md:17 | "Overridable today" no longer lists the LLM SDKs (lip-sync already removed by FILM-513) |
   | specs/known-bugs/KB-21.md | the four variables → "closed by FILM-1805"; `status: fixed` when this and FILM-513 land |
   | README.md, packages/llm/CLAUDE.md, AGENTS.md | Ollama instead of "Claude Code API"; §4.4's command |
   | specs/INDEX.md, phase-18 README table | rows |

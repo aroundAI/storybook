@@ -52,9 +52,9 @@ retirement:
   date: "2026-09-22"
   what_happened: >
     Retired by owner decision on 2026-09-22 (FILM-CC-04 KB-21): the feature is unreachable —
-    the editor is mounted nowhere and no API key exists anywhere. The code still exists;
-    deleting it is FILM-513 (DRAFT). Nothing replaces it. Kept as a record; not outstanding
-    work.
+    the editor is mounted nowhere and no API key exists anywhere. FILM-513 deleted the code,
+    the synclabs resolver entry and the lip_sync_jobs table. Nothing replaces it. Kept as a
+    record; not outstanding work.
   replacement: null
 open_questions: []
 notes: |
@@ -69,7 +69,7 @@ notes: |
   > **Status: 🗑️ RETIRED (2026-09-22) — see FILM-513.**
   > Both providers (SyncLabs, Wav2Lip) are deprecated by the owner, and the feature
   > was never reachable: the editor is mounted nowhere and no API key exists in any
-  > environment. FILM-513 deletes the code and drops the empty table. This file is
+  > environment. FILM-513 deleted the code and dropped the empty table. This file is
   > kept as the record of the design.
 
   ## Metadata

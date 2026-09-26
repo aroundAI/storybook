@@ -51,7 +51,6 @@ export const VENDORS = {
   playht: 'https://api.play.ht',
   suno: 'https://api.suno.ai',
   udio: 'https://api.udio.com',
-  synclabs: 'https://api.synclabs.so',
   piapi: 'https://api.piapi.ai',
   'brave-search': 'https://api.search.brave.com',
   'semantic-scholar': 'https://api.semanticscholar.org',

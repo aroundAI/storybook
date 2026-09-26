@@ -185,12 +185,13 @@ notes: |
   Shipped names. @kit/shared/vendors now exports VENDORS, Vendor,
   vendorUrl(vendor, env?), vendorUrlEnvName(vendor), vendorSandboxEnabled(env?)
   and ignoredVendorOverrides(env?), from resolver.ts. The override for a vendor
-  is VENDOR_URL_ + its name upper-cased with - as _. The 29 names:
+  is VENDOR_URL_ + its name upper-cased with - as _. The 28 names
+  (29 shipped; synclabs was removed with lip-sync by FILM-513):
 
   meta-graph, meta-graph-video, meta-oauth, tiktok, tiktok-oauth, x-api,
   x-oauth, linkedin-api, linkedin-oauth, google-oauth, google-token,
   youtube-data, youtube-analytics, youtube-reporting, gemini, openai,
-  deepseek, voyage, elevenlabs, playht, suno, udio, synclabs, piapi,
+  deepseek, voyage, elevenlabs, playht, suno, udio, piapi,
   brave-search, semantic-scholar, newsapi, archive-org, crossref.
 
   Four places where §2's sketch was wrong, and what shipped instead.
@@ -244,12 +245,14 @@ notes: |
 
   Left alone, deliberately.
 
-  - SYNCLABS_BASE_URL, WAV2LIP_API_URL, OPENAI_BASE_URL, ANTHROPIC_BASE_URL,
+  - OPENAI_BASE_URL, ANTHROPIC_BASE_URL,
     GOOGLE_GEMINI_BASE_URL, LOCAL_API_URL: existing overrides that are
     honoured in production today, with none of §3's conditions. They predate this
     spec and FILM-1803 relies on them. Whether to bring them under the same rule is
     a product decision, because a deploy may be using one for a legitimate proxy.
-    (Closed by FILM-1805, which retires the SDK ones and gates LOCAL_API_URL.)
+    (Closed by FILM-1805, which retires the SDK ones and gates LOCAL_API_URL.
+    SYNCLABS_BASE_URL and WAV2LIP_API_URL were also on this list; FILM-513
+    deleted lip-sync and both variables with it.)
   - Resend (packages/mailers/resend, the email-worker lambda): §5 - local mail goes
     to Inbucket.
   - LinkedIn has no revoke call anywhere, so there was nothing to route.
