@@ -29,19 +29,19 @@ server_action:
 acceptance_criteria:
   - text: "`generateDialogueVoiceAction` successfully generates audio for valid dialogue line"
     met: false
-    reason: "unverified — since `e8e8d78b` the studio uses `generateDialogueVoiceAsyncAction` → SQS → `apps/web/lambda/voice-worker/voice-generation.ts:183`; no test drives it"
+    reason: "unverified — since `e8e8d78b` the studio uses `generateDialogueVoiceAsyncAction` → SQS → `apps/web/lambda/voice-worker/voice-generation.ts:184`; no test drives it"
   - text: "`generateDialogueVoiceAction` uploads audio to correct storage path (`dialogue/{episode_id}/{dialogue_line_id}.mp3`)"
     met: true
-    evidence: "`apps/web/lambda/voice-worker/voice-generation.ts:216`, now `…/{dialogue_line_id}_{timestamp}.mp3` in R2, the timestamp busting the CDN cache"
+    evidence: "`apps/web/lambda/voice-worker/voice-generation.ts:217`, now `…/{dialogue_line_id}_{timestamp}.mp3` in R2, the timestamp busting the CDN cache"
   - text: "`generateDialogueVoiceAction` updates dialogue_lines.audio_url with public URL"
     met: true
-    evidence: "`apps/web/lambda/voice-worker/voice-generation.ts:243`"
+    evidence: "`apps/web/lambda/voice-worker/voice-generation.ts:246`"
   - text: "`generateDialogueVoiceAction` updates dialogue_lines.status to 'completed'"
     met: true
-    evidence: "`apps/web/lambda/voice-worker/voice-generation.ts:244`"
+    evidence: "`apps/web/lambda/voice-worker/voice-generation.ts:247`"
   - text: "`generateDialogueVoiceAction` stores generation metadata (cost, duration, settings)"
     met: true
-    evidence: "`apps/web/lambda/voice-worker/voice-generation.ts:229`"
+    evidence: "`apps/web/lambda/voice-worker/voice-generation.ts:230`"
   - text: "`generateDialogueVoiceAction` retrieves voice settings from character's voice profile"
     met: false
     reason: "retired — `voice_profiles` was dropped in `05ec0ae9`; settings are the defaults (`packages/features/audio-generation/src/server/voice-queries.ts:40`)"
@@ -62,16 +62,16 @@ acceptance_criteria:
     reason: "no longer true — no `generation_jobs` row is created or updated; voice-worker's `markJob*` calls, which filtered on `reference_type='episode'` and matched nothing, were removed by KB-14 (#309)"
   - text: "`generateDialogueVoiceAction` sets status to 'failed' on error"
     met: true
-    evidence: "`apps/web/lambda/voice-worker/voice-generation.ts:268`"
+    evidence: "`apps/web/lambda/voice-worker/voice-generation.ts:269`"
   - text: "`generateDialogueVoiceAction` stores error message in metadata on failure"
     met: true
-    evidence: "`apps/web/lambda/voice-worker/voice-generation.ts:252`"
+    evidence: "`apps/web/lambda/voice-worker/voice-generation.ts:270`"
   - text: "`generateDialogueVoiceAction` respects overwriteExisting flag"
     met: false
-    reason: "no longer true — voice-worker parses `overwriteExisting` (`apps/web/lambda/voice-worker/voice-generation.ts:31`) but never reads it; the async action never checks existing audio"
+    reason: "no longer true — voice-worker parses `overwriteExisting` (`apps/web/lambda/voice-worker/voice-generation.ts:33`) but never reads it; the async action never checks existing audio"
   - text: "`generateDialogueVoiceAction` reverts status if job creation fails"
     met: true
-    evidence: "the async action reverts to `pending` when queueing fails (`packages/features/audio-generation/src/server/voice-actions.ts:572`)"
+    evidence: "the async action reverts to `pending` when queueing fails (`packages/features/audio-generation/src/server/voice-actions.ts:578`)"
   - text: "`generateVoiceFromTextAction` generates audio for raw text"
     met: false
     reason: "retired — no caller: only the unmounted package `VoiceAssignment` imports it (`packages/features/audio-generation/src/components/VoiceAssignment.tsx:44`); voices are chosen in the character editor (FILM-205)"
@@ -89,13 +89,13 @@ acceptance_criteria:
     reason: "retired — `generateVoiceFromTextAction` has no caller (see above)"
   - text: "Both actions enforce authentication via `requireUser`"
     met: true
-    evidence: "the live async action, `packages/features/audio-generation/src/server/voice-actions.ts:435`"
+    evidence: "the live async action, `packages/features/audio-generation/src/server/voice-actions.ts:437`"
   - text: "Both actions validate audioBuffer before upload"
     met: false
-    reason: "no longer true — voice-worker uploads the response body without checking it (`apps/web/lambda/voice-worker/voice-generation.ts:212`)"
+    reason: "no longer true — voice-worker uploads the response body without checking it (`apps/web/lambda/voice-worker/voice-generation.ts:213`)"
   - text: "Both actions enforce RLS policies (via Supabase client)"
     met: true
-    evidence: "the async action reads the line through the user's client (`packages/features/audio-generation/src/server/voice-actions.ts:447`) before queueing; the worker then runs as service role"
+    evidence: "the async action reads the line through the user's client (`packages/features/audio-generation/src/server/voice-actions.ts:450`) before queueing; the worker then runs as service role"
   - text: "Actions complete within 60 seconds (timeout configured)"
     met: false
     reason: "unverified — runtime timing; the action only queues, and the worker's limit is 5 minutes (`sst.config.ts:907`)"
@@ -107,10 +107,10 @@ acceptance_criteria:
     reason: "no longer true — no job row or key on the live path; an SQS redelivery generates and uploads again"
   - text: "All errors logged with context"
     met: true
-    evidence: "`packages/features/audio-generation/src/server/voice-actions.ts:561`; `apps/web/lambda/voice-worker/voice-generation.ts:259`"
+    evidence: "`packages/features/audio-generation/src/server/voice-actions.ts:569`; `apps/web/lambda/voice-worker/voice-generation.ts:277`"
   - text: "API keys never exposed in logs (uses env var)"
     met: true
-    evidence: "the key now comes from `external_api_keys` (`apps/web/lambda/voice-worker/voice-generation.ts:174`) and is used only in the request header (`:198`)"
+    evidence: "the key now comes from `external_api_keys` (`apps/web/lambda/voice-worker/voice-generation.ts:175`) and is used only in the request header (`:190`)"
   - text: "TypeScript compiles without errors"
     met: true
     evidence: "`pnpm typecheck` runs `web`'s `typecheck`, whose second half is `tsc --noEmit -p lambda/tsconfig.json` (`apps/web/package.json:23`); that config includes every worker file (`apps/web/lambda/tsconfig.json:23`) and CI's TypeScript job runs it (`.github/workflows/workflow.yml:94`) — KB-14, #309. Passes on `main` at `b21bd33e` (KB-80), with `@kit/audio-generation`'s own `tsc --noEmit`; `voice-worker/index.ts` and `voice-worker/voice-generation.ts` are in the lambda program. The `'dialogue_voice_generation'` job-tracking calls that were not a `GenerationJobType` were removed there"
@@ -126,10 +126,10 @@ remaining:
     reason: "no `generation_jobs` row is created or updated on the live path. voice-worker's `markJob*` calls, which filtered on `reference_type='episode'` with a line id and matched nothing, were removed by KB-14 (#309); nothing replaced them"
     closed_by: "unassigned"
   - criterion: "Respects `overwriteExisting`"
-    reason: "parsed but never read (`apps/web/lambda/voice-worker/voice-generation.ts:31`)"
+    reason: "parsed but never read (`apps/web/lambda/voice-worker/voice-generation.ts:33`)"
     closed_by: "unassigned"
   - criterion: "Validates the audio buffer before upload"
-    reason: "the response body is uploaded unchecked (`apps/web/lambda/voice-worker/voice-generation.ts:212`)"
+    reason: "the response body is uploaded unchecked (`apps/web/lambda/voice-worker/voice-generation.ts:213`)"
     closed_by: "unassigned"
 open_questions: []
 notes: |
