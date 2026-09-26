@@ -68,11 +68,15 @@ select ok(not public.can_write_project('cccccccc-2800-4000-8000-000000000001'), 
 select makerkit.authenticate_as('kb28_stranger');
 select ok(not public.can_write_project('cccccccc-2800-4000-8000-000000000001'), 'can_write_project: a stranger may not write');
 
--- Reading a public project is not writing to it. Assert the read first, so
--- the next case cannot pass merely because the project was invisible.
-select isnt_empty(
+-- Until KB-85/88 a stranger could read any public project's row, and this
+-- asserted that read before asserting it gave no write. The public-read
+-- policy is gone: public pages read public_projects, which lists only public
+-- TEAM accounts' projects. This one is on a personal account, so a stranger
+-- reads it nowhere. can_write_project is a definer function over the id, so
+-- the cases below do not depend on visibility either way.
+select is_empty(
   $$ select id from public.projects where id = 'cccccccc-2800-4000-8000-000000000002' $$,
-  'Precondition: the stranger can read the public project'
+  'A stranger no longer reads a public project''s row (KB-85/88)'
 );
 select ok(not public.can_write_project('cccccccc-2800-4000-8000-000000000002'), 'can_write_project: a public-project reader may not write');
 select ok(not public.can_write_project(null), 'can_write_project: a null project has no writers');

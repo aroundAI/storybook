@@ -1,82 +1,47 @@
--- Add public_profile JSONB column to accounts
-ALTER TABLE public.accounts 
-  ADD COLUMN IF NOT EXISTS public_profile JSONB DEFAULT '{}'::jsonb;
+-- KB-85 and KB-88: public share pages for visitors who are not signed in,
+-- with `anon` (the public API key) at least privilege.
+--
+-- Test: apps/web/supabase/tests/database/anon-public-surface.test.sql
+--
+-- KB-88. `anon` had no USAGE on schema public (20221215192558_schema.sql),
+-- so every /@company, project and episode page was a 404 to anyone signed
+-- out, and the sitemap listed none of them.
+--
+-- KB-85. That missing USAGE was also the only thing keeping Supabase's
+-- default grants dormant: anon held SELECT, INSERT, UPDATE and DELETE on 64
+-- of 86 tables, writes on two views, all four sequences, and EXECUTE on two
+-- studio RPCs (measured 2026-09-25). So the grants go first, and USAGE last.
+--
+-- What anon reads afterwards is three owner-rights views, the KB-60 shape
+-- (public_accounts): their column lists and filters are the whole exposure.
+-- They list PUBLIC rows only. An unlisted project or episode ("only people
+-- with the direct link") opens through a lookup by its exact key, so it can
+-- be fetched but never listed.
+--
+-- The rules live once, in two kit views (kit is not exposed by the API):
+--   kit.shareable_projects  public or unlisted project of a public team
+--   kit.shareable_episodes  live episode, not private, of a shareable project
+-- The public views and the lookups are filters over those two.
 
--- Add GIN index for JSONB queries on accounts
-CREATE INDEX IF NOT EXISTS idx_accounts_public_profile 
-  ON public.accounts USING GIN (public_profile);
+-- ============================================================
+-- 1. KB-85: strip anon, before it can reach anything
+-- ============================================================
 
--- Ensure slug is unique and not null for team accounts (if not already enforced)
--- Note: slug is typically managed via application logic, but unique constraint is good practice
--- DO action if constraints don't exist:
--- ALTER TABLE public.accounts ADD CONSTRAINT accounts_slug_unique UNIQUE (slug);
+revoke all on all tables in schema public from anon;
+revoke all on all sequences in schema public from anon;
+revoke execute on function public.get_episode_languages(uuid[]) from anon;
+revoke execute on function public.get_episode_audio_stats(uuid[]) from anon;
 
-COMMENT ON COLUMN public.accounts.public_profile IS 
-  'Public profile settings: {is_public, display_name, bio, website_url, social_links, custom_styles}';
+-- Objects later migrations create (as postgres) grant anon nothing.
+-- supabase_admin's own defaults, and the pgvector functions it owns in
+-- public, are out of this role's reach on hosted Supabase: see KB-85.
+alter default privileges for role postgres in schema public revoke all on tables from anon;
+alter default privileges for role postgres in schema public revoke all on sequences from anon;
+alter default privileges for role postgres in schema public revoke execute on functions from anon;
 
--- Add visibility to projects
-ALTER TABLE public.projects 
-  ADD COLUMN IF NOT EXISTS visibility TEXT DEFAULT 'private' 
-  CHECK (visibility IN ('private', 'public', 'unlisted'));
-
--- Add public_slug to projects
-ALTER TABLE public.projects 
-  ADD COLUMN IF NOT EXISTS public_slug TEXT;
-
--- Add SEO metadata to projects
-ALTER TABLE public.projects 
-  ADD COLUMN IF NOT EXISTS seo_metadata JSONB DEFAULT '{}'::jsonb;
-
--- Unique constraint for public_slug per account on projects
-CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_public_slug_account 
-  ON public.projects(account_id, public_slug) 
-  WHERE public_slug IS NOT NULL;
-
--- Index for project visibility queries
-CREATE INDEX IF NOT EXISTS idx_projects_visibility 
-  ON public.projects(visibility) 
-  WHERE visibility = 'public';
-
-COMMENT ON COLUMN public.projects.visibility IS 'private=hidden, public=visible, unlisted=link-only';
-COMMENT ON COLUMN public.projects.public_slug IS 'URL-safe slug for public pages';
-
--- Add visibility to episodes (inherits from project by default)
-ALTER TABLE public.episodes 
-  ADD COLUMN IF NOT EXISTS visibility TEXT DEFAULT 'inherit' 
-  CHECK (visibility IN ('inherit', 'private', 'public', 'unlisted'));
-
--- Add public_slug to episodes
-ALTER TABLE public.episodes 
-  ADD COLUMN IF NOT EXISTS public_slug TEXT;
-
--- Add SEO metadata to episodes
-ALTER TABLE public.episodes 
-  ADD COLUMN IF NOT EXISTS seo_metadata JSONB DEFAULT '{}'::jsonb;
-
--- Add localized videos (YT/FB per language) to episodes
-ALTER TABLE public.episodes 
-  ADD COLUMN IF NOT EXISTS localized_videos JSONB DEFAULT '{}'::jsonb;
-
--- Unique constraint for public_slug per project on episodes
-CREATE UNIQUE INDEX IF NOT EXISTS idx_episodes_public_slug_project 
-  ON public.episodes(project_id, public_slug) 
-  WHERE public_slug IS NOT NULL;
-
--- GIN index for localized_videos language queries on episodes
-CREATE INDEX IF NOT EXISTS idx_episodes_localized_videos 
-  ON public.episodes USING GIN (localized_videos);
-
-COMMENT ON COLUMN public.episodes.localized_videos IS 
-  'Per-language video links: {"en": {"youtube": {...}, "facebook": {...}}}';
-
--- ============================================
--- Public pages: what anon reads (KB-85/88, migration 20260925083724)
--- ============================================
--- Lists (public rows only): public_accounts (15-account-views.sql),
--- public_projects, public_episodes. Links (public or unlisted, exact key):
--- get_shared_project, get_shared_project_episodes, get_shared_episode.
--- The rules live once, in kit.shareable_projects and kit.shareable_episodes.
--- projects and episodes have no public-read policy: they are for members.
+-- ============================================================
+-- 2. What may be shared at all
+-- ============================================================
 
 create view kit.shareable_projects
 with (security_barrier = true) as
@@ -208,3 +173,21 @@ revoke all on function public.get_shared_episode(uuid, text) from public, anon, 
 grant execute on function public.get_shared_project(uuid, text) to anon, authenticated, service_role;
 grant execute on function public.get_shared_project_episodes(uuid) to anon, authenticated, service_role;
 grant execute on function public.get_shared_episode(uuid, text) to anon, authenticated, service_role;
+
+-- ============================================================
+-- 5. The base tables are for members again
+-- ============================================================
+-- Public pages read the views above. These policies let any signed-in user
+-- read every column of a public or unlisted project and its episodes,
+-- soft-deleted ones included, and list the unlisted ones (#346's lead).
+-- linkAsSequel could also read another account's public project through
+-- them; it now finds only projects the caller is a member of.
+
+drop policy "Allow public read of public/unlisted projects" on public.projects;
+drop policy "Allow public read of public/unlisted/inherit episodes" on public.episodes;
+
+-- ============================================================
+-- 6. KB-88: last, now that there is nothing else to reach
+-- ============================================================
+
+grant usage on schema public to anon;

@@ -5722,6 +5722,43 @@ export type Database = {
         }
         Relationships: []
       }
+      public_episodes: {
+        Row: {
+          account_slug: string | null
+          created_at: string | null
+          description: string | null
+          duration_seconds: number | null
+          id: string | null
+          localized_videos: Json | null
+          number: number | null
+          project_id: string | null
+          project_public_slug: string | null
+          public_slug: string | null
+          seo_metadata: Json | null
+          slug: string | null
+          thumbnail_url: string | null
+          title: string | null
+          updated_at: string | null
+          visibility: string | null
+        }
+        Relationships: []
+      }
+      public_projects: {
+        Row: {
+          account_id: string | null
+          account_slug: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          metadata: Json | null
+          name: string | null
+          public_slug: string | null
+          seo_metadata: Json | null
+          updated_at: string | null
+          visibility: string | null
+        }
+        Relationships: []
+      }
       user_account_workspace: {
         Row: {
           id: string | null
@@ -6163,6 +6200,82 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "audit_logs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_shared_episode: {
+        Args: { p_project_id: string; p_slug: string }
+        Returns: {
+          account_slug: string | null
+          created_at: string | null
+          description: string | null
+          duration_seconds: number | null
+          id: string | null
+          localized_videos: Json | null
+          number: number | null
+          project_id: string | null
+          project_public_slug: string | null
+          public_slug: string | null
+          seo_metadata: Json | null
+          slug: string | null
+          thumbnail_url: string | null
+          title: string | null
+          updated_at: string | null
+          visibility: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "public_episodes"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_shared_project: {
+        Args: { p_account_id: string; p_public_slug: string }
+        Returns: {
+          account_id: string | null
+          account_slug: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          metadata: Json | null
+          name: string | null
+          public_slug: string | null
+          seo_metadata: Json | null
+          updated_at: string | null
+          visibility: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "public_projects"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_shared_project_episodes: {
+        Args: { p_project_id: string }
+        Returns: {
+          account_slug: string | null
+          created_at: string | null
+          description: string | null
+          duration_seconds: number | null
+          id: string | null
+          localized_videos: Json | null
+          number: number | null
+          project_id: string | null
+          project_public_slug: string | null
+          public_slug: string | null
+          seo_metadata: Json | null
+          slug: string | null
+          thumbnail_url: string | null
+          title: string | null
+          updated_at: string | null
+          visibility: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "public_episodes"
           isOneToOne: false
           isSetofReturn: true
         }

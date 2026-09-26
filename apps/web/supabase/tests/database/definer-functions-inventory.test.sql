@@ -55,6 +55,12 @@ select results_eq(
        ('public.get_current_account_id'),
        -- project_members, any role
        ('public.get_project_generation_costs'),
+       -- no caller identity: the row's own visibility (kit.shareable_episodes), exact key (KB-85/88)
+       ('public.get_shared_episode'),
+       -- no caller identity: the row's own visibility (kit.shareable_projects), exact key (KB-85/88)
+       ('public.get_shared_project'),
+       -- no caller identity: listable episodes of a shareable project (KB-85/88)
+       ('public.get_shared_project_episodes'),
        -- access to the project's account (KB-41, #319)
        ('public.get_project_members'),
        -- predicate about the caller

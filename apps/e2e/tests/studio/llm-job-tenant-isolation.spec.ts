@@ -22,8 +22,9 @@ import { signInAs } from '../utils/session';
  * `can_write_project`), and the refusal reaches the page as written in a
  * production build.
  *
- * A public project is the sharper case: its episodes are readable by every
- * signed-in user, so "the row came back" is no proof of anything.
+ * A public project is the sharper case: its episodes are readable by anyone
+ * (through public_episodes since KB-85/88), so "the row came back" is no
+ * proof of anything.
  */
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? 'http://127.0.0.1:55321';
@@ -55,25 +56,40 @@ async function seedEpisode(project: SeededProject): Promise<SeededEpisode> {
   return { id: row.id, slug };
 }
 
-async function makePublic(projectId: string) {
-  const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/projects?id=eq.${projectId}`,
-    {
-      method: 'PATCH',
-      headers: {
-        apikey: SERVICE_ROLE_KEY,
-        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ visibility: 'public' }),
+async function patchAsServiceRole(path: string, body: unknown) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    method: 'PATCH',
+    headers: {
+      apikey: SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+      'Content-Type': 'application/json',
     },
-  );
+    body: JSON.stringify(body),
+  });
 
   expect(response.status).toBe(204);
 }
 
-/** How many rows of `episodes` with this id `user` can read through RLS. */
-async function readableEpisodes(user: SeededTeam, episodeId: string) {
+/** Public as a public page sees it: a public team, and a public slug. */
+async function makePublic(team: SeededTeam, projectId: string) {
+  await patchAsServiceRole(`accounts?id=eq.${team.accountId}`, {
+    public_profile: { is_public: true },
+  });
+  await patchAsServiceRole(`projects?id=eq.${projectId}`, {
+    visibility: 'public',
+    public_slug: `kb31-${projectId.slice(0, 8)}`,
+  });
+}
+
+/**
+ * How many rows with this id `user` can read: from `episodes` through RLS,
+ * or from `public_episodes`, where anyone reads public episodes.
+ */
+async function readableEpisodes(
+  user: SeededTeam,
+  episodeId: string,
+  table: 'episodes' | 'public_episodes' = 'episodes',
+) {
   const session = (await (
     await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
       method: 'POST',
@@ -84,7 +100,7 @@ async function readableEpisodes(user: SeededTeam, episodeId: string) {
 
   const rows = (await (
     await fetch(
-      `${SUPABASE_URL}/rest/v1/episodes?id=eq.${episodeId}&select=id`,
+      `${SUPABASE_URL}/rest/v1/${table}?id=eq.${episodeId}&select=id`,
       {
         headers: {
           apikey: ANON_KEY,
@@ -194,10 +210,12 @@ test.describe('LLM jobs name only what the caller may write (KB-31)', () => {
   test('another account’s public episode is refused, though it is readable', async ({
     page,
   }) => {
-    await makePublic(victimProject.id);
+    await makePublic(victim, victimProject.id);
 
     // The premise of the attack: B can read the episode.
-    expect(await readableEpisodes(attacker, victimEpisode.id)).toBe(1);
+    expect(
+      await readableEpisodes(attacker, victimEpisode.id, 'public_episodes'),
+    ).toBe(1);
 
     await openIdeation(page, attacker, attackerProject, attackerEpisode);
     await forgeIdeationRequest(page, attackerEpisode.id, victimEpisode.id);

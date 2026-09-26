@@ -35,8 +35,9 @@ select results_eq(
 
 -- 2. Every public relation it can read is behind RLS. Tables must have RLS
 -- on; views must run as the caller (security_invoker) so the underlying
--- tables' RLS applies. public_accounts is the one exception by design
--- (KB-60): an owner-rights view whose columns and rows are public anyway.
+-- tables' RLS applies. The public-page views are the exception by design
+-- (KB-60, KB-85/88): owner-rights views whose columns and rows are public
+-- anyway, and which anon reads too.
 select is_empty(
   $$ select c.relname::text
        from pg_class c join pg_namespace n on n.oid = c.relnamespace
@@ -46,7 +47,7 @@ select is_empty(
         and not (
               (c.relkind in ('r', 'p') and c.relrowsecurity)
            or (c.relkind = 'v' and 'security_invoker=true' = any(coalesce(c.reloptions, '{}')))
-           or (c.relkind = 'v' and c.relname = 'public_accounts')
+           or (c.relkind = 'v' and c.relname in ('public_accounts', 'public_projects', 'public_episodes'))
         ) $$,
   'every public relation myfriends can SELECT is an RLS table or a security_invoker view'
 );

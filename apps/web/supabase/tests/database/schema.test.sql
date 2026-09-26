@@ -27,7 +27,9 @@ select tests.rls_enabled('public', 'order_items');
 select tests.rls_enabled('public', 'roles');
 select tests.rls_enabled('public', 'role_permissions');
 
-SELECT schema_privs_are('public', 'anon', Array [NULL], 'Anon should not have access to public schema');
+-- KB-88: anon has USAGE, so public share pages work signed out. What it can
+-- reach inside the schema is pinned in anon-public-surface.test.sql (KB-85).
+SELECT schema_privs_are('public', 'anon', Array ['USAGE'], 'Anon has USAGE on public, and no more');
 
 -- set the role to anonymous for verifying access tests
 set role anon;

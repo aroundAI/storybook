@@ -1,0 +1,100 @@
+{
+  "feature": "FILM-CC-04 KB-85, KB-88",
+  "mutations": [
+    {
+      "name": "KB-85 Supabase's default grants to anon are back on a table",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/anon-public-surface.test.sql",
+      "sql": "grant select, insert, update, delete on public.platform_connections to anon;"
+    },
+    {
+      "name": "KB-85 new tables grant anon everything again (default privileges)",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/anon-public-surface.test.sql",
+      "sql": "alter default privileges for role postgres in schema public grant all on tables to anon;"
+    },
+    {
+      "name": "KB-85 anon holds a sequence again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/anon-public-surface.test.sql",
+      "sql": "grant usage, select, update on sequence public.notifications_id_seq to anon;"
+    },
+    {
+      "name": "KB-85 anon may call the studio RPCs again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/anon-public-surface.test.sql",
+      "sql": "grant execute on function public.get_episode_languages(uuid[]) to anon;"
+    },
+    {
+      "name": "KB-88 anon loses USAGE on public (the pages are a 404 again)",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/anon-public-surface.test.sql",
+      "sql": "revoke usage on schema public from anon;"
+    },
+    {
+      "name": "KB-85/88 the all-columns public-read policy on projects is back",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/anon-public-surface.test.sql",
+      "sql": "create policy \"Allow public read of public/unlisted projects\" on public.projects for select to anon, authenticated using (visibility in ('public', 'unlisted'));"
+    },
+    {
+      "name": "KB-85/88 soft-deleted episodes are shareable",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/anon-public-surface.test.sql",
+      "sql": "create or replace view kit.shareable_episodes\nwith (security_barrier = true) as\nselect\n  e.id,\n  e.project_id,\n  p.public_slug as project_public_slug,\n  p.account_slug,\n  e.number,\n  e.title,\n  e.description,\n  e.duration_seconds,\n  e.thumbnail_url,\n  e.slug,\n  e.public_slug,\n  e.visibility,\n  e.localized_videos,\n  e.seo_metadata,\n  e.created_at,\n  e.updated_at\nfrom public.episodes e\njoin kit.shareable_projects p on p.id = e.project_id\nwhere e.visibility in ('inherit', 'public', 'unlisted');"
+    },
+    {
+      "name": "KB-85/88 private episodes are shareable",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/anon-public-surface.test.sql",
+      "sql": "create or replace view kit.shareable_episodes\nwith (security_barrier = true) as\nselect\n  e.id,\n  e.project_id,\n  p.public_slug as project_public_slug,\n  p.account_slug,\n  e.number,\n  e.title,\n  e.description,\n  e.duration_seconds,\n  e.thumbnail_url,\n  e.slug,\n  e.public_slug,\n  e.visibility,\n  e.localized_videos,\n  e.seo_metadata,\n  e.created_at,\n  e.updated_at\nfrom public.episodes e\njoin kit.shareable_projects p on p.id = e.project_id\nwhere e.deleted_at is null\n  and e.visibility is not null;"
+    },
+    {
+      "name": "KB-85/88 unlisted projects can be listed",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/anon-public-surface.test.sql",
+      "sql": "create or replace view public.public_projects with (security_barrier = true) as select * from kit.shareable_projects;"
+    },
+    {
+      "name": "KB-85/88 the project view exposes all of metadata (canon, providers)",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/anon-public-surface.test.sql",
+      "sql": "create or replace view kit.shareable_projects\nwith (security_barrier = true) as\nselect\n  p.id,\n  p.account_id,\n  a.slug as account_slug,\n  p.name,\n  p.description,\n  p.public_slug,\n  p.visibility,\n  -- The page reads three keys. The rest of metadata is studio settings\n  -- (canon, providers, platforms) and stays private.\n  p.metadata as metadata,\n  p.seo_metadata,\n  p.created_at,\n  p.updated_at\nfrom public.projects p\njoin public.public_accounts a on a.id = p.account_id\nwhere p.visibility in ('public', 'unlisted')\n  and p.public_slug is not null;"
+    },
+    {
+      "name": "KB-85/88 a private team's public project is shareable",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/anon-public-surface.test.sql",
+      "sql": "create or replace view kit.shareable_projects\nwith (security_barrier = true) as\nselect\n  p.id,\n  p.account_id,\n  a.slug as account_slug,\n  p.name,\n  p.description,\n  p.public_slug,\n  p.visibility,\n  -- The page reads three keys. The rest of metadata is studio settings\n  -- (canon, providers, platforms) and stays private.\n  jsonb_strip_nulls(jsonb_build_object(\n    'cover_url', p.metadata -> 'cover_url',\n    'genre', p.metadata -> 'genre',\n    'target_audience', p.metadata -> 'target_audience'\n  )) as metadata,\n  p.seo_metadata,\n  p.created_at,\n  p.updated_at\nfrom public.projects p\njoin public.accounts a on a.id = p.account_id\nwhere p.visibility in ('public', 'unlisted')\n  and p.public_slug is not null;"
+    },
+    {
+      "name": "KB-85/88 the project lookup matches the slug as a pattern",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/anon-public-surface.test.sql",
+      "sql": "create or replace function public.get_shared_project(p_account_id uuid, p_public_slug text)\nreturns setof public.public_projects\nlanguage sql\nstable\nsecurity definer\nset search_path = ''\nas $$\n  select * from kit.shareable_projects\n   where account_id = p_account_id\n     and public_slug like p_public_slug;\n$$;"
+    },
+    {
+      "name": "KB-88 a failed public read is a silent 404 again",
+      "kind": "unit",
+      "file": "packages/features/public-sharing/src/server/public-queries.ts",
+      "find": "    await logReadFailure('public-company', error, { slug });\n",
+      "replace": "",
+      "cwd": "packages/features/public-sharing",
+      "test": "src/server/__tests__/public-queries.test.ts",
+      "pattern": "a failed company read is logged"
+    },
+    {
+      "name": "KB-85/88 the project page reads the list view, so an unlisted link is a 404",
+      "kind": "e2e",
+      "file": "packages/features/public-sharing/src/server/public-queries.ts",
+      "edits": [
+        {
+          "find": "    .rpc('get_shared_project', {\n      p_account_id: company.id,\n      p_public_slug: projectSlug,\n    })\n",
+          "replace": "    .from('public_projects')\n    .select('*')\n    .eq('account_id', company.id)\n    .eq('public_slug', projectSlug)\n"
+        }
+      ],
+      "spec": "tests/public-sharing/public-pages-logged-out.spec.ts",
+      "grep": "unlisted opens by its link only"
+    }
+  ]
+}
