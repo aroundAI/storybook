@@ -243,7 +243,9 @@ export const SfxTimeline = React.forwardRef<
       setGeneratingIds((prev) => new Set(prev).add(cue.id));
 
       try {
-        const result = await generateAudioForCueAction({ cueId: cue.id });
+        const result = await unwrap(
+          generateAudioForCueAction({ cueId: cue.id }),
+        );
         if (result.status === 'queued') {
           toast.info(`Generating: ${cue.prompt.substring(0, 30)}...`);
           // Don't call fetchCues here - WebSocket will notify when complete

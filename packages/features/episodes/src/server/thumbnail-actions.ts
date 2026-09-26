@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { requireAffectedRows } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import {
   type StorageAdapter,
@@ -176,7 +176,7 @@ async function removeThumbnailFile(
 /**
  * Upload or replace a thumbnail for a specific episode + language
  */
-export const uploadEpisodeThumbnailAction = enhanceAction(
+const uploadEpisodeThumbnail = enhanceAction(
   async (
     data,
   ): Promise<{
@@ -319,6 +319,10 @@ export const uploadEpisodeThumbnailAction = enhanceAction(
   },
 );
 
+export const uploadEpisodeThumbnailAction = returnRefusals(
+  uploadEpisodeThumbnail,
+);
+
 // ============================================================================
 // Delete Episode Thumbnail Action
 // ============================================================================
@@ -326,7 +330,7 @@ export const uploadEpisodeThumbnailAction = enhanceAction(
 /**
  * Delete an episode thumbnail
  */
-export const deleteEpisodeThumbnailAction = enhanceAction(
+const deleteEpisodeThumbnail = enhanceAction(
   async (data): Promise<{ success: boolean; error?: string }> => {
     const logger = await getLogger();
     const ctx = {
@@ -403,6 +407,10 @@ export const deleteEpisodeThumbnailAction = enhanceAction(
   {
     schema: DeleteEpisodeThumbnailSchema,
   },
+);
+
+export const deleteEpisodeThumbnailAction = returnRefusals(
+  deleteEpisodeThumbnail,
 );
 
 // ============================================================================

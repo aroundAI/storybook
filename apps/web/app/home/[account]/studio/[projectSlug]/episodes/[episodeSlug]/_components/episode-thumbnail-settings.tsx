@@ -25,6 +25,7 @@ import {
   setDefaultThumbnailAction,
   uploadEpisodeThumbnailAction,
 } from '@kit/episodes/server';
+import { unwrap } from '@kit/next/action-result';
 import {
   PROJECT_ASSETS_BUCKET,
   episodeThumbnailPath,
@@ -223,10 +224,12 @@ function ThumbnailCard({
   const handleRemove = () => {
     startRemoveTransition(async () => {
       try {
-        const result = await deleteEpisodeThumbnailAction({
-          thumbnailId: thumbnail.id,
-          episodeId,
-        });
+        const result = await unwrap(
+          deleteEpisodeThumbnailAction({
+            thumbnailId: thumbnail.id,
+            episodeId,
+          }),
+        );
 
         if (result.success) {
           toast.success(`Removed the ${label} thumbnail`);
@@ -510,17 +513,19 @@ function AddThumbnailDialog({
 
       setUploadProgress(70);
 
-      const result = await uploadEpisodeThumbnailAction({
-        episodeId,
-        language: code,
-        languageLabel: languageLabel.trim() || undefined,
-        thumbnailUrl: uploadResult.url,
-        fileName: selectedFile.name,
-        fileSizeBytes: selectedFile.size,
-        mimeType: selectedFile.type,
-        width: imageDimensions?.width,
-        height: imageDimensions?.height,
-      });
+      const result = await unwrap(
+        uploadEpisodeThumbnailAction({
+          episodeId,
+          language: code,
+          languageLabel: languageLabel.trim() || undefined,
+          thumbnailUrl: uploadResult.url,
+          fileName: selectedFile.name,
+          fileSizeBytes: selectedFile.size,
+          mimeType: selectedFile.type,
+          width: imageDimensions?.width,
+          height: imageDimensions?.height,
+        }),
+      );
 
       setUploadProgress(100);
 

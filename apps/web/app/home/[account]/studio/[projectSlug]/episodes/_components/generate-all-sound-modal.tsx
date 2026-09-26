@@ -670,7 +670,7 @@ export function GenerateAllSoundModal({
           for (const cue of pendingMusic) {
             if (cancelledRef.current) break;
             try {
-              await generateAudioForCueAction({ cueId: cue.id });
+              await unwrap(generateAudioForCueAction({ cueId: cue.id }));
               dispatchedCueIds.add(cue.id);
               // 3s delay between dispatches (20 req/min for music)
               await delay(3000);
@@ -757,7 +757,7 @@ export function GenerateAllSoundModal({
           for (const cue of pendingSfx) {
             if (cancelledRef.current) break;
             try {
-              await generateAudioForCueAction({ cueId: cue.id });
+              await unwrap(generateAudioForCueAction({ cueId: cue.id }));
               dispatchedCueIds.add(cue.id);
               // 2s delay between dispatches (30 req/min for SFX)
               await delay(2000);

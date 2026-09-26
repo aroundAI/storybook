@@ -8,7 +8,7 @@ import { z } from 'zod';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { requireAffectedRows } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { canPerformProjectAction } from '@kit/projects/queries';
 import { getLogger } from '@kit/shared/logger';
 import {
@@ -130,7 +130,7 @@ async function removeIntroFile(
  * This action handles upserting an intro - if an intro already exists
  * for the given project + language combination, it will be replaced.
  */
-export const uploadProjectIntroAction = enhanceAction(
+const uploadProjectIntro = enhanceAction(
   async (
     data,
   ): Promise<{ success: boolean; intro?: ProjectIntro; error?: string }> => {
@@ -271,6 +271,8 @@ export const uploadProjectIntroAction = enhanceAction(
   },
 );
 
+export const uploadProjectIntroAction = returnRefusals(uploadProjectIntro);
+
 // ============================================================================
 // Delete Project Intro Action
 // ============================================================================
@@ -278,7 +280,7 @@ export const uploadProjectIntroAction = enhanceAction(
 /**
  * Delete a project intro
  */
-export const deleteProjectIntroAction = enhanceAction(
+const deleteProjectIntro = enhanceAction(
   async (data): Promise<{ success: boolean; error?: string }> => {
     const logger = await getLogger();
     const ctx = {
@@ -358,6 +360,8 @@ export const deleteProjectIntroAction = enhanceAction(
     schema: DeleteProjectIntroSchema,
   },
 );
+
+export const deleteProjectIntroAction = returnRefusals(deleteProjectIntro);
 
 // ============================================================================
 // Get Project Intros Action

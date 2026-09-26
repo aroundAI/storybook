@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { unwrap } from '@kit/next/action-result';
+
 /**
  * KB-31, audio producers: a job is queued only on a target whose project the
  * caller can write to (KB-28's `can_write_project`, asked as the caller).
@@ -245,7 +247,7 @@ describe('generateAudioForCueAction', () => {
       '../src/server/audio-cue-actions'
     );
 
-    const result = await generateAudioForCueAction({ cueId: A_CUE });
+    const result = await unwrap(generateAudioForCueAction({ cueId: A_CUE }));
 
     expect(result).toMatchObject({ success: false, status: 'failed' });
     expect(state.updates).toEqual([]);
@@ -257,7 +259,7 @@ describe('generateAudioForCueAction', () => {
       '../src/server/audio-cue-actions'
     );
 
-    await generateAudioForCueAction({ cueId: B_CUE });
+    await unwrap(generateAudioForCueAction({ cueId: B_CUE }));
 
     expect(state.sent).toHaveLength(1);
     expect(state.sent[0]!.payload).toMatchObject({

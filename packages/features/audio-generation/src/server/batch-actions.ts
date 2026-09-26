@@ -439,7 +439,7 @@ export const getBatchStatusAction = enhanceAction(
  *
  * @throws {Error} If job not found or no failed lines to retry
  */
-export const retryFailedDialogueAction = enhanceAction(
+const retryFailedDialogue = enhanceAction(
   async (
     data: RetryFailedDialogueSchemaType,
   ): Promise<RetryFailedDialogueResult> => {
@@ -585,6 +585,8 @@ export const retryFailedDialogueAction = enhanceAction(
     schema: RetryFailedDialogueSchema,
   },
 );
+
+export const retryFailedDialogueAction = returnRefusals(retryFailedDialogue);
 
 /**
  * Cancel a batch generation job

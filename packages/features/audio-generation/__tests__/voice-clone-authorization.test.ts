@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { unwrap } from '@kit/next/action-result';
+
 /**
  * KB-112. Starting a voice clone, deleting one, and listing the account's
  * ElevenLabs voices all read the account's key and call ElevenLabs. #337
@@ -199,9 +201,9 @@ describe('a caller who can read the project but not write it', () => {
       '../src/server/voice-profile-actions'
     );
 
-    await expect(listVoicesAction({ projectId: PROJECT })).rejects.toThrow(
-      'Project not found or access denied',
-    );
+    await expect(
+      unwrap(listVoicesAction({ projectId: PROJECT })),
+    ).rejects.toThrow('Project not found or access denied');
     expect(state.keyReads).toBe(0);
     expect(state.vendorCalls).toEqual([]);
   });
@@ -242,7 +244,7 @@ describe('a caller who can write the project', () => {
       '../src/server/voice-profile-actions'
     );
 
-    await listVoicesAction({ projectId: PROJECT });
+    await unwrap(listVoicesAction({ projectId: PROJECT }));
 
     expect(state.vendorCalls).toEqual(['list']);
   });

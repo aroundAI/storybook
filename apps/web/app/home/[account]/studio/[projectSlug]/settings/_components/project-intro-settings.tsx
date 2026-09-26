@@ -10,7 +10,7 @@ import {
   getProjectIntrosAction,
   uploadProjectIntroAction,
 } from '@kit/episodes/server';
-import { refusalMessage } from '@kit/next/action-result';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { UploadRefusal } from '@kit/storage/client';
 import {
   PROJECT_ASSETS_BUCKET,
@@ -188,10 +188,12 @@ function IntroCard({
   const handleDelete = () => {
     startDeleteTransition(async () => {
       try {
-        const result = await deleteProjectIntroAction({
-          introId: intro.id,
-          projectId,
-        });
+        const result = await unwrap(
+          deleteProjectIntroAction({
+            introId: intro.id,
+            projectId,
+          }),
+        );
 
         if (result.success) {
           toast.success(
@@ -415,16 +417,18 @@ function AddIntroDialog({
       setUploadProgress(70);
 
       // 3. Save to database
-      const result = await uploadProjectIntroAction({
-        projectId,
-        language: language.toLowerCase(),
-        languageLabel: languageLabel.trim() || undefined,
-        videoUrl,
-        durationSeconds: duration,
-        fileName: selectedFile.name,
-        fileSizeBytes: selectedFile.size,
-        mimeType: selectedFile.type,
-      });
+      const result = await unwrap(
+        uploadProjectIntroAction({
+          projectId,
+          language: language.toLowerCase(),
+          languageLabel: languageLabel.trim() || undefined,
+          videoUrl,
+          durationSeconds: duration,
+          fileName: selectedFile.name,
+          fileSizeBytes: selectedFile.size,
+          mimeType: selectedFile.type,
+        }),
+      );
 
       setUploadProgress(100);
 

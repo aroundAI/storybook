@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { unwrap } from '@kit/next/action-result';
+
 /**
  * KB-54: replacing or deleting a project intro or an episode thumbnail must
  * delete the old stored file — and only a file inside that intro's project
@@ -160,20 +162,24 @@ beforeEach(() => {
 });
 
 function replaceIntro() {
-  return uploadProjectIntroAction({
-    projectId: PROJECT,
-    language: 'en',
-    videoUrl: url(NEW_INTRO),
-    durationSeconds: 5,
-  });
+  return unwrap(
+    uploadProjectIntroAction({
+      projectId: PROJECT,
+      language: 'en',
+      videoUrl: url(NEW_INTRO),
+      durationSeconds: 5,
+    }),
+  );
 }
 
 function replaceThumbnail() {
-  return uploadEpisodeThumbnailAction({
-    episodeId: EPISODE,
-    language: 'en',
-    thumbnailUrl: url(NEW_THUMB),
-  });
+  return unwrap(
+    uploadEpisodeThumbnailAction({
+      episodeId: EPISODE,
+      language: 'en',
+      thumbnailUrl: url(NEW_THUMB),
+    }),
+  );
 }
 
 describe('replacing an intro', () => {
@@ -216,10 +222,12 @@ describe('deleting an intro', () => {
   it('deletes its file by the full key', async () => {
     state.existing = { video_url: url(OLD_INTRO) };
 
-    const result = await deleteProjectIntroAction({
-      introId: INTRO_ID,
-      projectId: PROJECT,
-    });
+    const result = await unwrap(
+      deleteProjectIntroAction({
+        introId: INTRO_ID,
+        projectId: PROJECT,
+      }),
+    );
 
     expect(result.success).toBe(true);
     expect(state.log).toEqual([
@@ -233,7 +241,9 @@ describe('deleting an intro', () => {
       video_url: url(`projects/${OTHER_PROJECT}/assets/intros/en-1.mp4`),
     };
 
-    await deleteProjectIntroAction({ introId: INTRO_ID, projectId: PROJECT });
+    await unwrap(
+      deleteProjectIntroAction({ introId: INTRO_ID, projectId: PROJECT }),
+    );
 
     expect(state.log).toEqual(['project_intros.delete']);
   });
@@ -278,10 +288,12 @@ describe('deleting a thumbnail', () => {
   it('deletes its file by the full key', async () => {
     state.existing = { thumbnail_url: url(OLD_THUMB) };
 
-    const result = await deleteEpisodeThumbnailAction({
-      thumbnailId: THUMB_ID,
-      episodeId: EPISODE,
-    });
+    const result = await unwrap(
+      deleteEpisodeThumbnailAction({
+        thumbnailId: THUMB_ID,
+        episodeId: EPISODE,
+      }),
+    );
 
     expect(result.success).toBe(true);
     expect(state.log).toEqual([
@@ -297,10 +309,12 @@ describe('deleting a thumbnail', () => {
     state.existing = { thumbnail_url: url(OLD_THUMB) };
     state.deleteRows = [];
 
-    const result = await deleteEpisodeThumbnailAction({
-      thumbnailId: THUMB_ID,
-      episodeId: EPISODE,
-    });
+    const result = await unwrap(
+      deleteEpisodeThumbnailAction({
+        thumbnailId: THUMB_ID,
+        episodeId: EPISODE,
+      }),
+    );
 
     expect(result).toEqual({
       success: false,
@@ -315,10 +329,12 @@ describe('deleting an intro that removes no row (KB-61)', () => {
     state.existing = { video_url: url(OLD_INTRO) };
     state.deleteRows = [];
 
-    const result = await deleteProjectIntroAction({
-      introId: INTRO_ID,
-      projectId: PROJECT,
-    });
+    const result = await unwrap(
+      deleteProjectIntroAction({
+        introId: INTRO_ID,
+        projectId: PROJECT,
+      }),
+    );
 
     expect(result).toEqual({
       success: false,
@@ -349,25 +365,31 @@ describe('saving an intro or thumbnail from somewhere else (KB-90)', () => {
       url(`projects/${PROJECT}/assets/covers/cover-1.png`),
     ],
   ])('refuses an intro from %s, and saves nothing', async (_, videoUrl) => {
-    const result = await uploadProjectIntroAction({
-      projectId: PROJECT,
-      language: 'en',
-      videoUrl,
-      durationSeconds: 5,
-    });
+    const result = await unwrap(
+      uploadProjectIntroAction({
+        projectId: PROJECT,
+        language: 'en',
+        videoUrl,
+        durationSeconds: 5,
+      }),
+    );
 
     expect(result).toEqual(refused);
     expect(state.log).toEqual([]);
   });
 
   it("refuses an intro's poster outside the project's assets", async () => {
-    const result = await uploadProjectIntroAction({
-      projectId: PROJECT,
-      language: 'en',
-      videoUrl: url(NEW_INTRO),
-      thumbnailUrl: url(`projects/${OTHER_PROJECT}/assets/covers/cover-1.png`),
-      durationSeconds: 5,
-    });
+    const result = await unwrap(
+      uploadProjectIntroAction({
+        projectId: PROJECT,
+        language: 'en',
+        videoUrl: url(NEW_INTRO),
+        thumbnailUrl: url(
+          `projects/${OTHER_PROJECT}/assets/covers/cover-1.png`,
+        ),
+        durationSeconds: 5,
+      }),
+    );
 
     expect(result).toEqual(refused);
     expect(state.log).toEqual([]);
@@ -384,11 +406,13 @@ describe('saving an intro or thumbnail from somewhere else (KB-90)', () => {
   ])(
     'refuses a thumbnail from %s, and saves nothing',
     async (_, thumbnailUrl) => {
-      const result = await uploadEpisodeThumbnailAction({
-        episodeId: EPISODE,
-        language: 'en',
-        thumbnailUrl,
-      });
+      const result = await unwrap(
+        uploadEpisodeThumbnailAction({
+          episodeId: EPISODE,
+          language: 'en',
+          thumbnailUrl,
+        }),
+      );
 
       expect(result).toEqual(refused);
       expect(state.log).toEqual([]);
@@ -396,17 +420,21 @@ describe('saving an intro or thumbnail from somewhere else (KB-90)', () => {
   );
 
   it('saves an upload from its own folder, cache-busting query and all', async () => {
-    const intro = await uploadProjectIntroAction({
-      projectId: PROJECT,
-      language: 'en',
-      videoUrl: `${url(NEW_INTRO)}?v=123`,
-      durationSeconds: 5,
-    });
-    const thumbnail = await uploadEpisodeThumbnailAction({
-      episodeId: EPISODE,
-      language: 'en',
-      thumbnailUrl: `${url(NEW_THUMB)}?v=123`,
-    });
+    const intro = await unwrap(
+      uploadProjectIntroAction({
+        projectId: PROJECT,
+        language: 'en',
+        videoUrl: `${url(NEW_INTRO)}?v=123`,
+        durationSeconds: 5,
+      }),
+    );
+    const thumbnail = await unwrap(
+      uploadEpisodeThumbnailAction({
+        episodeId: EPISODE,
+        language: 'en',
+        thumbnailUrl: `${url(NEW_THUMB)}?v=123`,
+      }),
+    );
 
     expect(intro.success).toBe(true);
     expect(thumbnail.success).toBe(true);

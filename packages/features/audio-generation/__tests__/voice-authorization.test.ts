@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { unwrap } from '@kit/next/action-result';
+
 /**
  * KB-46 and KB-47 (voice): voice generation runs only on an episode whose
  * project the caller can write to (KB-28's `can_write_project`, asked as the
@@ -354,9 +356,11 @@ describe('generateDialogueVoiceAsyncAction (one line, voice queue)', () => {
       '../src/server/voice-actions'
     );
 
-    const result = await generateDialogueVoiceAsyncAction({
-      dialogueLineId: A_LINE,
-    });
+    const result = await unwrap(
+      generateDialogueVoiceAsyncAction({
+        dialogueLineId: A_LINE,
+      }),
+    );
 
     expect(result).toEqual({
       success: false,
@@ -372,9 +376,11 @@ describe('generateDialogueVoiceAsyncAction (one line, voice queue)', () => {
       '../src/server/voice-actions'
     );
 
-    const result = await generateDialogueVoiceAsyncAction({
-      dialogueLineId: B_LINE,
-    });
+    const result = await unwrap(
+      generateDialogueVoiceAsyncAction({
+        dialogueLineId: B_LINE,
+      }),
+    );
 
     expect(result).toEqual({ success: true, status: 'queued' });
     expect(state.sent).toHaveLength(1);
@@ -427,7 +433,7 @@ describe('retryFailedDialogueAction (voice queue)', () => {
     );
 
     await expect(
-      retryFailedDialogueAction({ batchJobId: A_BATCH }),
+      unwrap(retryFailedDialogueAction({ batchJobId: A_BATCH })),
     ).rejects.toThrow('Batch job not found');
     expect(state.updates).toEqual([]);
     expect(state.sent).toEqual([]);
@@ -438,7 +444,7 @@ describe('retryFailedDialogueAction (voice queue)', () => {
       '../src/server/batch-actions'
     );
 
-    await retryFailedDialogueAction({ batchJobId: B_BATCH });
+    await unwrap(retryFailedDialogueAction({ batchJobId: B_BATCH }));
 
     expect(state.sent).toHaveLength(1);
     expect(state.sent[0]).toMatchObject({

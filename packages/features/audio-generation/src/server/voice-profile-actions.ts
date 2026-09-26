@@ -39,7 +39,7 @@ import { getAccountElevenLabsApiKey } from './project-audio-settings';
 /**
  * List available voices from ElevenLabs with optional filters
  */
-export const listVoicesAction = enhanceAction(
+const listVoices = enhanceAction(
   async (data: ListVoicesSchemaType): Promise<ListVoicesResponse> => {
     const logger = await getLogger();
     const ctx = { name: 'voice-profile.listVoices' };
@@ -119,6 +119,8 @@ export const listVoicesAction = enhanceAction(
     schema: ListVoicesSchema,
   },
 );
+
+export const listVoicesAction = returnRefusals(listVoices);
 
 /**
  * Get voice profile for a character
@@ -256,7 +258,7 @@ export const saveVoiceProfileAction = returnRefusals(saveVoiceProfile);
  * Delete voice profile from a character
  * Simplified: clears elevenlabs_voice_id directly
  */
-export const deleteVoiceProfileAction = enhanceAction(
+const deleteVoiceProfile = enhanceAction(
   async (data: DeleteVoiceProfileSchemaType): Promise<{ success: boolean }> => {
     const logger = await getLogger();
     const ctx = {
@@ -302,6 +304,8 @@ export const deleteVoiceProfileAction = enhanceAction(
     schema: DeleteVoiceProfileSchema,
   },
 );
+
+export const deleteVoiceProfileAction = returnRefusals(deleteVoiceProfile);
 
 /**
  * Bulk assign same voice to multiple characters
@@ -417,7 +421,7 @@ const autoAssignVoices = enhanceAction(
     }
 
     // Fetch all available voices (with BYOK support via projectId)
-    const voicesResult = await listVoicesAction({ projectId: data.projectId });
+    const voicesResult = await listVoices({ projectId: data.projectId });
 
     if (!voicesResult.voices.length) {
       throw new ActionRefusal('No voices available for auto-assignment');

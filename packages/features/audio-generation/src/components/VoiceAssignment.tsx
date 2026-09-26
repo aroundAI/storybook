@@ -122,14 +122,16 @@ export function VoiceAssignmentPanel({
       filters.gender !== 'all' ? filters.gender : undefined,
     ],
     queryFn: () =>
-      listVoicesAction({
-        projectId,
-        language: filters.language !== 'all' ? filters.language : undefined,
-        gender:
-          filters.gender !== 'all'
-            ? (filters.gender as 'male' | 'female' | 'neutral')
-            : undefined,
-      }),
+      unwrap(
+        listVoicesAction({
+          projectId,
+          language: filters.language !== 'all' ? filters.language : undefined,
+          gender:
+            filters.gender !== 'all'
+              ? (filters.gender as 'male' | 'female' | 'neutral')
+              : undefined,
+        }),
+      ),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 

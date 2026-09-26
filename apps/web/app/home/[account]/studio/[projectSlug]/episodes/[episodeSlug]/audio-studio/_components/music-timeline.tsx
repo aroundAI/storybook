@@ -341,9 +341,11 @@ export const MusicTimeline = React.forwardRef<
 
     for (const track of pendingCues) {
       try {
-        await generateAudioForCueAction({
-          cueId: track.id.replace('cue-', ''),
-        });
+        await unwrap(
+          generateAudioForCueAction({
+            cueId: track.id.replace('cue-', ''),
+          }),
+        );
       } catch {
         toast.error(`Failed to queue: ${track.name ?? 'music cue'}`);
       }
@@ -491,9 +493,11 @@ export const MusicTimeline = React.forwardRef<
 
     setIsRegenerating(true);
     try {
-      const result = await generateAudioForCueAction({
-        cueId: track.id.replace('cue-', ''),
-      });
+      const result = await unwrap(
+        generateAudioForCueAction({
+          cueId: track.id.replace('cue-', ''),
+        }),
+      );
       if (result.status === 'queued') {
         toast.info('Music generation started...');
         // WebSocket notifies on completion

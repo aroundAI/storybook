@@ -217,7 +217,7 @@ export const processAudioCuesAction = enhanceAction(
  *
  * Used when user clicks "Generate" on a pending cue
  */
-export const generateAudioForCueAction = enhanceAction(
+const generateAudioForCue = enhanceAction(
   async (
     data,
   ): Promise<{
@@ -342,6 +342,8 @@ export const generateAudioForCueAction = enhanceAction(
     }),
   },
 );
+
+export const generateAudioForCueAction = returnRefusals(generateAudioForCue);
 
 /**
  * Get audio cues for an episode

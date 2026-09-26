@@ -423,7 +423,7 @@ export const generateDialogueVoiceAction = returnRefusals(
  * This is the preferred method for production use as it avoids
  * API Gateway timeout issues with long TTS generation.
  */
-export const generateDialogueVoiceAsyncAction = enhanceAction(
+const generateDialogueVoiceAsync = enhanceAction(
   async (
     data: GenerateDialogueVoiceSchemaType,
   ): Promise<{
@@ -602,6 +602,10 @@ export const generateDialogueVoiceAsyncAction = enhanceAction(
   {
     schema: GenerateDialogueVoiceSchema,
   },
+);
+
+export const generateDialogueVoiceAsyncAction = returnRefusals(
+  generateDialogueVoiceAsync,
 );
 
 /**
@@ -887,7 +891,7 @@ export const updateDialogueTextAction = returnRefusals(updateDialogueText);
 /**
  * Update the timing of a dialogue line (timeline position and duration)
  */
-export const updateDialogueTimingAction = enhanceAction(
+const updateDialogueTiming = enhanceAction(
   async (data: {
     dialogueLineId: string;
     timelineStartSeconds?: number;
@@ -942,6 +946,8 @@ export const updateDialogueTimingAction = enhanceAction(
     }),
   },
 );
+
+export const updateDialogueTimingAction = returnRefusals(updateDialogueTiming);
 
 /**
  * Clear all generated voices for an episode

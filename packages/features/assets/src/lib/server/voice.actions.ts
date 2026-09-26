@@ -5,7 +5,7 @@ import 'server-only';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
-import { requireAffectedRows } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { decrypt } from '@kit/shared/crypto';
 import { vendorUrl } from '@kit/shared/vendors';
 import { readExternalApiKey } from '@kit/supabase/external-api-keys';
@@ -121,7 +121,7 @@ const AssignVoiceToCharacterSchema = z.object({
 /**
  * Save voice profile assignment to a character
  */
-export const assignVoiceToCharacterAction = enhanceAction(
+const assignVoiceToCharacter = enhanceAction(
   async ({ characterId, voiceAssetId }) => {
     const client = getSupabaseServerClient();
 
@@ -144,4 +144,8 @@ export const assignVoiceToCharacterAction = enhanceAction(
   {
     schema: AssignVoiceToCharacterSchema,
   },
+);
+
+export const assignVoiceToCharacterAction = returnRefusals(
+  assignVoiceToCharacter,
 );

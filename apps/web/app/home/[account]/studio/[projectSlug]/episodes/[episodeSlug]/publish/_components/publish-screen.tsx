@@ -294,15 +294,17 @@ export function PublishScreen({
       );
 
       // Save to episode_thumbnails table
-      const result = await uploadEpisodeThumbnailAction({
-        episodeId: episode.id,
-        language: lang,
-        languageLabel: LANG_INFO[lang as SupportedLanguage]?.name || lang,
-        thumbnailUrl: uploadResult.url,
-        fileName: file.name,
-        fileSizeBytes: file.size,
-        mimeType: file.type,
-      });
+      const result = await unwrap(
+        uploadEpisodeThumbnailAction({
+          episodeId: episode.id,
+          language: lang,
+          languageLabel: LANG_INFO[lang as SupportedLanguage]?.name || lang,
+          thumbnailUrl: uploadResult.url,
+          fileName: file.name,
+          fileSizeBytes: file.size,
+          mimeType: file.type,
+        }),
+      );
 
       if (result.success && result.thumbnail) {
         setEpisodeThumbnails((prev) => {
