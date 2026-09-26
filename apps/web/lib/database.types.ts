@@ -97,11 +97,9 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
-          current_usage_cents: number
           email: string | null
           id: string
           is_personal_account: boolean
-          monthly_budget_cents: number | null
           name: string
           picture_url: string | null
           primary_owner_user_id: string
@@ -114,11 +112,9 @@ export type Database = {
         Insert: {
           created_at?: string | null
           created_by?: string | null
-          current_usage_cents?: number
           email?: string | null
           id?: string
           is_personal_account?: boolean
-          monthly_budget_cents?: number | null
           name: string
           picture_url?: string | null
           primary_owner_user_id?: string
@@ -131,11 +127,9 @@ export type Database = {
         Update: {
           created_at?: string | null
           created_by?: string | null
-          current_usage_cents?: number
           email?: string | null
           id?: string
           is_personal_account?: boolean
-          monthly_budget_cents?: number | null
           name?: string
           picture_url?: string | null
           primary_owner_user_id?: string
@@ -5376,10 +5370,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      check_account_budget: {
-        Args: { p_account_id: string; p_estimated_cost_cents?: number }
-        Returns: boolean
-      }
       cleanup_expired_oauth_states: { Args: never; Returns: number }
       commit_canon_changes: {
         Args: {
@@ -5446,11 +5436,9 @@ export type Database = {
         Returns: {
           created_at: string | null
           created_by: string | null
-          current_usage_cents: number
           email: string | null
           id: string
           is_personal_account: boolean
-          monthly_budget_cents: number | null
           name: string
           picture_url: string | null
           primary_owner_user_id: string
@@ -5855,14 +5843,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      increment_account_usage: {
-        Args: { p_account_id: string; p_amount_cents: number }
-        Returns: {
-          budget_cents: number
-          is_over_budget: boolean
-          new_usage_cents: number
-        }[]
-      }
       increment_batch_progress: {
         Args: {
           p_batch_job_id: string
@@ -5926,7 +5906,6 @@ export type Database = {
         Args: { p_experiment_id: string; p_tag_ids: string[] }
         Returns: undefined
       }
-      reset_monthly_usage: { Args: never; Returns: number }
       revenue_cents_by_publish: {
         Args: { p_publish_ids: string[] }
         Returns: {

@@ -41,10 +41,9 @@ retirement:
   what_happened: >
     The video cost-tracking library (`packages/features/video-generation/src/lib/cost-tracking/`) was
     deleted in `5b88db3a` (2026-01-15), the commit that removed `packages/features/video-generation`;
-    the owner retired in-app video generation on purpose. Nothing replaces it for video; account budgets
-    for voice generation are a separate feature (`check_account_budget` / `increment_account_usage`,
-    called from `packages/features/audio-generation/src/server/voice-queries.ts:58`). Kept as a record;
-    not outstanding work.
+    the owner retired in-app video generation on purpose. Nothing replaces it for video. The separate
+    account budget for voice generation was removed too (owner, 2026-09-25: "Remove the budget
+    machinery"), so nothing checks or caps spend. Kept as a record; not outstanding work.
   replacement: null
 open_questions: []
 library:

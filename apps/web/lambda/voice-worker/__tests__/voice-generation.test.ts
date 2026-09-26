@@ -4,10 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { processDialogueVoiceGeneration } from '../voice-generation';
 
 /**
- * KB-83: batch and queued single-line voice run in this worker, on the
- * service-role key, and never added their cost to the account's usage — so
- * most voice spend was invisible to the budget. The worker now records it on
- * the payload's account, which the enqueuing action authorised (KB-46/47).
+ * The voice worker generates a queued line on the payload account's key.
+ * KB-83 made it count the cost against the account's usage; the budget
+ * machinery is now removed (owner, 2026-09-25), so the worker generates the
+ * line and calls no database function for spend.
  *
  * The real handler runs, decrypting a key encrypted here the way the app
  * encrypts it. The vendor and R2 are stubbed.
@@ -84,24 +84,20 @@ afterEach(() => {
   delete process.env.ENCRYPTION_KEY;
 });
 
-describe('voice worker spend (KB-83)', () => {
-  it("adds a generated line's cost to the payload account's usage", async () => {
+describe('voice worker', () => {
+  it('generates a line and calls no database function for spend', async () => {
     const supabase = supabaseWith(await encryptedKey('sk-test'));
-    const text = 'x'.repeat(1000); // ~$0.30 per 1k characters
 
     const result = await processDialogueVoiceGeneration(
-      payload(text),
+      payload('x'.repeat(1000)),
       supabase,
     );
 
     expect(result.success).toBe(true);
-    expect(rpc).toHaveBeenCalledWith('increment_account_usage', {
-      p_account_id: ACCOUNT,
-      p_amount_cents: 30,
-    });
+    expect(rpc).not.toHaveBeenCalled();
   });
 
-  it('records nothing when the vendor refuses the line', async () => {
+  it('throws when the vendor refuses the line', async () => {
     const supabase = supabaseWith(await encryptedKey('sk-test'));
     vi.stubGlobal(
       'fetch',
@@ -112,18 +108,5 @@ describe('voice worker spend (KB-83)', () => {
       processDialogueVoiceGeneration(payload('Hello'), supabase),
     ).rejects.toThrow('429');
     expect(rpc).not.toHaveBeenCalled();
-  });
-
-  it('a failed recording does not fail the line', async () => {
-    const supabase = supabaseWith(await encryptedKey('sk-test'));
-    rpc.mockResolvedValue({ data: null, error: { message: 'reset' } });
-
-    const result = await processDialogueVoiceGeneration(
-      payload('Hello'),
-      supabase,
-    );
-
-    expect(result.success).toBe(true);
-    expect(rpc).toHaveBeenCalledTimes(1);
   });
 });

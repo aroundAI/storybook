@@ -78,8 +78,6 @@ describe('AccountWebhooksService', () => {
         primary_owner_user_id: '123',
         created_by: null,
         updated_by: null,
-        current_usage_cents: 0,
-        monthly_budget_cents: null,
         public_profile: null,
       };
 
@@ -110,8 +108,6 @@ describe('AccountWebhooksService', () => {
         primary_owner_user_id: '456',
         created_by: null,
         updated_by: null,
-        current_usage_cents: 0,
-        monthly_budget_cents: null,
         public_profile: null,
       };
 
@@ -149,8 +145,6 @@ describe('AccountWebhooksService', () => {
         primary_owner_user_id: '789',
         created_by: null,
         updated_by: null,
-        current_usage_cents: 0,
-        monthly_budget_cents: null,
         public_profile: null,
       };
 
@@ -178,8 +172,6 @@ describe('AccountWebhooksService', () => {
         primary_owner_user_id: '101',
         created_by: null,
         updated_by: null,
-        current_usage_cents: 0,
-        monthly_budget_cents: null,
         public_profile: null,
       };
 
@@ -211,8 +203,6 @@ describe('AccountWebhooksService', () => {
         primary_owner_user_id: '202',
         created_by: null,
         updated_by: null,
-        current_usage_cents: 0,
-        monthly_budget_cents: null,
         public_profile: null,
       };
 
@@ -238,8 +228,6 @@ describe('AccountWebhooksService', () => {
         primary_owner_user_id: '303',
         created_by: null,
         updated_by: null,
-        current_usage_cents: 0,
-        monthly_budget_cents: null,
         public_profile: null,
       };
 
@@ -278,8 +266,6 @@ describe('AccountWebhooksService', () => {
         primary_owner_user_id: '404',
         created_by: null,
         updated_by: null,
-        current_usage_cents: 0,
-        monthly_budget_cents: null,
         public_profile: null,
       };
 
@@ -307,8 +293,6 @@ describe('AccountWebhooksService', () => {
         primary_owner_user_id: '505',
         created_by: null,
         updated_by: null,
-        current_usage_cents: 0,
-        monthly_budget_cents: null,
         public_profile: null,
       };
 
@@ -347,8 +331,6 @@ describe('AccountWebhooksService', () => {
         primary_owner_user_id: '606',
         created_by: null,
         updated_by: null,
-        current_usage_cents: 0,
-        monthly_budget_cents: null,
         public_profile: null,
       };
 
@@ -375,8 +357,6 @@ describe('AccountWebhooksService', () => {
         primary_owner_user_id: '707',
         created_by: null,
         updated_by: null,
-        current_usage_cents: 0,
-        monthly_budget_cents: null,
         public_profile: null,
       };
 
@@ -403,8 +383,6 @@ describe('AccountWebhooksService', () => {
         primary_owner_user_id: '801',
         created_by: null,
         updated_by: null,
-        current_usage_cents: 0,
-        monthly_budget_cents: null,
         public_profile: null,
       };
 
@@ -421,8 +399,6 @@ describe('AccountWebhooksService', () => {
         primary_owner_user_id: '802',
         created_by: null,
         updated_by: null,
-        current_usage_cents: 0,
-        monthly_budget_cents: null,
         public_profile: null,
       };
 
@@ -448,8 +424,6 @@ describe('AccountWebhooksService', () => {
         primary_owner_user_id: '901',
         created_by: null,
         updated_by: null,
-        current_usage_cents: 0,
-        monthly_budget_cents: null,
         public_profile: null,
       };
 
@@ -466,8 +440,6 @@ describe('AccountWebhooksService', () => {
         primary_owner_user_id: '902',
         created_by: null,
         updated_by: null,
-        current_usage_cents: 0,
-        monthly_budget_cents: null,
         public_profile: null,
       };
 

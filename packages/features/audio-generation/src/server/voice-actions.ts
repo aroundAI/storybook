@@ -33,12 +33,7 @@ import {
   getAccountElevenLabsApiKey,
   getProjectTTSModel,
 } from './project-audio-settings';
-import {
-  checkAccountBudget,
-  getVoiceIdForCharacter,
-  getVoiceSettings,
-  recordVoiceSpend,
-} from './voice-queries';
+import { getVoiceIdForCharacter, getVoiceSettings } from './voice-queries';
 
 // Note: These actions use type assertions because the film studio tables
 // (dialogue_lines, episodes, generation_jobs) are not yet in the generated
@@ -177,19 +172,6 @@ const generateDialogueVoice = enhanceAction(
 
     // 5. Estimate cost
     const estimatedCost = estimateVoiceCost(dialogueData.text.length);
-
-    // 6. Check account budget
-    const hasBudget = await checkAccountBudget(
-      client,
-      accountId,
-      estimatedCost,
-    );
-    if (!hasBudget) {
-      logger.warn({ ...ctx, estimatedCost, accountId }, 'Account over budget');
-      throw new ActionRefusal(
-        'Monthly budget exceeded. Please upgrade your plan or wait until next month.',
-      );
-    }
 
     // 8. Get API key from stored external_api_keys
     const apiKey = await getAccountElevenLabsApiKey(accountId);
@@ -349,9 +331,6 @@ const generateDialogueVoice = enhanceAction(
           completed_at: new Date().toISOString(),
         })
         .eq('id', jobData.id);
-
-      // 17. Increment account usage for cost tracking
-      await recordVoiceSpend(target, actualCost);
 
       logger.info(
         { ...ctx, audioUrl, duration: result.duration },
@@ -661,19 +640,6 @@ const generateVoiceFromText = enhanceAction(
     // 3. Estimate cost
     const estimatedCost = estimateVoiceCost(data.text.length);
 
-    // 4. Check account budget
-    const hasBudget = await checkAccountBudget(
-      client,
-      accountId,
-      estimatedCost,
-    );
-    if (!hasBudget) {
-      logger.warn({ ...ctx, estimatedCost, accountId }, 'Account over budget');
-      throw new ActionRefusal(
-        'Monthly budget exceeded. Please upgrade your plan or wait until next month.',
-      );
-    }
-
     // 5. Create generation job record for tracking
     const idempotencyKey = `voice-text-${user.id}-${Date.now()}`;
 
@@ -761,9 +727,6 @@ const generateVoiceFromText = enhanceAction(
           completed_at: new Date().toISOString(),
         })
         .eq('id', jobData.id);
-
-      // 11. Increment account usage for cost tracking
-      await recordVoiceSpend(target, actualCost);
 
       logger.info(
         { ...ctx, audioUrl, duration: result.duration },

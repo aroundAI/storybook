@@ -1,0 +1,27 @@
+{
+  "feature": "Account budget removed (owner, 2026-09-25)",
+  "mutations": [
+    {
+      "name": "BUDGET R1 a budget check comes back in the voice actions",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/voice-queries.ts",
+      "find": "// Note: These queries use type assertions because the film studio tables",
+      "replace": "// checkAccountBudget\n// Note: These queries use type assertions because the film studio tables",
+      "cwd": "apps/web",
+      "test": "test/account-budget-retired.test.ts",
+      "pattern": "names the budget machinery"
+    },
+    {
+      "name": "BUDGET DB1 a budget function is created again",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/account-budget-retired.test.sql",
+      "sql": "create function public.reset_monthly_usage() returns integer language sql as $$ select 0 $$;"
+    },
+    {
+      "name": "BUDGET DB2 the account trigger still reads the dropped usage column",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/account-budget-retired.test.sql",
+      "sql": "create or replace function kit.protect_account_fields () returns trigger as $$ begin if current_user in ('authenticated', 'anon') then if new.id <> old.id or new.email <> old.email or new.current_usage_cents is distinct from old.current_usage_cents then raise exception 'You do not have permission to update this field'; end if; end if; return NEW; end $$ language plpgsql set search_path = '';"
+    }
+  ]
+}
