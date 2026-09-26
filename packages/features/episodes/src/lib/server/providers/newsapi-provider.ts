@@ -35,16 +35,34 @@ interface NewsAPIResponse {
   articles: NewsAPIArticle[];
 }
 
+/** One `external_sources` row NewsAPI serves, by NewsAPI's own source id. */
+export interface NewsAPISource {
+  /** The `external_sources` row id. */
+  id: string;
+  /** NewsAPI's id for it (`config.source_id`), e.g. `reuters`. */
+  newsapiId: string;
+  credibilityTier: CredibilityTier;
+}
+
+/**
+ * Every NewsAPI source in one provider (KB-125). A search is one request
+ * with `sources=` listing them all, and each article is credited to the row
+ * whose NewsAPI id it carries, at that row's tier. It used to be one
+ * provider per row, each asking NewsAPI the same unfiltered question and
+ * each claiming every answer.
+ */
 export class NewsAPIProvider extends BaseExternalProvider {
   readonly name = 'NewsAPI';
   readonly category: SourceCategory = 'news';
-  readonly sourceId: string;
+  /** The provider, not a row: articles carry their own row's id. */
+  readonly sourceId = 'newsapi';
 
   private apiKey: string | null;
+  private readonly byNewsapiId: Map<string, NewsAPISource>;
 
-  constructor(sourceId: string, credibilityTier: CredibilityTier = 'tier_2') {
-    super(credibilityTier);
-    this.sourceId = sourceId;
+  constructor(sources: NewsAPISource[]) {
+    super();
+    this.byNewsapiId = new Map(sources.map((s) => [s.newsapiId, s]));
     this.apiKey = process.env.NEWSAPI_KEY ?? null;
     this.cacheTTLHours = 6; // News expires faster
   }
@@ -58,8 +76,11 @@ export class NewsAPIProvider extends BaseExternalProvider {
       throw new Error('NewsAPI key not configured (NEWSAPI_KEY)');
     }
 
+    if (this.byNewsapiId.size === 0) return [];
+
     const url = new URL(`${vendorUrl('newsapi')}/v2/everything`);
     url.searchParams.set('q', params.query);
+    url.searchParams.set('sources', [...this.byNewsapiId.keys()].join(','));
     url.searchParams.set('pageSize', String(params.pageSize ?? 20));
     url.searchParams.set('sortBy', 'relevancy');
 
@@ -89,13 +110,29 @@ export class NewsAPIProvider extends BaseExternalProvider {
     }
 
     const data = (await response.json()) as NewsAPIResponse;
+
+    // An article from a source not asked for cannot be credited, so it is
+    // dropped rather than attributed to a guess.
+    return data.articles.flatMap((article) => {
+      const source = article.source.id
+        ? this.byNewsapiId.get(article.source.id)
+        : undefined;
+      return source ? [this.toContent(article, source, params)] : [];
+    });
+  }
+
+  private toContent(
+    article: NewsAPIArticle,
+    source: NewsAPISource,
+    params: ExternalSearchParams,
+  ): ExternalContent {
     const cacheExpiry = this.getCacheExpiryDate();
     const now = new Date();
 
-    return data.articles.map((article) => ({
+    return {
       id: randomUUID(), // Temporary client-side ID; replaced by DB on upsert
       externalId: this.generateExternalId(article.url),
-      sourceId: this.sourceId,
+      sourceId: source.id,
       title: article.title,
       description: article.description ?? '',
       content: article.content,
@@ -107,10 +144,10 @@ export class NewsAPIProvider extends BaseExternalProvider {
       topics: [],
       entities: createEmptyEntities(),
       imageUrl: article.urlToImage ?? undefined,
-      credibilityTier: this.credibilityTier,
+      credibilityTier: source.credibilityTier,
       fetchedAt: now,
       cacheExpiresAt: cacheExpiry,
-    }));
+    };
   }
 
   private generateExternalId(url: string): string {
