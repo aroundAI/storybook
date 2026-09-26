@@ -35,28 +35,28 @@ library:
 acceptance_criteria:
   - text: "Builds complete context from database"
     met: false
-    reason: "not met — `episode_summaries` and `world_states` have no writer anywhere, so those sections are always empty (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:425`)"
+    reason: "not met — `episode_summaries` and `world_states` have no writer anywhere, so those sections are always empty (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:426`)"
   - text: "Tracks token usage accurately (±10% of actual)"
     met: false
-    reason: "unverified — estimate is JSON length ÷ 4 (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:91`); no test compares it with a tokenizer"
+    reason: "unverified — estimate is JSON length ÷ 4 (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:92`); no test compares it with a tokenizer"
   - text: "Enforces budget limits with configurable threshold"
     met: false
-    reason: "unverified — loaders stop at category caps (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:123`); world state only truncates atmosphere; no test"
+    reason: "unverified — loaders stop at category caps (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:124`); world state only truncates atmosphere; no test"
   - text: "Prioritizes content by scoring algorithm"
     met: false
     reason: "not met — `calculatePriority` (`packages/features/episodes/src/lib/canon/memory-strategies.ts:238`) is never called; loaders keep `created_at` order"
   - text: "Redistributes unused budget dynamically"
     met: false
-    reason: "not met — per-category budgets are fixed (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:638`); no redistribution code exists"
+    reason: "not met — per-category budgets are fixed (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:639`); no redistribution code exists"
   - text: "Applies memory horizon decay"
     met: false
-    reason: "not met — horizon is a hard episode window (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:408`); `getDecayFactor` is reached only from tests"
+    reason: "not met — horizon is a hard episode window (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:409`); `getDecayFactor` is reached only from tests"
   - text: "Handles overflow gracefully"
     met: false
-    reason: "unverified — items past a category cap are dropped (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:123`); no test exercises overflow"
+    reason: "unverified — items past a category cap are dropped (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:124`); no test exercises overflow"
   - text: "Formats context for prompt injection"
     met: true
-    evidence: "packages/features/episodes/src/lib/canon/memory-context-builder.ts:772"
+    evidence: "packages/features/episodes/src/lib/canon/memory-context-builder.ts:770"
   - text: "**New**: Formats context for UI display (Memory Context Preview)"
     met: false
     reason: "not met — never imported or rendered (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/memory-context-preview.tsx:55`; only commit: 88a122b0)"
