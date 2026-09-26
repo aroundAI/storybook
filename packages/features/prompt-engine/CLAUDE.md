@@ -171,6 +171,12 @@ console.log(rendered.userPrompt); // Variables interpolated
 console.log(rendered.llmConfig); // Provider, model, etc.
 ```
 
+Every placeholder must be filled: a `{{name}}` with no value and no `default`,
+or one the template does not declare in `variables`, throws — in this renderer
+and in the LLM worker's, which is the same function (`renderTemplate` in
+`src/lib/render-template.ts`). Send optional variables as `''` rather than
+leaving them out. `__tests__/prompt-variables.test.ts` checks every call site.
+
 ### Validation Functions
 
 ```typescript

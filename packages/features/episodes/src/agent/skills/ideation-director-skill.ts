@@ -138,10 +138,13 @@ const generateIdeasTool = createTool({
           season_context: seasonContext ?? '',
           previous_episodes: previousEpisodes ?? '',
           visual_style: visualStyle ?? '',
-          style: 'balanced',
           recurring_element: recurringElements ?? '',
           premise_depth_instructions: depthInstructions,
-          ...(weakIndices ? { weak_indices: weakIndices } : {}),
+          // Partial regeneration: which ideas to replace (KB-126 — the prompt
+          // never read this, so a "regenerate the weak ones" call rewrote all)
+          weak_indices: weakIndices
+            ? `**Regenerate only the ideas at these positions (0-based): ${weakIndices}.** Keep every other idea exactly as it was, in its place.`
+            : '',
         },
         context: {
           name: 'agent.ideationDirector.generateIdeas',

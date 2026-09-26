@@ -17,6 +17,7 @@
   "exports": {
     "./server": "./src/lib/server/index.ts",
     "./llm-job-target": "./src/lib/server/llm-job-target.ts",
+    "./render-template": "./src/lib/render-template.ts",
     "./prompt-registry": "./src/lib/server/prompt-registry.ts",
     "./llm-job-payloads": "./src/lib/llm-job-payloads.ts",
     "./types": "./src/lib/types.ts",

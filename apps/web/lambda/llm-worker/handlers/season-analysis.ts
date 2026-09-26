@@ -89,7 +89,7 @@ function formatFactsForSeasonPrompt(facts: ExternalFact[]): string {
  */
 export async function processSeasonAnalysis(
   payload: Record<string, unknown>,
-  _supabase: SupabaseClient<Database>,
+  supabase: SupabaseClient<Database>,
 ): Promise<{ success: boolean; data: AnalysisResult }> {
   const { projectId, roadmap, externalFacts } = parseLlmJobPayload(
     'season-analysis',
@@ -106,6 +106,26 @@ export async function processSeasonAnalysis(
       ? formatFactsForSeasonPrompt(sanitizeStrings(externalFacts))
       : '';
 
+  // The project's recurring elements: the template has a place for them,
+  // and nothing filled it (KB-126)
+  const { data: project } = await supabase
+    .from('projects')
+    .select('metadata')
+    .eq('id', projectId)
+    .single();
+  // Read for the model only: defused here, as season-outline does (KB-101)
+  const projectMetadata = sanitizeStrings(
+    (project?.metadata as Record<string, unknown>) || {},
+  );
+  const { formatRecurringElementsForPrompt } = await import(
+    '../utils/context-builder'
+  );
+  const recurringElement = formatRecurringElementsForPrompt(
+    Array.isArray(projectMetadata.recurringElements)
+      ? projectMetadata.recurringElements
+      : [],
+  );
+
   // Use Lambda-safe LLM executor
   const { data: result } = await executeLLMForLambda<AnalysisResult>({
     templateSlug: 'season-generation',
@@ -113,6 +133,7 @@ export async function processSeasonAnalysis(
       // The user's roadmap and facts, defused for the model (KB-101)
       roadmap: sanitizeForPrompt(roadmap),
       verified_facts: verifiedFacts,
+      recurring_element: recurringElement,
     },
   });
 

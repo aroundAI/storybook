@@ -1,0 +1,45 @@
+{
+  "feature": "KB-126 (one prompt renderer)",
+  "mutations": [
+    {
+      "name": "RT1 the shared renderer blanks an unfilled placeholder",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/lib/render-template.ts",
+      "find": "      unfilled.add(name);\n      return match;",
+      "replace": "      return '';",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/render-template.test.ts",
+      "pattern": "refuses an optional placeholder"
+    },
+    {
+      "name": "RT2 the worker renders unfilled placeholders its own way",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/lib/render-template.ts",
+      "find": "      unfilled.add(name);\n      return match;",
+      "replace": "      return '';",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/render-prompt.test.ts",
+      "pattern": "refuses an optional placeholder"
+    },
+    {
+      "name": "RT3 a value's own placeholders are expanded",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/lib/render-template.ts",
+      "find": "      if (provided(variables[name])) return String(variables[name]);",
+      "replace": "      if (provided(variables[name])) return fill(String(variables[name]));",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/render-template.test.ts",
+      "pattern": "does not expand"
+    },
+    {
+      "name": "RT4 the worker joins system prompts in file order again",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/llm-utils.ts",
+      "find": "    template.slug || template.name || 'unknown',\n    template,\n    variables,\n",
+      "replace": "    template.slug || template.name || 'unknown',\n    {\n      ...template,\n      system_prompts: undefined,\n      system_prompt: (template.system_prompts ?? []).map((part) => part.content).join('\\n\\n'),\n    },\n    variables,\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/render-prompt.test.ts",
+      "pattern": "exactly as prompt-engine does"
+    }
+  ]
+}

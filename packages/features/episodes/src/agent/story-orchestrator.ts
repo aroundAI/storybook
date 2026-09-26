@@ -149,7 +149,11 @@ export async function runStoryOrchestrator(
       {
         userPrompt: buildStoryPrompt(input),
       },
-      { accountId: input.accountId },
+      {
+        accountId: input.accountId,
+        // The director's template reads the facts itself (KB-126)
+        _verifiedFacts: input.verifiedFacts,
+      },
     );
 
   if (!result.success || !result.data) {

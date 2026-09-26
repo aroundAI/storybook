@@ -6,6 +6,7 @@
  */
 import type { LLMProvider } from '@kit/llm';
 import { createLLMClient } from '@kit/llm';
+import { renderTemplate } from '@kit/prompt-engine/render-template';
 
 import { type PromptTemplate, getPromptTemplate } from './prompt-registry';
 
@@ -38,42 +39,13 @@ export function renderPrompt(
   template: PromptTemplate,
   variables: Record<string, unknown>,
 ): RenderedPrompt {
-  // Handle system prompts - can be array or string
-  let systemPrompt: string;
-  if (Array.isArray(template.system_prompts)) {
-    // New format: array of system prompt objects with 'content' field
-    systemPrompt = template.system_prompts.map((p) => p.content).join('\n\n');
-  } else if (typeof template.system_prompt === 'string') {
-    // Legacy format: single system_prompt string
-    systemPrompt = template.system_prompt;
-  } else {
-    // Fallback to empty string
-    systemPrompt = '';
-  }
-
-  // Get user prompt
-  let userPrompt = template.user_prompt || '';
-
-  // Replace variables in prompts
-  for (const [key, value] of Object.entries(variables)) {
-    const placeholder = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
-    systemPrompt = systemPrompt.replace(placeholder, String(value));
-    userPrompt = userPrompt.replace(placeholder, String(value));
-  }
-
-  // Apply defaults for missing optional variables
-  for (const [key, config] of Object.entries(template.variables || {})) {
-    if (!variables[key] && config.default !== undefined) {
-      const placeholder = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
-      systemPrompt = systemPrompt.replace(placeholder, String(config.default));
-      userPrompt = userPrompt.replace(placeholder, String(config.default));
-    }
-  }
-
-  // Remove any remaining unmatched placeholders (optional variables not provided)
-  const unfilledPlaceholder = /\{\{\s*\w+\s*\}\}/g;
-  systemPrompt = systemPrompt.replace(unfilledPlaceholder, '');
-  userPrompt = userPrompt.replace(unfilledPlaceholder, '');
+  // The same renderer prompt-engine uses (KB-126): an unfilled or
+  // undeclared placeholder is an error, not blanked out of the text
+  const { systemPrompt, userPrompt } = renderTemplate(
+    template.slug || template.name || 'unknown',
+    template,
+    variables,
+  );
 
   return {
     templateSlug: template.name || template.slug || 'unknown',
