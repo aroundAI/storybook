@@ -3,6 +3,12 @@
 import { AlertCircle, Loader2, Trash2 } from 'lucide-react';
 
 import { refusalMessage, unwrap } from '@kit/next/action-result';
+import {
+  PLATFORMS,
+  PLATFORMS_DELETED_ON_UNPUBLISH,
+  PLATFORM_NAMES,
+  type Platform,
+} from '@kit/publishing/lib/platforms';
 import { deleteEpisodePublishesAction } from '@kit/publishing/server';
 import { Button } from '@kit/ui/button';
 import {
@@ -12,6 +18,23 @@ import {
   DialogTitle,
 } from '@kit/ui/dialog';
 import { toast } from '@kit/ui/sonner';
+
+// What the publish worker actually deletes (KB-119): the text follows the
+// list, so it cannot promise more or less than the worker does
+const REMOTELY_DELETED = joinNames(PLATFORMS_DELETED_ON_UNPUBLISH);
+const ONLY_RECORD_REMOVED = joinNames(
+  PLATFORMS.filter(
+    (platform) =>
+      !(PLATFORMS_DELETED_ON_UNPUBLISH as readonly string[]).includes(platform),
+  ),
+);
+
+function joinNames(platforms: readonly Platform[]) {
+  const names = platforms.map((platform) => PLATFORM_NAMES[platform]);
+  return names.length > 1
+    ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
+    : (names[0] ?? '');
+}
 
 interface DeleteAllDialogProps {
   open: boolean;
@@ -36,17 +59,17 @@ export function DeleteAllDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-red-500" />
-            Delete All Publish Records
+            Delete All Published Videos
           </DialogTitle>
         </DialogHeader>
-        <div className="py-4">
+        <div className="py-4" data-test="publish-delete-all-copy">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            This will permanently delete all publish records for this episode.
-            This action cannot be undone.
+            This deletes this episode&apos;s videos on {REMOTELY_DELETED}, and
+            removes every publish record for the episode. This cannot be undone.
           </p>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-500">
-            Note: This only removes records from our system. Videos already
-            published to platforms will need to be deleted manually.
+            Videos on {ONLY_RECORD_REMOVED} stay up: only our record of them is
+            removed. Delete those on the platform.
           </p>
         </div>
         <div className="flex justify-end gap-3">

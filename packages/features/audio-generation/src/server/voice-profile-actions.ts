@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
+import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -58,17 +59,15 @@ export const listVoicesAction = enhanceAction(
       throw new Error('Project ID is required to list voices');
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: project } = await (client as any)
-      .from('projects')
-      .select('account_id')
-      .eq('id', data.projectId)
-      .single();
+    // Listing is the first step of assigning a voice, and it reads the
+    // account's ElevenLabs key: project writers only (KB-112)
+    const target = await authorizeProjectTarget(client, data.projectId);
 
-    const accountId = project?.account_id;
-    if (!accountId) {
-      throw new Error('Could not find project account');
+    if (!target) {
+      throw new ActionRefusal('Project not found or access denied');
     }
+
+    const { accountId } = target;
 
     // Get API key - stored keys only, no fallback
     const apiKey = await getAccountElevenLabsApiKey(accountId);

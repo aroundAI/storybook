@@ -20,7 +20,7 @@ import {
   getOAuthAppCredentials,
 } from '../server/oauth-app-credentials';
 import type { PlatformConnection } from './database-types';
-import { type Platform, isPlatform } from './platforms';
+import { PLATFORM_NAMES, type Platform, isPlatform } from './platforms';
 import { EXPIRY_BUFFER_MS, isWithinRefreshWindow } from './token-expiry';
 
 export type { Platform };
@@ -649,15 +649,6 @@ async function refreshXToken(
     expiresAt: new Date(Date.now() + data.expires_in * 1000),
   };
 }
-
-const PLATFORM_NAMES: Record<Platform, string> = {
-  youtube: 'YouTube',
-  tiktok: 'TikTok',
-  instagram: 'Instagram',
-  facebook: 'Facebook',
-  linkedin: 'LinkedIn',
-  twitter: 'X',
-};
 
 /**
  * Formats platform name for display

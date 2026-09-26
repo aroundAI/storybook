@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
+import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -62,11 +63,16 @@ const startVoiceClone = enhanceAction(
       throw new ActionRefusal('Asset not found');
     }
 
-    const accountId = asset.projects?.account_id;
-    if (!accountId) {
-      logger.error(ctx, 'Could not determine account for asset');
-      throw new Error('Could not determine account');
+    // Cloning spends the account's ElevenLabs key: the caller must be able
+    // to write the asset's project, not only read it (KB-112, the KB-46 rule)
+    const target = await authorizeProjectTarget(client, asset.project_id);
+
+    if (!target) {
+      logger.warn(ctx, 'Voice clone refused: no write access to the project');
+      throw new ActionRefusal('Asset not found');
     }
+
+    const { accountId } = target;
 
     // Store consent record
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -218,7 +224,19 @@ const deleteVoiceClone = enhanceAction(
       throw new ActionRefusal('Voice profile not found');
     }
 
-    const accountId = profile.assets?.projects?.account_id;
+    // Deleting spends the account's ElevenLabs key and removes the voice for
+    // every project: the caller must be able to write this one (KB-112)
+    const projectId = profile.assets?.project_id;
+    const target = projectId
+      ? await authorizeProjectTarget(client, projectId)
+      : null;
+
+    if (!target) {
+      logger.warn(ctx, 'Voice clone deletion refused: no write access');
+      throw new ActionRefusal('Voice profile not found');
+    }
+
+    const { accountId } = target;
 
     // Delete from ElevenLabs if we have a provider_voice_id
     if (profile.provider_voice_id && accountId) {

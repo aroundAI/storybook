@@ -17,6 +17,27 @@ export const PLATFORMS = [
 
 export type Platform = (typeof PLATFORMS)[number];
 
+/** How each platform is named to the user. */
+export const PLATFORM_NAMES: Record<Platform, string> = {
+  youtube: 'YouTube',
+  tiktok: 'TikTok',
+  instagram: 'Instagram',
+  facebook: 'Facebook',
+  linkedin: 'LinkedIn',
+  twitter: 'X',
+};
+
+/**
+ * Where unpublishing also deletes the video on the platform: the platforms
+ * the publish worker has a delete handler for (`deleteFrom<Platform>` in
+ * `apps/web/lambda/publish-worker/handlers/`). Elsewhere only our record is
+ * removed. `unpublish-platforms.test.ts` fails if the two differ.
+ */
+export const PLATFORMS_DELETED_ON_UNPUBLISH = [
+  'youtube',
+  'facebook',
+] as const satisfies readonly Platform[];
+
 /** Narrows a stored `platform` string, so it is checked rather than cast. */
 export function isPlatform(value: string): value is Platform {
   return (PLATFORMS as readonly string[]).includes(value);
