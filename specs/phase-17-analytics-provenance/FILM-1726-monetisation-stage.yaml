@@ -9,7 +9,7 @@ dependencies:
   - spec_id: "FILM-1703"
     note: null
   - spec_id: "FILM-1711"
-    note: null
+    note: "#289's code (merged 2026-09-22): scope declarations, the binding test and the access states. Live verification is FILM-1725 Checks F–H, not this dependency"
   - spec_id: "FILM-1720"
     note: null
 summary: >
@@ -102,6 +102,16 @@ notes: |
   we write zero-valued api rows — figures marked authoritative that measure
   nothing. This is a live correctness concern independent of whether the stage
   ships, and it may belong in FILM-1711 rather than here. Decide which.
+
+  **Resolved by FILM-1711 (#289, merged 2026-09-22; recorded 2026-09-25).**
+  The sync writes revenue only when it was measured
+  (`if (normalizedData.revenue_measured)`,
+  `packages/features/content-analytics/src/server/analytics-sync-cron.ts:536`),
+  and YouTube without the monetary scope is unmeasured; and
+  `planRevenueRowWrites`
+  (`packages/features/content-analytics/src/lib/revenue-mix.ts:128`) never
+  inserts a zero, only writes one to correct an existing row. Merged, not yet
+  deployed — see FILM-1711's Deployment note.
 
   ## 3. What this spec must settle
 
