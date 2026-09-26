@@ -23,6 +23,7 @@ const outline = {
   locations: '- The 40th floor',
   verified_facts: '',
   recurring_element: '',
+  surrounding_episodes: '',
 };
 
 describe('prompt-engine rendering', () => {

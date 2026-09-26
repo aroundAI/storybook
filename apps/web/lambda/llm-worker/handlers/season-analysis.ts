@@ -113,7 +113,10 @@ export async function processSeasonAnalysis(
     .select('metadata')
     .eq('id', projectId)
     .single();
-  const projectMetadata = (project?.metadata as Record<string, unknown>) || {};
+  // Read for the model only: defused here, as season-outline does (KB-101)
+  const projectMetadata = sanitizeStrings(
+    (project?.metadata as Record<string, unknown>) || {},
+  );
   const { formatRecurringElementsForPrompt } = await import(
     '../utils/context-builder'
   );
