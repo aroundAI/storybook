@@ -5,6 +5,7 @@ import {
   YouTubeAnalyticsProvider,
   YouTubeAnalyticsScopeError,
   createYouTubeAnalyticsProvider,
+  totalsFromDays,
 } from '../src/providers/youtube/youtube-analytics';
 
 // Mock googleapis before importing the provider
@@ -134,23 +135,25 @@ describe('YouTubeAnalyticsProvider', () => {
       expect(result.dailyData).toBeDefined();
     });
 
-    // Every reports.query answers by what it was asked for, so a test can tell
-    // the totals call from the revenue call the way YouTube does.
-    const TOTALS_ROW = [1000, 50, 2, 25, 10, 5000, 180, 45.5, 20, 5];
+    // Every reports.query answers by what it was asked for. The totals are
+    // the period's days summed (FILM-1712: there is no separate totals call),
+    // so the daily query answers with two days.
+    const DAY_ONE = [400, 20, 2, 5, 1, 300, 45, 45.5, 5, 1];
+    const DAY_TWO = [600, 30, 3, 7, 2, 450, 45, 50.5, 6, 2];
 
     function answerByMetrics(revenue: () => Promise<unknown>) {
       mockReportsQuery.mockImplementation(
         ({ metrics, dimensions }: { metrics: string; dimensions?: string }) =>
           metrics.includes('estimatedRevenue')
             ? revenue()
-            : Promise.resolve({
-                data: {
-                  rows:
-                    !dimensions && metrics.startsWith('views,likes,dislikes')
-                      ? [TOTALS_ROW]
-                      : [],
-                },
-              }),
+            : dimensions === 'day' && metrics !== 'engagedViews'
+              ? Promise.resolve(
+                  dailyAnswer([
+                    ['2025-01-01', ...DAY_ONE],
+                    ['2025-01-02', ...DAY_TWO],
+                  ]),
+                )
+              : Promise.resolve({ data: { rows: [] } }),
       );
     }
 
@@ -160,18 +163,44 @@ describe('YouTubeAnalyticsProvider', () => {
       endDate: new Date('2025-01-31'),
     };
 
+    // The two days summed; the averages from their definitions:
+    // duration = minutes watched × 60 / views = 750 × 60 / 1000 = 45 s;
+    // percentage viewed, weighted by views = (400 × 45.5 + 600 × 50.5) / 1000.
     const NON_REVENUE_TOTALS = {
       views: 1000,
       likes: 50,
-      dislikes: 2,
-      comments: 25,
-      shares: 10,
-      estimatedMinutesWatched: 5000,
-      averageViewDuration: 180,
-      averageViewPercentage: 45.5,
-      subscribersGained: 20,
-      subscribersLost: 5,
+      dislikes: 5,
+      comments: 12,
+      shares: 3,
+      estimatedMinutesWatched: 750,
+      averageViewDuration: 45,
+      averageViewPercentage: 48.5,
+      subscribersGained: 11,
+      subscribersLost: 3,
     };
+
+    // FILM-1712. The totals query asked YouTube again for the figures the
+    // daily query already returns (since KB-94), and its answer reached only
+    // the write-only `extra_metrics`. One quota unit per video per sync, gone.
+    it('makes no video-level totals query: every non-revenue query is by a dimension', async () => {
+      answerByMetrics(() => Promise.reject(new Error('must not be called')));
+
+      await provider.getVideoAnalytics(input);
+
+      const undimensioned = mockReportsQuery.mock.calls
+        .map(([params]) => params as { metrics: string; dimensions?: string })
+        .filter((params) => !params.dimensions);
+
+      expect(undimensioned).toEqual([]);
+    });
+
+    it('derives the totals from the days, with the averages from their definitions', async () => {
+      answerByMetrics(() => Promise.reject(new Error('must not be called')));
+
+      const result = await provider.getVideoAnalytics(input);
+
+      expect(result.totals).toMatchObject(NON_REVENUE_TOTALS);
+    });
 
     it('does not ask for revenue unless told the monetary scope is held', async () => {
       answerByMetrics(() => Promise.reject(new Error('must not be called')));
@@ -565,16 +594,14 @@ describe('YouTubeAnalyticsProvider', () => {
     });
 
     it('should handle API errors gracefully for demographics data', async () => {
-      mockReportsQuery
-        .mockResolvedValueOnce({
-          data: { rows: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]] },
-        }) // totals
-        .mockResolvedValueOnce({ data: { rows: [] } }) // daily
-        .mockResolvedValueOnce({ data: { rows: [] } }) // retention
-        .mockRejectedValueOnce(new Error('Insufficient views')) // demographics - fails
-        .mockRejectedValueOnce(new Error('Insufficient views')) // demographics gender - fails
-        .mockResolvedValueOnce({ data: { rows: [] } }) // traffic
-        .mockResolvedValueOnce({ data: { rows: [] } }); // geography
+      // Answered by what is asked, not by call order: both demographics
+      // queries (age group, gender) fail, everything else is empty.
+      mockReportsQuery.mockImplementation(
+        ({ dimensions }: { dimensions?: string }) =>
+          dimensions === 'ageGroup' || dimensions === 'gender'
+            ? Promise.reject(new Error('Insufficient views'))
+            : Promise.resolve({ data: { rows: [] } }),
+      );
 
       const result = await provider.getVideoAnalytics({
         videoId: 'test-video-id',
@@ -622,5 +649,47 @@ describe('YouTubeAnalyticsProvider', () => {
         }),
       ).rejects.toThrow('Network error');
     });
+  });
+});
+
+describe('totalsFromDays (FILM-1712)', () => {
+  const day = (
+    date: string,
+    views: number,
+    minutes: number,
+    percentage: number,
+  ) => ({
+    date,
+    views,
+    likes: 0,
+    comments: 0,
+    shares: 0,
+    estimatedMinutesWatched: minutes,
+    averageViewDuration: views > 0 ? (minutes * 60) / views : 0,
+    subscribersGained: 0,
+    dislikes: 0,
+    averageViewPercentage: percentage,
+    subscribersLost: 0,
+  });
+
+  it('recomputes the averages from their definitions, not by averaging the days', () => {
+    // A small day and a large one: an average of the days' averages would
+    // give 35 s and 50 %; the period's own figures are 15 s and 26 %.
+    const totals = totalsFromDays([
+      day('2026-09-01', 100, 100, 80),
+      day('2026-09-02', 900, 150, 20),
+    ]);
+
+    expect(totals.views).toBe(1000);
+    expect(totals.estimatedMinutesWatched).toBe(250);
+    expect(totals.averageViewDuration).toBe(15);
+    expect(totals.averageViewPercentage).toBe(26);
+  });
+
+  it('a period with no views has no average, and reads 0', () => {
+    const totals = totalsFromDays([day('2026-09-01', 0, 0, 0)]);
+
+    expect(totals.averageViewDuration).toBe(0);
+    expect(totals.averageViewPercentage).toBe(0);
   });
 });

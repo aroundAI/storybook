@@ -368,8 +368,19 @@ export function buildAudienceRows(input: {
   for (const city of data.audience?.cities ?? []) {
     push('city', city.city, { views: city.count });
   }
-  for (const genderAge of data.audience?.genderAge ?? []) {
-    push('age_group', genderAge.dimension, { views: genderAge.count });
+  for (const age of data.audience?.ages ?? []) {
+    push('age_group', age.ageGroup, { views: age.count });
+  }
+  // Meta's F/M/U, stored as the gender values TikTok's rows use
+  const INSTAGRAM_GENDER: Record<string, string> = {
+    F: 'female',
+    M: 'male',
+    U: 'other',
+  };
+  for (const gender of data.audience?.genders ?? []) {
+    push('gender', INSTAGRAM_GENDER[gender.gender] ?? gender.gender, {
+      views: gender.count,
+    });
   }
 
   return rows;

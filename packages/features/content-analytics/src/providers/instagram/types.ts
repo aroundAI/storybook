@@ -10,7 +10,6 @@
  */
 export interface InstagramInsightsInput {
   mediaId: string;
-  metrics?: InstagramMetric[];
 }
 
 /**
@@ -23,11 +22,10 @@ export type InstagramMetric =
   | 'likes'
   | 'comments'
   | 'saved'
-  | 'shares'
-  /** FEED and STORY only. Not available for REELS. */
-  | 'profile_visits'
-  /** FEED and STORY only. Not available for REELS. */
-  | 'follows';
+  | 'shares';
+// `profile_visits` and `follows` are FEED and STORY only — not REELS, which is
+// what creators publish — and we request neither. They are not declared here
+// so no result can claim them (FILM-1712; provider-result-fields.test.ts).
 
 /**
  * `media_type` as Instagram returns it. A Reel is `VIDEO`; the surface a media
@@ -63,8 +61,6 @@ export interface InstagramTotals {
   comments: number;
   saved: number;
   shares: number;
-  profileVisits: number;
-  follows: number;
 }
 
 /**
@@ -79,8 +75,13 @@ export interface InstagramAudienceData {
     city: string;
     count: number;
   }>;
-  genderAge: Array<{
-    dimension: string; // e.g., "F.25-34"
+  /** Meta reports age and gender as separate breakdowns (FILM-1712) */
+  ages: Array<{
+    ageGroup: string; // e.g., "25-34"
+    count: number;
+  }>;
+  genders: Array<{
+    gender: string; // "F", "M" or "U"
     count: number;
   }>;
 }
