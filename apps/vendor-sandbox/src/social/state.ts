@@ -5,7 +5,6 @@ import {
   avoidSentinel,
   cumulativeAt,
   dailySeries,
-  reportedAt,
 } from './growth';
 import * as names from './names';
 import {
@@ -66,6 +65,8 @@ export interface SocialObject {
   profile: Profile;
   /** Created on first sight of an id the app already had (a seeded publish). */
   adopted: boolean;
+  /** What the upload said about itself, as the vendor keeps it (privacy, category, …). */
+  details?: Record<string, string | boolean | string[]>;
 }
 
 export type TokenCheck =
@@ -75,13 +76,35 @@ export type TokenCheck =
 
 export type Metric = 'views' | Exclude<RatioName, 'completion'>;
 
+/** A one-time authorization code, as a consent screen issues it. */
+export interface AuthCode {
+  value: string;
+  platform: Platform;
+  accountId: string;
+  scopes: string[];
+  clientId: string;
+  redirectUri: string;
+  /** PKCE (X): the challenge the authorize request carried. */
+  codeChallenge?: string;
+  expiresMs: number;
+  used: boolean;
+}
+
+export type CodeCheck =
+  | { ok: true; code: AuthCode }
+  | { ok: false; reason: 'unknown' | 'used' | 'expired' | 'client' | 'redirect' };
+
 export interface SocialStateJson {
   seed: number;
   accounts: SocialAccount[];
   tokens: SocialToken[];
   objects: SocialObject[];
   counters: Record<string, number>;
+  codes?: AuthCode[];
+  records?: Record<string, unknown[]>;
 }
+
+const CODE_TTL_MS = 10 * 60_000;
 
 const HOUR_MS = 3_600_000;
 
@@ -121,6 +144,9 @@ export class SocialState {
   private tokens = new Map<string, SocialToken>();
   private objects = new Map<string, SocialObject>();
   private counters = new Map<string, number>();
+  private codes = new Map<string, AuthCode>();
+  /** Vendor-specific lists (YouTube Reporting jobs, …), by namespace. */
+  private records = new Map<string, unknown[]>();
 
   constructor(options: { seed: number; speed?: number; now?: () => number }) {
     this.seed = options.seed;
@@ -145,6 +171,77 @@ export class SocialState {
     this.tokens.clear();
     this.objects.clear();
     this.counters.clear();
+    this.codes.clear();
+    this.records.clear();
+  }
+
+  /**
+   * The account a platform's consent screen is signed in as: the first one,
+   * created on first use. One person per platform per run, so reconnecting
+   * finds the same channel, as it would in production.
+   */
+  signedIn(platform: Platform): SocialAccount {
+    return this.listAccounts(platform)[0] ?? this.createAccount(platform);
+  }
+
+  // ---- authorization codes ---------------------------------------------
+
+  issueCode(
+    platform: Platform,
+    accountId: string,
+    scopes: string[],
+    grant: { clientId: string; redirectUri: string; codeChallenge?: string },
+  ): AuthCode {
+    const rng = this.rngFor(`code:${platform}:${this.next(`code:${platform}`)}`);
+    const code: AuthCode = {
+      value: `sbx-code-${token(rng, 32)}`,
+      platform,
+      accountId,
+      scopes: [...scopes],
+      ...grant,
+      expiresMs: this.now() + CODE_TTL_MS,
+      used: false,
+    };
+    this.codes.set(code.value, code);
+    return code;
+  }
+
+  /** Redeems a code once, for the client and redirect it was issued to. */
+  redeemCode(
+    value: string,
+    clientId: string,
+    redirectUri: string | undefined,
+  ): CodeCheck {
+    const code = this.codes.get(value);
+    if (!code) return { ok: false, reason: 'unknown' };
+    if (code.used) return { ok: false, reason: 'used' };
+    if (this.now() >= code.expiresMs) return { ok: false, reason: 'expired' };
+    if (code.clientId !== clientId) return { ok: false, reason: 'client' };
+    if (redirectUri !== undefined && code.redirectUri !== redirectUri)
+      return { ok: false, reason: 'redirect' };
+    code.used = true;
+    return { ok: true, code };
+  }
+
+  /** The token this value names, whatever its state (for refresh and revoke). */
+  token(value: string) {
+    return this.tokens.get(value);
+  }
+
+  // ---- vendor records -----------------------------------------------------
+
+  list<T>(namespace: string): T[] {
+    return (this.records.get(namespace) ?? []) as T[];
+  }
+
+  add<T>(namespace: string, item: T) {
+    this.records.set(namespace, [...this.list<T>(namespace), item]);
+    return item;
+  }
+
+  /** A fresh id for a vendor record, replayable from the seed. */
+  recordId(namespace: string, length = 24) {
+    return token(this.rngFor(`${namespace}:${this.next(namespace)}`), length);
   }
 
   // ---- accounts ---------------------------------------------------------
@@ -270,6 +367,7 @@ export class SocialState {
       title?: string;
       caption?: string;
       durationSeconds?: number;
+      details?: SocialObject['details'];
     } = {},
   ): SocialObject {
     const rng = this.rngFor(
@@ -285,6 +383,7 @@ export class SocialState {
       publishedMs: this.now(),
       profile: drawProfile(rng, platform),
       adopted: false,
+      ...(options.details ? { details: options.details } : {}),
     };
     this.objects.set(`${platform}:${object.id}`, object);
     return object;
@@ -335,9 +434,13 @@ export class SocialState {
   }
 
   /**
-   * A metric's cumulative figure. Views follow the curve; every other metric
-   * is its ratio of views, rounded down, so it rises with views and can
-   * never exceed them.
+   * A metric's cumulative figure at `atMs`, as the vendor reports it now.
+   * Views follow the curve; every other metric is its ratio of views,
+   * rounded down, so it rises with views and can never exceed them.
+   *
+   * A reporting delay hides what happened in the last `delay` of simulated
+   * time: the figure stops at `now - delay`. It does not shift history — a
+   * past day holds what happened that day, whenever it is asked about.
    */
   cumulative(
     object: SocialObject,
@@ -345,11 +448,12 @@ export class SocialState {
     atMs = this.now(),
     delaySimulatedMs = 0,
   ) {
-    const views = reportedAt(
+    const processedUntil =
+      this.speed > 0 ? this.now() - delaySimulatedMs / this.speed : this.now();
+    const views = cumulativeAt(
       this.growth(object),
-      atMs,
+      Math.min(atMs, processedUntil),
       this.speed,
-      delaySimulatedMs,
     );
     return avoidSentinel(
       metric === 'views'
@@ -397,6 +501,8 @@ export class SocialState {
       tokens: [...this.tokens.values()],
       objects: [...this.objects.values()],
       counters: Object.fromEntries(this.counters),
+      codes: [...this.codes.values()],
+      records: Object.fromEntries(this.records),
     };
   }
 
@@ -407,6 +513,8 @@ export class SocialState {
     for (const t of json.tokens) this.tokens.set(t.value, t);
     for (const o of json.objects) this.objects.set(`${o.platform}:${o.id}`, o);
     for (const [k, v] of Object.entries(json.counters)) this.counters.set(k, v);
+    for (const c of json.codes ?? []) this.codes.set(c.value, c);
+    for (const [k, v] of Object.entries(json.records ?? {})) this.records.set(k, v);
   }
 
   summary() {

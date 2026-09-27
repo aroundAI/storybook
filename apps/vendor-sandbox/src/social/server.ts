@@ -43,9 +43,14 @@ export interface SocialRequest {
   method: string;
   state: SandboxState;
   social: SocialState;
+  /** This origin as the app reached it, e.g. `http://127.0.0.1:4103`. */
+  self: string;
   /** Tag the ledger entry with the object the call was about. */
   about(objectId: string): void;
 }
+
+/** A vendor's own error body for an injected failure (`/__sandbox/fail`). */
+export type FailureShape = (status: number) => { status: number; body: unknown };
 
 const SECRET_KEYS =
   'access_token|refresh_token|client_secret|id_token|code|code_verifier|token|fb_exchange_token|input_token';
@@ -80,12 +85,14 @@ export function socialHandler(
   state: SandboxState,
   social: SocialState,
   routes: readonly SocialRoute[] = [],
+  failure?: FailureShape,
 ): Handler {
   return async (req, res, body) => {
     const started = Date.now();
     const url = new URL(req.url ?? '/', 'http://sandbox.localhost');
     const method = req.method ?? 'GET';
     let object: string | undefined;
+    let injectedFailure = false;
 
     // Record what was served, whichever route answered.
     const end = res.end.bind(res);
@@ -98,7 +105,19 @@ export function socialHandler(
 
     try {
       let answered = false;
-      for (const route of routes) {
+
+      const injected = state.takeFailure(origin, url.pathname);
+      if (injected) {
+        const shaped = failure?.(injected.status) ?? {
+          status: injected.status,
+          body: { error: { code: injected.status, message: 'injected failure' } },
+        };
+        sendJson(res, shaped.status, shaped.body);
+        answered = true;
+        injectedFailure = true;
+      }
+
+      for (const route of answered ? [] : routes) {
         answered = await route({
           req,
           res,
@@ -107,6 +126,7 @@ export function socialHandler(
           method,
           state,
           social,
+          self: `http://${req.headers.host ?? '127.0.0.1'}`,
           about: (id) => {
             object = id;
           },
@@ -134,6 +154,7 @@ export function socialHandler(
           : undefined,
         responseSummary: served ? summarise(redactSecrets(served)) : undefined,
         durationMs: Date.now() - started,
+        ...(injectedFailure ? { injectedFailure } : {}),
         ...(object ? { object } : {}),
       });
     }

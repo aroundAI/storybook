@@ -11,6 +11,7 @@ import {
   socialHandler,
 } from './social/server';
 import { SocialState } from './social/state';
+import { SOCIAL_ROUTES } from './social/vendors';
 import { SandboxState } from './state';
 import { elevenLabsHandler } from './vendors/elevenlabs';
 import { geminiHandler } from './vendors/gemini';
@@ -85,7 +86,13 @@ export async function createSandbox(
     );
     for (const origin of Object.keys(SOCIAL_ORIGINS) as SocialOrigin[]) {
       servers[origin] = await listen(
-        socialHandler(origin, state, social),
+        socialHandler(
+          origin,
+          state,
+          social,
+          SOCIAL_ROUTES[origin].routes,
+          SOCIAL_ROUTES[origin].failure,
+        ),
         ports[origin],
       );
     }
