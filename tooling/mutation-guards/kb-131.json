@@ -1,0 +1,35 @@
+{
+  "feature": "KB-131",
+  "mutations": [
+    {
+      "name": "JSON-LD: the helper stops escaping <",
+      "kind": "unit",
+      "file": "apps/web/lib/json-ld.ts",
+      "find": "    .replace(/</g, '\\\\u003c')\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "test": "lib/__tests__/json-ld.test.ts",
+      "pattern": "leaves nothing the HTML parser can act on"
+    },
+    {
+      "name": "JSON-LD: JsonLd goes back to a bare JSON.stringify",
+      "kind": "unit",
+      "file": "apps/web/lib/structured-data.tsx",
+      "find": "dangerouslySetInnerHTML={{ __html: serializeJsonLd(data) }}",
+      "replace": "dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}",
+      "cwd": "apps/web",
+      "test": "lib/__tests__/json-ld.test.ts",
+      "pattern": "bare JSON.stringify"
+    },
+    {
+      "name": "Invite email: interpolation stops escaping",
+      "kind": "unit",
+      "file": "packages/email-templates/src/lib/i18n.ts",
+      "find": "      ns: params.namespace,\n",
+      "replace": "      ns: params.namespace,\n      interpolation: { escapeValue: false },\n",
+      "cwd": "apps/web",
+      "test": "test/invite-email-escaping.test.tsx",
+      "pattern": "escapes the team and inviter names"
+    }
+  ]
+}

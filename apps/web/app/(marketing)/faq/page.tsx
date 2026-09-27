@@ -8,6 +8,7 @@ import { Trans } from '@kit/ui/trans';
 import { SitePageHeader } from '~/(marketing)/_components/site-page-header';
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { withI18n } from '~/lib/i18n/with-i18n';
+import { JsonLd } from '~/lib/structured-data';
 
 export const generateMetadata = async () => {
   const { t } = await createI18nServerInstance();
@@ -67,11 +68,7 @@ async function FAQPage() {
 
   return (
     <>
-      <script
-        key={'ld:json'}
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
+      <JsonLd key={'ld:json'} data={structuredData} />
 
       <div className={'flex flex-col space-y-4 xl:space-y-8'}>
         <SitePageHeader

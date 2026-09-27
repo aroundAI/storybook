@@ -1,5 +1,7 @@
 import appConfig from '~/config/app.config';
 
+import { serializeJsonLd } from './json-ld';
+
 // JSON-LD types (inline to avoid external dependencies)
 type JsonLdContext = 'https://schema.org';
 
@@ -178,13 +180,14 @@ export function getBreadcrumbSchema(
 }
 
 /**
- * Component to render JSON-LD in head
+ * Component to render JSON-LD in head. The only way structured data reaches
+ * a page: `serializeJsonLd` escapes what would let a title end the script.
  */
-export function JsonLd({ data }: { data: Record<string, unknown> }) {
+export function JsonLd({ data }: { data: object }) {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(data) }}
     />
   );
 }
