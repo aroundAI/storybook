@@ -71,7 +71,7 @@ const KNOWN: Record<string, [number, string]> = {
     [3, ADMIN],
   'apps/web/lambda/publish-worker/index.ts | publishes | update': [1, ADMIN],
   'apps/web/lambda/publish-worker/index.ts | social_posts | update': [2, ADMIN],
-  'apps/web/lambda/scheduled-publish/index.ts | publishes | update': [2, ADMIN],
+  'apps/web/lambda/scheduled-publish/index.ts | publishes | update': [3, ADMIN],
   'apps/web/lambda/voice-worker/voice-generation.ts | dialogue_lines | update':
     [3, ADMIN],
   'packages/billing/gateway/src/server/services/billing-event-handler/billing-event-handler.service.ts | orders | update':
