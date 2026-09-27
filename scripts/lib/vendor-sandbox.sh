@@ -83,6 +83,13 @@ start_sandbox() {
     return 0
   fi
 
+  # Something else on the port (another checkout's sandbox, left running)
+  # would answer the readiness check below for a sandbox that never started
+  if curl -s -o /dev/null "$SANDBOX_CONTROL_URL/" 2> /dev/null; then
+    echo "Something already answers on $SANDBOX_CONTROL_URL; stop it, or set SANDBOX_PORT_BASE"
+    return 1
+  fi
+
   # Only tsx goes to the background, with no inherited stdin and its output
   # in the log: a caller that pipes `local-env.sh up` (to tee, to a CI log)
   # must not be held open by it, and the pid recorded must be the sandbox's.
@@ -93,7 +100,8 @@ start_sandbox() {
   ) || return 1
 
   for _ in $(seq 1 30); do
-    if curl -sf "$SANDBOX_CONTROL_URL/__sandbox/state" > /dev/null 2>&1; then
+    if grep -q '\[sandbox\] seed' "$dir/sandbox.log" 2> /dev/null &&
+      curl -sf "$SANDBOX_CONTROL_URL/__sandbox/state" > /dev/null 2>&1; then
       echo "    $(grep -m1 '\[sandbox\] seed' "$dir/sandbox.log")"
       return 0
     fi

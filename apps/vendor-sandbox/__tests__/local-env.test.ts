@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -125,6 +125,39 @@ describe('starting and stopping the sandbox', () => {
       expect(spawnSync('kill', ['-0', String(pid)]).status).not.toBe(0);
     },
   );
+
+  // A sandbox left running by another checkout answered for this one: the
+  // start was reported with no seed and the pid of a process that had died.
+  it('refuses to start when something else already answers on its port', async () => {
+    const other = http.createServer((_req, res) => res.end('{}'));
+    await new Promise<void>((done) => other.listen(0, '127.0.0.1', done));
+    const base = (other.address() as AddressInfo).port;
+    const root = mkdtempSync(join(tmpdir(), 'sandbox-root-'));
+    spawnSync('mkdir', ['-p', join(root, 'apps')]);
+    spawnSync('ln', [
+      '-s',
+      join(REPO, 'apps/vendor-sandbox'),
+      join(root, 'apps/vendor-sandbox'),
+    ]);
+
+    const started = await new Promise<{ status: number | null; out: string }>(
+      (done) => {
+        const child = spawn(
+          'bash',
+          ['-c', `. "${LIB}" && start_sandbox "${root}"`],
+          { env: { ...process.env, SANDBOX_PORT_BASE: String(base) } },
+        );
+        let out = '';
+        child.stdout.on('data', (d) => (out += d));
+        child.on('close', (status) => done({ status, out }));
+      },
+    );
+    other.close();
+
+    expect(started.status).not.toBe(0);
+    expect(started.out).toMatch(/already answers on http:\/\/127\.0\.0\.1:\d+/);
+    expect(existsSync(join(root, '.sandbox/pid'))).toBe(false);
+  });
 });
 
 describe('the egress guard', () => {
