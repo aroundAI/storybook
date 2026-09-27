@@ -686,15 +686,7 @@ create policy "seasons_read" on public.seasons for select
     exists (
       select 1 from public.projects p
       where p.id = seasons.project_id
-      and (
-        exists(
-          select 1 from public.accounts a
-          where a.id = p.account_id
-          and a.primary_owner_user_id = auth.uid()
-          and a.is_personal_account = true
-        )
-        or
-        public.has_role_on_account(p.account_id)
+      and public.has_role_on_account(p.account_id)
       )
     )
   );
@@ -738,15 +730,7 @@ create policy "episodes_read" on public.episodes for select
     exists (
       select 1 from public.projects p
       where p.id = episodes.project_id
-      and (
-        exists(
-          select 1 from public.accounts a
-          where a.id = p.account_id
-          and a.primary_owner_user_id = auth.uid()
-          and a.is_personal_account = true
-        )
-        or
-        public.has_role_on_account(p.account_id)
+      and public.has_role_on_account(p.account_id)
       )
     )
   );
@@ -790,15 +774,7 @@ create policy "assets_read" on public.assets for select
     exists (
       select 1 from public.projects p
       where p.id = assets.project_id
-      and (
-        exists(
-          select 1 from public.accounts a
-          where a.id = p.account_id
-          and a.primary_owner_user_id = auth.uid()
-          and a.is_personal_account = true
-        )
-        or
-        public.has_role_on_account(p.account_id)
+      and public.has_role_on_account(p.account_id)
       )
     )
   );
@@ -969,15 +945,7 @@ create policy "shots_read" on public.shots for select
       select 1 from public.episodes e
       join public.projects p on p.id = e.project_id
       where e.id = shots.episode_id
-      and (
-        exists(
-          select 1 from public.accounts a
-          where a.id = p.account_id
-          and a.primary_owner_user_id = auth.uid()
-          and a.is_personal_account = true
-        )
-        or
-        public.has_role_on_account(p.account_id)
+      and public.has_role_on_account(p.account_id)
       )
     )
   );
@@ -1026,15 +994,7 @@ create policy "dialogue_lines_read" on public.dialogue_lines for select
       select 1 from public.episodes e
       join public.projects p on p.id = e.project_id
       where e.id = dialogue_lines.episode_id
-      and (
-        exists(
-          select 1 from public.accounts a
-          where a.id = p.account_id
-          and a.primary_owner_user_id = auth.uid()
-          and a.is_personal_account = true
-        )
-        or
-        public.has_role_on_account(p.account_id)
+      and public.has_role_on_account(p.account_id)
       )
     )
   );
@@ -1083,15 +1043,7 @@ create policy "audio_tracks_read" on public.audio_tracks for select
       select 1 from public.episodes e
       join public.projects p on p.id = e.project_id
       where e.id = audio_tracks.episode_id
-      and (
-        exists(
-          select 1 from public.accounts a
-          where a.id = p.account_id
-          and a.primary_owner_user_id = auth.uid()
-          and a.is_personal_account = true
-        )
-        or
-        public.has_role_on_account(p.account_id)
+      and public.has_role_on_account(p.account_id)
       )
     )
   );
@@ -1140,15 +1092,7 @@ create policy "character_details_read" on public.character_details for select
       select 1 from public.assets a
       join public.projects p on p.id = a.project_id
       where a.id = character_details.asset_id
-      and (
-        exists(
-          select 1 from public.accounts acc
-          where acc.id = p.account_id
-          and acc.primary_owner_user_id = auth.uid()
-          and acc.is_personal_account = true
-        )
-        or
-        public.has_role_on_account(p.account_id)
+      and public.has_role_on_account(p.account_id)
       )
     )
   );
@@ -1197,15 +1141,7 @@ create policy "voice_profiles_read" on public.voice_profiles for select
       select 1 from public.assets a
       join public.projects p on p.id = a.project_id
       where a.id = voice_profiles.asset_id
-      and (
-        exists(
-          select 1 from public.accounts acc
-          where acc.id = p.account_id
-          and acc.primary_owner_user_id = auth.uid()
-          and acc.is_personal_account = true
-        )
-        or
-        public.has_role_on_account(p.account_id)
+      and public.has_role_on_account(p.account_id)
       )
     )
   );
@@ -1254,15 +1190,7 @@ create policy "publishes_read" on public.publishes for select
       select 1 from public.episodes e
       join public.projects p on p.id = e.project_id
       where e.id = publishes.episode_id
-      and (
-        exists(
-          select 1 from public.accounts a
-          where a.id = p.account_id
-          and a.primary_owner_user_id = auth.uid()
-          and a.is_personal_account = true
-        )
-        or
-        public.has_role_on_account(p.account_id)
+      and public.has_role_on_account(p.account_id)
       )
     )
   );
@@ -1554,15 +1482,7 @@ create policy "dubbed_versions_read" on public.dubbed_versions for select
       select 1 from public.episodes e
       join public.projects p on p.id = e.project_id
       where e.id = dubbed_versions.episode_id
-      and (
-        exists(
-          select 1 from public.accounts a
-          where a.id = p.account_id
-          and a.primary_owner_user_id = auth.uid()
-          and a.is_personal_account = true
-        )
-        or
-        public.has_role_on_account(p.account_id)
+      and public.has_role_on_account(p.account_id)
       )
     )
   );
@@ -1615,15 +1535,7 @@ create policy "dubbed_dialogue_lines_read" on public.dubbed_dialogue_lines for s
       join public.episodes e on e.id = dv.episode_id
       join public.projects p on p.id = e.project_id
       where dv.id = dubbed_dialogue_lines.dubbed_version_id
-      and (
-        exists(
-          select 1 from public.accounts a
-          where a.id = p.account_id
-          and a.primary_owner_user_id = auth.uid()
-          and a.is_personal_account = true
-        )
-        or
-        public.has_role_on_account(p.account_id)
+      and public.has_role_on_account(p.account_id)
       )
     )
   );

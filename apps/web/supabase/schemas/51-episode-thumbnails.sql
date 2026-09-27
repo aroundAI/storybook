@@ -74,14 +74,7 @@ create policy "episode_thumbnails_read" on public.episode_thumbnails for select
       select 1 from public.episodes e
       join public.projects p on p.id = e.project_id
       where e.id = episode_thumbnails.episode_id
-      and (
-        exists(
-          select 1 from public.accounts a
-          where a.id = p.account_id
-          and a.primary_owner_user_id = auth.uid()
-          and a.is_personal_account = true
-        )
-        or public.has_role_on_account(p.account_id)
+      and public.has_role_on_account(p.account_id)
       )
     )
   );
