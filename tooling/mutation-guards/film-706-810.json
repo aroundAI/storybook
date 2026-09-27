@@ -1,0 +1,45 @@
+{
+  "feature": "FILM-706, FILM-810",
+  "mutations": [
+    {
+      "name": "FILM-706 P1 the PKCE challenge is padded base64, not base64url",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/tiktok/config.ts",
+      "find": "  const digest = await crypto.subtle.digest('SHA-256', data);\n  return Buffer.from(digest).toString('base64url');",
+      "replace": "  const digest = await crypto.subtle.digest('SHA-256', data);\n  return Buffer.from(digest).toString('base64');",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/tiktok-pkce.test.ts",
+      "pattern": "PKCE code challenge"
+    },
+    {
+      "name": "FILM-706 P2 the PKCE verifier is 64 hex characters",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/tiktok/config.ts",
+      "find": "  crypto.getRandomValues(array);\n  return Buffer.from(array).toString('base64url');",
+      "replace": "  crypto.getRandomValues(array);\n  return Buffer.from(array).toString('hex');",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/tiktok-pkce.test.ts",
+      "pattern": "PKCE code verifier"
+    },
+    {
+      "name": "FILM-810 C1 medium confidence starts at 15 days",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/revenue-by-currency.ts",
+      "find": "  else if (daysWithData >= 14) confidenceLevel = 'medium';",
+      "replace": "  else if (daysWithData >= 15) confidenceLevel = 'medium';",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-projection-confidence.test.ts",
+      "pattern": "projection confidence levels"
+    },
+    {
+      "name": "FILM-810 C2 confidence counts rows, not days",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/revenue-by-currency.ts",
+      "find": "  const daysWithData = part.uniqueDates.size;",
+      "replace": "  const daysWithData = part.uniqueDates.size * 2;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-projection-confidence.test.ts",
+      "pattern": "projection confidence levels"
+    }
+  ]
+}
