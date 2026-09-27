@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { displayedEngagementRatePercent } from '@kit/clickhouse';
 import type { LanguageDimension, SegmentConfidence } from '@kit/clickhouse';
 import {
   LANGUAGE_DIMENSION_SEGMENTS,
@@ -60,7 +61,7 @@ export interface LanguagePerformance {
   likes: number;
   comments: number;
   shares: number;
-  engagement: number; // (likes + comments + shares) / views * 100
+  engagement: number; // engagementRatio (FILM-1713), as a percentage
   revenueCents: number;
   contentCount: number;
   /** Every published video in this language, with or without views. */
@@ -299,10 +300,7 @@ export async function getLanguagePerformance(
           ? 100
           : 0;
 
-    const engagement =
-      stats.views > 0
-        ? ((stats.likes + stats.comments + stats.shares) / stats.views) * 100
-        : 0;
+    const engagement = displayedEngagementRatePercent(stats);
 
     results.push({
       language,
@@ -401,10 +399,7 @@ export async function getPlatformLanguageMatrix(
   // Build result
   const results: PlatformLanguageEntry[] = [];
   for (const entry of matrix.values()) {
-    const engagementRate =
-      entry.views > 0
-        ? ((entry.likes + entry.comments + entry.shares) / entry.views) * 100
-        : 0;
+    const engagementRate = displayedEngagementRatePercent(entry);
 
     results.push({
       platform: entry.platform,
@@ -494,20 +489,11 @@ export async function getContentTypeComparison(
   return {
     longForm: {
       ...longForm,
-      engagement:
-        longForm.views > 0
-          ? ((longForm.likes + longForm.comments + longForm.shares) /
-              longForm.views) *
-            100
-          : 0,
+      engagement: displayedEngagementRatePercent(longForm),
     },
     shorts: {
       ...shorts,
-      engagement:
-        shorts.views > 0
-          ? ((shorts.likes + shorts.comments + shorts.shares) / shorts.views) *
-            100
-          : 0,
+      engagement: displayedEngagementRatePercent(shorts),
     },
   };
 }

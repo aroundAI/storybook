@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { displayedEngagementRatePercent } from '@kit/clickhouse';
 import {
   formatDateStr,
   queryDailyTimeSeries,
@@ -301,10 +302,7 @@ function buildTopContent(
     if (!stats) continue;
 
     const episode = publish.episodes as PublishRow['episodes'];
-    const engagementRate =
-      stats.views > 0
-        ? ((stats.likes + stats.comments + stats.shares) / stats.views) * 100
-        : 0;
+    const engagementRate = displayedEngagementRatePercent(stats);
 
     contentList.push({
       id: publish.id,

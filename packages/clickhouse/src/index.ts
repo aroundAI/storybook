@@ -147,6 +147,46 @@ export {
 } from './lib/language-dimension';
 export type { LanguageDimension } from './lib/language-dimension';
 
+// Every rate defined once, and velocity at the grain the data has
+// (FILM-1713). Pure, so the dashboards and the server share one definition.
+export {
+  MEASURE_INPUT_SUPPORT,
+  PREFERRED_DENOMINATOR,
+  attentionEfficiency,
+  computeMeasure,
+  displayedEngagementRatePercent,
+  engagementRatio,
+} from './lib/measures';
+export type {
+  AttentionEfficiency,
+  DenominatorStamp,
+  InputSupportCell,
+  InstagramMediaSurface,
+  Measure,
+  MeasureAbsence,
+  MeasureCounts,
+  MeasureId,
+  MeasureInput,
+  RateMeasureId,
+} from './lib/measures';
+export {
+  ACCELERATING_AT,
+  AGE_BUCKETS,
+  DECELERATING_AT,
+  STALLED_SHARE_OF_PEAK,
+  VELOCITY_GRAIN,
+  ageBucket,
+  compareVelocity,
+  dailyVelocities,
+  growthState,
+} from './lib/velocity';
+export type {
+  AgeBucketId,
+  DailyPoint,
+  GrowthState,
+  VelocityReading,
+} from './lib/velocity';
+
 // What "a view" means per platform, and when it changed (FILM-1722). Pure,
 // so a chart can ask where a boundary falls without reaching the server.
 export {

@@ -6,6 +6,7 @@
  */
 import 'server-only';
 
+import { displayedEngagementRatePercent } from '@kit/clickhouse';
 import {
   queryAudienceRows,
   queryDailyTimeSeries,
@@ -254,10 +255,12 @@ export async function getEpisodeAnalytics(
     comments: d.comments,
   }));
 
-  const engagementRate =
-    totalViews > 0
-      ? ((totalLikes + totalComments + totalShares) / totalViews) * 100
-      : 0;
+  const engagementRate = displayedEngagementRatePercent({
+    views: totalViews,
+    likes: totalLikes,
+    comments: totalComments,
+    shares: totalShares,
+  });
 
   return {
     episodeId,
@@ -437,8 +440,12 @@ export async function getSeasonAnalytics(
       epRevenue += stats.revenue_cents;
     }
 
-    const epEngagement =
-      epViews > 0 ? ((epLikes + epComments + epShares) / epViews) * 100 : 0;
+    const epEngagement = displayedEngagementRatePercent({
+      views: epViews,
+      likes: epLikes,
+      comments: epComments,
+      shares: epShares,
+    });
 
     episodeAnalytics.push({
       episodeId: ep.id,
@@ -976,10 +983,7 @@ export async function getContentList(
       revenue_cents: 0,
       subscribers_gained: 0,
     };
-    const engagementRate =
-      stats.views > 0
-        ? ((stats.likes + stats.comments + stats.shares) / stats.views) * 100
-        : 0;
+    const engagementRate = displayedEngagementRatePercent(stats);
 
     return {
       publishId: publish.id,
