@@ -129,7 +129,6 @@ function parseOverride(value: string) {
   return acceptable ? `${url.origin}${url.pathname}`.replace(/\/+$/, '') : null;
 }
 
-
 /** A set override's URL; a malformed or non-local one throws, never falls back. */
 function localOverride(name: string, value: string): string {
   const override = parseOverride(value);
