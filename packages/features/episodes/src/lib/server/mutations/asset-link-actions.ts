@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -137,7 +138,7 @@ export const extractDescriptionAction = enhanceAction(
  * to the episode's metadata (character_ids/location_ids arrays).
  * Deduplicates by ID and case-insensitive name.
  */
-export const linkAssetToEpisodeAction = enhanceAction(
+const linkAssetToEpisode = enhanceAction(
   async (data) => {
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
@@ -178,21 +179,26 @@ export const linkAssetToEpisodeAction = enhanceAction(
       : [...existingNames, data.assetName];
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = await (client as any)
+    const { data: updated, error: updateError } = await (client as any)
       .from('episodes')
       .update({
         metadata: { ...metadata, [idsKey]: newIds, [namesKey]: newNames },
       })
-      .eq('id', data.episodeId);
+      .eq('id', data.episodeId)
+      .select('id');
 
     if (updateError) {
       throw new Error('Failed to link asset to episode');
     }
 
+    requireAffectedRows(updated, "You can't change this episode's assets.");
+
     return { success: true as const, data: { linked: true } };
   },
   { schema: LinkAssetToEpisodeSchema },
 );
+
+export const linkAssetToEpisodeAction = returnRefusals(linkAssetToEpisode);
 
 /**
  * Batch-creates assets from sidebar and links them to an episode.
@@ -203,7 +209,7 @@ export const linkAssetToEpisodeAction = enhanceAction(
  * 3. Fetch all matching assets (including pre-existing duplicates)
  * 4. Link all assets to episode metadata
  */
-export const batchCreateUnlinkedAction = enhanceAction(
+const batchCreateUnlinked = enhanceAction(
   async (data) => {
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
@@ -354,7 +360,7 @@ export const batchCreateUnlinkedAction = enhanceAction(
       }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (client as any)
+      const { data: updated, error: updatedError } = await (client as any)
         .from('episodes')
         .update({
           metadata: {
@@ -365,7 +371,14 @@ export const batchCreateUnlinkedAction = enhanceAction(
             location_names: finalLocNames,
           },
         })
-        .eq('id', data.episodeId);
+        .eq('id', data.episodeId)
+        .select('id');
+
+      if (updatedError) {
+        throw new Error(`Failed to update episodes: ${updatedError.message}`);
+      }
+
+      requireAffectedRows(updated, "You can't change this episode's assets.");
     }
 
     revalidatePath('/', 'layout');
@@ -381,3 +394,5 @@ export const batchCreateUnlinkedAction = enhanceAction(
   },
   { schema: BatchCreateUnlinkedSchema },
 );
+
+export const batchCreateUnlinkedAction = returnRefusals(batchCreateUnlinked);

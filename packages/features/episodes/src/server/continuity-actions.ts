@@ -6,7 +6,7 @@ import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { createLLMClient } from '@kit/llm';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -293,15 +293,18 @@ const fixContinuityIssue = enhanceAction(
 
     if (Object.keys(updates).length > 1) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: updateError } = await (client as any)
+      const { data: updated, error: updateError } = await (client as any)
         .from('episodes')
         .update(updates)
-        .eq('id', data.episodeId);
+        .eq('id', data.episodeId)
+        .select('id');
 
       if (updateError) {
         logger.error({ ...ctx, error: updateError }, 'Failed to apply fix');
         throw new Error('Failed to apply fix');
       }
+
+      requireAffectedRows(updated, "You can't change this episode.");
 
       // Create audit log
       const accountId = episode.project?.account_id;

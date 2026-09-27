@@ -38,7 +38,6 @@ const DEAD = 'no caller in the repo';
 
 // Checked in the per-package KB-105 pull requests that follow this one;
 // each removes its lines.
-const PENDING_EPISODES = 'KB-105: converted in the episodes pull request';
 const PENDING_PUBLISHING = 'KB-105: converted in the publishing pull request';
 // Owned by another open pull request (2026-09-25); it adopts
 // requireAffectedRows and removes its line.
@@ -116,34 +115,14 @@ const KNOWN: Record<string, [number, string]> = {
     [1, ADMIN],
   'packages/features/episodes/src/lib/canon/sequel-system.ts | projects | update':
     [1, DEAD],
-  'packages/features/episodes/src/lib/server/mutations/asset-link-actions.ts | episodes | update':
-    [2, PENDING_EPISODES],
-  'packages/features/episodes/src/lib/server/mutations/publish-actions.ts | episodes | update':
-    [2, PENDING_EPISODES],
-  'packages/features/episodes/src/lib/server/mutations/refinement-actions.ts | episodes | update':
-    [2, PENDING_EPISODES],
   'packages/features/episodes/src/lib/server/mutations/shot-actions.ts | generation_jobs | update':
     [1, CLEANUP],
   'packages/features/episodes/src/lib/server/mutations/shot-actions.ts | shots | update':
     [1, CASCADE],
-  'packages/features/episodes/src/server/actions.ts | episodes | update': [
-    1,
-    PENDING_EPISODES,
-  ],
   'packages/features/episodes/src/server/actions.ts | generation_jobs | update':
     [2, CLEANUP],
-  'packages/features/episodes/src/server/auto-stitch-action.ts | episodes | update':
-    [1, PENDING_EPISODES],
-  'packages/features/episodes/src/server/canon-actions.ts | narrative_threads | update':
-    [2, PENDING_EPISODES],
-  'packages/features/episodes/src/server/canon-actions.ts | projects | update':
-    [1, PENDING_EPISODES],
-  'packages/features/episodes/src/server/continuity-actions.ts | episodes | update':
-    [1, PENDING_EPISODES],
   'packages/features/episodes/src/server/thumbnail-actions.ts | episode_thumbnails | update':
-    [3, `${PENDING_EPISODES} + ${SET_BEFORE}`],
-  'packages/features/episodes/src/server/timeline-actions.ts | dialogue_lines | update':
-    [1, PENDING_EPISODES],
+    [2, SET_BEFORE],
   'packages/features/publishing/src/jobs/process-scheduled-publishes.ts | publishes | update':
     [3, ADMIN],
   'packages/features/publishing/src/server/connection-actions.ts | platform_connections | update':

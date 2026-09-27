@@ -12,7 +12,7 @@ import { z } from 'zod';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -843,7 +843,7 @@ export const getCanonHealthAction = enhanceAction(
 /**
  * Updates canon settings for a project.
  */
-export const updateCanonSettingsAction = enhanceAction(
+const updateCanonSettings = enhanceAction(
   async (data: { projectId: string; settings: Partial<CanonSettings> }) => {
     const client = getSupabaseServerClient();
 
@@ -874,15 +874,21 @@ export const updateCanonSettingsAction = enhanceAction(
       },
     };
 
-    const { error } = await client
+    const { data: updated, error } = await client
       .from('projects')
       .update({ metadata: updatedMetadata })
-      .eq('id', data.projectId);
+      .eq('id', data.projectId)
+      .select('id');
 
     if (error) {
       console.error('Error updating canon settings:', error);
       throw new Error(`Failed to update canon settings: ${error.message}`);
     }
+
+    requireAffectedRows(
+      updated,
+      "You can't change this project's canon settings.",
+    );
 
     revalidatePath(
       `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
@@ -908,6 +914,8 @@ export const updateCanonSettingsAction = enhanceAction(
     }),
   },
 );
+
+export const updateCanonSettingsAction = returnRefusals(updateCanonSettings);
 
 // =============================================================================
 // INLINE VALIDATION ACTION (Step 3)
@@ -1378,7 +1386,8 @@ export const commitCanonChangesAction = enhanceAction(
                   description: update.description,
                   version: newVersion,
                 })
-                .eq('id', existing.id);
+                .eq('id', existing.id)
+                .select('id');
             } else {
               // resolve
               return client
@@ -1393,13 +1402,17 @@ export const commitCanonChangesAction = enhanceAction(
                   episodes_touched: touched,
                   version: newVersion,
                 })
-                .eq('id', existing.id);
+                .eq('id', existing.id)
+                .select('id');
             }
           })
           .filter(Boolean);
 
         const results = await Promise.all(updatePromises);
-        threadsUpdated += results.filter((r) => !r?.error).length;
+        // KB-105: a thread RLS refused comes back with no rows and no error
+        threadsUpdated += results.filter(
+          (r) => !r?.error && (r?.data?.length ?? 0) > 0,
+        ).length;
       }
     } catch (threadError) {
       console.warn('[commitCanonChanges] Thread updates failed:', threadError);

@@ -1542,7 +1542,7 @@ export const bulkResetToStoryboardAction = enhanceAction(
 
         // 5. Update episode
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: updateError } = await (client as any)
+        const { data: resetRows, error: updateError } = await (client as any)
           .from('episodes')
           .update({
             status: 'storyboard',
@@ -1550,10 +1550,17 @@ export const bulkResetToStoryboardAction = enhanceAction(
             updated_at: new Date().toISOString(),
           })
           .eq('id', episodeId)
-          .is('deleted_at', null);
+          .is('deleted_at', null)
+          .select('id');
 
         if (updateError) {
           errors.push({ episodeId, error: 'Failed to update episode' });
+          continue;
+        }
+
+        // KB-105: RLS answers a refused update with no rows and no error
+        if (!resetRows?.length) {
+          errors.push({ episodeId, error: "You can't change this episode." });
           continue;
         }
 

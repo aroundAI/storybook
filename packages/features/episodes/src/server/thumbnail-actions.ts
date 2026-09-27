@@ -502,7 +502,7 @@ export const getEpisodeThumbnailsAction = enhanceAction(
 /**
  * Set a thumbnail as the default for an episode
  */
-export const setDefaultThumbnailAction = enhanceAction(
+const setDefaultThumbnail = enhanceAction(
   async (data): Promise<{ success: boolean; error?: string }> => {
     const logger = await getLogger();
     const ctx = {
@@ -537,15 +537,21 @@ export const setDefaultThumbnailAction = enhanceAction(
         .eq('is_default', true);
 
       // Set the new default
-      const { error: updateError } = await client
+      const { data: updated, error: updateError } = await client
         .from('episode_thumbnails')
         .update({ is_default: true })
         .eq('id', data.thumbnailId)
-        .eq('episode_id', data.episodeId);
+        .eq('episode_id', data.episodeId)
+        .select('id');
 
       if (updateError) {
         throw new Error(`Failed to set default: ${updateError.message}`);
       }
+
+      requireAffectedRows(
+        updated,
+        "You can't change this episode's default thumbnail.",
+      );
 
       logger.info(ctx, 'Default thumbnail set successfully');
 
@@ -560,3 +566,5 @@ export const setDefaultThumbnailAction = enhanceAction(
     schema: SetDefaultThumbnailSchema,
   },
 );
+
+export const setDefaultThumbnailAction = returnRefusals(setDefaultThumbnail);

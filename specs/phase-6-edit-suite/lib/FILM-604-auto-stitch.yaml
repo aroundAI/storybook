@@ -61,10 +61,9 @@ retirement:
     `packages/features/edit-suite/src/components/edit-suite-provider.tsx:529`), which writes relational
     `edit_*` rows instead of `episode.metadata.timeline` and reports no warnings or gaps.
     `packages/features/episodes/src/lib/auto-stitch.ts` and `autoStitchAction`
-    (`packages/features/episodes/src/server/auto-stitch-action.ts:62`) survive with their unit tests;
-    `autoStitchAction` is the only non-test user of `auto-stitch.ts`, and nothing has called it since
-    the audio studio dropped the call in `b7f7cb53` (2026-05-27). Kept as a record; not outstanding
-    work.
+    survived with their unit tests, uncalled since the audio studio dropped the call in `b7f7cb53`
+    (2026-05-27); both were removed on 2026-09-27 (owner decision), with `planTimelineAction`.
+    Kept as a record; not outstanding work.
   replacement: "packages/features/edit-suite/src/lib/auto-assemble.ts"
 open_questions:
   - "[ ] Should we support AI-driven SFX placement? (post-MVP)"

@@ -11,7 +11,7 @@ import {
   extractDescriptionAction,
   linkAssetToEpisodeAction,
 } from '@kit/episodes/server';
-import { unwrap } from '@kit/next/action-result';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -106,12 +106,14 @@ export function SidebarAssetList({
 
     startBatchTransition(async () => {
       try {
-        const result = await batchCreateUnlinkedAction({
-          projectId,
-          episodeId,
-          items: unlinkedItems,
-          storyContext,
-        });
+        const result = await unwrap(
+          batchCreateUnlinkedAction({
+            projectId,
+            episodeId,
+            items: unlinkedItems,
+            storyContext,
+          }),
+        );
 
         if (result.success) {
           const parts: string[] = [];
@@ -130,8 +132,8 @@ export function SidebarAssetList({
           refetch();
           onAssetCreated?.();
         }
-      } catch {
-        toast.error('Failed to create assets');
+      } catch (error) {
+        toast.error(refusalMessage(error, 'Failed to create assets'));
       }
     });
   };
@@ -419,18 +421,20 @@ function CreateAssetDialog({
 
         if (result.success) {
           // Link to episode
-          await linkAssetToEpisodeAction({
-            episodeId,
-            assetId: result.data.id,
-            assetName: name,
-            assetType: type,
-          });
+          await unwrap(
+            linkAssetToEpisodeAction({
+              episodeId,
+              assetId: result.data.id,
+              assetName: name,
+              assetType: type,
+            }),
+          );
 
           toast.success(`${name} added to library`);
           onCreated(result.data.id);
         }
-      } catch {
-        toast.error(`Failed to create ${name}`);
+      } catch (error) {
+        toast.error(refusalMessage(error, `Failed to create ${name}`));
       }
     });
   };

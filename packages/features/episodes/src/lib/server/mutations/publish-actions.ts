@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { noTenantLlmJobTarget } from '@kit/prompt-engine/llm-job-target';
 import { episodeVideoSaveRefusal } from '@kit/storage/episode-video';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -55,16 +55,22 @@ const updatePublishedVideo = enhanceAction(
       delete updatedVideos[language];
     }
 
-    const { error: updateError } = await client
+    const { data: updated, error: updateError } = await client
       .from('episodes')
       .update({ localized_videos: updatedVideos })
-      .eq('id', episodeId);
+      .eq('id', episodeId)
+      .select('id');
 
     if (updateError) {
       throw new Error(
         `Failed to update published video: ${updateError.message}`,
       );
     }
+
+    requireAffectedRows(
+      updated,
+      "You can't change this episode's published videos.",
+    );
 
     revalidatePath(
       `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
@@ -121,14 +127,17 @@ const updateShortsGroups = enhanceAction(
       throw new ActionRefusal(refusal);
     }
 
-    const { error: updateError } = await client
+    const { data: updated, error: updateError } = await client
       .from('episodes')
       .update({ shorts_groups: shortsGroups })
-      .eq('id', episodeId);
+      .eq('id', episodeId)
+      .select('id');
 
     if (updateError) {
       throw new Error(`Failed to update shorts groups: ${updateError.message}`);
     }
+
+    requireAffectedRows(updated, "You can't change this episode's shorts.");
 
     revalidatePath(
       `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,

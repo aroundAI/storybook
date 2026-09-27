@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -267,14 +267,21 @@ const undoRefinementHandler = enhanceAction(
       delete updatedMetadata.previous_story_data;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (client as any)
+      const { data: restored, error: restoredError } = await (client as any)
         .from('episodes')
         .update({
           story_data: previousStoryData,
           metadata: updatedMetadata,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', data.episodeId);
+        .eq('id', data.episodeId)
+        .select('id');
+
+      if (restoredError) {
+        throw new Error(`Failed to update episodes: ${restoredError.message}`);
+      }
+
+      requireAffectedRows(restored, "You can't change this episode.");
 
       logger.info(ctx, 'Story refinement undone');
     } else {
@@ -290,14 +297,21 @@ const undoRefinementHandler = enhanceAction(
       delete updatedMetadata.previous_screenplay_data;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (client as any)
+      const { data: restored, error: restoredError } = await (client as any)
         .from('episodes')
         .update({
           screenplay_data: previousScreenplayData,
           metadata: updatedMetadata,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', data.episodeId);
+        .eq('id', data.episodeId)
+        .select('id');
+
+      if (restoredError) {
+        throw new Error(`Failed to update episodes: ${restoredError.message}`);
+      }
+
+      requireAffectedRows(restored, "You can't change this episode.");
 
       logger.info(ctx, 'Screenplay refinement undone');
     }

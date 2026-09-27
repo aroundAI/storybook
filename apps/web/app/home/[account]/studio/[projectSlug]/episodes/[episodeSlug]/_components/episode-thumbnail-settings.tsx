@@ -25,7 +25,7 @@ import {
   setDefaultThumbnailAction,
   uploadEpisodeThumbnailAction,
 } from '@kit/episodes/server';
-import { unwrap } from '@kit/next/action-result';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import {
   PROJECT_ASSETS_BUCKET,
   episodeThumbnailPath,
@@ -251,10 +251,12 @@ function ThumbnailCard({
 
     startDefaultTransition(async () => {
       try {
-        const result = await setDefaultThumbnailAction({
-          thumbnailId: thumbnail.id,
-          episodeId,
-        });
+        const result = await unwrap(
+          setDefaultThumbnailAction({
+            thumbnailId: thumbnail.id,
+            episodeId,
+          }),
+        );
 
         if (result.success) {
           toast.success(`Set ${label} as default`);
@@ -262,8 +264,8 @@ function ThumbnailCard({
         } else {
           toast.error(result.error || 'Failed to set default');
         }
-      } catch {
-        toast.error('Failed to set default');
+      } catch (error) {
+        toast.error(refusalMessage(error, 'Failed to set default'));
       }
     });
   };
