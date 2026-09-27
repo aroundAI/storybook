@@ -3,7 +3,7 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 
 -- A fixed count rather than no_plan(): a file that aborts partway reports a
 -- plan mismatch instead of a nearly-passing suite.
-select plan(20);
+select plan(21);
 
 -- FILM-CC-04 KB-99. The product is team accounts only: someone working alone
 -- is a team of one. A project, and every row of an account-scoped workspace
@@ -66,8 +66,8 @@ select is(
     where t.tgname = 'require_team_account'
       and t.tgfoid::regprocedure::text = 'kit.require_team_account()'
       and pg_get_triggerdef(t.oid) ~ 'BEFORE INSERT OR UPDATE OF account_id ON public\.\w+ FOR EACH ROW'),
-  19,
-  'the guard is a row trigger before insert, and before any update of account_id, on 19 tables'
+  20,
+  'the guard is a row trigger before insert, and before any update of account_id, on 20 tables'
 );
 
 select is_empty(
@@ -136,11 +136,24 @@ select throws_ok(
   'nor schedule a report on one'
 );
 
+-- A signed-in caller is stopped first by KB-113's freeze (#395): a project
+-- may not move to any other account (42501)
+select throws_ok(
+  $$ update public.projects set account_id = tests.get_supabase_uid('kb99_p')
+      where id = '99990000-0000-4000-8000-000000000001' $$,
+  '42501', null,
+  'nor move a team''s project onto a personal account'
+);
+
+-- The freeze covers signed-in callers only; with no user, this guard is what
+-- refuses a personal account
+select set_config('request.jwt.claims', '', true);
+select set_config('request.jwt.claim.sub', '', true);
 select throws_ok(
   $$ update public.projects set account_id = tests.get_supabase_uid('kb99_p')
       where id = '99990000-0000-4000-8000-000000000001' $$,
   '23514', null,
-  'nor move a team''s project onto a personal account'
+  'and the service role cannot move one there either'
 );
 
 select lives_ok(

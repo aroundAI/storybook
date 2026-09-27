@@ -17,7 +17,7 @@ acceptance_criteria:
     evidence: null
   - text: "RLS policies protect project-level access"
     met: false
-    reason: "partly — tenant isolation is now asserted (a stranger reads no fact of another tenant, `apps/web/supabase/tests/database/studio-owner-access.test.sql:278`; writes and reviews in `verified-facts-review.test.sql`), and every policy names `TO authenticated` (KB-48, `apps/web/supabase/migrations/20260924075347_kb48-studio-owner-access.sql:234`). But reads are account-scoped, not project-scoped: an account member reads the facts of every project in the account (`studio-owner-access.test.sql`, 'setup: the project member can read a fact of another project in the account')"
+    reason: "partly — tenant isolation is now asserted (a stranger reads no fact of another tenant, `apps/web/supabase/tests/database/studio-owner-access.test.sql:299`; writes and reviews in `verified-facts-review.test.sql`), and every policy names `TO authenticated` (KB-48, `apps/web/supabase/migrations/20260924075347_kb48-studio-owner-access.sql:234`). But reads are account-scoped, not project-scoped: an account member reads the facts of every project in the account (`studio-owner-access.test.sql`, 'setup: the project member can read a fact of another project in the account')"
   - text: "TypeScript types exported from @kit/episodes"
     met: true
     evidence: null

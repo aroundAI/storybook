@@ -13,7 +13,9 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 --      PP  a PUBLIC project of T, the same. Public projects are readable by
 --          any signed-in user; their revenue is not.
 --      RA  an account-scoped revenue row on T (no video).
---   S  rev_solo's personal account, with a project, a video and a revenue row.
+--   S  a team of one: rev_solo owns it and nobody else is on it (KB-99: no
+--      workspace data on a personal account). A project, a video and a
+--      revenue row.
 --   rev_projonly has a project_members row on PT and no role on T.
 --   rev_stranger belongs to nothing here.
 select plan(6);
@@ -46,18 +48,21 @@ grant execute on function public.kb13_policy_filter() to authenticated;
 set local role postgres;
 
 insert into public.accounts (id, name, is_personal_account, primary_owner_user_id)
-values ('13130000-0000-4000-8000-0000000000a0', 'KB-13 team', false, tests.get_supabase_uid('rev_owner'));
+values
+  ('13130000-0000-4000-8000-0000000000a0', 'KB-13 team', false, tests.get_supabase_uid('rev_owner')),
+  ('13130000-0000-4000-8000-0000000000a1', 'KB-13 solo team', false, tests.get_supabase_uid('rev_solo'));
 
 insert into public.accounts_memberships (user_id, account_id, account_role)
 values
   (tests.get_supabase_uid('rev_owner'), '13130000-0000-4000-8000-0000000000a0', 'owner'),
-  (tests.get_supabase_uid('rev_member'), '13130000-0000-4000-8000-0000000000a0', 'member')
+  (tests.get_supabase_uid('rev_member'), '13130000-0000-4000-8000-0000000000a0', 'member'),
+  (tests.get_supabase_uid('rev_solo'), '13130000-0000-4000-8000-0000000000a1', 'owner')
 on conflict do nothing;
 
 insert into public.platform_connections (id, account_id, platform, platform_account_name, is_active)
 values
   ('13130000-0000-4000-8000-0000000000c0', '13130000-0000-4000-8000-0000000000a0', 'youtube', 'T channel', true),
-  ('13130000-0000-4000-8000-0000000000c1', tests.get_supabase_uid('rev_solo'), 'youtube', 'S channel', true);
+  ('13130000-0000-4000-8000-0000000000c1', '13130000-0000-4000-8000-0000000000a1', 'youtube', 'S channel', true);
 
 -- Projects are created as their owner: the creator becomes the project owner
 select set_config('request.jwt.claims',
@@ -70,7 +75,7 @@ values
 select set_config('request.jwt.claims',
   json_build_object('sub', tests.get_supabase_uid('rev_solo'), 'role', 'authenticated')::text, true);
 insert into public.projects (id, account_id, name, status)
-values ('13130000-0000-4000-8000-0000000000b2', tests.get_supabase_uid('rev_solo'), 'PS', 'active');
+values ('13130000-0000-4000-8000-0000000000b2', '13130000-0000-4000-8000-0000000000a1', 'PS', 'active');
 
 insert into public.project_members (project_id, user_id, role)
 values ('13130000-0000-4000-8000-0000000000b0', tests.get_supabase_uid('rev_projonly'), 'member');
@@ -117,7 +122,7 @@ select is(public.kb13_visible(), '{}'::int[],
 
 select makerkit.authenticate_as('rev_solo');
 select is(public.kb13_visible(), array[300],
-  'A4 a personal account owner reads their own video''s revenue only');
+  'A4 the owner of a team of one reads their own video''s revenue only');
 
 select makerkit.authenticate_as('rev_stranger');
 select is(public.kb13_visible(), '{}'::int[],

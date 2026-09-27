@@ -173,21 +173,30 @@ select results_eq(
   'Owner decision: the owner''s replace took effect and the removed key is gone'
 );
 
--- A personal account's primary owner has no membership row, and still manages
--- their own keys.
+-- Team accounts only (KB-99, owner decision 2026-09-25): a personal account
+-- holds no workspace data, and so no key.
 select makerkit.authenticate_as('member');
 
-select lives_ok(
+select throws_ok(
   $$ insert into public.external_api_keys (account_id, provider, encrypted_key)
      values (auth.uid(), 'openai', 'enc-personal') $$,
-  'Owner decision: a personal account''s owner can add a key to it'
+  '23514', null,
+  'Owner decision: a personal account holds no key (KB-99, team accounts only)'
 );
 
--- ...and cannot move it onto a team account they are only a member of.
+-- An owner of one team cannot move its key onto another team they do not own.
+set local role postgres;
+insert into public.accounts (id, name, is_personal_account, primary_owner_user_id)
+values ('84840000-0000-4000-8000-00000000000b', 'KB-84 other team', false,
+        tests.get_supabase_uid('kb84_stranger'));
+
+select makerkit.authenticate_as('owner');
+
 select throws_ok(
   $$ update public.external_api_keys
-        set account_id = makerkit.get_account_id_by_slug('storybook')
-      where account_id = auth.uid() and provider = 'openai' $$,
+        set account_id = '84840000-0000-4000-8000-00000000000b'
+      where account_id = makerkit.get_account_id_by_slug('storybook')
+        and provider = 'hailuo' $$,
   '42501', null,
   'Owner decision: an owner cannot move a key onto an account they do not own (WITH CHECK)'
 );

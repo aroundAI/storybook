@@ -61,6 +61,7 @@ declare
     'channel_analytics_settings',
     'compilations',
     'content_tags',
+    'external_sources',
     'external_api_keys',
     'generation_jobs',
     'manual_tasks',
