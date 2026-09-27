@@ -53,7 +53,7 @@ suite (~11 min at one worker) and the guards (~5 min).
 
 | Script | What it does |
 |---|---|
-| `pipeline.sh <pr>…` | Full run for each PR, one at a time: `static.sh`, then `services.sh`, then `report.sh`. Checks the PR's worktree is clean and at the PR's head first. Stops if Docker goes down. |
+| `pipeline.sh <pr>…` | Full run for each PR, one at a time: `static.sh`, then `services.sh`, then `report.sh`. Checks the PR's worktree is clean and at the PR's head first, creating it at `.local-ci/worktrees/pr-<n>` when there is none. Stops if Docker goes down. |
 | `static.sh <pr> <worktree> <out>` | The jobs that need no shared service. |
 | `services.sh <pr> <worktree> <out>` | The jobs on the shared Supabase, ClickHouse and port 3000. Holds the database lock while it runs. |
 | `report.sh <pr> <worktree> <out> [note]` | Writes `report.md`: the commit tested, the `main` it's based on, and one row per step. This is the PR comment. |
@@ -64,6 +64,7 @@ suite (~11 min at one worker) and the guards (~5 min).
 | `dblock.sh acquire\|release <name>` | FIFO lock on one lane's database, ClickHouse and web port (`LANE=B` for lane B). Anything that resets or reads the local DB takes it, teammates included. Local CI for a PR (`localci-*`) goes to the front of the queue. |
 | `lane.sh` | Sourced by every script: the lane's ports, lock and hosts. |
 | `lane-b.sh up\|down\|status` | Starts, stops or reports lane B's stack. |
+| `webhooks-to.sh <port>` | Points the database webhooks (invitation, account teardown, subscription delete) at `<port>` on the current lane. `seed.sql` points them at :3000, so `services.sh` runs it on lane B after the reset; run it yourself after any reset on lane B, or with your own server on another port. |
 | `remerge-index.py` | The `INDEX.md` re-merge `rebase-pr.sh` uses: a single checked 3-way merge. Count cells get the PR's change added on top of main's number, not one side's value, and `rebase-pr.sh` then recounts them from the files, which corrects the arithmetic if it was wrong. |
 
 ## Lanes: two PRs at once

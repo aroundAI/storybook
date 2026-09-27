@@ -200,6 +200,11 @@ test.describe('Media and report storage (KB-55, KB-56)', () => {
       route.request().method() === 'POST' ? retarget(route) : route.continue(),
     );
 
+    // The earlier test stores the owner's own tracks in this folder: what
+    // matters is that the stranger's attempt adds nothing to it
+    const folder = `projects/${project.id}/assets/audio`;
+    const before = await storageObjectsUnder('project-assets', folder);
+
     await signInAs(page, outsider);
     await page.goto(`/home/${outsider.slug}/studio/${own.slug}/audio-library`);
 
@@ -219,12 +224,7 @@ test.describe('Media and report storage (KB-55, KB-56)', () => {
       await page.screenshot({ path: `${OUT}/kb73-03-outsider-refused.png` });
     }
 
-    expect(
-      await storageObjectsUnder(
-        'project-assets',
-        `projects/${project.id}/assets/audio`,
-      ),
-    ).toEqual([]);
+    expect(await storageObjectsUnder('project-assets', folder)).toEqual(before);
     expect(
       await readRows(
         'audio_assets',
