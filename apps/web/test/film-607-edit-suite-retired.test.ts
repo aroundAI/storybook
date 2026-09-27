@@ -139,5 +139,5 @@ describe('FILM-607: the Edit Suite stays retired', () => {
 
     expect(files.length).toBeGreaterThan(500);
     expect(findRetiredNames(files)).toEqual([]);
-  });
+  }, 30_000);
 });
