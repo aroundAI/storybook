@@ -24,6 +24,10 @@ SEED=$STATE/next-cache-seed
 [ -d "$WT/apps/web/.next/cache" ] || { [ -d "$SEED" ] && mkdir -p "$WT/apps/web/.next" && cp -cR "$SEED" "$WT/apps/web/.next/cache"; }
 stop_server
 run "⚫️ Test" "production build (test env)" "NODE_OPTIONS=--max-old-space-size=4096 pnpm --filter web build:test"
+# seed.sql points the invitation and teardown webhooks at :3000. On lane B the
+# app is on $WEB_PORT, so without this no invitation email is sent, the
+# invitation spec fails, and --max-failures=1 stops Playwright there.
+[ "$LANE" = A ] || run "⚫️ Test" "database webhooks point at :$WEB_PORT" "\"$CI/webhooks-to.sh\" $WEB_PORT"
 (cd "$WT/apps/web" && NODE_ENV=test next start -p $WEB_PORT > "$OUT/test-server.log" 2>&1) & SERVER_PID=$!
 run "⚫️ Test" "server ready" "wait_http http://localhost:$WEB_PORT/healthcheck"
 run "⚫️ Test" "Supabase tests" "pnpm --filter web supabase:test"
