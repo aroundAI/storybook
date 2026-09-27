@@ -107,7 +107,12 @@ export const SCOPE = {
 } as const;
 
 /** Scopes that authorise reading a channel's own data. */
-export const READ_SCOPES = [SCOPE.readonly, SCOPE.youtube, SCOPE.forceSsl, SCOPE.partner];
+export const READ_SCOPES = [
+  SCOPE.readonly,
+  SCOPE.youtube,
+  SCOPE.forceSsl,
+  SCOPE.partner,
+];
 /** Scopes that authorise an upload. */
 export const UPLOAD_SCOPES = [SCOPE.upload, SCOPE.youtube, SCOPE.forceSsl];
 /** Scopes that authorise changing a playlist. */

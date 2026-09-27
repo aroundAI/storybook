@@ -56,7 +56,11 @@ export function consentPage(page: ConsentPage) {
 </main></body></html>`;
 }
 
-export function sendHtml(res: http.ServerResponse, status: number, html: string) {
+export function sendHtml(
+  res: http.ServerResponse,
+  status: number,
+  html: string,
+) {
   res.writeHead(status, {
     'content-type': 'text/html; charset=utf-8',
     'content-length': Buffer.byteLength(html),

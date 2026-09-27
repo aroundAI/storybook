@@ -9,7 +9,14 @@ import type { SocialRoute } from './server';
  * the id, with the label's initials.
  */
 
-const PALETTE = ['#2f6f8f', '#8f4a2f', '#4a7a3a', '#6a4a8f', '#8f2f5a', '#2f8f7a'];
+const PALETTE = [
+  '#2f6f8f',
+  '#8f4a2f',
+  '#4a7a3a',
+  '#6a4a8f',
+  '#8f2f5a',
+  '#2f8f7a',
+];
 
 function initials(label: string) {
   return (
@@ -22,7 +29,12 @@ function initials(label: string) {
   );
 }
 
-export function mediaUrl(origin: string, kind: string, id: string, label: string) {
+export function mediaUrl(
+  origin: string,
+  kind: string,
+  id: string,
+  label: string,
+) {
   return `${origin}/sandbox-media/${kind}/${encodeURIComponent(id)}.svg?label=${encodeURIComponent(label)}`;
 }
 
@@ -34,8 +46,10 @@ export const mediaRoute: SocialRoute = ({ url, method, res }) => {
   let hash = 0;
   for (const c of `${kind}${id}`) hash = (hash * 31 + c.charCodeAt(0)) >>> 0;
   const colour = PALETTE[hash % PALETTE.length];
-  const text = initials(url.searchParams.get('label') ?? '')
-    .replace(/[&<>"']/g, '');
+  const text = initials(url.searchParams.get('label') ?? '').replace(
+    /[&<>"']/g,
+    '',
+  );
   const wide = kind === 'thumbnail';
   const [w, h] = wide ? [480, 270] : [240, 240];
 

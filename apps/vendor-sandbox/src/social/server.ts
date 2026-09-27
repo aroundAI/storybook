@@ -50,7 +50,10 @@ export interface SocialRequest {
 }
 
 /** A vendor's own error body for an injected failure (`/__sandbox/fail`). */
-export type FailureShape = (status: number) => { status: number; body: unknown };
+export type FailureShape = (status: number) => {
+  status: number;
+  body: unknown;
+};
 
 const SECRET_KEYS =
   'access_token|refresh_token|client_secret|id_token|code|code_verifier|token|fb_exchange_token|input_token';
@@ -110,7 +113,9 @@ export function socialHandler(
       if (injected) {
         const shaped = failure?.(injected.status) ?? {
           status: injected.status,
-          body: { error: { code: injected.status, message: 'injected failure' } },
+          body: {
+            error: { code: injected.status, message: 'injected failure' },
+          },
         };
         sendJson(res, shaped.status, shaped.body);
         answered = true;

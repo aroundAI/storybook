@@ -92,7 +92,10 @@ export interface AuthCode {
 
 export type CodeCheck =
   | { ok: true; code: AuthCode }
-  | { ok: false; reason: 'unknown' | 'used' | 'expired' | 'client' | 'redirect' };
+  | {
+      ok: false;
+      reason: 'unknown' | 'used' | 'expired' | 'client' | 'redirect';
+    };
 
 export interface SocialStateJson {
   seed: number;
@@ -192,7 +195,9 @@ export class SocialState {
     scopes: string[],
     grant: { clientId: string; redirectUri: string; codeChallenge?: string },
   ): AuthCode {
-    const rng = this.rngFor(`code:${platform}:${this.next(`code:${platform}`)}`);
+    const rng = this.rngFor(
+      `code:${platform}:${this.next(`code:${platform}`)}`,
+    );
     const code: AuthCode = {
       value: `sbx-code-${token(rng, 32)}`,
       platform,
@@ -514,7 +519,8 @@ export class SocialState {
     for (const o of json.objects) this.objects.set(`${o.platform}:${o.id}`, o);
     for (const [k, v] of Object.entries(json.counters)) this.counters.set(k, v);
     for (const c of json.codes ?? []) this.codes.set(c.value, c);
-    for (const [k, v] of Object.entries(json.records ?? {})) this.records.set(k, v);
+    for (const [k, v] of Object.entries(json.records ?? {}))
+      this.records.set(k, v);
   }
 
   summary() {

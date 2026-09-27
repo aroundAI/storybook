@@ -1,7 +1,7 @@
 import { expect, vi } from 'vitest';
 
-import { SANDBOX_CLIENTS } from '../src/social/credentials';
 import { type Sandbox, createSandbox } from '../src/sandbox';
+import { SANDBOX_CLIENTS } from '../src/social/credentials';
 
 export const APP = 'http://localhost:3132';
 export const ALL_YOUTUBE_SCOPES = [
@@ -13,17 +13,39 @@ export const ALL_YOUTUBE_SCOPES = [
 ];
 
 const FREE_PORTS = {
-  control: 0, openai: 0, gemini: 0, elevenlabs: 0,
-  meta: 0, tiktok: 0, google: 0, x: 0, linkedin: 0,
+  control: 0,
+  openai: 0,
+  gemini: 0,
+  elevenlabs: 0,
+  meta: 0,
+  tiktok: 0,
+  google: 0,
+  x: 0,
+  linkedin: 0,
 };
 
 /** A sandbox on free ports with a clock the test moves, and the app's env pointed at it. */
-export async function googleSandbox(seed: number, clock: () => number, speed = 1) {
-  const sandbox = await createSandbox({ seed, speed, now: clock, ports: FREE_PORTS });
+export async function googleSandbox(
+  seed: number,
+  clock: () => number,
+  speed = 1,
+) {
+  const sandbox = await createSandbox({
+    seed,
+    speed,
+    now: clock,
+    ports: FREE_PORTS,
+  });
   vi.stubEnv('NODE_ENV', 'test');
   vi.stubEnv('VENDOR_SANDBOX', '1');
   vi.stubEnv('AWS_LAMBDA_FUNCTION_NAME', '');
-  for (const name of ['GOOGLE_OAUTH', 'GOOGLE_TOKEN', 'YOUTUBE_DATA', 'YOUTUBE_ANALYTICS', 'YOUTUBE_REPORTING']) {
+  for (const name of [
+    'GOOGLE_OAUTH',
+    'GOOGLE_TOKEN',
+    'YOUTUBE_DATA',
+    'YOUTUBE_ANALYTICS',
+    'YOUTUBE_REPORTING',
+  ]) {
     vi.stubEnv(`VENDOR_URL_${name}`, sandbox.urls.google);
   }
   return sandbox;
@@ -41,8 +63,13 @@ export interface GoogleTokens {
  * The connect route's authorize URL, the consent page's Allow with `scopes`
  * ticked, and the callback's code exchange — the real OAuth config throughout.
  */
-export async function connectYouTube(sandbox: Sandbox, scopes = ALL_YOUTUBE_SCOPES) {
-  const { YOUTUBE_OAUTH_CONFIG } = await import('@kit/publishing/oauth/youtube');
+export async function connectYouTube(
+  sandbox: Sandbox,
+  scopes = ALL_YOUTUBE_SCOPES,
+) {
+  const { YOUTUBE_OAUTH_CONFIG } = await import(
+    '@kit/publishing/oauth/youtube'
+  );
   const authorize = new URL(YOUTUBE_OAUTH_CONFIG.authUrl);
   authorize.search = new URLSearchParams({
     client_id: SANDBOX_CLIENTS.youtube.clientId,
@@ -59,7 +86,9 @@ export async function connectYouTube(sandbox: Sandbox, scopes = ALL_YOUTUBE_SCOP
   const html = await page.text();
   const action = /action="([^"]+)"/.exec(html)![1]!;
   const hidden = Object.fromEntries(
-    [...html.matchAll(/type="hidden" name="([^"]+)" value="([^"]*)"/g)].map(([, k, v]) => [k, v]),
+    [...html.matchAll(/type="hidden" name="([^"]+)" value="([^"]*)"/g)].map(
+      ([, k, v]) => [k, v],
+    ),
   );
   const form = new URLSearchParams({ ...hidden, decision: 'allow' });
   for (const scope of scopes) form.append('scope', scope);
@@ -70,7 +99,9 @@ export async function connectYouTube(sandbox: Sandbox, scopes = ALL_YOUTUBE_SCOP
     redirect: 'manual',
   });
   const back = new URL(decided.headers.get('location')!);
-  expect(back.origin + back.pathname).toBe(`${APP}/api/platforms/callback/youtube`);
+  expect(back.origin + back.pathname).toBe(
+    `${APP}/api/platforms/callback/youtube`,
+  );
   expect(back.searchParams.get('state')).toBe('nonce-state');
 
   const tokenResponse = await fetch(YOUTUBE_OAUTH_CONFIG.tokenUrl, {
@@ -89,7 +120,9 @@ export async function connectYouTube(sandbox: Sandbox, scopes = ALL_YOUTUBE_SCOP
 
 /** What the token-refresh cron does before a sync: a refresh grant. */
 export async function refreshYouTube(refreshToken: string) {
-  const { YOUTUBE_OAUTH_CONFIG } = await import('@kit/publishing/oauth/youtube');
+  const { YOUTUBE_OAUTH_CONFIG } = await import(
+    '@kit/publishing/oauth/youtube'
+  );
   const response = await fetch(YOUTUBE_OAUTH_CONFIG.tokenUrl, {
     method: 'POST',
     body: new URLSearchParams({

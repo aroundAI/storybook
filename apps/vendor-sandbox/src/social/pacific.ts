@@ -36,7 +36,8 @@ export function pacificMidnight(date: string) {
   const utcMidnight = Date.parse(`${date}T00:00:00Z`);
   // The offset at local midnight is the offset a few hours later, except on
   // the two changeover days; checking the result settles those.
-  let start = utcMidnight - offsetMinutes(utcMidnight + 12 * 3_600_000) * 60_000;
+  let start =
+    utcMidnight - offsetMinutes(utcMidnight + 12 * 3_600_000) * 60_000;
   if (pacificDate(start) !== date) start += 3_600_000;
   if (pacificDate(start - 1) === date) start -= 3_600_000;
   return start;

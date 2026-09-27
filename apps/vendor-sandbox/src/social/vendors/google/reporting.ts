@@ -24,35 +24,74 @@ const DAY_MS = 86_400_000;
 export const REPORT_TYPES = {
   channel_basic_a3: {
     name: 'User activity',
-    dimensions: ['date', 'channel_id', 'video_id', 'live_or_on_demand', 'subscribed_status', 'country_code'],
+    dimensions: [
+      'date',
+      'channel_id',
+      'video_id',
+      'live_or_on_demand',
+      'subscribed_status',
+      'country_code',
+    ],
     metrics: [
-      'engaged_views', 'views', 'comments', 'likes', 'dislikes', 'shares',
-      'watch_time_minutes', 'average_view_duration_seconds',
-      'average_view_duration_percentage', 'subscribers_gained', 'subscribers_lost',
-      'red_views', 'red_watch_time_minutes',
+      'engaged_views',
+      'views',
+      'comments',
+      'likes',
+      'dislikes',
+      'shares',
+      'watch_time_minutes',
+      'average_view_duration_seconds',
+      'average_view_duration_percentage',
+      'subscribers_gained',
+      'subscribers_lost',
+      'red_views',
+      'red_watch_time_minutes',
     ],
   },
   channel_combined_a3: {
     name: 'Combined',
     dimensions: [
-      'date', 'channel_id', 'video_id', 'live_or_on_demand', 'subscribed_status',
-      'country_code', 'playback_location_type', 'traffic_source_type', 'device_type',
+      'date',
+      'channel_id',
+      'video_id',
+      'live_or_on_demand',
+      'subscribed_status',
+      'country_code',
+      'playback_location_type',
+      'traffic_source_type',
+      'device_type',
       'operating_system',
     ],
     metrics: [
-      'engaged_views', 'views', 'watch_time_minutes', 'average_view_duration_seconds',
-      'average_view_duration_percentage', 'red_views', 'red_watch_time_minutes',
+      'engaged_views',
+      'views',
+      'watch_time_minutes',
+      'average_view_duration_seconds',
+      'average_view_duration_percentage',
+      'red_views',
+      'red_watch_time_minutes',
     ],
   },
   channel_traffic_source_a3: {
     name: 'Traffic sources',
     dimensions: [
-      'date', 'channel_id', 'video_id', 'live_or_on_demand', 'subscribed_status',
-      'country_code', 'traffic_source_type', 'traffic_source_detail',
+      'date',
+      'channel_id',
+      'video_id',
+      'live_or_on_demand',
+      'subscribed_status',
+      'country_code',
+      'traffic_source_type',
+      'traffic_source_detail',
     ],
     metrics: [
-      'engaged_views', 'views', 'watch_time_minutes', 'average_view_duration_seconds',
-      'average_view_duration_percentage', 'red_views', 'red_watch_time_minutes',
+      'engaged_views',
+      'views',
+      'watch_time_minutes',
+      'average_view_duration_seconds',
+      'average_view_duration_percentage',
+      'red_views',
+      'red_watch_time_minutes',
     ],
   },
   channel_reach_basic_a1: {
@@ -63,8 +102,13 @@ export const REPORT_TYPES = {
   channel_reach_combined_a1: {
     name: 'Reach combined',
     dimensions: [
-      'date', 'channel_id', 'video_id', 'traffic_source_type', 'traffic_source_detail',
-      'operating_system', 'device_type',
+      'date',
+      'channel_id',
+      'video_id',
+      'traffic_source_type',
+      'traffic_source_detail',
+      'operating_system',
+      'device_type',
     ],
     metrics: ['video_thumbnail_impressions', 'video_thumbnail_impressions_ctr'],
   },
@@ -74,8 +118,30 @@ type ReportTypeId = keyof typeof REPORT_TYPES;
 
 /** The numeric codes of traffic_source_type (dimensions reference), all of them. */
 export const TRAFFIC_SOURCE_CODES = [
-  '0', '1', '3', '4', '5', '7', '8', '9', '11', '14', '17', '18', '19', '20',
-  '23', '24', '25', '26', '27', '28', '29', '30', '31', '32',
+  '0',
+  '1',
+  '3',
+  '4',
+  '5',
+  '7',
+  '8',
+  '9',
+  '11',
+  '14',
+  '17',
+  '18',
+  '19',
+  '20',
+  '23',
+  '24',
+  '25',
+  '26',
+  '27',
+  '28',
+  '29',
+  '30',
+  '31',
+  '32',
 ];
 const COUNTRIES = ['US', 'GB', 'IN', 'CA', 'AU', 'DE', 'PH', 'NG'];
 // Mobile phone, Computer, TV, Tablet (device_type codes).
@@ -118,7 +184,9 @@ function yyyymmdd(date: string) {
 export function reportDays(social: SocialState, job: Job) {
   const today = pacificDate(social.now());
   const days: string[] = [];
-  let date = pacificDate(pacificMidnight(pacificDate(job.createMs)) - 30 * DAY_MS + 12 * 3_600_000);
+  let date = pacificDate(
+    pacificMidnight(pacificDate(job.createMs)) - 30 * DAY_MS + 12 * 3_600_000,
+  );
   for (; date < today; date = nextDate(date)) days.push(date);
   return days;
 }
@@ -147,7 +215,8 @@ function dayFigures(social: SocialState, object: SocialObject, date: string) {
   const from = pacificMidnight(date);
   const to = pacificMidnight(nextDate(date));
   const on = (metric: Parameters<SocialState['cumulative']>[1]) =>
-    social.cumulative(object, metric, to) - social.cumulative(object, metric, from);
+    social.cumulative(object, metric, to) -
+    social.cumulative(object, metric, from);
   const views = on('views');
   const watchSeconds =
     social.watchSeconds(object, to) - social.watchSeconds(object, from);
@@ -189,33 +258,35 @@ export function reportCsv(social: SocialState, job: Job, day: string) {
     const f = dayFigures(social, object, day);
     if (Object.values(f).every((value) => value === 0)) continue;
 
-    const rng = social.rngFor(`yt-report-split:${job.reportTypeId}:${object.id}:${day}`);
-    const splits =
-      job.reportTypeId.startsWith('channel_reach')
-        ? job.reportTypeId === 'channel_reach_basic_a1'
-          ? [{}]
-          : TRAFFIC_SOURCE_CODES.slice(0, 6).map((code, i) => ({
-              traffic_source_type: code,
-              traffic_source_detail: '',
-              operating_system: OS_CODES[i % OS_CODES.length]!,
-              device_type: DEVICE_CODES[i % DEVICE_CODES.length]!,
-            }))
-        : ['subscribed', 'unsubscribed'].flatMap((status) =>
-            COUNTRIES.slice(0, 4).map((country, i) => ({
-              live_or_on_demand: 'onDemand',
-              subscribed_status: status,
-              country_code: country,
-              ...(job.reportTypeId === 'channel_basic_a3'
-                ? {}
-                : {
-                    traffic_source_type: rng.pick(TRAFFIC_SOURCE_CODES),
-                    traffic_source_detail: '',
-                    playback_location_type: PLAYBACK_CODES[i % PLAYBACK_CODES.length]!,
-                    device_type: DEVICE_CODES[i % DEVICE_CODES.length]!,
-                    operating_system: OS_CODES[i % OS_CODES.length]!,
-                  }),
-            })),
-          );
+    const rng = social.rngFor(
+      `yt-report-split:${job.reportTypeId}:${object.id}:${day}`,
+    );
+    const splits = job.reportTypeId.startsWith('channel_reach')
+      ? job.reportTypeId === 'channel_reach_basic_a1'
+        ? [{}]
+        : TRAFFIC_SOURCE_CODES.slice(0, 6).map((code, i) => ({
+            traffic_source_type: code,
+            traffic_source_detail: '',
+            operating_system: OS_CODES[i % OS_CODES.length]!,
+            device_type: DEVICE_CODES[i % DEVICE_CODES.length]!,
+          }))
+      : ['subscribed', 'unsubscribed'].flatMap((status) =>
+          COUNTRIES.slice(0, 4).map((country, i) => ({
+            live_or_on_demand: 'onDemand',
+            subscribed_status: status,
+            country_code: country,
+            ...(job.reportTypeId === 'channel_basic_a3'
+              ? {}
+              : {
+                  traffic_source_type: rng.pick(TRAFFIC_SOURCE_CODES),
+                  traffic_source_detail: '',
+                  playback_location_type:
+                    PLAYBACK_CODES[i % PLAYBACK_CODES.length]!,
+                  device_type: DEVICE_CODES[i % DEVICE_CODES.length]!,
+                  operating_system: OS_CODES[i % OS_CODES.length]!,
+                }),
+          })),
+        );
 
     const weights = drawWeights(rng, splits.length);
     const part = (total: number) => splitInteger(total, weights);
@@ -242,17 +313,22 @@ export function reportCsv(social: SocialState, job: Job, day: string) {
         channel_id: job.accountId,
         video_id: object.id,
         ...dims,
-        ...Object.fromEntries(Object.entries(parts).map(([k, p]) => [k, p[i]!])),
+        ...Object.fromEntries(
+          Object.entries(parts).map(([k, p]) => [k, p[i]!]),
+        ),
         watch_time_minutes: (watch[i]! / 60).toFixed(3),
         red_watch_time_minutes: ((watch[i]! / 60) * 0.02).toFixed(3),
         average_view_duration_seconds: v > 0 ? (watch[i]! / v).toFixed(3) : '0',
         average_view_duration_percentage:
-          v > 0 ? ((watch[i]! / v / object.durationSeconds) * 100).toFixed(3) : '0',
+          v > 0
+            ? ((watch[i]! / v / object.durationSeconds) * 100).toFixed(3)
+            : '0',
         video_thumbnail_impressions_ctr:
           impressions > 0 ? Math.min(v / impressions, 0.3).toFixed(4) : '0',
       };
       // A row with nothing in it is left out, as the real reports leave it out.
-      if (Object.values(parts).every((p) => p[i] === 0) && watch[i] === 0) return;
+      if (Object.values(parts).every((p) => p[i] === 0) && watch[i] === 0)
+        return;
       lines.push(columns.map((c) => csvCell(cells[c] ?? '')).join(','));
     });
   }
@@ -296,14 +372,32 @@ const jobsCreate: SocialRoute = ({ url, method, req, res, body, social }) => {
   }
   const reportTypeId = String(requested.reportTypeId ?? '');
   if (!isReportType(reportTypeId)) {
-    sendJson(res, 400, googleError(400, `Report type ${reportTypeId} does not exist.`, 'badRequest', 'INVALID_ARGUMENT'));
+    sendJson(
+      res,
+      400,
+      googleError(
+        400,
+        `Report type ${reportTypeId} does not exist.`,
+        'badRequest',
+        'INVALID_ARGUMENT',
+      ),
+    );
     return true;
   }
   const existing = social
     .list<Job>(jobsNamespace(token.accountId))
     .find((job) => job.reportTypeId === reportTypeId);
   if (existing) {
-    sendJson(res, 409, googleError(409, 'Requested entity already exists', 'alreadyExists', 'ALREADY_EXISTS'));
+    sendJson(
+      res,
+      409,
+      googleError(
+        409,
+        'Requested entity already exists',
+        'alreadyExists',
+        'ALREADY_EXISTS',
+      ),
+    );
     return true;
   }
 
@@ -328,30 +422,56 @@ const reportsList: SocialRoute = ({ url, method, req, res, social, self }) => {
     .list<Job>(jobsNamespace(token.accountId))
     .find((j) => j.id === match[1]);
   if (!job) {
-    sendJson(res, 404, googleError(404, 'Requested entity was not found.', 'notFound', 'NOT_FOUND'));
+    sendJson(
+      res,
+      404,
+      googleError(
+        404,
+        'Requested entity was not found.',
+        'notFound',
+        'NOT_FOUND',
+      ),
+    );
     return true;
   }
 
   const createdAfter = url.searchParams.get('createdAfter');
-  const pageSize = Math.min(Number(url.searchParams.get('pageSize')) || 100, 100);
+  const pageSize = Math.min(
+    Number(url.searchParams.get('pageSize')) || 100,
+    100,
+  );
   const start = Number(url.searchParams.get('pageToken') ?? 0) || 0;
 
   const all = reportDays(social, job)
     .map((day) => reportFor(social, self, job, day))
     .filter((r) => Date.parse(r.createTime) <= social.now())
-    .filter((r) => !createdAfter || Date.parse(r.createTime) > Date.parse(createdAfter))
+    .filter(
+      (r) =>
+        !createdAfter || Date.parse(r.createTime) > Date.parse(createdAfter),
+    )
     .reverse();
 
   const page = all.slice(start, start + pageSize);
   sendJson(res, 200, {
     ...(page.length ? { reports: page } : {}),
-    ...(start + pageSize < all.length ? { nextPageToken: String(start + pageSize) } : {}),
+    ...(start + pageSize < all.length
+      ? { nextPageToken: String(start + pageSize) }
+      : {}),
   });
   return true;
 };
 
-const mediaDownload: SocialRoute = ({ url, method, req, res, social, about }) => {
-  const match = /^\/v1\/media\/CHANNEL\/([^/]+)\/([^/]+)\/([^/]+)$/.exec(url.pathname);
+const mediaDownload: SocialRoute = ({
+  url,
+  method,
+  req,
+  res,
+  social,
+  about,
+}) => {
+  const match = /^\/v1\/media\/CHANNEL\/([^/]+)\/([^/]+)\/([^/]+)$/.exec(
+    url.pathname,
+  );
   if (method !== 'GET' || !match) return false;
   const token = authorize(req, res, social, ANALYTICS_SCOPES);
   if (!token) return true;
@@ -360,13 +480,28 @@ const mediaDownload: SocialRoute = ({ url, method, req, res, social, about }) =>
   const job = social
     .list<Job>(jobsNamespace(token.accountId))
     .find((j) => j.id === jobId);
-  const compact = job && reportId?.startsWith(job.id) ? reportId.slice(job.id.length) : '';
+  const compact =
+    job && reportId?.startsWith(job.id) ? reportId.slice(job.id.length) : '';
   const day = /^\d{8}$/.test(compact)
     ? `${compact.slice(0, 4)}-${compact.slice(4, 6)}-${compact.slice(6)}`
     : '';
 
-  if (!job || channelId !== token.accountId || !day || !reportDays(social, job).includes(day)) {
-    sendJson(res, 404, googleError(404, 'Requested entity was not found.', 'notFound', 'NOT_FOUND'));
+  if (
+    !job ||
+    channelId !== token.accountId ||
+    !day ||
+    !reportDays(social, job).includes(day)
+  ) {
+    sendJson(
+      res,
+      404,
+      googleError(
+        404,
+        'Requested entity was not found.',
+        'notFound',
+        'NOT_FOUND',
+      ),
+    );
     return true;
   }
   about(reportId!);

@@ -49,7 +49,13 @@ export function threeSignificantFigures(count: number) {
   return Math.floor(count / scale) * scale;
 }
 
-function thumbnails(self: string, kind: string, id: string, label: string, sizes: Record<string, [number, number]>) {
+function thumbnails(
+  self: string,
+  kind: string,
+  id: string,
+  label: string,
+  sizes: Record<string, [number, number]>,
+) {
   return Object.fromEntries(
     Object.entries(sizes).map(([name, [width, height]]) => [
       name,
@@ -63,10 +69,18 @@ function channelCreated(social: SocialState, account: SocialAccount) {
   return new Date(social.now() - rng.int(200, 2400) * DAY_MS).toISOString();
 }
 
-function channelResource(ctx: SocialRequest, account: SocialAccount, parts: string[]) {
+function channelResource(
+  ctx: SocialRequest,
+  account: SocialAccount,
+  parts: string[],
+) {
   const { social, self } = ctx;
-  const objects = social.listObjects('youtube').filter((o) => o.accountId === account.id);
-  const baseViews = social.rngFor(`channel-views:${account.id}`).int(4_000, 900_000);
+  const objects = social
+    .listObjects('youtube')
+    .filter((o) => o.accountId === account.id);
+  const baseViews = social
+    .rngFor(`channel-views:${account.id}`)
+    .int(4_000, 900_000);
   const resource: Record<string, unknown> = {
     kind: 'youtube#channel',
     etag: etag(social, `channel:${account.id}`),
@@ -87,12 +101,20 @@ function channelResource(ctx: SocialRequest, account: SocialAccount, parts: stri
     };
   }
   if (parts.includes('statistics')) {
-    const views = objects.reduce((sum, o) => sum + social.cumulative(o, 'views'), baseViews);
+    const views = objects.reduce(
+      (sum, o) => sum + social.cumulative(o, 'views'),
+      baseViews,
+    );
     resource.statistics = {
       viewCount: String(views),
-      subscriberCount: String(threeSignificantFigures(social.followers(account))),
+      subscriberCount: String(
+        threeSignificantFigures(social.followers(account)),
+      ),
       hiddenSubscriberCount: false,
-      videoCount: String(objects.length + social.rngFor(`channel-videos:${account.id}`).int(3, 60)),
+      videoCount: String(
+        objects.length +
+          social.rngFor(`channel-videos:${account.id}`).int(3, 60),
+      ),
     };
   }
   return resource;
@@ -104,9 +126,15 @@ function isoDuration(seconds: number) {
   return `PT${m ? `${m}M` : ''}${s || !m ? `${s}S` : ''}`;
 }
 
-function videoResource(ctx: SocialRequest, object: SocialObject, parts: string[]) {
+function videoResource(
+  ctx: SocialRequest,
+  object: SocialObject,
+  parts: string[],
+) {
   const { social, self } = ctx;
-  const channel = object.accountId ? social.account('youtube', object.accountId) : undefined;
+  const channel = object.accountId
+    ? social.account('youtube', object.accountId)
+    : undefined;
   const d = object.details ?? {};
   const resource: Record<string, unknown> = {
     kind: 'youtube#video',
@@ -141,7 +169,8 @@ function videoResource(ctx: SocialRequest, object: SocialObject, parts: string[]
   if (parts.includes('status')) {
     resource.status = {
       uploadStatus: 'processed',
-      privacyStatus: typeof d.privacyStatus === 'string' ? d.privacyStatus : 'public',
+      privacyStatus:
+        typeof d.privacyStatus === 'string' ? d.privacyStatus : 'public',
       madeForKids: d.madeForKids === true,
       selfDeclaredMadeForKids: d.madeForKids === true,
     };
@@ -150,7 +179,9 @@ function videoResource(ctx: SocialRequest, object: SocialObject, parts: string[]
     resource.statistics = {
       viewCount: String(social.cumulative(object, 'views')),
       likeCount: String(social.cumulative(object, 'likes')),
-      dislikeCount: String(Math.floor(social.cumulative(object, 'likes') * 0.035)),
+      dislikeCount: String(
+        Math.floor(social.cumulative(object, 'likes') * 0.035),
+      ),
       favoriteCount: '0',
       commentCount: String(social.cumulative(object, 'comments')),
     };
@@ -180,7 +211,9 @@ const channelsList: SocialRoute = (ctx) => {
   const mine = url.searchParams.get('mine') === 'true';
 
   const accounts = mine
-    ? [social.account('youtube', token.accountId)].filter((a): a is SocialAccount => !!a)
+    ? [social.account('youtube', token.accountId)].filter(
+        (a): a is SocialAccount => !!a,
+      )
     : ids
         .map((id) => social.account('youtube', id))
         .filter((a): a is SocialAccount => !!a);
@@ -188,7 +221,11 @@ const channelsList: SocialRoute = (ctx) => {
   sendJson(
     res,
     200,
-    listEnvelope(social, 'youtube#channelListResponse', accounts.map((a) => channelResource(ctx, a, parts))),
+    listEnvelope(
+      social,
+      'youtube#channelListResponse',
+      accounts.map((a) => channelResource(ctx, a, parts)),
+    ),
   );
   return true;
 };
@@ -230,13 +267,16 @@ export function multipartRelated(contentType: string, body: Buffer) {
       const head = part.slice(0, split);
       const content = part.slice(split + 4).replace(/\r\n$/, '');
       return {
-        contentType: /content-type:\s*([^\r\n]+)/i.exec(head)?.[1]?.trim() ?? '',
+        contentType:
+          /content-type:\s*([^\r\n]+)/i.exec(head)?.[1]?.trim() ?? '',
         content,
       };
     });
 
   const json = parts.find((p) => p.contentType.startsWith('application/json'));
-  const media = parts.find((p) => !p.contentType.startsWith('application/json'));
+  const media = parts.find(
+    (p) => !p.contentType.startsWith('application/json'),
+  );
   if (!json) return null;
 
   return {
@@ -250,14 +290,28 @@ export function multipartRelated(contentType: string, body: Buffer) {
 /** POST /upload/youtube/v3/videos?uploadType=multipart */
 const videosInsert: SocialRoute = (ctx) => {
   const { url, method, req, res, body, social, about } = ctx;
-  if (method !== 'POST' || url.pathname !== '/upload/youtube/v3/videos') return false;
+  if (method !== 'POST' || url.pathname !== '/upload/youtube/v3/videos')
+    return false;
 
   const token = authorize(req, res, social, UPLOAD_SCOPES);
   if (!token) return true;
 
   const parsed = multipartRelated(req.headers['content-type'] ?? '', body);
-  if (url.searchParams.get('uploadType') !== 'multipart' || !parsed || parsed.mediaBytes === 0) {
-    sendJson(res, 400, googleError(400, 'The request does not include the video content.', 'mediaBodyRequired', 'INVALID_ARGUMENT'));
+  if (
+    url.searchParams.get('uploadType') !== 'multipart' ||
+    !parsed ||
+    parsed.mediaBytes === 0
+  ) {
+    sendJson(
+      res,
+      400,
+      googleError(
+        400,
+        'The request does not include the video content.',
+        'mediaBodyRequired',
+        'INVALID_ARGUMENT',
+      ),
+    );
     return true;
   }
 
@@ -265,7 +319,16 @@ const videosInsert: SocialRoute = (ctx) => {
   const status = objectAt(parsed.resource.status);
   const title = String(snippet.title ?? '');
   if (!title.trim()) {
-    sendJson(res, 400, googleError(400, 'The request metadata does not specify a video title.', 'invalidTitle', 'INVALID_ARGUMENT'));
+    sendJson(
+      res,
+      400,
+      googleError(
+        400,
+        'The request metadata does not specify a video title.',
+        'invalidTitle',
+        'INVALID_ARGUMENT',
+      ),
+    );
     return true;
   }
   const isShort = /#shorts\b/i.test(`${title} ${snippet.description ?? ''}`);
@@ -277,9 +340,12 @@ const videosInsert: SocialRoute = (ctx) => {
     durationSeconds: isShort ? rng.int(14, 59) : rng.int(64, 178),
     details: {
       privacyStatus: String(status.privacyStatus ?? 'public'),
-      madeForKids: status.selfDeclaredMadeForKids === true || status.madeForKids === true,
+      madeForKids:
+        status.selfDeclaredMadeForKids === true || status.madeForKids === true,
       categoryId: String(snippet.categoryId ?? '24'),
-      ...(Array.isArray(snippet.tags) ? { tags: snippet.tags.map(String) } : {}),
+      ...(Array.isArray(snippet.tags)
+        ? { tags: snippet.tags.map(String) }
+        : {}),
       creatorContentType: isShort ? 'SHORTS' : 'VIDEO_ON_DEMAND',
     },
   });
@@ -287,7 +353,8 @@ const videosInsert: SocialRoute = (ctx) => {
 
   const resource = videoResource(ctx, object, listParam(url, 'part'));
   // Just uploaded: not processed yet.
-  if (resource.status) (resource.status as Record<string, unknown>).uploadStatus = 'uploaded';
+  if (resource.status)
+    (resource.status as Record<string, unknown>).uploadStatus = 'uploaded';
   sendJson(res, 200, resource);
   return true;
 };
@@ -295,7 +362,8 @@ const videosInsert: SocialRoute = (ctx) => {
 /** POST /upload/youtube/v3/thumbnails/set?videoId=…&uploadType=media */
 const thumbnailsSet: SocialRoute = (ctx) => {
   const { url, method, req, res, body, social, self, about } = ctx;
-  if (method !== 'POST' || url.pathname !== '/upload/youtube/v3/thumbnails/set') return false;
+  if (method !== 'POST' || url.pathname !== '/upload/youtube/v3/thumbnails/set')
+    return false;
 
   const token = authorize(req, res, social, UPLOAD_SCOPES);
   if (!token) return true;
@@ -303,11 +371,32 @@ const thumbnailsSet: SocialRoute = (ctx) => {
   const videoId = url.searchParams.get('videoId') ?? '';
   about(videoId);
   if (body.length === 0) {
-    sendJson(res, 400, googleError(400, 'The request does not include the image content.', 'mediaBodyRequired', 'INVALID_ARGUMENT'));
+    sendJson(
+      res,
+      400,
+      googleError(
+        400,
+        'The request does not include the image content.',
+        'mediaBodyRequired',
+        'INVALID_ARGUMENT',
+      ),
+    );
     return true;
   }
-  if (!social.hasObject('youtube', videoId) || social.object('youtube', videoId).accountId !== token.accountId) {
-    sendJson(res, 404, googleError(404, 'The video that you are trying to update cannot be found.', 'videoNotFound', 'NOT_FOUND'));
+  if (
+    !social.hasObject('youtube', videoId) ||
+    social.object('youtube', videoId).accountId !== token.accountId
+  ) {
+    sendJson(
+      res,
+      404,
+      googleError(
+        404,
+        'The video that you are trying to update cannot be found.',
+        'videoNotFound',
+        'NOT_FOUND',
+      ),
+    );
     return true;
   }
 
@@ -329,16 +418,28 @@ const thumbnailsSet: SocialRoute = (ctx) => {
 /** POST /youtube/v3/playlistItems?part=snippet */
 const playlistItemsInsert: SocialRoute = (ctx) => {
   const { url, method, req, res, body, social, about } = ctx;
-  if (method !== 'POST' || url.pathname !== '/youtube/v3/playlistItems') return false;
+  if (method !== 'POST' || url.pathname !== '/youtube/v3/playlistItems')
+    return false;
 
   if (!authorize(req, res, social, MANAGE_SCOPES)) return true;
 
-  const snippet = objectAt(objectAt(JSON.parse(body.toString('utf8') || '{}')).snippet);
+  const snippet = objectAt(
+    objectAt(JSON.parse(body.toString('utf8') || '{}')).snippet,
+  );
   const playlistId = String(snippet.playlistId ?? '');
   const videoId = String(objectAt(snippet.resourceId).videoId ?? '');
   about(videoId);
   if (!playlistId || !social.hasObject('youtube', videoId)) {
-    sendJson(res, 404, googleError(404, 'The playlist identified with the request\'s playlistId parameter cannot be found.', 'playlistNotFound', 'NOT_FOUND'));
+    sendJson(
+      res,
+      404,
+      googleError(
+        404,
+        "The playlist identified with the request's playlistId parameter cannot be found.",
+        'playlistNotFound',
+        'NOT_FOUND',
+      ),
+    );
     return true;
   }
 

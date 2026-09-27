@@ -88,7 +88,10 @@ const decision: SocialRoute = ({ url, method, body, res, social }) => {
   const stateParam: Record<string, string> = state ? { state } : {};
 
   if (form.get('decision') !== 'allow') {
-    redirect(res, withParams(redirectUri, { error: 'access_denied', ...stateParam }));
+    redirect(
+      res,
+      withParams(redirectUri, { error: 'access_denied', ...stateParam }),
+    );
     return true;
   }
 
@@ -151,13 +154,22 @@ const tokenEndpoint: SocialRoute = ({ url, method, body, res, social }) => {
   if (grant === 'refresh_token') {
     const found = social.token(form.get('refresh_token') ?? '');
     if (!found || found.kind !== 'refresh' || found.revoked) {
-      sendJson(res, 400, tokenError('invalid_grant', 'Token has been expired or revoked.'));
+      sendJson(
+        res,
+        400,
+        tokenError('invalid_grant', 'Token has been expired or revoked.'),
+      );
       return true;
     }
-    const { access } = social.issueTokens('youtube', found.accountId, found.scopes, {
-      ttlMs: ACCESS_TTL_S * 1000,
-      refresh: false,
-    });
+    const { access } = social.issueTokens(
+      'youtube',
+      found.accountId,
+      found.scopes,
+      {
+        ttlMs: ACCESS_TTL_S * 1000,
+        refresh: false,
+      },
+    );
     // A refresh grant returns a new access token, not a new refresh token.
     sendJson(res, 200, {
       access_token: access.value,
@@ -168,7 +180,14 @@ const tokenEndpoint: SocialRoute = ({ url, method, body, res, social }) => {
     return true;
   }
 
-  sendJson(res, 400, tokenError('unsupported_grant_type', 'Invalid grant_type: ' + (grant ?? '')));
+  sendJson(
+    res,
+    400,
+    tokenError(
+      'unsupported_grant_type',
+      'Invalid grant_type: ' + (grant ?? ''),
+    ),
+  );
   return true;
 };
 
@@ -176,7 +195,8 @@ const tokenEndpoint: SocialRoute = ({ url, method, body, res, social }) => {
 const revokeEndpoint: SocialRoute = ({ url, method, body, res, social }) => {
   if (method !== 'POST' || url.pathname !== '/revoke') return false;
 
-  const value = url.searchParams.get('token') ?? formOf(body).get('token') ?? '';
+  const value =
+    url.searchParams.get('token') ?? formOf(body).get('token') ?? '';
   const found = social.token(value);
   if (!found || found.revoked) {
     sendJson(res, 400, tokenError('invalid_token', 'Token expired or revoked'));
@@ -187,4 +207,9 @@ const revokeEndpoint: SocialRoute = ({ url, method, body, res, social }) => {
   return true;
 };
 
-export const googleOAuthRoutes = [authorizePage, decision, tokenEndpoint, revokeEndpoint];
+export const googleOAuthRoutes = [
+  authorizePage,
+  decision,
+  tokenEndpoint,
+  revokeEndpoint,
+];

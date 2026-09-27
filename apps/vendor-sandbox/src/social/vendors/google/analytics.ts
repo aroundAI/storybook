@@ -52,37 +52,135 @@ const MONETARY = new Set([
 ]);
 
 /** Retention metrics: only on elapsedVideoTimeRatio. */
-const RETENTION = new Set(['audienceWatchRatio', 'relativeRetentionPerformance']);
+const RETENTION = new Set([
+  'audienceWatchRatio',
+  'relativeRetentionPerformance',
+]);
 
 /** Every dimension served, with its documented values (dimensions reference). */
 export const ANALYTICS_DIMENSIONS = {
   day: null,
   elapsedVideoTimeRatio: null,
-  ageGroup: ['age13-17', 'age18-24', 'age25-34', 'age35-44', 'age45-54', 'age55-64', 'age65-'],
+  ageGroup: [
+    'age13-17',
+    'age18-24',
+    'age25-34',
+    'age35-44',
+    'age45-54',
+    'age55-64',
+    'age65-',
+  ],
   gender: ['female', 'male', 'user_specified'],
   insightTrafficSourceType: [
-    'ADVERTISING', 'ANNOTATION', 'CAMPAIGN_CARD', 'END_SCREEN', 'EXT_URL', 'HASHTAGS',
-    'LIVE_REDIRECT', 'NO_LINK_EMBEDDED', 'NO_LINK_OTHER', 'NOTIFICATION', 'PLAYLIST',
-    'PRODUCT_PAGE', 'PROMOTED', 'RELATED_VIDEO', 'SHORTS', 'SOUND_PAGE', 'SUBSCRIBER',
-    'YT_CHANNEL', 'YT_OTHER_PAGE', 'YT_SEARCH', 'VIDEO_REMIXES', 'WATCH_WITH',
+    'ADVERTISING',
+    'ANNOTATION',
+    'CAMPAIGN_CARD',
+    'END_SCREEN',
+    'EXT_URL',
+    'HASHTAGS',
+    'LIVE_REDIRECT',
+    'NO_LINK_EMBEDDED',
+    'NO_LINK_OTHER',
+    'NOTIFICATION',
+    'PLAYLIST',
+    'PRODUCT_PAGE',
+    'PROMOTED',
+    'RELATED_VIDEO',
+    'SHORTS',
+    'SOUND_PAGE',
+    'SUBSCRIBER',
+    'YT_CHANNEL',
+    'YT_OTHER_PAGE',
+    'YT_SEARCH',
+    'VIDEO_REMIXES',
+    'WATCH_WITH',
   ],
   country: [
-    'US', 'GB', 'IN', 'CA', 'AU', 'DE', 'BR', 'PH', 'NG', 'MX', 'FR', 'ID', 'ZA',
-    'KE', 'IE', 'NZ', 'NL', 'SE', 'PK', 'ES', 'IT', 'JP', 'PL', 'MY', 'SG',
+    'US',
+    'GB',
+    'IN',
+    'CA',
+    'AU',
+    'DE',
+    'BR',
+    'PH',
+    'NG',
+    'MX',
+    'FR',
+    'ID',
+    'ZA',
+    'KE',
+    'IE',
+    'NZ',
+    'NL',
+    'SE',
+    'PK',
+    'ES',
+    'IT',
+    'JP',
+    'PL',
+    'MY',
+    'SG',
   ],
   city: [
-    'London', 'New York', 'Los Angeles', 'Toronto', 'Sydney', 'Manchester', 'Chicago',
-    'Mumbai', 'Lagos', 'Melbourne', 'Houston', 'Dublin', 'Birmingham', 'Delhi',
-    'Vancouver', 'Nairobi', 'Auckland', 'Glasgow', 'Seattle', 'Leeds', 'Atlanta',
-    'Bristol', 'Calgary', 'Johannesburg', 'Brisbane',
+    'London',
+    'New York',
+    'Los Angeles',
+    'Toronto',
+    'Sydney',
+    'Manchester',
+    'Chicago',
+    'Mumbai',
+    'Lagos',
+    'Melbourne',
+    'Houston',
+    'Dublin',
+    'Birmingham',
+    'Delhi',
+    'Vancouver',
+    'Nairobi',
+    'Auckland',
+    'Glasgow',
+    'Seattle',
+    'Leeds',
+    'Atlanta',
+    'Bristol',
+    'Calgary',
+    'Johannesburg',
+    'Brisbane',
   ],
-  deviceType: ['MOBILE', 'DESKTOP', 'TV', 'TABLET', 'GAME_CONSOLE', 'AUTOMOTIVE', 'WEARABLE', 'UNKNOWN_PLATFORM'],
+  deviceType: [
+    'MOBILE',
+    'DESKTOP',
+    'TV',
+    'TABLET',
+    'GAME_CONSOLE',
+    'AUTOMOTIVE',
+    'WEARABLE',
+    'UNKNOWN_PLATFORM',
+  ],
   operatingSystem: [
-    'ANDROID', 'IOS', 'WINDOWS', 'MACINTOSH', 'SMART_TV', 'LINUX', 'CHROMECAST',
-    'PLAYSTATION', 'XBOX', 'WEBOS', 'TIZEN', 'OTHER',
+    'ANDROID',
+    'IOS',
+    'WINDOWS',
+    'MACINTOSH',
+    'SMART_TV',
+    'LINUX',
+    'CHROMECAST',
+    'PLAYSTATION',
+    'XBOX',
+    'WEBOS',
+    'TIZEN',
+    'OTHER',
   ],
   subscribedStatus: ['UNSUBSCRIBED', 'SUBSCRIBED'],
-  creatorContentType: ['VIDEO_ON_DEMAND', 'SHORTS', 'LIVE_STREAM', 'STORY', 'UNSPECIFIED'],
+  creatorContentType: [
+    'VIDEO_ON_DEMAND',
+    'SHORTS',
+    'LIVE_STREAM',
+    'STORY',
+    'UNSPECIFIED',
+  ],
   liveOrOnDemand: ['ON_DEMAND', 'LIVE'],
 } as const;
 
@@ -96,7 +194,12 @@ function badRequest(message: string) {
   return googleError(400, message, 'badRequest', 'INVALID_ARGUMENT');
 }
 
-const FORBIDDEN = googleError(403, 'Forbidden', 'forbidden', 'PERMISSION_DENIED');
+const FORBIDDEN = googleError(
+  403,
+  'Forbidden',
+  'forbidden',
+  'PERMISSION_DENIED',
+);
 
 function round(value: number, places: number) {
   const f = 10 ** places;
@@ -116,7 +219,12 @@ function traits(social: SocialState, object: SocialObject) {
 }
 
 /** A count metric's cumulative for one video, as reported at `at`. */
-function cumulative(social: SocialState, object: SocialObject, metric: string, at: number) {
+function cumulative(
+  social: SocialState,
+  object: SocialObject,
+  metric: string,
+  at: number,
+) {
   const { delayMs, engaged, rpm, adRate } = traits(social, object);
   const c = (m: Parameters<SocialState['cumulative']>[1]) =>
     social.cumulative(object, m, Math.min(at, social.now()), delayMs);
@@ -136,7 +244,9 @@ function cumulative(social: SocialState, object: SocialObject, metric: string, a
     case 'subscribersLost':
       return Math.floor(c('follows') * 0.11);
     case 'estimatedMinutesWatched':
-      return Math.floor(social.watchSeconds(object, Math.min(at, social.now()), delayMs) / 60);
+      return Math.floor(
+        social.watchSeconds(object, Math.min(at, social.now()), delayMs) / 60,
+      );
     case 'watchSeconds':
       return social.watchSeconds(object, Math.min(at, social.now()), delayMs);
     case 'adImpressions':
@@ -160,19 +270,36 @@ interface Window {
 /** Sums of the count metrics over a window, across videos. */
 function totals(social: SocialState, objects: SocialObject[], window: Window) {
   const names = [
-    'views', 'engagedViews', 'likes', 'dislikes', 'comments', 'shares',
-    'estimatedMinutesWatched', 'watchSeconds', 'subscribersGained', 'subscribersLost',
-    'adImpressions', 'estimatedRevenue', 'estimatedAdRevenue', 'estimatedRedPartnerRevenue',
+    'views',
+    'engagedViews',
+    'likes',
+    'dislikes',
+    'comments',
+    'shares',
+    'estimatedMinutesWatched',
+    'watchSeconds',
+    'subscribersGained',
+    'subscribersLost',
+    'adImpressions',
+    'estimatedRevenue',
+    'estimatedAdRevenue',
+    'estimatedRedPartnerRevenue',
   ];
-  const sum: Record<string, number> = Object.fromEntries(names.map((n) => [n, 0]));
+  const sum: Record<string, number> = Object.fromEntries(
+    names.map((n) => [n, 0]),
+  );
   let durationViews = 0;
   let clickRate = 0;
 
   for (const object of objects) {
     for (const name of names) {
-      sum[name]! += cumulative(social, object, name, window.to) - cumulative(social, object, name, window.from);
+      sum[name]! +=
+        cumulative(social, object, name, window.to) -
+        cumulative(social, object, name, window.from);
     }
-    const views = cumulative(social, object, 'views', window.to) - cumulative(social, object, 'views', window.from);
+    const views =
+      cumulative(social, object, 'views', window.to) -
+      cumulative(social, object, 'views', window.from);
     durationViews += views * object.durationSeconds;
     clickRate += traits(social, object).cardClickRate * views;
   }
@@ -181,21 +308,33 @@ function totals(social: SocialState, objects: SocialObject[], window: Window) {
   return {
     ...sum,
     averageViewDuration: views > 0 ? Math.round(sum.watchSeconds! / views) : 0,
-    averageViewPercentage: durationViews > 0 ? round((sum.watchSeconds! / durationViews) * 100, 2) : 0,
+    averageViewPercentage:
+      durationViews > 0
+        ? round((sum.watchSeconds! / durationViews) * 100, 2)
+        : 0,
     cardClickRate: views > 0 ? round(clickRate / views, 4) : 0,
   } as Record<string, number>;
 }
 
 function metricValue(name: string, t: Record<string, number>) {
   const v = t[name] ?? 0;
-  if (name.startsWith('estimated') && name.endsWith('Revenue')) return round(v, 3);
+  if (name.startsWith('estimated') && name.endsWith('Revenue'))
+    return round(v, 3);
   return v;
 }
 
 const INTEGER_METRICS = new Set([
-  'views', 'engagedViews', 'likes', 'dislikes', 'comments', 'shares',
-  'estimatedMinutesWatched', 'averageViewDuration', 'subscribersGained',
-  'subscribersLost', 'adImpressions',
+  'views',
+  'engagedViews',
+  'likes',
+  'dislikes',
+  'comments',
+  'shares',
+  'estimatedMinutesWatched',
+  'averageViewDuration',
+  'subscribersGained',
+  'subscribersLost',
+  'adImpressions',
 ]);
 
 /**
@@ -210,7 +349,8 @@ function processedDays(
 ) {
   const latest = Math.max(
     ...objects.map(
-      (o) => social.now() - traits(social, o).delayMs / Math.max(social.speed, 1e-9),
+      (o) =>
+        social.now() - traits(social, o).delayMs / Math.max(social.speed, 1e-9),
     ),
   );
   const firstPublished = Math.min(...objects.map((o) => o.publishedMs));
@@ -259,11 +399,22 @@ function header(name: string, columnType: 'DIMENSION' | 'METRIC') {
 }
 
 function dateOk(value: string | null) {
-  return value !== null && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
+  return (
+    value !== null &&
+    /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    !Number.isNaN(Date.parse(value))
+  );
 }
 
 /** GET /v2/reports */
-const reportsQuery: SocialRoute = ({ url, method, req, res, social, about }) => {
+const reportsQuery: SocialRoute = ({
+  url,
+  method,
+  req,
+  res,
+  social,
+  about,
+}) => {
   if (method !== 'GET' || url.pathname !== '/v2/reports') return false;
 
   const token = authorize(req, res, social, ANALYTICS_SCOPES);
@@ -276,22 +427,46 @@ const reportsQuery: SocialRoute = ({ url, method, req, res, social, about }) => 
     return true;
   }
   if (!dateOk(q.get('startDate')) || !dateOk(q.get('endDate'))) {
-    sendJson(res, 400, badRequest('Required parameters startDate and endDate must be dates in the format YYYY-MM-DD.'));
+    sendJson(
+      res,
+      400,
+      badRequest(
+        'Required parameters startDate and endDate must be dates in the format YYYY-MM-DD.',
+      ),
+    );
     return true;
   }
 
-  const metrics = (q.get('metrics') ?? '').split(',').map((m) => m.trim()).filter(Boolean);
-  const dimensions = (q.get('dimensions') ?? '').split(',').map((d) => d.trim()).filter(Boolean);
+  const metrics = (q.get('metrics') ?? '')
+    .split(',')
+    .map((m) => m.trim())
+    .filter(Boolean);
+  const dimensions = (q.get('dimensions') ?? '')
+    .split(',')
+    .map((d) => d.trim())
+    .filter(Boolean);
 
   for (const metric of metrics) {
     if (!(ANALYTICS_METRICS as readonly string[]).includes(metric)) {
-      sendJson(res, 400, badRequest(`Unknown identifier (${metric}) given in field parameters.metrics.`));
+      sendJson(
+        res,
+        400,
+        badRequest(
+          `Unknown identifier (${metric}) given in field parameters.metrics.`,
+        ),
+      );
       return true;
     }
   }
   for (const dimension of dimensions) {
     if (!isDimension(dimension)) {
-      sendJson(res, 400, badRequest(`Unknown identifier (${dimension}) given in field parameters.dimensions.`));
+      sendJson(
+        res,
+        400,
+        badRequest(
+          `Unknown identifier (${dimension}) given in field parameters.dimensions.`,
+        ),
+      );
       return true;
     }
   }
@@ -299,7 +474,10 @@ const reportsQuery: SocialRoute = ({ url, method, req, res, social, about }) => 
     sendJson(res, 400, badRequest('The query is not supported.'));
     return true;
   }
-  if (metrics.some((m) => MONETARY.has(m)) && !token.scopes.includes(SCOPE.monetary)) {
+  if (
+    metrics.some((m) => MONETARY.has(m)) &&
+    !token.scopes.includes(SCOPE.monetary)
+  ) {
     sendJson(res, 403, FORBIDDEN);
     return true;
   }
@@ -311,7 +489,8 @@ const reportsQuery: SocialRoute = ({ url, method, req, res, social, about }) => 
   if (
     (dimension === 'elapsedVideoTimeRatio') !== retentionAsked ||
     (dimension === 'elapsedVideoTimeRatio' && !videoFilter) ||
-    (dimension === 'liveOrOnDemand' && metrics.includes('averageViewPercentage'))
+    (dimension === 'liveOrOnDemand' &&
+      metrics.includes('averageViewPercentage'))
   ) {
     sendJson(res, 400, badRequest('The query is not supported.'));
     return true;
@@ -329,7 +508,9 @@ const reportsQuery: SocialRoute = ({ url, method, req, res, social, about }) => 
     }
     objects = [object];
   } else {
-    objects = social.listObjects('youtube').filter((o) => o.accountId === token.accountId);
+    objects = social
+      .listObjects('youtube')
+      .filter((o) => o.accountId === token.accountId);
   }
 
   const startDate = q.get('startDate')!;
@@ -346,7 +527,10 @@ const reportsQuery: SocialRoute = ({ url, method, req, res, social, about }) => 
 
   let rows: Array<Array<string | number>> = [];
 
-  if (objects.length > 0 && processedDays(social, objects, startDate, endDate).length > 0) {
+  if (
+    objects.length > 0 &&
+    processedDays(social, objects, startDate, endDate).length > 0
+  ) {
     if (!dimension) {
       const t = totals(social, objects, window);
       rows = [metrics.map((m) => metricValue(m, t))];
@@ -359,10 +543,14 @@ const reportsQuery: SocialRoute = ({ url, method, req, res, social, about }) => 
         return [date, ...metrics.map((m) => metricValue(m, t))];
       });
     } else if (dimension === 'elapsedVideoTimeRatio') {
-      rows = retentionPoints(social, objects[0]!).map(([x, watch, relative]) => [
-        x,
-        ...metrics.map((m) => (m === 'audienceWatchRatio' ? watch : relative)),
-      ]);
+      rows = retentionPoints(social, objects[0]!).map(
+        ([x, watch, relative]) => [
+          x,
+          ...metrics.map((m) =>
+            m === 'audienceWatchRatio' ? watch : relative,
+          ),
+        ],
+      );
     } else {
       rows = breakdown(social, objects, window, dimension, metrics);
     }
@@ -371,18 +559,24 @@ const reportsQuery: SocialRoute = ({ url, method, req, res, social, about }) => 
   const sort = q.get('sort');
   if (sort) {
     const descending = sort.startsWith('-');
-    const column = columnHeaders.findIndex((h) => h.name === sort.replace(/^-/, ''));
+    const column = columnHeaders.findIndex(
+      (h) => h.name === sort.replace(/^-/, ''),
+    );
     if (column >= 0) {
       rows.sort((a, b) => {
         const x = a[column]!;
         const y = b[column]!;
-        const order = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y));
+        const order =
+          typeof x === 'number' && typeof y === 'number'
+            ? x - y
+            : String(x).localeCompare(String(y));
         return descending ? -order : order;
       });
     }
   }
   const maxResults = Number(q.get('maxResults') ?? '');
-  if (Number.isInteger(maxResults) && maxResults > 0) rows = rows.slice(0, maxResults);
+  if (Number.isInteger(maxResults) && maxResults > 0)
+    rows = rows.slice(0, maxResults);
 
   sendJson(res, 200, {
     kind: 'youtubeAnalytics#resultTable',
@@ -402,51 +596,73 @@ function breakdown(
   metrics: string[],
 ) {
   const values = ANALYTICS_DIMENSIONS[dimension];
-  const counts = new Map<string, Record<string, number>>(values.map((v) => [v, {}]));
+  const counts = new Map<string, Record<string, number>>(
+    values.map((v) => [v, {}]),
+  );
   const weightTotals = new Map<string, number>(values.map((v) => [v, 0]));
 
   for (const object of objects) {
-    const kind = String(object.details?.creatorContentType ?? 'VIDEO_ON_DEMAND');
+    const kind = String(
+      object.details?.creatorContentType ?? 'VIDEO_ON_DEMAND',
+    );
     const weights =
       dimension === 'creatorContentType'
         ? values.map((v) => (v === kind ? 1 : 0))
         : dimension === 'liveOrOnDemand'
           ? values.map((v) => (v === 'ON_DEMAND' ? 1 : 0))
-          : drawWeights(social.rngFor(`yt-weights:${dimension}:${object.id}`), values.length);
+          : drawWeights(
+              social.rngFor(`yt-weights:${dimension}:${object.id}`),
+              values.length,
+            );
     const t = totals(social, [object], window);
 
     for (const name of Object.keys(t)) {
-      const parts = INTEGER_METRICS.has(name) || name === 'watchSeconds'
-        ? splitInteger(Math.round(t[name]!), weights)
-        : weights.map((w) => (t[name]! * w) / weights.reduce((a, b) => a + b, 0));
+      const parts =
+        INTEGER_METRICS.has(name) || name === 'watchSeconds'
+          ? splitInteger(Math.round(t[name]!), weights)
+          : weights.map(
+              (w) => (t[name]! * w) / weights.reduce((a, b) => a + b, 0),
+            );
       values.forEach((value, i) => {
         const row = counts.get(value)!;
         row[name] = (row[name] ?? 0) + parts[i]!;
       });
     }
-    values.forEach((value, i) => weightTotals.set(value, weightTotals.get(value)! + weights[i]! * Math.max(t.views!, 1)));
+    values.forEach((value, i) =>
+      weightTotals.set(
+        value,
+        weightTotals.get(value)! + weights[i]! * Math.max(t.views!, 1),
+      ),
+    );
   }
 
   const shares = percentages(values.map((v) => weightTotals.get(v)!));
   const overall = totals(social, objects, window);
 
-  return values
-    .map((value, i) => {
-      const row = counts.get(value)!;
-      const views = row.views ?? 0;
-      const withAverages: Record<string, number> = {
-        ...row,
-        averageViewDuration: views > 0 ? Math.round((row.watchSeconds ?? 0) / views) : 0,
-        // A share of the length watched does not split: each value carries the videos'.
-        averageViewPercentage: overall.averageViewPercentage!,
-        cardClickRate: overall.cardClickRate!,
-        viewerPercentage: shares[i]!,
-      };
-      return { value, views, cells: metrics.map((m) => metricValue(m, withAverages)) };
-    })
-    // A value nobody watched from is not a row, as in the real reports.
-    .filter(({ views, cells }) => views > 0 || cells.some((c) => c !== 0))
-    .map(({ value, cells }) => [value, ...cells]);
+  return (
+    values
+      .map((value, i) => {
+        const row = counts.get(value)!;
+        const views = row.views ?? 0;
+        const withAverages: Record<string, number> = {
+          ...row,
+          averageViewDuration:
+            views > 0 ? Math.round((row.watchSeconds ?? 0) / views) : 0,
+          // A share of the length watched does not split: each value carries the videos'.
+          averageViewPercentage: overall.averageViewPercentage!,
+          cardClickRate: overall.cardClickRate!,
+          viewerPercentage: shares[i]!,
+        };
+        return {
+          value,
+          views,
+          cells: metrics.map((m) => metricValue(m, withAverages)),
+        };
+      })
+      // A value nobody watched from is not a row, as in the real reports.
+      .filter(({ views, cells }) => views > 0 || cells.some((c) => c !== 0))
+      .map(({ value, cells }) => [value, ...cells])
+  );
 }
 
 export const youtubeAnalyticsRoutes = [reportsQuery];

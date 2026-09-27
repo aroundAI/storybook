@@ -6,7 +6,10 @@ import type { Rng } from '../rng';
  * exactly: largest remainder. A breakdown that did not sum to its total
  * would be a sandbox bug the app is then asked to explain.
  */
-export function splitInteger(total: number, weights: readonly number[]): number[] {
+export function splitInteger(
+  total: number,
+  weights: readonly number[],
+): number[] {
   const sum = weights.reduce((a, w) => a + w, 0);
   if (total <= 0 || sum <= 0) return weights.map(() => 0);
 
@@ -33,7 +36,9 @@ export function splitInteger(total: number, weights: readonly number[]): number[
 export function drawWeights(rng: Rng, count: number, concentration = 1.3) {
   return rng
     .shuffle(Array.from({ length: count }, (_, i) => i))
-    .map((rank) => 1 / (rank + 1) ** concentration * (0.75 + rng.next() * 0.5));
+    .map(
+      (rank) => (1 / (rank + 1) ** concentration) * (0.75 + rng.next() * 0.5),
+    );
 }
 
 /** Percentages that sum to exactly 100 at two decimals. */
