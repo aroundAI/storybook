@@ -11,8 +11,91 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  # Documentation-only fast path. A change is docs-only when every changed
+  # file is `**/*.md`, `specs/**` or `docs/**` (scripts/ci/docs-only.sh). Then
+  # the heavy jobs below are skipped, which branch protection counts as
+  # passing, and 📝 Docs checks runs the checks that read docs instead. Jobs
+  # are skipped rather than the workflow: a workflow skipped by
+  # `paths-ignore` reports nothing, and the required checks hang at
+  # "Expected". Heavy jobs skip only on an explicit code == 'false', so a
+  # failed or unknown classification runs the full suite. Editing this file
+  # or the classifier is a code change, so it always gets the full suite.
+  changes:
+    name: 🔀 Changes
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify the changed files
+        id: classify
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -z "$BASE" ] || [ -z "${BASE//0/}" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            echo "Base '$BASE' is unknown: running the full suite"
+            echo 'code=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # --no-renames: a code file renamed to .md is a deletion of code.
+          if ! files=$(git diff --name-only --no-renames "$BASE"...HEAD); then
+            echo 'git diff failed: running the full suite'
+            echo 'code=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          printf '%s\n' "$files"
+          result=$(printf '%s\n' "$files" | bash scripts/ci/docs-only.sh)
+          echo "$result"
+          echo "$result" >> "$GITHUB_OUTPUT"
+
+  docs-checks:
+    name: 📝 Docs checks
+    # Runs only on the docs-only path, in place of the heavy jobs. Every
+    # unit suite, not a list of the tests that read docs: nine of them read
+    # docs/ or specs/ on 2026-09-23 (the KB-80 drift test, the capability
+    # reference bindings, data provenance, vendor API versions, analytics
+    # scopes), and a list would miss the tenth. Then the mutation guards that
+    # target docs/ or specs/. 🧪 Unit guards requires this job to pass on the
+    # docs path, so a failure here blocks the merge.
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'false' }}
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    env:
+      DO_NOT_TRACK: 1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Docs-only classifier
+        run: bash scripts/ci/docs-only.test.sh
+
+      - name: Run Unit Tests
+        run: bash scripts/test-units.sh
+
+      - name: Mutation guards - self-test
+        run: python3 tooling/mutation-guards/run.py --self-test
+
+      - name: Mutation guards - those targeting docs and specs
+        run: python3 tooling/mutation-guards/run.py --kind unit --file-prefix specs/ --file-prefix docs/
+
   typescript:
     name: ʦ TypeScript
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     timeout-minutes: 10
     runs-on: ubuntu-latest
     env:
@@ -60,6 +143,8 @@ jobs:
     # with, seven packages had no format script at all, and the import
     # sorter added a duplicate header comment on every run. `pnpm
     # format:fix` repairs a failure here.
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     timeout-minutes: 10
     runs-on: ubuntu-latest
     env:
@@ -85,6 +170,8 @@ jobs:
 
   clickhouse-sql:
     name: 🗄️ ClickHouse SQL
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     timeout-minutes: 15
     runs-on: ubuntu-latest
     env:
@@ -150,6 +237,8 @@ jobs:
 
   supabase-db:
     name: 🐘 Supabase DB
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     timeout-minutes: 20
     runs-on: ubuntu-latest
     env:
@@ -266,6 +355,8 @@ jobs:
 
   unit-test:
     name: 🧪 Unit Tests
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     timeout-minutes: 15
     runs-on: ubuntu-latest
     env:
@@ -327,6 +418,8 @@ jobs:
     # cancelled mid-run, so the guards after the cutoff never ran. Each shard
     # runs every 4th entry, ~1/4 of them, in parallel. When they grow, add a
     # shard, not minutes.
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     timeout-minutes: 15
     runs-on: ubuntu-latest
     strategy:
@@ -365,16 +458,28 @@ jobs:
     name: 🧪 Unit guards
     # One stable name for branch protection to require, whatever the shard
     # count. always(): a failed or cancelled shard must fail this, not skip it.
-    needs: unit-guards
+    # On the docs-only path the shards are skipped and 📝 Docs checks stands
+    # in for them; this is the required check that makes that job gate the
+    # merge. Any other combination, including a failed 🔀 Changes, fails.
+    needs: [changes, unit-guards, docs-checks]
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Every unit guard shard passed
+      - name: Every unit guard shard passed, or the docs checks did
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          CODE: ${{ needs.changes.outputs.code }}
+          SHARDS: ${{ needs.unit-guards.result }}
+          DOCS: ${{ needs.docs-checks.result }}
         run: |
-          if [ "${{ needs.unit-guards.result }}" != "success" ]; then
-            echo "Unit guard shards: ${{ needs.unit-guards.result }}"
-            exit 1
+          echo "Changes: $CHANGES (code=$CODE); unit guard shards: $SHARDS; docs checks: $DOCS"
+          if [ "$CHANGES" = success ] && [ "$CODE" != false ] && [ "$SHARDS" = success ]; then
+            exit 0
           fi
+          if [ "$CHANGES" = success ] && [ "$CODE" = false ] && [ "$SHARDS" = skipped ] && [ "$DOCS" = success ]; then
+            exit 0
+          fi
+          exit 1
 
   e2e-guards:
     name: 🧬 E2E guards
@@ -403,7 +508,8 @@ jobs:
     runs-on: ubuntu-latest
     # CI minutes are rationed: the E2E mutation guards run only on pushes to
     # main (after a merge), not on every PR push. PRs still run ⚫️ Test.
-    if: ${{ vars.ENABLE_E2E_JOB == 'true' && github.event_name == 'push' }}
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' && github.event_name == 'push' }}
     env:
       DO_NOT_TRACK: 1
       # The server reads ClickHouse, unlike ⚫️ Test: the evidence specs seed
@@ -556,7 +662,8 @@ jobs:
     # failing.
     timeout-minutes: 30
     runs-on: ubuntu-latest
-    if: ${{ vars.ENABLE_E2E_JOB == 'true' }}
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' }}
     env:
       DO_NOT_TRACK: 1
       # The server reads ClickHouse, unlike ⚫️ Test: the evidence specs seed
@@ -704,7 +811,8 @@ jobs:
     # mid-run after every earlier step had passed.
     timeout-minutes: 45
     runs-on: ubuntu-latest
-    if: ${{ vars.ENABLE_E2E_JOB == 'true' }}
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' }}
     env:
       # No Stripe. The billing specs are skipped (see ENABLE_BILLING_TESTS
       # below), so the repo needs no payment credentials to run this job.

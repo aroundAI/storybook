@@ -256,6 +256,14 @@ you broke a shared helper, **A/B it** — run the suspect specs with and without
 your change on the same server — rather than reading a local failure count as a
 verdict.
 
+**A docs-only change gets a shorter CI.** When every changed file is `**/*.md`,
+`specs/**` or `docs/**` (`scripts/ci/docs-only.sh`), the heavy jobs are skipped
+and 📝 Docs checks runs instead: every unit suite (nine tests read `docs/` or
+`specs/`), and the mutation guards that target those folders. `.json` and
+`.yaml` elsewhere are code: manifests, prompts, guards, locales, the lockfile.
+Anything that is not clearly docs, including a changed classifier or
+`workflow.yml`, gets the full suite.
+
 ---
 
 ## What each layer can see

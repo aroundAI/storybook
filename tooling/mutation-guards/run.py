@@ -218,6 +218,9 @@ def main():
     parser.add_argument('--shard', metavar='I/N',
                         help='run every Nth selected entry, starting at I (1-based), '
                              'so parallel CI jobs split the E2E guards')
+    parser.add_argument('--file-prefix', action='append', metavar='PREFIX',
+                        help='run only entries whose file starts with this, so '
+                             'a docs-only CI run checks the guards on docs/specs')
     args = parser.parse_args()
 
     base_env = dict(os.environ)
@@ -240,6 +243,8 @@ def main():
         entry for entry in load_entries()
         if (not args.kind or entry['kind'] in args.kind)
         and (not args.only or any(o in entry['name'] for o in args.only))
+        and (not args.file_prefix
+             or any(entry.get('file', '').startswith(p) for p in args.file_prefix))
     ]
 
     if args.shard:
