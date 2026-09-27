@@ -107,7 +107,7 @@ notes: |
 
   ```
   packages/features/content-analytics/src/server/deep-dive-actions.ts:252   ypp_target_watch_hours, ypp_target_subscribers
-  packages/features/content-analytics/src/server/taxonomy-actions.ts:339    tag_min_sample
+  packages/features/content-analytics/src/server/taxonomy-actions.ts:344    tag_min_sample
   ```
 
   Both fall back with `??` — `4000`, `1000`, `5` (`deep-dive-actions.ts:262-263`,

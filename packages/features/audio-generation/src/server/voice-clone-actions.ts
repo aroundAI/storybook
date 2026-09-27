@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -263,7 +263,7 @@ const deleteVoiceClone = enhanceAction(
 
     // Clear clone data from voice_profiles
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (client as any)
+    const { data: cleared, error: clearError } = await (client as any)
       .from('voice_profiles')
       .update({
         provider_voice_id: null,
@@ -271,7 +271,14 @@ const deleteVoiceClone = enhanceAction(
         clone_status: null,
         clone_metadata: {},
       })
-      .eq('asset_id', data.assetId);
+      .eq('asset_id', data.assetId)
+      .select('asset_id');
+
+    if (clearError) {
+      throw new Error(`Failed to clear the voice clone: ${clearError.message}`);
+    }
+
+    requireAffectedRows(cleared, "The voice clone wasn't removed.");
 
     // Delete consent record (cascade should handle this, but be explicit)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -128,8 +128,13 @@ function query(table: string) {
         : { data: null, error: { message: 'not found' } };
     },
     maybeSingle: async () => ({ data: found[0] ?? null, error: null }),
-    then: (resolve: (value: { data: null; error: null }) => unknown) =>
-      resolve({ data: null, error: null }),
+    // A write reports the rows it matched, as `.select()` after it would
+    then: (
+      resolve: (value: {
+        data: Record<string, unknown>[];
+        error: null;
+      }) => unknown,
+    ) => resolve({ data: found, error: null }),
   };
 
   return builder;

@@ -13,7 +13,11 @@ export type StoredApiKey = Pick<
 >;
 
 export interface ApiKeyWriteFailure {
-  branch: 'api_key_owner_check' | 'api_key_upsert' | 'api_key_delete';
+  branch:
+    | 'api_key_owner_check'
+    | 'api_key_upsert'
+    | 'api_key_delete'
+    | 'api_key_delete_none';
   cause: unknown;
 }
 
@@ -170,11 +174,21 @@ export async function removeExternalApiKey(
     return { error: refused };
   }
 
-  const { error } = await client
+  const { data: deleted, error } = await client
     .from('external_api_keys')
     .delete()
     .eq('account_id', accountId)
-    .eq('provider', provider);
+    .eq('provider', provider)
+    .select('provider');
 
-  return { error: error ? { branch: 'api_key_delete', cause: error } : null };
+  if (error) {
+    return { error: { branch: 'api_key_delete', cause: error } };
+  }
+
+  // RLS filters a delete it refuses to nothing, with no error (KB-61)
+  return {
+    error: deleted?.length
+      ? null
+      : { branch: 'api_key_delete_none', cause: null },
+  };
 }

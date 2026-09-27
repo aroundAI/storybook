@@ -93,20 +93,8 @@ const KNOWN: Record<string, [number, string]> = {
     [1, CASCADE],
   'packages/features/episodes/src/lib/server/mutations/season-actions.ts | episodes | soft-delete':
     [1, CASCADE],
-
-  // Owned by another open pull request (2026-09-25); it adopts
-  // requireAffectedRows and removes its line.
-  // KB-84 (#390) moved it from api-keys-actions.ts into removeExternalApiKey.
-  'packages/supabase/src/external-api-keys.ts | external_api_keys | delete': [
-    1,
-    'teammate api-keys',
-  ],
-  'packages/features/content-analytics/src/server/taxonomy-actions.ts | content_tags | delete':
-    [1, 'teammate tag-scope'],
-  'packages/features/content-analytics/src/server/report-actions.ts | scheduled_reports | delete':
-    [1, 'teammate reporting'],
   'packages/features/audio-generation/src/server/voice-clone-actions.ts | voice_consent | delete':
-    [1, 'teammate voice-key'],
+    [1, CASCADE],
 };
 
 const REPO = join(__dirname, '..', '..', '..');

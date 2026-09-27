@@ -2,6 +2,7 @@ import { Locator, Page, expect } from '@playwright/test';
 
 import {
   SeededTeam,
+  deleteRows,
   insertRow,
   seedProject,
   seedTeamAccount,
@@ -294,6 +295,32 @@ export const SCENARIOS: RefusalScenario[] = [
       // The second submission is the refusal.
       await label.fill('Process explainer');
       await submit.click();
+    },
+  },
+  {
+    area: 'analytics',
+    name: 'deleting a tag another tab already deleted (KB-61)',
+    message: "That tag wasn't deleted.",
+    run: async (page) => {
+      const team = await seedTeamAccount({ emailPrefix: 'kb61' });
+
+      await signInAs(page, team);
+      await page.goto(`/home/${team.slug}/studio/analytics/tags`);
+
+      const form = byTest(page, 'create-tag-form');
+      await form
+        .getByPlaceholder('e.g. Process explainer')
+        .fill('Night shoots');
+      await form.getByRole('button', { name: 'Add tag' }).click();
+      await page.getByText('Added "Night shoots"').waitFor();
+
+      // The other tab: the tag goes while this page still lists it.
+      await deleteRows(
+        'content_tags',
+        `account_id=eq.${team.accountId}&label=eq.Night%20shoots`,
+      );
+
+      await page.getByRole('button', { name: 'Delete Night shoots' }).click();
     },
   },
 ];

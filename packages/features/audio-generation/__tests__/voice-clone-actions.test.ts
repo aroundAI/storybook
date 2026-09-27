@@ -594,6 +594,9 @@ describe('Voice Clone Actions', () => {
             return {
               select: vi.fn().mockReturnThis(),
               update: vi.fn().mockReturnThis(),
+              // The clear reports the row it changed (KB-61)
+              then: (resolve: (value: unknown) => unknown) =>
+                resolve({ data: [{ asset_id: 'asset-123' }], error: null }),
               eq: vi.fn().mockReturnThis(),
               single: vi.fn().mockResolvedValue({
                 data: {
@@ -649,6 +652,9 @@ describe('Voice Clone Actions', () => {
             return {
               select: vi.fn().mockReturnThis(),
               update: vi.fn().mockReturnThis(),
+              // The clear reports the row it changed (KB-61)
+              then: (resolve: (value: unknown) => unknown) =>
+                resolve({ data: [{ asset_id: 'asset-123' }], error: null }),
               eq: vi.fn().mockReturnThis(),
               single: vi.fn().mockResolvedValue({
                 data: {
@@ -697,6 +703,9 @@ describe('Voice Clone Actions', () => {
             return {
               select: vi.fn().mockReturnThis(),
               update: vi.fn().mockReturnThis(),
+              // The clear reports the row it changed (KB-61)
+              then: (resolve: (value: unknown) => unknown) =>
+                resolve({ data: [{ asset_id: 'asset-123' }], error: null }),
               eq: vi.fn().mockReturnThis(),
               single: vi.fn().mockResolvedValue({
                 data: {
@@ -723,6 +732,38 @@ describe('Voice Clone Actions', () => {
 
         expect(result.success).toBe(true);
         expect(mockDeleteClonedVoice).not.toHaveBeenCalled();
+      });
+
+      // KB-61: RLS answers an update it filters out with no rows and no
+      // error, as it does one that worked
+      it('refuses when clearing the clone changed no row', async () => {
+        mockSupabaseClient.from.mockImplementation((table: string) => {
+          if (table === 'voice_profiles') {
+            return {
+              select: vi.fn().mockReturnThis(),
+              update: vi.fn().mockReturnThis(),
+              then: (resolve: (value: unknown) => unknown) =>
+                resolve({ data: [], error: null }),
+              eq: vi.fn().mockReturnThis(),
+              single: vi.fn().mockResolvedValue({
+                data: {
+                  provider_voice_id: null,
+                  assets: {
+                    project_id: 'project-123',
+                    projects: { account_id: 'account-123' },
+                  },
+                },
+                error: null,
+              }),
+            };
+          }
+          return {};
+        });
+
+        await expect(deleteVoiceCloneAction(validInput)).resolves.toEqual({
+          ok: false,
+          error: "The voice clone wasn't removed.",
+        });
       });
     });
   });

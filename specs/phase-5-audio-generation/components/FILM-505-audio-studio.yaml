@@ -42,7 +42,7 @@ component:
 acceptance_criteria:
   - text: "Audio Studio loads without errors"
     met: true
-    evidence: "judged against the live route-local studio (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/page.tsx`), which replaced this spec's package `AudioStudio` in `f7cdfa21` (that component still exists, mounted nowhere); `apps/e2e/tests/refusals/refusals.po.ts:233` opens it and drives it on the production build"
+    evidence: "judged against the live route-local studio (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/page.tsx`), which replaced this spec's package `AudioStudio` in `f7cdfa21` (that component still exists, mounted nowhere); `apps/e2e/tests/refusals/refusals.po.ts:234` opens it and drives it on the production build"
   - text: "Episode title displays correctly"
     met: true
     evidence: "the episode layout's header renders it above every studio (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-header.tsx:77`)"
@@ -69,7 +69,7 @@ acceptance_criteria:
     reason: "unverified — no test; music and SFX blocks toggle play and pause (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/music-timeline.tsx:659`), dialogue blocks only play"
   - text: "Batch generate button triggers batch action"
     met: true
-    evidence: "`apps/e2e/tests/refusals/refusals.po.ts:235` clicks `generate-all-dialogue` and receives the batch action's refusal"
+    evidence: "`apps/e2e/tests/refusals/refusals.po.ts:236` clicks `generate-all-dialogue` and receives the batch action's refusal"
   - text: "Progress indicator updates in real-time"
     met: false
     reason: "unverified — no test watches the bar; it re-renders on each 3-second poll (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/use-batch-generation.ts:179`)"

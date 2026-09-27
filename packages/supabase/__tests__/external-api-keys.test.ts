@@ -177,8 +177,11 @@ function callerWithOwnership(answer: {
   primary?: boolean;
   role?: boolean;
   error?: unknown;
+  /** The rows the delete reports removing; `[]` is RLS matching nothing */
+  removed?: Array<{ provider: string }>;
 }) {
   const deletes: unknown[][] = [];
+  const removed = answer.removed ?? [{ provider: 'hailuo' }];
   const rpc = vi.fn(async (fn: string) => ({
     data: fn === 'is_account_owner' ? !!answer.primary : !!answer.role,
     error: answer.error ?? null,
@@ -188,8 +191,10 @@ function callerWithOwnership(answer: {
       deletes.push(['eq', ...args]);
       return deleteChain;
     },
-    then: (resolve: (value: { error: null }) => void) =>
-      resolve({ error: null }),
+    select: async (...args: unknown[]) => {
+      deletes.push(['select', ...args]);
+      return { data: removed, error: null };
+    },
   };
   const from = vi.fn((table: string) => ({
     delete: () => {
@@ -317,7 +322,18 @@ describe('removeExternalApiKey (KB-84)', () => {
       ['delete', 'external_api_keys'],
       ['eq', 'account_id', ACCOUNT],
       ['eq', 'provider', 'hailuo'],
+      ['select', 'provider'],
     ]);
     expect(admin.from).not.toHaveBeenCalled();
+  });
+
+  it('reports a delete that removed nothing (KB-61)', async () => {
+    const { client } = callerWithOwnership({ primary: true, removed: [] });
+
+    await expect(
+      removeExternalApiKey(client, ACCOUNT, 'hailuo'),
+    ).resolves.toEqual({
+      error: { branch: 'api_key_delete_none', cause: null },
+    });
   });
 });
