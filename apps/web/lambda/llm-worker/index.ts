@@ -17,7 +17,6 @@ import {
   PostToConnectionCommand,
 } from '@aws-sdk/client-apigatewaymanagementapi';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { awsClientOptions } from '@kit/shared/vendors';
 import {
   DeleteCommand,
   DynamoDBDocumentClient,
@@ -27,6 +26,7 @@ import type { SQSBatchResponse, SQSEvent } from 'aws-lambda';
 import ws from 'ws';
 
 import type { LlmJobType } from '@kit/prompt-engine/llm-job-payloads';
+import { awsClientOptions } from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
 
 import { runLlmJob } from './job-boundary';

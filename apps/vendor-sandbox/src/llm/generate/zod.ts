@@ -183,7 +183,10 @@ export function generateFromZod(
       });
       if (perPerson)
         return perPerson.map((itemCtx, i) =>
-          generateFromZod(def.type as z.ZodTypeAny, itemCtx, [...path, String(i)]),
+          generateFromZod(def.type as z.ZodTypeAny, itemCtx, [
+            ...path,
+            String(i),
+          ]),
         );
       return distinctItems(length, (i) =>
         generateFromZod(def.type as z.ZodTypeAny, ctx, [...path, String(i)]),

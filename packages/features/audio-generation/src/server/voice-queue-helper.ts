@@ -5,9 +5,9 @@ import {
   SendMessageBatchCommand,
   SendMessageCommand,
 } from '@aws-sdk/client-sqs';
-import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
 
 import type { LlmJobTarget } from '@kit/prompt-engine/llm-job-target';
+import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
 
 // Initialize SQS client
 const sqs = new SQSClient(awsClientOptions('sqs'));

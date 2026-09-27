@@ -7,7 +7,6 @@ import { revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
-import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
 import { z } from 'zod';
 
 import type { AggregatedTotals } from '@kit/clickhouse';
@@ -16,6 +15,7 @@ import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
+import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 

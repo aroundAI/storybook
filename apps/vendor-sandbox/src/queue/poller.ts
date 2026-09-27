@@ -1,8 +1,8 @@
 import {
   DeleteMessageCommand,
   GetQueueUrlCommand,
-  ReceiveMessageCommand,
   type Message,
+  ReceiveMessageCommand,
   type SQSClient,
 } from '@aws-sdk/client-sqs';
 
@@ -18,7 +18,9 @@ export interface SqsBatchResponse {
   batchItemFailures?: Array<{ itemIdentifier: string }>;
 }
 
-export type SqsHandler = (event: { Records: unknown[] }) => Promise<SqsBatchResponse | void>;
+export type SqsHandler = (event: {
+  Records: unknown[];
+}) => Promise<SqsBatchResponse | void>;
 
 export interface PollerOptions {
   client: SQSClient;
@@ -27,7 +29,12 @@ export interface PollerOptions {
   batchSize: number;
   region: string;
   /** Called after each batch, for logs and tests. */
-  onBatch?: (summary: { queueName: string; received: number; deleted: number; failed: string[] }) => void;
+  onBatch?: (summary: {
+    queueName: string;
+    received: number;
+    deleted: number;
+    failed: string[];
+  }) => void;
   waitSeconds?: number;
 }
 
@@ -40,7 +47,12 @@ function toRecord(message: Message, queueName: string, region: string) {
     messageAttributes: Object.fromEntries(
       Object.entries(message.MessageAttributes ?? {}).map(([name, value]) => [
         name,
-        { stringValue: value.StringValue, dataType: value.DataType, stringListValues: [], binaryListValues: [] },
+        {
+          stringValue: value.StringValue,
+          dataType: value.DataType,
+          stringListValues: [],
+          binaryListValues: [],
+        },
       ]),
     ),
     md5OfBody: message.MD5OfBody,
@@ -57,7 +69,11 @@ export function startPoller(options: PollerOptions) {
   const loop = async () => {
     while (running) {
       try {
-        queueUrl ??= (await options.client.send(new GetQueueUrlCommand({ QueueName: options.queueName }))).QueueUrl;
+        queueUrl ??= (
+          await options.client.send(
+            new GetQueueUrlCommand({ QueueName: options.queueName }),
+          )
+        ).QueueUrl;
 
         const { Messages = [] } = await options.client.send(
           new ReceiveMessageCommand({
@@ -73,27 +89,51 @@ export function startPoller(options: PollerOptions) {
         const handler = await options.handler();
         let failed: string[];
         try {
-          const response = await handler({ Records: Messages.map((m) => toRecord(m, options.queueName, options.region)) });
-          failed = (response?.batchItemFailures ?? []).map((f) => f.itemIdentifier);
+          const response = await handler({
+            Records: Messages.map((m) =>
+              toRecord(m, options.queueName, options.region),
+            ),
+          });
+          failed = (response?.batchItemFailures ?? []).map(
+            (f) => f.itemIdentifier,
+          );
         } catch (error) {
           // A handler that throws fails the whole batch, as in Lambda.
-          console.error(`[local-workers] ${options.queueName} handler threw:`, error);
+          console.error(
+            `[local-workers] ${options.queueName} handler threw:`,
+            error,
+          );
           failed = Messages.map((m) => m.MessageId ?? '');
         }
 
-        const done = Messages.filter((m) => !failed.includes(m.MessageId ?? ''));
+        const done = Messages.filter(
+          (m) => !failed.includes(m.MessageId ?? ''),
+        );
         for (const message of done) {
-          await options.client.send(new DeleteMessageCommand({ QueueUrl: queueUrl, ReceiptHandle: message.ReceiptHandle }));
+          await options.client.send(
+            new DeleteMessageCommand({
+              QueueUrl: queueUrl,
+              ReceiptHandle: message.ReceiptHandle,
+            }),
+          );
         }
         if (failed.length > 0) {
           console.warn(
             `[local-workers] ${options.queueName}: ${failed.length} message(s) failed; left for redelivery (then the DLQ)`,
           );
         }
-        options.onBatch?.({ queueName: options.queueName, received: Messages.length, deleted: done.length, failed });
+        options.onBatch?.({
+          queueName: options.queueName,
+          received: Messages.length,
+          deleted: done.length,
+          failed,
+        });
       } catch (error) {
         if (!running) break;
-        console.error(`[local-workers] ${options.queueName} poll failed:`, error instanceof Error ? error.message : error);
+        console.error(
+          `[local-workers] ${options.queueName} poll failed:`,
+          error instanceof Error ? error.message : error,
+        );
         await new Promise((resolve) => setTimeout(resolve, 2000));
       }
     }

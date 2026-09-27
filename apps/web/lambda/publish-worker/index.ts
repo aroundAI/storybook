@@ -37,7 +37,11 @@ import {
 } from '@kit/publishing/lib/owned-episode-video';
 import { ownedEpisodeThumbnail } from '@kit/publishing/lib/owned-thumbnail';
 import type { YouTubeChannelDeclaration } from '@kit/publishing/lib/youtube-declaration';
-import { LINKEDIN_REST_VERSION, awsClientOptions, vendorUrl } from '@kit/shared/vendors';
+import {
+  LINKEDIN_REST_VERSION,
+  awsClientOptions,
+  vendorUrl,
+} from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
 
 import { mergeFailureMetadata } from './failure-metadata';

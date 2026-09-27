@@ -1,5 +1,4 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { awsClientOptions } from '@kit/shared/vendors';
 import {
   DynamoDBDocumentClient,
   PutCommand,
@@ -9,6 +8,8 @@ import type {
   APIGatewayProxyStructuredResultV2,
   APIGatewayProxyWebsocketEventV2,
 } from 'aws-lambda';
+
+import { awsClientOptions } from '@kit/shared/vendors';
 
 import { isSuperAdminFromToken, verifySupabaseToken } from './utils/auth';
 

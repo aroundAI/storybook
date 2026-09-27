@@ -20,10 +20,18 @@ const LAMBDA = { ...DEV, AWS_LAMBDA_FUNCTION_NAME: 'storybook-llm-worker' };
 
 describe('localServiceUrl', () => {
   it('names the emulator in the sandbox', () => {
-    expect(localServiceUrl('sqs', { ...DEV, VENDOR_URL_SQS: 'http://127.0.0.1:4120' })).toBe('http://127.0.0.1:4120');
-    expect(localServiceUrl('dynamodb', { ...DEV, VENDOR_URL_DYNAMODB: 'http://127.0.0.1:4122' })).toBe(
-      'http://127.0.0.1:4122',
-    );
+    expect(
+      localServiceUrl('sqs', {
+        ...DEV,
+        VENDOR_URL_SQS: 'http://127.0.0.1:4120',
+      }),
+    ).toBe('http://127.0.0.1:4120');
+    expect(
+      localServiceUrl('dynamodb', {
+        ...DEV,
+        VENDOR_URL_DYNAMODB: 'http://127.0.0.1:4122',
+      }),
+    ).toBe('http://127.0.0.1:4122');
   });
 
   it.each([
@@ -32,7 +40,11 @@ describe('localServiceUrl', () => {
     ['development without VENDOR_SANDBOX', { NODE_ENV: 'development' }],
   ])('never reads the variable in %s', (_label, env) => {
     // Malformed on purpose: reading it would throw.
-    const set = { VENDOR_URL_SQS: 'not a url', VENDOR_URL_DYNAMODB: 'not a url', VENDOR_URL_APIGATEWAY: 'not a url' };
+    const set = {
+      VENDOR_URL_SQS: 'not a url',
+      VENDOR_URL_DYNAMODB: 'not a url',
+      VENDOR_URL_APIGATEWAY: 'not a url',
+    };
     expect(localServiceUrl('sqs', { ...env, ...set })).toBeUndefined();
     expect(localServiceUrl('dynamodb', { ...env, ...set })).toBeUndefined();
     expect(awsClientOptions('dynamodb', { ...env, ...set })).toEqual({});
@@ -40,15 +52,23 @@ describe('localServiceUrl', () => {
   });
 
   it('refuses a public address in the sandbox rather than use it', () => {
-    expect(() => localServiceUrl('dynamodb', { ...DEV, VENDOR_URL_DYNAMODB: 'https://dynamodb.example.com' })).toThrow(
-      /VENDOR_URL_DYNAMODB must be/,
-    );
+    expect(() =>
+      localServiceUrl('dynamodb', {
+        ...DEV,
+        VENDOR_URL_DYNAMODB: 'https://dynamodb.example.com',
+      }),
+    ).toThrow(/VENDOR_URL_DYNAMODB must be/);
   });
 });
 
 describe('awsClientOptions', () => {
   it('gives the emulator endpoint and placeholder credentials in the sandbox', () => {
-    expect(awsClientOptions('sqs', { ...DEV, VENDOR_URL_SQS: 'http://127.0.0.1:4120' })).toEqual({
+    expect(
+      awsClientOptions('sqs', {
+        ...DEV,
+        VENDOR_URL_SQS: 'http://127.0.0.1:4120',
+      }),
+    ).toEqual({
       endpoint: 'http://127.0.0.1:4120',
       region: 'us-east-1',
       credentials: { accessKeyId: 'sandbox', secretAccessKey: 'sandbox' },
@@ -62,7 +82,8 @@ describe('awsClientOptions', () => {
 
 describe('queueUrlFromEnv', () => {
   const LOCAL = 'http://127.0.0.1:4120/000000000000/StorybookLlmJobsQueue';
-  const AWS = 'https://sqs.eu-west-1.amazonaws.com/123456789012/StorybookLlmJobsQueue';
+  const AWS =
+    'https://sqs.eu-west-1.amazonaws.com/123456789012/StorybookLlmJobsQueue';
 
   it('keeps a local queue URL in the sandbox', () => {
     expect(queueUrlFromEnv(LOCAL, DEV)).toBe(LOCAL);
@@ -88,8 +109,14 @@ describe('queueUrlFromEnv', () => {
 
 describe('ignoredVendorOverrides', () => {
   it('reports the local-service variables in production and accepts them in the sandbox', () => {
-    const set = { VENDOR_URL_SQS: 'http://127.0.0.1:4120', VENDOR_URL_DYNAMODB: 'http://127.0.0.1:4122' };
-    expect(ignoredVendorOverrides({ ...PRODUCTION, ...set })).toEqual(['VENDOR_URL_DYNAMODB', 'VENDOR_URL_SQS']);
+    const set = {
+      VENDOR_URL_SQS: 'http://127.0.0.1:4120',
+      VENDOR_URL_DYNAMODB: 'http://127.0.0.1:4122',
+    };
+    expect(ignoredVendorOverrides({ ...PRODUCTION, ...set })).toEqual([
+      'VENDOR_URL_DYNAMODB',
+      'VENDOR_URL_SQS',
+    ]);
     expect(ignoredVendorOverrides({ ...DEV, ...set })).toEqual([]);
   });
 });

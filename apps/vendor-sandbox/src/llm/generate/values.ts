@@ -121,7 +121,8 @@ export function distinctItems(
   return items;
 }
 
-const CAST_LIST = /^(characters?|cast|people|speakers?|characterStates|characterVoices)$/i;
+const CAST_LIST =
+  /^(characters?|cast|people|speakers?|characterStates|characterVoices)$/i;
 
 /**
  * A list of characters is one entry per cast member: `characters` with the
@@ -136,7 +137,11 @@ export function castListContexts(
   bounds: { min?: number; ofObjects: boolean },
 ) {
   const people = ctx.cast.people;
-  if (!bounds.ofObjects || people.length === 0 || !CAST_LIST.test(fieldName(path)))
+  if (
+    !bounds.ofObjects ||
+    people.length === 0 ||
+    !CAST_LIST.test(fieldName(path))
+  )
     return undefined;
   const count = Math.max(bounds.min ?? 0, Math.min(length, people.length));
   return Array.from({ length: count }, (_, i) => ({

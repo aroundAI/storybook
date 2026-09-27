@@ -5,6 +5,7 @@
  * for background processing.
  */
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
+
 import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
 
 import {

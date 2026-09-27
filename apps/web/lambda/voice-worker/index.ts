@@ -17,7 +17,6 @@ import {
   PostToConnectionCommand,
 } from '@aws-sdk/client-apigatewaymanagementapi';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { awsClientOptions } from '@kit/shared/vendors';
 import {
   DeleteCommand,
   DynamoDBDocumentClient,
@@ -30,6 +29,7 @@ import {
   QueuedJobRefused,
   assertQueuedJobAccess,
 } from '@kit/prompt-engine/llm-job-target';
+import { awsClientOptions } from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
 
 // Initialize DynamoDB client

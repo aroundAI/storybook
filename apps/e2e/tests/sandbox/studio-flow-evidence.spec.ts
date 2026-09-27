@@ -1,6 +1,11 @@
 import { type Page, expect, test } from '@playwright/test';
 
-import { insertRow, seedProject, seedTeamAccount, serviceRoleAuth } from '../utils/seed';
+import {
+  insertRow,
+  seedProject,
+  seedTeamAccount,
+  serviceRoleAuth,
+} from '../utils/seed';
 import { signInAs } from '../utils/session';
 
 /**
@@ -19,7 +24,8 @@ import { signInAs } from '../utils/session';
  */
 
 const CONTROL = process.env.SANDBOX_CONTROL_URL ?? 'http://127.0.0.1:4100';
-const ELEVENLABS = process.env.SANDBOX_ELEVENLABS_URL ?? 'http://127.0.0.1:4113';
+const ELEVENLABS =
+  process.env.SANDBOX_ELEVENLABS_URL ?? 'http://127.0.0.1:4113';
 const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
 const shoot = Boolean(process.env.CAPTURE_EVIDENCE);
 
@@ -38,7 +44,8 @@ async function ledger() {
 }
 
 async function snap(page: Page, name: string) {
-  if (shoot) await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: false });
+  if (shoot)
+    await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: false });
 }
 
 const STAGE_TIMEOUT = 120_000;
@@ -56,19 +63,34 @@ test.describe('A full studio run through the local job queue (FILM-1806)', () =>
 
     // --- Seed: a team, a show, two characters with voices, two places, an episode.
     const team = await seedTeamAccount('studio-flow');
-    const project = await seedProject(team, { name: 'Harbor Lights Diner', slug: `harbor-lights-${Date.now()}` });
+    const project = await seedProject(team, {
+      name: 'Harbor Lights Diner',
+      slug: `harbor-lights-${Date.now()}`,
+    });
     const auth = serviceRoleAuth();
 
     const voices = (
-      (await (await fetch(`${ELEVENLABS}/v1/voices`, { headers: { 'xi-api-key': 'sandbox-local-key' } })).json()) as {
+      (await (
+        await fetch(`${ELEVENLABS}/v1/voices`, {
+          headers: { 'xi-api-key': 'sandbox-local-key' },
+        })
+      ).json()) as {
         voices: Array<{ voice_id: string; name: string }>;
       }
     ).voices;
 
     const characterIds: string[] = [];
     for (const [i, [name, role, description]] of [
-      ['Mara Okafor', 'protagonist', "The lighthouse keeper's granddaughter: curious, stubborn, twelve years old"],
-      ['Theo Lindqvist', 'supporting', 'A night-shift baker who knows every rumour in town'],
+      [
+        'Mara Okafor',
+        'protagonist',
+        "The lighthouse keeper's granddaughter: curious, stubborn, twelve years old",
+      ],
+      [
+        'Theo Lindqvist',
+        'supporting',
+        'A night-shift baker who knows every rumour in town',
+      ],
     ].entries()) {
       const asset = await insertRow<{ id: string }>(
         'assets',
@@ -85,10 +107,20 @@ test.describe('A full studio run through the local job queue (FILM-1806)', () =>
 
     const locationIds: string[] = [];
     for (const [name, description] of [
-      ['The lighthouse on Gull Point', 'A white stone lighthouse at the end of a shingle spit'],
-      ["Mrs. Varga's bakery on Canal Road", 'A narrow bakery that opens at four in the morning'],
+      [
+        'The lighthouse on Gull Point',
+        'A white stone lighthouse at the end of a shingle spit',
+      ],
+      [
+        "Mrs. Varga's bakery on Canal Road",
+        'A narrow bakery that opens at four in the morning',
+      ],
     ]) {
-      const asset = await insertRow<{ id: string }>('assets', { project_id: project.id, type: 'location', name, description }, auth);
+      const asset = await insertRow<{ id: string }>(
+        'assets',
+        { project_id: project.id, type: 'location', name, description },
+        auth,
+      );
       locationIds.push(asset.id);
     }
 
@@ -115,11 +147,22 @@ test.describe('A full studio run through the local job queue (FILM-1806)', () =>
       .filter({ has: page.getByRole('button', { name: /Add Key|Update/ }) })
       .last();
     await card.getByRole('button', { name: /Add Key|Update/ }).click();
-    await page.getByRole('dialog').locator('#api-key').fill('sandbox-local-key');
+    await page
+      .getByRole('dialog')
+      .locator('#api-key')
+      .fill('sandbox-local-key');
     // Checked against the ElevenLabs stand-in before it can be saved.
-    await page.getByRole('dialog').getByRole('button', { name: 'Test' }).click();
-    await expect(page.getByRole('dialog').getByRole('button', { name: 'Save Key' })).toBeEnabled();
-    await page.getByRole('dialog').getByRole('button', { name: 'Save Key' }).click();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Test' })
+      .click();
+    await expect(
+      page.getByRole('dialog').getByRole('button', { name: 'Save Key' }),
+    ).toBeEnabled();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Save Key' })
+      .click();
     await expect(page.getByText('API key saved successfully')).toBeVisible();
 
     const episodeUrl = `/home/${team.slug}/studio/${project.slug}/episodes/${episodeSlug}`;
@@ -128,15 +171,27 @@ test.describe('A full studio run through the local job queue (FILM-1806)', () =>
     await page.goto(`${episodeUrl}/ideation`, { timeout: STAGE_TIMEOUT }); // a first dev compile is slow
     await page
       .locator('[data-test="ideation-premise"]')
-      .fill('Mara finds a sealed letter under the lighthouse floorboards, addressed to someone who has not been born yet.');
+      .fill(
+        'Mara finds a sealed letter under the lighthouse floorboards, addressed to someone who has not been born yet.',
+      );
     await page.locator('[data-test="ideation-generate"]').click();
-    await expect(page.getByText(/Generated \d+ story ideas/)).toBeVisible({ timeout: STAGE_TIMEOUT });
+    await expect(page.getByText(/Generated \d+ story ideas/)).toBeVisible({
+      timeout: STAGE_TIMEOUT,
+    });
 
-    const ideationReplies = (await ledger()).filter((e) => e.identified?.key === 'story-ideation');
+    const ideationReplies = (await ledger()).filter(
+      (e) => e.identified?.key === 'story-ideation',
+    );
     expect(ideationReplies.length).toBeGreaterThan(0);
-    const servedTitles = [...(ideationReplies[0]!.responseSummary ?? '').matchAll(/"title": "([^"]+)"/g)].map((m) => m[1]);
+    const servedTitles = [
+      ...(ideationReplies[0]!.responseSummary ?? '').matchAll(
+        /"title": "([^"]+)"/g,
+      ),
+    ].map((m) => m[1]);
     for (const title of servedTitles.slice(0, 1)) {
-      await expect(page.getByText(title!, { exact: true }).first()).toBeVisible();
+      await expect(
+        page.getByText(title!, { exact: true }).first(),
+      ).toBeVisible();
     }
     await snap(page, '01-ideation-ideas');
 
@@ -146,24 +201,38 @@ test.describe('A full studio run through the local job queue (FILM-1806)', () =>
     await snap(page, '02-refine-idea');
     await page.getByRole('button', { name: 'Generate Story' }).click();
     await expect(page).toHaveURL(/\/story$/, { timeout: STAGE_TIMEOUT });
-    await expect(page.getByRole('button', { name: 'Convert to Screenplay' })).toBeVisible({ timeout: STAGE_TIMEOUT });
+    await expect(
+      page.getByRole('button', { name: 'Convert to Screenplay' }),
+    ).toBeVisible({ timeout: STAGE_TIMEOUT });
     await snap(page, '03-story');
 
     // --- 3. Screenplay (enqueued: screenplay-conversion → screenplay orchestrator).
     await page.getByRole('button', { name: 'Convert to Screenplay' }).click();
     await expect(page).toHaveURL(/\/screenplay$/, { timeout: STAGE_TIMEOUT });
-    await expect(page.getByRole('button', { name: /Approve & Generate Shots/ })).toBeEnabled({ timeout: STAGE_TIMEOUT });
-    await expect(page.getByText(/Mara Okafor|MARA OKAFOR/).first()).toBeVisible({ timeout: STAGE_TIMEOUT });
+    await expect(
+      page.getByRole('button', { name: /Approve & Generate Shots/ }),
+    ).toBeEnabled({ timeout: STAGE_TIMEOUT });
+    await expect(page.getByText(/Mara Okafor|MARA OKAFOR/).first()).toBeVisible(
+      { timeout: STAGE_TIMEOUT },
+    );
     await snap(page, '04-screenplay');
 
     // --- 4. Shots (enqueued: shot-generation → shot orchestrator).
-    await page.getByRole('button', { name: /Approve & Generate Shots/ }).click();
-    await expect(page.getByText(/Shot list generated/).first()).toBeVisible({ timeout: STAGE_TIMEOUT });
+    await page
+      .getByRole('button', { name: /Approve & Generate Shots/ })
+      .click();
+    await expect(page.getByText(/Shot list generated/).first()).toBeVisible({
+      timeout: STAGE_TIMEOUT,
+    });
     await page.goto(`${episodeUrl}/visual-studio`, { timeout: STAGE_TIMEOUT }); // a first dev compile is slow
-    await expect(page.getByText(/^\d+ shots$/).first()).toBeVisible({ timeout: STAGE_TIMEOUT });
+    await expect(page.getByText(/^\d+ shots$/).first()).toBeVisible({
+      timeout: STAGE_TIMEOUT,
+    });
     await expect(page.getByText(/^Shot \d+\.\d+$/).first()).toBeVisible();
     // The shots speak with the show's own cast, not a stranger's.
-    await expect(page.getByText(/Mara Okafor|Theo Lindqvist/).first()).toBeVisible();
+    await expect(
+      page.getByText(/Mara Okafor|Theo Lindqvist/).first(),
+    ).toBeVisible();
     await snap(page, '05-shots');
 
     // --- 5. Voice (enqueued: the voice queue → voice worker → ElevenLabs stand-in).
@@ -175,17 +244,29 @@ test.describe('A full studio run through the local job queue (FILM-1806)', () =>
     await generateAll.click();
 
     const spoken = async () =>
-      (await ledger()).filter((e) => e.id > lastBefore && e.vendor === 'elevenlabs' && e.path.startsWith('/v1/text-to-speech/'));
-    await expect.poll(async () => (await spoken()).length, { timeout: STAGE_TIMEOUT }).toBeGreaterThan(0);
+      (await ledger()).filter(
+        (e) =>
+          e.id > lastBefore &&
+          e.vendor === 'elevenlabs' &&
+          e.path.startsWith('/v1/text-to-speech/'),
+      );
+    await expect
+      .poll(async () => (await spoken()).length, { timeout: STAGE_TIMEOUT })
+      .toBeGreaterThan(0);
     for (const entry of await spoken()) expect(entry.status).toBe(200);
     await page.reload();
-    await expect(page.locator('audio').first()).toBeAttached({ timeout: STAGE_TIMEOUT });
+    await expect(page.locator('audio').first()).toBeAttached({
+      timeout: STAGE_TIMEOUT,
+    });
     await snap(page, '07-dialogue-voiced');
 
     // --- Nothing reached a real vendor; every model call was the sandbox's.
     if (shoot) {
       await page.goto(`${CONTROL}/__sandbox`);
-      await page.screenshot({ path: `${OUT}/08-sandbox-ledger.png`, fullPage: true });
+      await page.screenshot({
+        path: `${OUT}/08-sandbox-ledger.png`,
+        fullPage: true,
+      });
     }
   });
 });

@@ -11,7 +11,6 @@
 import { createClient } from '@supabase/supabase-js';
 
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
-import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
 import ws from 'ws';
 
 import {
@@ -23,6 +22,7 @@ import {
   EPISODE_VIDEO_PUBLISH_REFUSAL,
   ownedEpisodeVideo,
 } from '@kit/publishing/lib/owned-episode-video';
+import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
 import type { Database, Json } from '@kit/supabase/database';
 
 const sqsClient = new SQSClient(awsClientOptions('sqs'));

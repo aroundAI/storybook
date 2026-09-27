@@ -68,7 +68,9 @@ export function castFromPrompt(userPrompt: string) {
   for (const m of userPrompt.matchAll(/^\s*Name:\s*(.+)$/gm)) add(m[1]!);
   for (const m of userPrompt.matchAll(/^\s*- \*\*([^*]+)\*\* \(/gm)) add(m[1]!);
   for (const m of userPrompt.matchAll(/^###\s+([^(\n]+?)\s+\(/gm)) add(m[1]!);
-  for (const m of userPrompt.matchAll(/Character(?:s| Names)(?: for Dialogue)?\**:\s*\**\s*([^\n]+)/g)) {
+  for (const m of userPrompt.matchAll(
+    /Character(?:s| Names)(?: for Dialogue)?\**:\s*\**\s*([^\n]+)/g,
+  )) {
     for (const part of m[1]!.split(',')) add(part);
   }
   return names.slice(0, 8);

@@ -8,6 +8,7 @@ import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { wholeShotSeconds } from '../../schemas/shot-list.schema';
 import {
   BatchCreateShotsSchema,
   CreateShotSchema,
@@ -15,7 +16,6 @@ import {
   ReorderShotsSchema,
   UpdateShotSchema,
 } from '../../schemas/shot.schema';
-import { wholeShotSeconds } from '../../schemas/shot-list.schema';
 import type {
   BatchCreateShotsResponse,
   DeleteShotResponse,

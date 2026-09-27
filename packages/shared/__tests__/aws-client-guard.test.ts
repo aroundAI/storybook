@@ -1,6 +1,5 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve, sep } from 'node:path';
-
 import { describe, expect, it } from 'vitest';
 
 /**
@@ -14,17 +13,30 @@ import { describe, expect, it } from 'vitest';
 
 const REPO = resolve(__dirname, '../../..');
 const ROOTS = ['packages', 'apps'];
-const SKIP_DIRS = new Set(['node_modules', '.next', '.turbo', '.open-next', '.sst', 'dist', 'coverage', 'test-results']);
+const SKIP_DIRS = new Set([
+  'node_modules',
+  '.next',
+  '.turbo',
+  '.open-next',
+  '.sst',
+  'dist',
+  'coverage',
+  'test-results',
+]);
 const SOURCE = /\.(?:ts|tsx|js|mjs|cjs)$/;
-const TEST_FILE = /(?:^|\/)(?:__tests__|__mocks__|e2e)\/|\.(?:test|spec)\.[jt]sx?$/;
+const TEST_FILE =
+  /(?:^|\/)(?:__tests__|__mocks__|e2e)\/|\.(?:test|spec)\.[jt]sx?$/;
 
-const CLIENT = /\bnew\s+(SQSClient|DynamoDBClient|ApiGatewayManagementApiClient)\s*\(/g;
+const CLIENT =
+  /\bnew\s+(SQSClient|DynamoDBClient|ApiGatewayManagementApiClient)\s*\(/g;
 const QUEUE_ENV = /process\.env\.([A-Z_]*QUEUE_URL)\b/g;
 
 function sourceFiles(path: string): string[] {
   const absolute = join(REPO, path);
   if (!statSync(absolute).isDirectory()) return SOURCE.test(path) ? [path] : [];
-  return readdirSync(absolute).flatMap((entry) => (SKIP_DIRS.has(entry) ? [] : sourceFiles(join(path, entry))));
+  return readdirSync(absolute).flatMap((entry) =>
+    SKIP_DIRS.has(entry) ? [] : sourceFiles(join(path, entry)),
+  );
 }
 
 const FILES = ROOTS.flatMap(sourceFiles)
@@ -40,12 +52,15 @@ function argumentsFrom(source: string, open: number) {
   return source.slice(open);
 }
 
-const lineOf = (source: string, index: number) => source.slice(0, index).split('\n').length;
+const lineOf = (source: string, index: number) =>
+  source.slice(0, index).split('\n').length;
 
 describe('AWS clients reach the local emulators only through awsClientOptions (FILM-1806)', () => {
   it('finds the clients, so an empty result means clean and not unread', () => {
     const found = FILES.flatMap((file) =>
-      [...readFileSync(join(REPO, file), 'utf8').matchAll(CLIENT)].map((m) => `${file} ${m[1]}`),
+      [...readFileSync(join(REPO, file), 'utf8').matchAll(CLIENT)].map(
+        (m) => `${file} ${m[1]}`,
+      ),
     );
     expect(found).toEqual(
       expect.arrayContaining([
@@ -61,8 +76,16 @@ describe('AWS clients reach the local emulators only through awsClientOptions (F
     const missing = FILES.flatMap((file) => {
       const source = readFileSync(join(REPO, file), 'utf8');
       return [...source.matchAll(CLIENT)]
-        .filter((m) => !/awsClientOptions\(/.test(argumentsFrom(source, m.index + m[0].length - 1)))
-        .map((m) => `${file}:${lineOf(source, m.index)} new ${m[1]}() without awsClientOptions()`);
+        .filter(
+          (m) =>
+            !/awsClientOptions\(/.test(
+              argumentsFrom(source, m.index + m[0].length - 1),
+            ),
+        )
+        .map(
+          (m) =>
+            `${file}:${lineOf(source, m.index)} new ${m[1]}() without awsClientOptions()`,
+        );
     });
     expect(missing).toEqual([]);
   });
@@ -71,7 +94,12 @@ describe('AWS clients reach the local emulators only through awsClientOptions (F
     const raw = FILES.flatMap((file) => {
       const source = readFileSync(join(REPO, file), 'utf8');
       return [...source.matchAll(QUEUE_ENV)]
-        .filter((m) => !/queueUrlFromEnv\(\s*$/.test(source.slice(Math.max(0, m.index - 40), m.index)))
+        .filter(
+          (m) =>
+            !/queueUrlFromEnv\(\s*$/.test(
+              source.slice(Math.max(0, m.index - 40), m.index),
+            ),
+        )
         .map((m) => `${file}:${lineOf(source, m.index)} reads ${m[1]} raw`);
     });
     expect(raw).toEqual([]);

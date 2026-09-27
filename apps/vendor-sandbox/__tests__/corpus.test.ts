@@ -121,18 +121,37 @@ describe('the cast a prompt names', () => {
           'Name: the lighthouse',
         ].join('\n'),
       ),
-    ).toEqual(['Mara Okafor', 'Theo Lindqvist', 'Hana Sato', 'Ines Duarte', 'Kwame Adeyemi']);
+    ).toEqual([
+      'Mara Okafor',
+      'Theo Lindqvist',
+      'Hana Sato',
+      'Ines Duarte',
+      'Kwame Adeyemi',
+    ]);
   });
 
   it('is the only cast a screenplay speaks with', () => {
     const prompt = catalog.find((p) => p.key === 'screenplay-conversion')!;
-    const user = '**Character Names for Dialogue**: Mara Okafor, Theo Lindqvist';
+    const user =
+      '**Character Names for Dialogue**: Mara Okafor, Theo Lindqvist';
     for (let seed = 0; seed < 20; seed++) {
-      const data = parse(respondToPrompt(prompt, user, createRng(seed)).text) as {
-        screenplay: { scenes: Array<{ dialogue: Array<{ character: string }> }> };
+      const data = parse(
+        respondToPrompt(prompt, user, createRng(seed)).text,
+      ) as {
+        screenplay: {
+          scenes: Array<{ dialogue: Array<{ character: string }> }>;
+        };
       };
-      const speakers = new Set(data.screenplay.scenes.flatMap((s) => s.dialogue.map((d) => d.character)));
-      expect([...speakers].every((name) => ['Mara Okafor', 'Theo Lindqvist'].includes(name))).toBe(true);
+      const speakers = new Set(
+        data.screenplay.scenes.flatMap((s) =>
+          s.dialogue.map((d) => d.character),
+        ),
+      );
+      expect(
+        [...speakers].every((name) =>
+          ['Mara Okafor', 'Theo Lindqvist'].includes(name),
+        ),
+      ).toBe(true);
     }
   });
 });
@@ -140,14 +159,25 @@ describe('the cast a prompt names', () => {
 describe('a list of characters', () => {
   it('names each cast member once, not one name over and over', () => {
     const schema = z.object({
-      characters: z.array(z.object({ name: z.string(), role: z.string() })).min(1),
+      characters: z
+        .array(z.object({ name: z.string(), role: z.string() }))
+        .min(1),
     });
     for (let seed = 0; seed < 20; seed++) {
-      const ctx = createContext(createRng(seed), 'Characters: Mara Okafor, Theo Lindqvist');
-      const { characters } = generateFromZod(schema, ctx) as { characters: Array<{ name: string }> };
+      const ctx = createContext(
+        createRng(seed),
+        'Characters: Mara Okafor, Theo Lindqvist',
+      );
+      const { characters } = generateFromZod(schema, ctx) as {
+        characters: Array<{ name: string }>;
+      };
       const names = characters.map((c) => c.name);
-      expect(new Set(names).size, `seed ${seed}: ${names.join(', ')}`).toBe(names.length);
-      expect(names.every((n) => ['Mara Okafor', 'Theo Lindqvist'].includes(n))).toBe(true);
+      expect(new Set(names).size, `seed ${seed}: ${names.join(', ')}`).toBe(
+        names.length,
+      );
+      expect(
+        names.every((n) => ['Mara Okafor', 'Theo Lindqvist'].includes(n)),
+      ).toBe(true);
     }
   });
 });

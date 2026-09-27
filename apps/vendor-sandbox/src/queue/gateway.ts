@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
-
 import { type WebSocket, WebSocketServer } from 'ws';
 
 import { HOST, readBody } from '../http';
@@ -16,7 +15,9 @@ import { HOST, readBody } from '../http';
  * answered here by writing to that socket.
  */
 
-type Handler = (event: Record<string, unknown>) => Promise<{ statusCode?: number } | undefined | void>;
+type Handler = (
+  event: Record<string, unknown>,
+) => Promise<{ statusCode?: number } | undefined | void>;
 
 export interface WebSocketHandlers {
   connect: Handler;
@@ -38,7 +39,12 @@ function requestContext(connectionId: string, routeKey: string, port: number) {
   return {
     connectionId,
     routeKey,
-    eventType: routeKey === '$connect' ? 'CONNECT' : routeKey === '$disconnect' ? 'DISCONNECT' : 'MESSAGE',
+    eventType:
+      routeKey === '$connect'
+        ? 'CONNECT'
+        : routeKey === '$disconnect'
+          ? 'DISCONNECT'
+          : 'MESSAGE',
     domainName: `127.0.0.1:${port}`,
     stage: STAGE,
     apiId: 'local',
@@ -48,7 +54,10 @@ function requestContext(connectionId: string, routeKey: string, port: number) {
   };
 }
 
-export async function startGateway(handlers: WebSocketHandlers, port: number): Promise<Gateway> {
+export async function startGateway(
+  handlers: WebSocketHandlers,
+  port: number,
+): Promise<Gateway> {
   const connections = new Map<string, WebSocket>();
   const server = http.createServer();
   const wss = new WebSocketServer({ noServer: true });
@@ -59,13 +68,18 @@ export async function startGateway(handlers: WebSocketHandlers, port: number): P
   server.on('request', (req, res) => {
     void readBody(req).then((body) => {
       const match = /^\/(?:[^/]+\/)?@connections\/([^/?]+)/.exec(req.url ?? '');
-      const socket = match ? connections.get(decodeURIComponent(match[1]!)) : undefined;
+      const socket = match
+        ? connections.get(decodeURIComponent(match[1]!))
+        : undefined;
       if (!match || req.method !== 'POST') {
         res.writeHead(404).end();
         return;
       }
       if (!socket) {
-        res.writeHead(410, { 'content-type': 'application/json', 'x-amzn-errortype': 'GoneException' });
+        res.writeHead(410, {
+          'content-type': 'application/json',
+          'x-amzn-errortype': 'GoneException',
+        });
         res.end(JSON.stringify({ message: 'Gone' }));
         return;
       }
@@ -79,7 +93,12 @@ export async function startGateway(handlers: WebSocketHandlers, port: number): P
     const connectionId = randomUUID().replaceAll('-', '').slice(0, 16);
     const event = {
       requestContext: requestContext(connectionId, '$connect', boundPort),
-      headers: Object.fromEntries(Object.entries(req.headers).map(([k, v]) => [k, Array.isArray(v) ? v.join(',') : v])),
+      headers: Object.fromEntries(
+        Object.entries(req.headers).map(([k, v]) => [
+          k,
+          Array.isArray(v) ? v.join(',') : v,
+        ]),
+      ),
       queryStringParameters: Object.fromEntries(url.searchParams),
       isBase64Encoded: false,
     };
@@ -88,7 +107,9 @@ export async function startGateway(handlers: WebSocketHandlers, port: number): P
       .connect(event)
       .then((result) => {
         if ((result?.statusCode ?? 200) !== 200) {
-          socket.write(`HTTP/1.1 ${result?.statusCode ?? 401} Unauthorized\r\n\r\n`);
+          socket.write(
+            `HTTP/1.1 ${result?.statusCode ?? 401} Unauthorized\r\n\r\n`,
+          );
           socket.destroy();
           return;
         }
@@ -96,7 +117,11 @@ export async function startGateway(handlers: WebSocketHandlers, port: number): P
           connections.set(connectionId, ws);
           ws.on('message', (data) => {
             void handlers.default({
-              requestContext: requestContext(connectionId, '$default', boundPort),
+              requestContext: requestContext(
+                connectionId,
+                '$default',
+                boundPort,
+              ),
               body: data.toString(),
               isBase64Encoded: false,
             });
@@ -104,7 +129,11 @@ export async function startGateway(handlers: WebSocketHandlers, port: number): P
           ws.on('close', () => {
             connections.delete(connectionId);
             void handlers.disconnect({
-              requestContext: requestContext(connectionId, '$disconnect', boundPort),
+              requestContext: requestContext(
+                connectionId,
+                '$disconnect',
+                boundPort,
+              ),
               isBase64Encoded: false,
             });
           });
