@@ -190,7 +190,7 @@ case "${1:-}" in
   status)
     load_env
     echo "ClickHouse: $(curl -s "http://localhost:8123/?user=$CLICKHOUSE_USER&password=$CLICKHOUSE_PASSWORD&query=SELECT%20version()" || echo 'down')"
-    (cd "$ROOT/apps/web" && supabase status 2>&1 | head -3)
+    (cd "$ROOT/apps/web" && supabase status 2>&1 | sed -n 1,3p)
     sandbox_status "$ROOT"
     local_queue_status "$ROOT"
     ;;

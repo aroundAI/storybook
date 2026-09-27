@@ -22,7 +22,7 @@ function ensureTwice(initial: string) {
   for (let i = 0; i < 2; i++) {
     const run = spawnSync('bash', [
       '-c',
-      `. "${LIB}" && ensure_sandbox_env "${file}"`,
+      `set -euo pipefail; . "${LIB}" && ensure_sandbox_env "${file}"`,
     ]);
     expect(run.status, run.stderr.toString()).toBe(0);
   }
@@ -51,7 +51,7 @@ describe('the local.env block', () => {
     );
     const run = spawnSync('bash', [
       '-c',
-      `. "${LIB}" && ensure_sandbox_env "${file}"`,
+      `set -euo pipefail; . "${LIB}" && ensure_sandbox_env "${file}"`,
     ]);
     expect(run.status, run.stderr.toString()).toBe(0);
     const env = readFileSync(file, 'utf8');

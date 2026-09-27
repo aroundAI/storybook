@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
 } from 'react';
@@ -149,6 +150,19 @@ export function useEpisodeGenerationCheck({
       }
     }
   }, [isContextGenerating, hasData, setIsGenerating, refetchEpisode]);
+
+  // A job can finish between this page's data being read and its WebSocket
+  // subscription opening - the previous page queues it and navigates at once,
+  // and a fast worker answers first. Neither the active-job query (finished
+  // jobs are not active) nor the socket (the message came before the
+  // subscriber) would then show it, and the step stayed locked until a reload.
+  // One read on arrival closes that gap.
+  const checkedOnArrival = useRef(false);
+  useEffect(() => {
+    if (hasData || checkedOnArrival.current) return;
+    checkedOnArrival.current = true;
+    refetchEpisode();
+  }, [hasData, refetchEpisode]);
 
   return useMemo(() => ({ isGenerating }), [isGenerating]);
 }

@@ -5,6 +5,7 @@ import {
   seedProject,
   seedTeamAccount,
   serviceRoleAuth,
+  updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
 
@@ -68,6 +69,11 @@ test.describe('A full studio run through the local job queue (FILM-1806)', () =>
       slug: `harbor-lights-${Date.now()}`,
     });
     const auth = serviceRoleAuth();
+    // Voice needs the project's TTS model, set in Project Settings; there is
+    // no default (getProjectTTSModel refuses without one).
+    await updateRows('projects', `id=eq.${project.id}`, {
+      audio_settings: { elevenlabs: { tts_model: 'eleven_multilingual_v2' } },
+    });
 
     const voices = (
       (await (
@@ -174,25 +180,25 @@ test.describe('A full studio run through the local job queue (FILM-1806)', () =>
       .fill(
         'Mara finds a sealed letter under the lighthouse floorboards, addressed to someone who has not been born yet.',
       );
+    // The sandbox's ledger outlives a run: read only what this run asked for.
+    const ledgerStart = (await ledger())[0]?.id ?? 0;
     await page.locator('[data-test="ideation-generate"]').click();
     await expect(page.getByText(/Generated \d+ story ideas/)).toBeVisible({
       timeout: STAGE_TIMEOUT,
     });
 
     const ideationReplies = (await ledger()).filter(
-      (e) => e.identified?.key === 'story-ideation',
+      (e) => e.id > ledgerStart && e.identified?.key === 'story-ideation',
     );
     expect(ideationReplies.length).toBeGreaterThan(0);
-    const servedTitles = [
-      ...(ideationReplies[0]!.responseSummary ?? '').matchAll(
-        /"title": "([^"]+)"/g,
+    const servedTitles = ideationReplies.flatMap((reply) =>
+      [...(reply.responseSummary ?? '').matchAll(/"title": "([^"]+)"/g)].map(
+        (m) => m[1]!,
       ),
-    ].map((m) => m[1]);
-    for (const title of servedTitles.slice(0, 1)) {
-      await expect(
-        page.getByText(title!, { exact: true }).first(),
-      ).toBeVisible();
-    }
+    );
+    await expect(
+      page.getByText(servedTitles[0]!, { exact: true }).first(),
+    ).toBeVisible();
     await snap(page, '01-ideation-ideas');
 
     // --- 2. Story (enqueued: story-generation → story orchestrator).

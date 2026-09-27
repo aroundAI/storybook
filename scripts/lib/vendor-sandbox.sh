@@ -21,7 +21,7 @@ ensure_sandbox_env() {
   touch "$file"
 
   local encryption_key
-  encryption_key=$(grep -m1 '^ENCRYPTION_KEY=' "$file" | cut -d= -f2-)
+  encryption_key=$(grep -m1 '^ENCRYPTION_KEY=' "$file" | cut -d= -f2- || true)
   local key_outside=''
   if [ -n "$encryption_key" ] &&
     awk -v s="$SANDBOX_BLOCK_START" -v e="$SANDBOX_BLOCK_END" \

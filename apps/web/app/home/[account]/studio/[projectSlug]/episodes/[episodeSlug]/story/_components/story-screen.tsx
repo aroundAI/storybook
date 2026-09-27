@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 
 import {
   ArrowRight,
@@ -49,6 +49,8 @@ export function StoryScreen({
   );
   const storyData = episode.storyData;
 
+  const leftForScreenplay = useRef(false);
+
   // WebSocket for screenplay-conversion async LLM results
   const {
     status: llmStatus,
@@ -69,6 +71,10 @@ export function StoryScreen({
   // The screenplay page has its own WebSocket handler + GeneratingState to detect completion.
   // This handler only needs to refetch if the user is still on this page when it completes.
   useEffect(() => {
+    // Once a queued conversion has sent the user on to the screenplay, a
+    // refresh here would race that navigation (a fast worker answers before
+    // the action returns) and can cancel it, leaving the user on the story.
+    if (leftForScreenplay.current) return;
     if (llmStatus === 'success' && llmResult) {
       // llmResult is already the result object from message.result (contains {success, data})
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -121,6 +127,7 @@ export function StoryScreen({
       // GeneratingState + WebSocket handler to detect completion and auto-refresh
       if (result?.queued) {
         toast.info('Converting to screenplay in background...');
+        leftForScreenplay.current = true;
         onScreenplayComplete();
         return { success: true, queued: true };
       }
