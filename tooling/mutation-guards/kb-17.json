@@ -44,12 +44,6 @@
       "sql": "drop policy immutable_events_delete on public.immutable_events; create policy immutable_events_delete on public.immutable_events for delete to authenticated using (exists (select 1 from public.projects p where p.id = immutable_events.project_id and public.has_role_on_account(p.account_id)));"
     },
     {
-      "name": "KB-17 read back on has_role_on_account (personal owners locked out)",
-      "kind": "pgtap",
-      "test": "apps/web/supabase/tests/database/immutable-events-immutable.test.sql",
-      "sql": "drop policy immutable_events_read on public.immutable_events; create policy immutable_events_read on public.immutable_events for select to authenticated using (exists (select 1 from public.projects p where p.id = immutable_events.project_id and public.has_role_on_account(p.account_id)));"
-    },
-    {
       "kind": "unit",
       "file": "packages/features/episodes/src/server/canon-actions.ts",
       "cwd": "packages/features/episodes",

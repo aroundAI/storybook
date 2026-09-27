@@ -78,9 +78,11 @@ const featuresFlagConfig = FeatureFlagsSchema.parse({
     process.env.NEXT_PUBLIC_ENABLE_TEAM_ACCOUNTS,
     true,
   ),
+  // Team accounts only (KB-99): the deploy (sst.config.ts) sets this false, and
+  // every environment must match it. Bound by feature-flags-parity.test.ts.
   enablePersonalAccounts: getBoolean(
     process.env.NEXT_PUBLIC_ENABLE_PERSONAL_ACCOUNTS,
-    true,
+    false,
   ),
   enableTeamCreation: getBoolean(
     process.env.NEXT_PUBLIC_ENABLE_TEAM_ACCOUNTS_CREATION,

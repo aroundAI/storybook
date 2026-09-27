@@ -4,6 +4,27 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 -- KB-27 (sibling). A fixed plan, so a truncated run fails as a plan mismatch.
 select plan(20);
 
+-- KB-99: the product is team accounts only; someone working alone is a team
+-- of one. A fixture that used to sit on a user's personal account sits on a
+-- team that user owns instead, with the owner membership a team always has.
+create function pg_temp.solo_team(identifier text) returns uuid
+language plpgsql security definer as $$
+declare
+  team uuid := md5('kb99-solo:' || identifier)::uuid;
+begin
+  insert into public.accounts (id, name, is_personal_account, primary_owner_user_id)
+  values (team, identifier || ' (team of one)', false, tests.get_supabase_uid(identifier))
+  on conflict (id) do nothing;
+
+  insert into public.accounts_memberships (user_id, account_id, account_role)
+  values (tests.get_supabase_uid(identifier), team, 'owner')
+  on conflict do nothing;
+
+  return team;
+end;
+$$;
+grant execute on function pg_temp.solo_team(text) to authenticated;
+
 -- bulk_reset_episodes_to_stage is SECURITY DEFINER and deletes story,
 -- screenplay, shots, audio and canon. Before KB-27 it checked only that the
 -- episodes belonged to the account the caller *named*, never that the caller
@@ -18,7 +39,7 @@ select plan(20);
 --       kb27b_member is a project member; kb27b_teammate has an account role
 --       and no project row. E1 is live with a story and a canon event; E2 is
 --       soft-deleted with a canon event.
---   S   kb27b_solo's personal project, episode F with a canon event.
+--   S   kb27b_solo's project on their team of one, episode F with a canon event.
 --   kb27b_stranger has only a personal account.
 --
 -- E1 also has a shot, which only the screenplay/storyboard branch deletes
@@ -49,7 +70,7 @@ select makerkit.authenticate_as('kb27b_solo');
 set local role postgres;
 
 insert into public.projects (id, account_id, name, status)
-values ('27280000-0000-4000-8000-000000000005', tests.get_supabase_uid('kb27b_solo'), 'KB-27 reset S', 'active');
+values ('27280000-0000-4000-8000-000000000005', pg_temp.solo_team('kb27b_solo'), 'KB-27 reset S', 'active');
 
 insert into public.accounts_memberships (user_id, account_id, account_role)
 values
@@ -161,14 +182,14 @@ select is(pg_temp.e1_story(), null, 'B3: the story is cleared');
 select is(pg_temp.events('e1:canon'), 0::bigint, 'B3: the episode''s canon is removed');
 
 -- ==================================
--- B4: a personal-account owner resets their own episode
+-- B4: a team-of-one owner resets their own episode
 -- ==================================
 select makerkit.authenticate_as('kb27b_solo');
 select set_config('kb27.result', public.bulk_reset_episodes_to_stage(
-  array['27280000-0000-4000-8000-000000000006']::uuid[], 'draft', tests.get_supabase_uid('kb27b_solo'))::text, true);
+  array['27280000-0000-4000-8000-000000000006']::uuid[], 'draft', pg_temp.solo_team('kb27b_solo'))::text, true);
 
 set local role postgres;
-select is(pg_temp.result()->>'reset_count', '1', 'B4: a personal-account owner resets their own episode');
+select is(pg_temp.result()->>'reset_count', '1', 'B4: a team-of-one owner resets their own episode');
 select is(pg_temp.events('f:canon'), 0::bigint, 'B4: its canon is removed');
 
 select * from finish();

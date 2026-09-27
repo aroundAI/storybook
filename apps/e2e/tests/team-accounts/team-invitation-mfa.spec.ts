@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { AuthPageObject } from '../authentication/auth.po';
 import { InvitationsPageObject } from '../invitations/invitations.po';
+import { waitForSignedIn } from '../utils/session';
 import { SUPER_ADMIN } from '../utils/super-admin';
 import { TeamAccountsPageObject } from './team-accounts.po';
 
@@ -24,7 +25,7 @@ test.describe('Team Invitation with MFA Flow', () => {
       password: 'testingpassword',
     });
 
-    await page.waitForURL('/home');
+    await waitForSignedIn(page);
 
     // Create a new team
     await teamAccounts.createTeam({

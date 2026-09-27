@@ -5,6 +5,27 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 -- instead of reading as a nearly-passing suite.
 select plan(48);
 
+-- KB-99: the product is team accounts only; someone working alone is a team
+-- of one. A fixture that used to sit on a user's personal account sits on a
+-- team that user owns instead, with the owner membership a team always has.
+create function pg_temp.solo_team(identifier text) returns uuid
+language plpgsql security definer as $$
+declare
+  team uuid := md5('kb99-solo:' || identifier)::uuid;
+begin
+  insert into public.accounts (id, name, is_personal_account, primary_owner_user_id)
+  values (team, identifier || ' (team of one)', false, tests.get_supabase_uid(identifier))
+  on conflict (id) do nothing;
+
+  insert into public.accounts_memberships (user_id, account_id, account_role)
+  values (tests.get_supabase_uid(identifier), team, 'owner')
+  on conflict do nothing;
+
+  return team;
+end;
+$$;
+grant execute on function pg_temp.solo_team(text) to authenticated;
+
 -- Who writes into a project, and what that means for its storage folder.
 --
 -- Fixtures:
@@ -28,13 +49,13 @@ select makerkit.authenticate_as('kb28_owner');
 
 insert into public.projects (id, account_id, name, slug, visibility)
 values
-  ('cccccccc-2800-4000-8000-000000000001', tests.get_supabase_uid('kb28_owner'), 'KB-28 private', 'kb28-private', 'private'),
-  ('cccccccc-2800-4000-8000-000000000002', tests.get_supabase_uid('kb28_owner'), 'KB-28 public', 'kb28-public', 'public');
+  ('cccccccc-2800-4000-8000-000000000001', pg_temp.solo_team('kb28_owner'), 'KB-28 private', 'kb28-private', 'private'),
+  ('cccccccc-2800-4000-8000-000000000002', pg_temp.solo_team('kb28_owner'), 'KB-28 public', 'kb28-public', 'public');
 
 select makerkit.authenticate_as('kb28_stranger');
 
 insert into public.projects (id, account_id, name, slug)
-values ('cccccccc-2800-4000-8000-000000000003', tests.get_supabase_uid('kb28_stranger'), 'KB-28 other', 'kb28-other');
+values ('cccccccc-2800-4000-8000-000000000003', pg_temp.solo_team('kb28_stranger'), 'KB-28 other', 'kb28-other');
 
 set local role postgres;
 

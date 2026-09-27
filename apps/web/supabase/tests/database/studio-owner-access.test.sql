@@ -3,6 +3,27 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 
 select plan(88);
 
+-- KB-99: the product is team accounts only; someone working alone is a team
+-- of one. A fixture that used to sit on a user's personal account sits on a
+-- team that user owns instead, with the owner membership a team always has.
+create function pg_temp.solo_team(identifier text) returns uuid
+language plpgsql security definer as $$
+declare
+  team uuid := md5('kb99-solo:' || identifier)::uuid;
+begin
+  insert into public.accounts (id, name, is_personal_account, primary_owner_user_id)
+  values (team, identifier || ' (team of one)', false, tests.get_supabase_uid(identifier))
+  on conflict (id) do nothing;
+
+  insert into public.accounts_memberships (user_id, account_id, account_role)
+  values (tests.get_supabase_uid(identifier), team, 'owner')
+  on conflict do nothing;
+
+  return team;
+end;
+$$;
+grant execute on function pg_temp.solo_team(text) to authenticated;
+
 -- FILM-CC-04 KB-48. episode_facts, audio_cues, shot_transitions and
 -- audio_assets tested a membership row only, which a personal account's owner
 -- does not have. Each table now uses the studio rule its siblings use:
@@ -18,11 +39,11 @@ select plan(88);
 --       with no season was invisible to everyone
 --
 -- Actors
---   kb48_p      personal account owner, creator (so owner) of project XP
+--   kb48_p      owner of a team of one (KB-99), creator (so owner) of project XP
 --   kb48_tw     team: project member on XT            -> reads and writes XT
 --   kb48_tv     team: project viewer on XT            -> reads XT, writes nothing
 --   kb48_toff   team: account member, not on XT       -> reads XT, writes nothing
---   kb48_s      a stranger with a personal project XS -> nothing of XP or XT
+--   kb48_s      a stranger with their own project XS  -> nothing of XP or XT
 
 select tests.create_supabase_user('kb48_p', 'kb48-p@storybook.dev');
 select tests.create_supabase_user('kb48_towner', 'kb48-towner@storybook.dev');
@@ -51,12 +72,12 @@ grant execute on function pg_temp.affected(text) to authenticated;
 select makerkit.authenticate_as('kb48_p');
 set local role postgres;
 insert into public.projects (id, account_id, name, status) values
-  ('4848a000-0000-4000-8000-000000000001', tests.get_supabase_uid('kb48_p'), 'KB-48 personal', 'active');
+  ('4848a000-0000-4000-8000-000000000001', pg_temp.solo_team('kb48_p'), 'KB-48 solo', 'active');
 
 select makerkit.authenticate_as('kb48_s');
 set local role postgres;
 insert into public.projects (id, account_id, name, status) values
-  ('4848a000-0000-4000-8000-000000000004', tests.get_supabase_uid('kb48_s'), 'KB-48 stranger', 'active');
+  ('4848a000-0000-4000-8000-000000000004', pg_temp.solo_team('kb48_s'), 'KB-48 stranger', 'active');
 
 select makerkit.authenticate_as('kb48_towner');
 set local role postgres;
@@ -114,38 +135,38 @@ insert into public.audio_assets (id, project_id, audio_type, prompt_hash, prompt
   ('4848a000-0000-4000-8000-000000000072', '4848a000-0000-4000-8000-000000000002', 'sfx', 'kb48-t', 'T asset');
 
 -- ------------------------------------------------------------------
--- Personal owner (the ticket)
+-- Team-of-one owner (the ticket's personal owner, KB-99)
 -- ------------------------------------------------------------------
 select makerkit.authenticate_as('kb48_p');
 
 select is((select count(*)::int from public.episode_facts where episode_id = '4848a000-0000-4000-8000-000000000011'), 1,
-  'Personal owner reads their episode''s fact links');
+  'Team-of-one owner reads their episode''s fact links');
 select is((select count(*)::int from public.audio_cues where id in ('4848a000-0000-4000-8000-000000000051', '4848a000-0000-4000-8000-000000000052')), 2,
-  'Personal owner reads their audio cues, including one on an episode with no season (R9)');
+  'Team-of-one owner reads their audio cues, including one on an episode with no season (R9)');
 select is((select count(*)::int from public.shot_transitions where episode_id = '4848a000-0000-4000-8000-000000000011'), 1,
-  'Personal owner reads their shot transitions');
+  'Team-of-one owner reads their shot transitions');
 select is((select count(*)::int from public.audio_assets where project_id = '4848a000-0000-4000-8000-000000000001'), 1,
-  'Personal owner reads their audio assets');
+  'Team-of-one owner reads their audio assets');
 
 select is(pg_temp.affected($$ update public.audio_cues set prompt = 'P edited' where id = '4848a000-0000-4000-8000-000000000051' $$), 1,
-  'Personal owner updates their audio cue');
+  'Team-of-one owner updates their audio cue');
 select is(pg_temp.affected($$ update public.shot_transitions set transition_type = 'fade' where id = '4848a000-0000-4000-8000-000000000061' $$), 1,
-  'Personal owner updates their shot transition');
+  'Team-of-one owner updates their shot transition');
 select is(pg_temp.affected($$ update public.audio_assets set prompt = 'P edited' where id = '4848a000-0000-4000-8000-000000000071' $$), 1,
-  'Personal owner updates their audio asset');
+  'Team-of-one owner updates their audio asset');
 
 select lives_ok($$ insert into public.episode_facts (id, episode_id, fact_id) values
   ('4848a000-0000-4000-8000-000000000141', '4848a000-0000-4000-8000-000000000011', '4848a000-0000-4000-8000-000000000022') $$,
-  'Personal owner links their fact to their episode');
+  'Team-of-one owner links their fact to their episode');
 select lives_ok($$ insert into public.audio_cues (id, episode_id, scene_number, cue_type, prompt) values
   ('4848a000-0000-4000-8000-000000000151', '4848a000-0000-4000-8000-000000000012', 2, 'sfx', 'P new cue') $$,
-  'Personal owner adds an audio cue, on an episode with no season (R9)');
+  'Team-of-one owner adds an audio cue, on an episode with no season (R9)');
 select lives_ok($$ insert into public.shot_transitions (id, episode_id, from_shot_id, to_shot_id) values
   ('4848a000-0000-4000-8000-000000000161', '4848a000-0000-4000-8000-000000000011', '4848a000-0000-4000-8000-000000000032', '4848a000-0000-4000-8000-000000000031') $$,
-  'Personal owner adds a shot transition');
+  'Team-of-one owner adds a shot transition');
 select lives_ok($$ insert into public.audio_assets (id, project_id, audio_type, prompt_hash, prompt) values
   ('4848a000-0000-4000-8000-000000000171', '4848a000-0000-4000-8000-000000000001', 'sfx', 'kb48-p2', 'P new asset') $$,
-  'Personal owner adds an audio asset');
+  'Team-of-one owner adds an audio asset');
 
 -- R8: the link already exists; this is the statement .upsert({ ignoreDuplicates: true }) sends.
 select lives_ok($$ insert into public.episode_facts (episode_id, fact_id) values
@@ -158,23 +179,23 @@ select is((select count(*)::int from public.episode_facts
 
 -- R7: a fact of another tenant, which the owner cannot read.
 select is((select count(*)::int from public.verified_facts where id = '4848a000-0000-4000-8000-000000000025'), 0,
-  'setup: the personal owner cannot read the stranger''s fact');
+  'setup: the team-of-one owner cannot read the stranger''s fact');
 select throws_ok($$ insert into public.episode_facts (episode_id, fact_id) values
   ('4848a000-0000-4000-8000-000000000011', '4848a000-0000-4000-8000-000000000025') $$,
   '42501', null,
   'Linking another tenant''s fact to your own episode is refused (R7)');
 
 select is(pg_temp.affected($$ delete from public.episode_facts where id = '4848a000-0000-4000-8000-000000000141' $$), 1,
-  'Personal owner unlinks a fact');
+  'Team-of-one owner unlinks a fact');
 select is(pg_temp.affected($$ delete from public.audio_cues where id = '4848a000-0000-4000-8000-000000000151' $$), 1,
-  'Personal owner deletes an audio cue');
+  'Team-of-one owner deletes an audio cue');
 select is(pg_temp.affected($$ delete from public.shot_transitions where id = '4848a000-0000-4000-8000-000000000161' $$), 1,
-  'Personal owner deletes a shot transition');
+  'Team-of-one owner deletes a shot transition');
 select is(pg_temp.affected($$ delete from public.audio_assets where id = '4848a000-0000-4000-8000-000000000171' $$), 1,
-  'Personal owner deletes an audio asset');
+  'Team-of-one owner deletes an audio asset');
 
 select is((select count(*)::int from public.audio_cues where id = '4848a000-0000-4000-8000-000000000053'), 0,
-  'Personal owner reads no other account''s audio cues');
+  'Team-of-one owner reads no other account''s audio cues');
 
 -- ------------------------------------------------------------------
 -- Team project member: reads and writes XT

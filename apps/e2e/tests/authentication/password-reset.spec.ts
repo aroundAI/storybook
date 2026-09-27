@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { isSignedInLanding, waitForSignedIn } from '../utils/session';
 import { AuthPageObject } from './auth.po';
 
 const newPassword = (Math.random() * 10000).toString();
@@ -51,7 +52,7 @@ test.describe('Password Reset Flow', () => {
         })
         .click();
 
-      await page.waitForURL('/home');
+      await waitForSignedIn(page);
     }).toPass();
 
     await auth.signOut();
@@ -64,7 +65,7 @@ test.describe('Password Reset Flow', () => {
       password: newPassword,
     });
 
-    await page.waitForURL('/home', {
+    await page.waitForURL(isSignedInLanding, {
       timeout: 2000,
     });
   });

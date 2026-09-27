@@ -324,19 +324,10 @@ create policy "projects_read" on public.projects for select
     public.has_role_on_account(account_id)
   );
 
+-- Team accounts only (KB-99): a project belongs to a team, which the
+-- `require_team_account` trigger enforces for every writer.
 create policy "projects_create" on public.projects for insert
-  to authenticated with check (
-    -- Personal account: user is the primary owner
-    exists(
-      select 1 from public.accounts
-      where accounts.id = projects.account_id
-        and primary_owner_user_id = auth.uid()
-        and is_personal_account = true
-    )
-    or
-    -- Team account: user has a role
-    public.has_role_on_account(account_id)
-  );
+  to authenticated with check (public.has_role_on_account(account_id));
 
 create policy "projects_update" on public.projects for update
   to authenticated using (

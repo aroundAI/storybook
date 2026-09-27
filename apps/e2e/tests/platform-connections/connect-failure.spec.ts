@@ -1,6 +1,11 @@
 import { Page, expect, test } from '@playwright/test';
 
-import { SeededTeam, seedTeamAccount, seedUser } from '../utils/seed';
+import {
+  SeededTeam,
+  seedMembership,
+  seedTeamAccount,
+  seedUser,
+} from '../utils/seed';
 import { signInAs } from '../utils/session';
 
 /**
@@ -40,6 +45,13 @@ function callback(platform: string, params: Record<string, string>) {
 
 function failure(page: Page) {
   return page.locator('[data-test="connect-failure"]');
+}
+
+/** PR screenshots, only when asked for: CI pays nothing for them. */
+async function captureIfAsked(page: Page, name: string) {
+  if (process.env.CAPTURE_EVIDENCE) {
+    await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: true });
+  }
 }
 
 async function signedInTeam(page: Page) {
@@ -214,7 +226,9 @@ test.describe('A failed connect — the branches that share one helper', () => {
     ).toContainText('TikTok sent you back without an authorisation code');
   });
 
-  test('someone with no team lands on their home page, with the message', async ({
+  // KB-99: `/home` redirects to a team and drops the query, so a failure no
+  // workspace can be chosen for lands on a page that renders it instead.
+  test('someone with no team lands on create-team, with the message', async ({
     page,
   }) => {
     const user = await seedUser('kb19-solo');
@@ -223,10 +237,45 @@ test.describe('A failed connect — the branches that share one helper', () => {
     await page.goto(callback('linkedin', { error: 'access_denied' }));
 
     await expect(failure(page)).toBeVisible();
-    expect(new URL(page.url()).pathname).toBe('/home');
+    expect(new URL(page.url()).pathname).toBe('/home/teams/create');
     await expect(
       failure(page).locator('[data-test="connect-failure-title"]'),
     ).toHaveText('LinkedIn was not connected');
+    // The create-team dialog waits: opened over the message, it hides it.
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await captureIfAsked(page, 'kb99-01-no-team');
+
+    await failure(page)
+      .locator('[data-test="connect-failure-dismiss"]')
+      .click();
+    await expect(failure(page)).toHaveCount(0);
+    expect(new URL(page.url()).pathname).toBe('/home/teams/create');
+    expect(new URL(page.url()).search).toBe('');
+  });
+
+  test('someone in several teams, with no hint which, sees it on their profile page', async ({
+    page,
+  }) => {
+    const team = await seedTeamAccount({ emailPrefix: 'kb99-two' });
+    const other = await seedTeamAccount({ emailPrefix: 'kb99-other' });
+    await seedMembership(team.userId, other.accountId);
+
+    await signInAs(page, team);
+    await page.goto(callback('linkedin', { error: 'access_denied' }));
+
+    await expect(failure(page)).toBeVisible();
+    expect(new URL(page.url()).pathname).toBe('/home/settings');
+    await expect(
+      failure(page).locator('[data-test="connect-failure-title"]'),
+    ).toHaveText('LinkedIn was not connected');
+    await captureIfAsked(page, 'kb99-02-several-teams');
+
+    await failure(page)
+      .locator('[data-test="connect-failure-dismiss"]')
+      .click();
+    await expect(failure(page)).toHaveCount(0);
+    expect(new URL(page.url()).pathname).toBe('/home/settings');
+    expect(new URL(page.url()).search).toBe('');
   });
 
   test('dismissing the message clears it from the address, and it stays gone', async ({

@@ -28,13 +28,13 @@ acceptance_criteria:
     evidence: "`apps/web/supabase/migrations/20260923075604_kb17-immutable-events-immutable.sql`: `immutable_events` grants `authenticated` SELECT, INSERT and DELETE only and `anon` nothing (KB-17; pinned by `table_privs_are` in `apps/web/supabase/tests/database/immutable-events-immutable.test.sql`)"
   - text: "Append-only tables restricted to SELECT/INSERT"
     met: true
-    evidence: "apps/web/supabase/migrations/20260924181028_kb76-77-63-canon-write-scope.sql:345 — `authenticated` holds SELECT and INSERT only on `character_states` and `state_deltas`, `anon` nothing (KB-77); pinned by `table_privs_are` in apps/web/supabase/tests/database/canon-write-scope.test.sql:330"
+    evidence: "apps/web/supabase/migrations/20260924181028_kb76-77-63-canon-write-scope.sql:345 — `authenticated` holds SELECT and INSERT only on `character_states` and `state_deltas`, `anon` nothing (KB-77); pinned by `table_privs_are` in apps/web/supabase/tests/database/canon-write-scope.test.sql:351"
   - text: "Policies use existing `has_role_on_account` function"
     met: true
     evidence: "apps/web/supabase/migrations/20260128225704_canon_management.sql:235. `immutable_events` moved to the owner's rules of 2026-09-23 (`has_account_access` for reads, `can_write_project` for writes) in `apps/web/supabase/migrations/20260923075604_kb17-immutable-events-immutable.sql`, because `has_role_on_account` excludes personal-account owners and includes project viewers"
   - text: "No cross-project data leakage possible"
     met: true
-    evidence: "apps/web/supabase/tests/database/canon-write-scope.test.sql:170 — for all seven other canon tables an outsider reads nothing and cannot insert, and no row can point at another account's episode, character or sequel parent (X, :225); `immutable_events` in `apps/web/supabase/tests/database/immutable-events-immutable.test.sql` (KB-17)"
+    evidence: "apps/web/supabase/tests/database/canon-write-scope.test.sql:191 — for all seven other canon tables an outsider reads nothing and cannot insert, and no row can point at another account's episode, character or sequel parent (X, :225); `immutable_events` in `apps/web/supabase/tests/database/immutable-events-immutable.test.sql` (KB-17)"
   - text: "Attack vector analysis completed and all vectors mitigated"
     met: true
     evidence: "apps/web/supabase/migrations/20260924181028_kb76-77-63-canon-write-scope.sql:60 — every canon table's writes follow `can_write_project` with a `WITH CHECK` (KB-76), character-state authorship is pinned (:297, KB-77), and the logs cannot be changed or deleted by clients (:339); `immutable_events` by KB-17 (`apps/web/supabase/migrations/20260923075604_kb17-immutable-events-immutable.sql`) and `commit_canon_changes` by KB-27 (`apps/web/supabase/migrations/20260923044106_kb27-canon-write-scope.sql`); proven by apps/web/supabase/tests/database/canon-write-scope.test.sql"

@@ -95,8 +95,8 @@
       "name": "C3 A slug is put in the path unchecked",
       "kind": "unit",
       "file": "apps/web/lib/platforms/connect-failure.ts",
-      "find": "  return accountSlug && ACCOUNT_SLUG.test(accountSlug)",
-      "replace": "  return accountSlug",
+      "find": "  if (accountSlug && ACCOUNT_SLUG.test(accountSlug)) {",
+      "replace": "  if (accountSlug) {",
       "cwd": "apps/web",
       "test": "lib/platforms/__tests__/connect-failure.test.ts",
       "pattern": "could leave its path segment"

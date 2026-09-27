@@ -10,6 +10,7 @@ import pathsConfig from '~/config/paths.config';
 
 const paths = {
   home: pathsConfig.app.home,
+  settings: pathsConfig.app.personalAccountSettings,
 };
 
 const features = {

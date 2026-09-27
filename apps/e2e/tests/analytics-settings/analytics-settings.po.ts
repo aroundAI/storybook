@@ -2,6 +2,7 @@ import { Page, expect } from '@playwright/test';
 
 import { AuthPageObject } from '../authentication/auth.po';
 import { seedTeamAccount, seedYouTubeConnection } from '../utils/seed';
+import { waitForSignedIn } from '../utils/session';
 
 /**
  * The analytics settings page (FILM-1608).
@@ -48,7 +49,7 @@ export class AnalyticsSettingsPageObject {
       password: account.password,
     });
 
-    await this.page.waitForURL('**/home');
+    await waitForSignedIn(this.page);
     await this.goToSettings(account.slug);
 
     return { ...account, connectionId };

@@ -4,6 +4,27 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 -- A fixed plan, so a run that stops early fails as a plan mismatch.
 select plan(22);
 
+-- KB-99: the product is team accounts only; someone working alone is a team
+-- of one. A fixture that used to sit on a user's personal account sits on a
+-- team that user owns instead, with the owner membership a team always has.
+create function pg_temp.solo_team(identifier text) returns uuid
+language plpgsql security definer as $$
+declare
+  team uuid := md5('kb99-solo:' || identifier)::uuid;
+begin
+  insert into public.accounts (id, name, is_personal_account, primary_owner_user_id)
+  values (team, identifier || ' (team of one)', false, tests.get_supabase_uid(identifier))
+  on conflict (id) do nothing;
+
+  insert into public.accounts_memberships (user_id, account_id, account_role)
+  values (tests.get_supabase_uid(identifier), team, 'owner')
+  on conflict do nothing;
+
+  return team;
+end;
+$$;
+grant execute on function pg_temp.solo_team(text) to authenticated;
+
 -- KB-26. An uploaded research source (its text in `external_content`, its
 -- name in `external_sources`) was readable by every signed-in user, and two
 -- tenants uploading the same name shared one source row. These cases run the
@@ -33,10 +54,10 @@ select public.create_team_account('KB26 Alice Co');
 insert into public.projects (account_id, name, slug)
 values (makerkit.get_account_id_by_slug('kb26-alice-co'), 'Doc', 'kb26-doc');
 
--- Solo's project in his personal account (no membership rows exist there).
+-- Solo's project on his team of one (KB-99).
 select makerkit.authenticate_as('kb26_solo');
 insert into public.projects (account_id, name, slug)
-values (tests.get_supabase_uid('kb26_solo'), 'Solo Doc', 'kb26-solo-doc');
+values (pg_temp.solo_team('kb26_solo'), 'Solo Doc', 'kb26-solo-doc');
 
 select makerkit.authenticate_as('kb26_outsider');
 select public.create_team_account('KB26 Outsider Co');
@@ -70,7 +91,7 @@ insert into public.external_content (external_id, source_id, project_id, is_uplo
 values ('manual-kb26-alice', '26000000-0000-4000-8000-000000000001',
         current_setting('kb26.p')::uuid, true, 'Interview notes', 'CONFIDENTIAL', 'manual://interview-notes', 'research');
 
--- Solo's upload in his personal project.
+-- Solo's upload in his own project.
 insert into public.external_sources (id, name, slug, project_id, category, provider_type, credibility_tier)
 values ('26000000-0000-4000-8000-000000000002', 'Solo notes', 'solo-notes',
         current_setting('kb26.solo_p')::uuid, 'research', 'manual', 'tier_3');
@@ -131,12 +152,12 @@ select is(
 select makerkit.authenticate_as('kb26_solo');
 select is(
   (select count(*)::int from public.external_content where external_id = 'manual-kb26-solo'),
-  1, 'A personal-account owner reads uploads in his own project');
+  1, 'A team-of-one owner reads uploads in his own project');
 
 select makerkit.authenticate_as('kb26_alice');
 select is(
   (select count(*)::int from public.external_content where external_id = 'manual-kb26-solo'),
-  0, 'Alice does not read Solo''s personal upload');
+  0, 'Alice does not read Solo''s upload');
 
 select makerkit.authenticate_as('kb26_outsider');
 select is(

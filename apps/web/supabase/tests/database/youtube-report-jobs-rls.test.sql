@@ -5,6 +5,27 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 -- plan mismatch instead of a nearly-passing suite.
 select plan(18);
 
+-- KB-99: the product is team accounts only; someone working alone is a team
+-- of one. A fixture that used to sit on a user's personal account sits on a
+-- team that user owns instead, with the owner membership a team always has.
+create function pg_temp.solo_team(identifier text) returns uuid
+language plpgsql security definer as $$
+declare
+  team uuid := md5('kb99-solo:' || identifier)::uuid;
+begin
+  insert into public.accounts (id, name, is_personal_account, primary_owner_user_id)
+  values (team, identifier || ' (team of one)', false, tests.get_supabase_uid(identifier))
+  on conflict (id) do nothing;
+
+  insert into public.accounts_memberships (user_id, account_id, account_role)
+  values (tests.get_supabase_uid(identifier), team, 'owner')
+  on conflict do nothing;
+
+  return team;
+end;
+$$;
+grant execute on function pg_temp.solo_team(text) to authenticated;
+
 -- KB-51. `youtube_report_jobs` is the YouTube Reporting API job registry, one
 -- row per (connection, report type), with the ingest's watermark and last
 -- error (FILM-1504). Only the service role writes it — the report-ingest
@@ -30,8 +51,8 @@ select tests.create_supabase_user('kb51_solo', 'kb51-solo@storybook.dev');
 select tests.create_supabase_user('kb51_outsider', 'kb51-outsider@storybook.dev');
 
 select set_config('kb51.team', makerkit.get_account_id_by_slug('storybook')::text, true);
--- A personal account's id is its owner's user id.
-select set_config('kb51.solo', tests.get_supabase_uid('kb51_solo')::text, true);
+-- kb51_solo works alone: a team of one (KB-99).
+select set_config('kb51.solo', pg_temp.solo_team('kb51_solo')::text, true);
 
 -- Written as postgres, the way the service role writes them.
 insert into public.platform_connections (id, account_id, platform, platform_account_name)
@@ -88,14 +109,14 @@ select is(
   (select count(*)::int from public.youtube_report_jobs
    where id = '51000000-0000-4000-8000-000000000002'),
   1,
-  'A personal account owner, who has no membership row, reads their own connection''s jobs'
+  'A team-of-one owner reads their own connection''s jobs'
 );
 
 select is(
   (select count(*)::int from public.youtube_report_jobs
    where id = '51000000-0000-4000-8000-000000000001'),
   0,
-  'A personal account owner does not read a team''s jobs they do not belong to'
+  'A team-of-one owner does not read a team''s jobs they do not belong to'
 );
 
 select makerkit.authenticate_as('member');

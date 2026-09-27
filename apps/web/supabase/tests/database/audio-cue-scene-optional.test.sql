@@ -12,8 +12,10 @@ select tests.create_supabase_user('kb92_owner', 'kb92-owner@storybook.dev');
 
 select makerkit.authenticate_as('kb92_owner');
 set local role postgres;
+insert into public.accounts (id, name, is_personal_account, primary_owner_user_id)
+values ('9292a000-0000-4000-8000-00000000000a', 'KB-92 team', false, tests.get_supabase_uid('kb92_owner'));
 insert into public.projects (id, account_id, name, status) values
-  ('9292a000-0000-4000-8000-000000000001', tests.get_supabase_uid('kb92_owner'), 'KB-92', 'active');
+  ('9292a000-0000-4000-8000-000000000001', '9292a000-0000-4000-8000-00000000000a', 'KB-92', 'active');
 insert into public.episodes (id, project_id, number, title) values
   ('9292a000-0000-4000-8000-000000000011', '9292a000-0000-4000-8000-000000000001', 1, 'KB-92 episode');
 
