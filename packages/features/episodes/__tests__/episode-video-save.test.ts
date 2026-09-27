@@ -68,7 +68,7 @@ beforeEach(() => {
 });
 
 describe('updatePublishedVideoAction', () => {
-  it('stores this episode\'s own upload', async () => {
+  it("stores this episode's own upload", async () => {
     const result = await updatePublishedVideoAction({
       episodeId: E,
       language: 'en',
@@ -94,10 +94,22 @@ describe('updatePublishedVideoAction', () => {
     state.stored = { localized_videos: { hi: legacy, en: own } };
 
     expect(
-      (await updatePublishedVideoAction({ episodeId: E, language: 'es', videoUrl: legacy })).ok,
+      (
+        await updatePublishedVideoAction({
+          episodeId: E,
+          language: 'es',
+          videoUrl: legacy,
+        })
+      ).ok,
     ).toBe(true);
     expect(
-      (await updatePublishedVideoAction({ episodeId: E, language: 'en', videoUrl: '' })).ok,
+      (
+        await updatePublishedVideoAction({
+          episodeId: E,
+          language: 'en',
+          videoUrl: '',
+        })
+      ).ok,
     ).toBe(true);
     expect(state.updates).toEqual([
       { localized_videos: { hi: legacy, en: own, es: legacy } },

@@ -23,7 +23,9 @@ const url = (key: string) => `${R2}/project-assets/${key}`;
 
 const own = url(publishVideoPath(E, 'en', 'mp4', 1));
 const othersVideo = url(publishVideoPath(OTHER, 'en', 'mp4', 1));
-const legacy = url(`projects/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/shots/s/video/a.mp4`);
+const legacy = url(
+  `projects/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/shots/s/video/a.mp4`,
+);
 
 describe('ownedEpisodeVideoUpload', () => {
   it('accepts the path every upload uses (publishVideoPath)', () => {
@@ -33,10 +35,18 @@ describe('ownedEpisodeVideoUpload', () => {
   it("refuses another episode's upload, another host, and a traversal", () => {
     expect(ownedEpisodeVideoUpload(othersVideo, E, env)).toBeNull();
     expect(
-      ownedEpisodeVideoUpload(`https://evil.example/project-assets/episodes/${E}/videos/x.mp4`, E, env),
+      ownedEpisodeVideoUpload(
+        `https://evil.example/project-assets/episodes/${E}/videos/x.mp4`,
+        E,
+        env,
+      ),
     ).toBeNull();
     expect(
-      ownedEpisodeVideoUpload(url(`episodes/${E}/videos/../../${OTHER}/videos/x.mp4`), E, env),
+      ownedEpisodeVideoUpload(
+        url(`episodes/${E}/videos/../../${OTHER}/videos/x.mp4`),
+        E,
+        env,
+      ),
     ).toBeNull();
   });
 
@@ -45,8 +55,16 @@ describe('ownedEpisodeVideoUpload', () => {
     const sb = (key: string) =>
       `http://127.0.0.1:54321/storage/v1/object/public/project-assets/${key}`;
 
-    expect(ownedEpisodeVideoUpload(sb(`episodes/${E}/videos/en-1.mp4`), E, sbEnv)).not.toBeNull();
-    expect(ownedEpisodeVideoUpload(sb(`episodes/${OTHER}/videos/en-1.mp4`), E, sbEnv)).toBeNull();
+    expect(
+      ownedEpisodeVideoUpload(sb(`episodes/${E}/videos/en-1.mp4`), E, sbEnv),
+    ).not.toBeNull();
+    expect(
+      ownedEpisodeVideoUpload(
+        sb(`episodes/${OTHER}/videos/en-1.mp4`),
+        E,
+        sbEnv,
+      ),
+    ).toBeNull();
   });
 });
 
@@ -58,29 +76,48 @@ describe('episodeVideoSaveRefusal', () => {
   };
 
   it('allows a new upload of this episode', () => {
-    expect(episodeVideoSaveRefusal({ episodeId: E, stored: {}, next: [own], env })).toBeNull();
+    expect(
+      episodeVideoSaveRefusal({ episodeId: E, stored: {}, next: [own], env }),
+    ).toBeNull();
   });
 
   it("refuses another episode's video, as reproduced in KB-123", () => {
     expect(
-      episodeVideoSaveRefusal({ episodeId: E, stored: {}, next: [othersVideo], env }),
+      episodeVideoSaveRefusal({
+        episodeId: E,
+        stored: {},
+        next: [othersVideo],
+        env,
+      }),
     ).toBe(EPISODE_VIDEO_SAVE_REFUSAL);
   });
 
   it('keeps a value the episode already holds, even one outside its folder', () => {
     expect(
-      episodeVideoSaveRefusal({ episodeId: E, stored, next: [legacy, own], env }),
+      episodeVideoSaveRefusal({
+        episodeId: E,
+        stored,
+        next: [legacy, own],
+        env,
+      }),
     ).toBeNull();
   });
 
   it('refuses when one of several values is new and foreign', () => {
     expect(
-      episodeVideoSaveRefusal({ episodeId: E, stored, next: [legacy, othersVideo], env }),
+      episodeVideoSaveRefusal({
+        episodeId: E,
+        stored,
+        next: [legacy, othersVideo],
+        env,
+      }),
     ).toBe(EPISODE_VIDEO_SAVE_REFUSAL);
   });
 
   it('lets an empty value through, which removes a video', () => {
-    expect(episodeVideoSaveRefusal({ episodeId: E, stored: {}, next: [''], env })).toBeNull();
+    expect(
+      episodeVideoSaveRefusal({ episodeId: E, stored: {}, next: [''], env }),
+    ).toBeNull();
   });
 });
 

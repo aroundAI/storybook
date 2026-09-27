@@ -21,8 +21,7 @@ import { PROJECT_ASSETS_BUCKET } from '@kit/storage/upload-paths';
 
 type Env = Record<string, string | undefined>;
 
-const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface EpisodeVideoScope {
   episodeId: string;

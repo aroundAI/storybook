@@ -78,7 +78,9 @@ function table(name: string) {
             project_id: 'p',
             project: { account_id: ACCOUNT },
             // An episode's own upload: a publish sends nothing else (KB-123)
-            localized_videos: { en: `${BASE}/episodes/${EPISODE}/videos/en-1.mp4` },
+            localized_videos: {
+              en: `${BASE}/episodes/${EPISODE}/videos/en-1.mp4`,
+            },
             shorts_groups: [
               { id: 'group-a', videos: { en: GROUP_A } },
               { id: 'group-b', videos: { en: GROUP_B } },

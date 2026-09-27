@@ -47,9 +47,9 @@ describe('every publish path checks the video it sends', () => {
   }
 
   it('retry sends the checked video, not the stored one', () => {
-    expect(read('packages/features/publishing/src/server/publish-actions.ts')).not.toMatch(
-      /videoUrl: episode\.final_video_url/,
-    );
+    expect(
+      read('packages/features/publishing/src/server/publish-actions.ts'),
+    ).not.toMatch(/videoUrl: episode\.final_video_url/);
   });
 });
 

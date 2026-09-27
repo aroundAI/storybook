@@ -33,10 +33,9 @@ async function capture(page: Page, name: string) {
 }
 
 async function storedVideos(episodeId: string) {
-  const [row] = await readRows<{ localized_videos: Record<string, string> | null }>(
-    'episodes',
-    `id=eq.${episodeId}&select=localized_videos`,
-  );
+  const [row] = await readRows<{
+    localized_videos: Record<string, string> | null;
+  }>('episodes', `id=eq.${episodeId}&select=localized_videos`);
 
   return row?.localized_videos ?? {};
 }

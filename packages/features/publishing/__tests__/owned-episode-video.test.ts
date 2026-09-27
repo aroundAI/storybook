@@ -41,12 +41,20 @@ const cases: Array<[string, string, boolean]> = [
   ['3 own project shots', `projects/${P}/shots/s/video/a.mp4`, true],
   ['4 own project, other folder', `projects/${P}/exports/x.mp4`, true],
   ['5 sibling episode', `episodes/${SIBLING}/videos/x.mp4`, true],
-  ['6 episode of another project', `episodes/${OTHER_PROJECT_EP}/videos/x.mp4`, false],
+  [
+    '6 episode of another project',
+    `episodes/${OTHER_PROJECT_EP}/videos/x.mp4`,
+    false,
+  ],
   ['6 another project', `projects/${P2}/assets/x.mp4`, false],
   ['8 unknown episode', `episodes/${UNKNOWN_EP}/videos/x.mp4`, false],
   ['9 other key in the bucket', `misc/x.mp4`, false],
   ['9 a folder id that is not an id', `episodes/not-an-id/videos/x.mp4`, false],
-  ['10 traversal', `episodes/${E}/videos/../../${OTHER_PROJECT_EP}/videos/x.mp4`, false],
+  [
+    '10 traversal',
+    `episodes/${E}/videos/../../${OTHER_PROJECT_EP}/videos/x.mp4`,
+    false,
+  ],
   ['10 empty segment', `episodes/${E}//videos/x.mp4`, false],
 ];
 
@@ -68,7 +76,9 @@ describe('ownedEpisodeVideo', () => {
 
   it('refuses the own folder on another host (11)', async () => {
     const foreign = `https://evil.example/project-assets/episodes/${E}/videos/x.mp4`;
-    expect(await ownedEpisodeVideo(foreign, scope, projectOf, r2Env)).toBeNull();
+    expect(
+      await ownedEpisodeVideo(foreign, scope, projectOf, r2Env),
+    ).toBeNull();
   });
 
   it('refuses another bucket on the storage host (11)', async () => {
@@ -83,16 +93,23 @@ describe('ownedEpisodeVideo', () => {
   });
 
   it('refuses what is not a URL (12), and an empty value', async () => {
-    expect(await ownedEpisodeVideo('not-a-url', scope, projectOf, r2Env)).toBeNull();
+    expect(
+      await ownedEpisodeVideo('not-a-url', scope, projectOf, r2Env),
+    ).toBeNull();
     expect(await ownedEpisodeVideo('', scope, projectOf, r2Env)).toBeNull();
     expect(await ownedEpisodeVideo(null, scope, projectOf, r2Env)).toBeNull();
   });
 
   it('refuses everything when the environment names no storage host', async () => {
     expect(
-      await ownedEpisodeVideo(r2(`episodes/${E}/videos/x.mp4`), scope, projectOf, {
-        STORAGE_PROVIDER: 'r2',
-      }),
+      await ownedEpisodeVideo(
+        r2(`episodes/${E}/videos/x.mp4`),
+        scope,
+        projectOf,
+        {
+          STORAGE_PROVIDER: 'r2',
+        },
+      ),
     ).toBeNull();
   });
 
@@ -103,9 +120,19 @@ describe('ownedEpisodeVideo', () => {
       return projects[id] ?? null;
     };
 
-    await ownedEpisodeVideo(r2(`episodes/${E}/videos/x.mp4`), scope, tracking, r2Env);
+    await ownedEpisodeVideo(
+      r2(`episodes/${E}/videos/x.mp4`),
+      scope,
+      tracking,
+      r2Env,
+    );
     await ownedEpisodeVideo(r2(`projects/${P}/x.mp4`), scope, tracking, r2Env);
-    await ownedEpisodeVideo(r2(`episodes/${SIBLING}/videos/x.mp4`), scope, tracking, r2Env);
+    await ownedEpisodeVideo(
+      r2(`episodes/${SIBLING}/videos/x.mp4`),
+      scope,
+      tracking,
+      r2Env,
+    );
 
     expect(asked).toEqual([SIBLING]);
   });
@@ -113,9 +140,11 @@ describe('ownedEpisodeVideo', () => {
 
 describe('episodeVideoTarget', () => {
   it('reads the id of an episode or project folder', () => {
-    expect(episodeVideoTarget(r2(`episodes/${E}/videos/x.mp4`), r2Env)).toEqual({
-      episodeId: E,
-    });
+    expect(episodeVideoTarget(r2(`episodes/${E}/videos/x.mp4`), r2Env)).toEqual(
+      {
+        episodeId: E,
+      },
+    );
     expect(episodeVideoTarget(r2(`projects/${P}/shots/x.mp4`), r2Env)).toEqual({
       projectId: P,
     });

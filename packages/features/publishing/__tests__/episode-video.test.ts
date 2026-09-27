@@ -65,7 +65,8 @@ function oldJob(
       const group = shortsGroups[i];
       if (!group) continue;
       if (shortsGroupId && group.id !== shortsGroupId) continue;
-      if (group.videos && group.videos[language]) return group.videos[language]!;
+      if (group.videos && group.videos[language])
+        return group.videos[language]!;
     }
     return null;
   };
@@ -93,15 +94,22 @@ function oldPublishNow(
 
   const getShortsVideoUrl = (language: string): string | null => {
     for (const group of shortsGroups) {
-      if (group.videos && group.videos[language]) return group.videos[language]!;
+      if (group.videos && group.videos[language])
+        return group.videos[language]!;
     }
     return null;
   };
   const shortsVideoUrl = getShortsVideoUrl(lang);
 
   const url = isShortsPreferred
-    ? (shortsVideoUrl ?? localizedVideos[lang] ?? episode.final_video_url ?? null)
-    : (localizedVideos[lang] ?? shortsVideoUrl ?? episode.final_video_url ?? null);
+    ? (shortsVideoUrl ??
+      localizedVideos[lang] ??
+      episode.final_video_url ??
+      null)
+    : (localizedVideos[lang] ??
+      shortsVideoUrl ??
+      episode.final_video_url ??
+      null);
 
   return {
     url,
