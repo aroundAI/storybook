@@ -25,8 +25,8 @@
       "name": "Y1 the period's average view duration is averaged, not recomputed",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
-      "find": "      views > 0 ? (estimatedMinutesWatched * 60) / views : 0,\n",
-      "replace": "      days.length ? sum((day) => day.averageViewDuration) / days.length : 0,\n",
+      "find": "    averageViewDuration: views > 0 ? (estimatedMinutesWatched * 60) / views : 0,\n",
+      "replace": "    averageViewDuration: days.length\n      ? sum((day) => day.averageViewDuration) / days.length\n      : 0,\n",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/youtube-analytics.test.ts",
       "pattern": "recomputes the averages from their definitions"

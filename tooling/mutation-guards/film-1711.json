@@ -55,8 +55,8 @@
       "name": "A6 A revenue metric rejoins the totals query",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
-      "find": "        'subscribersLost',\n      ].join(','),",
-      "replace": "        'subscribersLost',\n        'estimatedRevenue',\n      ].join(','),",
+      "find": "  'subscribersLost',\n] as const;",
+      "replace": "  'subscribersLost',\n  'estimatedRevenue',\n] as const;",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/analytics-scope-binding.test.ts",
       "pattern": "travels alone"

@@ -45,8 +45,8 @@
       "name": "A retired field is read off the response by property access",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/providers/tiktok/tiktok-analytics.ts",
-      "find": "          saves: 0,",
-      "replace": "          saves: (video as Record<string, number>).save_count ?? 0,",
+      "find": "          shares: video.share_count ?? 0,\n",
+      "replace": "          shares: video.share_count ?? 0,\n          saves: (video as Record<string, number>).save_count ?? 0,\n",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/platform-field-names.test.ts",
       "pattern": "save_count"

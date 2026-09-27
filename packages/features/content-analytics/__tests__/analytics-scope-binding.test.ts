@@ -270,8 +270,12 @@ describe('a scope-gated metric travels alone', () => {
     const mixed = sourceFiles(join(REPO, PROVIDERS)).flatMap((file) => {
       const source = withoutComments(readFileSync(file, 'utf8'));
 
+      // Inline lists (`metrics: [...]`) and named ones (`const DAILY_METRICS =
+      // [...]`, joined into a query): FILM-1712 moved YouTube's totals onto
+      // the daily query, whose list is a constant.
       return [
         ...source.matchAll(/\bmetrics:\s*(\[[\s\S]*?\]|'[^']*'|"[^"]*")/g),
+        ...source.matchAll(/\bconst\s+\w*METRICS\w*\s*=\s*(\[[\s\S]*?\])/g),
       ].flatMap((match) => {
         const names = [...match[1]!.matchAll(/[A-Za-z_]\w*/g)].map(
           ([name]) => name,
