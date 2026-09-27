@@ -96,7 +96,10 @@ async function main() {
   const table = process.env.CONNECTIONS_TABLE_NAME;
   if (!table)
     throw new Error('CONNECTIONS_TABLE_NAME is not set (see local.env).');
-  await ensureConnectionsTable(new DynamoDBClient(ddbOptions), table);
+  await ensureConnectionsTable(
+    new DynamoDBClient(awsClientOptions('dynamodb')),
+    table,
+  );
 
   const ws = await import('../../../web/websocket/connect');
   const wsDefault = await import('../../../web/websocket/default');
@@ -110,7 +113,7 @@ async function main() {
     Number(process.env.LOCAL_GATEWAY_PORT || 4121),
   );
 
-  const client = new SQSClient(sqsOptions);
+  const client = new SQSClient(awsClientOptions('sqs'));
   const pollers = [
     startPoller({
       client,

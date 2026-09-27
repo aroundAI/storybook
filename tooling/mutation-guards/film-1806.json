@@ -1,0 +1,35 @@
+{
+  "feature": "FILM-1806",
+  "mutations": [
+    {
+      "name": "Q1 production reads the local queue override",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/resolver.ts",
+      "find": "  if (!vendorSandboxEnabled(env)) return undefined;\n\n  const name = localServiceEnvName(service);",
+      "replace": "  const name = localServiceEnvName(service);",
+      "cwd": "packages/shared",
+      "test": "__tests__/local-services.test.ts",
+      "pattern": "never reads the variable"
+    },
+    {
+      "name": "Q2 an SQS client is built without awsClientOptions",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/lib/server/sqs-helper.ts",
+      "find": "const sqs = new SQSClient(awsClientOptions('sqs'));",
+      "replace": "const sqs = new SQSClient({});",
+      "cwd": "packages/shared",
+      "test": "__tests__/aws-client-guard.test.ts",
+      "pattern": "builds every SQS, DynamoDB and API Gateway client"
+    },
+    {
+      "name": "KB-130 a fractional shot duration is stored as given",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/schemas/shot-list.schema.ts",
+      "find": "  return Math.max(1, Math.round(seconds));",
+      "replace": "  return seconds;",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/shot-duration-whole-seconds.test.ts",
+      "pattern": "whole seconds"
+    }
+  ]
+}
