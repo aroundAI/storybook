@@ -46,6 +46,12 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './'),
+      // Workspace packages that leave React to their consumer (@kit/ui,
+      // @kit/email-templates) cannot resolve `react/jsx-dev-runtime` from
+      // their own directory. This app is the consumer: point them at its
+      // React, so a test renders them as the app does.
+      react: path.resolve(__dirname, 'node_modules/react'),
+      'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
       '@kit/shared/logger': path.resolve(
         __dirname,
         '../../packages/shared/src/logger/index.ts',

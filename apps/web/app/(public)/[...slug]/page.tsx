@@ -24,6 +24,8 @@ import {
   getPublicProjects,
 } from '@kit/public-sharing/server/public-queries';
 
+import { JsonLd } from '~/lib/structured-data';
+
 interface PageProps {
   params: Promise<{ slug: string[] }>;
   searchParams: Promise<{ lang?: string }>;
@@ -117,10 +119,7 @@ export default async function PublicPage({ params, searchParams }: PageProps) {
 
     return (
       <>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-        />
+        <JsonLd data={structuredData} />
         <CompanyPage company={company} projects={projects} />
       </>
     );
@@ -137,10 +136,7 @@ export default async function PublicPage({ params, searchParams }: PageProps) {
 
     return (
       <>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-        />
+        <JsonLd data={structuredData} />
         <ProjectPage project={project} episodes={episodes} baseUrl={BASE_URL} />
       </>
     );
@@ -163,10 +159,7 @@ export default async function PublicPage({ params, searchParams }: PageProps) {
 
     return (
       <>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-        />
+        <JsonLd data={structuredData} />
         <EpisodePage
           episode={episode}
           platformUrls={platformUrls}
