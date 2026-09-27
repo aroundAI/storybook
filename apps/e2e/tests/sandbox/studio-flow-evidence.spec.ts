@@ -62,7 +62,7 @@ test.describe('A full studio run through the local job queue (FILM-1806)', () =>
     test.setTimeout(900_000);
 
     // --- Seed: a team, a show, two characters with voices, two places, an episode.
-    const team = await seedTeamAccount('studio-flow');
+    const team = await seedTeamAccount({ emailPrefix: 'studio-flow' });
     const project = await seedProject(team, {
       name: 'Harbor Lights Diner',
       slug: `harbor-lights-${Date.now()}`,

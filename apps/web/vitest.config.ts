@@ -148,6 +148,10 @@ export default defineConfig({
         __dirname,
         '../../packages/mailers/core/src/index.ts',
       ),
+      '@kit/episodes/schemas/shot-list': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/lib/schemas/shot-list.schema.ts',
+      ),
       '@kit/episodes/lib/server/project-write-access': path.resolve(
         __dirname,
         '../../packages/features/episodes/src/lib/server/project-write-access.ts',

@@ -129,6 +129,18 @@ function parseOverride(value: string) {
   return acceptable ? `${url.origin}${url.pathname}`.replace(/\/+$/, '') : null;
 }
 
+
+/** A set override's URL; a malformed or non-local one throws, never falls back. */
+function localOverride(name: string, value: string): string {
+  const override = parseOverride(value);
+  if (!override) {
+    throw new Error(
+      `${name} must be an http(s) URL on a local address (localhost, 127.0.0.1, a container name), without credentials or a query - got "${value}"`,
+    );
+  }
+  return override;
+}
+
 /**
  * The origin to call for a vendor: the real host, unless
  * `vendorSandboxEnabled` and `VENDOR_URL_<NAME>` names a local address.
@@ -145,15 +157,7 @@ export function vendorUrl(vendor: Vendor, env: Env = process.env): string {
 
   if (!value) return VENDORS[vendor];
 
-  const override = parseOverride(value);
-
-  if (!override) {
-    throw new Error(
-      `${name} must be an http(s) URL on a local address (localhost, 127.0.0.1, a container name), without credentials or a query - got "${value}"`,
-    );
-  }
-
-  return override;
+  return localOverride(name, value);
 }
 
 /**
@@ -226,13 +230,7 @@ export function localServiceUrl(
   const value = env[name];
   if (!value) return undefined;
 
-  const override = parseOverride(value);
-  if (!override) {
-    throw new Error(
-      `${name} must be an http(s) URL on a local address (localhost, 127.0.0.1, a container name), without credentials or a query - got "${value}"`,
-    );
-  }
-  return override;
+  return localOverride(name, value);
 }
 
 /**
