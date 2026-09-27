@@ -40,7 +40,7 @@ acceptance_criteria:
     reason: "not met — `memory-context-preview.tsx` is never imported; the ideation page does not render it (only commit: 88a122b0)"
   - text: "Inline warnings display on Story generation"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/story-screen.tsx:255"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/story-screen.tsx:262"
   - text: "Continuity Sidebar shows scene constraints"
     met: false
     reason: "not met — no continuity sidebar in the screenplay route; `ContinuitySidebar` never existed (`git log -S` finds nothing)"
@@ -52,7 +52,7 @@ acceptance_criteria:
     reason: "unverified — visual; needs a browser check at 1280px, none recorded"
   - text: "Collapsible panels for mobile"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/story-screen.tsx:332"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/story-screen.tsx:339"
   - text: "Sidebar hides on narrow screens"
     met: false
     reason: "not met — the Continuity Sidebar it refers to does not exist"

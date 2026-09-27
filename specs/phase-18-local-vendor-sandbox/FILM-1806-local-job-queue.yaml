@@ -3,7 +3,7 @@ title: "Local Job Queue"
 phase: 18
 phase_name: "Local Vendor Sandbox"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: M
 dependencies:
   - spec_id: "FILM-1801"
@@ -24,25 +24,32 @@ summary: >
 acceptance_criteria:
   - text: "With local.env loaded, every studio stage in FILM-1803 §4 marked Enqueued completes in the local app, against the AI sandbox"
     met: false
-    reason: "not yet implemented — DRAFT"
+    reason: "ideation, story, screenplay, shot list and audio cues complete through the local queue, run live 2026-09-28 (apps/e2e/tests/sandbox/studio-flow-evidence.spec.ts). Dialogue voice does not: the voice worker uploads straight to Cloudflare R2 (apps/web/lambda/llm-worker/utils/r2-storage.ts builds the r2.cloudflarestorage.com endpoint and ignores STORAGE_PROVIDER), and a laptop has no R2"
   - text: "local-env.sh up starts the queue and its worker runner; status and down include them"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "run live 2026-09-28: up printed '[local-workers] ready: 3 queues…'; status printed the queue line once its SIGPIPE was fixed (scripts/local-env.sh, `| sed -n 1,3p`); down calls stop_local_queue (scripts/lib/vendor-sandbox.sh), used live to restart the queue after a rebase"
   - text: "The messages are the ones production sends (queueLlmJob, queueVoiceJob[s]), and the handlers that run are the llm-worker's and voice-worker's own, unchanged"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "apps/vendor-sandbox/src/queue/main.ts bundles apps/web/lambda/{llm,voice,publish}-worker and websocket handlers as they are; the app enqueues through its own sqs-helper and voice-queue-helper, pointed at ElasticMQ by awsClientOptions()"
   - text: "The local queue is used only under vendorSandboxEnabled(); in production, and in any Lambda, the queue URL cannot point at it, and a set override is logged as ignored"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/shared/__tests__/local-services.test.ts ('never reads the variable' in production, a Lambda, and development without VENDOR_SANDBOX; ignoredVendorOverrides); packages/shared/__tests__/aws-client-guard.test.ts; guards Q1 and Q2 in tooling/mutation-guards/film-1806.json go RED"
   - text: "A handler that throws is visible: the job's status reaches failed in the app, and the runner logs the message and error; nothing is retried forever"
+    met: true
+    evidence: "apps/vendor-sandbox/__tests__/local-queue.local-stack.test.ts against the real ElasticMQ (a failed message is redelivered, then the dead-letter queue takes it); live 2026-09-28: a publish refused by KB-30 set publishes.status to failed, and the runner logged 'left for redelivery (then the DLQ)'"
+  - text: "A FILM-1804 flow drives ideation → story → screenplay → shots → audio in the browser and reads each stage's result off the page"
     met: false
-    reason: "not yet implemented — DRAFT"
-  - text: "A FILM-1804 flow drives ideation → story → screenplay → shot list → audio in the browser and reads each stage's result off the page"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    reason: "apps/e2e/tests/sandbox/studio-flow-evidence.spec.ts passes ideation, story, screenplay and shots live (screenshots 01–05) and reaches the voice step, where the ElevenLabs stand-in answers every line; it fails on the audio element, because the voice worker cannot store the audio (see the first criterion)"
   - text: "The publish queue runs locally as the llm and voice queues do: a scheduled publish (packages/features/jobs cron → process-scheduled-publishes), an unpublish and an episode's publish delete reach apps/web/lambda/publish-worker's own handlers, which call FILM-1802's social sandbox"
     met: false
-    reason: "not yet implemented — DRAFT"
+    reason: "scheduled publish: met, live (apps/e2e/tests/sandbox/publish-queue-evidence.spec.ts: the cron queues it, the publish worker uploads to the YouTube sandbox, publishes.status reaches published). Unpublish: reaches the worker's delete handler, which calls the sandbox, but the sandbox has no DELETE /youtube/v3/videos yet (404, which the worker treats as already gone). The episode-level publish delete is not yet exercised"
+remaining:
+  - criterion: "Dialogue voice completes locally"
+    reason: "the llm and voice workers write to Cloudflare R2 directly; locally they need an R2 stand-in or to honour STORAGE_PROVIDER"
+    closed_by: "owner"
+  - criterion: "Unpublish and episode publish delete round-trip"
+    reason: "the YouTube sandbox needs DELETE /youtube/v3/videos (FILM-1802), and the delete-all path needs a run"
+    closed_by: "FILM-1802"
 open_questions: []
 notes: |
   ## 1. Why this exists
