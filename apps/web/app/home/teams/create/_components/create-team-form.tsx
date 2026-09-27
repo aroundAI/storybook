@@ -19,7 +19,11 @@ import {
  * say first: a failed platform connect lands here for someone with no team
  * (KB-99), and a modal over that message would hide it.
  */
-export function CreateTeamPrompt({ openOnLoad = true }: { openOnLoad?: boolean }) {
+export function CreateTeamPrompt({
+  openOnLoad = true,
+}: {
+  openOnLoad?: boolean;
+}) {
   const [isDialogOpen, setIsDialogOpen] = useState(openOnLoad);
 
   return (
