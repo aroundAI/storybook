@@ -24,6 +24,14 @@ const CONNECTION = '50000000-0000-4000-8000-000000000001';
 const FOREIGN_CONNECTION = '50000000-0000-4000-8000-000000000002';
 const POST = '60000000-0000-4000-8000-000000000001';
 
+// An episode's own upload: KB-123 sends nothing else, so the channel check
+// here is the only thing that can refuse
+const STORAGE = 'https://abcdefghijklmnop.supabase.co';
+const OWN_VIDEO = `${STORAGE}/storage/v1/object/public/project-assets/episodes/${EPISODE}/videos/en-1.mp4`;
+
+vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', STORAGE);
+vi.stubEnv('STORAGE_PROVIDER', '');
+
 const OWNER = '70000000-0000-4000-8000-000000000001';
 const ADMIN = '70000000-0000-4000-8000-000000000002';
 const MEMBER = '70000000-0000-4000-8000-000000000003';
@@ -94,7 +102,7 @@ function rows(table: string, filters: Filters): Record<string, unknown>[] {
         ? [
             {
               project_id: PROJECT,
-              final_video_url: 'https://cdn.test/v.mp4',
+              final_video_url: OWN_VIDEO,
               thumbnail_url: null,
               localized_videos: null,
               shorts_groups: null,
@@ -115,7 +123,7 @@ function rows(table: string, filters: Filters): Record<string, unknown>[] {
               platform_content_id: 'VIDEO123',
               platform_connection_id: state.publishConnection || CONNECTION,
               episodes: {
-                final_video_url: 'https://cdn.test/v.mp4',
+                final_video_url: OWN_VIDEO,
                 thumbnail_url: null,
                 project: { account_id: ACCOUNT },
               },
