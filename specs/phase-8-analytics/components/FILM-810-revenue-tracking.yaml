@@ -89,8 +89,8 @@ test_plan:
       met: true
       evidence: "`packages/features/content-analytics/__tests__/revenue-by-currency.test.ts:88`"
     - text: "Test projection confidence levels"
-      met: false
-      reason: "not met — no test asserts `confidenceLevel`; `revenue-by-currency.test.ts:235` checks the estimate only"
+      met: true
+      evidence: "`packages/features/content-analytics/__tests__/revenue-projection-confidence.test.ts:27` — the 13/14 and 24/25-day boundaries, days not rows, and each currency by its own days; guard `tooling/mutation-guards/film-706-810.json`"
     - text: "Test currency formatting"
       met: true
       evidence: "`packages/features/content-analytics/__tests__/money.test.ts:94` (`formatMoney`)"
