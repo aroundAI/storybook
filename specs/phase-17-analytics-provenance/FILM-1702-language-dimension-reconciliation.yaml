@@ -344,7 +344,7 @@ notes: |
 
   - **Asset selection in the publish pipeline** —
     `publishing/src/jobs/process-scheduled-publishes.ts:248` and
-    `apps/web/lambda/scheduled-publish/index.ts:96,253`. They choose which
+    `apps/web/lambda/scheduled-publish/index.ts:97,253`. They choose which
     *file* to upload when a scheduled publish has no language, and fall back to
     the English asset. That is a routing default, not a claim about the video:
     the row stays NULL. Changing it means deciding what a language-less
