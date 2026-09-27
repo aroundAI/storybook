@@ -308,7 +308,9 @@ export const SCENARIOS: RefusalScenario[] = [
       await page.goto(`/home/${team.slug}/studio/analytics/tags`);
 
       const form = byTest(page, 'create-tag-form');
-      await form.getByPlaceholder('e.g. Process explainer').fill('Night shoots');
+      await form
+        .getByPlaceholder('e.g. Process explainer')
+        .fill('Night shoots');
       await form.getByRole('button', { name: 'Add tag' }).click();
       await page.getByText('Added "Night shoots"').waitFor();
 
