@@ -204,7 +204,7 @@ test.describe('Admin', () => {
       await waitForSignedIn(page);
     });
 
-    test('delete user flow', async ({ page }) => {
+    test('delete user flow', async ({ page, browser, baseURL }) => {
       // FILM-CC-04 KB-1. This flow used to pass only because its user had
       // never created anything: `projects.created_by` referenced auth.users
       // with no ON DELETE action, so the first project made a user
@@ -251,29 +251,31 @@ test.describe('Admin', () => {
       // account page, and the test fails here.
       await page.waitForURL('/admin/accounts');
 
-      // Log out
-      await page.context().clearCookies();
-      await page.waitForURL('/');
+      // The deleted user can't sign in. Tried from a browser that was never
+      // the admin's: clearing this page's cookies left its auth listener to
+      // redirect whenever it noticed, which raced every navigation after it.
+      // The empty storageState matters: without it the project's saved admin
+      // session is applied, and the sign-in page redirects to the dashboard.
+      const visitor = await browser.newContext({
+        baseURL,
+        storageState: { cookies: [], origins: [] },
+      });
+      const signInPage = await visitor.newPage();
 
-      // Verify user can't log in
-      await page.goto('/auth/sign-in');
+      await signInPage.goto('/auth/sign-in');
 
-      const auth = new AuthPageObject(page);
-
-      await auth.signIn({
+      await new AuthPageObject(signInPage).signIn({
         email: testUser.email,
         password: testUser.password,
       });
 
-      // Should show an error message
       await expect(
-        page.locator('[data-test="auth-error-message"]'),
+        signInPage.locator('[data-test="auth-error-message"]'),
       ).toBeVisible();
 
-      // The project stays with the team, with no author. Read last: the
-      // log-out above depends on the cookies going while the accounts page
-      // is still loading, and a request placed before it let the page settle
-      // so that nothing ever navigated to '/'.
+      await visitor.close();
+
+      // The project stays with the team, with no author.
       const after = await readRows<{ created_by: string | null }>(
         'projects',
         `id=eq.${project.id}&select=created_by`,
