@@ -17,6 +17,7 @@ import {
   PostToConnectionCommand,
 } from '@aws-sdk/client-apigatewaymanagementapi';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { awsClientOptions } from '@kit/shared/vendors';
 import {
   DeleteCommand,
   DynamoDBDocumentClient,
@@ -32,7 +33,7 @@ import {
 import type { Database } from '@kit/supabase/database';
 
 // Initialize DynamoDB client
-const ddbClient = new DynamoDBClient({});
+const ddbClient = new DynamoDBClient(awsClientOptions('dynamodb'));
 const ddb = DynamoDBDocumentClient.from(ddbClient);
 const CONNECTIONS_TABLE_NAME = process.env.CONNECTIONS_TABLE_NAME || '';
 const WEBSOCKET_ENDPOINT = process.env.WEBSOCKET_ENDPOINT || '';
@@ -147,6 +148,7 @@ async function sendToUser(
   // Create API Gateway Management API client
   const apiGatewayClient = new ApiGatewayManagementApiClient({
     endpoint: WEBSOCKET_ENDPOINT,
+    ...awsClientOptions('apigateway'),
   });
 
   // Send to all connections

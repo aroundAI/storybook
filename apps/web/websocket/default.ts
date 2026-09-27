@@ -3,6 +3,7 @@ import {
   PostToConnectionCommand,
 } from '@aws-sdk/client-apigatewaymanagementapi';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { awsClientOptions } from '@kit/shared/vendors';
 import {
   DeleteCommand,
   DynamoDBDocumentClient,
@@ -17,7 +18,7 @@ import type {
 
 import { validateWebSocketMessage } from './schemas/websocket-messages.schema';
 
-const ddbClient = new DynamoDBClient({});
+const ddbClient = new DynamoDBClient(awsClientOptions('dynamodb'));
 const ddb = DynamoDBDocumentClient.from(ddbClient);
 
 const TABLE_NAME = process.env.CONNECTIONS_TABLE_NAME || '';
@@ -99,6 +100,7 @@ export const handler = async (
   // Create API Gateway Management API client for sending messages
   const apiGatewayClient = new ApiGatewayManagementApiClient({
     endpoint: `https://${domain}/${stage}`,
+    ...awsClientOptions('apigateway'),
   });
 
   try {

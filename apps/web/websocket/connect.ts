@@ -1,4 +1,5 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { awsClientOptions } from '@kit/shared/vendors';
 import {
   DynamoDBDocumentClient,
   PutCommand,
@@ -11,7 +12,7 @@ import type {
 
 import { isSuperAdminFromToken, verifySupabaseToken } from './utils/auth';
 
-const client = new DynamoDBClient({});
+const client = new DynamoDBClient(awsClientOptions('dynamodb'));
 const ddb = DynamoDBDocumentClient.from(client);
 
 const TABLE_NAME = process.env.CONNECTIONS_TABLE_NAME || '';

@@ -37,7 +37,7 @@ import {
 } from '@kit/publishing/lib/owned-episode-video';
 import { ownedEpisodeThumbnail } from '@kit/publishing/lib/owned-thumbnail';
 import type { YouTubeChannelDeclaration } from '@kit/publishing/lib/youtube-declaration';
-import { LINKEDIN_REST_VERSION, vendorUrl } from '@kit/shared/vendors';
+import { LINKEDIN_REST_VERSION, awsClientOptions, vendorUrl } from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
 
 import { mergeFailureMetadata } from './failure-metadata';
@@ -49,7 +49,7 @@ import {
 import { checkConnectionToken } from './token';
 
 // Initialize DynamoDB client
-const ddbClient = new DynamoDBClient({});
+const ddbClient = new DynamoDBClient(awsClientOptions('dynamodb'));
 const ddb = DynamoDBDocumentClient.from(ddbClient);
 const CONNECTIONS_TABLE_NAME = process.env.CONNECTIONS_TABLE_NAME || '';
 const WEBSOCKET_ENDPOINT = process.env.WEBSOCKET_ENDPOINT || '';
@@ -111,6 +111,7 @@ async function sendToUser(
 
   const wsClient = new ApiGatewayManagementApiClient({
     endpoint: WEBSOCKET_ENDPOINT,
+    ...awsClientOptions('apigateway'),
   });
 
   const messageStr = JSON.stringify(message);

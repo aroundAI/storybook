@@ -1,6 +1,11 @@
 import { stringForField } from '../../corpus';
 import type { GenerateContext } from './context';
-import { arrayLength, distinctItems, numberForField } from './values';
+import {
+  arrayLength,
+  castListContexts,
+  distinctItems,
+  numberForField,
+} from './values';
 
 /** The subset of JSON Schema the prompt files use. */
 export interface JsonSchema {
@@ -60,6 +65,14 @@ export function generateFromJsonSchema(
         max: schema.maxItems,
         ofStrings: items.type === 'string',
       });
+      const perPerson = castListContexts(path, ctx, length, {
+        min: schema.minItems,
+        ofObjects: items.type === 'object',
+      });
+      if (perPerson)
+        return perPerson.map((itemCtx, i) =>
+          generateFromJsonSchema(items, itemCtx, [...path, String(i)]),
+        );
       return distinctItems(length, (i) =>
         generateFromJsonSchema(items, ctx, [...path, String(i)]),
       );

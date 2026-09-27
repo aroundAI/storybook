@@ -8,6 +8,7 @@
     "clean": "git clean -xdf .turbo node_modules",
     "start": "tsx src/main.ts",
     "seed-credentials": "tsx --conditions=react-server src/social/seed-credentials.ts",
+    "workers": "esbuild src/queue/main.ts --bundle --platform=node --format=cjs --target=node20 --outfile=../../.sandbox/workers.cjs --log-level=warning && node ../../.sandbox/workers.cjs",
     "format": "prettier --check \"**/*.{ts,tsx,json}\"",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
@@ -15,7 +16,12 @@
   },
   "prettier": "@kit/prettier-config",
   "dependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.913.0",
+    "@aws-sdk/client-dynamodb": "^3.913.0",
+    "@aws-sdk/client-sqs": "^3.968.0",
     "@kit/prompt-engine": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "ws": "^8.18.3",
     "zod": "^3.25.74"
   },
   "devDependencies": {
@@ -28,11 +34,12 @@
     "@kit/llm": "workspace:*",
     "@kit/prettier-config": "workspace:*",
     "@kit/publishing": "workspace:*",
-    "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",
     "@kit/tsconfig": "workspace:*",
     "@types/node": "^24.5.0",
+    "@types/ws": "^8.18.1",
     "ajv": "^8.20.0",
+    "esbuild": "^0.27.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"

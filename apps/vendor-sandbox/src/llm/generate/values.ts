@@ -120,3 +120,27 @@ export function distinctItems(
   }
   return items;
 }
+
+const CAST_LIST = /^(characters?|cast|people|speakers?|characterStates|characterVoices)$/i;
+
+/**
+ * A list of characters is one entry per cast member: `characters` with the
+ * same name four times reads like a bug, and the app matches by name. Each
+ * item is generated with the cast narrowed to its own person, so every name
+ * inside it agrees. Undefined when the list is not one of characters.
+ */
+export function castListContexts(
+  path: readonly string[],
+  ctx: GenerateContext,
+  length: number,
+  bounds: { min?: number; ofObjects: boolean },
+) {
+  const people = ctx.cast.people;
+  if (!bounds.ofObjects || people.length === 0 || !CAST_LIST.test(fieldName(path)))
+    return undefined;
+  const count = Math.max(bounds.min ?? 0, Math.min(length, people.length));
+  return Array.from({ length: count }, (_, i) => ({
+    ...ctx,
+    cast: { ...ctx.cast, people: [people[i % people.length]!] },
+  }));
+}

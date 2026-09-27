@@ -177,9 +177,10 @@ export const SDK_BASE_URL_VARIABLES = [
  * that carries one says so instead of degrading silently.
  */
 export function ignoredVendorOverrides(env: Env = process.env) {
-  const known = new Set(
-    (Object.keys(VENDORS) as Vendor[]).map(vendorUrlEnvName),
-  );
+  const known = new Set([
+    ...(Object.keys(VENDORS) as Vendor[]).map(vendorUrlEnvName),
+    ...LOCAL_SERVICES.map(localServiceEnvName),
+  ]);
   const sdkVariables = new Set<string>(SDK_BASE_URL_VARIABLES);
 
   return Object.keys(env)
@@ -191,4 +192,91 @@ export function ignoredVendorOverrides(env: Env = process.env) {
           (!vendorSandboxEnabled(env) || !known.has(name))),
     )
     .sort();
+}
+
+/**
+ * AWS services the app reaches through the SDK's own endpoint resolution in
+ * production - no host is written anywhere - but which a laptop replaces
+ * with an emulator (FILM-1806): SQS (ElasticMQ), DynamoDB (dynamodb-local) and
+ * the API Gateway Management API that pushes to WebSockets (the local runner).
+ * Unlike a vendor, they have no fixed origin to fall back to, so outside the
+ * sandbox there is no override at all and the SDK resolves as it always has.
+ */
+export const LOCAL_SERVICES = ['sqs', 'dynamodb', 'apigateway'] as const;
+
+export type LocalService = (typeof LOCAL_SERVICES)[number];
+
+/** `sqs` is overridden by `VENDOR_URL_SQS`. */
+export function localServiceEnvName(service: LocalService) {
+  return `${OVERRIDE_PREFIX}${service.toUpperCase()}`;
+}
+
+/**
+ * The local emulator's endpoint for `service`, or `undefined` - always
+ * `undefined` unless `vendorSandboxEnabled`, so production never reads the
+ * variable. A malformed or non-local value throws, as `vendorUrl` does.
+ */
+export function localServiceUrl(
+  service: LocalService,
+  env: Env = process.env,
+): string | undefined {
+  if (!vendorSandboxEnabled(env)) return undefined;
+
+  const name = localServiceEnvName(service);
+  const value = env[name];
+  if (!value) return undefined;
+
+  const override = parseOverride(value);
+  if (!override) {
+    throw new Error(
+      `${name} must be an http(s) URL on a local address (localhost, 127.0.0.1, a container name), without credentials or a query - got "${value}"`,
+    );
+  }
+  return override;
+}
+
+/**
+ * Options for an AWS SDK client of `service`: in the sandbox, the emulator's
+ * endpoint and placeholder credentials (an emulator accepts any); otherwise
+ * nothing, so the client is built exactly as it was.
+ */
+export function awsClientOptions(
+  service: LocalService,
+  env: Env = process.env,
+): {
+  endpoint?: string;
+  region?: string;
+  credentials?: { accessKeyId: string; secretAccessKey: string };
+} {
+  const endpoint = localServiceUrl(service, env);
+  if (!endpoint) return {};
+
+  return {
+    endpoint,
+    region: env.AWS_REGION || 'us-east-1',
+    credentials: { accessKeyId: 'sandbox', secretAccessKey: 'sandbox' },
+  };
+}
+
+/**
+ * A queue URL read from the environment. The SQS client sends to whatever
+ * host a queue URL names (`useQueueUrlAsEndpoint`), so a URL on this
+ * machine is honoured only in the sandbox; anywhere else it is treated as
+ * unset, and the caller reports the queue as not configured.
+ */
+export function queueUrlFromEnv(
+  value: string | undefined,
+  env: Env = process.env,
+): string | undefined {
+  if (!value) return undefined;
+
+  let hostname: string;
+  try {
+    hostname = new URL(value).hostname;
+  } catch {
+    return undefined;
+  }
+
+  if (isLocalHostname(hostname) && !vendorSandboxEnabled(env)) return undefined;
+  return value;
 }

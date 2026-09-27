@@ -3,6 +3,7 @@ import {
   PostToConnectionCommand,
 } from '@aws-sdk/client-apigatewaymanagementapi';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { awsClientOptions } from '@kit/shared/vendors';
 import {
   DeleteCommand,
   DynamoDBDocumentClient,
@@ -14,7 +15,7 @@ import type {
   APIGatewayProxyWebsocketEventV2,
 } from 'aws-lambda';
 
-const client = new DynamoDBClient({});
+const client = new DynamoDBClient(awsClientOptions('dynamodb'));
 const ddb = DynamoDBDocumentClient.from(client);
 
 const TABLE_NAME = process.env.CONNECTIONS_TABLE_NAME || '';
@@ -50,7 +51,10 @@ export const handler = async (
 
     // 2. If this connection had channel subscriptions, notify peers
     if (channels.length > 0 && userId) {
-      const apiGw = new ApiGatewayManagementApiClient({ endpoint });
+      const apiGw = new ApiGatewayManagementApiClient({
+        endpoint,
+        ...awsClientOptions('apigateway'),
+      });
 
       const message = JSON.stringify({
         type: 'user-left',

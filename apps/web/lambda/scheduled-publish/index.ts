@@ -11,6 +11,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
+import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
 import ws from 'ws';
 
 import {
@@ -24,9 +25,9 @@ import {
 } from '@kit/publishing/lib/owned-episode-video';
 import type { Database, Json } from '@kit/supabase/database';
 
-const sqsClient = new SQSClient({});
+const sqsClient = new SQSClient(awsClientOptions('sqs'));
 
-const PUBLISH_QUEUE_URL = process.env.PUBLISH_QUEUE_URL!;
+const PUBLISH_QUEUE_URL = queueUrlFromEnv(process.env.PUBLISH_QUEUE_URL)!;
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 

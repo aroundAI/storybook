@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
+import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
 import { z } from 'zod';
 
 import type { AggregatedTotals } from '@kit/clickhouse';
@@ -54,8 +55,9 @@ import { uploadToYouTube } from './youtube-upload';
 // Initialize SQS client
 const sqsClient = new SQSClient({
   region: process.env.AWS_REGION || 'us-east-1',
+  ...awsClientOptions('sqs'),
 });
-const PUBLISH_QUEUE_URL = process.env.PUBLISH_QUEUE_URL!;
+const PUBLISH_QUEUE_URL = queueUrlFromEnv(process.env.PUBLISH_QUEUE_URL);
 
 /**
  * Replace localhost URLs with tunnel URL for external platform uploads.

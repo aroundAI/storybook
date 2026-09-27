@@ -5,11 +5,12 @@ import {
   SendMessageBatchCommand,
   SendMessageCommand,
 } from '@aws-sdk/client-sqs';
+import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
 
 import type { LlmJobTarget } from '@kit/prompt-engine/llm-job-target';
 
 // Initialize SQS client
-const sqs = new SQSClient({});
+const sqs = new SQSClient(awsClientOptions('sqs'));
 
 /**
  * Get queue URL from SST Resource or environment variable
@@ -28,7 +29,7 @@ function getVoiceQueueUrl(): string {
   }
 
   // Fall back to environment variable
-  return process.env.VOICE_QUEUE_URL || '';
+  return queueUrlFromEnv(process.env.VOICE_QUEUE_URL) ?? '';
 }
 
 /**

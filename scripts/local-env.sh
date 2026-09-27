@@ -155,6 +155,10 @@ case "${1:-}" in
     echo "==> Sandbox OAuth clients (FILM-1802)"
     (cd "$ROOT/apps/vendor-sandbox" && pnpm --silent seed-credentials)
 
+    echo "==> Local job queue (FILM-1806)"
+    load_env
+    start_local_queue "$ROOT"
+
     echo
     echo "Ready. Env file: deployment/config/local.env"
     ;;
@@ -188,11 +192,14 @@ case "${1:-}" in
     echo "ClickHouse: $(curl -s "http://localhost:8123/?user=$CLICKHOUSE_USER&password=$CLICKHOUSE_PASSWORD&query=SELECT%20version()" || echo 'down')"
     (cd "$ROOT/apps/web" && supabase status 2>&1 | head -3)
     sandbox_status "$ROOT"
+    local_queue_status "$ROOT"
     ;;
 
   down)
     echo "==> Vendor sandbox"
     stop_sandbox "$ROOT"
+    echo "==> Local job queue"
+    stop_local_queue "$ROOT"
     echo "==> ClickHouse"
     docker rm -f "$CH_CONTAINER" > /dev/null 2>&1 || true
     echo "==> Supabase"

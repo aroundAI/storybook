@@ -12,6 +12,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ReelSceneAnalysis } from '@kit/episodes/agent/shot-orchestrator';
 import { sanitizeForPrompt, sanitizeStrings } from '@kit/episodes/lib';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
+import { wholeShotSeconds } from '@kit/episodes/schemas/shot-list';
 import type { Database, Json } from '@kit/supabase/database';
 
 import {
@@ -334,7 +335,7 @@ export async function processShotGeneration(
         sequence_number: sequenceNumber++,
         scene_description: shot.description,
         prompt: shot.veoPrompt?.fullPrompt || shot.description,
-        duration_seconds: shot.duration,
+        duration_seconds: wholeShotSeconds(shot.duration),
         camera_direction: shot.cameraDirection ?? null,
         status: 'pending',
         shorts_candidate: sceneIsCandidate,

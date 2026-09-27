@@ -5,6 +5,7 @@
  * for background processing.
  */
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
+import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
 
 import {
   type LlmJobPayloadInput,
@@ -14,7 +15,7 @@ import {
 import type { LlmJobTarget } from './llm-job-target';
 
 // Initialize SQS client
-const sqs = new SQSClient({});
+const sqs = new SQSClient(awsClientOptions('sqs'));
 
 /**
  * Get queue URL from SST Resource or environment variable
@@ -33,7 +34,7 @@ function getQueueUrl(): string {
   }
 
   // Fall back to environment variable
-  return process.env.LLM_JOBS_QUEUE_URL || '';
+  return queueUrlFromEnv(process.env.LLM_JOBS_QUEUE_URL) ?? '';
 }
 
 export type { LlmJobType };

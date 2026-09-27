@@ -40,9 +40,10 @@ acceptance_criteria:
   - text: "A FILM-1804 flow drives ideation → story → screenplay → shot list → audio in the browser and reads each stage's result off the page"
     met: false
     reason: "not yet implemented — DRAFT"
-open_questions:
-  - "Emulator or in-process runner? An SQS emulator (ElasticMQ in Docker, beside ClickHouse) keeps SQS semantics - visibility timeout, redelivery, a dead-letter queue - and lets the handlers run as they do in the Lambda. An in-process runner (the queue helpers call the handler directly in dev) needs no container but skips those semantics and runs worker code inside the Next server. Recommendation: the emulator, with a small poller process that invokes the handlers."
-  - "How the SDK is pointed at it: an explicit endpoint passed to SQSClient from a resolver entry (VENDOR_URL_SQS), not the AWS SDK's own AWS_ENDPOINT_URL* variables, which are read in any environment - the class FILM-1805 closed for the LLM SDKs."
+  - text: "The publish queue runs locally as the llm and voice queues do: a scheduled publish (packages/features/jobs cron → process-scheduled-publishes), an unpublish and an episode's publish delete reach apps/web/lambda/publish-worker's own handlers, which call FILM-1802's social sandbox"
+    met: false
+    reason: "not yet implemented — DRAFT"
+open_questions: []
 notes: |
   ## 1. Why this exists
 
@@ -61,7 +62,40 @@ notes: |
   delivery: a queue the app can send to locally, and something that runs the
   handlers.
 
-  ## 2. The shape (proposed, see open questions)
+  ## 2. Locked decisions (proposed 2026-09-25; confirmed by the owner, 2026-09-27)
+
+  - An emulator, not an in-process runner: ElasticMQ
+    (softwaremill/elasticmq-native:1.6.12) on 127.0.0.1:4120, with every
+    queue and dead-letter queue of sst.config.ts (visibility 900 s for LLM
+    jobs, 300 s for voice and publish; maxReceiveCount 3). A small runner
+    (apps/vendor-sandbox/src/queue/main.ts) long-polls each queue and invokes
+    the real handlers with SQS-shaped events. It deletes what a handler
+    finishes and leaves a failure for redelivery, then for the dead-letter
+    queue.
+  - The endpoint is explicit, from resolver entries (`VENDOR_URL_SQS`,
+    `VENDOR_URL_DYNAMODB`, `VENDOR_URL_APIGATEWAY`), read only under
+    vendorSandboxEnabled() through `awsClientOptions()`. It never comes from
+    the SDK's own `AWS_ENDPOINT_URL*`, which is read in any environment.
+    Queue URLs go through `queueUrlFromEnv()`, which drops a local-host URL
+    outside the sandbox, because SDK v3 treats a queue URL's host as the
+    endpoint.
+  - A queue alone shows nothing: results reach the page over the API Gateway
+    WebSocket, from connections kept in DynamoDB. So a local gateway
+    (127.0.0.1:4121) runs apps/web/websocket's own $connect, $default and
+    $disconnect handlers and answers the Management API's
+    `POST /@connections/{id}`. dynamodb-local (amazon/dynamodb-local:2.5.3)
+    on 127.0.0.1:4122 holds the connections table as sst.config.ts declares
+    it. Only the AWS transport is stubbed.
+  - The runner is bundled with esbuild, as SST bundles the Lambdas, and runs
+    under node with the egress guard preloaded. Any non-loopback connection
+    is refused and logged to .sandbox/workers-egress-blocked.log.
+  - The publish queue is in scope (FILM-1802 Q5): the runner feeds
+    StorybookPublishQueue to publish-worker and runs scheduled-publish every
+    5 minutes, as the cron does. LinkedIn's registerUpload and ugcPosts
+    calls are made by publish-worker's own handler, so they reach the
+    social sandbox only through FILM-1802's resolver entries.
+
+  ## 2a. The original shape
 
   - local-env.sh up starts an SQS-compatible emulator (ElasticMQ) on a local
     port with two queues named as sst.config.ts names them, and a small
@@ -79,8 +113,9 @@ notes: |
 
   ## 3. Out of scope
 
-  - The other Lambdas (publish, analytics sync, token refresh, email, reports):
-    their local runs belong with FILM-1802's social sandbox.
+  - The other Lambdas (analytics sync, token refresh, email, reports): their
+    local runs belong with FILM-1802's social sandbox. Publish was in this
+    list, and moved into scope (see §2).
   - Scale, ordering guarantees beyond what SQS itself gives, and cost.
 
   ## 4. Verification
