@@ -4,8 +4,8 @@
     {
       "name": "NM1 The episode total re-inlines the engagement formula",
       "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
-      "find": "displayedEngagementRatePercent({",
-      "replace": "((totalLikes + totalComments + totalShares) / totalViews) * 100 + 0 * ({",
+      "find": "const engagementRate = displayedEngagementRatePercent({",
+      "replace": "const engagementRate = ((totalLikes + totalComments + totalShares) / totalViews) * 100 + 0 * ({",
       "kind": "unit",
       "cwd": "packages/clickhouse",
       "test": "__tests__/engagement-rate-one-definition.test.ts",
