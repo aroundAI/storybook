@@ -14,7 +14,13 @@ done
 # one PR at a time, static then services: overlapping them exhausted memory
 for pr in "$@"; do
   wt=$(cat $STATE/runs/$pr/worktree)
+  # static stages run one at a time across both lanes: two at once, next to a
+  # lane's E2E suite, starved the Mac and timed tests out (lane B, #360).
+  # Service stages hold only their own lane's lock, so they may overlap.
+  until mkdir "$STATE/static.lock" 2>/dev/null; do sleep 10; done
+  trap 'rmdir "$STATE/static.lock" 2>/dev/null' EXIT
   "$CI/static.sh" $pr "$wt" "$STATE/runs/$pr"
+  rmdir "$STATE/static.lock"; trap - EXIT
   docker info >/dev/null 2>&1 || { echo "#$pr: Docker is down; stopping"; exit 2; }
   "$CI/services.sh" $pr "$wt" "$STATE/runs/$pr"
   docker info >/dev/null 2>&1 || { echo "#$pr: Docker went down during services; report not trustworthy; stopping"; exit 2; }

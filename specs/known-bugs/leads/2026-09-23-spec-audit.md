@@ -1,0 +1,57 @@
+## Leads from the 2026-09-23 spec audit — read, not reproduced
+
+**These are not entries.** The rule above holds: an entry is reproduced before
+it is written down. Thirteen auditors reading the code against the specs found
+more than 80 possible bugs; the ones below are those most likely to matter to a
+user. Each was seen in the code and has **not** been run. When one is worked,
+reproduce it first and move it up as a KB entry, or strike it here with what
+proved it wrong. Paths abbreviated with `…/studio/` are under
+`apps/web/app/home/[account]/studio/[projectSlug]/`.
+
+**Analytics correctness**
+- ~~`channel_daily`: the reach and basic report branches write rows on one ReplacingMergeTree key, each zeroing the other's columns, so whichever lands later zeroes that day's residual watch time (a YPP input) or impressions — `packages/features/content-analytics/src/server/reporting/report-ingest.ts:349`, `:403`; `packages/clickhouse/src/migrations/003_reach_and_traffic.ts:56`~~ **Fixed by #312**, re-verified 2026-09-24 on local ClickHouse 24.8: the old shape (one `channel_daily` row carrying both families) read 0 s watch time after core then reach; on `main` (reach in `channel_reach_daily`, migration 011) it reads 1,800 s and 4,000 impressions. Guarded by `verify-queries.ts` (FILM-1504 assertion)
+- ~~The Analytics-API sync re-fetches three days and overwrites Reporting-API-only columns (`subscribers_lost`, `dislikes`, `avg_view_percentage`) with zeros — `packages/features/content-analytics/src/server/ingest.ts:81`, `:124`~~ **Reproduced: KB-94**
+- The scheduled raw CSV repeats the period's total impressions on every daily row, and CTR/AVD are period rates repeated per day — `apps/web/app/api/reports/scheduled/route.ts:517-519` (FILM-1601)
+- Instagram's never-requested `follows` is stored as `subscribers_gained = 0` — `packages/features/content-analytics/src/server/analytics-sync-cron.ts:915` (FILM-803; FILM-1712 covers the class)
+- Audience breakdowns mix fetches: `argMax` per key keeps a country or OS missing from the latest fetch at its old value — `packages/clickhouse/src/queries-detail.ts:246`
+- The YouTube backfill can stall for good behind 50 permanently failing publishes, retried first each run — `packages/features/content-analytics/src/server/backfill/youtube-backfill.ts:253`, `:20`
+
+**UI that is broken or says something untrue**
+- The AI Insights tab renders nothing: the worker's `{ success, data }` is stored without unwrapping — `packages/features/content-analytics/src/components/ai-insights.tsx:52`; the Language insights card likely crashes on the same shape — `language-insights-cards.tsx:184`, `:272`
+- The canon dashboard's Facts tab is always empty and its badge never shows — regression `3581f78f`: `…/studio/episodes/[episodeSlug]/story/_components/episode-facts-panel.tsx:61` expects an array, `packages/features/episodes/src/server/episode-fact-actions.ts:178` returns `{ facts, totalCount }` (FILM-1142)
+- Every studio page load sends a failing request: the sidebar filters `external_content.project_id`, a column that does not exist — `…/studio/layout.tsx:84`
+- Visual Studio's "Generate All Pending" and "Regenerate" toast success and do nothing; "Replace" discards the chosen file; the "Add New Shot" tile has no handler — `…/studio/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:240`, `shot-details-sidebar.tsx:332`, `:835`, `shot-grid.tsx:54`
+- An assembled VEO prompt over 2,000 characters cannot be saved: update caps `prompt` at 2000, create allows 8000 — `packages/features/episodes/src/lib/schemas/shot.schema.ts:194`
+- ~~Edit suite: the Inspector says "Coming soon", so speed, fades and keyframes cannot be edited; the Snap toggle is never read; clips on a locked track can be moved and deleted; many edits bypass undo — `packages/features/edit-suite/src/components/inspector/inspector-panel.tsx:37`, `timeline/clip-block.tsx:172`, `timeline/track-row.tsx:303` (PHASE-14, FILM-601, FILM-602)~~ **Resolved by removal:** the Edit Suite is retired (FILM-607).
+- Settings still ask for, and validate against the vendor, Kling/Runway/Hailuo keys (retired) and OpenAI/Claude/Gemini keys that nothing reads — `apps/web/app/home/[account]/settings/_components/api-keys-settings.tsx:55-125`; the project form saves "Default Video Provider" and "Enable Subtitles", which nothing reads — `apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:131`, `:705`
+- X and LinkedIn ~~cannot be connected~~ or published from the UI, yet the social-post page tells creators to "Connect one in Settings → Platforms" — ~~`packages/features/publishing/src/components/platform-connections.tsx:90`~~, `packages/features/publishing/src/lib/constants.ts:45-51`, `apps/web/app/home/[account]/social-posts/[postId]/_components/social-post-detail.tsx:381`. **Connect half resolved by KB-86 (#343):** both have a card with Connect and Disconnect. Publishing remains: the publish screen's platform lists stop at YouTube, Facebook, Instagram and TikTok, and X video needs `media.write` (FILM-1729). The social-post link also points at `/home/<slug>/settings`, not the Platforms page
+
+**Studio data**
+- Shots: soft-deleted rows keep their `sequence_number` under a non-partial unique key, so reorder, close-gap and add-after-delete collide, and the reorder loop ignores the error — `packages/features/episodes/src/lib/server/mutations/shot-actions.ts:425-431`, `:45`, `:125`; `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:331`
+- A deleted asset's name cannot be reused: `unique(project_id, type, name)` counts soft-deleted rows (seasons got the partial-index fix, assets did not) — `20251205125737_film-studio-tables.sql:134`
+- ~~Story generation can drop project facts: a duplicate `verifiedFacts` key lets episode facts, or `undefined`, overwrite them — `apps/web/lambda/llm-worker/handlers/story-generation.ts:323`, `:329` (TS1117, hidden by KB-14)~~ **Resolved by KB-14 (#309), and overstated:** both keys were built from the same rows — the facts linked to this episode through `episode_facts` (`context-builder.ts` `fetchEpisodeFacts` and the linked-facts query) — and differed only in framing ("NON-NEGOTIABLE constraints" vs "use accurately"). No fact was dropped. The later key always won at runtime, so KB-14 removed the earlier one and kept the prompt exactly as it was (owner decision, 2026-09-23).
+- Episode numbers can repeat: `createEpisode` relies on a unique constraint no migration creates — `packages/features/episodes/src/server/actions.ts:67`
+- ~~Resetting an episode leaves canon rows behind: `character_states` and `state_deltas` have no DELETE policy, so the user-client delete removes nothing and raises nothing — `packages/features/episodes/src/server/actions.ts:1227`, `:1241`~~ **Reproduced and fixed** as part of KB-77 (#342): single-episode resets now run in `bulk_reset_episodes_to_stage`.
+- `reel_note` is passed to the shot director and never interpolated into the prompt — `packages/features/prompt-engine/src/prompts/story-generation/scene-shot-generation.json:128`
+- The assets page caches its project lookup for an hour by slug alone, with no account in the key or the query, so another account's same-slug project can be served — `…/studio/assets/page.tsx:79-90`
+- Asset delete fails open: a failed in-use check deletes anyway — `packages/features/assets/src/lib/server/asset.queries.ts:139-143`, and bulk delete goes straight to confirmation — `packages/features/assets/src/components/asset-gallery.tsx:222-224` (FILM-201)
+
+**Audio**
+- Voice `speed` is accepted and never sent to ElevenLabs — `apps/web/lambda/voice-worker/voice-generation.ts:204`
+- Batch dialogue: an SQS redelivery counts a failure again, so a batch can close while lines are still queued; a cancelled batch keeps generating, at cost, and is then marked completed — `apps/web/lambda/voice-worker/index.ts:291`; `apps/web/supabase/migrations/20260527094643_increment_batch_progress_rpc.sql:64`
+- A 429 is treated as permanent, with no backoff, for every provider built on `fetchWithRetry` — `packages/features/audio-generation/src/lib/http.ts:72`
+
+**Publishing and vendors**
+- TikTok direct posting calls `/v2/post/publish/video/init/`, but connect never requests `video.publish`; the immediate path also sends an undocumented `privacy_level: 'PUBLIC'` and `video_upload_id` — `packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:264`, `apps/web/lambda/publish-worker/handlers/tiktok.ts:16`, `packages/features/publishing/src/oauth/tiktok/config.ts:12` (the FILM-1729 class)
+- One channel still cannot be connected for two languages: the shorts migration dropped a constraint name that never existed, so the three-column key survives — `apps/web/supabase/migrations/20260101120000_add_shorts_tables.sql:236`
+- Token refresh: a failed lock retries every second with no cap — `packages/features/publishing/src/lib/token-refresh.ts:180-183`; the expiring-connections read is unpaged, under the 1000-row cap — `packages/features/publishing/src/jobs/refresh-expiring-tokens.ts:75-81`
+- *(Found while fixing KB-30, 2026-09-24.)* Project and episode publishing defaults are saved and never applied: project settings and the platforms page write `project_publishing_configs` (default tags, title suffix, description template, enabled) and `episode_publishing_configs`, and nothing on the publish path reads either — checked with a plain `grep -r` over `…/studio/episodes/`, `publish-actions.ts` and `src/jobs/`, with a positive control — `packages/features/publishing/src/server/project-publishing-actions.ts`, `episode-publishing-actions.ts`
+- *(Found while fixing KB-30.)* A real YouTube playlist id is refused: `playlistIds` is validated as `z.array(z.string().uuid())`, and YouTube playlist ids are not UUIDs — `packages/features/publishing/src/lib/schemas/publish.schema.ts:24`
+- *(Found while fixing KB-30.)* A YouTube upload's privacy depends on which path sends it: an immediate publish and a retry are always `public`; the in-app scheduled-publish cron sends `metadata.privacy`, else **`private`**; the SST scheduled-publish lambda sends `metadata.privacy`, else `public`. Nothing sets `metadata.privacy`, so a scheduled publish processed by the in-app cron would go up private — `packages/features/publishing/src/jobs/process-scheduled-publishes.ts` (`uploadToPlatform`), `apps/web/lambda/publish-worker/handlers/youtube.ts:41`. Which scheduler runs in production decides whether this bites; KB-30 kept each path's behaviour as it was
+
+**Facts, news and the rest**
+- Fact search passes raw input to `to_tsquery`, so a trailing space likely breaks the page, and the claim query cannot use its full-text index — `packages/features/episodes/src/server/fact-actions.ts:298`
+- Each uncached news search calls NewsAPI once per active source (12 seeded) with identical parameters — `packages/features/episodes/src/lib/server/services/context-aggregator.ts:229`
+- `/sitemap.xml` has two handlers — `apps/web/app/sitemap.ts:13`, `apps/web/app/sitemap.xml/route.ts:16`
+- Two status colours fail WCAG AA 4.5:1 on small badges — `apps/web/styles/shadcn-ui.css:51`, `:55`
+- The live Suno dialogs need `SUNO_API_KEY`, which `sst.config.ts` does not pass to the server (production config not checked, by rule) — `packages/features/audio-generation/src/server/music-actions.ts:83`

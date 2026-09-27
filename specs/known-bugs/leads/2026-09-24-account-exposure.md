@@ -1,0 +1,8 @@
+# Leads from KB-59, KB-60 and KB-42 (2026-09-24)
+
+Read, not reproduced. The rule for leads is in [the README](../README.md#leads).
+
+**Account exposure (from KB-59, KB-60 and KB-42, 2026-09-24)**
+- `net.http_delete` has a NULL ACL, so PUBLIC can execute it, and `net` grants USAGE to PUBLIC. Any role with a direct SQL login, such as KB-59's `myfriends`, can have the database send outbound HTTP DELETE requests. PostgREST does not expose `net`, so only direct logins reach it. Measured locally (pg_net 0.20.4) from the catalog, not called. Production's ACL may differ and has not been checked
+- The voice budget check fails open: any RPC error is logged at warn and the generation proceeds — `packages/features/audio-generation/src/server/voice-queries.ts:67-72`. KB-42 made the RPC return `false` to strangers rather than raise, so its own refusal cannot take this path
+- The public-read policies on `projects` and `episodes` (`20260108120000_public_sharing_rls.sql`) expose every column of a public or unlisted row to any signed-in user, not only what the public pages render. Among them: `projects.created_by`/`updated_by` (user ids), `audio_settings`, `metadata`; `episodes.story_data`, `screenplay_data`, `shot_list`, `metadata`, `viral_quality`, `master_video_asset_id`, and `deleted_at` (soft-deleted episodes of a public project stay readable). `select * from projects where visibility = 'unlisted'` also lists every "link-only" project. The KB-60 shape (a view with the public columns) would fit both; the pages select `*` today, so they need narrowing with it
