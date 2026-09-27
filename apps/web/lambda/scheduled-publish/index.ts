@@ -13,8 +13,16 @@ import { createClient } from '@supabase/supabase-js';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import ws from 'ws';
 
+import {
+  SCHEDULED_LAMBDA_PRECEDENCE,
+  resolveEpisodeVideo,
+} from '@kit/publishing/lib/episode-video';
 import type { PublishJobMessage } from '@kit/publishing/lib/job-types';
-import type { Database } from '@kit/supabase/database';
+import {
+  EPISODE_VIDEO_PUBLISH_REFUSAL,
+  ownedEpisodeVideo,
+} from '@kit/publishing/lib/owned-episode-video';
+import type { Database, Json } from '@kit/supabase/database';
 
 const sqsClient = new SQSClient({});
 
@@ -64,6 +72,7 @@ interface ScheduledPublish {
   content_type: string | null;
   language: string | null; // Direct language field
   episodes: {
+    project_id: string;
     final_video_url: string | null;
     thumbnail_url: string | null;
     localized_videos: Record<string, string> | null;
@@ -87,52 +96,29 @@ function resolveVideoUrl(publish: ScheduledPublish): string | null {
   const lang =
     publish.language || (publish.metadata?.language as string) || 'en';
   const isShort = publish.content_type === 'short';
-  const localizedVideos = episode.localized_videos ?? {};
-  const shortsGroups = episode.shorts_groups ?? [];
+  const shortsGroupId = publish.metadata?.shortsGroupId as string | undefined;
 
-  // SHORTS: Use source_shot_id to find the exact group
-  if (isShort) {
-    const shortsGroupId = publish.metadata?.shortsGroupId as string;
-
-    if (!shortsGroupId) {
-      console.error(
-        `[Cron] Short publish ${publish.id} missing shortsGroupId in metadata`,
-      );
-      return null;
-    }
-
-    for (const group of shortsGroups) {
-      if (group?.id === shortsGroupId) {
-        if (group.videos?.[lang]) {
-          console.log(`[Cron] Resolved short: group=${group.id}, lang=${lang}`);
-          return group.videos[lang];
-        }
-        console.warn(
-          `[Cron] Shorts group ${group.id} has no video for lang=${lang}`,
-        );
-        return null;
-      }
-    }
-
-    console.warn(
-      `[Cron] shortsGroupId ${shortsGroupId} not found in shorts_groups`,
+  if (isShort && !shortsGroupId) {
+    console.error(
+      `[Cron] Short publish ${publish.id} missing shortsGroupId in metadata`,
     );
+  }
+
+  // One resolver for every publish path (KB-123), with this path's precedence
+  const resolved = resolveEpisodeVideo(episode, {
+    language: lang,
+    short: isShort,
+    shortsGroupId,
+    ...SCHEDULED_LAMBDA_PRECEDENCE,
+  });
+
+  if (!resolved) {
+    console.error(`[Cron] No video URL found for lang=${lang}`);
     return null;
   }
 
-  // FULL VIDEO: Check localized_videos, then fallback to final_video_url
-  if (localizedVideos[lang]) {
-    console.log(`[Cron] Resolved full video: localized_videos.${lang}`);
-    return localizedVideos[lang];
-  }
-
-  if (episode.final_video_url) {
-    console.log(`[Cron] Resolved full video: final_video_url`);
-    return episode.final_video_url;
-  }
-
-  console.error(`[Cron] No video URL found for lang=${lang}`);
-  return null;
+  console.log(`[Cron] Resolved video: ${resolved.from}, lang=${lang}`);
+  return resolved.url;
 }
 
 /**
@@ -160,6 +146,7 @@ export async function handler(): Promise<ScheduledPublishResult> {
       content_type,
       language,
       episodes(
+        project_id,
         final_video_url,
         thumbnail_url,
         localized_videos,
@@ -197,6 +184,44 @@ export async function handler(): Promise<ScheduledPublishResult> {
 
     if (!videoUrl) {
       console.error(`[Cron] No video URL for publish ${publish.id}, skipping`);
+      skipped++;
+      continue;
+    }
+
+    // Only a file of this episode's own project is sent (KB-123). Marked
+    // failed rather than skipped, so it is not picked up again every run.
+    const projectId = publish.episodes?.project_id;
+    const ownedVideoUrl = projectId
+      ? await ownedEpisodeVideo(
+          videoUrl,
+          { episodeId: publish.episode_id, projectId },
+          async (episodeId) => {
+            const { data } = await supabase
+              .from('episodes')
+              .select('project_id')
+              .eq('id', episodeId)
+              .maybeSingle();
+
+            return data?.project_id ?? null;
+          },
+        )
+      : null;
+
+    if (!ownedVideoUrl) {
+      console.error(
+        `[Cron] Refused a video that is not a file of publish ${publish.id}'s project`,
+      );
+      await supabase
+        .from('publishes')
+        .update({
+          status: 'failed',
+          metadata: {
+            ...(publish.metadata ?? {}),
+            error: EPISODE_VIDEO_PUBLISH_REFUSAL,
+            failedAt: new Date().toISOString(),
+          } as Json,
+        })
+        .eq('id', publish.id);
       skipped++;
       continue;
     }

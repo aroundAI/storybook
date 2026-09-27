@@ -1,0 +1,15 @@
+{
+  "feature": "KB-133",
+  "mutations": [
+    {
+      "name": "P1 Publish Now ignores the Shorts group it names again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "            shortsGroupId: isShortsPreferred ? platform.shortsGroupId : null,\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-now-shorts-group.test.ts",
+      "pattern": "its own short is uploaded"
+    }
+  ]
+}

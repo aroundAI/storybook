@@ -62,7 +62,7 @@ acceptance_criteria:
     reason: "not met — no X metrics are read anywhere (`public_metrics` appears nowhere); FILM-1727 is DRAFT"
   - text: "Delete tweet functionality"
     met: false
-    reason: "not met — the provider has no delete; unpublish skips X (`apps/web/lambda/publish-worker/index.ts:195-202`)"
+    reason: "not met — the provider has no delete; unpublish skips X (`apps/web/lambda/publish-worker/index.ts:233-237`)"
   - text: "Video duration validation"
     met: false
     reason: "not met — `TWITTER_CONSTRAINTS.maxDuration` (`packages/features/publishing/src/providers/twitter/types.ts:50`) is never read"
@@ -105,7 +105,7 @@ remaining:
     reason: "No X metrics are read anywhere"
     closed_by: "FILM-1727"
   - criterion: "Delete tweet functionality"
-    reason: "The provider has no delete, and unpublish skips X at the vendor (`apps/web/lambda/publish-worker/index.ts:195-202`)"
+    reason: "The provider has no delete, and unpublish skips X at the vendor (`apps/web/lambda/publish-worker/index.ts:233-237`)"
     closed_by: "unassigned"
   - criterion: "Video duration validation"
     reason: "The 140-second limit is declared and never checked"

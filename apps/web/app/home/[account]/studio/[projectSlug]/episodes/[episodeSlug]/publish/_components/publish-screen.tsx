@@ -352,13 +352,15 @@ export function PublishScreen({
     // Persist to database
     startTransition(async () => {
       try {
-        await updateShortsGroupsAction({
-          episodeId: episode.id,
-          shortsGroups: updatedGroups,
-        });
+        await unwrap(
+          updateShortsGroupsAction({
+            episodeId: episode.id,
+            shortsGroups: updatedGroups,
+          }),
+        );
       } catch (error) {
         console.error('Failed to save shorts group:', error);
-        toast.error('Failed to save group');
+        toast.error(refusalMessage(error, 'Failed to save group'));
       }
     });
   };
@@ -378,13 +380,15 @@ export function PublishScreen({
     // Persist to database
     startTransition(async () => {
       try {
-        await updateShortsGroupsAction({
-          episodeId: episode.id,
-          shortsGroups: updatedGroups,
-        });
+        await unwrap(
+          updateShortsGroupsAction({
+            episodeId: episode.id,
+            shortsGroups: updatedGroups,
+          }),
+        );
       } catch (error) {
         console.error('Failed to save shorts group:', error);
-        toast.error('Failed to save group changes');
+        toast.error(refusalMessage(error, 'Failed to save group changes'));
       }
     });
   };
@@ -400,14 +404,16 @@ export function PublishScreen({
     // Persist to database
     startTransition(async () => {
       try {
-        await updateShortsGroupsAction({
-          episodeId: episode.id,
-          shortsGroups: updatedGroups,
-        });
+        await unwrap(
+          updateShortsGroupsAction({
+            episodeId: episode.id,
+            shortsGroups: updatedGroups,
+          }),
+        );
         toast.success('Group deleted');
       } catch (error) {
         console.error('Failed to delete shorts group:', error);
-        toast.error('Failed to delete group');
+        toast.error(refusalMessage(error, 'Failed to delete group'));
       }
     });
   };
@@ -427,16 +433,18 @@ export function PublishScreen({
     // Persist to database
     startTransition(async () => {
       try {
-        await updateShortsGroupsAction({
-          episodeId: episode.id,
-          shortsGroups: updatedGroups,
-        });
+        await unwrap(
+          updateShortsGroupsAction({
+            episodeId: episode.id,
+            shortsGroups: updatedGroups,
+          }),
+        );
         toast.success(
           `Removed ${LANG_INFO[language as SupportedLanguage]?.name || language} video`,
         );
       } catch (error) {
         console.error('Failed to delete video from group:', error);
-        toast.error('Failed to delete video');
+        toast.error(refusalMessage(error, 'Failed to delete video'));
       }
     });
   };
@@ -758,18 +766,18 @@ export function PublishScreen({
         try {
           if (uploadType === 'full') {
             // Update full video
-            const updateResult = await updatePublishedVideoAction({
-              episodeId: episode.id,
-              language: selectedLanguage,
-              videoUrl: result.url,
-            });
-            if (updateResult.success) {
-              toast.success(
-                `Video uploaded for ${LANG_INFO[selectedLanguage].name}`,
-              );
-              setUploadDialogOpen(false);
-              refetchEpisode();
-            }
+            await unwrap(
+              updatePublishedVideoAction({
+                episodeId: episode.id,
+                language: selectedLanguage,
+                videoUrl: result.url,
+              }),
+            );
+            toast.success(
+              `Video uploaded for ${LANG_INFO[selectedLanguage].name}`,
+            );
+            setUploadDialogOpen(false);
+            refetchEpisode();
           } else {
             // Update shorts group - add video to selected group
             if (!selectedGroupId) {
@@ -784,21 +792,21 @@ export function PublishScreen({
                   }
                 : g,
             );
-            const updateResult = await updateShortsGroupsAction({
-              episodeId: episode.id,
-              shortsGroups: updatedGroups,
-            });
-            if (updateResult.success) {
-              setShortsGroups(updatedGroups);
-              toast.success(
-                `Short uploaded for ${LANG_INFO[selectedLanguage].name}`,
-              );
-              setUploadDialogOpen(false);
-            }
+            await unwrap(
+              updateShortsGroupsAction({
+                episodeId: episode.id,
+                shortsGroups: updatedGroups,
+              }),
+            );
+            setShortsGroups(updatedGroups);
+            toast.success(
+              `Short uploaded for ${LANG_INFO[selectedLanguage].name}`,
+            );
+            setUploadDialogOpen(false);
           }
         } catch (error) {
           console.error('Failed to update:', error);
-          toast.error('Failed to update video');
+          toast.error(refusalMessage(error, 'Failed to update video'));
         }
       });
     } catch (error) {
@@ -813,19 +821,19 @@ export function PublishScreen({
   const handleRemoveVideo = (lang: SupportedLanguage) => {
     startTransition(async () => {
       try {
-        const result = await updatePublishedVideoAction({
-          episodeId: episode.id,
-          language: lang,
-          videoUrl: '',
-        });
+        await unwrap(
+          updatePublishedVideoAction({
+            episodeId: episode.id,
+            language: lang,
+            videoUrl: '',
+          }),
+        );
 
-        if (result.success) {
-          toast.success(`Removed ${LANG_INFO[lang].name} video`);
-          refetchEpisode();
-        }
+        toast.success(`Removed ${LANG_INFO[lang].name} video`);
+        refetchEpisode();
       } catch (error) {
         console.error('Failed to remove video:', error);
-        toast.error('Failed to remove video');
+        toast.error(refusalMessage(error, 'Failed to remove video'));
       }
     });
   };

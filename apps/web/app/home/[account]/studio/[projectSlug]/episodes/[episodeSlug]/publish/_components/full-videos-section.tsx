@@ -77,6 +77,7 @@ export function FullVideosSection({
         {uploadedFullLanguages.length === 0 ? (
           <button
             onClick={() => onOpenUploadDialog('full')}
+            data-test="upload-full-video"
             className="flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-gray-500 transition-colors hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 dark:border-gray-600 dark:bg-gray-800/50"
           >
             <Upload className="h-8 w-8" />

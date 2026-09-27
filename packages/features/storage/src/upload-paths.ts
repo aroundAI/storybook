@@ -130,13 +130,21 @@ export function episodeThumbnailPath(
   return `${episodeThumbnailFolder(episodeId)}${segment(language)}-${now}.${ext}`;
 }
 
+/**
+ * The folder an episode's full and shorts videos are uploaded to, and the
+ * only one the save actions will store a new video from (KB-123).
+ */
+export function episodeVideoFolder(episodeId: string) {
+  return `episodes/${episodeId}/videos/`;
+}
+
 export function publishVideoPath(
   episodeId: string,
   language: string,
   ext: string,
   now = Date.now(),
 ) {
-  return `episodes/${episodeId}/videos/${language}-${now}.${ext}`;
+  return `${episodeVideoFolder(episodeId)}${language}-${now}.${ext}`;
 }
 
 export function shotVideoPath(

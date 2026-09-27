@@ -154,7 +154,7 @@ export function UploadVideoDialog({
                   : 'border-gray-300 hover:border-indigo-400 dark:border-gray-600'
               }`}
             >
-              <input {...getInputProps()} />
+              <input {...getInputProps()} data-test="upload-video-file" />
               {selectedFile ? (
                 <div className="flex items-center justify-center gap-2">
                   <Video className="h-5 w-5 text-indigo-500" />
@@ -190,6 +190,7 @@ export function UploadVideoDialog({
 
           <Button
             onClick={handleUpload}
+            data-test="upload-video-submit"
             disabled={!selectedFile || isUploading || isPending}
             className="w-full"
           >

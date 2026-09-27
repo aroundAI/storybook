@@ -80,6 +80,24 @@ function payloadOf(response: ActionResponse): string | null {
 
   if (data.startsWith('E{')) return null;
 
+  // A refusal returned as a value (KB-6) carries no data: `{ ok: false,
+  // error }` and nothing else, with no figure in the message
+  try {
+    const value: unknown = JSON.parse(data);
+    if (
+      typeof value === 'object' &&
+      value !== null &&
+      (value as { ok?: unknown }).ok === false &&
+      typeof (value as { error?: unknown }).error === 'string' &&
+      !(value as { error: string }).error.includes(String(B_VIEWS)) &&
+      Object.keys(value).length === 2
+    ) {
+      return null;
+    }
+  } catch {
+    // Not JSON: treat it as data
+  }
+
   return ['', 'null', '[]', '{}'].includes(data) ? null : data;
 }
 

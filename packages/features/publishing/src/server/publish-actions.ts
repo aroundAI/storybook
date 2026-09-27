@@ -18,7 +18,16 @@ import { getLogger } from '@kit/shared/logger';
 import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import {
+  PUBLISH_NOW_PRECEDENCE,
+  resolveEpisodeVideo,
+} from '../lib/episode-video';
 import type { DeleteJobMessage } from '../lib/job-types';
+import {
+  EPISODE_VIDEO_PUBLISH_REFUSAL,
+  type ProjectOfEpisode,
+  ownedEpisodeVideo,
+} from '../lib/owned-episode-video';
 import { ownedEpisodeThumbnail } from '../lib/owned-thumbnail';
 import {
   GetPublishStatusSchema,
@@ -82,6 +91,21 @@ function getTunnelUrl(url: string): string {
 type PublishPlatformInput = z.infer<
   typeof PublishToAllSchema
 >['platforms'][number];
+
+/** The project of an episode, read as the caller: RLS decides what is seen (KB-123) */
+function projectOfEpisodeVia(
+  client: SupabaseClient<Database>,
+): ProjectOfEpisode {
+  return async (episodeId) => {
+    const { data } = await client
+      .from('episodes')
+      .select('project_id')
+      .eq('id', episodeId)
+      .maybeSingle();
+
+    return data?.project_id ?? null;
+  };
+}
 
 function refusalFor(channelNames: string[]) {
   const names = channelNames.map((name) => `“${name}”`).join(', ');
@@ -336,43 +360,35 @@ const publishToAllHandler = enhanceAction(
           // Client explicitly tells us if this is a full video or shorts publish
           const isShortsPreferred = platform.contentType === 'short';
 
-          let videoUrl: string | null = null;
           const lang = publishLanguage;
 
-          // Get shorts video URL from groups (first group that has this language)
-          const getShortsVideoUrl = (language: string): string | null => {
-            for (const group of shortsGroups) {
-              if (group.videos && group.videos[language]) {
-                return group.videos[language];
-              }
-            }
-            return null;
-          };
-          const shortsVideoUrl = getShortsVideoUrl(lang);
+          // One resolver for every publish path (KB-123). A short uses the
+          // group it names, as the scheduled paths do (KB-133).
+          const resolved = resolveEpisodeVideo(episode, {
+            language: lang,
+            short: isShortsPreferred,
+            shortsGroupId: isShortsPreferred ? platform.shortsGroupId : null,
+            ...PUBLISH_NOW_PRECEDENCE,
+          });
 
-          if (isShortsPreferred) {
-            // Try shorts first, fall back to full video
-            videoUrl =
-              shortsVideoUrl ??
-              localizedVideos[lang] ??
-              episode.final_video_url ??
-              null;
-          } else {
-            // Try full video first, fall back to shorts
-            videoUrl =
-              localizedVideos[lang] ??
-              shortsVideoUrl ??
-              episode.final_video_url ??
-              null;
+          if (!resolved) {
+            throw new ActionRefusal(`No video available for language: ${lang}`);
           }
 
+          // Only a file of this episode's own project is sent (KB-123)
+          const videoUrl = await ownedEpisodeVideo(
+            resolved.url,
+            { episodeId, projectId: episode.project_id },
+            projectOfEpisodeVia(client),
+          );
+
           if (!videoUrl) {
-            throw new ActionRefusal(`No video available for language: ${lang}`);
+            throw new ActionRefusal(EPISODE_VIDEO_PUBLISH_REFUSAL);
           }
 
           // Update content_type based on what we're actually publishing
           const actualContentType =
-            shortsVideoUrl && isShortsPreferred ? 'short' : 'full';
+            resolved.from === 'short' && isShortsPreferred ? 'short' : 'full';
           await client
             .from('publishes')
             .update({ content_type: actualContentType })
@@ -591,7 +607,7 @@ const retryPublish = enhanceAction(
         id, episode_id, platform_connection_id, platform, content_type, status,
         title, description, tags, thumbnail_url, platform_content_id, platform_url,
         scheduled_at, published_at, language, metadata, created_at,
-        episodes(final_video_url, thumbnail_url, project:projects!inner(account_id))
+        episodes(final_video_url, thumbnail_url, project_id, project:projects!inner(account_id))
       `,
       )
       .eq('id', publishId)
@@ -609,6 +625,17 @@ const retryPublish = enhanceAction(
 
     if (!episode?.final_video_url) {
       throw new ActionRefusal('Episode video not available');
+    }
+
+    // Only a file of this episode's own project is sent (KB-123)
+    const videoUrl = await ownedEpisodeVideo(
+      episode.final_video_url,
+      { episodeId: publish.episode_id, projectId: episode.project_id },
+      projectOfEpisodeVia(client),
+    );
+
+    if (!videoUrl) {
+      throw new ActionRefusal(EPISODE_VIDEO_PUBLISH_REFUSAL);
     }
 
     // Get access token
@@ -676,7 +703,7 @@ const retryPublish = enhanceAction(
         accessToken,
         connection.platform_account_id ?? '',
         {
-          videoUrl: episode.final_video_url,
+          videoUrl,
           title: publish.title ?? '',
           description: publish.description ?? '',
           tags: publish.tags ?? [],
