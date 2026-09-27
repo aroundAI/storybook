@@ -92,16 +92,26 @@ const startVoiceClone = enhanceAction(
       throw new Error('Failed to store consent record');
     }
 
-    // Update voice profile status to pending
+    // Update voice profile status to pending. A clone RLS refuses changes no
+    // row: it stops here, before the paid ElevenLabs call (KB-105).
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (client as any)
+    const { data: pending, error: pendingError } = await (client as any)
       .from('voice_profiles')
       .update({
         clone_samples: data.samples,
         clone_status: 'pending',
         clone_metadata: { training_started_at: new Date().toISOString() },
       })
-      .eq('asset_id', data.assetId);
+      .eq('asset_id', data.assetId)
+      .select('id');
+
+    if (pendingError) {
+      throw new Error(
+        `Failed to start the voice clone: ${pendingError.message}`,
+      );
+    }
+
+    requireAffectedRows(pending, "You can't clone this voice.");
 
     try {
       // Get API key and create provider

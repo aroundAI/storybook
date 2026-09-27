@@ -51,6 +51,10 @@ const state = vi.hoisted(() => ({
   caller: '',
   publishStatus: 'published',
   publishConnection: '',
+  publishPlatform: 'youtube',
+  postConnection: '',
+  /** The token read succeeds, so a flow can reach what comes after it */
+  tokenOk: false,
   /** RLS refusing the update although the caller passed the role check */
   updateMatchesNothing: false,
   sent: [] as Array<Record<string, unknown>>,
@@ -86,7 +90,9 @@ vi.mock('@aws-sdk/client-sqs', () => ({
 vi.mock('../src/server/connection-tokens', () => ({
   getAccessToken: async (connectionId: string) => {
     state.tokensRequested.push(connectionId);
-    return { error: 'stopped here by the test' };
+    return state.tokenOk
+      ? { accessToken: 'token' }
+      : { error: 'stopped here by the test' };
   },
 }));
 
@@ -119,7 +125,7 @@ function rows(table: string, filters: Filters): Record<string, unknown>[] {
               id: PUBLISH,
               episode_id: EPISODE,
               status: state.publishStatus,
-              platform: 'youtube',
+              platform: state.publishPlatform,
               platform_content_id: 'VIDEO123',
               platform_connection_id: state.publishConnection || CONNECTION,
               episodes: {
@@ -144,7 +150,7 @@ function rows(table: string, filters: Filters): Record<string, unknown>[] {
           id: POST,
           account_id: ACCOUNT,
           final_text: 'Hello',
-          platform_connection_id: FOREIGN_CONNECTION,
+          platform_connection_id: state.postConnection || FOREIGN_CONNECTION,
           visibility: 'PUBLIC',
           metadata: {},
         },
@@ -209,6 +215,9 @@ beforeEach(() => {
   state.tokensRequested.length = 0;
   state.publishStatus = 'published';
   state.publishConnection = '';
+  state.publishPlatform = 'youtube';
+  state.postConnection = '';
+  state.tokenOk = false;
   state.updateMatchesNothing = false;
   process.env.PUBLISH_QUEUE_URL = 'https://sqs.test/publish';
 });
@@ -353,5 +362,63 @@ describe('a channel of another account (KB-109)', () => {
       error: "That channel isn't connected to this account.",
     });
     expect(state.tokensRequested).toEqual([]);
+  });
+});
+
+describe('a status mark RLS refuses stops before the platform (KB-105)', () => {
+  it('retryPublishAction refuses before the upload', async () => {
+    state.caller = OWNER;
+    state.publishStatus = 'failed';
+    state.publishConnection = CONNECTION;
+    state.publishPlatform = 'tiktok';
+    // The retry reads its token first; the mark comes just before the upload.
+    state.tokenOk = true;
+    state.updateMatchesNothing = true;
+    const { retryPublishAction } = await actions();
+
+    const result = await retryPublishAction({ publishId: PUBLISH });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "You can't retry this publish.",
+    });
+  });
+
+  it('publishSocialPostAction refuses, and no token is read', async () => {
+    state.caller = OWNER;
+    state.postConnection = CONNECTION;
+    state.updateMatchesNothing = true;
+    vi.resetModules();
+    const { publishSocialPostAction } = await import(
+      '../src/server/social-post-actions'
+    );
+
+    const result = await publishSocialPostAction({ postId: POST });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "You can't publish this post.",
+    });
+    expect(state.tokensRequested).toEqual([]);
+  });
+
+  it('approveSocialPostAction refuses rather than reporting it approved', async () => {
+    state.caller = OWNER;
+    state.postConnection = CONNECTION;
+    state.updateMatchesNothing = true;
+    vi.resetModules();
+    const { approveSocialPostAction } = await import(
+      '../src/server/social-post-actions'
+    );
+
+    const result = await approveSocialPostAction({
+      postId: POST,
+      platformConnectionId: CONNECTION,
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "You can't approve this post.",
+    });
   });
 });

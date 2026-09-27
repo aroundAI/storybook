@@ -27,6 +27,8 @@ const state = vi.hoisted(() => ({
   keyReads: 0,
   vendorCalls: [] as string[],
   writes: [] as string[],
+  /** RLS refusing the voice profile update although the write check passed */
+  profileUpdateMatchesNothing: false,
 }));
 
 vi.mock('server-only', () => ({}));
@@ -101,6 +103,7 @@ const rows: Record<string, Row[]> = {
 
 function query(table: string) {
   let found = [...(rows[table] ?? [])];
+  let updating = false;
 
   const builder = {
     select: () => builder,
@@ -115,6 +118,7 @@ function query(table: string) {
     },
     update: () => {
       state.writes.push(`${table}.update`);
+      updating = true;
       return builder;
     },
     delete: () => {
@@ -134,7 +138,16 @@ function query(table: string) {
         data: Record<string, unknown>[];
         error: null;
       }) => unknown,
-    ) => resolve({ data: found, error: null }),
+    ) =>
+      resolve({
+        data:
+          updating &&
+          table === 'voice_profiles' &&
+          state.profileUpdateMatchesNothing
+            ? []
+            : found,
+        error: null,
+      }),
   };
 
   return builder;
@@ -166,6 +179,7 @@ beforeEach(() => {
   state.keyReads = 0;
   state.vendorCalls.length = 0;
   state.writes.length = 0;
+  state.profileUpdateMatchesNothing = false;
   vi.stubGlobal(
     'fetch',
     vi.fn(async () => new Response(new Uint8Array([1, 2, 3]))),
@@ -230,6 +244,20 @@ describe('a caller who can write the project', () => {
 
     expect(result).toMatchObject({ ok: true });
     expect(state.vendorCalls).toEqual(['clone']);
+  });
+
+  it('refuses a clone RLS will not mark pending, before any ElevenLabs call (KB-105)', async () => {
+    state.profileUpdateMatchesNothing = true;
+    const { startVoiceCloneAction } = await import(
+      '../src/server/voice-clone-actions'
+    );
+
+    const result = await startVoiceCloneAction(
+      cloneInput as Parameters<typeof startVoiceCloneAction>[0],
+    );
+
+    expect(result).toEqual({ ok: false, error: "You can't clone this voice." });
+    expect(state.vendorCalls).toEqual([]);
   });
 
   it('deletes a clone', async () => {

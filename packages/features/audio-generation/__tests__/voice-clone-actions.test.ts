@@ -49,6 +49,16 @@ const mockSupabaseClient = {
   from: vi.fn(),
 };
 
+// voice_profiles writes are awaited straight after .eq(), except the pending
+// mark, which reads the rows it changed (.select, KB-105): answer both.
+function profileUpdateResult() {
+  return Object.assign(Promise.resolve({ error: null }), {
+    select: vi
+      .fn()
+      .mockResolvedValue({ data: [{ id: 'profile-1' }], error: null }),
+  });
+}
+
 vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: () => mockSupabaseClient,
 }));
@@ -161,7 +171,7 @@ describe('Voice Clone Actions', () => {
           if (table === 'voice_profiles') {
             return {
               update: vi.fn().mockReturnThis(),
-              eq: vi.fn().mockResolvedValue({ error: null }),
+              eq: vi.fn(() => profileUpdateResult()),
             };
           }
           if (table === 'external_api_keys') {
@@ -334,7 +344,7 @@ describe('Voice Clone Actions', () => {
           if (table === 'voice_profiles') {
             return {
               update: vi.fn().mockReturnThis(),
-              eq: vi.fn().mockResolvedValue({ error: null }),
+              eq: vi.fn(() => profileUpdateResult()),
             };
           }
           if (table === 'external_api_keys') {
@@ -357,7 +367,7 @@ describe('Voice Clone Actions', () => {
         // API key mocked via external_api_keys table mock
 
         const updateMock = vi.fn().mockReturnThis();
-        const eqMock = vi.fn().mockResolvedValue({ error: null });
+        const eqMock = vi.fn(() => profileUpdateResult());
 
         mockSupabaseClient.from.mockImplementation((table: string) => {
           if (table === 'assets') {
@@ -447,7 +457,7 @@ describe('Voice Clone Actions', () => {
           if (table === 'voice_profiles') {
             return {
               update: vi.fn().mockReturnThis(),
-              eq: vi.fn().mockResolvedValue({ error: null }),
+              eq: vi.fn(() => profileUpdateResult()),
             };
           }
           if (table === 'external_api_keys') {
@@ -505,7 +515,7 @@ describe('Voice Clone Actions', () => {
           if (table === 'voice_profiles') {
             return {
               update: vi.fn().mockReturnThis(),
-              eq: vi.fn().mockResolvedValue({ error: null }),
+              eq: vi.fn(() => profileUpdateResult()),
             };
           }
           if (table === 'external_api_keys') {

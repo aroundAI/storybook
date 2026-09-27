@@ -101,7 +101,7 @@ export const updateProjectPublishingConfigsAction = enhanceAction(
       for (const config of input.configs) {
         if (config.id && existingIds.has(config.id)) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (client as any)
+          const { data: updated, error: updateError } = await (client as any)
             .from('project_publishing_configs')
             .update({
               platform_connection_id: config.platformConnectionId,
@@ -112,7 +112,16 @@ export const updateProjectPublishingConfigsAction = enhanceAction(
                 config.defaultDescriptionTemplate ?? null,
               default_tags: config.defaultTags ?? null,
             })
-            .eq('id', config.id);
+            .eq('id', config.id)
+            .select('id');
+
+          if (updateError) throw updateError;
+          // RLS answers a refused update with no rows and no error (KB-105).
+          if (!updated?.length) {
+            throw new Error(
+              "You can't change this project's publishing settings.",
+            );
+          }
         } else {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (client as any).from('project_publishing_configs').insert({

@@ -10,6 +10,66 @@
       "cwd": "packages/features/episodes",
       "test": "__tests__/kb105-checked-updates.test.ts",
       "pattern": "refuses when RLS filtered the update to no rows"
+    },
+    {
+      "name": "P1 a retry RLS refused goes on to the upload",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "    requireAffectedRows(marked, \"You can't retry this publish.\");\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-queue-authorization.test.ts",
+      "pattern": "retryPublishAction refuses before the upload"
+    },
+    {
+      "name": "P2 a social post RLS refused is published anyway",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/social-post-actions.ts",
+      "find": "    requireAffectedRows(marked, \"You can't publish this post.\");\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-queue-authorization.test.ts",
+      "pattern": "publishSocialPostAction refuses, and no token is read"
+    },
+    {
+      "name": "P3 an approval RLS refused is reported as approved",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/social-post-actions.ts",
+      "find": "    requireAffectedRows(approved, \"You can't approve this post.\");\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-queue-authorization.test.ts",
+      "pattern": "approveSocialPostAction refuses rather than reporting it approved"
+    },
+    {
+      "name": "V1 a voice clone RLS refused goes on to ElevenLabs",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/voice-clone-actions.ts",
+      "find": "    requireAffectedRows(pending, \"You can't clone this voice.\");\n",
+      "replace": "",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/voice-clone-authorization.test.ts",
+      "pattern": "refuses a clone RLS will not mark pending"
+    },
+    {
+      "name": "L1 a channel language RLS refused is reported saved",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/connection-actions.ts",
+      "find": "    requireAffectedRows(updated, \"You can't change this channel's language.\");\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/kb105-settings-checked.test.ts",
+      "pattern": "a channel's language"
+    },
+    {
+      "name": "C1 project publishing settings RLS refused are reported saved",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/project-publishing-actions.ts",
+      "find": "          if (!updated?.length) {\n",
+      "replace": "          if (false) {\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/kb105-settings-checked.test.ts",
+      "pattern": "a project's publishing settings"
     }
   ]
 }

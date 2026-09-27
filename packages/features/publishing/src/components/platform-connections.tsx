@@ -351,10 +351,12 @@ function ConnectionRow({
 
   const languageMutation = useMutation({
     mutationFn: (language: string) =>
-      updateConnectionLanguageAction({
-        connectionId: connection.id,
-        language,
-      }),
+      unwrap(
+        updateConnectionLanguageAction({
+          connectionId: connection.id,
+          language,
+        }),
+      ),
     onSuccess: (_, language) => {
       queryClient.invalidateQueries({
         queryKey: ['platform-connections', accountId],
@@ -363,8 +365,8 @@ function ConnectionRow({
         `Language set to ${LANGUAGE_NAMES[language as keyof typeof LANGUAGE_NAMES] ?? language}`,
       );
     },
-    onError: () => {
-      toast.error('Failed to update language');
+    onError: (error) => {
+      toast.error(refusalMessage(error, 'Failed to update language'));
     },
   });
 
