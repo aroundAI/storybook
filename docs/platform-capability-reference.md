@@ -669,6 +669,199 @@ video_thumbnail_impressions_ctr
 engaged_views
 ```
 
+<!-- fields: youtube/reporting-columns source: https://developers.google.com/youtube/reporting/v1/reports/channel_reports -->
+```text
+# CSV columns of the report types above, fetched 2026-09-25 (FILM-1802 PR B).
+# Dimensions, then metrics, per the channel reports reference.
+date                       # YYYYMMDD
+channel_id
+video_id
+live_or_on_demand          # live | onDemand
+subscribed_status          # subscribed | unsubscribed
+country_code
+playback_location_type     # numeric code (dimensions reference)
+traffic_source_type        # numeric code (dimensions reference)
+traffic_source_detail
+device_type                # numeric code (dimensions reference)
+operating_system           # numeric code (dimensions reference)
+engaged_views
+views
+comments
+likes
+dislikes
+shares
+watch_time_minutes
+average_view_duration_seconds
+average_view_duration_percentage
+subscribers_gained
+subscribers_lost
+red_views
+red_watch_time_minutes
+video_thumbnail_impressions
+video_thumbnail_impressions_ctr
+```
+
+<!-- fields: youtube/reporting-resources source: https://developers.google.com/youtube/reporting/v1/reference/rest/v1/jobs -->
+```text
+# jobs.list / jobs.create / reportTypes.list / jobs.reports.list, fetched 2026-09-25.
+jobs
+reportTypes
+reports
+nextPageToken
+id
+reportTypeId
+name
+createTime
+expireTime
+systemManaged
+jobId
+startTime
+endTime
+downloadUrl                # the Report resource (reference/rest/v1/jobs.reports)
+```
+
+<!-- fields: youtube/analytics-result source: https://developers.google.com/youtube/analytics/reference/reports/query -->
+```text
+# reports.query's response, fetched 2026-09-25. "If no data is available for the
+# given query, the rows element will be omitted from the response."
+kind                       # youtubeAnalytics#resultTable
+columnHeaders
+name
+columnType                 # DIMENSION | METRIC
+dataType                   # STRING | INTEGER | FLOAT | …
+rows
+```
+
+<!-- fields: youtube/channels source: https://developers.google.com/youtube/v3/docs/channels -->
+```text
+# The channel resource, fetched 2026-09-25. subscriberCount is "rounded down to
+# three significant figures"; counts are unsigned longs, serialised as strings.
+kind
+etag
+id
+snippet
+title
+description
+customUrl
+publishedAt
+thumbnails
+default
+medium
+high
+url
+width
+height
+statistics
+viewCount
+subscriberCount
+hiddenSubscriberCount
+videoCount
+items                      # the list response (channels.list)
+pageInfo
+totalResults
+resultsPerPage
+nextPageToken
+```
+
+<!-- fields: youtube/videos source: https://developers.google.com/youtube/v3/docs/videos -->
+```text
+# The video resource, fetched 2026-09-25. uploadStatus: deleted | failed |
+# processed | rejected | uploaded.
+kind
+etag
+id
+snippet
+publishedAt
+channelId
+title
+description
+thumbnails
+default
+medium
+high
+url
+width
+height
+channelTitle
+tags
+categoryId
+contentDetails
+duration                   # ISO 8601
+dimension
+definition
+caption
+status
+uploadStatus
+privacyStatus
+madeForKids
+selfDeclaredMadeForKids
+statistics
+viewCount
+likeCount
+dislikeCount
+favoriteCount
+commentCount
+items                      # the list response (videos.list)
+pageInfo
+totalResults
+resultsPerPage
+```
+
+<!-- fields: youtube/thumbnails-set source: https://developers.google.com/youtube/v3/docs/thumbnails/set -->
+```text
+# Response: {kind: "youtube#thumbnailSetResponse", etag, items: [thumbnail]}.
+kind
+etag
+items
+default
+medium
+high
+url
+width
+height
+```
+
+<!-- fields: youtube/playlist-items source: https://developers.google.com/youtube/v3/docs/playlistItems -->
+```text
+# The playlistItem resource, fetched 2026-09-25.
+kind
+etag
+id
+snippet
+playlistId
+title
+position
+resourceId
+videoId
+```
+
+<!-- fields: google/oauth-token source: https://developers.google.com/identity/protocols/oauth2/web-server -->
+```text
+# The token endpoint's response, fetched 2026-09-25. A refresh grant returns a
+# new access token; it is not documented to return a new refresh token.
+access_token
+expires_in
+refresh_token
+refresh_token_expires_in
+scope
+token_type                 # always Bearer
+error                      # invalid_grant, invalid_client, redirect_uri_mismatch, …
+error_description
+```
+
+<!-- fields: google/api-error source: https://developers.google.com/youtube/v3/docs/errors -->
+```text
+error
+code
+message
+errors
+domain
+reason                     # insufficientPermissions, authError, quotaExceeded, …
+location
+locationType
+status
+```
+
 <!-- fields: tiktok/display-video source: https://developers.tiktok.com/doc/tiktok-api-v2-video-query -->
 ```text
 # source not fetched 2026-09-21: developers.tiktok.com refused connections from
@@ -926,6 +1119,8 @@ inferred and must be labelled as such wherever they are used.
 | X rotates the refresh token on every refresh | Widely reported; the OAuth 2.0 pages, the OAuth FAQ and the OAuth API reference say nothing either way (read 2026-09-23). `refreshXToken` is correct whether or not it holds | inferred |
 | ~~The Instagram aggregate-metric names~~ | **Resolved 2026-09-21.** The changelog documents both: `*_count` fields on the Media node, short names as insights metrics | **documented** |
 | ~~`facebook_views` exists at all~~ | **Resolved 2026-09-21.** A media insights metric, Feed/Reels/Story, per the changelog | **documented** |
+| A token missing a scope gets 403 `insufficientPermissions`, "Request had insufficient authentication scopes." from the Analytics and Reporting APIs | Google's auth layer's usual wording; the YouTube Data errors page words its `insufficientPermissions` message differently. `isScopeMissingError` matches either. The sandbox (FILM-1802) serves this wording | inferred |
+| A revenue metric asked without `yt-analytics-monetary.readonly` gets 403 `Forbidden` | Documented that revenue needs the scope; the error's exact shape is not. The sandbox serves 403 `forbidden` | inferred |
 | Account insights accept `since`/`until` with `metric_type=total_value` | The reference neither states nor forbids it; `getAccountInsights` relies on it | inferred |
 | Instagram watch-time fields are in milliseconds | Community consensus; the reference states no unit | inferred |
 | Facebook `post_video_avg_time_watched` denominator is initial plays | Business Help Center; the API reference does not state it | inferred |

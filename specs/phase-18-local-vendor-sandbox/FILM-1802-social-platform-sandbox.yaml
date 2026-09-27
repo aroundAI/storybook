@@ -27,22 +27,22 @@ acceptance_criteria:
     evidence: "scripts/local-env.sh:151 (start_sandbox, FILM-1803); scripts/lib/vendor-sandbox-env.d/social.sh:9 prints every social VENDOR_URL_* into the rewritten block (apps/vendor-sandbox/__tests__/social-setup.test.ts)"
   - text: "A user can connect each of the five platforms through the real connect and callback routes, with no real credentials"
     met: false
-    reason: "not yet implemented: the OAuth endpoints arrive per platform in PRs B–E; PR A seeds the sandbox clients (apps/vendor-sandbox/src/social/seed-credentials.ts)"
+    reason: "YouTube done (PR B): consent, the code exchange and the channel the callback reads, through the app's own clients (apps/vendor-sandbox/__tests__/youtube-journey.test.ts); TikTok, Meta, X and LinkedIn arrive in PRs C–E"
   - text: "Token refresh and disconnect work through the real code paths"
     met: false
-    reason: "not yet implemented: the token model is in PR A (apps/vendor-sandbox/src/social/state.ts), the endpoints in PRs B–E"
+    reason: "YouTube done (PR B): tokens expire in real time, refresh returns a new access token and no new refresh token, and revoke ends the grant (apps/vendor-sandbox/__tests__/youtube-journey.test.ts); PRs C–E for the rest"
   - text: "Publishing through the app creates a sandbox object, and the next analytics sync reports on it — for YouTube, TikTok and Instagram; for Facebook, X and LinkedIn, which have no analytics sync (FILM-1720, FILM-1727), publishing creates the object and its status or permalink call returns it"
     met: false
-    reason: "not yet implemented: PRs B–E"
+    reason: "YouTube done (PR B): the upload creates the video, the thumbnail lands on it, and the next sync reports on it, totals equal to the day rows (apps/vendor-sandbox/__tests__/youtube-journey.test.ts); PRs C–E for the rest"
   - text: "Every response field the app reads is documented for that endpoint in the capability reference's field index, and every envelope field it ignores cites the vendor's documentation page — enforced by a test that parses the index"
     met: false
-    reason: "the harness is in PR A (apps/vendor-sandbox/src/social/fields.ts, __tests__/social-fidelity.test.ts); each vendor PR registers its endpoints"
+    reason: "YouTube's endpoints are registered and checked against the field index (apps/vendor-sandbox/__tests__/google-fidelity.test.ts); TikTok, Meta, X and LinkedIn register theirs in PRs C–E"
   - text: "Every behaviour in §3's table has a sandbox test"
     met: false
-    reason: "not yet implemented: PRs B–E"
+    reason: "YouTube's rows of §3 each have a test (apps/vendor-sandbox/__tests__/google-fidelity.test.ts, '§3: YouTube behaviour the sandbox must reproduce'); PRs C–E for the rest"
   - text: "A missing scope returns the vendor's authorisation error, not data"
     met: false
-    reason: "the scope model is in PR A (SocialState.checkToken); each vendor's error shape is in PRs B–E"
+    reason: "YouTube done (PR B): without the analytics scope, analytics fails as production does, and revenue needs yt-analytics-monetary.readonly (apps/vendor-sandbox/__tests__/youtube-journey.test.ts, apps/vendor-sandbox/__tests__/google-fidelity.test.ts); PRs C–E for the rest"
   - text: "Two runs produce different data; the same SANDBOX_SEED reproduces a run"
     met: true
     evidence: "apps/vendor-sandbox/__tests__/social-state.test.ts:65"
@@ -51,7 +51,7 @@ acceptance_criteria:
     evidence: "apps/vendor-sandbox/__tests__/social-growth.test.ts:64"
   - text: "The ledger records every request and response"
     met: true
-    evidence: "apps/vendor-sandbox/src/social/server.ts:126 (every social call, filterable by vendor and object, credentials redacted)"
+    evidence: "apps/vendor-sandbox/src/social/server.ts:151 (every social call, filterable by vendor and object, credentials redacted)"
   - text: "The sandbox binds to loopback and is never part of a production build or deploy"
     met: true
     evidence: "apps/vendor-sandbox/src/http.ts:8; apps/vendor-sandbox/__tests__/social-boundaries.test.ts:37"

@@ -9,7 +9,7 @@
       "replace": "      value: cumulative(day + DAY_MS) - cumulative(day),",
       "cwd": "apps/vendor-sandbox",
       "test": "__tests__/social-growth.test.ts",
-      "pattern": "sum to its total"
+      "pattern": "stops at now"
     },
     {
       "name": "S2 the decaying curve falls instead of rising",

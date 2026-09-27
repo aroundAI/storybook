@@ -173,3 +173,30 @@ describe('round sentinels', () => {
     }
   });
 });
+
+describe('dailySeries on its own', () => {
+  // SocialState.cumulative caps at what the vendor has processed, so through
+  // it the cap below is invisible. A cumulative that keeps growing past now
+  // is what shows that dailySeries stops at now by itself.
+  it('stops at now: its rows sum to the figure at now, not past it', () => {
+    const now = Date.parse('2026-09-10T12:00:00Z');
+    const rows = dailySeries(
+      (ms) => Math.floor(ms / 1000),
+      '2026-09-09',
+      '2026-09-12',
+      now,
+    );
+
+    expect(rows.map((row) => row.date)).toEqual([
+      '2026-09-09',
+      '2026-09-10',
+      '2026-09-11',
+      '2026-09-12',
+    ]);
+    expect(rows.slice(2).map((row) => row.value)).toEqual([0, 0]);
+    expect(rows.reduce((sum, row) => sum + row.value, 0)).toBe(
+      Math.floor(now / 1000) -
+        Math.floor(Date.parse('2026-09-09T00:00:00Z') / 1000),
+    );
+  });
+});
