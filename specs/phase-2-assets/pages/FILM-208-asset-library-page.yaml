@@ -26,7 +26,7 @@ page:
 acceptance_criteria:
   - text: "Page accessible at /home/[account]/studio/[projectId]/assets"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx (the segment is now the project slug); E2E apps/e2e/tests/refusals/refusals.po.ts:178"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx (the segment is now the project slug); E2E apps/e2e/tests/refusals/refusals.po.ts:179"
   - text: "Breadcrumb displays: Home > Studio > [Project Name] > Assets"
     met: false
     reason: "not met — never built; the page has a \"Back to Project\" link instead (apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:133-140)"
@@ -53,7 +53,7 @@ acceptance_criteria:
     reason: "retired — replaced by a real LocationEditor in 41c76442 (apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:93-107)"
   - text: "AssetGallery renders with project assets"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:152-157; E2E apps/e2e/tests/refusals/refusals.po.ts:178-190"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:152-157; E2E apps/e2e/tests/refusals/refusals.po.ts:179-191"
   - text: "Tab selection persisted in URL (?tab=character)"
     met: true
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:59, packages/features/assets/src/components/asset-gallery.tsx:161"

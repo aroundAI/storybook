@@ -49,7 +49,7 @@ acceptance_criteria:
     evidence: "packages/features/film-studio-schemas/__tests__/project.test.ts:109; name rule at `apps/web/app/home/[account]/studio/projects/new/_lib/schema.ts:10`"
   - text: "Form submission creates project with Film Studio settings"
     met: false
-    reason: "unverified — needs an E2E of a successful create; `apps/e2e/tests/refusals/refusals.po.ts:100` drives only the duplicate-name refusal"
+    reason: "unverified — needs an E2E of a successful create; `apps/e2e/tests/refusals/refusals.po.ts:101` drives only the duplicate-name refusal"
   - text: "Settings can be edited after project creation"
     met: false
     reason: "unverified — an edit path exists (`apps/web/app/home/[account]/studio/[projectSlug]/settings/_lib/server/update-studio-settings.action.ts:30`) but reaches only 4 of the 11 creation settings (style, audience, rating, language), and is untested"

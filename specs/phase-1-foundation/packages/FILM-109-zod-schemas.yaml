@@ -99,7 +99,7 @@ test_plan:
   integration:
     - text: "Schemas work with react-hook-form and @hookform/resolvers"
       met: true
-      evidence: "apps/e2e/tests/refusals/refusals.po.ts:100 drives the project form, whose `zodResolver` schema embeds `StudioProjectSettingsSchema`"
+      evidence: "apps/e2e/tests/refusals/refusals.po.ts:101 drives the project form, whose `zodResolver` schema embeds `StudioProjectSettingsSchema`"
     - text: "Schemas work with Supabase type generation"
       met: false
       reason: "not met — no test found"
