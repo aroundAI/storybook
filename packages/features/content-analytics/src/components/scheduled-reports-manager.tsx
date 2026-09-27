@@ -16,7 +16,7 @@ import {
   Trash2,
 } from 'lucide-react';
 
-import { refusalMessage } from '@kit/next/action-result';
+import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { Card, CardContent } from '@kit/ui/card';
@@ -113,7 +113,7 @@ export function ScheduledReportsManager({
       return;
     }
     try {
-      await deleteScheduledReportAction({ id: reportId });
+      await unwrap(deleteScheduledReportAction({ id: reportId }));
       await loadReports();
     } catch (err) {
       console.error('Failed to delete report:', err);

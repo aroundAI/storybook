@@ -175,6 +175,10 @@ export const deleteApiKeyAction = returnRefusals(
         throw new ActionRefusal(OWNERS_ONLY);
       }
 
+      if (error?.branch === 'api_key_delete_none') {
+        throw new ActionRefusal("That API key wasn't removed.");
+      }
+
       if (error) {
         throw new Error(`Could not remove the API key (${error.branch})`, {
           cause: error.cause,

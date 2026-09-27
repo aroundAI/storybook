@@ -43,10 +43,10 @@ const PENDING_PUBLISHING = 'KB-105: converted in the publishing pull request';
 // Owned by another open pull request (2026-09-25); it adopts
 // requireAffectedRows and removes its line.
 const TAG_SCOPE = 'teammate tag-scope';
-// The clone gate (start) and the clone removal are in functions #393 rewrites;
-// it adopts requireAffectedRows there and lowers this count by two.
+// The clone removal checks its row since KB-61's tail (#440). The clone gate
+// (start) is still unchecked: it was left to #393, which merged without it.
 const VOICE_CLONE_PR =
-  'KB-105: the two checks are left to #393, which rewrites these functions';
+  'KB-105: the clone start gate is still to check; #393 merged without it';
 
 const KNOWN: Record<string, [number, string]> = {
   'apps/web/app/api/reports/scheduled/route.ts | scheduled_reports | update': [
@@ -91,7 +91,7 @@ const KNOWN: Record<string, [number, string]> = {
   'packages/features/audio-generation/src/server/voice-actions.ts | generation_jobs | update':
     [4, `${FAILURE_MARK} + ${RECORDS_RESULT}`],
   'packages/features/audio-generation/src/server/voice-clone-actions.ts | voice_profiles | update':
-    [4, `${FAILURE_MARK} + ${RECORDS_RESULT} + ${VOICE_CLONE_PR}`],
+    [3, `${FAILURE_MARK} + ${RECORDS_RESULT} + ${VOICE_CLONE_PR}`],
   'packages/features/content-analytics/src/server/analytics-sync-cron.ts | platform_connections | update':
     [1, ADMIN],
   'packages/features/content-analytics/src/server/analytics-sync-cron.ts | publishes | update':

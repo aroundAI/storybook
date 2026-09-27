@@ -146,6 +146,46 @@
       "replace": "",
       "spec": "tests/storage/episode-thumbnails-panel.spec.ts",
       "grep": "already gone says so"
+    },
+    {
+      "name": "KB-61 T1 a tag delete that removed nothing reports success again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/taxonomy-actions.ts",
+      "find": "    requireAffectedRows(deleted, \"That tag wasn't deleted.\");\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/kb61-deletes-refused.test.ts",
+      "pattern": "deleting a tag"
+    },
+    {
+      "name": "KB-61 T2 a scheduled-report delete that removed nothing reports success again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/report-actions.ts",
+      "find": "    requireAffectedRows(deleted, \"That scheduled report wasn't deleted.\");\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/kb61-deletes-refused.test.ts",
+      "pattern": "deleting a scheduled report"
+    },
+    {
+      "name": "KB-61 T3 an API-key delete that removed nothing reports success again",
+      "kind": "unit",
+      "file": "packages/supabase/src/external-api-keys.ts",
+      "find": "    error: deleted?.length\n      ? null\n      : { branch: 'api_key_delete_none', cause: null },\n",
+      "replace": "    error: null,\n",
+      "cwd": "packages/supabase",
+      "test": "__tests__/external-api-keys.test.ts",
+      "pattern": "reports a delete that removed nothing"
+    },
+    {
+      "name": "KB-61 T4 a voice-clone removal that cleared no row reports success again",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/voice-clone-actions.ts",
+      "find": "    requireAffectedRows(cleared, \"The voice clone wasn't removed.\");\n",
+      "replace": "",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/voice-clone-actions.test.ts",
+      "pattern": "refuses when clearing the clone changed no row"
     }
   ]
 }

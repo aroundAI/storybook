@@ -40,7 +40,7 @@ export function TagManagerClient({
         });
       }}
       onDelete={async (tagId) => {
-        await deleteTagAction({ tagId });
+        await unwrap(deleteTagAction({ tagId }));
 
         startTransition(() => {
           setTags((current) => current.filter((tag) => tag.id !== tagId));

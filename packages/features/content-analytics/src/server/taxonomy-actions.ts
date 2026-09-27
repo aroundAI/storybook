@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { querySegmentPerformance } from '@kit/clickhouse/server';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -84,7 +84,7 @@ export const updateTagAction = enhanceAction(
  * Deleting a tag cascades to its assignments; affected publishes are
  * re-synced so video_dim.tags stops advertising it.
  */
-export const deleteTagAction = enhanceAction(
+const deleteTag = enhanceAction(
   async ({ tagId }) => {
     const client = getSupabaseServerClient();
 
@@ -102,14 +102,17 @@ export const deleteTagAction = enhanceAction(
       'publish_tags by tag',
     );
 
-    const { error } = await client
+    const { data: deleted, error } = await client
       .from('content_tags')
       .delete()
-      .eq('id', tagId);
+      .eq('id', tagId)
+      .select('id');
 
     if (error) {
       throw new Error(`Failed to delete tag: ${error.message}`);
     }
+
+    requireAffectedRows(deleted, "That tag wasn't deleted.");
 
     const publishIds = assignments.map((row) => row.publish_id);
 
@@ -121,6 +124,8 @@ export const deleteTagAction = enhanceAction(
   },
   { schema: DeleteTagSchema, auth: true },
 );
+
+export const deleteTagAction = returnRefusals(deleteTag);
 
 export const listTagsAction = enhanceAction(
   async ({ accountId, dimension }) => {

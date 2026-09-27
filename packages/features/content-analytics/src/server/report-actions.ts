@@ -20,7 +20,7 @@ import {
 } from '@kit/clickhouse/server';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { chunkIds, fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -466,19 +466,22 @@ export const updateScheduledReportAction = enhanceAction(
 /**
  * Delete a scheduled report
  */
-export const deleteScheduledReportAction = enhanceAction(
+const deleteScheduledReport = enhanceAction(
   async function (data): Promise<{ success: boolean }> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const client = getSupabaseServerClient() as SupabaseClient<any>;
 
-    const { error } = await client
+    const { data: deleted, error } = await client
       .from('scheduled_reports')
       .delete()
-      .eq('id', data.id);
+      .eq('id', data.id)
+      .select('id');
 
     if (error) {
       throw new Error(`Failed to delete scheduled report: ${error.message}`);
     }
+
+    requireAffectedRows(deleted, "That scheduled report wasn't deleted.");
 
     return { success: true };
   },
@@ -486,6 +489,10 @@ export const deleteScheduledReportAction = enhanceAction(
     auth: true,
     schema: DeleteScheduledReportSchema,
   },
+);
+
+export const deleteScheduledReportAction = returnRefusals(
+  deleteScheduledReport,
 );
 
 /**
