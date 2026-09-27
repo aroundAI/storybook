@@ -54,7 +54,11 @@ vi.mock('@kit/supabase/server-client', () => ({
         single: async () => ({ data: state.stored, error: null }),
         update: (payload: unknown) => {
           state.updates.push(payload);
-          return { eq: async () => ({ error: null }) };
+          return {
+            eq: () => ({
+              select: async () => ({ data: [{ id: E }], error: null }),
+            }),
+          };
         },
       };
       return builder;

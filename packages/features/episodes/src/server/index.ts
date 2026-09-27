@@ -18,17 +18,10 @@ export * from '../lib/server/mutations/refinement-actions';
 // Season CRUD actions (FILM-302)
 export * from '../lib/server/mutations/season-actions';
 export * from './captions-actions';
-// Auto-stitch action (FILM-604)
-export * from './auto-stitch-action';
-
-// NOTE: Auto-stitch library is server-only, import directly:
-// import { autoStitch } from '@kit/episodes/lib/auto-stitch';
-
 // Season Generation (FILM-201)
 export * from '../lib/server/mutations/season-generation-actions';
 
 // Timeline Planning
-export * from './timeline-actions';
 
 // Project Intro actions
 export * from './intro-actions';

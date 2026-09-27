@@ -1,0 +1,15 @@
+{
+  "feature": "KB-105",
+  "mutations": [
+    {
+      "name": "E1 The shorts save reports success when RLS changed no row",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/server/mutations/publish-actions.ts",
+      "find": "    requireAffectedRows(updated, \"You can't change this episode's shorts.\");\n",
+      "replace": "",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/kb105-checked-updates.test.ts",
+      "pattern": "refuses when RLS filtered the update to no rows"
+    }
+  ]
+}

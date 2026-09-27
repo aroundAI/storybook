@@ -198,7 +198,7 @@ notes: |
   **Key Server Action Files:**
   - `packages/features/episodes/src/server/story-actions.ts` — Story generation
   - `packages/features/episodes/src/server/screenplay-actions.ts` — Scene/screenplay
-  - `packages/features/episodes/src/server/timeline-actions.ts` — Audio timeline
+  - `packages/features/episodes/src/server/timeline-actions.ts` — Audio timeline (removed 2026-09-27: no caller)
   - `packages/features/episodes/src/server/intro-actions.ts` — Intro generation
 
   ### 5.2 Batch Episode Creation
