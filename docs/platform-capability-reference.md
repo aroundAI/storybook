@@ -790,13 +790,13 @@ country                    # same
 gender                     # same
 ```
 
-⚠️ **Our audience request is not the documented one.** `fetchAccountAudience` asks
-for `follower_demographics` with all four breakdowns in one call and no
-`timeframe`. Meta lists `timeframe` as required (`last_14_days` … `this_week`), and
-its examples show one demographic breakdown per request. A rejected call returns
-`undefined`, which the provider treats as "no audience", so Instagram audience rows
-have most likely never been written. Unverified against a live account; fixing it
-changes stored data, so it is not fixed here. FILM-1712 owns it.
+**Our audience request is the documented one (FILM-1712, 2026-09-27).** `fetchAccountAudience`
+asks for `follower_demographics` once per breakdown (`country`, `city`, `age`, `gender`) with
+`timeframe=this_month`; from v20.0 only `this_month` and `this_week` are accepted. Before, it
+sent all four breakdowns in one call with no `timeframe`. That call was not rejected in
+production (owner, 2026-09-27), but its parsers looked for items named after each breakdown,
+while Meta answers with one item named `follower_demographics`, so no audience row was ever
+written.
 
 <!-- fields: facebook/video-insights source: https://developers.facebook.com/docs/graph-api/reference/video/video_insights/ -->
 ```text

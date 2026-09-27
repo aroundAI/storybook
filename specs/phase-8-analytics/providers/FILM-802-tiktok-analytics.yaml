@@ -55,10 +55,10 @@ test_plan:
   unit:
     - text: "Test audience data parsing"
       met: false
-      reason: "no longer true — nothing is parsed since d818a603; the test asserts the audience is absent (`packages/features/content-analytics/__tests__/tiktok-analytics.test.ts:174`)"
+      reason: "no longer true — nothing is parsed since d818a603; the test asserts the audience is absent (`packages/features/content-analytics/__tests__/tiktok-analytics.test.ts:211`)"
     - text: "Test traffic source mapping"
       met: false
-      reason: "no longer true — nothing is mapped since d818a603; the test asserts `trafficSources` is empty (`tiktok-analytics.test.ts:174`)"
+      reason: "no longer true — nothing is mapped since d818a603; the test asserts `trafficSources` is empty (`tiktok-analytics.test.ts:210`)"
   integration:
     - text: "Test with mocked TikTok API"
       met: true
