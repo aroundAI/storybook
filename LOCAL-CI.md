@@ -75,7 +75,7 @@ stack verifies about two PRs an hour. A second stack doubles that.
 | | Lane A (default) | Lane B |
 |---|---|---|
 | Supabase | project `storybook`, 55321–55327 | project `storybook-b`, 55420–55429 |
-| ClickHouse | `storybook-clickhouse`, 8123 | `storybook-clickhouse-b`, 18123 (capped at 2 GB) |
+| ClickHouse | `storybook-clickhouse`, 8123 | `storybook-clickhouse-b`, 18123 (capped at 2 GB; diagnostic logs off, `clickhouse-b.xml`, so it idles near 300 MB, not 1.7 GB — a container made before this file needs `docker rm -f storybook-clickhouse-b && scripts/local-ci/lane-b.sh up` once) |
 | Web app | :3000 | :3001 |
 | Lock | `.local-ci/db.lock`, `lockq/` | `.local-ci/db-b.lock`, `lockq-b/` |
 | Started by | `./scripts/local-env.sh up` | `scripts/local-ci/lane-b.sh up` |
