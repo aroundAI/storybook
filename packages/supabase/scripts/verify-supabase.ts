@@ -55,10 +55,12 @@ async function main() {
     auth: { persistSession: false },
   });
 
-  // A seeded account to hang the fixture rows off.
+  // A seeded team to hang the fixture rows off: workspace rows belong to a
+  // team account (KB-99)
   const { data: account, error: accountError } = await admin
     .from('accounts')
     .select('id')
+    .eq('is_personal_account', false)
     .limit(1)
     .maybeSingle();
 
