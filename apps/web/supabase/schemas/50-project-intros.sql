@@ -67,15 +67,7 @@ CREATE POLICY "project_intros_read" ON public.project_intros FOR SELECT
       SELECT 1 FROM public.projects p
       WHERE p.id = project_intros.project_id
       AND (
-        -- Personal account: user is the primary owner
-        EXISTS(
-          SELECT 1 FROM public.accounts a
-          WHERE a.id = p.account_id
-          AND a.primary_owner_user_id = auth.uid()
-          AND a.is_personal_account = true
-        )
-        OR
-        -- Team account: user has a role
+        -- Personal account: user is the primary owner-- Team account: user has a role
         public.has_role_on_account(p.account_id)
       )
     )

@@ -186,15 +186,7 @@ create policy "revenue_records_read" on public.revenue_records for select
       select pub.id from public.publishes pub
       join public.episodes e on e.id = pub.episode_id
       join public.projects p on p.id = e.project_id
-      where
-        exists(
-          select 1 from public.accounts a
-          where a.id = p.account_id
-          and a.primary_owner_user_id = auth.uid()
-          and a.is_personal_account = true
-        )
-        or
-        public.has_role_on_account(p.account_id)
+      wherepublic.has_role_on_account(p.account_id)
     )
   );
 

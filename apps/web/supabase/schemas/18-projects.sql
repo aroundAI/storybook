@@ -310,19 +310,11 @@ grant select, insert, update, delete on table public.project_members to authenti
 
 -- Projects policies
 -- Note: Avoid circular RLS dependencies between projects and project_members
+-- A role on the account. Personal accounts hold no projects (KB-99), and
+-- the personal-owner branch this had cost a scan of every personal account
+-- per read (KB-132).
 create policy "projects_read" on public.projects for select
-  to authenticated using (
-    -- Personal account: user is the primary owner
-    exists(
-      select 1 from public.accounts
-      where accounts.id = projects.account_id
-        and primary_owner_user_id = auth.uid()
-        and is_personal_account = true
-    )
-    or
-    -- Team account: user has a role
-    public.has_role_on_account(account_id)
-  );
+  to authenticated using (public.has_role_on_account(account_id));
 
 -- Team accounts only (KB-99): a project belongs to a team, which the
 -- `require_team_account` trigger enforces for every writer.
@@ -364,15 +356,7 @@ create policy "project_members_read" on public.project_members for select
       select 1 from public.projects p
       where p.id = project_members.project_id
       and (
-        -- Personal account check
-        exists(
-          select 1 from public.accounts a
-          where a.id = p.account_id
-          and a.primary_owner_user_id = auth.uid()
-          and a.is_personal_account = true
-        )
-        or
-        -- Team account check
+        -- Personal account check-- Team account check
         public.has_role_on_account(p.account_id)
       )
     )

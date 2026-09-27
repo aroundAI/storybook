@@ -113,15 +113,7 @@ create policy "captions_read" on public.captions for select
       select 1 from public.episodes e
       join public.projects p on p.id = e.project_id
       where e.id = captions.episode_id
-      and (
-        exists(
-          select 1 from public.accounts a
-          where a.id = p.account_id
-          and a.primary_owner_user_id = auth.uid()
-          and a.is_personal_account = true
-        )
-        or
-        public.has_role_on_account(p.account_id)
+      and public.has_role_on_account(p.account_id)
       )
     )
   );
@@ -171,15 +163,7 @@ create policy "caption_segments_read" on public.caption_segments for select
       join public.episodes e on e.id = c.episode_id
       join public.projects p on p.id = e.project_id
       where c.id = caption_segments.caption_id
-      and (
-        exists(
-          select 1 from public.accounts a
-          where a.id = p.account_id
-          and a.primary_owner_user_id = auth.uid()
-          and a.is_personal_account = true
-        )
-        or
-        public.has_role_on_account(p.account_id)
+      and public.has_role_on_account(p.account_id)
       )
     )
   );
