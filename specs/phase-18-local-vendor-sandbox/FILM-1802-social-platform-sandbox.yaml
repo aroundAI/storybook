@@ -3,7 +3,7 @@ title: "Social Platform Sandbox"
 phase: 18
 phase_name: "Local Vendor Sandbox"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: XL
 dependencies:
   - spec_id: "FILM-1801"
@@ -61,6 +61,25 @@ acceptance_criteria:
   - text: "No generated figure is a round sentinel, and each object's figures are mutually consistent"
     met: true
     evidence: "apps/vendor-sandbox/__tests__/social-realism.test.ts:97"
+remaining:
+  - criterion: "A user can connect each of the five platforms through the real connect and callback routes, with no real credentials"
+    reason: "not yet implemented: the OAuth endpoints arrive per platform in PRs B–E; PR A seeds the sandbox clients (apps/vendor-sandbox/src/social/seed-credentials.ts)"
+    closed_by: "FILM-1802"
+  - criterion: "Token refresh and disconnect work through the real code paths"
+    reason: "not yet implemented: the token model is in PR A (apps/vendor-sandbox/src/social/state.ts), the endpoints in PRs B–E"
+    closed_by: "FILM-1802"
+  - criterion: "Publishing through the app creates a sandbox object, and the next analytics sync reports on it — for YouTube, TikTok and Instagram; for Facebook, X and LinkedIn, which have no analytics sync (FILM-1720, FILM-1727), publishing creates the object and its status or permalink call returns it"
+    reason: "not yet implemented: PRs B–E"
+    closed_by: "FILM-1802"
+  - criterion: "Every response field the app reads is documented for that endpoint in the capability reference's field index, and every envelope field it ignores cites the vendor's documentation page — enforced by a test that parses the index"
+    reason: "the harness is in PR A (apps/vendor-sandbox/src/social/fields.ts, __tests__/social-fidelity.test.ts); each vendor PR registers its endpoints"
+    closed_by: "FILM-1802"
+  - criterion: "Every behaviour in §3's table has a sandbox test"
+    reason: "not yet implemented: PRs B–E"
+    closed_by: "FILM-1802"
+  - criterion: "A missing scope returns the vendor's authorisation error, not data"
+    reason: "the scope model is in PR A (SocialState.checkToken); each vendor's error shape is in PRs B–E"
+    closed_by: "FILM-1802"
 open_questions: []
 notes: |
   ## 1. Overview
