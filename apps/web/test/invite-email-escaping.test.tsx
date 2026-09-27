@@ -9,7 +9,8 @@ import { renderInviteEmail } from '@kit/email-templates';
  * written by any signed-in user, and the email goes to someone else's inbox.
  * They must arrive as text.
  */
-const TEAM = '<img src=x onerror=alert(1)>Acme</strong><a href="https://evil.test">';
+const TEAM =
+  '<img src=x onerror=alert(1)>Acme</strong><a href="https://evil.test">';
 const INVITER = '<script>alert(2)</script>Eve';
 
 describe('renderInviteEmail', () => {
