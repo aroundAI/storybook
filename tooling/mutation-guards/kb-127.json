@@ -1,0 +1,15 @@
+{
+  "feature": "KB-127",
+  "mutations": [
+    {
+      "name": "KB-127 R1 Refresh force-refreshes whatever connection id it is sent",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/connection-actions.ts",
+      "find": "      if (!connection) {\n        throw new ActionRefusal(CONNECTION_NOT_FOUND);\n      }\n\n      // Force refresh to handle cases where token is valid in DB but revoked on provider\n      const result = await ensureValidToken(connection.id, true);\n",
+      "replace": "      // Force refresh to handle cases where token is valid in DB but revoked on provider\n      const result = await ensureValidToken(connectionId, true);\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/connection-actions.test.ts",
+      "pattern": "refuses, as a value, a connection the caller cannot see"
+    }
+  ]
+}
