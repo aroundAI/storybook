@@ -465,3 +465,33 @@ describe('getSyncSchedule tiers', () => {
     expect(schedule.ageCategory).toBe('after_90_days');
   });
 });
+
+describe('Instagram audience rows (FILM-1712)', () => {
+  it('stores age and gender as separate dimensions, gender as TikTok names it', () => {
+    const rows = buildAudienceRows({
+      projectId: '550e8400-e29b-41d4-a716-446655440000',
+      videoId: 'ig-1',
+      platform: 'instagram',
+      analytics: {
+        audience: {
+          countries: [{ country: 'US', count: 60 }],
+          cities: [],
+          ages: [{ ageGroup: '25-34', count: 70 }],
+          genders: [
+            { gender: 'F', count: 55 },
+            { gender: 'M', count: 40 },
+            { gender: 'U', count: 5 },
+          ],
+        },
+      } as unknown as Parameters<typeof buildAudienceRows>[0]['analytics'],
+    });
+
+    expect(rows.map((row) => [row.dimension, row.key, row.views])).toEqual([
+      ['country', 'US', 60],
+      ['age_group', '25-34', 70],
+      ['gender', 'female', 55],
+      ['gender', 'male', 40],
+      ['gender', 'other', 5],
+    ]);
+  });
+});

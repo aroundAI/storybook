@@ -171,7 +171,7 @@ describe('TikTokAnalyticsProvider', () => {
       ]);
     });
 
-    it('reports what the Display API cannot measure as zero, not as data', async () => {
+    it('claims nothing the Display API does not return (FILM-1712)', async () => {
       // The endpoint has no save, watch-time or traffic-source field at all.
       // These were once read off the response as `save_count`,
       // `average_watch_time`, `total_play_time`, `full_video_watched_rate`
@@ -200,17 +200,12 @@ describe('TikTokAnalyticsProvider', () => {
         videoId: 'test-video-id',
       });
 
+      // Only what the request asked for. The rest is absent, not a 0.
       expect(result.totals).toEqual({
         views: 1000,
         likes: 50,
         comments: 25,
         shares: 10,
-        saves: 0,
-        profileViews: 0,
-        followersGained: 0,
-        averageWatchTime: 0,
-        totalPlayTime: 0,
-        fullVideoWatchedRate: 0,
       });
       expect(result.trafficSources).toEqual([]);
       expect(result.audience).toBeUndefined();

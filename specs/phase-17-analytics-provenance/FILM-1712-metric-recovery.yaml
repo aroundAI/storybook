@@ -3,7 +3,7 @@ title: "Metric Recovery"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: L
 dependencies:
   - spec_id: "FILM-1711"
@@ -23,52 +23,52 @@ summary: >
 acceptance_criteria:
   - text: "Every field added to a request appears in FILM-1721 with a citation"
     met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    reason: "part B: no field is added to a request yet"
   - text: "A test fails when a provider type declares a field the request does not ask for and when a request asks for a field FILM-1721 does not document"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "packages/features/content-analytics/__tests__/provider-result-fields.test.ts (a result claims only requested fields) with platform-field-names.test.ts (a request asks only for documented ones)"
   - text: "YouTube's daily query returns average view percentage, and the separate totals call is removed or justified"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "the daily query asks for averageViewPercentage; fetchTotals is gone and the period's totals are totalsFromDays over the daily rows, averages recomputed from their definitions (youtube-analytics.test.ts, 'totalsFromDays')"
   - text: "Instagram's reach reaches a column instead of extra_metrics"
     met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    reason: "part B: no field is added to a request yet"
   - text: "ig_reels_avg_watch_time and ig_reels_video_view_total_time are requested for REELS, and their unit is confirmed empirically before the value is stored"
     met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    reason: "part B: no field is added to a request yet"
   - text: "Instagram watch_time_seconds is a measurement or an honest null, never a hardcoded zero"
     met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    reason: "the daily column is null since KB-114 (#418), but normalizeAnalytics still writes a literal 0 into the cumulative snapshot; part B requests the real figure"
   - text: "reposts_count, saved_count and shares_count are requested for FEED and REELS"
     met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    reason: "part B: no field is added to a request yet"
   - text: "The aggregates are requested as Media node fields, and none is stored in views or labelled as views — they include boosted and crossposted placements, and total_views_count includes replays"
     met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    reason: "part B: no field is added to a request yet"
   - text: "The five TikTok field names that do not exist are recorded as such, so they are not re-added"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "docs/platform-capability-reference.md and FILM-1721 'Names that do not exist'; TikTokTotals no longer declares any of them (provider-result-fields.test.ts)"
   - text: "Instagram follows/profile_visits are recorded as unavailable for Reels rather than requested"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "removed from InstagramMetric and InstagramTotals, with the Reels limit stated at the type (instagram/types.ts); provider-result-fields.test.ts fails if a result claims them"
   - text: "No provider maps a never-requested field to a column as zero"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "provider-result-fields.test.ts: every totals field is read from a requested vendor field, no literals. Instagram's subscribers_gained is no longer follows ?? 0; its daily row stores null (KB-114)"
   - text: "A metric we do not have is distinguishable from one that is genuinely zero"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "unmeasured counters are null in ClickHouse and read as not measured in exports and series (KB-114, #418); providers no longer declare the fields (this spec)"
   - text: "input.metrics on the Instagram provider is honoured or removed"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "removed: the option was never read, and InstagramInsightsInput no longer declares it"
   - text: "Instagram's audience request sends timeframe and one demographic breakdown per call, as Meta documents; whether the current four-breakdown, no-timeframe call is rejected is confirmed against a live account first, and recorded in FILM-1721"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "four requests, one breakdown each (country, city, age, gender), timeframe this_month (all v20+ accepts; the app is on v23.0), rows read from the follower_demographics item Meta returns (instagram-audience.test.ts, red on the old call). The old call was not rejected in production (owner, 2026-09-27), but its parsers looked for items Meta never returns, so every audience list was empty; recorded in docs/platform-capability-reference.md"
   - text: "extra_metrics gains a reader or stops being written"
     met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    reason: "nothing reads it, but Instagram's reach lives only there; it keeps being written until part B gives reach a column, so that history is not lost in between"
   - text: "The capability matrix is updated in the same PR as each newly-ingested field, per FILM-1703's writer-binding test"
     met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    reason: "part B: no field is added to a request yet"
 open_questions: []
 feature:
   database: null

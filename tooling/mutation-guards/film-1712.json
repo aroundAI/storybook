@@ -1,0 +1,35 @@
+{
+  "feature": "FILM-1712",
+  "mutations": [
+    {
+      "name": "A1 the audience asks for every breakdown in one call again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "      AUDIENCE_BREAKDOWNS.map((breakdown) => this.fetchDemographic(breakdown)),\n",
+      "replace": "      [AUDIENCE_BREAKDOWNS.join(',') as (typeof AUDIENCE_BREAKDOWNS)[number]].map((breakdown) => this.fetchDemographic(breakdown)),\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/instagram-audience.test.ts",
+      "pattern": "asks once per breakdown"
+    },
+    {
+      "name": "F1 a TikTok result claims saves it never requested",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/tiktok/tiktok-analytics.ts",
+      "find": "          shares: video.share_count ?? 0,\n",
+      "replace": "          shares: video.share_count ?? 0,\n          saves: 0,\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/provider-result-fields.test.ts",
+      "pattern": ""
+    },
+    {
+      "name": "Y1 the period's average view duration is averaged, not recomputed",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
+      "find": "    averageViewDuration: views > 0 ? (estimatedMinutesWatched * 60) / views : 0,\n",
+      "replace": "    averageViewDuration: days.length\n      ? sum((day) => day.averageViewDuration) / days.length\n      : 0,\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/youtube-analytics.test.ts",
+      "pattern": "recomputes the averages from their definitions"
+    }
+  ]
+}

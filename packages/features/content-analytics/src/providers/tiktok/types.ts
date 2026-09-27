@@ -36,12 +36,9 @@ export interface TikTokTotals {
   likes: number;
   comments: number;
   shares: number;
-  saves: number;
-  profileViews: number;
-  followersGained: number;
-  averageWatchTime: number; // seconds
-  totalPlayTime: number; // seconds
-  fullVideoWatchedRate: number; // 0-1
+  // Nothing else: saves have no creator-auth surface, and watch time, play
+  // time, completion and profile views are Business API only (FILM-1730).
+  // A figure the request cannot return is not declared (FILM-1712).
 }
 
 /**

@@ -603,7 +603,7 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1709 | [platform-filter-completion](./phase-17-analytics-provenance/FILM-1709-platform-filter-completion.yaml) | DRAFT | L | FILM-1704, FILM-1707 |
 | FILM-1710 | [asset-duration](./phase-17-analytics-provenance/FILM-1710-asset-duration.yaml) | 🟡 PARTIAL | M | FILM-1711 (TikTok leg only) |
 | FILM-1711 | [analytics-authorisation](./phase-17-analytics-provenance/FILM-1711-analytics-authorisation.yaml) | 🟡 PARTIAL | L | FILM-1721 |
-| FILM-1712 | [metric-recovery](./phase-17-analytics-provenance/FILM-1712-metric-recovery.yaml) | DRAFT | L | FILM-1711, FILM-1721 |
+| FILM-1712 | [metric-recovery](./phase-17-analytics-provenance/FILM-1712-metric-recovery.yaml) | PARTIAL | L | FILM-1711, FILM-1721 |
 | FILM-1713 | [normalised-measures-velocity](./phase-17-analytics-provenance/FILM-1713-normalised-measures-velocity.yaml) | PARTIAL | M | FILM-1722 (registry, on main) |
 | FILM-1714 | [signal-model](./phase-17-analytics-provenance/FILM-1714-signal-model.yaml) | DRAFT | M | FILM-1703, FILM-1713, FILM-1716 |
 | FILM-1715 | [self-benchmarking](./phase-17-analytics-provenance/FILM-1715-self-benchmarking.yaml) | DRAFT | M | FILM-1703, FILM-1713, FILM-1716, FILM-1721 |
@@ -722,11 +722,11 @@ reason when not.
 | 14. Edit Suite v2 | 1 | 0 | 0 | 0 | 1 | 0 |
 | 15. Deep Analytics | 11 | 0 | 4 | 0 | 2 | 5 |
 | 16. Workbook Parity | 17 | 0 | 2 | 0 | 0 | 15 |
-| 17. Analytics Provenance | 30 | 18 | 5 | 2 | 0 | 5 |
+| 17. Analytics Provenance | 30 | 17 | 6 | 2 | 0 | 5 |
 | 18. Vendor Sandbox | 6 | 2 | 3 | 0 | 0 | 1 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **233** | **20** | **77** | **2** | **53** | **81** |
+| **TOTAL** | **233** | **19** | **78** | **2** | **53** | **81** |
 
 No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose PR is open keeps the status it has on `main`.
 
@@ -741,7 +741,7 @@ No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose 
 | Edit Suite v2 (Ph 14) | 1 | 0 | 0 | 1 | 0 |
 | Deep Analytics (Ph 15) | 11 | 5 | 4 | 2 | 0 |
 | Workbook Parity (Ph 16) | 17 | 15 | 2 | 0 | 0 |
-| Provenance & Signal (Ph 17) | 30 | 5 | 5 | 0 | 20 |
+| Provenance & Signal (Ph 17) | 30 | 5 | 6 | 0 | 19 |
 | Vendor Sandbox (Ph 18) | 6 | 1 | 3 | 0 | 2 |
 | Public Sharing | 2 | 1 | 1 | 0 | 0 |
 

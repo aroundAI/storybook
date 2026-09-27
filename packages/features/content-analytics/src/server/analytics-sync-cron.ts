@@ -906,7 +906,10 @@ function normalizeAnalytics(
         // Not measured as zero: Instagram documents Reels watch time and we
         // never request it. `not_ingested` in CAPABILITY_MATRIX; FILM-1712.
         watch_time_seconds: 0,
-        subscribers_gained: data.totals.follows ?? 0,
+        // Not measured: Meta offers no `follows` for Reels, and we never ask
+        // for it (FILM-1712). The cumulative snapshot holds a number; the
+        // day's row stores null (KB-114, buildSnapshotDeltaRow).
+        subscribers_gained: 0,
         revenue_cents: 0,
         ad_revenue_cents: 0,
         red_revenue_cents: 0,

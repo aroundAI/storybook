@@ -143,7 +143,6 @@ export class YouTubeAnalyticsProvider {
     try {
       // Fetch metrics in parallel for optimal performance
       const [
-        totals,
         revenue,
         dailyData,
         retention,
@@ -155,7 +154,6 @@ export class YouTubeAnalyticsProvider {
         cityGeography,
         subscribedStatus,
       ] = await Promise.all([
-        this.fetchTotals(videoId, startDateStr, endDateStr),
         includeRevenue
           ? this.fetchRevenue(videoId, startDateStr, endDateStr)
           : Promise.resolve(noRevenue('scope_missing')),
@@ -173,7 +171,7 @@ export class YouTubeAnalyticsProvider {
       return {
         videoId,
         period: { startDate: startDateStr, endDate: endDateStr },
-        totals: { ...totals, ...revenue.totals },
+        totals: { ...totalsFromDays(dailyData), ...revenue.totals },
         revenueAccess: revenue.access,
         dailyData,
         retention,
@@ -194,51 +192,6 @@ export class YouTubeAnalyticsProvider {
       }
       throw error;
     }
-  }
-
-  /**
-   * Fetches aggregate totals for the date range. No revenue: those metrics
-   * need a different scope and are fetched by `fetchRevenue`, so that a
-   * channel without it keeps its totals.
-   */
-  private async fetchTotals(
-    videoId: string,
-    startDate: string,
-    endDate: string,
-  ): Promise<Omit<YouTubeTotals, keyof RevenueTotals>> {
-    const response = await this.youtubeAnalytics.reports.query({
-      ids: 'channel==MINE',
-      startDate,
-      endDate,
-      metrics: [
-        'views',
-        'likes',
-        'dislikes',
-        'comments',
-        'shares',
-        'estimatedMinutesWatched',
-        'averageViewDuration',
-        'averageViewPercentage',
-        'subscribersGained',
-        'subscribersLost',
-      ].join(','),
-      filters: `video==${videoId}`,
-    });
-
-    const row = (response.data.rows?.[0] as number[] | undefined) ?? [];
-
-    return {
-      views: row[0] ?? 0,
-      likes: row[1] ?? 0,
-      dislikes: row[2] ?? 0,
-      comments: row[3] ?? 0,
-      shares: row[4] ?? 0,
-      estimatedMinutesWatched: row[5] ?? 0,
-      averageViewDuration: row[6] ?? 0,
-      averageViewPercentage: row[7] ?? 0,
-      subscribersGained: row[8] ?? 0,
-      subscribersLost: row[9] ?? 0,
-    };
   }
 
   /**
@@ -755,4 +708,40 @@ export function createYouTubeAnalyticsProvider(
   accessToken: string,
 ): YouTubeAnalyticsProvider {
   return new YouTubeAnalyticsProvider(accessToken);
+}
+
+/**
+ * The period's non-revenue totals, from its days (FILM-1712).
+ *
+ * The daily query carries every metric the totals query did (KB-94 added
+ * the last three), so asking YouTube again for the period was a second read
+ * of the same figures. Counts are summed; the two averages are recomputed
+ * from their definitions rather than averaged: duration is minutes watched ×
+ * 60 / views, and percentage viewed is weighted by each day's views. A period
+ * with no views has no average, and reads 0 as before.
+ */
+export function totalsFromDays(
+  days: readonly YouTubeDailyMetrics[],
+): Omit<YouTubeTotals, keyof RevenueTotals> {
+  const sum = (pick: (day: YouTubeDailyMetrics) => number) =>
+    days.reduce((total, day) => total + pick(day), 0);
+
+  const views = sum((day) => day.views);
+  const estimatedMinutesWatched = sum((day) => day.estimatedMinutesWatched);
+
+  return {
+    views,
+    likes: sum((day) => day.likes),
+    dislikes: sum((day) => day.dislikes),
+    comments: sum((day) => day.comments),
+    shares: sum((day) => day.shares),
+    estimatedMinutesWatched,
+    averageViewDuration: views > 0 ? (estimatedMinutesWatched * 60) / views : 0,
+    averageViewPercentage:
+      views > 0
+        ? sum((day) => day.averageViewPercentage * day.views) / views
+        : 0,
+    subscribersGained: sum((day) => day.subscribersGained),
+    subscribersLost: sum((day) => day.subscribersLost),
+  };
 }

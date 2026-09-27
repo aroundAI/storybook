@@ -15,6 +15,12 @@ import type {
 
 const GRAPH_API_BASE = META_GRAPH_BASE;
 
+/** Meta's `follower_demographics` breakdowns, one per request (FILM-1712) */
+const AUDIENCE_BREAKDOWNS = ['country', 'city', 'age', 'gender'] as const;
+
+/** Required; `this_month` and `this_week` are all v20.0+ accepts */
+const AUDIENCE_TIMEFRAME = 'this_month';
+
 /**
  * Error thrown when the Instagram connection is missing the insights scope.
  * This occurs when users connected their Instagram account before analytics
@@ -144,8 +150,6 @@ export class InstagramInsightsProvider {
           comments: metrics.comments ?? 0,
           saved: metrics.saved ?? 0,
           shares: metrics.shares ?? 0,
-          profileVisits: metrics.profile_visits ?? 0,
-          follows: metrics.follows ?? 0,
         },
         audience,
       };
@@ -190,11 +194,52 @@ export class InstagramInsightsProvider {
   }
 
   /**
-   * Fetches account-level audience demographics
+   * Account-level audience demographics (FILM-1712).
+   *
+   * Meta documents `follower_demographics` as one breakdown per request, with
+   * a required `timeframe`; from v20.0 only `this_month` and `this_week`
+   * remain. Each breakdown is its own call, so one refused call loses only
+   * its own list. The result is one `follower_demographics` item whose first
+   * breakdown holds the rows.
    */
   private async fetchAccountAudience(): Promise<
     InstagramAudienceData | undefined
   > {
+    const [countries, cities, ages, genders] = await Promise.all(
+      AUDIENCE_BREAKDOWNS.map((breakdown) => this.fetchDemographic(breakdown)),
+    );
+
+    if (!countries && !cities && !ages && !genders) {
+      return undefined;
+    }
+
+    const rows = (results: DemographicResult[] | undefined) =>
+      (results ?? [])
+        .map((result) => ({
+          value: result.dimension_values?.[0] ?? '',
+          count: result.value ?? 0,
+        }))
+        .filter((row) => row.value !== '')
+        .sort((a, b) => b.count - a.count);
+
+    return {
+      countries: rows(countries).map(({ value, count }) => ({
+        country: value,
+        count,
+      })),
+      cities: rows(cities).map(({ value, count }) => ({ city: value, count })),
+      ages: rows(ages).map(({ value, count }) => ({ ageGroup: value, count })),
+      genders: rows(genders).map(({ value, count }) => ({
+        gender: value,
+        count,
+      })),
+    };
+  }
+
+  /** One breakdown of `follower_demographics`, or undefined when refused */
+  private async fetchDemographic(
+    breakdown: (typeof AUDIENCE_BREAKDOWNS)[number],
+  ): Promise<DemographicResult[] | undefined> {
     try {
       const response = await fetch(
         `${GRAPH_API_BASE}/${this.instagramAccountId}/insights?` +
@@ -202,7 +247,8 @@ export class InstagramInsightsProvider {
             metric: 'follower_demographics',
             period: 'lifetime',
             metric_type: 'total_value',
-            breakdown: 'country,city,age,gender',
+            timeframe: AUDIENCE_TIMEFRAME,
+            breakdown,
             access_token: this.accessToken,
           }),
       );
@@ -219,13 +265,9 @@ export class InstagramInsightsProvider {
         return undefined;
       }
 
-      const demographics = data.data ?? [];
+      const item = data.data?.find((d) => d.name === 'follower_demographics');
 
-      return {
-        countries: this.parseCountryBreakdown(demographics),
-        cities: this.parseCityBreakdown(demographics),
-        genderAge: this.parseGenderAgeBreakdown(demographics),
-      };
+      return item?.total_value?.breakdowns?.[0]?.results ?? [];
     } catch {
       return undefined;
     }
@@ -359,66 +401,6 @@ export class InstagramInsightsProvider {
       {} as Record<string, number>,
     );
   }
-
-  /**
-   * Parses country breakdown data
-   */
-  private parseCountryBreakdown(
-    data: DemographicDataItem[],
-  ): Array<{ country: string; count: number }> {
-    const metric = data.find((d) => d.name === 'country');
-    if (!metric?.total_value?.breakdowns?.[0]?.results) {
-      return [];
-    }
-
-    return metric.total_value.breakdowns[0].results
-      .map((result) => ({
-        country: result.dimension_values?.[0] ?? '',
-        count: result.value ?? 0,
-      }))
-      .sort((a, b) => b.count - a.count);
-  }
-
-  /**
-   * Parses city breakdown data
-   */
-  private parseCityBreakdown(
-    data: DemographicDataItem[],
-  ): Array<{ city: string; count: number }> {
-    const metric = data.find((d) => d.name === 'city');
-    if (!metric?.total_value?.breakdowns?.[0]?.results) {
-      return [];
-    }
-
-    return metric.total_value.breakdowns[0].results
-      .map((result) => ({
-        city: result.dimension_values?.[0] ?? '',
-        count: result.value ?? 0,
-      }))
-      .sort((a, b) => b.count - a.count);
-  }
-
-  /**
-   * Parses gender/age breakdown data
-   */
-  private parseGenderAgeBreakdown(
-    data: DemographicDataItem[],
-  ): Array<{ dimension: string; count: number }> {
-    // Gender/age comes as combined breakdown
-    const metric = data.find(
-      (d) => d.name === 'age' || d.name === 'gender' || d.name === 'age,gender',
-    );
-    if (!metric?.total_value?.breakdowns?.[0]?.results) {
-      return [];
-    }
-
-    return metric.total_value.breakdowns[0].results
-      .map((result) => ({
-        dimension: result.dimension_values?.join('.') ?? '',
-        count: result.value ?? 0,
-      }))
-      .sort((a, b) => b.count - a.count);
-  }
 }
 
 /**
@@ -433,15 +415,15 @@ interface InsightsDataItem {
 /**
  * Internal type for demographic data items
  */
+interface DemographicResult {
+  dimension_values?: string[];
+  value?: number;
+}
+
 interface DemographicDataItem {
   name: string;
   total_value?: {
-    breakdowns?: Array<{
-      results?: Array<{
-        dimension_values?: string[];
-        value?: number;
-      }>;
-    }>;
+    breakdowns?: Array<{ results?: DemographicResult[] }>;
   };
 }
 

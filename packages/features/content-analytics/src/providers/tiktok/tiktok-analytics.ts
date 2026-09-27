@@ -187,17 +187,10 @@ export class TikTokAnalyticsProvider {
           likes: video.like_count ?? 0,
           comments: video.comment_count ?? 0,
           shares: video.share_count ?? 0,
-          // Everything below is structurally zero on this endpoint, not
-          // measured as zero. The Display API returns none of it; saves have no
-          // creator-auth surface at all, and the rest live on the Business API,
-          // which needs a separate app and a TikTok Business account.
+          // Nothing else is returned by this endpoint: saves have no
+          // creator-auth surface, and watch time, completion and profile
+          // views live on the Business API (FILM-1730).
           // docs/platform-capability-reference.md
-          saves: 0,
-          profileViews: 0,
-          followersGained: 0,
-          averageWatchTime: 0,
-          totalPlayTime: 0,
-          fullVideoWatchedRate: 0,
         },
         dailyData: [], // TikTok doesn't provide per-video daily breakdown
         audience: undefined,

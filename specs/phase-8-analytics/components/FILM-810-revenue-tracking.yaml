@@ -97,7 +97,7 @@ test_plan:
   integration:
     - text: "Test YouTube Analytics API revenue fetch"
       met: true
-      evidence: "`packages/features/content-analytics/__tests__/youtube-analytics.test.ts:195` (mocked API)"
+      evidence: "`packages/features/content-analytics/__tests__/youtube-analytics.test.ts:223` (mocked API)"
     - text: "Test manual revenue entry flow"
       met: true
       evidence: "`apps/e2e/tests/revenue/revenue.spec.ts:16`"
