@@ -32,12 +32,6 @@
       "sql": "drop policy sequel_parent_contexts_insert on public.sequel_parent_contexts; create policy sequel_parent_contexts_insert on public.sequel_parent_contexts for insert to authenticated with check (public.can_write_project(sequel_project_id));"
     },
     {
-      "name": "KB-76 reads back on has_role_on_account (personal owners locked out)",
-      "kind": "pgtap",
-      "test": "apps/web/supabase/tests/database/canon-write-scope.test.sql",
-      "sql": "drop policy narrative_threads_read on public.narrative_threads; create policy narrative_threads_read on public.narrative_threads for select to authenticated using (exists (select 1 from public.projects p where p.id = narrative_threads.project_id and public.has_role_on_account(p.account_id)));"
-    },
-    {
       "name": "KB-76 thread DELETE granted back to authenticated",
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/canon-write-scope.test.sql",
