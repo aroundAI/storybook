@@ -51,7 +51,7 @@ acceptance_criteria:
     evidence: "apps/vendor-sandbox/__tests__/social-growth.test.ts:64"
   - text: "The ledger records every request and response"
     met: true
-    evidence: "apps/vendor-sandbox/src/social/server.ts:146 (every social call, filterable by vendor and object, credentials redacted)"
+    evidence: "apps/vendor-sandbox/src/social/server.ts:151 (every social call, filterable by vendor and object, credentials redacted)"
   - text: "The sandbox binds to loopback and is never part of a production build or deploy"
     met: true
     evidence: "apps/vendor-sandbox/src/http.ts:8; apps/vendor-sandbox/__tests__/social-boundaries.test.ts:37"
