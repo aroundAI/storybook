@@ -95,34 +95,43 @@ describe('starting and stopping the sandbox', () => {
       const base = 47_000 + Math.floor(Math.random() * 900) * 20;
       const env = { ...process.env, SANDBOX_PORT_BASE: String(base) };
 
-      // Piped through cat, as `local-env.sh up | tee log` would be: a
-      // background job holding the pipe makes this time out.
-      const started = spawnSync(
-        'bash',
-        ['-c', `. "${LIB}" && start_sandbox "${root}" | cat`],
-        { env, timeout: 60_000 },
-      );
-      expect(
-        started.error,
-        'start_sandbox did not return while its output was piped',
-      ).toBeUndefined();
-      expect(started.stdout.toString()).toMatch(/\[sandbox\] seed \d+/);
+      try {
+        // Piped through cat, as `local-env.sh up | tee log` would be: a
+        // background job holding the pipe makes this time out.
+        const started = spawnSync(
+          'bash',
+          ['-c', `. "${LIB}" && start_sandbox "${root}" | cat`],
+          { env, timeout: 60_000 },
+        );
+        expect(
+          started.error,
+          'start_sandbox did not return while its output was piped',
+        ).toBeUndefined();
+        expect(started.stdout.toString()).toMatch(/\[sandbox\] seed \d+/);
 
-      const pid = Number(readFileSync(join(root, '.sandbox/pid'), 'utf8'));
-      expect(
-        spawnSync('ps', [
-          '-p',
-          String(pid),
-          '-o',
-          'command=',
-        ]).stdout.toString(),
-      ).toMatch(/tsx/);
+        const pid = Number(readFileSync(join(root, '.sandbox/pid'), 'utf8'));
+        expect(
+          spawnSync('ps', [
+            '-p',
+            String(pid),
+            '-o',
+            'command=',
+          ]).stdout.toString(),
+        ).toMatch(/tsx/);
 
-      spawnSync('bash', ['-c', `. "${LIB}" && stop_sandbox "${root}"`], {
-        env,
-      });
-      spawnSync('sleep', ['1']);
-      expect(spawnSync('kill', ['-0', String(pid)]).status).not.toBe(0);
+        spawnSync('bash', ['-c', `. "${LIB}" && stop_sandbox "${root}"`], {
+          env,
+        });
+        spawnSync('sleep', ['1']);
+        expect(spawnSync('kill', ['-0', String(pid)]).status).not.toBe(0);
+      } finally {
+        // A run that fails (or a guard's mutation of stop) must not leave a
+        // sandbox on the grid for a later run's random base to land on
+        spawnSync('bash', [
+          '-c',
+          `lsof -ti tcp:${base} -sTCP:LISTEN | xargs kill 2>/dev/null; true`,
+        ]);
+      }
     },
   );
 
