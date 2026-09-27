@@ -87,7 +87,7 @@ test_plan:
   integration:
     - text: "Test with mocked YouTube API"
       met: true
-      evidence: "`packages/features/content-analytics/__tests__/youtube-analytics.test.ts:109`"
+      evidence: "`packages/features/content-analytics/__tests__/youtube-analytics.test.ts:110`"
     - text: "Test error handling"
       met: true
       evidence: "`packages/features/content-analytics/__tests__/youtube-analytics.test.ts:614`"
