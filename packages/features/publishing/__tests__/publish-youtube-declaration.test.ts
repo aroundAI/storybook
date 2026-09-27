@@ -38,6 +38,11 @@ vi.mock('../src/providers/youtube', () => ({
 const CONNECTION = '00000000-0000-4000-8000-0000000000c1';
 const EPISODE = '00000000-0000-4000-8000-0000000000e1';
 const ACCOUNT = '00000000-0000-4000-8000-0000000000a1';
+const STORAGE = 'https://abcdefghijklmnop.supabase.co';
+const OWN_VIDEO = `${STORAGE}/storage/v1/object/public/project-assets/episodes/${EPISODE}/videos/en-1.mp4`;
+
+vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', STORAGE);
+vi.stubEnv('STORAGE_PROVIDER', '');
 
 let channel: {
   id: string;
@@ -66,7 +71,8 @@ function table(name: string) {
             final_video_url: null,
             thumbnail_url: null,
             project_id: 'p',
-            localized_videos: { en: 'https://cdn.example.com/en.mp4' },
+            // An episode's own upload: a publish sends nothing else (KB-123)
+            localized_videos: { en: OWN_VIDEO },
             shorts_groups: [],
             public_slug: 'slug',
             title: 'Episode',

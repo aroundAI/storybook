@@ -1,0 +1,125 @@
+{
+  "feature": "KB-123 (an episode's video can name another's file)",
+  "mutations": [
+    {
+      "name": "KB-123 save rule accepts any new video",
+      "kind": "unit",
+      "file": "packages/features/storage/src/episode-video.ts",
+      "find": "      !ownedEpisodeVideoUpload(url, episodeId, env),",
+      "replace": "      false,",
+      "cwd": "packages/features/storage",
+      "test": "__tests__/episode-video.test.ts",
+      "pattern": "refuses another episode"
+    },
+    {
+      "name": "KB-123 updatePublishedVideo checks nothing",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/server/mutations/publish-actions.ts",
+      "find": "      next: [videoUrl],",
+      "replace": "      next: [],",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/episode-video-save.test.ts",
+      "pattern": "refuses another episode"
+    },
+    {
+      "name": "KB-123 updateShortsGroups checks nothing",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/server/mutations/publish-actions.ts",
+      "find": "      next: shortsGroups.flatMap((group) => Object.values(group.videos)),",
+      "replace": "      next: [],",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/episode-video-save.test.ts",
+      "pattern": "refuses a group"
+    },
+    {
+      "name": "KB-123 publish sends any project's folder",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/owned-episode-video.ts",
+      "find": "    return target.projectId === scope.projectId ? url : null;",
+      "replace": "    return url;",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/owned-episode-video.test.ts",
+      "pattern": "another project"
+    },
+    {
+      "name": "KB-123 publish sends any episode's folder",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/owned-episode-video.ts",
+      "find": "  return (await projectOfEpisode(target.episodeId)) === scope.projectId",
+      "replace": "  return true",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/owned-episode-video.test.ts",
+      "pattern": "episode of another project"
+    },
+    {
+      "name": "KB-123 publish ignores the storage host",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/owned-episode-video.ts",
+      "find": "  const key = prefix ? keyUnderPrefix(prefix, url) : null;",
+      "replace": "  const key = url.split('/project-assets/')[1] ?? null;",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/owned-episode-video.test.ts",
+      "pattern": "another host"
+    },
+    {
+      "name": "KB-123 worker stops checking the job's video",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/index.ts",
+      "find": "  job.videoUrl = await ownedJobVideo(job);\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/episode-video-paths.test.ts",
+      "pattern": "publish-worker"
+    },
+    {
+      "name": "KB-123 retry uploads the stored video unchecked",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "          videoUrl,\n          title: publish.title ?? '',",
+      "replace": "          videoUrl: episode.final_video_url,\n          title: publish.title ?? '',",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/episode-video-paths.test.ts",
+      "pattern": "retry sends"
+    },
+    {
+      "name": "KB-123 the Lambda reads localized_videos itself again",
+      "kind": "unit",
+      "file": "apps/web/lambda/scheduled-publish/index.ts",
+      "find": "  // One resolver for every publish path (KB-123), with this path's precedence\n  const resolved = resolveEpisodeVideo(episode, {",
+      "replace": "  if (episode.localized_videos?.[lang]) return episode.localized_videos[lang];\n  // One resolver for every publish path (KB-123), with this path's precedence\n  const resolved = resolveEpisodeVideo(episode, {",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/episode-video-paths.test.ts",
+      "pattern": "only episode-video"
+    },
+    {
+      "name": "KB-123 publish-now sends the resolved video unchecked",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "          const videoUrl = await ownedEpisodeVideo(\n            resolved.url,",
+      "replace": "          const videoUrl = await (async (url: string | null, ..._rest: unknown[]) => url)(\n            resolved.url,",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/episode-video-paths.test.ts",
+      "pattern": "publish-actions"
+    },
+    {
+      "name": "KB-123 the scheduled job sends its video unchecked",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/jobs/process-scheduled-publishes.ts",
+      "find": "      const ownedVideoUrl = await ownedEpisodeVideo(\n        videoUrl,",
+      "replace": "      const ownedVideoUrl = await (async (url: string | null, ..._rest: unknown[]) => url)(\n        videoUrl,",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/episode-video-paths.test.ts",
+      "pattern": "process-scheduled-publishes"
+    },
+    {
+      "name": "KB-123 the scheduled Lambda queues its video unchecked",
+      "kind": "unit",
+      "file": "apps/web/lambda/scheduled-publish/index.ts",
+      "find": "      ? await ownedEpisodeVideo(\n          videoUrl,",
+      "replace": "      ? await (async (url: string | null, ..._rest: unknown[]) => url)(\n          videoUrl,",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/episode-video-paths.test.ts",
+      "pattern": "scheduled-publish"
+    }
+  ]
+}

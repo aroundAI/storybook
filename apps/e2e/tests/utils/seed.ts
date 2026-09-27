@@ -27,6 +27,15 @@ export function uniqueStamp() {
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? 'http://127.0.0.1:55321';
 
 /**
+ * A video URL in the episode's own videos folder on the test stack's storage,
+ * the only kind a publish sends (KB-123). The file need not exist: specs
+ * that seed one stop before anything is fetched.
+ */
+export function episodeVideoUrl(episodeId: string, language = 'en') {
+  return `${SUPABASE_URL}/storage/v1/object/public/project-assets/episodes/${episodeId}/videos/${language}-1.mp4`;
+}
+
+/**
  * Local Supabase's well-known demo keys. These are the published values
  * every `supabase start` produces, not secrets — CI overrides them, and a
  * run against anything but a local stack must.

@@ -4,6 +4,7 @@ import { mkdirSync } from 'node:fs';
 
 import {
   type SeededTeam,
+  episodeVideoUrl,
   readRows,
   seedEpisodeWithShot,
   seedProject,
@@ -56,7 +57,7 @@ async function seedUndeclaredChannel(page: Page): Promise<Fixture> {
   const { episodeId, slug } = await seedEpisodeWithShot(project.id);
 
   await updateRows('episodes', `id=eq.${episodeId}`, {
-    localized_videos: { en: 'https://cdn.example.com/kb30-episode-en.mp4' },
+    localized_videos: { en: episodeVideoUrl(episodeId) },
   });
 
   const connectionId = await seedYouTubeConnection(

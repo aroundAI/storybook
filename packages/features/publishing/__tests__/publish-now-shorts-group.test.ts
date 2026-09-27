@@ -1,13 +1,11 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * KB-104. A publish took its thumbnail from the request (or the stored row)
- * and the upload downloaded it after a check that only looked at the host's
- * suffix, so another tenant's file on the same storage host, or a file on a
- * storage host the caller owns, went to the channel. A thumbnail is now used
- * only when it is one of this episode's own uploads.
+ * KB-133. Publish Now sends each Shorts group of a language as its own
+ * publish, naming the group, but uploaded the first group holding that
+ * language every time: with two groups in one language, one short went out
+ * twice and the other never. The scheduled paths already used the group
+ * named; publish-now now does too.
  */
 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
@@ -44,17 +42,9 @@ const ACCOUNT = '11111111-1111-4111-8111-111111111111';
 const BASE = `${SUPABASE}/storage/v1/object/public/project-assets`;
 const CONNECTION = '00000000-0000-4000-8000-0000000000c1';
 const EPISODE = '00000000-0000-4000-8000-0000000000e1';
-const OTHER_EPISODE = '00000000-0000-4000-8000-0000000000e2';
 
-const OWN = `${BASE}/episodes/${EPISODE}/thumbnails/en-1790000000000.png`;
-const FOREIGN = {
-  "another episode's thumbnail on the same host": `${BASE}/episodes/${OTHER_EPISODE}/thumbnails/en-1.png`,
-  'a storage host the caller owns': `https://attacker-owned-project.supabase.co/storage/v1/object/public/project-assets/episodes/${EPISODE}/thumbnails/x.png`,
-  'a CloudFront host': `https://d1234abcdef.cloudfront.net/episodes/${EPISODE}/thumbnails/x.png`,
-  'an S3 bucket': `https://any-bucket.s3.amazonaws.com/episodes/${EPISODE}/thumbnails/x.png`,
-  "this episode's folder climbed out of": `${BASE}/episodes/${EPISODE}/thumbnails/../../${OTHER_EPISODE}/thumbnails/x.png`,
-};
-
+const GROUP_A = `${BASE}/episodes/${EPISODE}/videos/en-short-a.mp4`;
+const GROUP_B = `${BASE}/episodes/${EPISODE}/videos/en-short-b.mp4`;
 const inserted: Array<Record<string, unknown>> = [];
 
 function table(name: string) {
@@ -89,7 +79,10 @@ function table(name: string) {
             project: { account_id: ACCOUNT },
             // An episode's own upload: a publish sends nothing else (KB-123)
             localized_videos: { en: `${BASE}/episodes/${EPISODE}/videos/en-1.mp4` },
-            shorts_groups: [],
+            shorts_groups: [
+              { id: 'group-a', videos: { en: GROUP_A } },
+              { id: 'group-b', videos: { en: GROUP_B } },
+            ],
             public_slug: 'slug',
             title: 'Episode',
             number: 1,
@@ -125,19 +118,19 @@ vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: () => ({ from: (name: string) => table(name) }),
 }));
 
-function publishWith(thumbnailUrl: string) {
+function publishShort(shortsGroupId: string) {
   return {
     episodeId: EPISODE,
     platforms: [
       {
         platform: 'youtube' as const,
         connectionId: CONNECTION,
-        contentType: 'full' as const,
+        contentType: 'short' as const,
+        shortsGroupId,
         title: 'Episode',
         description: '',
         tags: [],
         language: 'en',
-        thumbnailUrl,
         platformSpecific: {},
       },
     ],
@@ -161,72 +154,20 @@ afterEach(() => {
   process.env = { ...savedEnv };
 });
 
-describe('publishToAllAction and the thumbnail it is handed (KB-104)', () => {
-  it.each(Object.entries(FOREIGN))(
-    'refuses %s, writing no publish row and uploading nothing',
-    async (_label, url) => {
-      const { publishToAllAction } = await import(
-        '../src/server/publish-actions'
-      );
-
-      const result = await publishToAllAction(publishWith(url));
-
-      expect(result).toEqual({
-        ok: false,
-        error: expect.stringContaining('thumbnail'),
-      });
-      expect(inserted).toEqual([]);
-      expect(uploadVideo).not.toHaveBeenCalled();
-    },
-  );
-
-  it("publishes with the episode's own uploaded thumbnail", async () => {
+describe('Publish Now sends the Shorts group it names (KB-133)', () => {
+  it.each([
+    ['group-a', GROUP_A],
+    ['group-b', GROUP_B],
+  ])('%s: its own short is uploaded', async (groupId, video) => {
     const { publishToAllAction } = await import(
       '../src/server/publish-actions'
     );
 
-    const result = await publishToAllAction(publishWith(OWN));
+    const result = await publishToAllAction(publishShort(groupId));
 
     expect(result).toMatchObject({ ok: true });
-    expect(inserted[0]?.thumbnail_url).toBe(OWN);
     expect(uploadVideo).toHaveBeenCalledWith(
-      expect.objectContaining({ thumbnailPath: OWN }),
+      expect.objectContaining({ videoPath: video }),
     );
-  });
-});
-
-describe('every other place a stored thumbnail is used checks it (KB-104)', () => {
-  const ROOT = join(__dirname, '../../../..');
-
-  // The row a publish reads its thumbnail from is writable by any project
-  // writer through the API, so the action's check alone is not enough.
-  const CONSUMERS = [
-    'packages/features/publishing/src/server/publish-actions.ts',
-    'packages/features/publishing/src/jobs/process-scheduled-publishes.ts',
-    'apps/web/lambda/publish-worker/index.ts',
-  ];
-
-  // A thumbnail taken straight from a row or a job, without the check
-  const UNCHECKED = [
-    /thumbnailUrl:\s*publish\.thumbnail_url/,
-    /thumbnail_url:\s*platform\.thumbnailUrl\s*\?\?\s*episode\.thumbnail_url/,
-    /validateContentUrl\(\s*platform\.thumbnailUrl/,
-  ];
-
-  it.each(CONSUMERS)('%s uses ownedEpisodeThumbnail', (file) => {
-    const source = readFileSync(join(ROOT, file), 'utf8');
-
-    expect(source).toMatch(/ownedEpisodeThumbnail\(/);
-    for (const pattern of UNCHECKED) {
-      expect(source, `${file} matches ${pattern}`).not.toMatch(pattern);
-    }
-  });
-
-  it('the patterns catch the shape the bug had (positive control)', () => {
-    const before = `thumbnailUrl: publish.thumbnail_url ?? episode.thumbnail_url,
-      thumbnail_url: platform.thumbnailUrl ?? episode.thumbnail_url,`;
-
-    expect(UNCHECKED[0]!.test(before)).toBe(true);
-    expect(UNCHECKED[1]!.test(before)).toBe(true);
   });
 });

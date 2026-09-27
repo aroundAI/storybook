@@ -3,6 +3,14 @@ import 'server-only';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
+import {
+  SCHEDULED_JOB_PRECEDENCE,
+  resolveEpisodeVideo,
+} from '../lib/episode-video';
+import {
+  EPISODE_VIDEO_PUBLISH_REFUSAL,
+  ownedEpisodeVideo,
+} from '../lib/owned-episode-video';
 import { ownedEpisodeThumbnail } from '../lib/owned-thumbnail';
 import { ensureValidToken } from '../lib/token-refresh';
 import type { Platform } from '../lib/types';
@@ -39,6 +47,7 @@ interface ScheduledPublish {
   language: string | null;
   content_type: string | null;
   episodes: {
+    project_id: string;
     final_video_url: string | null;
     thumbnail_url: string | null;
     localized_videos: Record<string, string> | null;
@@ -151,7 +160,7 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
       metadata,
       language,
       content_type,
-      episodes(final_video_url, thumbnail_url, localized_videos, shorts_groups)
+      episodes(final_video_url, thumbnail_url, localized_videos, shorts_groups, project_id)
     `,
         )
         .eq('status', 'scheduled')
@@ -280,58 +289,23 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
         'Resolving video URL for scheduled publish',
       );
 
-      // Get shorts video URL from groups (first group that has this language)
-      const getShortsVideoUrl = (language: string): string | null => {
-        for (let i = 0; i < shortsGroups.length; i++) {
-          const group = shortsGroups[i];
+      // One resolver for every publish path (KB-123), with this path's precedence
+      const resolved = resolveEpisodeVideo(episode, {
+        language: lang,
+        short: isShort,
+        shortsGroupId,
+        ...SCHEDULED_JOB_PRECEDENCE,
+      });
+      const videoUrl = resolved?.url ?? null;
 
-          if (!group) continue;
-
-          // If a specific group ID was requested, ensure we match it
-          if (shortsGroupId && group.id !== shortsGroupId) {
-            continue;
-          }
-
-          if (group.videos && group.videos[language]) {
-            logger.debug(
-              { ...publishCtx, groupIndex: i, language },
-              'Found shorts video in group',
-            );
-            return group.videos[language];
-          }
-        }
-        return null;
-      };
-
-      let videoUrl: string | null = null;
-      if (isShort) {
-        // Try shorts first, fall back to full video
-        const shortsUrl = getShortsVideoUrl(lang);
-        videoUrl =
-          shortsUrl ?? localizedVideos[lang] ?? episode.final_video_url ?? null;
-        logger.info(
-          {
-            ...publishCtx,
-            shortsUrlFound: !!shortsUrl,
-            localizedUrlFound: !!localizedVideos[lang],
-            finalUrlFound: !!episode.final_video_url,
-            resolvedUrl: videoUrl ? 'yes' : 'no',
-          },
-          'Short video URL resolution',
-        );
-      } else {
-        // Try localized full video, fall back to default
-        videoUrl = localizedVideos[lang] ?? episode.final_video_url ?? null;
-        logger.info(
-          {
-            ...publishCtx,
-            localizedUrlFound: !!localizedVideos[lang],
-            finalUrlFound: !!episode.final_video_url,
-            resolvedUrl: videoUrl ? 'yes' : 'no',
-          },
-          'Full video URL resolution',
-        );
-      }
+      logger.info(
+        {
+          ...publishCtx,
+          isShort,
+          resolvedFrom: resolved?.from ?? 'none',
+        },
+        'Video URL resolution',
+      );
 
       if (!videoUrl) {
         logger.error(
@@ -353,6 +327,25 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
         throw new Error(
           `No video available for language: ${lang}, content_type: ${publish.content_type}`,
         );
+      }
+
+      // Only a file of this episode's own project is sent (KB-123)
+      const ownedVideoUrl = await ownedEpisodeVideo(
+        videoUrl,
+        { episodeId: publish.episode_id, projectId: episode.project_id },
+        async (episodeId) => {
+          const { data } = await client
+            .from('episodes')
+            .select('project_id')
+            .eq('id', episodeId)
+            .maybeSingle();
+
+          return data?.project_id ?? null;
+        },
+      );
+
+      if (!ownedVideoUrl) {
+        throw new Error(EPISODE_VIDEO_PUBLISH_REFUSAL);
       }
 
       logger.info(

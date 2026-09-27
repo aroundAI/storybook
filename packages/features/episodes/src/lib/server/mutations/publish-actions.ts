@@ -4,8 +4,11 @@ import { revalidatePath } from 'next/cache';
 
 import { z } from 'zod';
 
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { returnRefusals } from '@kit/next/refusals';
 import { noTenantLlmJobTarget } from '@kit/prompt-engine/llm-job-target';
+import { episodeVideoSaveRefusal } from '@kit/storage/episode-video';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 const PublishVideoSchema = z.object({
@@ -15,20 +18,31 @@ const PublishVideoSchema = z.object({
 });
 
 /**
- * Update full video URL for a specific language
+ * Update full video URL for a specific language. A new video must be one of
+ * the episode's own uploads (KB-123); an empty `videoUrl` removes it.
  */
-export const updatePublishedVideoAction = enhanceAction(
+const updatePublishedVideo = enhanceAction(
   async ({ episodeId, language, videoUrl }) => {
     const client = getSupabaseServerClient();
 
     const { data: episode, error: fetchError } = await client
       .from('episodes')
-      .select('localized_videos')
+      .select('final_video_url, localized_videos, shorts_groups')
       .eq('id', episodeId)
       .single();
 
     if (fetchError) {
       throw new Error(`Failed to fetch episode: ${fetchError.message}`);
+    }
+
+    const refusal = episodeVideoSaveRefusal({
+      episodeId,
+      stored: episode,
+      next: [videoUrl],
+    });
+
+    if (refusal) {
+      throw new ActionRefusal(refusal);
     }
 
     const currentVideos =
@@ -62,6 +76,8 @@ export const updatePublishedVideoAction = enhanceAction(
   { schema: PublishVideoSchema },
 );
 
+export const updatePublishedVideoAction = returnRefusals(updatePublishedVideo);
+
 const ShortsGroupSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -78,11 +94,32 @@ const UpdateShortsGroupsSchema = z.object({
 
 /**
  * Update the entire shorts_groups array for an episode.
- * This persists add/update/delete operations on shorts groups.
+ * This persists add/update/delete operations on shorts groups. Every video
+ * must be one of the episode's own uploads or one it already holds (KB-123).
  */
-export const updateShortsGroupsAction = enhanceAction(
+const updateShortsGroups = enhanceAction(
   async ({ episodeId, shortsGroups }) => {
     const client = getSupabaseServerClient();
+
+    const { data: episode, error: fetchError } = await client
+      .from('episodes')
+      .select('final_video_url, localized_videos, shorts_groups')
+      .eq('id', episodeId)
+      .single();
+
+    if (fetchError) {
+      throw new Error(`Failed to fetch episode: ${fetchError.message}`);
+    }
+
+    const refusal = episodeVideoSaveRefusal({
+      episodeId,
+      stored: episode,
+      next: shortsGroups.flatMap((group) => Object.values(group.videos)),
+    });
+
+    if (refusal) {
+      throw new ActionRefusal(refusal);
+    }
 
     const { error: updateError } = await client
       .from('episodes')
@@ -102,6 +139,8 @@ export const updateShortsGroupsAction = enhanceAction(
   },
   { schema: UpdateShortsGroupsSchema },
 );
+
+export const updateShortsGroupsAction = returnRefusals(updateShortsGroups);
 
 /**
  * Item to be translated in a batch

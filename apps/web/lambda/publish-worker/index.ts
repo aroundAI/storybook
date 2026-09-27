@@ -31,6 +31,10 @@ import type {
   PublishJobMessage,
   SocialTextPostJobMessage,
 } from '@kit/publishing/lib/job-types';
+import {
+  EPISODE_VIDEO_PUBLISH_REFUSAL,
+  ownedEpisodeVideo,
+} from '@kit/publishing/lib/owned-episode-video';
 import { ownedEpisodeThumbnail } from '@kit/publishing/lib/owned-thumbnail';
 import type { YouTubeChannelDeclaration } from '@kit/publishing/lib/youtube-declaration';
 import { LINKEDIN_REST_VERSION, vendorUrl } from '@kit/shared/vendors';
@@ -268,6 +272,34 @@ async function updatePublishStatus(
   await supabase.from('publishes').update(updateData).eq('id', publishId);
 }
 
+/** The job's video when it is a file of the episode's own project (KB-123) */
+async function ownedJobVideo(job: PublishJobMessage): Promise<string> {
+  const projectOfEpisode = async (episodeId: string) => {
+    const { data } = await supabase
+      .from('episodes')
+      .select('project_id')
+      .eq('id', episodeId)
+      .maybeSingle();
+
+    return data?.project_id ?? null;
+  };
+
+  const projectId = await projectOfEpisode(job.episodeId);
+  const videoUrl = projectId
+    ? await ownedEpisodeVideo(
+        job.videoUrl,
+        { episodeId: job.episodeId, projectId },
+        projectOfEpisode,
+      )
+    : null;
+
+  if (!videoUrl) {
+    throw new Error(EPISODE_VIDEO_PUBLISH_REFUSAL);
+  }
+
+  return videoUrl;
+}
+
 /**
  * Process a single publish job
  */
@@ -291,6 +323,11 @@ async function processPublish(job: PublishJobMessage): Promise<void> {
     }
     job.thumbnailUrl = thumbnailUrl ?? undefined;
   }
+
+  // KB-123: the handlers download the video or hand its URL to the platform,
+  // and it comes from a row any project writer can update. Only a file of the
+  // episode's own project goes; anything else fails the job before a fetch.
+  job.videoUrl = await ownedJobVideo(job);
 
   // 2. Get valid access token
   const tokenResult = await checkConnectionToken(
