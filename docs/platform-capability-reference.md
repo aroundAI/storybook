@@ -961,6 +961,10 @@ story_navigation_action_type   # navigation only
 
 <!-- fields: instagram/user-fields source: https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user -->
 ```text
+id                         # app-scoped; Page-backed accounts
+username
+name
+profile_picture_url
 followers_count
 ```
 
@@ -994,6 +998,31 @@ sent all four breakdowns in one call with no `timeframe`. That call was not reje
 production (owner, 2026-09-27), but its parsers looked for items named after each breakdown,
 while Meta answers with one item named `follower_demographics`, so no audience row was ever
 written.
+
+<!-- fields: meta/oauth-token source: https://developers.facebook.com/docs/facebook-login/guides/access-tokens/get-long-lived/ -->
+```text
+access_token               # code exchange and fb_exchange_token alike
+token_type                 # "bearer"; fb_exchange_token response
+expires_in                 # seconds; about 60 days for a long-lived user token
+```
+
+<!-- fields: facebook/user-accounts source: https://developers.facebook.com/docs/graph-api/reference/page/ -->
+```text
+# Page nodes as GET /me/accounts lists them (the edge documents only `tasks`;
+# the fields are the Page node's own). Re-read 2026-09-28.
+id
+name
+access_token               # only for a user with a role on the Page
+category
+picture
+instagram_business_account # the linked Instagram account ({id})
+```
+
+<!-- fields: facebook/user-permissions source: https://developers.facebook.com/docs/graph-api/reference/user/permissions/ -->
+```text
+permission
+status                     # granted, declined, expired
+```
 
 <!-- fields: facebook/video-insights source: https://developers.facebook.com/docs/graph-api/reference/video/video_insights/ -->
 ```text
