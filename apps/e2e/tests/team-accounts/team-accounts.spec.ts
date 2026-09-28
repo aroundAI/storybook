@@ -228,9 +228,6 @@ test.describe('Team Member Role Management', () => {
     // Update the member's role to admin
     await teamAccounts.updateMemberRole(memberEmail, 'owner');
 
-    // Wait for the page to fully load after the update
-    await page.waitForTimeout(1000);
-
     // Verify the role was updated successfully
     const updatedRoleBadge = page
       .getByRole('row', { name: memberEmail })
@@ -306,8 +303,10 @@ test.describe('Team Account Security', () => {
 
     await userBTeamAccounts.auth.visitConfirmEmailLink(emailB);
 
-    // 4. Attempt to access the team page with User B
-    await userBPage.goto(`/home/${teamSlug}`);
+    // 4. Attempt to access the team page with User B. The page redirects
+    // before its load event, which `goto` reports as ERR_ABORTED: return on
+    // commit and let the URL assertion wait for where it lands.
+    await userBPage.goto(`/home/${teamSlug}`, { waitUntil: 'commit' });
 
     // Not a member: the team page sends them home, and home sends someone
     // with no team to create one (KB-99).

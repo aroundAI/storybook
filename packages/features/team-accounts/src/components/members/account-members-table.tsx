@@ -35,6 +35,24 @@ interface Permissions {
   canTransferOwnership: boolean;
 }
 
+type Member = Members[0];
+
+/**
+ * What the server confirmed for this user's own changes (KB-135). The list
+ * comes from the page, and the refresh after an update was not always
+ * applied: the role was saved while the badge kept the old one until a
+ * reload. A change is shown only while the page's list still has the value
+ * it replaced, so once the list catches up, or someone else changes the
+ * member, the page's list wins.
+ */
+type Confirmed = {
+  roles: Record<string, { from: string; to: string }>;
+  removed: string[];
+};
+
+const membershipKey = (member: Member) =>
+  `${member.user_id}:${member.created_at}`;
+
 type AccountMembersTableProps = {
   members: Members;
   currentUserId: string;
@@ -53,7 +71,21 @@ export function AccountMembersTable({
   canManageRoles,
 }: AccountMembersTableProps) {
   const [search, setSearch] = useState('');
+  const [confirmed, setConfirmed] = useState<Confirmed>({
+    roles: {},
+    removed: [],
+  });
   const { t } = useTranslation('teams');
+
+  const shown = members
+    .filter((member) => !confirmed.removed.includes(membershipKey(member)))
+    .map((member) => {
+      const change = confirmed.roles[membershipKey(member)];
+
+      return change && member.role === change.from
+        ? { ...member, role: change.to }
+        : member;
+    });
 
   const permissions = {
     canUpdateRole: (targetRole: number) => {
@@ -73,9 +105,22 @@ export function AccountMembersTable({
     currentUserId,
     currentAccountId,
     currentRoleHierarchy: userRoleHierarchy,
+    onRoleUpdated: (member, role) =>
+      setConfirmed((prev) => ({
+        ...prev,
+        roles: {
+          ...prev.roles,
+          [membershipKey(member)]: { from: member.role, to: role },
+        },
+      })),
+    onRemoved: (member) =>
+      setConfirmed((prev) => ({
+        ...prev,
+        removed: [...prev.removed, membershipKey(member)],
+      })),
   });
 
-  const filteredMembers = members
+  const filteredMembers = shown
     .filter((member) => {
       const searchString = search.toLowerCase();
 
@@ -121,6 +166,8 @@ function useGetColumns(
     currentUserId: string;
     currentAccountId: string;
     currentRoleHierarchy: number;
+    onRoleUpdated: (member: Member, role: string) => void;
+    onRemoved: (member: Member) => void;
   },
 ): ColumnDef<Members[0]>[] {
   const { t } = useTranslation('teams');
@@ -199,6 +246,8 @@ function useGetColumns(
             currentUserId={params.currentUserId}
             currentTeamAccountId={params.currentAccountId}
             currentRoleHierarchy={params.currentRoleHierarchy}
+            onRoleUpdated={(role) => params.onRoleUpdated(row.original, role)}
+            onRemoved={() => params.onRemoved(row.original)}
           />
         ),
       },
@@ -213,12 +262,16 @@ function ActionsDropdown({
   currentUserId,
   currentTeamAccountId,
   currentRoleHierarchy,
+  onRoleUpdated,
+  onRemoved,
 }: {
   permissions: Permissions;
   member: Members[0];
   currentUserId: string;
   currentTeamAccountId: string;
   currentRoleHierarchy: number;
+  onRoleUpdated: (role: string) => void;
+  onRemoved: () => void;
 }) {
   const [isRemoving, setIsRemoving] = useState(false);
   const [isTransferring, setIsTransferring] = useState(false);
@@ -283,6 +336,7 @@ function ActionsDropdown({
           setIsOpen={setIsRemoving}
           teamAccountId={currentTeamAccountId}
           userId={member.user_id}
+          onRemoved={onRemoved}
         />
       </If>
 
@@ -294,6 +348,7 @@ function ActionsDropdown({
           userRole={member.role}
           teamAccountId={currentTeamAccountId}
           userRoleHierarchy={currentRoleHierarchy}
+          onUpdated={onRoleUpdated}
         />
       </If>
 
