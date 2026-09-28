@@ -6,7 +6,11 @@ import { revalidatePath } from 'next/cache';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
-import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
+import {
+  requireAffectedRows,
+  requireRow,
+  returnRefusals,
+} from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -360,15 +364,14 @@ const approveSocialPost = enhanceAction(
     const client = getSupabaseServerClient();
 
     // Verify the post exists and has content
-    const { data: post, error: fetchError } = await client
-      .from('social_posts')
-      .select('final_text, status')
-      .eq('id', input.postId)
-      .single();
-
-    if (fetchError || !post) {
-      throw new ActionRefusal('Social post not found');
-    }
+    const post = requireRow(
+      await client
+        .from('social_posts')
+        .select('final_text, status')
+        .eq('id', input.postId)
+        .single(),
+      'Social post not found',
+    );
 
     if (!post.final_text || post.final_text.trim().length === 0) {
       throw new ActionRefusal(
@@ -420,17 +423,16 @@ const publishSocialPostHandler = enhanceAction(
     const client = getSupabaseServerClient();
 
     // Get the post
-    const { data: post, error: fetchError } = await client
-      .from('social_posts')
-      .select(
-        'id, account_id, final_text, platform_connection_id, visibility, metadata',
-      )
-      .eq('id', input.postId)
-      .single();
-
-    if (fetchError || !post) {
-      throw new ActionRefusal('Social post not found');
-    }
+    const post = requireRow(
+      await client
+        .from('social_posts')
+        .select(
+          'id, account_id, final_text, platform_connection_id, visibility, metadata',
+        )
+        .eq('id', input.postId)
+        .single(),
+      'Social post not found',
+    );
 
     if (!post.final_text) {
       throw new ActionRefusal('Post has no content to publish');
@@ -559,15 +561,14 @@ const regenerateVariantsHandler = enhanceAction(
     const client = getSupabaseServerClient();
 
     // Get the post
-    const { data: post, error: fetchError } = await client
-      .from('social_posts')
-      .select('raw_notes, research_context, account_id')
-      .eq('id', input.postId)
-      .single();
-
-    if (fetchError || !post) {
-      throw new ActionRefusal('Social post not found');
-    }
+    const post = requireRow(
+      await client
+        .from('social_posts')
+        .select('raw_notes, research_context, account_id')
+        .eq('id', input.postId)
+        .single(),
+      'Social post not found',
+    );
 
     // Re-generate variants
     const researchContext = post.research_context as {

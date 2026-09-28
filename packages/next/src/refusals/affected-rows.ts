@@ -26,3 +26,38 @@ export function requireAffectedRows<T>(
 
   return rows;
 }
+
+/**
+ * The row a `.single()` read found, an `ActionRefusal` when there is none, or
+ * the read's own error, thrown as the crash it is (KB-138).
+ *
+ * `if (error || !row) throw new ActionRefusal('… not found')` told the user a
+ * statement timeout was a missing row (KB-137), and a refusal never reaches
+ * monitoring. `.single()` reports no row as `PGRST116`; anything else is a
+ * failed read.
+ *
+ *   const post = requireRow(
+ *     await client.from('social_posts').select('id').eq('id', id).single(),
+ *     'Social post not found',
+ *   );
+ */
+export function requireRow<
+  R extends {
+    data: unknown;
+    error: { code?: string; message: string } | null;
+  },
+>(result: R, notFound: string): NonNullable<R['data']> {
+  const { data, error } = result;
+
+  if (error && error.code !== NO_ROW) {
+    throw new Error(`${notFound}: the read failed (${error.message})`);
+  }
+
+  if (!data) {
+    throw new ActionRefusal(notFound);
+  }
+
+  return data as NonNullable<R['data']>;
+}
+
+const NO_ROW = 'PGRST116';

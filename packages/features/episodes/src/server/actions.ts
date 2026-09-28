@@ -9,7 +9,11 @@ import { mapRowToAsset } from '@kit/assets';
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
+import {
+  requireAffectedRows,
+  requireRow,
+  returnRefusals,
+} from '@kit/next/refusals';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
@@ -1017,24 +1021,23 @@ const deleteEpisode = enhanceAction(
     }
 
     // Fetch episode for audit log
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: episode, error: fetchError } = await (client as any)
-      .from('episodes')
-      .select(
-        `
+    const episode = requireRow(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('episodes')
+        .select(
+          `
         id, project_id, season_id, number, slug, title, description, status, version,
         duration_seconds, thumbnail_url, final_video_url, target_duration_seconds,
         created_at, updated_at, deleted_at,
         project:projects(account_id)
       `,
-      )
-      .eq('id', data.episodeId)
-      .is('deleted_at', null)
-      .single();
-
-    if (fetchError || !episode) {
-      throw new ActionRefusal('Episode not found');
-    }
+        )
+        .eq('id', data.episodeId)
+        .is('deleted_at', null)
+        .single(),
+      'Episode not found',
+    );
 
     const now = new Date().toISOString();
 
@@ -1643,22 +1646,21 @@ const resetToStageHandler = enhanceAction(
     }
 
     // Fetch episode for verification and audit log context
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: episode, error: fetchError } = await (client as any)
-      .from('episodes')
-      .select(
-        `
+    const episode = requireRow(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('episodes')
+        .select(
+          `
         id, project_id, title, status, version,
         project:projects(account_id)
       `,
-      )
-      .eq('id', data.episodeId)
-      .is('deleted_at', null)
-      .single();
-
-    if (fetchError || !episode) {
-      throw new ActionRefusal('Episode not found');
-    }
+        )
+        .eq('id', data.episodeId)
+        .is('deleted_at', null)
+        .single(),
+      'Episode not found',
+    );
 
     const accountId = episode.project?.account_id;
 

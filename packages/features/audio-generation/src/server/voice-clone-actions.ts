@@ -6,7 +6,11 @@ import { revalidatePath } from 'next/cache';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
+import {
+  requireAffectedRows,
+  requireRow,
+  returnRefusals,
+} from '@kit/next/refusals';
 import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -51,17 +55,15 @@ const startVoiceClone = enhanceAction(
     }
 
     // Get asset to determine account_id
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: asset, error: assetError } = await (client as any)
-      .from('assets')
-      .select('id, project_id, projects(account_id)')
-      .eq('id', data.assetId)
-      .single();
-
-    if (assetError || !asset) {
-      logger.error({ ...ctx, error: assetError }, 'Asset not found');
-      throw new ActionRefusal('Asset not found');
-    }
+    const asset = requireRow(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('assets')
+        .select('id, project_id, projects(account_id)')
+        .eq('id', data.assetId)
+        .single(),
+      'Asset not found',
+    );
 
     // Cloning spends the account's ElevenLabs key: the caller must be able
     // to write the asset's project, not only read it (KB-112, the KB-46 rule)
@@ -222,17 +224,15 @@ const deleteVoiceClone = enhanceAction(
     }
 
     // Get voice profile with provider_voice_id
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: profile, error: profileError } = await (client as any)
-      .from('voice_profiles')
-      .select('provider_voice_id, assets(project_id, projects(account_id))')
-      .eq('asset_id', data.assetId)
-      .single();
-
-    if (profileError || !profile) {
-      logger.error({ ...ctx, error: profileError }, 'Voice profile not found');
-      throw new ActionRefusal('Voice profile not found');
-    }
+    const profile = requireRow(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('voice_profiles')
+        .select('provider_voice_id, assets(project_id, projects(account_id))')
+        .eq('asset_id', data.assetId)
+        .single(),
+      'Voice profile not found',
+    );
 
     // Deleting spends the account's ElevenLabs key and removes the voice for
     // every project: the caller must be able to write this one (KB-112)

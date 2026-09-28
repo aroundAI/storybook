@@ -13,7 +13,11 @@ import type { AggregatedTotals } from '@kit/clickhouse';
 import { queryTotalsByVideoIds } from '@kit/clickhouse/server';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
+import {
+  requireAffectedRows,
+  requireRow,
+  returnRefusals,
+} from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
@@ -189,18 +193,16 @@ const publishToAllHandler = enhanceAction(
     const client = getSupabaseServerClient();
 
     // Get episode video - fetch localized videos and shorts groups for multi-language support
-    const { data: episode, error: episodeError } = await client
-      .from('episodes')
-      .select(
-        'final_video_url, thumbnail_url, project_id, localized_videos, shorts_groups, public_slug, title, number, project:projects!inner(account_id)',
-      )
-      .eq('id', episodeId)
-      .single();
-
-    if (episodeError || !episode) {
-      logger.error({ ...ctx, error: episodeError }, 'Episode not found');
-      throw new ActionRefusal('Episode not found');
-    }
+    const episode = requireRow(
+      await client
+        .from('episodes')
+        .select(
+          'final_video_url, thumbnail_url, project_id, localized_videos, shorts_groups, public_slug, title, number, project:projects!inner(account_id)',
+        )
+        .eq('id', episodeId)
+        .single(),
+      'Episode not found',
+    );
 
     // Support both legacy final_video_url and new localized_videos
     const localizedVideos =
@@ -280,15 +282,14 @@ const publishToAllHandler = enhanceAction(
           const accessToken = tokenResult.accessToken;
 
           // Get connection details
-          const { data: connection, error: connError } = await client
-            .from('platform_connections')
-            .select('platform_account_id, platform_account_name, language')
-            .eq('id', platform.connectionId)
-            .single();
-
-          if (connError || !connection) {
-            throw new ActionRefusal('Platform connection not found');
-          }
+          const connection = requireRow(
+            await client
+              .from('platform_connections')
+              .select('platform_account_id, platform_account_name, language')
+              .eq('id', platform.connectionId)
+              .single(),
+            'Platform connection not found',
+          );
 
           // The language of the asset this publish uploads: the one the
           // request names, else the channel's target, which is what selects
@@ -602,22 +603,21 @@ const retryPublish = enhanceAction(
     const client = getSupabaseServerClient();
 
     // Get publish record
-    const { data: publish, error: publishError } = await client
-      .from('publishes')
-      .select(
-        `
+    const publish = requireRow(
+      await client
+        .from('publishes')
+        .select(
+          `
         id, episode_id, platform_connection_id, platform, content_type, status,
         title, description, tags, thumbnail_url, platform_content_id, platform_url,
         scheduled_at, published_at, language, metadata, created_at,
         episodes(final_video_url, thumbnail_url, project_id, project:projects!inner(account_id))
       `,
-      )
-      .eq('id', publishId)
-      .single();
-
-    if (publishError || !publish) {
-      throw new ActionRefusal('Publish record not found');
-    }
+        )
+        .eq('id', publishId)
+        .single(),
+      'Publish record not found',
+    );
 
     if (publish.status !== 'failed') {
       throw new ActionRefusal('Can only retry failed publishes');
@@ -1232,16 +1232,14 @@ const unpublishHandler = enhanceAction(
 
     const client = getSupabaseServerClient();
 
-    const { data: publish, error: fetchError } = await client
-      .from('publishes')
-      .select('id, episode_id, status')
-      .eq('id', publishId)
-      .single();
-
-    if (fetchError || !publish) {
-      logger.error({ ...ctx, error: fetchError }, 'Publish record not found');
-      throw new ActionRefusal('Publish record not found');
-    }
+    const publish = requireRow(
+      await client
+        .from('publishes')
+        .select('id, episode_id, status')
+        .eq('id', publishId)
+        .single(),
+      'Publish record not found',
+    );
 
     await assertCanTakeDown(client, publish.episode_id, user.id);
 

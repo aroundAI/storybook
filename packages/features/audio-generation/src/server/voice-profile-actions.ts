@@ -6,7 +6,11 @@ import { revalidatePath } from 'next/cache';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
+import {
+  requireAffectedRows,
+  requireRow,
+  returnRefusals,
+} from '@kit/next/refusals';
 import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -204,18 +208,16 @@ const saveVoiceProfile = enhanceAction(
     }
 
     // Verify the character asset exists
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: charAsset, error: assetError } = await (client as any)
-      .from('assets')
-      .select('id, project_id, account_id')
-      .eq('id', data.characterAssetId)
-      .eq('type', 'character')
-      .single();
-
-    if (assetError || !charAsset) {
-      logger.error({ ...ctx, error: assetError }, 'Character asset not found');
-      throw new ActionRefusal('Character not found');
-    }
+    requireRow(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('assets')
+        .select('id, project_id, account_id')
+        .eq('id', data.characterAssetId)
+        .eq('type', 'character')
+        .single(),
+      'Character not found',
+    );
 
     // Update character_details with the ElevenLabs voice ID directly
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

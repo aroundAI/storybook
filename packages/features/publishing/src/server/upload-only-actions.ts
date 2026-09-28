@@ -2,7 +2,7 @@
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireRow, returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -98,21 +98,19 @@ const generateExportPackageHandler = enhanceAction(
     const client = getSupabaseServerClient();
 
     // Get episode with related data
-    const { data: episode, error: episodeError } = await client
-      .from('episodes')
-      .select(
-        `
+    const episode = requireRow(
+      await client
+        .from('episodes')
+        .select(
+          `
         *,
         publishes (*)
       `,
-      )
-      .eq('id', episodeId)
-      .single();
-
-    if (episodeError || !episode) {
-      logger.error({ ...ctx, error: episodeError }, 'Episode not found');
-      throw new ActionRefusal('Episode not found');
-    }
+        )
+        .eq('id', episodeId)
+        .single(),
+      'Episode not found',
+    );
 
     // Check if video is ready
     if (!episode.final_video_url) {

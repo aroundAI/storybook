@@ -244,9 +244,14 @@ describe('Voice Clone Actions', () => {
             return {
               select: vi.fn().mockReturnValue({
                 eq: vi.fn().mockReturnValue({
+                  // What .single() answers when no row matches (KB-138)
                   single: vi.fn().mockResolvedValue({
                     data: null,
-                    error: { message: 'Not found' },
+                    error: {
+                      code: 'PGRST116',
+                      message:
+                        'JSON object requested, multiple (or no) rows returned',
+                    },
                   }),
                 }),
               }),

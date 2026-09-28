@@ -4,7 +4,11 @@ import { z } from 'zod';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
-import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
+import {
+  requireAffectedRows,
+  requireRow,
+  returnRefusals,
+} from '@kit/next/refusals';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -55,17 +59,16 @@ const refineStoryHandler = enhanceAction(
     }
 
     // Verify episode exists and has a story
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: episode, error: fetchError } = await (client as any)
-      .from('episodes')
-      .select('id, project_id, story_data, project:projects(id, account_id)')
-      .eq('id', data.episodeId)
-      .is('deleted_at', null)
-      .single();
-
-    if (fetchError || !episode) {
-      throw new ActionRefusal('Episode not found');
-    }
+    const episode = requireRow(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('episodes')
+        .select('id, project_id, story_data, project:projects(id, account_id)')
+        .eq('id', data.episodeId)
+        .is('deleted_at', null)
+        .single(),
+      'Episode not found',
+    );
 
     if (!episode.story_data?.fullStory) {
       throw new ActionRefusal(
@@ -155,19 +158,18 @@ const refineScreenplayHandler = enhanceAction(
     }
 
     // Verify episode exists and has a screenplay
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: episode, error: fetchError } = await (client as any)
-      .from('episodes')
-      .select(
-        'id, project_id, screenplay_data, project:projects(id, account_id)',
-      )
-      .eq('id', data.episodeId)
-      .is('deleted_at', null)
-      .single();
-
-    if (fetchError || !episode) {
-      throw new ActionRefusal('Episode not found');
-    }
+    const episode = requireRow(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('episodes')
+        .select(
+          'id, project_id, screenplay_data, project:projects(id, account_id)',
+        )
+        .eq('id', data.episodeId)
+        .is('deleted_at', null)
+        .single(),
+      'Episode not found',
+    );
 
     if (!episode.screenplay_data?.scenes) {
       throw new ActionRefusal(
@@ -242,17 +244,16 @@ const undoRefinementHandler = enhanceAction(
     }
 
     // Fetch episode metadata
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: episode, error: fetchError } = await (client as any)
-      .from('episodes')
-      .select('id, metadata, story_data, screenplay_data')
-      .eq('id', data.episodeId)
-      .is('deleted_at', null)
-      .single();
-
-    if (fetchError || !episode) {
-      throw new ActionRefusal('Episode not found');
-    }
+    const episode = requireRow(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('episodes')
+        .select('id, metadata, story_data, screenplay_data')
+        .eq('id', data.episodeId)
+        .is('deleted_at', null)
+        .single(),
+      'Episode not found',
+    );
 
     const metadata = (episode.metadata ?? {}) as Record<string, unknown>;
 

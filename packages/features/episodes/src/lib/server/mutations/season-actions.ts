@@ -5,7 +5,11 @@ import { revalidatePath } from 'next/cache';
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
+import {
+  requireAffectedRows,
+  requireRow,
+  returnRefusals,
+} from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -251,23 +255,22 @@ const updateSeason = enhanceAction(
     }
 
     // Fetch current season for audit log
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: currentSeason, error: fetchError } = await (client as any)
-      .from('seasons')
-      .select(
-        `
+    const currentSeason = requireRow(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('seasons')
+        .select(
+          `
         id, project_id, number, name, description, direction_notes,
         created_at, updated_at, deleted_at,
         project:projects(account_id)
       `,
-      )
-      .eq('id', data.seasonId)
-      .is('deleted_at', null)
-      .single();
-
-    if (fetchError || !currentSeason) {
-      throw new ActionRefusal('Season not found');
-    }
+        )
+        .eq('id', data.seasonId)
+        .is('deleted_at', null)
+        .single(),
+      'Season not found',
+    );
 
     // Build update object (only include provided fields)
     const updates: Record<string, unknown> = {

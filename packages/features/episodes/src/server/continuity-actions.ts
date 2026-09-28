@@ -6,7 +6,11 @@ import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { createLLMClient } from '@kit/llm';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
+import {
+  requireAffectedRows,
+  requireRow,
+  returnRefusals,
+} from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -224,23 +228,22 @@ const fixContinuityIssue = enhanceAction(
     }
 
     // Fetch episode for fixing (include project for audit log)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: episode, error: episodeError } = await (client as any)
-      .from('episodes')
-      .select(
-        `
+    const episode = requireRow(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('episodes')
+        .select(
+          `
         id, project_id, title, story_data, screenplay_data, shot_list,
         created_at, updated_at, deleted_at,
         project:projects(id, account_id)
       `,
-      )
-      .eq('id', data.episodeId)
-      .is('deleted_at', null)
-      .single();
-
-    if (episodeError || !episode) {
-      throw new ActionRefusal('Episode not found');
-    }
+        )
+        .eq('id', data.episodeId)
+        .is('deleted_at', null)
+        .single(),
+      'Episode not found',
+    );
 
     // Use LLM to generate the fix
     const llmClient = createLLMClient();
