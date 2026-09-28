@@ -47,7 +47,10 @@ import {
   queryDailyTimeSeriesByPlatform,
   queryDataDaysForVideos,
   queryLanguagePairs,
+  queryChannelNewAccounts,
+  queryChannelReach,
   queryLatestSnapshots,
+  queryPostAccountsReached,
   queryLatestSubscriberLevels,
   queryMedianViewsPerVideo,
   queryNetSubscribersForVideos,
@@ -1492,6 +1495,90 @@ async function assertions() {
       return `complete=${[...complete].join(',')}`;
     },
   );
+
+  // The reach readers (src/reach.ts), with hand-computed answers.
+  await step('assert: reach readers answer per channel and per post', async () => {
+    const connectionId = '17171717-0000-4000-8000-000000000017';
+    const w = (asOf: string, windowDays: number, reach: number | null) => ({
+      connectionId,
+      platform: 'instagram' as const,
+      asOf,
+      windowDays,
+      accountsReached: reach,
+      accountsReachedFollowers: null,
+      accountsReachedNonFollowers: null,
+      source: 'verify',
+    });
+
+    await insertChannelWindows([
+      w('2026-09-26', 7, 60),
+      w('2026-09-26', 30, 170),
+      w('2026-09-26', 23, 130),
+      w('2026-09-27', 30, 175),
+      w('2026-09-27', 23, null),
+    ]);
+
+    const reach30 = await queryChannelReach({
+      connectionId,
+      platform: 'instagram',
+      windowDays: 30,
+      from: '2026-09-01',
+      to: '2026-09-30',
+    });
+    const fresh = await queryChannelNewAccounts({
+      connectionId,
+      from: '2026-09-01',
+      to: '2026-09-30',
+    });
+
+    const got30 = reach30.map((r) => `${r.asOf}=${r.accountsReached}`).join(',');
+    if (got30 !== '2026-09-26=170,2026-09-27=175') throw new Error(`30-day ${got30}`);
+    const gotNew = fresh.map((r) => `${r.asOf}=${r.newAccounts}`).join(',');
+    // 170 - 130 = 40; the 27th has no 23-day figure, so it is unknown.
+    if (gotNew !== '2026-09-26=40,2026-09-27=null') throw new Error(`new ${gotNew}`);
+
+    const client = getClickHouseClient();
+    const post = { project_id: PROJECT, video_id: 'reach-post', platform: 'instagram' };
+    // Instagram's daily rows are snapshot deltas; the provenance step checks it.
+    const daily = { ...post, metric_source: 'snapshot_delta' };
+    await client.insert({
+      table: 'video_metrics',
+      values: [
+        { ...daily, metric_date: '2026-09-25', views: 10, likes: 0, comments: 0, shares: 0, revenue_cents: 0, accounts_reached: 1200, extra_metrics: '{}' },
+        { ...daily, metric_date: '2026-09-26', views: 10, likes: 0, comments: 0, shares: 0, revenue_cents: 0, accounts_reached: 700, extra_metrics: '{}' },
+      ],
+      format: 'JSONEachRow',
+    });
+    await client.insert({
+      table: 'video_snapshots',
+      values: [
+        { ...post, snapshot_date: '2026-09-26', fetched_at: '2026-09-26 10:00:00', views: 20, likes: 0, comments: 0, shares: 0, saves: 0, watch_time_seconds: 0, subscribers_gained: 0, accounts_reached: 5900 },
+      ],
+      format: 'JSONEachRow',
+    });
+
+    const reached = await queryPostAccountsReached({
+      projectId: PROJECT,
+      videoId: 'reach-post',
+      from: '2026-09-01',
+      to: '2026-09-30',
+    });
+
+    if (reached.inRange !== 1900) throw new Error(`inRange ${reached.inRange}`);
+    if (reached.lifetime !== 5900) throw new Error(`lifetime ${reached.lifetime}`);
+
+    const none = await queryPostAccountsReached({
+      projectId: PROJECT,
+      videoId: 'no-such-post',
+      from: '2026-09-01',
+      to: '2026-09-30',
+    });
+    if (none.lifetime !== null || none.inRange !== null) {
+      throw new Error(`empty post ${JSON.stringify(none)}`);
+    }
+
+    return `30d=${got30} new=${gotNew} post=${reached.inRange}/${reached.lifetime}`;
+  });
 
   await step('assert: the breakdown groups the seeded sources', async () => {
     // Fixed expectations, not a comparison of two derivations of the same

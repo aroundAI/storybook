@@ -206,3 +206,15 @@ export type {
   PurgeTable,
   PurgeTarget,
 } from '../purge';
+
+export {
+  queryChannelNewAccounts,
+  queryChannelReach,
+  queryPostAccountsReached,
+} from '../reach';
+export type {
+  ChannelNewAccountsDay,
+  ChannelReachDay,
+  PostAccountsReached,
+  ReachPlatform,
+} from '../reach';
