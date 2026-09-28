@@ -8,7 +8,7 @@ import { z } from 'zod';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -332,27 +332,37 @@ const UpdateLanguageSchema = z.object({
  * Updates the target language for a platform connection
  * Used for automatic routing of multi-language content to language-specific channels
  */
-export const updateConnectionLanguageAction = enhanceAction(
+const updateConnectionLanguage = enhanceAction(
   async ({ connectionId, language }) => {
     const client = getSupabaseServerClient();
 
     // Type cast until migration is applied and types regenerated
-    const { error } = await (
+    const { data: updated, error } = await (
       client as unknown as {
         from: (table: string) => {
           update: (data: { language: string }) => {
-            eq: (col: string, val: string) => Promise<{ error: unknown }>;
+            eq: (
+              col: string,
+              val: string,
+            ) => {
+              select: (
+                columns: string,
+              ) => Promise<{ data: { id: string }[] | null; error: unknown }>;
+            };
           };
         };
       }
     )
       .from('platform_connections')
       .update({ language })
-      .eq('id', connectionId);
+      .eq('id', connectionId)
+      .select('id');
 
     if (error) {
       throw new Error('Failed to update connection language');
     }
+
+    requireAffectedRows(updated, "You can't change this channel's language.");
 
     revalidatePath(`/home/[account]/settings`, 'page');
 
@@ -362,6 +372,10 @@ export const updateConnectionLanguageAction = enhanceAction(
     schema: UpdateLanguageSchema,
     auth: true,
   },
+);
+
+export const updateConnectionLanguageAction = returnRefusals(
+  updateConnectionLanguage,
 );
 
 /**

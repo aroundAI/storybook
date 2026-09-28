@@ -376,17 +376,20 @@ const approveSocialPost = enhanceAction(
       );
     }
 
-    const { error } = await client
+    const { data: approved, error } = await client
       .from('social_posts')
       .update({
         status: 'approved',
         platform_connection_id: input.platformConnectionId,
       })
-      .eq('id', input.postId);
+      .eq('id', input.postId)
+      .select('id');
 
     if (error) {
       throw new Error(`Failed to approve social post: ${error.message}`);
     }
+
+    requireAffectedRows(approved, "You can't approve this post.");
 
     revalidatePath('/home/[account]/social-posts', 'page');
     return { success: true };
@@ -447,11 +450,19 @@ const publishSocialPostHandler = enhanceAction(
       post.account_id,
     );
 
-    // Update status to publishing
-    await client
+    // Update status to publishing. A publish RLS refuses changes no row: it
+    // stops here, before the platform call, rather than posting anyway (KB-105).
+    const { data: marked, error: markError } = await client
       .from('social_posts')
       .update({ status: 'publishing' })
-      .eq('id', input.postId);
+      .eq('id', input.postId)
+      .select('id');
+
+    if (markError) {
+      throw new Error(`Failed to start publishing: ${markError.message}`);
+    }
+
+    requireAffectedRows(marked, "You can't publish this post.");
 
     try {
       // Get access token

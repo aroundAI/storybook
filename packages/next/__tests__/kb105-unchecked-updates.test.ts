@@ -36,17 +36,6 @@ const CASCADE = 'renumbers siblings after a checked delete';
 const BOOKKEEPING = 'a counter, cache or embedding nobody is told about';
 const DEAD = 'no caller in the repo';
 
-// Checked in the per-package KB-105 pull requests that follow this one;
-// each removes its lines.
-const PENDING_PUBLISHING = 'KB-105: converted in the publishing pull request';
-// Owned by another open pull request (2026-09-25); it adopts
-// requireAffectedRows and removes its line.
-const TAG_SCOPE = 'teammate tag-scope';
-// The clone removal checks its row since KB-61's tail (#440). The clone gate
-// (start) is still unchecked: it was left to #393, which merged without it.
-const VOICE_CLONE_PR =
-  'KB-105: the clone start gate is still to check; #393 merged without it';
-
 const KNOWN: Record<string, [number, string]> = {
   'apps/web/app/api/reports/scheduled/route.ts | scheduled_reports | update': [
     2,
@@ -90,7 +79,7 @@ const KNOWN: Record<string, [number, string]> = {
   'packages/features/audio-generation/src/server/voice-actions.ts | generation_jobs | update':
     [4, `${FAILURE_MARK} + ${RECORDS_RESULT}`],
   'packages/features/audio-generation/src/server/voice-clone-actions.ts | voice_profiles | update':
-    [3, `${FAILURE_MARK} + ${RECORDS_RESULT} + ${VOICE_CLONE_PR}`],
+    [2, `${FAILURE_MARK} + ${RECORDS_RESULT}`],
   'packages/features/content-analytics/src/server/analytics-sync-cron.ts | platform_connections | update':
     [1, ADMIN],
   'packages/features/content-analytics/src/server/analytics-sync-cron.ts | publishes | update':
@@ -104,7 +93,7 @@ const KNOWN: Record<string, [number, string]> = {
   'packages/features/content-analytics/src/server/reporting/report-ingest.ts | youtube_report_jobs | update':
     [1, ADMIN],
   'packages/features/content-analytics/src/server/taxonomy-actions.ts | content_tags | update':
-    [1, TAG_SCOPE],
+    [1, DEAD],
   'packages/features/content-analytics/src/server/vendor-data-purge.ts | vendor_data_purges | update':
     [3, ADMIN],
   'packages/features/episodes/src/agent/orchestrator.ts | episodes | update': [
@@ -125,21 +114,14 @@ const KNOWN: Record<string, [number, string]> = {
     [2, SET_BEFORE],
   'packages/features/publishing/src/jobs/process-scheduled-publishes.ts | publishes | update':
     [3, ADMIN],
-  'packages/features/publishing/src/server/connection-actions.ts | platform_connections | update':
-    [1, PENDING_PUBLISHING],
   'packages/features/publishing/src/server/episode-publishing-actions.ts | episode_publishing_configs | update':
-    [2, PENDING_PUBLISHING],
-  'packages/features/publishing/src/server/project-publishing-actions.ts | project_publishing_configs | update':
-    [1, PENDING_PUBLISHING],
+    [2, DEAD],
   'packages/features/publishing/src/server/publish-actions.ts | episodes | update':
     [1, BOOKKEEPING],
   'packages/features/publishing/src/server/publish-actions.ts | publishes | update':
-    [
-      7,
-      `${FAILURE_MARK} + ${JUST_INSERTED} + ${PENDING_PUBLISHING} + ${RECORDS_RESULT}`,
-    ],
+    [6, `${FAILURE_MARK} + ${JUST_INSERTED} + ${RECORDS_RESULT}`],
   'packages/features/publishing/src/server/social-post-actions.ts | social_posts | update':
-    [4, `${FAILURE_MARK} + ${PENDING_PUBLISHING} + ${RECORDS_RESULT}`],
+    [2, `${FAILURE_MARK} + ${RECORDS_RESULT}`],
   'packages/features/team-accounts/src/server/services/account-members.service.ts | accounts_memberships | update':
     [1, ADMIN],
 };

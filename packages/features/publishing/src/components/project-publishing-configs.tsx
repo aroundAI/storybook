@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
+import { toast } from '@kit/ui/sonner';
 
 import type { PlatformConnection } from '../server/episode-publishing-actions';
 import { updateProjectPublishingConfigsAction } from '../server/project-publishing-actions';
@@ -121,7 +122,7 @@ export function ProjectPublishingConfigs({
     setIsSaving(true);
     startTransition(async () => {
       try {
-        await updateProjectPublishingConfigsAction({
+        const result = await updateProjectPublishingConfigsAction({
           projectId,
           configs: localConfigs.map((c) => ({
             id: c.existingId,
@@ -130,6 +131,9 @@ export function ProjectPublishingConfigs({
             isEnabled: c.isEnabled,
           })),
         });
+        if (!result.success) {
+          toast.error(result.error ?? 'Failed to save publishing settings');
+        }
       } finally {
         setIsSaving(false);
       }

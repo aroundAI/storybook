@@ -13,7 +13,7 @@ import type { AggregatedTotals } from '@kit/clickhouse';
 import { queryTotalsByVideoIds } from '@kit/clickhouse/server';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
@@ -693,11 +693,19 @@ const retryPublish = enhanceAction(
       }
     }
 
-    // Update status to publishing
-    await client
+    // Update status to publishing. A retry RLS refuses changes no row: it
+    // stops here, before the upload, rather than publishing anyway (KB-105).
+    const { data: marked, error: markError } = await client
       .from('publishes')
       .update({ status: 'publishing' })
-      .eq('id', publishId);
+      .eq('id', publishId)
+      .select('id');
+
+    if (markError) {
+      throw new Error(`Failed to start the retry: ${markError.message}`);
+    }
+
+    requireAffectedRows(marked, "You can't retry this publish.");
 
     try {
       const uploadResult = await uploadToPlatform(
