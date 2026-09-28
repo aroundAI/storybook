@@ -1,5 +1,6 @@
 import { Page, expect, test } from '@playwright/test';
 
+import { byTest } from '../utils/visible';
 import { InvitationsPageObject } from './invitations.po';
 
 test.describe('Invitations', () => {
@@ -56,9 +57,7 @@ test.describe('Invitations', () => {
 
     const row = invitations.getInvitationRow(email);
 
-    await expect(row.locator('[data-test="member-role-badge"]')).toHaveText(
-      'Owner',
-    );
+    await expect(byTest(row, 'member-role-badge')).toHaveText('Owner');
   });
 });
 

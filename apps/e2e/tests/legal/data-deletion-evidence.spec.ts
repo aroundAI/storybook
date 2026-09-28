@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { byTest } from '../utils/visible';
+
 /**
  * Screenshots for the KB-20 pull request: the legal text is the owner's to
  * approve, and approving it means reading it as a visitor would.
@@ -27,7 +29,7 @@ test.describe('Data deletion and privacy policy — evidence', () => {
     await page.goto('/data-deletion');
     await page.addStyleTag({ content: UNSTICK_HEADER });
 
-    const deletionPage = page.locator('[data-test="data-deletion-page"]');
+    const deletionPage = byTest(page, 'data-deletion-page');
 
     await expect(deletionPage).toBeVisible();
     await deletionPage.screenshot({ path: `${OUT}/01-data-deletion-page.png` });
@@ -37,9 +39,7 @@ test.describe('Data deletion and privacy policy — evidence', () => {
 
     const thirdParties = page.locator('#section-1');
 
-    await expect(
-      page.locator('[data-test="privacy-youtube-terms-link"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'privacy-youtube-terms-link')).toBeVisible();
 
     await thirdParties.screenshot({
       path: `${OUT}/02-privacy-section-1-platform-data.png`,
@@ -55,9 +55,7 @@ test.describe('Data deletion and privacy policy — evidence', () => {
 
     const rights = page.locator('#section-6');
 
-    await expect(
-      page.locator('[data-test="privacy-google-permissions-link"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'privacy-google-permissions-link')).toBeVisible();
 
     await rights.screenshot({ path: `${OUT}/03-privacy-section-6-rights.png` });
 
@@ -66,9 +64,7 @@ test.describe('Data deletion and privacy policy — evidence', () => {
 
     const integrations = page.locator('#section-5');
 
-    await expect(
-      page.locator('[data-test="terms-youtube-terms-link"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'terms-youtube-terms-link')).toBeVisible();
 
     await integrations.screenshot({
       path: `${OUT}/04-terms-section-5-youtube.png`,
@@ -77,7 +73,7 @@ test.describe('Data deletion and privacy policy — evidence', () => {
     await page.goto('/');
     await page.addStyleTag({ content: UNSTICK_HEADER });
 
-    const footer = page.locator('[data-test="site-footer"]');
+    const footer = byTest(page, 'site-footer');
 
     await expect(footer.locator('a[href="/data-deletion"]')).toBeVisible();
     await footer.scrollIntoViewIfNeeded();

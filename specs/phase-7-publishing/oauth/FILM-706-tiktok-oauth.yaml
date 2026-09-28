@@ -52,7 +52,7 @@ acceptance_criteria:
     evidence: "`packages/features/publishing/src/oauth/tiktok/revoke.ts` (moved from `disconnect.ts` by KB-22)"
   - text: "State/nonce prevents CSRF attacks"
     met: true
-    evidence: "`apps/web/app/api/platforms/callback/tiktok/route.ts:79`; `apps/e2e/tests/platform-connections/connect-failure.spec.ts:168`"
+    evidence: "`apps/web/app/api/platforms/callback/tiktok/route.ts:79`; `apps/e2e/tests/platform-connections/connect-failure.spec.ts:169`"
 test_plan:
   unit:
     - text: "Test PKCE code verifier generation"
@@ -63,7 +63,7 @@ test_plan:
       evidence: "`packages/features/publishing/__tests__/tiktok-pkce.test.ts:30` — RFC 7636 Appendix B's verifier gives its challenge; guard `tooling/mutation-guards/film-706-810.json`"
     - text: "Test state encoding/decoding"
       met: true
-      evidence: "`apps/e2e/tests/platform-connections/connect-failure.spec.ts:138`, `apps/e2e/tests/platform-connections/connect-failure.spec.ts:184`"
+      evidence: "`apps/e2e/tests/platform-connections/connect-failure.spec.ts:139`, `apps/e2e/tests/platform-connections/connect-failure.spec.ts:185`"
   integration:
     - text: "Test OAuth flow with mocked TikTok endpoints"
       met: false

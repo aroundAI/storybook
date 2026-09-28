@@ -121,25 +121,25 @@ acceptance_criteria:
     evidence: null
   - text: "A change can be edited, abandoned and deleted through the page; a second edit saves its own values, and fields the baseline measured are locked once started (KB-7)"
     met: true
-    evidence: "apps/e2e/tests/experiments/experiments-manage.spec.ts:138, :227, :301, :365"
+    evidence: "apps/e2e/tests/experiments/experiments-manage.spec.ts:137, :227, :301, :365"
   - text: "A change is deleted only while planned or abandoned — by the table, the action and the page (KB-7, owner decision 2026-09-24)"
     met: true
-    evidence: "apps/web/supabase/tests/database/analytics-experiments-rls.test.sql:101; packages/features/content-analytics/src/server/experiment-actions.ts:821; apps/e2e/tests/experiments/experiments-manage.spec.ts:393"
+    evidence: "apps/web/supabase/tests/database/analytics-experiments-rls.test.sql:101; packages/features/content-analytics/src/server/experiment-actions.ts:821; apps/e2e/tests/experiments/experiments-manage.spec.ts:386"
   - text: "A refused edit or delete shows its own wording on a production build, and the dialog re-reads the change"
     met: true
-    evidence: "apps/e2e/tests/experiments/experiments-manage.spec.ts:274, :427 (30 passed on a build:test server, 2026-09-24)"
+    evidence: "apps/e2e/tests/experiments/experiments-manage.spec.ts:273, :427 (30 passed on a build:test server, 2026-09-24)"
   - text: "At conclusion the baseline window is measured again and kept beside the start's baseline; both are shown with their days of data and no comparison between them (KB-8, owner decision 2026-09-24)"
     met: true
-    evidence: "packages/features/content-analytics/src/server/experiment-actions.ts:568; apps/e2e/tests/experiments/experiments-manage-evidence.spec.ts:176 (6.0% on 2 of 30 days, then 4.5% on 3 of 30, against local ClickHouse)"
+    evidence: "packages/features/content-analytics/src/server/experiment-actions.ts:568; apps/e2e/tests/experiments/experiments-manage-evidence.spec.ts:169 (6.0% on 2 of 30 days, then 4.5% on 3 of 30, against local ClickHouse)"
   - text: "Tags can be linked on create and edit; the second change logged links only its own tags (moved from FILM-1509)"
     met: true
-    evidence: "apps/e2e/tests/experiments/experiments-manage.spec.ts:526, :138"
+    evidence: "apps/e2e/tests/experiments/experiments-manage.spec.ts:515, :138"
   - text: "A tag from another account cannot be linked, by a user in both accounts (KB-93, pgTAP)"
     met: true
     evidence: "apps/web/supabase/tests/database/experiment-tags-account-rls.test.sql:57"
   - text: "Changes can be filtered by status; the filter survives a reload and an empty filter does not claim an empty log (moved from FILM-1509)"
     met: true
-    evidence: "apps/e2e/tests/experiments/experiments-manage.spec.ts:468"
+    evidence: "apps/e2e/tests/experiments/experiments-manage.spec.ts:457"
   - text: "A user outside the account cannot read, add, update or delete its changes (moved from FILM-1509, pgTAP)"
     met: true
     evidence: "apps/web/supabase/tests/database/analytics-experiments-rls.test.sql:41"

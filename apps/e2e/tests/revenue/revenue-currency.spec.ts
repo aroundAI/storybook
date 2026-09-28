@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { readRows, seedTeamAccount } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 import { RevenueCurrencyPageObject } from './revenue-currency.po';
 import { RevenuePageObject } from './revenue.po';
 
@@ -32,9 +33,10 @@ test.describe('Revenue per currency', () => {
 
     // The trend is each currency against its own previous period: dollars
     // went 1,000 → 1,600, euros 0 → 800. Summed, it read +140.0%.
-    await expect(
-      page.locator('[data-test="revenue-tile-trend"]'),
-    ).toContainText(['+60.0%', '+100.0%']);
+    await expect(byTest(page, 'revenue-tile-trend')).toContainText([
+      '+60.0%',
+      '+100.0%',
+    ]);
 
     // 31 days in the default window: 160000/31 and 80000/31 cents.
     await expect(revenue.tileValues('daily')).toHaveText(['$52', '€26']);
@@ -136,9 +138,9 @@ test.describe('Revenue per currency', () => {
     await revenue.openTab('content');
 
     await expect(revenue.topContentTables()).toHaveCount(1);
-    await expect(
-      page.locator('[data-test="revenue-top-content-row"]'),
-    ).toHaveText(['#1No imgSponsored videoyoutube0$2,200$0']);
+    await expect(byTest(page, 'revenue-top-content-row')).toHaveText([
+      '#1No imgSponsored videoyoutube0$2,200$0',
+    ]);
   });
 
   test('a euro entry typed into a dollar account adds a euro card and leaves the dollars alone', async ({

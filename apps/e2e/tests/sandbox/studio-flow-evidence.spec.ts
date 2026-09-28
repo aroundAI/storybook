@@ -9,6 +9,7 @@ import {
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * FILM-1806 (and FILM-1803's browser-driven criterion): one full studio run
@@ -183,7 +184,7 @@ test.describe('A full studio run through the local job queue (FILM-1806)', () =>
       );
     // The sandbox's ledger outlives a run: read only what this run asked for.
     const ledgerStart = (await ledger())[0]?.id ?? 0;
-    await page.locator('[data-test="ideation-generate"]').click();
+    await byTest(page, 'ideation-generate').click();
     await expect(page.getByText(/Generated \d+ story ideas/)).toBeVisible({
       timeout: STAGE_TIMEOUT,
     });
@@ -244,7 +245,7 @@ test.describe('A full studio run through the local job queue (FILM-1806)', () =>
 
     // --- 5. Voice (enqueued: the voice queue → voice worker → ElevenLabs stand-in).
     await page.goto(`${episodeUrl}/audio-studio`, { timeout: STAGE_TIMEOUT }); // a first dev compile is slow
-    const generateAll = page.locator('[data-test="generate-all-dialogue"]');
+    const generateAll = byTest(page, 'generate-all-dialogue');
     await expect(generateAll).toBeEnabled({ timeout: STAGE_TIMEOUT });
     await snap(page, '06-dialogue-pending');
     const lastBefore = (await ledger())[0]?.id ?? 0;

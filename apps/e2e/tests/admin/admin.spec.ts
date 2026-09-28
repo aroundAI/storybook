@@ -13,6 +13,7 @@ import {
 } from '../utils/seed';
 import { waitForSignedIn } from '../utils/session';
 import { SUPER_ADMIN_STORAGE_STATE } from '../utils/super-admin';
+import { byTest } from '../utils/visible';
 
 test.describe('Admin Auth flow without MFA', () => {
   test('will return a 404 for non-admin users', async ({ page }) => {
@@ -136,9 +137,7 @@ test.describe('Admin', () => {
       await withSignedOutPage(browser, async (signedOut) => {
         await signIn(signedOut, testUser);
 
-        await expect(
-          signedOut.locator('[data-test="auth-error-message"]'),
-        ).toBeVisible();
+        await expect(byTest(signedOut, 'auth-error-message')).toBeVisible();
       });
     });
 
@@ -269,9 +268,7 @@ test.describe('Admin', () => {
         password: testUser.password,
       });
 
-      await expect(
-        signInPage.locator('[data-test="auth-error-message"]'),
-      ).toBeVisible();
+      await expect(byTest(signInPage, 'auth-error-message')).toBeVisible();
 
       await visitor.close();
 

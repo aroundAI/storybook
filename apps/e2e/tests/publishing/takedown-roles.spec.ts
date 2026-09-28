@@ -14,6 +14,7 @@ import {
   serviceRoleAuth,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * KB-47. Taking a published video down from its platform is irreversible.
@@ -89,12 +90,8 @@ test.describe('who sees the takedown controls (KB-47)', () => {
     await expect(
       page.getByRole('heading', { name: 'Published Content' }),
     ).toBeVisible();
-    await expect(page.locator('[data-test="publish-unpublish"]')).toHaveCount(
-      0,
-    );
-    await expect(page.locator('[data-test="publish-delete-all"]')).toHaveCount(
-      0,
-    );
+    await expect(byTest(page, 'publish-unpublish')).toHaveCount(0);
+    await expect(byTest(page, 'publish-delete-all')).toHaveCount(0);
 
     await capture(page, 'member-no-takedown');
   });
@@ -108,12 +105,8 @@ test.describe('who sees the takedown controls (KB-47)', () => {
     await expect(
       page.getByRole('heading', { name: 'Published Content' }),
     ).toBeVisible();
-    await expect(page.locator('[data-test="publish-unpublish"]')).toHaveCount(
-      1,
-    );
-    await expect(page.locator('[data-test="publish-delete-all"]')).toHaveCount(
-      1,
-    );
+    await expect(byTest(page, 'publish-unpublish')).toHaveCount(1);
+    await expect(byTest(page, 'publish-delete-all')).toHaveCount(1);
 
     await capture(page, 'owner-takedown');
   });

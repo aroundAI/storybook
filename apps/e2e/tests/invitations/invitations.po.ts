@@ -2,6 +2,7 @@ import { Page, expect } from '@playwright/test';
 
 import { AuthPageObject } from '../authentication/auth.po';
 import { TeamAccountsPageObject } from '../team-accounts/team-accounts.po';
+import { byTest } from '../utils/visible';
 
 export class InvitationsPageObject {
   private readonly page: Page;
@@ -49,7 +50,7 @@ export class InvitationsPageObject {
       await this.page.click(`[data-test="role-option-${invite.role}"]`);
 
       if (index < invites.length - 1) {
-        await form.locator('[data-test="add-new-invite-button"]').click();
+        await byTest(form, 'add-new-invite-button').click();
       }
     }
 
@@ -75,7 +76,7 @@ export class InvitationsPageObject {
   }
 
   getInvitations() {
-    return this.page.locator('[data-test="invitation-email"]');
+    return byTest(this.page, 'invitation-email');
   }
 
   async deleteInvitation(email: string) {
@@ -83,7 +84,7 @@ export class InvitationsPageObject {
 
     await actions.click();
 
-    await this.page.locator('[data-test="remove-invitation-trigger"]').click();
+    await byTest(this.page, 'remove-invitation-trigger').click();
 
     await this.page.click(
       '[data-test="delete-invitation-form"] button[type="submit"]',
@@ -100,7 +101,7 @@ export class InvitationsPageObject {
 
     await actions.click();
 
-    await this.page.locator('[data-test="update-invitation-trigger"]').click();
+    await byTest(this.page, 'update-invitation-trigger').click();
 
     await this.page.click(`[data-test="role-selector-trigger"]`);
     await this.page.click(`[data-test="role-option-${role}"]`);
@@ -130,6 +131,6 @@ export class InvitationsPageObject {
   }
 
   private getInviteForm() {
-    return this.page.locator('[data-test="invite-members-form"]');
+    return byTest(this.page, 'invite-members-form');
   }
 }

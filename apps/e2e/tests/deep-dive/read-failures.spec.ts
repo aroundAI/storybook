@@ -1,6 +1,7 @@
 import { Page, expect, test } from '@playwright/test';
 
 import { RevenuePageObject } from '../revenue/revenue.po';
+import { byTest } from '../utils/visible';
 import { DeepDivePageObject } from './deep-dive.po';
 
 /**
@@ -72,16 +73,14 @@ test.describe('Failed reads', () => {
     );
 
     // The claim that must not be made: the channels are unknown, not absent.
-    await expect(page.locator('[data-test="ypp-no-channels"]')).toHaveCount(0);
+    await expect(byTest(page, 'ypp-no-channels')).toHaveCount(0);
 
     // The subscriber card names and groups its lines by that same list, so
     // without it the card can only guess — unnamed lines and an empty total.
     await expect(
       page.locator('[data-test="subscriber-series-error"]:visible'),
     ).toBeVisible(ERROR_STATE);
-    await expect(
-      page.locator('[data-test="subscriber-series-empty"]'),
-    ).toHaveCount(0);
+    await expect(byTest(page, 'subscriber-series-empty')).toHaveCount(0);
 
     if (process.env.CAPTURE_EVIDENCE) {
       const card = page
@@ -124,9 +123,7 @@ test.describe('Failed reads', () => {
     ).toBeVisible(ERROR_STATE);
 
     // The claim that must not be made: the count is unknown, not absent.
-    await expect(
-      page.locator('[data-test="subscriber-series-empty"]'),
-    ).toHaveCount(0);
+    await expect(byTest(page, 'subscriber-series-empty')).toHaveCount(0);
   });
 
   test('a failed revenue summary is reported, not shown as no revenue', async ({
@@ -138,13 +135,11 @@ test.describe('Failed reads', () => {
     await abortActionMatching(page, (body) => body.includes('"startDate"'));
 
     await page.goto(`/home/${account.slug}/studio/analytics`);
-    await page.locator('[data-test="revenue-tab-overview"]').click();
+    await byTest(page, 'revenue-tab-overview').click();
 
     const mix = page.locator('[data-test="revenue-mix-card"]:visible');
 
-    await expect(mix.locator('[data-test="revenue-mix-error"]')).toBeVisible(
-      ERROR_STATE,
-    );
+    await expect(byTest(mix, 'revenue-mix-error')).toBeVisible(ERROR_STATE);
     await expect(mix).not.toContainText('No revenue recorded for this period.');
 
     // The tiles above the mix read the same summary. Reporting a figure
@@ -154,9 +149,9 @@ test.describe('Failed reads', () => {
     // `$0`, not `$0.00`: `formatCurrency` renders whole dollars, so the
     // earlier assertion could not fail on any implementation.
     for (const tile of ['total', 'daily', 'rpm']) {
-      await expect(
-        page.locator(`[data-test="revenue-summary-error-${tile}"]`),
-      ).toBeVisible(ERROR_STATE);
+      await expect(byTest(page, `revenue-summary-error-${tile}`)).toBeVisible(
+        ERROR_STATE,
+      );
     }
 
     // No figure left in the three tiles the summary feeds. `$0`, not
@@ -165,16 +160,16 @@ test.describe('Failed reads', () => {
     // reads its own query, which succeeded, so its figure is real.
     for (const tile of ['total', 'daily', 'rpm']) {
       await expect(
-        page.locator(`[data-test="revenue-tile-${tile}"]`).getByText('$'),
+        byTest(page, `revenue-tile-${tile}`).getByText('$'),
       ).toHaveCount(0);
     }
 
     // The chart above them reads the time series, which this abort also
     // matches (both bodies carry `startDate`), and printed "No revenue data
     // for this period" from it.
-    await expect(
-      page.locator('[data-test="revenue-summary-error-time-series"]'),
-    ).toBeVisible(ERROR_STATE);
+    await expect(byTest(page, 'revenue-summary-error-time-series')).toBeVisible(
+      ERROR_STATE,
+    );
     await expect(page.getByText('No revenue data for this period')).toHaveCount(
       0,
     );
@@ -183,9 +178,9 @@ test.describe('Failed reads', () => {
     // data by platform" — a measurement, off a read that never landed.
     await page.locator('[role="tab"]', { hasText: 'By Platform' }).click();
 
-    await expect(
-      page.locator('[data-test="revenue-summary-error-platforms"]'),
-    ).toBeVisible(ERROR_STATE);
+    await expect(byTest(page, 'revenue-summary-error-platforms')).toBeVisible(
+      ERROR_STATE,
+    );
     await expect(page.getByText('No revenue data by platform')).toHaveCount(0);
   });
 
@@ -279,9 +274,7 @@ test.describe('Failed reads', () => {
     // query-core sets `status: 'error'` but keeps `data`, so a bare
     // `isError` would take the filter away while the filtering it applied
     // stays on every card.
-    await expect(
-      page.locator('[data-test="channel-filter-error"]'),
-    ).toHaveCount(0);
+    await expect(byTest(page, 'channel-filter-error')).toHaveCount(0);
     await expect(deepDive.channelFilter()).toContainText('Active Channel');
 
     // The cards follow the same rule through `isUnavailable`, covered by its

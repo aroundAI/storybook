@@ -1,5 +1,6 @@
 import { test } from '@playwright/test';
 
+import { byTest } from '../utils/visible';
 import { AnalyticsSettingsPageObject } from './analytics-settings.po';
 
 /**
@@ -77,7 +78,7 @@ test.describe('Analytics settings — evidence', () => {
     // letting the page look like it worked.
     await settings.chooseStatus('Unknown');
     await settings.channelWatchHours().fill('1200');
-    await page.locator('[data-test="channel-overridden-notice"]').waitFor();
+    await byTest(page, 'channel-overridden-notice').waitFor();
 
     await page.screenshot({
       path: `${OUT}/05-lower-override-notice.png`,

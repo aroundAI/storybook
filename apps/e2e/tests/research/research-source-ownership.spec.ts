@@ -15,6 +15,7 @@ import {
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * KB-37: research sources belong to a team.
@@ -97,16 +98,16 @@ async function addSource(
   await page.getByRole('button', { name: 'Add Source' }).first().click();
 
   const dialog = page.getByRole('dialog');
-  await dialog.locator('[data-test="add-source-name"]').fill(name);
-  await dialog.locator('[data-test="add-source-category"]').click();
+  await byTest(dialog, 'add-source-name').fill(name);
+  await byTest(dialog, 'add-source-category').click();
   await page.getByRole('option', { name: 'research' }).click();
 
   if (scope) {
-    await dialog.locator('[data-test="add-source-scope"]').click();
+    await byTest(dialog, 'add-source-scope').click();
     await page.getByRole('option', { name: scope }).click();
   }
 
-  await dialog.locator('[data-test="add-source-submit"]').click();
+  await byTest(dialog, 'add-source-submit').click();
   await expect(dialog).toBeHidden({ timeout: 20_000 });
 }
 
@@ -128,12 +129,10 @@ test.describe('Research sources belong to a team (KB-37)', () => {
 
     // A built-in says so and has no remove button.
     const reuters = sourceRow(page, 'Reuters');
-    await expect(
-      reuters.locator('[data-test="research-source-kind"]'),
-    ).toHaveText('Built-in');
-    await expect(
-      reuters.locator('[data-test="research-source-remove"]'),
-    ).toHaveCount(0);
+    await expect(byTest(reuters, 'research-source-kind')).toHaveText(
+      'Built-in',
+    );
+    await expect(byTest(reuters, 'research-source-remove')).toHaveCount(0);
 
     // A team-wide source first, then, after the dialog has reset, a source
     // with the default scope: the second must be this project's, not the

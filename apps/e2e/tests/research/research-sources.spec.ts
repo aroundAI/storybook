@@ -10,6 +10,7 @@ import {
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * KB-26: an uploaded research source belongs to its project.
@@ -60,9 +61,9 @@ async function uploadThroughDialog(page: Page, name: string, text: string) {
   await page.getByRole('button', { name: 'Upload Source' }).click();
 
   const dialog = page.getByRole('dialog');
-  await dialog.locator('[data-test="upload-source-name"]').fill(name);
-  await dialog.locator('[data-test="upload-source-paste"]').fill(text);
-  await dialog.locator('[data-test="upload-source-submit"]').click();
+  await byTest(dialog, 'upload-source-name').fill(name);
+  await byTest(dialog, 'upload-source-paste').fill(text);
+  await byTest(dialog, 'upload-source-submit').click();
 
   await expect(dialog).toBeHidden({ timeout: 20_000 });
 }

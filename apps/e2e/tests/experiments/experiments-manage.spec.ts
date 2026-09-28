@@ -10,6 +10,7 @@ import {
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 import { ExperimentsPageObject } from './experiments.po';
 
 /**
@@ -120,9 +121,7 @@ async function seedChange(
  * badge reads abandoned. Not the toast — an earlier one may still be up.
  */
 async function expectAbandoned(page: Page) {
-  await expect(
-    page.locator('[data-test="experiment-abandon-dialog"]'),
-  ).toHaveCount(0);
+  await expect(byTest(page, 'experiment-abandon-dialog')).toHaveCount(0);
   await expect(
     page.locator('[role="dialog"]').getByText('abandoned', { exact: true }),
   ).toBeVisible();
@@ -281,7 +280,7 @@ test.describe('Editing a change (KB-7)', () => {
 
     await log.edit(id);
     await log.editField('experiment-metric').click();
-    await page.locator('[data-test="experiment-metric-option-ctr"]').click();
+    await byTest(page, 'experiment-metric-option-ctr').click();
 
     // Another tab starts it while this form still believes it is planned.
     await updateRows('analytics_experiments', `id=eq.${id}`, {
@@ -311,9 +310,7 @@ test.describe('Abandoning a change (KB-7)', () => {
       reviewWindowDays: 30,
     });
     await page.reload();
-    await expect(
-      page.locator(`[data-test="experiment-due-${running}"]`),
-    ).toBeVisible();
+    await expect(byTest(page, `experiment-due-${running}`)).toBeVisible();
     const today = await log.localToday();
 
     await log.open(planned);
@@ -321,7 +318,7 @@ test.describe('Abandoning a change (KB-7)', () => {
     await page
       .locator('[data-test="experiment-abandon-reason"]')
       .fill('Logged by mistake');
-    await page.locator('[data-test="experiment-abandon-confirm"]').click();
+    await byTest(page, 'experiment-abandon-confirm').click();
     await expectAbandoned(page);
     // Once abandoned: no Abandon, but Delete is offered (planned or abandoned).
     await expect(log.dialogButton('experiment-abandon')).toHaveCount(0);
@@ -338,10 +335,8 @@ test.describe('Abandoning a change (KB-7)', () => {
     // The second abandon, with no reason, must not carry the first's.
     await log.open(running);
     await log.dialogButton('experiment-abandon').click();
-    await expect(
-      page.locator('[data-test="experiment-abandon-reason"]'),
-    ).toHaveValue('');
-    await page.locator('[data-test="experiment-abandon-confirm"]').click();
+    await expect(byTest(page, 'experiment-abandon-reason')).toHaveValue('');
+    await byTest(page, 'experiment-abandon-confirm').click();
     await expectAbandoned(page);
     await log.closeDialog();
 
@@ -352,9 +347,7 @@ test.describe('Abandoning a change (KB-7)', () => {
       ended_at: today,
     });
     // It is no longer waiting for review.
-    await expect(
-      page.locator(`[data-test="experiment-due-${running}"]`),
-    ).toHaveCount(0);
+    await expect(byTest(page, `experiment-due-${running}`)).toHaveCount(0);
     await expect(
       page.locator(`[data-test="experiment-row-${running}"]:visible`),
     ).toContainText('abandoned');
@@ -375,11 +368,11 @@ test.describe('Deleting a change (KB-7, only while planned or abandoned)', () =>
 
     await log.open(id);
     await log.dialogButton('experiment-delete').click();
-    await page.locator('[data-test="experiment-delete-cancel"]').click();
+    await byTest(page, 'experiment-delete-cancel').click();
     expect(await readChange(id)).toBeDefined();
 
     await log.dialogButton('experiment-delete').click();
-    await page.locator('[data-test="experiment-delete-confirm"]').click();
+    await byTest(page, 'experiment-delete-confirm').click();
     await expect(page.getByText('Change deleted')).toBeVisible();
     await expect(page.locator('[role="dialog"]')).toHaveCount(0);
     await expect(
@@ -440,10 +433,8 @@ test.describe('Deleting a change (KB-7, only while planned or abandoned)', () =>
       started_at: daysAgo(0),
     });
 
-    await page.locator('[data-test="experiment-delete-confirm"]').click();
-    await expect(
-      page.locator('[data-test="experiment-confirm-error"]'),
-    ).toHaveText(
+    await byTest(page, 'experiment-delete-confirm').click();
+    await expect(byTest(page, 'experiment-confirm-error')).toHaveText(
       'Only a planned or abandoned change can be deleted; this one is running. Abandon it first to stop it and keep its record.',
     );
     expect((await readChange(id))?.status).toBe('running');
@@ -451,9 +442,7 @@ test.describe('Deleting a change (KB-7, only while planned or abandoned)', () =>
     // The refusal says the change moved on; the dialog must show where to,
     // not keep offering the planned change's Start and Delete.
     await page.keyboard.press('Escape');
-    await expect(
-      page.locator('[data-test="experiment-delete-dialog"]'),
-    ).toHaveCount(0);
+    await expect(byTest(page, 'experiment-delete-dialog')).toHaveCount(0);
     await expect(
       page.locator('[role="dialog"]').getByText('running', { exact: true }),
     ).toBeVisible();
@@ -490,7 +479,7 @@ test.describe('Filtering by status (FILM-1509 → FILM-1610)', () => {
       page.locator(`[data-test="experiment-row-${id}"]:visible`);
     await expect(row(ids.planned)).toBeVisible();
 
-    await page.locator('[data-test="experiment-status-filter"]').click();
+    await byTest(page, 'experiment-status-filter').click();
     await page
       .locator('[data-test="experiment-status-option-running"]')
       .click();
@@ -500,23 +489,23 @@ test.describe('Filtering by status (FILM-1509 → FILM-1610)', () => {
     await expect(row(ids.concluded)).toHaveCount(0);
 
     await page.reload();
-    await expect(
-      page.locator('[data-test="experiment-status-filter"]'),
-    ).toHaveText(/running/i);
+    await expect(byTest(page, 'experiment-status-filter')).toHaveText(
+      /running/i,
+    );
     await expect(row(ids.running)).toBeVisible();
     await expect(row(ids.planned)).toHaveCount(0);
 
     // Filtered to a status with no changes: not "No changes logged yet".
-    await page.locator('[data-test="experiment-status-filter"]').click();
+    await byTest(page, 'experiment-status-filter').click();
     await page
       .locator('[data-test="experiment-status-option-abandoned"]')
       .click();
-    await expect(
-      page.locator('[data-test="experiment-list-filtered-empty"]'),
-    ).toHaveText(/No abandoned changes/);
+    await expect(byTest(page, 'experiment-list-filtered-empty')).toHaveText(
+      /No abandoned changes/,
+    );
     await expect(page.getByText('No changes logged yet')).toHaveCount(0);
 
-    await page.locator('[data-test="experiment-list-show-all"]').click();
+    await byTest(page, 'experiment-list-show-all').click();
     await expect(page).not.toHaveURL(/status=/);
     for (const id of Object.values(ids)) await expect(row(id)).toBeVisible();
   });

@@ -20,7 +20,7 @@ const E2E = join('apps', 'e2e', 'tests');
 const HELPER = join(E2E, 'utils', 'visible.ts');
 
 /** Bare uses on `main` when this was written; lower it as they are migrated. */
-const CEILING = 688;
+const CEILING = 240;
 
 const BARE = /locator\(\s*['"`]\[data-test=/;
 

@@ -19,7 +19,7 @@ acceptance_criteria:
     reason: "unverified — needs a live YouTube sync; writes at `packages/features/content-analytics/src/server/analytics-sync-cron.ts:741`–`:751`; this path fills only `avg_view_duration_seconds` of the three columns (`ingest.ts:138`), as §3 designs"
   - text: "`getProjectAudienceDataAction` returns real demographics/geography (Audience tab shows data)"
     met: true
-    evidence: "`apps/e2e/tests/audience/audience-evidence.spec.ts:285`, `packages/features/content-analytics/__tests__/project-audience.test.ts:172`"
+    evidence: "`apps/e2e/tests/audience/audience-evidence.spec.ts:280`, `packages/features/content-analytics/__tests__/project-audience.test.ts:172`"
   - text: "`getGeographyByLanguage` returns per-country rows"
     met: false
     reason: "unverified — reads country rows (`packages/features/content-analytics/src/server/language-analytics.ts:703`); no test runs it (mocked in `language-insights-actions.test.ts:48`)"

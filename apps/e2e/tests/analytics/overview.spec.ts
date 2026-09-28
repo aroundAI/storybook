@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { byTest } from '../utils/visible';
 import { OverviewPageObject } from './overview.po';
 
 /**
@@ -61,15 +62,15 @@ test.describe('Overview truth (KB-16)', () => {
     await expect(overview.card('shares')).toContainText(
       'We don’t collect how content was shared, only how often.',
     );
-    await expect(
-      page.locator('[data-test="overview-revenue-none"]'),
-    ).toContainText('No revenue recorded');
+    await expect(byTest(page, 'overview-revenue-none')).toContainText(
+      'No revenue recorded',
+    );
     await expect(overview.card('platform-split')).toContainText(
       'No views recorded in this period.',
     );
-    await expect(
-      page.locator('[data-test="overview-comments-most-discussed"]'),
-    ).toHaveCount(0);
+    await expect(byTest(page, 'overview-comments-most-discussed')).toHaveCount(
+      0,
+    );
   });
 
   test('a project paid in two currencies sees its recorded mix, one card per currency', async ({
@@ -94,9 +95,7 @@ test.describe('Overview truth (KB-16)', () => {
 
     // $1,200 ads + $400 premium: 75% / 25% of $1,600.
     await expect(dollars).toContainText('Revenue · USD');
-    await expect(dollars.locator('[data-test="card-figure"]')).toHaveText(
-      '$1,600',
-    );
+    await expect(byTest(dollars, 'card-figure')).toHaveText('$1,600');
     await expect(overview.revenueRows(dollars)).toHaveText([
       'Ads$1,200 · 75%',
       'Premium$400 · 25%',
@@ -104,7 +103,7 @@ test.describe('Overview truth (KB-16)', () => {
 
     // €600 sponsorship + €200 product: 75% / 25% of €800. Never "$2,400".
     await expect(euros).toContainText('Revenue · EUR');
-    await expect(euros.locator('[data-test="card-figure"]')).toHaveText('€800');
+    await expect(byTest(euros, 'card-figure')).toHaveText('€800');
     await expect(overview.revenueRows(euros)).toHaveText([
       'Sponsorship€600 · 75%',
       'Product sales€200 · 25%',
@@ -133,9 +132,7 @@ test.describe('Overview truth (KB-16)', () => {
 
     await expect(card.getByRole('heading')).toHaveText('Revenue');
     await expect(card).not.toContainText('USD');
-    await expect(card.locator('[data-test="card-figure"]')).toHaveText(
-      '$2,400',
-    );
+    await expect(byTest(card, 'card-figure')).toHaveText('$2,400');
     await expect(overview.revenueRows(card)).toHaveText([
       'Ads$1,200 · 50%',
       'Sponsorship$600 · 25%',

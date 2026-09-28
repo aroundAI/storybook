@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { RevenuePageObject } from '../revenue/revenue.po';
 import { seedPublishedEpisode, seedYouTubeConnection } from '../utils/seed';
+import { byTest } from '../utils/visible';
 import { DeepDivePageObject } from './deep-dive.po';
 
 /**
@@ -38,7 +39,7 @@ test.describe('FILM-1611 — evidence', () => {
       number: 3,
     });
     await page.reload();
-    await page.locator('[data-test="analytics-tab-deep-dive"]').click();
+    await byTest(page, 'analytics-tab-deep-dive').click();
     await expect(deepDive.yppCards()).toHaveCount(2);
 
     // 1. The tab as it opens: All channels, and one YPP card per active
@@ -55,9 +56,7 @@ test.describe('FILM-1611 — evidence', () => {
 
     // 2. The selector open, the disconnected channel listed and marked.
     await deepDive.channelFilter().click();
-    await expect(
-      page.locator('[data-test="channel-filter-inactive-badge"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'channel-filter-inactive-badge')).toBeVisible();
     // Animations off: the popover fades in, and a mid-fade capture shows the
     // page underneath through it.
     await page.screenshot({
@@ -122,7 +121,7 @@ test.describe('FILM-1611 — evidence', () => {
     await medians.screenshot({ path: `${OUT}/05-tag-medians-topic.png` });
 
     await dimension.click();
-    await page.locator('[data-test="tag-medians-dimension-language"]').click();
+    await byTest(page, 'tag-medians-dimension-language').click();
     await expect(dimension).toHaveText('Language');
     await medians.screenshot({ path: `${OUT}/06-tag-medians-language.png` });
 
@@ -138,7 +137,7 @@ test.describe('FILM-1611 — evidence', () => {
     await revenue.expectSuccessToast();
 
     await page.goto(`/home/${fixture.team.slug}/studio/analytics`);
-    await page.locator('[data-test="revenue-tab-overview"]').click();
+    await byTest(page, 'revenue-tab-overview').click();
 
     const mix = page.locator('[data-test="revenue-mix-card"]:visible');
 

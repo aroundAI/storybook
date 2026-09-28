@@ -2,6 +2,7 @@ import { Page, expect, test } from '@playwright/test';
 
 import { readRows, seedExperiment, seedTeamAccount } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * A failed read or write must say so (FILM-1610 review, A3 and A4).
@@ -92,12 +93,8 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
     ).toBeVisible(ERROR_STATE);
 
     await expect(page.getByText('No changes logged yet')).toHaveCount(0);
-    await expect(
-      page.locator('[data-test="experiments-due-empty"]'),
-    ).toHaveCount(0);
-    await expect(page.locator('[data-test="video-picker-empty"]')).toHaveCount(
-      0,
-    );
+    await expect(byTest(page, 'experiments-due-empty')).toHaveCount(0);
+    await expect(byTest(page, 'video-picker-empty')).toHaveCount(0);
   });
 
   test('a failed start says so and leaves the experiment planned', async ({
@@ -116,9 +113,7 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
     await onAction(page, startAction, 'abort');
     await start.click();
 
-    await expect(
-      page.locator('[data-test="experiment-action-error"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'experiment-action-error')).toBeVisible();
     await expect(page.getByText('Started — baseline captured')).toHaveCount(0);
     await expect(start).toBeEnabled();
   });

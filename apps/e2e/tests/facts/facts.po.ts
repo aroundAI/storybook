@@ -12,7 +12,7 @@ import {
   uniqueStamp,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
-import { visible } from '../utils/visible';
+import { byTest, visible } from '../utils/visible';
 
 const SERVICE_ROLE_KEY =
   process.env.E2E_SUPABASE_SERVICE_ROLE_KEY ??
@@ -90,9 +90,7 @@ export class FactsPageObject {
     await this.page.goto(
       `/home/${team.slug}/studio/${project.slug}/settings/facts`,
     );
-    await expect(
-      this.page.locator('[data-test="fact-card"]').first(),
-    ).toBeVisible();
+    await expect(byTest(this.page, 'fact-card').first()).toBeVisible();
   }
 
   /** The card on screen, not React's hidden streamed copy (`utils/visible.ts`). */
@@ -112,7 +110,7 @@ export class FactsPageObject {
   }
 
   dialog(): Locator {
-    return this.page.locator('[data-test="fact-review-dialog"]');
+    return byTest(this.page, 'fact-review-dialog');
   }
 
   notes(): Locator {
@@ -151,7 +149,7 @@ export class FactsPageObject {
   }
 
   verifiedBy(): Locator {
-    return this.page.locator('[data-test="fact-verified-by"]');
+    return byTest(this.page, 'fact-verified-by');
   }
 
   async readFacts(facts: SeededFact[]) {

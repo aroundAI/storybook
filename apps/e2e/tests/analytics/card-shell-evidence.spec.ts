@@ -18,6 +18,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * FILM-1706 — screenshots and DOM measurements for the card shell.
@@ -189,7 +190,7 @@ test.describe('FILM-1706 card shell — evidence', () => {
       measured[`overview-${theme}`] = await readCards(page);
       await page.screenshot({ path: `${OUT}/film-1706-overview-${theme}.png` });
 
-      await page.locator('[data-test="analytics-tab-deep-dive"]').click();
+      await byTest(page, 'analytics-tab-deep-dive').click();
       await expect(
         page.locator(
           '[data-test="deep-dive-traffic-share"] [data-test="card-figure"]',
@@ -215,7 +216,7 @@ test.describe('FILM-1706 card shell — evidence', () => {
     }
 
     // Details, opened from the keyboard, with focus showing.
-    const traffic = page.locator('[data-test="deep-dive-traffic-breakdown"]');
+    const traffic = byTest(page, 'deep-dive-traffic-breakdown');
     const trigger = traffic.getByRole('button', { name: 'Details' });
 
     await trigger.focus();
@@ -227,23 +228,21 @@ test.describe('FILM-1706 card shell — evidence', () => {
 
     // The second state: the median card after its mode changes. Same rows,
     // a different question, so the sentence must change with it.
-    const median = page.locator('[data-test="deep-dive-median"]');
+    const median = byTest(page, 'deep-dive-median');
     const before = await median
       .locator('[data-test="card-sentence"]')
       .textContent();
 
     await median.getByRole('button', { name: 'Views in period' }).click();
-    await expect(median.locator('[data-test="card-sentence"]')).not.toHaveText(
-      before ?? '',
-    );
-    await expect(median.locator('[data-test="card-figure"]')).toHaveText(
+    await expect(byTest(median, 'card-sentence')).not.toHaveText(before ?? '');
+    await expect(byTest(median, 'card-figure')).toHaveText(
       EXPECTED['Median views per video'],
     );
 
     measured['median-second-state'] = {
       before,
-      after: await median.locator('[data-test="card-sentence"]').textContent(),
-      figure: await median.locator('[data-test="card-figure"]').textContent(),
+      after: await byTest(median, 'card-sentence').textContent(),
+      figure: await byTest(median, 'card-figure').textContent(),
     };
     await median.screenshot({
       path: `${OUT}/film-1706-median-second-state.png`,

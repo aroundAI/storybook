@@ -13,6 +13,7 @@ import {
   writeRowsAs,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * Team settings → API Keys (KB-84, and the owner's decision of 2026-09-25).
@@ -49,7 +50,7 @@ function settings(team: SeededTeam) {
 }
 
 function hailuoCard(page: Page) {
-  return page.locator('[data-test="api-key-card-hailuo"]');
+  return byTest(page, 'api-key-card-hailuo');
 }
 
 async function keyRows(team: SeededTeam) {
@@ -61,10 +62,10 @@ async function keyRows(team: SeededTeam) {
 
 async function saveHailuoKey(page: Page, key: string) {
   await hailuoCard(page).locator('[data-test="api-key-edit"]').click();
-  await page.locator('[data-test="api-key-input"]').fill(key);
-  await page.locator('[data-test="api-key-test"]').click();
+  await byTest(page, 'api-key-input').fill(key);
+  await byTest(page, 'api-key-test').click();
   await expect(page.getByText('API key is valid and working!')).toBeVisible();
-  await page.locator('[data-test="api-key-save"]').click();
+  await byTest(page, 'api-key-save').click();
 }
 
 /**
@@ -114,7 +115,7 @@ test.describe('API keys: owners manage them', () => {
     expect(await keyRows(team)).toHaveLength(1);
 
     await hailuoCard(page).locator('[data-test="api-key-edit"]').click();
-    await page.locator('[data-test="api-key-remove"]').click();
+    await byTest(page, 'api-key-remove').click();
     await expect(page.getByText('API key removed successfully')).toBeVisible();
     await expect(
       hailuoCard(page).locator('[data-test="api-key-status"]'),
@@ -144,16 +145,14 @@ test.describe('API keys: other roles see, and are refused', () => {
     await signInAs(page, member);
     await page.goto(settings(team));
 
-    await expect(
-      page.locator('[data-test="api-keys-owners-only"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'api-keys-owners-only')).toBeVisible();
     await expect(
       hailuoCard(page).locator('[data-test="api-key-status"]'),
     ).toHaveText('Connected');
     await expect(
       hailuoCard(page).locator('[data-test="api-key-last-four"]'),
     ).toHaveCount(0);
-    await expect(page.locator('[data-test="api-key-edit"]')).toHaveCount(0);
+    await expect(byTest(page, 'api-key-edit')).toHaveCount(0);
     await evidence(page, 'kb84-03-member-view');
   });
 
@@ -170,8 +169,8 @@ test.describe('API keys: other roles see, and are refused', () => {
     await page.goto(settings(team));
 
     await hailuoCard(page).locator('[data-test="api-key-edit"]').click();
-    await page.locator('[data-test="api-key-input"]').fill(HAILUO_A);
-    await page.locator('[data-test="api-key-test"]').click();
+    await byTest(page, 'api-key-input').fill(HAILUO_A);
+    await byTest(page, 'api-key-test').click();
     await expect(page.getByText('API key is valid and working!')).toBeVisible();
 
     // The page still shows the controls; the server must not trust that.
@@ -181,9 +180,9 @@ test.describe('API keys: other roles see, and are refused', () => {
       { account_role: 'member' },
     );
 
-    await page.locator('[data-test="api-key-save"]').click();
+    await byTest(page, 'api-key-save').click();
 
-    await expect(page.locator('[data-test="api-key-error"]')).toHaveText(
+    await expect(byTest(page, 'api-key-error')).toHaveText(
       'Only account owners can add, replace or remove API keys.',
     );
     if (EVIDENCE) {

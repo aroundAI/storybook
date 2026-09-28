@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { byTest } from '../utils/visible';
 import { RevenuePageObject } from './revenue.po';
 
 /**
@@ -25,7 +26,7 @@ test.describe('Manual revenue entry — evidence', () => {
 
     await revenue.setup();
 
-    const form = page.locator('[data-test="manual-revenue-form"]');
+    const form = byTest(page, 'manual-revenue-form');
 
     // 1. The form as it opens. "Whole channel" is the default scope, and
     //    reaching it at all is what two review rounds failed to do.

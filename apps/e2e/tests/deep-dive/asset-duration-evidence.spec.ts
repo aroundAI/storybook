@@ -15,6 +15,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * The published clip's own duration, where a person reads it (FILM-1710).
@@ -112,9 +113,9 @@ test.describe('FILM-1710 — the clip, not its episode', () => {
       `/home/${team.slug}/studio/${project.slug}/analytics?tab=deep-dive`,
     );
 
-    await page.locator('[data-test="analytics-tab-deep-dive"]').click();
+    await byTest(page, 'analytics-tab-deep-dive').click();
 
-    const rows = page.locator('[data-test="diagnostic-row"]');
+    const rows = byTest(page, 'diagnostic-row');
 
     await expect(rows).toHaveCount(2);
 
@@ -139,7 +140,7 @@ test.describe('FILM-1710 — the clip, not its episode', () => {
     // --- The same curve, on a Short with no reported length ---------------
     // The second drill-down, not a fresh page: the panel is reused, and a
     // timestamp left over from the first video is the bug worth catching.
-    await page.locator('[data-test="retention-drilldown-close"]').click();
+    await byTest(page, 'retention-drilldown-close').click();
     await rows.filter({ hasText: 'Short nobody has measured' }).first().click();
     await expect(curve).toBeVisible();
 
@@ -156,7 +157,7 @@ test.describe('FILM-1710 — the clip, not its episode', () => {
     // --- The other surface that draws this chart: the episode page --------
     // It resolves its own publish and calls the same action, so the same
     // two answers must come out of it.
-    const episodeRetention = page.locator('[data-test="episode-retention"]');
+    const episodeRetention = byTest(page, 'episode-retention');
     const episodeUrl = (episodeSlug: string) =>
       `/home/${team.slug}/studio/${project.slug}/episodes/${episodeSlug}/analytics`;
 

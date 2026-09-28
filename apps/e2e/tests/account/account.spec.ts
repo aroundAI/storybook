@@ -7,6 +7,7 @@ import {
   seedProject,
   seedTeamAccount,
 } from '../utils/seed';
+import { byTest } from '../utils/visible';
 import { AccountPageObject } from './account.po';
 
 test.describe('Account Settings', () => {
@@ -74,9 +75,7 @@ test.describe('Account Deletion', () => {
     // fails whether or not the account was deleted, and proves nothing.
     await auth.signIn({ email, password });
 
-    await expect(
-      page.locator('[data-test="auth-error-message"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'auth-error-message')).toBeVisible();
   });
 
   // FILM-CC-04 KB-1. The test above passed throughout the bug: its user had
@@ -121,8 +120,6 @@ test.describe('Account Deletion', () => {
     await page.goto('/auth/sign-in');
     await auth.signIn({ email, password });
 
-    await expect(
-      page.locator('[data-test="auth-error-message"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'auth-error-message')).toBeVisible();
   });
 });

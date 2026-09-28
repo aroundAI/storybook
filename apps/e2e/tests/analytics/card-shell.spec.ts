@@ -11,6 +11,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 import { OverviewPageObject } from './overview.po';
 
 /**
@@ -108,7 +109,7 @@ test.describe('Analytics card shell (FILM-1706)', () => {
 
     await overview.goToOverview(await overview.setup('none'));
 
-    const shares = page.locator('[data-test="overview-shares"]');
+    const shares = byTest(page, 'overview-shares');
     const trigger = shares.getByRole('button', { name: 'Details' });
     const region = shares.getByRole('region', { includeHidden: true });
 
@@ -159,7 +160,7 @@ test.describe('Analytics card shell (FILM-1706)', () => {
     }
 
     // What browser find does on a match inside `hidden="until-found"`.
-    const shares = page.locator('[data-test="overview-shares"]');
+    const shares = byTest(page, 'overview-shares');
     const region = shares.getByRole('region', { includeHidden: true });
 
     await region.dispatchEvent('beforematch');

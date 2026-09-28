@@ -58,12 +58,12 @@ acceptance_criteria:
     evidence: "The linked Instagram account / Facebook Page is disconnected with it — `disconnect_platform_connection` (`apps/web/supabase/migrations/20260923140320_kb22-disconnect-keeps-records.sql`); since KB-22 the rows are kept, not deleted"
   - text: "Proper error messages for permission issues"
     met: true
-    evidence: "`apps/e2e/tests/platform-connections/connect-failure.spec.ts:106` (KB-19, #297)"
+    evidence: "`apps/e2e/tests/platform-connections/connect-failure.spec.ts:107` (KB-19, #297)"
 test_plan:
   unit:
     - text: "Test state encoding/decoding"
       met: true
-      evidence: "`apps/e2e/tests/platform-connections/connect-failure.spec.ts:138`, `apps/e2e/tests/platform-connections/connect-failure.spec.ts:184`"
+      evidence: "`apps/e2e/tests/platform-connections/connect-failure.spec.ts:139`, `apps/e2e/tests/platform-connections/connect-failure.spec.ts:185`"
     - text: "Test page selection logic"
       met: false
       reason: "not met — no test found"

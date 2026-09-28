@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { readRows, seedTeamAccount, uniqueStamp } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * KB-58: creating a project goes through `createFilmProjectAction`, an
@@ -26,8 +27,8 @@ test('the create-project form creates a project, then refuses the same name', as
 
   const submit = async () => {
     await page.goto(`/home/${team.slug}/studio/projects/new`);
-    await page.locator('[data-test="project-name-input"]').fill(name);
-    await page.locator('[data-test="create-project-submit"]').click();
+    await byTest(page, 'project-name-input').fill(name);
+    await byTest(page, 'create-project-submit').click();
   };
 
   await submit();

@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { insertClickHouse } from '../utils/clickhouse';
 import { readRows, seedRunningExperiment } from '../utils/seed';
+import { byTest } from '../utils/visible';
 import { ExperimentsPageObject } from './experiments.po';
 
 /**
@@ -100,7 +101,7 @@ test.describe('Experiment log — evidence', () => {
       .click();
     await page.getByRole('button', { name: 'Start', exact: true }).click();
     await expect(
-      page.locator('[data-test="experiment-watched-baseline-unmeasured"]'),
+      byTest(page, 'experiment-watched-baseline-unmeasured'),
     ).toBeVisible();
 
     await page.screenshot({
@@ -119,9 +120,7 @@ test.describe('Experiment log — evidence', () => {
 
     await page.getByRole('button', { name: 'inconclusive' }).click();
     await expect(page.getByText('Concluded', { exact: true })).toBeVisible();
-    await expect(
-      page.locator('[data-test="experiment-result-after-days"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'experiment-result-after-days')).toBeVisible();
 
     await page.screenshot({
       path: `${OUT}/03c-concluded.png`,
@@ -230,9 +229,9 @@ test.describe('Experiment log — evidence', () => {
     await page.getByLabel('What actually happened?').fill('CTR rose to 5%');
     await page.getByRole('button', { name: 'confirmed' }).click();
     await expect(page.getByText('Concluded', { exact: true })).toBeVisible();
-    await expect(
-      page.locator('[data-test="experiment-watched-result-value"]'),
-    ).toHaveText('5.0%');
+    await expect(byTest(page, 'experiment-watched-result-value')).toHaveText(
+      '5.0%',
+    );
 
     const [stored] = await readRows<{
       status: string;
@@ -415,9 +414,9 @@ test.describe('Experiment log — evidence', () => {
         .click();
       await page.getByRole('button', { name: 'Start', exact: true }).click();
 
-      const side = page.locator('[data-test="experiment-watched-baseline"]');
+      const side = byTest(page, 'experiment-watched-baseline');
       await expect(
-        page.locator('[data-test="experiment-watched-baseline-value"]'),
+        byTest(page, 'experiment-watched-baseline-value'),
       ).toBeVisible();
       readings[title] = await side.textContent();
 
@@ -515,9 +514,9 @@ test.describe('Experiment log — evidence', () => {
       .click();
     await page.getByRole('button', { name: 'Start', exact: true }).click();
 
-    const side = page.locator('[data-test="experiment-watched-baseline"]');
+    const side = byTest(page, 'experiment-watched-baseline');
     await expect(
-      page.locator('[data-test="experiment-watched-baseline-value"]'),
+      byTest(page, 'experiment-watched-baseline-value'),
     ).toBeVisible();
     const reading = await side.textContent();
 

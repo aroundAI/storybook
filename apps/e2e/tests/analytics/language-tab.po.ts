@@ -7,6 +7,7 @@ import {
   seedTeamAccount,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 export type LanguageDimension = 'content' | 'channel';
 
@@ -32,7 +33,7 @@ export class LanguageTabPageObject {
     await this.page.goto(
       `/home/${accountSlug}/studio/${projectSlug}/analytics`,
     );
-    await this.page.locator('[data-test="analytics-tab-language"]').click();
+    await byTest(this.page, 'analytics-tab-language').click();
 
     await expect(this.dimensionControl()).toBeVisible();
   }
@@ -78,7 +79,7 @@ export class LanguageTabPageObject {
 
   rows() {
     return this.page.locator('[data-test^="language-row-"]:visible').filter({
-      has: this.page.locator('[data-test="language-row-name"]'),
+      has: byTest(this.page, 'language-row-name'),
     });
   }
 
@@ -86,9 +87,9 @@ export class LanguageTabPageObject {
     const row = this.row(language);
 
     return {
-      name: await row.locator('[data-test="language-row-name"]').innerText(),
-      views: await row.locator('[data-test="language-row-views"]').innerText(),
-      share: await row.locator('[data-test="language-row-share"]').innerText(),
+      name: await byTest(row, 'language-row-name').innerText(),
+      views: await byTest(row, 'language-row-views').innerText(),
+      share: await byTest(row, 'language-row-share').innerText(),
       checkpoint: await row
         .locator('[data-test="language-row-checkpoint"]')
         .innerText(),

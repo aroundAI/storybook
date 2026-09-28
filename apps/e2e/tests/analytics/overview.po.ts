@@ -12,6 +12,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 export interface OverviewFixture {
   team: SeededTeam;
@@ -114,15 +115,15 @@ export class OverviewPageObject {
   }
 
   card(name: 'shares' | 'comments' | 'platform-split') {
-    return this.page.locator(`[data-test="overview-${name}"]`);
+    return byTest(this.page, `overview-${name}`);
   }
 
   revenueCards() {
-    return this.page.locator('[data-test="overview-revenue"]');
+    return byTest(this.page, 'overview-revenue');
   }
 
   revenueRows(card: ReturnType<Page['locator']>) {
-    return card.locator('[data-test="overview-revenue-row"]');
+    return byTest(card, 'overview-revenue-row');
   }
 
   metricCards() {
@@ -130,7 +131,7 @@ export class OverviewPageObject {
   }
 
   metricChanges() {
-    return this.page.locator('[data-test="metric-change"]');
+    return byTest(this.page, 'metric-change');
   }
 
   /** Everything on the page, whitespace collapsed — the metric row too. */

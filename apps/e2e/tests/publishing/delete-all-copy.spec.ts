@@ -11,6 +11,7 @@ import {
   serviceRoleAuth,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * KB-119. The "Delete All" dialog said videos already on platforms "will need
@@ -66,7 +67,7 @@ test('the Delete All dialog says the videos are deleted on YouTube and Facebook'
 
   await page.getByTitle('Clear All').click();
 
-  const copy = page.locator('[data-test="publish-delete-all-copy"]');
+  const copy = byTest(page, 'publish-delete-all-copy');
 
   await expect(copy).toContainText(
     "This deletes this episode's videos on YouTube and Facebook",

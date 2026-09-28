@@ -16,6 +16,7 @@ import {
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 import { png } from './png';
 
 /**
@@ -76,7 +77,7 @@ test.describe('Project storage (KB-28)', () => {
     await page.goto(`/home/${team.slug}/studio/${project.slug}/settings`);
 
     const input = page.locator('[data-test="cover-image-input"]');
-    const preview = page.locator('[data-test="cover-image-preview"]');
+    const preview = byTest(page, 'cover-image-preview');
     const storedPrefix = `/project-assets/projects/${project.id}/assets/covers/`;
 
     // KB-38: what the page declares when it asks for an upload URL, and what

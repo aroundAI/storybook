@@ -8,6 +8,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * Another account cannot read a public project's analytics (FILM-1615 EDD,
@@ -212,7 +213,7 @@ test.describe('Analytics tenant isolation (FILM-1615 Step 0)', () => {
     await victimPage.goto(
       `/home/${victim.slug}/studio/${victimProject.slug}/analytics`,
     );
-    await victimPage.locator('[data-test="analytics-tab-deep-dive"]').click();
+    await byTest(victimPage, 'analytics-tab-deep-dive').click();
     await expect
       .poll(
         () =>
@@ -258,7 +259,7 @@ test.describe('Analytics tenant isolation (FILM-1615 Step 0)', () => {
     await page.goto(
       `/home/${attacker.slug}/studio/${attackerProject.slug}/analytics`,
     );
-    await page.locator('[data-test="analytics-tab-deep-dive"]').click();
+    await byTest(page, 'analytics-tab-deep-dive').click();
 
     // Wait until every read that carried the figure for the victim has
     // answered the attacker too, then look for the figure in any response.

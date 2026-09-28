@@ -9,6 +9,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 export interface VideoLogFixture {
   team: SeededTeam;
@@ -66,13 +67,13 @@ export class VideoLogPageObject {
   }
 
   async openVideoLog() {
-    await this.page.locator('[data-test="analytics-tab-video-log"]').click();
+    await byTest(this.page, 'analytics-tab-video-log').click();
 
     await expect(this.tab()).toBeVisible();
   }
 
   async openDeepDive() {
-    await this.page.locator('[data-test="analytics-tab-deep-dive"]').click();
+    await byTest(this.page, 'analytics-tab-deep-dive').click();
 
     await expect(
       this.page.locator('[data-test="deep-dive-tab"]:visible'),

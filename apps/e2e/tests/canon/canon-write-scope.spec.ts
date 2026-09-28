@@ -16,6 +16,7 @@ import {
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * KB-76, KB-77, KB-63: canon is written by the project's writers, and
@@ -152,27 +153,27 @@ function storyUrl() {
 async function openThreads(page: Page, user: SeededUser) {
   await signInAs(page, user);
   await page.goto(storyUrl());
-  await page.locator('[data-test="story-sidebar-toggle"]').click();
-  await page.locator('[data-test="story-canon-tab"]').click();
-  await page.locator('[data-test="canon-threads-tab"]').click();
+  await byTest(page, 'story-sidebar-toggle').click();
+  await byTest(page, 'story-canon-tab').click();
+  await byTest(page, 'canon-threads-tab').click();
 }
 
 async function addThread(page: Page, name: string) {
-  await page.locator('[data-test="canon-add-thread"]').first().click();
-  await page.locator('[data-test="canon-thread-name"]').fill(name);
+  await byTest(page, 'canon-add-thread').first().click();
+  await byTest(page, 'canon-thread-name').fill(name);
   await page
     .locator('[data-test="canon-thread-description"]')
     .fill(`${name}, carried across the season.`);
-  await page.locator('[data-test="canon-thread-submit"]').click();
+  await byTest(page, 'canon-thread-submit').click();
 }
 
 async function resetToStory(page: Page, user: SeededUser) {
   await signInAs(page, user);
   await page.goto(storyUrl());
-  await page.locator('[data-test="episode-actions-trigger"]').first().click();
-  await page.locator('[data-test="episode-reset-menu"]').click();
-  await page.locator('[data-test="episode-reset-story"]').click();
-  await page.locator('[data-test="episode-reset-confirm"]').click();
+  await byTest(page, 'episode-actions-trigger').first().click();
+  await byTest(page, 'episode-reset-menu').click();
+  await byTest(page, 'episode-reset-story').click();
+  await byTest(page, 'episode-reset-confirm').click();
 }
 
 function threadNames() {
@@ -215,12 +216,12 @@ test.describe('Canon write scope (KB-76, KB-77, KB-63)', () => {
     await openThreads(page, viewer);
 
     // Reads are on account membership: the viewer sees both threads.
-    await expect(page.locator('[data-test="canon-thread"]')).toHaveCount(2);
+    await expect(byTest(page, 'canon-thread')).toHaveCount(2);
 
     await addThread(page, 'A viewer thread');
 
     await expect(page.getByText(CANON_REFUSAL).first()).toBeVisible();
-    await expect(page.locator('[data-test="canon-thread-name"]')).toHaveValue(
+    await expect(byTest(page, 'canon-thread-name')).toHaveValue(
       'A viewer thread',
     );
 
@@ -239,7 +240,7 @@ test.describe('Canon write scope (KB-76, KB-77, KB-63)', () => {
   test('a project member adds two threads', async ({ page }) => {
     await openThreads(page, member);
 
-    const threads = page.locator('[data-test="canon-thread"]');
+    const threads = byTest(page, 'canon-thread');
     await expect(threads).toHaveCount(2);
 
     await addThread(page, 'The traitor at the gate');

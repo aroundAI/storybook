@@ -10,6 +10,7 @@ import {
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
 import { SUPER_ADMIN_STORAGE_STATE } from '../utils/super-admin';
+import { byTest } from '../utils/visible';
 
 /**
  * KB-36. /admin/platforms offered a TikTok card whose saved key nothing read:
@@ -35,7 +36,7 @@ async function capture(page: Page, name: string) {
 }
 
 function tiktokSource(page: Page) {
-  return page.locator('[data-test="oauth-app-source-tiktok"]');
+  return byTest(page, 'oauth-app-source-tiktok');
 }
 
 async function saveTikTok(page: Page, clientKey: string, secret: string) {
@@ -45,7 +46,7 @@ async function saveTikTok(page: Page, clientKey: string, secret: string) {
   await page
     .locator('[data-test="oauth-app-client-secret-tiktok"]')
     .fill(secret);
-  await page.locator('[data-test="oauth-app-save-tiktok"]').click();
+  await byTest(page, 'oauth-app-save-tiktok').click();
   await expect(page.getByText('TikTok credentials saved!')).toBeVisible();
 }
 

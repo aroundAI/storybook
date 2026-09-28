@@ -15,6 +15,7 @@ import {
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 import { png } from './png';
 
 /**
@@ -82,12 +83,10 @@ async function openPublish(page: Page, slug: string) {
 
   // Exactly one panel: while a navigation settles the screen can briefly
   // render twice (see intro-thumbnail-upload.spec.ts), so wait for one.
-  const panel = page.locator('[data-test="episode-thumbnails"]');
+  const panel = byTest(page, 'episode-thumbnails');
   await expect(panel).toHaveCount(1);
   await expect(panel).toBeVisible();
-  await expect(panel.locator('[data-test="thumbnails-loading"]')).toHaveCount(
-    0,
-  );
+  await expect(byTest(panel, 'thumbnails-loading')).toHaveCount(0);
 
   return panel;
 }
@@ -98,10 +97,10 @@ async function addThumbnail(
   language: string,
   colour: [number, number, number],
 ) {
-  await panel.locator('[data-test="thumbnail-add"]').click();
+  await byTest(panel, 'thumbnail-add').click();
 
   const dialog = page.getByRole('dialog');
-  await dialog.locator('[data-test="thumbnail-language"]').fill(language);
+  await byTest(dialog, 'thumbnail-language').fill(language);
 
   // A file chosen before hydration is ignored; the preview shows the handler ran.
   await expect(async () => {
@@ -115,15 +114,15 @@ async function addThumbnail(
     });
   }).toPass({ timeout: 20_000 });
 
-  await dialog.locator('[data-test="thumbnail-submit"]').click();
-  await expect(
-    panel.locator(`[data-test="thumbnail-${language}"]`),
-  ).toBeVisible({ timeout: 30_000 });
+  await byTest(dialog, 'thumbnail-submit').click();
+  await expect(byTest(panel, `thumbnail-${language}`)).toBeVisible({
+    timeout: 30_000,
+  });
 }
 
 async function removeThumbnail(page: Page, panel: Locator, language: string) {
-  await panel.locator(`[data-test="thumbnail-remove-${language}"]`).click();
-  await page.locator('[data-test="thumbnail-remove-confirm"]').click();
+  await byTest(panel, `thumbnail-remove-${language}`).click();
+  await byTest(page, 'thumbnail-remove-confirm').click();
 }
 
 /** The image the publish screen's video slot shows for a language */
@@ -147,7 +146,7 @@ test.describe('Episode thumbnails panel (KB-89, KB-61)', () => {
     await signInAs(page, team);
     const panel = await openPublish(page, episode.slug);
 
-    await expect(panel.locator('[data-test="thumbnails-empty"]')).toBeVisible();
+    await expect(byTest(panel, 'thumbnails-empty')).toBeVisible();
 
     await addThumbnail(page, panel, 'en', RED);
     await addThumbnail(page, panel, 'hi', GREEN);
@@ -166,7 +165,7 @@ test.describe('Episode thumbnails panel (KB-89, KB-61)', () => {
 
     // Hindi becomes the default: a language with no thumbnail of its own
     // falls back to it, in the slot as in the publish step.
-    await panel.locator('[data-test="thumbnail-set-default-hi"]').click();
+    await byTest(panel, 'thumbnail-set-default-hi').click();
     await expect(
       panel.locator(
         '[data-test="thumbnail-hi"] [data-test="thumbnail-default"]',
@@ -179,20 +178,20 @@ test.describe('Episode thumbnails panel (KB-89, KB-61)', () => {
     }
 
     // Cancel leaves it
-    await panel.locator('[data-test="thumbnail-remove-en"]').click();
+    await byTest(panel, 'thumbnail-remove-en').click();
 
     if (evidence) {
       await page.screenshot({ path: `${OUT}/kb89-02-confirm-remove.png` });
     }
 
     await page.getByRole('button', { name: 'Cancel' }).click();
-    await expect(panel.locator('[data-test="thumbnail-en"]')).toBeVisible();
+    await expect(byTest(panel, 'thumbnail-en')).toBeVisible();
     expect(await thumbnailRows(episode.episodeId)).toHaveLength(2);
 
     // Remove English: the row and its file go, and its slot now shows the
     // default (Hindi) rather than the removed image
     await removeThumbnail(page, panel, 'en');
-    await expect(panel.locator('[data-test="thumbnail-en"]')).toHaveCount(0);
+    await expect(byTest(panel, 'thumbnail-en')).toHaveCount(0);
     await expect
       .poll(async () => (await thumbnailRows(episode.episodeId)).length)
       .toBe(1);
@@ -214,8 +213,8 @@ test.describe('Episode thumbnails panel (KB-89, KB-61)', () => {
     // After a reload it is still gone
     await page.reload();
     const reloaded = await openPublish(page, episode.slug);
-    await expect(reloaded.locator('[data-test="thumbnail-en"]')).toHaveCount(0);
-    await expect(reloaded.locator('[data-test="thumbnail-hi"]')).toBeVisible();
+    await expect(byTest(reloaded, 'thumbnail-en')).toHaveCount(0);
+    await expect(byTest(reloaded, 'thumbnail-hi')).toBeVisible();
 
     if (evidence) {
       await reloaded.scrollIntoViewIfNeeded();
@@ -224,9 +223,7 @@ test.describe('Episode thumbnails panel (KB-89, KB-61)', () => {
 
     // The second removal, after the first
     await removeThumbnail(page, reloaded, 'hi');
-    await expect(
-      reloaded.locator('[data-test="thumbnails-empty"]'),
-    ).toBeVisible();
+    await expect(byTest(reloaded, 'thumbnails-empty')).toBeVisible();
     await expect
       .poll(async () => (await thumbnailRows(episode.episodeId)).length)
       .toBe(0);
@@ -252,7 +249,7 @@ test.describe('Episode thumbnails panel (KB-89, KB-61)', () => {
 
     await removeThumbnail(page, panel, 'en');
 
-    await expect(panel.locator('[data-test="thumbnail-en"]')).toHaveCount(0);
+    await expect(byTest(panel, 'thumbnail-en')).toHaveCount(0);
     await expect
       .poll(async () => (await thumbnailRows(episode.episodeId)).length)
       .toBe(0);
@@ -262,9 +259,7 @@ test.describe('Episode thumbnails panel (KB-89, KB-61)', () => {
 
     await page.reload();
     const reloaded = await openPublish(page, episode.slug);
-    await expect(
-      reloaded.locator('[data-test="thumbnails-empty"]'),
-    ).toBeVisible();
+    await expect(byTest(reloaded, 'thumbnails-empty')).toBeVisible();
   });
 
   test('removing a thumbnail that is already gone says so, and keeps nothing stale', async ({
@@ -291,8 +286,8 @@ test.describe('Episode thumbnails panel (KB-89, KB-61)', () => {
     ).toBeVisible();
 
     // The refusal re-reads the list: the card for a row that is gone goes
-    await expect(panel.locator('[data-test="thumbnail-en"]')).toHaveCount(0);
-    await expect(panel.locator('[data-test="thumbnails-empty"]')).toBeVisible();
+    await expect(byTest(panel, 'thumbnail-en')).toHaveCount(0);
+    await expect(byTest(panel, 'thumbnails-empty')).toBeVisible();
 
     if (evidence) {
       await page.screenshot({ path: `${OUT}/kb89-05-already-gone.png` });
