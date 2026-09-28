@@ -164,9 +164,11 @@ async function queryLatestSnapshotsSingle(input: {
       argMax(likes, fetched_at) as likes,
       argMax(comments, fetched_at) as comments,
       argMax(shares, fetched_at) as shares,
-      argMax(saves, fetched_at) as saves,
-      argMax(watch_time_seconds, fetched_at) as watch_time_seconds,
-      argMax(subscribers_gained, fetched_at) as subscribers_gained,
+      -- The latest snapshot's own values, NULL included: a bare argMax skips
+      -- NULLs and would hand back an older figure (migration 017).
+      argMax(tuple(saves), fetched_at).1 as saves,
+      argMax(tuple(watch_time_seconds), fetched_at).1 as watch_time_seconds,
+      argMax(tuple(subscribers_gained), fetched_at).1 as subscribers_gained,
       -- The latest snapshot's own reach, NULL included. A bare argMax skips
       -- NULLs and would hand back an older reach, making the next delta
       -- cover several days while dated to one.
@@ -195,9 +197,11 @@ async function queryLatestSnapshotsSingle(input: {
       likes: Number(row.likes),
       comments: Number(row.comments),
       shares: Number(row.shares),
-      saves: Number(row.saves),
-      watch_time_seconds: Number(row.watch_time_seconds),
-      subscribers_gained: Number(row.subscribers_gained),
+      saves: row.saves == null ? null : Number(row.saves),
+      watch_time_seconds:
+        row.watch_time_seconds == null ? null : Number(row.watch_time_seconds),
+      subscribers_gained:
+        row.subscribers_gained == null ? null : Number(row.subscribers_gained),
       accounts_reached:
         row.accounts_reached == null ? null : Number(row.accounts_reached),
     });

@@ -89,6 +89,32 @@ describe('computeSnapshotDelta', () => {
 
     expect(computeSnapshotDelta(current, null)).toEqual(current);
   });
+
+  // Migration 017: an unmeasured counter's day is null, never 0 — whether
+  // today's figure is missing or the baseline recorded none.
+  it('keeps an unmeasured counter null, never 0', () => {
+    const current = {
+      views: 1500,
+      likes: 130,
+      comments: 55,
+      shares: 25,
+      saves: 12,
+      watch_time_seconds: null,
+      subscribers_gained: null,
+      accounts_reached: 5200,
+    };
+
+    const delta = computeSnapshotDelta(current, baseline);
+    expect(delta.watch_time_seconds).toBeNull();
+    expect(delta.subscribers_gained).toBeNull();
+    expect(delta.saves).toBe(2);
+
+    const fromUnmeasured = computeSnapshotDelta(
+      { ...current, watch_time_seconds: 6200 },
+      { ...baseline, watch_time_seconds: null },
+    );
+    expect(fromUnmeasured.watch_time_seconds).toBeNull();
+  });
 });
 
 // FILM-1712 part B: accounts reached is a unique count, so its daily figure

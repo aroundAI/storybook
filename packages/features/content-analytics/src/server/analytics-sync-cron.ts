@@ -847,7 +847,7 @@ function normalizeAnalytics(
         likes: data.totals.likes,
         comments: data.totals.comments,
         shares: data.totals.shares,
-        saves: 0, // YouTube doesn't have saves
+        saves: null, // YouTube has no saves metric
         watch_time_seconds: (data.totals.estimatedMinutesWatched ?? 0) * 60,
         subscribers_gained: data.totals.subscribersGained ?? 0,
         revenue_cents: data.totals.estimatedRevenue ?? 0,
@@ -876,9 +876,9 @@ function normalizeAnalytics(
         // Saves have no creator-auth surface on TikTok, and watch time is
         // Business API only. Both are structurally zero, not measured as zero.
         // docs/platform-capability-reference.md
-        saves: 0,
-        watch_time_seconds: 0,
-        subscribers_gained: 0, // TikTok doesn't provide per-video follower gains
+        saves: null,
+        watch_time_seconds: null,
+        subscribers_gained: null, // TikTok doesn't provide per-video follower gains
         revenue_cents: 0, // TikTok doesn't expose revenue
         ad_revenue_cents: 0,
         red_revenue_cents: 0,
@@ -903,14 +903,13 @@ function normalizeAnalytics(
         likes: data.totals.likes ?? 0,
         comments: data.totals.comments ?? 0,
         shares: data.totals.shares ?? 0,
-        saves: data.totals.saved ?? 0,
-        // Not measured as zero: Instagram documents Reels watch time and we
-        // never request it. `not_ingested` in CAPABILITY_MATRIX; FILM-1712.
-        watch_time_seconds: 0,
-        // Not measured: Meta offers no `follows` for Reels, and we never ask
-        // for it (FILM-1712). The cumulative snapshot holds a number; the
-        // day's row stores null (KB-114, buildSnapshotDeltaRow).
-        subscribers_gained: 0,
+        saves: data.totals.saved ?? null,
+        // Not stored until its unit is confirmed on a live account
+        // (FILM-1712): `not_ingested` in CAPABILITY_MATRIX. Null, not 0.
+        watch_time_seconds: null,
+        // Meta offers no `follows` for Reels (FILM-1712). Null, not 0, in
+        // the snapshot as in the day's row (migration 017, KB-114).
+        subscribers_gained: null,
         revenue_cents: 0,
         ad_revenue_cents: 0,
         red_revenue_cents: 0,
