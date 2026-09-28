@@ -76,8 +76,13 @@ export function metaAuthorize(
   res: http.ServerResponse,
   social: SocialState,
   anyOf: readonly string[] = [],
+  body?: Buffer,
 ): SocialToken | null {
-  const value = url.searchParams.get('access_token') ?? bearerOf(req);
+  const value =
+    url.searchParams.get('access_token') ??
+    bodyToken(body) ??
+    bearerOf(req) ??
+    oauthHeaderOf(req);
   const check = value ? social.checkToken(value) : null;
 
   if (!check || !check.ok || check.token.kind !== 'access') {
@@ -89,6 +94,24 @@ export function metaAuthorize(
     return null;
   }
   return check.token;
+}
+
+/** `access_token` in a JSON or form body, as `media_publish` sends it. */
+function bodyToken(body?: Buffer) {
+  if (!body || body.length === 0) return null;
+  const text = body.toString('utf8');
+  try {
+    const parsed = JSON.parse(text) as { access_token?: unknown };
+    return typeof parsed.access_token === 'string' ? parsed.access_token : null;
+  } catch {
+    return new URLSearchParams(text).get('access_token');
+  }
+}
+
+/** `Authorization: OAuth {token}`, as the Reels upload host takes it. */
+function oauthHeaderOf(req: http.IncomingMessage) {
+  const header = req.headers.authorization ?? '';
+  return header.startsWith('OAuth ') ? header.slice(6) : null;
 }
 
 /** `/v23.0/me/accounts` → `/me/accounts`; any documented version path. */
