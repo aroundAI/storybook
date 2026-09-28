@@ -9,6 +9,7 @@ import {
   seedTeamAccount,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * KB-123. An episode's video URL decides which file a publish sends to the
@@ -76,13 +77,13 @@ test.describe('An episode video is one of its own uploads (KB-123)', () => {
       return route.continue();
     });
 
-    await page.locator('[data-test="upload-full-video"]').click();
+    await byTest(page, 'upload-full-video').click();
     await page.locator('[data-test="upload-video-file"]').setInputFiles({
       name: 'pilot.mp4',
       mimeType: 'video/mp4',
       buffer: Buffer.from('kb-123 stand-in video'),
     });
-    await page.locator('[data-test="upload-video-submit"]').click();
+    await byTest(page, 'upload-video-submit').click();
 
     await expect(page.getByText(REFUSAL)).toBeVisible();
     await capture(page, '01-refused');
@@ -90,7 +91,7 @@ test.describe('An episode video is one of its own uploads (KB-123)', () => {
 
     // The second submission, on the same open dialog, unaltered
     await page.unrouteAll({ behavior: 'wait' });
-    await page.locator('[data-test="upload-video-submit"]').click();
+    await byTest(page, 'upload-video-submit').click();
 
     await expect(page.getByText('Video uploaded for English')).toBeVisible();
     await capture(page, '02-saved');

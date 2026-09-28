@@ -58,7 +58,7 @@ acceptance_criteria:
     evidence: "packages/features/assets/src/components/asset-card.tsx:212, :301, :319"
   - text: "Asset cards have Edit and Delete buttons"
     met: true
-    evidence: "as card-menu items (packages/features/assets/src/components/asset-card.tsx:272-285); E2E apps/e2e/tests/refusals/refusals.po.ts:187-188"
+    evidence: "as card-menu items (packages/features/assets/src/components/asset-card.tsx:272-285); E2E apps/e2e/tests/refusals/refusals.po.ts:189-190"
   - text: "Search bar filters assets by name and description"
     met: true
     evidence: "packages/features/assets/src/components/asset-gallery.tsx:145-153, packages/features/assets/src/hooks/use-character-filters.ts:88-93"

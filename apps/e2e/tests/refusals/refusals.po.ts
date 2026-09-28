@@ -4,8 +4,10 @@ import {
   SeededTeam,
   deleteRows,
   insertRow,
+  seedMembership,
   seedProject,
   seedTeamAccount,
+  seedUser,
   seedYouTubeConnection,
   uniqueStamp,
   updateRows,
@@ -321,6 +323,34 @@ export const SCENARIOS: RefusalScenario[] = [
       );
 
       await page.getByRole('button', { name: 'Delete Night shoots' }).click();
+    },
+  },
+  {
+    // KB-105: an update RLS matches to no row answers `{ data: [], error:
+    // null }`, as one that worked. This one checks what it changed, so the
+    // page says so instead of "Language set to Spanish".
+    area: 'publishing',
+    name: 'changing the language of a channel after another tab removed you from the team (KB-105)',
+    message: "You can't change this channel's language.",
+    run: async (page) => {
+      const team = await seedTeamAccount({ emailPrefix: 'kb105' });
+      const member = await seedUser('kb105-member');
+      await seedMembership(member.userId, team.accountId);
+      await seedYouTubeConnection(team.accountId, 'Seeded Harbour Channel');
+
+      await signInAs(page, member);
+      await page.goto(`/home/${team.slug}/settings/platforms`);
+      const language = byTest(page, 'connection-language');
+      await language.waitFor();
+
+      // The other tab: an owner removes this member while the page is open.
+      await deleteRows(
+        'accounts_memberships',
+        `user_id=eq.${member.userId}&account_id=eq.${team.accountId}`,
+      );
+
+      await language.click();
+      await page.getByRole('option', { name: 'Spanish' }).click();
     },
   },
 ];
