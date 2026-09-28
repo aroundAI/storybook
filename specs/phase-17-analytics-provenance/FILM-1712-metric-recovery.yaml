@@ -37,8 +37,8 @@ acceptance_criteria:
     met: false
     reason: "part B: no field is added to a request yet"
   - text: "Instagram watch_time_seconds is a measurement or an honest null, never a hardcoded zero"
-    met: false
-    reason: "the daily column is null since KB-114 (#418), but normalizeAnalytics still writes a literal 0 into the cumulative snapshot; part B requests the real figure"
+    met: true
+    evidence: "an honest null in both places: the daily column since KB-114 (#418), and the lifetime snapshot since migration 017 (normalizeAnalytics writes null; the baseline keeps the latest NULL via argMax(tuple(...)).1; `pnpm --filter @kit/clickhouse verify` asserts it, red first). The real figure waits on its unit check (the Reels criterion above)"
   - text: "reposts_count, saved_count and shares_count are requested for FEED and REELS"
     met: false
     reason: "part B: no field is added to a request yet"
@@ -64,8 +64,8 @@ acceptance_criteria:
     met: true
     evidence: "four requests, one breakdown each (country, city, age, gender), timeframe this_month (all v20+ accepts; the app is on v23.0), rows read from the follower_demographics item Meta returns (instagram-audience.test.ts, red on the old call). The old call was not rejected in production (owner, 2026-09-27), but its parsers looked for items Meta never returns, so every audience list was empty; recorded in docs/platform-capability-reference.md"
   - text: "extra_metrics gains a reader or stops being written"
-    met: false
-    reason: "nothing reads it, but Instagram's reach lives only there; it keeps being written until part B gives reach a column, so that history is not lost in between"
+    met: true
+    evidence: "stops being written: reach has had its own column since #457, and nothing read the raw payloads. The ingest inputs no longer take extraMetricsJson, so it cannot be written again by accident; the column stays, empty"
   - text: "The capability matrix is updated in the same PR as each newly-ingested field, per FILM-1703's writer-binding test"
     met: false
     reason: "reach is done: the cross-platform reach PRs give it two families, accounts_reached (per post, video_metrics) and channel_accounts_reached (per channel, channel_windows), and Instagram's impressions/CTR entry is now unsupported. The fields part B has yet to request (Reels watch time, reposts/saved/shares counts, the aggregates) are not ingested yet"

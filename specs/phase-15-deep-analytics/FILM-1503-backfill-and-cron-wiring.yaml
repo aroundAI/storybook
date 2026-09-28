@@ -26,7 +26,7 @@ acceptance_criteria:
     reason: "unverified — depends on the rows the Analytics API returns; needs a real backfill run"
   - text: "Backfill is resumable — re-invocation skips completed publishes"
     met: true
-    evidence: "`packages/features/content-analytics/src/server/backfill/youtube-backfill.ts:207` (pending predicate; completion mark at `:298`)"
+    evidence: "`packages/features/content-analytics/src/server/backfill/youtube-backfill.ts:206` (pending predicate; completion mark at `:298`)"
   - text: "`pnpm sst diff` shows only the new scheduled-reports cron"
     met: false
     reason: "unverified — a ship-time diff; the cron exists (`sst.config.ts:1306`); a diff needs AWS credentials"

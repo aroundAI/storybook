@@ -52,7 +52,7 @@ acceptance_criteria:
     evidence: null
   - text: "Stores daily snapshots - Upserts to `content_analytics` with `(publish_id, snapshot_date)` unique key"
     met: true
-    evidence: "now ClickHouse `video_snapshots` (`packages/features/content-analytics/src/server/analytics-sync-cron.ts:828`); `content_analytics` was dropped in 947c7ae9"
+    evidence: "now ClickHouse `video_snapshots` (`packages/features/content-analytics/src/server/analytics-sync-cron.ts:824`); `content_analytics` was dropped in 947c7ae9"
   - text: "Updates existing snapshots - Uses Supabase upsert with `onConflict`"
     met: true
     evidence: "now `ReplacingMergeTree(fetched_at)` ordered by `snapshot_date` (`packages/clickhouse/src/migrations/002_metrics_v2.ts:59`)"
@@ -72,10 +72,10 @@ test_plan:
   unit:
     - text: "Test schedule calculation"
       met: true
-      evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:491` (`getSyncSchedule` tiers)"
+      evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:513` (`getSyncSchedule` tiers)"
     - text: "Test age-based sync frequency"
       met: true
-      evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:495` (the 30–90 and >90 day tiers only)"
+      evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:517` (the 30–90 and >90 day tiers only)"
   integration:
     - text: "Test sync flow with mocked providers"
       met: false
