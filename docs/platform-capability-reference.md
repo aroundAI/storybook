@@ -945,9 +945,20 @@ shares
 profile_visits             # FEED + STORY only, NOT REELS
 follows                    # FEED + STORY only, NOT REELS
 reels_skip_rate
-ig_reels_avg_watch_time    # units undocumented; ms inferred
+ig_reels_avg_watch_time    # milliseconds, observed (see note); NOT total_time / views
 ig_reels_video_view_total_time
 ```
+
+**Reels watch time is in milliseconds — observed, not inferred (owner's own
+account, 2026-09-28 and -29).** Meta's response titles say so ("Reels Average
+Watch Time (milliseconds)", "Video View Total Time (milliseconds)"), and the
+values agree: a Reel with 221 views had `ig_reels_avg_watch_time` 6,194 (6.2
+seconds; as seconds it would be 1.7 hours) and `ig_reels_video_view_total_time`
+749,526 (12.5 minutes). **The average is not total ÷ views:** 749,526 ÷ 221 is
+3,391, while 749,526 ÷ 6,194 is 121.0 exactly — Meta divides by a count of 121,
+not by views (which count every play and display, replays included). Whether
+121 is the Reel's accounts reached or its first plays is not yet confirmed.
+Store both figures as reported; never derive one from the other.
 
 <!-- fields: instagram/media-insights-2026 source: https://developers.facebook.com/docs/instagram-platform/changelog -->
 ```text

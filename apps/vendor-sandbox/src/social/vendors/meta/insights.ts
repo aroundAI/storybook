@@ -244,16 +244,22 @@ const mediaInsights: SocialRoute = ({
   const saved = social.cumulative(object, 'saves');
   const shares = social.cumulative(object, 'shares');
   const watchedMs = social.watchSeconds(object) * MS;
+  const reach = mediaReach(social, instagram, object);
   const value: Record<string, number> = {
     views,
-    reach: mediaReach(social, instagram, object),
+    reach,
     total_interactions: likes + comments + saved + shares,
     likes,
     comments,
     saved,
     shares,
     ig_reels_video_view_total_time: watchedMs,
-    ig_reels_avg_watch_time: views > 0 ? Math.round(watchedMs / views) : 0,
+    // Not total ÷ views: on a live Reel (owner, 2026-09-29) Meta's average
+    // was total ÷ 121 while views were 221. Which count it divides by
+    // (accounts reached, or first plays) is not yet confirmed; the sandbox
+    // uses reach, a count below views, so nothing here can pass by assuming
+    // the average is derivable from views.
+    ig_reels_avg_watch_time: reach > 0 ? Math.round(watchedMs / reach) : 0,
   };
 
   sendJson(res, 200, {
