@@ -7,7 +7,11 @@ import { z } from 'zod';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
+import {
+  requireAffectedRows,
+  requireRow,
+  returnRefusals,
+} from '@kit/next/refusals';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { getStorageAdapter, writeProjectObject } from '@kit/storage';
@@ -102,34 +106,32 @@ const generateDialogueVoice = enhanceAction(
     }
 
     // 1. Fetch dialogue line with episode and account context
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: dialogueLine, error: fetchError } = await (client as any)
-      .from('dialogue_lines')
-      .select(
-        `
-        id,
-        episode_id,
-        text,
-        character_asset_id,
-        audio_url,
-        status,
-        episodes!inner(
+    const dialogueLine = requireRow(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('dialogue_lines')
+        .select(
+          `
           id,
-          project_id,
-          projects!inner(
+          episode_id,
+          text,
+          character_asset_id,
+          audio_url,
+          status,
+          episodes!inner(
             id,
-            account_id
+            project_id,
+            projects!inner(
+              id,
+              account_id
+            )
           )
+        `,
         )
-      `,
-      )
-      .eq('id', data.dialogueLineId)
-      .single();
-
-    if (fetchError || !dialogueLine) {
-      logger.error({ ...ctx, error: fetchError }, 'Dialogue line not found');
-      throw new ActionRefusal('Dialogue line not found');
-    }
+        .eq('id', data.dialogueLineId)
+        .single(),
+      'Dialogue line not found',
+    );
 
     // Type-safe access to nested response data
     const dialogueData = dialogueLine as DialogueLineResponse;
@@ -820,32 +822,30 @@ const updateDialogueText = enhanceAction(
     }
 
     // Fetch dialogue line to verify access
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: dialogueLine, error: fetchError } = await (client as any)
-      .from('dialogue_lines')
-      .select(
-        `
-        id,
-        episode_id,
-        text,
-        audio_url,
-        episodes!inner(
+    const dialogueLine = requireRow(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('dialogue_lines')
+        .select(
+          `
           id,
-          project_id,
-          projects!inner(
+          episode_id,
+          text,
+          audio_url,
+          episodes!inner(
             id,
-            account_id
+            project_id,
+            projects!inner(
+              id,
+              account_id
+            )
           )
+        `,
         )
-      `,
-      )
-      .eq('id', data.dialogueLineId)
-      .single();
-
-    if (fetchError || !dialogueLine) {
-      logger.error({ ...ctx, error: fetchError }, 'Dialogue line not found');
-      throw new ActionRefusal('Dialogue line not found');
-    }
+        .eq('id', data.dialogueLineId)
+        .single(),
+      'Dialogue line not found',
+    );
 
     // Update the dialogue text
     // If there was existing audio, mark as needing regeneration

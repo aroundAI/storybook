@@ -5,9 +5,8 @@ import 'server-only';
 import { revalidatePath } from 'next/cache';
 
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
-import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireRow, returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
@@ -46,21 +45,19 @@ const updateStudioSettings = enhanceAction(
     }
 
     // Fetch current project
-    const { data: project, error: fetchError } = await client
-      .from('projects')
-      .select(
-        `
+    const project = requireRow(
+      await client
+        .from('projects')
+        .select(
+          `
         id, name, slug, description, account_id, metadata, status, visibility,
         created_at, updated_at
       `,
-      )
-      .eq('id', data.projectId)
-      .single();
-
-    if (fetchError || !project) {
-      logger.error({ ...ctx, error: fetchError }, 'Project not found');
-      throw new ActionRefusal('Project not found');
-    }
+        )
+        .eq('id', data.projectId)
+        .single(),
+      'Project not found',
+    );
 
     // Merge new settings with existing metadata
     const existingMetadata =

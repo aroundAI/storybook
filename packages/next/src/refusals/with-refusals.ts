@@ -6,7 +6,7 @@ import { getLogger } from '@kit/shared/logger';
 
 import { ActionRefusal, type ActionResult } from './action-result';
 
-export { requireAffectedRows } from './affected-rows';
+export { requireAffectedRows, requireRow } from './affected-rows';
 
 /**
  * Wraps a mutation action so every outcome is a value the client can read in

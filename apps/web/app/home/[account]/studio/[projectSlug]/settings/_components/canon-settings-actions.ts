@@ -3,9 +3,12 @@
 import { z } from 'zod';
 
 import { MAX_MEMORY_HORIZON, MIN_MEMORY_HORIZON } from '@kit/episodes/lib';
-import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
+import {
+  requireAffectedRows,
+  requireRow,
+  returnRefusals,
+} from '@kit/next/refusals';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 const UpdateCanonSettingsSchema = z.object({
@@ -29,15 +32,14 @@ const updateCanonSettings = enhanceAction(
     const client = getSupabaseServerClient();
 
     // Get current project metadata
-    const { data: project, error: fetchError } = await client
-      .from('projects')
-      .select('metadata')
-      .eq('id', data.projectId)
-      .single();
-
-    if (fetchError || !project) {
-      throw new ActionRefusal('Project not found');
-    }
+    const project = requireRow(
+      await client
+        .from('projects')
+        .select('metadata')
+        .eq('id', data.projectId)
+        .single(),
+      'Project not found',
+    );
 
     // Merge canon settings into existing metadata
     const currentMetadata = (project.metadata ?? {}) as Record<string, unknown>;

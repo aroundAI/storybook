@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
-import { returnRefusals } from '@kit/next/refusals';
+import { requireRow, returnRefusals } from '@kit/next/refusals';
 import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
@@ -134,15 +134,14 @@ const batchCreateEpisodesHandler = enhanceAction(
     });
 
     // Verify project access and get account ID
-    const { data: project, error: projectError } = await client
-      .from('projects')
-      .select('id, account_id')
-      .eq('id', data.projectId)
-      .single();
-
-    if (projectError || !project) {
-      throw new ActionRefusal('Project not found or access denied');
-    }
+    const project = requireRow(
+      await client
+        .from('projects')
+        .select('id, account_id')
+        .eq('id', data.projectId)
+        .single(),
+      'Project not found or access denied',
+    );
 
     const accountId = project.account_id;
 

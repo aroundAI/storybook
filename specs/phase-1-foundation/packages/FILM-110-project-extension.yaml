@@ -52,7 +52,7 @@ acceptance_criteria:
     reason: "unverified — needs an E2E of a successful create; `apps/e2e/tests/refusals/refusals.po.ts:101` drives only the duplicate-name refusal"
   - text: "Settings can be edited after project creation"
     met: false
-    reason: "unverified — an edit path exists (`apps/web/app/home/[account]/studio/[projectSlug]/settings/_lib/server/update-studio-settings.action.ts:30`) but reaches only 4 of the 11 creation settings (style, audience, rating, language), and is untested"
+    reason: "unverified — an edit path exists (`apps/web/app/home/[account]/studio/[projectSlug]/settings/_lib/server/update-studio-settings.action.ts:29`) but reaches only 4 of the 11 creation settings (style, audience, rating, language), and is untested"
 test_plan:
   unit:
     - text: "Form validation with valid data passes"

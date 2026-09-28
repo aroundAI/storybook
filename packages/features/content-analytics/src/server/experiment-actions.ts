@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { queryTotalsByVideoIds } from '@kit/clickhouse/server';
 import type { AggregatedTotals } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
+import { requireRow } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { fetchAllRows } from '@kit/shared/pagination';
 import type { Json } from '@kit/supabase/database';
@@ -96,17 +97,16 @@ async function readSnapshotContext(
   client: Client,
   experimentId: string,
 ): Promise<SnapshotContext> {
-  const { data, error } = await client
-    .from('analytics_experiments')
-    .select(
-      'account_id, status, started_at, review_window_days, metric_watched',
-    )
-    .eq('id', experimentId)
-    .single();
-
-  if (error || !data) {
-    throw new ActionRefusal('Change not found or access denied');
-  }
+  const data = requireRow(
+    await client
+      .from('analytics_experiments')
+      .select(
+        'account_id, status, started_at, review_window_days, metric_watched',
+      )
+      .eq('id', experimentId)
+      .single(),
+    'Change not found or access denied',
+  );
 
   return data as SnapshotContext;
 }

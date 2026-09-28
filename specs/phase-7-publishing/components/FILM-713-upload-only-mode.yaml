@@ -58,7 +58,7 @@ acceptance_criteria:
     reason: "no longer true — built (`packages/features/publishing/src/components/upload-only-mode.tsx:357`), but no page has ever rendered `UploadOnlyMode`"
   - text: "Mark publish as external with URL tracking"
     met: false
-    reason: "no longer true — `markAsExternallyUploadedAction` (`packages/features/publishing/src/server/upload-only-actions.ts:191`) is called only from that never-rendered component"
+    reason: "no longer true — `markAsExternallyUploadedAction` (`packages/features/publishing/src/server/upload-only-actions.ts:189`) is called only from that never-rendered component"
 test_plan:
   unit:
     - text: "Test content ID extraction from URLs"

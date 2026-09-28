@@ -11,7 +11,11 @@ import { z } from 'zod';
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
+import {
+  requireAffectedRows,
+  requireRow,
+  returnRefusals,
+} from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
@@ -614,15 +618,14 @@ const updateProjectAudioSettings = enhanceAction(
     }
 
     // Get current project for account_id
-    const { data: project, error: fetchError } = await client
-      .from('projects')
-      .select('account_id')
-      .eq('id', data.projectId)
-      .single();
-
-    if (fetchError || !project) {
-      throw new ActionRefusal('Project not found');
-    }
+    const project = requireRow(
+      await client
+        .from('projects')
+        .select('account_id')
+        .eq('id', data.projectId)
+        .single(),
+      'Project not found',
+    );
 
     // Update audio_settings column
     const { data: updated, error } = await client

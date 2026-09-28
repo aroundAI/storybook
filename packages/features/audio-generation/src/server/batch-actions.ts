@@ -6,7 +6,11 @@ import { z } from 'zod';
 
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
+import {
+  requireAffectedRows,
+  requireRow,
+  returnRefusals,
+} from '@kit/next/refusals';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -613,16 +617,15 @@ const cancelBatch = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: job, error } = await (client as any)
-      .from('batch_generation_jobs')
-      .select('status')
-      .eq('id', data.batchJobId)
-      .single();
-
-    if (error || !job) {
-      throw new ActionRefusal('Batch job not found');
-    }
+    const job = requireRow(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('batch_generation_jobs')
+        .select('status')
+        .eq('id', data.batchJobId)
+        .single(),
+      'Batch job not found',
+    );
 
     if (job.status === 'completed' || job.status === 'cancelled') {
       throw new ActionRefusal(
