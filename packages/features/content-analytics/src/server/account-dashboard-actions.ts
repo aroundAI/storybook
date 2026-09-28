@@ -107,12 +107,11 @@ export async function getAccountDashboardData(
           `
       id, platform, title, published_at,
       episodes!inner (
-        id, title, thumbnail_url,
-        seasons!inner (project_id)
+        id, title, thumbnail_url, project_id
       )
     `,
         )
-        .in('episodes.seasons.project_id', chunk)
+        .in('episodes.project_id', chunk)
         .order('id')
         .range(from, to),
     'dashboard publishes',

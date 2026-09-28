@@ -244,7 +244,7 @@ const generateAudioForCue = enhanceAction(
                 id, episode_id, scene_number, cue_type, prompt,
                 start_offset_seconds, duration_seconds, is_loopable, status,
                 audio_asset_id, audio_track_id, created_at,
-                episodes!inner(season_id, seasons!inner(project_id))
+                episodes!inner(project_id)
             `,
       )
       .eq('id', data.cueId)

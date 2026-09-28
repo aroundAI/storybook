@@ -139,12 +139,10 @@ async function fetchAnalyticsData(
       title,
       episodes!inner (
         title,
-        seasons!inner (
-          projects!inner (
-            id,
-            name,
-            account_id
-          )
+        projects!inner (
+          id,
+          name,
+          account_id
         )
       )
     `;
@@ -161,7 +159,7 @@ async function fetchAnalyticsData(
       .from('publishes')
       .select(PUBLISH_COLUMNS)
       .in('platform', platforms)
-      .eq('episodes.seasons.projects.account_id', accountId);
+      .eq('episodes.projects.account_id', accountId);
 
   // Paged: these ids are the report's content set, so truncation silently
   // drops rows from the delivered report and from every total derived from
@@ -176,7 +174,7 @@ async function fetchAnalyticsData(
           projectIds,
           (chunk, from, to) =>
             basePublishQuery()
-              .in('episodes.seasons.projects.id', chunk)
+              .in('episodes.projects.id', chunk)
               .order('id')
               .range(from, to),
           'report publishes (by project)',
@@ -258,14 +256,14 @@ async function fetchAnalyticsData(
       const quality = qualityMetrics.get(row.id);
       const episodes = row.episodes as unknown as {
         title: string;
-        seasons: { projects: { name: string } };
+        projects: { name: string };
       };
 
       return {
         snapshotDate: endDateStr,
         platform: row.platform,
         contentTitle: row.title || episodes.title,
-        projectName: episodes.seasons.projects.name,
+        projectName: episodes.projects.name,
         views: stats.views,
         likes: stats.likes,
         comments: stats.comments,
