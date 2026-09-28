@@ -61,6 +61,10 @@ describe('reach page rules (cross-platform reach design)', () => {
     ).toEqual({ views: 150, comments: 4, shares: 2 });
 
     // The type admits only the three counts: a reach figure cannot be passed.
-    expect(Object.keys(totalCounts([]))).toEqual(['views', 'comments', 'shares']);
+    expect(Object.keys(totalCounts([]))).toEqual([
+      'views',
+      'comments',
+      'shares',
+    ]);
   });
 });

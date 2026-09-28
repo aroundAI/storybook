@@ -52,7 +52,9 @@ export function ReachOverviewView({
   view,
   basePath,
 }: ReachOverviewViewProps) {
-  const href = (next: Partial<{ tab: ReachTab; view: ReachView; window: ReachWindow }>) => {
+  const href = (
+    next: Partial<{ tab: ReachTab; view: ReachView; window: ReachWindow }>,
+  ) => {
     const params = new URLSearchParams({
       tab: next.tab ?? tab,
       view: next.view ?? view,
@@ -102,9 +104,9 @@ export function ReachOverviewView({
         />
       </div>
 
-      <p className="text-muted-foreground text-sm" data-test="reach-range">
-        {overview.from} to {overview.to}. Views, comments and shares count
-        posts published through Storybook only.
+      <p className="text-sm text-muted-foreground" data-test="reach-range">
+        {overview.from} to {overview.to}. Views, comments and shares count posts
+        published through Storybook only.
       </p>
 
       {view === 'channel' ? (
@@ -173,16 +175,19 @@ function ChannelView({
         {(['views', 'comments', 'shares'] as const).map((metric) => (
           <Card key={metric} data-test={`reach-count-${metric}`}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-muted-foreground text-sm font-medium capitalize">
+              <CardTitle className="text-sm font-medium text-muted-foreground capitalize">
                 {metric}
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-semibold" data-test="reach-count-value">
+              <div
+                className="text-2xl font-semibold"
+                data-test="reach-count-value"
+              >
                 {shown[metric].toLocaleString('en-US')}
               </div>
               {tab === 'all' && platformCounts.length > 0 ? (
-                <ul className="text-muted-foreground mt-2 text-xs">
+                <ul className="mt-2 text-xs text-muted-foreground">
                   {platformCounts.map((row) => (
                     <li key={row.platform}>
                       {PLATFORM_LABEL[row.platform]}:{' '}
@@ -198,7 +203,7 @@ function ChannelView({
 
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">Accounts reached</h2>
-        <p className="text-muted-foreground text-sm">
+        <p className="text-sm text-muted-foreground">
           Different accounts that saw anything from each channel in the last{' '}
           {overview.window} days. Never added across channels or platforms: the
           same person would be counted more than once.
@@ -212,7 +217,9 @@ function ChannelView({
             />
           ))}
           {channels.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No connected channels.</p>
+            <p className="text-sm text-muted-foreground">
+              No connected channels.
+            </p>
           ) : null}
         </div>
       </section>
@@ -252,7 +259,7 @@ function ChannelReachCard({
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">
           {channel.name}{' '}
-          <span className="text-muted-foreground font-normal">
+          <span className="font-normal text-muted-foreground">
             · {PLATFORM_LABEL[channel.platform]}
           </span>
         </CardTitle>
@@ -260,12 +267,15 @@ function ChannelReachCard({
       <CardContent className="flex flex-col gap-2">
         {channel.reach.measured ? (
           <>
-            <div className="text-2xl font-semibold" data-test="channel-reach-value">
+            <div
+              className="text-2xl font-semibold"
+              data-test="channel-reach-value"
+            >
               {latest?.accountsReached != null
                 ? latest.accountsReached.toLocaleString('en-US')
                 : 'No figure yet'}
             </div>
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               {latest
                 ? `As of ${latest.asOf}.`
                 : 'Nothing recorded for this window yet; the nightly sync records it.'}
@@ -278,7 +288,10 @@ function ChannelReachCard({
             ) : null}
           </>
         ) : (
-          <NotMeasured reason={channel.reach.reason} test="channel-reach-reason" />
+          <NotMeasured
+            reason={channel.reach.reason}
+            test="channel-reach-reason"
+          />
         )}
         {channel.newAccounts ? (
           <p className="text-sm" data-test="channel-new-accounts">
@@ -294,7 +307,10 @@ function ChannelReachCard({
 function PostsView({ posts }: { posts: PostRow[] }) {
   if (posts.length === 0) {
     return (
-      <p className="text-muted-foreground text-sm" data-test="reach-posts-empty">
+      <p
+        className="text-sm text-muted-foreground"
+        data-test="reach-posts-empty"
+      >
         No published posts in this view.
       </p>
     );
@@ -320,7 +336,9 @@ function PostsView({ posts }: { posts: PostRow[] }) {
             <TableCell>{PLATFORM_LABEL[post.platform]}</TableCell>
             {(['views', 'comments', 'shares'] as const).map((metric) => (
               <TableCell key={metric} className="text-right">
-                {post.counts ? post.counts[metric].toLocaleString('en-US') : '—'}
+                {post.counts
+                  ? post.counts[metric].toLocaleString('en-US')
+                  : '—'}
               </TableCell>
             ))}
             <TableCell className="text-right" data-test="reach-post-new">
@@ -349,8 +367,10 @@ function MeasuredCell({ value }: { value: Measured<number | null> }) {
 function NotMeasured({ reason, test }: { reason: string; test: string }) {
   return (
     <div className="flex flex-col gap-1">
-      <div className="text-muted-foreground text-lg font-medium">Not measured</div>
-      <p className="text-muted-foreground text-xs" data-test={test}>
+      <div className="text-lg font-medium text-muted-foreground">
+        Not measured
+      </div>
+      <p className="text-xs text-muted-foreground" data-test={test}>
         {reason}
       </p>
     </div>

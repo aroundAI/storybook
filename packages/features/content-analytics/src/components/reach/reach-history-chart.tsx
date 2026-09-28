@@ -3,7 +3,11 @@
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@kit/ui/chart';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@kit/ui/chart';
 
 interface ReachSeries {
   key: string;
@@ -11,7 +15,12 @@ interface ReachSeries {
   points: Array<{ asOf: string; value: number | null }>;
 }
 
-const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)'];
+const COLORS = [
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+];
 
 /**
  * Each channel's recorded window figure, day by day: one line per channel,
@@ -26,7 +35,9 @@ export function ReachHistoryChart({
 }) {
   if (series.length === 0) return null;
 
-  const days = [...new Set(series.flatMap((s) => s.points.map((p) => p.asOf)))].sort();
+  const days = [
+    ...new Set(series.flatMap((s) => s.points.map((p) => p.asOf))),
+  ].sort();
   const rows = days.map((asOf) => ({
     asOf,
     ...Object.fromEntries(

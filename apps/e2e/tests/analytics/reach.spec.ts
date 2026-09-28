@@ -35,7 +35,10 @@ test.describe('Reach page: what is measured, and what is not', () => {
     await reach.open(fixture.team, { window: 90 });
 
     await expect(
-      byTest(reach.channel(fixture.instagram.connectionId), 'channel-reach-reason'),
+      byTest(
+        reach.channel(fixture.instagram.connectionId),
+        'channel-reach-reason',
+      ),
     ).toHaveText(/Meta's longest unique-reach window is 30 days/);
     await expect(byTest(page, 'reach-window-90')).toHaveAttribute(
       'aria-current',

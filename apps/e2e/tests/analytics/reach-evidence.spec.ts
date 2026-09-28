@@ -72,8 +72,20 @@ async function seed(fixture: ReachFixture) {
   });
 
   await insertClickHouse('video_metrics', [
-    metric(ig.postId, 'instagram', yesterday, { views: 100, comments: 3, shares: 2 }, 80),
-    metric(ig.postId, 'instagram', dayBefore, { views: 50, comments: 1, shares: 0 }, 40),
+    metric(
+      ig.postId,
+      'instagram',
+      yesterday,
+      { views: 100, comments: 3, shares: 2 },
+      80,
+    ),
+    metric(
+      ig.postId,
+      'instagram',
+      dayBefore,
+      { views: 50, comments: 1, shares: 0 },
+      40,
+    ),
     metric(
       fixture.youtube.videoId,
       'youtube',
@@ -133,9 +145,9 @@ test.describe('Reach page — figures and evidence', () => {
     await expect(byTest(ig, 'channel-reach-value')).toHaveText('60');
     // 170 − 130: seen this week, not in the 23 days before.
     await expect(byTest(ig, 'channel-new-accounts')).toContainText('40');
-    await expect(
-      reach.channel(fixture.youtube.connectionId),
-    ).toContainText('Not measured');
+    await expect(reach.channel(fixture.youtube.connectionId)).toContainText(
+      'Not measured',
+    );
     readings.all7 = await byTest(page, 'reach-overview').innerText();
     await shoot(page, '01-all-7-days');
 
@@ -172,6 +184,9 @@ test.describe('Reach page — figures and evidence', () => {
     readings.posts7 = await byTest(page, 'reach-posts').innerText();
     await shoot(page, '05-posts-7-days');
 
-    writeFileSync(`${OUT}/reach-measured.json`, JSON.stringify(readings, null, 2));
+    writeFileSync(
+      `${OUT}/reach-measured.json`,
+      JSON.stringify(readings, null, 2),
+    );
   });
 });

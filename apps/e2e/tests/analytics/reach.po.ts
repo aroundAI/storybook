@@ -104,7 +104,10 @@ export class ReachPageObject {
   }
 
   count(metric: 'views' | 'comments' | 'shares') {
-    return byTest(byTest(this.page, `reach-count-${metric}`), 'reach-count-value');
+    return byTest(
+      byTest(this.page, `reach-count-${metric}`),
+      'reach-count-value',
+    );
   }
 
   postRow(title: string) {

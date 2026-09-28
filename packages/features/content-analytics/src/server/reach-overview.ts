@@ -95,9 +95,8 @@ export async function loadReachOverview(input: {
           .range(start, end),
       'reach connections',
     )
-  ).filter(
-    (row): row is typeof row & { platform: AnalyticsPlatform } =>
-      isAnalyticsPlatform(row.platform),
+  ).filter((row): row is typeof row & { platform: AnalyticsPlatform } =>
+    isAnalyticsPlatform(row.platform),
   );
 
   const projectIds = (
@@ -245,9 +244,8 @@ async function loadPosts(
           .range(start, end),
       'reach publishes',
     )
-  ).filter(
-    (row): row is typeof row & { platform: AnalyticsPlatform } =>
-      isAnalyticsPlatform(row.platform),
+  ).filter((row): row is typeof row & { platform: AnalyticsPlatform } =>
+    isAnalyticsPlatform(row.platform),
   );
 
   if (publishes.length === 0) return [];

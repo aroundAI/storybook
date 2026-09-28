@@ -508,9 +508,9 @@ describe('what the platform cannot do is kept apart from what we have not done',
       level: 'derived',
       table: 'video_metrics',
     });
-    expect(capabilityFor('channel_accounts_reached', 'instagram')).toMatchObject(
-      { level: 'native', table: 'channel_windows' },
-    );
+    expect(
+      capabilityFor('channel_accounts_reached', 'instagram'),
+    ).toMatchObject({ level: 'native', table: 'channel_windows' });
   });
 
   it('claims no live verification it cannot cite', () => {
