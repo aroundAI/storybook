@@ -74,6 +74,13 @@ export interface VideoMetric {
    * later row replaces the whole row; omitting it erases the other's figure.
    */
   engaged_views?: number | null;
+  /**
+   * Accounts that saw this post for the first time that day (migration
+   * 015, FILM-1712): the day's increase in the platform's lifetime unique
+   * reach. Instagram only; **null means not measured**. A unique count: it
+   * sums over one post's days and never across posts.
+   */
+  accounts_reached?: number | null;
   extra_metrics: string;
 }
 
@@ -96,8 +103,11 @@ export type YouTubeVideoMetric = Omit<
   | 'avg_view_duration_seconds'
   | 'avg_view_percentage'
   | 'dislikes'
+  | 'accounts_reached'
 > & {
   platform: 'youtube';
+  /** YouTube reports no per-video unique reach. */
+  accounts_reached?: null;
   metric_source: MetricSource;
   /** YouTube has no saves metric (KB-114): not measured, never 0. */
   saves: null;
@@ -167,6 +177,8 @@ export interface VideoSnapshot {
   saves: number;
   watch_time_seconds: number;
   subscribers_gained: number;
+  /** Lifetime unique accounts reached (Instagram); null when not measured. */
+  accounts_reached: number | null;
 }
 
 /**
@@ -298,6 +310,8 @@ export interface SnapshotTotals {
   saves: number;
   watch_time_seconds: number;
   subscribers_gained: number;
+  /** The latest snapshot's own value: null when it recorded no reach. */
+  accounts_reached: number | null;
 }
 
 /**

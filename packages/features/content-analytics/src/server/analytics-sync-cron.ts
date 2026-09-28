@@ -792,6 +792,11 @@ async function ingestCumulativeSnapshot(
     saves: normalizedData.saves,
     watch_time_seconds: normalizedData.watch_time_seconds,
     subscribers_gained: normalizedData.subscribers_gained,
+    // Instagram's media reach, lifetime; TikTok reports none we can read.
+    accounts_reached:
+      platform === 'instagram'
+        ? (analytics as InstagramInsightsResult).totals.reach
+        : null,
   };
 
   const writeContext = {

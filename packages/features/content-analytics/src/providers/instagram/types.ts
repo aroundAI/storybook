@@ -55,7 +55,8 @@ export interface InstagramInsightsResult {
  */
 export interface InstagramTotals {
   views: number;
-  reach: number;
+  /** Lifetime unique accounts reached (estimated); null when Meta omits it. */
+  reach: number | null;
   totalInteractions: number;
   likes: number;
   comments: number;

@@ -29,6 +29,29 @@ export interface CumulativeTotals {
   saves: number;
   watch_time_seconds: number;
   subscribers_gained: number;
+  /**
+   * Lifetime unique accounts reached. Instagram only; null when not
+   * measured. Not a counter: its delta is "first-time viewers that day".
+   */
+  accounts_reached: number | null;
+}
+
+/**
+ * The day's increase in a post's lifetime reach (FILM-1712). NULL when it
+ * cannot be measured: today's figure is missing, or the baseline snapshot
+ * exists but recorded no reach (taken before migration 015) — subtracting
+ * from nothing would put the post's whole lifetime on one day. With no
+ * baseline at all, the lifetime is the delta, as for every counter.
+ */
+export function accountsReachedDelta(
+  current: number | null,
+  baseline: SnapshotTotals | null,
+): number | null {
+  if (current === null) return null;
+  if (!baseline) return current;
+  if (baseline.accounts_reached === null) return null;
+
+  return Math.max(0, current - baseline.accounts_reached);
 }
 
 /**
@@ -61,6 +84,7 @@ export function computeSnapshotDelta(
       current.subscribers_gained,
       baseline.subscribers_gained,
     ),
+    accounts_reached: accountsReachedDelta(current.accounts_reached, baseline),
   };
 }
 
@@ -196,12 +220,15 @@ export type SnapshotDeltaMetric = VideoMetric &
         saves: null;
         watch_time_seconds: null;
         subscribers_gained: null;
+        /** Reach is Business API only (FILM-1730), which we do not call. */
+        accounts_reached: null;
       }
     | {
         platform: 'instagram';
         saves: number;
         watch_time_seconds: null;
         subscribers_gained: null;
+        accounts_reached: number | null;
       }
   );
 
@@ -237,6 +264,7 @@ export function buildSnapshotDeltaRow(input: {
       saves: null,
       watch_time_seconds: null,
       subscribers_gained: null,
+      accounts_reached: null,
     };
   }
 
@@ -246,6 +274,7 @@ export function buildSnapshotDeltaRow(input: {
     saves: input.delta.saves,
     watch_time_seconds: null,
     subscribers_gained: null,
+    accounts_reached: input.delta.accounts_reached,
   };
 }
 

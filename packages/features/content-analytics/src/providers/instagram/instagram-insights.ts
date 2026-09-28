@@ -144,7 +144,8 @@ export class InstagramInsightsProvider {
         mediaProductType,
         totals: {
           views: metrics.views ?? 0,
-          reach: metrics.reach ?? 0,
+          // Not measured is null, never 0 (FILM-1712): a 0 reads as nobody.
+          reach: metrics.reach ?? null,
           totalInteractions: metrics.total_interactions ?? 0,
           likes: metrics.likes ?? 0,
           comments: metrics.comments ?? 0,
