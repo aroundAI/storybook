@@ -20,7 +20,7 @@ acceptance_criteria:
     evidence: "per currency since KB-12: `packages/features/content-analytics/__tests__/revenue-by-currency.test.ts:60`, `apps/e2e/tests/revenue/revenue-currency-evidence.spec.ts:105`"
   - text: "Manual entry supports category + channel-level records; RLS covers both branches"
     met: true
-    evidence: "`apps/e2e/tests/revenue/revenue.spec.ts:16`, `:30`; `apps/web/supabase/tests/database/revenue-records-rls.test.sql:79` (account branch), `:315` (publish branch)"
+    evidence: "`apps/e2e/tests/revenue/revenue.spec.ts:17`, `:30`; `apps/web/supabase/tests/database/revenue-records-rls.test.sql:79` (account branch), `:315` (publish branch)"
   - text: "Historical rows are backfilled into categories"
     met: true
     evidence: "`apps/web/supabase/migrations/20260827104500_revenue-categories.sql:66`"

@@ -43,7 +43,7 @@ acceptance_criteria:
     evidence: null
   - text: "Manual revenue entries can be created and edited"
     met: true
-    evidence: "`apps/e2e/tests/revenue/revenue-currency.spec.ts:199` — a € and a $ entry on one day both kept after a reload, and a same-currency save replaces (KB-23, #345)"
+    evidence: "`apps/e2e/tests/revenue/revenue-currency.spec.ts:201` — a € and a $ entry on one day both kept after a reload, and a same-currency save replaces (KB-23, #345)"
   - text: "Revenue summary displays total, daily average, and RPM"
     met: true
     evidence: null
@@ -55,7 +55,7 @@ acceptance_criteria:
     evidence: null
   - text: "Monthly/yearly projections are calculated with confidence levels"
     met: true
-    evidence: "`packages/features/content-analytics/src/server/revenue-actions.ts:485` — the window ends on the caller's date (KB-24, #345); `apps/e2e/tests/revenue/revenue-currency.spec.ts:279`"
+    evidence: "`packages/features/content-analytics/src/server/revenue-actions.ts:485` — the window ends on the caller's date (KB-24, #345); `apps/e2e/tests/revenue/revenue-currency.spec.ts:281`"
   - text: "Revenue reports can be generated and exported"
     met: false
     reason: "no longer true — `generateRevenueReportAction` stores a `revenue_reports` row, writes no file, and nothing calls it (since e84ba285) — `packages/features/content-analytics/src/server/revenue-actions.ts:639`"
@@ -100,7 +100,7 @@ test_plan:
       evidence: "`packages/features/content-analytics/__tests__/youtube-analytics.test.ts:223` (mocked API)"
     - text: "Test manual revenue entry flow"
       met: true
-      evidence: "`apps/e2e/tests/revenue/revenue.spec.ts:16`"
+      evidence: "`apps/e2e/tests/revenue/revenue.spec.ts:17`"
     - text: "Test report generation"
       met: false
       reason: "not met — no test found"
@@ -110,10 +110,10 @@ test_plan:
   e2e:
     - text: "Two currencies on one day, scope and category both persist; the second submission and a reload are asserted"
       met: true
-      evidence: "`apps/e2e/tests/revenue/revenue-currency.spec.ts:199`"
+      evidence: "`apps/e2e/tests/revenue/revenue-currency.spec.ts:201`"
     - text: "An entry saved today appears in the projection east of UTC"
       met: true
-      evidence: "`apps/e2e/tests/revenue/revenue-currency.spec.ts:279`"
+      evidence: "`apps/e2e/tests/revenue/revenue-currency.spec.ts:281`"
 remaining:
   - criterion: "Revenue reports can be generated and exported"
     reason: "`generateRevenueReportAction` (`revenue-actions.ts:611`) inserts a `revenue_reports` summary row with a `file_format` label but produces no file, and no UI calls it. The general Export Reports (FILM-809) takes revenue from ClickHouse `revenue_cents`, which every writer sets to `0` (KB-16, *Remaining*)"

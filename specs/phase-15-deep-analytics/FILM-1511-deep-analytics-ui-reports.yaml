@@ -24,7 +24,7 @@ summary: >
 acceptance_criteria:
   - text: "Diagnostics tab lists recent videos with impressions/CTR/AVD and cliff flags; `detectRetentionCliff` unit-tested"
     met: true
-    evidence: "now a Deep Dive section: `apps/e2e/tests/deep-dive/diagnostics-evidence.spec.ts:42`, `packages/features/content-analytics/__tests__/retention.test.ts:126`"
+    evidence: "now a Deep Dive section: `apps/e2e/tests/deep-dive/diagnostics-evidence.spec.ts:43`, `packages/features/content-analytics/__tests__/retention.test.ts:126`"
   - text: "All new cards render with data, loading skeletons, and empty states"
     met: false
     reason: "not met — rolling-90 and returning-viewer cards and the account-dashboard tiles were never built; their actions have no caller"
