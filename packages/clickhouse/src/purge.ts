@@ -29,6 +29,7 @@ export const PURGE_CHANNEL_TABLES = [
   'channel_daily',
   'channel_subscribers',
   'channel_reach_daily',
+  'channel_windows',
 ] as const;
 
 export const PURGE_INDEX_TABLE = 'video_dim';

@@ -7,6 +7,7 @@
 // Types
 export type {
   InstagramAccountInsights,
+  InstagramAccountReach,
   InstagramAudienceData,
   InstagramInsightsInput,
   InstagramInsightsPeriod,

@@ -89,6 +89,16 @@ async function seed(f: Fixture) {
     channel_reach_daily: [
       { connection_id: f.connectionId, metric_date: today, impressions: 900 },
     ],
+    channel_windows: [
+      {
+        connection_id: f.connectionId,
+        platform: 'instagram',
+        as_of: today,
+        window_days: 30,
+        accounts_reached: 170,
+        source: 'purge-probe',
+      },
+    ],
     video_dim: videos.map((video_id) => ({
       video_id,
       project_id: f.projectId,

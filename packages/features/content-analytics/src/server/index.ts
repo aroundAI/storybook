@@ -211,6 +211,8 @@ export type {
 } from './segment-actions';
 
 export { captureSubscriberSnapshots } from './subscriber-snapshot';
+export { captureChannelReachWindows } from './channel-reach-windows';
+export type { ChannelReachCaptureResult } from './channel-reach-windows';
 export type { SubscriberCaptureResult } from './subscriber-snapshot';
 export { runVendorDataPurges } from './vendor-data-purge';
 export type { VendorDataPurgeRunResult } from './vendor-data-purge';

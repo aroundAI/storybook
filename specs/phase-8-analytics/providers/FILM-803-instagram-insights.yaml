@@ -42,7 +42,7 @@ provider:
 acceptance_criteria:
   - text: "Fetches Reel plays, reach, impressions"
     met: false
-    reason: "unverified — the code asks for `views` (Meta's Graph v22 replacement for `plays` and `impressions`) and `reach` (`packages/features/content-analytics/src/providers/instagram/instagram-insights.ts:117`, mocked test `instagram-insights.test.ts:108`); live data waits on Meta's review of the insights scope (FILM-1711)"
+    reason: "unverified — the code asks for `views` (Meta's Graph v22 replacement for `plays` and `impressions`) and `reach` (`packages/features/content-analytics/src/providers/instagram/instagram-insights.ts:118`, mocked test `instagram-insights.test.ts:108`); live data waits on Meta's review of the insights scope (FILM-1711)"
   - text: "Fetches engagement (likes, comments, saves, shares)"
     met: false
     reason: "unverified — requested and parsed (`instagram-insights.ts:118`, mocked test `instagram-insights.test.ts:108`); live data waits on Meta's review (FILM-1711)"

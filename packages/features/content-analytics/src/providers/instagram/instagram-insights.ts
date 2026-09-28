@@ -5,6 +5,7 @@ import { META_GRAPH_BASE } from '@kit/shared/vendors';
 
 import type {
   InstagramAccountInsights,
+  InstagramAccountReach,
   InstagramAudienceData,
   InstagramInsightsInput,
   InstagramInsightsPeriod,
@@ -306,6 +307,92 @@ export class InstagramInsightsProvider {
         : { ok: false, reason: 'unavailable' };
     } catch {
       return { ok: false, reason: 'unavailable' };
+    }
+  }
+
+  /**
+   * The account's unique reach over one window (cross-platform reach design,
+   * 2026-09-28): one number from Meta, counted once per person across the
+   * window — checked on a real account, 170 for a 30-day window against 176
+   * summed daily. Meta caps a window at 30 days.
+   *
+   * `since`/`until` are the window's first day and the day after its last,
+   * as UTC midnights. Two calls: the total, and the same reach split by
+   * `follow_type`. A figure Meta leaves out is null, never 0.
+   */
+  async getAccountReach(window: {
+    since: Date;
+    until: Date;
+  }): Promise<InstagramAccountReach> {
+    const request = (extra: Record<string, string>) =>
+      fetch(
+        `${GRAPH_API_BASE}/${this.instagramAccountId}/insights?` +
+          new URLSearchParams({
+            metric: 'reach',
+            metric_type: 'total_value',
+            period: 'day',
+            since: Math.floor(window.since.getTime() / 1000).toString(),
+            until: Math.floor(window.until.getTime() / 1000).toString(),
+            access_token: this.accessToken,
+            ...extra,
+          }),
+      );
+
+    try {
+      const [totalResponse, splitResponse] = await Promise.all([
+        request({}),
+        request({ breakdown: 'follow_type' }),
+      ]);
+
+      for (const response of [totalResponse, splitResponse]) {
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch account reach: HTTP ${response.status}`,
+          );
+        }
+      }
+
+      type ReachItem = {
+        name: string;
+        total_value?: {
+          value?: number;
+          breakdowns?: Array<{
+            results?: Array<{ dimension_values?: string[]; value?: number }>;
+          }>;
+        };
+      };
+      const total = (await totalResponse.json()) as {
+        data?: ReachItem[];
+      } & GraphAPIError;
+      const split = (await splitResponse.json()) as {
+        data?: ReachItem[];
+      } & GraphAPIError;
+
+      for (const body of [total, split]) {
+        if (body.error) {
+          throw new Error(
+            body.error.message ?? 'Failed to fetch account reach',
+          );
+        }
+      }
+
+      const reach = total.data?.find((item) => item.name === 'reach');
+      const results =
+        split.data?.find((item) => item.name === 'reach')?.total_value
+          ?.breakdowns?.[0]?.results ?? [];
+      const byType = (type: string) =>
+        results.find((r) => r.dimension_values?.[0] === type)?.value ?? null;
+
+      return {
+        accountsReached: reach?.total_value?.value ?? null,
+        followers: byType('FOLLOWER'),
+        nonFollowers: byType('NON_FOLLOWER'),
+      };
+    } catch (error) {
+      if (isPermissionError(error)) {
+        throw new InstagramInsightsScopeError();
+      }
+      throw error;
     }
   }
 

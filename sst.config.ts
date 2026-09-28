@@ -1347,6 +1347,37 @@ export default $config({
 
     console.log(`✓ Subscriber snapshot cron configured (daily at 02:00 UTC)`);
 
+    // Channel Reach Cron (migration 016): unique reach per Instagram channel
+    // and window, recorded nightly while Meta still keeps it (~90 days).
+    // Half an hour after the subscriber snapshot, on the same fixed clock.
+    new sst.aws.Cron('StorybookChannelReachCron', {
+      job: {
+        handler: 'apps/web/lambda/channel-reach/index.handler',
+        timeout: '5 minutes',
+        memory: '256 MB',
+        architecture: 'arm64',
+        link: [web],
+        environment: {
+          API_URL: web.url,
+          CRON_SECRET: process.env.CRON_SECRET || '',
+        },
+        transform: {
+          function: {
+            kmsKeyArn: kmsKey.arn,
+          },
+        },
+        permissions: [
+          {
+            actions: ['kms:Decrypt'],
+            resources: [kmsKey.arn],
+          },
+        ],
+      },
+      schedule: 'cron(30 2 * * ? *)',
+    });
+
+    console.log(`✓ Channel reach cron configured (daily at 02:30 UTC)`);
+
     // Vendor Data Purge Cron (KB-20 item 3 / KB-22 part B) - deletes queued
     // connections' vendor statistics: YouTube's within 7 days of an in-app
     // disconnect (its API policies), and a deleted account's. Hourly, so the

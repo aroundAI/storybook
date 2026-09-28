@@ -52,7 +52,7 @@ holds a table they do not name:
 |---|---|
 | `video_dim` | `video_id`; carries `account_id`, `connection_id`, `platform` |
 | `video_metrics`, `video_snapshots`, `video_reach_daily`, `video_traffic_sources`, `video_audience`, `video_retention_curves` | `video_id` — **the Postgres publish id**, not the platform's video id |
-| `channel_daily`, `channel_subscribers`, `channel_reach_daily` (FILM-1504) | `connection_id` |
+| `channel_daily`, `channel_subscribers`, `channel_reach_daily` (FILM-1504), `channel_windows` (migration 016) | `connection_id` |
 
 `video_dim` is the index into the per-video tables: `video_dim.connection_id`
 says which videos were a connection's — including after its account is
