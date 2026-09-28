@@ -182,12 +182,17 @@ test.describe('Media and report storage (KB-55, KB-56)', () => {
     const outsider = await seedTeamAccount({ emailPrefix: 'kb73-outsider' });
     const own = await seedProject(outsider, { name: 'KB-73 outsider' });
     const presigned: number[] = [];
+    // The victim's project is this test's alone. It shared the team's
+    // project with the upload test above, so its "adds nothing" snapshot
+    // depended on that test's files being listed first: 6 of 30 local-CI
+    // runs saw its two tracks appear after the snapshot and retried.
+    const victim = await seedProject(team, { name: 'KB-73 victim' });
 
     // Every request the dialog sends names the victim's project instead
     const retarget = async (route: Route) => {
       const body = (route.request().postData() ?? '')
         .split(own.id)
-        .join(project.id);
+        .join(victim.id);
       const response = await route.fetch({ postData: body });
       if (route.request().url().includes('/api/storage/presign')) {
         presigned.push(response.status());
@@ -202,7 +207,7 @@ test.describe('Media and report storage (KB-55, KB-56)', () => {
 
     // The earlier test stores the owner's own tracks in this folder: what
     // matters is that the stranger's attempt adds nothing to it
-    const folder = `projects/${project.id}/assets/audio`;
+    const folder = `projects/${victim.id}/assets/audio`;
     const before = await storageObjectsUnder('project-assets', folder);
 
     await signInAs(page, outsider);
@@ -228,7 +233,7 @@ test.describe('Media and report storage (KB-55, KB-56)', () => {
     expect(
       await readRows(
         'audio_assets',
-        `project_id=eq.${project.id}&name=eq.${encodeURIComponent(name)}&select=id`,
+        `project_id=eq.${victim.id}&name=eq.${encodeURIComponent(name)}&select=id`,
       ),
     ).toEqual([]);
   });
