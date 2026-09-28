@@ -261,7 +261,8 @@ describe('InstagramInsightsProvider', () => {
       });
 
       expect(result.totals.views).toBe(0);
-      expect(result.totals.reach).toBe(0);
+      // Not measured, not "reached nobody" (FILM-1712 part B).
+      expect(result.totals.reach).toBeNull();
       expect(result.totals.likes).toBe(0);
     });
   });

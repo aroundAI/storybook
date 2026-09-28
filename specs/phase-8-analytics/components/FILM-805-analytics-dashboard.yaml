@@ -81,14 +81,14 @@ test_plan:
       reason: "not met — no test found; the dashboard's daily series (`queryDailyTimeSeriesByPlatform`) is not date-filled"
     - text: "Test `aggregateByPlatform` grouping"
       met: true
-      evidence: "`packages/clickhouse/__tests__/clickhouse.test.ts:338` (`queryPlatformBreakdown`, its replacement)"
+      evidence: "`packages/clickhouse/__tests__/clickhouse.test.ts:339` (`queryPlatformBreakdown`, its replacement)"
   integration:
     - text: "Test full analytics query with mock data"
       met: true
       evidence: "`packages/features/content-analytics/__tests__/dashboard-project-access.test.ts:105`"
     - text: "Test date range filtering"
       met: true
-      evidence: "`packages/clickhouse/__tests__/clickhouse.test.ts:269` (the shared `buildWhereClause`)"
+      evidence: "`packages/clickhouse/__tests__/clickhouse.test.ts:270` (the shared `buildWhereClause`)"
   e2e: []
 remaining:
   - criterion: "Filters by selected platforms"

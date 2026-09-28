@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { YouTubeAnalyticsResult } from '../src/providers/youtube/types';
 import {
+  accountsReachedDelta,
   buildAudienceRows,
   buildRetentionPoints,
   buildSnapshotDeltaRow,
@@ -23,6 +24,7 @@ const baseline = {
   saves: 10,
   watch_time_seconds: 5000,
   subscribers_gained: 5,
+  accounts_reached: 4000,
 };
 
 describe('computeSnapshotDelta', () => {
@@ -36,6 +38,7 @@ describe('computeSnapshotDelta', () => {
         saves: 12,
         watch_time_seconds: 6200,
         subscribers_gained: 8,
+        accounts_reached: 5200,
       },
       baseline,
     );
@@ -48,6 +51,7 @@ describe('computeSnapshotDelta', () => {
       saves: 2,
       watch_time_seconds: 1200,
       subscribers_gained: 3,
+      accounts_reached: 1200,
     });
   });
 
@@ -61,6 +65,7 @@ describe('computeSnapshotDelta', () => {
         saves: 12,
         watch_time_seconds: 6200,
         subscribers_gained: 8,
+        accounts_reached: 5200,
       },
       baseline,
     );
@@ -79,9 +84,36 @@ describe('computeSnapshotDelta', () => {
       saves: 0,
       watch_time_seconds: 300,
       subscribers_gained: 1,
+      accounts_reached: 40,
     };
 
     expect(computeSnapshotDelta(current, null)).toEqual(current);
+  });
+});
+
+// FILM-1712 part B: accounts reached is a unique count, so its daily figure
+// is "first-time viewers that day", and not measured stays null, never 0.
+describe('accountsReachedDelta', () => {
+  it("is the day's increase over the baseline snapshot", () => {
+    expect(accountsReachedDelta(5200, baseline)).toBe(1200);
+  });
+
+  it("is null when today's figure is missing", () => {
+    expect(accountsReachedDelta(null, baseline)).toBeNull();
+  });
+
+  it('is the lifetime figure when there is no baseline, as for every counter', () => {
+    expect(accountsReachedDelta(4000, null)).toBe(4000);
+  });
+
+  it('is null when the baseline recorded no reach, so one day cannot absorb the lifetime', () => {
+    expect(
+      accountsReachedDelta(4000, { ...baseline, accounts_reached: null }),
+    ).toBeNull();
+  });
+
+  it('clamps a downward restatement of the estimate to 0', () => {
+    expect(accountsReachedDelta(3950, baseline)).toBe(0);
   });
 });
 
@@ -304,6 +336,7 @@ describe('buildSnapshotDeltaRow', () => {
         saves: 3,
         watch_time_seconds: 0,
         subscribers_gained: 7,
+        accounts_reached: 90,
       },
       extraMetricsJson: '{}',
     });
@@ -328,6 +361,7 @@ describe('buildSnapshotDeltaRow', () => {
     saves: 3,
     watch_time_seconds: 0,
     subscribers_gained: 7,
+    accounts_reached: 90,
   };
   const build = (platform: 'tiktok' | 'instagram') =>
     buildSnapshotDeltaRow({
@@ -353,6 +387,12 @@ describe('buildSnapshotDeltaRow', () => {
       watch_time_seconds: null,
       subscribers_gained: null,
     });
+  });
+
+  // FILM-1712 part B: only Instagram reports per-post reach we can read.
+  it("keeps Instagram accounts reached and writes TikTok's as null", () => {
+    expect(build('instagram').accounts_reached).toBe(90);
+    expect(build('tiktok').accounts_reached).toBeNull();
   });
 });
 

@@ -272,6 +272,7 @@ async function seed() {
         saves: 0,
         watch_time_seconds: 3000,
         subscribers_gained: 3,
+        accounts_reached: null,
       },
     ]),
   );
@@ -1401,6 +1402,58 @@ async function assertions() {
     if (snap.views !== 500) throw new Error(`expected 500, got ${snap.views}`);
     return `views=${snap.views} on ${snap.snapshot_date}`;
   });
+
+  // FILM-1712 part B. ClickHouse aggregates skip NULLs, so a bare
+  // argMax(accounts_reached) would return an older snapshot's reach when the
+  // latest recorded none. The baseline must be the latest snapshot's own
+  // value, NULL included.
+  await step(
+    "assert: the baseline reach is the latest snapshot's, NULL included",
+    async () => {
+      const snapshot = (
+        videoId: string,
+        date: string,
+        fetchedAt: string,
+        accountsReached: number | null,
+      ) => ({
+        project_id: PROJECT,
+        video_id: videoId,
+        platform: 'instagram',
+        snapshot_date: date,
+        fetched_at: fetchedAt,
+        views: 100,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        saves: 0,
+        watch_time_seconds: 0,
+        subscribers_gained: 0,
+        accounts_reached: accountsReached,
+      });
+
+      await getClickHouseClient().insert({
+        table: 'video_snapshots',
+        values: [
+          snapshot('reach-kept', '2026-05-01', '2026-05-01 10:00:00', 4000),
+          snapshot('reach-kept', '2026-05-02', '2026-05-02 10:00:00', 5200),
+          snapshot('reach-lost', '2026-05-01', '2026-05-01 10:00:00', 4000),
+          snapshot('reach-lost', '2026-05-02', '2026-05-02 10:00:00', null),
+        ],
+        format: 'JSONEachRow',
+      });
+
+      const snaps = await queryLatestSnapshots({
+        videoIds: ['reach-kept', 'reach-lost'],
+        beforeDate: '2026-06-01',
+      });
+      const kept = snaps.get('reach-kept')?.accounts_reached;
+      const lost = snaps.get('reach-lost')?.accounts_reached;
+
+      if (kept !== 5200) throw new Error(`expected 5200, got ${kept}`);
+      if (lost !== null) throw new Error(`expected null, got ${lost}`);
+      return `kept=${kept} lost=${lost}`;
+    },
+  );
 
   await step('assert: the breakdown groups the seeded sources', async () => {
     // Fixed expectations, not a comparison of two derivations of the same

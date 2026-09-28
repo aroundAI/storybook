@@ -31,8 +31,8 @@ acceptance_criteria:
     met: true
     evidence: "the daily query asks for averageViewPercentage; fetchTotals is gone and the period's totals are totalsFromDays over the daily rows, averages recomputed from their definitions (youtube-analytics.test.ts, 'totalsFromDays')"
   - text: "Instagram's reach reaches a column instead of extra_metrics"
-    met: false
-    reason: "part B: no field is added to a request yet"
+    met: true
+    evidence: "Migration 015: `accounts_reached Nullable(UInt64)` on video_metrics (the day's first-time viewers) and video_snapshots (lifetime). NULL, never 0, when Meta omits it or the baseline predates the column; `pnpm --filter @kit/clickhouse verify` asserts the baseline keeps the latest snapshot's NULL. Named for what it counts: 'reach' already means YouTube impressions here"
   - text: "ig_reels_avg_watch_time and ig_reels_video_view_total_time are requested for REELS, and their unit is confirmed empirically before the value is stored"
     met: false
     reason: "part B: no field is added to a request yet"
