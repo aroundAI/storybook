@@ -18,6 +18,7 @@ import {
   uniqueStamp,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * KB-95: the audio library's Delete hid the card and deleted nothing. The
@@ -89,11 +90,9 @@ async function deleteThroughMenu(page: Page, name: string) {
     .locator('[data-test="audio-asset-card"]', { hasText: name })
     .filter({ visible: true });
   await card.hover();
-  await card.locator('[data-test="audio-asset-menu"]').click();
-  await page.locator('[data-test="audio-asset-delete"]').click();
-  await expect(
-    page.locator('[data-test="audio-asset-delete-dialog"]'),
-  ).toBeVisible();
+  await byTest(card, 'audio-asset-menu').click();
+  await byTest(page, 'audio-asset-delete').click();
+  await expect(byTest(page, 'audio-asset-delete-dialog')).toBeVisible();
 }
 
 async function readAsset(id: string) {
@@ -133,11 +132,9 @@ test.describe('Audio library Delete (KB-95)', () => {
       await page.screenshot({ path: `${OUT}/kb95-01-confirm-delete.png` });
     }
 
-    await page.locator('[data-test="audio-asset-delete-confirm"]').click();
+    await byTest(page, 'audio-asset-delete-confirm').click();
 
-    await expect(
-      page.locator('[data-test="audio-asset-delete-dialog"]'),
-    ).toBeHidden();
+    await expect(byTest(page, 'audio-asset-delete-dialog')).toBeHidden();
     await expect(card).toBeHidden();
 
     await page.reload();
@@ -182,7 +179,7 @@ test.describe('Audio library Delete (KB-95)', () => {
     await page.goto(`/home/${team.slug}/studio/${project.slug}/audio-library`);
 
     await deleteThroughMenu(page, name);
-    await page.locator('[data-test="audio-asset-delete-confirm"]').click();
+    await byTest(page, 'audio-asset-delete-confirm').click();
 
     await expect(
       page
@@ -204,11 +201,11 @@ test.describe('Audio library Delete (KB-95)', () => {
     await page.goto(`/home/${team.slug}/studio/${project.slug}/audio-library`);
 
     await deleteThroughMenu(page, name);
-    await page.locator('[data-test="audio-asset-delete-confirm"]').click();
+    await byTest(page, 'audio-asset-delete-confirm').click();
 
-    await expect(
-      page.locator('[data-test="audio-asset-delete-error"]'),
-    ).toHaveText("You can't delete assets in this project.");
+    await expect(byTest(page, 'audio-asset-delete-error')).toHaveText(
+      "You can't delete assets in this project.",
+    );
 
     if (evidence) {
       await page.screenshot({ path: `${OUT}/kb95-03-viewer-refused.png` });

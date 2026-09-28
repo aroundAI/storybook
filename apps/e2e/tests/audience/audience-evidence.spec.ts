@@ -18,6 +18,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * The Audience tab, with every figure on it traced to a ClickHouse row
@@ -150,9 +151,9 @@ async function openAnalytics(page: Page, fixture: AudienceFixture) {
 }
 
 async function openAudience(page: Page) {
-  await page.locator('[data-test="analytics-tab-audience"]').click();
+  await byTest(page, 'analytics-tab-audience').click();
 
-  await expect(page.locator('[data-test="audience-grid"]')).toBeVisible();
+  await expect(byTest(page, 'audience-grid')).toBeVisible();
 }
 
 test.describe('FILM-1701 — the Audience tab shows only what was measured', () => {
@@ -176,7 +177,7 @@ test.describe('FILM-1701 — the Audience tab shows only what was measured', () 
     await openAnalytics(page, fixture);
     await openAudience(page);
 
-    const device = page.locator('[data-test="audience-card-device"]');
+    const device = byTest(page, 'audience-card-device');
     const share = (key: string) =>
       device.locator(
         `[data-test="device-row-${key}"] [data-test="device-share"]`,
@@ -190,12 +191,12 @@ test.describe('FILM-1701 — the Audience tab shows only what was measured', () 
 
     // A device nobody watched on has no row: it is not a 0% one.
     await expect(device.locator('[data-test^="device-row-"]')).toHaveCount(4);
-    await expect(device.locator('[data-test="device-total-views"]')).toHaveText(
+    await expect(byTest(device, 'device-total-views')).toHaveText(
       /4,000 views/,
     );
 
     // The measured cards beside it, in the same unit.
-    const audience = page.locator('[data-test="audience-grid"]');
+    const audience = byTest(page, 'audience-grid');
 
     await expect(
       audience.locator(
@@ -217,12 +218,8 @@ test.describe('FILM-1701 — the Audience tab shows only what was measured', () 
         '[data-test="geography-row-US"] [data-test="geography-share"]',
       ),
     ).toHaveText('25.0%');
-    await expect(
-      audience.locator('[data-test="gender-share-female"]'),
-    ).toHaveText('70.0%');
-    await expect(
-      audience.locator('[data-test="gender-share-male"]'),
-    ).toHaveText('30.0%');
+    await expect(byTest(audience, 'gender-share-female')).toHaveText('70.0%');
+    await expect(byTest(audience, 'gender-share-male')).toHaveText('30.0%');
 
     // The two cards that were never measured say so, and show no figure.
     for (const card of ['interests', 'peak-activity']) {
@@ -263,18 +260,16 @@ test.describe('FILM-1701 — the Audience tab shows only what was measured', () 
     await openAnalytics(page, fixture);
     await openAudience(page);
 
-    const device = page.locator('[data-test="audience-card-device"]');
+    const device = byTest(page, 'audience-card-device');
 
-    await expect(device.locator('[data-test="device-empty"]')).toContainText(
+    await expect(byTest(device, 'device-empty')).toContainText(
       'No device data',
     );
     await expect(device.locator('[data-test^="device-row-"]')).toHaveCount(0);
     await expect(device).not.toContainText('%');
 
     // The cards that do have rows are unaffected by the one that does not.
-    await expect(page.locator('[data-test="gender-share-female"]')).toHaveText(
-      '70.0%',
-    );
+    await expect(byTest(page, 'gender-share-female')).toHaveText('70.0%');
 
     await page.screenshot({
       path: `${OUT}/02-audience-no-device-rows.png`,
@@ -297,7 +292,7 @@ test.describe('FILM-1701 — the Audience tab shows only what was measured', () 
     // stayed empty until a visitor had been to another tab and come back.
     await openAnalytics(page, fixture);
 
-    const regions = page.locator('[data-test="overview-top-regions"]');
+    const regions = byTest(page, 'overview-top-regions');
 
     await expect(
       regions.locator('[data-test="region-row-IN"] [data-test="region-share"]'),
@@ -306,19 +301,15 @@ test.describe('FILM-1701 — the Audience tab shows only what was measured', () 
       regions.locator('[data-test="region-row-US"] [data-test="region-share"]'),
     ).toHaveText('25.0%');
 
-    const gender = page.locator('[data-test="overview-gender"]');
+    const gender = byTest(page, 'overview-gender');
 
-    await expect(gender.locator('[data-test="gender-male"]')).toHaveText(
-      '30.0%',
-    );
-    await expect(gender.locator('[data-test="gender-female"]')).toHaveText(
-      '70.0%',
-    );
+    await expect(byTest(gender, 'gender-male')).toHaveText('30.0%');
+    await expect(byTest(gender, 'gender-female')).toHaveText('70.0%');
 
     // 4,000 views, and no claim about which platforms they came from: both
     // videos here are YouTube, so "across TikTok, YouTube, and Instagram"
     // was false of this very page.
-    const views = page.locator('[data-test="overview-views"]');
+    const views = byTest(page, 'overview-views');
 
     await expect(views).toContainText('4,000');
     await expect(views).not.toContainText(/TikTok|Insta|YT\b/);

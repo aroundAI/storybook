@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { byTest } from '../utils/visible';
 import { RevenuePageObject } from './revenue.po';
 
 /**
@@ -273,7 +274,7 @@ test.describe('Revenue mix', () => {
 
     // A fresh load, so the summary is read after the entry was written.
     await page.goto(`/home/${account.slug}/studio/analytics`);
-    await page.locator('[data-test="revenue-tab-overview"]').click();
+    await byTest(page, 'revenue-tab-overview').click();
 
     const mix = page.locator('[data-test="revenue-mix-card"]:visible');
 

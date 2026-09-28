@@ -2,6 +2,7 @@ import { Page, expect, test } from '@playwright/test';
 
 import { seedTeamAccount, seedUser } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * KB-100. With personal accounts off, as every deploy runs (KB-99), the
@@ -31,15 +32,13 @@ test.describe('Profile settings with team accounts only (KB-100)', () => {
     await expect(page).toHaveURL(`/home/${team.slug}`);
 
     await userMenu(page).click();
-    const item = page.locator('[data-test="account-dropdown-settings"]');
+    const item = byTest(page, 'account-dropdown-settings');
     await expect(item).toHaveText('Profile settings');
     await captureIfAsked(page, 'kb100-01-user-menu');
 
     await item.click();
     await page.waitForURL('**/home/settings');
-    await expect(
-      page.locator('[data-test="update-account-name-form"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'update-account-name-form')).toBeVisible();
 
     const nameInput = page.locator(
       '[data-test="update-account-name-form"] input',
@@ -79,9 +78,7 @@ test.describe('Profile settings with team accounts only (KB-100)', () => {
 
     await page.goto('/home/settings');
     expect(new URL(page.url()).pathname).toBe('/home/settings');
-    await expect(
-      page.locator('[data-test="update-account-name-form"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'update-account-name-form')).toBeVisible();
   });
 
   test('someone with no team is sent to create one, and can still reach their settings', async ({
@@ -102,10 +99,8 @@ test.describe('Profile settings with team accounts only (KB-100)', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
     await userMenu(page).click();
-    await page.locator('[data-test="account-dropdown-settings"]').click();
+    await byTest(page, 'account-dropdown-settings').click();
     await page.waitForURL('**/home/settings');
-    await expect(
-      page.locator('[data-test="update-account-name-form"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'update-account-name-form')).toBeVisible();
   });
 });

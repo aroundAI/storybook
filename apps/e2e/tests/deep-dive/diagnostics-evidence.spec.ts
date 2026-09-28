@@ -15,6 +15,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * Weekly diagnostics and the retention curve, with real figures
@@ -100,9 +101,9 @@ test.describe('FILM-1616 — diagnostics with data', () => {
       `/home/${team.slug}/studio/${project.slug}/analytics?tab=deep-dive`,
     );
 
-    await page.locator('[data-test="analytics-tab-deep-dive"]').click();
+    await byTest(page, 'analytics-tab-deep-dive').click();
 
-    const rows = page.locator('[data-test="diagnostic-row"]');
+    const rows = byTest(page, 'diagnostic-row');
 
     await expect(rows).toHaveCount(2);
 
@@ -126,13 +127,9 @@ test.describe('FILM-1616 — diagnostics with data', () => {
     // The drill-down: the row with the cliff opens the curve that shows it.
     await rows.filter({ hasText: 'Packaging failed' }).first().click();
 
-    await expect(
-      page.locator('[data-test="retention-drilldown"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'retention-drilldown')).toBeVisible();
 
-    await expect(
-      page.locator('[data-test="retention-curve-error"]'),
-    ).toHaveCount(0);
+    await expect(byTest(page, 'retention-curve-error')).toHaveCount(0);
 
     // Wait for the drawn curve, not just the panel. The first version of
     // this screenshot caught the loading skeleton — evidence of a spinner,
@@ -183,9 +180,9 @@ test.describe('FILM-1616 — diagnostics with data', () => {
       `/home/${team.slug}/studio/${project.slug}/analytics?tab=deep-dive`,
     );
 
-    await page.locator('[data-test="analytics-tab-deep-dive"]').click();
+    await byTest(page, 'analytics-tab-deep-dive').click();
 
-    const row = page.locator('[data-test="diagnostic-row"]').first();
+    const row = byTest(page, 'diagnostic-row').first();
 
     await expect(row).toBeVisible();
 
@@ -199,14 +196,14 @@ test.describe('FILM-1616 — diagnostics with data', () => {
     // only way to see the break is to ask for roles. With `role="button"`
     // on the <tr> this section held one row — the header — and the data
     // row was a button owning cells.
-    const section = page.locator('[data-test="weekly-diagnostics-section"]');
+    const section = byTest(page, 'weekly-diagnostics-section');
 
     await expect(section.getByRole('row')).toHaveCount(2);
     await expect(row.getByRole('cell')).not.toHaveCount(0);
 
     // The control is a real button in a cell, named for what it opens, and
     // it reports the panel's state.
-    const open = row.locator('[data-test="diagnostic-open"]');
+    const open = byTest(row, 'diagnostic-open');
 
     await expect(open).toHaveAttribute('aria-expanded', 'false');
 
@@ -215,9 +212,7 @@ test.describe('FILM-1616 — diagnostics with data', () => {
     await open.focus();
     await page.keyboard.press('Enter');
 
-    await expect(
-      page.locator('[data-test="retention-drilldown"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'retention-drilldown')).toBeVisible();
 
     await expect(open).toHaveAttribute('aria-expanded', 'true');
   });
@@ -254,21 +249,17 @@ test.describe('FILM-1616 — diagnostics with data', () => {
       `/home/${team.slug}/studio/${project.slug}/analytics?tab=deep-dive`,
     );
 
-    await page.locator('[data-test="analytics-tab-deep-dive"]').click();
-    await page.locator('[data-test="diagnostic-row"]').first().click();
+    await byTest(page, 'analytics-tab-deep-dive').click();
+    await byTest(page, 'diagnostic-row').first().click();
 
-    await expect(
-      page.locator('[data-test="retention-drilldown"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'retention-drilldown')).toBeVisible();
 
     // No cliff claimed, and no failure reported: absent data is absent.
-    await expect(
-      page.locator('[data-test="retention-curve-error"]'),
-    ).toHaveCount(0);
+    await expect(byTest(page, 'retention-curve-error')).toHaveCount(0);
 
-    await expect(
-      page.locator('[data-test="retention-drilldown"]'),
-    ).toContainText('No retention curve available');
+    await expect(byTest(page, 'retention-drilldown')).toContainText(
+      'No retention curve available',
+    );
 
     // And no curve drawn — a zero-filled one would render as a video
     // nobody watched.

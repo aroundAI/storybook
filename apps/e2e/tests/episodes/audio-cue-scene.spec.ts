@@ -8,6 +8,7 @@ import {
   uniqueStamp,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * KB-92: a cue on a shot with no scene number is saved with no scene, and the
@@ -73,8 +74,8 @@ test.describe('Audio cues without a scene (KB-92)', () => {
       `/home/${team.slug}/studio/${project.slug}/episodes/${slug}/audio-studio`,
     );
 
-    const sfxTab = page.locator('[data-test="audio-tab-sfx"]');
-    const meta = page.locator('[data-test="sfx-cue-meta"]');
+    const sfxTab = byTest(page, 'audio-tab-sfx');
+    const meta = byTest(page, 'sfx-cue-meta');
 
     // A click before hydration is dropped; retry until the list appears.
     await expect(async () => {

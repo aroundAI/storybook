@@ -13,6 +13,7 @@ import {
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 import { png } from './png';
 
 /**
@@ -90,9 +91,9 @@ test.describe('Project intros (KB-39, KB-54)', () => {
     await openSettings(page);
 
     // Add
-    await page.locator('[data-test="intro-add"]').click();
+    await byTest(page, 'intro-add').click();
     let dialog = page.getByRole('dialog');
-    await dialog.locator('[data-test="intro-language"]').fill('en');
+    await byTest(dialog, 'intro-language').fill('en');
     await chooseVideo(dialog, {
       name: 'intro-a.webm',
       mimeType: 'video/webm',
@@ -103,7 +104,7 @@ test.describe('Project intros (KB-39, KB-54)', () => {
       await page.screenshot({ path: `${OUT}/kb39-01-intro-dialog.png` });
     }
 
-    await dialog.locator('[data-test="intro-submit"]').click();
+    await byTest(dialog, 'intro-submit').click();
 
     await expect(page.getByText('Added en intro').first()).toBeVisible();
     const card = page.locator('[data-test="intro-card"][data-language="en"]');
@@ -123,14 +124,14 @@ test.describe('Project intros (KB-39, KB-54)', () => {
     }
 
     // Replace: a new file, and the first one is deleted
-    await card.locator('[data-test="intro-replace"]').click();
+    await byTest(card, 'intro-replace').click();
     dialog = page.getByRole('dialog');
     await chooseVideo(dialog, {
       name: 'intro-b.webm',
       mimeType: 'video/webm',
       buffer: INTRO_B,
     });
-    await dialog.locator('[data-test="intro-submit"]').click();
+    await byTest(dialog, 'intro-submit').click();
 
     await expect(page.getByText('Replaced en intro').first()).toBeVisible();
     await expect(card).toContainText('intro-b.webm');
@@ -146,7 +147,7 @@ test.describe('Project intros (KB-39, KB-54)', () => {
     }
 
     // Delete: the row and the file
-    await card.locator('[data-test="intro-delete"]').click();
+    await byTest(card, 'intro-delete').click();
 
     await expect(page.getByText('Deleted en intro').first()).toBeVisible();
     await expect(card).toHaveCount(0);
@@ -163,15 +164,15 @@ test.describe('Project intros (KB-39, KB-54)', () => {
   }) => {
     await openSettings(page);
 
-    await page.locator('[data-test="intro-add"]').click();
+    await byTest(page, 'intro-add').click();
     const dialog = page.getByRole('dialog');
-    await dialog.locator('[data-test="intro-language"]').fill('fr');
+    await byTest(dialog, 'intro-language').fill('fr');
     await chooseVideo(dialog, {
       name: 'intro.mkv',
       mimeType: 'video/x-matroska',
       buffer: INTRO_A,
     });
-    await dialog.locator('[data-test="intro-submit"]').click();
+    await byTest(dialog, 'intro-submit').click();
 
     await expect(
       page.getByText('Content type not allowed: video/x-matroska').first(),

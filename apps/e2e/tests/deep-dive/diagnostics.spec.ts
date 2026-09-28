@@ -8,6 +8,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * Weekly diagnostics and the retention drill-down (FILM-1616).
@@ -38,16 +39,16 @@ test.describe('FILM-1616 — weekly diagnostics', () => {
       `/home/${team.slug}/studio/${project.slug}/analytics?tab=deep-dive`,
     );
 
-    await page.locator('[data-test="analytics-tab-deep-dive"]').click();
+    await byTest(page, 'analytics-tab-deep-dive').click();
 
-    const section = page.locator('[data-test="weekly-diagnostics-section"]');
+    const section = byTest(page, 'weekly-diagnostics-section');
 
     await expect(section).toBeVisible();
 
     // §8: with ClickHouse off the table renders no rows. A row here would
     // carry `views: 0` for a video nobody has measured, which reads as
     // nobody watched.
-    await expect(page.locator('[data-test="diagnostic-row"]')).toHaveCount(0);
+    await expect(byTest(page, 'diagnostic-row')).toHaveCount(0);
     await expect(section).toContainText('Nothing to diagnose yet');
 
     // Outside the card grid, not one of its cards. The framing is the
@@ -130,16 +131,14 @@ test.describe('FILM-1616 — weekly diagnostics', () => {
 
       await page.goto(url);
 
-      await expect(
-        page.locator('[data-test="episode-retention"]'),
-      ).toBeVisible();
+      await expect(byTest(page, 'episode-retention')).toBeVisible();
     };
 
     // Own publish: the curve area renders and reports no failure. With
     // ClickHouse off the curve itself is empty, which is the point — the
     // difference under test is refusal, not data.
     await load();
-    await expect(page.locator('[data-test="episode-retention"]')).toContainText(
+    await expect(byTest(page, 'episode-retention')).toContainText(
       'No retention curve available',
     );
 
@@ -147,9 +146,7 @@ test.describe('FILM-1616 — weekly diagnostics', () => {
     await page.unroute('**/*');
     await load(theirVideo.publishId);
 
-    await expect(
-      page.locator('[data-test="episode-retention-error"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'episode-retention-error')).toBeVisible();
 
     await page.unroute('**/*');
   });
@@ -179,7 +176,7 @@ test.describe('FILM-1616 — weekly diagnostics', () => {
     // A resolver that assumes at most one row errors here, and an error
     // that is discarded reads as "this episode has no video" — the section
     // disappears with nothing said.
-    await expect(page.locator('[data-test="episode-retention"]')).toBeVisible();
+    await expect(byTest(page, 'episode-retention')).toBeVisible();
   });
 
   test('reports a failed video lookup rather than rendering nothing', async ({
@@ -224,9 +221,7 @@ test.describe('FILM-1616 — weekly diagnostics', () => {
       `/home/${team.slug}/studio/${project.slug}/episodes/${video.episodeSlug}/analytics`,
     );
 
-    await expect(
-      page.locator('[data-test="episode-video-error"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'episode-video-error')).toBeVisible();
 
     await page.unroute('**/*');
   });

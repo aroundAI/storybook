@@ -6,6 +6,7 @@ import { type Server, createServer } from 'node:http';
 import { encryptLikeTheApp } from '../utils/crypto';
 import { seedTeamAccount, seedYouTubeConnection } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * KB-25, KB-45, KB-86, KB-87 — connecting and disconnecting, against one
@@ -152,16 +153,16 @@ function row(page: Page, connectionId: string) {
 }
 
 function card(page: Page, platform: string) {
-  return page.locator(`[data-test="platform-card-${platform}"]`);
+  return byTest(page, `platform-card-${platform}`);
 }
 
 async function openDisconnect(
   page: Page,
   rowLocator: ReturnType<Page['locator']>,
 ) {
-  await rowLocator.locator('[data-test="disconnect-connection"]').click();
+  await byTest(rowLocator, 'disconnect-connection').click();
 
-  const dialog = page.locator('[data-test="disconnect-dialog"]');
+  const dialog = byTest(page, 'disconnect-dialog');
 
   await expect(dialog).toBeVisible();
 
@@ -169,7 +170,7 @@ async function openDisconnect(
 }
 
 const unconfirmed = (page: Page) =>
-  page.locator('[data-test="disconnect-revoke-unconfirmed"]');
+  byTest(page, 'disconnect-revoke-unconfirmed');
 
 test.describe('Connecting and disconnecting, and what the platform is asked (KB-25, KB-45, KB-86, KB-87)', () => {
   test.skip(
@@ -213,14 +214,14 @@ test.describe('Connecting and disconnecting, and what the platform is asked (KB-
     const x = card(page, 'twitter');
 
     await expect(x).toBeVisible();
-    await expect(
-      x.locator('[data-test="platform-limitation-twitter"]'),
-    ).toContainText("Publishing to X doesn't work yet");
+    await expect(byTest(x, 'platform-limitation-twitter')).toContainText(
+      "Publishing to X doesn't work yet",
+    );
     await capture(page, '01-x-card');
 
     // Connect: the real connect route, X's authorize page (stand-in), the
     // real callback — which used to end on the failure page (KB-87).
-    await x.locator('[data-test="connect-platform-twitter"]').click();
+    await byTest(x, 'connect-platform-twitter').click();
     await page.waitForURL(
       new RegExp(
         `/home/${team.slug}/settings/platforms\\?success=twitter_connected`,
@@ -235,7 +236,7 @@ test.describe('Connecting and disconnecting, and what the platform is asked (KB-
       'tweet.read tweet.write users.read offline.access',
     );
 
-    const connected = x.locator('[data-test="connection-row"]');
+    const connected = byTest(x, 'connection-row');
 
     await expect(connected).toHaveCount(1);
     await expect(connected).toContainText('acme_on_x');
@@ -244,12 +245,12 @@ test.describe('Connecting and disconnecting, and what the platform is asked (KB-
     // Disconnect: X agrees to both revokes.
     const dialog = await openDisconnect(page, connected);
 
-    await expect(
-      dialog.locator('[data-test="disconnect-access"]'),
-    ).toContainText("We'll also ask X to revoke our access.");
+    await expect(byTest(dialog, 'disconnect-access')).toContainText(
+      "We'll also ask X to revoke our access.",
+    );
     await capture(page, '03-x-dialog');
 
-    await dialog.locator('[data-test="confirm-disconnect"]').click();
+    await byTest(dialog, 'confirm-disconnect').click();
     await expect(connected).toHaveAttribute('data-status', 'disconnected');
     await expect(
       page.getByText('Disconnected acme_on_x. Your records are kept.'),
@@ -272,7 +273,7 @@ test.describe('Connecting and disconnecting, and what the platform is asked (KB-
     // Second submission: reconnect the same X account — the same row comes
     // back (KB-22) — and this time X refuses the revoke.
     await page.goto(`/home/${team.slug}/settings/platforms`);
-    await x.locator('[data-test="connect-platform-twitter"]').click();
+    await byTest(x, 'connect-platform-twitter').click();
     await page.waitForURL(/success=twitter_connected/);
     await expect(connected).toHaveCount(1);
     await expect(connected).not.toHaveAttribute('data-status', 'disconnected');
@@ -332,21 +333,19 @@ test.describe('Connecting and disconnecting, and what the platform is asked (KB-
     const linkedin = card(page, 'linkedin');
 
     await expect(
-      linkedin.locator('[data-test="platform-limitation-linkedin"]'),
+      byTest(linkedin, 'platform-limitation-linkedin'),
     ).toContainText('Personal profiles only');
     await expect(row(page, connectionId)).toContainText('Acme on LinkedIn');
     await capture(page, '06-linkedin-card');
 
     const dialog = await openDisconnect(page, row(page, connectionId));
 
-    await expect(
-      dialog.locator('[data-test="disconnect-access"]'),
-    ).toContainText(
+    await expect(byTest(dialog, 'disconnect-access')).toContainText(
       "LinkedIn doesn't let apps revoke their own access, so remove our access in LinkedIn's settings too.",
     );
     await capture(page, '07-linkedin-dialog');
 
-    await dialog.locator('[data-test="confirm-disconnect"]').click();
+    await byTest(dialog, 'confirm-disconnect').click();
     await expect(row(page, connectionId)).toHaveAttribute(
       'data-status',
       'disconnected',
@@ -365,8 +364,8 @@ test.describe('Connecting and disconnecting, and what the platform is asked (KB-
     // Connect: the real connect route sends the browser to LinkedIn's
     // consent screen with our client and the personal-profile scopes.
     await page.goto(`/home/${team.slug}/settings/platforms`);
-    await linkedin.locator('[data-test="connect-platform-linkedin"]').click();
-    await expect(page.locator('[data-test="linkedin-consent"]')).toBeVisible();
+    await byTest(linkedin, 'connect-platform-linkedin').click();
+    await expect(byTest(page, 'linkedin-consent')).toBeVisible();
 
     const authorize = vendor.requests('/oauth/v2/authorization')[0];
 

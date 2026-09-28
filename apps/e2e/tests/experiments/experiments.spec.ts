@@ -10,6 +10,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 import { ExperimentsPageObject } from './experiments.po';
 
 interface ExperimentRow {
@@ -168,9 +169,7 @@ test.describe('Experiment log (FILM-1610)', () => {
     await expect(
       page.locator(`[data-test="experiment-due-${due}"]:visible`),
     ).toContainText('Overdue experiment');
-    await expect(
-      page.locator(`[data-test="experiment-due-${notDue}"]`),
-    ).toHaveCount(0);
+    await expect(byTest(page, `experiment-due-${notDue}`)).toHaveCount(0);
   });
 
   test('a watched metric with no data says why instead of showing zero', async ({
@@ -211,9 +210,9 @@ test.describe('Experiment log (FILM-1610)', () => {
       '[data-test="experiment-watched-baseline-unmeasured"]',
     );
     await expect(baseline).toHaveAttribute('data-reason', 'no_data');
-    await expect(
-      page.locator('[data-test="experiment-watched-baseline-value"]'),
-    ).toHaveCount(0);
+    await expect(byTest(page, 'experiment-watched-baseline-value')).toHaveCount(
+      0,
+    );
   });
 });
 
@@ -256,11 +255,11 @@ test.describe('An experiment runs its whole course (FILM-1610 review 4, G9)', ()
     await expect(
       page.getByRole('button', { name: 'Start', exact: true }),
     ).toHaveCount(0);
+    await expect(byTest(page, 'experiment-result-after-days')).toHaveText(
+      ' · result after 0 days',
+    );
     await expect(
-      page.locator('[data-test="experiment-result-after-days"]'),
-    ).toHaveText(' · result after 0 days');
-    await expect(
-      page.locator('[data-test="experiment-watched-result-unmeasured"]'),
+      byTest(page, 'experiment-watched-result-unmeasured'),
     ).toHaveAttribute('data-reason', 'no_data');
 
     const [row] = await readRows<{
@@ -357,15 +356,11 @@ test.describe('Video picker at scale, and labels (FILM-1610 review 3, F5 F6)', (
     await log.field('video-picker-trigger').click();
 
     // Only a page is loaded, and the picker says so.
-    await expect(
-      page.locator('[data-test="video-picker-has-more"]'),
-    ).toBeVisible();
-    await expect(
-      page.locator(`[data-test="video-picker-option-${needle}"]`),
-    ).toHaveCount(0);
+    await expect(byTest(page, 'video-picker-has-more')).toBeVisible();
+    await expect(byTest(page, `video-picker-option-${needle}`)).toHaveCount(0);
 
-    await page.locator('[data-test="video-picker-search"]').fill('Needle');
-    await page.locator(`[data-test="video-picker-option-${needle}"]`).click();
+    await byTest(page, 'video-picker-search').fill('Needle');
+    await byTest(page, `video-picker-option-${needle}`).click();
     await page.keyboard.press('Escape');
 
     await log.field('experiment-title').fill('Found by search');

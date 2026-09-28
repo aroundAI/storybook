@@ -13,6 +13,7 @@ import {
   storageUploadAs,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * KB-55 / KB-56: the audio buckets exist and the reports bucket admits a
@@ -58,7 +59,7 @@ async function uploadThroughDialog(
     .filter({ visible: true })
     .click();
 
-  const submit = page.locator('[data-test="audio-upload-submit"]');
+  const submit = byTest(page, 'audio-upload-submit');
 
   // As in the KB-28 spec: on a production build the file input can be
   // live before React attaches onChange. Choosing again is harmless until
@@ -72,7 +73,7 @@ async function uploadThroughDialog(
     await expect(submit).toBeEnabled({ timeout: 1_000 });
   }).toPass();
 
-  await page.locator('[data-test="audio-upload-name"]').fill(track.name);
+  await byTest(page, 'audio-upload-name').fill(track.name);
 
   if (evidence && screenshot) {
     await page.screenshot({ path: `${OUT}/${screenshot}` });
@@ -229,9 +230,9 @@ test.describe('Media and report storage (KB-55, KB-56)', () => {
       false,
     );
 
-    await expect(
-      page.locator('[data-test="audio-upload-error"]'),
-    ).toContainText('You do not have permission to upload to this project');
+    await expect(byTest(page, 'audio-upload-error')).toContainText(
+      'You do not have permission to upload to this project',
+    );
     expect(presigned).toEqual([403]);
 
     if (evidence) {

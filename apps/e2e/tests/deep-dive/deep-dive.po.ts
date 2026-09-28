@@ -9,6 +9,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 export interface DeepDiveFixture {
   team: SeededTeam;
@@ -63,7 +64,7 @@ export class DeepDivePageObject {
       `/home/${accountSlug}/studio/${projectSlug}/analytics`,
     );
 
-    await this.page.locator('[data-test="analytics-tab-deep-dive"]').click();
+    await byTest(this.page, 'analytics-tab-deep-dive').click();
 
     await expect(this.tab()).toBeVisible();
   }

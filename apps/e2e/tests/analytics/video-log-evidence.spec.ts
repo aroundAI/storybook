@@ -12,6 +12,7 @@ import {
 } from '../utils/clickhouse';
 import { seedMembership, seedRevenueRecord, seedUser } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 import { VideoLogFixture, VideoLogPageObject } from './video-log.po';
 
 /**
@@ -371,43 +372,41 @@ test.describe('FILM-1615 — the Video Log with data', () => {
     await videoLog.goToAnalytics(fixture.team.slug, fixture.project.slug);
     await videoLog.openVideoLog();
 
-    await page.locator('[data-test="note-edit"]').first().click();
-    await page.locator('[data-test="note-input"]').fill('Swapped thumbnail');
+    await byTest(page, 'note-edit').first().click();
+    await byTest(page, 'note-input').fill('Swapped thumbnail');
     await page.screenshot({ path: `${OUT}/08-note-editor.png` });
-    await page.locator('[data-test="note-save"]').click();
+    await byTest(page, 'note-save').click();
 
-    await expect(page.locator('[data-test="note-edit"]').first()).toContainText(
+    await expect(byTest(page, 'note-edit').first()).toContainText(
       'Swapped thumbnail',
     );
 
     // The second save is the one that finds state bugs: the editor reopens
     // over a note that already exists, and its conditional save must carry
     // the version the first save returned.
-    await page.locator('[data-test="note-edit"]').first().click();
-    await page.locator('[data-test="note-input"]').fill('Swapped on day 4');
-    await page.locator('[data-test="note-save"]').click();
+    await byTest(page, 'note-edit').first().click();
+    await byTest(page, 'note-input').fill('Swapped on day 4');
+    await byTest(page, 'note-save').click();
 
-    await expect(page.locator('[data-test="note-edit"]').first()).toContainText(
+    await expect(byTest(page, 'note-edit').first()).toContainText(
       'Swapped on day 4',
     );
 
     await page.reload();
     await videoLog.openVideoLog();
 
-    await expect(page.locator('[data-test="note-edit"]').first()).toContainText(
+    await expect(byTest(page, 'note-edit').first()).toContainText(
       'Swapped on day 4',
     );
 
     await page.screenshot({ path: `${OUT}/09-note-saved.png`, fullPage: true });
 
     // Emptying it removes it.
-    await page.locator('[data-test="note-edit"]').first().click();
-    await page.locator('[data-test="note-input"]').fill('');
-    await page.locator('[data-test="note-save"]').click();
+    await byTest(page, 'note-edit').first().click();
+    await byTest(page, 'note-input').fill('');
+    await byTest(page, 'note-save').click();
 
-    await expect(page.locator('[data-test="note-edit"]').first()).toContainText(
-      'Add note',
-    );
+    await expect(byTest(page, 'note-edit').first()).toContainText('Add note');
   });
 
   test('refuses a note over the limit, saying what the limit is', async ({
@@ -421,18 +420,16 @@ test.describe('FILM-1615 — the Video Log with data', () => {
     await videoLog.goToAnalytics(fixture.team.slug, fixture.project.slug);
     await videoLog.openVideoLog();
 
-    await page.locator('[data-test="note-edit"]').first().click();
-    await page.locator('[data-test="note-input"]').fill('x'.repeat(5001));
-    await page.locator('[data-test="note-save"]').click();
+    await byTest(page, 'note-edit').first().click();
+    await byTest(page, 'note-input').fill('x'.repeat(5001));
+    await byTest(page, 'note-save').click();
 
     await expect(
       page.locator('[data-test="note-editor"]:visible'),
     ).toContainText('At most 5,000 characters');
 
     // Nothing was saved, and the text is still there to fix.
-    await expect(page.locator('[data-test="note-input"]')).toHaveValue(
-      'x'.repeat(5001),
-    );
+    await expect(byTest(page, 'note-input')).toHaveValue('x'.repeat(5001));
 
     await page.screenshot({ path: `${OUT}/10-note-too-long.png` });
   });
@@ -458,17 +455,17 @@ test.describe('FILM-1615 — the Video Log with data', () => {
     await otherLog.goToAnalytics(fixture.team.slug, fixture.project.slug);
     await otherLog.openVideoLog();
 
-    await page.locator('[data-test="note-edit"]').first().click();
-    await otherPage.locator('[data-test="note-edit"]').first().click();
+    await byTest(page, 'note-edit').first().click();
+    await byTest(otherPage, 'note-edit').first().click();
 
-    await otherPage.locator('[data-test="note-input"]').fill('Their note');
-    await otherPage.locator('[data-test="note-save"]').click();
-    await expect(
-      otherPage.locator('[data-test="note-edit"]').first(),
-    ).toContainText('Their note');
+    await byTest(otherPage, 'note-input').fill('Their note');
+    await byTest(otherPage, 'note-save').click();
+    await expect(byTest(otherPage, 'note-edit').first()).toContainText(
+      'Their note',
+    );
 
-    await page.locator('[data-test="note-input"]').fill('My note');
-    await page.locator('[data-test="note-save"]').click();
+    await byTest(page, 'note-input').fill('My note');
+    await byTest(page, 'note-save').click();
 
     const conflict = page.locator('[data-test="note-conflict"]:visible');
 
@@ -481,15 +478,11 @@ test.describe('FILM-1615 — the Video Log with data', () => {
 
     // The editor is still open with the typed text: nothing was lost, and
     // nothing was overwritten.
-    await expect(page.locator('[data-test="note-input"]')).toHaveValue(
-      'My note',
-    );
+    await expect(byTest(page, 'note-input')).toHaveValue('My note');
 
     // Saving again is now a deliberate replacement, and it takes.
-    await page.locator('[data-test="note-save"]').click();
-    await expect(page.locator('[data-test="note-edit"]').first()).toContainText(
-      'My note',
-    );
+    await byTest(page, 'note-save').click();
+    await expect(byTest(page, 'note-edit').first()).toContainText('My note');
 
     await other.close();
   });
@@ -506,12 +499,10 @@ test.describe('FILM-1615 — the Video Log with data', () => {
 
     await videoLog.goToAnalytics(fixture.team.slug, fixture.project.slug);
     await videoLog.openVideoLog();
-    await page.locator('[data-test="note-edit"]').first().click();
-    await page.locator('[data-test="note-input"]').fill('Owner note');
-    await page.locator('[data-test="note-save"]').click();
-    await expect(page.locator('[data-test="note-edit"]').first()).toContainText(
-      'Owner note',
-    );
+    await byTest(page, 'note-edit').first().click();
+    await byTest(page, 'note-input').fill('Owner note');
+    await byTest(page, 'note-save').click();
+    await expect(byTest(page, 'note-edit').first()).toContainText('Owner note');
     await context.close();
 
     // An account member who is not on the project reads the log and the
@@ -528,10 +519,10 @@ test.describe('FILM-1615 — the Video Log with data', () => {
     await readerLog.goToAnalytics(fixture.team.slug, fixture.project.slug);
     await readerLog.openVideoLog();
 
-    await expect(
-      readerPage.locator('[data-test="note-readonly"]').first(),
-    ).toHaveText('Owner note');
-    await expect(readerPage.locator('[data-test="note-edit"]')).toHaveCount(0);
+    await expect(byTest(readerPage, 'note-readonly').first()).toHaveText(
+      'Owner note',
+    );
+    await expect(byTest(readerPage, 'note-edit')).toHaveCount(0);
 
     await readerPage.screenshot({ path: `${OUT}/12-note-read-only.png` });
 
@@ -550,18 +541,18 @@ test.describe('FILM-1615 — the Video Log with data', () => {
     await videoLog.goToAnalytics(fixture.team.slug, fixture.project.slug);
     await videoLog.openVideoLog();
 
-    const trigger = page.locator('[data-test="note-edit"]').first();
+    const trigger = byTest(page, 'note-edit').first();
 
     await trigger.click();
-    await page.locator('[data-test="note-input"]').fill('Typed, not saved');
+    await byTest(page, 'note-input').fill('Typed, not saved');
 
     // A click outside with unsaved changes keeps the editor open: losing a
     // note to a misplaced click is not a recoverable mistake.
-    await page.locator('[data-test="video-log-scope-note"]').click();
-    await expect(page.locator('[data-test="note-editor"]')).toBeVisible();
+    await byTest(page, 'video-log-scope-note').click();
+    await expect(byTest(page, 'note-editor')).toBeVisible();
 
     // Ctrl/⌘+Enter saves from the textarea.
-    await page.locator('[data-test="note-input"]').press('ControlOrMeta+Enter');
+    await byTest(page, 'note-input').press('ControlOrMeta+Enter');
     await expect(trigger).toContainText('Typed, not saved');
 
     // Focus comes back to the row's button, not to the top of the document.
@@ -569,15 +560,15 @@ test.describe('FILM-1615 — the Video Log with data', () => {
 
     // Escape discards.
     await trigger.press('Enter');
-    await page.locator('[data-test="note-input"]').fill('Discarded');
-    await page.locator('[data-test="note-input"]').press('Escape');
+    await byTest(page, 'note-input').fill('Discarded');
+    await byTest(page, 'note-input').press('Escape');
 
-    await expect(page.locator('[data-test="note-editor"]')).toHaveCount(0);
+    await expect(byTest(page, 'note-editor')).toHaveCount(0);
     await expect(trigger).toContainText('Typed, not saved');
 
     // The explanations are reachable without a mouse: the trigger is a
     // button, and it carries the explanation for a screen reader.
-    const explained = page.locator('[data-test="checkpoint-immature"]').first();
+    const explained = byTest(page, 'checkpoint-immature').first();
 
     if (await explained.count()) {
       await explained.focus();

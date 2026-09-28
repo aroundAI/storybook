@@ -1,6 +1,7 @@
 import { Page, expect } from '@playwright/test';
 
 import { Mailbox } from '../utils/mailbox';
+import { byTest } from '../utils/visible';
 
 export class AuthPageObject {
   private readonly page: Page;
@@ -100,9 +101,7 @@ export class AuthPageObject {
     // it has to fail when the code is rejected. Without this the helper always
     // "passed" on the first attempt and the test carried on from the
     // verification screen it had never left.
-    await expect(
-      this.page.locator('[data-test="submit-mfa-button"]'),
-    ).toBeHidden();
+    await expect(byTest(this.page, 'submit-mfa-button')).toBeHidden();
   }
 
   async visitConfirmEmailLink(

@@ -16,6 +16,7 @@ import {
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * The episode's Facts tab (FILM-1142) and the rules behind it (KB-48).
@@ -88,22 +89,22 @@ async function openFacts(
   await page.goto(
     `/home/${team.slug}/studio/${project.slug}/episodes/${episodeSlug}/story`,
   );
-  await page.locator('[data-test="story-sidebar-toggle"]').click();
-  await page.locator('[data-test="story-canon-tab"]').click();
+  await byTest(page, 'story-sidebar-toggle').click();
+  await byTest(page, 'story-canon-tab').click();
   await page.getByRole('tab', { name: /Facts/ }).click();
 }
 
-const cards = (page: Page) => page.locator('[data-test="episode-fact-card"]');
+const cards = (page: Page) => byTest(page, 'episode-fact-card');
 
 async function linkFacts(page: Page, which: string[]) {
-  await page.locator('[data-test="episode-facts-link"]').click();
+  await byTest(page, 'episode-facts-link').click();
   for (const claim of which) {
     await page
       .locator('[data-test="link-fact-option"]')
       .filter({ hasText: claim })
       .click();
   }
-  await page.locator('[data-test="link-facts-submit"]').click();
+  await byTest(page, 'link-facts-submit').click();
 }
 
 function linksOf(id: string) {
@@ -121,14 +122,12 @@ test.describe('Episode facts (FILM-1142, KB-48)', () => {
   }) => {
     await openFacts(page, team);
 
-    await expect(
-      page.locator('[data-test="episode-facts-empty"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'episode-facts-empty')).toBeVisible();
 
     await linkFacts(page, [claims[0]!, claims[1]!]);
     await expect(page.getByText('Linked 2 fact(s) to episode')).toBeVisible();
     await expect(cards(page)).toHaveCount(2);
-    await expect(page.locator('[data-test="episode-facts-count"]')).toHaveText(
+    await expect(byTest(page, 'episode-facts-count')).toHaveText(
       '2 facts linked',
     );
     await expect(page.getByRole('tab', { name: /Facts/ })).toContainText('2');
@@ -138,8 +137,8 @@ test.describe('Episode facts (FILM-1142, KB-48)', () => {
     }
 
     // The second link: the dialog must now offer only the fact not yet linked.
-    await page.locator('[data-test="episode-facts-link"]').click();
-    const options = page.locator('[data-test="link-fact-option"]');
+    await byTest(page, 'episode-facts-link').click();
+    const options = byTest(page, 'link-fact-option');
     await expect(options).toHaveCount(1);
     await expect(options).toContainText(claims[2]!);
 
@@ -150,13 +149,13 @@ test.describe('Episode facts (FILM-1142, KB-48)', () => {
     }
 
     await options.click();
-    await page.locator('[data-test="link-facts-submit"]').click();
+    await byTest(page, 'link-facts-submit').click();
     await expect(page.getByText('Linked 1 fact(s) to episode')).toBeVisible();
     await expect(cards(page)).toHaveCount(3);
 
     await page.reload();
-    await page.locator('[data-test="story-sidebar-toggle"]').click();
-    await page.locator('[data-test="story-canon-tab"]').click();
+    await byTest(page, 'story-sidebar-toggle').click();
+    await byTest(page, 'story-canon-tab').click();
     await page.getByRole('tab', { name: /Facts/ }).click();
     await expect(cards(page)).toHaveCount(3);
     await expect(page.getByRole('tab', { name: /Facts/ })).toContainText('3');
@@ -167,7 +166,7 @@ test.describe('Episode facts (FILM-1142, KB-48)', () => {
 
     const first = cards(page).filter({ hasText: claims[0]! });
     await first.hover();
-    await first.locator('[data-test="episode-fact-unlink"]').click();
+    await byTest(first, 'episode-fact-unlink').click();
     await expect(page.getByText('Fact unlinked from episode')).toBeVisible();
     await expect(cards(page)).toHaveCount(2);
     await expect(cards(page).filter({ hasText: claims[0]! })).toHaveCount(0);
@@ -187,7 +186,7 @@ test.describe('Episode facts (FILM-1142, KB-48)', () => {
 
     const card = cards(page).first();
     await card.hover();
-    await card.locator('[data-test="episode-fact-unlink"]').click();
+    await byTest(card, 'episode-fact-unlink').click();
     await expect(page.getByText(UNLINK_REFUSAL)).toBeVisible();
     await expect(cards(page)).toHaveCount(2);
 

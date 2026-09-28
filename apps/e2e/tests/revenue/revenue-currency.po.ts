@@ -10,6 +10,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /** A local calendar day `n` days back, as the dashboard's date range reads it. */
 export function daysAgo(n: number): string {
@@ -108,7 +109,7 @@ export class RevenueCurrencyPageObject {
   }
 
   tiles(name: 'total' | 'daily' | 'rpm' | 'projection') {
-    return this.page.locator(`[data-test="revenue-tile-${name}"]`);
+    return byTest(this.page, `revenue-tile-${name}`);
   }
 
   /** The figure a tile states, without its title or caption. */
@@ -127,10 +128,10 @@ export class RevenueCurrencyPageObject {
   }
 
   platformCards() {
-    return this.page.locator('[data-test="revenue-platform-card"]');
+    return byTest(this.page, 'revenue-platform-card');
   }
 
   topContentTables() {
-    return this.page.locator('[data-test="revenue-top-content"]');
+    return byTest(this.page, 'revenue-top-content');
   }
 }

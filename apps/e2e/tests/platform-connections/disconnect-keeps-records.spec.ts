@@ -25,6 +25,7 @@ import {
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * KB-22. Pressing Disconnect used to delete the connection row, and the
@@ -147,7 +148,7 @@ async function disconnect(page: Page, connectionId: string) {
     .locator('[data-test="disconnect-connection"]')
     .click();
 
-  const dialog = page.locator('[data-test="disconnect-dialog"]');
+  const dialog = byTest(page, 'disconnect-dialog');
 
   await expect(dialog).toBeVisible();
 
@@ -190,21 +191,21 @@ test.describe('Disconnecting a platform keeps the creator’s records (KB-22)', 
     const dialog = await disconnect(page, fixture.connectionId);
 
     await expect(dialog).toContainText('Disconnect Acme TV?');
-    await expect(
-      dialog.locator('[data-test="disconnect-access"]'),
-    ).toContainText("We'll also ask YouTube to revoke our access.");
-    await expect(dialog.locator('[data-test="disconnect-kept"]')).toContainText(
+    await expect(byTest(dialog, 'disconnect-access')).toContainText(
+      "We'll also ask YouTube to revoke our access.",
+    );
+    await expect(byTest(dialog, 'disconnect-kept')).toContainText(
       'revenue you entered',
     );
-    await expect(
-      dialog.locator('[data-test="disconnect-vendor-data"]'),
-    ).toContainText('We delete them within 7 days');
-    await expect(
-      dialog.locator('[data-test="disconnect-scheduled"]'),
-    ).toContainText("1 scheduled post on this channel won't go out");
+    await expect(byTest(dialog, 'disconnect-vendor-data')).toContainText(
+      'We delete them within 7 days',
+    );
+    await expect(byTest(dialog, 'disconnect-scheduled')).toContainText(
+      "1 scheduled post on this channel won't go out",
+    );
     await capture(page, '01-dialog-youtube');
 
-    await dialog.locator('[data-test="confirm-disconnect"]').click();
+    await byTest(dialog, 'confirm-disconnect').click();
 
     await expect(dialog).toBeHidden();
     await expect(row(page, fixture.connectionId)).toHaveAttribute(
@@ -403,17 +404,13 @@ test.describe('Disconnecting a platform keeps the creator’s records (KB-22)', 
 
     const dialog = await disconnect(page, connectionId);
 
-    await expect(
-      dialog.locator('[data-test="disconnect-vendor-data"]'),
-    ).toContainText(
+    await expect(byTest(dialog, 'disconnect-vendor-data')).toContainText(
       'Statistics already collected from TikTok are kept until you ask us to delete them.',
     );
     await expect(
       dialog.locator('a[href="/data-deletion#request"]'),
     ).toBeVisible();
-    await expect(
-      dialog.locator('[data-test="disconnect-scheduled"]'),
-    ).toHaveCount(0);
+    await expect(byTest(dialog, 'disconnect-scheduled')).toHaveCount(0);
     await capture(page, '04-dialog-tiktok');
 
     await page.keyboard.press('Escape');
@@ -449,14 +446,12 @@ test.describe('Disconnecting a platform keeps the creator’s records (KB-22)', 
 
     const dialog = await disconnect(page, instagramId);
 
-    await expect(
-      dialog.locator('[data-test="disconnect-linked"]'),
-    ).toContainText(
+    await expect(byTest(dialog, 'disconnect-linked')).toContainText(
       'Acme Page is connected through the same Facebook login and is disconnected with it.',
     );
     await capture(page, '05-dialog-instagram-linked');
 
-    await dialog.locator('[data-test="confirm-disconnect"]').click();
+    await byTest(dialog, 'confirm-disconnect').click();
 
     await expect(row(page, instagramId)).toHaveAttribute(
       'data-status',

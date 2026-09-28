@@ -1,5 +1,6 @@
 import { Page, Request, expect, test } from '@playwright/test';
 
+import { byTest } from '../utils/visible';
 import { VideoLogPageObject } from './video-log.po';
 
 /**
@@ -216,7 +217,7 @@ test.describe('Video Log', () => {
     await expect(loading).toHaveAttribute('aria-busy', 'true');
 
     // The claim that must not be made while the read is in flight.
-    await expect(page.locator('[data-test="video-log-empty"]')).toHaveCount(0);
+    await expect(byTest(page, 'video-log-empty')).toHaveCount(0);
 
     release();
 
@@ -243,11 +244,11 @@ test.describe('Video Log', () => {
     await expect(error).toHaveAttribute('role', 'alert');
 
     // An unread log is not an empty one, and must not read as one.
-    await expect(page.locator('[data-test="video-log-empty"]')).toHaveCount(0);
+    await expect(byTest(page, 'video-log-empty')).toHaveCount(0);
 
     // Try again re-reads: with the abort lifted, the read succeeds.
     await page.unroute('**/*');
-    await page.locator('[data-test="video-log-retry"]').click();
+    await byTest(page, 'video-log-retry').click();
 
     await expect(
       page.locator('[data-test="video-log-empty"]:visible'),

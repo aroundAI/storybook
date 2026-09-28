@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { byTest } from '../utils/visible';
+
 /**
  * KB-20: two vendor reviews read these pages before they read anything else.
  *
@@ -21,13 +23,12 @@ test.describe('Data deletion instructions', () => {
 
     expect(response?.status()).toBe(200);
 
-    await expect(
-      page.locator('[data-test="data-deletion-page"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'data-deletion-page')).toBeVisible();
 
-    await expect(
-      page.locator('[data-test="data-deletion-contact"]'),
-    ).toHaveAttribute('href', /^mailto:.+@.+/);
+    await expect(byTest(page, 'data-deletion-contact')).toHaveAttribute(
+      'href',
+      /^mailto:.+@.+/,
+    );
   });
 
   test('it links to where access is revoked at each vendor', async ({
@@ -35,19 +36,21 @@ test.describe('Data deletion instructions', () => {
   }) => {
     await page.goto('/data-deletion');
 
-    await expect(
-      page.locator('[data-test="revoke-link-google"]'),
-    ).toHaveAttribute('href', GOOGLE_PERMISSIONS);
+    await expect(byTest(page, 'revoke-link-google')).toHaveAttribute(
+      'href',
+      GOOGLE_PERMISSIONS,
+    );
 
     for (const vendor of ['facebook', 'instagram', 'x', 'linkedin']) {
-      await expect(
-        page.locator(`[data-test="revoke-link-${vendor}"]`),
-      ).toHaveAttribute('href', /^https:\/\//);
+      await expect(byTest(page, `revoke-link-${vendor}`)).toHaveAttribute(
+        'href',
+        /^https:\/\//,
+      );
     }
 
-    await expect(
-      page.locator('[data-test="revoke-path-tiktok"]'),
-    ).toContainText('Manage app permissions');
+    await expect(byTest(page, 'revoke-path-tiktok')).toContainText(
+      'Manage app permissions',
+    );
   });
 
   test('says which platforms we ask to revoke, and that LinkedIn offers no way (KB-25)', async ({
@@ -55,15 +58,15 @@ test.describe('Data deletion instructions', () => {
   }) => {
     await page.goto('/data-deletion');
 
-    await expect(
-      page.locator('[data-test="disconnect-revokes"]'),
-    ).toContainText('For YouTube, TikTok, Instagram, Facebook and X we ask');
-    await expect(
-      page.locator('[data-test="disconnect-linkedin"]'),
-    ).toContainText('LinkedIn does not let apps revoke their own access');
-    await expect(
-      page.locator('[data-test="data-deletion-page"]'),
-    ).not.toContainText('do not yet');
+    await expect(byTest(page, 'disconnect-revokes')).toContainText(
+      'For YouTube, TikTok, Instagram, Facebook and X we ask',
+    );
+    await expect(byTest(page, 'disconnect-linkedin')).toContainText(
+      'LinkedIn does not let apps revoke their own access',
+    );
+    await expect(byTest(page, 'data-deletion-page')).not.toContainText(
+      'do not yet',
+    );
   });
 
   test('the footer links to it, and the link resolves', async ({
@@ -91,16 +94,18 @@ test.describe('Privacy policy — what YouTube requires of it', () => {
   }) => {
     await page.goto('/privacy-policy');
 
-    await expect(
-      page.locator('[data-test="privacy-youtube-terms-link"]'),
-    ).toHaveAttribute('href', YOUTUBE_TERMS);
+    await expect(byTest(page, 'privacy-youtube-terms-link')).toHaveAttribute(
+      'href',
+      YOUTUBE_TERMS,
+    );
+
+    await expect(byTest(page, 'privacy-google-privacy-link')).toHaveAttribute(
+      'href',
+      GOOGLE_PRIVACY,
+    );
 
     await expect(
-      page.locator('[data-test="privacy-google-privacy-link"]'),
-    ).toHaveAttribute('href', GOOGLE_PRIVACY);
-
-    await expect(
-      page.locator('[data-test="privacy-google-permissions-link"]'),
+      byTest(page, 'privacy-google-permissions-link'),
     ).toHaveAttribute('href', GOOGLE_PERMISSIONS);
   });
 
@@ -110,7 +115,7 @@ test.describe('Privacy policy — what YouTube requires of it', () => {
   }) => {
     await page.goto('/privacy-policy');
 
-    const link = page.locator('[data-test="privacy-data-deletion-link"]');
+    const link = byTest(page, 'privacy-data-deletion-link');
 
     await expect(link).toHaveAttribute('href', '/data-deletion');
 
@@ -124,9 +129,10 @@ test.describe('Terms of service — what YouTube requires of it', () => {
   test('links the YouTube Terms of Service', async ({ page }) => {
     await page.goto('/terms-of-service');
 
-    await expect(
-      page.locator('[data-test="terms-youtube-terms-link"]'),
-    ).toHaveAttribute('href', YOUTUBE_TERMS);
+    await expect(byTest(page, 'terms-youtube-terms-link')).toHaveAttribute(
+      'href',
+      YOUTUBE_TERMS,
+    );
   });
 });
 
@@ -142,9 +148,7 @@ test.describe('Nothing on either page is still waiting on a decision', () => {
     test(`${path} renders no DRAFT — BLOCKED box`, async ({ page }) => {
       await page.goto(path);
 
-      await expect(
-        page.locator('[data-test="blocked-on-owner-decision"]'),
-      ).toHaveCount(0);
+      await expect(byTest(page, 'blocked-on-owner-decision')).toHaveCount(0);
     });
   }
 
@@ -153,16 +157,16 @@ test.describe('Nothing on either page is still waiting on a decision', () => {
   }) => {
     await page.goto('/data-deletion');
 
-    await expect(
-      page.locator('[data-test="retention-disconnect"]'),
-    ).toContainText('7 calendar days');
+    await expect(byTest(page, 'retention-disconnect')).toContainText(
+      '7 calendar days',
+    );
 
     // KB-22: disconnecting no longer deletes what the creator entered.
-    await expect(
-      page.locator('[data-test="retention-disconnect"]'),
-    ).toContainText('Disconnecting keeps your own records');
+    await expect(byTest(page, 'retention-disconnect')).toContainText(
+      'Disconnecting keeps your own records',
+    );
 
-    await expect(page.locator('[data-test="retention-revoked"]')).toContainText(
+    await expect(byTest(page, 'retention-revoked')).toContainText(
       '30 calendar days',
     );
   });
@@ -172,7 +176,7 @@ test.describe('Nothing on either page is still waiting on a decision', () => {
   }) => {
     await page.goto('/privacy-policy');
 
-    const howLong = page.locator('[data-test="privacy-retention"]');
+    const howLong = byTest(page, 'privacy-retention');
 
     await expect(howLong).toContainText('7 calendar days');
     await expect(howLong).toContainText('30 calendar days');
@@ -190,8 +194,8 @@ test.describe('Nothing on either page is still waiting on a decision', () => {
 
     await page.goto('/data-deletion');
 
-    await expect(
-      page.locator('[data-test="deletion-account-reports"]'),
-    ).toContainText('report files');
+    await expect(byTest(page, 'deletion-account-reports')).toContainText(
+      'report files',
+    );
   });
 });

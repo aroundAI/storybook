@@ -13,6 +13,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 import { DeepDivePageObject } from './deep-dive.po';
 
 /**
@@ -173,7 +174,7 @@ test.describe('FILM-1617 — evidence', () => {
     };
 
     // 2. Total: one line per platform, and why it has the days it has.
-    await page.locator('[data-test="subscriber-series-total"]').click();
+    await byTest(page, 'subscriber-series-total').click();
     await clearHover();
     await card.screenshot({ path: `${OUT}/21-scenarios-total.png` });
 
@@ -245,7 +246,7 @@ test.describe('FILM-1617 — evidence', () => {
     await expect(
       page.locator('[data-test="subscriber-series"]:visible'),
     ).toBeVisible();
-    await page.locator('[data-test="subscriber-series-total"]').click();
+    await byTest(page, 'subscriber-series-total').click();
     await clearHover();
     await cardAround(page, 'subscriber-series').screenshot({
       path: `${OUT}/25-gap-pair-total.png`,

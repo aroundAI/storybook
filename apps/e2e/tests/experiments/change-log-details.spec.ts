@@ -1,6 +1,7 @@
 import { Page, expect, test } from '@playwright/test';
 
 import { readRows, seedExperiment, seedPublishedVideos } from '../utils/seed';
+import { byTest } from '../utils/visible';
 import { ExperimentsPageObject } from './experiments.po';
 
 /** PR screenshots, only when asked for (`CAPTURE_EVIDENCE=1`). */
@@ -91,7 +92,7 @@ test.describe('Change log: what it can and cannot measure (round 5, A, H1, H2)',
       await page.getByRole('button', { name: 'Start', exact: true }).click();
 
       await expect(
-        page.locator('[data-test="experiment-watched-baseline-unmeasured"]'),
+        byTest(page, 'experiment-watched-baseline-unmeasured'),
       ).toHaveAttribute('data-reason', 'published_after_window');
       await capture(page, '31-published-after-window');
     });
@@ -110,10 +111,10 @@ test.describe('Change log: the picker and dates (round 5, H4 H5 H6)', () => {
     await log.field('video-picker-trigger').click();
 
     await expect(
-      page.locator(`[data-test="video-picker-option-${first}"]`),
+      byTest(page, `video-picker-option-${first}`),
     ).toHaveAccessibleName(/^Linked\b/);
     await expect(
-      page.locator(`[data-test="video-picker-option-${second}"]`),
+      byTest(page, `video-picker-option-${second}`),
     ).toHaveAccessibleName(/^Not linked\b/);
   });
 
@@ -172,9 +173,9 @@ test.describe('Change log: the picker and dates (round 5, H4 H5 H6)', () => {
       ).toContainText('Created 2026-01-02');
 
       await log.field('video-picker-trigger').click();
-      await expect(
-        page.locator(`[data-test="video-picker-option-${late}"]`),
-      ).toContainText('2026-01-02');
+      await expect(byTest(page, `video-picker-option-${late}`)).toContainText(
+        '2026-01-02',
+      );
       await capture(page, '33-local-dates-kolkata');
     });
   });

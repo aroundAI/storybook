@@ -13,6 +13,7 @@ import {
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * KB-30. Every YouTube upload declared "not made for kids" and category 22 —
@@ -116,11 +117,11 @@ function youtubeConfigIn(request: Request, connectionId: string) {
 
 /** Publish All → confirm → the request it sends. */
 async function confirmAndCapture(page: Page) {
-  await expect(page.locator('[data-test="confirm-publish"]')).toBeVisible();
+  await expect(byTest(page, 'confirm-publish')).toBeVisible();
 
   const [request] = await Promise.all([
     page.waitForRequest(isPublishRequest),
-    page.locator('[data-test="confirm-publish"]').click(),
+    byTest(page, 'confirm-publish').click(),
   ]);
 
   return request;
@@ -131,11 +132,11 @@ async function answer(
   choice: 'made-for-kids' | 'not-for-kids',
   categoryId: string,
 ) {
-  const dialog = page.locator('[data-test="youtube-audience-dialog"]');
+  const dialog = byTest(page, 'youtube-audience-dialog');
 
-  await dialog.locator(`[data-test="audience-${choice}"]`).click();
-  await dialog.locator('[data-test="audience-category"]').click();
-  await page.locator(`[data-test="audience-category-${categoryId}"]`).click();
+  await byTest(dialog, `audience-${choice}`).click();
+  await byTest(dialog, 'audience-category').click();
+  await byTest(page, `audience-category-${categoryId}`).click();
 
   return dialog;
 }
@@ -147,43 +148,39 @@ test.describe('YouTube uploads declare the audience the creator chose (KB-30)', 
     const fixture = await seedUndeclaredChannel(page);
 
     await page.goto(fixture.publishUrl);
-    await expect(
-      page.locator('[data-test="youtube-audience-not-set"]'),
-    ).toContainText('Acme Kids');
+    await expect(byTest(page, 'youtube-audience-not-set')).toContainText(
+      'Acme Kids',
+    );
     await capture(page, '01-sidebar-not-set');
 
     // Asked before anything else happens, with nothing pre-selected.
-    await page.locator('[data-test="publish-all"]').click();
+    await byTest(page, 'publish-all').click();
 
-    const dialog = page.locator('[data-test="youtube-audience-dialog"]');
+    const dialog = byTest(page, 'youtube-audience-dialog');
     await expect(dialog).toBeVisible();
-    await expect(
-      dialog.locator('[data-test="audience-made-for-kids"]'),
-    ).toHaveAttribute('data-state', 'unchecked');
-    await expect(
-      dialog.locator('[data-test="audience-not-for-kids"]'),
-    ).toHaveAttribute('data-state', 'unchecked');
-    await expect(
-      dialog.locator('[data-test="audience-category"]'),
-    ).toContainText('Choose a category');
-    await expect(
-      dialog.locator('[data-test="audience-continue"]'),
-    ).toBeDisabled();
+    await expect(byTest(dialog, 'audience-made-for-kids')).toHaveAttribute(
+      'data-state',
+      'unchecked',
+    );
+    await expect(byTest(dialog, 'audience-not-for-kids')).toHaveAttribute(
+      'data-state',
+      'unchecked',
+    );
+    await expect(byTest(dialog, 'audience-category')).toContainText(
+      'Choose a category',
+    );
+    await expect(byTest(dialog, 'audience-continue')).toBeDisabled();
     await capture(page, '02-dialog-empty');
 
     // One answer is not enough: both are required.
-    await dialog.locator('[data-test="audience-made-for-kids"]').click();
-    await expect(
-      dialog.locator('[data-test="audience-continue"]'),
-    ).toBeDisabled();
+    await byTest(dialog, 'audience-made-for-kids').click();
+    await expect(byTest(dialog, 'audience-continue')).toBeDisabled();
 
     await answer(page, 'made-for-kids', '1');
-    await expect(
-      dialog.locator('[data-test="audience-continue"]'),
-    ).toBeEnabled();
+    await expect(byTest(dialog, 'audience-continue')).toBeEnabled();
     await capture(page, '03-dialog-answered');
 
-    await dialog.locator('[data-test="audience-continue"]').click();
+    await byTest(dialog, 'audience-continue').click();
     await expect(dialog).toBeHidden();
 
     // Saved to the channel, not just to this publish.
@@ -210,9 +207,9 @@ test.describe('YouTube uploads declare the audience the creator chose (KB-30)', 
     // The second submission: no question, the same declaration.
     // Wait for this upload to finish (it fails at the seeded token) before
     // closing: closing mid-upload lets the finishing upload reopen the dialog.
-    await page.locator('[data-test="publish-dialog-close"]').click();
+    await byTest(page, 'publish-dialog-close').click();
     await expect(page.locator('[data-test="confirm-publish"]')).toBeHidden();
-    await page.locator('[data-test="publish-all"]').click();
+    await byTest(page, 'publish-all').click();
     await expect(dialog).toBeHidden();
 
     const second = await confirmAndCapture(page);
@@ -229,20 +226,21 @@ test.describe('YouTube uploads declare the audience the creator chose (KB-30)', 
     const row = page.locator(
       `[data-test="connection-row"][data-connection-id="${fixture.connectionId}"]`,
     );
-    await expect(
-      row.locator('[data-test="youtube-audience-summary"]'),
-    ).toHaveText('Made for kids · Film & Animation');
+    await expect(byTest(row, 'youtube-audience-summary')).toHaveText(
+      'Made for kids · Film & Animation',
+    );
 
-    await row.locator('[data-test="youtube-audience-edit"]').click();
-    await expect(
-      dialog.locator('[data-test="audience-made-for-kids"]'),
-    ).toHaveAttribute('data-state', 'checked');
+    await byTest(row, 'youtube-audience-edit').click();
+    await expect(byTest(dialog, 'audience-made-for-kids')).toHaveAttribute(
+      'data-state',
+      'checked',
+    );
     await answer(page, 'not-for-kids', '27');
-    await dialog.locator('[data-test="audience-continue"]').click();
+    await byTest(dialog, 'audience-continue').click();
 
-    await expect(
-      row.locator('[data-test="youtube-audience-summary"]'),
-    ).toHaveText('Not made for kids · Education');
+    await expect(byTest(row, 'youtube-audience-summary')).toHaveText(
+      'Not made for kids · Education',
+    );
     await capture(page, '05-settings-row-changed');
     await expect
       .poll(() => channelDeclaration(fixture.connectionId))
@@ -253,13 +251,11 @@ test.describe('YouTube uploads declare the audience the creator chose (KB-30)', 
     await expect(
       page.getByRole('button', { name: 'Manage Channels' }),
     ).toBeVisible();
-    await expect(
-      page.locator('[data-test="youtube-audience-not-set"]'),
-    ).toBeHidden();
-    await page.locator('[data-test="publish-all"]').click();
-    await expect(
-      page.locator('[data-test="confirm-youtube-audience-row"]'),
-    ).toHaveText('Acme Kids: Not made for kids · Education');
+    await expect(byTest(page, 'youtube-audience-not-set')).toBeHidden();
+    await byTest(page, 'publish-all').click();
+    await expect(byTest(page, 'confirm-youtube-audience-row')).toHaveText(
+      'Acme Kids: Not made for kids · Education',
+    );
 
     const third = await confirmAndCapture(page);
     expect(
@@ -282,15 +278,13 @@ test.describe('YouTube uploads declare the audience the creator chose (KB-30)', 
 
     await page.goto(fixture.publishUrl);
     // Rendered by the client once connections load: the page is hydrated.
-    await expect(
-      page.locator('[data-test="youtube-audience-not-set"]'),
-    ).toBeVisible();
-    await page.locator('[data-test="publish-all"]').click();
+    await expect(byTest(page, 'youtube-audience-not-set')).toBeVisible();
+    await byTest(page, 'publish-all').click();
 
-    const dialog = page.locator('[data-test="youtube-audience-dialog"]');
+    const dialog = byTest(page, 'youtube-audience-dialog');
     await expect(dialog).toBeVisible();
 
-    await dialog.locator('[data-test="audience-cancel"]').click();
+    await byTest(dialog, 'audience-cancel').click();
     await expect(dialog).toBeHidden();
 
     // Nothing went on to translation or confirmation either.

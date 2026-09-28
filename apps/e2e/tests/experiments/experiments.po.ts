@@ -7,6 +7,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * The experiment log (FILM-1610).
@@ -68,7 +69,7 @@ export class ExperimentsPageObject {
 
   async choose(trigger: string, option: string) {
     await this.field(trigger).click();
-    await this.page.locator(`[data-test="${option}"]`).click();
+    await byTest(this.page, `${option}`).click();
   }
 
   async chooseChannel(connectionId: string) {
@@ -97,7 +98,7 @@ export class ExperimentsPageObject {
     await scope
       .locator('[data-test="experiment-tags"] [data-test="tag-picker-trigger"]')
       .click();
-    await this.page.locator(`[data-test="tag-picker-option-${tagId}"]`).click();
+    await byTest(this.page, `tag-picker-option-${tagId}`).click();
     await this.page.keyboard.press('Escape');
   }
 
@@ -115,7 +116,7 @@ export class ExperimentsPageObject {
 
   /** The edit form inside the change dialog. */
   editForm() {
-    return this.page.locator('[data-test="experiment-edit-form"]');
+    return byTest(this.page, 'experiment-edit-form');
   }
 
   editField(testId: string) {

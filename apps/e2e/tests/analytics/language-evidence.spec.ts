@@ -9,6 +9,7 @@ import {
   insertClickHouse,
 } from '../utils/clickhouse';
 import { seedAnalyticsSettings } from '../utils/seed';
+import { byTest } from '../utils/visible';
 import { LanguageTabFixture, LanguageTabPageObject } from './language-tab.po';
 
 /**
@@ -313,7 +314,7 @@ test.describe('FILM-1702 — the Language tab with data', () => {
         .locator('[data-test="tag-medians-dimension-language"]')
         .click();
 
-      const segments = medians.locator('[data-test="tag-medians-segment"]');
+      const segments = byTest(medians, 'tag-medians-segment');
 
       await expect(segments).toHaveCount(3, RELOADED);
 

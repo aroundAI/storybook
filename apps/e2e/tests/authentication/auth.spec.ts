@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { waitForSignedIn } from '../utils/session';
+import { byTest } from '../utils/visible';
 import { AuthPageObject } from './auth.po';
 
 test.describe('Auth flow', () => {
@@ -132,7 +133,7 @@ test.describe('Last auth method tracking', () => {
     await auth.goToSignIn();
 
     // Check if the last used method hint is visible
-    const lastMethodHint = page.locator('[data-test="last-auth-method-hint"]');
+    const lastMethodHint = byTest(page, 'last-auth-method-hint');
     await expect(lastMethodHint).toBeVisible();
 
     // Verify it shows the correct method (password)
@@ -180,7 +181,7 @@ test.describe('Last auth method tracking', () => {
     await auth.goToSignIn();
 
     // The hint should still be visible after signing in again
-    const lastMethodHint = page.locator('[data-test="last-auth-method-hint"]');
+    const lastMethodHint = byTest(page, 'last-auth-method-hint');
 
     await expect(lastMethodHint).toBeVisible();
   });
@@ -209,7 +210,7 @@ test.describe('Last auth method tracking', () => {
     await page.reload();
 
     // The hint should not be visible for expired data
-    const lastMethodHint = page.locator('[data-test="last-auth-method-hint"]');
+    const lastMethodHint = byTest(page, 'last-auth-method-hint');
     await expect(lastMethodHint).not.toBeVisible();
 
     // Verify localStorage was cleared
@@ -234,7 +235,7 @@ test.describe('Last auth method tracking', () => {
     await page.reload();
 
     // Should not crash and not show the hint
-    const lastMethodHint = page.locator('[data-test="last-auth-method-hint"]');
+    const lastMethodHint = byTest(page, 'last-auth-method-hint');
     await expect(lastMethodHint).not.toBeVisible();
 
     // Page should still be functional

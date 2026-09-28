@@ -8,6 +8,7 @@ import {
   uniqueStamp,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * FILM-607: the Edit Suite is retired. The episode workspace offers the
@@ -97,7 +98,7 @@ test.describe('Episode workspace tabs (FILM-607)', () => {
     await page.goto(`${base}/ideation`);
 
     for (const tab of TABS) {
-      const link = page.locator(`[data-test="episode-tab-${tab.id}"]`);
+      const link = byTest(page, `episode-tab-${tab.id}`);
 
       // A click that lands before the page has hydrated is dropped, and a dev
       // server compiles each route on its first visit: retry the click until

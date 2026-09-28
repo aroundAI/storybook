@@ -1,6 +1,7 @@
 import { Page, expect } from '@playwright/test';
 
 import { StripePageObject } from './stripe.po';
+import { byTest } from './visible';
 
 export class BillingPageObject {
   public readonly stripe: StripePageObject;
@@ -27,11 +28,11 @@ export class BillingPageObject {
   }
 
   manageBillingButton() {
-    return this.page.locator('[data-test="manage-billing-redirect-button"]');
+    return byTest(this.page, 'manage-billing-redirect-button');
   }
 
   successStatus() {
-    return this.page.locator('[data-test="payment-return-success"]');
+    return byTest(this.page, 'payment-return-success');
   }
 
   async returnToBilling() {
@@ -48,6 +49,6 @@ export class BillingPageObject {
   }
 
   getStatus() {
-    return this.page.locator('[data-test="current-plan-card-status-badge"]');
+    return byTest(this.page, 'current-plan-card-status-badge');
   }
 }

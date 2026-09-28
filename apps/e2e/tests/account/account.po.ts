@@ -4,6 +4,7 @@ import { AuthPageObject } from '../authentication/auth.po';
 import { OtpPo } from '../utils/otp.po';
 import { seedUser } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 export class AccountPageObject {
   private readonly page: Page;
@@ -88,6 +89,6 @@ export class AccountPageObject {
   }
 
   getProfileName() {
-    return this.page.locator('[data-test="account-dropdown-display-name"]');
+    return byTest(this.page, 'account-dropdown-display-name');
   }
 }

@@ -9,6 +9,7 @@ import {
   uniqueStamp,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * Another account's episode cannot be used to build a prompt (KB-31).
@@ -147,13 +148,13 @@ async function openIdeation(
   );
   // The page can briefly render the form twice while it hydrates; wait for
   // the one that stays, rather than filling whichever comes first.
-  await expect(page.locator('[data-test="ideation-premise"]')).toHaveCount(1);
-  await expect(page.locator('[data-test="ideation-premise"]')).toBeVisible();
+  await expect(byTest(page, 'ideation-premise')).toHaveCount(1);
+  await expect(byTest(page, 'ideation-premise')).toBeVisible();
 }
 
 async function generate(page: Page) {
-  await page.locator('[data-test="ideation-premise"]').fill(PREMISE);
-  await page.locator('[data-test="ideation-generate"]').click();
+  await byTest(page, 'ideation-premise').fill(PREMISE);
+  await byTest(page, 'ideation-generate').click();
 }
 
 const toast = (page: Page) => page.locator('[data-sonner-toast]').first();

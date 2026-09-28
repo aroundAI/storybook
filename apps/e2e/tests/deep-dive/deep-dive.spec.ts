@@ -8,6 +8,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 import { DeepDivePageObject } from './deep-dive.po';
 
 type ActionArgs = {
@@ -69,16 +70,16 @@ test.describe('Deep Dive channel filter', () => {
     );
 
     await expect(active).toContainText('Active Channel');
-    await expect(
-      active.locator('[data-test="channel-filter-inactive-badge"]'),
-    ).toHaveCount(0);
+    await expect(byTest(active, 'channel-filter-inactive-badge')).toHaveCount(
+      0,
+    );
 
     // A disconnected channel still owns the history the figures are built
     // from, so it is listed — and says it is disconnected.
     await expect(inactive).toContainText('Retired Channel');
-    await expect(
-      inactive.locator('[data-test="channel-filter-inactive-badge"]'),
-    ).toHaveText('Inactive');
+    await expect(byTest(inactive, 'channel-filter-inactive-badge')).toHaveText(
+      'Inactive',
+    );
   });
 
   test('a selected channel reaches every action, and All channels sends none', async ({
@@ -166,7 +167,7 @@ test.describe('Deep Dive channel filter', () => {
     await seedYouTubeConnection(fixture.team.accountId, 'Unrelated Channel');
 
     await page.reload();
-    await page.locator('[data-test="analytics-tab-deep-dive"]').click();
+    await byTest(page, 'analytics-tab-deep-dive').click();
 
     // The project's two active channels, two cards — never a pooled total,
     // never the disconnected channel, never the account's unrelated one.
@@ -206,13 +207,11 @@ test.describe('Deep Dive subscribers (FILM-1617)', () => {
     await expect(deepDive.subscriberEmpty()).toContainText(
       'No subscriber count yet',
     );
-    await expect(
-      page.locator('[data-test="subscriber-series-error"]'),
-    ).toHaveCount(0);
+    await expect(byTest(page, 'subscriber-series-error')).toHaveCount(0);
 
     const ypp = deepDive.yppCards().first();
 
-    await expect(ypp.locator('[data-test="ypp-subscribers-value"]')).toHaveText(
+    await expect(byTest(ypp, 'ypp-subscribers-value')).toHaveText(
       'Unavailable',
     );
 

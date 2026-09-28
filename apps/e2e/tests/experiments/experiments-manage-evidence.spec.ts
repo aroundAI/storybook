@@ -9,6 +9,7 @@ import {
   uniqueStamp,
   updateRows,
 } from '../utils/seed';
+import { byTest } from '../utils/visible';
 import { ExperimentsPageObject } from './experiments.po';
 
 /**
@@ -102,10 +103,8 @@ test.describe('Change log management — evidence', () => {
       .locator('[data-test="experiment-abandon-reason"]')
       .fill('Channel paused for a month');
     await page.screenshot({ path: `${OUT}/04-abandon-dialog.png` });
-    await page.locator('[data-test="experiment-abandon-confirm"]').click();
-    await expect(
-      page.locator('[data-test="experiment-abandon-dialog"]'),
-    ).toHaveCount(0);
+    await byTest(page, 'experiment-abandon-confirm').click();
+    await expect(byTest(page, 'experiment-abandon-dialog')).toHaveCount(0);
     await expect(
       page.locator('[role="dialog"]').getByText('abandoned', { exact: true }),
     ).toBeVisible();
@@ -116,7 +115,7 @@ test.describe('Change log management — evidence', () => {
     await log.open(planned);
     await log.dialogButton('experiment-delete').click();
     await page.screenshot({ path: `${OUT}/06-delete-dialog.png` });
-    await page.locator('[data-test="experiment-delete-cancel"]').click();
+    await byTest(page, 'experiment-delete-cancel').click();
 
     // Delete refused: the change was started in another tab meanwhile.
     await log.dialogButton('experiment-delete').click();
@@ -124,15 +123,11 @@ test.describe('Change log management — evidence', () => {
       status: 'running',
       started_at: daysAgo(0),
     });
-    await page.locator('[data-test="experiment-delete-confirm"]').click();
-    await expect(
-      page.locator('[data-test="experiment-confirm-error"]'),
-    ).toBeVisible();
+    await byTest(page, 'experiment-delete-confirm').click();
+    await expect(byTest(page, 'experiment-confirm-error')).toBeVisible();
     await page.screenshot({ path: `${OUT}/07-delete-refused.png` });
     await page.keyboard.press('Escape');
-    await expect(
-      page.locator('[data-test="experiment-delete-dialog"]'),
-    ).toHaveCount(0);
+    await expect(byTest(page, 'experiment-delete-dialog')).toHaveCount(0);
     // The dialog re-read the change: it is running now, with no Delete.
     await expect(
       page.locator('[role="dialog"]').getByText('running', { exact: true }),
@@ -141,7 +136,7 @@ test.describe('Change log management — evidence', () => {
     await log.closeDialog();
 
     // Filter.
-    await page.locator('[data-test="experiment-status-filter"]').click();
+    await byTest(page, 'experiment-status-filter').click();
     await page
       .locator('[data-test="experiment-status-option-abandoned"]')
       .click();
@@ -150,13 +145,11 @@ test.describe('Change log management — evidence', () => {
       path: `${OUT}/08-filter-abandoned.png`,
       fullPage: true,
     });
-    await page.locator('[data-test="experiment-status-filter"]').click();
+    await byTest(page, 'experiment-status-filter').click();
     await page
       .locator('[data-test="experiment-status-option-concluded"]')
       .click();
-    await expect(
-      page.locator('[data-test="experiment-list-filtered-empty"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'experiment-list-filtered-empty')).toBeVisible();
     await page.screenshot({
       path: `${OUT}/09-filter-empty.png`,
       fullPage: true,
@@ -211,9 +204,9 @@ test.describe('Change log management — evidence', () => {
     );
     await log.open(row!.id);
     await page.getByRole('button', { name: 'Start', exact: true }).click();
-    await expect(
-      page.locator('[data-test="experiment-watched-baseline-value"]'),
-    ).toHaveText('6.0%');
+    await expect(byTest(page, 'experiment-watched-baseline-value')).toHaveText(
+      '6.0%',
+    );
 
     const [started] = await readRows<{ started_at: string }>(
       'analytics_experiments',
@@ -229,16 +222,16 @@ test.describe('Change log management — evidence', () => {
     await page.getByLabel('What actually happened?').fill('CTR fell to 5%');
     await page.getByRole('button', { name: 'inconclusive' }).click();
     await expect(
-      page.locator('[data-test="experiment-watched-baseline-remeasured"]'),
+      byTest(page, 'experiment-watched-baseline-remeasured'),
     ).toBeVisible();
 
-    const atStart = page.locator('[data-test="experiment-watched-baseline"]');
+    const atStart = byTest(page, 'experiment-watched-baseline');
     const again = page.locator(
       '[data-test="experiment-watched-baseline-remeasured"]',
     );
-    await expect(
-      page.locator('[data-test="experiment-watched-baseline-value"]'),
-    ).toHaveText('6.0%');
+    await expect(byTest(page, 'experiment-watched-baseline-value')).toHaveText(
+      '6.0%',
+    );
     await expect(atStart).toContainText('data on 2 of 30 days');
     await expect(
       page.locator(
@@ -246,9 +239,9 @@ test.describe('Change log management — evidence', () => {
       ),
     ).toHaveText('4.5%');
     await expect(again).toContainText('data on 3 of 30 days');
-    await expect(
-      page.locator('[data-test="experiment-watched-result-value"]'),
-    ).toHaveText('5.0%');
+    await expect(byTest(page, 'experiment-watched-result-value')).toHaveText(
+      '5.0%',
+    );
 
     const [stored] = await readRows<{
       baseline_metrics: { watched: Record<string, unknown> };

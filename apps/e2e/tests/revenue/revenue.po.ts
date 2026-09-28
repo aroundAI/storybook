@@ -3,6 +3,7 @@ import { Locator, Page, expect } from '@playwright/test';
 import { AuthPageObject } from '../authentication/auth.po';
 import { seedTeamAccount } from '../utils/seed';
 import { waitForSignedIn } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * The manual revenue entry form.
@@ -58,25 +59,23 @@ export class RevenuePageObject {
     await this.page.goto(`/home/${slug}/studio/analytics`);
     await this.page.click('[data-test="revenue-tab-manual"]');
 
-    await expect(
-      this.page.locator('[data-test="manual-revenue-form"]'),
-    ).toBeVisible();
+    await expect(byTest(this.page, 'manual-revenue-form')).toBeVisible();
   }
 
   amountInput() {
-    return this.page.locator('[data-test="revenue-amount-input"]');
+    return byTest(this.page, 'revenue-amount-input');
   }
 
   categoryTrigger() {
-    return this.page.locator('[data-test="revenue-category-trigger"]');
+    return byTest(this.page, 'revenue-category-trigger');
   }
 
   currencyTrigger() {
-    return this.page.locator('[data-test="revenue-currency-trigger"]');
+    return byTest(this.page, 'revenue-currency-trigger');
   }
 
   publishTrigger() {
-    return this.page.locator('[data-test="revenue-publish-trigger"]');
+    return byTest(this.page, 'revenue-publish-trigger');
   }
 
   /**
@@ -103,16 +102,16 @@ export class RevenuePageObject {
   }
 
   dateTrigger() {
-    return this.page.locator('[data-test="revenue-date-trigger"]');
+    return byTest(this.page, 'revenue-date-trigger');
   }
 
   /** The currency sign in front of the amount field. */
   amountSymbol() {
-    return this.page.locator('[data-test="revenue-amount-symbol"]');
+    return byTest(this.page, 'revenue-amount-symbol');
   }
 
   submitButton() {
-    return this.page.locator('[data-test="revenue-submit"]');
+    return byTest(this.page, 'revenue-submit');
   }
 
   async fillAmount(dollars: string) {

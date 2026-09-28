@@ -14,6 +14,7 @@ import {
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * KB-17: canon events are written by the project's writers, as themselves,
@@ -77,26 +78,26 @@ async function openCanon(page: Page, user: SeededUser) {
     `/home/${team.slug}/studio/${project.slug}/episodes/${episodeSlug}/story`,
   );
   // The story's sidebar starts collapsed, off the right edge.
-  await page.locator('[data-test="story-sidebar-toggle"]').click();
-  await page.locator('[data-test="story-canon-tab"]').click();
+  await byTest(page, 'story-sidebar-toggle').click();
+  await byTest(page, 'story-canon-tab').click();
 }
 
 async function addEvent(
   page: Page,
   event: { type?: string; key: string; description: string },
 ) {
-  await page.locator('[data-test="canon-add-event"]').click();
+  await byTest(page, 'canon-add-event').click();
 
   if (event.type) {
-    await page.locator('[data-test="canon-event-type"]').click();
+    await byTest(page, 'canon-event-type').click();
     await page.getByRole('option', { name: new RegExp(event.type) }).click();
   }
 
-  await page.locator('[data-test="canon-event-key"]').fill(event.key);
+  await byTest(page, 'canon-event-key').fill(event.key);
   await page
     .locator('[data-test="canon-event-description"]')
     .fill(event.description);
-  await page.locator('[data-test="canon-event-submit"]').click();
+  await byTest(page, 'canon-event-submit').click();
 }
 
 function eventsOf(projectId: string) {
@@ -114,7 +115,7 @@ test.describe('Canon events (KB-17)', () => {
   }) => {
     await openCanon(page, member);
 
-    const rows = page.locator('[data-test="canon-event"]');
+    const rows = byTest(page, 'canon-event');
 
     await addEvent(page, {
       type: 'Death',
@@ -166,7 +167,7 @@ test.describe('Canon events (KB-17)', () => {
     await openCanon(page, viewer);
 
     // Reads are on account membership: the viewer sees the member's events.
-    await expect(page.locator('[data-test="canon-event"]')).toHaveCount(2);
+    await expect(byTest(page, 'canon-event')).toHaveCount(2);
 
     await addEvent(page, {
       key: 'viewer_fact',
@@ -175,9 +176,7 @@ test.describe('Canon events (KB-17)', () => {
 
     await expect(page.getByText(REFUSAL).first()).toBeVisible();
     // The dialog stays open with what they typed.
-    await expect(page.locator('[data-test="canon-event-key"]')).toHaveValue(
-      'viewer_fact',
-    );
+    await expect(byTest(page, 'canon-event-key')).toHaveValue('viewer_fact');
 
     if (evidence) {
       await page.screenshot({ path: `${OUT}/02-viewer-refused.png` });

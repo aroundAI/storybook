@@ -7,6 +7,7 @@ import {
   seedUser,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * KB-19. A refused, cancelled or broken platform connect used to end on the
@@ -44,7 +45,7 @@ function callback(platform: string, params: Record<string, string>) {
 }
 
 function failure(page: Page) {
-  return page.locator('[data-test="connect-failure"]');
+  return byTest(page, 'connect-failure');
 }
 
 /** PR screenshots, only when asked for: CI pays nothing for them. */
@@ -303,9 +304,7 @@ test.describe('A failed connect — the branches that share one helper', () => {
 
     await page.reload();
     await expect(failure(page)).toHaveCount(0);
-    await expect(
-      page.locator('[data-test="platform-connections"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'platform-connections')).toBeVisible();
   });
 });
 

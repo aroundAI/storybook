@@ -13,6 +13,7 @@ import {
   uniqueStamp,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * KB-127: the Refresh button's action force-refreshed any connection id it
@@ -131,7 +132,7 @@ test.describe('Refreshing a connection (KB-127)', () => {
     const row = page.locator(
       `[data-test="connection-row"][data-connection-id="${bobChannel}"]`,
     );
-    await row.locator('[data-test="refresh-connection"]').click();
+    await byTest(row, 'refresh-connection').click();
 
     // The action has answered once a toast shows, whichever it is.
     await expect(page.locator('[data-sonner-toast]').first()).toBeVisible();

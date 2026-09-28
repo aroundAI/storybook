@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { seedChannelSettings } from '../utils/seed';
+import { byTest } from '../utils/visible';
 import { AnalyticsSettingsPageObject } from './analytics-settings.po';
 
 /**
@@ -177,9 +178,7 @@ test.describe('Analytics settings', () => {
     await settings.chooseStatus('Unknown');
     await settings.channelWatchHours().fill('1200');
 
-    await expect(
-      page.locator('[data-test="channel-overridden-notice"]'),
-    ).toHaveCount(0);
+    await expect(byTest(page, 'channel-overridden-notice')).toHaveCount(0);
   });
 
   test('no override notice for text the field cannot parse', async ({
@@ -198,9 +197,7 @@ test.describe('Analytics settings', () => {
     await settings.chooseStatus('Unknown');
     await settings.channelWatchHours().fill('1,2');
 
-    await expect(
-      page.locator('[data-test="channel-overridden-notice"]'),
-    ).toHaveCount(0);
+    await expect(byTest(page, 'channel-overridden-notice')).toHaveCount(0);
 
     // Submitted, because react-hook-form only surfaces validation on submit —
     // the first draft of this case asserted the message without submitting
@@ -217,9 +214,7 @@ test.describe('Analytics settings', () => {
 
     // Still silent after the failed submit: 0 is a parse sentinel, not a
     // target anyone chose.
-    await expect(
-      page.locator('[data-test="channel-overridden-notice"]'),
-    ).toHaveCount(0);
+    await expect(byTest(page, 'channel-overridden-notice')).toHaveCount(0);
   });
 
   test('the override notice quotes the account value just saved, not the one from page load', async ({
@@ -241,7 +236,7 @@ test.describe('Analytics settings', () => {
     await settings.chooseStatus('Unknown');
     await settings.channelWatchHours().fill('1200');
 
-    const notice = page.locator('[data-test="channel-overridden-notice"]');
+    const notice = byTest(page, 'channel-overridden-notice');
 
     await expect(notice).toBeVisible();
     // The resolved target, read off `resolveYppTarget` rather than

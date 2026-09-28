@@ -4,6 +4,7 @@ import { AuthPageObject } from '../authentication/auth.po';
 import { OtpPo } from '../utils/otp.po';
 import { seedTeamAccount } from '../utils/seed';
 import { isSignedInLanding, signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 export class TeamAccountsPageObject {
   private readonly page: Page;
@@ -50,7 +51,7 @@ export class TeamAccountsPageObject {
   }
 
   getTeams() {
-    return this.page.locator('[data-test="account-selector-team"]');
+    return byTest(this.page, 'account-selector-team');
   }
 
   /**
@@ -102,7 +103,7 @@ export class TeamAccountsPageObject {
       await this.page.click('[data-test="account-selector-trigger"]');
 
       return expect(
-        this.page.locator('[data-test="account-selector-content"]'),
+        byTest(this.page, 'account-selector-content'),
       ).toBeVisible();
     }).toPass();
   }
@@ -197,7 +198,7 @@ export class TeamAccountsPageObject {
       // The dialog closes only when the action has succeeded. Waiting for
       // the members URL did nothing: the page is already on it (KB-135).
       await expect(
-        this.page.locator('[data-test="confirm-update-member-role"]'),
+        byTest(this.page, 'confirm-update-member-role'),
       ).toBeHidden();
     }).toPass();
   }
