@@ -90,6 +90,26 @@
       "cwd": "packages/shared",
       "test": "__tests__/vendor-api-versions.test.ts",
       "pattern": "has no vendor host or version literal"
+    },
+    {
+      "name": "D1 the YouTube sandbox stops serving videos.delete",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/vendors/google/data.ts",
+      "find": "  videosInsert,\n  videosDelete,\n",
+      "replace": "  videosInsert,\n",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/youtube-delete.test.ts",
+      "pattern": "deletes the video: 204"
+    },
+    {
+      "name": "D2 a deleted video stays in videos.list",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/vendors/google/data.ts",
+      "find": "  const ids = listParam(url, 'id').filter((id) => !deleted.includes(id));\n",
+      "replace": "  const ids = listParam(url, 'id');\n",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/youtube-delete.test.ts",
+      "pattern": "deletes the video: 204"
     }
   ]
 }

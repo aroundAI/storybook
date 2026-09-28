@@ -10,12 +10,16 @@ import {
   googleError,
 } from './errors';
 
+/** Tombstones of deleted videos, kept in the state's records. */
+const DELETED = 'deleted:youtube';
+
 /**
  * YouTube Data API v3, the calls the app makes
  * (https://developers.google.com/youtube/v3/docs): channels.list (connect,
  * the subscriber snapshot), videos.list (video info, durations),
  * videos.insert (a multipart upload — googleapis never sends a resumable
- * one here), thumbnails.set and playlistItems.insert.
+ * one here), videos.delete (unpublish), thumbnails.set and
+ * playlistItems.insert.
  */
 
 const DAY_MS = 86_400_000;
@@ -238,7 +242,9 @@ const videosList: SocialRoute = (ctx) => {
   if (!authorize(req, res, social, READ_SCOPES)) return true;
 
   const parts = listParam(url, 'part');
-  const ids = listParam(url, 'id');
+  // A deleted video is simply absent from the list, as YouTube answers.
+  const deleted = social.list(DELETED);
+  const ids = listParam(url, 'id').filter((id) => !deleted.includes(id));
   if (ids.length === 1) about(ids[0]!);
 
   sendJson(
@@ -459,10 +465,55 @@ const playlistItemsInsert: SocialRoute = (ctx) => {
   return true;
 };
 
+/**
+ * DELETE /youtube/v3/videos?id=… — 204 with no body. An unknown or already
+ * deleted video is 404 videoNotFound; another channel's video is refused the
+ * same way, as YouTube does not say it exists. An adopted video (one the app
+ * already held, owner unknown) may be deleted by any authorised token.
+ */
+const videosDelete: SocialRoute = (ctx) => {
+  const { url, method, req, res, social, about } = ctx;
+  if (method !== 'DELETE' || url.pathname !== '/youtube/v3/videos')
+    return false;
+
+  const token = authorize(req, res, social, MANAGE_SCOPES);
+  if (!token) return true;
+
+  const videoId = url.searchParams.get('id') ?? '';
+  about(videoId);
+  const owner = social.hasObject('youtube', videoId)
+    ? social.object('youtube', videoId).accountId
+    : undefined;
+  if (
+    owner === undefined ||
+    (owner !== null && owner !== token.accountId) ||
+    social.list(DELETED).includes(videoId)
+  ) {
+    sendJson(
+      res,
+      404,
+      googleError(
+        404,
+        'The video that you are trying to delete cannot be found.',
+        'videoNotFound',
+        'NOT_FOUND',
+      ),
+    );
+    return true;
+  }
+
+  social.removeObject('youtube', videoId);
+  social.add(DELETED, videoId);
+  res.writeHead(204);
+  res.end();
+  return true;
+};
+
 export const youtubeDataRoutes = [
   channelsList,
   videosList,
   videosInsert,
+  videosDelete,
   thumbnailsSet,
   playlistItemsInsert,
 ];

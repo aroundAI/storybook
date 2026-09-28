@@ -42,14 +42,14 @@ acceptance_criteria:
     reason: "apps/e2e/tests/sandbox/studio-flow-evidence.spec.ts passes ideation, story, screenplay and shots live (screenshots 01–05) and reaches the voice step, where the ElevenLabs stand-in answers every line; it fails on the audio element, because the voice worker cannot store the audio (see the first criterion)"
   - text: "The publish queue runs locally as the llm and voice queues do: a scheduled publish (packages/features/jobs cron → process-scheduled-publishes), an unpublish and an episode's publish delete reach apps/web/lambda/publish-worker's own handlers, which call FILM-1802's social sandbox"
     met: false
-    reason: "scheduled publish: met, live (apps/e2e/tests/sandbox/publish-queue-evidence.spec.ts: the cron queues it, the publish worker uploads to the YouTube sandbox, publishes.status reaches published). Unpublish: reaches the worker's delete handler, which calls the sandbox, but the sandbox has no DELETE /youtube/v3/videos yet (404, which the worker treats as already gone). The episode-level publish delete is not yet exercised"
+    reason: "scheduled publish: met, live (apps/e2e/tests/sandbox/publish-queue-evidence.spec.ts: the cron queues it, the publish worker uploads to the YouTube sandbox, publishes.status reaches published). Unpublish: reaches the worker's delete handler, and the YouTube sandbox answers its videos.delete with 204 as YouTube does (apps/vendor-sandbox/__tests__/youtube-delete.test.ts; the evidence spec now requires the 204). The episode-level publish delete is not yet exercised"
 remaining:
   - criterion: "Dialogue voice completes locally"
     reason: "the llm and voice workers write to Cloudflare R2 directly; locally they need an R2 stand-in or to honour STORAGE_PROVIDER"
     closed_by: "owner"
   - criterion: "Unpublish and episode publish delete round-trip"
-    reason: "the YouTube sandbox needs DELETE /youtube/v3/videos (FILM-1802), and the delete-all path needs a run"
-    closed_by: "FILM-1802"
+    reason: "the delete-all path (deleteEpisodePublishesAction) needs a live run"
+    closed_by: "unassigned"
 open_questions: []
 notes: |
   ## 1. Why this exists

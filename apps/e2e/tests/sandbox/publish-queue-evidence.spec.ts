@@ -218,7 +218,8 @@ test.describe('A scheduled publish through the local publish queue (FILM-1806)',
               e.id > lastBeforeDelete &&
               e.vendor === 'google' &&
               e.method === 'DELETE' &&
-              e.path.startsWith('/youtube/v3/videos'),
+              e.path.startsWith('/youtube/v3/videos') &&
+              e.status === 204,
           ).length,
         { timeout: 120_000 },
       )
