@@ -1,5 +1,6 @@
 import type { SocialOrigin } from './server';
 import { GOOGLE_SERVED } from './vendors/google/fields';
+import { META_SERVED } from './vendors/meta/fields';
 
 /**
  * What each social endpoint may serve (FILM-1802 §3, the lead's ruling on
@@ -38,7 +39,10 @@ export interface ServedEndpoint {
  * Every endpoint the sandbox serves. Each vendor's PR adds its entries with
  * its handlers; an endpoint is added when an app call site is (§11).
  */
-export const SERVED: readonly ServedEndpoint[] = [...GOOGLE_SERVED];
+export const SERVED: readonly ServedEndpoint[] = [
+  ...GOOGLE_SERVED,
+  ...META_SERVED,
+];
 
 /** Vendor documentation hosts an envelope citation may point at. */
 export const VENDOR_DOC_HOSTS = [

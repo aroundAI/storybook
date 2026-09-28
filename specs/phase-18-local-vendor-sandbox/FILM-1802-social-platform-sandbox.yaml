@@ -27,7 +27,7 @@ acceptance_criteria:
     evidence: "scripts/local-env.sh:151 (start_sandbox, FILM-1803); scripts/lib/vendor-sandbox-env.d/social.sh:9 prints every social VENDOR_URL_* into the rewritten block (apps/vendor-sandbox/__tests__/social-setup.test.ts)"
   - text: "A user can connect each of the five platforms through the real connect and callback routes, with no real credentials"
     met: false
-    reason: "YouTube done (PR B): consent, the code exchange and the channel the callback reads, through the app's own clients (apps/vendor-sandbox/__tests__/youtube-journey.test.ts); TikTok, Meta, X and LinkedIn arrive in PRs C–E"
+    reason: "YouTube done (PR B): consent, the code exchange and the channel the callback reads, through the app's own clients (apps/vendor-sandbox/__tests__/youtube-journey.test.ts); Meta's read side done: Facebook Login's dialog, code exchange, long-lived exchange, Pages and permissions, through the app's own config (apps/vendor-sandbox/__tests__/meta-fidelity.test.ts); Meta publishing, TikTok, X and LinkedIn in PRs C–E"
   - text: "Token refresh and disconnect work through the real code paths"
     met: false
     reason: "YouTube done (PR B): tokens expire in real time, refresh returns a new access token and no new refresh token, and revoke ends the grant (apps/vendor-sandbox/__tests__/youtube-journey.test.ts); PRs C–E for the rest"
@@ -36,13 +36,13 @@ acceptance_criteria:
     reason: "YouTube done (PR B): the upload creates the video, the thumbnail lands on it, and the next sync reports on it, totals equal to the day rows (apps/vendor-sandbox/__tests__/youtube-journey.test.ts); PRs C–E for the rest"
   - text: "Every response field the app reads is documented for that endpoint in the capability reference's field index, and every envelope field it ignores cites the vendor's documentation page — enforced by a test that parses the index"
     met: false
-    reason: "YouTube's endpoints are registered and checked against the field index (apps/vendor-sandbox/__tests__/google-fidelity.test.ts); TikTok, Meta, X and LinkedIn register theirs in PRs C–E"
+    reason: "YouTube's endpoints are registered and checked against the field index (apps/vendor-sandbox/__tests__/google-fidelity.test.ts); Meta's read endpoints (Login, Pages, permissions, the Instagram user and media nodes, media and account insights) are registered and checked the same way (apps/vendor-sandbox/__tests__/meta-fidelity.test.ts); Meta publishing, TikTok, X and LinkedIn in PRs C–E"
   - text: "Every behaviour in §3's table has a sandbox test"
     met: false
     reason: "YouTube's rows of §3 each have a test (apps/vendor-sandbox/__tests__/google-fidelity.test.ts, '§3: YouTube behaviour the sandbox must reproduce'); PRs C–E for the rest"
   - text: "A missing scope returns the vendor's authorisation error, not data"
     met: false
-    reason: "YouTube done (PR B): without the analytics scope, analytics fails as production does, and revenue needs yt-analytics-monetary.readonly (apps/vendor-sandbox/__tests__/youtube-journey.test.ts, apps/vendor-sandbox/__tests__/google-fidelity.test.ts); PRs C–E for the rest"
+    reason: "YouTube done (PR B): without the analytics scope, analytics fails as production does, and revenue needs yt-analytics-monetary.readonly (apps/vendor-sandbox/__tests__/youtube-journey.test.ts, apps/vendor-sandbox/__tests__/google-fidelity.test.ts). Meta: a bad token gets Graph code 190 and insights without instagram_manage_insights get code 10 (apps/vendor-sandbox/src/social/vendors/meta/errors.ts, meta-fidelity.test.ts); PRs C–E for the rest"
   - text: "Two runs produce different data; the same SANDBOX_SEED reproduces a run"
     met: true
     evidence: "apps/vendor-sandbox/__tests__/social-state.test.ts:65"
