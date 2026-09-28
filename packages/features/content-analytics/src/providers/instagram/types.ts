@@ -62,6 +62,13 @@ export interface InstagramTotals {
   comments: number;
   saved: number;
   shares: number;
+  /**
+   * Reels only: total watch time and Meta's own average, in milliseconds
+   * (observed on a live account, 2026-09-29). Null for other media, or when
+   * Meta omits it. The average is Meta's — not total ÷ views, which it isn't.
+   */
+  watchTimeMs: number | null;
+  avgWatchTimeMs: number | null;
 }
 
 /**

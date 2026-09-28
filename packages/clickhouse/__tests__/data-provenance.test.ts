@@ -438,20 +438,21 @@ describe.each(RULES.map((rule) => [rule.rule, rule] as const))(
 // ---------------------------------------------------------------------------
 
 describe('what the platform cannot do is kept apart from what we have not done', () => {
-  it('Instagram watch time is ours to build, never unsupported', () => {
-    // Instagram documents both Reels watch-time fields; we never request them.
+  it('Instagram watch time is collected from Reels, never unsupported', () => {
+    // FILM-1712: the Reels total is requested and stored (milliseconds,
+    // confirmed on a live account 2026-09-29), as a daily snapshot delta.
     expect(capabilityFor('watch_time', 'instagram')).toMatchObject({
-      level: 'not_ingested',
-      blockedBy: 'FILM-1712',
-      table: null,
+      level: 'derived',
+      method: 'snapshot_delta_fetch_day',
+      table: 'video_metrics',
     });
   });
 
-  it('TikTok and Instagram watch time share a level and not a price', () => {
+  it("TikTok's watch time is still ours to build, behind a paid gate; Instagram's is not", () => {
     const tiktok = capabilityFor('watch_time', 'tiktok');
     const instagram = capabilityFor('watch_time', 'instagram');
 
-    expect(tiktok.level).toBe(instagram.level);
+    expect(tiktok.level).toBe('not_ingested');
     expect(tiktok.accountGate).toBeDefined();
     expect(instagram.accountGate).toBeUndefined();
   });
@@ -495,9 +496,11 @@ describe('what the platform cannot do is kept apart from what we have not done',
       );
     }
 
-    expect(capabilityFor('watch_time', 'instagram').blockedBy).toBe(
-      'FILM-1712',
-    );
+    // Reels watch time is collected now (FILM-1712, unit confirmed live).
+    expect(capabilityFor('watch_time', 'instagram')).toMatchObject({
+      level: 'derived',
+      table: 'video_metrics',
+    });
   });
 
   it("Instagram's reach is accounts, read under accounts reached (FILM-1712)", () => {
@@ -702,8 +705,8 @@ describe('coverageSummary', () => {
   it('sorts the selected platforms by what their figures are', () => {
     expect(coverageSummary('watch_time')).toEqual({
       measured: ['youtube'],
-      derived: [],
-      absent: ['tiktok', 'instagram'],
+      derived: ['instagram'],
+      absent: ['tiktok'],
       caveats: [
         {
           platform: 'tiktok',
@@ -712,7 +715,7 @@ describe('coverageSummary', () => {
         },
         {
           platform: 'instagram',
-          level: 'not_ingested',
+          level: 'derived',
           note: capabilityFor('watch_time', 'instagram').note,
         },
       ],
@@ -822,9 +825,9 @@ describe('allowedMetricSources', () => {
   });
 
   it('allows no rows at all where there is nothing to show', () => {
-    expect(
-      allowedMetricSources(capabilityFor('watch_time', 'instagram')),
-    ).toEqual([]);
+    expect(allowedMetricSources(capabilityFor('watch_time', 'tiktok'))).toEqual(
+      [],
+    );
   });
 });
 

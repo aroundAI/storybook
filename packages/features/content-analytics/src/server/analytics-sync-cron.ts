@@ -904,9 +904,12 @@ function normalizeAnalytics(
         comments: data.totals.comments ?? 0,
         shares: data.totals.shares ?? 0,
         saves: data.totals.saved ?? null,
-        // Not stored until its unit is confirmed on a live account
-        // (FILM-1712): `not_ingested` in CAPABILITY_MATRIX. Null, not 0.
-        watch_time_seconds: null,
+        // Reels' total watch time, reported in milliseconds (confirmed on a
+        // live account, 2026-09-29); null for other media or when omitted.
+        watch_time_seconds:
+          data.totals.watchTimeMs === null
+            ? null
+            : Math.round(data.totals.watchTimeMs / 1000),
         // Meta offers no `follows` for Reels (FILM-1712). Null, not 0, in
         // the snapshot as in the day's row (migration 017, KB-114).
         subscribers_gained: null,

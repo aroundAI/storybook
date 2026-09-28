@@ -403,12 +403,15 @@ describe('buildSnapshotDeltaRow', () => {
     });
   });
 
-  it('keeps Instagram saves, and writes its watch time and follower gains as null', () => {
+  // FILM-1712: Reels watch time is requested and stored (milliseconds,
+  // confirmed on a live account); follows still do not exist for Reels.
+  it('keeps Instagram saves and watch time, and writes follower gains as null', () => {
     expect(build('instagram')).toMatchObject({
       saves: 3,
-      watch_time_seconds: null,
+      watch_time_seconds: delta.watch_time_seconds,
       subscribers_gained: null,
     });
+    expect(build('instagram').watch_time_seconds).not.toBeNull();
   });
 
   // FILM-1712 part B: only Instagram reports per-post reach we can read.

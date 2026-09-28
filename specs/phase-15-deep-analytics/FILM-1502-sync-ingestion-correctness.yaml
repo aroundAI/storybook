@@ -23,10 +23,10 @@ acceptance_criteria:
     evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:58`, `packages/features/content-analytics/src/server/analytics-sync-cron.ts:808`"
   - text: "First sync of an adopted (old) TikTok/IG video writes only a baseline snapshot"
     met: true
-    evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:452`, `packages/features/content-analytics/src/server/analytics-sync-cron.ts:824`"
+    evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:455`, `packages/features/content-analytics/src/server/analytics-sync-cron.ts:824`"
   - text: "30–90-day-old videos sync daily"
     met: true
-    evidence: "`packages/features/content-analytics/src/server/schedule.ts:45`, `packages/features/content-analytics/__tests__/ingest.test.ts:517`"
+    evidence: "`packages/features/content-analytics/src/server/schedule.ts:45`, `packages/features/content-analytics/__tests__/ingest.test.ts:520`"
   - text: "New indexes exist; `fetchPublishesForSync` query plan uses them"
     met: false
     reason: "unverified — indexes exist (`apps/web/supabase/migrations/20260827095315_publishes-sync-indexes.sql:3`); plan use needs `EXPLAIN` on seeded data"

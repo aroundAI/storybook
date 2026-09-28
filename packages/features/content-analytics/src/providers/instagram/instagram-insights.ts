@@ -135,6 +135,7 @@ export class InstagramInsightsProvider {
       // in favor of the universal `views` metric across all media types.
       // `shares` is documented for FEED, REELS and STORY alike; `likes`,
       // `comments` and `saved` are not documented for STORY.
+      const isReels = mediaProductType === 'REELS';
       const metricsForType =
         mediaProductType === 'STORY'
           ? ['views', 'reach', 'total_interactions', 'shares']
@@ -146,6 +147,11 @@ export class InstagramInsightsProvider {
               'comments',
               'saved',
               'shares',
+              // Reels only, in milliseconds (confirmed on a live account
+              // by the owner, 2026-09-29). The average is not total ÷ views.
+              ...(isReels
+                ? ['ig_reels_avg_watch_time', 'ig_reels_video_view_total_time']
+                : []),
             ];
 
       // No follower / non-follower split here: Meta documents `follow_type`
@@ -171,6 +177,8 @@ export class InstagramInsightsProvider {
           comments: metrics.comments ?? 0,
           saved: metrics.saved ?? 0,
           shares: metrics.shares ?? 0,
+          watchTimeMs: metrics.ig_reels_video_view_total_time ?? null,
+          avgWatchTimeMs: metrics.ig_reels_avg_watch_time ?? null,
         },
         audience,
       };
