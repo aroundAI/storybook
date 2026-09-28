@@ -25,6 +25,7 @@ case "${1:-}" in
       docker run -d --name "$CH_CONTAINER" \
         -e CLICKHOUSE_USER=default -e CLICKHOUSE_PASSWORD=local \
         -e CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 \
+        -v "$CI/clickhouse-b.xml:/etc/clickhouse-server/config.d/storybook-logs.xml:ro" \
         --memory 2g -p 18123:8123 "$CH_IMAGE" > /dev/null
     fi
     for _ in $(seq 1 60); do curl -sf "$CH_URL/ping" >/dev/null && break; sleep 2; done

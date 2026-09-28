@@ -1,0 +1,19 @@
+<!--
+  Lane B's ClickHouse (lane-b.sh): the diagnostic logs no local-CI step reads
+  are off. Left on, asynchronous_metric_log alone grew past 118 million rows
+  and held the idle server at 1.7 GiB of its 2 GiB container, so the
+  "execute every query" stage ran out of memory (2026-09-27). query_log stays:
+  packages/clickhouse/scripts/verify-queries.ts reads it, and a day of it is
+  enough.
+-->
+<clickhouse>
+    <asynchronous_metric_log remove="1"/>
+    <metric_log remove="1"/>
+    <text_log remove="1"/>
+    <trace_log remove="1"/>
+    <processors_profile_log remove="1"/>
+    <part_log remove="1"/>
+    <query_log>
+        <ttl>event_date + INTERVAL 1 DAY DELETE</ttl>
+    </query_log>
+</clickhouse>
