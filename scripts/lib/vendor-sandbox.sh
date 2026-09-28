@@ -162,6 +162,29 @@ start_container() {
   fi
 }
 
+# The public bucket the workers' R2 writes land in locally (FILM-1806). It is
+# created through the storage API with the local service key; an existing
+# bucket is left as it is.
+ensure_local_r2_bucket() {
+  local root="$1" status api service code
+  status=$(cd "$root/apps/web" && supabase status -o env 2> /dev/null || true)
+  api=$(printf '%s\n' "$status" | sed -n 's/^API_URL="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' | head -n 1)
+  service=$(printf '%s\n' "$status" | sed -n 's/^SERVICE_ROLE_KEY="\{0,1\}\([^"]*\)"\{0,1\}$/\1/p' | head -n 1)
+  if [ -z "$api" ] || [ -z "$service" ]; then
+    echo "    local Supabase is not running; no local R2 bucket"
+    return 0
+  fi
+  code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$api/storage/v1/bucket" \
+    -H "Authorization: Bearer $service" -H "apikey: $service" \
+    -H 'Content-Type: application/json' \
+    -d '{"id":"r2-local","name":"r2-local","public":true}')
+  case "$code" in
+    200) echo "    created the public bucket r2-local" ;;
+    400 | 409) echo "    bucket r2-local is there" ;;
+    *) echo "    could not create bucket r2-local (HTTP $code)"; return 1 ;;
+  esac
+}
+
 start_local_queue() {
   local root="$1"
   local dir="$root/.sandbox"

@@ -155,6 +155,9 @@ case "${1:-}" in
     echo "==> Sandbox OAuth clients (FILM-1802)"
     (cd "$ROOT/apps/vendor-sandbox" && pnpm --silent seed-credentials)
 
+    echo "==> Local R2 bucket (FILM-1806)"
+    ensure_local_r2_bucket "$ROOT"
+
     echo "==> Local job queue (FILM-1806)"
     load_env
     start_local_queue "$ROOT"

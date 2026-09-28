@@ -23,8 +23,8 @@ summary: >
   send to it.
 acceptance_criteria:
   - text: "With local.env loaded, every studio stage in FILM-1803 §4 marked Enqueued completes in the local app, against the AI sandbox"
-    met: false
-    reason: "ideation, story, screenplay, shot list and audio cues complete through the local queue, run live 2026-09-28 (apps/e2e/tests/sandbox/studio-flow-evidence.spec.ts). Dialogue voice does not: the voice worker uploads straight to Cloudflare R2 (apps/web/lambda/llm-worker/utils/r2-storage.ts builds the r2.cloudflarestorage.com endpoint and ignores STORAGE_PROVIDER), and a laptop has no R2"
+    met: true
+    evidence: "run live 2026-09-28 (#456): ideation, story, screenplay, shot list, audio cues and dialogue voice complete through the local queue. The voice worker's R2 writes go to local Supabase Storage in the sandbox (VENDOR_URL_R2, bucket r2-local): 64 lines, 64 .mp3 objects, each audio_url served 200 audio/mpeg"
   - text: "local-env.sh up starts the queue and its worker runner; status and down include them"
     met: true
     evidence: "run live 2026-09-28: up printed '[local-workers] ready: 3 queues…'; status printed the queue line once its SIGPIPE was fixed (scripts/local-env.sh, `| sed -n 1,3p`); down calls stop_local_queue (scripts/lib/vendor-sandbox.sh), used live to restart the queue after a rebase"
@@ -38,15 +38,12 @@ acceptance_criteria:
     met: true
     evidence: "apps/vendor-sandbox/__tests__/local-queue.local-stack.test.ts against the real ElasticMQ (a failed message is redelivered, then the dead-letter queue takes it); live 2026-09-28: a publish refused by KB-30 set publishes.status to failed, and the runner logged 'left for redelivery (then the DLQ)'"
   - text: "A FILM-1804 flow drives ideation → story → screenplay → shots → audio in the browser and reads each stage's result off the page"
-    met: false
-    reason: "apps/e2e/tests/sandbox/studio-flow-evidence.spec.ts passes ideation, story, screenplay and shots live (screenshots 01–05) and reaches the voice step, where the ElevenLabs stand-in answers every line; it fails on the audio element, because the voice worker cannot store the audio (see the first criterion)"
+    met: true
+    evidence: "apps/e2e/tests/sandbox/studio-flow-evidence.spec.ts passed live 2026-09-28 in 37 s (screenshots 01–08): the voice step reads 'All N voice(s) generated' off the page and fetches every line's stored audio_url (200, audio/*). Its old check looked for an <audio> element the Audio Studio never renders (it plays through new Audio(url))"
   - text: "The publish queue runs locally as the llm and voice queues do: a scheduled publish (packages/features/jobs cron → process-scheduled-publishes), an unpublish and an episode's publish delete reach apps/web/lambda/publish-worker's own handlers, which call FILM-1802's social sandbox"
     met: false
     reason: "scheduled publish: met, live (apps/e2e/tests/sandbox/publish-queue-evidence.spec.ts: the cron queues it, the publish worker uploads to the YouTube sandbox, publishes.status reaches published). Unpublish: reaches the worker's delete handler, and the YouTube sandbox answers its videos.delete with 204 as YouTube does (apps/vendor-sandbox/__tests__/youtube-delete.test.ts; the evidence spec now requires the 204). The episode-level publish delete is not yet exercised"
 remaining:
-  - criterion: "Dialogue voice completes locally"
-    reason: "the llm and voice workers write to Cloudflare R2 directly; locally they need an R2 stand-in or to honour STORAGE_PROVIDER"
-    closed_by: "owner"
   - criterion: "Unpublish and episode publish delete round-trip"
     reason: "the delete-all path (deleteEpisodePublishesAction) needs a live run"
     closed_by: "unassigned"

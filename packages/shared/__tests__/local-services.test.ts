@@ -44,9 +44,11 @@ describe('localServiceUrl', () => {
       VENDOR_URL_SQS: 'not a url',
       VENDOR_URL_DYNAMODB: 'not a url',
       VENDOR_URL_APIGATEWAY: 'not a url',
+      VENDOR_URL_R2: 'not a url',
     };
     expect(localServiceUrl('sqs', { ...env, ...set })).toBeUndefined();
     expect(localServiceUrl('dynamodb', { ...env, ...set })).toBeUndefined();
+    expect(localServiceUrl('r2', { ...env, ...set })).toBeUndefined();
     expect(awsClientOptions('dynamodb', { ...env, ...set })).toEqual({});
     expect(awsClientOptions('apigateway', { ...env, ...set })).toEqual({});
   });

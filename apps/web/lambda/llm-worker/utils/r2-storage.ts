@@ -6,6 +6,7 @@
  */
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
+import { localServiceUrl } from '@kit/shared/vendors';
 import { keyInTarget } from '@kit/storage/upload-paths';
 
 // Singleton S3 client
@@ -17,21 +18,30 @@ function getR2Client(): S3Client {
   const accountId = process.env.R2_ACCOUNT_ID;
   const accessKeyId = process.env.R2_ACCESS_KEY_ID;
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  // Only in the sandbox (FILM-1801's gate): local Supabase Storage's S3
+  // endpoint stands in for R2, which a laptop does not have (FILM-1806).
+  const local = localServiceUrl('r2');
 
-  if (!accountId || !accessKeyId || !secretAccessKey) {
+  if (!accessKeyId || !secretAccessKey || (!accountId && !local)) {
     throw new Error(
       'R2 credentials not configured. Required: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY',
     );
   }
 
-  s3Client = new S3Client({
-    region: 'auto',
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId,
-      secretAccessKey,
-    },
-  });
+  s3Client = new S3Client(
+    local
+      ? {
+          region: process.env.R2_REGION || 'local',
+          endpoint: local,
+          forcePathStyle: true,
+          credentials: { accessKeyId, secretAccessKey },
+        }
+      : {
+          region: 'auto',
+          endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+          credentials: { accessKeyId, secretAccessKey },
+        },
+  );
 
   return s3Client;
 }

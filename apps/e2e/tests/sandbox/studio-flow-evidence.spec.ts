@@ -2,6 +2,7 @@ import { type Page, expect, test } from '@playwright/test';
 
 import {
   insertRow,
+  readRows,
   seedProject,
   seedTeamAccount,
   serviceRoleAuth,
@@ -131,7 +132,7 @@ test.describe('A full studio run through the local job queue (FILM-1806)', () =>
     }
 
     const episodeSlug = `the-letter-${Date.now()}`;
-    await insertRow(
+    const episode = await insertRow<{ id: string }>(
       'episodes',
       {
         project_id: project.id,
@@ -260,10 +261,29 @@ test.describe('A full studio run through the local job queue (FILM-1806)', () =>
       .poll(async () => (await spoken()).length, { timeout: STAGE_TIMEOUT })
       .toBeGreaterThan(0);
     for (const entry of await spoken()) expect(entry.status).toBe(200);
+    // The Audio Studio plays through `new Audio(url)`, never an <audio>
+    // element, so the proof is the page's own count and the stored files:
+    // every line has a URL, and each one serves real audio (FILM-1806's local
+    // R2 in the sandbox).
     await page.reload();
-    await expect(page.locator('audio').first()).toBeAttached({
-      timeout: STAGE_TIMEOUT,
-    });
+    // The banner and a toast both say it: either one will do.
+    await expect(
+      page
+        .getByText(/All \d+ voice\(s\) generated/)
+        .filter({ visible: true })
+        .first(),
+    ).toBeVisible({ timeout: STAGE_TIMEOUT });
+    const lines = await readRows<{ audio_url: string | null }>(
+      'dialogue_lines',
+      `episode_id=eq.${episode.id}&select=audio_url`,
+    );
+    expect(lines.length).toBeGreaterThan(0);
+    for (const { audio_url } of lines) {
+      expect(audio_url).toBeTruthy();
+      const audio = await fetch(audio_url!);
+      expect(audio.status).toBe(200);
+      expect(audio.headers.get('content-type')).toContain('audio/');
+    }
     await snap(page, '07-dialogue-voiced');
 
     // --- Nothing reached a real vendor; every model call was the sandbox's.
