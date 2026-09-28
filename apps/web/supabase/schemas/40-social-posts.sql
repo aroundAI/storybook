@@ -65,36 +65,36 @@ ALTER TABLE public.social_posts ENABLE ROW LEVEL SECURITY;
 CREATE POLICY social_posts_select ON public.social_posts
   FOR SELECT TO authenticated USING (
     account_id IN (
-      SELECT id FROM public.accounts WHERE id = auth.uid()
+      SELECT id FROM public.accounts WHERE id = (select auth.uid())
       UNION ALL
-      SELECT account_id FROM public.accounts_memberships WHERE user_id = auth.uid()
+      SELECT account_id FROM public.accounts_memberships WHERE user_id = (select auth.uid())
     )
   );
 
 CREATE POLICY social_posts_insert ON public.social_posts
   FOR INSERT TO authenticated WITH CHECK (
     account_id IN (
-      SELECT id FROM public.accounts WHERE id = auth.uid()
+      SELECT id FROM public.accounts WHERE id = (select auth.uid())
       UNION ALL
-      SELECT account_id FROM public.accounts_memberships WHERE user_id = auth.uid()
+      SELECT account_id FROM public.accounts_memberships WHERE user_id = (select auth.uid())
     )
   );
 
 CREATE POLICY social_posts_update ON public.social_posts
   FOR UPDATE TO authenticated USING (
     account_id IN (
-      SELECT id FROM public.accounts WHERE id = auth.uid()
+      SELECT id FROM public.accounts WHERE id = (select auth.uid())
       UNION ALL
-      SELECT account_id FROM public.accounts_memberships WHERE user_id = auth.uid()
+      SELECT account_id FROM public.accounts_memberships WHERE user_id = (select auth.uid())
     )
   );
 
 CREATE POLICY social_posts_delete ON public.social_posts
   FOR DELETE TO authenticated USING (
     account_id IN (
-      SELECT id FROM public.accounts WHERE id = auth.uid()
+      SELECT id FROM public.accounts WHERE id = (select auth.uid())
       UNION ALL
-      SELECT account_id FROM public.accounts_memberships WHERE user_id = auth.uid()
+      SELECT account_id FROM public.accounts_memberships WHERE user_id = (select auth.uid())
     )
     AND status NOT IN ('published')
   );
