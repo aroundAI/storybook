@@ -200,12 +200,14 @@ export function ignoredVendorOverrides(env: Env = process.env) {
 /**
  * AWS services the app reaches through the SDK's own endpoint resolution in
  * production - no host is written anywhere - but which a laptop replaces
- * with an emulator (FILM-1806): SQS (ElasticMQ), DynamoDB (dynamodb-local) and
- * the API Gateway Management API that pushes to WebSockets (the local runner).
- * Unlike a vendor, they have no fixed origin to fall back to, so outside the
- * sandbox there is no override at all and the SDK resolves as it always has.
+ * with an emulator (FILM-1806): SQS (ElasticMQ), DynamoDB (dynamodb-local),
+ * the API Gateway Management API that pushes to WebSockets (the local runner)
+ * and R2, which the workers write to through the S3 API (local Supabase
+ * Storage's S3 endpoint). Unlike a vendor, they have no fixed origin to fall
+ * back to, so outside the sandbox there is no override at all and the SDK
+ * resolves as it always has.
  */
-export const LOCAL_SERVICES = ['sqs', 'dynamodb', 'apigateway'] as const;
+export const LOCAL_SERVICES = ['sqs', 'dynamodb', 'apigateway', 'r2'] as const;
 
 export type LocalService = (typeof LOCAL_SERVICES)[number];
 

@@ -30,6 +30,26 @@
       "cwd": "packages/features/episodes",
       "test": "__tests__/shot-duration-whole-seconds.test.ts",
       "pattern": "whole seconds"
+    },
+    {
+      "name": "R1 the workers' R2 client ignores the local storage override",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/utils/r2-storage.ts",
+      "find": "  const local = localServiceUrl('r2');\n",
+      "replace": "  const local: string | undefined = undefined;\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/r2-local-endpoint.test.ts",
+      "pattern": "uses local Supabase Storage in the sandbox"
+    },
+    {
+      "name": "R2 production reads the R2 override",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/utils/r2-storage.ts",
+      "find": "  const local = localServiceUrl('r2');\n",
+      "replace": "  const local = process.env.VENDOR_URL_R2;\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/r2-local-endpoint.test.ts",
+      "pattern": "ignores the override"
     }
   ]
 }
