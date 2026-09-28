@@ -512,7 +512,6 @@ async function syncSinglePublish(
         projectId,
         publish,
         analytics as YouTubeAnalyticsResult,
-        normalizedData,
       );
     } else {
       await ingestCumulativeSnapshot(
@@ -732,13 +731,11 @@ async function ingestYouTubeDaily(
   projectId: string,
   publish: PublishForSync,
   analytics: YouTubeAnalyticsResult,
-  normalizedData: NormalizedAnalytics,
 ): Promise<string | undefined> {
   const rows = buildYouTubeDailyRows({
     projectId,
     videoId: publish.id,
     dailyData: analytics.dailyData,
-    extraMetricsJson: JSON.stringify(normalizedData.raw_data ?? {}),
   });
 
   await insertVideoMetrics(rows);
@@ -812,7 +809,6 @@ async function ingestCumulativeSnapshot(
         platform,
         metricDate: snapshotDeltaMetricDate(writeContext),
         delta: computeSnapshotDelta(currentTotals, baseline),
-        extraMetricsJson: JSON.stringify(normalizedData.raw_data ?? {}),
       }),
     ]);
   }

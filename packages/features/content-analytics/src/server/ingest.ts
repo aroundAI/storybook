@@ -152,20 +152,21 @@ function engagedViewsFor(day: YouTubeDailyMetrics): number | null {
 }
 
 /**
- * Map YouTube per-day metrics to daily ClickHouse rows. The raw provider
- * payload (retention, traffic sources, …) is attached to the latest day's
- * row only — it is a lifetime aggregate and duplicating it per day would
- * bloat storage without adding information.
+ * `extra_metrics` is no longer written (FILM-1712): it held each provider's
+ * raw payload, which nothing read, and Instagram's reach — its only figure
+ * with no column — now has `accounts_reached`. The column stays, empty.
+ */
+const NO_EXTRA_METRICS = '{}';
+
+/**
+ * Map YouTube per-day metrics to daily ClickHouse rows.
  */
 export function buildYouTubeDailyRows(input: {
   projectId: string;
   videoId: string;
   dailyData: YouTubeDailyMetrics[];
-  extraMetricsJson: string;
   metricSource?: 'analytics_api' | 'backfill';
 }): YouTubeVideoMetric[] {
-  const latest = latestDataDate(input.dailyData);
-
   return input.dailyData.map((day) => ({
     project_id: input.projectId,
     video_id: input.videoId,
@@ -187,7 +188,7 @@ export function buildYouTubeDailyRows(input: {
     // Always set, null included: the Reporting ingest writes this key too,
     // and an omitted field would erase its figure (KB-50).
     engaged_views: engagedViewsFor(day),
-    extra_metrics: day.date === latest ? input.extraMetricsJson : '{}',
+    extra_metrics: NO_EXTRA_METRICS,
   }));
 }
 
@@ -238,7 +239,6 @@ export function buildSnapshotDeltaRow(input: {
   platform: 'tiktok' | 'instagram';
   metricDate: string;
   delta: CumulativeTotals;
-  extraMetricsJson: string;
 }): SnapshotDeltaMetric {
   const base = {
     project_id: input.projectId,
@@ -254,7 +254,7 @@ export function buildSnapshotDeltaRow(input: {
     avg_view_percentage: null,
     dislikes: null,
     metric_source: 'snapshot_delta' as const,
-    extra_metrics: input.extraMetricsJson,
+    extra_metrics: NO_EXTRA_METRICS,
   };
 
   if (input.platform === 'tiktok') {

@@ -209,7 +209,6 @@ describe('buildYouTubeDailyRows', () => {
           subscribersLost: 1,
         },
       ],
-      extraMetricsJson: '{"retention":true}',
     });
 
     expect(rows).toHaveLength(2);
@@ -225,7 +224,8 @@ describe('buildYouTubeDailyRows', () => {
     expect(rows[1]).toMatchObject({
       metric_date: '2026-06-14',
       watch_time_seconds: 4530,
-      extra_metrics: '{"retention":true}',
+      // No raw payload on any day: extra_metrics is no longer written (FILM-1712).
+      extra_metrics: '{}',
     });
   });
 
@@ -254,7 +254,6 @@ describe('buildYouTubeDailyRows', () => {
         projectId: '550e8400-e29b-41d4-a716-446655440000',
         videoId: 'publish-1',
         dailyData,
-        extraMetricsJson: '{}',
       }).map((r) => [r.metric_date, r.engaged_views]);
 
     it('carries the reported figure', () => {
@@ -305,7 +304,6 @@ describe('buildYouTubeDailyRows', () => {
           engagedViews: 331,
         },
       ],
-      extraMetricsJson: '{}',
     });
 
     expect(row).toMatchObject({
@@ -338,7 +336,6 @@ describe('buildSnapshotDeltaRow', () => {
         subscribers_gained: 7,
         accounts_reached: 90,
       },
-      extraMetricsJson: '{}',
     });
 
     expect(row).toMatchObject({
@@ -370,7 +367,6 @@ describe('buildSnapshotDeltaRow', () => {
       platform,
       metricDate: '2026-09-20',
       delta,
-      extraMetricsJson: '{}',
     });
 
   it('writes TikTok saves, watch time and follower gains as null', () => {
