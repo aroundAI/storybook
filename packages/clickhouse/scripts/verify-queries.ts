@@ -2497,6 +2497,12 @@ const PRESENCE_PROBES: Record<MetricFamily, string | null> = {
   traffic_sources: `SELECT DISTINCT platform FROM video_traffic_sources WHERE ${NOT_NOISE}`,
   retention_curve: `SELECT DISTINCT platform FROM video_retention_curves WHERE ${NOT_NOISE}`,
   reach: `SELECT DISTINCT platform FROM video_reach_daily WHERE ${NOT_NOISE}`,
+  // Told apart from engagement by the column, as watch_time is.
+  accounts_reached: `SELECT DISTINCT platform FROM video_metrics
+                     WHERE ${NOT_NOISE} AND accounts_reached IS NOT NULL`,
+  // Keyed by connection, with its own platform column and no project.
+  channel_accounts_reached: `SELECT DISTINCT platform FROM channel_windows
+                             WHERE accounts_reached IS NOT NULL`,
   // Neither channel table has a platform column; both are keyed by
   // connection. Resolved through video_dim rather than assumed to be YouTube
   // because that happens to be true today. A connection with no dim row
