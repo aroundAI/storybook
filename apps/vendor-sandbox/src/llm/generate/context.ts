@@ -49,14 +49,45 @@ export function nounOf(field: string) {
   return singular(words.at(-1) ?? field);
 }
 
+const PERSON = /^[A-Z][\p{L}'’-]+(?: [A-Z][\p{L}'’-]+){0,3}$/u;
+
+/**
+ * The characters a prompt names, in the forms the app's context builders
+ * write them (apps/web/lambda/llm-worker/utils/context-builder.ts):
+ * `Name: X` lines, `Character Names: A, B`, `- **X** (role)`, the VEO
+ * block's `### X (role)` and
+ * `Characters: A, B`. A reply must use these names - the app matches
+ * dialogue to its characters by name - so they replace the random cast.
+ */
+export function castFromPrompt(userPrompt: string) {
+  const names: string[] = [];
+  const add = (value: string) => {
+    const name = value.trim().replace(/[.*]+$/, '');
+    if (PERSON.test(name) && !names.includes(name)) names.push(name);
+  };
+  for (const m of userPrompt.matchAll(/^\s*Name:\s*(.+)$/gm)) add(m[1]!);
+  for (const m of userPrompt.matchAll(/^\s*- \*\*([^*]+)\*\* \(/gm)) add(m[1]!);
+  for (const m of userPrompt.matchAll(/^###\s+([^(\n]+?)\s+\(/gm)) add(m[1]!);
+  for (const m of userPrompt.matchAll(
+    /Character(?:s| Names)(?: for Dialogue)?\**:\s*\**\s*([^\n]+)/g,
+  )) {
+    for (const part of m[1]!.split(',')) add(part);
+  }
+  return names.slice(0, 8);
+}
+
 export function createContext(
   rng: Rng,
   userPrompt: string,
   quality: Quality = 'high',
 ): GenerateContext {
+  const cast = drawCast(rng);
+  const named = castFromPrompt(userPrompt);
+  if (named.length > 0) cast.people = named;
+
   return {
     rng,
-    cast: drawCast(rng),
+    cast,
     counts: countsFromPrompt(userPrompt),
     unplaced: new Set(),
     quality,

@@ -425,3 +425,13 @@ export interface BatchShotDefinition {
   characters: string[];
   metadata: Record<string, unknown>;
 }
+
+/**
+ * `shots.duration_seconds` is an integer column, while a model's shot may
+ * last 8.35 seconds (the prompt's schema allows it) and an edit may say 7.5.
+ * Every write stores whole seconds, at least one, so neither fails the insert
+ * (KB-130).
+ */
+export function wholeShotSeconds(seconds: number) {
+  return Math.max(1, Math.round(seconds));
+}

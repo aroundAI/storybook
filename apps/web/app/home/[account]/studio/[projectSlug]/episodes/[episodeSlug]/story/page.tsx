@@ -55,7 +55,8 @@ export default function StoryPage() {
   }, [wsStatus, wsResult, wsError, refetchEpisode]);
 
   const handleScreenplayComplete = () => {
-    refetchEpisode();
+    // No refresh before the push: the two race, and a refresh landing second
+    // left the user on this page. The destination reads the episode on arrival.
     router.push(
       `/home/${accountSlug}/studio/${projectSlug}/episodes/${episode.slug ?? episode.id}/screenplay`,
     );

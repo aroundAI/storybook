@@ -74,7 +74,7 @@ acceptance_criteria:
     reason: "no longer true — `getPostMetrics` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:319`) has no caller; no LinkedIn metrics are read anywhere"
   - text: "Delete post functionality"
     met: false
-    reason: "no longer true — `deletePost` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:346`) has no caller; unpublish skips LinkedIn (`apps/web/lambda/publish-worker/index.ts:232-237`)"
+    reason: "no longer true — `deletePost` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:346`) has no caller; unpublish skips LinkedIn (`apps/web/lambda/publish-worker/index.ts:237-242`)"
   - text: "Video duration validation (10 min personal, 15 min company)"
     met: false
     reason: "no longer true — only the never-mounted `LinkedInComposer` checks duration (`packages/features/publishing/src/components/linkedin-composer.tsx:42`); the provider checks size (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:45`)"
@@ -114,7 +114,7 @@ remaining:
     reason: "`getPostMetrics` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:319`) has no caller"
     closed_by: "unassigned"
   - criterion: "Delete post functionality"
-    reason: "`deletePost` has no caller; unpublish skips LinkedIn at the vendor (`apps/web/lambda/publish-worker/index.ts:232-237`)"
+    reason: "`deletePost` has no caller; unpublish skips LinkedIn at the vendor (`apps/web/lambda/publish-worker/index.ts:237-242`)"
     closed_by: "unassigned"
   - criterion: "Video duration validation"
     reason: "Only the never-mounted `LinkedInComposer` checks it"

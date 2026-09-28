@@ -95,8 +95,8 @@
       "name": "A bad override falls back to the real vendor instead of throwing",
       "kind": "unit",
       "file": "packages/shared/src/vendors/resolver.ts",
-      "find": "  if (!override) {\n    throw new Error(",
-      "replace": "  if (!override) return VENDORS[vendor];\n\n  if (!override) {\n    throw new Error(",
+      "find": "  if (!value) return VENDORS[vendor];\n\n  return localOverride(name, value);",
+      "replace": "  if (!value) return VENDORS[vendor];\n\n  return parseOverride(value) ?? VENDORS[vendor];",
       "cwd": "packages/shared",
       "test": "__tests__/vendor-url-resolver.test.ts",
       "pattern": "rather than sending a token there"

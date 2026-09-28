@@ -26,12 +26,13 @@ import type { SQSBatchResponse, SQSEvent } from 'aws-lambda';
 import ws from 'ws';
 
 import type { LlmJobType } from '@kit/prompt-engine/llm-job-payloads';
+import { awsClientOptions } from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
 
 import { runLlmJob } from './job-boundary';
 
 // Initialize DynamoDB client
-const ddbClient = new DynamoDBClient({});
+const ddbClient = new DynamoDBClient(awsClientOptions('dynamodb'));
 const ddb = DynamoDBDocumentClient.from(ddbClient);
 const CONNECTIONS_TABLE_NAME = process.env.CONNECTIONS_TABLE_NAME || '';
 const WEBSOCKET_ENDPOINT = process.env.WEBSOCKET_ENDPOINT || '';
@@ -116,6 +117,7 @@ async function sendToUser(
   // Create API Gateway Management API client
   const apiGatewayClient = new ApiGatewayManagementApiClient({
     endpoint: WEBSOCKET_ENDPOINT,
+    ...awsClientOptions('apigateway'),
   });
 
   // Send to all connections

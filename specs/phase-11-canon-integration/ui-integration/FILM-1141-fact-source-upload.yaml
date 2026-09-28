@@ -62,7 +62,7 @@ remaining:
       Upload and queueing errors are caught and toasted
       (`upload-source-dialog.tsx:253`), but a job that fails in the worker
       leaves no trace the user can see; SQS jobs are not recorded anywhere
-      (`packages/features/prompt-engine/src/lib/server/sqs-helper.ts:71`)
+      (`packages/features/prompt-engine/src/lib/server/sqs-helper.ts:73`)
     closed_by: "unassigned"
 open_questions: []
 component:

@@ -2,7 +2,12 @@ import { z } from 'zod';
 
 import { stringForField, uuid } from '../../corpus';
 import type { GenerateContext } from './context';
-import { arrayLength, distinctItems, numberForField } from './values';
+import {
+  arrayLength,
+  castListContexts,
+  distinctItems,
+  numberForField,
+} from './values';
 
 /**
  * Compiles a prompt's Zod definition exactly as the executor does
@@ -170,6 +175,19 @@ export function generateFromZod(
           (def.maxLength as Check | null)?.value,
         ofStrings: defOf(def.type as z.ZodTypeAny).typeName === 'ZodString',
       });
+      const perPerson = castListContexts(path, ctx, length, {
+        min:
+          (def.exactLength as Check | null)?.value ??
+          (def.minLength as Check | null)?.value,
+        ofObjects: defOf(def.type as z.ZodTypeAny).typeName === 'ZodObject',
+      });
+      if (perPerson)
+        return perPerson.map((itemCtx, i) =>
+          generateFromZod(def.type as z.ZodTypeAny, itemCtx, [
+            ...path,
+            String(i),
+          ]),
+        );
       return distinctItems(length, (i) =>
         generateFromZod(def.type as z.ZodTypeAny, ctx, [...path, String(i)]),
       );

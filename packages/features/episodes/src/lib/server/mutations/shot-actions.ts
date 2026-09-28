@@ -8,6 +8,7 @@ import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { wholeShotSeconds } from '../../schemas/shot-list.schema';
 import {
   BatchCreateShotsSchema,
   CreateShotSchema,
@@ -64,7 +65,7 @@ export const createShotAction = enhanceAction(
         sequence_number: nextSequenceNumber,
         scene_description: data.description,
         prompt: data.prompt,
-        duration_seconds: data.durationSeconds,
+        duration_seconds: wholeShotSeconds(data.durationSeconds),
         camera_direction: data.cameraDirection ?? null,
         status: 'pending',
         generation_metadata: data.metadata ?? {},
@@ -141,7 +142,7 @@ export const batchCreateShotsAction = enhanceAction(
       sequence_number: nextSequenceNumber + index,
       scene_description: shot.description,
       prompt: shot.prompt,
-      duration_seconds: shot.durationSeconds,
+      duration_seconds: wholeShotSeconds(shot.durationSeconds),
       camera_direction: shot.cameraDirection ?? null,
       status: 'pending',
       generation_metadata: {
@@ -284,7 +285,7 @@ export const updateShotAction = enhanceAction(
       updates.scene_description = data.description;
     if (data.prompt !== undefined) updates.prompt = data.prompt;
     if (data.durationSeconds !== undefined) {
-      updates.duration_seconds = data.durationSeconds;
+      updates.duration_seconds = wholeShotSeconds(data.durationSeconds);
     }
     if (data.cameraDirection !== undefined) {
       updates.camera_direction = data.cameraDirection;

@@ -47,7 +47,7 @@ acceptance_criteria:
     evidence: "`packages/features/publishing/src/providers/facebook/facebook-provider.ts:180`, `packages/features/publishing/src/providers/facebook/facebook-provider.ts:394`"
   - text: "Scheduled publishing works"
     met: false
-    reason: "unverified — provider can send `scheduled_publish_time` (`packages/features/publishing/src/providers/facebook/facebook-provider.ts:184`); the product schedules server-side (`packages/features/publishing/src/server/publish-actions.ts:301`); no test"
+    reason: "unverified — provider can send `scheduled_publish_time` (`packages/features/publishing/src/providers/facebook/facebook-provider.ts:184`); the product schedules server-side (`packages/features/publishing/src/server/publish-actions.ts:303`); no test"
   - text: "Reels upload to correct endpoint"
     met: true
     evidence: "`packages/features/publishing/src/providers/facebook/facebook-provider.ts:63`"

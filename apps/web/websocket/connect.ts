@@ -9,9 +9,11 @@ import type {
   APIGatewayProxyWebsocketEventV2,
 } from 'aws-lambda';
 
+import { awsClientOptions } from '@kit/shared/vendors';
+
 import { isSuperAdminFromToken, verifySupabaseToken } from './utils/auth';
 
-const client = new DynamoDBClient({});
+const client = new DynamoDBClient(awsClientOptions('dynamodb'));
 const ddb = DynamoDBDocumentClient.from(client);
 
 const TABLE_NAME = process.env.CONNECTIONS_TABLE_NAME || '';

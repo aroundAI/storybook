@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { queueUrlFromEnv } from '@kit/shared/vendors';
+
 import type {
   AuthProvider,
   CacheProvider,
@@ -381,7 +383,7 @@ function getQueueConfig(provider: QueueProvider): Record<string, string> {
     case 'sqs':
       return {
         region: process.env.AWS_REGION ?? 'us-east-1',
-        queueUrl: process.env.SQS_QUEUE_URL ?? '',
+        queueUrl: queueUrlFromEnv(process.env.SQS_QUEUE_URL) ?? '',
         accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? '',
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? '',
       };

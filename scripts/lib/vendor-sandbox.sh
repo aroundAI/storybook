@@ -21,7 +21,7 @@ ensure_sandbox_env() {
   touch "$file"
 
   local encryption_key
-  encryption_key=$(grep -m1 '^ENCRYPTION_KEY=' "$file" | cut -d= -f2-)
+  encryption_key=$(grep -m1 '^ENCRYPTION_KEY=' "$file" | cut -d= -f2- || true)
   local key_outside=''
   if [ -n "$encryption_key" ] &&
     awk -v s="$SANDBOX_BLOCK_START" -v e="$SANDBOX_BLOCK_END" \
@@ -48,6 +48,18 @@ VENDOR_URL_GEMINI=http://127.0.0.1:4112
 VENDOR_URL_OPENAI=http://127.0.0.1:4110
 VENDOR_URL_ELEVENLABS=http://127.0.0.1:4113
 GEMINI_API_KEY=sandbox-local-key
+# The local job queue (FILM-1806): ElasticMQ for SQS, dynamodb-local for the
+# WebSocket connections table, and the runner's gateway for API Gateway.
+VENDOR_URL_SQS=http://127.0.0.1:4120
+VENDOR_URL_DYNAMODB=http://127.0.0.1:4122
+VENDOR_URL_APIGATEWAY=http://127.0.0.1:4121
+LLM_JOBS_QUEUE_URL=http://127.0.0.1:4120/000000000000/StorybookLlmJobsQueue
+VOICE_QUEUE_URL=http://127.0.0.1:4120/000000000000/StorybookVoiceQueue
+PUBLISH_QUEUE_URL=http://127.0.0.1:4120/000000000000/StorybookPublishQueue
+CONNECTIONS_TABLE_NAME=StorybookConnections
+WEBSOCKET_ENDPOINT=http://127.0.0.1:4121
+NEXT_PUBLIC_WEBSOCKET_URL=ws://127.0.0.1:4121
+AWS_REGION=us-east-1
 ENVEOF
     # Other stand-ins add their lines here: each executable file in
     # scripts/lib/vendor-sandbox-env.d/ prints lines for the block (FILM-1802
@@ -128,5 +140,100 @@ sandbox_status() {
     echo "Vendor sandbox: pid $pid, $SANDBOX_CONTROL_URL/__sandbox"
   else
     echo "Vendor sandbox: down"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# The local job queue (FILM-1806): two emulator containers and the runner
+# that feeds the app's own workers from them.
+
+QUEUE_CONTAINER="storybook-elasticmq"
+DYNAMO_CONTAINER="storybook-dynamodb"
+QUEUE_IMAGE="softwaremill/elasticmq-native:1.6.12"
+DYNAMO_IMAGE="amazon/dynamodb-local:2.5.3"
+
+start_container() {
+  local name="$1"
+  shift
+  if docker ps -a --format '{{.Names}}' | grep -qx "$name"; then
+    docker start "$name" > /dev/null
+  else
+    docker run -d --name "$name" "$@" > /dev/null
+  fi
+}
+
+start_local_queue() {
+  local root="$1"
+  local dir="$root/.sandbox"
+  mkdir -p "$dir"
+
+  # Loopback only, like the sandbox.
+  start_container "$QUEUE_CONTAINER" -p 127.0.0.1:4120:9324 \
+    -v "$root/apps/vendor-sandbox/queue/elasticmq.conf:/opt/elasticmq.conf:ro" "$QUEUE_IMAGE"
+  start_container "$DYNAMO_CONTAINER" -p 127.0.0.1:4122:8000 "$DYNAMO_IMAGE" -jar DynamoDBLocal.jar -inMemory -sharedDb
+
+  for _ in $(seq 1 30); do
+    if curl -s -o /dev/null "http://127.0.0.1:4120/?Action=ListQueues" && curl -s -o /dev/null http://127.0.0.1:4122; then
+      break
+    fi
+    sleep 1
+  done
+
+  if pid=$(workers_pid "$dir"); then
+    echo "    workers already running (pid $pid)"
+    return 0
+  fi
+
+  # The runner and the app's workers are bundled with esbuild, as SST bundles
+  # each worker, then run with node. The egress guard, preloaded, makes sure
+  # none of them reaches past this machine.
+  (
+    cd "$root/apps/vendor-sandbox" || exit 1
+    ./node_modules/.bin/esbuild src/queue/main.ts --bundle --platform=node --format=cjs \
+      --target=node20 --outfile="$dir/workers.cjs" --log-level=error > "$dir/workers.log" 2>&1 || exit 1
+    NODE_OPTIONS="--import $root/apps/vendor-sandbox/scripts/egress-guard.mjs" \
+      EGRESS_GUARD_LOG="$dir/workers-egress-blocked.log" \
+      nohup node --enable-source-maps "$dir/workers.cjs" < /dev/null >> "$dir/workers.log" 2>&1 &
+    echo $! > "$dir/workers.pid"
+  ) || return 1
+
+  for _ in $(seq 1 60); do
+    if grep -q '\[local-workers\] ready' "$dir/workers.log" 2> /dev/null; then
+      echo "    $(grep -m1 '\[local-workers\] ready' "$dir/workers.log")"
+      return 0
+    fi
+    if ! workers_pid "$dir" > /dev/null; then break; fi
+    sleep 1
+  done
+  echo "The local job queue did not start; see $dir/workers.log"
+  return 1
+}
+
+workers_pid() {
+  local pidfile="$1/workers.pid"
+  [ -f "$pidfile" ] || return 1
+  local pid
+  pid=$(cat "$pidfile")
+  kill -0 "$pid" 2> /dev/null || return 1
+  echo "$pid"
+}
+
+stop_local_queue() {
+  local dir="$1/.sandbox"
+  local pid
+  if pid=$(workers_pid "$dir"); then
+    pkill -P "$pid" 2> /dev/null || true
+    kill "$pid" 2> /dev/null || true
+  fi
+  rm -f "$dir/workers.pid"
+  docker rm -f "$QUEUE_CONTAINER" "$DYNAMO_CONTAINER" > /dev/null 2>&1 || true
+}
+
+local_queue_status() {
+  local dir="$1/.sandbox"
+  if pid=$(workers_pid "$dir"); then
+    echo "Local job queue: workers pid $pid, SQS 127.0.0.1:4120, DynamoDB 127.0.0.1:4122, gateway ws://127.0.0.1:4121"
+  else
+    echo "Local job queue: down"
   fi
 }

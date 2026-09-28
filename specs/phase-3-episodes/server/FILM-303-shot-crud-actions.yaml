@@ -81,7 +81,7 @@ acceptance_criteria:
     evidence: null
   - text: "`deleteShotAction` reorders remaining shots to close gap"
     met: false
-    reason: "no longer true — the soft-deleted row keeps its number, so each decrement hits the same unique constraint; errors are ignored (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:435`)"
+    reason: "no longer true — the soft-deleted row keeps its number, so each decrement hits the same unique constraint; errors are ignored (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:436`)"
   - text: "`deleteShotAction` cancels in-progress generation job"
     met: false
     reason: "retired — shot generation jobs were video jobs; in-app video generation removed in 5b88db3a"
@@ -99,7 +99,7 @@ acceptance_criteria:
     evidence: null
   - text: "All database errors properly caught and thrown"
     met: false
-    reason: "no longer true — `deleteShotAction` ignores the errors of its close-gap updates (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:435`)"
+    reason: "no longer true — `deleteShotAction` ignores the errors of its close-gap updates (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:436`)"
   - text: "TypeScript compiles without errors"
     met: true
     evidence: null
@@ -118,13 +118,13 @@ remaining:
     reason: "embeds `generation_jobs` with no foreign key and selects a nonexistent `progress` column (`packages/features/episodes/src/lib/server/queries/shot-queries.ts:43`) (owner: no callers: fix or delete)"
     closed_by: "owner"
   - criterion: "`deleteShotAction` closes the gap"
-    reason: "the soft-deleted row still holds its number, so the decrements collide, and the errors are ignored (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:435`) (owner: no callers: fix or delete)"
+    reason: "the soft-deleted row still holds its number, so the decrements collide, and the errors are ignored (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:436`) (owner: no callers: fix or delete)"
     closed_by: "owner"
   - criterion: "Batch create handles 100+ shots"
     reason: "schema caps a batch at 100 (`packages/features/episodes/src/lib/schemas/shot.schema.ts:167`); shot generation inserts directly and is not capped (owner: no callers: fix or delete)"
     closed_by: "owner"
   - criterion: "All database errors caught and thrown"
-    reason: "close-gap update errors are ignored (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:435`) (owner: no callers: fix or delete)"
+    reason: "close-gap update errors are ignored (`packages/features/episodes/src/lib/server/mutations/shot-actions.ts:436`) (owner: no callers: fix or delete)"
     closed_by: "owner"
 open_questions: []
 notes: |
