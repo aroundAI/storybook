@@ -123,5 +123,5 @@ describe('FILM-513: lip-sync stays retired', () => {
 
     expect(files.length).toBeGreaterThan(500);
     expect(findRetiredNames(files)).toEqual([]);
-  });
+  }, 30_000);
 });

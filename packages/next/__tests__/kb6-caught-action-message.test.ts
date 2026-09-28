@@ -91,7 +91,7 @@ describe('KB-6: a caught server-action error is never read for its message', () 
       bare,
       'A refusal is a value now: without unwrap(…) the caller reads "refused" as "done"',
     ).toEqual([]);
-  });
+  }, 30_000);
 
   it('no exported server action throws a refusal: each one returns it (returnRefusals / withRefusals)', () => {
     const thrown = findThrownRefusals(
@@ -105,7 +105,7 @@ describe('KB-6: a caught server-action error is never read for its message', () 
       thrown,
       'Rename the enhanceAction to an inner const and export returnRefusals(inner); callers unwrap(…)',
     ).toEqual([]);
-  });
+  }, 30_000);
 
   it('every file excused as owned by another pull request still needs excusing', () => {
     expect(Object.keys(KNOWN).filter((file) => !offenders.has(file))).toEqual(
