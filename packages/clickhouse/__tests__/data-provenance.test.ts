@@ -495,11 +495,22 @@ describe('what the platform cannot do is kept apart from what we have not done',
       );
     }
 
-    for (const family of ['watch_time', 'reach'] as const) {
-      expect(capabilityFor(family, 'instagram').blockedBy, family).toBe(
-        'FILM-1712',
-      );
-    }
+    expect(capabilityFor('watch_time', 'instagram').blockedBy).toBe(
+      'FILM-1712',
+    );
+  });
+
+  it("Instagram's reach is accounts, read under accounts reached (FILM-1712)", () => {
+    // Its `reach` field counts accounts, so it answers `accounts_reached`,
+    // not the impressions/CTR family, which Instagram does not report.
+    expect(capabilityFor('reach', 'instagram').level).toBe('unsupported');
+    expect(capabilityFor('accounts_reached', 'instagram')).toMatchObject({
+      level: 'derived',
+      table: 'video_metrics',
+    });
+    expect(
+      capabilityFor('channel_accounts_reached', 'instagram'),
+    ).toMatchObject({ level: 'native', table: 'channel_windows' });
   });
 
   it('claims no live verification it cannot cite', () => {

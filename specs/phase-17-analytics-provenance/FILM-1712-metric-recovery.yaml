@@ -68,7 +68,7 @@ acceptance_criteria:
     reason: "nothing reads it, but Instagram's reach lives only there; it keeps being written until part B gives reach a column, so that history is not lost in between"
   - text: "The capability matrix is updated in the same PR as each newly-ingested field, per FILM-1703's writer-binding test"
     met: false
-    reason: "part B: no field is added to a request yet"
+    reason: "reach is done: the cross-platform reach PRs give it two families, accounts_reached (per post, video_metrics) and channel_accounts_reached (per channel, channel_windows), and Instagram's impressions/CTR entry is now unsupported. The fields part B has yet to request (Reels watch time, reposts/saved/shares counts, the aggregates) are not ingested yet"
 open_questions: []
 feature:
   database: null

@@ -206,3 +206,86 @@ export async function queryPostAccountsReached(input: {
         : null,
   };
 }
+
+export interface PostReachSummary {
+  /** First-time viewers in the range; null when any day in it is unmeasured. */
+  inRange: number | null;
+  /** Meta's own lifetime figure from the latest snapshot; null if none. */
+  lifetime: number | null;
+}
+
+/**
+ * `queryPostAccountsReached`'s two figures for many posts in one read, for
+ * a table. Grouped by post: each figure is still one post's, and nothing is
+ * added across posts. A post with no rows is absent from the map.
+ */
+export async function queryPostsAccountsReached(input: {
+  projectIds: string[];
+  videoIds: string[];
+  from: string;
+  to: string;
+}): Promise<Map<string, PostReachSummary>> {
+  const summaries = new Map<string, PostReachSummary>();
+
+  if (!isClickHouseEnabled() || input.videoIds.length === 0) return summaries;
+
+  const client = getClickHouseClient();
+
+  const [daysResult, lifetimeResult] = await Promise.all([
+    client.query({
+      query: `
+        SELECT
+          video_id,
+          sum(accounts_reached) AS in_range,
+          countIf(accounts_reached IS NULL) AS unmeasured
+        FROM video_metrics FINAL
+        WHERE project_id IN {projectIds: Array(UUID)}
+          AND video_id IN {videoIds: Array(String)}
+          AND metric_date BETWEEN {from: Date} AND {to: Date}
+        GROUP BY video_id
+      `,
+      query_params: input,
+      format: 'JSONEachRow',
+    }),
+    client.query({
+      query: `
+        SELECT
+          video_id,
+          argMax(tuple(accounts_reached), fetched_at).1 AS lifetime
+        FROM video_snapshots
+        WHERE project_id IN {projectIds: Array(UUID)}
+          AND video_id IN {videoIds: Array(String)}
+        GROUP BY video_id
+      `,
+      query_params: input,
+      format: 'JSONEachRow',
+    }),
+  ]);
+
+  for (const row of await daysResult.json<{
+    video_id: string;
+    in_range: string | number | null;
+    unmeasured: string | number;
+  }>()) {
+    summaries.set(row.video_id, {
+      inRange: Number(row.unmeasured) > 0 ? null : nullableNumber(row.in_range),
+      lifetime: null,
+    });
+  }
+
+  for (const row of await lifetimeResult.json<{
+    video_id: string;
+    lifetime: string | number | null;
+  }>()) {
+    const summary = summaries.get(row.video_id) ?? {
+      inRange: null,
+      lifetime: null,
+    };
+    summaries.set(row.video_id, {
+      ...summary,
+      lifetime: nullableNumber(row.lifetime),
+    });
+  }
+
+  return summaries;
+}

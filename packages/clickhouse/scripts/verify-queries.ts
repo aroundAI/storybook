@@ -56,6 +56,7 @@ import {
   queryPerVideoTotals,
   queryPlatformBreakdown,
   queryPostAccountsReached,
+  queryPostsAccountsReached,
   queryQualityMetricsForVideos,
   queryRetentionCurve,
   queryRetentionCurves,
@@ -1605,6 +1606,19 @@ async function assertions() {
         throw new Error(`empty post ${JSON.stringify(none)}`);
       }
 
+      // The batched reader gives each post the same two figures, per post.
+      const batched = await queryPostsAccountsReached({
+        projectIds: [PROJECT],
+        videoIds: ['reach-post', 'no-such-post'],
+        from: '2026-09-01',
+        to: '2026-09-30',
+      });
+      const one = batched.get('reach-post');
+      if (one?.inRange !== 1900 || one.lifetime !== 5900) {
+        throw new Error(`batched ${JSON.stringify(one)}`);
+      }
+      if (batched.has('no-such-post')) throw new Error('batched: empty post');
+
       return `30d=${got30} new=${gotNew} post=${reached.inRange}/${reached.lifetime}`;
     },
   );
@@ -2497,6 +2511,12 @@ const PRESENCE_PROBES: Record<MetricFamily, string | null> = {
   traffic_sources: `SELECT DISTINCT platform FROM video_traffic_sources WHERE ${NOT_NOISE}`,
   retention_curve: `SELECT DISTINCT platform FROM video_retention_curves WHERE ${NOT_NOISE}`,
   reach: `SELECT DISTINCT platform FROM video_reach_daily WHERE ${NOT_NOISE}`,
+  // Told apart from engagement by the column, as watch_time is.
+  accounts_reached: `SELECT DISTINCT platform FROM video_metrics
+                     WHERE ${NOT_NOISE} AND accounts_reached IS NOT NULL`,
+  // Keyed by connection, with its own platform column and no project.
+  channel_accounts_reached: `SELECT DISTINCT platform FROM channel_windows
+                             WHERE accounts_reached IS NOT NULL`,
   // Neither channel table has a platform column; both are keyed by
   // connection. Resolved through video_dim rather than assumed to be YouTube
   // because that happens to be true today. A connection with no dim row

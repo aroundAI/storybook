@@ -50,6 +50,8 @@ export const METRIC_FAMILIES = [
   'traffic_sources', //                            → video_traffic_sources
   'retention_curve', //                            → video_retention_curves
   'reach', // impressions, CTR                     → video_reach_daily
+  'accounts_reached', // a post's unique accounts    → video_metrics
+  'channel_accounts_reached', // a channel's, per window → channel_windows
   'channel_totals', // subscribers / followers     → channel_daily, channel_subscribers
   'demographics', // age, gender                   → video_audience
   'geography', // country, city                    → video_audience
@@ -628,16 +630,87 @@ export const CAPABILITY_MATRIX: Record<
         fields: ['reach'],
       },
     },
-    // Requested today and dropped at ingest for want of a column.
+    // Instagram's `reach` counts accounts, not impressions: it is stored as
+    // `accounts_reached` (FILM-1712) and read under that family.
     instagram: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...INSTAGRAM_MEDIA,
+      note: 'Instagram stopped reporting impressions in 2025 and never reported click-through; how many accounts saw a post is under accounts reached.',
+      reference: { section: 'Instagram', surface: null, fields: [] },
+    },
+  },
+
+  // Unique accounts, not views: one person counted once. Never summed across
+  // posts, channels or platforms; `src/reach.ts` is the only reader.
+  accounts_reached: {
+    youtube: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...YOUTUBE_ANALYTICS,
+      note: 'YouTube reports how many times a video was viewed, not how many different people watched it.',
+      reference: { section: 'YouTube', surface: null, fields: [] },
+    },
+    tiktok: {
       level: 'not_ingested',
       table: null,
-      blockedBy: 'FILM-1712',
+      blockedBy: 'FILM-1730',
+      ...TIKTOK_BUSINESS,
+      note: 'TikTok reports how many people a video reached only through a Business integration we have not built yet.',
+      reference: {
+        section: 'TikTok',
+        surface: 'tiktok/business',
+        fields: ['reach'],
+      },
+    },
+    instagram: {
+      level: 'derived',
+      table: 'video_metrics',
+      method: 'snapshot_delta_fetch_day',
       ...INSTAGRAM_MEDIA,
-      note: 'Instagram does report how many accounts a post reached and we do not store it yet, so reach covers YouTube only.',
+      note: 'Instagram reports how many accounts have seen a post so far, so each day shows the new ones since we last checked, dated to the day we checked.',
       reference: {
         section: 'Instagram',
         surface: 'instagram/media-insights',
+        fields: ['reach'],
+      },
+    },
+  },
+
+  // A channel's unique accounts over a whole window (7, 30 and the 23 days
+  // behind the 7-day "new" figure), recorded nightly. A window figure is not
+  // a sum of days, and Meta's longest window is 30 days.
+  channel_accounts_reached: {
+    youtube: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...YOUTUBE_ANALYTICS,
+      note: 'YouTube reports how many times your videos were viewed, not how many different people watched them.',
+      reference: { section: 'YouTube', surface: null, fields: [] },
+    },
+    tiktok: {
+      level: 'not_ingested',
+      table: null,
+      blockedBy: 'FILM-1730',
+      ...TIKTOK_BUSINESS,
+      note: 'TikTok reports reach only through a Business integration we have not built yet.',
+      reference: {
+        section: 'TikTok',
+        surface: 'tiktok/business',
+        fields: ['reach'],
+      },
+    },
+    instagram: {
+      level: 'native',
+      table: 'channel_windows',
+      ...INSTAGRAM_ACCOUNT,
+      note: 'Instagram reports how many different accounts saw anything of yours over the last 7 or 30 days, and we record it every night.',
+      reference: {
+        section: 'Instagram',
+        surface: 'instagram/user-insights',
         fields: ['reach'],
       },
     },

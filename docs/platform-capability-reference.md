@@ -53,6 +53,10 @@ and valid on `dimensions=day` + `filters=video==ID`.
 - `averageViewPercentage` **is** valid on the daily per-video query. The two YouTube
   calls can collapse into one. The only documented incompatibility is the
   `liveOrOnDemand` dimension.
+- **No unique-viewer metric.** The metrics reference (re-read 2026-09-28) lists
+  `views`, `engagedViews` and other counts of views, and nothing counting
+  different people. So YouTube has no `accounts_reached`, for a video or a
+  channel: the capability matrix calls both `unsupported`.
 - `annotationClickThroughRate` is documented but **effectively dead** — annotations
   were retired — so it must not be requested.
 - **`adImpressions` is not thumbnail impressions.** It is ad inventory, and it was
