@@ -87,15 +87,15 @@ describe('unique reach has one reader (cross-platform reach design)', () => {
   });
 
   it('flags the shapes it guards against', () => {
-    expect(breaksTheRule('SELECT sum(accounts_reached) FROM video_metrics')).toEqual([
-      'aggregates accounts_reached',
-    ]);
+    expect(
+      breaksTheRule('SELECT sum(accounts_reached) FROM video_metrics'),
+    ).toEqual(['aggregates accounts_reached']);
     expect(breaksTheRule('SELECT * FROM channel_windows FINAL')).toEqual([
       'reads channel_windows',
     ]);
-    expect(breaksTheRule('accounts_reached: input.delta.accounts_reached')).toEqual(
-      [],
-    );
+    expect(
+      breaksTheRule('accounts_reached: input.delta.accounts_reached'),
+    ).toEqual([]);
     // TypeScript's Math.max is the delta clamp, not a SQL aggregate.
     expect(
       breaksTheRule('Math.max(0, current - baseline.accounts_reached)'),

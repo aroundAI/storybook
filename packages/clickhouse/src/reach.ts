@@ -151,7 +151,8 @@ export async function queryPostAccountsReached(input: {
   from: string;
   to: string;
 }): Promise<PostAccountsReached> {
-  if (!isClickHouseEnabled()) return { days: [], lifetime: null, inRange: null };
+  if (!isClickHouseEnabled())
+    return { days: [], lifetime: null, inRange: null };
 
   const client = getClickHouseClient();
 
