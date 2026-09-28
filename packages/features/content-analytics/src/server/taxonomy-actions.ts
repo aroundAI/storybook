@@ -20,7 +20,6 @@ import {
   SetPublishTagsSchema,
   TAGGED_LIBRARY_THRESHOLD,
   TagDimensionSchema,
-  UpdateTagSchema,
 } from '../lib/schemas/taxonomy.schema';
 import { tagScopeRefusal } from '../lib/tag-scope';
 import { resolveTagMinSample } from '../lib/ypp-targets';
@@ -61,24 +60,6 @@ const createTag = enhanceAction(
 );
 
 export const createTagAction = returnRefusals(createTag);
-
-export const updateTagAction = enhanceAction(
-  async ({ tagId, label }) => {
-    const client = getSupabaseServerClient();
-
-    const { error } = await client
-      .from('content_tags')
-      .update({ label })
-      .eq('id', tagId);
-
-    if (error) {
-      throw new Error(`Failed to update tag: ${error.message}`);
-    }
-
-    return { success: true };
-  },
-  { schema: UpdateTagSchema, auth: true },
-);
 
 /**
  * Deleting a tag cascades to its assignments; affected publishes are

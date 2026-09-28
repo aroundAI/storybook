@@ -37,11 +37,6 @@ export const CreateTagSchema = z.object({
   label: z.string().min(1).max(120),
 });
 
-export const UpdateTagSchema = z.object({
-  tagId: z.string().uuid(),
-  label: z.string().min(1).max(120),
-});
-
 export const DeleteTagSchema = z.object({
   tagId: z.string().uuid(),
 });

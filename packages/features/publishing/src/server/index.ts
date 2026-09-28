@@ -19,11 +19,9 @@ export {
   unpublishAction,
 } from './publish-actions';
 
-export {
-  updateEpisodePublishingConfigsAction,
-  togglePublishingConfigAction,
-  type EpisodePublishingConfig,
-  type PlatformConnection,
+export type {
+  EpisodePublishingConfig,
+  PlatformConnection,
 } from './episode-publishing-actions';
 
 export {

@@ -92,8 +92,6 @@ const KNOWN: Record<string, [number, string]> = {
     [1, ADMIN],
   'packages/features/content-analytics/src/server/reporting/report-ingest.ts | youtube_report_jobs | update':
     [1, ADMIN],
-  'packages/features/content-analytics/src/server/taxonomy-actions.ts | content_tags | update':
-    [1, DEAD],
   'packages/features/content-analytics/src/server/vendor-data-purge.ts | vendor_data_purges | update':
     [3, ADMIN],
   'packages/features/episodes/src/agent/orchestrator.ts | episodes | update': [
@@ -114,8 +112,6 @@ const KNOWN: Record<string, [number, string]> = {
     [2, SET_BEFORE],
   'packages/features/publishing/src/jobs/process-scheduled-publishes.ts | publishes | update':
     [3, ADMIN],
-  'packages/features/publishing/src/server/episode-publishing-actions.ts | episode_publishing_configs | update':
-    [2, DEAD],
   'packages/features/publishing/src/server/publish-actions.ts | episodes | update':
     [1, BOOKKEEPING],
   'packages/features/publishing/src/server/publish-actions.ts | publishes | update':

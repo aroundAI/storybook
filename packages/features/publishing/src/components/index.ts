@@ -9,7 +9,6 @@ export { MetadataEditor } from './metadata-editor';
 export { ThumbnailSelector } from './thumbnail-selector';
 export { PlatformSpecificSettingsComponent } from './platform-specific-settings';
 export { PublishStatusRow } from './publish-status-row';
-export { EpisodePublishingConfigs } from './episode-publishing-configs';
 export { ProjectPublishingConfigs } from './project-publishing-configs';
 export { OAuthAppConfig } from './oauth-app-config';
 export { GlobalOAuthAppConfig } from './global-oauth-app-config';

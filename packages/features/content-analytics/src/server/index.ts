@@ -96,7 +96,6 @@ export {
   getPublishTagsAction,
   listTagsAction,
   setPublishTagsAction,
-  updateTagAction,
 } from './taxonomy-actions';
 
 // Server actions
