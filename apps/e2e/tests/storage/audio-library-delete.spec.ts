@@ -82,10 +82,12 @@ async function seedUploadedAsset(name: string) {
   return { id: row.id, fileUrl: row.file_url, key };
 }
 
+// Visible only (KB-136): React can leave a streamed copy of the page in a
+// hidden container, so a strict locator also matches a card nobody sees.
 async function deleteThroughMenu(page: Page, name: string) {
-  const card = page.locator('[data-test="audio-asset-card"]', {
-    hasText: name,
-  });
+  const card = page
+    .locator('[data-test="audio-asset-card"]', { hasText: name })
+    .filter({ visible: true });
   await card.hover();
   await card.locator('[data-test="audio-asset-menu"]').click();
   await page.locator('[data-test="audio-asset-delete"]').click();
@@ -120,9 +122,9 @@ test.describe('Audio library Delete (KB-95)', () => {
     await signInAs(page, team);
     await page.goto(`/home/${team.slug}/studio/${project.slug}/audio-library`);
 
-    const card = page.locator('[data-test="audio-asset-card"]', {
-      hasText: name,
-    });
+    const card = page
+      .locator('[data-test="audio-asset-card"]', { hasText: name })
+      .filter({ visible: true });
     await expect(card).toBeVisible();
 
     await deleteThroughMenu(page, name);
@@ -140,7 +142,9 @@ test.describe('Audio library Delete (KB-95)', () => {
 
     await page.reload();
     await expect(
-      page.locator('[data-test="audio-asset-card"]', { hasText: name }),
+      page
+        .locator('[data-test="audio-asset-card"]', { hasText: name })
+        .filter({ visible: true }),
     ).toBeHidden();
 
     if (evidence) {
@@ -181,7 +185,9 @@ test.describe('Audio library Delete (KB-95)', () => {
     await page.locator('[data-test="audio-asset-delete-confirm"]').click();
 
     await expect(
-      page.locator('[data-test="audio-asset-card"]', { hasText: name }),
+      page
+        .locator('[data-test="audio-asset-card"]', { hasText: name })
+        .filter({ visible: true }),
     ).toBeHidden();
 
     expect((await readAsset(asset.id))?.deleted_at).toBeTruthy();
@@ -210,7 +216,9 @@ test.describe('Audio library Delete (KB-95)', () => {
 
     await page.reload();
     await expect(
-      page.locator('[data-test="audio-asset-card"]', { hasText: name }),
+      page
+        .locator('[data-test="audio-asset-card"]', { hasText: name })
+        .filter({ visible: true }),
     ).toBeVisible();
 
     expect((await readAsset(asset.id))?.deleted_at).toBeNull();

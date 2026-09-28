@@ -120,7 +120,7 @@ test.describe('AI sandbox — inline flows (FILM-1803)', () => {
 
     const asset = page
       .locator('[data-test="audio-asset-card"]')
-      .filter({ hasText: 'Ferry horn at dusk' });
+      .filter({ hasText: 'Ferry horn at dusk', visible: true }); // KB-136
     await expect(asset).toBeVisible({ timeout: 60_000 });
     const served = (await ledger('elevenlabs', since)).find(
       (e) => e.path === '/v1/sound-generation',
