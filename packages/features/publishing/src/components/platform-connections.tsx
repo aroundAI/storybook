@@ -430,6 +430,7 @@ function ConnectionRow({
             disabled={languageMutation.isPending}
           >
             <SelectTrigger
+              data-test="connection-language"
               className="w-[130px]"
               title="Target language for this channel"
             >
