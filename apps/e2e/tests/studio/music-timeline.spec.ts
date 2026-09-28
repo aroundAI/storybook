@@ -7,6 +7,7 @@ import {
   seedProject,
   seedTeamAccount,
   uniqueStamp,
+  updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
 
@@ -161,5 +162,31 @@ test.describe('FILM-514: Music timeline', () => {
           ).length,
       )
       .toBe(0);
+  });
+
+  test('a cue on an episode in no season can be regenerated (KB-139)', async ({
+    page,
+  }) => {
+    // `episodes.season_id` is nullable, and this episode has none: the cue
+    // was found through `seasons!inner`, which drops it, so the action
+    // answered with PostgREST's "cannot coerce … to a single JSON object".
+    const { team, project, episode } = await seedMusicEpisode();
+    await updateRows('projects', `id=eq.${project.id}`, {
+      audio_settings: { elevenlabs: { music_model: 'music_v1' } },
+    });
+
+    await openMusicTimeline(page, team, project.slug, episode.slug);
+
+    await page.getByText(CUE_PROMPT).click();
+    await page.getByRole('button', { name: 'Regenerate' }).click();
+
+    // The first answer is past the cue lookup: queued, or — where no job
+    // queue is configured, as in the ⚫️ Test job — the queue step's own
+    // failure. Before the fix it was the lookup's PostgREST error.
+    const answer = page.locator('[data-sonner-toast]').first();
+    await expect(answer).toContainText(
+      /Music generation started|LLM_JOBS_QUEUE_URL/,
+    );
+    await expect(answer).not.toContainText(/single JSON object|Cue not found/);
   });
 });

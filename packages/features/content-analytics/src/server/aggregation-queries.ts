@@ -720,8 +720,8 @@ export async function getProjectAudienceData(
     (from, to) =>
       client
         .from('publishes')
-        .select('id, episodes!inner(season_id, seasons!inner(project_id))')
-        .eq('episodes.seasons.project_id', projectId)
+        .select('id, episodes!inner(project_id)')
+        .eq('episodes.project_id', projectId)
         .order('id')
         .range(from, to),
     'project audience publishes',
@@ -909,7 +909,8 @@ export async function getContentList(
 ): Promise<ContentListItem[]> {
   const client = getSupabaseServerClient();
 
-  // Get all publishes for this project through episodes -> seasons.
+  // Get all publishes for this project through episodes.project_id: an
+  // episode need not be in a season (season_id is nullable, KB-48 R9).
   // Paged: the account dashboard reduces this list to a top-N, so a short
   // read silently changes which content is presented as the best.
   const publishes = await fetchAllRows<{
@@ -931,13 +932,11 @@ export async function getContentList(
         id,
         title,
         thumbnail_url,
-        seasons!inner (
-          project_id
-        )
+        project_id
       )
     `,
       )
-      .eq('episodes.seasons.project_id', projectId)
+      .eq('episodes.project_id', projectId)
       .not('published_at', 'is', null);
 
     if (options?.platforms && options.platforms.length > 0) {
