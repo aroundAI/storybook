@@ -154,6 +154,14 @@ export const GOOGLE_SERVED: readonly ServedEndpoint[] = [
     ),
   },
   {
+    // videos.delete answers 204 with no body: nothing to read or cite.
+    origin: 'google',
+    method: 'DELETE',
+    path: '/youtube/v3/videos',
+    reads: [],
+    envelope: [],
+  },
+  {
     origin: 'google',
     method: 'POST',
     path: '/upload/youtube/v3/thumbnails/set',

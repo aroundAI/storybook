@@ -424,6 +424,11 @@ export class SocialState {
     return this.objects.has(`${platform}:${id}`);
   }
 
+  /** Forget an object the vendor deleted; its id is tombstoned by the caller. */
+  removeObject(platform: Platform, id: string) {
+    this.objects.delete(`${platform}:${id}`);
+  }
+
   listObjects(platform?: Platform) {
     return [...this.objects.values()].filter(
       (o) => !platform || o.platform === platform,
