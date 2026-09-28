@@ -211,10 +211,12 @@ export {
   queryChannelNewAccounts,
   queryChannelReach,
   queryPostAccountsReached,
+  queryPostsAccountsReached,
 } from '../reach';
 export type {
   ChannelNewAccountsDay,
   ChannelReachDay,
   PostAccountsReached,
+  PostReachSummary,
   ReachPlatform,
 } from '../reach';

@@ -56,6 +56,7 @@ import {
   queryPerVideoTotals,
   queryPlatformBreakdown,
   queryPostAccountsReached,
+  queryPostsAccountsReached,
   queryQualityMetricsForVideos,
   queryRetentionCurve,
   queryRetentionCurves,
@@ -1604,6 +1605,19 @@ async function assertions() {
       if (none.lifetime !== null || none.inRange !== null) {
         throw new Error(`empty post ${JSON.stringify(none)}`);
       }
+
+      // The batched reader gives each post the same two figures, per post.
+      const batched = await queryPostsAccountsReached({
+        projectIds: [PROJECT],
+        videoIds: ['reach-post', 'no-such-post'],
+        from: '2026-09-01',
+        to: '2026-09-30',
+      });
+      const one = batched.get('reach-post');
+      if (one?.inRange !== 1900 || one.lifetime !== 5900) {
+        throw new Error(`batched ${JSON.stringify(one)}`);
+      }
+      if (batched.has('no-such-post')) throw new Error('batched: empty post');
 
       return `30d=${got30} new=${gotNew} post=${reached.inRange}/${reached.lifetime}`;
     },

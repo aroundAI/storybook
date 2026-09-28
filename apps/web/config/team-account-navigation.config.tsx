@@ -46,6 +46,11 @@ const getRoutes = (account: string) => [
         Icon: <BarChart3 className={iconClasses} />,
       },
       {
+        label: 'common:routes.reach',
+        path: `/home/${account}/studio/analytics/reach`,
+        Icon: <Users className={iconClasses} />,
+      },
+      {
         label: 'common:routes.contentTags',
         path: `/home/${account}/studio/analytics/tags`,
         Icon: <Tags className={iconClasses} />,
