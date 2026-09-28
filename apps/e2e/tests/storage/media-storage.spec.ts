@@ -51,7 +51,12 @@ async function uploadThroughDialog(
   expectClosed = true,
   screenshot?: string,
 ) {
-  await page.locator('[data-test="audio-library-upload"]').click();
+  // Visible only (KB-136): React can leave a streamed copy of the page in a
+  // hidden container, so a strict locator also matches a card nobody sees.
+  await page
+    .locator('[data-test="audio-library-upload"]')
+    .filter({ visible: true })
+    .click();
 
   const submit = page.locator('[data-test="audio-upload-submit"]');
 
@@ -123,7 +128,9 @@ test.describe('Media and report storage (KB-55, KB-56)', () => {
 
       // No reload: the card is drawn from what the save returned
       await expect(
-        page.locator('[data-test="audio-asset-card"]', { hasText: track.name }),
+        page
+          .locator('[data-test="audio-asset-card"]', { hasText: track.name })
+          .filter({ visible: true }),
       ).toBeVisible();
 
       if (evidence) {
@@ -169,7 +176,9 @@ test.describe('Media and report storage (KB-55, KB-56)', () => {
 
     await page.reload();
     for (const track of tracks) {
-      await expect(page.getByText(track.name)).toBeVisible();
+      await expect(
+        page.getByText(track.name).filter({ visible: true }),
+      ).toBeVisible();
     }
   });
 
