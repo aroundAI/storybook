@@ -26,9 +26,10 @@ export interface CumulativeTotals {
   likes: number;
   comments: number;
   shares: number;
-  saves: number;
-  watch_time_seconds: number;
-  subscribers_gained: number;
+  /** Null where the platform does not measure it (migration 017). */
+  saves: number | null;
+  watch_time_seconds: number | null;
+  subscribers_gained: number | null;
   /**
    * Lifetime unique accounts reached. Instagram only; null when not
    * measured. Not a counter: its delta is "first-time viewers that day".
@@ -55,6 +56,20 @@ export function accountsReachedDelta(
 }
 
 /**
+ * A nullable counter's delta (migration 017): null when today's figure is
+ * unmeasured, or when the baseline snapshot recorded none — subtracting from
+ * nothing would put the whole lifetime on one day. Clamped as every counter.
+ */
+function measuredDelta(
+  current: number | null,
+  baseline: number | null,
+): number | null {
+  if (current === null || baseline === null) return null;
+
+  return Math.max(0, current - baseline);
+}
+
+/**
  * Delta between the current lifetime totals and the latest prior snapshot,
  * clamped to zero per metric — platforms occasionally restate counters
  * downward (deleted comments, spam-filtered views) and a negative daily
@@ -75,12 +90,12 @@ export function computeSnapshotDelta(
     likes: clamp(current.likes, baseline.likes),
     comments: clamp(current.comments, baseline.comments),
     shares: clamp(current.shares, baseline.shares),
-    saves: clamp(current.saves, baseline.saves),
-    watch_time_seconds: clamp(
+    saves: measuredDelta(current.saves, baseline.saves),
+    watch_time_seconds: measuredDelta(
       current.watch_time_seconds,
       baseline.watch_time_seconds,
     ),
-    subscribers_gained: clamp(
+    subscribers_gained: measuredDelta(
       current.subscribers_gained,
       baseline.subscribers_gained,
     ),
@@ -152,20 +167,21 @@ function engagedViewsFor(day: YouTubeDailyMetrics): number | null {
 }
 
 /**
- * Map YouTube per-day metrics to daily ClickHouse rows. The raw provider
- * payload (retention, traffic sources, …) is attached to the latest day's
- * row only — it is a lifetime aggregate and duplicating it per day would
- * bloat storage without adding information.
+ * `extra_metrics` is no longer written (FILM-1712): it held each provider's
+ * raw payload, which nothing read, and Instagram's reach — its only figure
+ * with no column — now has `accounts_reached`. The column stays, empty.
+ */
+const NO_EXTRA_METRICS = '{}';
+
+/**
+ * Map YouTube per-day metrics to daily ClickHouse rows.
  */
 export function buildYouTubeDailyRows(input: {
   projectId: string;
   videoId: string;
   dailyData: YouTubeDailyMetrics[];
-  extraMetricsJson: string;
   metricSource?: 'analytics_api' | 'backfill';
 }): YouTubeVideoMetric[] {
-  const latest = latestDataDate(input.dailyData);
-
   return input.dailyData.map((day) => ({
     project_id: input.projectId,
     video_id: input.videoId,
@@ -187,7 +203,7 @@ export function buildYouTubeDailyRows(input: {
     // Always set, null included: the Reporting ingest writes this key too,
     // and an omitted field would erase its figure (KB-50).
     engaged_views: engagedViewsFor(day),
-    extra_metrics: day.date === latest ? input.extraMetricsJson : '{}',
+    extra_metrics: NO_EXTRA_METRICS,
   }));
 }
 
@@ -225,7 +241,8 @@ export type SnapshotDeltaMetric = VideoMetric &
       }
     | {
         platform: 'instagram';
-        saves: number;
+        /** Measured, except where Meta omits it (STORY has no `saved`). */
+        saves: number | null;
         watch_time_seconds: null;
         subscribers_gained: null;
         accounts_reached: number | null;
@@ -238,7 +255,6 @@ export function buildSnapshotDeltaRow(input: {
   platform: 'tiktok' | 'instagram';
   metricDate: string;
   delta: CumulativeTotals;
-  extraMetricsJson: string;
 }): SnapshotDeltaMetric {
   const base = {
     project_id: input.projectId,
@@ -254,7 +270,7 @@ export function buildSnapshotDeltaRow(input: {
     avg_view_percentage: null,
     dislikes: null,
     metric_source: 'snapshot_delta' as const,
-    extra_metrics: input.extraMetricsJson,
+    extra_metrics: NO_EXTRA_METRICS,
   };
 
   if (input.platform === 'tiktok') {

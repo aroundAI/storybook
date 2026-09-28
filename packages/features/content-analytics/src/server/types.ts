@@ -129,9 +129,10 @@ export interface NormalizedAnalytics {
   likes: number;
   comments: number;
   shares: number;
-  saves: number;
-  watch_time_seconds: number;
-  subscribers_gained: number;
+  /** Null where the platform does not measure it, never 0 (migration 017). */
+  saves: number | null;
+  watch_time_seconds: number | null;
+  subscribers_gained: number | null;
   revenue_cents: number;
   ad_revenue_cents: number;
   red_revenue_cents: number;

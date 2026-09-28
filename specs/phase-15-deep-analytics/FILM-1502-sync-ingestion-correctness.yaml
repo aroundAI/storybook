@@ -17,16 +17,16 @@ acceptance_criteria:
     reason: "unverified — needs two sync runs against a live ClickHouse; unit tests cover only the pure helpers"
   - text: "YouTube rows carry real platform data dates, not sync dates"
     met: true
-    evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:180`"
+    evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:206`"
   - text: "TikTok/IG day rows equal lifetime delta vs. previous snapshot, clamped ≥ 0"
     met: true
-    evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:58`, `packages/features/content-analytics/src/server/analytics-sync-cron.ts:811`"
+    evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:58`, `packages/features/content-analytics/src/server/analytics-sync-cron.ts:808`"
   - text: "First sync of an adopted (old) TikTok/IG video writes only a baseline snapshot"
     met: true
-    evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:430`, `packages/features/content-analytics/src/server/analytics-sync-cron.ts:828`"
+    evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:452`, `packages/features/content-analytics/src/server/analytics-sync-cron.ts:824`"
   - text: "30–90-day-old videos sync daily"
     met: true
-    evidence: "`packages/features/content-analytics/src/server/schedule.ts:45`, `packages/features/content-analytics/__tests__/ingest.test.ts:495`"
+    evidence: "`packages/features/content-analytics/src/server/schedule.ts:45`, `packages/features/content-analytics/__tests__/ingest.test.ts:517`"
   - text: "New indexes exist; `fetchPublishesForSync` query plan uses them"
     met: false
     reason: "unverified — indexes exist (`apps/web/supabase/migrations/20260827095315_publishes-sync-indexes.sql:3`); plan use needs `EXPLAIN` on seeded data"

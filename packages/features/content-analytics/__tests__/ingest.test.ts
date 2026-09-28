@@ -89,6 +89,32 @@ describe('computeSnapshotDelta', () => {
 
     expect(computeSnapshotDelta(current, null)).toEqual(current);
   });
+
+  // Migration 017: an unmeasured counter's day is null, never 0 — whether
+  // today's figure is missing or the baseline recorded none.
+  it('keeps an unmeasured counter null, never 0', () => {
+    const current = {
+      views: 1500,
+      likes: 130,
+      comments: 55,
+      shares: 25,
+      saves: 12,
+      watch_time_seconds: null,
+      subscribers_gained: null,
+      accounts_reached: 5200,
+    };
+
+    const delta = computeSnapshotDelta(current, baseline);
+    expect(delta.watch_time_seconds).toBeNull();
+    expect(delta.subscribers_gained).toBeNull();
+    expect(delta.saves).toBe(2);
+
+    const fromUnmeasured = computeSnapshotDelta(
+      { ...current, watch_time_seconds: 6200 },
+      { ...baseline, watch_time_seconds: null },
+    );
+    expect(fromUnmeasured.watch_time_seconds).toBeNull();
+  });
 });
 
 // FILM-1712 part B: accounts reached is a unique count, so its daily figure
@@ -209,7 +235,6 @@ describe('buildYouTubeDailyRows', () => {
           subscribersLost: 1,
         },
       ],
-      extraMetricsJson: '{"retention":true}',
     });
 
     expect(rows).toHaveLength(2);
@@ -225,7 +250,8 @@ describe('buildYouTubeDailyRows', () => {
     expect(rows[1]).toMatchObject({
       metric_date: '2026-06-14',
       watch_time_seconds: 4530,
-      extra_metrics: '{"retention":true}',
+      // No raw payload on any day: extra_metrics is no longer written (FILM-1712).
+      extra_metrics: '{}',
     });
   });
 
@@ -254,7 +280,6 @@ describe('buildYouTubeDailyRows', () => {
         projectId: '550e8400-e29b-41d4-a716-446655440000',
         videoId: 'publish-1',
         dailyData,
-        extraMetricsJson: '{}',
       }).map((r) => [r.metric_date, r.engaged_views]);
 
     it('carries the reported figure', () => {
@@ -305,7 +330,6 @@ describe('buildYouTubeDailyRows', () => {
           engagedViews: 331,
         },
       ],
-      extraMetricsJson: '{}',
     });
 
     expect(row).toMatchObject({
@@ -338,7 +362,6 @@ describe('buildSnapshotDeltaRow', () => {
         subscribers_gained: 7,
         accounts_reached: 90,
       },
-      extraMetricsJson: '{}',
     });
 
     expect(row).toMatchObject({
@@ -370,7 +393,6 @@ describe('buildSnapshotDeltaRow', () => {
       platform,
       metricDate: '2026-09-20',
       delta,
-      extraMetricsJson: '{}',
     });
 
   it('writes TikTok saves, watch time and follower gains as null', () => {

@@ -155,7 +155,6 @@ export async function runYouTubeBackfillBatch(options?: {
         projectId,
         videoId: publish.id,
         dailyData: allDays,
-        extraMetricsJson: '{}',
         metricSource: 'backfill',
       });
 

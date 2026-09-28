@@ -1414,7 +1414,7 @@ async function assertions() {
   // latest recorded none. The baseline must be the latest snapshot's own
   // value, NULL included.
   await step(
-    "assert: the baseline reach is the latest snapshot's, NULL included",
+    "assert: the baseline reach and watch time are the latest snapshot's, NULL included",
     async () => {
       const snapshot = (
         videoId: string,
@@ -1432,7 +1432,9 @@ async function assertions() {
         comments: 0,
         shares: 0,
         saves: 0,
-        watch_time_seconds: 0,
+        // Migration 017: the snapshot that recorded no reach recorded no
+        // watch time either, and the baseline must say so too.
+        watch_time_seconds: accountsReached === null ? null : 0,
         subscribers_gained: 0,
         accounts_reached: accountsReached,
       });
@@ -1457,7 +1459,11 @@ async function assertions() {
 
       if (kept !== 5200) throw new Error(`expected 5200, got ${kept}`);
       if (lost !== null) throw new Error(`expected null, got ${lost}`);
-      return `kept=${kept} lost=${lost}`;
+      const lostWatch = snaps.get('reach-lost')?.watch_time_seconds;
+      if (lostWatch !== null) {
+        throw new Error(`watch time: expected null, got ${lostWatch}`);
+      }
+      return `kept=${kept} lost=${lost} lostWatch=${lostWatch}`;
     },
   );
 

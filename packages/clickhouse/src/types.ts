@@ -174,9 +174,10 @@ export interface VideoSnapshot {
   likes: number;
   comments: number;
   shares: number;
-  saves: number;
-  watch_time_seconds: number;
-  subscribers_gained: number;
+  /** Null where the platform does not measure it (migration 017). */
+  saves: number | null;
+  watch_time_seconds: number | null;
+  subscribers_gained: number | null;
   /** Lifetime unique accounts reached (Instagram); null when not measured. */
   accounts_reached: number | null;
 }
@@ -307,9 +308,10 @@ export interface SnapshotTotals {
   likes: number;
   comments: number;
   shares: number;
-  saves: number;
-  watch_time_seconds: number;
-  subscribers_gained: number;
+  /** The latest snapshot's own values, NULL included (migration 017). */
+  saves: number | null;
+  watch_time_seconds: number | null;
+  subscribers_gained: number | null;
   /** The latest snapshot's own value: null when it recorded no reach. */
   accounts_reached: number | null;
 }
