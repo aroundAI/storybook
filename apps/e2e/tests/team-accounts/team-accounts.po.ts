@@ -214,15 +214,12 @@ export class TeamAccountsPageObject {
       // Complete OTP verification
       await this.otp.completeOtpVerification(ownerEmail);
 
-      // Click the confirm button
-      const click = this.page.click(
-        '[data-test="confirm-transfer-ownership-button"]',
-      );
-
-      // Wait for the transfer to complete and page to reload
-      const response = this.page.waitForURL('**/home/*/members');
-
-      return Promise.all([click, response]);
+      // The dialog reloads the page once the transfer has succeeded, so wait
+      // for that load, not for the URL the page is already on (KB-135).
+      await Promise.all([
+        this.page.waitForEvent('load'),
+        this.page.click('[data-test="confirm-transfer-ownership-button"]'),
+      ]);
     }).toPass();
   }
 

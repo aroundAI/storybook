@@ -123,6 +123,10 @@ function TransferOrganizationOwnershipForm({
               await transferOwnershipAction(data);
 
               setIsOpen(false);
+              // A transfer changes the viewer's own permissions, which the
+              // whole layout reads, not one row. The refreshed page was not
+              // always applied (KB-135), so load it again from the server.
+              window.location.reload();
             } catch {
               setError(true);
             }

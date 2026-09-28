@@ -249,17 +249,12 @@ test.describe('Team Ownership Transfer', () => {
     // Transfer ownership to the member
     await teamAccounts.transferOwnership(memberEmail, ownerEmail);
 
-    // Wait for the page to fully load after the transfer
-    await page.waitForTimeout(1000);
-
     // Verify the transfer was successful by checking if the primary owner badge
     // is now on the new owner's row
     const memberRow = page.getByRole('row', { name: memberEmail });
 
     // Check for the primary owner badge on the member's row
-    await expect(memberRow.locator('text=Primary Owner')).toBeVisible({
-      timeout: 5000,
-    });
+    await expect(memberRow.locator('text=Primary Owner')).toBeVisible();
 
     // The original owner should no longer have the primary owner badge
     const ownerRow = page.getByRole('row', { name: ownerEmail.split('@')[0] });
