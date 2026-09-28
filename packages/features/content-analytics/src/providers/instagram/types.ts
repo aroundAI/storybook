@@ -88,6 +88,17 @@ export interface InstagramAudienceData {
 }
 
 /**
+ * The account's unique reach over one window; null when Meta omits it.
+ * `followers` + `nonFollowers` need not equal the total (Meta also answers
+ * UNKNOWN).
+ */
+export interface InstagramAccountReach {
+  accountsReached: number | null;
+  followers: number | null;
+  nonFollowers: number | null;
+}
+
+/**
  * Account-level insights overview
  */
 export interface InstagramAccountInsights {

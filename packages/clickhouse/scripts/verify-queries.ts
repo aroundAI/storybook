@@ -26,6 +26,7 @@ import {
   getClickHouseClient,
   insertChannelDaily,
   insertChannelReachDaily,
+  insertChannelWindows,
   insertRetentionCurves,
   insertSubscriberSnapshot,
   insertVideoAudience,
@@ -39,6 +40,7 @@ import {
   queryBackCatalogShare,
   queryChannelWatchWindow,
   queryCohortMedians,
+  queryCompleteChannelWindowDays,
   queryConnectionVideoIds,
   queryDailyStats,
   queryDailyTimeSeries,
@@ -1452,6 +1454,42 @@ async function assertions() {
       if (kept !== 5200) throw new Error(`expected 5200, got ${kept}`);
       if (lost !== null) throw new Error(`expected null, got ${lost}`);
       return `kept=${kept} lost=${lost}`;
+    },
+  );
+
+  // Migration 016: a day counts as recorded only when all its windows are.
+  await step(
+    'assert: a channel day is complete only with every window',
+    async () => {
+      const connectionId = '16161616-0000-4000-8000-000000000016';
+      const row = (asOf: string, windowDays: number) => ({
+        connectionId,
+        platform: 'instagram' as const,
+        asOf,
+        windowDays,
+        accountsReached: 170,
+        accountsReachedFollowers: 40,
+        accountsReachedNonFollowers: null,
+        source: 'verify',
+      });
+
+      await insertChannelWindows([
+        row('2026-09-26', 7),
+        row('2026-09-26', 23),
+        row('2026-09-26', 30),
+        row('2026-09-27', 7),
+      ]);
+
+      const complete = await queryCompleteChannelWindowDays({
+        connectionId,
+        platform: 'instagram',
+        windowDays: [7, 23, 30],
+        since: '2026-09-01',
+      });
+
+      if (!complete.has('2026-09-26')) throw new Error('complete day missing');
+      if (complete.has('2026-09-27')) throw new Error('partial day counted');
+      return `complete=${[...complete].join(',')}`;
     },
   );
 

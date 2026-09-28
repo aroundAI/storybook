@@ -78,6 +78,7 @@ export type SourceTable =
   | 'channel_daily'
   | 'channel_reach_daily'
   | 'channel_subscribers'
+  | 'channel_windows'
   | 'video_audience';
 
 /**
@@ -979,6 +980,7 @@ export const TABLE_WRITERS: Record<SourceTable, string> = {
   channel_daily: 'insertChannelDaily',
   channel_reach_daily: 'insertChannelReachDaily',
   channel_subscribers: 'insertSubscriberSnapshot',
+  channel_windows: 'insertChannelWindows',
   video_audience: 'insertVideoAudience',
 };
 
@@ -1028,6 +1030,10 @@ export const WRITER_CALL_SITES: Record<SourceTable, readonly string[]> = {
   channel_subscribers: [
     VERIFY_SCRIPT,
     `${CONTENT_ANALYTICS}/server/subscriber-snapshot.ts`,
+  ],
+  channel_windows: [
+    VERIFY_SCRIPT,
+    `${CONTENT_ANALYTICS}/server/channel-reach-windows.ts`,
   ],
   video_audience: [
     VERIFY_SCRIPT,

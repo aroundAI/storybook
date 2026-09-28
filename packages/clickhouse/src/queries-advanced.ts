@@ -1921,6 +1921,82 @@ export async function querySubscriberDeltas(input: {
 }
 
 /**
+ * One channel's unique reach for one window, as the platform answered it
+ * (migration 016). Idempotent per (connection, platform, window, as_of) via
+ * ReplacingMergeTree. Never summed: see the migration.
+ */
+export interface ChannelWindowRow {
+  connectionId: string;
+  platform: 'instagram' | 'facebook';
+  /** Last complete day in the window, YYYY-MM-DD. */
+  asOf: string;
+  windowDays: number;
+  accountsReached: number | null;
+  accountsReachedFollowers: number | null;
+  accountsReachedNonFollowers: number | null;
+  source: string;
+}
+
+/**
+ * The `as_of` days a channel already has every window for — what the nightly
+ * capture skips. Reads dates only, never a reach figure.
+ */
+export async function queryCompleteChannelWindowDays(input: {
+  connectionId: string;
+  platform: ChannelWindowRow['platform'];
+  windowDays: readonly number[];
+  since: string;
+}): Promise<Set<string>> {
+  if (!isClickHouseEnabled()) return new Set();
+
+  const result = await getClickHouseClient().query({
+    query: `
+      SELECT toString(as_of) AS day
+      FROM channel_windows FINAL
+      WHERE connection_id = {connectionId: UUID}
+        AND platform = {platform: String}
+        AND as_of >= {since: Date}
+        AND window_days IN {windowDays: Array(UInt16)}
+      GROUP BY as_of
+      HAVING uniqExact(window_days) = {expected: UInt32}
+    `,
+    query_params: {
+      connectionId: input.connectionId,
+      platform: input.platform,
+      since: input.since,
+      windowDays: [...input.windowDays],
+      expected: input.windowDays.length,
+    },
+    format: 'JSONEachRow',
+  });
+
+  const rows = await result.json<{ day: string }>();
+
+  return new Set(rows.map((row) => row.day));
+}
+
+export async function insertChannelWindows(
+  rows: ChannelWindowRow[],
+): Promise<void> {
+  if (!isClickHouseEnabled() || rows.length === 0) return;
+
+  await getClickHouseClient().insert({
+    table: 'channel_windows',
+    values: rows.map((row) => ({
+      connection_id: row.connectionId,
+      platform: row.platform,
+      as_of: row.asOf,
+      window_days: row.windowDays,
+      accounts_reached: row.accountsReached,
+      accounts_reached_followers: row.accountsReachedFollowers,
+      accounts_reached_non_followers: row.accountsReachedNonFollowers,
+      source: row.source,
+    })),
+    format: 'JSONEachRow',
+  });
+}
+
+/**
  * One subscriber anchor. Idempotent per (connection_id, snapshot_date) via
  * ReplacingMergeTree, whose version is the millisecond-resolution
  * `inserted_at` — see migration 008 for why second resolution is not enough.

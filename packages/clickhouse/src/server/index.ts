@@ -83,10 +83,13 @@ export {
 } from '../lib/video-age';
 
 export {
+  insertChannelWindows,
   insertSubscriberSnapshot,
+  queryCompleteChannelWindowDays,
   querySubscriberAnchors,
   querySubscriberDeltas,
 } from '../queries-advanced';
+export type { ChannelWindowRow } from '../queries-advanced';
 
 export {
   queryLatestSubscriberLevels,
