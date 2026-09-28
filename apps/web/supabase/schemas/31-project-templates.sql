@@ -79,7 +79,7 @@ create policy "project_templates_read" on public.project_templates for select
       -- User's own account templates
       account_id in (
         select a.id from public.accounts a
-        where a.primary_owner_user_id = auth.uid()
+        where a.primary_owner_user_id = (select auth.uid())
         or public.has_role_on_account(a.id)
       )
     )
@@ -91,7 +91,7 @@ create policy "project_templates_create" on public.project_templates for insert
     is_system = false
     and account_id in (
       select a.id from public.accounts a
-      where a.primary_owner_user_id = auth.uid()
+      where a.primary_owner_user_id = (select auth.uid())
       or public.has_role_on_account(a.id)
     )
   );
@@ -103,7 +103,7 @@ create policy "project_templates_update" on public.project_templates for update
     and deleted_at is null
     and account_id in (
       select a.id from public.accounts a
-      where a.primary_owner_user_id = auth.uid()
+      where a.primary_owner_user_id = (select auth.uid())
       or public.has_role_on_account(a.id)
     )
   );
@@ -114,7 +114,7 @@ create policy "project_templates_delete" on public.project_templates for delete
     is_system = false
     and account_id in (
       select a.id from public.accounts a
-      where a.primary_owner_user_id = auth.uid()
+      where a.primary_owner_user_id = (select auth.uid())
       or public.has_role_on_account(a.id)
     )
   );
