@@ -351,7 +351,7 @@ notes: |
     scheduled publish should upload, which belongs to the publishing pipeline.
   - **Source B fallbacks** — `connection-actions.ts:85,328`,
     `publish-hub.tsx:81`, `platform-connections.tsx:374`,
-    `project-publishing-configs.tsx:92`, `episode-publishing-configs.tsx:121`,
+    `project-publishing-configs.tsx:92`, `episode-publishing-configs.tsx` (deleted since, never rendered),
     `publish-screen.tsx:657,819,1042,1081`. The column is `NOT NULL`, so each
     is unreachable; they date from when the column might not have existed.
     Left alone because FILM-1711 is editing the same files.
