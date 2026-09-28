@@ -39,6 +39,7 @@ export function UpdateMemberRoleDialog({
   teamAccountId,
   userRole,
   userRoleHierarchy,
+  onUpdated,
 }: {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
@@ -46,6 +47,7 @@ export function UpdateMemberRoleDialog({
   teamAccountId: string;
   userRole: Role;
   userRoleHierarchy: number;
+  onUpdated?: (role: Role) => void;
 }) {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -68,6 +70,7 @@ export function UpdateMemberRoleDialog({
               teamAccountId={teamAccountId}
               userRole={userRole}
               roles={data}
+              onUpdated={onUpdated}
             />
           )}
         </RolesDataProvider>
@@ -82,12 +85,14 @@ function UpdateMemberForm({
   teamAccountId,
   setIsOpen,
   roles,
+  onUpdated,
 }: React.PropsWithChildren<{
   userId: string;
   userRole: Role;
   teamAccountId: string;
   setIsOpen: (isOpen: boolean) => void;
   roles: Role[];
+  onUpdated?: (role: Role) => void;
 }>) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<boolean>();
@@ -102,6 +107,7 @@ function UpdateMemberForm({
           role,
         });
 
+        onUpdated?.(role);
         setIsOpen(false);
       } catch {
         setError(true);

@@ -22,11 +22,13 @@ export function RemoveMemberDialog({
   setIsOpen,
   teamAccountId,
   userId,
+  onRemoved,
 }: {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   teamAccountId: string;
   userId: string;
+  onRemoved?: () => void;
 }) {
   return (
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
@@ -45,6 +47,7 @@ export function RemoveMemberDialog({
           setIsOpen={setIsOpen}
           accountId={teamAccountId}
           userId={userId}
+          onRemoved={onRemoved}
         />
       </AlertDialogContent>
     </AlertDialog>
@@ -55,10 +58,12 @@ function RemoveMemberForm({
   accountId,
   userId,
   setIsOpen,
+  onRemoved,
 }: {
   accountId: string;
   userId: string;
   setIsOpen: (isOpen: boolean) => void;
+  onRemoved?: () => void;
 }) {
   const [isSubmitting, startTransition] = useTransition();
   const [error, setError] = useState<boolean>();
@@ -68,6 +73,7 @@ function RemoveMemberForm({
       try {
         await unwrap(removeMemberFromAccountAction({ accountId, userId }));
 
+        onRemoved?.();
         setIsOpen(false);
       } catch {
         setError(true);

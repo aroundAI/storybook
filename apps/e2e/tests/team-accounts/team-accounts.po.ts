@@ -192,12 +192,13 @@ export class TeamAccountsPageObject {
       await this.page.click(`[data-test="role-option-${newRole}"]`);
 
       // Click the confirm button
-      const click = this.page.click('[data-test="confirm-update-member-role"]');
+      await this.page.click('[data-test="confirm-update-member-role"]');
 
-      // Wait for the update to complete and page to reload
-      const response = this.page.waitForURL('**/home/*/members');
-
-      return Promise.all([click, response]);
+      // The dialog closes only when the action has succeeded. Waiting for
+      // the members URL did nothing: the page is already on it (KB-135).
+      await expect(
+        this.page.locator('[data-test="confirm-update-member-role"]'),
+      ).toBeHidden();
     }).toPass();
   }
 
