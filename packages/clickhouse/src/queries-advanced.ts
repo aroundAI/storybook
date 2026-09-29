@@ -309,9 +309,9 @@ export async function queryMedianViewsPerVideo(input: {
         SELECT
           toString(${bucketFn}(d.published_at)) as bucket,
           count() as video_count,
-          quantileExact(0.5)(v.total_views) as median_views,
-          quantileExact(0.25)(v.total_views) as p25_views,
-          quantileExact(0.75)(v.total_views) as p75_views,
+          ifNotFinite(quantileExactInclusive(0.5)(v.total_views), 0) as median_views,
+          ifNotFinite(quantileExactInclusive(0.25)(v.total_views), 0) as p25_views,
+          ifNotFinite(quantileExactInclusive(0.75)(v.total_views), 0) as p75_views,
           avg(v.total_views) as mean_views
         FROM (${dimSubquery(conditions, latest)}) d
         LEFT JOIN (
@@ -328,9 +328,9 @@ export async function queryMedianViewsPerVideo(input: {
         SELECT
           bucket,
           count() as video_count,
-          quantileExact(0.5)(video_views) as median_views,
-          quantileExact(0.25)(video_views) as p25_views,
-          quantileExact(0.75)(video_views) as p75_views,
+          ifNotFinite(quantileExactInclusive(0.5)(video_views), 0) as median_views,
+          ifNotFinite(quantileExactInclusive(0.25)(video_views), 0) as p25_views,
+          ifNotFinite(quantileExactInclusive(0.75)(video_views), 0) as p75_views,
           avg(video_views) as mean_views
         FROM (
           SELECT
@@ -638,7 +638,7 @@ export async function queryBackCatalogShare(input: {
  * and distorts the newest cohort most, which is the one a reader most wants
  * to judge.
  *
- * `quantileExact`, not `quantile`: cohorts are small, and an approximate
+ * `quantileExactInclusive`, not `quantile`: cohorts are small, and an approximate
  * quantile would return a different number run to run.
  *
  * The join is LEFT so a video with no ingested rows counts as a zero rather
@@ -695,9 +695,9 @@ export async function queryCohortMedians(input: {
       const eligible = `age_days >= ${days} AND ingest_lag_days < ${days}`;
 
       return `
-      quantileExactIf(0.5)(v_${days}, ${eligible}) as median_${days},
-      quantileExactIf(0.25)(v_${days}, ${eligible}) as p25_${days},
-      quantileExactIf(0.75)(v_${days}, ${eligible}) as p75_${days},
+      ifNotFinite(quantileExactInclusiveIf(0.5)(v_${days}, ${eligible}), 0) as median_${days},
+      ifNotFinite(quantileExactInclusiveIf(0.25)(v_${days}, ${eligible}), 0) as p25_${days},
+      ifNotFinite(quantileExactInclusiveIf(0.75)(v_${days}, ${eligible}), 0) as p75_${days},
       avgIf(v_${days}, ${eligible}) as mean_${days},
       countIf(${eligible}) as mature_count_${days},
       countIf(age_days >= ${days} AND ingest_lag_days >= ${days}) as predates_ingest_count_${days}`;
@@ -1098,13 +1098,13 @@ export async function querySegmentPerformance(input: {
       count() as video_count,
       countIf(${eligible}) as mature_video_count,
       countIf(age_days >= ${days} AND ingest_lag_days >= ${days}) as predates_ingest_count,
-      quantileExactIf(0.5)(v_views, ${eligible}) as median_views,
+      ifNotFinite(quantileExactInclusiveIf(0.5)(v_views, ${eligible}), 0) as median_views,
       avgIf(v_views, ${eligible}) as mean_views,
-      quantileExactIf(0.25)(v_views, ${eligible}) as p25_views,
-      quantileExactIf(0.75)(v_views, ${eligible}) as p75_views,
+      ifNotFinite(quantileExactInclusiveIf(0.25)(v_views, ${eligible}), 0) as p25_views,
+      ifNotFinite(quantileExactInclusiveIf(0.75)(v_views, ${eligible}), 0) as p75_views,
       minIf(v_views, ${eligible}) as min_views,
       maxIf(v_views, ${eligible}) as max_views,
-      quantileExactIf(0.5)(v_watch, ${eligible}) as median_watch,
+      ifNotFinite(quantileExactInclusiveIf(0.5)(v_watch, ${eligible}), 0) as median_watch,
       sumIf(v_views, ${eligible}) as total_views,
       sumIf(v_impressions, ${eligible}) as impressions,
       sumIf(v_ctr_weighted, ${eligible}) as ctr_weighted
