@@ -20,9 +20,11 @@ import { graphError, graphPath, metaAuthorize } from './errors';
  * `POST {upload_url}` with `Authorization: OAuth …` and `file_url`; then
  * upload_phase=finish, video_state=PUBLISHED; `GET /{video-id}?fields=status`.
  *
- * Not served (see specs/known-bugs/leads/2026-09-29-facebook-video-fields.md):
- * a Video's `permalink_url` and `DELETE /{video-id}`, which Meta's Video
- * reference does not document, and the non-Reel `/{page-id}/videos` upload.
+ * Observed, not documented (the owner's live Page, 2026-09-29): a Video's
+ * `permalink_url` — a path relative to facebook.com, `/reel/{id}/`, not a URL
+ * — and `DELETE /{video-id}`, answered `{ success: true }`. Neither is on the
+ * Video reference or the Reels guide. Not served: the non-Reel
+ * `/{page-id}/videos` upload.
  */
 
 const PUBLISH_SCOPE = ['instagram_content_publish'];
@@ -48,6 +50,7 @@ interface FacebookReel {
   uploaded: boolean;
   published: boolean;
   description: string;
+  deleted?: boolean;
 }
 
 /** Digits, as Meta's ids are: a record id with its characters folded. */
@@ -280,7 +283,24 @@ const rupload: SocialRoute = ({ url, method, req, res, social }) => {
   return true;
 };
 
-/** GET /{video-id}?fields=status — the Reels guide's status object. */
+/** The Graph API's answer for an id that is not (or is no longer) there. */
+function noSuchObject(res: Parameters<SocialRoute>[0]['res'], id: string) {
+  sendJson(
+    res,
+    400,
+    graphError(
+      100,
+      `Unsupported get request. Object with ID '${id}' does not exist, cannot be loaded due to missing permissions, or does not support this operation.`,
+      'GraphMethodException',
+      33,
+    ),
+  );
+}
+
+/**
+ * GET /{video-id}?fields=status,permalink_url — the Reels guide's status
+ * object, and the permalink as Meta answered it on a live Page: relative.
+ */
 const videoStatus: SocialRoute = ({ url, method, req, res, social }) => {
   const path = graphPath(url.pathname);
   const id = path && /^\/(\d+)$/.exec(path)?.[1];
@@ -288,6 +308,11 @@ const videoStatus: SocialRoute = ({ url, method, req, res, social }) => {
   const reel = social.list<FacebookReel>('fb-reel').find((r) => r.id === id);
   if (!reel) return false;
   if (!metaAuthorize(url, req, res, social)) return true;
+  if (reel.deleted) {
+    noSuchObject(res, id);
+    return true;
+  }
+  const fields = (url.searchParams.get('fields') ?? '').split(',');
 
   const processing = social.now() - reel.createdMs < PROCESSING_MS;
   sendJson(res, 200, {
@@ -298,8 +323,28 @@ const videoStatus: SocialRoute = ({ url, method, req, res, social }) => {
           ? 'processing'
           : 'ready',
     },
+    ...(fields.includes('permalink_url') && {
+      permalink_url: `/reel/${id}/`,
+    }),
     id,
   });
+  return true;
+};
+
+/** DELETE /{video-id} — `{ success: true }`, as a live Page answered it. */
+const deleteVideo: SocialRoute = ({ url, method, req, res, social }) => {
+  const path = graphPath(url.pathname);
+  const id = path && /^\/(\d+)$/.exec(path)?.[1];
+  if (method !== 'DELETE' || !id) return false;
+  const reel = social.list<FacebookReel>('fb-reel').find((r) => r.id === id);
+  if (!reel) return false;
+  if (!metaAuthorize(url, req, res, social, PAGE_SCOPE)) return true;
+  if (reel.deleted) {
+    noSuchObject(res, id);
+    return true;
+  }
+  reel.deleted = true;
+  sendJson(res, 200, { success: true });
   return true;
 };
 
@@ -310,4 +355,5 @@ export const metaPublishingRoutes: readonly SocialRoute[] = [
   videoReels,
   rupload,
   videoStatus,
+  deleteVideo,
 ];

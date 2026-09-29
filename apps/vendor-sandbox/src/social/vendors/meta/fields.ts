@@ -186,12 +186,20 @@ export const META_SERVED: readonly ServedEndpoint[] = [
     method: 'GET',
     path: '/{version}/{video-id}',
     block: 'facebook/reels-publishing',
-    reads: ['video_status'],
+    reads: ['video_status', 'permalink_url'],
     envelope: cite(
       'https://developers.facebook.com/docs/video-api/guides/reels-publishing/',
       'status',
       'id',
     ),
+  },
+  {
+    origin: 'meta',
+    method: 'DELETE',
+    path: '/{version}/{video-id}',
+    block: 'facebook/reels-publishing',
+    reads: ['success'],
+    envelope: [],
   },
   {
     origin: 'meta',

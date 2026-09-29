@@ -1048,6 +1048,8 @@ video_id                   # upload_phase=start
 upload_url                 # upload_phase=start; the rupload host
 success                    # the upload, and upload_phase=finish
 video_status               # GET /{video-id}?fields=status: uploading, processing, ready, error, expired
+permalink_url              # GET /{video-id}; observed, not on this guide or the Video reference (see ledger): a path, /reel/{id}/
+success                    # DELETE /{video-id}; observed, not documented (see ledger)
 ```
 
 <!-- fields: facebook/video-insights source: https://developers.facebook.com/docs/graph-api/reference/video/video_insights/ -->
@@ -1169,7 +1171,8 @@ _Verified: 2026-09-21_
 ## Documented-vs-inferred ledger
 
 Everything in this document is vendor-documented **except** the rows below, which are
-inferred and must be labelled as such wherever they are used.
+inferred, or observed on a live account without a page that documents them, and must be
+labelled as such wherever they are used.
 
 | Claim | Basis | Status |
 |---|---|---|
@@ -1181,7 +1184,10 @@ inferred and must be labelled as such wherever they are used.
 | A token missing a scope gets 403 `insufficientPermissions`, "Request had insufficient authentication scopes." from the Analytics and Reporting APIs | Google's auth layer's usual wording; the YouTube Data errors page words its `insufficientPermissions` message differently. `isScopeMissingError` matches either. The sandbox (FILM-1802) serves this wording | inferred |
 | A revenue metric asked without `yt-analytics-monetary.readonly` gets 403 `Forbidden` | Documented that revenue needs the scope; the error's exact shape is not. The sandbox serves 403 `forbidden` | inferred |
 | Account insights accept `since`/`until` with `metric_type=total_value` | The reference neither states nor forbids it; `getAccountInsights` relies on it | inferred |
-| Instagram watch-time fields are in milliseconds | Community consensus; the reference states no unit | inferred |
+| Instagram watch-time fields are in milliseconds | The reference states no unit. Observed on the owner's business account: Meta's metric titles say milliseconds (2026-09-28), and a Reel with 221 views read average 6,194 and total 749,526 (2026-09-29) | **observed** |
+| A Facebook Video's `permalink_url` | On neither the Video reference nor the Reels guide. Observed on the owner's Page, 2026-09-29: returned, as a path relative to facebook.com (`/reel/{id}/`), not a URL. `getVideoStatus` prefixes `https://www.facebook.com` | **observed** |
+| `DELETE /{video-id}` answers `{ "success": true }` | The Video reference has no Deleting section. Observed on the owner's Page, 2026-09-29 | **observed** |
+| Reading a deleted Video gets code 100 (`GraphMethodException`, subcode 33) | The Graph API's usual answer for a missing object; not run after the delete above. The sandbox serves it | inferred |
 | Facebook `post_video_avg_time_watched` denominator is initial plays | Business Help Center; the API reference does not state it | inferred |
 | Instagram media insights ≈ 2 years, account ≈ 90 days | Two Meta pages disagree; this reconciles them | inferred |
 | TikTok app review takes 1–2 weeks | Third-party integrator reports, not TikTok | inferred |

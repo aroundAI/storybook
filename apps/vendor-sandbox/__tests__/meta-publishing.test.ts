@@ -239,6 +239,47 @@ describe('Meta sandbox: publishing a Reel through the app providers', () => {
     );
   });
 
+  // Observed on the owner's Page (2026-09-29): permalink_url is a path, and
+  // DELETE answers { success: true }. The provider makes the path a link.
+  it("the app's FacebookProvider reads a relative permalink as a link, then deletes the Reel", async () => {
+    const { FacebookProvider } = await import(
+      '@kit/publishing/providers/facebook'
+    );
+    const provider = new FacebookProvider(pageToken, pageId);
+    const { videoId } = await provider.uploadVideo({
+      videoPath: 'https://cdn.example.org/pier.mp4',
+      title: 'Pier',
+      description: 'The pier at noon',
+      isReel: true,
+      published: true,
+    } as never);
+
+    const raw = await graph(`/${videoId}`, {
+      fields: 'status,permalink_url',
+      access_token: pageToken,
+    });
+    expect(
+      undeclaredKeys(entry('GET', '/{version}/{video-id}'), raw.body),
+    ).toEqual([]);
+    expect((raw.body as { permalink_url: string }).permalink_url).toBe(
+      `/reel/${videoId}/`,
+    );
+    expect((await provider.getVideoStatus(videoId)).videoUrl).toBe(
+      `https://www.facebook.com/reel/${videoId}/`,
+    );
+
+    await provider.deleteVideo(videoId);
+    const gone = await graph(`/${videoId}`, {
+      fields: 'status',
+      access_token: pageToken,
+    });
+    expect(gone.status).toBe(400);
+    expect((gone.body as { error: { code: number } }).error.code).toBe(100);
+    await expect(provider.deleteVideo(videoId)).rejects.toThrow(
+      /delete failed/,
+    );
+  });
+
   it('publishing without instagram_content_publish is refused with code 10', async () => {
     const { access } = sandbox.social.issueTokens(
       'facebook',
