@@ -3,7 +3,7 @@ title: "Transaction Functions"
 phase: 1
 phase_name: "Foundation"
 category: db_function
-status: PARTIAL
+status: DONE
 audited: "2026-09-23"
 effort: M
 dependencies:
@@ -67,73 +67,70 @@ db_function:
       returns: "TABLE(job_type VARCHAR(50), provider VARCHAR(50), total_cost_cents BIGINT, job_count BIGINT, completed_count BIGINT, failed_count BIGINT)"
 acceptance_criteria:
   - text: "`create_character_with_details` creates both records atomically"
-    met: false
-    reason: "no longer true — inserts `character_details.voice_asset_id`, renamed to `elevenlabs_voice_id` in `20251225160000`; every call fails (`apps/web/supabase/migrations/20251207165513_film-studio-functions.sql:45`)"
+    met: true
+    evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:56"
   - text: "`create_character_with_details` rolls back on any failure"
-    met: false
-    reason: "unverified — needs a pgTAP test; no test or app code calls any of these five functions"
+    met: true
+    evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:76"
   - text: "`update_episode_with_lock` returns conflict data when version mismatch"
-    met: false
-    reason: "unverified — needs a pgTAP test; none exists"
+    met: true
+    evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:113"
   - text: "`update_episode_with_lock` increments version on success"
-    met: false
-    reason: "unverified — needs a pgTAP test; none exists"
+    met: true
+    evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:96"
   - text: "`batch_create_shots` deletes existing shots before inserting new ones"
-    met: false
-    reason: "unverified — needs a pgTAP test; none exists"
+    met: true
+    evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:184"
   - text: "`batch_create_shots` returns array of new shot IDs"
     met: true
-    evidence: null
+    evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:165"
   - text: "`soft_delete_episode` cancels pending generation jobs"
-    met: false
-    reason: "unverified — needs a pgTAP test; none exists"
+    met: true
+    evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:293"
   - text: "`get_project_generation_costs` aggregates costs correctly"
-    met: false
-    reason: "unverified — needs a pgTAP test; none exists"
+    met: true
+    evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:235"
   - text: "All functions use `SECURITY DEFINER` for RLS bypass"
     met: true
-    evidence: null
+    evidence: "apps/web/supabase/migrations/20251207165513_film-studio-functions.sql:22"
   - text: "All functions have proper error handling with meaningful messages"
     met: true
-    evidence: null
+    evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:76"
 test_plan:
   unit:
     - text: "Test character creation with valid data"
-      met: false
-      reason: "not tested: create_character_with_details fails on every call, because it writes character_details.voice_asset_id, which 20251225160000 renamed to elevenlabs_voice_id (KB-140)"
+      met: true
+      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:56"
     - text: "Test character creation with missing required fields (should fail)"
       met: true
-      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:42"
+      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:38"
     - text: "Test optimistic lock success case"
       met: true
-      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:63"
+      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:96"
     - text: "Test optimistic lock conflict detection"
       met: true
-      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:80"
+      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:113"
     - text: "Test batch shot creation with empty array"
       met: true
-      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:165"
+      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:198"
     - text: "Test batch shot creation with multiple shots"
       met: true
-      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:132"
+      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:165"
     - text: "Test cost aggregation with various job types"
       met: true
-      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:202"
+      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:235"
   integration:
     - text: "Test transaction rollback on character creation failure"
-      met: false
-      reason: "not tested: create_character_with_details fails before it can roll anything back (KB-140); the rollback cannot be observed until it is fixed"
+      met: true
+      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:76"
     - text: "Test concurrent episode updates trigger conflict"
       met: true
-      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:98"
+      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:131"
     - text: "Test RLS policies are respected within functions"
       met: true
-      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:179"
+      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:212"
   e2e: []
-remaining:
-  - criterion: "`create_character_with_details` creates both records atomically"
-    reason: "Its insert names `character_details.voice_asset_id` (`apps/web/supabase/migrations/20251207165513_film-studio-functions.sql:45`), a column renamed to `elevenlabs_voice_id` in `20251225160000`, so every call fails. No app code calls any of the five functions (characters are written by `packages/features/assets/src/lib/server/character.mutations.ts:89`), so the choice is fix or drop them."
-    closed_by: "owner"
+remaining: []
 open_questions:
   - "[x] Should `batch_create_shots` update episode status? **Yes, to 'storyboard'**"
   - "[ ] Should we add a `restore_episode` function for soft delete recovery? (non-blocking)"
@@ -142,7 +139,7 @@ notes: |
   - **Priority:** P0 (Critical)
   - **Effort:** M (4-8 hours)
   - **Blocks:** FILM-202 (Character Actions), FILM-303 (Shot CRUD)
-  - **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ Completed)
+  - **Status:** ✅ DONE (KB-140 fixed the character function; every function now has a pgTAP test)
 
   ## Specification
   ### Requirements
