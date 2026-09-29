@@ -206,11 +206,12 @@ describe('Meta sandbox: Instagram reads, through the app provider', () => {
     now = T0 + 5 * DAY;
     const info = await graph(`/${SEEDED_REEL}`, {
       access_token: pageToken,
-      fields: 'media_type,media_product_type',
+      fields: 'media_type,media_product_type,reposts_count',
     });
     expect(
       undeclaredKeys(entry('GET', '/{version}/{ig-media-id}'), info.body),
     ).toEqual([]);
+    const reposts = (info.body as { reposts_count: number }).reposts_count;
 
     const raw = await graph(`/${SEEDED_REEL}/insights`, {
       access_token: pageToken,
@@ -247,6 +248,10 @@ describe('Meta sandbox: Instagram reads, through the app provider', () => {
     ).getMediaInsights({ mediaId: SEEDED_REEL });
     expect(insights.totals.views).toBe(value.views);
     expect(insights.totals.reach).toBe(value.reach);
+    // FILM-1712: reposts ride on the media-info call, a count no larger than
+    // the shares that carry them.
+    expect(insights.totals.reposts).toBe(reposts);
+    expect(reposts).toBeLessThanOrEqual(value.shares!);
   });
 
   it('account reach: unique, not additive, split, and never over 30 days', async () => {

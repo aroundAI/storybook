@@ -10,7 +10,7 @@ import { meterInstagramCall } from './usage';
  * (`instagram-insights.ts`, the connect callback):
  *
  * - `GET /{ig-user-id}?fields=…` — `instagram/user-fields`;
- * - `GET /{ig-media-id}?fields=media_type,media_product_type` —
+ * - `GET /{ig-media-id}?fields=media_type,media_product_type,reposts_count` —
  *   `instagram/media-fields`;
  * - `GET /{ig-media-id}/insights?metric=…` — `instagram/media-insights`;
  * - `GET /{ig-user-id}/insights?metric=…&metric_type=total_value` — reach
@@ -26,6 +26,13 @@ import { meterInstagramCall } from './usage';
  */
 
 const INSIGHTS_SCOPE = ['instagram_manage_insights'];
+
+/**
+ * Reposts per share. The growth model draws no repost ratio of its own —
+ * adding one would move every seeded figure — so a post's `reposts_count` is
+ * a fixed share of its shares: lifetime, and never falling, as Meta's is.
+ */
+const REPOSTS_PER_SHARE = 0.4;
 const BASIC_SCOPE = ['instagram_basic', 'instagram_manage_insights'];
 
 /** Meta's longest `since`/`until` span for account insights. */
@@ -181,6 +188,9 @@ const nodes: SocialRoute = ({ url, method, req, res, social, self, about }) => {
     media_type: 'VIDEO',
     media_product_type: 'REELS',
     permalink: `https://www.instagram.com/reel/${shortcode(post.id)}/`,
+    reposts_count: Math.floor(
+      social.cumulative(post, 'shares') * REPOSTS_PER_SHARE,
+    ),
   };
   sendJson(res, 200, {
     ...Object.fromEntries(

@@ -70,6 +70,16 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/ingest.test.ts",
       "pattern": "keeps Instagram reposts"
+    },
+    {
+      "name": "R5 the sandbox's media node stops serving reposts",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/vendors/meta/insights.ts",
+      "find": "    reposts_count: Math.floor(\n      social.cumulative(post, 'shares') * REPOSTS_PER_SHARE,\n    ),\n",
+      "replace": "",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/meta-fidelity.test.ts",
+      "pattern": "short-lived token → long-lived token|media insights for a seeded Reel"
     }
   ]
 }

@@ -95,7 +95,7 @@ export const META_SERVED: readonly ServedEndpoint[] = [
     method: 'GET',
     path: '/{version}/{ig-media-id}',
     block: 'instagram/media-fields',
-    reads: ['media_type', 'media_product_type', 'permalink'],
+    reads: ['media_type', 'media_product_type', 'permalink', 'reposts_count'],
     envelope: cite(MEDIA_PAGE, 'id'),
   },
   {
