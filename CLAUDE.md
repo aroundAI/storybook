@@ -744,15 +744,58 @@ git checkout -b feat/feature-name main
 git push -u origin feat/feature-name
 ```
 
-**Pull Requests**:
-```bash
-# Create PR via GitHub CLI
-gh pr create --base main --head feat/feature-name
+### Opening a pull request ⚠️
 
-# Or push and use the GitHub URL
-git push origin feat/feature-name
-# Then visit the URL in the terminal output
+**A PR says what it does in its title, and updates that record in the same
+PR.** The 2026-09-29 records audit found the specs lagging merged work:
+FILM-1802 still said "not served" after #473 served it; KB-113, KB-125 and
+FILM-1711 cited PRs that had merged into a dead branch instead of #422, the
+one that reached main; KB-128 stayed open after the same bug was fixed as
+KB-137. None of it was visible without reading every PR.
+
+**Title: `type(IDS): what now happens, in plain words`**
+
+- `type` is one of `feat`, `fix`, `docs`, `test`, `chore`, `ci`, `refactor`,
+  `perf`, `build`, `revert`.
+- `IDS` are the specs and known bugs this PR *does*, comma-separated:
+  `fix(KB-60, KB-42): …`. One it only mentions stays out of the
+  parentheses: `fix(KB-111): … (KB-114 filed)`. With no spec or KB, name the
+  area: `chore(local-ci): …`.
+
+**Records, in the same PR:**
+
+- `feat(FILM-x)` / `fix(FILM-x)`: update FILM-x. Tick the criteria it meets
+  with evidence, rewrite the reasons it changes, and cite `#<PR>`.
+- `fix(KB-n)`: `status`, `fixed_in: ["#<PR>"]`, `fixed_summary` and the
+  banner, as `specs/known-bugs/README.md` says.
+- **Re-lands:** a PR merged into another branch never reached main. The
+  records cite the PR that did: `"#422 (re-land of #395)"`.
+- **Duplicates:** when a fix closes an older KB too, close that one pointing
+  at the fix, and name it in the fix's banner.
+- `docs`, `test`, `chore`, `ci`, `refactor`, `perf` and `build` owe no record
+  unless they change a criterion.
+
+**Labels** mirror the title: `type: <type>`; `known-bug` when a KB is in the
+scope; `spec` when a FILM spec is; `area: <area>` from that spec's phase.
+Pass them to `gh pr create --label`, or let the checker add them. A PR
+closed without merging gets `superseded` as well.
+
+**Body:** What, Why, Evidence, and **Records updated**, listing the spec and
+KB files the PR changes.
+
+```bash
+gh pr create --base main --head feat/film-1802-x \
+  --title "feat(FILM-1802): the sandbox serves X" \
+  --label "type: feat,spec,area: vendor-sandbox" --body-file body.md
+
+pnpm prs:records --pr <n>                 # this PR: title, IDs, records, labels
+pnpm prs:records --pr <n> --apply-labels  # add the labels it is missing
+pnpm prs:records --since 2026-09-22       # audit everything merged since a date
 ```
+
+Run `pnpm prs:records --pr <n>` before asking for a merge. It exits non-zero
+on any gap, and PRs merged into a branch other than main are skipped (their
+work reaches main in a later PR, which is the one checked).
 
 ## Verification Steps
 
@@ -760,6 +803,6 @@ After implementation:
 1. **Run `pnpm typecheck`** - Must pass without errors
 2. **Run `pnpm lint:fix`** - Auto-fix issues
 3. **Run `pnpm format:fix`** - See Code Quality section above; CI's 💅 Format job fails if Prettier would change a file
-4. **Verify spec compliance** - If implementing a feature from `specs/`, ensure the spec document is updated to match any implementation changes
+4. **Verify spec compliance** - If implementing a feature from `specs/`, ensure the spec document is updated to match any implementation changes, citing the PR; `pnpm prs:records --pr <n>` checks it. See [Opening a pull request](#opening-a-pull-request-)
 5. **Screenshot every UI change in the PR** - Required, not optional. See
    [Screenshots are required for UI changes](#screenshots-are-required-for-ui-changes)

@@ -43,6 +43,7 @@
     "specs:citations": "tsx packages/shared/__tests__/spec-citations/cli.ts",
     "specs:index": "tsx packages/shared/__tests__/spec-index/cli.ts",
     "specs:known-bugs": "tsx packages/shared/__tests__/known-bugs/cli.ts",
+    "prs:records": "tsx packages/shared/__tests__/pr-records/cli.ts",
     "sst": "sst",
     "sst:deploy": "sst deploy",
     "sst:dev": "sst dev",

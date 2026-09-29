@@ -178,6 +178,10 @@ notes: |
 
   ## 9. What was found and done (2026-09-22)
 
+  Landed on main as #304: the first PR, #291, merged into FILM-1723's branch
+  after that branch had already merged, so none of it reached main until the
+  re-land.
+
   Stacked on FILM-1723 (#284), which had already put Meta, X and LinkedIn's version
   in packages/shared/src/vendors/ with each host in a private *_HOST constant. This
   spec swapped those constants for the resolver and swept everything #284 left.

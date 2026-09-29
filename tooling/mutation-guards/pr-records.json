@@ -1,0 +1,25 @@
+{
+  "feature": "PR records (2026-09-29 records audit)",
+  "mutations": [
+    {
+      "name": "R1 a feat or fix owes its spec no record again",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/pr-records/records.ts",
+      "find": "  const recordOwed = parsed.type === 'feat' || parsed.type === 'fix';\n",
+      "replace": "  const recordOwed = false;\n",
+      "cwd": "packages/shared",
+      "test": "__tests__/pr-records.test.ts",
+      "pattern": "neither updates nor cites"
+    },
+    {
+      "name": "R2 a re-land entry stops counting for the PR it re-lands",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/pr-records/records.ts",
+      "find": "        !fixedIn.some((entry) => new RegExp(`${ref}\\\\b`).test(entry))\n",
+      "replace": "        !fixedIn.some((entry) => entry === ref)\n",
+      "cwd": "packages/shared",
+      "test": "__tests__/pr-records.test.ts",
+      "pattern": "re-land entry"
+    }
+  ]
+}
