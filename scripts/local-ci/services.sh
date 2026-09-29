@@ -8,7 +8,7 @@ stop_server() { [ -n "$SERVER_PID" ] && { pkill -P "$SERVER_PID" 2>/dev/null; ki
 "$CI/dblock.sh" acquire "localci-$PR" "local CI services for #$PR" >/dev/null
 trap 'stop_server; "$CI/dblock.sh" release "localci-$PR" >/dev/null' EXIT
 SBENV='eval "$(cd apps/web && supabase status -o env | sed "s/^/export /")"'
-run "🐘 Supabase DB" "apply every migration (db reset)" "cd apps/web && supabase db reset"
+run "🐘 Supabase DB" "apply every migration (db reset)" "cd apps/web && bash $CI/db-reset.sh"
 run "🐘 Supabase DB" "types are generated" "cd apps/web && pnpm run check:types-current"
 run "🐘 Supabase DB" "verify pagination and RLS (PostgREST)" "$SBENV; export NEXT_PUBLIC_SUPABASE_URL=\$API_URL NEXT_PUBLIC_SUPABASE_ANON_KEY=\$ANON_KEY SUPABASE_SERVICE_ROLE_KEY=\$SERVICE_ROLE_KEY; pnpm --filter @kit/supabase verify"
 run "🐘 Supabase DB" "verify canon memory builder" "$SBENV; export NEXT_PUBLIC_SUPABASE_URL=\$API_URL SUPABASE_SERVICE_ROLE_KEY=\$SERVICE_ROLE_KEY E2E_SUPABASE_URL=\$API_URL E2E_SUPABASE_ANON_KEY=\$ANON_KEY E2E_SUPABASE_SERVICE_ROLE_KEY=\$SERVICE_ROLE_KEY; pnpm --filter @kit/episodes verify"

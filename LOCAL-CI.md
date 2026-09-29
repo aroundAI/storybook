@@ -131,6 +131,12 @@ LANE=B scripts/local-ci/pipeline.sh 352  # lane B, at the same time
 
 ## Gotchas (each one cost hours the first time)
 
+- **`supabase db reset` sometimes races its own setup:** `LegacyDbSetupError:
+  error running container: exit 1`, with `FATAL: role "postgres" does not
+  exist` in the db log, and every later stage fails. `db-reset.sh` retries
+  that error once (twice in ~60 resets on 2026-09-29); any other failure
+  still fails at once.
+
 - **A stacked PR whose parent merged: retarget first, then push.** `gh pr edit
   <n> --base main`, *then* push the rebase. Pushed while the PR still targets
   the merged parent's branch, the push starts no `pull_request` runs (GitHub
