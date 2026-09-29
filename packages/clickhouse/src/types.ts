@@ -81,6 +81,11 @@ export interface VideoMetric {
    * sums over one post's days and never across posts.
    */
   accounts_reached?: number | null;
+  /**
+   * Reposts added that day (migration 018, FILM-1712). Instagram FEED and
+   * REELS only; **null means not measured**.
+   */
+  reposts?: number | null;
   extra_metrics: string;
 }
 
@@ -104,10 +109,13 @@ export type YouTubeVideoMetric = Omit<
   | 'avg_view_percentage'
   | 'dislikes'
   | 'accounts_reached'
+  | 'reposts'
 > & {
   platform: 'youtube';
   /** YouTube reports no per-video unique reach. */
   accounts_reached?: null;
+  /** YouTube reports no reposts. */
+  reposts?: null;
   metric_source: MetricSource;
   /** YouTube has no saves metric (KB-114): not measured, never 0. */
   saves: null;
@@ -180,6 +188,8 @@ export interface VideoSnapshot {
   subscribers_gained: number | null;
   /** Lifetime unique accounts reached (Instagram); null when not measured. */
   accounts_reached: number | null;
+  /** Lifetime reposts (Instagram FEED and REELS); null when not measured. */
+  reposts: number | null;
 }
 
 /**
@@ -314,6 +324,8 @@ export interface SnapshotTotals {
   subscribers_gained: number | null;
   /** The latest snapshot's own value: null when it recorded no reach. */
   accounts_reached: number | null;
+  /** The latest snapshot's own value: null when it recorded no reposts. */
+  reposts: number | null;
 }
 
 /**

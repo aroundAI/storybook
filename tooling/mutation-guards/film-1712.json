@@ -30,6 +30,56 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/youtube-analytics.test.ts",
       "pattern": "recomputes the averages from their definitions"
+    },
+    {
+      "name": "R1 reposts are read without being requested",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "?fields=media_type,media_product_type,reposts_count&access_token",
+      "replace": "?fields=media_type,media_product_type&access_token",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/provider-result-fields.test.ts",
+      "pattern": "every total is read from a requested field"
+    },
+    {
+      "name": "R2 a Story's missing reposts become a measured 0",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "          reposts: mediaInfo.reposts_count ?? null,\n",
+      "replace": "          reposts: 0,\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/provider-result-fields.test.ts",
+      "pattern": "every total is read from a requested field"
+    },
+    {
+      "name": "R3 the reposts delta subtracts from a baseline that recorded none",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/ingest.ts",
+      "find": "    reposts: measuredDelta(current.reposts, baseline.reposts),\n",
+      "replace": "    reposts: current.reposts,\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/ingest.test.ts",
+      "pattern": "adds reposts as a counter"
+    },
+    {
+      "name": "R4 the Instagram row drops its reposts",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/ingest.ts",
+      "find": "    reposts: input.delta.reposts,\n",
+      "replace": "    reposts: null,\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/ingest.test.ts",
+      "pattern": "keeps Instagram reposts"
+    },
+    {
+      "name": "R5 the sandbox's media node stops serving reposts",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/vendors/meta/insights.ts",
+      "find": "    reposts_count: Math.floor(\n      social.cumulative(post, 'shares') * REPOSTS_PER_SHARE,\n    ),\n",
+      "replace": "",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/meta-fidelity.test.ts",
+      "pattern": "short-lived token → long-lived token|media insights for a seeded Reel"
     }
   ]
 }

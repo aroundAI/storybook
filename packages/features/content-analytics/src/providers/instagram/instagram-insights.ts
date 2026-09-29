@@ -106,9 +106,10 @@ export class InstagramInsightsProvider {
     try {
       // `media_type` is only ever CAROUSEL_ALBUM / IMAGE / VIDEO — a Reel is
       // VIDEO. The surface (FEED / REELS / STORY / AD) is `media_product_type`,
-      // and it is what decides which metrics exist.
+      // and it is what decides which metrics exist. `reposts_count` rides
+      // along: a Media node field, FEED and REELS (FILM-1712).
       const mediaInfoResponse = await fetch(
-        `${GRAPH_API_BASE}/${mediaId}?fields=media_type,media_product_type&access_token=${this.accessToken}`,
+        `${GRAPH_API_BASE}/${mediaId}?fields=media_type,media_product_type,reposts_count&access_token=${this.accessToken}`,
       );
 
       if (!mediaInfoResponse.ok) {
@@ -120,6 +121,7 @@ export class InstagramInsightsProvider {
       const mediaInfo = (await mediaInfoResponse.json()) as {
         media_type?: InstagramMediaType;
         media_product_type?: InstagramMediaProductType;
+        reposts_count?: number;
       } & GraphAPIError;
 
       if (mediaInfo.error) {
@@ -179,6 +181,7 @@ export class InstagramInsightsProvider {
           shares: metrics.shares ?? 0,
           watchTimeMs: metrics.ig_reels_video_view_total_time ?? null,
           avgWatchTimeMs: metrics.ig_reels_avg_watch_time ?? null,
+          reposts: mediaInfo.reposts_count ?? null,
         },
         audience,
       };

@@ -25,6 +25,7 @@ const baseline = {
   watch_time_seconds: 5000,
   subscribers_gained: 5,
   accounts_reached: 4000,
+  reposts: 3,
 };
 
 describe('computeSnapshotDelta', () => {
@@ -39,6 +40,7 @@ describe('computeSnapshotDelta', () => {
         watch_time_seconds: 6200,
         subscribers_gained: 8,
         accounts_reached: 5200,
+        reposts: 7,
       },
       baseline,
     );
@@ -52,6 +54,7 @@ describe('computeSnapshotDelta', () => {
       watch_time_seconds: 1200,
       subscribers_gained: 3,
       accounts_reached: 1200,
+      reposts: 4,
     });
   });
 
@@ -66,6 +69,7 @@ describe('computeSnapshotDelta', () => {
         watch_time_seconds: 6200,
         subscribers_gained: 8,
         accounts_reached: 5200,
+        reposts: 7,
       },
       baseline,
     );
@@ -85,6 +89,7 @@ describe('computeSnapshotDelta', () => {
       watch_time_seconds: 300,
       subscribers_gained: 1,
       accounts_reached: 40,
+      reposts: 1,
     };
 
     expect(computeSnapshotDelta(current, null)).toEqual(current);
@@ -102,6 +107,7 @@ describe('computeSnapshotDelta', () => {
       watch_time_seconds: null,
       subscribers_gained: null,
       accounts_reached: 5200,
+      reposts: 7,
     };
 
     const delta = computeSnapshotDelta(current, baseline);
@@ -114,6 +120,30 @@ describe('computeSnapshotDelta', () => {
       { ...baseline, watch_time_seconds: null },
     );
     expect(fromUnmeasured.watch_time_seconds).toBeNull();
+  });
+
+  // FILM-1712: reposts is a counter like saves, null for a Story and on the
+  // first day after migration 018 (the baseline recorded none).
+  it('adds reposts as a counter, and keeps them null when not measured', () => {
+    const current = {
+      views: 1500,
+      likes: 130,
+      comments: 55,
+      shares: 25,
+      saves: 12,
+      watch_time_seconds: 6200,
+      subscribers_gained: 8,
+      accounts_reached: 5200,
+      reposts: 7,
+    };
+
+    expect(computeSnapshotDelta(current, baseline).reposts).toBe(4);
+    expect(
+      computeSnapshotDelta({ ...current, reposts: null }, baseline).reposts,
+    ).toBeNull();
+    expect(
+      computeSnapshotDelta(current, { ...baseline, reposts: null }).reposts,
+    ).toBeNull();
   });
 });
 
@@ -361,6 +391,7 @@ describe('buildSnapshotDeltaRow', () => {
         watch_time_seconds: 0,
         subscribers_gained: 7,
         accounts_reached: 90,
+        reposts: 6,
       },
     });
 
@@ -385,6 +416,7 @@ describe('buildSnapshotDeltaRow', () => {
     watch_time_seconds: 0,
     subscribers_gained: 7,
     accounts_reached: 90,
+    reposts: 6,
   };
   const build = (platform: 'tiktok' | 'instagram') =>
     buildSnapshotDeltaRow({
@@ -418,6 +450,12 @@ describe('buildSnapshotDeltaRow', () => {
   it("keeps Instagram accounts reached and writes TikTok's as null", () => {
     expect(build('instagram').accounts_reached).toBe(90);
     expect(build('tiktok').accounts_reached).toBeNull();
+  });
+
+  // FILM-1712: reposts_count is a Media node field TikTok has no match for.
+  it("keeps Instagram reposts and writes TikTok's as null", () => {
+    expect(build('instagram').reposts).toBe(6);
+    expect(build('tiktok').reposts).toBeNull();
   });
 });
 

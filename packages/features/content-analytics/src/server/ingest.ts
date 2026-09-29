@@ -35,6 +35,8 @@ export interface CumulativeTotals {
    * measured. Not a counter: its delta is "first-time viewers that day".
    */
   accounts_reached: number | null;
+  /** Lifetime reposts. Instagram FEED and REELS only; null when not measured. */
+  reposts: number | null;
 }
 
 /**
@@ -100,6 +102,7 @@ export function computeSnapshotDelta(
       baseline.subscribers_gained,
     ),
     accounts_reached: accountsReachedDelta(current.accounts_reached, baseline),
+    reposts: measuredDelta(current.reposts, baseline.reposts),
   };
 }
 
@@ -238,6 +241,7 @@ export type SnapshotDeltaMetric = VideoMetric &
         subscribers_gained: null;
         /** Reach is Business API only (FILM-1730), which we do not call. */
         accounts_reached: null;
+        reposts: null;
       }
     | {
         platform: 'instagram';
@@ -247,6 +251,8 @@ export type SnapshotDeltaMetric = VideoMetric &
         watch_time_seconds: number | null;
         subscribers_gained: null;
         accounts_reached: number | null;
+        /** FEED and REELS (FILM-1712); null for a Story or when omitted. */
+        reposts: number | null;
       }
   );
 
@@ -282,6 +288,7 @@ export function buildSnapshotDeltaRow(input: {
       watch_time_seconds: null,
       subscribers_gained: null,
       accounts_reached: null,
+      reposts: null,
     };
   }
 
@@ -292,6 +299,7 @@ export function buildSnapshotDeltaRow(input: {
     watch_time_seconds: input.delta.watch_time_seconds,
     subscribers_gained: null,
     accounts_reached: input.delta.accounts_reached,
+    reposts: input.delta.reposts,
   };
 }
 

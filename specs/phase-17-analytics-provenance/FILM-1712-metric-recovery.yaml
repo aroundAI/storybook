@@ -3,7 +3,7 @@ title: "Metric Recovery"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: PARTIAL
+status: DONE
 effort: L
 dependencies:
   - spec_id: "FILM-1711"
@@ -22,8 +22,8 @@ summary: >
   spec exists to correct.
 acceptance_criteria:
   - text: "Every field added to a request appears in FILM-1721 with a citation"
-    met: false
-    reason: "part B: no field is added to a request yet"
+    met: true
+    evidence: "the three fields part B added are in the field reference with their source pages: ig_reels_avg_watch_time and ig_reels_video_view_total_time in `instagram/media-insights` (#470), reposts_count in `instagram/media-fields` (#472). platform-field-names.test.ts fails a request for any field the reference does not document"
   - text: "A test fails when a provider type declares a field the request does not ask for and when a request asks for a field FILM-1721 does not document"
     met: true
     evidence: "packages/features/content-analytics/__tests__/provider-result-fields.test.ts (a result claims only requested fields) with platform-field-names.test.ts (a request asks only for documented ones)"
@@ -40,11 +40,11 @@ acceptance_criteria:
     met: true
     evidence: "an honest null in both places: the daily column since KB-114 (#418), and the lifetime snapshot since migration 017 (normalizeAnalytics writes null; the baseline keeps the latest NULL via argMax(tuple(...)).1; `pnpm --filter @kit/clickhouse verify` asserts it, red first). The real figure waits on its unit check (the Reels criterion above)"
   - text: "reposts_count, saved_count and shares_count are requested for FEED and REELS"
-    met: false
-    reason: "part B: no field is added to a request yet"
+    met: true
+    evidence: "reposts_count rides on the media-info call the provider already makes (instagram-insights.ts), and is stored as `reposts` — lifetime in video_snapshots, the day's increase in video_metrics (migration 018), null for a Story, for YouTube and TikTok, and on the first day after the migration. Capability family `reposts`, Instagram derived. saved_count and shares_count are deliberately not requested: they are the `saved` and `shares` insights already stored, and asking twice buys nothing (owner decision, 2026-09-29). Guards R1–R4 in film-1712.json"
   - text: "The aggregates are requested as Media node fields, and none is stored in views or labelled as views — they include boosted and crossposted placements, and total_views_count includes replays"
     met: false
-    reason: "part B: no field is added to a request yet"
+    reason: "moved to FILM-1722 by owner decision (2026-09-29): the aggregates are requested only once FILM-1722 defines what they mean"
   - text: "The five TikTok field names that do not exist are recorded as such, so they are not re-added"
     met: true
     evidence: "docs/platform-capability-reference.md and FILM-1721 'Names that do not exist'; TikTokTotals no longer declares any of them (provider-result-fields.test.ts)"
@@ -67,8 +67,12 @@ acceptance_criteria:
     met: true
     evidence: "stops being written: reach has had its own column since #457, and nothing read the raw payloads. The ingest inputs no longer take extraMetricsJson, so it cannot be written again by accident; the column stays, empty"
   - text: "The capability matrix is updated in the same PR as each newly-ingested field, per FILM-1703's writer-binding test"
-    met: false
-    reason: "reach is done: the cross-platform reach PRs give it two families, accounts_reached (per post, video_metrics) and channel_accounts_reached (per channel, channel_windows), and Instagram's impressions/CTR entry is now unsupported. Reels watch time moved with its matrix entry (watch_time × instagram: derived, video_metrics) in the same PR, forced by the absent-entry guard. The fields part B has yet to request (reposts/saved/shares counts, the aggregates) are not ingested yet"
+    met: true
+    evidence: "each field moved with its entry: reach as accounts_reached and channel_accounts_reached (the reach PRs); Reels watch time as watch_time × instagram: derived (#470); reposts as the new `reposts` family, Instagram derived (#472), with a verify-queries presence probe. saved_count/shares_count are not requested (they duplicate stored insights), and the aggregates moved to FILM-1722"
+remaining:
+  - criterion: "The aggregates are requested as Media node fields, and none is stored in views or labelled as views — they include boosted and crossposted placements, and total_views_count includes replays"
+    reason: "moved by owner decision (2026-09-29): requested only once FILM-1722 defines what they mean"
+    closed_by: "FILM-1722"
 open_questions: []
 feature:
   database: null

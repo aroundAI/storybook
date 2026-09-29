@@ -42,8 +42,12 @@ function totalsBlock(source: string): string {
   throw new Error('unterminated totals block');
 }
 
-/** `key: <source>.<vendor_field> …` entries, and anything that is not one. */
-function totalsEntries(block: string, sourceName: string) {
+/**
+ * `key: <source>.<vendor_field> …` entries, and anything that is not one.
+ * `sources` names each object a total may be read from, with what that
+ * object's request asked for.
+ */
+function totalsEntries(block: string, sources: Record<string, Set<string>>) {
   const body = block
     .slice(block.indexOf('{') + 1, -1)
     .replace(/\/\/.*$/gm, '')
@@ -55,12 +59,13 @@ function totalsEntries(block: string, sourceName: string) {
     .filter(Boolean)
     .map((entry) => {
       const [key, value = ''] = entry.split(/:\s*/, 2);
-      const field = new RegExp(`^${sourceName}\\.(\\w+)\\b`).exec(value.trim());
+      const field = /^(\w+)\.(\w+)\b/.exec(value.trim());
+      const requested = field ? sources[field[1]!] : undefined;
 
       return {
         key: key!.trim(),
         value: value.trim(),
-        vendor: field?.[1] ?? null,
+        requested: Boolean(requested?.has(field![2]!)),
       };
     });
 }
@@ -69,27 +74,35 @@ const CASES = [
   {
     platform: 'instagram',
     file: 'instagram/instagram-insights.ts',
-    sourceName: 'metrics',
-    requested(source: string) {
+    sources(source: string) {
       const declaration = /const metricsForType\s*=([\s\S]*?);/.exec(
         source,
       )?.[1];
 
       if (!declaration) throw new Error('no metricsForType');
 
-      return [...declaration.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]!);
+      // The media-info call's Media node fields (FILM-1712: reposts_count).
+      const nodeFields = /\/\$\{mediaId\}\?fields=([a-z_,]+)/.exec(source)?.[1];
+
+      if (!nodeFields) throw new Error('no media-info field list');
+
+      return {
+        metrics: new Set(
+          [...declaration.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]!),
+        ),
+        mediaInfo: new Set(nodeFields.split(',')),
+      };
     },
   },
   {
     platform: 'tiktok',
     file: 'tiktok/tiktok-analytics.ts',
-    sourceName: 'video',
-    requested(source: string) {
+    sources(source: string) {
       const fields = /\/video\/query\/\?fields=([a-z_,]+)/.exec(source)?.[1];
 
       if (!fields) throw new Error('no /video/query/ field list');
 
-      return fields.split(',');
+      return { video: new Set(fields.split(',')) };
     },
   },
 ];
@@ -99,18 +112,20 @@ describe('a provider result claims only what its request asked for', () => {
     '$platform: every total is read from a requested field',
     (entry) => {
       const source = read(entry.file);
-      const requested = new Set(entry.requested(source));
-      const entries = totalsEntries(totalsBlock(source), entry.sourceName);
+      const sources = entry.sources(source);
+      const entries = totalsEntries(totalsBlock(source), sources);
 
       expect(entries.length).toBeGreaterThan(0);
 
       const offenders = entries
-        .filter(({ vendor }) => vendor === null || !requested.has(vendor))
+        .filter(({ requested }) => !requested)
         .map(({ key, value }) => `${key}: ${value}`);
 
       expect(
         offenders,
-        `not read from a requested field (requested: ${[...requested].join(', ')})`,
+        `not read from a requested field (requested: ${Object.entries(sources)
+          .map(([name, fields]) => `${name}: ${[...fields].join(', ')}`)
+          .join('; ')})`,
       ).toEqual([]);
     },
   );

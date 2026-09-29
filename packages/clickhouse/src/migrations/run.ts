@@ -24,6 +24,7 @@ import { migration as m014 } from './014_unmeasured_counters_null';
 import { migration as m015 } from './015_accounts_reached';
 import { migration as m016 } from './016_channel_windows';
 import { migration as m017 } from './017_snapshot_unmeasured_null';
+import { migration as m018 } from './018_reposts';
 import type { ClickHouseMigration } from './migration-types';
 
 const MIGRATIONS: ClickHouseMigration[] = [
@@ -44,6 +45,7 @@ const MIGRATIONS: ClickHouseMigration[] = [
   m015,
   m016,
   m017,
+  m018,
 ];
 
 const MIGRATION_TABLE = `

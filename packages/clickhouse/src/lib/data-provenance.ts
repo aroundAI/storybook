@@ -45,6 +45,7 @@ export const ANALYTICS_PLATFORMS = [
  */
 export const METRIC_FAMILIES = [
   'engagement', // views/likes/comments/shares     → video_metrics
+  'reposts', // a post's reposts                 → video_metrics
   'watch_time', //                                 → video_metrics
   'revenue', //                                    → video_metrics
   'traffic_sources', //                            → video_traffic_sources
@@ -429,6 +430,39 @@ export const CAPABILITY_MATRIX: Record<
         section: 'Instagram',
         surface: 'instagram/media-insights',
         fields: ['views', 'likes', 'comments', 'saved', 'shares'],
+      },
+    },
+  },
+
+  // Its own family, not engagement: `reposts_count` is a Media node field,
+  // a different surface from the insights the rest of engagement comes from.
+  reposts: {
+    youtube: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...YOUTUBE_ANALYTICS,
+      note: 'YouTube has no reposts.',
+      reference: { section: 'YouTube', surface: null, fields: [] },
+    },
+    tiktok: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...TIKTOK_DISPLAY,
+      note: 'TikTok does not report how often a video was reposted.',
+      reference: { section: 'TikTok', surface: null, fields: [] },
+    },
+    instagram: {
+      level: 'derived',
+      table: 'video_metrics',
+      method: 'snapshot_delta_fetch_day',
+      ...INSTAGRAM_MEDIA,
+      note: 'Instagram reports how many times a post or Reel has been reposted so far, so each day shows the reposts since we last checked, dated to the day we checked; Stories show none.',
+      reference: {
+        section: 'Instagram',
+        surface: 'instagram/media-fields',
+        fields: ['reposts_count'],
       },
     },
   },

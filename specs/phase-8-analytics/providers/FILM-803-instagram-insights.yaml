@@ -42,7 +42,7 @@ provider:
 acceptance_criteria:
   - text: "Fetches Reel plays, reach, impressions"
     met: false
-    reason: "unverified — the code asks for `views` (Meta's Graph v22 replacement for `plays` and `impressions`) and `reach` (`packages/features/content-analytics/src/providers/instagram/instagram-insights.ts:137`, mocked test `instagram-insights.test.ts:108`); live data waits on Meta's review of the insights scope (FILM-1711)"
+    reason: "unverified — the code asks for `views` (Meta's Graph v22 replacement for `plays` and `impressions`) and `reach` (`packages/features/content-analytics/src/providers/instagram/instagram-insights.ts:139`, mocked test `instagram-insights.test.ts:108`); live data waits on Meta's review of the insights scope (FILM-1711)"
   - text: "Fetches engagement (likes, comments, saves, shares)"
     met: false
     reason: "unverified — requested and parsed (`instagram-insights.ts:118`, mocked test `instagram-insights.test.ts:108`); live data waits on Meta's review (FILM-1711)"
@@ -76,8 +76,8 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "Fetches profile visits and follows from content"
-    reason: "Neither metric is in the request list (`instagram-insights.ts:111-122`), so `profileVisits` and `follows` are always 0 — and the sync stores that `follows` 0 as the publish's `subscribers_gained` (`analytics-sync-cron.ts:915`), a never-requested field written as a measurement. Meta offers both for FEED and STORY media only — not Reels (`docs/platform-capability-reference.md:257`) (closed-by note: \"No provider maps a never-requested field to a column as zero\"; records Reels `follows`/`profile_visits` as unavailable)"
-    closed_by: "FILM-1712"
+    reason: "FILM-1712 (DONE) settled the zero half: neither metric is requested or claimed, so no 0 is written as a measurement, and Instagram's `subscribers_gained` is null (KB-114). Meta offers both for FEED and STORY media only, not Reels (`docs/platform-capability-reference.md`). Requesting them for FEED and STORY is planned by no spec"
+    closed_by: "unassigned"
 open_questions: []
 notes: |-
   ## Metadata

@@ -279,6 +279,7 @@ async function seed() {
         watch_time_seconds: 3000,
         subscribers_gained: 3,
         accounts_reached: null,
+        reposts: null,
       },
     ]),
   );
@@ -1414,7 +1415,7 @@ async function assertions() {
   // latest recorded none. The baseline must be the latest snapshot's own
   // value, NULL included.
   await step(
-    "assert: the baseline reach and watch time are the latest snapshot's, NULL included",
+    "assert: the baseline reach, watch time and reposts are the latest snapshot's, NULL included",
     async () => {
       const snapshot = (
         videoId: string,
@@ -1437,6 +1438,8 @@ async function assertions() {
         watch_time_seconds: accountsReached === null ? null : 0,
         subscribers_gained: 0,
         accounts_reached: accountsReached,
+        // Migration 018: reposts follow the same rule as reach.
+        reposts: accountsReached === null ? null : accountsReached / 100,
       });
 
       await getClickHouseClient().insert({
@@ -1463,7 +1466,14 @@ async function assertions() {
       if (lostWatch !== null) {
         throw new Error(`watch time: expected null, got ${lostWatch}`);
       }
-      return `kept=${kept} lost=${lost} lostWatch=${lostWatch}`;
+      const keptReposts = snaps.get('reach-kept')?.reposts;
+      const lostReposts = snaps.get('reach-lost')?.reposts;
+      if (keptReposts !== 52 || lostReposts !== null) {
+        throw new Error(
+          `reposts: expected 52 and null, got ${keptReposts} and ${lostReposts}`,
+        );
+      }
+      return `kept=${kept} lost=${lost} lostWatch=${lostWatch} reposts=${keptReposts}/${lostReposts}`;
     },
   );
 
@@ -1587,6 +1597,7 @@ async function assertions() {
           watch_time_seconds: 0,
           subscribers_gained: 0,
           accounts_reached: 5900,
+          reposts: 0,
         },
       ]);
 
@@ -2504,6 +2515,9 @@ const audienceProbe = (family: keyof typeof AUDIENCE_FAMILY_DIMENSIONS) =>
  */
 const PRESENCE_PROBES: Record<MetricFamily, string | null> = {
   engagement: `SELECT DISTINCT platform FROM video_metrics WHERE ${NOT_NOISE}`,
+  // Told apart from engagement by the column, as watch_time is.
+  reposts: `SELECT DISTINCT platform FROM video_metrics
+            WHERE ${NOT_NOISE} AND reposts IS NOT NULL`,
   // Families that share video_metrics are told apart by their column: a row
   // existing says nothing about whether watch time was measured.
   watch_time: `SELECT DISTINCT platform FROM video_metrics
