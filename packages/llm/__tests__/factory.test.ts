@@ -24,6 +24,8 @@ describe('LLM Factory', () => {
     delete process.env.GEMINI_API_KEY;
     delete process.env.DEEPSEEK_API_KEY;
     delete process.env.LOCAL_API_URL;
+    // The local provider only runs in a vendor sandbox (KB-21).
+    process.env.VENDOR_SANDBOX = '1';
     delete process.env.LLM_TEMPERATURE;
     delete process.env.LLM_MAX_TOKENS;
     delete process.env.LLM_TOP_P;
@@ -542,5 +544,68 @@ describe('LLM Factory', () => {
         expect(client.getProvider()).toBe('gemini');
       });
     });
+  });
+});
+
+describe('KB-21: the local provider runs only in a vendor sandbox', () => {
+  const local = (baseUrl?: string) => ({
+    provider: 'local' as const,
+    model: 'llama3.1',
+    apiKey: 'not-needed',
+    baseUrl,
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    resetLLMClient();
+  });
+
+  it('constructs in dev or test with VENDOR_SANDBOX=1', () => {
+    vi.stubEnv('VENDOR_SANDBOX', '1');
+
+    expect(createLLMClient(local()).getProvider()).toBe('local');
+  });
+
+  it.each([
+    ['production', { NODE_ENV: 'production', VENDOR_SANDBOX: '1' }],
+    ['no sandbox flag', { NODE_ENV: 'test', VENDOR_SANDBOX: '' }],
+    [
+      'a Lambda',
+      {
+        NODE_ENV: 'test',
+        VENDOR_SANDBOX: '1',
+        AWS_LAMBDA_FUNCTION_NAME: 'worker',
+      },
+    ],
+  ])('refuses to construct in %s, naming VENDOR_SANDBOX=1', (_, env) => {
+    for (const [name, value] of Object.entries(env)) {
+      vi.stubEnv(name, value);
+    }
+
+    expect(() => createLLMClient(local())).toThrow(
+      expect.objectContaining({
+        code: 'LOCAL_PROVIDER_DISABLED',
+        message: expect.stringContaining('VENDOR_SANDBOX=1'),
+      }),
+    );
+  });
+
+  it.each([
+    ['a public host', 'https://evil.example.com/v1'],
+    ['credentials', 'http://user:pass@localhost:11434/v1'],
+    ['a query string', 'http://localhost:11434/v1?x=1'],
+    ['no URL at all', 'not a url'],
+  ])('rejects LOCAL_API_URL with %s instead of using the default', (_, url) => {
+    vi.stubEnv('VENDOR_SANDBOX', '1');
+
+    expect(() => createLLMClient(local(url))).toThrow('LOCAL_API_URL must be');
+  });
+
+  it('accepts a local address', () => {
+    vi.stubEnv('VENDOR_SANDBOX', '1');
+
+    expect(() =>
+      createLLMClient(local('http://localhost:11434/v1')),
+    ).not.toThrow();
   });
 });

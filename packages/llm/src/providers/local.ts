@@ -11,6 +11,8 @@
  */
 import OpenAI from 'openai';
 
+import { localApiUrl, vendorSandboxEnabled } from '@kit/shared/vendors';
+
 import { calculateTokenCost, getModelPricing } from '../pricing';
 import type {
   ChatCompletionRequest,
@@ -44,10 +46,23 @@ export class LocalClient implements LLMClient {
       );
     }
 
+    // Prompts go to whatever this points at, so it only runs in a sandbox
+    // (KB-21): dev or test by name, VENDOR_SANDBOX=1, and never in a Lambda.
+    if (!vendorSandboxEnabled()) {
+      throw new LLMError(
+        'The local provider only runs in a vendor sandbox: it needs NODE_ENV=development or test, VENDOR_SANDBOX=1, and a process that is not an AWS Lambda',
+        'local',
+        'LOCAL_PROVIDER_DISABLED',
+      );
+    }
+
     this.config = config;
 
-    // Use custom base URL or default to localhost:8000
-    const baseURL = config.baseUrl ?? DEFAULT_LOCAL_BASE_URL;
+    // A custom base URL must be a local address; a bad one throws rather than
+    // falling back to the default port.
+    const baseURL = config.baseUrl
+      ? localApiUrl(config.baseUrl)
+      : DEFAULT_LOCAL_BASE_URL;
 
     this.client = new OpenAI({
       apiKey: 'not-needed', // Local API doesn't require auth

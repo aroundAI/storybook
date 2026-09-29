@@ -206,6 +206,24 @@ describe('vendorUrl fails closed', () => {
   });
 });
 
+describe('ignoredVendorOverrides: LOCAL_API_URL (KB-21)', () => {
+  const env = {
+    NODE_ENV: 'production',
+    LOCAL_API_URL: 'http://localhost:11434',
+  };
+
+  it('names it while the sandbox is off, and not while it is on', () => {
+    expect(ignoredVendorOverrides(env)).toEqual(['LOCAL_API_URL']);
+    expect(
+      ignoredVendorOverrides({
+        NODE_ENV: 'development',
+        VENDOR_SANDBOX: '1',
+        LOCAL_API_URL: 'http://localhost:11434',
+      }),
+    ).toEqual([]);
+  });
+});
+
 describe('ignoredVendorOverrides', () => {
   it('names every VENDOR_URL_* present in production', () => {
     const env = {
