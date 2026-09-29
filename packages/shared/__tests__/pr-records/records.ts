@@ -39,6 +39,39 @@ export interface PullRequest {
   /** Paths the PR changes. */
   files: string[];
   labels: string[];
+  /** Its commits, when they are checked (`--pr`; `--commits` for an audit). */
+  commits?: Commit[];
+}
+
+export interface Commit {
+  sha: string;
+  authorEmails: string[];
+  subject: string;
+  body: string;
+}
+
+/**
+ * Who may author a commit (owner, 2026-09-29: "everything needs to be
+ * committed under shaurya@aroundai.co not claude"). Add a teammate here.
+ */
+export const COMMIT_AUTHORS = ['shaurya@aroundai.co'];
+
+const CLAUDE_TRAILER = /^co-authored-by:.*\b(claude|anthropic)\b/im;
+
+/** A commit's author, trailer and subject, against CLAUDE.md "Commit messages". */
+export function commitProblems(commit: Commit): string[] {
+  const at = commit.sha.slice(0, 8);
+  const problems: string[] = [];
+  const strangers = commit.authorEmails.filter(
+    (email) => !COMMIT_AUTHORS.includes(email.toLowerCase()),
+  );
+  if (strangers.length)
+    problems.push(`commit ${at} is authored by ${strangers.join(', ')}`);
+  if (CLAUDE_TRAILER.test(commit.body))
+    problems.push(`commit ${at} carries a Co-Authored-By Claude trailer`);
+  if (!parseTitle(commit.subject))
+    problems.push(`commit ${at}'s subject is not \`type(IDS): summary\``);
+  return problems;
 }
 
 export interface Records {
@@ -120,6 +153,9 @@ export function prProblems(
         `${id}: ${file} is not updated by this PR and never cites ${ref}`,
       );
   }
+
+  for (const commit of pr.commits ?? [])
+    problems.push(...commitProblems(commit));
 
   if (labels) {
     const missing = expectedLabels(pr, records).filter(

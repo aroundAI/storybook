@@ -20,6 +20,26 @@
       "cwd": "packages/shared",
       "test": "__tests__/pr-records.test.ts",
       "pattern": "re-land entry"
+    },
+    {
+      "name": "R3 a commit by another author passes again",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/pr-records/records.ts",
+      "find": "  if (strangers.length)\n    problems.push(`commit ${at} is authored by ${strangers.join(', ')}`);\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/pr-records.test.ts",
+      "pattern": "another author"
+    },
+    {
+      "name": "R4 a Claude co-author trailer passes again",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/pr-records/records.ts",
+      "find": "  if (CLAUDE_TRAILER.test(commit.body))\n    problems.push(`commit ${at} carries a Co-Authored-By Claude trailer`);\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/pr-records.test.ts",
+      "pattern": "another author"
     }
   ]
 }

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  type Commit,
   type PullRequest,
   type Records,
+  commitProblems,
   expectedLabels,
   parseTitle,
   prProblems,
@@ -146,5 +148,49 @@ describe('expectedLabels', () => {
     expect(
       expectedLabels(pr({ title: 'fix(FILM-1802, KB-138): x' }), records),
     ).toEqual(['area: vendor-sandbox', 'known-bug', 'spec', 'type: fix']);
+  });
+});
+
+describe('commitProblems', () => {
+  const commit = (over: Partial<Commit>): Commit => ({
+    sha: 'f5b0259d0000',
+    authorEmails: ['shaurya@aroundai.co'],
+    subject: 'fix(KB-138): a failed read says what failed',
+    body: 'Why it was wrong, and what now happens.',
+    ...over,
+  });
+
+  it('passes a commit by the owner with a typed subject', () => {
+    expect(commitProblems(commit({}))).toEqual([]);
+  });
+
+  // Owner, 2026-09-29: committed under shaurya@aroundai.co, not Claude.
+  it('flags another author and a Claude co-author trailer', () => {
+    expect(
+      commitProblems(
+        commit({
+          authorEmails: ['t@t'],
+          body: 'Why.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>',
+        }),
+      ),
+    ).toEqual([
+      'commit f5b0259d is authored by t@t',
+      'commit f5b0259d carries a Co-Authored-By Claude trailer',
+    ]);
+  });
+
+  it('flags an untyped subject', () => {
+    expect(commitProblems(commit({ subject: 'wip' }))).toEqual([
+      "commit f5b0259d's subject is not `type(IDS): summary`",
+    ]);
+  });
+
+  it('makes a PR with a bad commit fail', () => {
+    expect(
+      prProblems(
+        pr({ files: [SPEC], commits: [commit({ authorEmails: ['t@t'] })] }),
+        records,
+      ),
+    ).toEqual(['commit f5b0259d is authored by t@t']);
   });
 });

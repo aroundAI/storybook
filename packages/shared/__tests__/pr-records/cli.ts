@@ -5,6 +5,7 @@
  *   --pr <n>          one PR, open or merged (local CI runs this)
  *   --since <date>    every PR merged on or after the date, e.g. 2026-09-22
  *   --no-labels       skip the label check
+ *   --commits         check each PR's commits in an audit too (--pr always does)
  *   --apply-labels    add the labels a PR is missing, on GitHub (writes)
  *
  * Exits 1 when any PR has a problem. The changed files come from the merge
@@ -98,6 +99,13 @@ interface GhPr {
 }
 const FIELDS = 'number,title,state,baseRefName,labels,mergeCommit';
 
+interface GhCommit {
+  oid: string;
+  messageHeadline: string;
+  messageBody: string;
+  authors: { email: string }[];
+}
+
 function changedFiles(pr: GhPr): string[] {
   const range =
     pr.state === 'MERGED' && pr.mergeCommit
@@ -148,6 +156,17 @@ for (const raw of prs.sort((a, b) => a.number - b.number)) {
     files: changedFiles(raw),
     labels: raw.labels.map((label) => label.name),
   };
+  if (prNumber || argv.includes('--commits')) {
+    const { commits } = JSON.parse(
+      gh('pr', 'view', String(raw.number), '--json', 'commits'),
+    ) as { commits: GhCommit[] };
+    pr.commits = commits.map((commit) => ({
+      sha: commit.oid,
+      authorEmails: commit.authors.map((author) => author.email),
+      subject: commit.messageHeadline,
+      body: commit.messageBody,
+    }));
+  }
 
   if (applyLabels) {
     const missing = expectedLabels(pr, records).filter(
