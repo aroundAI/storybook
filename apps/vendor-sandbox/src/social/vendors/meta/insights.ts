@@ -118,6 +118,22 @@ export function mediaReach(
   );
 }
 
+/** An Instagram-style shortcode, derived from the post's id's digits. */
+function shortcode(id: string) {
+  const alphabet =
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-';
+  const digits = id.replace(/\D/g, '');
+  let out = '';
+  for (let i = 0; i < 11; i++) {
+    const pair = Number(
+      digits.slice((i * 2) % digits.length, ((i * 2) % digits.length) + 2) ||
+        '0',
+    );
+    out += alphabet[(pair + i * 7) % alphabet.length];
+  }
+  return out;
+}
+
 function fieldsOf(url: URL) {
   return (url.searchParams.get('fields') ?? '').split(',').filter(Boolean);
 }
@@ -159,11 +175,12 @@ const nodes: SocialRoute = ({ url, method, req, res, social, self, about }) => {
   if (id === social.signedIn('facebook').id) return false;
   if (!metaAuthorize(url, req, res, social, BASIC_SCOPE)) return true;
   about(id);
+  const post = social.object('instagram', id);
   const fields: Record<string, unknown> = {
     media_type: 'VIDEO',
     media_product_type: 'REELS',
+    permalink: `https://www.instagram.com/reel/${shortcode(post.id)}/`,
   };
-  social.object('instagram', id);
   sendJson(res, 200, {
     ...Object.fromEntries(
       fieldsOf(url)
@@ -227,16 +244,22 @@ const mediaInsights: SocialRoute = ({
   const saved = social.cumulative(object, 'saves');
   const shares = social.cumulative(object, 'shares');
   const watchedMs = social.watchSeconds(object) * MS;
+  const reach = mediaReach(social, instagram, object);
   const value: Record<string, number> = {
     views,
-    reach: mediaReach(social, instagram, object),
+    reach,
     total_interactions: likes + comments + saved + shares,
     likes,
     comments,
     saved,
     shares,
     ig_reels_video_view_total_time: watchedMs,
-    ig_reels_avg_watch_time: views > 0 ? Math.round(watchedMs / views) : 0,
+    // Not total ÷ views: on a live Reel (owner, 2026-09-29) Meta's average
+    // was total ÷ 121 while views were 221. Which count it divides by
+    // (accounts reached, or first plays) is not yet confirmed; the sandbox
+    // uses reach, a count below views, so nothing here can pass by assuming
+    // the average is derivable from views.
+    ig_reels_avg_watch_time: reach > 0 ? Math.round(watchedMs / reach) : 0,
   };
 
   sendJson(res, 200, {

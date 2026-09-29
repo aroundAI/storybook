@@ -135,8 +135,8 @@
       "name": "The reference loses a field the matrix cites",
       "kind": "unit",
       "file": "docs/platform-capability-reference.md",
-      "find": "ig_reels_avg_watch_time    # units undocumented; ms inferred\n",
-      "replace": "",
+      "find": "ig_reels_video_view_total_time\n```\n",
+      "replace": "```\n",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/capability-matrix-reference.test.ts",
       "pattern": "names only vendor fields the reference documents"

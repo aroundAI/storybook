@@ -918,12 +918,19 @@ audience_countries
 ```text
 media_type                 # CAROUSEL_ALBUM / IMAGE / VIDEO - never REELS
 media_product_type         # AD / FEED / STORY / REELS - branch on this
+permalink                  # "Permanent URL to the media" (re-read 2026-09-29)
 reposts_count              # FEED + REELS, Facebook Login, added 2026-04-22
 saved_count                # FEED + REELS, owner or accepted collaborator
 shares_count               # FEED + REELS
 total_views_count          # all surfaces incl. boosted and replays, video only
 total_like_count           # all surfaces incl. boosted
 total_comments_count       # all surfaces incl. boosted
+```
+
+<!-- fields: instagram/container-fields source: https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-container -->
+```text
+status_code                # EXPIRED, ERROR, FINISHED, IN_PROGRESS, PUBLISHED; expires unpublished after 24 hours
+status                     # an error subcode when status_code is ERROR
 ```
 
 <!-- fields: instagram/media-insights source: https://developers.facebook.com/docs/instagram-platform/reference/instagram-media/insights/ -->
@@ -938,9 +945,20 @@ shares
 profile_visits             # FEED + STORY only, NOT REELS
 follows                    # FEED + STORY only, NOT REELS
 reels_skip_rate
-ig_reels_avg_watch_time    # units undocumented; ms inferred
+ig_reels_avg_watch_time    # milliseconds, observed (see note); NOT total_time / views
 ig_reels_video_view_total_time
 ```
+
+**Reels watch time is in milliseconds — observed, not inferred (owner's own
+account, 2026-09-28 and -29).** Meta's response titles say so ("Reels Average
+Watch Time (milliseconds)", "Video View Total Time (milliseconds)"), and the
+values agree: a Reel with 221 views had `ig_reels_avg_watch_time` 6,194 (6.2
+seconds; as seconds it would be 1.7 hours) and `ig_reels_video_view_total_time`
+749,526 (12.5 minutes). **The average is not total ÷ views:** 749,526 ÷ 221 is
+3,391, while 749,526 ÷ 6,194 is 121.0 exactly — Meta divides by a count of 121,
+not by views (which count every play and display, replays included). Whether
+121 is the Reel's accounts reached or its first plays is not yet confirmed.
+Store both figures as reported; never derive one from the other.
 
 <!-- fields: instagram/media-insights-2026 source: https://developers.facebook.com/docs/instagram-platform/changelog -->
 ```text
@@ -1022,6 +1040,14 @@ instagram_business_account # the linked Instagram account ({id})
 ```text
 permission
 status                     # granted, declined, expired
+```
+
+<!-- fields: facebook/reels-publishing source: https://developers.facebook.com/docs/video-api/guides/reels-publishing/ -->
+```text
+video_id                   # upload_phase=start
+upload_url                 # upload_phase=start; the rupload host
+success                    # the upload, and upload_phase=finish
+video_status               # GET /{video-id}?fields=status: uploading, processing, ready, error, expired
 ```
 
 <!-- fields: facebook/video-insights source: https://developers.facebook.com/docs/graph-api/reference/video/video_insights/ -->

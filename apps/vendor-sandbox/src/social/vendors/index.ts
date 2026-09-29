@@ -8,6 +8,7 @@ import { youtubeReportingRoutes } from './google/reporting';
 import { metaFailure } from './meta/errors';
 import { metaInsightsRoutes } from './meta/insights';
 import { metaOAuthRoutes } from './meta/oauth';
+import { metaPublishingRoutes } from './meta/publishing';
 
 /**
  * What each social origin serves. A platform's PR adds its routes here; an
@@ -28,7 +29,12 @@ export const SOCIAL_ROUTES: Record<
     failure: googleFailure,
   },
   meta: {
-    routes: [mediaRoute, ...metaOAuthRoutes, ...metaInsightsRoutes],
+    routes: [
+      mediaRoute,
+      ...metaOAuthRoutes,
+      ...metaPublishingRoutes,
+      ...metaInsightsRoutes,
+    ],
     failure: metaFailure,
   },
   tiktok: { routes: [mediaRoute] },

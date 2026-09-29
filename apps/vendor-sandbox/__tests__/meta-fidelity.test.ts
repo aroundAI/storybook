@@ -235,9 +235,10 @@ describe('Meta sandbox: Instagram reads, through the app provider', () => {
     expect(value.total_interactions).toBe(
       value.likes! + value.comments! + value.saved! + value.shares!,
     );
-    // Milliseconds, as Meta's own titles label them (owner, live account,
-    // 2026-09-28): total over views is the average.
-    expect(value.ig_reels_avg_watch_time).toBe(
+    // Milliseconds (owner, live account, 2026-09-28 and -29). The average is
+    // not total ÷ views: the live Reel gave total ÷ 121 with 221 views. It
+    // divides by a count no larger than views, so it is at least total ÷ views.
+    expect(value.ig_reels_avg_watch_time).toBeGreaterThanOrEqual(
       Math.round(value.ig_reels_video_view_total_time! / value.views!),
     );
 
