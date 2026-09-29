@@ -130,6 +130,26 @@
       "cwd": "apps/vendor-sandbox",
       "test": "__tests__/meta-usage.test.ts",
       "pattern": "comes back as the hour rolls on"
+    },
+    {
+      "name": "V1 the sandbox answers a permalink as a full URL, which Meta did not",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/vendors/meta/publishing.ts",
+      "find": "      permalink_url: `/reel/${id}/`,\n",
+      "replace": "      permalink_url: `https://www.facebook.com/reel/${id}/`,\n",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/meta-publishing.test.ts",
+      "pattern": "reads a relative permalink as a link"
+    },
+    {
+      "name": "V2 a deleted Reel can still be read",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/vendors/meta/publishing.ts",
+      "find": "  reel.deleted = true;\n",
+      "replace": "",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/meta-publishing.test.ts",
+      "pattern": "reads a relative permalink as a link"
     }
   ]
 }
