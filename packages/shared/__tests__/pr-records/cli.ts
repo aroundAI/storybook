@@ -157,9 +157,10 @@ for (const raw of prs.sort((a, b) => a.number - b.number)) {
     labels: raw.labels.map((label) => label.name),
   };
   if (prNumber || argv.includes('--commits')) {
-    const { commits } = JSON.parse(
-      gh('pr', 'view', String(raw.number), '--json', 'commits'),
-    ) as { commits: GhCommit[] };
+    const { commits, body } = JSON.parse(
+      gh('pr', 'view', String(raw.number), '--json', 'commits,body'),
+    ) as { commits: GhCommit[]; body: string };
+    pr.body = body;
     pr.commits = commits.map((commit) => ({
       sha: commit.oid,
       authorEmails: commit.authors.map((author) => author.email),

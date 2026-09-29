@@ -782,6 +782,8 @@ closed without merging gets `superseded` as well.
 
 **Body:** What, Why, Evidence, and **Records updated**, listing the spec and
 KB files the PR changes.
+No "Generated with Claude Code" line: like the commits, the PR is the
+owner's (2026-09-29).
 
 ```bash
 gh pr create --base main --head feat/film-1802-x \

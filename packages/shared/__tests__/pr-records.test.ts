@@ -193,4 +193,16 @@ describe('commitProblems', () => {
       ),
     ).toEqual(['commit f5b0259d is authored by t@t']);
   });
+
+  it('flags a "Generated with Claude Code" description', () => {
+    expect(
+      prProblems(
+        pr({
+          files: [SPEC],
+          body: '## What\n\nx\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)',
+        }),
+        records,
+      ),
+    ).toEqual(['the description carries a "Generated with Claude Code" line']);
+  });
 });

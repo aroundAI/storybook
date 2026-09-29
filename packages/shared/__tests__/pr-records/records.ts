@@ -39,6 +39,8 @@ export interface PullRequest {
   /** Paths the PR changes. */
   files: string[];
   labels: string[];
+  /** Its description, when it is checked (`--pr`; `--commits` for an audit). */
+  body?: string;
   /** Its commits, when they are checked (`--pr`; `--commits` for an audit). */
   commits?: Commit[];
 }
@@ -156,6 +158,11 @@ export function prProblems(
 
   for (const commit of pr.commits ?? [])
     problems.push(...commitProblems(commit));
+  // Owner, 2026-09-29: nothing is signed as Claude's, the PR text included.
+  if (pr.body && /generated with \[?claude code/i.test(pr.body))
+    problems.push(
+      'the description carries a "Generated with Claude Code" line',
+    );
 
   if (labels) {
     const missing = expectedLabels(pr, records).filter(

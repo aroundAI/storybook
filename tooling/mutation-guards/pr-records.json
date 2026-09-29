@@ -40,6 +40,16 @@
       "cwd": "packages/shared",
       "test": "__tests__/pr-records.test.ts",
       "pattern": "another author"
+    },
+    {
+      "name": "R5 a Generated with Claude Code description passes again",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/pr-records/records.ts",
+      "find": "  if (pr.body && /generated with \\[?claude code/i.test(pr.body))\n    problems.push(\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/pr-records.test.ts",
+      "pattern": "Generated with Claude Code"
     }
   ]
 }
