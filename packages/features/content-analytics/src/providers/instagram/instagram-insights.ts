@@ -3,6 +3,11 @@ import 'server-only';
 import type { SubscriberCountResult } from '@kit/shared/subscribers';
 import { META_GRAPH_BASE } from '@kit/shared/vendors';
 
+import {
+  MetaRateLimitError,
+  isMetaThrottle,
+  metaUsagePercent,
+} from '../../lib/meta-usage';
 import type {
   InstagramAccountInsights,
   InstagramAccountReach,
@@ -69,10 +74,24 @@ interface GraphAPIError {
  * on Professional Instagram accounts using Meta Graph API v23.0.
  */
 export class InstagramInsightsProvider {
+  /**
+   * The highest share of Meta's hourly allowance any response so far has
+   * reported (`X-Business-Use-Case-Usage` / `X-App-Usage`), or null before
+   * one did. Read by callers that pace many calls (the nightly reach sync).
+   */
+  usagePercent: number | null = null;
+
   constructor(
     private accessToken: string,
     private instagramAccountId: string,
   ) {}
+
+  private noteUsage(response: Response) {
+    const usage = metaUsagePercent(response.headers);
+    if (usage !== null) {
+      this.usagePercent = Math.max(this.usagePercent ?? 0, usage);
+    }
+  }
 
   /**
    * Fetches insights for a media item (Reel or Video)
@@ -345,11 +364,7 @@ export class InstagramInsightsProvider {
       ]);
 
       for (const response of [totalResponse, splitResponse]) {
-        if (!response.ok) {
-          throw new Error(
-            `Failed to fetch account reach: HTTP ${response.status}`,
-          );
-        }
+        this.noteUsage(response);
       }
 
       type ReachItem = {
@@ -368,10 +383,26 @@ export class InstagramInsightsProvider {
         data?: ReachItem[];
       } & GraphAPIError;
 
-      for (const body of [total, split]) {
+      for (const [body, response] of [
+        [total, totalResponse],
+        [split, splitResponse],
+      ] as const) {
+        // A throttle is not a failure: the caller stops for the night and
+        // resumes, rather than counting the channel as broken.
+        if (isMetaThrottle(body.error?.code)) {
+          throw new MetaRateLimitError(
+            body.error.code,
+            body.error.message ?? 'Meta rate limit reached',
+          );
+        }
         if (body.error) {
           throw new Error(
             body.error.message ?? 'Failed to fetch account reach',
+          );
+        }
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch account reach: HTTP ${response.status}`,
           );
         }
       }

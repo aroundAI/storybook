@@ -10,6 +10,7 @@ import { getLogger } from '@kit/shared/logger';
 import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
+import { MetaRateLimitError, USAGE_CEILING } from '../lib/meta-usage';
 import { createInstagramInsightsProvider } from '../providers/instagram';
 
 /**
@@ -104,6 +105,12 @@ export interface ChannelReachCaptureResult {
   rowsWritten: number;
   /** Channels that failed; each is logged and retried the next night. */
   failed: number;
+  /**
+   * Channels stopped for the night by Meta's rate limit: at USAGE_CEILING of
+   * the hourly allowance, or refused with a throttle code. Not failures —
+   * their missing days are picked up on the next run.
+   */
+  throttled: number;
   /** True when the time budget ran out with days still missing. */
   budgetExhausted: boolean;
 }
@@ -128,7 +135,13 @@ export async function captureChannelReachWindows(
 
   if (!isClickHouseEnabled()) {
     logger.info(ctx, 'ClickHouse is off; nothing to record');
-    return { channels: 0, rowsWritten: 0, failed: 0, budgetExhausted: false };
+    return {
+      channels: 0,
+      rowsWritten: 0,
+      failed: 0,
+      throttled: 0,
+      budgetExhausted: false,
+    };
   }
 
   const client = getSupabaseServerAdminClient();
@@ -148,6 +161,7 @@ export async function captureChannelReachWindows(
 
   let rowsWritten = 0;
   let failed = 0;
+  let throttled = 0;
   let budgetExhausted = false;
 
   for (const connection of connections) {
@@ -202,8 +216,32 @@ export async function captureChannelReachWindows(
         // One day's windows land together, so a day is never half-recorded.
         await insertChannelWindows(rows);
         rowsWritten += rows.length;
+
+        // Leave headroom under Meta's hourly allowance: the rest of this
+        // channel's backlog waits for the next run.
+        if ((provider.usagePercent ?? 0) >= USAGE_CEILING) {
+          throttled += 1;
+          logger.warn(
+            {
+              ...ctx,
+              connectionId: connection.id,
+              usagePercent: provider.usagePercent,
+            },
+            'Channel reach capture paused at the rate-limit ceiling',
+          );
+          break;
+        }
       }
     } catch (error) {
+      if (error instanceof MetaRateLimitError) {
+        throttled += 1;
+        logger.warn(
+          { ...ctx, connectionId: connection.id, code: error.code },
+          'Channel reach capture throttled by Meta; resumes next run',
+        );
+        continue;
+      }
+
       // Never fatal to the batch; the missing days are retried next night.
       failed += 1;
       logger.error(
@@ -219,10 +257,17 @@ export async function captureChannelReachWindows(
       channels: connections.length,
       rowsWritten,
       failed,
+      throttled,
       budgetExhausted,
     },
     'Channel reach capture complete',
   );
 
-  return { channels: connections.length, rowsWritten, failed, budgetExhausted };
+  return {
+    channels: connections.length,
+    rowsWritten,
+    failed,
+    throttled,
+    budgetExhausted,
+  };
 }
