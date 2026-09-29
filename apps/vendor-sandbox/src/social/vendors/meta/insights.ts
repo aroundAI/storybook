@@ -3,6 +3,7 @@ import { mediaUrl } from '../../media';
 import type { SocialRoute } from '../../server';
 import type { SocialAccount, SocialObject, SocialState } from '../../state';
 import { graphError, graphPath, metaAuthorize } from './errors';
+import { meterInstagramCall } from './usage';
 
 /**
  * The Instagram reads the app makes on the Facebook Login path
@@ -219,6 +220,16 @@ const mediaInsights: SocialRoute = ({
   if (method !== 'GET' || !id || id === instagram.id) return false;
 
   if (!metaAuthorize(url, req, res, social, INSIGHTS_SCOPE)) return true;
+  if (
+    !meterInstagramCall(
+      social,
+      res,
+      instagram.id,
+      social.signedIn('facebook').id,
+    )
+  ) {
+    return true;
+  }
   about(id);
 
   const metrics = (url.searchParams.get('metric') ?? '')
@@ -289,6 +300,8 @@ const userInsights: SocialRoute = ({ url, method, req, res, social }) => {
   if (method !== 'GET' || path !== `/${instagram.id}/insights`) return false;
 
   if (!metaAuthorize(url, req, res, social, INSIGHTS_SCOPE)) return true;
+  const page = social.signedIn('facebook');
+  if (!meterInstagramCall(social, res, instagram.id, page.id)) return true;
 
   const q = url.searchParams;
   const metrics = (q.get('metric') ?? '').split(',').filter(Boolean);
