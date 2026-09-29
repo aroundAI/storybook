@@ -110,6 +110,26 @@
       "cwd": "apps/vendor-sandbox",
       "test": "__tests__/youtube-delete.test.ts",
       "pattern": "deletes the video: 204"
+    },
+    {
+      "name": "U1 the Instagram allowance is never spent, so nothing is refused",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/vendors/meta/usage.ts",
+      "find": "  const spent = usagePercent(social, accountId) >= 100;\n",
+      "replace": "  const spent = false;\n",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/meta-usage.test.ts",
+      "pattern": "refuses with 80002"
+    },
+    {
+      "name": "U2 calls outside the hour still count, so the allowance never comes back",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/vendors/meta/usage.ts",
+      "find": "  const since = social.now() - HOUR_MS;\n",
+      "replace": "  const since = 0;\n",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/meta-usage.test.ts",
+      "pattern": "comes back as the hour rolls on"
     }
   ]
 }

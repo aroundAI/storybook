@@ -102,7 +102,12 @@ describe('Meta sandbox: the Instagram rate limit', () => {
     expect(refused.usage.call_count).toBe(100);
   });
 
+  // Self-contained: it spends the allowance itself, so it holds when run
+  // alone (as a mutation guard runs it) and not only after the test above.
   it('the allowance comes back as the hour rolls on', async () => {
+    for (let i = 0; i <= HOURLY_INSTAGRAM_CALLS; i++) await reach();
+    expect((await reach()).status).toBe(400);
+
     now += 61 * 60_000;
     const after = await reach();
     expect(after.status).toBe(200);
