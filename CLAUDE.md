@@ -761,6 +761,23 @@ KB-137. None of it was visible without reading every PR.
   `fix(KB-60, KB-42): …`. One it only mentions stays out of the
   parentheses: `fix(KB-111): … (KB-114 filed)`. With no spec or KB, name the
   area: `chore(local-ci): …`.
+- The summary says what is true afterwards, in plain words and the present
+  tense: "a failed read says what failed", not "refactor error handling".
+- **Markers**, at the end of the summary, only in these forms:
+
+  | Marker | Means | Checked |
+  |---|---|---|
+  | `(closes FILM-x)` / `(closes KB-n)` | The spec becomes DONE, or the KB fixed | It must be in `(IDS)`, and the record must say DONE or fixed |
+  | `(part N)` | One slice of a multi-PR spec: `(part C)`, `(part 2/4)` | Form only |
+  | `(stacked on #N)` | Merges after #N; retarget to main once #N merges | Form only |
+  | `(re-land of #N)` | Replaces a PR that merged into a dead branch | Its records cite this PR, as for any fix |
+
+  Any other parenthesis is prose, like "(KB-114 filed)".
+
+Read together, a title is an audit line: `fix(KB-113, KB-125): land the two
+fixes on main (re-land of #395, #400) (closes KB-113)` says what kind of
+change it is, which records must show it, what changed, and how it relates to
+other PRs, before the description is opened.
 
 **Records, in the same PR:**
 
@@ -782,6 +799,8 @@ closed without merging gets `superseded` as well.
 
 **Body:** What, Why, Evidence, and **Records updated**, listing the spec and
 KB files the PR changes.
+No "Generated with Claude Code" line: like the commits, the PR is the
+owner's (2026-09-29).
 
 ```bash
 gh pr create --base main --head feat/film-1802-x \
@@ -793,9 +812,49 @@ pnpm prs:records --pr <n> --apply-labels  # add the labels it is missing
 pnpm prs:records --since 2026-09-22       # audit everything merged since a date
 ```
 
-Run `pnpm prs:records --pr <n>` before asking for a merge. It exits non-zero
-on any gap, and PRs merged into a branch other than main are skipped (their
-work reaches main in a later PR, which is the one checked).
+It is a CI step: 📋 PR records (`.github/workflows/pr-records.yml`) re-runs it
+whenever the PR is pushed, retitled or relabelled, and local CI runs it, so a
+gap fails the run. When required checks go back on for `main`, require it too
+(LOCAL-CI.md). Run `pnpm prs:records --pr <n>` yourself before asking for a merge.
+It exits non-zero on any gap, and PRs merged into a branch other than main
+are skipped (their work reaches main in a later PR, which is the one checked).
+
+### Commit messages ⚠️
+
+**Every commit is authored as `Shauryadeep Chaudhuri <shaurya@aroundai.co>`,
+and none carries a `Co-Authored-By: Claude …` trailer** (owner, 2026-09-29).
+The repo's local git config sets the identity for every worktree; check it in
+a fresh clone:
+
+```bash
+git config user.name  "Shauryadeep Chaudhuri"
+git config user.email "shaurya@aroundai.co"
+```
+
+It was `t <t@t>`, and GitHub's squash merge turned each branch author and
+trailer into a `Co-authored-by:` line on main: 158 commits since 2026-09-22
+carry one. Main's history is not rewritten for it; new commits are right.
+
+**The message:**
+
+```
+type(IDS): what now happens, in plain words        ← subject, ≤ 72 characters
+
+Why the change was needed, and what it found: the cause, not a list of
+files. Wrap at 72. Name the specs, KBs and PRs it touches (#422, KB-128).
+```
+
+- The subject follows the PR title's rule: the same `type` list, and `IDS`
+  are the specs or KBs this commit *does*. A PR squashes to its title, so
+  the commits on a branch are read by reviewers, not by `git log` on main.
+- One logical change per commit. A follow-up in the same PR says what it
+  fixed ("the cover file input stays bare — setInputFiles needs the hidden
+  element"), not "fix tests" or "address review".
+- No trailers but the ones git or a tool needs (`Refs: #123` is fine).
+
+`pnpm prs:records --pr <n>` checks every commit in the PR: its author, the
+trailer, and the subject. An audit (`--since`) checks commits too with
+`--commits`.
 
 ## Verification Steps
 

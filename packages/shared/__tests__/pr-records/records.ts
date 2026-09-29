@@ -39,6 +39,41 @@ export interface PullRequest {
   /** Paths the PR changes. */
   files: string[];
   labels: string[];
+  /** Its description, when it is checked (`--pr`; `--commits` for an audit). */
+  body?: string;
+  /** Its commits, when they are checked (`--pr`; `--commits` for an audit). */
+  commits?: Commit[];
+}
+
+export interface Commit {
+  sha: string;
+  authorEmails: string[];
+  subject: string;
+  body: string;
+}
+
+/**
+ * Who may author a commit (owner, 2026-09-29: "everything needs to be
+ * committed under shaurya@aroundai.co not claude"). Add a teammate here.
+ */
+export const COMMIT_AUTHORS = ['shaurya@aroundai.co'];
+
+const CLAUDE_TRAILER = /^co-authored-by:.*\b(claude|anthropic)\b/im;
+
+/** A commit's author, trailer and subject, against CLAUDE.md "Commit messages". */
+export function commitProblems(commit: Commit): string[] {
+  const at = commit.sha.slice(0, 8);
+  const problems: string[] = [];
+  const strangers = commit.authorEmails.filter(
+    (email) => !COMMIT_AUTHORS.includes(email.toLowerCase()),
+  );
+  if (strangers.length)
+    problems.push(`commit ${at} is authored by ${strangers.join(', ')}`);
+  if (CLAUDE_TRAILER.test(commit.body))
+    problems.push(`commit ${at} carries a Co-Authored-By Claude trailer`);
+  if (!parseTitle(commit.subject))
+    problems.push(`commit ${at}'s subject is not \`type(IDS): summary\``);
+  return problems;
 }
 
 export interface Records {
@@ -49,20 +84,46 @@ export interface Records {
   kbFixedIn(id: string): string[] | undefined;
   /** The label naming the spec's area, e.g. `area: analytics`. */
   specArea(file: string): string | undefined;
+  /** A known bug's `status` (open, partial, fixed), or undefined. */
+  kbStatus(id: string): string | undefined;
 }
 
 export interface ParsedTitle {
   type: PrType;
   ids: string[];
+  /**
+   * Markers at the end of the summary (CLAUDE.md): `(closes FILM-x)`,
+   * `(part N)`, `(stacked on #N)`, `(re-land of #N)`. Any other
+   * parenthesis, such as "(KB-114 filed)", is prose.
+   */
+  closes: string[];
+  part?: string;
+  stackedOn: number[];
+  relandOf: number[];
 }
+
+const MARKER = /\((closes|part|stacked on|re-land of) ([^)]+)\)/g;
+const numbers = (text: string) =>
+  [...text.matchAll(/#(\d+)/g)].map((m) => Number(m[1]));
 
 export function parseTitle(title: string): ParsedTitle | undefined {
   const match = TITLE.exec(title);
   if (!match) return undefined;
-  return {
+  const parsed: ParsedTitle = {
     type: match[1] as PrType,
     ids: [...(match[2] ?? '').matchAll(ID)].map((m) => m[1]!),
+    closes: [],
+    stackedOn: [],
+    relandOf: [],
   };
+  for (const [, kind, value] of title.matchAll(MARKER)) {
+    if (kind === 'closes')
+      parsed.closes.push(...[...value!.matchAll(ID)].map((m) => m[1]!));
+    if (kind === 'part') parsed.part = value!.trim();
+    if (kind === 'stacked on') parsed.stackedOn.push(...numbers(value!));
+    if (kind === 're-land of') parsed.relandOf.push(...numbers(value!));
+  }
+  return parsed;
 }
 
 /** The labels a PR should carry, from its title and the specs it names. */
@@ -120,6 +181,34 @@ export function prProblems(
         `${id}: ${file} is not updated by this PR and never cites ${ref}`,
       );
   }
+
+  // `closes` is a promise the records must keep: the spec reads DONE, the
+  // KB fixed. And a PR closes only what it does.
+  for (const id of parsed.closes) {
+    if (!parsed.ids.includes(id)) {
+      problems.push(`closes ${id}, which is not in the title's (IDS)`);
+      continue;
+    }
+    if (id.startsWith('KB-')) {
+      if (records.kbStatus(id) && records.kbStatus(id) !== 'fixed')
+        problems.push(
+          `closes ${id}, but its status is ${records.kbStatus(id)}`,
+        );
+      continue;
+    }
+    const file = records.specFile(id);
+    const status = file && /^status: (\S+)/m.exec(records.specText(file))?.[1];
+    if (file && status !== 'DONE')
+      problems.push(`closes ${id}, but ${file} says ${status ?? 'no status'}`);
+  }
+
+  for (const commit of pr.commits ?? [])
+    problems.push(...commitProblems(commit));
+  // Owner, 2026-09-29: nothing is signed as Claude's, the PR text included.
+  if (pr.body && /generated with \[?claude code/i.test(pr.body))
+    problems.push(
+      'the description carries a "Generated with Claude Code" line',
+    );
 
   if (labels) {
     const missing = expectedLabels(pr, records).filter(

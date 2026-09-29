@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  type Commit,
   type PullRequest,
   type Records,
+  commitProblems,
   expectedLabels,
   parseTitle,
   prProblems,
@@ -16,6 +18,8 @@ const records: Records = {
   specText: () => 'reason: "Meta publishing done (#468)"',
   kbFixedIn: (id) => ({ 'KB-138': ['#454', '#475'], 'KB-114': ['#418'] })[id],
   specArea: () => 'area: vendor-sandbox',
+  kbStatus: (id) =>
+    ({ 'KB-138': 'fixed', 'KB-114': 'fixed', 'KB-59': 'open' })[id],
 };
 
 const pr = (over: Partial<PullRequest>): PullRequest => ({
@@ -30,15 +34,15 @@ describe('parseTitle', () => {
   it('reads the type and the ids in the scope, not the ones mentioned after it', () => {
     expect(
       parseTitle('fix(KB-111): a figure is null, not 0 (KB-114 filed)'),
-    ).toEqual({
+    ).toMatchObject({
       type: 'fix',
       ids: ['KB-111'],
     });
-    expect(parseTitle('feat(FILM-1805, KB-21): base URLs')).toEqual({
+    expect(parseTitle('feat(FILM-1805, KB-21): base URLs')).toMatchObject({
       type: 'feat',
       ids: ['FILM-1805', 'KB-21'],
     });
-    expect(parseTitle('chore: tidy')).toEqual({ type: 'chore', ids: [] });
+    expect(parseTitle('chore: tidy')).toMatchObject({ type: 'chore', ids: [] });
   });
 
   it('refuses a title without a type', () => {
@@ -146,5 +150,102 @@ describe('expectedLabels', () => {
     expect(
       expectedLabels(pr({ title: 'fix(FILM-1802, KB-138): x' }), records),
     ).toEqual(['area: vendor-sandbox', 'known-bug', 'spec', 'type: fix']);
+  });
+});
+
+describe('commitProblems', () => {
+  const commit = (over: Partial<Commit>): Commit => ({
+    sha: 'f5b0259d0000',
+    authorEmails: ['shaurya@aroundai.co'],
+    subject: 'fix(KB-138): a failed read says what failed',
+    body: 'Why it was wrong, and what now happens.',
+    ...over,
+  });
+
+  it('passes a commit by the owner with a typed subject', () => {
+    expect(commitProblems(commit({}))).toEqual([]);
+  });
+
+  // Owner, 2026-09-29: committed under shaurya@aroundai.co, not Claude.
+  it('flags another author and a Claude co-author trailer', () => {
+    expect(
+      commitProblems(
+        commit({
+          authorEmails: ['t@t'],
+          body: 'Why.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>',
+        }),
+      ),
+    ).toEqual([
+      'commit f5b0259d is authored by t@t',
+      'commit f5b0259d carries a Co-Authored-By Claude trailer',
+    ]);
+  });
+
+  it('flags an untyped subject', () => {
+    expect(commitProblems(commit({ subject: 'wip' }))).toEqual([
+      "commit f5b0259d's subject is not `type(IDS): summary`",
+    ]);
+  });
+
+  it('makes a PR with a bad commit fail', () => {
+    expect(
+      prProblems(
+        pr({ files: [SPEC], commits: [commit({ authorEmails: ['t@t'] })] }),
+        records,
+      ),
+    ).toEqual(['commit f5b0259d is authored by t@t']);
+  });
+
+  it('flags a "Generated with Claude Code" description', () => {
+    expect(
+      prProblems(
+        pr({
+          files: [SPEC],
+          body: '## What\n\nx\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)',
+        }),
+        records,
+      ),
+    ).toEqual(['the description carries a "Generated with Claude Code" line']);
+  });
+});
+
+describe('title markers', () => {
+  it('reads closes, part, stacked on and re-land of; other parentheses are prose', () => {
+    expect(
+      parseTitle(
+        'fix(KB-113, KB-125): land the fixes (re-land of #395, #400) (stacked on #421) (part B) (closes KB-113) (KB-99 filed)',
+      ),
+    ).toEqual({
+      type: 'fix',
+      ids: ['KB-113', 'KB-125'],
+      closes: ['KB-113'],
+      part: 'B',
+      stackedOn: [421],
+      relandOf: [395, 400],
+    });
+  });
+
+  it('holds closes to the records: in the IDS, and the KB fixed or the spec DONE', () => {
+    const at = (title: string, labels: string[]) =>
+      prProblems(pr({ number: 454, title, labels, files: [SPEC] }), {
+        ...records,
+        kbFixedIn: () => ['#454'],
+      });
+    expect(
+      at('fix(KB-138): x (closes KB-138)', ['type: fix', 'known-bug']),
+    ).toEqual([]);
+    expect(
+      at('fix(KB-59): x (closes KB-59)', ['type: fix', 'known-bug']),
+    ).toEqual(['closes KB-59, but its status is open']);
+    expect(
+      at('fix(KB-138): x (closes KB-59)', ['type: fix', 'known-bug']),
+    ).toEqual(["closes KB-59, which is not in the title's (IDS)"]);
+    expect(
+      at('feat(FILM-1802): x (closes FILM-1802)', [
+        'type: feat',
+        'spec',
+        'area: vendor-sandbox',
+      ]),
+    ).toEqual([`closes FILM-1802, but ${SPEC} says no status`]);
   });
 });

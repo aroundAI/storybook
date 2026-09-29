@@ -28,6 +28,7 @@ same commands:
 |---|---|
 | ʦ TypeScript | `pnpm run typecheck`, `pnpm run lint` |
 | 💅 Format | `pnpm turbo format --force --continue -- …` (check only) |
+| 📋 PR records (its own workflow, `pr-records.yml`) | `pnpm -s prs:records --pr <n>`: title, records, labels |
 | 🧪 Unit Tests | classifier table tests, `scripts/test-units.sh`, guard self-test, coverage |
 | 🧪 Unit guards (4 shards) | the 4 shards, 2 at a time, each on a copy-on-write clone (`cp -cR`) of the worktree |
 | 🐘 Supabase DB | schema drift, start-script test, `supabase db reset` from the PR's tree, types-current, the two PostgREST verifiers, pgTAP, database mutation guards |
@@ -155,7 +156,8 @@ LANE=B scripts/local-ci/pipeline.sh 352  # lane B, at the same time
 
 ## When Actions is back
 
-1. Re-add the required status checks on `main`.
+1. Re-add the required status checks on `main`, including 📋 PR records
+   (`pr-records.yml`, added after the checks went off).
 2. Remove the $0 Actions budget.
 3. **Run the full suite once on `main`** before any new work. It's the audit
    for what was merged locally: PRs merged on a re-check never ran the full

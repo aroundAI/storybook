@@ -5,6 +5,7 @@
  *   --pr <n>          one PR, open or merged (local CI runs this)
  *   --since <date>    every PR merged on or after the date, e.g. 2026-09-22
  *   --no-labels       skip the label check
+ *   --commits         check each PR's commits in an audit too (--pr always does)
  *   --apply-labels    add the labels a PR is missing, on GitHub (writes)
  *
  * Exits 1 when any PR has a problem. The changed files come from the merge
@@ -59,14 +60,15 @@ for (const path of specFiles(join(REPO, 'specs'))) {
   const id = /^spec_id: "?([^"\n]+)"?/m.exec(readFileSync(path, 'utf8'))?.[1];
   if (id) specById.set(id, relative(REPO, path));
 }
-const bugs = new Map(loadKnownBugs().map((bug) => [bug.id, bug.fixedIn]));
+const bugs = new Map(loadKnownBugs().map((bug) => [bug.id, bug]));
 
 const records: Records = {
   specFile: (id) =>
     specById.get(id) ??
     [...specById].find(([specId]) => specId.startsWith(id))?.[1],
   specText: (file) => readFileSync(join(REPO, file), 'utf8'),
-  kbFixedIn: (id) => bugs.get(id),
+  kbFixedIn: (id) => bugs.get(id)?.fixedIn,
+  kbStatus: (id) => bugs.get(id)?.status,
   specArea: (file) => {
     const area = AREAS[file.split('/')[1] ?? ''];
     return area && `area: ${area}`;
@@ -97,6 +99,13 @@ interface GhPr {
   mergeCommit: { oid: string } | null;
 }
 const FIELDS = 'number,title,state,baseRefName,labels,mergeCommit';
+
+interface GhCommit {
+  oid: string;
+  messageHeadline: string;
+  messageBody: string;
+  authors: { email: string }[];
+}
 
 function changedFiles(pr: GhPr): string[] {
   const range =
@@ -148,6 +157,18 @@ for (const raw of prs.sort((a, b) => a.number - b.number)) {
     files: changedFiles(raw),
     labels: raw.labels.map((label) => label.name),
   };
+  if (prNumber || argv.includes('--commits')) {
+    const { commits, body } = JSON.parse(
+      gh('pr', 'view', String(raw.number), '--json', 'commits,body'),
+    ) as { commits: GhCommit[]; body: string };
+    pr.body = body;
+    pr.commits = commits.map((commit) => ({
+      sha: commit.oid,
+      authorEmails: commit.authors.map((author) => author.email),
+      subject: commit.messageHeadline,
+      body: commit.messageBody,
+    }));
+  }
 
   if (applyLabels) {
     const missing = expectedLabels(pr, records).filter(

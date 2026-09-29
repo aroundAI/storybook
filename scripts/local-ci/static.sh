@@ -12,6 +12,7 @@ for i in 1 2 3 4; do (cp -cR "$WT" "$CL/s$i" 2>/dev/null; rm -rf "$CL/s$i/apps/w
 run "ʦ TypeScript" "typecheck" "pnpm run typecheck"
 run "ʦ TypeScript" "lint" "pnpm run lint"
 run "💅 Format" "format (check)" "pnpm turbo format --force --continue -- --ignore-path=../../.gitignore --ignore-path=../../.prettierignore"
+run "📋 PR records" "title, records and labels (.github/workflows/pr-records.yml)" "pnpm -s prs:records --pr $PR"
 run "🧪 Unit Tests" "docs-only classifier table test" "bash scripts/ci/docs-only.test.sh"
 run "🧪 Unit Tests" "unchanged-code classifier table test" "[ ! -f scripts/ci/code-patch-unchanged.test.sh ] || bash scripts/ci/code-patch-unchanged.test.sh"
 run "🧪 Unit Tests" "unit tests (scripts/test-units.sh)" "bash scripts/test-units.sh"

@@ -20,6 +20,46 @@
       "cwd": "packages/shared",
       "test": "__tests__/pr-records.test.ts",
       "pattern": "re-land entry"
+    },
+    {
+      "name": "R3 a commit by another author passes again",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/pr-records/records.ts",
+      "find": "  if (strangers.length)\n    problems.push(`commit ${at} is authored by ${strangers.join(', ')}`);\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/pr-records.test.ts",
+      "pattern": "another author"
+    },
+    {
+      "name": "R4 a Claude co-author trailer passes again",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/pr-records/records.ts",
+      "find": "  if (CLAUDE_TRAILER.test(commit.body))\n    problems.push(`commit ${at} carries a Co-Authored-By Claude trailer`);\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/pr-records.test.ts",
+      "pattern": "another author"
+    },
+    {
+      "name": "R5 a Generated with Claude Code description passes again",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/pr-records/records.ts",
+      "find": "  if (pr.body && /generated with \\[?claude code/i.test(pr.body))\n    problems.push(\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/pr-records.test.ts",
+      "pattern": "Generated with Claude Code"
+    },
+    {
+      "name": "R6 a spec a PR says it closes may stay open",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/pr-records/records.ts",
+      "find": "    if (file && status !== 'DONE')\n      problems.push(`closes ${id}, but ${file} says ${status ?? 'no status'}`);\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/pr-records.test.ts",
+      "pattern": "holds closes to the records"
     }
   ]
 }
