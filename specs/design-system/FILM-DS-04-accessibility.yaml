@@ -48,7 +48,7 @@ test_plan:
   automated:
     - text: "Run axe-core on all pages"
       met: false
-      reason: "not met — no test found; axe-core is only a transitive dependency of eslint-plugin-jsx-a11y"
+      reason: "not written: axe-core is only a transitive dependency of eslint-plugin-jsx-a11y; running it on every page needs it added and would surface the known accessibility gaps, which is its own piece of work"
     - text: "Validate HTML structure (headings, landmarks)"
       met: false
       reason: "not met — no test found"

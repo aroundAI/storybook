@@ -103,7 +103,7 @@ test_plan:
       evidence: "`apps/e2e/tests/revenue/revenue.spec.ts:17`"
     - text: "Test report generation"
       met: false
-      reason: "not met — no test found"
+      reason: "not built: generateRevenueReportAction stores a revenue_reports row, writes no file, and nothing calls it"
     - text: "Test RLS policies"
       met: true
       evidence: "`apps/web/supabase/tests/database/revenue-records-rls.test.sql:8` (`revenue_records` only)"

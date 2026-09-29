@@ -75,13 +75,13 @@ test_plan:
   visual:
     - text: "Chart renders correctly with sample data"
       met: false
-      reason: "not met — no test found"
+      reason: "not written: needs the chart rendered in a browser (a Playwright spec with screenshots), which no unit test can show"
     - text: "Responsive at different widths"
       met: false
-      reason: "not met — no test found"
+      reason: "not written: needs the chart rendered in a browser (a Playwright spec with screenshots), which no unit test can show"
     - text: "Export generates valid image"
       met: false
-      reason: "not met — no test found"
+      reason: "not written: needs the chart rendered in a browser (a Playwright spec with screenshots), which no unit test can show"
 remaining:
   - criterion: "Legend clickable to hide/show series"
     reason: "`performance-chart.tsx:157,196` render a bare recharts `<Legend />`; recharts does not toggle series by itself and nothing tracks hidden series. True since the chart shipped (2b20331f)"

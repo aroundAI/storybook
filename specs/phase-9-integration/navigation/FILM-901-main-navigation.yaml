@@ -72,7 +72,7 @@ test_plan:
   integration:
     - text: "Test navigation between sections"
       met: false
-      reason: "not met — no test found"
+      reason: "not written: needs a browser (a Playwright spec that clicks through the sidebar); the config is unit-tested in apps/web/config/__tests__/studio-navigation.test.ts"
     - text: "Test deep linking to episode tabs"
       met: true
       evidence: "`apps/e2e/tests/refusals/refusals.po.ts:235` (a direct `goto` to `audio-studio`; incidental, no tab-state assertion)"

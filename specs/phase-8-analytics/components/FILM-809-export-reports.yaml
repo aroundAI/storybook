@@ -70,7 +70,7 @@ test_plan:
       evidence: "`apps/e2e/tests/analytics/raw-export-evidence.spec.ts:100` (scheduled route → emailed signed link → CSV; gated by `CLICKHOUSE_EVIDENCE=1`)"
     - text: "Test PDF generation with charts"
       met: false
-      reason: "not met — no test found"
+      reason: "not built: the PDF draws no charts (packages/features/content-analytics/src/lib/pdf-generator.tsx renders branding and tables only), so there is no chart to test"
     - text: "Test scheduled report execution"
       met: true
       evidence: "`apps/e2e/tests/analytics/raw-export-evidence.spec.ts:100` (asserts `last_run_status` and the delivered CSV)"
