@@ -265,6 +265,7 @@ describe.skipIf(!LOCAL_STACK_URL || !LOCAL_STACK_KEY)(
       const regenerate = () =>
         commitStoryCanon({
           projectId,
+          accountId: userId,
           episodeId,
           episodeNumber: 1,
           season: 1,

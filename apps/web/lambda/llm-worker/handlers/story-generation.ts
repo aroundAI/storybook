@@ -483,6 +483,7 @@ export async function processStoryGeneration(
     try {
       await commitStoryCanon({
         projectId: data.projectId,
+        accountId: data.accountId,
         episodeId: data.episodeId,
         episodeNumber: episodeContext.episodeNumber ?? 1,
         season: episodeContext.seasonNumber ?? 1,
