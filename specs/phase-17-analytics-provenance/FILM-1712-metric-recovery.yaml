@@ -32,7 +32,7 @@ acceptance_criteria:
     evidence: "the daily query asks for averageViewPercentage; fetchTotals is gone and the period's totals are totalsFromDays over the daily rows, averages recomputed from their definitions (youtube-analytics.test.ts, 'totalsFromDays')"
   - text: "Instagram's reach reaches a column instead of extra_metrics"
     met: true
-    evidence: "Migration 015: `accounts_reached Nullable(UInt64)` on video_metrics (the day's first-time viewers) and video_snapshots (lifetime). NULL, never 0, when Meta omits it or the baseline predates the column; `pnpm --filter @kit/clickhouse verify` asserts the baseline keeps the latest snapshot's NULL. Named for what it counts: 'reach' already means YouTube impressions here"
+    evidence: "Migration 015: `accounts_reached Nullable(UInt64)` on video_metrics (the day's first-time viewers) and video_snapshots (lifetime). NULL, never 0, when Meta omits it or the baseline predates the column; `pnpm --filter @kit/clickhouse verify` asserts the baseline keeps the latest snapshot's NULL. Named for what it counts: 'reach' already means YouTube impressions here (#457)"
   - text: "ig_reels_avg_watch_time and ig_reels_video_view_total_time are requested for REELS, and their unit is confirmed empirically before the value is stored"
     met: true
     evidence: "both requested for REELS only (instagram-insights.ts, metricsForType). Unit confirmed on the owner's own business account before storing: Meta's titles say milliseconds (2026-09-28), and a Reel with 221 views read average 6,194 and total 749,526 — 6.2 s and 12.5 min; as seconds the average would be 1.7 h (2026-09-29). The total is stored as watch_time_seconds (÷ 1000) in the snapshot and its daily delta; the average is kept as Meta reports it and never derived — it is not total ÷ views (749,526 ÷ 6,194 = 121, not 221)"
@@ -68,7 +68,7 @@ acceptance_criteria:
     evidence: "stops being written: reach has had its own column since #457, and nothing read the raw payloads. The ingest inputs no longer take extraMetricsJson, so it cannot be written again by accident; the column stays, empty"
   - text: "The capability matrix is updated in the same PR as each newly-ingested field, per FILM-1703's writer-binding test"
     met: true
-    evidence: "each field moved with its entry: reach as accounts_reached and channel_accounts_reached (the reach PRs); Reels watch time as watch_time × instagram: derived (#470); reposts as the new `reposts` family, Instagram derived (#472), with a verify-queries presence probe. saved_count/shares_count are not requested (they duplicate stored insights), and the aggregates moved to FILM-1722"
+    evidence: "each field moved with its entry: reach as accounts_reached and channel_accounts_reached — #457 per post, #460 channel_windows and the nightly sync, #461 the one reader, #463 the reach page and both families, #469 the sync paced under Meta's rate limit; Reels watch time as watch_time × instagram: derived (#470); reposts as the new `reposts` family, Instagram derived (#472), with a verify-queries presence probe. saved_count/shares_count are not requested (they duplicate stored insights), and the aggregates moved to FILM-1722"
 remaining:
   - criterion: "The aggregates are requested as Media node fields, and none is stored in views or labelled as views — they include boosted and crossposted placements, and total_views_count includes replays"
     reason: "moved by owner decision (2026-09-29): requested only once FILM-1722 defines what they mean"

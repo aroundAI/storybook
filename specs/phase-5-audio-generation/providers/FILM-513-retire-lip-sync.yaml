@@ -24,7 +24,7 @@ provider:
 acceptance_criteria:
   - text: "Migration drops `lip_sync_jobs` and **refuses if the table has rows** — the refusal seen by inserting one row locally, running the migration, watching it raise, removing the row, running again"
     met: true
-    evidence: "apps/web/supabase/migrations/20260925101920_drop-lip-sync-jobs.sql:13-25; refusal and drop transcripts in the FILM-513 PR body. Owner approved the drop 2026-09-25 with 0 production rows"
+    evidence: "apps/web/supabase/migrations/20260925101920_drop-lip-sync-jobs.sql:13-25; refusal and drop transcripts in #371's description. Owner approved the drop 2026-09-25 with 0 production rows"
   - text: "Types regenerated (`check:types-current` green); `lip_sync_jobs` absent from `database.types.ts`"
     met: true
     evidence: "apps/web/lib/database.types.ts and packages/supabase/src/database.types.ts regenerated with the pinned CLI; both scanned by apps/web/test/film-513-lip-sync-retired.test.ts"
@@ -45,7 +45,7 @@ acceptance_criteria:
     evidence: "FILM-511 retirement text, FILM-1803 (row 4114 and the lip-sync stand-in removed), FILM-1801 §9, phase-18 README, KB-21 (partial), KB-6 annotation, INDEX"
   - text: "PR body states that nothing user-visible changes and why no screenshots"
     met: true
-    evidence: "The FILM-513 PR body"
+    evidence: "#371's description"
 open_questions: []
 notes: |
   > **Done (2026-09-25).** The owner approved the drop on 2026-09-25;

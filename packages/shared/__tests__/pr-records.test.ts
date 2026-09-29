@@ -1,0 +1,150 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  type PullRequest,
+  type Records,
+  expectedLabels,
+  parseTitle,
+  prProblems,
+} from './pr-records/records';
+
+const SPEC =
+  'specs/phase-18-local-vendor-sandbox/FILM-1802-social-platform-sandbox.yaml';
+
+const records: Records = {
+  specFile: (id) => (id === 'FILM-1802' ? SPEC : undefined),
+  specText: () => 'reason: "Meta publishing done (#468)"',
+  kbFixedIn: (id) => ({ 'KB-138': ['#454', '#475'], 'KB-114': ['#418'] })[id],
+  specArea: () => 'area: vendor-sandbox',
+};
+
+const pr = (over: Partial<PullRequest>): PullRequest => ({
+  number: 473,
+  title: 'feat(FILM-1802): the sandbox serves a Video permalink',
+  files: [],
+  labels: ['type: feat', 'spec', 'area: vendor-sandbox'],
+  ...over,
+});
+
+describe('parseTitle', () => {
+  it('reads the type and the ids in the scope, not the ones mentioned after it', () => {
+    expect(
+      parseTitle('fix(KB-111): a figure is null, not 0 (KB-114 filed)'),
+    ).toEqual({
+      type: 'fix',
+      ids: ['KB-111'],
+    });
+    expect(parseTitle('feat(FILM-1805, KB-21): base URLs')).toEqual({
+      type: 'feat',
+      ids: ['FILM-1805', 'KB-21'],
+    });
+    expect(parseTitle('chore: tidy')).toEqual({ type: 'chore', ids: [] });
+  });
+
+  it('refuses a title without a type', () => {
+    expect(parseTitle('Plan Document')).toBeUndefined();
+    expect(
+      parseTitle('Local CI: pipeline.sh creates worktrees'),
+    ).toBeUndefined();
+  });
+});
+
+describe('prProblems', () => {
+  // The gap the 2026-09-29 audit found: #473 merged, FILM-1802 still said
+  // "not served", and nothing noticed.
+  it('flags a feat that names a spec it neither updates nor cites', () => {
+    expect(prProblems(pr({}), records)).toEqual([
+      `FILM-1802: ${SPEC} is not updated by this PR and never cites #473`,
+    ]);
+  });
+
+  it('passes when the PR changes the spec, or the spec cites it', () => {
+    expect(prProblems(pr({ files: [SPEC] }), records)).toEqual([]);
+    expect(prProblems(pr({ number: 468 }), records)).toEqual([]);
+  });
+
+  it('flags a KB fix missing from fixed_in, and passes a listed one', () => {
+    expect(
+      prProblems(
+        pr({
+          number: 999,
+          title: 'fix(KB-138): x',
+          labels: ['type: fix', 'known-bug'],
+        }),
+        records,
+      ),
+    ).toEqual(["KB-138's fixed_in does not list #999"]);
+    expect(
+      prProblems(
+        pr({
+          number: 475,
+          title: 'fix(KB-138): x',
+          labels: ['type: fix', 'known-bug'],
+        }),
+        records,
+      ),
+    ).toEqual([]);
+  });
+
+  it('accepts a re-land entry that names the PR', () => {
+    const relanded: Records = {
+      ...records,
+      kbFixedIn: () => ['#264 (round 4)', '#303 (re-land of #299)'],
+    };
+    expect(
+      prProblems(
+        pr({
+          number: 299,
+          title: 'fix(KB-6): x',
+          labels: ['type: fix', 'known-bug'],
+        }),
+        relanded,
+      ),
+    ).toEqual([]);
+    expect(
+      prProblems(
+        pr({
+          number: 29,
+          title: 'fix(KB-6): x',
+          labels: ['type: fix', 'known-bug'],
+        }),
+        relanded,
+      ),
+    ).toEqual(["KB-6's fixed_in does not list #29"]);
+  });
+
+  it('owes no record for test, docs or chore, but the ids must still resolve', () => {
+    expect(
+      prProblems(
+        pr({
+          title: 'test(FILM-1802): steadier',
+          labels: ['type: test', 'spec', 'area: vendor-sandbox'],
+        }),
+        records,
+      ),
+    ).toEqual([]);
+    expect(
+      prProblems(
+        pr({ title: 'docs(KB-9999): x', labels: ['type: docs', 'known-bug'] }),
+        records,
+      ),
+    ).toEqual(['KB-9999 names no file in specs/known-bugs/']);
+  });
+
+  it('flags a bad title and missing labels', () => {
+    expect(prProblems(pr({ title: 'Plan Document' }), records)[0]).toMatch(
+      /title is not `type\(IDS\): summary`/,
+    );
+    expect(prProblems(pr({ files: [SPEC], labels: [] }), records)).toEqual([
+      'missing labels: area: vendor-sandbox, spec, type: feat',
+    ]);
+  });
+});
+
+describe('expectedLabels', () => {
+  it('mirrors the title: type, known-bug, spec and its area', () => {
+    expect(
+      expectedLabels(pr({ title: 'fix(FILM-1802, KB-138): x' }), records),
+    ).toEqual(['area: vendor-sandbox', 'known-bug', 'spec', 'type: fix']);
+  });
+});
