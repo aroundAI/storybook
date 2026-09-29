@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
 import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
+import { whyNoRow } from '@kit/shared/rows';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -156,7 +157,7 @@ const linkAssetToEpisode = enhanceAction(
       .single();
 
     if (fetchError || !episode) {
-      throw new Error('Episode not found');
+      throw new Error(whyNoRow(fetchError, 'Episode not found'));
     }
 
     const metadata = (episode.metadata ?? {}) as Record<string, unknown>;

@@ -6,6 +6,7 @@ import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
 import { decrypt, encrypt } from '@kit/shared/crypto';
+import { whyNoRow } from '@kit/shared/rows';
 import { vendorUrl } from '@kit/shared/vendors';
 import {
   canManageExternalApiKeys,
@@ -40,7 +41,7 @@ async function getAccountIdFromSlug(slug: string): Promise<string> {
     .single();
 
   if (error || !data) {
-    throw new Error('Account not found');
+    throw new Error(whyNoRow(error, 'Account not found'));
   }
 
   return data.id;

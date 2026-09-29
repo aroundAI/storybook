@@ -8,6 +8,7 @@ import {
   sanitizeStrings,
 } from '@kit/episodes/lib';
 import type { ProjectType } from '@kit/film-studio-schemas/project';
+import { whyNoRow } from '@kit/shared/rows';
 import type { Database } from '@kit/supabase/database';
 
 import {
@@ -231,9 +232,7 @@ export async function buildEpisodeContext(
       errorDetails: episodeError?.details,
       errorHint: episodeError?.hint,
     });
-    throw new Error(
-      `Episode not found (${episodeId}): ${episodeError?.message || 'No data returned'} [code: ${episodeError?.code}]`,
-    );
+    throw new Error(whyNoRow(episodeError, `Episode not found (${episodeId})`));
   }
 
   console.log(

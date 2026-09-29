@@ -40,58 +40,58 @@ server_action:
 acceptance_criteria:
   - text: "`createEpisodeAction` successfully creates episode with valid data"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:100"
+    evidence: "packages/features/episodes/src/server/actions.ts:101"
   - text: "`createEpisodeAction` auto-assigns episode number if not provided"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:93"
+    evidence: "packages/features/episodes/src/server/actions.ts:94"
   - text: "`createEpisodeAction` respects RLS (cannot create for inaccessible project)"
     met: false
     reason: "unverified — policy `episodes_create` exists (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:667`); no pgTAP test exercises it"
   - text: "`getEpisodeWithShotsAction` returns episode with all related shots"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:574"
+    evidence: "packages/features/episodes/src/server/actions.ts:575"
   - text: "`getEpisodeWithShotsAction` includes season information"
     met: false
-    reason: "not met — `packages/features/episodes/src/server/actions.ts:663` reads `season?.[0]`, but PostgREST returns this many-to-one embed as an object, so season is always null"
+    reason: "not met — `packages/features/episodes/src/server/actions.ts:664` reads `season?.[0]`, but PostgREST returns this many-to-one embed as an object, so season is always null"
   - text: "`updateEpisodeStatusAction` enforces valid status transitions"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:727"
+    evidence: "packages/features/episodes/src/server/actions.ts:728"
   - text: "`updateEpisodeStatusAction` throws error on version mismatch"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:721"
+    evidence: "packages/features/episodes/src/server/actions.ts:722"
   - text: "`updateEpisodeStatusAction` increments version on success"
     met: true
     evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:113"
   - text: "`listProjectEpisodesAction` returns all non-deleted episodes"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:830"
+    evidence: "packages/features/episodes/src/server/actions.ts:831"
   - text: "`listProjectEpisodesAction` filters by season and status"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:835"
+    evidence: "packages/features/episodes/src/server/actions.ts:836"
   - text: "`listProjectEpisodesAction` respects pagination"
     met: true
-    evidence: "`packages/features/episodes/src/server/actions.ts:832`, `packages/features/episodes/src/lib/schemas.ts:93`"
+    evidence: "`packages/features/episodes/src/server/actions.ts:833`, `packages/features/episodes/src/lib/schemas.ts:93`"
   - text: "`updateEpisodeAction` updates only provided fields"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:913"
+    evidence: "packages/features/episodes/src/server/actions.ts:914"
   - text: "`updateEpisodeAction` validates version for optimistic locking"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:908"
+    evidence: "packages/features/episodes/src/server/actions.ts:909"
   - text: "`deleteEpisodeAction` soft deletes episode and all shots"
     met: false
-    reason: "not met — its shots are hard-deleted (`packages/features/episodes/src/server/actions.ts:1067`), although `shots.deleted_at` exists since migration `20251209061319`"
+    reason: "not met — its shots are hard-deleted (`packages/features/episodes/src/server/actions.ts:1068`), although `shots.deleted_at` exists since migration `20251209061319`"
   - text: "All actions enforce authentication"
     met: true
-    evidence: "`packages/features/episodes/src/server/actions.ts:65`, `packages/next/src/actions/index.ts:43`"
+    evidence: "`packages/features/episodes/src/server/actions.ts:66`, `packages/next/src/actions/index.ts:43`"
   - text: "All actions complete within 3 seconds"
     met: false
     reason: "unverified — runtime timing; needs a timed run against a seeded database"
   - text: "All inputs validated with Zod schemas"
     met: true
-    evidence: "`packages/features/episodes/src/server/actions.ts:188` (a `schema` on every action)"
+    evidence: "`packages/features/episodes/src/server/actions.ts:189` (a `schema` on every action)"
   - text: "All database errors properly caught and thrown"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:757"
+    evidence: "packages/features/episodes/src/server/actions.ts:758"
   - text: "TypeScript compiles without errors"
     met: true
     evidence: "`tsc --noEmit` in `packages/features/episodes` at 3017b6f9: no errors in the package"
@@ -104,10 +104,10 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "`getEpisodeWithShotsAction` includes season information"
-    reason: "`packages/features/episodes/src/server/actions.ts:663` reads `season?.[0]` from a many-to-one embed that PostgREST returns as an object, so `season` is always null; the action has no callers today"
+    reason: "`packages/features/episodes/src/server/actions.ts:664` reads `season?.[0]` from a many-to-one embed that PostgREST returns as an object, so `season` is always null; the action has no callers today"
     closed_by: "unassigned"
   - criterion: "`deleteEpisodeAction` soft-deletes the shots"
-    reason: "shots are hard-deleted (`packages/features/episodes/src/server/actions.ts:1067`) although `shots.deleted_at` exists (`apps/web/supabase/migrations/20251209061319_add-missing-shots-columns.sql:19`)"
+    reason: "shots are hard-deleted (`packages/features/episodes/src/server/actions.ts:1068`) although `shots.deleted_at` exists (`apps/web/supabase/migrations/20251209061319_add-missing-shots-columns.sql:19`)"
     closed_by: "unassigned"
 open_questions: []
 notes: |

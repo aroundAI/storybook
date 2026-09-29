@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { readFailed, whyNoRow } from '@kit/shared/rows';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { syncSinglePublishById } from './analytics-sync-cron';
@@ -52,6 +53,10 @@ export const manualSyncAction = enhanceAction(
       )
       .eq('id', data.publishId)
       .single();
+
+    if (readFailed(error)) {
+      throw new Error(whyNoRow(error, 'Publish not found or access denied'));
+    }
 
     if (error || !publish) {
       return {

@@ -14,6 +14,7 @@ import {
 } from '@kit/next/refusals';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
+import { readFailed, whyNoRow } from '@kit/shared/rows';
 import { getStorageAdapter, writeProjectObject } from '@kit/storage';
 import { dialogueAudioPath, voicePreviewPath } from '@kit/storage/upload-paths';
 import { requireUser } from '@kit/supabase/require-user';
@@ -476,6 +477,10 @@ const generateDialogueVoiceAsync = enhanceAction(
       )
       .eq('id', data.dialogueLineId)
       .single();
+
+    if (readFailed(fetchError)) {
+      throw new Error(whyNoRow(fetchError, 'Dialogue line not found'));
+    }
 
     if (fetchError || !dialogueLine) {
       return {

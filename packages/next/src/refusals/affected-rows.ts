@@ -1,3 +1,5 @@
+import { readFailed, whyNoRow } from '@kit/shared/rows';
+
 import { ActionRefusal } from './action-result';
 
 /**
@@ -49,8 +51,8 @@ export function requireRow<
 >(result: R, notFound: string): NonNullable<R['data']> {
   const { data, error } = result;
 
-  if (error && error.code !== NO_ROW) {
-    throw new Error(`${notFound}: the read failed (${error.message})`);
+  if (readFailed(error)) {
+    throw new Error(whyNoRow(error, notFound));
   }
 
   if (!data) {
@@ -59,5 +61,3 @@ export function requireRow<
 
   return data as NonNullable<R['data']>;
 }
-
-const NO_ROW = 'PGRST116';

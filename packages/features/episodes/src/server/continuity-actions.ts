@@ -12,6 +12,7 @@ import {
   returnRefusals,
 } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
+import { whyNoRow } from '@kit/shared/rows';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -109,7 +110,7 @@ export const checkContinuityAction = enhanceAction(
 
     if (episodeError || !episode) {
       logger.error({ ...ctx, error: episodeError }, 'Episode not found');
-      throw new Error('Episode not found');
+      throw new Error(whyNoRow(episodeError, 'Episode not found'));
     }
 
     // Check if there's content to analyze

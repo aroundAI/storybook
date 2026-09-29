@@ -1,0 +1,45 @@
+{
+  "feature": "KB-138",
+  "mutations": [
+    {
+      "name": "G1 a thrown not-found hides the failed read again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/social-post-actions.ts",
+      "find": "      throw new Error(whyNoRow(error, 'Social post not found'));\n",
+      "replace": "      throw new Error('Social post not found');\n",
+      "cwd": "packages/next",
+      "test": "__tests__/kb138-errors-not-not-found.test.ts",
+      "pattern": "thrown or returned"
+    },
+    {
+      "name": "G2 a returned not-found answers a failed read again",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/token.ts",
+      "find": "  if (readFailed(error)) {\n    throw new Error(whyNoRow(error, 'Platform connection not found'));\n  }\n",
+      "replace": "",
+      "cwd": "packages/next",
+      "test": "__tests__/kb138-errors-not-not-found.test.ts",
+      "pattern": "thrown or returned"
+    },
+    {
+      "name": "G3 PGRST116 stops meaning no row",
+      "kind": "unit",
+      "file": "packages/shared/src/rows/index.ts",
+      "find": "  return !!error && error.code !== NO_ROW;\n",
+      "replace": "  return !!error;\n",
+      "cwd": "packages/shared",
+      "test": "__tests__/rows.test.ts",
+      "pattern": ""
+    },
+    {
+      "name": "G4 a failed read is worded as no row",
+      "kind": "unit",
+      "file": "packages/shared/src/rows/index.ts",
+      "find": "  return readFailed(error)\n    ? `${notFound}: the read failed (${error!.message})`\n    : notFound;\n",
+      "replace": "  return notFound;\n",
+      "cwd": "packages/shared",
+      "test": "__tests__/rows.test.ts",
+      "pattern": "names the failed read"
+    }
+  ]
+}

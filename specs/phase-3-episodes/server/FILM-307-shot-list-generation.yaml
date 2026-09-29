@@ -25,7 +25,7 @@ acceptance_criteria:
     evidence: null
   - text: "Creates shot records via batchCreateShotsAction"
     met: false
-    reason: "retired — the job flow inserts shots directly (`apps/web/lambda/llm-worker/handlers/shot-generation.ts:412`); `batchCreateShotsAction` has no callers"
+    reason: "retired — the job flow inserts shots directly (`apps/web/lambda/llm-worker/handlers/shot-generation.ts:413`); `batchCreateShotsAction` has no callers"
   - text: "Updates episode.shot_list with metadata"
     met: true
     evidence: null
@@ -34,7 +34,7 @@ acceptance_criteria:
     evidence: null
   - text: "Handles optimistic locking"
     met: false
-    reason: "no longer true — the worker's write drops the version guard (`apps/web/lambda/llm-worker/handlers/shot-generation.ts:451`, 669b66e3)"
+    reason: "no longer true — the worker's write drops the version guard (`apps/web/lambda/llm-worker/handlers/shot-generation.ts:452`, 669b66e3)"
   - text: "Completes within 40 seconds"
     met: false
     reason: "unverified — runtime timing of an async agent job; needs a timed run"
@@ -43,10 +43,10 @@ acceptance_criteria:
     evidence: null
   - text: "Supports both screenplay_data and story_data as input sources (fallback)"
     met: false
-    reason: "retired — eb3b01f0 moved to per-scene processing, which needs a screenplay (`packages/features/episodes/src/lib/server/mutations/shot-list-actions.ts:77`)"
+    reason: "retired — eb3b01f0 moved to per-scene processing, which needs a screenplay (`packages/features/episodes/src/lib/server/mutations/shot-list-actions.ts:78`)"
 remaining:
   - criterion: "Handles optimistic locking"
-    reason: "no version guard on the worker's write since 669b66e3 (`apps/web/lambda/llm-worker/handlers/shot-generation.ts:451`)"
+    reason: "no version guard on the worker's write since 669b66e3 (`apps/web/lambda/llm-worker/handlers/shot-generation.ts:452`)"
     closed_by: "owner"
 open_questions: []
 notes: |

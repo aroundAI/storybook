@@ -83,7 +83,7 @@ acceptance_criteria:
     evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:289"
   - text: "last_used_at tracks usage"
     met: false
-    reason: "not met — nothing writes it when a key is used; the only write sets it to null on save (apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts:137)"
+    reason: "not met — nothing writes it when a key is used; the only write sets it to null on save (apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts:138)"
 test_plan:
   unit:
     - text: "Insert key with valid provider succeeds"
@@ -139,7 +139,7 @@ test_plan:
       reason: "not met — no test found"
 remaining:
   - criterion: "last_used_at tracks usage"
-    reason: "No key reader updates it; saveApiKeyAction writes null (apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts:137), and git log -S last_used_at shows no writer ever existed"
+    reason: "No key reader updates it; saveApiKeyAction writes null (apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts:138), and git log -S last_used_at shows no writer ever existed"
     closed_by: "unassigned"
 open_questions: []
 notes: |

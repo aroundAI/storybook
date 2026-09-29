@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
 import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
+import { whyNoRow } from '@kit/shared/rows';
 import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -592,7 +593,7 @@ export const updateNarrativeThreadAction = enhanceAction(
       .single();
 
     if (fetchError || !current) {
-      throw new Error('Thread not found');
+      throw new Error(whyNoRow(fetchError, 'Thread not found'));
     }
 
     // Verify version matches (optimistic locking)

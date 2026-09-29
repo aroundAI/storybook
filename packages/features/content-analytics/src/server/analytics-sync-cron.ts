@@ -13,6 +13,7 @@ import {
 import type { SnapshotTotals, VideoSnapshot } from '@kit/clickhouse/server';
 import { getLogger } from '@kit/shared/logger';
 import { fetchAllByIds } from '@kit/shared/pagination';
+import { readFailed, whyNoRow } from '@kit/shared/rows';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import { planRevenueRowWrites } from '../lib/revenue-mix';
@@ -1046,6 +1047,10 @@ export async function syncSinglePublishById(
     )
     .eq('id', publishId)
     .single();
+
+  if (readFailed(error)) {
+    throw new Error(whyNoRow(error, 'Publish not found'));
+  }
 
   if (error || !publish) {
     return {

@@ -9,6 +9,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { sanitizeForPrompt, sanitizeStrings } from '@kit/episodes/lib';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
+import { whyNoRow } from '@kit/shared/rows';
 import type { Database, Json } from '@kit/supabase/database';
 
 import { executeLLMForLambda } from '../llm-utils';
@@ -74,7 +75,7 @@ export async function processScreenplayRefinement(
       .single();
 
     if (episodeError || !episode) {
-      throw new Error(`Episode not found: ${episodeError?.message}`);
+      throw new Error(whyNoRow(episodeError, 'Episode not found'));
     }
 
     const screenplayData = episode.screenplay_data as Record<

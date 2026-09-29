@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { enhanceAction } from '@kit/next/actions';
 import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
+import { whyNoRow } from '@kit/shared/rows';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -119,7 +120,7 @@ export const batchCreateShotsAction = enhanceAction(
       .single();
 
     if (episodeError || !episode) {
-      throw new Error('Episode not found');
+      throw new Error(whyNoRow(episodeError, 'Episode not found'));
     }
 
     // Get next sequence number

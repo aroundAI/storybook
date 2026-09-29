@@ -52,7 +52,7 @@ acceptance_criteria:
     evidence: null
   - text: "Stores daily snapshots - Upserts to `content_analytics` with `(publish_id, snapshot_date)` unique key"
     met: true
-    evidence: "now ClickHouse `video_snapshots` (`packages/features/content-analytics/src/server/analytics-sync-cron.ts:829`); `content_analytics` was dropped in 947c7ae9"
+    evidence: "now ClickHouse `video_snapshots` (`packages/features/content-analytics/src/server/analytics-sync-cron.ts:830`); `content_analytics` was dropped in 947c7ae9"
   - text: "Updates existing snapshots - Uses Supabase upsert with `onConflict`"
     met: true
     evidence: "now `ReplacingMergeTree(fetched_at)` ordered by `snapshot_date` (`packages/clickhouse/src/migrations/002_metrics_v2.ts:59`)"
@@ -64,7 +64,7 @@ acceptance_criteria:
     evidence: null
   - text: "Manual sync trigger works - `manualSyncAction` and `syncSinglePublishById` functions"
     met: false
-    reason: "unverified — both exist (`packages/features/content-analytics/src/server/sync-actions.ts:35`, `analytics-sync-cron.ts:1021`); no test drives them and no UI calls `manualSyncAction`"
+    reason: "unverified — both exist (`packages/features/content-analytics/src/server/sync-actions.ts:36`, `analytics-sync-cron.ts:1021`); no test drives them and no UI calls `manualSyncAction`"
   - text: "Respects API rate limits - `PlatformRateLimiter` with sliding window (YouTube 10/min, TikTok 20/min, Instagram 30/min)"
     met: true
     evidence: null

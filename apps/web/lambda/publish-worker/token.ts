@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { isWithinRefreshWindow } from '@kit/publishing/lib/token-expiry';
+import { readFailed, whyNoRow } from '@kit/shared/rows';
 import type { Database } from '@kit/supabase/database';
 
 import { decrypt } from './crypto';
@@ -35,6 +36,10 @@ export async function checkConnectionToken(
     )
     .eq('id', connectionId)
     .single();
+
+  if (readFailed(error)) {
+    throw new Error(whyNoRow(error, 'Platform connection not found'));
+  }
 
   if (error || !connection) {
     return { valid: false, error: 'Platform connection not found' };

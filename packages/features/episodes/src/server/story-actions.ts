@@ -9,6 +9,7 @@ import type {
   StoryIdeationOutput,
 } from '@kit/prompt-engine/schemas';
 import { getLogger } from '@kit/shared/logger';
+import { whyNoRow } from '@kit/shared/rows';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -177,7 +178,7 @@ const generateFullStory = enhanceAction(
 
     if (fetchError || !episode) {
       logger.error({ ...ctx, error: fetchError }, 'Episode not found');
-      throw new Error('Episode not found');
+      throw new Error(whyNoRow(fetchError, 'Episode not found'));
     }
 
     // Check version for optimistic locking

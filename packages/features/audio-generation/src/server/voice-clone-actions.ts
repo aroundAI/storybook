@@ -13,6 +13,7 @@ import {
 } from '@kit/next/refusals';
 import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
+import { whyNoRow } from '@kit/shared/rows';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -329,7 +330,7 @@ export const checkCloneStatusAction = enhanceAction(
       .single();
 
     if (error || !profile) {
-      throw new Error('Voice profile not found');
+      throw new Error(whyNoRow(error, 'Voice profile not found'));
     }
 
     return {

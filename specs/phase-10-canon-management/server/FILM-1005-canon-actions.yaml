@@ -94,37 +94,37 @@ server_action:
 acceptance_criteria:
   - text: "All CRUD actions implemented with proper typing"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:214, packages/features/episodes/src/server/canon-actions.ts:576"
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:215, packages/features/episodes/src/server/canon-actions.ts:577"
   - text: "Authorization checks on all actions via RLS"
     met: true
     evidence: "apps/web/supabase/migrations/20260924181028_kb76-77-63-canon-write-scope.sql:60 — thread, world-state, summary, act-bridge, sequel-context, character-state and state-delta writes need `can_write_project`, with the author pinned (KB-76/77, tested by apps/web/supabase/tests/database/canon-write-scope.test.sql); immutable events by KB-17 (apps/web/supabase/migrations/20260923075604_kb17-immutable-events-immutable.sql); `commit_canon_changes` by KB-27 (apps/web/supabase/migrations/20260923044106_kb27-canon-write-scope.sql); `updateCanonSettingsAction` writes `projects` under `projects_update` (`can_edit_project`: owner or admin); every read is on `has_account_access`"
   - text: "Audit logging for all mutations with context"
     met: false
-    reason: "not met — only character-state inserts write `state_deltas` (`packages/features/episodes/src/server/canon-actions.ts:357`); deletes and thread edits unrecorded; immutable-event and character-state authorship are pinned to the writer (KB-17, KB-77)"
+    reason: "not met — only character-state inserts write `state_deltas` (`packages/features/episodes/src/server/canon-actions.ts:358`); deletes and thread edits unrecorded; immutable-event and character-state authorship are pinned to the writer (KB-17, KB-77)"
   - text: "State delta tracking for rollback capability"
     met: false
-    reason: "not met — deltas only for character states (`packages/features/episodes/src/server/canon-actions.ts:396`; a refused delta now fails the action, KB-77); nothing reads `state_deltas`"
+    reason: "not met — deltas only for character states (`packages/features/episodes/src/server/canon-actions.ts:397`; a refused delta now fails the action, KB-77); nothing reads `state_deltas`"
   - text: "Input validation with comprehensive Zod schemas"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:53"
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:54"
   - text: "Error handling with specific error classes"
     met: false
-    reason: "not met — no canon error classes exist; actions throw `Error` or `ActionRefusal` (`packages/features/episodes/src/server/canon-actions.ts:227`)"
+    reason: "not met — no canon error classes exist; actions throw `Error` or `ActionRefusal` (`packages/features/episodes/src/server/canon-actions.ts:228`)"
   - text: "Optimistic locking for concurrent updates"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:637, apps/web/supabase/migrations/20260129194541_add_narrative_threads_version.sql:4"
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:638, apps/web/supabase/migrations/20260129194541_add_narrative_threads_version.sql:4"
   - text: "Batch operations for efficient multi-record updates"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:1313"
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:1314"
   - text: "Rollback support for failed transactions"
     met: true
     evidence: "apps/web/supabase/migrations/20260130004332_add_commit_canon_changes_function.sql:5"
   - text: "**New**: Dashboard query actions for Canon Settings page"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:725"
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:726"
   - text: "**New**: Canon extraction actions for Publish page"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:1095"
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:1096"
   - text: "Unit tests for conflict detection"
     met: false
     reason: "not met — no test found"

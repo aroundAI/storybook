@@ -16,6 +16,7 @@ import {
 } from '@kit/next/refusals';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
+import { readFailed, whyNoRow } from '@kit/shared/rows';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -717,7 +718,7 @@ export const updateEpisodeStatusAction = enhanceAction(
       .single();
 
     if (fetchError || !currentEpisode) {
-      throw new Error('Episode not found');
+      throw new Error(whyNoRow(fetchError, 'Episode not found'));
     }
 
     // Check version for optimistic locking
@@ -904,7 +905,7 @@ export const updateEpisodeAction = enhanceAction(
       .single();
 
     if (fetchError || !currentEpisode) {
-      throw new Error('Episode not found');
+      throw new Error(whyNoRow(fetchError, 'Episode not found'));
     }
 
     // Check version for optimistic locking
@@ -1218,7 +1219,7 @@ const resetEpisode = enhanceAction(
       .single();
 
     if (fetchError || !episode) {
-      throw new Error('Episode not found');
+      throw new Error(whyNoRow(fetchError, 'Episode not found'));
     }
 
     // Optimistic lock: ensure the version the client holds matches what's in the DB
@@ -1313,7 +1314,7 @@ export const resetToStoryboardAction = enhanceAction(
       .single();
 
     if (fetchError || !episode) {
-      throw new Error('Episode not found');
+      throw new Error(whyNoRow(fetchError, 'Episode not found'));
     }
 
     // Verify account access
@@ -1492,6 +1493,10 @@ export const bulkResetToStoryboardAction = enhanceAction(
           .eq('id', episodeId)
           .is('deleted_at', null)
           .single();
+
+        if (readFailed(fetchError)) {
+          throw new Error(whyNoRow(fetchError, 'Episode not found'));
+        }
 
         if (fetchError || !episode) {
           errors.push({ episodeId, error: 'Episode not found' });

@@ -3,6 +3,7 @@
 import type { StudioProjectSettings } from '@kit/film-studio-schemas/project';
 import type { ActionResult } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
+import { whyNoRow } from '@kit/shared/rows';
 import type { Json } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -52,7 +53,7 @@ export const createFilmProjectAction = enhanceAction(
       .single();
 
     if (accountError || !account) {
-      throw new Error('Account not found');
+      throw new Error(whyNoRow(accountError, 'Account not found'));
     }
 
     // Generate slug from project name

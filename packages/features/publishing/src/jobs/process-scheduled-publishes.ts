@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { getLogger } from '@kit/shared/logger';
+import { whyNoRow } from '@kit/shared/rows';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import {
@@ -247,7 +248,7 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
         .single();
 
       if (connError || !connection) {
-        throw new Error('Platform connection not found');
+        throw new Error(whyNoRow(connError, 'Platform connection not found'));
       }
 
       const episode = publish.episodes;

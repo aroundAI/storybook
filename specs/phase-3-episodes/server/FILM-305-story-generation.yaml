@@ -50,7 +50,7 @@ acceptance_criteria:
     evidence: null
   - text: "`generateFullStoryAction` handles optimistic locking"
     met: false
-    reason: "no longer true — version checked only when queueing (`packages/features/episodes/src/server/story-actions.ts:184`); the worker's write drops the guard (f64c9648)"
+    reason: "no longer true — version checked only when queueing (`packages/features/episodes/src/server/story-actions.ts:185`); the worker's write drops the guard (f64c9648)"
   - text: "`generateFullStoryAction` completes within 30 seconds"
     met: false
     reason: "unverified — runtime timing of an async agent job; needs a timed run"
@@ -59,7 +59,7 @@ acceptance_criteria:
     evidence: null
   - text: "All actions respect RLS policies"
     met: true
-    evidence: "KB-31, #315: both story actions queue their LLM job only after `authorizeEpisodeTarget` (`packages/features/episodes/src/server/story-actions.ts:79`, `:156`), which asks `can_write_project` on the episode's project as the caller (`packages/features/prompt-engine/src/lib/server/llm-job-target.ts:85`); `queueLlmJob` requires that target and sends only its ids (`packages/features/prompt-engine/src/lib/server/sqs-helper.ts:76`, `:90`). Red on the old code: `packages/features/episodes/__tests__/llm-job-authorization.test.ts` (27 tests, green on main)"
+    evidence: "KB-31, #315: both story actions queue their LLM job only after `authorizeEpisodeTarget` (`packages/features/episodes/src/server/story-actions.ts:80`, `:156`), which asks `can_write_project` on the episode's project as the caller (`packages/features/prompt-engine/src/lib/server/llm-job-target.ts:85`); `queueLlmJob` requires that target and sends only its ids (`packages/features/prompt-engine/src/lib/server/sqs-helper.ts:76`, `:90`). Red on the old code: `packages/features/episodes/__tests__/llm-job-authorization.test.ts` (27 tests, green on main)"
   - text: "Supports Claude, GPT-4, and Gemini providers"
     met: true
     evidence: null

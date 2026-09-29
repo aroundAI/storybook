@@ -11,6 +11,7 @@ import {
   returnRefusals,
 } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
+import { whyNoRow } from '@kit/shared/rows';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -374,7 +375,7 @@ const deleteSeason = enhanceAction(
 
       if (fetchError || !season) {
         logger.error({ ...ctx, error: fetchError }, 'Season not found');
-        throw new Error('Season not found');
+        throw new Error(whyNoRow(fetchError, 'Season not found'));
       }
 
       const now = new Date().toISOString();
