@@ -91,6 +91,9 @@ feature:
       file: "packages/features/publishing/src/lib/follower-count.ts"
   provider_integration: null
 notes: |
+  Delivered in #262 (the surfaces, and the getSubscriberSeriesAction
+  cross-account scoping fix it needed first).
+
   ## 1. Overview
 
   FILM-1607 built the absolute subscriber series — daily snapshots into
