@@ -15,7 +15,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
-import { byTest } from '../utils/visible';
+import { byTest, visible } from '../utils/visible';
 
 /**
  * The published clip's own duration, where a person reads it (FILM-1710).
@@ -119,7 +119,7 @@ test.describe('FILM-1710 — the clip, not its episode', () => {
 
     await expect(rows).toHaveCount(2);
 
-    const caption = page.locator('[data-test="retention-drilldown"] p');
+    const caption = visible(page, '[data-test="retention-drilldown"] p');
     const curve = page.getByRole('img', { name: 'Audience retention curve' });
 
     // --- The Short whose length the platform reported ---------------------

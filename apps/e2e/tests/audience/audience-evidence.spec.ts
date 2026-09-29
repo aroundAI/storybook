@@ -18,7 +18,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
-import { byTest } from '../utils/visible';
+import { byTest, visible } from '../utils/visible';
 
 /**
  * The Audience tab, with every figure on it traced to a ClickHouse row
@@ -295,10 +295,16 @@ test.describe('FILM-1701 — the Audience tab shows only what was measured', () 
     const regions = byTest(page, 'overview-top-regions');
 
     await expect(
-      regions.locator('[data-test="region-row-IN"] [data-test="region-share"]'),
+      visible(
+        regions,
+        '[data-test="region-row-IN"] [data-test="region-share"]',
+      ),
     ).toHaveText('75.0%');
     await expect(
-      regions.locator('[data-test="region-row-US"] [data-test="region-share"]'),
+      visible(
+        regions,
+        '[data-test="region-row-US"] [data-test="region-share"]',
+      ),
     ).toHaveText('25.0%');
 
     const gender = byTest(page, 'overview-gender');

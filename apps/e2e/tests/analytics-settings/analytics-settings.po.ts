@@ -3,6 +3,7 @@ import { Page, expect } from '@playwright/test';
 import { AuthPageObject } from '../authentication/auth.po';
 import { seedTeamAccount, seedYouTubeConnection } from '../utils/seed';
 import { waitForSignedIn } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * The analytics settings page (FILM-1608).
@@ -72,17 +73,15 @@ export class AnalyticsSettingsPageObject {
   async goToSettings(slug: string) {
     await this.page.goto(`/home/${slug}/studio/analytics/settings`);
 
-    await expect(
-      this.page.locator('[data-test="account-targets-form"]:visible'),
-    ).toBeVisible();
+    await expect(byTest(this.page, 'account-targets-form')).toBeVisible();
   }
 
   accountWatchHours() {
-    return this.page.locator('[data-test="account-watch-hours-input"]:visible');
+    return byTest(this.page, 'account-watch-hours-input');
   }
 
   accountSubscribers() {
-    return this.page.locator('[data-test="account-subscribers-input"]:visible');
+    return byTest(this.page, 'account-subscribers-input');
   }
 
   accountTagMinSample() {
@@ -92,31 +91,31 @@ export class AnalyticsSettingsPageObject {
   }
 
   accountSubmit() {
-    return this.page.locator('[data-test="account-targets-submit"]:visible');
+    return byTest(this.page, 'account-targets-submit');
   }
 
   accountSavedSummary() {
-    return this.page.locator('[data-test="account-targets-saved"]:visible');
+    return byTest(this.page, 'account-targets-saved');
   }
 
   channelWatchHours() {
-    return this.page.locator('[data-test="channel-watch-hours-input"]:visible');
+    return byTest(this.page, 'channel-watch-hours-input');
   }
 
   channelSubscribers() {
-    return this.page.locator('[data-test="channel-subscribers-input"]:visible');
+    return byTest(this.page, 'channel-subscribers-input');
   }
 
   channelStatusTrigger() {
-    return this.page.locator('[data-test="channel-status-trigger"]:visible');
+    return byTest(this.page, 'channel-status-trigger');
   }
 
   channelJoined() {
-    return this.page.locator('[data-test="channel-joined-input"]:visible');
+    return byTest(this.page, 'channel-joined-input');
   }
 
   channelSubmit() {
-    return this.page.locator('[data-test="channel-targets-submit"]:visible');
+    return byTest(this.page, 'channel-targets-submit');
   }
 
   /** Radix renders options in a portal, so they are selected by role. */

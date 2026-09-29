@@ -49,7 +49,7 @@ test.describe('FILM-1611 — evidence', () => {
       fullPage: true,
     });
 
-    const yppSection = page.locator('[data-test="ypp-progress-list"]:visible');
+    const yppSection = byTest(page, 'ypp-progress-list');
 
     await yppSection.scrollIntoViewIfNeeded();
     await yppSection.screenshot({ path: `${OUT}/01b-ypp-cards.png` });
@@ -112,7 +112,7 @@ test.describe('FILM-1611 — evidence', () => {
     // 5-6. Tag medians on the tags page: Topic, then Language.
     await page.goto(`/home/${fixture.team.slug}/studio/analytics/tags`);
 
-    const medians = page.locator('[data-test="tag-medians-card"]:visible');
+    const medians = byTest(page, 'tag-medians-card');
     const dimension = medians.locator(
       '[data-test="tag-medians-dimension-trigger"]',
     );
@@ -139,7 +139,7 @@ test.describe('FILM-1611 — evidence', () => {
     await page.goto(`/home/${fixture.team.slug}/studio/analytics`);
     await byTest(page, 'revenue-tab-overview').click();
 
-    const mix = page.locator('[data-test="revenue-mix-card"]:visible');
+    const mix = byTest(page, 'revenue-mix-card');
 
     await expect(mix).toContainText('Licensing');
     await mix.screenshot({ path: `${OUT}/07-revenue-mix.png` });

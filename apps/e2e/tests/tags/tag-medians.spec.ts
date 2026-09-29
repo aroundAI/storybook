@@ -21,7 +21,7 @@ test.describe('Tag medians', () => {
     await signInAs(page, team);
     await page.goto(`/home/${team.slug}/studio/analytics/tags`);
 
-    const card = page.locator('[data-test="tag-medians-card"]:visible');
+    const card = byTest(page, 'tag-medians-card');
     const trigger = byTest(card, 'tag-medians-dimension-trigger');
 
     await expect(trigger).toHaveText('Topic');
@@ -61,7 +61,7 @@ test.describe('Tag medians', () => {
     await signInAs(page, team);
     await page.goto(`/home/${team.slug}/studio/analytics/tags`);
 
-    const card = page.locator('[data-test="tag-medians-card"]:visible');
+    const card = byTest(page, 'tag-medians-card');
     const trigger = byTest(card, 'tag-medians-dimension-trigger');
 
     await trigger.click();

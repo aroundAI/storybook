@@ -157,9 +157,7 @@ test.describe('FILM-1617 — evidence', () => {
     const card = cardAround(page, 'subscriber-series');
     const clearHover = () => page.mouse.move(0, 0);
 
-    await expect(
-      page.locator('[data-test="subscriber-series"]:visible'),
-    ).toBeVisible();
+    await expect(byTest(page, 'subscriber-series')).toBeVisible();
     await card.scrollIntoViewIfNeeded();
     await clearHover();
 
@@ -243,9 +241,7 @@ test.describe('FILM-1617 — evidence', () => {
 
     await page.setViewportSize({ width: 1280, height: 720 });
     await deepDive.goToDeepDive(team.slug, pairProject.slug);
-    await expect(
-      page.locator('[data-test="subscriber-series"]:visible'),
-    ).toBeVisible();
+    await expect(byTest(page, 'subscriber-series')).toBeVisible();
     await byTest(page, 'subscriber-series-total').click();
     await clearHover();
     await cardAround(page, 'subscriber-series').screenshot({
@@ -266,7 +262,7 @@ test.describe('FILM-1617 — evidence', () => {
       `/home/${team.slug}/studio/${project.slug}/episodes/${episode.slug}/publish`,
     );
 
-    const counts = page.locator('[data-test="channel-follower-count"]:visible');
+    const counts = byTest(page, 'channel-follower-count');
 
     await expect(counts.first()).toBeVisible();
 
@@ -353,9 +349,9 @@ test.describe('FILM-1617 — evidence', () => {
     await deepDive.goToDeepDive(team.slug, project.slug);
 
     // The card loads after the page: wait for it, then for its points.
-    await expect(
-      page.locator('[data-test="subscriber-series"]:visible'),
-    ).toBeVisible({ timeout: 60_000 });
+    await expect(byTest(page, 'subscriber-series')).toBeVisible({
+      timeout: 60_000,
+    });
 
     const card = cardAround(page, 'subscriber-series');
     await card.scrollIntoViewIfNeeded();
@@ -408,9 +404,9 @@ test.describe('FILM-1617 — evidence', () => {
       .addCookies([{ name: 'theme', value: 'dark', url: page.url() }]);
     // The tab is client state: a reload lands on Overview, so go back.
     await deepDive.goToDeepDive(team.slug, project.slug);
-    await expect(
-      page.locator('[data-test="subscriber-series"]:visible'),
-    ).toBeVisible({ timeout: 60_000 });
+    await expect(byTest(page, 'subscriber-series')).toBeVisible({
+      timeout: 60_000,
+    });
     await expect(points).toHaveCount(seeded.length);
     await cardAround(page, 'subscriber-series').scrollIntoViewIfNeeded();
     await cardAround(page, 'subscriber-series').screenshot({

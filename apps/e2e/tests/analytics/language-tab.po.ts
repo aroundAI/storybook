@@ -39,7 +39,7 @@ export class LanguageTabPageObject {
   }
 
   dimensionControl() {
-    return this.page.locator('[data-test="language-dimension"]:visible');
+    return byTest(this.page, 'language-dimension');
   }
 
   dimensionOption(dimension: LanguageDimension) {
@@ -98,6 +98,6 @@ export class LanguageTabPageObject {
   }
 
   divergence() {
-    return this.page.locator('[data-test="language-divergence"]:visible');
+    return byTest(this.page, 'language-divergence');
   }
 }

@@ -182,9 +182,7 @@ test.describe('Deep Dive channel filter', () => {
 
     await deepDive.chooseChannel(fixture.inactiveChannelId);
 
-    await expect(
-      page.locator('[data-test="ypp-not-applicable"]:visible'),
-    ).toBeVisible();
+    await expect(byTest(page, 'ypp-not-applicable')).toBeVisible();
     await expect(deepDive.yppCards()).toHaveCount(0);
 
     await deepDive.chooseChannel(fixture.activeChannelId);

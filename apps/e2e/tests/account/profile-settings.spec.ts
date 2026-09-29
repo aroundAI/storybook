@@ -2,7 +2,7 @@ import { Page, expect, test } from '@playwright/test';
 
 import { seedTeamAccount, seedUser } from '../utils/seed';
 import { signInAs } from '../utils/session';
-import { byTest } from '../utils/visible';
+import { byTest, visible } from '../utils/visible';
 
 /**
  * KB-100. With personal accounts off, as every deploy runs (KB-99), the
@@ -19,7 +19,7 @@ async function captureIfAsked(page: Page, name: string) {
 }
 
 function userMenu(page: Page) {
-  return page.locator('[data-test="account-dropdown-trigger"]:visible');
+  return byTest(page, 'account-dropdown-trigger');
 }
 
 test.describe('Profile settings with team accounts only (KB-100)', () => {
@@ -43,20 +43,20 @@ test.describe('Profile settings with team accounts only (KB-100)', () => {
     const nameInput = page.locator(
       '[data-test="update-account-name-form"] input',
     );
-    const save = page.locator('[data-test="update-account-name-form"] button');
+    const save = visible(page, '[data-test="update-account-name-form"] button');
 
     await nameInput.fill('First Name');
     await save.click();
-    await expect(
-      page.locator('[data-test="account-dropdown-display-name"]:visible'),
-    ).toHaveText('First Name');
+    await expect(byTest(page, 'account-dropdown-display-name')).toHaveText(
+      'First Name',
+    );
 
     // The second save is where form state and the DOM part company.
     await nameInput.fill('Second Name');
     await save.click();
-    await expect(
-      page.locator('[data-test="account-dropdown-display-name"]:visible'),
-    ).toHaveText('Second Name');
+    await expect(byTest(page, 'account-dropdown-display-name')).toHaveText(
+      'Second Name',
+    );
     await captureIfAsked(page, 'kb100-02-after-second-save');
 
     await page.reload();

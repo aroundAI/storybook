@@ -15,7 +15,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
-import { byTest } from '../utils/visible';
+import { byTest, visible } from '../utils/visible';
 
 /**
  * Weekly diagnostics and the retention curve, with real figures
@@ -140,7 +140,7 @@ test.describe('FILM-1616 — diagnostics with data', () => {
 
     // The seeded curve drops 0.90 → 0.45 at 15% through: a 45-point drop,
     // stated in the caption rather than left to the eye.
-    const caption = page.locator('[data-test="retention-drilldown"] p');
+    const caption = visible(page, '[data-test="retention-drilldown"] p');
 
     await expect(caption).toContainText('Sharp drop of 45 points');
 

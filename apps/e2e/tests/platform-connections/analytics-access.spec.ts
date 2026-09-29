@@ -2,6 +2,7 @@ import { Page, expect, test } from '@playwright/test';
 
 import { seedTeamAccount, seedYouTubeConnection } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * FILM-1711. The Platform Connections page says which analytics a connection
@@ -96,7 +97,7 @@ test.describe('Analytics authorisation on Platform Connections', () => {
 
     // Only what is missing is listed: views and retention already work.
     await expect(
-      notice(page, ids.legacy).locator('[data-test="analytics-access-entry"]'),
+      byTest(notice(page, ids.legacy), 'analytics-access-entry'),
     ).toHaveCount(1);
   });
 
@@ -119,7 +120,7 @@ test.describe('Analytics authorisation on Platform Connections', () => {
       'Partner Program',
     );
     await expect(
-      notice(page, ids.gated).locator('[data-test="analytics-reconnect"]'),
+      byTest(notice(page, ids.gated), 'analytics-reconnect'),
     ).toHaveCount(0);
   });
 
@@ -135,7 +136,7 @@ test.describe('Analytics authorisation on Platform Connections', () => {
       'reconnecting will not change it',
     );
     await expect(
-      notice(page, ids.tiktok).locator('[data-test="analytics-reconnect"]'),
+      byTest(notice(page, ids.tiktok), 'analytics-reconnect'),
     ).toHaveCount(0);
   });
 
@@ -152,10 +153,10 @@ test.describe('Analytics authorisation on Platform Connections', () => {
     // Reconnecting records the grant. It does not promise access: Instagram
     // insights still wait on Meta, and the label must not say otherwise.
     await expect(
-      notice(page, ids.unrecorded).locator('[data-test="analytics-reconnect"]'),
+      byTest(notice(page, ids.unrecorded), 'analytics-reconnect'),
     ).toHaveText('Reconnect Instagram');
     await expect(
-      notice(page, ids.legacy).locator('[data-test="analytics-reconnect"]'),
+      byTest(notice(page, ids.legacy), 'analytics-reconnect'),
     ).toHaveText('Reconnect YouTube to grant access');
   });
 

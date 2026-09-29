@@ -276,7 +276,7 @@ test.describe('Revenue mix', () => {
     await page.goto(`/home/${account.slug}/studio/analytics`);
     await byTest(page, 'revenue-tab-overview').click();
 
-    const mix = page.locator('[data-test="revenue-mix-card"]:visible');
+    const mix = byTest(page, 'revenue-mix-card');
 
     await expect(mix).toBeVisible();
     await expect(mix).toContainText('Licensing');

@@ -85,12 +85,12 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
     await onAction(page, accountRead, 'abort');
     await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
 
-    await expect(
-      page.locator('[data-test="experiment-list-error"]:visible'),
-    ).toBeVisible(ERROR_STATE);
-    await expect(
-      page.locator('[data-test="experiments-due-error"]:visible'),
-    ).toBeVisible(ERROR_STATE);
+    await expect(byTest(page, 'experiment-list-error')).toBeVisible(
+      ERROR_STATE,
+    );
+    await expect(byTest(page, 'experiments-due-error')).toBeVisible(
+      ERROR_STATE,
+    );
 
     await expect(page.getByText('No changes logged yet')).toHaveCount(0);
     await expect(byTest(page, 'experiments-due-empty')).toHaveCount(0);
@@ -105,7 +105,7 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
 
     await signInAs(page, team);
     await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
-    await page.locator(`[data-test="experiment-row-${id}"]:visible`).click();
+    await byTest(page, `experiment-row-${id}`).click();
 
     const start = page.getByRole('button', { name: 'Start', exact: true });
     await expect(start).toBeVisible();
@@ -124,7 +124,7 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
 
     await signInAs(page, team);
     await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
-    await page.locator(`[data-test="experiment-row-${id}"]:visible`).click();
+    await byTest(page, `experiment-row-${id}`).click();
 
     const start = page.getByRole('button', { name: 'Start', exact: true });
     await expect(start).toBeVisible();
@@ -149,7 +149,7 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
 
     await signInAs(page, team);
     await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
-    await page.locator(`[data-test="experiment-row-${id}"]:visible`).click();
+    await byTest(page, `experiment-row-${id}`).click();
 
     const start = page.getByRole('button', { name: 'Start', exact: true });
     await expect(start).toBeVisible();
@@ -181,7 +181,7 @@ test.describe('Experiment log — failures (FILM-1610)', () => {
     for (const page of [first!, second!]) {
       await signInAs(page, team);
       await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
-      await page.locator(`[data-test="experiment-row-${id}"]:visible`).click();
+      await byTest(page, `experiment-row-${id}`).click();
       await expect(
         page.getByRole('button', { name: 'Start', exact: true }),
       ).toBeVisible();

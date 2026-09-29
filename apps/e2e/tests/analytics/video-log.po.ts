@@ -75,25 +75,23 @@ export class VideoLogPageObject {
   async openDeepDive() {
     await byTest(this.page, 'analytics-tab-deep-dive').click();
 
-    await expect(
-      this.page.locator('[data-test="deep-dive-tab"]:visible'),
-    ).toBeVisible();
+    await expect(byTest(this.page, 'deep-dive-tab')).toBeVisible();
   }
 
   tab() {
-    return this.page.locator('[data-test="video-log-tab"]:visible');
+    return byTest(this.page, 'video-log-tab');
   }
 
   table() {
-    return this.page.locator('[data-test="video-log-table"]:visible');
+    return byTest(this.page, 'video-log-table');
   }
 
   rows() {
-    return this.page.locator('[data-test="video-log-row"]:visible');
+    return byTest(this.page, 'video-log-row');
   }
 
   channelFilter() {
-    return this.tab().locator('[data-test="channel-filter-trigger"]');
+    return byTest(this.tab(), 'channel-filter-trigger');
   }
 
   async chooseChannel(connectionId: string | 'all') {
@@ -105,15 +103,15 @@ export class VideoLogPageObject {
   }
 
   rangeLabel() {
-    return this.page.locator('[data-test="video-log-range"]:visible');
+    return byTest(this.page, 'video-log-range');
   }
 
   next() {
-    return this.page.locator('[data-test="video-log-next"]:visible');
+    return byTest(this.page, 'video-log-next');
   }
 
   previous() {
-    return this.page.locator('[data-test="video-log-previous"]:visible');
+    return byTest(this.page, 'video-log-previous');
   }
 
   async sortBy(column: 'title' | 'published_at' | 'lifetime_views') {
@@ -124,6 +122,6 @@ export class VideoLogPageObject {
 
   /** The cells of one column, in row order. */
   column(testId: string) {
-    return this.table().locator(`[data-test="${testId}"]`);
+    return byTest(this.table(), testId);
   }
 }

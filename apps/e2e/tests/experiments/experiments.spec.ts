@@ -166,9 +166,9 @@ test.describe('Experiment log (FILM-1610)', () => {
     await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
     await expect(log.form()).toBeVisible();
 
-    await expect(
-      page.locator(`[data-test="experiment-due-${due}"]:visible`),
-    ).toContainText('Overdue experiment');
+    await expect(byTest(page, `experiment-due-${due}`)).toContainText(
+      'Overdue experiment',
+    );
     await expect(byTest(page, `experiment-due-${notDue}`)).toHaveCount(0);
   });
 
@@ -316,7 +316,7 @@ test.describe("Experiment dates are the user's own (FILM-1610 review, E1)", () =
     await page.clock.setFixedTime(new Date(`${utcToday}T19:00:00Z`));
     await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
 
-    await page.locator(`[data-test="experiment-row-${id}"]:visible`).click();
+    await byTest(page, `experiment-row-${id}`).click();
     await page.getByRole('button', { name: 'Start', exact: true }).click();
     await expect(page.getByText('Started — baseline captured')).toBeVisible();
 
@@ -415,9 +415,7 @@ test.describe('The due list follows the date (FILM-1610 review 3, F10)', () => {
     await page.clock.setFixedTime(new Date('2026-03-01T12:00:00Z'));
     await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
 
-    await expect(
-      page.locator('[data-test="experiments-due-empty"]:visible'),
-    ).toBeVisible();
+    await expect(byTest(page, 'experiments-due-empty')).toBeVisible();
 
     // The next day, the tab regains focus. The cached list was for 1 March;
     // a key without the date would keep serving it.
@@ -427,8 +425,6 @@ test.describe('The due list follows the date (FILM-1610 review 3, F10)', () => {
       window.dispatchEvent(new Event('focus'));
     });
 
-    await expect(
-      page.locator(`[data-test="experiment-due-${id}"]:visible`),
-    ).toBeVisible();
+    await expect(byTest(page, `experiment-due-${id}`)).toBeVisible();
   });
 });

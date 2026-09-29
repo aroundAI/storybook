@@ -4,7 +4,7 @@ import { AuthPageObject } from '../authentication/auth.po';
 import { OtpPo } from '../utils/otp.po';
 import { seedTeamAccount } from '../utils/seed';
 import { isSignedInLanding, signInAs } from '../utils/session';
-import { byTest } from '../utils/visible';
+import { byTest, visible } from '../utils/visible';
 
 export class TeamAccountsPageObject {
   private readonly page: Page;
@@ -109,7 +109,7 @@ export class TeamAccountsPageObject {
   }
 
   async tryCreateTeam(teamName: string) {
-    await this.page.locator('[data-test="create-team-form"] input').fill('');
+    await visible(this.page, '[data-test="create-team-form"] input').fill('');
     await this.page.waitForTimeout(200);
     await this.page
       .locator('[data-test="create-team-form"] input')

@@ -348,9 +348,9 @@ test.describe('Abandoning a change (KB-7)', () => {
     });
     // It is no longer waiting for review.
     await expect(byTest(page, `experiment-due-${running}`)).toHaveCount(0);
-    await expect(
-      page.locator(`[data-test="experiment-row-${running}"]:visible`),
-    ).toContainText('abandoned');
+    await expect(byTest(page, `experiment-row-${running}`)).toContainText(
+      'abandoned',
+    );
   });
 });
 
@@ -375,9 +375,7 @@ test.describe('Deleting a change (KB-7, only while planned or abandoned)', () =>
     await byTest(page, 'experiment-delete-confirm').click();
     await expect(page.getByText('Change deleted')).toBeVisible();
     await expect(page.locator('[role="dialog"]')).toHaveCount(0);
-    await expect(
-      page.locator(`[data-test="experiment-row-${id}"]:visible`),
-    ).toHaveCount(0);
+    await expect(byTest(page, `experiment-row-${id}`)).toHaveCount(0);
 
     expect(await readChange(id)).toBeUndefined();
     expect(await linkedVideos(id)).toEqual([]);
@@ -475,8 +473,7 @@ test.describe('Filtering by status (FILM-1509 → FILM-1610)', () => {
 
     await signInAs(page, team);
     await page.goto(`/home/${team.slug}/studio/analytics/experiments`);
-    const row = (id: string) =>
-      page.locator(`[data-test="experiment-row-${id}"]:visible`);
+    const row = (id: string) => byTest(page, `experiment-row-${id}`);
     await expect(row(ids.planned)).toBeVisible();
 
     await byTest(page, 'experiment-status-filter').click();
@@ -526,7 +523,7 @@ test.describe('Tags on a change (FILM-1509 → FILM-1610)', () => {
     await log.submitAndWaitForReset();
     // After the reset the picker must look empty too.
     await expect(
-      log.field('experiment-tags').locator('[data-test="tag-picker-trigger"]'),
+      byTest(log.field('experiment-tags'), 'tag-picker-trigger'),
     ).toHaveText('Add tags');
 
     await log.field('experiment-title').fill('Second, tagged');

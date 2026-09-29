@@ -64,22 +64,18 @@ test.describe('Failed reads', () => {
 
     await deepDive.goToDeepDive(fixture.team.slug, fixture.project.slug);
 
-    await expect(
-      page.locator('[data-test="channel-filter-error"]:visible'),
-    ).toBeVisible(ERROR_STATE);
+    await expect(byTest(page, 'channel-filter-error')).toBeVisible(ERROR_STATE);
 
-    await expect(page.locator('[data-test="ypp-error"]:visible')).toBeVisible(
-      ERROR_STATE,
-    );
+    await expect(byTest(page, 'ypp-error')).toBeVisible(ERROR_STATE);
 
     // The claim that must not be made: the channels are unknown, not absent.
     await expect(byTest(page, 'ypp-no-channels')).toHaveCount(0);
 
     // The subscriber card names and groups its lines by that same list, so
     // without it the card can only guess — unnamed lines and an empty total.
-    await expect(
-      page.locator('[data-test="subscriber-series-error"]:visible'),
-    ).toBeVisible(ERROR_STATE);
+    await expect(byTest(page, 'subscriber-series-error')).toBeVisible(
+      ERROR_STATE,
+    );
     await expect(byTest(page, 'subscriber-series-empty')).toHaveCount(0);
 
     if (process.env.CAPTURE_EVIDENCE) {
@@ -118,9 +114,9 @@ test.describe('Failed reads', () => {
 
     await deepDive.goToDeepDive(fixture.team.slug, fixture.project.slug);
 
-    await expect(
-      page.locator('[data-test="subscriber-series-error"]:visible'),
-    ).toBeVisible(ERROR_STATE);
+    await expect(byTest(page, 'subscriber-series-error')).toBeVisible(
+      ERROR_STATE,
+    );
 
     // The claim that must not be made: the count is unknown, not absent.
     await expect(byTest(page, 'subscriber-series-empty')).toHaveCount(0);
@@ -137,7 +133,7 @@ test.describe('Failed reads', () => {
     await page.goto(`/home/${account.slug}/studio/analytics`);
     await byTest(page, 'revenue-tab-overview').click();
 
-    const mix = page.locator('[data-test="revenue-mix-card"]:visible');
+    const mix = byTest(page, 'revenue-mix-card');
 
     await expect(byTest(mix, 'revenue-mix-error')).toBeVisible(ERROR_STATE);
     await expect(mix).not.toContainText('No revenue recorded for this period.');
@@ -202,15 +198,9 @@ test.describe('Failed reads', () => {
 
     await deepDive.goToDeepDive(fixture.team.slug, fixture.project.slug);
 
-    await expect(
-      page.locator('[data-test="median-error"]:visible'),
-    ).toBeVisible(ERROR_STATE);
-    await expect(
-      page.locator('[data-test="back-catalog-error"]:visible'),
-    ).toBeVisible(ERROR_STATE);
-    await expect(
-      page.locator('[data-test="cohort-error"]:visible'),
-    ).toBeVisible(ERROR_STATE);
+    await expect(byTest(page, 'median-error')).toBeVisible(ERROR_STATE);
+    await expect(byTest(page, 'back-catalog-error')).toBeVisible(ERROR_STATE);
+    await expect(byTest(page, 'cohort-error')).toBeVisible(ERROR_STATE);
 
     // The claims that must not be made off a read that never landed.
     await expect(
