@@ -69,14 +69,14 @@ acceptance_criteria:
 test_plan:
   unit:
     - text: "Test character counting"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "packages/features/publishing/__tests__/twitter-provider.test.ts:198"
     - text: "Test hashtag/mention extraction"
       met: false
-      reason: "not met — no test found"
+      reason: "not built: the X provider has no hashtag or mention extraction"
     - text: "Test video duration validation"
       met: false
-      reason: "not met — no test found"
+      reason: "not built: the X duration limit is a constant that nothing enforces"
   integration:
     - text: "Test OAuth flow with mock API"
       met: true
@@ -86,7 +86,7 @@ test_plan:
       evidence: "`packages/features/publishing/__tests__/twitter-provider.test.ts:95`"
     - text: "Test analytics retrieval"
       met: false
-      reason: "not met — no test found"
+      reason: "not built: the X provider has no analytics method"
   e2e: []
 remaining:
   - criterion: "OAuth 2.0 connection flow works (unverified)"

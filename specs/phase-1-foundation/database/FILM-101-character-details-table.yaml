@@ -87,56 +87,56 @@ acceptance_criteria:
 test_plan:
   unit:
     - text: "Insert character_details with valid asset_id (type='character') succeeds"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/character-details-table.test.sql:33"
     - text: "Insert character_details with non-character asset_id fails (check constraint)"
       met: false
-      reason: "not met — no test found; the constraint it would test does not exist"
+      reason: "not built: no constraint ties asset_id to an asset of type character, and Postgres cannot CHECK a subquery; a trigger would be needed"
     - text: "Insert character_details with NULL physical_attributes succeeds"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/character-details-table.test.sql:43"
     - text: "Insert character_details with valid JSONB physical_attributes succeeds"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/character-details-table.test.sql:33"
     - text: "Insert character_details with invalid JSONB fails"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/character-details-table.test.sql:56"
     - text: "Array of reference_images stores and retrieves correctly"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/character-details-table.test.sql:126"
   integration:
     - text: "Deleting character asset cascades to delete character_details"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/character-details-table.test.sql:180"
     - text: "Deleting voice asset sets voice_asset_id to NULL"
       met: false
       reason: "retired — the voice_asset_id FK was dropped in 30ed2083"
     - text: "Can query characters by physical attributes (e.g., hair color)"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/character-details-table.test.sql:133"
     - text: "GIN index improves JSONB query performance"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/character-details-table.test.sql:169"
   e2e: []
   edge_cases:
     - text: "Character with no physical_attributes (NULL)"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/character-details-table.test.sql:43"
     - text: "Character with minimal physical_attributes (just age)"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/character-details-table.test.sql:67"
     - text: "Character with maximal physical_attributes (all fields populated)"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/character-details-table.test.sql:81"
     - text: "Element prompt over 5000 characters"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/character-details-table.test.sql:92"
     - text: "Empty reference_images array"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/character-details-table.test.sql:99"
     - text: "Reference_images array with 20+ URLs"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/character-details-table.test.sql:112"
     - text: "Voice_asset_id pointing to non-voice asset (should be prevented at app level)"
       met: false
       reason: "retired — the column now holds an ElevenLabs voice ID, not an asset reference (30ed2083)"

@@ -30,7 +30,7 @@ acceptance_criteria:
     reason: "not met — rolling-90 and returning-viewer cards and the account-dashboard tiles were never built; their actions have no caller"
   - text: "Generated CSV has no empty CTR/AVD columns; retention included when selected"
     met: false
-    reason: "unverified — wired (`packages/features/content-analytics/src/server/report-actions.ts:282`, retention `:229`); no test asserts a generated CSV"
+    reason: "unverified — wired (`packages/features/content-analytics/src/server/report-actions.ts:252`, retention `:229`); no test asserts a generated CSV"
   - text: "`raw_csv` monthly report delivers a complete per-video-per-day export"
     met: true
     evidence: "`apps/e2e/tests/analytics/raw-export-evidence.spec.ts:100`, `packages/features/content-analytics/__tests__/raw-export-generator.test.ts:40`"

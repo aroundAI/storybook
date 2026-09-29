@@ -99,14 +99,14 @@ acceptance_criteria:
 test_plan:
   unit:
     - text: "Test platform config initialization"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "packages/features/publishing/__tests__/publish-hub-config.test.ts:32"
     - text: "Test metadata validation"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "packages/features/publishing/__tests__/publish-hub-config.test.ts:73"
     - text: "Test scheduling logic"
       met: false
-      reason: "not met — no test found"
+      reason: "part: the schedule is read and validated (packages/features/publishing/__tests__/publish-hub-config.test.ts:182); the scheduled-versus-immediate branch in publish-actions.ts:305 is not tested"
   integration:
     - text: "Test multi-platform publish flow"
       met: false

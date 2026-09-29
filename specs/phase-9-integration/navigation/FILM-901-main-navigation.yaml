@@ -64,8 +64,8 @@ acceptance_criteria:
 test_plan:
   unit:
     - text: "Test `getStudioNavigation` with different params"
-      met: false
-      reason: "not met — no test found; `getStudioNavigationConfig` (`apps/web/config/studio-navigation.config.tsx:101`) has no callers"
+      met: true
+      evidence: "apps/web/config/__tests__/studio-navigation.test.ts:31"
     - text: "Test active state detection"
       met: false
       reason: "not met — no test found"

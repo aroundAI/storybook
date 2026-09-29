@@ -55,7 +55,7 @@ acceptance_criteria:
     evidence: null
   - text: "Responsive on mobile screens"
     met: false
-    reason: "unverified — needs a phone-width screenshot; the chart is `ResponsiveContainer` 100%, but the 7-toggle control group does not wrap (`packages/features/content-analytics/src/components/performance-chart.tsx:227`)"
+    reason: "unverified — needs a phone-width screenshot; the chart is `ResponsiveContainer` 100%, but the 7-toggle control group does not wrap (`packages/features/content-analytics/src/components/performance-chart.tsx:220`)"
   - text: "Legend clickable to hide/show series"
     met: false
     reason: "no longer true — a bare recharts `<Legend />` with no click handler or hidden-series state, since 2b20331f (`performance-chart.tsx:157`)"
@@ -66,10 +66,10 @@ test_plan:
   unit:
     - text: "Test data transformation for chart format"
       met: false
-      reason: "not met — no test found"
+      reason: "not built: the chart passes its DailyMetric rows to recharts unchanged, so there is no transformation to test"
     - text: "Test platform color mapping"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "packages/features/content-analytics/__tests__/csv-and-platform-colors.test.ts:118"
   integration: []
   e2e: []
   visual:

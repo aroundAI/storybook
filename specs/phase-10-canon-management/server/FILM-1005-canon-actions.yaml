@@ -126,20 +126,17 @@ acceptance_criteria:
     met: true
     evidence: "packages/features/episodes/src/server/canon-actions.ts:1096"
   - text: "Unit tests for conflict detection"
-    met: false
-    reason: "not met — no test found"
+    met: true
+    evidence: "packages/features/episodes/__tests__/canon-conflicts-and-batches.test.ts:101"
   - text: "Integration tests for batch operations"
-    met: false
-    reason: "not met — no test found"
+    met: true
+    evidence: "packages/features/episodes/__tests__/canon-conflicts-and-batches.test.ts:153"
 remaining:
   - criterion: "Audit logging; state deltas for rollback"
     reason: "Only character-state changes write a delta, with no actor; nothing reads deltas"
     closed_by: "unassigned"
   - criterion: "Specific error classes"
     reason: "None exist"
-    closed_by: "unassigned"
-  - criterion: "Unit and integration tests"
-    reason: "Only KB-17's refusal tests import `canon-actions.ts` (`packages/features/episodes/__tests__/canon-event-actions.test.ts`); nothing tests conflict detection or batch operations"
     closed_by: "unassigned"
 open_questions: []
 notes: |
