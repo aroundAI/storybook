@@ -193,4 +193,25 @@ describe('TwitterProvider.uploadVideo', () => {
       }),
     ).rejects.toThrow('media.write');
   });
+
+  // FILM-714. The character limit is checked before any request is made.
+  it('refuses a tweet over 280 characters before sending anything', async () => {
+    await expect(
+      createTwitterProvider('token').uploadVideo({
+        videoPath: VIDEO_URL,
+        text: 'x'.repeat(281),
+      }),
+    ).rejects.toThrow('Tweet exceeds maximum length of 280 characters');
+
+    expect(calls).toEqual([]);
+  });
+
+  it('accepts a tweet of exactly 280 characters', async () => {
+    const result = await createTwitterProvider('token').uploadVideo({
+      videoPath: VIDEO_URL,
+      text: 'x'.repeat(280),
+    });
+
+    expect(result.tweetId).toBe(POST_ID);
+  });
 });

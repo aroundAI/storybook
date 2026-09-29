@@ -87,20 +87,20 @@ acceptance_criteria:
 test_plan:
   unit:
     - text: "Insert key with valid provider succeeds"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/external-api-keys-table.test.sql:21"
     - text: "Insert key with invalid provider fails"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/external-api-keys-table.test.sql:27"
     - text: "Insert duplicate key for same account+provider fails (unique constraint)"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/external-api-keys-table.test.sql:34"
     - text: "Insert key for different provider succeeds"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/external-api-keys-table.test.sql:41"
     - text: "Timestamps populate automatically"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/external-api-keys-table.test.sql:60"
   integration:
     - text: "Retrieve active key for account+provider"
       met: true
@@ -110,33 +110,33 @@ test_plan:
       evidence: "packages/supabase/__tests__/external-api-keys.test.ts:142 (asserts the is_active filter; KB-84 moved every key read into that helper)"
     - text: "Update last_used_at on key retrieval"
       met: false
-      reason: "not met — no test found; no code updates it"
+      reason: "not built: no code updates last_used_at when a key is read; the column accepts the write (apps/web/supabase/tests/database/external-api-keys-table.test.sql:78) but nothing makes it"
     - text: "Deactivate key (set is_active = FALSE)"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/external-api-keys-table.test.sql:88"
     - text: "Reactivate key (set is_active = TRUE)"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/external-api-keys-table.test.sql:98"
   e2e: []
   edge_cases:
     - text: "Very long API key (2000+ characters)"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/external-api-keys-table.test.sql:121"
     - text: "Key rotation (deactivate old, add new)"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/external-api-keys-table.test.sql:114"
     - text: "Missing key for provider (falls back to platform key)"
       met: true
-      evidence: "packages/features/audio-generation/__tests__/config-loader.test.ts:103"
+      evidence: "packages/features/audio-generation/__tests__/config-loader.test.ts:114"
     - text: "Multiple accounts with same provider (different keys)"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/external-api-keys-table.test.sql:53"
     - text: "Key never used (last_used_at = NULL)"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/external-api-keys-table.test.sql:68"
     - text: "Invalid encrypted_key (decryption fails - handle gracefully)"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "packages/features/audio-generation/__tests__/config-loader.test.ts:101"
 remaining:
   - criterion: "last_used_at tracks usage"
     reason: "No key reader updates it; saveApiKeyAction writes null (apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts:138), and git log -S last_used_at shows no writer ever existed"

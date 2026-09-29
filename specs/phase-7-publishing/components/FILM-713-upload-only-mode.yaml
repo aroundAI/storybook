@@ -72,14 +72,14 @@ test_plan:
       evidence: null
   integration:
     - text: "Test export package generation"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "packages/features/publishing/__tests__/upload-only-flow.test.ts:105"
     - text: "Test external upload marking"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "packages/features/publishing/__tests__/upload-only-flow.test.ts:219"
     - text: "Test publish record creation"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "packages/features/publishing/__tests__/upload-only-flow.test.ts:219"
   e2e: []
 remaining:
   - criterion: "All eight criteria (export package, copy-ready metadata, instructions, checklist, upload link, URL capture, external marking)"

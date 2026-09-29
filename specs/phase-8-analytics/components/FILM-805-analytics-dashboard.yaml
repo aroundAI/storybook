@@ -75,10 +75,10 @@ test_plan:
   unit:
     - text: "Test `calculateTotals` aggregation"
       met: false
-      reason: "not met — no test found; totals are summed in `getEpisodeAnalytics`/`getProjectAnalytics`, whose tests mock them empty"
+      reason: "not built: no calculateTotals function exists; totals are summed in getEpisodeAnalytics and getProjectAnalytics, whose tests mock them empty"
     - text: "Test `aggregateDailyMetrics` date filling"
       met: false
-      reason: "not met — no test found; the dashboard's daily series (`queryDailyTimeSeriesByPlatform`) is not date-filled"
+      reason: "not built: no aggregateDailyMetrics function exists, and the dashboard daily series (queryDailyTimeSeriesByPlatform) is not date-filled"
     - text: "Test `aggregateByPlatform` grouping"
       met: true
       evidence: "`packages/clickhouse/__tests__/clickhouse.test.ts:341` (`queryPlatformBreakdown`, its replacement)"

@@ -100,30 +100,30 @@ acceptance_criteria:
 test_plan:
   unit:
     - text: "Insert with valid episode_id succeeds"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/audio-tracks-table.test.sql:24"
     - text: "Insert with invalid type fails"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/audio-tracks-table.test.sql:30"
     - text: "Insert with volume > 2.0 fails"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/audio-tracks-table.test.sql:43"
     - text: "Insert with negative timeline_start_seconds fails"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/audio-tracks-table.test.sql:50"
     - text: "Insert with duration_seconds = 0 fails"
       met: false
-      reason: "not met — no test found; no such check exists"
+      reason: "not built: no duration_seconds > 0 check exists, so a zero-duration track is accepted"
   integration:
     - text: "Deleting episode cascades to delete tracks"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/audio-tracks-table.test.sql:94"
     - text: "Query tracks by type"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/audio-tracks-table.test.sql:69"
     - text: "Order tracks by timeline_start_seconds"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/audio-tracks-table.test.sql:77"
   e2e: []
 remaining:
   - criterion: "duration_seconds > 0 check"

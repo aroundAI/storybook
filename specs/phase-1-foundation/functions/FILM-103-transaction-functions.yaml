@@ -100,35 +100,35 @@ test_plan:
   unit:
     - text: "Test character creation with valid data"
       met: false
-      reason: "not met — no test found"
+      reason: "not tested: create_character_with_details fails on every call, because it writes character_details.voice_asset_id, which 20251225160000 renamed to elevenlabs_voice_id (KB-140)"
     - text: "Test character creation with missing required fields (should fail)"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:42"
     - text: "Test optimistic lock success case"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:63"
     - text: "Test optimistic lock conflict detection"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:80"
     - text: "Test batch shot creation with empty array"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:165"
     - text: "Test batch shot creation with multiple shots"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:132"
     - text: "Test cost aggregation with various job types"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:202"
   integration:
     - text: "Test transaction rollback on character creation failure"
       met: false
-      reason: "not met — no test found"
+      reason: "not tested: create_character_with_details fails before it can roll anything back (KB-140); the rollback cannot be observed until it is fixed"
     - text: "Test concurrent episode updates trigger conflict"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:98"
     - text: "Test RLS policies are respected within functions"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/supabase/tests/database/transaction-functions.test.sql:179"
   e2e: []
 remaining:
   - criterion: "`create_character_with_details` creates both records atomically"

@@ -81,27 +81,27 @@ acceptance_criteria:
 test_plan:
   unit:
     - text: "Test character counting"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "packages/features/publishing/__tests__/linkedin-provider.test.ts:96"
     - text: "Test hashtag extraction"
       met: false
-      reason: "not met — no test found"
+      reason: "not built: the LinkedIn provider has no hashtag extraction"
     - text: "Test video duration validation for personal vs company"
       met: false
-      reason: "not met — no test found"
+      reason: "not built: the LinkedIn duration limits are constants that nothing enforces"
   integration:
     - text: "Test OAuth flow with mock API"
       met: false
       reason: "part — the connect half reaches a stand-in consent screen (`apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts`); the callback's success path is not driven. Failure branches: `apps/e2e/tests/platform-connections/connect-failure.spec.ts`"
     - text: "Test video upload initialization"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "packages/features/publishing/__tests__/linkedin-provider.test.ts:133"
     - text: "Test post creation"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "packages/features/publishing/__tests__/linkedin-provider.test.ts:195"
     - text: "Test analytics retrieval"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "packages/features/publishing/__tests__/linkedin-provider.test.ts:246"
   e2e: []
 remaining:
   - criterion: "OAuth 2.0 connection flow works for personal accounts (unverified)"

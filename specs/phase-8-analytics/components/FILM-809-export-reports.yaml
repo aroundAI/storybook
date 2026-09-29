@@ -49,28 +49,28 @@ acceptance_criteria:
     evidence: null
   - text: "View report history (deferred - using temporary signed URLs instead)"
     met: false
-    reason: "not met — deferred at ship time: report history; no table or UI exists, reports are signed URLs (`packages/features/content-analytics/src/server/report-actions.ts:291`)"
+    reason: "not met — deferred at ship time: report history; no table or UI exists, reports are signed URLs (`packages/features/content-analytics/src/server/report-actions.ts:261`)"
   - text: "Schedule recurring reports (weekly/monthly)"
     met: true
     evidence: null
 test_plan:
   unit:
     - text: "Test CSV generation format"
-      met: false
-      reason: "not met — no test of `generateCSV`; only the later raw export's CSV is tested (`packages/features/content-analytics/__tests__/raw-export-generator.test.ts:40`)"
+      met: true
+      evidence: "packages/features/content-analytics/__tests__/csv-and-platform-colors.test.ts:35"
     - text: "Test date range calculation"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "packages/features/content-analytics/__tests__/report-date-range.test.ts:15"
     - text: "Test metric aggregation"
-      met: false
-      reason: "not met — no test found (`calculateSummary`, `report-actions.ts:287`)"
+      met: true
+      evidence: "packages/features/content-analytics/__tests__/report-date-range.test.ts:98"
   integration:
     - text: "Test full report generation workflow"
       met: true
       evidence: "`apps/e2e/tests/analytics/raw-export-evidence.spec.ts:100` (scheduled route → emailed signed link → CSV; gated by `CLICKHOUSE_EVIDENCE=1`)"
     - text: "Test PDF generation with charts"
       met: false
-      reason: "not met — no test found"
+      reason: "not built: the PDF draws no charts (packages/features/content-analytics/src/lib/pdf-generator.tsx renders branding and tables only), so there is no chart to test"
     - text: "Test scheduled report execution"
       met: true
       evidence: "`apps/e2e/tests/analytics/raw-export-evidence.spec.ts:100` (asserts `last_run_status` and the delivered CSV)"

@@ -59,23 +59,23 @@ test_plan:
   unit:
     - text: "Test frame extraction timing calculations"
       met: false
-      reason: "not met — no test found"
+      reason: "not built: no thumbnail generator code exists (no frame extraction, overlay, size configuration or AI enhancement), so there is nothing to test"
     - text: "Test platform size configurations"
       met: false
-      reason: "not met — no test found"
+      reason: "not built: no thumbnail generator code exists (no frame extraction, overlay, size configuration or AI enhancement), so there is nothing to test"
     - text: "Test overlay data validation"
       met: false
-      reason: "not met — no test found"
+      reason: "not built: no thumbnail generator code exists (no frame extraction, overlay, size configuration or AI enhancement), so there is nothing to test"
   integration:
     - text: "Test full thumbnail generation workflow"
       met: false
-      reason: "not met — no test found"
+      reason: "not built: no thumbnail generator code exists (no frame extraction, overlay, size configuration or AI enhancement), so there is nothing to test"
     - text: "Test primary thumbnail setting"
       met: false
-      reason: "not met — no test found"
+      reason: "not built: no thumbnail generator code exists (no frame extraction, overlay, size configuration or AI enhancement), so there is nothing to test"
     - text: "Test AI enhancement integration"
       met: false
-      reason: "not met — no test found"
+      reason: "not built: no thumbnail generator code exists (no frame extraction, overlay, size configuration or AI enhancement), so there is nothing to test"
   e2e: []
 remaining:
   - criterion: "Extract 12 key frames"
