@@ -4,6 +4,7 @@ import {
   type Commit,
   type PullRequest,
   type Records,
+  changedRecord,
   commitProblems,
   expectedLabels,
   parseTitle,
@@ -247,5 +248,45 @@ describe('title markers', () => {
         'area: vendor-sandbox',
       ]),
     ).toEqual([`closes FILM-1802, but ${SPEC} says no status`]);
+  });
+});
+
+describe('changedRecord', () => {
+  it('accepts the record at its path today, an older Markdown path, or the old KB register', () => {
+    expect(changedRecord([SPEC], 'FILM-1802', SPEC)).toBe(true);
+    expect(
+      changedRecord(
+        ['specs/phase-16-workbook-parity/FILM-1607-subscriber-snapshots.md'],
+        'FILM-1607',
+        'specs/phase-16-workbook-parity/FILM-1607-subscriber-snapshots.yaml',
+      ),
+    ).toBe(true);
+    expect(
+      changedRecord(
+        ['specs/cross-cutting/FILM-CC-04-known-bugs.md'],
+        'KB-11',
+        'specs/known-bugs/KB-11.md',
+      ),
+    ).toBe(true);
+  });
+
+  it('does not count another id, a prefix of it, or a file outside specs/', () => {
+    expect(
+      changedRecord(
+        ['specs/phase-16-workbook-parity/FILM-16070-x.md'],
+        'FILM-1607',
+        'x.yaml',
+      ),
+    ).toBe(false);
+    expect(
+      changedRecord(['apps/e2e/FILM-1607.spec.ts'], 'FILM-1607', 'x.yaml'),
+    ).toBe(false);
+    expect(
+      changedRecord(
+        ['specs/cross-cutting/FILM-CC-04-known-bugs.md'],
+        'FILM-1607',
+        'x.yaml',
+      ),
+    ).toBe(false);
   });
 });

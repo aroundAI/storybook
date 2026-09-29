@@ -143,6 +143,21 @@ export function expectedLabels(pr: PullRequest, records: Records): string[] {
   return [...labels].sort();
 }
 
+/**
+ * Did the PR change the record for `id`? Its file today, or any spec file
+ * with the id in its name: before 2026-09-23 the specs were Markdown at other
+ * paths (#306, #307), and before #356 every KB lived in one register.
+ */
+export function changedRecord(files: string[], id: string, file: string) {
+  if (files.includes(file)) return true;
+  const named = new RegExp(`(^|[^\\w-])${id}([^\\w]|$)`);
+  return files.some(
+    (path) =>
+      path.startsWith('specs/') &&
+      (named.test(path) || (id.startsWith('KB-') && /FILM-CC-04/.test(path))),
+  );
+}
+
 export function prProblems(
   pr: PullRequest,
   records: Records,
@@ -174,7 +189,7 @@ export function prProblems(
     if (!file) problems.push(`${id} names no spec in specs/`);
     else if (
       recordOwed &&
-      !pr.files.includes(file) &&
+      !changedRecord(pr.files, id, file) &&
       !new RegExp(`${ref}\\b`).test(records.specText(file))
     )
       problems.push(
