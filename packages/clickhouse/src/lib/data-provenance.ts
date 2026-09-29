@@ -470,15 +470,15 @@ export const CAPABILITY_MATRIX: Record<
     // Never `unsupported`: Instagram documents both fields for Reels and we
     // have simply never requested them.
     instagram: {
-      level: 'not_ingested',
-      table: null,
-      blockedBy: 'FILM-1712',
+      level: 'derived',
+      table: 'video_metrics',
+      method: 'snapshot_delta_fetch_day',
       ...INSTAGRAM_MEDIA,
-      note: 'Instagram does report watch time for Reels and we do not collect it yet, so no Instagram watch time is shown.',
+      note: 'Instagram reports total watch time for Reels only, so each day shows the minutes added since we last checked, dated to the day we checked; other posts show none.',
       reference: {
         section: 'Instagram',
         surface: 'instagram/media-insights',
-        fields: ['ig_reels_avg_watch_time', 'ig_reels_video_view_total_time'],
+        fields: ['ig_reels_video_view_total_time'],
       },
     },
   },

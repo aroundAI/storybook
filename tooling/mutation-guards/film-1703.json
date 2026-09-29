@@ -62,24 +62,24 @@
       "pattern": "agrees with whether"
     },
     {
-      "name": "Instagram watch time is requested and the matrix still says not_ingested",
+      "name": "Instagram watch time stops being requested while its total is still read",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
-      "find": "metric: 'views,reach',",
-      "replace": "metric: 'views,reach,ig_reels_video_view_total_time',",
-      "cwd": "packages/clickhouse",
-      "test": "__tests__/data-provenance.test.ts",
-      "pattern": "agrees with whether"
+      "find": "? ['ig_reels_avg_watch_time', 'ig_reels_video_view_total_time']",
+      "replace": "? ['ig_reels_avg_watch_time']",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/provider-result-fields.test.ts",
+      "pattern": "every total is read from a requested field"
     },
     {
       "name": "Instagram watch time recorded as the platform's gap instead of ours",
       "kind": "unit",
       "file": "packages/clickhouse/src/lib/data-provenance.ts",
-      "find": "      level: 'not_ingested',\n      table: null,\n      blockedBy: 'FILM-1712',\n      ...INSTAGRAM_MEDIA,\n      note: 'Instagram does report watch time",
-      "replace": "      level: 'unsupported',\n      table: null,\n      blockedBy: null,\n      ...INSTAGRAM_MEDIA,\n      note: 'Instagram does report watch time",
+      "find": "      level: 'derived',\n      table: 'video_metrics',\n      method: 'snapshot_delta_fetch_day',\n      ...INSTAGRAM_MEDIA,\n      note: 'Instagram reports total watch time",
+      "replace": "      level: 'unsupported',\n      table: null,\n      blockedBy: null,\n      ...INSTAGRAM_MEDIA,\n      note: 'Instagram reports total watch time",
       "cwd": "packages/clickhouse",
       "test": "__tests__/data-provenance.test.ts",
-      "pattern": "Instagram watch time is ours to build"
+      "pattern": "Instagram watch time is collected from Reels"
     },
     {
       "name": "The module imports a value, so a client bundle would pull it in",
@@ -125,8 +125,8 @@
       "name": "The matrix cites a vendor field the reference does not carry",
       "kind": "unit",
       "file": "packages/clickhouse/src/lib/data-provenance.ts",
-      "find": "        fields: ['ig_reels_avg_watch_time', 'ig_reels_video_view_total_time'],",
-      "replace": "        fields: ['ig_reels_avg_watch_time', 'ig_reels_replay_time'],",
+      "find": "        fields: ['ig_reels_video_view_total_time'],",
+      "replace": "        fields: ['ig_reels_replay_time'],",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/capability-matrix-reference.test.ts",
       "pattern": "names only vendor fields the reference documents"

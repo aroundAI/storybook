@@ -243,7 +243,8 @@ export type SnapshotDeltaMetric = VideoMetric &
         platform: 'instagram';
         /** Measured, except where Meta omits it (STORY has no `saved`). */
         saves: number | null;
-        watch_time_seconds: null;
+        /** Reels only (FILM-1712); null for other media or when omitted. */
+        watch_time_seconds: number | null;
         subscribers_gained: null;
         accounts_reached: number | null;
       }
@@ -288,7 +289,7 @@ export function buildSnapshotDeltaRow(input: {
     ...base,
     platform: 'instagram',
     saves: input.delta.saves,
-    watch_time_seconds: null,
+    watch_time_seconds: input.delta.watch_time_seconds,
     subscribers_gained: null,
     accounts_reached: input.delta.accounts_reached,
   };
