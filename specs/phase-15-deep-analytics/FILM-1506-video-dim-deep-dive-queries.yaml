@@ -27,7 +27,7 @@ acceptance_criteria:
     reason: "not met — no test for the monthly median; the one skewed-data median test covers the experiment fold (`watched-metrics.test.ts:64`)"
   - text: "Cohort curves are age-aligned (Q3 cohort at 90d comparable to Q1 cohort at 90d)"
     met: true
-    evidence: "each video judged at its own age (FILM-1604): `packages/clickhouse/__tests__/queries-advanced.test.ts:854`"
+    evidence: "each video judged at its own age (FILM-1604): `packages/clickhouse/__tests__/queries-advanced.test.ts:858`"
   - text: "`analytics_settings` defaults apply when no row exists"
     met: true
     evidence: "`packages/features/content-analytics/__tests__/ypp-targets.test.ts:60`, `:533` (defaults moved to `ypp-targets.ts` by FILM-1608)"

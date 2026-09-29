@@ -1,13 +1,21 @@
 ---
 id: KB-3
 title: "Flaky E2E tests under parallel load"
-status: open
-fixed_in: []
+status: partial
+fixed_in: ["#482"]
+fixed_summary: "In part: an E2E mutation guard that stays green is run again after a 20s wait before STAYED GREEN is believed; the three flaky specs and the runner flakes were not investigated"
 severity: Low
 found: 2026-09-19
 ---
 
 ## KB-3 — Flaky E2E tests under parallel load
+
+> **Fixed in part (2026-09-30), #482.** The guard runner (`tooling/mutation-guards/run.py`)
+> runs an E2E guard again after a 20s wait when its first run stays green, since
+> a recompile that had not landed is indistinguishable from a surviving mutation.
+> That is the *likeliest* cause, still not proven, so no claim is made that the
+> flake is gone. The three flaky specs, the port-bind failure and the runner
+> flakes below need a recurrence to be worked from, as their own sections say.
 
 **Severity:** Low. **Found:** FILM-1610 reviews. Each passed 3–5 times out
 of 3–5 on its own; each failed once when run alongside the rest of the

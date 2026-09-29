@@ -42,8 +42,8 @@ acceptance_criteria:
     met: false
     reason: "not yet implemented — DRAFT"
   - text: "(Half B) local refuses outside dev/test with a message naming VENDOR_SANDBOX=1; LOCAL_API_URL validated, bad values throw — all seen red first"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/llm/src/providers/local.ts:51 — #482 (KB-21); guarded by packages/llm/__tests__/factory.test.ts:550, red in tooling/mutation-guards/kb-open-bugs.json"
   - text: "(Half B) LLM_FORCE_PROVIDER=local routes the prompt executor, the Lambda copy and the agent runner through local under the gate, and is ignored (and logged) outside it"
     met: false
     reason: "not yet implemented — DRAFT"
@@ -61,9 +61,6 @@ acceptance_criteria:
     reason: "not yet implemented — DRAFT"
 remaining:
   - criterion: "(Half B) local defaults to http://localhost:11434/v1 and an owner-confirmed Ollama model"
-    reason: "Half B not started; Half A shipped alone (FILM-1803 needed only the SDK base URLs)"
-    closed_by: "unassigned"
-  - criterion: "(Half B) local refuses outside dev/test with a message naming VENDOR_SANDBOX=1; LOCAL_API_URL validated"
     reason: "Half B not started; Half A shipped alone (FILM-1803 needed only the SDK base URLs)"
     closed_by: "unassigned"
   - criterion: "(Half B) LLM_FORCE_PROVIDER=local routes the executor, the Lambda copy and the agent runner through local under the gate"
