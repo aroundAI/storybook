@@ -50,6 +50,16 @@
       "cwd": "packages/shared",
       "test": "__tests__/pr-records.test.ts",
       "pattern": "Generated with Claude Code"
+    },
+    {
+      "name": "R6 a spec a PR says it closes may stay open",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/pr-records/records.ts",
+      "find": "    if (file && status !== 'DONE')\n      problems.push(`closes ${id}, but ${file} says ${status ?? 'no status'}`);\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/pr-records.test.ts",
+      "pattern": "holds closes to the records"
     }
   ]
 }

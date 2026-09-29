@@ -60,14 +60,15 @@ for (const path of specFiles(join(REPO, 'specs'))) {
   const id = /^spec_id: "?([^"\n]+)"?/m.exec(readFileSync(path, 'utf8'))?.[1];
   if (id) specById.set(id, relative(REPO, path));
 }
-const bugs = new Map(loadKnownBugs().map((bug) => [bug.id, bug.fixedIn]));
+const bugs = new Map(loadKnownBugs().map((bug) => [bug.id, bug]));
 
 const records: Records = {
   specFile: (id) =>
     specById.get(id) ??
     [...specById].find(([specId]) => specId.startsWith(id))?.[1],
   specText: (file) => readFileSync(join(REPO, file), 'utf8'),
-  kbFixedIn: (id) => bugs.get(id),
+  kbFixedIn: (id) => bugs.get(id)?.fixedIn,
+  kbStatus: (id) => bugs.get(id)?.status,
   specArea: (file) => {
     const area = AREAS[file.split('/')[1] ?? ''];
     return area && `area: ${area}`;

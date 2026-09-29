@@ -761,6 +761,23 @@ KB-137. None of it was visible without reading every PR.
   `fix(KB-60, KB-42): …`. One it only mentions stays out of the
   parentheses: `fix(KB-111): … (KB-114 filed)`. With no spec or KB, name the
   area: `chore(local-ci): …`.
+- The summary says what is true afterwards, in plain words and the present
+  tense: "a failed read says what failed", not "refactor error handling".
+- **Markers**, at the end of the summary, only in these forms:
+
+  | Marker | Means | Checked |
+  |---|---|---|
+  | `(closes FILM-x)` / `(closes KB-n)` | The spec becomes DONE, or the KB fixed | It must be in `(IDS)`, and the record must say DONE or fixed |
+  | `(part N)` | One slice of a multi-PR spec: `(part C)`, `(part 2/4)` | Form only |
+  | `(stacked on #N)` | Merges after #N; retarget to main once #N merges | Form only |
+  | `(re-land of #N)` | Replaces a PR that merged into a dead branch | Its records cite this PR, as for any fix |
+
+  Any other parenthesis is prose, like "(KB-114 filed)".
+
+Read together, a title is an audit line: `fix(KB-113, KB-125): land the two
+fixes on main (re-land of #395, #400) (closes KB-113)` says what kind of
+change it is, which records must show it, what changed, and how it relates to
+other PRs, before the description is opened.
 
 **Records, in the same PR:**
 

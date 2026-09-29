@@ -18,6 +18,8 @@ const records: Records = {
   specText: () => 'reason: "Meta publishing done (#468)"',
   kbFixedIn: (id) => ({ 'KB-138': ['#454', '#475'], 'KB-114': ['#418'] })[id],
   specArea: () => 'area: vendor-sandbox',
+  kbStatus: (id) =>
+    ({ 'KB-138': 'fixed', 'KB-114': 'fixed', 'KB-59': 'open' })[id],
 };
 
 const pr = (over: Partial<PullRequest>): PullRequest => ({
@@ -32,15 +34,15 @@ describe('parseTitle', () => {
   it('reads the type and the ids in the scope, not the ones mentioned after it', () => {
     expect(
       parseTitle('fix(KB-111): a figure is null, not 0 (KB-114 filed)'),
-    ).toEqual({
+    ).toMatchObject({
       type: 'fix',
       ids: ['KB-111'],
     });
-    expect(parseTitle('feat(FILM-1805, KB-21): base URLs')).toEqual({
+    expect(parseTitle('feat(FILM-1805, KB-21): base URLs')).toMatchObject({
       type: 'feat',
       ids: ['FILM-1805', 'KB-21'],
     });
-    expect(parseTitle('chore: tidy')).toEqual({ type: 'chore', ids: [] });
+    expect(parseTitle('chore: tidy')).toMatchObject({ type: 'chore', ids: [] });
   });
 
   it('refuses a title without a type', () => {
@@ -204,5 +206,46 @@ describe('commitProblems', () => {
         records,
       ),
     ).toEqual(['the description carries a "Generated with Claude Code" line']);
+  });
+});
+
+describe('title markers', () => {
+  it('reads closes, part, stacked on and re-land of; other parentheses are prose', () => {
+    expect(
+      parseTitle(
+        'fix(KB-113, KB-125): land the fixes (re-land of #395, #400) (stacked on #421) (part B) (closes KB-113) (KB-99 filed)',
+      ),
+    ).toEqual({
+      type: 'fix',
+      ids: ['KB-113', 'KB-125'],
+      closes: ['KB-113'],
+      part: 'B',
+      stackedOn: [421],
+      relandOf: [395, 400],
+    });
+  });
+
+  it('holds closes to the records: in the IDS, and the KB fixed or the spec DONE', () => {
+    const at = (title: string, labels: string[]) =>
+      prProblems(pr({ number: 454, title, labels, files: [SPEC] }), {
+        ...records,
+        kbFixedIn: () => ['#454'],
+      });
+    expect(
+      at('fix(KB-138): x (closes KB-138)', ['type: fix', 'known-bug']),
+    ).toEqual([]);
+    expect(
+      at('fix(KB-59): x (closes KB-59)', ['type: fix', 'known-bug']),
+    ).toEqual(['closes KB-59, but its status is open']);
+    expect(
+      at('fix(KB-138): x (closes KB-59)', ['type: fix', 'known-bug']),
+    ).toEqual(["closes KB-59, which is not in the title's (IDS)"]);
+    expect(
+      at('feat(FILM-1802): x (closes FILM-1802)', [
+        'type: feat',
+        'spec',
+        'area: vendor-sandbox',
+      ]),
+    ).toEqual([`closes FILM-1802, but ${SPEC} says no status`]);
   });
 });
