@@ -120,7 +120,7 @@ export class RevenueCurrencyPageObject {
   }
 
   mixCards() {
-    return this.page.locator('[data-test="revenue-mix-card"]:visible');
+    return byTest(this.page, 'revenue-mix-card');
   }
 
   async openTab(tab: 'overview' | 'platforms' | 'content' | 'manual') {

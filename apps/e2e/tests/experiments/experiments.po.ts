@@ -60,16 +60,16 @@ export class ExperimentsPageObject {
   }
 
   form() {
-    return this.page.locator('[data-test="experiment-form"]:visible');
+    return byTest(this.page, 'experiment-form');
   }
 
   field(testId: string) {
-    return this.form().locator(`[data-test="${testId}"]`);
+    return byTest(this.form(), testId);
   }
 
   async choose(trigger: string, option: string) {
     await this.field(trigger).click();
-    await byTest(this.page, `${option}`).click();
+    await byTest(this.page, option).click();
   }
 
   async chooseChannel(connectionId: string) {
@@ -120,7 +120,7 @@ export class ExperimentsPageObject {
   }
 
   editField(testId: string) {
-    return this.editForm().locator(`[data-test="${testId}"]`);
+    return byTest(this.editForm(), testId);
   }
 
   async edit(experimentId: string) {

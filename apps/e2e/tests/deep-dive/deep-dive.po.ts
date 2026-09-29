@@ -70,11 +70,11 @@ export class DeepDivePageObject {
   }
 
   tab() {
-    return this.page.locator('[data-test="deep-dive-tab"]:visible');
+    return byTest(this.page, 'deep-dive-tab');
   }
 
   channelFilter() {
-    return this.page.locator('[data-test="channel-filter-trigger"]:visible');
+    return byTest(this.page, 'channel-filter-trigger');
   }
 
   async chooseChannel(connectionId: string | 'all') {
@@ -86,10 +86,10 @@ export class DeepDivePageObject {
   }
 
   yppCards() {
-    return this.page.locator('[data-test="ypp-progress-card"]:visible');
+    return byTest(this.page, 'ypp-progress-card');
   }
 
   subscriberEmpty() {
-    return this.page.locator('[data-test="subscriber-series-empty"]:visible');
+    return byTest(this.page, 'subscriber-series-empty');
   }
 }

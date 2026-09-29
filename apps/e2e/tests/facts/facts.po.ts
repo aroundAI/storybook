@@ -102,11 +102,11 @@ export class FactsPageObject {
   }
 
   status(fact: SeededFact): Locator {
-    return this.card(fact).locator('[data-test="fact-status"]');
+    return byTest(this.card(fact), 'fact-status');
   }
 
   verifyButton(fact: SeededFact): Locator {
-    return this.card(fact).locator('[data-test="fact-verify-button"]');
+    return byTest(this.card(fact), 'fact-verify-button');
   }
 
   dialog(): Locator {
@@ -114,23 +114,23 @@ export class FactsPageObject {
   }
 
   notes(): Locator {
-    return this.dialog().locator('[data-test="fact-review-notes"]');
+    return byTest(this.dialog(), 'fact-review-notes');
   }
 
   async openReview(fact: SeededFact) {
     await this.verifyButton(fact).click();
     await expect(this.dialog()).toBeVisible();
-    await expect(
-      this.dialog().locator('[data-test="fact-review-claim"]'),
-    ).toHaveText(fact.claim);
+    await expect(byTest(this.dialog(), 'fact-review-claim')).toHaveText(
+      fact.claim,
+    );
   }
 
   confirmVerified() {
-    return this.dialog().locator('[data-test="fact-confirm-verified"]').click();
+    return byTest(this.dialog(), 'fact-confirm-verified').click();
   }
 
   markDisputed() {
-    return this.dialog().locator('[data-test="fact-mark-disputed"]').click();
+    return byTest(this.dialog(), 'fact-mark-disputed').click();
   }
 
   successToast(text: string): Locator {

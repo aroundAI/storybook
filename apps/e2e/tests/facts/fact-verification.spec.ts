@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { PRODUCTION_SENTENCE } from '../refusals/refusals.po';
 import { updateRows } from '../utils/seed';
+import { byTest } from '../utils/visible';
 import { FactsPageObject } from './facts.po';
 
 /**
@@ -141,7 +142,7 @@ test.describe('Fact Library — verify and dispute', () => {
     await expect(facts.status(d!)).toHaveText('Unverified');
     await expect(facts.verifyButton(d!)).toHaveCount(0);
 
-    await facts.card(d!).locator('[data-test="fact-actions-menu"]').click();
+    await byTest(facts.card(d!), 'fact-actions-menu').click();
     await expect(
       page.getByRole('menuitem', { name: 'Copy Claim' }),
     ).toBeVisible();

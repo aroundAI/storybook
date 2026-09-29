@@ -18,7 +18,7 @@ import {
   seedYouTubeConnection,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
-import { byTest } from '../utils/visible';
+import { byTest, visible } from '../utils/visible';
 
 /**
  * FILM-1706 — screenshots and DOM measurements for the card shell.
@@ -179,12 +179,15 @@ test.describe('FILM-1706 card shell — evidence', () => {
         page.getByRole('heading', { name: 'Shares', exact: true }),
       ).toBeVisible();
       await expect(
-        page.locator('[data-test="overview-views"] [data-test="card-figure"]'),
+        visible(page, '[data-test="overview-views"] [data-test="card-figure"]'),
       ).toHaveText(EXPECTED['Total Views']);
       // The audience read lands after the page: wait for it, or Gender is
       // not on the page yet when the cards are read.
       await expect(
-        page.locator('[data-test="overview-gender"] [data-test="card-figure"]'),
+        visible(
+          page,
+          '[data-test="overview-gender"] [data-test="card-figure"]',
+        ),
       ).toHaveText(EXPECTED.Gender);
 
       measured[`overview-${theme}`] = await readCards(page);

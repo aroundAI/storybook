@@ -91,16 +91,16 @@ for (const platform of PLATFORMS) {
 
       await expect(failure(page)).toHaveAttribute('data-code', 'access_denied');
       await expect(failure(page)).toHaveAttribute('data-platform', platform.id);
+      await expect(byTest(failure(page), 'connect-failure-title')).toHaveText(
+        `${platform.label} was not connected`,
+      );
       await expect(
-        failure(page).locator('[data-test="connect-failure-title"]'),
-      ).toHaveText(`${platform.label} was not connected`);
-      await expect(
-        failure(page).locator('[data-test="connect-failure-message"]'),
+        byTest(failure(page), 'connect-failure-message'),
       ).toContainText(
         `${platform.label} reported that access was denied. That is what it sends when the consent screen is cancelled or declined`,
       );
       await expect(
-        failure(page).locator('[data-test="connect-failure-vendor"]'),
+        byTest(failure(page), 'connect-failure-vendor'),
       ).toContainText('The user denied the request');
     });
 
@@ -123,16 +123,16 @@ for (const platform of PLATFORMS) {
 
       await expect(failure(page)).toHaveAttribute('data-code', 'invalid_scope');
       await expect(
-        failure(page).locator('[data-test="connect-failure-message"]'),
+        byTest(failure(page), 'connect-failure-message'),
       ).toContainText(
         `${platform.label} refused a permission this app asked for. The app’s review for that permission may not be approved yet`,
       );
       await expect(
-        failure(page).locator('[data-test="connect-failure-vendor"]'),
+        byTest(failure(page), 'connect-failure-vendor'),
       ).toContainText('Scope not authorized for this client');
       // The reference a vendor's support asks for, where one is sent.
       await expect(
-        failure(page).locator('[data-test="connect-failure-vendor-log-id"]'),
+        byTest(failure(page), 'connect-failure-vendor-log-id'),
       ).toHaveText('20260922KB19');
     });
 
@@ -155,7 +155,7 @@ for (const platform of PLATFORMS) {
 
       await expect(failure(page)).toHaveAttribute('data-code', 'invalid_state');
       await expect(
-        failure(page).locator('[data-test="connect-failure-message"]'),
+        byTest(failure(page), 'connect-failure-message'),
       ).toContainText(
         'The request that came back could not be matched to a connection this app started',
       );
@@ -178,7 +178,7 @@ test.describe('A failed connect — the branches that share one helper', () => {
     await expect(failure(page)).toHaveAttribute('data-code', 'state_expired');
     expectOnPlatformsPage(page, team);
     await expect(
-      failure(page).locator('[data-test="connect-failure-message"]'),
+      byTest(failure(page), 'connect-failure-message'),
     ).toContainText('This connection attempt expired or was already used');
   });
 
@@ -211,7 +211,7 @@ test.describe('A failed connect — the branches that share one helper', () => {
     );
     expectOnPlatformsPage(page, team);
     await expect(
-      failure(page).locator('[data-test="connect-failure-message"]'),
+      byTest(failure(page), 'connect-failure-message'),
     ).toContainText('the pending YouTube connection was not found');
   });
 
@@ -223,7 +223,7 @@ test.describe('A failed connect — the branches that share one helper', () => {
     await expect(failure(page)).toHaveAttribute('data-code', 'missing_params');
     expectOnPlatformsPage(page, team);
     await expect(
-      failure(page).locator('[data-test="connect-failure-message"]'),
+      byTest(failure(page), 'connect-failure-message'),
     ).toContainText('TikTok sent you back without an authorisation code');
   });
 
@@ -239,9 +239,9 @@ test.describe('A failed connect — the branches that share one helper', () => {
 
     await expect(failure(page)).toBeVisible();
     expect(new URL(page.url()).pathname).toBe('/home/teams/create');
-    await expect(
-      failure(page).locator('[data-test="connect-failure-title"]'),
-    ).toHaveText('LinkedIn was not connected');
+    await expect(byTest(failure(page), 'connect-failure-title')).toHaveText(
+      'LinkedIn was not connected',
+    );
     // The create-team dialog waits: opened over the message, it hides it.
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await captureIfAsked(page, 'kb99-01-no-team');
@@ -266,9 +266,9 @@ test.describe('A failed connect — the branches that share one helper', () => {
 
     await expect(failure(page)).toBeVisible();
     expect(new URL(page.url()).pathname).toBe('/home/settings');
-    await expect(
-      failure(page).locator('[data-test="connect-failure-title"]'),
-    ).toHaveText('LinkedIn was not connected');
+    await expect(byTest(failure(page), 'connect-failure-title')).toHaveText(
+      'LinkedIn was not connected',
+    );
     await captureIfAsked(page, 'kb99-02-several-teams');
 
     await failure(page)
@@ -390,9 +390,10 @@ test.describe('A failed connect — hostile input', () => {
     );
 
     await expect(failure(page)).toHaveAttribute('data-code', 'unknown');
-    await expect(
-      failure(page).locator('[data-test="connect-failure-title"]'),
-    ).toHaveText('the platform was not connected', { ignoreCase: true });
+    await expect(byTest(failure(page), 'connect-failure-title')).toHaveText(
+      'the platform was not connected',
+      { ignoreCase: true },
+    );
     await expect(failure(page)).not.toContainText('pwned');
     await expect(failure(page)).not.toContainText('evil.example');
   });

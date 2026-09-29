@@ -26,7 +26,7 @@ test.describe('Change log: what it can and cannot measure (round 5, A, H1, H2)',
     const log = new ExperimentsPageObject(page);
     await log.setup();
 
-    const note = log.form().locator('[data-test="experiment-category-note"]');
+    const note = byTest(log.form(), 'experiment-category-note');
 
     await log.choose('experiment-category', 'experiment-category-option-hook');
     await expect(note).toContainText('part of the video itself');
@@ -49,9 +49,9 @@ test.describe('Change log: what it can and cannot measure (round 5, A, H1, H2)',
       'experiment-metric',
       'experiment-metric-option-views_at_30d',
     );
-    await expect(
-      log.form().locator('[data-test="experiment-metric-note"]'),
-    ).toContainText('same before and after');
+    await expect(byTest(log.form(), 'experiment-metric-note')).toContainText(
+      'same before and after',
+    );
   });
 
   test.describe('in UTC', () => {
@@ -168,9 +168,9 @@ test.describe('Change log: the picker and dates (round 5, H4 H5 H6)', () => {
       });
       await log.goTo(team.slug);
 
-      await expect(
-        page.locator(`[data-test="experiment-row-${id}"]:visible`),
-      ).toContainText('Created 2026-01-02');
+      await expect(byTest(page, `experiment-row-${id}`)).toContainText(
+        'Created 2026-01-02',
+      );
 
       await log.field('video-picker-trigger').click();
       await expect(byTest(page, `video-picker-option-${late}`)).toContainText(
@@ -191,7 +191,7 @@ test.describe('Change log: signed out mid-session (round 5, H11)', () => {
     const id = await seedExperiment(team.accountId, { title: 'Signed out' });
     await log.goTo(team.slug);
 
-    await page.locator(`[data-test="experiment-row-${id}"]:visible`).click();
+    await byTest(page, `experiment-row-${id}`).click();
     await context.clearCookies();
     await page.getByRole('button', { name: 'Start', exact: true }).click();
 

@@ -13,7 +13,7 @@ import {
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
-import { byTest } from '../utils/visible';
+import { byTest, visible } from '../utils/visible';
 import { png } from './png';
 
 /**
@@ -107,7 +107,7 @@ test.describe('Project intros (KB-39, KB-54)', () => {
     await byTest(dialog, 'intro-submit').click();
 
     await expect(page.getByText('Added en intro').first()).toBeVisible();
-    const card = page.locator('[data-test="intro-card"][data-language="en"]');
+    const card = visible(page, '[data-test="intro-card"][data-language="en"]');
     await expect(card).toBeVisible();
 
     const added = await introRow('en');

@@ -280,7 +280,7 @@ test.describe('FILM-1615 — the Video Log with data', () => {
 
     await videoLog.next().click();
 
-    const pastEnd = page.locator('[data-test="video-log-past-end"]:visible');
+    const pastEnd = byTest(page, 'video-log-past-end');
 
     await expect(pastEnd).toContainText('No more videos.');
     await page.screenshot({ path: `${OUT}/05-past-end.png` });
@@ -424,9 +424,9 @@ test.describe('FILM-1615 — the Video Log with data', () => {
     await byTest(page, 'note-input').fill('x'.repeat(5001));
     await byTest(page, 'note-save').click();
 
-    await expect(
-      page.locator('[data-test="note-editor"]:visible'),
-    ).toContainText('At most 5,000 characters');
+    await expect(byTest(page, 'note-editor')).toContainText(
+      'At most 5,000 characters',
+    );
 
     // Nothing was saved, and the text is still there to fix.
     await expect(byTest(page, 'note-input')).toHaveValue('x'.repeat(5001));
@@ -467,7 +467,7 @@ test.describe('FILM-1615 — the Video Log with data', () => {
     await byTest(page, 'note-input').fill('My note');
     await byTest(page, 'note-save').click();
 
-    const conflict = page.locator('[data-test="note-conflict"]:visible');
+    const conflict = byTest(page, 'note-conflict');
 
     await expect(conflict).toContainText(
       'Someone else changed this note since you opened it.',

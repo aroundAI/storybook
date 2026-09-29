@@ -227,26 +227,18 @@ test.describe('FILM-1702 — the Language tab with data', () => {
         await expect(tab.cardLabel(card)).toHaveText('By content language');
       }
 
-      await expect(
-        page.locator('[data-test="matrix-language-__not_set__"]:visible'),
-      ).toHaveText('Language not set');
-      await expect(
-        page.locator('[data-test="matrix-language-es"]:visible'),
-      ).toContainText('Spanish');
+      await expect(byTest(page, 'matrix-language-__not_set__')).toHaveText(
+        'Language not set',
+      );
+      await expect(byTest(page, 'matrix-language-es')).toContainText('Spanish');
 
       // The routing diagnostic: 2 of the 21 comparable videos.
-      await expect(
-        page.locator('[data-test="language-divergence-count"]:visible'),
-      ).toHaveText('2');
-      await expect(
-        page.locator('[data-test="language-divergence-total"]:visible'),
-      ).toHaveText('21');
-      await expect(
-        page.locator('[data-test="language-divergence-pair-es-en"]:visible'),
-      ).toHaveText('Spanish on a channel targeting English · 2');
-      await expect(
-        page.locator('[data-test="language-divergence-not-set"]:visible'),
-      ).toHaveText(
+      await expect(byTest(page, 'language-divergence-count')).toHaveText('2');
+      await expect(byTest(page, 'language-divergence-total')).toHaveText('21');
+      await expect(byTest(page, 'language-divergence-pair-es-en')).toHaveText(
+        'Spanish on a channel targeting English · 2',
+      );
+      await expect(byTest(page, 'language-divergence-not-set')).toHaveText(
         'Not compared: 5 with no language set, 1 with no channel target.',
       );
 
@@ -259,9 +251,10 @@ test.describe('FILM-1702 — the Language tab with data', () => {
         'By channel target language',
         RELOADED,
       );
-      await expect(
-        tab.row('en').locator('[data-test="language-row-views"]'),
-      ).toHaveText('720', RELOADED);
+      await expect(byTest(tab.row('en'), 'language-row-views')).toHaveText(
+        '720',
+        RELOADED,
+      );
 
       const channel = {
         en: await tab.readRow('en'),
@@ -292,12 +285,13 @@ test.describe('FILM-1702 — the Language tab with data', () => {
       // ------------------------------------------- and back, the second time
       await tab.chooseDimension('content');
 
-      await expect(
-        tab.row('en').locator('[data-test="language-row-views"]'),
-      ).toHaveText('150', RELOADED);
-      await expect(
-        tab.row(null).locator('[data-test="language-row-name"]'),
-      ).toHaveText('Language not set');
+      await expect(byTest(tab.row('en'), 'language-row-views')).toHaveText(
+        '150',
+        RELOADED,
+      );
+      await expect(byTest(tab.row(null), 'language-row-name')).toHaveText(
+        'Language not set',
+      );
 
       // ----------------------------- the other surface that groups by language
       //
@@ -305,7 +299,7 @@ test.describe('FILM-1702 — the Language tab with data', () => {
       // rather than the project. One project here, so the two must agree.
       await page.goto(`/home/${fixture.team.slug}/studio/analytics/tags`);
 
-      const medians = page.locator('[data-test="tag-medians-card"]:visible');
+      const medians = byTest(page, 'tag-medians-card');
 
       await medians
         .locator('[data-test="tag-medians-dimension-trigger"]')

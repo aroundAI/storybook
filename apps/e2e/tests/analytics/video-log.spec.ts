@@ -102,9 +102,7 @@ test.describe('Video Log', () => {
 
     // The header filters do not reach this table, and it has no totals.
     // Saying so is the only thing that stops a reader assuming both.
-    await expect(
-      page.locator('[data-test="video-log-scope-note"]:visible'),
-    ).toContainText(
+    await expect(byTest(page, 'video-log-scope-note')).toContainText(
       'The date range and platform filters above do not apply here, and there is no total',
     );
   });
@@ -118,7 +116,7 @@ test.describe('Video Log', () => {
     await videoLog.goToAnalytics(fixture.team.slug, fixture.project.slug);
     await videoLog.openVideoLog();
 
-    const empty = page.locator('[data-test="video-log-empty"]:visible');
+    const empty = byTest(page, 'video-log-empty');
 
     await expect(empty).toContainText('No videos with analytics yet.');
     await expect(empty).toContainText(
@@ -140,9 +138,9 @@ test.describe('Video Log', () => {
     await videoLog.openVideoLog();
     await videoLog.chooseChannel(fixture.connectionId);
 
-    await expect(
-      page.locator('[data-test="video-log-empty"]:visible'),
-    ).toContainText('No videos from this channel have analytics yet.');
+    await expect(byTest(page, 'video-log-empty')).toContainText(
+      'No videos from this channel have analytics yet.',
+    );
   });
 
   test('the channel picked in the Deep Dive is the channel the Video Log shows', async ({
@@ -155,7 +153,7 @@ test.describe('Video Log', () => {
     await videoLog.goToAnalytics(fixture.team.slug, fixture.project.slug);
     await videoLog.openDeepDive();
 
-    await page.locator('[data-test="channel-filter-trigger"]:visible').click();
+    await byTest(page, 'channel-filter-trigger').click();
     await page
       .locator(`[data-test="channel-filter-option-${fixture.connectionId}"]`)
       .click();
@@ -187,9 +185,9 @@ test.describe('Video Log', () => {
 
     await videoLog.openDeepDive();
 
-    await expect(
-      page.locator('[data-test="channel-filter-trigger"]:visible'),
-    ).toHaveText('Second Channel');
+    await expect(byTest(page, 'channel-filter-trigger')).toHaveText(
+      'Second Channel',
+    );
   });
 
   test('shows it is loading rather than an empty log it has not read yet', async ({
@@ -211,7 +209,7 @@ test.describe('Video Log', () => {
     await videoLog.goToAnalytics(fixture.team.slug, fixture.project.slug);
     await videoLog.openVideoLog();
 
-    const loading = page.locator('[data-test="video-log-loading"]:visible');
+    const loading = byTest(page, 'video-log-loading');
 
     await expect(loading).toBeVisible();
     await expect(loading).toHaveAttribute('aria-busy', 'true');
@@ -221,9 +219,7 @@ test.describe('Video Log', () => {
 
     release();
 
-    await expect(
-      page.locator('[data-test="video-log-empty"]:visible'),
-    ).toBeVisible();
+    await expect(byTest(page, 'video-log-empty')).toBeVisible();
   });
 
   test('a failed read is reported, not shown as a project with no videos', async ({
@@ -237,7 +233,7 @@ test.describe('Video Log', () => {
     await videoLog.goToAnalytics(fixture.team.slug, fixture.project.slug);
     await videoLog.openVideoLog();
 
-    const error = page.locator('[data-test="video-log-error"]:visible');
+    const error = byTest(page, 'video-log-error');
 
     await expect(error).toBeVisible(ERROR_STATE);
     await expect(error).toContainText('The Video Log could not be loaded.');
@@ -250,8 +246,6 @@ test.describe('Video Log', () => {
     await page.unroute('**/*');
     await byTest(page, 'video-log-retry').click();
 
-    await expect(
-      page.locator('[data-test="video-log-empty"]:visible'),
-    ).toBeVisible(ERROR_STATE);
+    await expect(byTest(page, 'video-log-empty')).toBeVisible(ERROR_STATE);
   });
 });

@@ -139,7 +139,7 @@ test.describe('Research sources belong to a team (KB-37)', () => {
     // team's (a Select that kept its last value would make it the team's).
     await addSource(page, teamSource, 'Every project in the team');
     await expect(
-      sourceRow(page, teamSource).locator('[data-test="research-source-kind"]'),
+      byTest(sourceRow(page, teamSource), 'research-source-kind'),
     ).toHaveText('Team');
 
     await addSource(page, projectSource);
@@ -286,7 +286,7 @@ test.describe('Research sources belong to a team (KB-37)', () => {
 
     await page.getByRole('button', { name: 'Add Source' }).first().click();
     await expect(
-      page.getByRole('dialog').locator('[data-test="add-source-scope"]'),
+      byTest(page.getByRole('dialog'), 'add-source-scope'),
     ).toHaveCount(0);
     await capture(page, '03-member-dialog-without-team-option');
     await page.getByRole('button', { name: 'Cancel' }).click();
