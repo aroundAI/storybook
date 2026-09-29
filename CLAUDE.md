@@ -793,9 +793,12 @@ pnpm prs:records --pr <n> --apply-labels  # add the labels it is missing
 pnpm prs:records --since 2026-09-22       # audit everything merged since a date
 ```
 
-Run `pnpm prs:records --pr <n>` before asking for a merge. It exits non-zero
-on any gap, and PRs merged into a branch other than main are skipped (their
-work reaches main in a later PR, which is the one checked).
+It is a CI step: 📋 PR records (`.github/workflows/pr-records.yml`) re-runs it
+whenever the PR is pushed, retitled or relabelled, and local CI runs it, so a
+gap fails the run. When required checks go back on for `main`, require it too
+(LOCAL-CI.md). Run `pnpm prs:records --pr <n>` yourself before asking for a merge.
+It exits non-zero on any gap, and PRs merged into a branch other than main
+are skipped (their work reaches main in a later PR, which is the one checked).
 
 ## Verification Steps
 

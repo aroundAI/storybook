@@ -1,0 +1,40 @@
+name: PR records
+# CLAUDE.md "Opening a pull request": the title says what the PR does
+# (type(IDS)), a feat or fix updates the spec or KB it names in the same PR,
+# and the labels mirror the title. pnpm prs:records checks all three.
+#
+# Its own workflow, not a job in workflow.yml: it must re-run when the title
+# or labels change, and those events must not re-run the paid suite.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  records:
+    name: 📋 PR records
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Title, records and labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: pnpm -s prs:records --pr ${{ github.event.pull_request.number }}
