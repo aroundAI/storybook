@@ -1,0 +1,119 @@
+{
+  "feature": "Spec test coverage: the tests that closed the 'test not written' items (FILM-101e/h/n, 103, 708, 714, 715, 809, 807, 901, 1005)",
+  "mutations": [
+    {
+      "name": "SPEC-TESTS U1 a tweet one character over 280 is sent",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/providers/twitter/twitter-provider.ts",
+      "find": "if (input.text.length > TWITTER_CONSTRAINTS.maxTweetLength) {",
+      "replace": "if (input.text.length > TWITTER_CONSTRAINTS.maxTweetLength + 1) {",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/twitter-provider.test.ts",
+      "pattern": "refuses a tweet over 280"
+    },
+    {
+      "name": "SPEC-TESTS U2 a LinkedIn video post one character over the limit is sent",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/providers/linkedin/linkedin-provider.ts",
+      "find": "// Validate post text length\n    if (input.text.length > LINKEDIN_CONSTRAINTS.post.maxLength) {",
+      "replace": "// Validate post text length\n    if (input.text.length > LINKEDIN_CONSTRAINTS.post.maxLength + 1) {",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/linkedin-provider.test.ts",
+      "pattern": "refuses a video post over the limit"
+    },
+    {
+      "name": "SPEC-TESTS U3 last month ends now instead of on its last day",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/report-date-range.ts",
+      "find": "return { start: startOfMonth(lastMonth), end: endOfMonth(lastMonth) };",
+      "replace": "return { start: startOfMonth(lastMonth), end: now };",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/report-date-range.test.ts",
+      "pattern": "takes last month whole"
+    },
+    {
+      "name": "SPEC-TESTS U4 a CSV value with a quote is not quoted",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/csv-generator.ts",
+      "find": "if (value.includes(',') || value.includes('\"') || value.includes('\\n')) {",
+      "replace": "if (value.includes(',') || value.includes('\\n')) {",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/csv-and-platform-colors.test.ts",
+      "pattern": "only special character is a quote"
+    },
+    {
+      "name": "SPEC-TESTS U5 two platforms share a colour",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/platform-colors.ts",
+      "find": "youtube: '#FF0000',",
+      "replace": "youtube: '#000000',",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/csv-and-platform-colors.test.ts",
+      "pattern": "distinct colour per platform"
+    },
+    {
+      "name": "SPEC-TESTS U6 medium-confidence canon events are committed",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/canon-actions.ts",
+      "find": ".filter((event) => event.confidence === 'high')",
+      "replace": ".filter((event) => event.confidence !== 'low')",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/canon-conflicts-and-batches.test.ts",
+      "pattern": "only the high-confidence events"
+    },
+    {
+      "name": "SPEC-TESTS U7 a duplicate immutable event key is added",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/server/canon-actions.ts",
+      "find": "    if (existing) {\n      throw new ActionRefusal(\n        `Event key",
+      "replace": "    if (false && existing) {\n      throw new ActionRefusal(\n        `Event key",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/canon-conflicts-and-batches.test.ts",
+      "pattern": "refuses an event key that already exists"
+    },
+    {
+      "name": "SPEC-TESTS U8 the project overview link lights on nested pages",
+      "kind": "unit",
+      "file": "apps/web/config/studio-navigation.config.tsx",
+      "find": "          path: basePath,\n          Icon: <FolderOpen className={iconClasses} />,\n          end: true,",
+      "replace": "          path: basePath,\n          Icon: <FolderOpen className={iconClasses} />,\n          end: false,",
+      "cwd": "apps/web",
+      "test": "config/__tests__/studio-navigation.test.ts",
+      "pattern": "marks the two root links as exact"
+    },
+    {
+      "name": "SPEC-TESTS U9 YouTube starts public in the Publish Hub",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/platform-limits.ts",
+      "find": "privacy: 'private',",
+      "replace": "privacy: 'public',",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-hub-config.test.ts",
+      "pattern": "starts YouTube private"
+    },
+    {
+      "name": "SPEC-TESTS P1 the audio track volume range is not enforced",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/audio-tracks-table.test.sql",
+      "sql": "alter table public.audio_tracks drop constraint audio_tracks_volume_check;"
+    },
+    {
+      "name": "SPEC-TESTS P2 an audio track survives its episode",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/audio-tracks-table.test.sql",
+      "sql": "alter table public.audio_tracks drop constraint audio_tracks_episode_id_fkey, add constraint audio_tracks_episode_id_fkey foreign key (episode_id) references public.episodes(id);"
+    },
+    {
+      "name": "SPEC-TESTS P3 an account may hold two keys for one provider",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/external-api-keys-table.test.sql",
+      "sql": "alter table public.external_api_keys drop constraint external_api_keys_account_id_provider_key;"
+    },
+    {
+      "name": "SPEC-TESTS P4 the character attribute GIN index is gone",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/character-details-table.test.sql",
+      "sql": "drop index public.idx_character_details_physical_attributes;"
+    }
+  ]
+}

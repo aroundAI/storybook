@@ -97,6 +97,17 @@ describe('Config Loader', () => {
           'playht',
         );
       });
+
+      it('should fail, not fall back to the platform key, when a stored key cannot be decrypted', async () => {
+        process.env.PLAYHT_API_KEY = 'platform-key';
+        process.env.PLAYHT_USER_ID = 'platform-user';
+        mockedReadKey.mockResolvedValue(storedKey('corrupt-ciphertext'));
+        mockedDecrypt.mockRejectedValue(new Error('Unsupported state'));
+
+        await expect(
+          loadVoiceProviderConfig('account-123', 'playht'),
+        ).rejects.toThrow('Unsupported state');
+      });
     });
 
     describe('Platform key fallback (non-ElevenLabs only)', () => {

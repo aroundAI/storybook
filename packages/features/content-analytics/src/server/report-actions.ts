@@ -4,14 +4,7 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import {
-  addDays,
-  addMonths,
-  endOfMonth,
-  startOfMonth,
-  subDays,
-  subMonths,
-} from 'date-fns';
+import { addDays, addMonths, startOfMonth } from 'date-fns';
 
 import {
   queryQualityMetricsForVideos,
@@ -26,11 +19,11 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { generateSummaryCSV } from '../lib/csv-generator';
 import { generatePDFReport } from '../lib/pdf-generator';
+import { calculateDateRange } from '../lib/report-date-range';
 import { calculateReportSummary } from '../lib/report-summary';
 import type {
   AnalyticsDataRow,
   Branding,
-  DatePreset,
   GeneratedReport,
   ReportMetric,
   ReportPlatform,
@@ -56,29 +49,6 @@ const RETENTION_CONCURRENCY = 20;
  * total; retention is optional enrichment, so it degrades past this.
  */
 const MAX_RETENTION_VIDEOS = 500;
-
-/**
- * Calculate date range from preset
- */
-function calculateDateRange(preset: DatePreset): { start: Date; end: Date } {
-  const now = new Date();
-
-  switch (preset) {
-    case 'last7days':
-      return { start: subDays(now, 7), end: now };
-    case 'last30days':
-      return { start: subDays(now, 30), end: now };
-    case 'lastMonth': {
-      const lastMonth = subMonths(now, 1);
-      return { start: startOfMonth(lastMonth), end: endOfMonth(lastMonth) };
-    }
-    case 'lastQuarter':
-      return { start: subMonths(now, 3), end: now };
-    case 'custom':
-    default:
-      return { start: subDays(now, 30), end: now };
-  }
-}
 
 /**
  * Calculate next run time for scheduled report

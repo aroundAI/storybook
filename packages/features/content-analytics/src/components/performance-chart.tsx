@@ -21,18 +21,11 @@ import { Button } from '@kit/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@kit/ui/toggle-group';
 
 import { formatDate, formatNumber } from '../lib/format';
+import { PLATFORM_COLORS } from '../lib/platform-colors';
 import type { DailyMetric } from '../types';
 
 type MetricType = 'views' | 'likes' | 'comments' | 'shares';
 type ChartType = 'line' | 'area' | 'stacked';
-
-const PLATFORM_COLORS: Record<string, string> = {
-  youtube: '#FF0000',
-  tiktok: '#000000',
-  instagram: '#E4405F',
-  facebook: '#1877F2',
-  aggregate: '#6366F1',
-};
 
 const METRIC_LABELS: Record<MetricType, string> = {
   views: 'Views',

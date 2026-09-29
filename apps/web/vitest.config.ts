@@ -72,6 +72,10 @@ export default defineConfig({
         __dirname,
         '../../packages/shared/src/rows/index.ts',
       ),
+      '@kit/ui/navigation-schema': path.resolve(
+        __dirname,
+        '../../packages/ui/src/makerkit/navigation-config.schema.ts',
+      ),
       '@kit/supabase/server-client': path.resolve(
         __dirname,
         '../../packages/supabase/src/clients/server-client.ts',
