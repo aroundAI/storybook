@@ -37,7 +37,7 @@ acceptance_criteria:
     reason: "unverified — needs a component or E2E test; the effect at `apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:219` is untested"
   - text: "Settings are saved to projects.settings JSONB column"
     met: false
-    reason: "unverified — `projects` has no `settings` column; the action writes `projects.metadata` (`apps/web/app/home/[account]/studio/projects/new/_lib/server/create-film-project.action.ts:70`) and no test reads it back"
+    reason: "unverified — `projects` has no `settings` column; the action writes `projects.metadata` (`apps/web/app/home/[account]/studio/projects/new/_lib/server/create-film-project.action.ts:71`) and no test reads it back"
   - text: "Form provides helpful descriptions and examples"
     met: true
     evidence: "apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:400, placeholder at `:295`"

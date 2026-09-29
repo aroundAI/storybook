@@ -11,6 +11,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ScreenplayScene } from '@kit/episodes/agent/screenplay-orchestrator';
 import { sanitizeForPrompt, sanitizeStrings } from '@kit/episodes/lib';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
+import { whyNoRow } from '@kit/shared/rows';
 import type { Database, Json } from '@kit/supabase/database';
 
 import {
@@ -79,7 +80,7 @@ export async function processScreenplayConversion(
       }>();
 
     if (episodeError || !episode) {
-      throw new Error(`Episode not found: ${episodeError?.message}`);
+      throw new Error(whyNoRow(episodeError, 'Episode not found'));
     }
 
     // Read for the model only (this handler never writes story_data back):

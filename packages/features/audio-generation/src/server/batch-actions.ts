@@ -13,6 +13,7 @@ import {
 } from '@kit/next/refusals';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
+import { whyNoRow } from '@kit/shared/rows';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -379,7 +380,7 @@ export const getBatchStatusAction = enhanceAction(
 
     if (error || !job) {
       logger.warn({ ...ctx, error }, 'Batch job not found');
-      throw new Error('Batch job not found');
+      throw new Error(whyNoRow(error, 'Batch job not found'));
     }
 
     const jobData = job as BatchJobResponse;
@@ -478,7 +479,7 @@ const retryFailedDialogue = enhanceAction(
       .single();
 
     if (error || !job) {
-      throw new Error('Batch job not found');
+      throw new Error(whyNoRow(error, 'Batch job not found'));
     }
 
     const jobData = job as BatchJobResponse;

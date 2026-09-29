@@ -6,6 +6,7 @@ import { returnRefusals } from '@kit/next/refusals';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import type { Screenplay } from '@kit/prompt-engine/schemas';
 import { getLogger } from '@kit/shared/logger';
+import { whyNoRow } from '@kit/shared/rows';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -195,7 +196,7 @@ const convertToScreenplay = enhanceAction(
 
     if (episodeError || !episode) {
       logger.error({ ...ctx, error: episodeError }, 'Episode not found');
-      throw new Error('Episode not found');
+      throw new Error(whyNoRow(episodeError, 'Episode not found'));
     }
 
     // Validate story_data exists

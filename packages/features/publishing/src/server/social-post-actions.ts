@@ -12,6 +12,7 @@ import {
   returnRefusals,
 } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
+import { whyNoRow } from '@kit/shared/rows';
 import type { Json } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -245,7 +246,7 @@ export const getSocialPostAction = enhanceAction(
       .single();
 
     if (error || !post) {
-      throw new Error('Social post not found');
+      throw new Error(whyNoRow(error, 'Social post not found'));
     }
 
     return post;

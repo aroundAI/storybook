@@ -111,7 +111,9 @@ start_sandbox() {
     echo $! > "$dir/pid"
   ) || return 1
 
-  for _ in $(seq 1 30); do
+  # 60 s: tsx compiles the sandbox on its first start, which took over 30 s
+  # once while a full unit run shared the machine (2026-09-29; ~2 s alone).
+  for _ in $(seq 1 60); do
     if grep -q '\[sandbox\] seed' "$dir/sandbox.log" 2> /dev/null &&
       curl -sf "$SANDBOX_CONTROL_URL/__sandbox/state" > /dev/null 2>&1; then
       echo "    $(grep -m1 '\[sandbox\] seed' "$dir/sandbox.log")"
@@ -120,7 +122,7 @@ start_sandbox() {
     sleep 1
   done
 
-  echo "The vendor sandbox did not start in 30s; see $dir/sandbox.log"
+  echo "The vendor sandbox did not start in 60s; see $dir/sandbox.log"
   return 1
 }
 

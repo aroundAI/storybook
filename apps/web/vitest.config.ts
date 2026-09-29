@@ -68,6 +68,10 @@ export default defineConfig({
         __dirname,
         '../../packages/shared/src/crypto/index.ts',
       ),
+      '@kit/shared/rows': path.resolve(
+        __dirname,
+        '../../packages/shared/src/rows/index.ts',
+      ),
       '@kit/supabase/server-client': path.resolve(
         __dirname,
         '../../packages/supabase/src/clients/server-client.ts',

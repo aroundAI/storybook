@@ -6,6 +6,7 @@ import { queryTotalsByVideoIds } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
 import { fetchAllRows } from '@kit/shared/pagination';
+import { readFailed, whyNoRow } from '@kit/shared/rows';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { addCalendarDays, callerTodayOr } from '../lib/caller-date';
@@ -203,7 +204,9 @@ export const addManualRevenueAction = enhanceAction(
         .single();
 
       if (publishError || !publish) {
-        throw new Error('Publish not found or access denied');
+        throw new Error(
+          whyNoRow(publishError, 'Publish not found or access denied'),
+        );
       }
 
       platform = publish.platform;
@@ -754,6 +757,12 @@ export const syncRevenueFromPlatformAction = enhanceAction(
       .eq('id', publishId)
       .single();
 
+    if (readFailed(publishError)) {
+      throw new Error(
+        whyNoRow(publishError, 'Publish not found or access denied'),
+      );
+    }
+
     if (publishError || !publish) {
       return {
         success: false,
@@ -789,6 +798,12 @@ export const syncRevenueFromPlatformAction = enhanceAction(
       .select('is_active')
       .eq('id', publish.platform_connection_id)
       .single();
+
+    if (readFailed(connectionError)) {
+      throw new Error(
+        whyNoRow(connectionError, 'Platform connection not found'),
+      );
+    }
 
     if (connectionError || !connection) {
       return {

@@ -18,7 +18,7 @@ summary: >
 acceptance_criteria:
   - text: "`video_dim` rows exist for all published publishes; publish-success keeps it fresh; nightly reconcile heals drift"
     met: false
-    reason: "unverified — no publish-success hook; each hourly sync upserts its batch, full reconcile at 02:00 UTC (`packages/features/content-analytics/src/server/analytics-sync-cron.ts:158`); coverage needs a live database"
+    reason: "unverified — no publish-success hook; each hourly sync upserts its batch, full reconcile at 02:00 UTC (`packages/features/content-analytics/src/server/analytics-sync-cron.ts:159`); coverage needs a live database"
   - text: "Median (both modes), rolling-90, traffic share, back-catalog, cohort, YPP, returning-proxy queries return hand-verified values on fixtures"
     met: false
     reason: "not met — no fixture checks upload-month median, rolling, back-catalog or returning-proxy values; unit tests mock the client"

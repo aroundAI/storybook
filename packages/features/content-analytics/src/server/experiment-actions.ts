@@ -8,6 +8,7 @@ import { enhanceAction } from '@kit/next/actions';
 import { requireRow } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
 import { fetchAllRows } from '@kit/shared/pagination';
+import { whyNoRow } from '@kit/shared/rows';
 import type { Json } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -781,7 +782,7 @@ export const getExperimentAction = enhanceAction(
       .single();
 
     if (error || !experiment) {
-      throw new Error('Change not found or access denied');
+      throw new Error(whyNoRow(error, 'Change not found or access denied'));
     }
 
     const [publishesResult, tagsResult] = await Promise.all([

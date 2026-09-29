@@ -10,6 +10,7 @@ import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
+import { whyNoRow } from '@kit/shared/rows';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -142,7 +143,7 @@ export const generateEpisodeAudioAction = enhanceAction(
       .single();
 
     if (episodeError || !episode) {
-      throw new Error('Episode not found');
+      throw new Error(whyNoRow(episodeError, 'Episode not found'));
     }
 
     const shotListData = episode.shot_list_data as {

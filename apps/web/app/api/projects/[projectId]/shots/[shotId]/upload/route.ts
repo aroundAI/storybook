@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { enhanceRouteHandler } from '@kit/next/routes';
 import { getLogger } from '@kit/shared/logger';
+import { readFailed, whyNoRow } from '@kit/shared/rows';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 const ALLOWED_VIDEO_CONTENT_TYPES = [
@@ -132,6 +133,10 @@ export const POST = enhanceRouteHandler(
       .eq('id', shotId)
       .is('deleted_at', null)
       .single();
+
+    if (readFailed(shotError)) {
+      throw new Error(whyNoRow(shotError, 'Shot not found'));
+    }
 
     if (shotError || !shot) {
       logger.warn({ ...ctx, error: shotError }, 'Shot not found');

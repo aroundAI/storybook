@@ -13,6 +13,7 @@ import type { ReelSceneAnalysis } from '@kit/episodes/agent/shot-orchestrator';
 import { sanitizeForPrompt, sanitizeStrings } from '@kit/episodes/lib';
 import { wholeShotSeconds } from '@kit/episodes/schemas/shot-list';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
+import { whyNoRow } from '@kit/shared/rows';
 import type { Database, Json } from '@kit/supabase/database';
 
 import {
@@ -77,7 +78,7 @@ export async function processShotGeneration(
       .single();
 
     if (episodeError || !episode) {
-      throw new Error(`Episode not found: ${episodeError?.message}`);
+      throw new Error(whyNoRow(episodeError, 'Episode not found'));
     }
 
     const screenplayData = episode.screenplay_data as {

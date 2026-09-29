@@ -12,6 +12,7 @@ import { enhanceAction } from '@kit/next/actions';
 import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { AudioCueTypeSchema } from '@kit/prompt-engine/llm-job-payloads';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
+import { readFailed, whyNoRow } from '@kit/shared/rows';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -249,6 +250,10 @@ const generateAudioForCue = enhanceAction(
       )
       .eq('id', data.cueId)
       .single();
+
+    if (readFailed(cueError)) {
+      throw new Error(whyNoRow(cueError, 'Cue not found'));
+    }
 
     if (cueError || !cue) {
       return {
