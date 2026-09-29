@@ -76,7 +76,9 @@ test.describe('Project storage (KB-28)', () => {
     await signInAs(page, team);
     await page.goto(`/home/${team.slug}/studio/${project.slug}/settings`);
 
-    const input = byTest(page, 'cover-image-input');
+    // A file input is hidden on purpose: setInputFiles below needs the
+    // element itself, which byTest's visible filter would never match.
+    const input = page.locator('[data-test="cover-image-input"]');
     const preview = byTest(page, 'cover-image-preview');
     const storedPrefix = `/project-assets/projects/${project.id}/assets/covers/`;
 
