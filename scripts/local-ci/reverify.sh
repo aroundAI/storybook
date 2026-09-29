@@ -10,7 +10,14 @@ OUT=$STATE/runs/$PR; GREEN_SHA=$(grep -o 'Commit tested | `[0-9a-f]*' "$OUT/repo
 grep -q '^## ✅' "$OUT/report.md" || { echo "#$PR has no green report to build on"; exit 1; }
 cd $R; git fetch -q origin
 MAIN=$(git rev-parse origin/main); WT=$(cat "$OUT/worktree"); REMOTE_HEAD=$(gh pr view $PR --json headRefOid --jq .headRefOid)
-if git -C "$WT" merge-base --is-ancestor "$MAIN" "$GREEN_SHA"; then echo "#$PR already on main $MAIN"; exit 0; fi
+# On main already, and still the tested code: the head may be a later commit
+# (an author rewrite) as long as its tree is the one that ran green.
+if git -C "$WT" merge-base --is-ancestor "$MAIN" "$GREEN_SHA"; then
+  if [ "$(git rev-parse "$REMOTE_HEAD^{tree}")" = "$(git rev-parse "$GREEN_SHA^{tree}")" ]; then
+    echo "#$PR already on main $MAIN; head ${REMOTE_HEAD:0:8} has the tested tree"; exit 0
+  fi
+  echo "#$PR head ${REMOTE_HEAD:0:8} is not the tested ${GREEN_SHA:0:8}: re-verifying"
+fi
 res=$("$CI/rebase-pr.sh" $PR 2>&1); echo "$res" | grep -E "^#|FAIL"
 echo "$res" | grep -q "rebased:" || { echo "#$PR rebase needs a human"; exit 2; }
 cd "$WT"; NEW=$(git rev-parse HEAD)
