@@ -794,6 +794,11 @@ async function ingestCumulativeSnapshot(
       platform === 'instagram'
         ? (analytics as InstagramInsightsResult).totals.reach
         : null,
+    // Instagram FEED and REELS; TikTok reports no reposts we can read.
+    reposts:
+      platform === 'instagram'
+        ? (analytics as InstagramInsightsResult).totals.reposts
+        : null,
   };
 
   const writeContext = {

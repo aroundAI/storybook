@@ -149,6 +149,7 @@ describe('@kit/clickhouse', () => {
             watch_time_seconds: 36000,
             subscribers_gained: 30,
             accounts_reached: null,
+            reposts: null,
           },
         ];
 
@@ -201,6 +202,7 @@ describe('@kit/clickhouse', () => {
           subscribers_gained: 30,
           // A row from before migration 015 carries no reach: not measured.
           accounts_reached: null,
+          reposts: null,
         });
 
         const call = mockClickHouseClient.query.mock.calls[0]![0];

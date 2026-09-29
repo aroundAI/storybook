@@ -172,7 +172,8 @@ async function queryLatestSnapshotsSingle(input: {
       -- The latest snapshot's own reach, NULL included. A bare argMax skips
       -- NULLs and would hand back an older reach, making the next delta
       -- cover several days while dated to one.
-      argMax(tuple(accounts_reached), fetched_at).1 as accounts_reached
+      argMax(tuple(accounts_reached), fetched_at).1 as accounts_reached,
+      argMax(tuple(reposts), fetched_at).1 as reposts
     FROM (
       SELECT * FROM video_snapshots
       WHERE video_id IN {videoIds: Array(String)}
@@ -204,6 +205,7 @@ async function queryLatestSnapshotsSingle(input: {
         row.subscribers_gained == null ? null : Number(row.subscribers_gained),
       accounts_reached:
         row.accounts_reached == null ? null : Number(row.accounts_reached),
+      reposts: row.reposts == null ? null : Number(row.reposts),
     });
   }
 

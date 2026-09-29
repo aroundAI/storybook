@@ -48,6 +48,9 @@ acceptance_criteria:
   - text: "No rate is computed without recording which denominator definition it used"
     met: false
     reason: "Registry half only. The definition is available to stamp; the existing rate sites do not stamp it. This is FILM-1713's own criterion (\"every measure records … which view definition and its effective date\")"
+  - text: "Instagram's aggregates (total_views_count, total_like_count, total_comments_count) are requested and stored only once defined here, never as views"
+    met: false
+    reason: "moved here from FILM-1712 by owner decision (2026-09-29); not requested yet"
 remaining:
   - criterion: "A chart crossing a boundary marks it rather than drawing a step change"
     reason: "Registry half only — viewDefinitionChangesBetween returns the boundaries; no chart calls it yet"
@@ -301,7 +304,7 @@ notes: |
   2026-09-25 (29 days after 2026-08-27, so every YouTube window of 28 days or
   more spans it); none of them yet reads the registry. The one production
   reader is ingest, which dates `engaged_views` from it
-  (packages/features/content-analytics/src/server/ingest.ts:154).
+  (packages/features/content-analytics/src/server/ingest.ts:157).
 
   | Site | What it compares |
   |---|---|

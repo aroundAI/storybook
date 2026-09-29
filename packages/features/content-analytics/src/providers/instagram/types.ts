@@ -69,6 +69,11 @@ export interface InstagramTotals {
    */
   watchTimeMs: number | null;
   avgWatchTimeMs: number | null;
+  /**
+   * Lifetime reposts: `reposts_count`, a Media node field for FEED and
+   * REELS (FILM-1712). Null for a Story, or when Meta omits it.
+   */
+  reposts: number | null;
 }
 
 /**
