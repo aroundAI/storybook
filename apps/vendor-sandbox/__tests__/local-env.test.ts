@@ -101,7 +101,8 @@ describe('starting and stopping the sandbox', () => {
         const started = spawnSync(
           'bash',
           ['-c', `. "${LIB}" && start_sandbox "${root}" | cat`],
-          { env, timeout: 60_000 },
+          // Above start_sandbox's own 60 s wait, so its message is what fails.
+          { env, timeout: 75_000 },
         );
         expect(
           started.error,
