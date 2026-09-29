@@ -59,7 +59,7 @@ suite (~11 min at one worker) and the guards (~5 min).
 | `services.sh <pr> <worktree> <out>` | The jobs on the shared Supabase, ClickHouse and port 3000. Holds the database lock while it runs. |
 | `report.sh <pr> <worktree> <out> [note]` | Writes `report.md`: the commit tested, the `main` it's based on, and one row per step. This is the PR comment. |
 | `rebase-pr.sh <pr>` | Rebases the PR onto `origin/main`, resolving conflicts in `specs/INDEX.md`, known-bugs registers, and spec citations. Stops on any code conflict. |
-| `reverify.sh <pr>` | After a green full run: rebases, then re-checks. If the PR's own code patch is unchanged (same `git patch-id`, the rule in `scripts/ci/code-patch-unchanged.sh`), it runs only the **📚 Docs checks** set, as CI does since #353. Otherwise it runs the full suite. Pushes with a lease and posts the report. |
+| `reverify.sh <pr>` | After a green full run: rebases, then re-checks. If the PR's own code patch is unchanged (same `git patch-id`, the rule in `scripts/ci/code-patch-unchanged.sh`), it runs only the **📚 Docs checks** set, as CI does since #353. Otherwise it runs the full suite, and a green full run becomes the PR's baseline (`runs/<pr>/report.md`; the previous one is kept as `report.<sha>.md`). Pushes with a lease and posts the report. |
 | `train.sh <pr>…` | The merge train (see The process, step 3). For each PR in order: wait for its full report, stop if it isn't green, re-verify on the current `main`, then `gh pr merge --squash --match-head-commit <verified sha>`. Stops and waits for a human on any failure. |
 | `status.sh` | One-screen summary: runs, each lane's lock holder and queue length, the train's last line. |
 | `dblock.sh acquire\|release <name>` | FIFO lock on one lane's database, ClickHouse and web port (`LANE=B` for lane B). Anything that resets or reads the local DB takes it, teammates included. Local CI for a PR (`localci-*`) goes to the front of the queue. |
@@ -130,6 +130,14 @@ LANE=B scripts/local-ci/pipeline.sh 352  # lane B, at the same time
 - **Never push speculatively.** Every push starts CI, and CI minutes cost money.
 
 ## Gotchas (each one cost hours the first time)
+
+- **A stacked PR whose parent merged: retarget first, then push.** `gh pr edit
+  <n> --base main`, *then* push the rebase. Pushed while the PR still targets
+  the merged parent's branch, the push starts no `pull_request` runs (GitHub
+  skips a PR it can't merge into its base), and the base change is an
+  `edited` event only `pr-records.yml` (#477) listens to, so the PR shows one check
+  (#477). If it happens, `gh pr close <n> && gh pr reopen <n>` fires every
+  workflow.
 
 - **Kill only the listener on port 3000:** `lsof -ti tcp:3000 -sTCP:LISTEN`.
   Without `-sTCP:LISTEN` it also kills Docker Desktop's backend, which proxies

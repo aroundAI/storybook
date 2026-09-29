@@ -48,6 +48,14 @@ if grep -q '^## ✅' "$RV/report.md"; then
   git -C "$WT" push --force-with-lease="$(git -C "$WT" rev-parse --abbrev-ref HEAD):$REMOTE_HEAD" origin HEAD 2>&1 | tail -1
   for _ in $(seq 1 30); do [ "$(gh pr view $PR --json headRefOid --jq .headRefOid)" = "$NEW" ] && break; sleep 3; done
   [ "$(gh pr view $PR --json headRefOid --jq .headRefOid)" = "$NEW" ] && gh pr comment $PR --body-file "$RV/report.md" && echo "#$PR $MODE re-verify GREEN, pushed and posted"
+  # A green full run is the new baseline: the next re-verify compares against
+  # this head, not the first report. Without it a stacked PR, whose first
+  # patch carried its parent's changes, ran the full suite on every re-verify
+  # (#477). A light run proves only the docs set, so it never replaces one.
+  if [ "$MODE" = full ]; then
+    cp "$OUT/report.md" "$OUT/report.${GREEN_SHA:0:8}.md"
+    cp "$RV/report.md" "$OUT/report.md"
+  fi
 else
   echo "#$PR $MODE re-verify FAILED; not pushed. See $RV"
 fi
