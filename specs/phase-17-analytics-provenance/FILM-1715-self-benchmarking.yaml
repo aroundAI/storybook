@@ -80,10 +80,10 @@ feature:
   queries:
     - name: "queryVideoViewsAtAge"
       purpose: "a video's views at 30/90/180/365 days, gated by matureAt, with ingestLagDays"
-      file: "packages/clickhouse/src/queries-advanced.ts:884"
+      file: "packages/clickhouse/src/queries-advanced.ts:886"
     - name: "queryCohortMedians"
       purpose: "the channel's own median/p25/p75 at the same checkpoint ages, quantileExact so deterministic, maturity judged per video per checkpoint, LEFT JOIN so a zero-view video counts as zero"
-      file: "packages/clickhouse/src/queries-advanced.ts:539"
+      file: "packages/clickhouse/src/queries-advanced.ts:541"
   actions: []
   ui: []
   provider_integration: null

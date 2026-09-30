@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 
 import { getAccountProjects } from '@kit/projects/queries';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { MAIN_CONTENT_ID, SkipToContent } from '@kit/ui/skip-to-content';
 
 import { generateCinemaFontsLink } from '~/lib/branding-styles';
 import { requireUserInServerComponent } from '~/lib/server/require-user-in-server-component';
@@ -10,6 +11,7 @@ import { loadTeamWorkspace } from '../../_lib/server/team-account-workspace.load
 import { MobileStudioHeader } from './_components/mobile-studio-header';
 import { StudioModeProvider } from './_components/studio-mode-provider';
 import { StudioSidebar } from './_components/studio-sidebar';
+import { PENDING_PUBLISH_STATUSES } from './_lib/pending-publishes';
 
 interface StudioProjectLayoutProps {
   children: React.ReactNode;
@@ -55,6 +57,7 @@ export default async function StudioProjectLayout({
     locationsResult,
     factsResult,
     contentResult,
+    pendingPublishesResult,
   ] = await Promise.all([
     getAccountProjects(accountId),
     client
@@ -82,6 +85,11 @@ export default async function StudioProjectLayout({
       .from('external_content')
       .select('*', { count: 'exact', head: true })
       .eq('project_id', project.id),
+    client
+      .from('publishes')
+      .select('id, episodes!inner(project_id)', { count: 'exact', head: true })
+      .eq('episodes.project_id', project.id)
+      .in('status', [...PENDING_PUBLISH_STATUSES]),
   ]);
 
   const sidebarProps = {
@@ -100,6 +108,7 @@ export default async function StudioProjectLayout({
       locations: locationsResult.count ?? undefined,
       researchSources: contentResult.count ?? undefined,
       researchFacts: factsResult.count ?? undefined,
+      pendingPublishes: pendingPublishesResult.count ?? undefined,
     },
   };
 
@@ -110,6 +119,8 @@ export default async function StudioProjectLayout({
       {/* Cinema typography fonts — only loaded in studio pages */}
       <link rel="stylesheet" href={cinemaFontsUrl} />
       <div className="flex h-screen flex-col">
+        <SkipToContent />
+
         {/* Mobile Header - visible only on mobile */}
         <MobileStudioHeader {...sidebarProps} />
 
@@ -120,7 +131,11 @@ export default async function StudioProjectLayout({
           </div>
 
           {/* Main Content */}
-          <main className="flex-1 overflow-y-auto bg-[#F5F5F7] dark:bg-[#0A0A0A]">
+          <main
+            id={MAIN_CONTENT_ID}
+            tabIndex={-1}
+            className="flex-1 overflow-y-auto bg-[#F5F5F7] focus:outline-none dark:bg-[#0A0A0A]"
+          >
             {children}
           </main>
         </div>

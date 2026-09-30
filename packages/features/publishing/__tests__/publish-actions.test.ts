@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Platform, PublishResult } from '../src/lib/types';
 
@@ -33,30 +33,87 @@ vi.mock('@kit/shared/logger', () => ({
     }),
 }));
 
-// Mock Supabase client
-/**
- * PostgREST builders resolve to `{ data, error }`; typing the terminal
- * methods as that shape is what lets a test override them.
- */
-interface QueryResult {
-  data: unknown;
-  error: { message: string } | null;
+const SUPABASE = 'https://abcdefghijklmnop.supabase.co';
+const ACCOUNT = '11111111-1111-4111-8111-111111111111';
+const EPISODE = '00000000-0000-4000-8000-0000000000e1';
+const CONNECTIONS = {
+  twitter: '00000000-0000-4000-8000-0000000000c1',
+  tiktok: '00000000-0000-4000-8000-0000000000c2',
+  linkedin: '00000000-0000-4000-8000-0000000000c3',
+} as const;
+const VIDEO = `${SUPABASE}/storage/v1/object/public/project-assets/episodes/${EPISODE}/videos/en-1.mp4`;
+
+interface DbState {
+  publishRows: Array<Record<string, unknown>>;
+  inserted: Array<Record<string, unknown>>;
+  updates: Array<Record<string, unknown>>;
 }
 
-const mockSupabaseClient = {
-  from: vi.fn(() => mockSupabaseClient),
-  select: vi.fn(() => mockSupabaseClient),
-  insert: vi.fn(() => mockSupabaseClient),
-  update: vi.fn(() => mockSupabaseClient),
-  eq: vi.fn(() => mockSupabaseClient),
-  order: vi.fn(() => mockSupabaseClient),
-  single: vi.fn(
-    (): Promise<QueryResult> => Promise.resolve({ data: null, error: null }),
-  ),
-};
+const db: DbState = { publishRows: [], inserted: [], updates: [] };
+
+const providers = vi.hoisted(() => ({
+  twitterUpload: vi.fn(),
+  tiktokUpload: vi.fn(),
+  linkedinUpload: vi.fn(),
+}));
+
+function table(name: string) {
+  let insertedId = '';
+  const query = {
+    select: () => query,
+    eq: () => query,
+    order: () => Promise.resolve({ data: db.publishRows, error: null as null }),
+    insert: (row: Record<string, unknown>) => {
+      db.inserted.push(row);
+      insertedId = `publish-${db.inserted.length}`;
+      return query;
+    },
+    update: (patch: Record<string, unknown>) => {
+      db.updates.push(patch);
+      return query;
+    },
+    single: () => {
+      if (name === 'episodes') {
+        return Promise.resolve({
+          data: {
+            final_video_url: null,
+            thumbnail_url: null,
+            project_id: 'p',
+            project: { account_id: ACCOUNT },
+            localized_videos: { en: VIDEO },
+            shorts_groups: [],
+            public_slug: 'slug',
+            title: 'Episode',
+            number: 1,
+          },
+          error: null,
+        });
+      }
+      if (name === 'platform_connections') {
+        return Promise.resolve({
+          data: {
+            platform_account_id: 'acct',
+            platform_account_name: 'Acme',
+            language: 'en',
+          },
+          error: null,
+        });
+      }
+      return Promise.resolve({ data: { id: insertedId }, error: null });
+    },
+    maybeSingle: () =>
+      Promise.resolve({
+        data: name === 'platform_connections' ? { account_id: ACCOUNT } : null,
+        error: null,
+      }),
+    then: (resolve: (value: unknown) => void) =>
+      resolve({ data: null, error: null }),
+  };
+  return query;
+}
 
 vi.mock('@kit/supabase/server-client', () => ({
-  getSupabaseServerClient: () => mockSupabaseClient,
+  getSupabaseServerClient: () => ({ from: (name: string) => table(name) }),
 }));
 
 // Mock connection-tokens
@@ -78,10 +135,7 @@ vi.mock('../src/providers/youtube', () => ({
 
 vi.mock('../src/providers/tiktok', () => ({
   TikTokProvider: vi.fn().mockImplementation(() => ({
-    uploadVideo: vi.fn().mockResolvedValue({
-      publishId: 'tt-video-123',
-      videoUrl: 'https://tiktok.com/@user/video/tt-video-123',
-    }),
+    uploadVideo: providers.tiktokUpload,
   })),
 }));
 
@@ -105,51 +159,257 @@ vi.mock('../src/providers/facebook', () => ({
 
 vi.mock('../src/providers/twitter', () => ({
   TwitterProvider: vi.fn().mockImplementation(() => ({
-    uploadVideo: vi.fn().mockResolvedValue({
-      tweetId: 'tw-tweet-123',
-      tweetUrl: 'https://twitter.com/user/status/tw-tweet-123',
-    }),
+    uploadVideo: providers.twitterUpload,
   })),
 }));
 
 vi.mock('../src/providers/linkedin', () => ({
   LinkedInProvider: vi.fn().mockImplementation(() => ({
-    uploadVideo: vi.fn().mockResolvedValue({
-      postUrn: 'urn:li:share:ln-post-123',
-      postUrl: 'https://linkedin.com/feed/update/ln-post-123',
-    }),
+    uploadVideo: providers.linkedinUpload,
   })),
 }));
 
 describe('Publish Actions', () => {
-  describe('mapDbStatus', () => {
-    it('should map database status to publish result status', async () => {
-      // Import after mocks are set up
+  describe('getPublishStatusAction polling', () => {
+    const row = (
+      status: string,
+      extra: Record<string, unknown> = {},
+    ): Record<string, unknown> => ({
+      id: 'pub-1',
+      platform: 'twitter',
+      status,
+      platform_content_id: null,
+      platform_url: null,
+      metadata: null,
+      ...extra,
+    });
+
+    it('reports each stage as the row moves from queued to published', async () => {
       const { getPublishStatusAction } = await import(
         '../src/server/publish-actions'
       );
 
-      // Mock the database response
-      mockSupabaseClient.single.mockResolvedValueOnce({
+      const polls = [
+        row('queued'),
+        row('publishing'),
+        row('published', {
+          platform_content_id: 'tw-1',
+          platform_url: 'https://x.com/i/web/status/tw-1',
+        }),
+      ];
+      const seen = [];
+
+      for (const publishRow of polls) {
+        db.publishRows = [publishRow];
+        seen.push(await getPublishStatusAction({ episodeId: EPISODE }));
+      }
+
+      expect(seen).toEqual([
+        {
+          twitter: {
+            platform: 'twitter',
+            status: 'pending',
+            publishId: 'pub-1',
+          },
+        },
+        {
+          twitter: {
+            platform: 'twitter',
+            status: 'publishing',
+            publishId: 'pub-1',
+          },
+        },
+        {
+          twitter: {
+            platform: 'twitter',
+            status: 'completed',
+            platformContentId: 'tw-1',
+            platformUrl: 'https://x.com/i/web/status/tw-1',
+            publishId: 'pub-1',
+          },
+        },
+      ]);
+    });
+
+    it('carries the recorded error of a failed publish', async () => {
+      const { getPublishStatusAction } = await import(
+        '../src/server/publish-actions'
+      );
+
+      db.publishRows = [row('failed', { metadata: { error: 'quota' } })];
+
+      const result = await getPublishStatusAction({ episodeId: EPISODE });
+
+      expect(result.twitter).toMatchObject({
+        status: 'failed',
+        error: 'quota',
+      });
+    });
+
+    it('keeps only the newest row of a platform and one entry per platform', async () => {
+      const { getPublishStatusAction } = await import(
+        '../src/server/publish-actions'
+      );
+
+      db.publishRows = [
+        row('scheduled', { id: 'newest' }),
+        row('failed', { id: 'older' }),
+        row('published', { id: 'tt-1', platform: 'tiktok' }),
+      ];
+
+      const result = await getPublishStatusAction({ episodeId: EPISODE });
+
+      expect(Object.keys(result).sort()).toEqual(['tiktok', 'twitter']);
+      expect(result.twitter).toMatchObject({
+        status: 'scheduled',
+        publishId: 'newest',
+      });
+      expect(result.tiktok).toMatchObject({ status: 'completed' });
+    });
+  });
+
+  describe('publishToAllAction', () => {
+    const input = (
+      platform: keyof typeof CONNECTIONS,
+      scheduledAt?: string,
+    ) => ({
+      platform,
+      connectionId: CONNECTIONS[platform],
+      contentType: 'full' as const,
+      title: `${platform} title`,
+      description: '',
+      tags: [],
+      language: 'en',
+      platformSpecific: {},
+      ...(scheduledAt ? { scheduledAt } : {}),
+    });
+
+    beforeEach(() => {
+      db.publishRows = [];
+      db.inserted = [];
+      db.updates = [];
+      process.env.NEXT_PUBLIC_SUPABASE_URL = SUPABASE;
+      delete process.env.STORAGE_PROVIDER;
+      providers.twitterUpload.mockReset().mockResolvedValue({
+        tweetId: 'tw-1',
+        tweetUrl: 'https://x.com/i/web/status/tw-1',
+      });
+      providers.tiktokUpload.mockReset().mockResolvedValue({
+        publishId: 'tt-1',
+        videoUrl: 'https://tiktok.com/v/tt-1',
+      });
+      providers.linkedinUpload.mockReset().mockResolvedValue({
+        postUrn: 'urn:li:share:1',
+        postUrl: 'https://linkedin.com/feed/update/1',
+      });
+    });
+
+    it('publishes an immediate request now and reports where it went', async () => {
+      const { publishToAllAction } = await import(
+        '../src/server/publish-actions'
+      );
+
+      const result = await publishToAllAction({
+        episodeId: EPISODE,
+        platforms: [input('twitter')],
+      });
+
+      expect(result).toEqual({
+        ok: true,
         data: [
           {
-            id: 'pub-1',
-            platform: 'youtube',
-            status: 'published',
-            platform_content_id: 'yt-123',
-            platform_url: 'https://youtube.com/watch?v=yt-123',
-            metadata: null,
+            platform: 'twitter',
+            status: 'completed',
+            platformContentId: 'tw-1',
+            platformUrl: 'https://x.com/i/web/status/tw-1',
+            publishId: 'publish-1',
           },
         ],
-        error: null,
+      });
+      expect(db.inserted[0]).toMatchObject({
+        status: 'publishing',
+        scheduled_at: null,
+      });
+      expect(db.updates).toContainEqual(
+        expect.objectContaining({
+          status: 'published',
+          platform_content_id: 'tw-1',
+          platform_url: 'https://x.com/i/web/status/tw-1',
+        }),
+      );
+    });
+
+    it('stores a scheduled request as scheduled and uploads nothing', async () => {
+      const { publishToAllAction } = await import(
+        '../src/server/publish-actions'
+      );
+      const at = '2030-01-01T10:00:00.000Z';
+
+      const result = await publishToAllAction({
+        episodeId: EPISODE,
+        platforms: [input('twitter', at)],
       });
 
-      // The function should normalize 'published' to 'completed'
-      const result = await getPublishStatusAction({
-        episodeId: 'test-episode-id',
+      expect(result).toEqual({
+        ok: true,
+        data: [
+          { platform: 'twitter', status: 'scheduled', publishId: 'publish-1' },
+        ],
+      });
+      expect(db.inserted[0]).toMatchObject({
+        status: 'scheduled',
+        scheduled_at: at,
+      });
+      expect(providers.twitterUpload).not.toHaveBeenCalled();
+    });
+
+    it('takes each platform on its own: one scheduled, one live, one failing', async () => {
+      const { publishToAllAction } = await import(
+        '../src/server/publish-actions'
+      );
+
+      providers.linkedinUpload.mockRejectedValue(new Error('LinkedIn is down'));
+
+      const result = await publishToAllAction({
+        episodeId: EPISODE,
+        platforms: [
+          input('twitter', '2030-01-01T10:00:00.000Z'),
+          input('tiktok'),
+          input('linkedin'),
+        ],
       });
 
-      expect(result).toBeDefined();
+      expect(result).toEqual({
+        ok: true,
+        data: [
+          { platform: 'twitter', status: 'scheduled', publishId: 'publish-1' },
+          {
+            platform: 'tiktok',
+            status: 'completed',
+            platformContentId: 'tt-1',
+            platformUrl: 'https://tiktok.com/v/tt-1',
+            publishId: 'publish-2',
+          },
+          {
+            platform: 'linkedin',
+            status: 'failed',
+            error: 'LinkedIn is down',
+          },
+        ],
+      });
+      expect(db.inserted.map((row) => [row.platform, row.status])).toEqual([
+        ['twitter', 'scheduled'],
+        ['tiktok', 'publishing'],
+        ['linkedin', 'publishing'],
+      ]);
+      expect(providers.twitterUpload).not.toHaveBeenCalled();
+      expect(providers.tiktokUpload).toHaveBeenCalledTimes(1);
+      expect(db.updates).toContainEqual(
+        expect.objectContaining({
+          status: 'failed',
+          metadata: expect.objectContaining({ error: 'LinkedIn is down' }),
+        }),
+      );
     });
   });
 

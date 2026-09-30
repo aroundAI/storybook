@@ -134,20 +134,46 @@ export async function isAssetInUse(assetId: string): Promise<boolean> {
 
   const client = getSupabaseServerClient();
 
-  // Check if asset is referenced by dialogue_lines in ACTIVE (non-deleted) episodes.
-  // dialogue_lines from soft-deleted episodes should not block deletion.
-  const { count: dialogueCount } = await client
-    .from('dialogue_lines')
-    .select('id, episodes!inner(id)', { count: 'exact', head: true })
-    .eq('character_asset_id', assetId)
-    .is('episodes.deleted_at', null);
+  const references = {
+    'dialogue lines in active episodes': client
+      .from('dialogue_lines')
+      .select('id, episodes!inner(id)', { count: 'exact', head: true })
+      .eq('character_asset_id', assetId)
+      .is('episodes.deleted_at', null),
+    'a character voice': client
+      .from('character_details')
+      .select('asset_id', { count: 'exact', head: true })
+      .eq('voice_asset_id', assetId),
+    'an episode master video': client
+      .from('episodes')
+      .select('id', { count: 'exact', head: true })
+      .or(
+        `master_video_asset_id.eq.${assetId},master_title_card_asset_id.eq.${assetId}`,
+      )
+      .is('deleted_at', null),
+    'an audio library entry': client
+      .from('audio_assets')
+      .select('id', { count: 'exact', head: true })
+      .eq('asset_id', assetId)
+      .is('deleted_at', null),
+    'a caption speaker': client
+      .from('caption_segments')
+      .select('id', { count: 'exact', head: true })
+      .eq('speaker_id', assetId),
+  };
 
-  if (dialogueCount && dialogueCount > 0) {
-    logger.info(
-      { ...ctx, dialogueCount },
-      'Asset is referenced by dialogue lines in active episodes',
-    );
-    return true;
+  for (const [referrer, query] of Object.entries(references)) {
+    const { count, error } = await query;
+
+    if (error) {
+      logger.error({ ...ctx, referrer, error }, 'Failed to check asset usage');
+      throw new Error(`Failed to check asset usage: ${error.message}`);
+    }
+
+    if (count && count > 0) {
+      logger.info({ ...ctx, referrer, count }, 'Asset is in use');
+      return true;
+    }
   }
 
   logger.info(ctx, 'Asset is not in use');

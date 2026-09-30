@@ -86,6 +86,12 @@ export function EpisodeSummaryGenerator({
     ExtractedThreadUpdate[]
   >([]);
   const [hasExtracted, setHasExtracted] = useState(false);
+  const [memory, setMemory] = useState<
+    Pick<
+      Awaited<ReturnType<typeof extractCanonChangesAction>>,
+      'keyEvents' | 'characterChanges' | 'worldState'
+    >
+  >({ keyEvents: [], characterChanges: [] });
 
   // Use ref for callback to avoid re-renders if parent provides unstable function
   const onSummaryGeneratedRef = useRef(onSummaryGenerated);
@@ -108,6 +114,11 @@ export function EpisodeSummaryGenerator({
       if (result) {
         setSummary(result.episodeSummary);
         setSentimentScore(result.sentimentScore);
+        setMemory({
+          keyEvents: result.keyEvents,
+          characterChanges: result.characterChanges,
+          worldState: result.worldState,
+        });
         // Add unique IDs for stable React keys (eventKey should be unique per event)
         const eventsWithIds = result.immutableEvents.map((event) => ({
           id: event.eventKey,
@@ -148,6 +159,7 @@ export function EpisodeSummaryGenerator({
           threadUpdates: extractedThreads,
           episodeSummary: summary,
           sentimentScore,
+          ...memory,
         },
       });
 

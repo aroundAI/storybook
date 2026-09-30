@@ -1,4 +1,4 @@
-import { fetchWithRetry, formatProviderError } from '../lib/http';
+import { assertApiKey, fetchWithRetry, handleProviderError } from '../lib/http';
 import { VoiceGenerationRequestSchema } from '../lib/schemas';
 import type {
   CloneVoiceRequest,
@@ -156,7 +156,7 @@ export abstract class BaseVoiceGenerationProvider
    * Handle and format errors consistently
    */
   protected handleError(error: unknown, operation: string): Error {
-    return formatProviderError(this.name, operation, error);
+    return handleProviderError(this.name, operation, error, this.config.apiKey);
   }
 
   /**
@@ -167,6 +167,8 @@ export abstract class BaseVoiceGenerationProvider
     options: RequestInit,
     binary: boolean = false,
   ): Promise<T> {
+    assertApiKey(this.name, this.config.apiKey);
+
     return fetchWithRetry<T>(
       url,
       options,
@@ -244,7 +246,7 @@ export abstract class BaseMusicGenerationProvider
    * Handle and format errors consistently
    */
   protected handleError(error: unknown, operation: string): Error {
-    return formatProviderError(this.name, operation, error);
+    return handleProviderError(this.name, operation, error, this.config.apiKey);
   }
 
   /**
@@ -254,6 +256,8 @@ export abstract class BaseMusicGenerationProvider
     url: string,
     options: RequestInit,
   ): Promise<T> {
+    assertApiKey(this.name, this.config.apiKey);
+
     return fetchWithRetry<T>(url, options, {
       maxRetries: this.config.maxRetries,
       timeout: this.config.timeout ?? 60000,

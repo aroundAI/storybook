@@ -3,8 +3,8 @@ title: "External API Keys Table"
 phase: 1
 phase_name: "Foundation"
 category: database_table
-status: PARTIAL
-audited: "2026-09-23"
+status: DONE
+audited: "2026-09-30"
 effort: XS
 dependencies: []
 summary: >
@@ -82,8 +82,8 @@ acceptance_criteria:
     met: true
     evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:289"
   - text: "last_used_at tracks usage"
-    met: false
-    reason: "not met — nothing writes it when a key is used; the only write sets it to null on save (apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts:138)"
+    met: true
+    evidence: "packages/supabase/src/external-api-keys.ts:135 (recordExternalApiKeyUse, called from readExternalApiKey at :125); writers apps/web/lambda/voice-worker/voice-generation.ts and apps/web/lambda/llm-worker/handlers/audio-file-generation.ts read keys through it; test packages/supabase/__tests__/external-api-keys.test.ts:181"
 test_plan:
   unit:
     - text: "Insert key with valid provider succeeds"
@@ -107,10 +107,10 @@ test_plan:
       evidence: "packages/features/audio-generation/__tests__/config-loader.test.ts:86"
     - text: "Inactive keys are excluded from queries"
       met: true
-      evidence: "packages/supabase/__tests__/external-api-keys.test.ts:142 (asserts the is_active filter; KB-84 moved every key read into that helper)"
+      evidence: "packages/supabase/__tests__/external-api-keys.test.ts:162 (asserts the is_active filter; KB-84 moved every key read into that helper)"
     - text: "Update last_used_at on key retrieval"
-      met: false
-      reason: "not built: no code updates last_used_at when a key is read; the column accepts the write (apps/web/supabase/tests/database/external-api-keys-table.test.sql:78) but nothing makes it"
+      met: true
+      evidence: "packages/supabase/__tests__/external-api-keys.test.ts:181 (stamps last_used_at on the key it hands out)"
     - text: "Deactivate key (set is_active = FALSE)"
       met: true
       evidence: "apps/web/supabase/tests/database/external-api-keys-table.test.sql:88"
@@ -137,10 +137,6 @@ test_plan:
     - text: "Invalid encrypted_key (decryption fails - handle gracefully)"
       met: true
       evidence: "packages/features/audio-generation/__tests__/config-loader.test.ts:101"
-remaining:
-  - criterion: "last_used_at tracks usage"
-    reason: "No key reader updates it; saveApiKeyAction writes null (apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts:138), and git log -S last_used_at shows no writer ever existed"
-    closed_by: "unassigned"
 open_questions: []
 notes: |
   Sections of the Markdown spec that have no typed field, kept verbatim. Moved to typed fields: the Context paragraph (summary), the column table (database_table.columns), index names and columns, unique keys and foreign keys (database_table), the acceptance criteria and test-plan checklists and the Remaining table (remaining).

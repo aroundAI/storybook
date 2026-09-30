@@ -101,6 +101,7 @@ export function PublishSettingsSidebar({
               variant="ghost"
               size="sm"
               onClick={onRefreshConnections}
+              aria-label="Refresh connected channels"
               disabled={loadingConnections}
             >
               <RefreshCw

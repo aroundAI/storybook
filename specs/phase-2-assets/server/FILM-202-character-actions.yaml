@@ -4,7 +4,7 @@ phase: 2
 phase_name: "Assets"
 category: server_action
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-30"
 effort: M
 dependencies:
   - spec_id: "FILM-103"
@@ -51,8 +51,8 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "updateCharacterAction updates both asset and details atomically"
-    met: false
-    reason: "not met — the asset update commits first (packages/features/assets/src/lib/server/character.mutations.ts:248); a failed details upsert (:356) leaves it applied"
+    met: true
+    evidence: "packages/features/assets/src/lib/server/character.mutations.ts:267 calls update_character_with_details (apps/web/supabase/migrations/20260930150000_film202-update-character-atomic.sql:11, one function call, so one transaction); packages/features/assets/__tests__/update-character-action.test.ts (one rpc call, no table writes) and apps/web/supabase/tests/database/character-update-atomic.test.sql (a failing details write rolls back the asset rename)"
   - text: "updateCharacterAction preserves unmodified fields"
     met: true
     evidence: null
@@ -97,8 +97,8 @@ test_plan:
   integration: []
   e2e: []
 remaining:
-  - criterion: "Update is atomic"
-    reason: "updateCharacterAction commits the assets update (packages/features/assets/src/lib/server/character.mutations.ts:248) before upserting character_details (:356), and never reverts the first when the second fails"
+  - criterion: "All operations complete within 3 seconds"
+    reason: "the database work behind the create and read actions is timed (apps/e2e/tests/performance/performance.spec.ts); the server action's own overhead is not, because a server action cannot be called without its build-specific id"
     closed_by: "unassigned"
 open_questions: []
 notes: |

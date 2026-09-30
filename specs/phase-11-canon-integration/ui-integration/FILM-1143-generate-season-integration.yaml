@@ -19,13 +19,13 @@ summary: >
 acceptance_criteria:
   - text: "Content type banner shows in Generate Season"
     met: false
-    reason: "no longer true — `contentType` is never set (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:285`); a generic \"Research Sources\" section shows instead"
+    reason: "no longer true — `contentType` is never set (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:286`); a generic \"Research Sources\" section shows instead"
   - text: "Banner shows linked sources summary"
     met: false
     reason: "no longer true — the source count is every active global source (`packages/features/episodes/src/server/external-context-actions.ts:432`), not the project's"
   - text: "Warning shown when factual content has no sources"
     met: false
-    reason: "no longer true — not gated on content type, and the 12 seeded global sources always count as sources (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:347`)"
+    reason: "no longer true — not gated on content type, and the 12 seeded global sources always count as sources (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:348`)"
   - text: "\"Add Sources\" link navigates to Research tab"
     met: true
     evidence: null
@@ -37,15 +37,15 @@ acceptance_criteria:
     evidence: null
   - text: "News projects show API connection status"
     met: false
-    reason: "no longer true — gated on `contentType === 'news'` (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:806`), which is never set"
+    reason: "no longer true — gated on `contentType === 'news'` (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:827`), which is never set"
   - text: "Refresh button updates live API sources"
     met: false
-    reason: "no longer true — it only re-reads counts (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:786`); nothing fetches from an API source"
+    reason: "no longer true — it only re-reads counts (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:807`); nothing fetches from an API source"
 remaining:
   - criterion: "Content type banner shows in Generate Season"
     reason: >
       `const [contentType, _setContentType] = useState(null)`
-      (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:285`):
+      (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:286`):
       the setter was never called, even in the first version (c397826e);
       17dfb955 renamed it with `_` to quiet lint. No banner names the content
       type

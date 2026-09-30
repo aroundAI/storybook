@@ -42,6 +42,8 @@ export interface NewsAPISource {
   /** NewsAPI's id for it (`config.source_id`), e.g. `reuters`. */
   newsapiId: string;
   credibilityTier: CredibilityTier;
+  /** The row's `bias_label`, carried onto each article (FILM-1133). */
+  biasLabel?: string;
 }
 
 /**
@@ -145,6 +147,7 @@ export class NewsAPIProvider extends BaseExternalProvider {
       entities: createEmptyEntities(),
       imageUrl: article.urlToImage ?? undefined,
       credibilityTier: source.credibilityTier,
+      biasLabel: source.biasLabel,
       fetchedAt: now,
       cacheExpiresAt: cacheExpiry,
     };

@@ -55,7 +55,7 @@ describe('origins', () => {
 
   it('a path nothing serves yet is a 404 that shows in the ledger, not silence', async () => {
     const response = await fetch(
-      `${sandbox.urls.tiktok}/v2/video/query/?fields=id`,
+      `${sandbox.urls.tiktok}/v2/research/video/query/?fields=id`,
       {
         method: 'POST',
         headers: { Authorization: 'Bearer sbx.tiktok.abc' },
@@ -75,7 +75,7 @@ describe('origins', () => {
     };
     expect(entries[0]).toMatchObject({
       vendor: 'tiktok',
-      path: '/v2/video/query/',
+      path: '/v2/research/video/query/',
       status: 404,
       keyPresent: true,
     });

@@ -10,6 +10,17 @@ import type {
 } from '../lib/types';
 import { BaseVoiceGenerationProvider } from './base';
 
+function getVoiceLanguage(voice: {
+  labels?: Record<string, string>;
+  verified_languages?: { language?: string }[];
+}): string {
+  return (
+    voice.verified_languages?.find((l) => l.language)?.language ??
+    voice.labels?.language ??
+    'en'
+  );
+}
+
 /**
  * ElevenLabs voice generation provider
  * Premium AI voice synthesis with natural-sounding voices
@@ -141,6 +152,7 @@ export class ElevenLabsProvider extends BaseVoiceGenerationProvider {
         category: string;
         description?: string;
         labels: Record<string, string>;
+        verified_languages?: { language?: string }[];
         preview_url?: string;
         available_for_tiers: string[];
         settings?: {
@@ -164,7 +176,7 @@ export class ElevenLabsProvider extends BaseVoiceGenerationProvider {
         id: voice.voice_id,
         name: voice.name,
         provider: 'elevenlabs' as const,
-        language: voice.labels.accent ?? 'en',
+        language: getVoiceLanguage(voice),
         gender: voice.labels.gender as
           | 'male'
           | 'female'
@@ -187,7 +199,10 @@ export class ElevenLabsProvider extends BaseVoiceGenerationProvider {
 
       // Apply filters
       if (params?.language) {
-        voices = voices.filter((v) => v.language?.includes(params.language!));
+        const wanted = params.language;
+        voices = voices.filter(
+          (v) => v.language === wanted || v.language.startsWith(`${wanted}-`),
+        );
       }
       if (params?.gender) {
         voices = voices.filter((v) => v.gender === params.gender);

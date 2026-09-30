@@ -111,7 +111,8 @@ async function startStandIn(port: number) {
             access_token: tokens.access,
             refresh_token: tokens.refresh,
             expires_in: 7200,
-            scope: 'tweet.read tweet.write users.read offline.access',
+            scope:
+              'tweet.read tweet.write media.write users.read offline.access',
           });
         }
         case '/2/users/me':
@@ -233,7 +234,7 @@ test.describe('Connecting and disconnecting, and what the platform is asked (KB-
     expect(authorize?.query.get('client_id')).toBe('kb25-x-client');
     expect(authorize?.query.get('code_challenge_method')).toBe('S256');
     expect(authorize?.query.get('scope')).toBe(
-      'tweet.read tweet.write users.read offline.access',
+      'tweet.read tweet.write media.write users.read offline.access',
     );
 
     const connected = byTest(x, 'connection-row');

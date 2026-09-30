@@ -242,6 +242,7 @@ export function LanguageTabBar({
               size="sm"
               className="h-7 gap-1 px-2 text-xs"
               disabled={isTranslating}
+              aria-label="Add language translation"
             >
               {isTranslating ? (
                 <Loader2 className="h-3 w-3 animate-spin" />

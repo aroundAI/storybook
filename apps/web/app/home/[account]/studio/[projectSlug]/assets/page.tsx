@@ -1,18 +1,17 @@
 import type { Metadata } from 'next';
 
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { ArrowLeft } from 'lucide-react';
-
 import { listCharacters } from '@kit/assets/character/queries';
-import { AssetGallery } from '@kit/assets/components';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { PageBody, PageHeader } from '@kit/ui/page';
 
 import { cached } from '~/lib/cache/data-cache';
 import { withI18n } from '~/lib/i18n/with-i18n';
 
+import { AssetCreateProvider } from './_components/asset-create-provider';
+import { AssetLibraryGallery } from './_components/asset-library-gallery';
+import { AssetsBreadcrumb } from './_components/assets-breadcrumb';
 import { CreateAssetButton } from './_components/create-asset-button';
 
 // ISR: Revalidate every 60 seconds
@@ -128,35 +127,26 @@ async function AssetLibraryPage({
   }
 
   return (
-    <>
-      {/* Back Link */}
-      <div className="px-6 pt-6">
-        <Link
-          href={`/home/${account}/studio/${project.slug}`}
-          className="inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Project
-        </Link>
-      </div>
+    <AssetCreateProvider>
+      <AssetsBreadcrumb
+        account={account}
+        projectSlug={project.slug}
+        projectName={project.name}
+      />
 
       <PageHeader title={title} description={description}>
-        <CreateAssetButton
-          projectId={project.id}
-          accountId={accountResult.id}
-          account={account}
-        />
+        <CreateAssetButton />
       </PageHeader>
 
       <PageBody>
-        <AssetGallery
+        <AssetLibraryGallery
           projectId={project.id}
           accountId={accountResult.id}
           initialTab={tab ?? 'character'}
           initialCharacters={initialCharacters}
         />
       </PageBody>
-    </>
+    </AssetCreateProvider>
   );
 }
 

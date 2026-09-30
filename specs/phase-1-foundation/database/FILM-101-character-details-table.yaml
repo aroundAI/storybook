@@ -3,8 +3,8 @@ title: "Character Details Table"
 phase: 1
 phase_name: "Foundation"
 category: database_table
-status: PARTIAL
-audited: "2026-09-23"
+status: DONE
+audited: "2026-09-30"
 effort: XS
 dependencies:
   - spec_id: "FILM-101d"
@@ -73,8 +73,8 @@ acceptance_criteria:
     met: false
     reason: "retired — FK dropped and column retyped to an ElevenLabs voice ID in 30ed2083 (apps/web/supabase/migrations/20251225160000_change_voice_id_to_text.sql:8)"
   - text: "Check constraint ensures asset is type 'character'"
-    met: false
-    reason: "not met — no check or trigger exists (a CHECK cannot hold the spec's subquery); the insert policy ignores type (apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:1104)"
+    met: true
+    evidence: "apps/web/supabase/migrations/20260930140000_not-built-db-guards.sql:10 (trigger character_details_require_character_asset, a trigger because Postgres cannot CHECK a subquery); apps/web/supabase/tests/database/not-built-db-guards.test.sql tests 1-3"
   - text: "GIN index on physical_attributes JSONB"
     met: true
     evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:438"
@@ -90,8 +90,8 @@ test_plan:
       met: true
       evidence: "apps/web/supabase/tests/database/character-details-table.test.sql:33"
     - text: "Insert character_details with non-character asset_id fails (check constraint)"
-      met: false
-      reason: "not built: no constraint ties asset_id to an asset of type character, and Postgres cannot CHECK a subquery; a trigger would be needed"
+      met: true
+      evidence: "apps/web/supabase/tests/database/not-built-db-guards.test.sql tests 2-3"
     - text: "Insert character_details with NULL physical_attributes succeeds"
       met: true
       evidence: "apps/web/supabase/tests/database/character-details-table.test.sql:43"
@@ -140,10 +140,6 @@ test_plan:
     - text: "Voice_asset_id pointing to non-voice asset (should be prevented at app level)"
       met: false
       reason: "retired — the column now holds an ElevenLabs voice ID, not an asset reference (30ed2083)"
-remaining:
-  - criterion: "Check constraint: asset is type 'character'"
-    reason: "Never created: Postgres rejects a subquery in a CHECK, and no trigger or policy tests the type (git log -S finds none). Only the create path sets it: create_character_with_details (apps/web/supabase/migrations/20260930113000_film202-create-character-atomic.sql:42)"
-    closed_by: "unassigned"
 open_questions: []
 notes: |
   Sections of the Markdown spec that have no typed field, kept verbatim. Moved to typed fields: the Context paragraph (summary), the column table (database_table.columns), index names and columns, unique keys and foreign keys (database_table), the acceptance criteria and test-plan checklists and the Remaining table (remaining).

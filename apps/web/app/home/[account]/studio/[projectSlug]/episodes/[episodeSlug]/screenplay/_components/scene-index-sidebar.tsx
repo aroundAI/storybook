@@ -17,7 +17,7 @@ export function SceneIndexSidebar({
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-4">
-        <h3 className="mb-4 text-xs font-semibold tracking-wider text-gray-400 uppercase dark:text-gray-500">
+        <h3 className="mb-4 text-xs font-semibold tracking-wider text-gray-600 uppercase dark:text-gray-500">
           Scene Index
         </h3>
 
@@ -25,6 +25,7 @@ export function SceneIndexSidebar({
           {scenes.map((scene) => (
             <button
               key={scene.number}
+              data-test={`scene-index-item-${scene.number}`}
               onClick={() => onSceneSelect(scene.number)}
               className={cn(
                 'group flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left transition-colors',

@@ -4,7 +4,7 @@ phase: 2
 phase_name: "Assets"
 category: server_action
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-30"
 effort: M
 dependencies:
   - spec_id: "FILM-101d"
@@ -67,8 +67,8 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "deleteAssetAction prevents deletion of assets in use"
-    met: false
-    reason: "not met — checks dialogue lines only, and ignores that query's error, so a failed check deletes (packages/features/assets/src/lib/server/asset.queries.ts:139-143)"
+    met: true
+    evidence: "packages/features/assets/src/lib/server/asset.queries.ts:129-185 (isAssetInUse checks active-episode dialogue_lines, character_details.voice_asset_id, episode master video and title card, audio_assets and caption_segments.speaker_id; hook_variants was dropped with its table); packages/features/assets/__tests__/is-asset-in-use.test.ts"
   - text: "All actions enforce authentication (reject unauthenticated users)"
     met: true
     evidence: null
@@ -79,8 +79,8 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "All database errors properly caught and thrown"
-    met: false
-    reason: "not met — isAssetInUse drops its count query's error and answers \"not in use\" (packages/features/assets/src/lib/server/asset.queries.ts:139-143)"
+    met: true
+    evidence: "packages/features/assets/src/lib/server/asset.queries.ts:165-170 (isAssetInUse destructures the error and throws \"Failed to check asset usage\"); the two throws tests in packages/features/assets/__tests__/is-asset-in-use.test.ts"
   - text: "TypeScript compiles without errors"
     met: true
     evidence: null
@@ -92,11 +92,8 @@ test_plan:
   integration: []
   e2e: []
 remaining:
-  - criterion: "In-use check before delete"
-    reason: "isAssetInUse checks only dialogue_lines and never reads the count query's error, so a failed check reports \"not in use\" and the asset is deleted (packages/features/assets/src/lib/server/asset.queries.ts:139-143)"
-    closed_by: "unassigned"
-  - criterion: "Database errors caught and thrown"
-    reason: "The same query's error is dropped rather than thrown"
+  - criterion: "All actions complete within 2 seconds"
+    reason: "the database work behind the create and read actions is timed (apps/e2e/tests/performance/performance.spec.ts); the server action's own overhead is not, because a server action cannot be called without its build-specific id"
     closed_by: "unassigned"
 open_questions: []
 notes: |

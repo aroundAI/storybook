@@ -1,7 +1,7 @@
 {
     "slug": "producer-role",
     "name": "News Episode Producer",
-    "version": 1,
+    "version": 2,
     "category": "news-generation",
     "description": "Plans news episode rundowns — segment ordering, duration allocation, pacing, and category balance.",
     "exported_at": "2026-02-12T00:00:00.000Z",
@@ -24,7 +24,7 @@
             "order": 1
         }
     ],
-    "user_prompt": "Plan a news episode rundown.\n\n<episode_title>\n{{episodeTitle}}\n</episode_title>\n\n<total_duration_minutes>\n{{totalDuration}}\n</total_duration_minutes>\n\n<available_stories>\n{{stories}}\n</available_stories>\n\nReturn JSON:\n{\n  \"rundown\": [\n    {\n      \"segmentNumber\": 1,\n      \"title\": \"Descriptive segment title\",\n      \"duration\": 90,\n      \"category\": \"breaking | politics | business | tech | health | feature\",\n      \"searchQuery\": \"Concise search query to find articles for this segment\",\n      \"priority\": \"high | medium | low\"\n    }\n  ],\n  \"totalRuntime\": 300\n}\n\nRules:\n- segmentNumber is sequential starting from 1.\n- duration is in SECONDS. Sum of all durations should approximate totalDuration × 60.\n- category should reflect the story's primary topic area.\n- searchQuery should be specific enough to retrieve relevant articles (3-8 words).\n- priority determines segment prominence: high = lead/breaking, medium = standard, low = feature/closer.\n- Order segments by priority descending, with features at the end.\n- Aim for 3-8 segments depending on total duration.",
+    "user_prompt": "Plan a news episode rundown.\n\n<episode_title>\n{{episodeTitle}}\n</episode_title>\n\n<total_duration_minutes>\n{{totalDuration}}\n</total_duration_minutes>\n\n<available_stories>\n{{stories}}\n</available_stories>\n\nReturn JSON:\n{\n  \"rundown\": [\n    {\n      \"segmentNumber\": 1,\n      \"title\": \"Descriptive segment title\",\n      \"duration\": 90,\n      \"category\": \"breaking | politics | business | tech | health | feature\",\n      \"searchQuery\": \"Concise search query to find articles for this segment\",\n      \"priority\": \"high | medium | low\"\n    }\n  ],\n  \"totalRuntime\": 300,\n  \"breakPositions\": [3]\n}\n\nRules:\n- segmentNumber is sequential starting from 1.\n- duration is in SECONDS. Sum of all durations should approximate totalDuration × 60.\n- category should reflect the story's primary topic area.\n- searchQuery should be specific enough to retrieve relevant articles (3-8 words).\n- priority determines segment prominence: high = lead/breaking, medium = standard, low = feature/closer.\n- Order segments by priority descending, with features at the end.\n- Aim for 3-8 segments depending on total duration.\n- breakPositions lists the segmentNumbers a commercial break follows. Breaks fall between segments, never after the last one. Use one break for every full 5 minutes of runtime (a 12-minute episode has 2), spaced evenly through the running time.",
     "variables": {
         "episodeTitle": {
             "type": "text",
@@ -44,6 +44,6 @@
     },
     "output": {
         "type": "object",
-        "schema_for_llm": "{ rundown: [{ segmentNumber: number, title: string, duration: number, category: string, searchQuery: string, priority: 'high' | 'medium' | 'low' }], totalRuntime: number }"
+        "schema_for_llm": "{ rundown: [{ segmentNumber: number, title: string, duration: number, category: string, searchQuery: string, priority: 'high' | 'medium' | 'low' }], totalRuntime: number, breakPositions: number[] }"
     }
 }

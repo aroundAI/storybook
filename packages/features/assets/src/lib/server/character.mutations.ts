@@ -230,133 +230,65 @@ const updateCharacter = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Build asset updates (only include provided fields)
-    const assetUpdates: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    };
+    const assetPatch: Record<string, Json> = {};
 
-    if (data.name !== undefined) assetUpdates.name = data.name;
+    if (data.name !== undefined) assetPatch.name = data.name;
     if (data.description !== undefined)
-      assetUpdates.description = data.description;
-    if (data.fileUrl !== undefined)
-      assetUpdates.file_url = data.fileUrl || null;
+      assetPatch.description = data.description;
+    if (data.fileUrl !== undefined) assetPatch.file_url = data.fileUrl || null;
     if (data.thumbnailUrl !== undefined)
-      assetUpdates.thumbnail_url = data.thumbnailUrl || null;
+      assetPatch.thumbnail_url = data.thumbnailUrl || null;
 
-    // Update asset if there are changes
-    if (Object.keys(assetUpdates).length > 1) {
-      const { data: updatedAssets, error: assetError } = await client
-        .from('assets')
-        .update(assetUpdates)
-        .eq('id', data.assetId)
-        .eq('type', 'character')
-        .is('deleted_at', null)
-        .select('id');
+    const attributesPatch: Record<string, Json> = {};
 
-      if (assetError) {
-        if (assetError.code === '23505' && data.name !== undefined) {
-          throw new ActionRefusal(
-            `A character named "${data.name}" already exists in this project. Choose a different name.`,
-          );
-        }
+    if (data.physicalAttributes !== undefined)
+      attributesPatch.physicalAttributes = data.physicalAttributes;
+    if (data.personalityTraits !== undefined)
+      attributesPatch.personalityTraits = data.personalityTraits;
+    if (data.clothingStyle !== undefined)
+      attributesPatch.clothingStyle = data.clothingStyle;
+    if (data.backstory !== undefined)
+      attributesPatch.backstory = data.backstory;
 
-        logger.error({ ...ctx, error: assetError }, 'Failed to update asset');
-        throw new Error(`Failed to update character: ${assetError.message}`);
+    const detailsPatch: Record<string, Json> = {};
+
+    if (data.personality !== undefined)
+      detailsPatch.personality = data.personality;
+    if (data.elementPrompt !== undefined)
+      detailsPatch.element_prompt = data.elementPrompt;
+    if (data.referenceImages !== undefined)
+      detailsPatch.reference_images = data.referenceImages;
+    if (data.voiceAssetId !== undefined)
+      detailsPatch.elevenlabs_voice_id = data.voiceAssetId;
+
+    // One call, one transaction: a failed details write no longer leaves the
+    // asset change applied (FILM-202).
+    const { error: updateError } = await client.rpc(
+      'update_character_with_details',
+      {
+        p_asset_id: data.assetId,
+        p_asset_patch: assetPatch,
+        p_details_patch: detailsPatch,
+        p_attributes_patch: attributesPatch,
+      },
+    );
+
+    if (updateError) {
+      if (updateError.code === '42501') {
+        throw new ActionRefusal("You can't change this character.");
       }
 
-      requireAffectedRows(updatedAssets, "You can't change this character.");
-    }
-
-    // Build character_details updates
-    const detailsUpdates: Record<string, unknown> = {};
-    let hasDetailsUpdates = false;
-
-    // For JSONB fields, we need to merge with existing data
-    const physicalAttributesUpdates: Record<string, unknown> = {};
-
-    if (data.physicalAttributes !== undefined) {
-      physicalAttributesUpdates.physicalAttributes = data.physicalAttributes;
-      hasDetailsUpdates = true;
-    }
-    if (data.personalityTraits !== undefined) {
-      physicalAttributesUpdates.personalityTraits = data.personalityTraits;
-      hasDetailsUpdates = true;
-    }
-    if (data.clothingStyle !== undefined) {
-      physicalAttributesUpdates.clothingStyle = data.clothingStyle;
-      hasDetailsUpdates = true;
-    }
-    if (data.backstory !== undefined) {
-      physicalAttributesUpdates.backstory = data.backstory;
-      hasDetailsUpdates = true;
-    }
-
-    if (Object.keys(physicalAttributesUpdates).length > 0) {
-      // Fetch existing physical_attributes to merge
-      const { data: existing } = await client
-        .from('character_details')
-        .select('physical_attributes')
-        .eq('asset_id', data.assetId)
-        .single();
-
-      const existingAttrs =
-        (existing?.physical_attributes as Record<string, unknown>) ?? {};
-      detailsUpdates.physical_attributes = {
-        ...existingAttrs,
-        ...physicalAttributesUpdates,
-      } as Json;
-    }
-
-    if (data.personality !== undefined) {
-      detailsUpdates.personality = data.personality;
-      hasDetailsUpdates = true;
-    }
-    if (data.elementPrompt !== undefined) {
-      detailsUpdates.element_prompt = data.elementPrompt;
-      hasDetailsUpdates = true;
-    }
-    if (data.referenceImages !== undefined) {
-      detailsUpdates.reference_images = data.referenceImages;
-      hasDetailsUpdates = true;
-    }
-    if (data.voiceAssetId !== undefined) {
-      detailsUpdates.elevenlabs_voice_id = data.voiceAssetId;
-      hasDetailsUpdates = true;
-    }
-
-    // Update character_details if there are changes (or create if missing)
-    if (hasDetailsUpdates) {
-      logger.info(
-        { ...ctx, detailsUpdates },
-        'Updating character_details with',
-      );
-
-      // Use upsert to handle cases where character_details row doesn't exist
-      const { data: upsertedRows, error: detailsError } = await client
-        .from('character_details')
-        .upsert(
-          {
-            asset_id: data.assetId,
-            ...detailsUpdates,
-          },
-          { onConflict: 'asset_id' },
-        )
-        .select();
-
-      if (detailsError) {
-        logger.error(
-          { ...ctx, error: detailsError },
-          'Failed to upsert character details',
-        );
-        throw new Error(
-          `Failed to upsert character details: ${detailsError.message}`,
+      if (updateError.code === '23505' && data.name !== undefined) {
+        throw new ActionRefusal(
+          `A character named "${data.name}" already exists in this project. Choose a different name.`,
         );
       }
 
-      logger.info(
-        { ...ctx, rowsAffected: upsertedRows?.length ?? 0 },
-        'character_details upsert result',
+      logger.error(
+        { ...ctx, error: updateError },
+        'Failed to update character',
       );
+      throw new Error(`Failed to update character: ${updateError.message}`);
     }
 
     // Fetch updated character

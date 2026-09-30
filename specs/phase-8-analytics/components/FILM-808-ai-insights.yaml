@@ -4,7 +4,7 @@ phase: 8
 phase_name: "Analytics"
 category: component
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-30"
 effort: M
 dependencies:
   - spec_id: "FILM-805"
@@ -34,35 +34,35 @@ component:
   accessibility_notes: null
 acceptance_criteria:
   - text: "Generates natural language summary of performance"
-    met: false
-    reason: "no longer true — the worker generates it, but the panel reads fields off the delivered `{ success, data }` wrapper, so nothing shows (5b88db3a) — `packages/features/content-analytics/src/components/ai-insights.tsx:57`, `apps/web/lambda/llm-worker/job-boundary.ts:76`"
+    met: true
+    evidence: "the panel unwraps the delivered `{ success, data }` (`packages/features/content-analytics/src/lib/insights-result.ts:11`, used at `packages/features/content-analytics/src/components/ai-insights.tsx:56`; test `packages/features/content-analytics/__tests__/insights-result.test.ts:18`); shown at `packages/features/content-analytics/src/components/ai-insights.tsx:141`. Unit-tested only, not reproduced in a browser"
   - text: "Identifies 3-4 key trends in data"
     met: false
-    reason: "no longer true — the prompt asks for no trends, the worker returns `trends: []`, the panel renders none — `apps/web/lambda/llm-worker/handlers/analytics-insights.ts:114`"
+    reason: "no longer true — the prompt asks for no trends, the worker returns `trends: []`, the panel renders none — `apps/web/lambda/llm-worker/handlers/analytics-insights.ts:144`"
   - text: "Provides specific content recommendations"
-    met: false
-    reason: "no longer true — generated but never shown (the `{ success, data }` wrapper, as for the summary) — `packages/features/content-analytics/src/components/ai-insights.tsx:137`"
+    met: true
+    evidence: "shown once the wrapper is unwrapped (`packages/features/content-analytics/src/components/ai-insights.tsx:151`; `packages/features/content-analytics/src/lib/insights-result.ts:11`, test `packages/features/content-analytics/__tests__/insights-result.test.ts:18`); unit-tested only, not reproduced in a browser"
   - text: "Suggests optimal posting times"
-    met: false
-    reason: "no longer true — asked for as `postingStrategy` but never shown (wrapper); no posting-time data is sent — `ai-insights.tsx:140`"
+    met: true
+    evidence: "`postingStrategy` shown once the wrapper is unwrapped (`packages/features/content-analytics/src/components/ai-insights.tsx:161`; test `packages/features/content-analytics/__tests__/insights-result.test.ts:18`); unit-tested only, not reproduced in a browser"
   - text: "Analyzes audience demographics and behavior"
     met: false
-    reason: "no longer true — the dashboard sends `audience: undefined`, so there is nothing to analyse; output never shown — `packages/features/content-analytics/src/components/analytics-dashboard.tsx:215`"
+    reason: "no longer true — the dashboard sends `audience: undefined`, so there is nothing to analyse; output never shown — `packages/features/content-analytics/src/components/analytics-dashboard.tsx:217`"
   - text: "Explains why top content performed well"
     met: false
     reason: "no longer true — the worker discards `topPerformers` (returns `[]`) and the dashboard sends no `topContent` — `analytics-insights.ts:148`, `analytics-dashboard.tsx:214`"
   - text: "Lists actionable items for improvement"
-    met: false
-    reason: "no longer true — generated but never shown (the `{ success, data }` wrapper) — `ai-insights.tsx:157`"
+    met: true
+    evidence: "shown once the wrapper is unwrapped (`packages/features/content-analytics/src/components/ai-insights.tsx:178`; test `packages/features/content-analytics/__tests__/insights-result.test.ts:18`); unit-tested only, not reproduced in a browser"
   - text: "Caches insights to avoid repeated LLM calls"
-    met: false
-    reason: "no longer true — react-query caches the queued `null` for an hour, not the insights; the worker stores nothing (e2d42522) — `ai-insights.tsx:72-76`"
+    met: true
+    evidence: "server cache: the worker serves a stored answer for 24 hours and stores a miss (`apps/web/lambda/llm-worker/handlers/analytics-insights.ts:63`, `:89`, `:170`; table `analytics_insights_cache`), tests `apps/web/lambda/llm-worker/__tests__/analytics-insights-handler.test.ts:230`, `:247`, `:257`; client: the queued `null` is no longer held for an hour (`packages/features/content-analytics/src/components/ai-insights.tsx:88`, `packages/features/content-analytics/__tests__/insights-result.test.ts:30`)"
   - text: "Shows loading state during generation"
-    met: false
-    reason: "no longer true — the skeleton shows only while enqueuing; `llmStatus` never becomes `pending` because `trigger()` is never called — `ai-insights.tsx:83`, `packages/ui/src/hooks/use-llm-job.ts:76`"
+    met: true
+    evidence: "the skeleton shows while a queued job has not delivered (`awaitingJob`, `packages/features/content-analytics/src/components/ai-insights.tsx:94`, `:103`); verified by reading, no component test. If the WebSocket message is lost the skeleton stays until a reload"
   - text: "Allows manual refresh of insights"
     met: true
-    evidence: null
+    evidence: "the Refresh button sets `refresh: true` (`packages/features/content-analytics/src/components/ai-insights.tsx:75`, `:127`), the payload accepts it (`packages/features/prompt-engine/src/lib/llm-job-payloads.ts:178`) and the worker skips the cache read and overwrites (`apps/web/lambda/llm-worker/handlers/analytics-insights.ts:170`); test `apps/web/lambda/llm-worker/__tests__/analytics-insights-handler.test.ts:271`"
 test_plan:
   unit:
     - text: "Test `calculateChanges` function"
@@ -74,26 +74,17 @@ test_plan:
   integration:
     - text: "Test with mocked LLM response"
       met: true
-      evidence: "apps/web/lambda/llm-worker/__tests__/analytics-insights-handler.test.ts:70"
+      evidence: "apps/web/lambda/llm-worker/__tests__/analytics-insights-handler.test.ts:108"
     - text: "Test caching behavior"
-      met: false
-      reason: "not built: insights are generated on request by a queued job and nothing caches them, so there is no caching to test"
+      met: true
+      evidence: "apps/web/lambda/llm-worker/__tests__/analytics-insights-handler.test.ts:214 — a miss writes, a fresh hit skips the model, an expired row calls it again, `refresh` bypasses and overwrites, the key is stable and distinct, the fallback is not cached"
   e2e: []
 remaining:
-  - criterion: "Summary, recommendations, posting times, audience, action items shown"
-    reason: "One cause: the worker sends the handler's `{ success, data }` as `result` (`llm-worker/index.ts:291`), and `ai-insights.tsx:52` stores it without unwrapping `.data`, so `insights?.summary` and every list read `undefined`. Other consumers unwrap (`ideation-screen.tsx:91`). Found by reading; not reproduced"
-    closed_by: "unassigned"
   - criterion: "Key trends"
-    reason: "No `trends` in the prompt (`insights-generation.json`) or the worker's output (`analytics-insights.ts:144`), and no trends section in the panel"
+    reason: "No `trends` in the prompt (`insights-generation.json`) or the worker's output (`analytics-insights.ts:144`), and no trends section in the panel; needs a prompt version change and a panel section"
     closed_by: "unassigned"
   - criterion: "Audience demographics, why top content performed"
     reason: "`analytics-dashboard.tsx:214-215` send `topContent` and `audience` as `undefined`; the worker also replaces the LLM's `topPerformers` with `[]` (`analytics-insights.ts:148`)"
-    closed_by: "unassigned"
-  - criterion: "Caches insights"
-    reason: "Only the queued `null` is cached (`ai-insights.tsx:72-76`); the insights live in component state and are lost when the tab unmounts, while a new request is suppressed for an hour"
-    closed_by: "unassigned"
-  - criterion: "Loading state during generation"
-    reason: "`llmStatus === 'pending'` (`ai-insights.tsx:83`) is unreachable: only `trigger()` sets it (`use-llm-job.ts:76`), and the panel calls the action directly"
     closed_by: "unassigned"
 open_questions: []
 notes: |-

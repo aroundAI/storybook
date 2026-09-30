@@ -49,6 +49,9 @@ function query(result: Result) {
     'in',
     'order',
     'single',
+    'upsert',
+    'limit',
+    'maybeSingle',
   ]) {
     chain[method] = vi.fn(() => chain);
   }
@@ -60,12 +63,20 @@ function query(result: Result) {
 
 type Chain = ReturnType<typeof query>;
 
-/** Each `from()` call returns the next result; the chains are kept to inspect. */
+const MEMORY_TABLES = ['episode_summaries', 'world_states'];
+
+/**
+ * Each `from()` call returns the next result; the chains are kept to inspect.
+ * The memory tables (FILM-1004) are served separately, so the thread counts
+ * below stay about threads; `memory` holds what was written to them.
+ */
 function clientReturning(
   results: Result[],
   rpc: Result = { data: null, error: null },
+  memoryResults: Record<string, Result> = {},
 ) {
   const chains: Chain[] = [];
+  const memory: Array<{ table: string; chain: Chain }> = [];
   const from = vi.fn(() => {
     const next = results[chains.length];
 
@@ -78,11 +89,17 @@ function clientReturning(
   const rpcFn = vi.fn(async () => rpc);
 
   vi.mocked(getSupabaseServerClient).mockReturnValue({
-    from,
+    from: (table: string) => {
+      if (!MEMORY_TABLES.includes(table)) return from();
+
+      const chain = query(memoryResults[table] ?? { data: null, error: null });
+      memory.push({ table, chain });
+      return chain;
+    },
     rpc: rpcFn,
   } as never);
 
-  return { from, rpc: rpcFn, chains };
+  return { from, rpc: rpcFn, chains, memory };
 }
 
 const PROJECT = '11111111-1111-4111-8111-111111111111';
@@ -221,6 +238,7 @@ describe('batch operations: commitCanonChangesAction', () => {
       eventsCreated: 1,
       threadsUpdated: 0,
       summaryStored: true,
+      memoryStored: { episodeSummary: true, worldState: false },
     });
     expect(from).not.toHaveBeenCalled();
   });
@@ -384,5 +402,118 @@ describe('batch operations: commitCanonChangesAction', () => {
 
     expect(from).toHaveBeenCalledTimes(1);
     expect(result.threadsUpdated).toBe(0);
+  });
+});
+
+describe('memory rows: commitCanonChangesAction (FILM-1004)', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const commit = (
+    changes: Partial<
+      Parameters<typeof commitCanonChangesAction>[0]['changes']
+    > = {},
+  ) =>
+    commitCanonChangesAction({
+      projectId: PROJECT,
+      episodeId: EPISODE,
+      season: 1,
+      episodeNumber: 3,
+      changes: {
+        immutableEvents: [],
+        threadUpdates: [],
+        episodeSummary: 'The gate falls.',
+        sentimentScore: 0.204,
+        keyEvents: ['The gate falls'],
+        characterChanges: ['Mara: hopeful -> grieving'],
+        ...changes,
+      },
+    });
+
+  const rpcOk = {
+    data: { eventsCreated: 0, summaryStored: true },
+    error: null,
+  };
+
+  it('upserts the episode summary row, one per episode', async () => {
+    const { memory } = clientReturning([], rpcOk);
+
+    const result = await commit();
+
+    expect(result.memoryStored).toEqual({
+      episodeSummary: true,
+      worldState: false,
+    });
+    expect(memory.map((m) => m.table)).toEqual(['episode_summaries']);
+    expect(memory[0]!.chain.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        episode_id: EPISODE,
+        plot_summary: 'The gate falls.',
+        key_events: ['The gate falls'],
+        character_changes: ['Mara: hopeful -> grieving'],
+        sentiment_score: 0.2,
+      }),
+      { onConflict: 'episode_id' },
+    );
+  });
+
+  it('writes no summary row for an empty summary', async () => {
+    const { memory } = clientReturning([], rpcOk);
+
+    const result = await commit({ episodeSummary: '   ' });
+
+    expect(memory).toEqual([]);
+    expect(result.memoryStored.episodeSummary).toBe(false);
+  });
+
+  it('inserts a world state when the extraction named a location and none exists', async () => {
+    const { memory } = clientReturning([], rpcOk, {
+      world_states: { data: null, error: null },
+    });
+
+    const result = await commit({
+      worldState: { location: ' The north gate ', atmosphere: 'smoke' },
+    });
+
+    expect(result.memoryStored.worldState).toBe(true);
+    const world = memory.filter((m) => m.table === 'world_states');
+    expect(world[1]!.chain.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        project_id: PROJECT,
+        episode_id: EPISODE,
+        location: 'The north gate',
+        atmosphere: 'smoke',
+        active_conflicts: [],
+      }),
+    );
+  });
+
+  it("updates the episode's world state when it already has one", async () => {
+    const { memory } = clientReturning([], rpcOk, {
+      world_states: { data: { id: 'w1' }, error: null },
+    });
+
+    await commit({ worldState: { location: 'The north gate' } });
+
+    const world = memory.filter((m) => m.table === 'world_states');
+    expect(world[1]!.chain.update).toHaveBeenCalledWith(
+      expect.objectContaining({ location: 'The north gate' }),
+    );
+    expect(world[1]!.chain.insert).not.toHaveBeenCalled();
+  });
+
+  it('does not fail the commit when the summary row is refused', async () => {
+    clientReturning([], rpcOk, {
+      episode_summaries: {
+        data: null,
+        error: { code: '42501', message: 'rls' },
+      },
+    });
+
+    const result = await commit();
+
+    expect(result).toMatchObject({
+      eventsCreated: 0,
+      memoryStored: { episodeSummary: false },
+    });
   });
 });

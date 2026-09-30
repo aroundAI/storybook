@@ -1,11 +1,9 @@
 /**
  * Local Provider Implementation
  *
- * Implements LLMClient interface for local OpenAI-compatible API:
- * - claude-sonnet-4-5 (Claude Sonnet 4.5)
- * - claude-sonnet-4 (Claude Sonnet 4)
- * - claude-opus-4 (Claude Opus 4)
- * - claude-haiku-4 (Claude Haiku 4)
+ * Implements LLMClient interface for a local OpenAI-compatible server,
+ * Ollama by default (`ollama pull llama3.1`). LM Studio, vLLM and llama.cpp's
+ * server speak the same protocol; point LOCAL_API_URL at them instead.
  *
  * Uses OpenAI SDK with custom base URL pointing to local server.
  */
@@ -28,7 +26,7 @@ import { LLMError } from '../types';
 /**
  * Default local API base URL
  */
-const DEFAULT_LOCAL_BASE_URL = 'http://127.0.0.1:8000/v1';
+const DEFAULT_LOCAL_BASE_URL = 'http://localhost:11434/v1';
 
 /**
  * Local client implementation using OpenAI-compatible API

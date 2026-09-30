@@ -4,7 +4,7 @@ phase: 11
 phase_name: "Canon Integration & Content Types"
 category: feature
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-30"
 effort: M
 dependencies:
   - spec_id: "FILM-1120"
@@ -23,8 +23,8 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "`runFactCheck` function validates content correctly"
-    met: false
-    reason: "not met — no caller. Its slug was unregistered until KB-106's fix pointed it at `documentary/fact-checker-role` (`packages/features/episodes/src/lib/documentary/fact-checker.ts:134`); facts can now reach `verified` (KB-18, #314)"
+    met: true
+    evidence: "packages/features/episodes/src/server/fact-check-actions.ts:40 (factCheckContentAction, enhanceAction with rate limit and withRefusals) calls runFactCheck and shouldBlockContent (:29-35) and returns { result, blocked }; read-only, it never changes a fact status (KB-18 human review intact). Tests packages/features/episodes/src/lib/__tests__/fact-checker-run.test.ts:61 and packages/features/episodes/__tests__/fact-check-actions.test.ts:44. Run from the Facts tab (story/_components/fact-check-section.tsx), not from the agent skill or the worker, because runFactCheck uses the request-scoped Supabase client"
   - text: "Critical issues are properly identified"
     met: false
     reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM judgement in the live skill (`packages/features/episodes/src/agent/skills/fact-checker-skill.ts:72`); no test or eval; read-only audit, not run"
@@ -39,23 +39,10 @@ acceptance_criteria:
     evidence: null
   - text: "UI shows results with severity-based styling"
     met: false
-    reason: "no longer true — no fact-check results UI exists or ever did (`FactCheckResults` never in git history)"
+    reason: "not verified — the section is built (apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/fact-check-section.tsx:128 styles each issue by severity, :109 shows the blocked notice) and mounted in the Facts tab, but no test or browser run drives it"
 remaining:
-  - criterion: "`runFactCheck` function validates content correctly"
-    reason: >
-      Nothing calls it. Its `templateSlug` now names
-      (`packages/features/episodes/src/lib/documentary/fact-checker.ts:134`) the
-      registered key the live agent skill uses,
-      `documentary/fact-checker-role`
-      (`packages/features/episodes/src/agent/skills/fact-checker-skill.ts:58`).
-      It reads only `verified` facts (`:81`); since KB-18 (#314) those can
-      exist, so it would no longer always exit at "cannot fact-check" (`:120`)
-      — but it is still never run
-    closed_by: "unassigned"
   - criterion: "UI shows results with severity-based styling"
-    reason: >
-      No `FactCheckResults` component or equivalent exists in code or git
-      history; results stay inside the story agent
+    reason: "The fact-check section is built and mounted in the Facts tab; no test or browser run has rendered it"
     closed_by: "unassigned"
 open_questions: []
 feature:

@@ -4,7 +4,7 @@ phase: 11
 phase_name: "Canon Integration & Content Types"
 category: feature
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-30"
 effort: M
 dependencies:
   - spec_id: "FILM-1133"
@@ -18,16 +18,16 @@ summary: >
 acceptance_criteria:
   - text: "Producer role plans valid episode rundowns"
     met: false
-    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM output used unvalidated (`packages/features/episodes/src/lib/server/services/producer-service.ts:137`); no test or eval"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM output used unvalidated (`packages/features/episodes/src/lib/server/services/producer-service.ts:147`, the rundown is read straight from `result.data`; break positions are validated, the rest is not); no test or eval"
   - text: "Segments are ordered by priority"
     met: false
     reason: "unverified — prompt rule only (`producer-role.json`); the service never sorts the rundown; no test"
   - text: "Break positions are calculated correctly"
-    met: false
-    reason: "not met — no break positions anywhere: `EpisodeRundown` has none (`packages/features/episodes/src/lib/server/services/producer-service.ts:28`), nor the prompt"
+    met: true
+    evidence: "packages/features/episodes/src/lib/server/services/producer-service.ts:37 (EpisodeRundown.breakPositions), :319 breakCountFor (one per full 5 minutes, at most segments-1), :339 resolveBreakPositions (uses the LLM's list only if it has the right count, distinct, existing, not last; otherwise :373 computeBreakPositions spaces breaks by running time, nearest boundary, earlier on a tie, no reuse), :310 single-segment fallback has none; the producer prompt v2 asks for breakPositions; tests packages/features/episodes/__tests__/producer-breaks.test.ts (25). The apps/vendor-sandbox producer template does not emit breakPositions, so it exercises the deterministic fallback"
   - text: "Orchestrator generates all segments"
     met: true
-    evidence: "packages/features/episodes/src/lib/server/services/producer-service.ts:165"
+    evidence: "packages/features/episodes/src/lib/server/services/producer-service.ts:184"
   - text: "Total runtime matches target duration"
     met: false
     reason: "unverified — nothing reconciles segment durations with the target; the LLM's `totalRuntime` is returned as given; no test"
@@ -35,13 +35,14 @@ acceptance_criteria:
     met: true
     evidence: "packages/features/episodes/src/server/news-actions.ts:140, :159"
 remaining:
-  - criterion: "Break positions are calculated correctly"
-    reason: >
-      Nothing computes break positions: `EpisodeRundown` is `{ rundown,
-      totalRuntime }`
-      (`packages/features/episodes/src/lib/server/services/producer-service.ts:28`),
-      the producer prompt never asks for them, and a repo search for
-      `breakPositions`/`break_position` finds nothing
+  - criterion: "Producer role plans valid episode rundowns"
+    reason: "Owner check OC-1 (docs/OWNER-CHECKS.md): LLM output used unvalidated, no test or eval"
+    closed_by: "owner"
+  - criterion: "Segments are ordered by priority"
+    reason: "Prompt rule only; the service never sorts the rundown"
+    closed_by: "unassigned"
+  - criterion: "Total runtime matches target duration"
+    reason: "Nothing reconciles segment durations with the target"
     closed_by: "unassigned"
 open_questions: []
 feature:

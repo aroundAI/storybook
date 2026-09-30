@@ -255,7 +255,7 @@ export function AssetCard({
 
               {/* Actions Menu (Absolute) — hidden in selection mode */}
               {!selectionMode && (
-                <div className="absolute top-2 right-2 z-10 opacity-0 transition-opacity group-hover:opacity-100">
+                <div className="absolute top-2 right-2 z-10 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button

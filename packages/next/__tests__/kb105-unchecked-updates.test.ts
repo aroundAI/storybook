@@ -35,6 +35,8 @@ const CLEANUP = 'cleanup inside a larger action, logged non-fatal, not shown';
 const CASCADE = 'renumbers siblings after a checked delete';
 const BOOKKEEPING = 'a counter, cache or embedding nobody is told about';
 const DEAD = 'no caller in the repo';
+const LAST_USED =
+  'stamps last_used_at when a key is handed out; best effort, a failed stamp must not fail the call the key was fetched for';
 
 const KNOWN: Record<string, [number, string]> = {
   'apps/web/app/api/reports/scheduled/route.ts | scheduled_reports | update': [
@@ -47,6 +49,8 @@ const KNOWN: Record<string, [number, string]> = {
   ],
   'apps/web/lambda/llm-worker/handlers/audio-file-generation.ts | audio_cues | update':
     [3, ADMIN],
+  'apps/web/lambda/llm-worker/handlers/audio-file-generation.ts | external_api_keys | update':
+    [1, LAST_USED],
   'apps/web/lambda/llm-worker/handlers/shot-generation.ts | episodes | update':
     [1, ADMIN],
   'apps/web/lambda/llm-worker/handlers/story-generation.ts | episodes | update':
@@ -62,6 +66,8 @@ const KNOWN: Record<string, [number, string]> = {
   'apps/web/lambda/scheduled-publish/index.ts | publishes | update': [3, ADMIN],
   'apps/web/lambda/voice-worker/voice-generation.ts | dialogue_lines | update':
     [3, ADMIN],
+  'apps/web/lambda/voice-worker/voice-generation.ts | external_api_keys | update':
+    [1, LAST_USED],
   'packages/billing/gateway/src/server/services/billing-event-handler/billing-event-handler.service.ts | orders | update':
     [2, ADMIN],
   'packages/features/audio-generation/src/lib/audio-embedding.ts | audio_assets | update':
@@ -120,6 +126,10 @@ const KNOWN: Record<string, [number, string]> = {
     [2, `${FAILURE_MARK} + ${RECORDS_RESULT}`],
   'packages/features/team-accounts/src/server/services/account-members.service.ts | accounts_memberships | update':
     [1, ADMIN],
+  'packages/supabase/src/external-api-keys.ts | external_api_keys | update': [
+    1,
+    LAST_USED,
+  ],
 };
 
 const REPO = join(__dirname, '..', '..', '..');

@@ -13,6 +13,11 @@ import type { LLMClient, LLMConfig, LLMProvider } from './types';
 import { LLMError } from './types';
 
 /**
+ * Default model for the local provider: an Ollama tag the owner has pulled
+ */
+export const DEFAULT_LOCAL_MODEL = 'llama3.1';
+
+/**
  * Singleton instance
  */
 let llmInstance: LLMClient | null = null;
@@ -32,7 +37,7 @@ let llmInstance: LLMClient | null = null;
  * - OPENAI_API_KEY: Falls back to this if LLM_PROVIDER=openai and LLM_API_KEY not set
  * - ANTHROPIC_API_KEY: Falls back to this if LLM_PROVIDER=anthropic and LLM_API_KEY not set
  * - GOOGLE_API_KEY: Falls back to this if LLM_PROVIDER=gemini and LLM_API_KEY not set
- * - LOCAL_API_URL: Base URL for local provider (default: http://127.0.0.1:8000/v1)
+ * - LOCAL_API_URL: Base URL for local provider (default: http://localhost:11434/v1, Ollama)
  */
 export function loadConfigFromEnv(): LLMConfig {
   const provider = (process.env.LLM_PROVIDER ?? 'openai') as LLMProvider;
@@ -123,7 +128,7 @@ function getDefaultModel(provider: LLMProvider): string {
     case 'gemini':
       return 'gemini-1.5-flash'; // Fast and cost-effective
     case 'local':
-      return 'claude-sonnet-4-5'; // Latest local Claude model
+      return DEFAULT_LOCAL_MODEL;
     case 'deepseek':
       return 'deepseek-chat';
     default:

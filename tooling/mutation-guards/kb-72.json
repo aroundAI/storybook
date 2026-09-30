@@ -15,8 +15,8 @@
       "name": "M2 The builder drops the thread's last-active episode number",
       "kind": "unit",
       "file": "packages/features/episodes/src/lib/canon/memory-context-builder.ts",
-      "find": "        item: thread,\n        id: thread.id,\n        episode: thread.lastActiveEpisodeNumber,\n",
-      "replace": "        item: { ...thread, lastActiveEpisodeNumber: undefined },\n        id: thread.id,\n        episode: thread.lastActiveEpisodeNumber,\n",
+      "find": "      item: thread,\n      id: thread.id,\n      episode: thread.lastActiveEpisodeNumber,\n",
+      "replace": "      item: { ...thread, lastActiveEpisodeNumber: undefined },\n      id: thread.id,\n      episode: thread.lastActiveEpisodeNumber,\n",
       "cwd": "packages/features/episodes",
       "test": "__tests__/memory-context-builder.test.ts",
       "pattern": "last-active episode for CANON_007"

@@ -2,7 +2,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { processAnalyticsInsights } from '../handlers/analytics-insights';
+import {
+  INSIGHTS_CACHE_TTL_MS,
+  processAnalyticsInsights,
+} from '../handlers/analytics-insights';
 
 /**
  * FILM-808. What the worker does around the model: it sends a summary of the
@@ -33,7 +36,39 @@ vi.mock('@kit/prompt-engine/server', () => ({
   },
 }));
 
-const supabase = {} as SupabaseClient;
+interface CacheRow {
+  insights: unknown;
+  created_at: string;
+}
+
+const cache = vi.hoisted(() => ({
+  row: null as CacheRow | null,
+  reads: [] as Array<Record<string, string>>,
+  writes: [] as Array<Record<string, unknown>>,
+}));
+
+const supabase = {
+  from: (table: string) => {
+    expect(table).toBe('analytics_insights_cache');
+    const filters: Record<string, string> = {};
+    const query = {
+      select: () => query,
+      eq: (column: string, value: string) => {
+        filters[column] = value;
+        return query;
+      },
+      maybeSingle: async () => {
+        cache.reads.push({ ...filters });
+        return { data: cache.row, error: null };
+      },
+      upsert: async (row: Record<string, unknown>) => {
+        cache.writes.push(row);
+        return { error: null };
+      },
+    };
+    return query;
+  },
+} as unknown as SupabaseClient;
 
 const totals = (over: Record<string, number> = {}) => ({
   views: 200,
@@ -61,6 +96,9 @@ const payload = (analytics: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   llm.calls.length = 0;
+  cache.row = null;
+  cache.reads.length = 0;
+  cache.writes.length = 0;
   llm.respond = async () => ({ data: {} });
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
   vi.spyOn(console, 'log').mockImplementation(() => undefined);
@@ -170,5 +208,104 @@ describe('processAnalyticsInsights', () => {
     };
 
     expect(sent.topContent).toHaveLength(5);
+  });
+});
+
+describe('the insights cache (FILM-808)', () => {
+  const answer = {
+    performanceSummary: 'Views are up.',
+    contentRecommendations: ['Post shorter cuts'],
+  };
+  const cachedData = {
+    summary: 'From the cache.',
+    trends: [],
+    contentRecommendations: [],
+    postingStrategy: [],
+    audienceInsights: [],
+    topPerformers: [],
+    actionItems: [],
+  };
+  const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
+
+  it('writes a miss to the cache under the project and the input hash', async () => {
+    llm.respond = async () => ({ data: answer });
+
+    await processAnalyticsInsights(payload(), supabase);
+
+    expect(cache.writes).toHaveLength(1);
+    expect(cache.writes[0]).toMatchObject({
+      project_id: PROJECT,
+      input_hash: expect.stringMatching(/^[0-9a-f]{64}$/),
+      insights: { summary: 'Views are up.' },
+    });
+    expect(cache.reads[0]).toEqual({
+      project_id: PROJECT,
+      input_hash: cache.writes[0]!.input_hash,
+    });
+  });
+
+  it('serves a fresh hit without calling the model', async () => {
+    cache.row = { insights: cachedData, created_at: ago(60_000) };
+
+    const result = await processAnalyticsInsights(payload(), supabase);
+
+    expect(result).toEqual({ success: true, data: cachedData });
+    expect(llm.calls).toHaveLength(0);
+    expect(cache.writes).toHaveLength(0);
+  });
+
+  it('calls the model again once the row is older than the TTL', async () => {
+    llm.respond = async () => ({ data: answer });
+    cache.row = {
+      insights: cachedData,
+      created_at: ago(INSIGHTS_CACHE_TTL_MS + 1000),
+    };
+
+    const result = await processAnalyticsInsights(payload(), supabase);
+
+    expect(llm.calls).toHaveLength(1);
+    expect(result.data.summary).toBe('Views are up.');
+    expect(cache.writes).toHaveLength(1);
+  });
+
+  it('bypasses a fresh hit when refresh is set, and overwrites it', async () => {
+    llm.respond = async () => ({ data: answer });
+    cache.row = { insights: cachedData, created_at: ago(60_000) };
+
+    const result = await processAnalyticsInsights(
+      { ...payload(), refresh: true },
+      supabase,
+    );
+
+    expect(cache.reads).toHaveLength(0);
+    expect(llm.calls).toHaveLength(1);
+    expect(result.data.summary).toBe('Views are up.');
+    expect(cache.writes).toHaveLength(1);
+  });
+
+  it('keys a different summary differently, and the same one identically', async () => {
+    llm.respond = async () => ({ data: answer });
+
+    await processAnalyticsInsights(payload(), supabase);
+    await processAnalyticsInsights(payload(), supabase);
+    await processAnalyticsInsights(
+      payload({ totals: totals({ views: 999 }) }),
+      supabase,
+    );
+
+    const [a, b, c] = cache.writes.map((w) => w.input_hash);
+
+    expect(a).toBe(b);
+    expect(a).not.toBe(c);
+  });
+
+  it('does not cache the fallback answer when the model fails', async () => {
+    llm.respond = async () => {
+      throw new Error('rate limited');
+    };
+
+    await processAnalyticsInsights(payload(), supabase);
+
+    expect(cache.writes).toHaveLength(0);
   });
 });

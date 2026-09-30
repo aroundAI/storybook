@@ -89,12 +89,13 @@ test.describe('Deep Dive channel filter', () => {
     const deepDive = new DeepDivePageObject(page);
     const fixture = await deepDive.setup();
 
-    // The first render: six deep-dive calls with the plain project scope —
-    // median, traffic, back catalog, cohorts, the subscriber series and the
-    // weekly diagnostics (FILM-1616) — and a YPP call with no channel.
+    // The first render: eight deep-dive calls with the plain project scope —
+    // median, traffic, back catalog, cohorts, the subscriber series, the
+    // weekly diagnostics (FILM-1616), rolling-90 and the returning-viewer
+    // proxy (FILM-1511) — and a YPP call with no channel.
     await expect
       .poll(() => deepDiveCalls(calls).length)
-      .toBeGreaterThanOrEqual(6);
+      .toBeGreaterThanOrEqual(8);
     await expect.poll(() => yppCalls(calls).length).toBeGreaterThanOrEqual(1);
 
     for (const call of [...deepDiveCalls(calls), ...yppCalls(calls)]) {
@@ -109,12 +110,13 @@ test.describe('Deep Dive channel filter', () => {
     // key without the channel would have served the cached all-channel
     // answer and made no request at all.
     //
-    // Six since FILM-1616: the weekly diagnostics is one of them, and the
-    // loop below is what holds it to carrying the channel rather than
-    // quietly answering for the whole project.
+    // Eight since FILM-1511: the weekly diagnostics (FILM-1616), the rolling-90
+    // card and the returning-viewer card are three of them, and the loop below
+    // is what holds each to carrying the channel rather than quietly
+    // answering for the whole project.
     await expect
       .poll(() => deepDiveCalls(calls.slice(beforeSelect)).length)
-      .toBe(6);
+      .toBe(8);
     await expect.poll(() => yppCalls(calls.slice(beforeSelect)).length).toBe(1);
 
     for (const call of deepDiveCalls(calls.slice(beforeSelect))) {
@@ -298,11 +300,10 @@ test.describe('Project analytics page', () => {
 
     const beforeScheduled = calls.length;
 
-    // The dialog is taller than the viewport and does not scroll, so its tab
-    // list is off-screen and cannot be clicked. Radix tabs follow arrow keys,
-    // which is how a keyboard user would reach it too.
-    await dialog.getByRole('tab', { name: 'Generate Report' }).focus();
-    await page.keyboard.press('ArrowRight');
+    // The dialog scrolls (it used to be taller than a short viewport with its
+    // tab list above the fold, which this test worked around with arrow keys),
+    // so the tab is clicked the way anyone would.
+    await dialog.getByRole('tab', { name: 'Scheduled Reports' }).click();
 
     await expect(
       dialog.getByRole('tab', { name: 'Scheduled Reports' }),

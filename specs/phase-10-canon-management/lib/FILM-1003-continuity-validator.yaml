@@ -4,7 +4,7 @@ phase: 10
 phase_name: "Canon Management"
 category: library
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-30"
 effort: L
 dependencies:
   - spec_id: "FILM-1001"
@@ -38,39 +38,36 @@ library:
     extraction).
 acceptance_criteria:
   - text: "All 9 violation types implemented"
-    met: false
-    reason: "not met — nine codes exist (`packages/features/episodes/src/lib/canon/continuity-validator.ts:30`), but the spec's Causality Break and standalone-episode Connectivity are absent"
+    met: true
+    evidence: "packages/features/episodes/src/lib/canon/continuity-validator.ts:88 (CANON_011 Causality Break, checkCausalityBreak at :673) and :94 (CANON_012 Standalone Episode, checkStandaloneEpisode at :701, MIN_CONNECTIVITY_RATIO at :105); tests __tests__/continuity-validator.test.ts:469 and :518. CANON_010 was already taken by Planner Output Malformed, so the spec's two missing rules are numbered 011 and 012. CANON_011 needs `dependsOnScenes` on plot scenes and nothing in the story planner emits it yet, so it is inert in production until a producer fills it; CANON_012 runs on real data"
   - text: "4 checkpoint methods functional (IDEATION, STORY, SCREENPLAY, PUBLISH)"
     met: false
-    reason: "unverified — no test drives any checkpoint; the Lambda paths import `server-only` via the context builder and likely skip"
+    reason: "unverified — the worker STORY and SCREENPLAY checkpoints are exercised by apps/web/lambda/llm-worker/__tests__/validation-checkpoint.test.ts; no test drives IDEATION or PUBLISH"
   - text: "Integration with story-actions.ts"
     met: false
-    reason: "retired — superseded: STORY validation runs as the story agent's `checkContinuity` tool (`packages/features/episodes/src/agent/skills/continuity-skill.ts:179`), d5f6dbdc"
+    reason: "retired — superseded: STORY validation runs as the story agent's `checkContinuity` tool (`packages/features/episodes/src/agent/skills/continuity-skill.ts:180`), d5f6dbdc"
   - text: "Unit tests with >80% coverage"
-    met: false
-    reason: "not met — 61% of statements, 70% of branches (v8, whole `@kit/episodes` suite, 2026-09-25); `__tests__/continuity-validator.test.ts` covers CANON_007 only (KB-72)"
+    met: true
+    evidence: "packages/features/episodes/__tests__/continuity-validator.test.ts:54-599 (35 tests: CANON_001-009, 011, 012, validateSceneBlocks, rule registry). continuity-validator.ts measured 92.94% statements, 92.75% branches, 88.88% functions (v8 through apps/web's vitest, 2026-09-30); the uncovered lines are underscore-prefixed dead helpers and one suggestAlternative default"
   - text: "Performance: single validation < 500ms"
     met: false
     reason: "unverified — needs a timed run; no benchmark exists"
   - text: "Clear error messages with suggestions"
     met: true
-    evidence: "packages/features/episodes/src/lib/canon/continuity-validator.ts:216"
+    evidence: "packages/features/episodes/src/lib/canon/continuity-validator.ts:244"
   - text: "Audit logging for all validations"
-    met: false
-    reason: "not met — nothing persisted; the STORY tool's result is not logged, SCREENPLAY logs counts only (`apps/web/lambda/llm-worker/utils/validation-checkpoint.ts:131`)"
+    met: true
+    evidence: "apps/web/lambda/llm-worker/utils/validation-checkpoint.ts:48 (recordValidationRun writes one public.validation_runs row per STORY or SCREENPLAY checkpoint run; a failed write is warned, never fatal; strict failures are logged before the throw); test apps/web/lambda/llm-worker/__tests__/validation-checkpoint.test.ts. Scope: the worker checkpoints only, which need the worker's service-role client. The in-app validateContentInlineAction and the checkContinuity agent tool do not go through the checkpoint and are not logged"
 test_plan:
   unit: []
   integration: []
   e2e: []
 remaining:
-  - criterion: "All 9 violation types"
-    reason: "Causality Break (rule 3) and standalone-episode Connectivity (rule 7) are not implemented; codes 003/005 check knowledge and world facts instead, and 007 holds the thread-orphan check"
-    closed_by: "owner"
-  - criterion: "Unit tests with >80% coverage"
-    reason: "61.25% statements, 69.86% branches, 80% functions (v8, 2026-09-25); only CANON_007 has a direct test (KB-72), the rest are reached through the continuity skill's tests"
+  - criterion: "4 checkpoint methods functional"
+    reason: "IDEATION and PUBLISH checkpoints have no test; STORY and SCREENPLAY are covered by validation-checkpoint.test.ts"
     closed_by: "unassigned"
-  - criterion: "Audit logging for all validations"
-    reason: "No persisted record; only a console count at the SCREENPLAY checkpoint"
+  - criterion: "Performance: single validation < 500ms"
+    reason: "No benchmark exists"
     closed_by: "unassigned"
 open_questions: []
 notes: |

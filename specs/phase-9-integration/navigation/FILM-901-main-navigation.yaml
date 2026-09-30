@@ -3,8 +3,8 @@ title: "Main Navigation"
 phase: 9
 phase_name: "Integration"
 category: component
-status: PARTIAL
-audited: "2026-09-23"
+status: DONE
+audited: "2026-09-30"
 effort: M
 dependencies: []
 summary: >-
@@ -48,10 +48,10 @@ acceptance_criteria:
     evidence: null
   - text: "Active state correctly highlights current route"
     met: true
-    evidence: "apps/e2e/tests/studio/sidebar-active.spec.ts:15"
-  - text: "Badge shows pending publish count (deferred to FILM-903)"
-    met: false
-    reason: "not met — deferred at ship time: no nav item carries a publish count, and FILM-903 is retired"
+    evidence: "apps/e2e/tests/studio/sidebar-active.spec.ts:22"
+  - text: "Badge shows the pending publish count, on the sidebar's Platforms link (there is no Publish nav item: Publish is a per-episode tab; owner decision 2026-09-30)"
+    met: true
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx:548 (badge on Platforms, `aria-label` at :112, `data-test=studio-nav-platforms-badge` at :132); count of draft/scheduled/queued/publishing publishes in `apps/web/app/home/[account]/studio/[projectSlug]/layout.tsx:111` and `apps/web/app/home/[account]/studio/[projectSlug]/_lib/pending-publishes.ts:20` (hidden at 0, 99+ above 99); unit tests `apps/web/test/studio-pending-publishes.test.tsx:56` and `:92`. The browser check `apps/e2e/tests/studio/sidebar-active.spec.ts:154` 'the Platforms link counts the project’s pending publishes, and hides at none' passed 2026-09-30 (real browser, retries off)"
   - text: "Back button returns to projects list"
     met: true
     evidence: null
@@ -59,8 +59,8 @@ acceptance_criteria:
     met: true
     evidence: "now a `Sheet` in `MobileStudioHeader` (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:141`), the desktop sidebar being `hidden md:block` (`layout.tsx:117`); `ResponsiveLayout` went in 5f44d0e1"
   - text: "Keyboard navigation works throughout (via Radix primitives)"
-    met: false
-    reason: "unverified — needs a keyboard-only walk-through or E2E; no test found"
+    met: true
+    evidence: "apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts:130 'every control in the studio sidebar can be reached and shows focus' and :248 'the episode tabs are reached in order and open with Enter' (passed 2026-09-30, real browser, retries off; the suite ran twice, 99/99)"
 test_plan:
   unit:
     - text: "Test `getStudioNavigation` with different params"
@@ -71,13 +71,12 @@ test_plan:
       evidence: "apps/web/test/studio-sidebar-active.test.ts:1"
   integration:
     - text: "Test navigation between sections"
-      met: false
-      reason: "not written: needs a browser (a Playwright spec that clicks through the sidebar); the config is unit-tested in apps/web/config/__tests__/studio-navigation.test.ts"
+      met: true
+      evidence: "apps/e2e/tests/studio/sidebar-active.spec.ts:100 'every section of the sidebar opens the page it names' clicks through the ten sidebar sections and asserts URL and aria-current (passed 2026-09-30, real browser, retries off; covers the KB-117 client-navigation stall on the assets route); the config is unit-tested in apps/web/config/__tests__/studio-navigation.test.ts"
     - text: "Test deep linking to episode tabs"
       met: true
       evidence: "`apps/e2e/tests/refusals/refusals.po.ts:235` (a direct `goto` to `audio-studio`; incidental, no tab-state assertion)"
   e2e: []
-remaining: []
 open_questions: []
 notes: |-
   ## Metadata
@@ -85,7 +84,7 @@ notes: |-
   - **Phase:** 9 - Integration
   - **Priority:** P2 (Post-MVP)
   - **Effort:** M (4-8 hours)
-  - **Status:** 🟡 PARTIAL (audit 2026-09-23; was DONE)
+  - **Status:** ✅ DONE (audit 2026-09-30; PARTIAL after the 2026-09-23 audit)
   - **Dependencies:** All feature packages
   - **Blocks:** None
 

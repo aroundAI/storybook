@@ -375,6 +375,35 @@ export type Database = {
           },
         ]
       }
+      analytics_insights_cache: {
+        Row: {
+          created_at: string
+          input_hash: string
+          insights: Json
+          project_id: string
+        }
+        Insert: {
+          created_at?: string
+          input_hash: string
+          insights: Json
+          project_id: string
+        }
+        Update: {
+          created_at?: string
+          input_hash?: string
+          insights?: Json
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_insights_cache_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       analytics_settings: {
         Row: {
           account_id: string
@@ -2478,6 +2507,77 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      generated_reports: {
+        Row: {
+          account_id: string
+          config: Json
+          created_at: string
+          created_by: string | null
+          date_range_end: string
+          date_range_start: string
+          file_name: string
+          id: string
+          record_count: number
+          report_type: string
+          storage_path: string
+        }
+        Insert: {
+          account_id: string
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          date_range_end: string
+          date_range_start: string
+          file_name: string
+          id?: string
+          record_count: number
+          report_type: string
+          storage_path: string
+        }
+        Update: {
+          account_id?: string
+          config?: Json
+          created_at?: string
+          created_by?: string | null
+          date_range_end?: string
+          date_range_start?: string
+          file_name?: string
+          id?: string
+          record_count?: number
+          report_type?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_reports_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_reports_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "public_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_reports_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generated_reports_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
             referencedColumns: ["id"]
           },
         ]
@@ -5021,6 +5121,50 @@ export type Database = {
           },
         ]
       }
+      validation_runs: {
+        Row: {
+          checkpoint: string
+          created_at: string
+          enforcement: string
+          episode_number: number | null
+          id: string
+          passed: boolean
+          project_id: string
+          summary: Json
+          violations: Json
+        }
+        Insert: {
+          checkpoint: string
+          created_at?: string
+          enforcement: string
+          episode_number?: number | null
+          id?: string
+          passed: boolean
+          project_id: string
+          summary: Json
+          violations?: Json
+        }
+        Update: {
+          checkpoint?: string
+          created_at?: string
+          enforcement?: string
+          episode_number?: number | null
+          id?: string
+          passed?: boolean
+          project_id?: string
+          summary?: Json
+          violations?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "validation_runs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendor_data_purges: {
         Row: {
           account_id: string | null
@@ -6052,6 +6196,15 @@ export type Database = {
       }
       transfer_team_account_ownership: {
         Args: { new_owner_id: string; target_account_id: string }
+        Returns: undefined
+      }
+      update_character_with_details: {
+        Args: {
+          p_asset_id: string
+          p_asset_patch?: Json
+          p_attributes_patch?: Json
+          p_details_patch?: Json
+        }
         Returns: undefined
       }
       update_episode_with_lock: {

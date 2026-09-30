@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import Image from 'next/image';
 
@@ -21,6 +21,10 @@ import { useLlmJob } from '@kit/ui/hooks';
 import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
 
+import {
+  insightsFromJobResult,
+  insightsStaleTime,
+} from '../lib/insights-result';
 import { generateInsightsAction } from '../server/insights-actions';
 import type { AggregateAnalytics } from '../types';
 
@@ -37,24 +41,22 @@ type InsightsData = Extract<
 
 export function AIInsights({ projectId, analytics }: AIInsightsProps) {
   const [wsInsights, setWsInsights] = useState<InsightsData | null>(null);
+  const forceRefresh = useRef(false);
 
   // WebSocket for async LLM results (uses shared provider from layout)
   const {
     status: llmStatus,
     result: llmResult,
     error: llmError,
-  } = useLlmJob<{
-    insights: InsightsData;
-  }>('analytics-insights');
+  } = useLlmJob<{ success: boolean; data: InsightsData }>('analytics-insights');
 
   // Handle async WebSocket result
   useEffect(() => {
     if (llmStatus === 'success' && llmResult) {
-      // llmResult is already the result object from message.result
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const resultData = llmResult as any;
-      if (resultData) {
-        setWsInsights(resultData);
+      const delivered = insightsFromJobResult(llmResult);
+
+      if (delivered) {
+        setWsInsights(delivered);
         toast.success('AI insights generated');
       }
     } else if (llmStatus === 'error') {
@@ -70,24 +72,35 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
   } = useQuery({
     queryKey: ['ai-insights', projectId, analytics?.totals?.views],
     queryFn: async () => {
+      const refresh = forceRefresh.current;
+      forceRefresh.current = false;
+
       const result = await unwrap(
-        generateInsightsAction({ projectId, analytics }),
+        generateInsightsAction({ projectId, analytics, refresh }),
       );
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((result as any)?.queued) {
+
+      if (result.queued) {
         toast.info('Generating insights in background...');
         return null; // WebSocket will deliver result
       }
       return result;
     },
-    staleTime: 1000 * 60 * 60, // Cache for 1 hour
+    staleTime: (query) => insightsStaleTime(query.state.data),
     enabled: !!projectId,
   });
 
   // Use WebSocket result if available, otherwise query result
   const insights = wsInsights || queryInsights;
+  const awaitingJob =
+    queryInsights === null && !wsInsights && llmStatus !== 'error';
 
-  if (isLoading || llmStatus === 'pending') {
+  const handleRefresh = () => {
+    forceRefresh.current = true;
+    setWsInsights(null);
+    void refetch();
+  };
+
+  if (isLoading || awaitingJob || llmStatus === 'pending') {
     return <InsightsSkeleton />;
   }
 
@@ -110,7 +123,8 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => refetch()}
+          onClick={handleRefresh}
+          data-test="ai-insights-refresh"
           disabled={isFetching}
           className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
         >

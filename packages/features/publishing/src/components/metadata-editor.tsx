@@ -26,6 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@kit/ui/popover';
 import { Textarea } from '@kit/ui/textarea';
 
 import { PLATFORM_CONFIG, PLATFORM_LIMITS } from '../lib/platform-limits';
+import { tweetLength } from '../lib/tweet-length';
 import type {
   MetadataEditorProps,
   Platform,
@@ -73,13 +74,17 @@ export function MetadataEditor({
   const limits = PLATFORM_LIMITS[platform.platform];
   const config = PLATFORM_CONFIG[platform.platform];
   const [tagInput, setTagInput] = useState('');
+  const isTweet = platform.platform === 'twitter';
+  const titleLength = isTweet
+    ? tweetLength(platform.title)
+    : platform.title.length;
 
   // Validation
   const validation = useMemo<ValidationResult>(() => {
     const warnings: string[] = [];
     const errors: string[] = [];
 
-    if (platform.title.length > limits.titleMax) {
+    if (titleLength > limits.titleMax) {
       errors.push(`Title exceeds ${limits.titleMax} characters`);
     }
 
@@ -109,7 +114,7 @@ export function MetadataEditor({
     }
 
     return { warnings, errors, isValid: errors.length === 0 };
-  }, [platform, limits]);
+  }, [platform, limits, titleLength]);
 
   const handleAddTag = useCallback(() => {
     if (!tagInput.trim()) return;
@@ -196,8 +201,15 @@ export function MetadataEditor({
                 <Label htmlFor={`${platform.platform}-title`}>
                   {titleLabel}
                 </Label>
-                <span className="text-sm text-muted-foreground">
-                  {platform.title.length}/{limits.titleMax}
+                <span
+                  className={
+                    titleLength > limits.titleMax
+                      ? 'text-sm text-destructive'
+                      : 'text-sm text-muted-foreground'
+                  }
+                  data-test={`${platform.platform}-title-count`}
+                >
+                  {titleLength}/{limits.titleMax}
                 </span>
               </div>
               {usesCaption ? (
@@ -208,7 +220,7 @@ export function MetadataEditor({
                     onChange({ title: e.target.value })
                   }
                   rows={4}
-                  maxLength={limits.titleMax}
+                  maxLength={isTweet ? undefined : limits.titleMax}
                   placeholder={`Enter ${platform.platform} caption...`}
                 />
               ) : (
@@ -218,7 +230,7 @@ export function MetadataEditor({
                   onChange={(e: ChangeEvent<HTMLInputElement>) =>
                     onChange({ title: e.target.value })
                   }
-                  maxLength={limits.titleMax}
+                  maxLength={isTweet ? undefined : limits.titleMax}
                   placeholder={`Enter ${platform.platform} title...`}
                 />
               )}

@@ -330,6 +330,58 @@ describe('ElevenLabsProvider', () => {
       expect(result.voices[0]?.provider).toBe('elevenlabs');
     });
 
+    it('should filter by real language, keeping accented English voices', async () => {
+      fetchMock.mockResolvedValueOnce(
+        createMockResponse({
+          ok: true,
+          data: {
+            voices: [
+              {
+                voice_id: 'a1',
+                name: 'Brit',
+                category: 'premade',
+                labels: { accent: 'british', language: 'en' },
+                available_for_tiers: [],
+              },
+              {
+                voice_id: 'a2',
+                name: 'Aussie',
+                category: 'premade',
+                labels: { accent: 'australian' },
+                verified_languages: [{ language: 'en' }],
+                available_for_tiers: [],
+              },
+              {
+                voice_id: 'a3',
+                name: 'Hans',
+                category: 'premade',
+                labels: { accent: 'german' },
+                verified_languages: [{ language: 'de' }],
+                available_for_tiers: [],
+              },
+            ],
+          },
+        }),
+      );
+
+      const resultPromise = provider.getVoices({ language: 'en' });
+      await vi.runAllTimersAsync();
+      const result = await resultPromise;
+
+      expect(result.voices.map((v) => v.id)).toEqual(['a1', 'a2']);
+    });
+
+    it('should reject an empty API key before any request', async () => {
+      const keyless = new ElevenLabsProvider({ apiKey: '  ', maxRetries: 1 });
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await expect(keyless.getVoices()).rejects.toThrow(
+        'API key is missing or empty',
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+      errSpy.mockRestore();
+    });
+
     it('should filter voices by gender', async () => {
       fetchMock.mockResolvedValueOnce(
         createMockResponse({

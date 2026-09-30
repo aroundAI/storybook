@@ -294,16 +294,16 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-101b | [episodes-table](./phase-1-foundation/database/FILM-101-episodes-table.yaml) | ✅ DONE | S | - |
 | FILM-101c | [shots-table](./phase-1-foundation/database/FILM-101-shots-table.yaml) | ✅ DONE | S | FILM-101b |
 | FILM-101d | [assets-table](./phase-1-foundation/database/FILM-101-assets-table.yaml) | ✅ DONE | S | - |
-| FILM-101e | [character-details-table](./phase-1-foundation/database/FILM-101-character-details-table.yaml) | 🟡 PARTIAL | XS | FILM-101d |
+| FILM-101e | [character-details-table](./phase-1-foundation/database/FILM-101-character-details-table.yaml) | ✅ DONE | XS | FILM-101d |
 | FILM-101f | [voice-profiles-table](./phase-1-foundation/database/FILM-101-voice-profiles-table.yaml) | 🗑️ RETIRED (05ec0ae9) | XS | FILM-101d |
 | FILM-101g | [dialogue-lines-table](./phase-1-foundation/database/FILM-101-dialogue-lines-table.yaml) | ✅ DONE | XS | FILM-101b, FILM-101c |
-| FILM-101h | [audio-tracks-table](./phase-1-foundation/database/FILM-101-audio-tracks-table.yaml) | 🟡 PARTIAL | XS | FILM-101b |
+| FILM-101h | [audio-tracks-table](./phase-1-foundation/database/FILM-101-audio-tracks-table.yaml) | ✅ DONE | XS | FILM-101b |
 | FILM-101i | [generation-jobs-table](./phase-1-foundation/database/FILM-101-generation-jobs-table.yaml) | ✅ DONE | M | - |
 | FILM-101j | [platform-connections-table](./phase-1-foundation/database/FILM-101-platform-connections-table.yaml) | ✅ DONE | S | - |
 | FILM-101k | [publishes-table](./phase-1-foundation/database/FILM-101-publishes-table.yaml) | ✅ DONE | S | FILM-101b, FILM-101j |
 | FILM-101l | [content-analytics-table](./phase-1-foundation/database/FILM-101-content-analytics-table.yaml) | 🗑️ RETIRED (047f0c84) | S | FILM-101k |
 | FILM-101m | [shared-resources-table](./phase-1-foundation/database/FILM-101-shared-resources-table.yaml) | ✅ DONE | XS | - |
-| FILM-101n | [external-api-keys-table](./phase-1-foundation/database/FILM-101-external-api-keys-table.yaml) | 🟡 PARTIAL | XS | - |
+| FILM-101n | [external-api-keys-table](./phase-1-foundation/database/FILM-101-external-api-keys-table.yaml) | ✅ DONE | XS | - |
 | FILM-102a | [enable-rls](./phase-1-foundation/rls/FILM-102-enable-rls.yaml) | ✅ DONE | XS | FILM-101* |
 | FILM-102b | [project-policies](./phase-1-foundation/rls/FILM-102-project-policies.yaml) | ✅ DONE | M | FILM-102a |
 | FILM-102c | [account-policies](./phase-1-foundation/rls/FILM-102-account-policies.yaml) | ✅ DONE | S | FILM-102a |
@@ -463,7 +463,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-901 | [main-navigation](./phase-9-integration/navigation/FILM-901-main-navigation.yaml) | 🟡 PARTIAL | M | - |
+| FILM-901 | [main-navigation](./phase-9-integration/navigation/FILM-901-main-navigation.yaml) | ✅ DONE | M | - |
 | FILM-902 | [dashboard-widgets](./phase-9-integration/components/FILM-902-dashboard-widgets.yaml) | 🗑️ RETIRED (5f44d0e1) | M | FILM-805, FILM-804 |
 | FILM-903 | [generation-status-panel](./phase-9-integration/components/FILM-903-generation-status-panel.yaml) | 🗑️ RETIRED (5f44d0e1) | M | FILM-411 |
 | FILM-904 | [api-keys-page](./phase-9-integration/settings/FILM-904-api-keys-page.yaml) | ✅ DONE | M | FILM-101n |
@@ -502,13 +502,13 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-1123 | [Fact-Checker Role Prompt](./phase-11-canon-integration/fact-management/FILM-1123-fact-checker-role.yaml) | 🟡 PARTIAL | M | #178 | FILM-304 |
 | FILM-1130 | [News Source Registry](./phase-11-canon-integration/news-system/FILM-1130-news-source-registry.yaml) | ✅ DONE | M | #182 | ~~FILM-1135~~ |
 | FILM-1131 | [News Article Cache](./phase-11-canon-integration/news-system/FILM-1131-news-article-cache.yaml) | 🟡 PARTIAL | M | #182 | ~~FILM-1135~~ |
-| FILM-1132 | [News Aggregator API](./phase-11-canon-integration/news-system/FILM-1132-news-aggregator-api.yaml) | 🟡 PARTIAL | L | #182 | ~~FILM-1135~~ |
+| FILM-1132 | [News Aggregator API](./phase-11-canon-integration/news-system/FILM-1132-news-aggregator-api.yaml) | ✅ DONE | L | #182 | ~~FILM-1135~~ |
 | FILM-1133 | [News Anchor Role](./phase-11-canon-integration/news-system/FILM-1133-anchor-role.yaml) | 🟡 PARTIAL | M | — | FILM-1132 |
 | FILM-1134 | [Producer Role](./phase-11-canon-integration/news-system/FILM-1134-producer-role.yaml) | 🟡 PARTIAL | M | — | FILM-1133 |
 | FILM-1135 | [External Context Provider](./phase-11-canon-integration/providers/FILM-1135-external-context-provider.yaml) | 🟡 PARTIAL | L | #181 | - |
 | FILM-1140 | [Research Hub UI](./phase-11-canon-integration/ui-integration/FILM-1140-research-hub-ui.yaml) | 🟡 PARTIAL | L | — | FILM-1120 |
 | FILM-1141 | [Fact Source Upload](./phase-11-canon-integration/ui-integration/FILM-1141-fact-source-upload.yaml) | 🟡 PARTIAL | M | — | FILM-1140 |
-| FILM-1142 | [Canon Dashboard Facts Tab](./phase-11-canon-integration/ui-integration/FILM-1142-canon-dashboard-facts.yaml) | 🟡 PARTIAL | M | #344 | FILM-1140 |
+| FILM-1142 | [Canon Dashboard Facts Tab](./phase-11-canon-integration/ui-integration/FILM-1142-canon-dashboard-facts.yaml) | ✅ DONE | M | #344 | FILM-1140 |
 | FILM-1143 | [Generate Season Integration](./phase-11-canon-integration/ui-integration/FILM-1143-generate-season-integration.yaml) | 🟡 PARTIAL | M | — | FILM-1120, FILM-1122 |
 
 ### Phase 12: Scale & Network Strategy (2 specs)
@@ -545,7 +545,7 @@ See [phase-15-deep-analytics/README.md](./phase-15-deep-analytics/README.md) for
 | FILM-1504 | [youtube-reporting-api](./phase-15-deep-analytics/FILM-1504-youtube-reporting-api.yaml) | 🟡 PARTIAL | L | FILM-1501 |
 | FILM-1505 | [stranded-metrics-promotion](./phase-15-deep-analytics/FILM-1505-stranded-metrics-promotion.yaml) | ✅ DONE | M | FILM-1502, FILM-1504 |
 | FILM-1506 | [video-dim-deep-dive-queries](./phase-15-deep-analytics/FILM-1506-video-dim-deep-dive-queries.yaml) | 🟡 PARTIAL | L | FILM-1502, FILM-1504, FILM-1505 |
-| FILM-1507 | [content-taxonomy](./phase-15-deep-analytics/FILM-1507-content-taxonomy.yaml) | 🟡 PARTIAL | M | FILM-1506 |
+| FILM-1507 | [content-taxonomy](./phase-15-deep-analytics/FILM-1507-content-taxonomy.yaml) | ✅ DONE | M | FILM-1506 |
 | FILM-1508 | [revenue-mix-alerts](./phase-15-deep-analytics/FILM-1508-revenue-mix-alerts.yaml) | ✅ DONE | M | FILM-1506 |
 | FILM-1509 | [experiment-log](./phase-15-deep-analytics/FILM-1509-experiment-log.yaml) | 🗑️ RETIRED (28fba0ca; folded into FILM-1610) | M | FILM-1502 |
 | FILM-1510 | [hook-lab](./phase-15-deep-analytics/FILM-1510-hook-lab.yaml) | 🗑️ RETIRED (removed; FILM-CC-04 KB-9, KB-10; redesigned as FILM-1724) | L | FILM-1505, FILM-1506, FILM-1507, FILM-1301 |
@@ -557,8 +557,8 @@ See [phase-16-workbook-parity/README.md](./phase-16-workbook-parity/README.md) f
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-1601 | [analytics-correctness-bugs](./phase-16-workbook-parity/FILM-1601-analytics-correctness-bugs.yaml) | 🟡 PARTIAL | M | FILM-1506, FILM-1508 |
-| FILM-1602 | [channel-dimension-ypp](./phase-16-workbook-parity/FILM-1602-channel-dimension-ypp.yaml) | 🟡 PARTIAL | L | FILM-1601, FILM-1506 |
+| FILM-1601 | [analytics-correctness-bugs](./phase-16-workbook-parity/FILM-1601-analytics-correctness-bugs.yaml) | ✅ DONE | M | FILM-1506, FILM-1508 |
+| FILM-1602 | [channel-dimension-ypp](./phase-16-workbook-parity/FILM-1602-channel-dimension-ypp.yaml) | ✅ DONE | L | FILM-1601, FILM-1506 |
 | FILM-1603 | [views-at-age-video-log](./phase-16-workbook-parity/FILM-1603-views-at-age-video-log.yaml) | ✅ DONE | L | FILM-1602, FILM-1612 |
 | FILM-1604 | [cohort-medians-growth](./phase-16-workbook-parity/FILM-1604-cohort-medians-growth.yaml) | ✅ DONE | M | FILM-1603 |
 | FILM-1607 | [subscriber-snapshots](./phase-16-workbook-parity/FILM-1607-subscriber-snapshots.yaml) | ✅ DONE | M | FILM-1602, FILM-1612 |
@@ -704,7 +704,7 @@ reason when not.
 
 | Phase | Total | Draft | Partial | Deferred | Retired | Done |
 |-------|-------|-------|---------|----------|---------|------|
-| 1. Foundation | 26 | 0 | 3 | 0 | 5 | 18 |
+| 1. Foundation | 26 | 0 | 0 | 0 | 5 | 21 |
 | Cross-Cutting | 3 | 0 | 0 | 0 | 1 | 2 |
 | Design System | 5 | 0 | 3 | 0 | 1 | 1 |
 | 2. Assets | 9 | 0 | 6 | 0 | 3 | 0 |
@@ -714,19 +714,19 @@ reason when not.
 | 6. Edit Suite | 8 | 0 | 0 | 0 | 6 | 2 |
 | 7. Publishing | 16 | 0 | 6 | 0 | 4 | 6 |
 | 8. Analytics | 10 | 0 | 7 | 0 | 0 | 3 |
-| 9. Integration | 6 | 0 | 1 | 0 | 3 | 2 |
+| 9. Integration | 6 | 0 | 0 | 0 | 3 | 3 |
 | 10. Canon Mgmt | 7 | 0 | 4 | 0 | 1 | 2 |
-| 11. Canon Integ | 22 | 0 | 17 | 0 | 1 | 4 |
+| 11. Canon Integ | 22 | 0 | 15 | 0 | 1 | 6 |
 | 12. Scale | 2 | 0 | 0 | 0 | 0 | 2 |
 | 13. Hook Opt | 2 | 0 | 0 | 0 | 2 | 0 |
 | 14. Edit Suite v2 | 1 | 0 | 0 | 0 | 1 | 0 |
-| 15. Deep Analytics | 11 | 0 | 4 | 0 | 2 | 5 |
-| 16. Workbook Parity | 17 | 0 | 2 | 0 | 0 | 15 |
+| 15. Deep Analytics | 11 | 0 | 3 | 0 | 2 | 6 |
+| 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 17 |
 | 17. Analytics Provenance | 30 | 17 | 5 | 2 | 0 | 6 |
 | 18. Vendor Sandbox | 6 | 1 | 4 | 0 | 0 | 1 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **233** | **18** | **76** | **2** | **54** | **83** |
+| **TOTAL** | **233** | **18** | **67** | **2** | **54** | **92** |
 
 No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose PR is open keeps the status it has on `main`.
 
@@ -734,13 +734,13 @@ No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose 
 
 | Scope | Total | Done | Partial | Retired | Draft / Deferred |
 |-------|-------|------|---------|---------|------------------|
-| MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 93 | 34 | 25 | 34 | 0 |
-| Post-MVP (Ph 6–9) | 40 | 13 | 14 | 13 | 0 |
-| Canon (Ph 10–11) | 29 | 6 | 21 | 2 | 0 |
+| MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 93 | 37 | 22 | 34 | 0 |
+| Post-MVP (Ph 6–9) | 40 | 14 | 13 | 13 | 0 |
+| Canon (Ph 10–11) | 29 | 8 | 19 | 2 | 0 |
 | Scale & Hooks (Ph 12–13) | 4 | 2 | 0 | 2 | 0 |
 | Edit Suite v2 (Ph 14) | 1 | 0 | 0 | 1 | 0 |
-| Deep Analytics (Ph 15) | 11 | 5 | 4 | 2 | 0 |
-| Workbook Parity (Ph 16) | 17 | 15 | 2 | 0 | 0 |
+| Deep Analytics (Ph 15) | 11 | 6 | 3 | 2 | 0 |
+| Workbook Parity (Ph 16) | 17 | 17 | 0 | 0 | 0 |
 | Provenance & Signal (Ph 17) | 30 | 6 | 5 | 0 | 19 |
 | Vendor Sandbox (Ph 18) | 6 | 1 | 4 | 0 | 1 |
 | Public Sharing | 2 | 1 | 1 | 0 | 0 |

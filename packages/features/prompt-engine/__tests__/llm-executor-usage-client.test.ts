@@ -26,6 +26,7 @@ vi.mock('@kit/llm', () => ({
     code = 'LLM_ERROR';
   },
   createLLMClient: () => ({ createChatCompletion: mocks.createChatCompletion }),
+  forcedLocalConfig: () => null,
   logLLMUsage: mocks.logLLMUsage,
 }));
 

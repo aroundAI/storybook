@@ -1,6 +1,13 @@
 import { expect, test } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 
-import { seedProject, seedTeamAccount } from '../utils/seed';
+import {
+  insertRow,
+  seedProject,
+  seedTeamAccount,
+  serviceRoleAuth,
+  uniqueStamp,
+} from '../utils/seed';
 import { signInAs } from '../utils/session';
 
 /**
@@ -14,6 +21,15 @@ import { signInAs } from '../utils/session';
  *
  *   AI_SANDBOX_EVIDENCE=1 CAPTURE_EVIDENCE=1 EVIDENCE_DIR=/tmp/evidence \
  *     PLAYWRIGHT_BASE_URL=http://localhost:3144 npx playwright test ai-sandbox-evidence
+ *
+ * The Gemini inline flows also need the app started under the egress guard,
+ * and the same log path given to this run, so "nothing left the machine" is
+ * read off the guard's own log rather than assumed:
+ *
+ *   EGRESS_GUARD_LOG=/tmp/egress.log \
+ *     NODE_OPTIONS="--import $PWD/apps/vendor-sandbox/scripts/egress-guard.mjs" \
+ *     npx next dev -p 3144            # the app, from apps/web
+ *   EGRESS_GUARD_LOG=/tmp/egress.log AI_SANDBOX_EVIDENCE=1 ... npx playwright test ai-sandbox-evidence
  */
 
 const CONTROL = process.env.SANDBOX_CONTROL_URL ?? 'http://127.0.0.1:4100';
@@ -27,6 +43,7 @@ interface LedgerEntry {
   path: string;
   status: number;
   responseSummary?: string;
+  identified?: { kind: string; key?: string };
 }
 
 async function ledger(vendor: string, since = 0) {
@@ -41,6 +58,16 @@ async function lastId() {
   return (
     ((await response.json()) as { entries: LedgerEntry[] }).entries[0]?.id ?? 0
   );
+}
+
+function egressRefusals() {
+  try {
+    return readFileSync(process.env.EGRESS_GUARD_LOG!, 'utf8')
+      .split('\n')
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
 }
 
 test.describe('AI sandbox — inline flows (FILM-1803)', () => {
@@ -184,5 +211,169 @@ test.describe('AI sandbox — inline flows (FILM-1803)', () => {
         fullPage: true,
       });
     }
+  });
+
+  test.describe('the Gemini inline flows, under the egress guard', () => {
+    test.beforeEach(() => {
+      expect(
+        process.env.EGRESS_GUARD_LOG,
+        'EGRESS_GUARD_LOG must name the log the app server writes its egress refusals to',
+      ).toBeTruthy();
+    });
+
+    const geminiReplies = async (since: number, key: string) =>
+      (await ledger('gemini', since)).filter(
+        (e) => e.identified?.key === key && e.status === 200,
+      );
+
+    test('the Gemini key check goes to the sandbox and reaches no vendor', async ({
+      page,
+    }) => {
+      test.setTimeout(120_000);
+      const refusedBefore = egressRefusals().length;
+      const team = await seedTeamAccount({ emailPrefix: 'ai-gemini-key' });
+      await signInAs(page, team);
+
+      await page.goto(`/home/${team.slug}/settings`);
+      const card = page
+        .locator('div')
+        .filter({ has: page.getByText('Google Gemini', { exact: true }) })
+        .filter({ has: page.getByRole('button', { name: /Add Key|Update/ }) })
+        .last();
+      await card.getByRole('button', { name: /Add Key|Update/ }).click();
+
+      const dialog = page.getByRole('dialog');
+      const keyInput = dialog.locator('#api-key');
+
+      let since = await lastId();
+      await keyInput.fill('sandbox-invalid-key');
+      await dialog.getByRole('button', { name: 'Test' }).click();
+      await expect
+        .poll(async () =>
+          (await ledger('gemini', since)).map(
+            (e) => `${e.path.split('?')[0]} ${e.status}`,
+          ),
+        )
+        .toContain('/v1beta/models 400');
+
+      since = await lastId();
+      await keyInput.fill('sandbox-local-key');
+      await dialog.getByRole('button', { name: 'Test' }).click();
+      await expect
+        .poll(async () =>
+          (await ledger('gemini', since)).map(
+            (e) => `${e.path.split('?')[0]} ${e.status}`,
+          ),
+        )
+        .toContain('/v1beta/models 200');
+      if (shoot)
+        await dialog.screenshot({ path: `${OUT}/07-gemini-key-accepted.png` });
+
+      expect(egressRefusals().length).toBe(refusedBefore);
+    });
+
+    test('social-post variants, an asset description and canon extraction are answered by the sandbox, and nothing leaves the machine', async ({
+      page,
+    }) => {
+      test.setTimeout(240_000);
+      const refusedBefore = egressRefusals().length;
+      const team = await seedTeamAccount({ emailPrefix: 'ai-gemini-flows' });
+      const project = await seedProject(team, {
+        name: 'Harbor Lights Diner',
+        slug: `harbor-lights-${Date.now()}`,
+      });
+      const auth = serviceRoleAuth();
+      const fullStory =
+        'Mara keeps the Harbor Lights Diner open through the storm. At dusk Tomas, the ferry pilot, ' +
+        'walks in with a sealed letter addressed to her late father, and neither of them sleeps until it is read.';
+      const episodeSlug = `sealed-letter-${uniqueStamp()}`;
+      const episode = await insertRow<{ id: string }>(
+        'episodes',
+        {
+          project_id: project.id,
+          number: 1,
+          title: 'The Sealed Letter',
+          slug: episodeSlug,
+          story_data: {
+            title: 'The Sealed Letter',
+            fullStory,
+            characters: [
+              {
+                name: 'Tomas Quill',
+                role: 'supporting',
+                arc: 'Delivers the letter and stays to hear it',
+              },
+            ],
+          },
+        },
+        auth,
+      );
+      await insertRow(
+        'shots',
+        { episode_id: episode.id, sequence_number: 1, prompt: 'Seeded shot' },
+        auth,
+      );
+      await signInAs(page, team);
+
+      // --- Social posts: LinkedIn variants, with research off (Brave is a vendor too).
+      let since = await lastId();
+      await page.goto(`/home/${team.slug}/social-posts`);
+      await page
+        .getByPlaceholder(/Paste your notes, ideas, or commentary here/)
+        .fill(
+          'A diner that stays open through the storm teaches more about service than any playbook does.',
+        );
+      await page.locator('#research-toggle').click();
+      await page
+        .getByRole('button', { name: 'Generate LinkedIn Post Variants' })
+        .click();
+      await expect(
+        page.getByText(/Generated \d+ LinkedIn post variants?/).first(),
+      ).toBeVisible({ timeout: 60_000 });
+      expect(
+        (await geminiReplies(since, 'linkedin-post-generation')).length,
+      ).toBeGreaterThan(0);
+      if (shoot)
+        await page.screenshot({ path: `${OUT}/08-social-variants.png` });
+
+      // --- Story sidebar: the description of an asset that is not in the library yet.
+      since = await lastId();
+      const episodePath = `/home/${team.slug}/studio/${project.slug}/episodes/${episodeSlug}`;
+      await page.goto(`${episodePath}/story`);
+      await page.getByText('Tomas Quill').first().hover();
+      await page.getByTitle('Create in library').first().click();
+      const createDialog = page.getByRole('alertdialog');
+      const description = createDialog.getByPlaceholder(
+        'Describe this character...',
+      );
+      await expect(description).toBeVisible({ timeout: 60_000 });
+      await expect(description).not.toHaveValue('', { timeout: 60_000 });
+      expect(
+        (
+          await geminiReplies(
+            since,
+            'story-generation/extract-asset-description',
+          )
+        ).length,
+      ).toBeGreaterThan(0);
+      if (shoot)
+        await createDialog.screenshot({
+          path: `${OUT}/09-asset-description.png`,
+        });
+
+      // --- Publish: the canon extraction runs on mount and offers to save.
+      since = await lastId();
+      await page.goto(`${episodePath}/publish`);
+      await expect(
+        page.getByRole('button', { name: 'Save to Canon' }),
+      ).toBeVisible({ timeout: 60_000 });
+      expect(
+        (await geminiReplies(since, 'canon-extraction')).length,
+      ).toBeGreaterThan(0);
+      if (shoot)
+        await page.screenshot({ path: `${OUT}/10-canon-extraction.png` });
+
+      expect(egressRefusals().length).toBe(refusedBefore);
+    });
   });
 });

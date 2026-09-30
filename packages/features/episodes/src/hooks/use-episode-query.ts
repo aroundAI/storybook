@@ -35,11 +35,11 @@ interface DatabaseEpisode {
   updated_at: string;
   deleted_at: string | null;
   master_video_asset_id: string | null;
-  season: Array<{
+  season: {
     id: string;
     name: string;
     number: number;
-  }> | null;
+  } | null;
   project: {
     metadata: Record<string, unknown>;
   } | null;
@@ -126,7 +126,7 @@ function transformEpisodeResponse(
     deletedAt: episode.deleted_at,
     masterVideoAssetId: episode.master_video_asset_id,
     shots: shots.map(transformShot),
-    season: episode.season?.[0] ?? null,
+    season: episode.season ?? null,
     projectMetadata: (episode.project?.metadata ?? {}) as {
       videoStyle?: string;
       targetAudience?: string;
@@ -188,6 +188,7 @@ export function useEpisodeQuery(
         `,
         )
         .eq('episode_id', episodeId)
+        .is('deleted_at', null)
         .order('sequence_number', { ascending: true });
 
       if (shotsError) {

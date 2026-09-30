@@ -4,6 +4,7 @@ phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
 status: PARTIAL
+audited: "2026-09-30"
 effort: M
 dependencies:
   - spec_id: "FILM-1722"
@@ -33,7 +34,7 @@ acceptance_criteria:
     evidence: "packages/clickhouse/__tests__/measures.test.ts \"refuses a range engaged views does not cover\" — view_definition_changed with its date, via viewsDenominatorFor"
   - text: "engagedViews backs any YouTube series crossing 2026-08-27"
     met: false
-    reason: "In the module, yes: computeMeasure reads engaged_views across 2026-08-27 and stamps bridged (packages/clickhouse/__tests__/measures.test.ts \"reads engaged_views across 2026-08-27\"). On the surfaces, no: the owner's ruling of 2026-09-22 (FILM-1722 §12) keeps today's displayed figures, over views, until FILM-1719 can explain the switch. displayedEngagementRatePercent holds them"
+    reason: "held until FILM-1719 — owner ruling 2026-09-22 (FILM-1722 section 12) keeps today's displayed figures, over views, until FILM-1719 can explain the switch. In the module, yes: computeMeasure reads engaged_views across 2026-08-27 and stamps bridged (packages/clickhouse/__tests__/measures.test.ts \"reads engaged_views across 2026-08-27\"). On the surfaces, no: the owner's ruling of 2026-09-22 (FILM-1722 §12) keeps today's displayed figures, over views, until FILM-1719 can explain the switch. displayedEngagementRatePercent holds them"
   - text: "A measure computed over a fallback denominator is distinguishable from one over the preferred denominator"
     met: true
     evidence: "packages/clickhouse/__tests__/measures.test.ts \"uses views for Instagram, marked as the fallback\" — role: fallback, fallbackFor reach not_ingested (FILM-1712)"
@@ -55,6 +56,10 @@ acceptance_criteria:
   - text: "Attention efficiency returns duration_unknown rather than a figure when the asset duration is null"
     met: true
     evidence: "packages/clickhouse/__tests__/measures.test.ts \"is duration_unknown when the duration is null\" (and 0)"
+remaining:
+  - criterion: "engagedViews backs any YouTube series crossing 2026-08-27"
+    reason: "Module-level proof exists (measures.test.ts \"reads engaged_views across 2026-08-27\"); the surfaces are not switched to computeMeasure. Owner ruling 2026-09-22 (FILM-1722 section 12): displayed figures are held until FILM-1719 can explain the switch; FILM-1719 now carries the criterion"
+    closed_by: "FILM-1719"
 open_questions: []
 feature:
   database: null

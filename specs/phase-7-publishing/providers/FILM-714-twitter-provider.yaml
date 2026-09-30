@@ -4,7 +4,7 @@ phase: 7
 phase_name: "Publishing"
 category: provider
 status: PARTIAL
-audited: "2026-09-24"
+audited: "2026-09-30"
 effort: M
 dependencies:
   - spec_id: "FILM-708"
@@ -49,20 +49,20 @@ acceptance_criteria:
     met: false
     reason: "owner check OC-5 (docs/OWNER-CHECKS.md) — no X credentials (FILM-1729 §2); FILM-1725 Check I. Against a local stand-in for X the whole flow now runs through the production build: Connect on the Platforms page (KB-86), X's authorize page, the real callback's token exchange and user lookup, and a landing on the platforms page with the new row (KB-87 — it used to land on the failure page); reconnecting re-attaches the same row; Disconnect revokes both tokens (KB-25) — `apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts`. Refresh is fixed by KB-15 (#326): `packages/features/publishing/__tests__/token-refresh.test.ts:687`"
   - text: "Video upload with chunked transfer"
-    met: false
-    reason: "not met — FILM-1729: `media.write` is never requested, so X refuses the upload (403); chunking itself is tested (`packages/features/publishing/__tests__/twitter-provider.test.ts:95`)"
+    met: true
+    evidence: "`media.write` is now requested at connect (`packages/features/publishing/src/oauth/twitter/config.ts:23`, guard `packages/features/publishing/__tests__/analytics-scopes.test.ts:33`); chunking tested at `packages/features/publishing/__tests__/twitter-provider.test.ts:95`. Accounts connected before this need to reconnect (the 403 already names the missing scope, `apps/web/lambda/publish-worker/handlers/twitter.ts:47`). Not run against live X (FILM-1725); the publish screen still lists no X platform (`packages/features/publishing/src/lib/constants.ts:45`, FILM-1729)"
   - text: "Tweet composition with character limit"
-    met: false
-    reason: "not met — no composer (`twitter-composer.tsx` never existed); the provider only rejects text over 280 (`packages/features/publishing/src/providers/twitter/twitter-provider.ts:36`)"
+    met: true
+    evidence: "the counter lives in the publish-hub metadata editor, there is no separate composer: `packages/features/publishing/src/components/metadata-editor.tsx:78` (red over the limit, `data-test=twitter-title-count`); URLs count 23 and text counts by code point (`packages/features/publishing/src/lib/tweet-length.ts:12`, `packages/features/publishing/__tests__/tweet-length.test.ts:5`); the provider uses it (`packages/features/publishing/src/providers/twitter/twitter-provider.ts:37`, `packages/features/publishing/__tests__/twitter-provider.test.ts:218`). X's 2x weighting of CJK characters is not reproduced (no twitter-text dependency)"
   - text: "Hashtag and mention tracking"
     met: false
     reason: "retired — owner decision 2026-09-30: X posts are not scanned for hashtags or mentions, and no feature depends on it"
   - text: "Analytics retrieval (views, likes, retweets, replies)"
     met: false
-    reason: "not met — no X metrics are read anywhere (`public_metrics` appears nowhere); FILM-1727 is DRAFT"
+    reason: "not met — no X metrics are read anywhere (`public_metrics` appears nowhere); needs a read scope/tier decision; FILM-1727 is DRAFT"
   - text: "Delete tweet functionality"
-    met: false
-    reason: "not met — the provider has no delete; unpublish skips X (`apps/web/lambda/publish-worker/index.ts:238-242`)"
+    met: true
+    evidence: "`apps/web/lambda/publish-worker/handlers/twitter.ts:164` (DELETE /2/tweets/:id, refuses an answer without `deleted: true`), wired in `apps/web/lambda/publish-worker/index.ts:236`, and X joins `PLATFORMS_DELETED_ON_UNPUBLISH` (`packages/features/publishing/src/lib/platforms.ts:39`); tests `apps/web/lambda/publish-worker/__tests__/twitter.test.ts:168`"
   - text: "Video duration validation"
     met: false
     reason: "retired — owner decision 2026-09-30: the 140-second limit stays a declared constant; X rejects a too-long video itself"
@@ -92,18 +92,9 @@ remaining:
   - criterion: "OAuth 2.0 connection flow works (unverified)"
     reason: "Never run against X: no credentials are held (FILM-1729 §2). The success path runs against a local stand-in for X (KB-86/KB-87, #343); one live connect is FILM-1725 Check I. Token refresh is fixed by KB-15 (#326)"
     closed_by: "FILM-1725"
-  - criterion: "Video upload with chunked transfer"
-    reason: "Chunking is built and tested, but `media.write` is never requested, so X refuses the upload with 403. Nothing on the publish screen sends a video to X either: its platform lists stop at YouTube, Facebook, Instagram and TikTok (`packages/features/publishing/src/lib/constants.ts:45`)"
-    closed_by: "FILM-1729"
-  - criterion: "Tweet composition with character limit"
-    reason: "No composer exists; the provider only rejects text over 280 characters"
-    closed_by: "unassigned"
   - criterion: "Analytics retrieval"
-    reason: "No X metrics are read anywhere"
+    reason: "No X metrics are read anywhere (`public_metrics` appears nowhere)"
     closed_by: "FILM-1727"
-  - criterion: "Delete tweet functionality"
-    reason: "The provider has no delete, and unpublish skips X at the vendor (`apps/web/lambda/publish-worker/index.ts:238-242`)"
-    closed_by: "unassigned"
 open_questions: []
 notes: |
   ## Metadata

@@ -4,7 +4,7 @@ phase: 5
 phase_name: "Audio Generation"
 category: component
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-30"
 effort: L
 dependencies:
   - spec_id: "FILM-502"
@@ -45,7 +45,7 @@ acceptance_criteria:
     evidence: "judged against the live route-local studio (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/page.tsx`), which replaced this spec's package `AudioStudio` in `f7cdfa21` (that component still exists, mounted nowhere); `apps/e2e/tests/refusals/refusals.po.ts:236` opens it and drives it on the production build"
   - text: "Episode title displays correctly"
     met: true
-    evidence: "the episode layout's header renders it above every studio (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-header.tsx:77`)"
+    evidence: "the episode layout's header renders it above every studio (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-header.tsx:79`)"
   - text: "Character list displays in sidebar"
     met: false
     reason: "retired — the studio's voice panel was removed in `ae019639`; voices are assigned in the character editor (FILM-205)"
@@ -63,7 +63,7 @@ acceptance_criteria:
     reason: "unverified — no test switches tabs; the buttons are at `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/audio-studio-header.tsx:106`"
   - text: "Audio player appears when audio selected"
     met: false
-    reason: "retired — the timeline redesign (`e737c138`) plays a clip from its block's popover (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:268`); there is no player panel"
+    reason: "retired — the timeline redesign (`e737c138`) plays a clip from its block's popover (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:376`); there is no player panel"
   - text: "Play/pause controls work"
     met: false
     reason: "unverified — no test; music and SFX blocks toggle play and pause (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/music-timeline.tsx:659`), dialogue blocks only play"
@@ -78,7 +78,7 @@ acceptance_criteria:
     evidence: "`apps/e2e/tests/refusals/action-refusals.spec.ts:26` asserts the toast's text"
   - text: "Keyboard shortcuts work"
     met: false
-    reason: "not met — no key handler anywhere under `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/`"
+    reason: "retired — owner decision 2026-09-30: keyboard shortcuts are deferred; the dialogue timeline is keyboard-operable (roving tabindex, Enter/Space, arrows, Home/End, E, Escape) and revisit later"
   - text: "Responsive layout on mobile/tablet"
     met: false
     reason: "unverified — visual; needs renders at phone and tablet widths"
@@ -98,8 +98,8 @@ acceptance_criteria:
     met: false
     reason: "unverified — visual"
   - text: "Accessible (keyboard navigation, ARIA labels)"
-    met: false
-    reason: "not met — dialogue blocks are clickable `div`s with no role, tabIndex or key handler (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:458`)"
+    met: true
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:565-591 (blocks are role=button with roving tabIndex, aria-label and aria-pressed; the block list has an aria-label naming its keys), :659-687 (role=menu and menuitem), :328 handleBlocksKeyDown backed by apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-keyboard.ts; apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/audio-studio-header.tsx:180-201 (zoom and fit aria-labels); unit test apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/__tests__/dialogue-keyboard.test.ts; e2e apps/e2e/tests/studio/dialogue-keyboard.spec.ts:92 'arrows move focus, Enter opens the menu, Escape returns focus' and :128 'typing e in the edit textarea does not trigger shortcuts' (passed 2026-09-30, real browser, retries off)"
   - text: "TypeScript compiles without errors"
     met: true
     evidence: "CI run 35779959194 (`main` at `6dfa35a4`): `web:typecheck` executed clean; these files are unchanged since"
@@ -111,12 +111,24 @@ test_plan:
   integration: []
   e2e: []
 remaining:
-  - criterion: "Keyboard shortcuts work"
-    reason: "no key handler anywhere under the live `audio-studio/` route"
+  - criterion: "Tab navigation works correctly"
+    reason: "unverified — no test switches tabs"
     closed_by: "unassigned"
-  - criterion: "Accessible (keyboard navigation, ARIA labels)"
-    reason: "dialogue blocks are clickable `div`s with no role, tabIndex or key handler (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:458`); the studio has two `aria-label`s in all"
+  - criterion: "Play/pause controls work"
+    reason: "unverified — no test; music and SFX blocks toggle play and pause, dialogue blocks only play"
     closed_by: "unassigned"
+  - criterion: "Progress indicator updates in real-time"
+    reason: "unverified — no test watches the bar; it re-renders on each 3-second poll"
+    closed_by: "unassigned"
+  - criterion: "Responsive layout on mobile/tablet"
+    reason: "unverified — visual; needs renders at phone and tablet widths"
+    closed_by: "owner"
+  - criterion: "No UI freezing during operations"
+    reason: "unverified — runtime behaviour; needs a profiled session"
+    closed_by: "owner"
+  - criterion: "Smooth animations and transitions"
+    reason: "unverified — visual"
+    closed_by: "owner"
 open_questions: []
 notes: |
   ## Checklist structure in the source (added in the YAML conversion)

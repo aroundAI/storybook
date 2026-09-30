@@ -16,7 +16,7 @@ import { byTest } from '../utils/visible';
 /**
  * KB-119. The "Delete All" dialog said videos already on platforms "will need
  * to be deleted manually". Confirming it queues a platform delete for every
- * publish, and the publish worker removes the video on YouTube and Facebook.
+ * publish, and the publish worker removes the video on YouTube, Facebook and X.
  * The dialog now says what happens, per platform.
  */
 
@@ -34,7 +34,7 @@ async function capture(page: Page, name: string) {
   await page.screenshot({ path: `${OUT}/kb-119-${name}.png` });
 }
 
-test('the Delete All dialog says the videos are deleted on YouTube and Facebook', async ({
+test('the Delete All dialog says the videos are deleted on YouTube, Facebook and X', async ({
   page,
 }) => {
   const team = await seedTeamAccount({ emailPrefix: 'kb119' });
@@ -70,10 +70,10 @@ test('the Delete All dialog says the videos are deleted on YouTube and Facebook'
   const copy = byTest(page, 'publish-delete-all-copy');
 
   await expect(copy).toContainText(
-    "This deletes this episode's videos on YouTube and Facebook",
+    "This deletes this episode's videos on YouTube, Facebook and X",
   );
   await expect(copy).toContainText(
-    'Videos on TikTok, Instagram, X and LinkedIn stay up',
+    'Videos on TikTok, Instagram and LinkedIn stay up',
   );
   await expect(copy).not.toContainText('deleted manually');
 

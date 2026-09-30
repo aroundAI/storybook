@@ -4,6 +4,7 @@ phase: 18
 phase_name: "Local Vendor Sandbox"
 category: feature
 status: PARTIAL
+audited: "2026-09-30"
 effort: M
 dependencies:
   - spec_id: "FILM-1801"
@@ -39,44 +40,32 @@ acceptance_criteria:
     met: true
     evidence: "SDK_BASE_URL_VARIABLES in resolver.ts; apps/web/lib/vendor-overrides.ts logs them by name; vendor-url-resolver.test.ts and vendor-overrides.test.ts"
   - text: "(Half B) local defaults to http://localhost:11434/v1 and an owner-confirmed Ollama model; \"Claude Code API\" wording gone"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/llm/src/providers/local.ts:29 (URL) and packages/llm/src/factory.ts:18 (`DEFAULT_LOCAL_MODEL = 'llama3.1'`, tag confirmed by the owner 2026-09-30); wording rewritten in packages/llm/CLAUDE.md, AGENTS.md and README.md:127-147; tests packages/llm/__tests__/factory.test.ts:570 (sends to Ollama on localhost:11434) and :177 (defaults to the Ollama model), both red first"
   - text: "(Half B) local refuses outside dev/test with a message naming VENDOR_SANDBOX=1; LOCAL_API_URL validated, bad values throw — all seen red first"
     met: true
-    evidence: "packages/llm/src/providers/local.ts:51 — #482 (KB-21); guarded by packages/llm/__tests__/factory.test.ts:550, red in tooling/mutation-guards/kb-open-bugs.json"
+    evidence: "packages/llm/src/providers/local.ts:49 — #482 (KB-21); guarded by packages/llm/__tests__/factory.test.ts:551, red in tooling/mutation-guards/kb-open-bugs.json"
   - text: "(Half B) LLM_FORCE_PROVIDER=local routes the prompt executor, the Lambda copy and the agent runner through local under the gate, and is ignored (and logged) outside it"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/llm/src/force-local.ts:15 (`forcedLocalConfig`, behind `vendorSandboxEnabled`), used at packages/features/prompt-engine/src/lib/server/llm-executor.ts:372, apps/web/lambda/llm-worker/llm-utils.ts:237 and packages/agent/src/runner.ts:364; ignored and named at start-up by `ignoredVendorOverrides` (packages/shared/src/vendors/resolver.ts:193); tests packages/llm/__tests__/force-local.test.ts:12, apps/web/lambda/llm-worker/__tests__/force-local-provider.test.ts:32 (incl. refused in a Lambda), packages/agent/__tests__/runner.test.ts, packages/shared/__tests__/vendor-url-resolver.test.ts; gate removed, and each of the three routes nulled, went red first"
   - text: "(Half B) baseUrl reaches the local client from the executor's explicit config (the latent bug, fixed and noted)"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "the executor, the Lambda copy and the runner pass `baseUrl: provider === 'local' ? process.env.LOCAL_API_URL : undefined` (packages/features/prompt-engine/src/lib/server/llm-executor.ts:382, apps/web/lambda/llm-worker/llm-utils.ts:253, packages/agent/src/runner.ts:381); test packages/features/prompt-engine/__tests__/local-provider-stub.test.ts:131 (\"reaches LOCAL_API_URL, not the default port\"), red with the line removed (`Connection error.`)"
   - text: "(Half B) A prompt file without provider/model is a validation error"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "`assertPromptLlm` (packages/features/prompt-engine/src/lib/render-template.ts:32) called by the loader (packages/features/prompt-engine/src/lib/server/prompt-loader.ts:46) and the Lambda's renderPrompt (apps/web/lambda/llm-worker/llm-utils.ts:47); the silent fallbacks (local/claude-sonnet-4-5, deepseek/deepseek-chat) are gone and all 31 bundled prompts set gemini / gemini-3.5-flash; tests packages/features/prompt-engine/__tests__/prompt-llm-config.test.ts:26 and :43, apps/web/lambda/llm-worker/__tests__/render-prompt.test.ts, red with the Lambda call removed"
   - text: "(Half B) One real prompt validated end to end against Ollama — or, honestly, against a stub with the live run recorded as the owner's"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "against a stub: packages/features/prompt-engine/__tests__/local-provider-stub.test.ts:110 runs the real story-ideation prompt through the real `executeLLM` and `LocalClient` against an in-process HTTP server, asserting the /v1/chat/completions path, the stub host, model llama3.1, the prompt text in the user message, and output that passes the prompt's own schema. No `response_format` is sent by any provider, so it cannot be captured. The live Ollama run is recorded as the owner's (see remaining)"
   - text: "(Half B) §4.4's command in README.md and packages/llm/CLAUDE.md; §6 documents updated"
     met: false
-    reason: "not yet implemented — DRAFT"
+    reason: "part — the command is in README.md:132-147, packages/llm/CLAUDE.md:34-70 and AGENTS.md (also the prompt-engine CLAUDE/AGENTS/PRD default URL); the §6 spec rows (FILM-1803 port table, FILM-1801 §9, phase-18 README, KB-21, INDEX) are not yet updated"
 remaining:
-  - criterion: "(Half B) local defaults to http://localhost:11434/v1 and an owner-confirmed Ollama model"
-    reason: "Half B not started; Half A shipped alone (FILM-1803 needed only the SDK base URLs)"
-    closed_by: "unassigned"
-  - criterion: "(Half B) LLM_FORCE_PROVIDER=local routes the executor, the Lambda copy and the agent runner through local under the gate"
-    reason: "Half B not started; Half A shipped alone (FILM-1803 needed only the SDK base URLs)"
-    closed_by: "unassigned"
-  - criterion: "(Half B) baseUrl reaches the local client from the executor's explicit config"
-    reason: "Half B not started; Half A shipped alone (FILM-1803 needed only the SDK base URLs)"
-    closed_by: "unassigned"
-  - criterion: "(Half B) A prompt file without provider/model is a validation error"
-    reason: "Half B not started; Half A shipped alone (FILM-1803 needed only the SDK base URLs)"
-    closed_by: "unassigned"
-  - criterion: "(Half B) One real prompt validated end to end against Ollama"
-    reason: "Half B not started; Half A shipped alone (FILM-1803 needed only the SDK base URLs)"
-    closed_by: "unassigned"
-  - criterion: "(Half B) §4.4's command documented; §6 documents updated"
-    reason: "Half B not started; Half A shipped alone (FILM-1803 needed only the SDK base URLs)"
+  - criterion: "(Half B) One real prompt validated end to end against Ollama — the live run"
+    reason: "proven against a stub only (packages/features/prompt-engine/__tests__/local-provider-stub.test.ts:110); the live run needs Ollama on the owner's machine"
+    closed_by: "owner"
+  - criterion: "(Half B) §6 documents updated"
+    reason: "the README and CLAUDE.md docs are done; the §6 spec rows (FILM-1803 port table, FILM-1801 §9, phase-18 README, KB-21, INDEX) still name the old default"
     closed_by: "unassigned"
 open_questions: []
 notes: |
@@ -96,7 +85,7 @@ notes: |
   | OPENAI_BASE_URL | the openai SDK itself | openai@4.104.0 index.js:72 — constructor({ baseURL = Core.readEnv('OPENAI_BASE_URL'), … }) |
   | ANTHROPIC_BASE_URL | @anthropic-ai/sdk itself | @anthropic-ai/sdk@0.38.0 index.js:56, same shape |
   | GOOGLE_GEMINI_BASE_URL (and GOOGLE_VERTEX_BASE_URL) | @google/genai itself | @google/genai@1.34.0 dist/node/index.mjs:19523 via getBaseUrl(options.httpOptions, …, getEnv('GOOGLE_GEMINI_BASE_URL')) |
-  | LOCAL_API_URL | our code | packages/llm/src/factory.ts:79 — the local provider's base URL |
+  | LOCAL_API_URL | our code | packages/llm/src/factory.ts:84 — the local provider's base URL |
 
   The owner's decisions (2026-09-22):
 
@@ -119,7 +108,7 @@ notes: |
     providers/gemini.ts:59-62 (Vertex) and :65 (developer API),
     providers/deepseek.ts:41-44, providers/local.ts:50-55,
     transcription.ts:92-95 (Whisper). The lambdas call createLLMClient from
-    @kit/llm (apps/web/lambda/llm-worker/llm-utils.ts:242-249).
+    @kit/llm (apps/web/lambda/llm-worker/llm-utils.ts:237-253, where Half B added forcedLocalConfig and the explicit baseUrl).
   - Precedence in all three SDKs: an explicit constructor base URL wins; the
     env var is only the fallback when none is passed; then the hard-coded
     default. Our OpenAI, Anthropic, Gemini and Whisper clients pass none, so
@@ -128,8 +117,8 @@ notes: |
   - The local provider is the openai SDK with baseURL
     (local.ts:50-55), defaulting to http://127.0.0.1:8000/v1 (local.ts:29)
     and to the model claude-sonnet-4-5 (factory.ts:126) — the remains of a
-    "Claude Code API" assumption in local.ts:4-10, packages/llm/CLAUDE.md:36-39,
-    README.md:133-142. Ollama serves exactly this protocol at
+    "Claude Code API" assumption in local.ts:4-10, packages/llm/CLAUDE.md and
+    README.md (all reworded to Ollama in Half B). Ollama serves exactly this protocol at
     http://localhost:11434/v1, so the provider fits it with no new code.
   - LOCAL_API_URL is read only by loadConfigFromEnv(), which only two call
     sites use (assets/src/lib/element-prompt/llm-generator.ts:36,
@@ -140,7 +129,7 @@ notes: |
     config that never carries baseUrl. So a prompt that said local would
     today ignore LOCAL_API_URL entirely. The Lambda copy
     (llm-utils.ts:274-291) has the same shape. The agent runner
-    (packages/agent/src/runner.ts:364-380) defaults to gemini separately.
+    (packages/agent/src/runner.ts:364-381) defaulted to gemini separately; Half B routes it through forcedLocalConfig() too.
   - VENDORS in packages/shared/src/vendors/resolver.ts has openai,
     gemini, deepseek, voyage — and no anthropic.
   - Nothing in the repository mentions Ollama.
@@ -209,7 +198,7 @@ notes: |
     llama3.1; this is a placeholder for the owner to confirm, not a
     measurement. The name must be one the owner has actually pulled.
   - Rewrite the "Claude Code API / claude-sonnet-4-5" wording in local.ts:4-10,
-    packages/llm/CLAUDE.md:36-39 and AGENTS.md, README.md:133-142 (the
+    packages/llm/CLAUDE.md and AGENTS.md, README.md (the
     "Local (Development — FREE!)" block and the pricing row) to describe Ollama:
     install, ollama pull <model>, the env, one command.
   - llm-executor.ts:342-343 and llm-utils.ts default provider || 'local',
@@ -227,7 +216,7 @@ notes: |
     conditions were not met — including VENDOR_SANDBOX=1, which is the one a
     developer will have forgotten.
   - LOCAL_API_URL keeps its name (README, CLAUDE.md and
-    packages/llm/__tests__/factory.test.ts:26,207,357,429-434 reference it)
+    packages/llm/__tests__/factory.test.ts:27,207,357,429-434 reference it)
     but is validated with the resolver's parseOverride rules: http(s), a
     local address, no credentials, query or fragment. A bad value throws;
     it never falls back to the default, because a typo silently sending

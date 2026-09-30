@@ -21,10 +21,14 @@ import {
 } from '@kit/ui/tooltip';
 import { cn } from '@kit/ui/utils';
 
+import type { SelectionModifiers } from './shot-selection';
+
 interface ShotCardProps {
   shot: Shot;
   isSelected: boolean;
-  onClick: () => void;
+  onSelect: (modifiers: SelectionModifiers) => void;
+  onFocus: () => void;
+  tabIndex: 0 | -1;
   size?: 'lg' | 'md' | 'sm';
 }
 
@@ -60,12 +64,12 @@ function extractCharacters(shot: Shot): string[] {
 
 const STATUS_STYLES: Record<ShotStatus, string> = {
   pending:
-    'bg-orange-200/80 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300',
+    'bg-orange-200/80 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300',
   generating:
-    'bg-blue-200/80 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+    'bg-blue-200/80 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
   completed:
-    'bg-green-200/80 text-green-700 dark:bg-green-900/50 dark:text-green-300',
-  failed: 'bg-red-200/80 text-red-700 dark:bg-red-900/50 dark:text-red-300',
+    'bg-green-200/80 text-green-800 dark:bg-green-900/50 dark:text-green-300',
+  failed: 'bg-red-200/80 text-red-800 dark:bg-red-900/50 dark:text-red-300',
 };
 
 const STATUS_ICONS: Record<ShotStatus, React.ReactNode> = {
@@ -76,7 +80,7 @@ const STATUS_ICONS: Record<ShotStatus, React.ReactNode> = {
 };
 
 const SIZE_CLASSES = {
-  lg: 'col-span-2 min-h-[400px]',
+  lg: 'sm:col-span-2 min-h-[400px]',
   md: 'col-span-1 min-h-[300px]',
   sm: 'col-span-1 min-h-[200px]',
 };
@@ -84,16 +88,40 @@ const SIZE_CLASSES = {
 const ShotCardInner = ({
   shot,
   isSelected,
-  onClick,
+  onSelect,
+  onFocus,
+  tabIndex,
   size = 'md',
 }: ShotCardProps) => {
   const characters = extractCharacters(shot);
 
   return (
     <div
-      onClick={onClick}
+      role="option"
+      aria-selected={isSelected}
+      aria-label={`Shot ${shot.sceneNumber}.${shot.shotNumber}: ${shot.description || shot.prompt || 'No description'}`}
+      tabIndex={tabIndex}
+      data-test="shot-card"
+      data-shot-id={shot.id}
+      data-selected={isSelected}
+      onFocus={onFocus}
+      onClick={(event) =>
+        onSelect({
+          toggle: event.metaKey || event.ctrlKey,
+          range: event.shiftKey,
+        })
+      }
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+
+        event.preventDefault();
+        onSelect({
+          toggle: event.metaKey || event.ctrlKey,
+          range: event.shiftKey,
+        });
+      }}
       className={cn(
-        'liquid-card group flex cursor-pointer flex-col overflow-hidden p-4 pb-6 transition-all',
+        'liquid-card group flex cursor-pointer flex-col overflow-hidden p-4 pb-6 transition-all outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
         SIZE_CLASSES[size],
         isSelected && 'ring-2 ring-blue-500/50',
       )}

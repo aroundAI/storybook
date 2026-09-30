@@ -25,7 +25,7 @@ acceptance_criteria:
     reason: "unverified — needs screenshots at 390/768/1024/1280px; Playwright runs Desktop Chrome only (`apps/e2e/playwright.config.ts:137`)"
   - text: "Sidebar collapses to sheet on tablet/mobile"
     met: false
-    reason: "no longer true — only below 768px (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:140`); tablets keep the full sidebar (`apps/web/app/home/[account]/studio/[projectSlug]/layout.tsx:118`)"
+    reason: "no longer true — only below 768px (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:140`); tablets keep the full sidebar (`apps/web/app/home/[account]/studio/[projectSlug]/layout.tsx:129`)"
   - text: "Bottom navigation appears on mobile"
     met: false
     reason: "no longer true — mobile navigation is a top header with a Sheet (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:140`); MobileNav never mounted, deleted 5f44d0e1"
@@ -43,13 +43,13 @@ acceptance_criteria:
     reason: "unverified — responsive sizes exist (e.g. `apps/web/app/home/[account]/studio/[projectSlug]/_components/hero-banner.tsx:38`); \"appropriately\" needs screenshots per breakpoint"
   - text: "No horizontal overflow at any breakpoint"
     met: true
-    evidence: "apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts:1"
+    evidence: "apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts:13"
 remaining:
   - criterion: "Sidebar collapses to sheet on tablet/mobile"
     reason: >
       The studio swaps to a Sheet only below `md` (768px); from 768px up the full
       sidebar shows (`hidden md:block`,
-      `apps/web/app/home/[account]/studio/[projectSlug]/layout.tsx:118`)
+      `apps/web/app/home/[account]/studio/[projectSlug]/layout.tsx:129`)
     closed_by: "owner"
   - criterion: "Bottom navigation appears on mobile"
     reason: >

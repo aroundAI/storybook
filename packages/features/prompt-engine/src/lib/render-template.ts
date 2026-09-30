@@ -25,6 +25,25 @@ export class PromptTemplateError extends Error {
   override readonly name = 'PromptTemplateError';
 }
 
+/**
+ * A prompt file names its own provider and model. Nothing fills a gap for it:
+ * a stale default model name hides where a prompt really runs (FILM-1805).
+ */
+export function assertPromptLlm(
+  slug: string,
+  template: { llm?: { provider?: string; model?: string } },
+): void {
+  const missing = (['provider', 'model'] as const).filter(
+    (field) => !template.llm?.[field],
+  );
+
+  if (missing.length > 0) {
+    throw new PromptTemplateError(
+      `Prompt ${slug} must set llm.${missing.join(' and llm.')}`,
+    );
+  }
+}
+
 const PLACEHOLDER = /\{\{\s*(\w+)\s*\}\}/g;
 
 function provided(value: unknown): boolean {

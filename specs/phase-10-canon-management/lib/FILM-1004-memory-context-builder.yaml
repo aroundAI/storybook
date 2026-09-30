@@ -4,7 +4,7 @@ phase: 10
 phase_name: "Canon Management"
 category: library
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-30"
 effort: M
 dependencies:
   - spec_id: "FILM-1001"
@@ -34,38 +34,38 @@ library:
     Context Preview panel.
 acceptance_criteria:
   - text: "Builds complete context from database"
-    met: false
-    reason: "not met — `episode_summaries` and `world_states` have no writer anywhere, so those sections are always empty (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:426`)"
+    met: true
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:1515 (storeEpisodeMemory, called from commitCanonChangesAction at :1751) upserts `episode_summaries` from the commit's SCORE summary and writes one `world_states` row per episode when the extraction names a location, through the pure mappers in packages/features/episodes/src/lib/canon/memory-rows.ts; writes go through the existing can_write_project policies (apps/web/supabase/migrations/20260924181028_kb76-77-63-canon-write-scope.sql); tests packages/features/episodes/__tests__/canon-conflicts-and-batches.test.ts:410. Scope: only the human-reviewed publish commit writes them — the worker's commit-story-canon.ts still writes no summaries or world state (see remaining); world state depends on the LLM naming a location; `new_constraints` stays empty because nothing extracts it"
   - text: "Tracks token usage accurately (±10% of actual)"
     met: false
     reason: "unverified — estimate is JSON length ÷ 4 (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:92`); no test compares it with a tokenizer"
   - text: "Enforces budget limits with configurable threshold"
     met: false
-    reason: "unverified — loaders stop at category caps (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:124`); world state only truncates atmosphere; no test"
+    reason: "unverified — loaders stop at category caps (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:124`); world state only truncates atmosphere; no test of the configurable threshold"
   - text: "Prioritizes content by scoring algorithm"
-    met: false
-    reason: "not met — `calculatePriority` (`packages/features/episodes/src/lib/canon/memory-strategies.ts:238`) is never called; loaders keep `created_at` order"
+    met: true
+    evidence: "packages/features/episodes/src/lib/canon/memory-context-builder.ts:448 (summaries), :728 (threads) and :739 (characters) order candidates through rankByPriority, which calls calculatePriority (packages/features/episodes/src/lib/canon/memory-strategies.ts:238); tests packages/features/episodes/__tests__/memory-context-builder.test.ts (ranks by calculatePriority before fitting the budget) and memory-strategies.test.ts:147"
   - text: "Redistributes unused budget dynamically"
-    met: false
-    reason: "not met — per-category budgets are fixed (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:639`); no redistribution code exists"
-  - text: "Applies memory horizon decay"
-    met: false
-    reason: "not met — horizon is a hard episode window (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:409`); `getDecayFactor` is reached only from tests"
+    met: true
+    evidence: "packages/features/episodes/src/lib/canon/memory-context-builder.ts:611 (redistributeBudgets: fixed donor order events > characters > threads > summaries > sources, world state donor only, donors capped at their need) applied at :761; tests packages/features/episodes/__tests__/memory-budget-redistribution.test.ts:25 and the overflow test in memory-context-builder.test.ts"
+  - text: "Applies memory horizon decay within a hard episode window"
+    met: true
+    evidence: "reworded from \"Applies memory horizon decay\": the horizon is a hard episode window (`.gte('number', startEpisode)` at packages/features/episodes/src/lib/canon/memory-context-builder.ts:415) and decay orders what fits the budget — getDecayFactor (packages/features/episodes/src/lib/canon/memory-strategies.ts:158) feeds calculatePriority (:249), which ranks threads, characters and summaries. Immutable events are exempt from decay by owner decision D1. Decay is not applied across the window itself, because that would change what CANON_001 sees"
   - text: "Handles overflow gracefully"
     met: false
-    reason: "unverified — items past a category cap are dropped (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:124`); no test exercises overflow"
+    reason: "unverified — items past a category cap are dropped (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:124`); the redistribution tests cover spill between categories, not the drop of lowest-ranked items"
   - text: "Formats context for prompt injection"
     met: true
-    evidence: "packages/features/episodes/src/lib/canon/memory-context-builder.ts:770"
+    evidence: "packages/features/episodes/src/lib/canon/memory-context-builder.ts:848"
   - text: "**New**: Formats context for UI display (Memory Context Preview)"
-    met: false
-    reason: "not met — never imported or rendered (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/memory-context-preview.tsx:55`; only commit: 88a122b0)"
+    met: true
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/page.tsx:166 mounts MemoryContextPreview (only when canon is enabled and the episode has a project); the component (ideation/_components/memory-context-preview.tsx:124) has loading, empty and error states with data-test hooks and catches failures so ideation is never blocked. No unit or E2E test covers it and no screenshot has been captured"
   - text: "Performance: < 200ms build time"
     met: false
     reason: "unverified — needs a timed run against a seeded project; no benchmark exists"
   - text: "Unit tests for budget calculations"
     met: true
-    evidence: "packages/features/episodes/__tests__/memory-context-builder.test.ts (FILM-1110)"
+    evidence: "packages/features/episodes/__tests__/memory-context-builder.test.ts (FILM-1110); redistribution in packages/features/episodes/__tests__/memory-budget-redistribution.test.ts:25"
   - text: "Unit tests for priority scoring"
     met: true
     evidence: "packages/features/episodes/__tests__/memory-strategies.test.ts:147"
@@ -73,15 +73,15 @@ acceptance_criteria:
     met: true
     evidence: "packages/features/episodes/scripts/verify-memory-context.ts (FILM-1110; CI: Supabase DB job). It found `assets.asset_type` and `episodes.episode_number`, two reads that returned HTTP 400 and emptied the character and summary sections"
 remaining:
-  - criterion: "Builds complete context from database"
-    reason: "Nothing writes `episode_summaries` or `world_states` (the canon commit stores the summary in `episodes.metadata` instead), so two of five sections are always empty"
+  - criterion: "Builds complete context from database (worker path)"
+    reason: "apps/web/lambda/llm-worker/utils/commit-story-canon.ts, the auto-populate after story generation, still writes no summaries or world state; only the human-reviewed publish commit does"
     closed_by: "unassigned"
-  - criterion: "Scoring, redistribution, horizon decay"
-    reason: "`calculatePriority` and `getDecayFactor` exist and are tested but unused; budgets are fixed per category"
+  - criterion: "Token accuracy, configurable budget threshold, overflow handling"
+    reason: "Unverified: no test compares the estimate with a tokenizer, exercises the threshold, or drops lowest-ranked items"
     closed_by: "unassigned"
-  - criterion: "Formats context for UI display"
-    reason: "Memory Context Preview is built but never rendered"
-    closed_by: "FILM-1007"
+  - criterion: "Performance: < 200ms build time"
+    reason: "No benchmark exists"
+    closed_by: "unassigned"
 open_questions: []
 notes: |
   Priority (source frontmatter): high

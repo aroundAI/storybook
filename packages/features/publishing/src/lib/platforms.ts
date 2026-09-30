@@ -36,6 +36,7 @@ export const PLATFORM_NAMES: Record<Platform, string> = {
 export const PLATFORMS_DELETED_ON_UNPUBLISH = [
   'youtube',
   'facebook',
+  'twitter',
 ] as const satisfies readonly Platform[];
 
 /** Narrows a stored `platform` string, so it is checked rather than cast. */

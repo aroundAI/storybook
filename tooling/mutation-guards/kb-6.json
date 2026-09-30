@@ -145,8 +145,8 @@
       "name": "KB-6 C1 a client calls a refusing action without unwrap (a refusal reads as done)",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/components/ai-insights.tsx",
-      "find": "      const result = await unwrap(\n        generateInsightsAction({ projectId, analytics }),\n      );",
-      "replace": "      const result = await generateInsightsAction({ projectId, analytics });",
+      "find": "      const result = await unwrap(\n        generateInsightsAction({ projectId, analytics, refresh }),\n      );",
+      "replace": "      const result = await generateInsightsAction({\n        projectId,\n        analytics,\n        refresh,\n      });",
       "cwd": "packages/next",
       "test": "__tests__/kb6-caught-action-message.test.ts",
       "pattern": "every call to an action that returns its refusals is unwrapped"

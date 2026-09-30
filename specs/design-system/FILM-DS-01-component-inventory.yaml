@@ -17,7 +17,7 @@ acceptance_criteria:
     evidence: null
   - text: "Each component has clear ownership (package)"
     met: true
-    evidence: "design_guideline.patterns names, for each of the 15 new components, the file that owns it or why none does (re-audited 2026-09-25), e.g. `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx:16`, `packages/features/public-sharing/src/components/video-player.tsx:28`"
+    evidence: "design_guideline.patterns names, for each of the 15 new components, the file that owns it or why none does (re-audited 2026-09-25), e.g. `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx:24`, `packages/features/public-sharing/src/components/video-player.tsx:28`"
   - text: "Effort estimates are provided for planning"
     met: true
     evidence: null
@@ -62,7 +62,7 @@ design_guideline:
     - "Reusable from @kit/ui (no modification): `ScrollArea` — Scrollable containers"
     - "Reusable from @kit/ui (no modification): `Separator` — Visual dividers"
     - "New high-complexity component: `TimelineEditor` — Multi-track video/audio timeline with scrubbing (effort XL, package @kit/episodes). Now: retired with the Edit Suite (FILM-607); no owner"
-    - "New high-complexity component: `ShotGrid` — Draggable grid with generation overlays (effort L, package @kit/episodes). Now: owned by the app: `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx:16` (no drag or generation overlays; in-app video generation was retired)"
+    - "New high-complexity component: `ShotGrid` — Draggable grid with generation overlays (effort L, package @kit/episodes). Now: owned by the app: `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx:24` (no drag or generation overlays; in-app video generation was retired)"
     - "New high-complexity component: `WaveformVisualizer` — Audio waveform with playhead sync (effort M, package @kit/audio-generation). Now: built as `Waveform` in @kit/audio-generation (`packages/features/audio-generation/src/components/Waveform.tsx:35`), used by `apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/audio-asset-card.tsx`"
     - "New high-complexity component: `VideoPlayer` — Custom player with frame-accurate seeking (effort M, package @kit/episodes). Now: owned by @kit/public-sharing (`packages/features/public-sharing/src/components/video-player.tsx:28`)"
     - "New high-complexity component: `CharacterCard` — Reference images + element prompt preview (effort M, package @kit/assets). Now: not built; characters render as @kit/assets `AssetCard` (`packages/features/assets/src/components/asset-card.tsx:150`)"
@@ -71,11 +71,11 @@ design_guideline:
     - "Medium-complexity extension: `AssetPicker` — base `Dialog` + `Combobox`; extension: Modal with preview, search (effort M). Now: owned by @kit/audio-generation (`packages/features/audio-generation/src/components/AssetPicker.tsx:50`); exported, no app caller"
     - "Medium-complexity extension: `PromptEditor` — base `Textarea`; extension: Token counter, variables (effort M). Now: not built; shot prompts are edited in a plain `Textarea` in the app (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-details-sidebar.tsx:1336`)"
     - "Medium-complexity extension: `CostEstimate` — base `Badge`; extension: Credits display, warnings (effort S). Now: not built; no component shows a per-action cost estimate"
-    - "Low-complexity composition: `StudioSidebar` — `Nav` + `Badge` + `Tooltip` (effort S). Now: owned by the app: `apps/web/app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx:160`"
+    - "Low-complexity composition: `StudioSidebar` — `Nav` + `Badge` + `Tooltip` (effort S). Now: owned by the app: `apps/web/app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx:182`"
     - "Low-complexity composition: `EpisodeCard` — `Card` + `Badge` + `Progress` + menu (effort S). Now: owned by the app: `apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/episode-card.tsx:34`"
     - "Low-complexity composition: `PipelineProgress` — `Steps` + `Progress` + status (effort S). Now: built as the stage tabs `EpisodeWorkspaceTabs`, owned by the app: `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:100`"
-    - "Low-complexity composition: `ShotCard` — `Card` + `Badge` + overlay + menu (effort S). Now: owned by the app: `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:272`"
-    - "Low-complexity composition: `DialogueLine` — `Card` + `Avatar` + play button (effort S). Now: no single-line component; the app renders lines in `DialogueTimeline` (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:105`); @kit/audio-generation `DialogueList` is exported with no app caller"
+    - "Low-complexity composition: `ShotCard` — `Card` + `Badge` + overlay + menu (effort S). Now: owned by the app: `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:300`"
+    - "Low-complexity composition: `DialogueLine` — `Card` + `Avatar` + play button (effort S). Now: no single-line component; the app renders lines in `DialogueTimeline` (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:112`); @kit/audio-generation `DialogueList` is exported with no app caller"
     - "Each feature package exports components from a single entry point (`src/components/index.ts`)"
   file_path: null
 notes: |

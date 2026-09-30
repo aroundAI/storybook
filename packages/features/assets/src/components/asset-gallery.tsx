@@ -67,6 +67,8 @@ interface AssetGalleryProps {
   };
   onAssetSelect?: (asset: Asset) => void;
   onCreateAsset?: (type: TabType) => void;
+  createDialog?: TabType | null;
+  onCreateDialogClose?: () => void;
 }
 
 export function AssetGallery({
@@ -76,6 +78,8 @@ export function AssetGallery({
   initialCharacters,
   onAssetSelect,
   onCreateAsset,
+  createDialog = null,
+  onCreateDialogClose,
 }: AssetGalleryProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -107,7 +111,11 @@ export function AssetGallery({
     isLoading: isCharacterLoading,
     deleteCharacter,
     fetchCharacters,
-  } = useCharacterAssets({ projectId, initialData: initialCharacters });
+  } = useCharacterAssets({
+    projectId,
+    initialData: initialCharacters,
+    enabled: activeTab === 'character',
+  });
 
   // Character filters
   const {
@@ -301,6 +309,16 @@ export function AssetGallery({
       void fetchLocationAssetsRef.current();
     }
   }, [router, activeTab, fetchCharacters]);
+
+  const handleCreateSuccess = useCallback(() => {
+    onCreateDialogClose?.();
+    router.refresh();
+    if (activeTab === 'character') {
+      void fetchCharacters();
+    } else {
+      void fetchLocationAssetsRef.current();
+    }
+  }, [onCreateDialogClose, router, activeTab, fetchCharacters]);
 
   const handleCreate = useCallback(() => {
     onCreateAsset?.(activeTab);
@@ -552,6 +570,40 @@ export function AssetGallery({
       ) : (
         <EmptyAssetState assetType={activeTab} onCreate={handleCreate} />
       )}
+
+      {/* Create Dialogs */}
+      <Dialog
+        open={createDialog === 'character'}
+        onOpenChange={(open) => !open && onCreateDialogClose?.()}
+      >
+        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Character</DialogTitle>
+          </DialogHeader>
+          <CharacterEditor
+            projectId={projectId}
+            accountId={accountId}
+            onSuccess={handleCreateSuccess}
+            onCancel={() => onCreateDialogClose?.()}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={createDialog === 'location'}
+        onOpenChange={(open) => !open && onCreateDialogClose?.()}
+      >
+        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Location</DialogTitle>
+          </DialogHeader>
+          <LocationEditor
+            projectId={projectId}
+            onSuccess={handleCreateSuccess}
+            onCancel={() => onCreateDialogClose?.()}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialogs */}
       <Dialog

@@ -435,9 +435,8 @@ describe('content-type strategies in the builder (FILM-1111)', () => {
       ]);
     });
 
-    it('keeps the most recently active character when only one fits', async () => {
-      // tokenBudgetPercent 1 → 400 tokens; series gives characters 25% = 100,
-      // room for one character context but not two.
+    it('ranks the most recently active character first under a tight budget', async () => {
+      // tokenBudgetPercent 1 → 400 tokens; series gives characters 25% = 100.
       const fake = createFakeCanonClient(storyCanon('series'));
 
       const context = await buildMemoryContext(fake.client, {
@@ -447,9 +446,28 @@ describe('content-type strategies in the builder (FILM-1111)', () => {
       });
 
       expect(context.metadata.budgets.characterStates).toBe(100);
+      expect(context.characterStates[0]?.characterName).toBe('Jon');
+    });
+
+    it('lets an overflowing category use what the others left unused (FILM-1004)', async () => {
+      // Same 100-token character budget as above, which holds one character.
+      // Nothing else in this canon needs its share, so the second fits too.
+      const fake = createFakeCanonClient(storyCanon('series'));
+
+      const context = await buildMemoryContext(fake.client, {
+        projectId: PROJECT_ID,
+        episodeNumber: 60,
+        tokenBudgetPercent: 1,
+      });
+
       expect(context.characterStates.map((c) => c.characterName)).toEqual([
         'Jon',
+        'Mara',
       ]);
+      expect(context.metadata.budgets.characterStates).toBe(100);
+      expect(context.tokenBudget.byCategory.characterStates).toBeGreaterThan(
+        100,
+      );
     });
 
     it('orders summaries by episode recency inside the horizon', async () => {
@@ -613,7 +631,7 @@ describe('content-type strategies in the builder (FILM-1111)', () => {
     });
 
     it('fits facts to the source budget', async () => {
-      // documentary: 2,000 tokens for sources ≈ 8,000 characters
+      // 5% of the window is 2,000 tokens in all, less than the long fact
       const fake = createFakeCanonClient({
         ...projectRow({ projectType: 'documentary' }),
         verified_facts: {
@@ -628,6 +646,7 @@ describe('content-type strategies in the builder (FILM-1111)', () => {
       const context = await buildMemoryContext(fake.client, {
         projectId: PROJECT_ID,
         episodeNumber: 2,
+        tokenBudgetPercent: 5,
       });
 
       expect(context.sources.map((s) => s.factId)).toEqual(['f1']);

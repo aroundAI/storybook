@@ -1,5 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
+
+import { createLLMClient } from '@kit/llm';
 
 import { runAgent } from '../src/runner';
 import { createTool, toolError, toolSuccess } from '../src/tool';
@@ -22,7 +24,8 @@ const RUN_CONTEXT: AgentRunContext = {
 
 const mockCreateChatCompletion = vi.fn();
 
-vi.mock('@kit/llm', () => ({
+vi.mock('@kit/llm', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kit/llm')>()),
   createLLMClient: vi.fn(() => ({
     createChatCompletion: mockCreateChatCompletion,
   })),
@@ -63,6 +66,44 @@ function mockLLMResponse(content: string) {
 describe('Agent Runner', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  describe('runAgent — LLM_FORCE_PROVIDER=local (FILM-1805)', () => {
+    const answer = mockLLMResponse(
+      JSON.stringify({ action: 'final_answer', result: 'ok' }),
+    );
+
+    const providerUsed = async () => {
+      mockCreateChatCompletion.mockResolvedValueOnce(answer);
+      await runAgent(makeConfig(), { userPrompt: 'hi' }, RUN_CONTEXT);
+
+      return vi.mocked(createLLMClient).mock.calls[0]![0];
+    };
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it('runs the agent on the local model under the sandbox gate', async () => {
+      vi.stubEnv('NODE_ENV', 'test');
+      vi.stubEnv('VENDOR_SANDBOX', '1');
+      vi.stubEnv('LLM_FORCE_PROVIDER', 'local');
+      vi.stubEnv('LLM_MODEL', 'llama3.1');
+
+      expect(await providerUsed()).toMatchObject({
+        provider: 'local',
+        model: 'llama3.1',
+      });
+    });
+
+    it('keeps the agent on gemini outside the gate', async () => {
+      vi.stubEnv('NODE_ENV', 'test');
+      vi.stubEnv('VENDOR_SANDBOX', '');
+      vi.stubEnv('LLM_FORCE_PROVIDER', 'local');
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+      expect(await providerUsed()).toMatchObject({ provider: 'gemini' });
+    });
   });
 
   describe('runAgent — Final Answer', () => {

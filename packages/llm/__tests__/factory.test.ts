@@ -1,3 +1,4 @@
+import http from 'node:http';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -173,10 +174,10 @@ describe('LLM Factory', () => {
         expect(config.model).toBe('gemini-1.5-flash');
       });
 
-      it('should default to claude-sonnet-4-5 for local', () => {
+      it('should default to the Ollama model for local', () => {
         process.env.LLM_PROVIDER = 'local';
         const config = loadConfigFromEnv();
-        expect(config.model).toBe('claude-sonnet-4-5');
+        expect(config.model).toBe('llama3.1');
       });
     });
 
@@ -564,6 +565,26 @@ describe('KB-21: the local provider runs only in a vendor sandbox', () => {
     vi.stubEnv('VENDOR_SANDBOX', '1');
 
     expect(createLLMClient(local()).getProvider()).toBe('local');
+  });
+
+  it('sends to Ollama on localhost:11434 when no base URL is given', async () => {
+    vi.stubEnv('VENDOR_SANDBOX', '1');
+    const request = vi.spyOn(http, 'request').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+
+    await createLLMClient(local())
+      .createChatCompletion({ messages: [{ role: 'user', content: 'hi' }] })
+      .catch(() => undefined);
+
+    const [target] = request.mock.calls[0] as unknown as [
+      { hostname?: string; port?: string | number; path?: string },
+    ];
+    request.mockRestore();
+
+    expect(`${target.hostname}:${target.port}${target.path}`).toBe(
+      'localhost:11434/v1/chat/completions',
+    );
   });
 
   it.each([

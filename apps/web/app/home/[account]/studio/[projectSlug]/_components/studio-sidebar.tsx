@@ -51,6 +51,10 @@ import { cn } from '@kit/ui/utils';
 
 import { ProfileAccountDropdownContainer } from '~/components/personal-account-dropdown-container';
 
+import {
+  type PendingPublishBadge,
+  pendingPublishBadge,
+} from '../_lib/pending-publishes';
 import { isAssetsTabActive, isPathActive } from '../_lib/sidebar-active';
 
 const SIDEBAR_COLLAPSED_KEY = 'studio-sidebar-collapsed';
@@ -77,6 +81,7 @@ interface StudioSidebarProps {
     locations?: number;
     researchSources?: number;
     researchFacts?: number;
+    pendingPublishes?: number;
   };
 }
 
@@ -85,6 +90,7 @@ interface NavItemProps {
   icon: React.ReactNode;
   label: string;
   count?: number;
+  badge?: PendingPublishBadge | null;
   isActive?: boolean;
   isCollapsed?: boolean;
 }
@@ -94,6 +100,7 @@ function NavItem({
   icon,
   label,
   count,
+  badge,
   isActive,
   isCollapsed,
 }: NavItemProps) {
@@ -102,6 +109,7 @@ function NavItem({
       href={href}
       data-test={`studio-nav-${label.toLowerCase().replace(/\s+/g, '-')}`}
       aria-current={isActive ? 'page' : undefined}
+      aria-label={badge ? `${label}, ${badge.ariaLabel}` : undefined}
       className={cn(
         'flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm transition-colors',
         'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
@@ -119,6 +127,15 @@ function NavItem({
           {count !== undefined && (
             <span className="ml-auto text-xs tabular-nums">{count}</span>
           )}
+          {badge && (
+            <span
+              data-test={`studio-nav-${label.toLowerCase().replace(/\s+/g, '-')}-badge`}
+              aria-hidden="true"
+              className="ml-auto min-w-5 rounded-full bg-primary px-1.5 text-center text-xs font-medium text-primary-foreground tabular-nums"
+            >
+              {badge.label}
+            </span>
+          )}
         </>
       )}
     </Link>
@@ -132,6 +149,11 @@ function NavItem({
           {label}
           {count !== undefined && (
             <span className="text-xs text-muted-foreground">({count})</span>
+          )}
+          {badge && (
+            <span className="text-xs text-muted-foreground">
+              ({badge.label})
+            </span>
           )}
         </TooltipContent>
       </Tooltip>
@@ -523,6 +545,7 @@ export function StudioSidebar({
                 href={`${basePath}/platforms`}
                 icon={<Share2 className="h-4 w-4" />}
                 label="Platforms"
+                badge={pendingPublishBadge(counts.pendingPublishes)}
                 isActive={isActive(`${basePath}/platforms`)}
                 isCollapsed={isCollapsed}
               />

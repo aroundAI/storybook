@@ -7,9 +7,35 @@ export interface RetryConfig {
   timeout?: number;
   baseDelay?: number;
   maxDelay?: number;
+  sleep?: (ms: number) => Promise<void>;
 }
 
-const DEFAULT_RETRY_CONFIG: Required<RetryConfig> = {
+const MAX_RETRY_AFTER_MS = 60000;
+
+const defaultSleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+function parseRetryAfterMs(header: string | null | undefined): number | null {
+  if (!header) {
+    return null;
+  }
+
+  const seconds = Number(header);
+
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.min(seconds * 1000, MAX_RETRY_AFTER_MS);
+  }
+
+  const date = Date.parse(header);
+
+  if (Number.isNaN(date)) {
+    return null;
+  }
+
+  return Math.min(Math.max(0, date - Date.now()), MAX_RETRY_AFTER_MS);
+}
+
+const DEFAULT_RETRY_CONFIG: Required<Omit<RetryConfig, 'sleep'>> = {
   maxRetries: 5,
   timeout: 30000,
   baseDelay: 1000,
@@ -30,7 +56,9 @@ export async function fetchWithRetry<T>(
     ...DEFAULT_RETRY_CONFIG,
     ...config,
   };
+  const sleep = config.sleep ?? defaultSleep;
 
+  let retryAfterMs: number | null = null;
   let lastError = new Error('Request failed after retries');
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -41,6 +69,10 @@ export async function fetchWithRetry<T>(
       });
 
       if (!response.ok) {
+        retryAfterMs =
+          response.status === 429
+            ? parseRetryAfterMs(response.headers?.get('retry-after'))
+            : null;
         const errorData = await response.json().catch(() => ({}));
         // ElevenLabs uses { detail: { message: "..." } } or { detail: "string" }
         const detail = (errorData as Record<string, unknown>)?.detail;
@@ -68,8 +100,12 @@ export async function fetchWithRetry<T>(
         throw lastError;
       }
 
-      // Don't retry on client errors (4xx) — they're permanent
-      if (/API error \(4\d\d\)/.test(lastError.message)) {
+      // Don't retry on client errors (4xx) — they're permanent. A 429 is a
+      // rate limit that clears, so it is retried.
+      if (
+        /API error \(4\d\d\)/.test(lastError.message) &&
+        !lastError.message.startsWith('API error (429)')
+      ) {
         throw lastError;
       }
 
@@ -80,8 +116,8 @@ export async function fetchWithRetry<T>(
           maxDelay,
         );
         const jitter = baseBackoff * 0.25 * (Math.random() * 2 - 1); // -25% to +25%
-        const delay = Math.max(0, baseBackoff + jitter);
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        const delay = retryAfterMs ?? Math.max(0, baseBackoff + jitter);
+        await sleep(delay);
       }
     }
   }
@@ -101,4 +137,35 @@ export function formatProviderError(
     return new Error(`${providerName} ${operation} failed: ${error.message}`);
   }
   return new Error(`${providerName} ${operation} failed: Unknown error`);
+}
+
+export function assertApiKey(providerName: string, apiKey: string): void {
+  if (!apiKey || apiKey.trim() === '') {
+    throw new Error(`${providerName} API key is missing or empty`);
+  }
+}
+
+/**
+ * Format a provider error and log it with provider and operation context.
+ * Uses console, as the lambda workers do; the API key is redacted.
+ */
+export function handleProviderError(
+  providerName: string,
+  operation: string,
+  error: unknown,
+  apiKey?: string,
+): Error {
+  const formatted = formatProviderError(providerName, operation, error);
+  const message =
+    apiKey && apiKey.trim() !== ''
+      ? formatted.message.split(apiKey).join('[redacted]')
+      : formatted.message;
+
+  console.error('[audio-generation] provider error', {
+    provider: providerName,
+    operation,
+    message,
+  });
+
+  return formatted;
 }

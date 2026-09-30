@@ -4,6 +4,7 @@ phase: 18
 phase_name: "Local Vendor Sandbox"
 category: feature
 status: PARTIAL
+audited: "2026-09-30"
 effort: L
 dependencies:
   - spec_id: "FILM-1801"
@@ -26,7 +27,7 @@ summary: >
 acceptance_criteria:
   - text: "(Narrowed 2026-09-25) With local.env loaded, no inline AI action a user can trigger reaches a real AI vendor"
     met: false
-    reason: "in part. Live run 2026-09-25 (apps/e2e/tests/sandbox/ai-sandbox-evidence.spec.ts, app with local.env's sandbox block and an egress guard): the ElevenLabs key check (401 then 200), saving the key, an 8 s sound effect (the browser measured it within 0.3 s) and music all went to the sandbox, and the only refused connection was npx's own npm registry check, never a vendor. The Gemini inline flows (social-post variants, canon validation, asset description) are proven through the real executeLLM over HTTP to the sandbox (every-prompt.test.ts) but were not yet driven in the browser"
+    reason: "in part; the Gemini browser flows are written, not yet run (apps/e2e/tests/sandbox/ai-sandbox-evidence.spec.ts:215: the Gemini key check, social-post variants, an asset description and canon extraction on Publish, each asserting a sandbox reply and no line in the egress-guard log). Live run 2026-09-25 (apps/e2e/tests/sandbox/ai-sandbox-evidence.spec.ts, app with local.env's sandbox block and an egress guard): the ElevenLabs key check (401 then 200), saving the key, an 8 s sound effect (the browser measured it within 0.3 s) and music all went to the sandbox, and the only refused connection was npx's own npm registry check, never a vendor. The Gemini inline flows (social-post variants, canon validation, asset description) are proven through the real executeLLM over HTTP to the sandbox (every-prompt.test.ts) but were not yet driven in the browser. Note validateContentInlineAction makes no LLM call; the canon inline flow is extractCanonChangesAction on the Publish page"
   - text: "Each of the 16 Zod-declared prompts gets output that passes the app's own schemaFn.parse"
     met: true
     evidence: "apps/vendor-sandbox/__tests__/every-prompt.test.ts — through the real executeLLM (which validates) and executeLLMForLambda (parsed with the executor's own compile), over HTTP to the sandbox via the real Gemini client"
@@ -59,8 +60,8 @@ acceptance_criteria:
     evidence: "apps/vendor-sandbox/__tests__/corpus.test.ts — every prompt × 200 seeds through findPlaceholders (src/corpus/placeholder.ts, shared with FILM-1802), and no string field left to a generic sentence"
 remaining:
   - criterion: "With local.env loaded, no inline AI action a user can trigger reaches a real AI vendor"
-    reason: "the Gemini inline flows still to be driven in the browser with the egress guard"
-    closed_by: "FILM-1803"
+    reason: "the Gemini inline flows are written (apps/e2e/tests/sandbox/ai-sandbox-evidence.spec.ts:215) and not yet run in the browser with the egress guard"
+    closed_by: "unassigned"
 open_questions: []
 notes: |
   ## 1. Overview

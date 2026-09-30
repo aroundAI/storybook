@@ -267,7 +267,7 @@ GEMINI_API_KEY=AI...
 DEEPSEEK_API_KEY=sk-...
 
 # Local (no key needed)
-LOCAL_API_URL=http://127.0.0.1:8000/v1
+LOCAL_API_URL=http://localhost:11434/v1
 ```
 
 ## Analytics

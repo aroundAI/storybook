@@ -27,7 +27,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
 import { AddEventDialog } from './add-event-dialog';
 import { AddThreadDialog } from './add-thread-dialog';
+import { DeleteEventDialog } from './delete-event-dialog';
+import { EditThreadDialog } from './edit-thread-dialog';
 import { EpisodeFactsPanel } from './episode-facts-panel';
+import { UpdateCharacterStateDialog } from './update-character-state-dialog';
 
 interface CanonDashboardProps {
   projectId: string;
@@ -35,6 +38,7 @@ interface CanonDashboardProps {
   episodeNumber: number;
   season?: number;
   canonEnabled: boolean;
+  storyContent?: string;
 }
 
 interface CharacterStateRow {
@@ -52,6 +56,7 @@ export function CanonDashboard({
   episodeNumber,
   season = 1,
   canonEnabled,
+  storyContent,
 }: CanonDashboardProps) {
   const [isPending, startTransition] = useTransition();
   const [events, setEvents] = useState<ImmutableEvent[]>([]);
@@ -152,6 +157,7 @@ export function CanonDashboard({
           <TabsTrigger
             value="characters"
             className="flex items-center gap-1.5 py-1.5 text-xs"
+            data-test="canon-characters-tab"
           >
             <User className="h-3 w-3 shrink-0" />
             Characters
@@ -220,6 +226,11 @@ export function CanonDashboard({
                   >
                     Ep.{event.episodeNumber}
                   </Badge>
+                  <DeleteEventDialog
+                    eventId={event.id}
+                    description={event.description}
+                    onDeleted={loadData}
+                  />
                 </div>
               ))}
               <AddEventDialog
@@ -281,6 +292,11 @@ export function CanonDashboard({
                   >
                     {thread.status}
                   </Badge>
+                  <EditThreadDialog
+                    thread={thread}
+                    episodeId={episodeId}
+                    onUpdated={loadData}
+                  />
                 </div>
               ))}
               <AddThreadDialog
@@ -323,6 +339,13 @@ export function CanonDashboard({
                     </p>
                   )}
                 </div>
+                <UpdateCharacterStateDialog
+                  characterId={state.character_id}
+                  characterName={state.characters?.name ?? 'Character'}
+                  stateType={state.state_type}
+                  episodeId={episodeId}
+                  onUpdated={loadData}
+                />
               </div>
             ))
           )}
@@ -333,6 +356,7 @@ export function CanonDashboard({
           <EpisodeFactsPanel
             episodeId={episodeId}
             projectId={projectId}
+            storyContent={storyContent}
             onCountChange={setFactsCount}
           />
         </TabsContent>

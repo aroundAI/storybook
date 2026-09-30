@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  dailyReachLookup,
   generateRawExportCSV,
   videoAgeInDays,
 } from '../src/lib/raw-export-generator';
@@ -158,5 +159,58 @@ describe('generateRawExportCSV — not measured', () => {
     expect(withBlank).toContain(
       'Watch Time (s) (blank = not measured by the platform)',
     );
+  });
+});
+
+describe('dailyReachLookup', () => {
+  const reachFor = dailyReachLookup([
+    {
+      videoId: 'v1',
+      date: '2026-06-14',
+      impressions: 1000,
+      impressionsCtr: 0.5,
+    },
+    {
+      videoId: 'v1',
+      date: '2026-06-15',
+      impressions: 400,
+      impressionsCtr: 0.25,
+    },
+  ]);
+
+  it("gives each daily row that day's impressions and CTR, not the period total", () => {
+    const csv = generateRawExportCSV(
+      ['2026-06-14', '2026-06-15'].map((date) => ({
+        ...row,
+        videoId: 'v1',
+        date,
+        ...reachFor('v1', date),
+      })),
+    );
+    const [header, first, second] = csv.split('\n');
+    const columns = header!.split(',');
+    const cell = (line: string | undefined, name: string) =>
+      line!.split(',')[columns.indexOf(name)];
+
+    expect(cell(first, 'Impressions')).toBe('1000');
+    expect(cell(first, 'CTR')).toBe('0.5000');
+    expect(cell(second, 'Impressions')).toBe('400');
+    expect(cell(second, 'CTR')).toBe('0.2500');
+  });
+
+  it('leaves a day the platform reported no reach for blank rather than repeating another day', () => {
+    const csv = generateRawExportCSV([
+      {
+        ...row,
+        videoId: 'v1',
+        date: '2026-06-16',
+        ...reachFor('v1', '2026-06-16'),
+      },
+    ]);
+    const [header, line] = csv.split('\n');
+    const columns = header!.split(',');
+
+    expect(line!.split(',')[columns.indexOf('Impressions')]).toBe('');
+    expect(line!.split(',')[columns.indexOf('CTR')]).toBe('');
   });
 });

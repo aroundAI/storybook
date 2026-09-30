@@ -3,8 +3,8 @@ title: "Audio Tracks Table"
 phase: 1
 phase_name: "Foundation"
 category: database_table
-status: PARTIAL
-audited: "2026-09-23"
+status: DONE
+audited: "2026-09-30"
 effort: XS
 dependencies:
   - spec_id: "FILM-101b"
@@ -92,8 +92,8 @@ acceptance_criteria:
     met: true
     evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:402"
   - text: "Check constraints prevent negative values"
-    met: false
-    reason: "not met — the spec's duration_seconds > 0 check was never created; only volume and timeline start are checked (apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:402-403)"
+    met: true
+    evidence: "apps/web/supabase/migrations/20260930140000_not-built-db-guards.sql:48 (audio_tracks_duration_seconds_positive; zero and negative durations, which meant unknown, were nulled first); apps/web/supabase/tests/database/not-built-db-guards.test.sql tests 4-5"
   - text: "Indexes created"
     met: true
     evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:412-413"
@@ -112,8 +112,8 @@ test_plan:
       met: true
       evidence: "apps/web/supabase/tests/database/audio-tracks-table.test.sql:50"
     - text: "Insert with duration_seconds = 0 fails"
-      met: false
-      reason: "not built: no duration_seconds > 0 check exists, so a zero-duration track is accepted"
+      met: true
+      evidence: "apps/web/supabase/tests/database/not-built-db-guards.test.sql test 4"
   integration:
     - text: "Deleting episode cascades to delete tracks"
       met: true
@@ -125,10 +125,6 @@ test_plan:
       met: true
       evidence: "apps/web/supabase/tests/database/audio-tracks-table.test.sql:77"
   e2e: []
-remaining:
-  - criterion: "duration_seconds > 0 check"
-    reason: "In the spec's table definition but never created: the migration checks only type, volume and timeline start (apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:401-403); git log -S finds no later addition"
-    closed_by: "unassigned"
 open_questions: []
 notes: |
   Sections of the Markdown spec that have no typed field, kept verbatim. Moved to typed fields: the Context paragraph (summary), the column table (database_table.columns), index names and columns, unique keys and foreign keys (database_table), the acceptance criteria and test-plan checklists and the Remaining table (remaining).

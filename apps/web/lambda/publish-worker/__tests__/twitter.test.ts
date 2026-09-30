@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PublishJobMessage } from '@kit/publishing/lib/job-types';
 import { X_API_BASE, X_MEDIA_UPLOAD, xPostUrl } from '@kit/shared/vendors';
 
-import { uploadToTwitter } from '../handlers/twitter';
+import { deleteFromTwitter, uploadToTwitter } from '../handlers/twitter';
 
 /**
  * FILM-1723. The lambda walks the upload protocol itself rather than through
@@ -152,5 +152,51 @@ describe('uploadToTwitter', () => {
     );
 
     await expect(uploadToTwitter('token', job)).rejects.toThrow('media.write');
+  });
+});
+
+describe('deleteFromTwitter', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('sends DELETE /2/tweets/:id with the bearer token', async () => {
+    const fetchMock = vi.fn(async () => json({ data: { deleted: true } }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await deleteFromTwitter('token', POST_ID);
+
+    expect(fetchMock).toHaveBeenCalledWith(`${X_API_BASE}/tweets/${POST_ID}`, {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer token' },
+    });
+  });
+
+  it("throws with X's status when the request is refused", async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => json({ title: 'Forbidden' }, 403)),
+    );
+
+    await expect(deleteFromTwitter('token', POST_ID)).rejects.toThrow(
+      /Twitter delete failed: 403/,
+    );
+  });
+
+  it('throws when X answers 200 without deleted: true', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => json({ data: { deleted: false } })),
+    );
+
+    await expect(deleteFromTwitter('token', POST_ID)).rejects.toThrow(
+      /was not deleted/,
+    );
   });
 });

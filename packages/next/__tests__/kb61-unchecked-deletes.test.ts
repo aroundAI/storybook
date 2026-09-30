@@ -74,7 +74,11 @@ const KNOWN: Record<string, [number, string]> = {
 
   // Cascades under a checked parent
   'packages/features/episodes/src/server/actions.ts | shots | delete': [
-    3,
+    2,
+    CASCADE,
+  ],
+  'packages/features/episodes/src/server/actions.ts | shots | soft-delete': [
+    1,
     CASCADE,
   ],
   'packages/features/episodes/src/server/actions.ts | audio_cues | delete': [

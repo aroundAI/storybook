@@ -5,8 +5,8 @@
       "name": "SPEC-TESTS U1 a tweet one character over 280 is sent",
       "kind": "unit",
       "file": "packages/features/publishing/src/providers/twitter/twitter-provider.ts",
-      "find": "if (input.text.length > TWITTER_CONSTRAINTS.maxTweetLength) {",
-      "replace": "if (input.text.length > TWITTER_CONSTRAINTS.maxTweetLength + 1) {",
+      "find": "if (tweetLength(input.text) > TWITTER_CONSTRAINTS.maxTweetLength) {",
+      "replace": "if (tweetLength(input.text) > TWITTER_CONSTRAINTS.maxTweetLength + 1) {",
       "cwd": "packages/features/publishing",
       "test": "__tests__/twitter-provider.test.ts",
       "pattern": "refuses a tweet over 280"
@@ -65,8 +65,8 @@
       "name": "SPEC-TESTS U7 a duplicate immutable event key is added",
       "kind": "unit",
       "file": "packages/features/episodes/src/server/canon-actions.ts",
-      "find": "    if (existing) {\n      throw new ActionRefusal(\n        `Event key",
-      "replace": "    if (false && existing) {\n      throw new ActionRefusal(\n        `Event key",
+      "find": "    if (existing) {\n      throw new CanonConflictError(\n        `Event key",
+      "replace": "    if (false && existing) {\n      throw new CanonConflictError(\n        `Event key",
       "cwd": "packages/features/episodes",
       "test": "__tests__/canon-conflicts-and-batches.test.ts",
       "pattern": "refuses an event key that already exists"

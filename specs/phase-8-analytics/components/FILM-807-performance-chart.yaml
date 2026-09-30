@@ -4,7 +4,7 @@ phase: 8
 phase_name: "Analytics"
 category: component
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-30"
 effort: M
 dependencies:
   - spec_id: "FILM-805"
@@ -54,8 +54,8 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "Responsive on mobile screens"
-    met: false
-    reason: "unverified — needs a phone-width screenshot; the chart is `ResponsiveContainer` 100%, but the 7-toggle control group does not wrap (`packages/features/content-analytics/src/components/performance-chart.tsx:220`)"
+    met: true
+    evidence: "the control row wraps (`packages/features/content-analytics/src/components/performance-chart.tsx:219`); `apps/e2e/tests/analytics/performance-chart.spec.ts:103` 'is usable at <name> ({width}px)' at 375, 768 and 1280px: the chart surface has size, the page has no horizontal overflow, the chart stays inside the viewport and the export button is visible (passed 2026-09-30, real browser, retries off, run twice)"
   - text: "Legend clickable to hide/show series"
     met: false
     reason: "no longer true — a bare recharts `<Legend />` with no click handler or hidden-series state, since 2b20331f (`performance-chart.tsx:157`)"
@@ -74,14 +74,14 @@ test_plan:
   e2e: []
   visual:
     - text: "Chart renders correctly with sample data"
-      met: false
-      reason: "not written: needs the chart rendered in a browser (a Playwright spec with screenshots), which no unit test can show"
+      met: true
+      evidence: "apps/e2e/tests/analytics/performance-chart.spec.ts:85 'draws the seeded series, and redraws when the metric changes' (gated by `CLICKHOUSE_EVIDENCE=1`; passed 2026-09-30, real browser, retries off, run twice)"
     - text: "Responsive at different widths"
-      met: false
-      reason: "not written: needs the chart rendered in a browser (a Playwright spec with screenshots), which no unit test can show"
+      met: true
+      evidence: "apps/e2e/tests/analytics/performance-chart.spec.ts:103 (375, 768 and 1280px, no horizontal overflow; passed 2026-09-30, real browser, retries off, run twice)"
     - text: "Export generates valid image"
-      met: false
-      reason: "not written: needs the chart rendered in a browser (a Playwright spec with screenshots), which no unit test can show"
+      met: true
+      evidence: "apps/e2e/tests/analytics/performance-chart.spec.ts:142 'exports a valid PNG' (downloads the export and checks the PNG magic bytes; passed 2026-09-30, real browser, retries off, run twice)"
 remaining:
   - criterion: "Legend clickable to hide/show series"
     reason: "`performance-chart.tsx:157,196` render a bare recharts `<Legend />`; recharts does not toggle series by itself and nothing tracks hidden series. True since the chart shipped (2b20331f)"

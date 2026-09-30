@@ -35,6 +35,7 @@ const client = vi.hoisted(() => {
     delete: vi.fn(() => chain),
     eq: vi.fn(() => chain),
     select: vi.fn(() => chain),
+    single: vi.fn(() => chain),
     then: (resolve: (value: Result) => unknown) =>
       Promise.resolve(results.shift() as Result).then(resolve),
   };
@@ -105,6 +106,99 @@ describe('linkFactsToEpisodeAction', () => {
       linkFactsToEpisodeAction({ episodeId: EPISODE, factIds: [FACT_A] }),
     ).rejects.toThrow();
   });
+});
+
+describe('linkFactsToEpisodeAction with a scene (FILM-1142)', () => {
+  const screenplay = {
+    scenes: [
+      { number: 1, heading: 'INT. LAB - DAY' },
+      { number: 4, heading: 'EXT. DAM - DUSK' },
+    ],
+  };
+
+  it('writes the scene the fact is used in', async () => {
+    client.results.push({ data: { screenplay_data: screenplay }, error: null });
+    client.results.push({ data: [{ id: 'l1' }], error: null });
+
+    const result = await linkFactsToEpisodeAction({
+      episodeId: EPISODE,
+      factIds: [FACT_A, FACT_B],
+      sceneReference: '4',
+    });
+
+    expect(client.chain.upsert).toHaveBeenCalledWith(
+      [
+        {
+          episode_id: EPISODE,
+          fact_id: FACT_A,
+          linked_by: 'user-1',
+          scene_reference: '4',
+        },
+        {
+          episode_id: EPISODE,
+          fact_id: FACT_B,
+          linked_by: 'user-1',
+          scene_reference: '4',
+        },
+      ],
+      { onConflict: 'episode_id,fact_id', ignoreDuplicates: true },
+    );
+    expect(result).toEqual({ ok: true, data: { linkedCount: 1 } });
+  });
+
+  it('refuses a scene the screenplay does not have, and links nothing', async () => {
+    client.results.push({ data: { screenplay_data: screenplay }, error: null });
+
+    const result = await linkFactsToEpisodeAction({
+      episodeId: EPISODE,
+      factIds: [FACT_A],
+      sceneReference: '9',
+    });
+
+    expect(result).toEqual({ ok: false, error: EPISODE_FACT_REFUSALS.scene });
+    expect(client.chain.upsert).not.toHaveBeenCalled();
+  });
+
+  it('refuses any scene while the episode has no screenplay', async () => {
+    client.results.push({ data: { screenplay_data: null }, error: null });
+
+    const result = await linkFactsToEpisodeAction({
+      episodeId: EPISODE,
+      factIds: [FACT_A],
+      sceneReference: '1',
+    });
+
+    expect(result).toEqual({ ok: false, error: EPISODE_FACT_REFUSALS.scene });
+  });
+});
+
+describe('sceneOptionsOf', () => {
+  it('lists scenes by number with their heading', async () => {
+    const { sceneOptionsOf } = await import('../episode-fact-scenes');
+
+    expect(
+      sceneOptionsOf({
+        scenes: [
+          { number: 2, heading: ' INT. LAB ' },
+          { number: 3 },
+          { heading: 'no number' },
+          null,
+        ],
+      }),
+    ).toEqual([
+      { value: '2', label: 'Scene 2: INT. LAB' },
+      { value: '3', label: 'Scene 3' },
+    ]);
+  });
+
+  it.each([null, undefined, 'x', {}, { scenes: 'no' }])(
+    'has no scenes for %j',
+    async (value) => {
+      const { sceneOptionsOf } = await import('../episode-fact-scenes');
+
+      expect(sceneOptionsOf(value)).toEqual([]);
+    },
+  );
 });
 
 describe('unlinkFactFromEpisodeAction', () => {

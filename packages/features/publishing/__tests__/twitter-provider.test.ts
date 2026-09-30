@@ -214,4 +214,15 @@ describe('TwitterProvider.uploadVideo', () => {
 
     expect(result.tweetId).toBe(POST_ID);
   });
+
+  it('counts a link as 23 characters, so a long URL does not use up the limit', async () => {
+    const link = `https://example.com/${'p'.repeat(200)}`;
+
+    const result = await createTwitterProvider('token').uploadVideo({
+      videoPath: VIDEO_URL,
+      text: `${'x'.repeat(256)} ${link}`,
+    });
+
+    expect(result.tweetId).toBe(POST_ID);
+  });
 });

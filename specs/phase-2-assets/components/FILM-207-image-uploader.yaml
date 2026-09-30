@@ -4,7 +4,7 @@ phase: 2
 phase_name: "Assets"
 category: component
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-30"
 effort: S
 dependencies:
   - spec_id: "FILM-203"
@@ -70,19 +70,19 @@ component:
 acceptance_criteria:
   - text: "Drag and drop zone renders with upload icon"
     met: true
-    evidence: "packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:76-118"
+    evidence: "packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:114-156"
   - text: "Click opens file picker"
     met: true
-    evidence: "react-dropzone root and input (packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:58-71, :97)"
+    evidence: "react-dropzone root and input (packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:94-108, :97)"
   - text: "Accepts PNG, JPG, JPEG, WebP only"
     met: true
-    evidence: "packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:40"
+    evidence: "packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:66"
   - text: "Rejects files larger than 10MB"
     met: true
-    evidence: "packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:65; packages/features/assets/__tests__/upload-validation.test.ts:90"
+    evidence: "packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:102; packages/features/assets/__tests__/upload-validation.test.ts:90"
   - text: "Displays validation errors inline"
-    met: false
-    reason: "not met — type and size rejections are dropped silently: onDrop ignores them, no onDropRejected (packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:48-56)"
+    met: true
+    evidence: "packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:37 (describeRejection), :86 (onDropRejected), :177-178 (role=alert, data-test=image-dropzone-error); e2e apps/e2e/tests/assets/asset-library.spec.ts:157 'a rejected drop says why, with a message per reason' (a .txt file gets 'not supported', an 11MB png gets 'too large', role=alert) (passed 2026-09-30, real browser, retries off)"
   - text: "Shows progress bar during upload (0-100%)"
     met: true
     evidence: "packages/features/assets/src/components/image-uploader/use-image-upload.ts:144-153, packages/features/assets/src/components/image-uploader/ImageUploadProgress.tsx:70-73"
@@ -115,25 +115,25 @@ acceptance_criteria:
     evidence: "packages/features/assets/src/components/image-uploader/use-image-upload.ts:164-166, :203-211"
   - text: "Retry button appears on error"
     met: true
-    evidence: "packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:140-152"
+    evidence: "packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:182-194"
   - text: "Upload completes within 10 seconds (5MB file)"
     met: false
     reason: "unverified — runtime timing; nothing measures it"
   - text: "Smooth drag/drop animations"
     met: false
-    reason: "unverified — transitions exist (packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:79, :111); smoothness is visual"
+    reason: "unverified — transitions exist (packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:117, :111); smoothness is visual"
   - text: "Responsive on mobile, tablet, desktop"
     met: false
     reason: "unverified — needs viewport screenshots; preview actions appear only on hover"
   - text: "Keyboard accessible (Tab, Enter, Space)"
     met: true
-    evidence: "focusable role=\"button\" root with react-dropzone key handling (packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:77, :91-94)"
+    evidence: "focusable role=\"button\" root with react-dropzone key handling (packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:115, :91-94)"
   - text: "Screen reader announces upload status"
     met: false
     reason: "owner check OC-8 (docs/OWNER-CHECKS.md) — live region while uploading (packages/features/assets/src/components/image-uploader/ImageUploadProgress.tsx:43-44), alert on error; success unannounced"
   - text: "Focus visible on interactive elements"
-    met: false
-    reason: "not met — zoom and remove sit in an opacity-0 overlay shown only on hover (packages/features/assets/src/components/image-uploader/ImagePreview.tsx:77)"
+    met: true
+    evidence: "packages/features/assets/src/components/image-uploader/ImagePreview.tsx:77 (focus-within:opacity-100 reveals zoom and remove); no test, CSS only"
   - text: "TypeScript compiles without errors"
     met: true
     evidence: "main CI run 35779959194 (6dfa35a4; code unchanged since): @kit/assets:typecheck ran uncached, no errors"
@@ -145,12 +145,18 @@ test_plan:
   integration: []
   e2e: []
 remaining:
-  - criterion: "Validation errors inline"
-    reason: "Files react-dropzone rejects (over 10 MB, wrong type) never reach upload(): onDrop ignores rejections and there is no onDropRejected (packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:48-56), so nothing is shown"
+  - criterion: "Upload completes within 10 seconds (5MB file)"
+    reason: "unverified — runtime timing; nothing measures it"
     closed_by: "unassigned"
-  - criterion: "Focus visible"
-    reason: "Zoom and remove are inside an opacity-0 overlay revealed only by group-hover (packages/features/assets/src/components/image-uploader/ImagePreview.tsx:77)"
-    closed_by: "unassigned"
+  - criterion: "Smooth drag/drop animations"
+    reason: "unverified — transitions exist (packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:79, :111); smoothness is visual"
+    closed_by: "owner"
+  - criterion: "Responsive on mobile, tablet, desktop"
+    reason: "unverified — needs viewport screenshots"
+    closed_by: "owner"
+  - criterion: "Screen reader announces upload status"
+    reason: "owner check OC-8 (docs/OWNER-CHECKS.md) — live region while uploading (packages/features/assets/src/components/image-uploader/ImageUploadProgress.tsx:43-44), alert on error; success unannounced"
+    closed_by: "owner"
 open_questions: []
 notes: |
   ## Conversion notes (Markdown to YAML, 2026-09-23)

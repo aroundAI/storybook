@@ -60,6 +60,7 @@ const query = {
   then: (resolve) => Promise.resolve({ data: [], error: null }).then(resolve),
   maybeSingle: () => Promise.resolve({ data: null, error: null }),
   single: () => Promise.resolve({ data: null, error: null }),
+  insert: () => Promise.resolve({ data: null, error: null }),
 };
 for (const m of ['select', 'eq', 'in', 'order', 'limit', 'gte', 'lt', 'range']) {
   query[m] = () => query;
@@ -123,6 +124,8 @@ describe('canon memory in the LLM Lambda bundle (FILM-1110)', () => {
     expect(run.result?.canonAvailable).toBe(true);
     expect(run.tables).toContain('projects');
     expect(run.tables).toContain('immutable_events');
+    // FILM-1003: the run is logged
+    expect(run.tables).toContain('validation_runs');
   }, 60_000);
 });
 

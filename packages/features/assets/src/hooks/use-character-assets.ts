@@ -17,6 +17,7 @@ import type { Asset, CharacterWithDetails } from '../lib/types';
 interface UseCharacterAssetsOptions {
   projectId: string;
   limit?: number;
+  enabled?: boolean;
   initialData?: {
     characters: CharacterWithDetails[];
     total: number;
@@ -39,6 +40,7 @@ interface UseCharacterAssetsReturn {
 export function useCharacterAssets({
   projectId,
   limit = 100,
+  enabled = true,
   initialData,
 }: UseCharacterAssetsOptions): UseCharacterAssetsReturn {
   const [characters, setCharacters] = useState<CharacterWithDetails[]>(
@@ -132,12 +134,12 @@ export function useCharacterAssets({
     });
   }, [projectId, limit]);
 
-  // Only auto-fetch if no initial data was provided
+  // Only auto-fetch if no initial data was provided and the list is in view
   useEffect(() => {
-    if (!hasFetched) {
+    if (enabled && !hasFetched) {
       void fetchCharacters();
     }
-  }, [hasFetched, fetchCharacters]);
+  }, [enabled, hasFetched, fetchCharacters]);
 
   const deleteCharacter = useCallback(
     async (assetId: string) => {
@@ -169,7 +171,7 @@ export function useCharacterAssets({
     characters,
     total,
     hasMore,
-    isLoading: !hasFetched || isLoading,
+    isLoading: (enabled && !hasFetched) || isLoading,
     isDeleting,
     error,
     fetchCharacters,

@@ -25,6 +25,7 @@ import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
 import { useEpisodeContext } from '../../_components/episode-context-provider';
+import { ContinuitySidebar } from './continuity-sidebar';
 import { SceneIndexSidebar } from './scene-index-sidebar';
 import { ScreenplayPaper } from './screenplay-paper';
 
@@ -32,6 +33,7 @@ interface ScreenplayScreenProps {
   episode: EpisodeWithShots;
   onShotListComplete: () => void;
   refetchEpisode: () => void;
+  canonEnabled?: boolean;
 }
 
 function parseScenes(screenplayData: ScreenplayData | null): ScreenplayScene[] {
@@ -70,6 +72,7 @@ export function ScreenplayScreen({
   episode,
   onShotListComplete,
   refetchEpisode,
+  canonEnabled = false,
 }: ScreenplayScreenProps) {
   const { setIsGenerating } = useEpisodeContext();
   const [isPending, _startTransition] = useTransition();
@@ -80,6 +83,8 @@ export function ScreenplayScreen({
 
   const scenes = parseScenes(episode.screenplayData);
   const metadata = episode.screenplayData?.metadata;
+  const activeScene =
+    scenes.find((scene) => scene.number === activeSceneNumber) ?? scenes[0];
   const hasShotList = Boolean(episode.shotList) || episode.shots.length > 0;
 
   // WebSocket for shot-generation async LLM results
@@ -289,6 +294,15 @@ export function ScreenplayScreen({
             activeSceneNumber={activeSceneNumber}
           />
         </div>
+
+        {canonEnabled && activeScene && episode.projectId && (
+          <ContinuitySidebar
+            projectId={episode.projectId}
+            episodeId={episode.id}
+            episodeNumber={episode.number ?? 1}
+            scene={activeScene}
+          />
+        )}
       </div>
 
       {/* Collapsible Glass Sidebar */}
@@ -296,6 +310,8 @@ export function ScreenplayScreen({
         {/* Trigger Button - Fixed to right edge */}
         <button
           onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
+          aria-label={isSidebarExpanded ? 'Hide characters' : 'Show characters'}
+          aria-expanded={isSidebarExpanded}
           className={cn(
             'fixed top-1/2 right-0 z-40 -translate-y-1/2 rounded-l-xl border border-r-0 border-white/30 bg-card/70 p-3 shadow-lg backdrop-blur-xl transition-all hover:bg-card/90 dark:hover:bg-gray-800/90',
             isSidebarExpanded && 'right-80',

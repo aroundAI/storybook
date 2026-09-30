@@ -199,6 +199,7 @@ export async function getEpisodeWithShots(
     `,
     )
     .eq('episode_id', episodeId)
+    .is('deleted_at', null)
     .order('sequence_number', { ascending: true });
 
   if (shotsError) {
@@ -209,7 +210,7 @@ export async function getEpisodeWithShots(
     data: {
       ...episode,
       shots: shots ?? [],
-      season: episode.season?.[0] ?? null,
+      season: episode.season ?? null,
     } as EpisodeWithShots,
     error: null,
   };
@@ -284,6 +285,7 @@ export async function getShotsByEpisode(
     `,
     )
     .eq('episode_id', episodeId)
+    .is('deleted_at', null)
     .order('sequence_number', { ascending: true });
 
   if (error) {
@@ -315,6 +317,7 @@ export async function getShot(
     `,
     )
     .eq('id', shotId)
+    .is('deleted_at', null)
     .single();
 
   if (error) {
@@ -347,6 +350,7 @@ export async function getShotsByScene(
     `,
     )
     .eq('episode_id', episodeId)
+    .is('deleted_at', null)
     .eq('scene_number', sceneNumber)
     .order('sequence_number', { ascending: true });
 

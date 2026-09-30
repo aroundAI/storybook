@@ -118,7 +118,13 @@ describe('deleteImmutableEventAction', () => {
   });
 
   it('reports success when the event was deleted', async () => {
-    clientReturning({ data: [{ id: input.eventId }], error: null });
+    clientReturning(
+      {
+        data: [{ id: input.eventId, event_key: 'k', established_in: 'e1' }],
+        error: null,
+      },
+      { data: null, error: null },
+    );
 
     await expect(deleteImmutableEventAction(input)).resolves.toEqual({
       ok: true,

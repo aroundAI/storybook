@@ -166,11 +166,15 @@ test.describe('Performance budgets', () => {
     await seedCharacters(team, projectId, 50);
     await signInAs(page, team);
 
-    // Start on Locations, so the characters are loaded but not on screen; then
-    // time from the click on Characters until every card is on screen.
+    // Start on Locations, so the characters are not on screen and, since only
+    // the active tab loads (FILM-204), not fetched either; then time from the
+    // click on Characters until every card is on screen, the fetch included.
+    // The tabs are server-rendered, so they are there before React has
+    // hydrated and a click that early is lost: wait for the page to settle.
     await page.goto(`${base}/assets?tab=location`);
     await expect(byTest(page, 'studio-nav-locations')).toBeVisible();
     await expect(page.getByRole('tab', { name: /Characters/ })).toBeVisible();
+    await page.waitForLoadState('networkidle');
 
     await withinBudget('render 50 characters', 500, async () => {
       await page.getByRole('tab', { name: /Locations/ }).click();

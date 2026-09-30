@@ -27,7 +27,7 @@ acceptance_criteria:
     reason: "no longer true — one generic empty state (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/research-hub-page.tsx:206`); content type never read"
   - text: "Source counts show in sidebar nav item"
     met: false
-    reason: "no longer true — the sources half filters `external_content` by `project_id`, a column it lacks (`apps/web/app/home/[account]/studio/[projectSlug]/layout.tsx:84`)"
+    reason: "no longer true — the sources half filters `external_content` by `project_id`, a column it lacks (`apps/web/app/home/[account]/studio/[projectSlug]/layout.tsx:87`)"
   - text: "Proper loading and error states"
     met: false
     reason: "no longer true — shows \"No sources configured\" until the client fetch returns (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/research-hub-page.tsx:202`)"
@@ -59,7 +59,7 @@ remaining:
   - criterion: "Source counts show in sidebar nav item"
     reason: >
       The count is `researchSources + researchFacts`
-      (`apps/web/app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx:503`);
+      (`apps/web/app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx:525`);
       `researchSources` queries `external_content.project_id`
       (`layout.tsx:84`), which no migration or generated type defines, so that
       request errors and only facts are counted

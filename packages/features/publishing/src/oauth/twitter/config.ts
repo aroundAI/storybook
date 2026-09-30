@@ -1,4 +1,8 @@
-import { X_API_BASE, X_OAUTH_AUTHORIZE_URL } from '@kit/shared/vendors';
+import {
+  X_API_BASE,
+  X_MEDIA_UPLOAD_SCOPE,
+  X_OAUTH_AUTHORIZE_URL,
+} from '@kit/shared/vendors';
 
 import type { OAuthAppCredentials } from '../../server/oauth-app-credentials';
 
@@ -16,6 +20,7 @@ export const TWITTER_OAUTH_CONFIG = {
   scopes: [
     'tweet.read',
     'tweet.write',
+    X_MEDIA_UPLOAD_SCOPE,
     'users.read',
     'offline.access', // Required for refresh tokens
   ],

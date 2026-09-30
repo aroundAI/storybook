@@ -5,10 +5,19 @@ import { youtubeDataRoutes } from './google/data';
 import { googleFailure } from './google/errors';
 import { googleOAuthRoutes } from './google/oauth';
 import { youtubeReportingRoutes } from './google/reporting';
+import { linkedInDataRoutes } from './linkedin/data';
+import { linkedInFailure } from './linkedin/errors';
+import { linkedInOAuthRoutes } from './linkedin/oauth';
 import { metaFailure } from './meta/errors';
 import { metaInsightsRoutes } from './meta/insights';
 import { metaOAuthRoutes } from './meta/oauth';
 import { metaPublishingRoutes } from './meta/publishing';
+import { tiktokDataRoutes } from './tiktok/data';
+import { tiktokFailure } from './tiktok/errors';
+import { tiktokOAuthRoutes } from './tiktok/oauth';
+import { xDataRoutes } from './x/data';
+import { xFailure } from './x/errors';
+import { xOAuthRoutes } from './x/oauth';
 
 /**
  * What each social origin serves. A platform's PR adds its routes here; an
@@ -37,7 +46,16 @@ export const SOCIAL_ROUTES: Record<
     ],
     failure: metaFailure,
   },
-  tiktok: { routes: [mediaRoute] },
-  x: { routes: [mediaRoute] },
-  linkedin: { routes: [mediaRoute] },
+  tiktok: {
+    routes: [mediaRoute, ...tiktokOAuthRoutes, ...tiktokDataRoutes],
+    failure: tiktokFailure,
+  },
+  x: {
+    routes: [mediaRoute, ...xOAuthRoutes, ...xDataRoutes],
+    failure: xFailure,
+  },
+  linkedin: {
+    routes: [mediaRoute, ...linkedInOAuthRoutes, ...linkedInDataRoutes],
+    failure: linkedInFailure,
+  },
 };

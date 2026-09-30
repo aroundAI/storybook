@@ -123,3 +123,21 @@ export const DeleteScheduledReportSchema = z.object({
 export const GetScheduledReportsSchema = z.object({
   accountId: z.string().uuid(),
 });
+
+export const REPORT_HISTORY_PAGE_SIZE = 10;
+
+/**
+ * Schema for reading an account's report history, newest first
+ */
+export const ListGeneratedReportsSchema = z.object({
+  accountId: z.string().uuid(),
+  limit: z.number().int().min(1).max(50),
+  offset: z.number().int().min(0),
+});
+
+/**
+ * Schema for acting on one history row
+ */
+export const GeneratedReportIdSchema = z.object({
+  id: z.string().uuid(),
+});

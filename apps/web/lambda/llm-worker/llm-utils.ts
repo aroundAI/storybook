@@ -5,8 +5,11 @@
  * to work in Lambda environment (no Next.js server-only dependencies).
  */
 import type { LLMProvider } from '@kit/llm';
-import { createLLMClient } from '@kit/llm';
-import { renderTemplate } from '@kit/prompt-engine/render-template';
+import { createLLMClient, forcedLocalConfig } from '@kit/llm';
+import {
+  assertPromptLlm,
+  renderTemplate,
+} from '@kit/prompt-engine/render-template';
 
 import { type PromptTemplate, getPromptTemplate } from './prompt-registry';
 
@@ -41,6 +44,8 @@ export function renderPrompt(
 ): RenderedPrompt {
   // The same renderer prompt-engine uses (KB-126): an unfilled or
   // undeclared placeholder is an error, not blanked out of the text
+  assertPromptLlm(template.slug || template.name || 'unknown', template);
+
   const { systemPrompt, userPrompt } = renderTemplate(
     template.slug || template.name || 'unknown',
     template,
@@ -229,9 +234,10 @@ export async function executeLLMForLambda<T = unknown>(config: {
   ];
 
   // 3. Create LLM client
-  const provider = rendered.llmConfig.provider || 'deepseek';
-  const model = rendered.llmConfig.model || 'deepseek-chat';
-  const apiKey = getApiKeyForProvider(provider);
+  const forcedLocal = forcedLocalConfig();
+  const provider = forcedLocal?.provider ?? rendered.llmConfig.provider;
+  const model = forcedLocal?.model ?? rendered.llmConfig.model;
+  const apiKey = forcedLocal?.apiKey ?? getApiKeyForProvider(provider);
 
   if (!apiKey) {
     throw new Error(`No API key found for provider: ${provider}`);
@@ -239,14 +245,17 @@ export async function executeLLMForLambda<T = unknown>(config: {
 
   console.log(`[LLM Lambda] Creating client: ${provider}/${model}`);
 
-  const llm = createLLMClient({
-    provider: provider as LLMProvider,
-    model,
-    apiKey,
-    vertexai: provider === 'gemini' && process.env.GEMINI_VERTEXAI === 'true',
-    project: process.env.GOOGLE_CLOUD_PROJECT,
-    location: process.env.GOOGLE_CLOUD_LOCATION,
-  });
+  const llm = createLLMClient(
+    forcedLocal ?? {
+      provider: provider as LLMProvider,
+      model,
+      apiKey,
+      baseUrl: provider === 'local' ? process.env.LOCAL_API_URL : undefined,
+      vertexai: provider === 'gemini' && process.env.GEMINI_VERTEXAI === 'true',
+      project: process.env.GOOGLE_CLOUD_PROJECT,
+      location: process.env.GOOGLE_CLOUD_LOCATION,
+    },
+  );
 
   // 4. Execute LLM call
   const maxTokens = config.maxTokens ?? rendered.llmConfig.max_tokens ?? 4000;

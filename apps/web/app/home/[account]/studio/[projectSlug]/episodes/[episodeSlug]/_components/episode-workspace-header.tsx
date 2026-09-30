@@ -54,11 +54,13 @@ export function EpisodeWorkspaceHeader() {
         <div className="flex items-center gap-3">
           <Link
             href={`/home/${accountSlug}/studio/${projectSlug}/episodes`}
-            className="rounded-full p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-[#A3A3A3] dark:hover:bg-[#1A1A1A] dark:hover:text-white"
+            aria-label="Back to episodes"
+            data-test="episode-back-link"
+            className="rounded-full p-1.5 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-[#A3A3A3] dark:hover:bg-[#1A1A1A] dark:hover:text-white"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           </Link>
-          <nav className="flex items-center text-xs text-gray-500 dark:text-[#A3A3A3]">
+          <nav className="flex items-center text-xs text-gray-600 dark:text-[#A3A3A3]">
             <Link
               href={`/home/${accountSlug}/studio/${projectSlug}`}
               className="transition-colors hover:text-gray-900 dark:hover:text-white"
@@ -119,19 +121,19 @@ export function EpisodeWorkspaceHeader() {
                               : 'Draft'}
               </span>
               <IssueSummaryBadge projectId={projectId} />
-              <span className="text-xs text-gray-500 dark:text-gray-400">
+              <span className="text-xs text-gray-600 dark:text-gray-400">
                 Ep {episode.number}
                 {episode.season && ` • S${episode.season.number}`}
               </span>
             </div>
-            <span className="text-[10px] text-gray-400 dark:text-gray-500">
+            <span className="text-[10px] text-gray-600 dark:text-gray-500">
               Updated {format(new Date(episode.updatedAt), 'M/d/yy, h:mm a')}
             </span>
           </div>
 
           {/* Description - condensed */}
           {episode.description && (
-            <p className="line-clamp-1 max-w-2xl text-xs text-gray-500 dark:text-gray-400">
+            <p className="line-clamp-1 max-w-2xl text-xs text-gray-600 dark:text-gray-400">
               {episode.description}
             </p>
           )}

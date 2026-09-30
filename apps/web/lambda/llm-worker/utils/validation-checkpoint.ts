@@ -45,6 +45,33 @@ export interface ValidationCheckpointResult {
   canonAvailable: boolean;
 }
 
+async function recordValidationRun(
+  config: ValidationCheckpointConfig,
+  run: {
+    passed: boolean;
+    summary: ValidationCheckpointResult['summary'];
+    violations: ReturnType<typeof validatePlotSkeleton>['violations'];
+  },
+): Promise<void> {
+  try {
+    const { error } = await config.supabase.from('validation_runs').insert({
+      project_id: config.projectId,
+      episode_number: config.episodeNumber,
+      checkpoint: config.checkpoint,
+      enforcement: config.enforcement,
+      passed: run.passed,
+      summary: run.summary,
+      violations: run.violations.map((v) => ({ ...v })),
+    });
+
+    if (error) {
+      console.warn('[Validation Checkpoint] Could not log the run:', error);
+    }
+  } catch (err) {
+    console.warn('[Validation Checkpoint] Could not log the run:', err);
+  }
+}
+
 /**
  * Runs a continuity validation checkpoint during content generation.
  *
@@ -136,6 +163,12 @@ export async function runValidationCheckpoint(
     // 5. Apply enforcement level
     const passed =
       config.enforcement === 'strict' ? validationResult.valid : true; // flexible always passes
+
+    await recordValidationRun(config, {
+      passed,
+      summary: validationResult.summary,
+      violations: validationResult.violations,
+    });
 
     if (!passed) {
       const errorMessages = validationResult.violations

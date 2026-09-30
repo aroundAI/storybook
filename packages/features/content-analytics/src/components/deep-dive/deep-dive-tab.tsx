@@ -4,11 +4,13 @@ import { type ReactNode, useMemo, useState } from 'react';
 
 import { useQuery } from '@tanstack/react-query';
 import {
+  Activity,
   BadgeCheck,
   CalendarRange,
   Layers,
   PieChart,
   TrendingUp,
+  UserCheck,
   Users,
 } from 'lucide-react';
 
@@ -22,6 +24,8 @@ import {
   getBackCatalogAction,
   getCohortCurvesAction,
   getMedianPerformanceAction,
+  getReturningViewerProxyAction,
+  getRollingViewsAction,
   getTrafficBreakdownAction,
   getYppProgressAction,
 } from '../../server/deep-dive-actions';
@@ -54,6 +58,17 @@ import {
   RetentionCurveChart,
   RetentionCurveChartSkeleton,
 } from './retention-curve-chart';
+import {
+  ReturningViewerProxyCard,
+  ReturningViewerProxyCardSkeleton,
+  returningViewerClaim,
+} from './returning-viewer-proxy-card';
+import {
+  ROLLING_WINDOW_DAYS,
+  Rolling90Card,
+  Rolling90CardSkeleton,
+  rolling90Claim,
+} from './rolling-90-card';
 import {
   SubscriberSeriesCard,
   SubscriberSeriesCardSkeleton,
@@ -354,6 +369,17 @@ export function DeepDiveTab({
     queryFn: () => getBackCatalogAction({ scope, ageDays: 90 }),
   });
 
+  const rollingQuery = useQuery({
+    queryKey: ['deep-dive-rolling', projectId, filters.connectionId],
+    queryFn: () =>
+      getRollingViewsAction({ scope, windowDays: ROLLING_WINDOW_DAYS }),
+  });
+
+  const returningViewerQuery = useQuery({
+    queryKey: ['deep-dive-returning-viewer', projectId, filters.connectionId],
+    queryFn: () => getReturningViewerProxyAction({ scope }),
+  });
+
   const cohortQuery = useQuery({
     queryKey: ['deep-dive-cohorts', projectId, filters.connectionId],
     queryFn: () =>
@@ -595,6 +621,65 @@ export function DeepDiveTab({
             dataTest={'back-catalog-error'}
           >
             <BackCatalogCard buckets={backCatalogQuery.data ?? []} />
+          </QueryState>
+        </AnalyticsCard>
+
+        <AnalyticsCard
+          title={'Rolling 90-day views'}
+          icon={Activity}
+          description={
+            'Views over the trailing 90 days, which monthly totals are too noisy to show.'
+          }
+          metricFamily={'engagement'}
+          platforms={scopePlatforms}
+          claim={claimFromQuery(rollingQuery, (points) =>
+            rolling90Claim(points, ROLLING_WINDOW_DAYS),
+          )}
+          details={{
+            method:
+              'The sum of daily views over each day and the 89 before it, with days that have no rows counted as zero.',
+          }}
+          data-test={'deep-dive-rolling'}
+        >
+          <QueryState
+            query={rollingQuery}
+            skeleton={<Rolling90CardSkeleton />}
+            message={'Rolling views could not be loaded.'}
+            dataTest={'rolling-error'}
+          >
+            <Rolling90Card
+              points={rollingQuery.data ?? []}
+              windowDays={ROLLING_WINDOW_DAYS}
+            />
+          </QueryState>
+        </AnalyticsCard>
+
+        <AnalyticsCard
+          title={'Subscribed share of views (proxy)'}
+          icon={UserCheck}
+          description={
+            'A stand-in for returning viewers: how much of the audience is already subscribed.'
+          }
+          metricFamily={'follower_status'}
+          platforms={scopePlatforms}
+          claim={claimFromQuery(returningViewerQuery, returningViewerClaim)}
+          details={{
+            caveats: [
+              'A proxy, not a measurement: YouTube reports no new-versus-returning split outside Studio, and a subscriber can be watching a video for the first time.',
+              'YouTube only. TikTok and Instagram report no subscriber split, so their views are not in this share.',
+            ],
+          }}
+          data-test={'deep-dive-returning-viewer'}
+        >
+          <QueryState
+            query={returningViewerQuery}
+            skeleton={<ReturningViewerProxyCardSkeleton />}
+            message={'The subscriber split could not be loaded.'}
+            dataTest={'returning-viewer-error'}
+          >
+            {returningViewerQuery.data ? (
+              <ReturningViewerProxyCard split={returningViewerQuery.data} />
+            ) : null}
           </QueryState>
         </AnalyticsCard>
 

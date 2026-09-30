@@ -111,6 +111,8 @@ export interface NarrativeThread {
   updatedAt: string;
   openedEpisode?: EpisodeRef;
   resolvedEpisode?: EpisodeRef;
+  /** Optimistic-lock counter an edit must send back (`updateNarrativeThreadAction`) */
+  version?: number;
   /**
    * The latest episode number the thread was opened or touched in. Set by
    * the memory context builder; undefined when none of its episodes resolve.
@@ -273,7 +275,9 @@ export type ViolationCode =
   | 'CANON_007' // Connectivity Failure
   | 'CANON_008' // Escalation Overflow
   | 'CANON_009' // Tone Drift
-  | 'CANON_010'; // Planner Output Malformed
+  | 'CANON_010' // Planner Output Malformed
+  | 'CANON_011' // Causality Break
+  | 'CANON_012'; // Standalone Episode
 
 /**
  * Severity levels for violations.
@@ -336,6 +340,8 @@ export interface PlotScene {
   location?: string;
   charactersPresent: string[];
   keyEvents?: string[];
+  /** Scene numbers whose outcome this scene builds on */
+  dependsOnScenes?: number[];
 }
 
 export interface PlotCharacter {

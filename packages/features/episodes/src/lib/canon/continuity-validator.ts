@@ -5,6 +5,8 @@
  * Validates narrative continuity against canon data.
  * Implements 9 validation rules (CANON_001-009).
  */
+import type { ProjectType } from '@kit/film-studio-schemas/project';
+
 import { staleForEpisodes } from './thread-staleness';
 import type {
   ContinuityValidationResult,
@@ -82,7 +84,33 @@ const VALIDATION_RULES: ValidationRule[] = [
     severity: 'info',
     checkpoints: ['STORY', 'SCREENPLAY'],
   },
+  {
+    code: 'CANON_011',
+    name: 'Causality Break',
+    severity: 'error',
+    checkpoints: ['STORY'],
+  },
+  {
+    code: 'CANON_012',
+    name: 'Standalone Episode',
+    severity: 'info',
+    checkpoints: ['STORY', 'SCREENPLAY'],
+  },
 ];
+
+/**
+ * Share of the available callback targets an episode should touch, by
+ * content type (FILM-1003 rule 7).
+ */
+const MIN_CONNECTIVITY_RATIO: Record<ProjectType, number> = {
+  series: 0.25,
+  'short-film': 0.1,
+  movie: 0.1,
+  documentary: 0.05,
+  educational: 0.05,
+  ad: 0,
+  news: 0,
+};
 
 // =============================================================================
 // HELPER FUNCTIONS
@@ -638,6 +666,83 @@ function checkToneDrift(
   return violations;
 }
 
+/**
+ * CANON_011: Causality Break
+ * A scene cannot build on the outcome of a scene that has not happened yet.
+ */
+function checkCausalityBreak(skeleton: PlotSkeleton): ContinuityViolation[] {
+  const violations: ContinuityViolation[] = [];
+  const sceneNumbers = new Set(skeleton.scenes.map((s) => s.sceneNumber));
+
+  for (const scene of skeleton.scenes) {
+    for (const causeNumber of scene.dependsOnScenes ?? []) {
+      if (causeNumber >= scene.sceneNumber && sceneNumbers.has(causeNumber)) {
+        violations.push({
+          code: 'CANON_011',
+          severity: 'error',
+          message: `Scene ${scene.sceneNumber} builds on the outcome of scene ${causeNumber}, which does not happen before it.`,
+          location: { sceneNumber: scene.sceneNumber },
+          suggestion:
+            'Move the cause before its effect, or drop the dependency.',
+        });
+      }
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * CANON_012: Standalone Episode
+ * Flags an episode that touches too little of the established canon
+ * (characters, open threads, locations, immutable events) for its content
+ * type. Skipped while there is no canon to call back to.
+ */
+function checkStandaloneEpisode(
+  skeleton: PlotSkeleton,
+  context: MemoryContext,
+): ContinuityViolation[] {
+  const targets =
+    context.characterStates.length +
+    context.activeThreads.length +
+    (context.worldState ? 1 : 0) +
+    context.immutableEvents.length;
+  if (targets === 0) return [];
+
+  const text = skeleton.scenes
+    .map((s) => [s.summary, s.location ?? '', ...(s.keyEvents ?? [])].join(' '))
+    .join(' ')
+    .toLowerCase();
+  const mentions = (name: string) =>
+    name.length > 0 && text.includes(name.toLowerCase());
+  const plotCharacterIds = new Set(
+    skeleton.characters.map((c) => c.characterId),
+  );
+
+  const callbacks =
+    context.characterStates.filter(
+      (c) => plotCharacterIds.has(c.characterId) || mentions(c.characterName),
+    ).length +
+    context.activeThreads.filter((t) => mentions(t.threadName)).length +
+    (context.worldState && mentions(context.worldState.location) ? 1 : 0) +
+    context.immutableEvents.filter((e) => mentions(e.eventKey)).length;
+
+  const minRatio =
+    MIN_CONNECTIVITY_RATIO[context.metadata?.projectType ?? 'series'];
+  const ratio = callbacks / targets;
+  if (ratio >= minRatio) return [];
+
+  return [
+    {
+      code: 'CANON_012',
+      severity: 'info',
+      message: `Episode connectivity ${(ratio * 100).toFixed(0)}% is below the ${(minRatio * 100).toFixed(0)}% threshold: ${callbacks} callback(s) to ${targets} established canon item(s).`,
+      suggestion:
+        'Reference an established character, open thread, location or event.',
+    },
+  ];
+}
+
 // =============================================================================
 // MAIN VALIDATION FUNCTIONS
 // =============================================================================
@@ -662,6 +767,8 @@ export function validatePlotSkeleton(
   violations.push(...checkConnectivityFailure(skeleton, context));
   violations.push(...checkEscalationOverflow(skeleton, context));
   violations.push(...checkToneDrift(skeleton, context));
+  violations.push(...checkCausalityBreak(skeleton));
+  violations.push(...checkStandaloneEpisode(skeleton, context));
 
   // Determine passed rules
   const violatedCodes = new Set(violations.map((v) => v.code));
@@ -710,6 +817,7 @@ export function validateSceneBlocks(
   violations.push(...checkResurrectionFailure(skeleton, context));
   violations.push(...checkWorldContradiction(skeleton, context));
   violations.push(...checkToneDrift(skeleton, context));
+  violations.push(...checkStandaloneEpisode(skeleton, context));
 
   const violatedCodes = new Set(violations.map((v) => v.code));
   const passedRules = VALIDATION_RULES.filter(

@@ -143,7 +143,7 @@ export function PageNavigation(props: React.PropsWithChildren) {
 
 export function PageDescription(props: React.PropsWithChildren) {
   return (
-    <div className={'flex h-6 items-center'}>
+    <div className={'flex min-h-6 items-center'}>
       <div className={'text-xs leading-none font-normal text-muted-foreground'}>
         {props.children}
       </div>
@@ -192,7 +192,7 @@ export function PageHeader({
             <SidebarTrigger className="hidden h-4.5 w-4.5 cursor-pointer text-muted-foreground hover:text-secondary-foreground lg:inline-flex" />
           ) : null}
 
-          <If condition={description}>
+          <If condition={title}>
             <If condition={displaySidebarTrigger}>
               <Separator
                 orientation="vertical"
@@ -200,12 +200,12 @@ export function PageHeader({
               />
             </If>
 
-            <PageDescription>{description}</PageDescription>
+            <PageTitle>{title}</PageTitle>
           </If>
         </div>
 
-        <If condition={title}>
-          <PageTitle>{title}</PageTitle>
+        <If condition={description}>
+          <PageDescription>{description}</PageDescription>
         </If>
       </div>
 

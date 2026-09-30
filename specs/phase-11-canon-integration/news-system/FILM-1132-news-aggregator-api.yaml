@@ -3,7 +3,7 @@ title: "News Aggregator Service"
 phase: 11
 phase_name: "Canon Integration & Content Types"
 category: feature
-status: PARTIAL
+status: DONE
 audited: "2026-09-23"
 effort: L
 dependencies:
@@ -28,8 +28,8 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "Stories include balanced perspectives (left, center, right)"
-    met: false
-    reason: "no longer true — articles never carry a bias label (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:131`), so every article lands in `center`"
+    met: true
+    evidence: "the aggregator selects `bias_label` (`packages/features/episodes/src/lib/server/services/context-aggregator.ts:112`, :150) and `NewsAPIProvider` sets it on each article (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:150`), so `getBalancedSources` (`packages/features/episodes/src/types/news-sources.ts:35`) buckets by the seeded outlet label; asserted in `packages/features/episodes/__tests__/newsapi-one-request.test.ts`. The labels are the seed's own (`external_sources.bias_label`), not verified by the owner (FILM-1133)"
   - text: "Entity extraction merges across articles"
     met: true
     evidence: null
@@ -39,20 +39,6 @@ acceptance_criteria:
   - text: "Server actions exported"
     met: true
     evidence: null
-remaining:
-  - criterion: "Stories include balanced perspectives (left, center, right)"
-    reason: >
-      `getBalancedSources` buckets by `article.biasLabel` and sends unlabelled
-      items to `center`
-      (`packages/features/episodes/src/types/news-sources.ts:35`).
-      `NewsAPIProvider` never sets `biasLabel`
-      (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:131`),
-      and the aggregator loads sources without `bias_label` (it loads
-      `config` since KB-125, #400, for the NewsAPI id)
-      (`packages/features/episodes/src/lib/server/services/context-aggregator.ts:111`),
-      so the seeded outlets' labels never reach an article. Left and right are
-      always empty
-    closed_by: "unassigned"
 open_questions: []
 feature:
   database:

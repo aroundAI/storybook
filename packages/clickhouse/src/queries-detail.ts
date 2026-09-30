@@ -326,6 +326,80 @@ export async function queryQualityMetricsForVideos(input: {
   );
 }
 
+/** One video's reach on one day, as the platform reported it. */
+export interface DailyReachRow {
+  videoId: string;
+  date: string;
+  impressions: number;
+  /** That day's own click-through rate, 0..1. */
+  impressionsCtr: number;
+}
+
+async function queryDailyReachForVideosSingle(input: {
+  videoIds: string[];
+  projectIds?: string[];
+  startDate: string;
+  endDate: string;
+}): Promise<DailyReachRow[]> {
+  if (input.videoIds.length === 0 || !isClickHouseEnabled()) return [];
+
+  const params: Record<string, unknown> = {
+    videoIds: input.videoIds,
+    startDate: input.startDate,
+    endDate: input.endDate,
+  };
+  const conditions = [
+    'video_id IN {videoIds: Array(String)}',
+    'metric_date >= {startDate: Date}',
+    'metric_date <= {endDate: Date}',
+  ];
+
+  pushProjectScope(conditions, params, input.projectIds);
+
+  const result = await getClickHouseClient().query({
+    query: `
+      SELECT video_id, toString(metric_date) as date, impressions, impressions_ctr
+      FROM video_reach_daily FINAL
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY video_id, metric_date
+    `,
+    query_params: params,
+    format: 'JSONEachRow',
+  });
+
+  const rows = await result.json<{
+    video_id: string;
+    date: string;
+    impressions: number;
+    impressions_ctr: number;
+  }>();
+
+  return rows.map((row) => ({
+    videoId: row.video_id,
+    date: row.date,
+    impressions: Number(row.impressions),
+    impressionsCtr: Number(row.impressions_ctr),
+  }));
+}
+
+/**
+ * Impressions and CTR per video per day. Rows are keyed by video and date,
+ * so chunks are disjoint and simply concatenate.
+ */
+export async function queryDailyReachForVideos(input: {
+  videoIds: string[];
+  projectIds?: string[];
+  startDate: string;
+  endDate: string;
+}): Promise<DailyReachRow[]> {
+  if (fitsOneChunk(input.videoIds))
+    return queryDailyReachForVideosSingle(input);
+
+  return concatByChunk(input.videoIds, (chunk) =>
+    queryDailyReachForVideosSingle({ ...input, videoIds: chunk }),
+  );
+}
+
 /**
  * Audience rows. Each row carries its `videoId` and its percentage is
  * relative to that video, so chunks are disjoint and simply concatenate —
@@ -348,6 +422,109 @@ export async function queryAudienceRows(input: {
   return concatByChunk(input.videoIds, (chunk) =>
     queryAudienceRowsSingle({ ...input, videoIds: chunk }),
   );
+}
+
+/** One upload month's subscribed-versus-not view counts. */
+export interface FollowerStatusMonth {
+  /** First day of the month the videos were published in, `YYYY-MM-DD`. */
+  month: string;
+  /** Videos published that month, whether or not they carry a split. */
+  videoCount: number;
+  /** Of those, the videos with a follower-status row. */
+  videosWithSplit: number;
+  subscribedViews: number;
+  notSubscribedViews: number;
+}
+
+async function queryFollowerStatusByUploadMonthSingle(input: {
+  videoIds: string[];
+  projectIds?: string[];
+}): Promise<FollowerStatusMonth[]> {
+  if (input.videoIds.length === 0 || !isClickHouseEnabled()) return [];
+
+  const params: Record<string, unknown> = { videoIds: input.videoIds };
+  const audienceConditions = [
+    'video_id IN {videoIds: Array(String)}',
+    "dimension = 'follower_status'",
+  ];
+
+  pushProjectScope(audienceConditions, params, input.projectIds);
+
+  const result = await getClickHouseClient().query({
+    query: `
+      SELECT
+        toString(toStartOfMonth(d.published_at)) AS month,
+        count() AS video_count,
+        countIf(a.has_split) AS videos_with_split,
+        sum(a.subscribed) AS subscribed_views,
+        sum(a.not_subscribed) AS not_subscribed_views
+      FROM (
+        SELECT video_id, published_at
+        FROM video_dim FINAL
+        WHERE video_id IN {videoIds: Array(String)}
+      ) AS d
+      LEFT JOIN (
+        SELECT
+          video_id,
+          true AS has_split,
+          sumIf(views, key = 'subscribed') AS subscribed,
+          sumIf(views, key != 'subscribed') AS not_subscribed
+        FROM (
+          SELECT video_id, key, argMax(views, fetched_at) AS views
+          FROM video_audience
+          WHERE ${audienceConditions.join(' AND ')}
+          GROUP BY video_id, key
+        )
+        GROUP BY video_id
+      ) AS a ON a.video_id = d.video_id
+      GROUP BY month
+      ORDER BY month
+    `,
+    query_params: params,
+    format: 'JSONEachRow',
+  });
+
+  const rows = await result.json<{
+    month: string;
+    video_count: number;
+    videos_with_split: number;
+    subscribed_views: number;
+    not_subscribed_views: number;
+  }>();
+
+  return rows.map((row) => ({
+    month: row.month,
+    videoCount: Number(row.video_count),
+    videosWithSplit: Number(row.videos_with_split),
+    subscribedViews: Number(row.subscribed_views),
+    notSubscribedViews: Number(row.not_subscribed_views),
+  }));
+}
+
+/**
+ * The subscribed split of each video's latest follower-status snapshot,
+ * grouped by the month the video was published. Audience rows are
+ * latest-wins snapshots with no date of their own, so upload month is the
+ * only period they can honestly be grouped by. Every field is a sum, so
+ * chunks fold by month.
+ */
+export async function queryFollowerStatusByUploadMonth(input: {
+  videoIds: string[];
+  /** Bounds what is read; see `queryQualityMetricsForVideos`. */
+  projectIds?: string[];
+}): Promise<FollowerStatusMonth[]> {
+  if (fitsOneChunk(input.videoIds)) {
+    return queryFollowerStatusByUploadMonthSingle(input);
+  }
+
+  const folded = await sumByChunk(
+    input.videoIds,
+    (chunk) =>
+      queryFollowerStatusByUploadMonthSingle({ ...input, videoIds: chunk }),
+    (row) => row.month,
+  );
+
+  return folded.sort((a, b) => a.month.localeCompare(b.month));
 }
 
 /**

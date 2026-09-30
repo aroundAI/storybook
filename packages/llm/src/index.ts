@@ -28,7 +28,13 @@
  */
 
 // Factory
-export { createLLMClient, resetLLMClient, loadConfigFromEnv } from './factory';
+export {
+  createLLMClient,
+  resetLLMClient,
+  loadConfigFromEnv,
+  DEFAULT_LOCAL_MODEL,
+} from './factory';
+export { forcedLocalConfig } from './force-local';
 
 // Types
 export type {

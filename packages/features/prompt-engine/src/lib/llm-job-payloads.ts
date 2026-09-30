@@ -175,6 +175,7 @@ const AnalyticsInsights = z.object({
   accountId,
   projectId: id,
   userId,
+  refresh: z.boolean().optional(),
   analytics: z.object({
     totals: z.object({
       views: z.number(),

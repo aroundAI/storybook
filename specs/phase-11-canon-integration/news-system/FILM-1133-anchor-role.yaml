@@ -4,7 +4,7 @@ phase: 11
 phase_name: "Canon Integration & Content Types"
 category: feature
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-30"
 effort: M
 dependencies:
   - spec_id: "FILM-1132"
@@ -26,21 +26,18 @@ acceptance_criteria:
     met: false
     reason: "unverified — the prompt asks for all three types; nothing checks the output; no test"
   - text: "Balance checker identifies bias distribution"
-    met: false
-    reason: "not met — `checkSourceBalanceAction` feeds articles with no bias label (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:131`); every distribution is `unknown`"
+    met: true
+    evidence: "packages/features/episodes/src/lib/server/services/context-aggregator.ts:112 selects `external_sources.bias_label` and :150 hands it on; packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:150 sets `biasLabel` on each article, so checkSourceBalance (anchor-service.ts:143) sees real labels; test packages/features/episodes/__tests__/newsapi-one-request.test.ts:179 (distribution { center: 1, center_left: 1 }). Caveat: the labels are the seed's (apps/web/supabase/migrations/20260211200003_seed_news_sources.sql, sourced to Ad Fontes / AllSides per its comment) and have not been checked by the owner; no static map was added"
   - text: "Server actions are authenticated"
     met: true
     evidence: "packages/features/episodes/src/server/news-actions.ts:82, :115"
 remaining:
-  - criterion: "Balance checker identifies bias distribution"
-    reason: >
-      `checkSourceBalance` counts `article.biasLabel`
-      (`packages/features/episodes/src/lib/server/services/anchor-service.ts:143`),
-      but the articles `checkSourceBalanceAction` passes it never carry one
-      (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:131`),
-      so it always reports every source as `unknown` — the same missing labels
-      as FILM-1132
-    closed_by: "FILM-1132"
+  - criterion: "Anchor role prompt generates valid broadcast scripts; all claims attributed to sources"
+    reason: "Owner check OC-1 (docs/OWNER-CHECKS.md): LLM behaviour, no test or eval"
+    closed_by: "owner"
+  - criterion: "Script includes ANCHOR, GRAPHIC, TRANSITION cues"
+    reason: "The prompt asks for all three; nothing checks the output"
+    closed_by: "unassigned"
 open_questions: []
 feature:
   database:

@@ -101,7 +101,7 @@
       "name": "KB-76 Add Thread throws the RLS refusal instead of returning it",
       "kind": "unit",
       "file": "packages/features/episodes/src/server/canon-actions.ts",
-      "find": "    if (error?.code === INSUFFICIENT_PRIVILEGE) {\n      throw new ActionRefusal(CANON_WRITE_REFUSAL);\n    }\n\n    if (error) {\n      console.error('Error creating narrative thread:', error);",
+      "find": "    if (error?.code === INSUFFICIENT_PRIVILEGE) {\n      throw new CanonPermissionError(CANON_WRITE_REFUSAL);\n    }\n\n    if (error) {\n      console.error('Error creating narrative thread:', error);",
       "replace": "    if (error) {\n      console.error('Error creating narrative thread:', error);",
       "cwd": "packages/features/episodes",
       "test": "__tests__/canon-write-scope-actions.test.ts"

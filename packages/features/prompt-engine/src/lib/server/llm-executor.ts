@@ -6,7 +6,12 @@
 import { z } from 'zod';
 
 import type { LLMProvider, LLMUsageEvent } from '@kit/llm';
-import { LLMError, createLLMClient, logLLMUsage } from '@kit/llm';
+import {
+  LLMError,
+  createLLMClient,
+  forcedLocalConfig,
+  logLLMUsage,
+} from '@kit/llm';
 import { getLogger } from '@kit/shared/logger';
 
 import { normalizeSceneShotData } from '../normalize-llm-output';
@@ -364,17 +369,23 @@ export async function executeLLM<T = unknown>(
     );
 
     // 3. Create LLM client
-    provider = rendered.llmConfig.provider || 'local';
-    model = rendered.llmConfig.model || 'claude-sonnet-4-5';
+    const forcedLocal = forcedLocalConfig();
 
-    const llm = createLLMClient({
-      provider: provider as LLMProvider,
-      model,
-      apiKey: await getApiKeyForProvider(provider),
-      vertexai: provider === 'gemini' && process.env.GEMINI_VERTEXAI === 'true',
-      project: process.env.GOOGLE_CLOUD_PROJECT,
-      location: process.env.GOOGLE_CLOUD_LOCATION,
-    });
+    provider = forcedLocal?.provider ?? rendered.llmConfig.provider;
+    model = forcedLocal?.model ?? rendered.llmConfig.model;
+
+    const llm = createLLMClient(
+      forcedLocal ?? {
+        provider: provider as LLMProvider,
+        model,
+        apiKey: await getApiKeyForProvider(provider),
+        baseUrl: provider === 'local' ? process.env.LOCAL_API_URL : undefined,
+        vertexai:
+          provider === 'gemini' && process.env.GEMINI_VERTEXAI === 'true',
+        project: process.env.GOOGLE_CLOUD_PROJECT,
+        location: process.env.GOOGLE_CLOUD_LOCATION,
+      },
+    );
 
     // 4. Execute LLM call (use config from JSON or override)
     const resolvedMaxTokens =
