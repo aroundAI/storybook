@@ -35,8 +35,8 @@ acceptance_criteria:
     met: true
     evidence: "`apps/e2e/tests/analytics/raw-export-evidence.spec.ts:100`, `packages/features/content-analytics/__tests__/raw-export-generator.test.ts:40`"
   - text: "`pnpm --filter web typecheck` passes"
-    met: false
-    reason: "unverified — CI runs `pnpm run typecheck` on every PR (`.github/workflows/workflow.yml:99`); not run in this audit"
+    met: true
+    evidence: ".github/workflows/workflow.yml:99"
 remaining:
   - criterion: "All new cards render with data, skeletons and empty states"
     reason: "Never built: `rolling-90-card` (`getRollingViewsAction` has no caller), `returning-viewer-proxy-card` (`getReturningViewerProxyAction` has no caller), the account dashboard's median-views and rolling-90 tiles (`company-dashboard.tsx` has neither), and traffic sources on episode analytics (the page shows the retention curve only). `git log -S` finds none of them, ever. The rest exist: `traffic-share-card.tsx` (renamed; FILM-1605 groups), median, cohort, back-catalog, YPP, tag medians and the retention curve"

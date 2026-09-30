@@ -5,7 +5,7 @@ export function AuthLayoutShell({
   Logo?: React.ComponentType;
 }>) {
   return (
-    <div
+    <main
       className={
         'flex h-screen flex-col items-center justify-center' +
         ' gap-y-10 bg-background lg:gap-y-8 lg:bg-muted/30' +
@@ -19,6 +19,6 @@ export function AuthLayoutShell({
       >
         {children}
       </div>
-    </div>
+    </main>
   );
 }

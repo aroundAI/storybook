@@ -142,9 +142,9 @@ async function TermsOfServicePage() {
                   key={i}
                   className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50"
                 >
-                  <h4 className="font-medium text-slate-900 dark:text-white">
+                  <h3 className="font-medium text-slate-900 dark:text-white">
                     {item.title}
-                  </h4>
+                  </h3>
                   <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                     {item.desc}
                   </p>
@@ -162,9 +162,9 @@ async function TermsOfServicePage() {
           >
             <div className="space-y-4">
               <div>
-                <h4 className="mb-2 font-medium text-slate-900 dark:text-white">
+                <h3 className="mb-2 font-medium text-slate-900 dark:text-white">
                   3.1 Eligibility
-                </h4>
+                </h3>
                 <p>
                   You must be at least 18 years old or the age of legal majority
                   in your jurisdiction to use the Service. By creating an
@@ -172,9 +172,9 @@ async function TermsOfServicePage() {
                 </p>
               </div>
               <div>
-                <h4 className="mb-2 font-medium text-slate-900 dark:text-white">
+                <h3 className="mb-2 font-medium text-slate-900 dark:text-white">
                   3.2 Account Security
-                </h4>
+                </h3>
                 <p>
                   You are responsible for maintaining the confidentiality of
                   your account credentials and for all activities that occur
@@ -183,9 +183,9 @@ async function TermsOfServicePage() {
                 </p>
               </div>
               <div>
-                <h4 className="mb-2 font-medium text-slate-900 dark:text-white">
+                <h3 className="mb-2 font-medium text-slate-900 dark:text-white">
                   3.3 Account Types
-                </h4>
+                </h3>
                 <p>
                   We offer personal accounts and team accounts. Team account
                   owners are responsible for the actions of all team members
@@ -204,9 +204,9 @@ async function TermsOfServicePage() {
           >
             <div className="space-y-4">
               <div>
-                <h4 className="mb-2 font-medium text-slate-900 dark:text-white">
+                <h3 className="mb-2 font-medium text-slate-900 dark:text-white">
                   4.1 Your Content
-                </h4>
+                </h3>
                 <p>
                   You retain all intellectual property rights to content you
                   create using the Service (&quot;User Content&quot;), including
@@ -217,9 +217,9 @@ async function TermsOfServicePage() {
                 </p>
               </div>
               <div>
-                <h4 className="mb-2 font-medium text-slate-900 dark:text-white">
+                <h3 className="mb-2 font-medium text-slate-900 dark:text-white">
                   4.2 AI-Generated Content
-                </h4>
+                </h3>
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
                   <p className="text-sm text-amber-800 dark:text-amber-200">
                     <strong>Important:</strong> AI-generated content may not be
@@ -229,9 +229,9 @@ async function TermsOfServicePage() {
                 </div>
               </div>
               <div>
-                <h4 className="mb-2 font-medium text-slate-900 dark:text-white">
+                <h3 className="mb-2 font-medium text-slate-900 dark:text-white">
                   4.3 Prohibited Content
-                </h4>
+                </h3>
                 <div className="grid gap-2 text-sm">
                   {[
                     'Illegal, harmful, threatening, abusive, or discriminatory content',
@@ -267,9 +267,9 @@ async function TermsOfServicePage() {
                 access and interact with these platforms on your behalf.
               </p>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-                <h4 className="mb-2 font-medium text-slate-900 dark:text-white">
+                <h3 className="mb-2 font-medium text-slate-900 dark:text-white">
                   Platform Terms
-                </h4>
+                </h3>
                 <p className="text-sm text-slate-600 dark:text-slate-400">
                   When publishing content to third-party platforms, you must
                   comply with their respective terms of service. We are not
@@ -284,7 +284,7 @@ async function TermsOfServicePage() {
                     href="https://www.youtube.com/t/terms"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-indigo-600 hover:underline dark:text-indigo-400"
+                    className="text-indigo-600 underline dark:text-indigo-400"
                   >
                     YouTube Terms of Service
                   </a>
@@ -304,36 +304,36 @@ async function TermsOfServicePage() {
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
-                  <h4 className="mb-2 font-medium text-slate-900 dark:text-white">
+                  <h3 className="mb-2 font-medium text-slate-900 dark:text-white">
                     Subscription Plans
-                  </h4>
+                  </h3>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
                     Access to certain features requires a paid subscription. All
                     fees are quoted in USD.
                   </p>
                 </div>
                 <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
-                  <h4 className="mb-2 font-medium text-slate-900 dark:text-white">
+                  <h3 className="mb-2 font-medium text-slate-900 dark:text-white">
                     Payment Processing
-                  </h4>
+                  </h3>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
                     We use Stripe and Lemon Squeezy for secure payment
                     processing.
                   </p>
                 </div>
                 <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
-                  <h4 className="mb-2 font-medium text-slate-900 dark:text-white">
+                  <h3 className="mb-2 font-medium text-slate-900 dark:text-white">
                     Cancellation
-                  </h4>
+                  </h3>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
                     Cancel anytime. Cancellation takes effect at the end of your
                     billing period.
                   </p>
                 </div>
                 <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
-                  <h4 className="mb-2 font-medium text-slate-900 dark:text-white">
+                  <h3 className="mb-2 font-medium text-slate-900 dark:text-white">
                     AI Credits
-                  </h4>
+                  </h3>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
                     Certain AI features consume credits. Unused credits may
                     expire per plan terms.
@@ -427,7 +427,7 @@ async function TermsOfServicePage() {
             </p>
             <a
               href={`mailto:${contactEmail}`}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 font-medium text-white transition-colors hover:bg-indigo-700"
+              className="inline-flex max-w-full items-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 font-medium break-all text-white transition-colors hover:bg-indigo-700"
             >
               <Mail className="h-4 w-4" />
               {contactEmail}

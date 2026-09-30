@@ -142,7 +142,7 @@ test_plan:
       reason: "retired — the column now holds an ElevenLabs voice ID, not an asset reference (30ed2083)"
 remaining:
   - criterion: "Check constraint: asset is type 'character'"
-    reason: "Never created: Postgres rejects a subquery in a CHECK, and no trigger or policy tests the type (git log -S finds none). Only the app create path sets it (packages/features/assets/src/lib/server/character.mutations.ts:58)"
+    reason: "Never created: Postgres rejects a subquery in a CHECK, and no trigger or policy tests the type (git log -S finds none). Only the create path sets it: create_character_with_details (apps/web/supabase/migrations/20260930113000_film202-create-character-atomic.sql:42)"
     closed_by: "unassigned"
 open_questions: []
 notes: |

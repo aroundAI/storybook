@@ -92,6 +92,37 @@ describe('ElevenLabsProvider', () => {
       expect(result.metadata?.modelId).toBe('eleven_monolingual_v1');
     });
 
+    it('should serve ten requests at once without mixing them up', async () => {
+      // The class keeps no per-request state, so concurrent calls must each
+      // return their own voice and text (FILM-501: up to 10 concurrent).
+      expect(
+        provider.getRateLimits().concurrentRequests,
+      ).toBeGreaterThanOrEqual(10);
+
+      fetchMock.mockImplementation(async () =>
+        createMockResponse({ ok: true, arrayBuffer: new ArrayBuffer(64) }),
+      );
+
+      const requests = Array.from({ length: 10 }, (_, n) =>
+        provider.generateVoice({
+          text: 'x'.repeat(n + 1),
+          voiceId: `voice-${n}`,
+          modelId,
+        }),
+      );
+
+      await vi.runAllTimersAsync();
+      const results = await Promise.all(requests);
+
+      expect(fetchMock).toHaveBeenCalledTimes(10);
+      expect(results.map((r) => r.metadata?.voiceId)).toEqual(
+        Array.from({ length: 10 }, (_, n) => `voice-${n}`),
+      );
+      expect(results.map((r) => r.characterCount)).toEqual(
+        Array.from({ length: 10 }, (_, n) => n + 1),
+      );
+    });
+
     it('should apply custom voice settings', async () => {
       fetchMock.mockResolvedValueOnce(
         createMockResponse({

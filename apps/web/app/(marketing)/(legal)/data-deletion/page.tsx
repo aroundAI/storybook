@@ -178,7 +178,7 @@ async function DataDeletionPage() {
                 platform&apos;s side at any time, whether or not you still have
                 a {productName} account. Access stops immediately.
               </p>
-              <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 dark:bg-slate-800">
                     <tr>
@@ -206,7 +206,7 @@ async function DataDeletionPage() {
                               href={item.href}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-indigo-600 hover:underline dark:text-indigo-400"
+                              className="text-indigo-600 underline dark:text-indigo-400"
                             >
                               {item.where}
                             </a>
@@ -248,7 +248,7 @@ async function DataDeletionPage() {
               go to the same address. The{' '}
               <Link
                 href="/privacy-policy"
-                className="text-indigo-600 hover:underline dark:text-indigo-400"
+                className="text-indigo-600 underline dark:text-indigo-400"
               >
                 Privacy Policy
               </Link>{' '}
@@ -256,7 +256,7 @@ async function DataDeletionPage() {
             </p>
             <a
               href={`mailto:${contactEmail}`}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 font-medium text-white transition-colors hover:bg-indigo-700"
+              className="inline-flex max-w-full items-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 font-medium break-all text-white transition-colors hover:bg-indigo-700"
             >
               <Mail className="h-4 w-4" />
               {contactEmail}
@@ -279,7 +279,7 @@ function ContactLink({
     <a
       data-test={dataTest}
       href={`mailto:${email}`}
-      className="text-indigo-600 hover:underline dark:text-indigo-400"
+      className="text-indigo-600 underline dark:text-indigo-400"
     >
       {email}
     </a>

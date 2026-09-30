@@ -65,7 +65,7 @@ async function offTokenCards(page: Page) {
           style.borderTopColor !== want.border
         );
       })
-      .map((card) => card.querySelector('h3')?.textContent ?? '?');
+      .map((card) => card.querySelector('h2')?.textContent ?? '?');
 
     probe.remove();
 
@@ -181,7 +181,7 @@ test.describe('Analytics card shell (FILM-1706)', () => {
 
     const marks = await cards(page).evaluateAll((all) =>
       all.map((card) => ({
-        title: card.querySelector('h3')?.textContent,
+        title: card.querySelector('h2')?.textContent,
         trigger: card.querySelector('button[aria-controls]') !== null,
         hover: card.className.includes('hover:bg-accent'),
       })),

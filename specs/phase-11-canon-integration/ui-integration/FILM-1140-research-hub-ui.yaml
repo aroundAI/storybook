@@ -59,7 +59,7 @@ remaining:
   - criterion: "Source counts show in sidebar nav item"
     reason: >
       The count is `researchSources + researchFacts`
-      (`apps/web/app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx:494`);
+      (`apps/web/app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx:503`);
       `researchSources` queries `external_content.project_id`
       (`layout.tsx:84`), which no migration or generated type defines, so that
       request errors and only facts are counted

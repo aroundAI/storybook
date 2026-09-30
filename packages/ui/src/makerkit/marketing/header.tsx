@@ -1,6 +1,6 @@
 import { cn } from '../../lib/utils';
 
-interface HeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+interface HeaderProps extends React.HTMLAttributes<HTMLElement> {
   logo?: React.ReactNode;
   navigation?: React.ReactNode;
   actions?: React.ReactNode;
@@ -14,7 +14,7 @@ export const Header: React.FC<HeaderProps> = function ({
   ...props
 }) {
   return (
-    <div
+    <header
       className={cn(
         'site-header sticky top-0 z-10 w-full bg-background/80 py-1 backdrop-blur-md dark:bg-background/50',
         className,
@@ -28,6 +28,6 @@ export const Header: React.FC<HeaderProps> = function ({
           <div className="flex items-center justify-end gap-x-2">{actions}</div>
         </div>
       </div>
-    </div>
+    </header>
   );
 };

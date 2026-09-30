@@ -73,11 +73,11 @@ test_plan:
       evidence: null
   integration:
     - text: "Test with mocked LLM response"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/lambda/llm-worker/__tests__/analytics-insights-handler.test.ts:70"
     - text: "Test caching behavior"
       met: false
-      reason: "not met — no test found"
+      reason: "not built: insights are generated on request by a queued job and nothing caches them, so there is no caching to test"
   e2e: []
 remaining:
   - criterion: "Summary, recommendations, posting times, audience, action items shown"

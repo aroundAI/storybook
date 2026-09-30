@@ -39,8 +39,8 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "createCharacterAction rolls back asset if details creation fails"
-    met: false
-    reason: "unverified — compensating delete (packages/features/assets/src/lib/server/character.mutations.ts:106) is unchecked, and assets_delete admits only owner/admin; no test"
+    met: true
+    evidence: "apps/web/supabase/tests/database/character-create-rollback.test.sql:67"
   - text: "createCharacterAction validates all nested schemas"
     met: true
     evidence: null
@@ -52,7 +52,7 @@ acceptance_criteria:
     evidence: null
   - text: "updateCharacterAction updates both asset and details atomically"
     met: false
-    reason: "not met — the asset update commits first (packages/features/assets/src/lib/server/character.mutations.ts:267); a failed details upsert (:356) leaves it applied"
+    reason: "not met — the asset update commits first (packages/features/assets/src/lib/server/character.mutations.ts:248); a failed details upsert (:356) leaves it applied"
   - text: "updateCharacterAction preserves unmodified fields"
     met: true
     evidence: null
@@ -78,8 +78,8 @@ acceptance_criteria:
     met: false
     reason: "unverified — runtime timing; nothing measures it"
   - text: "Transaction rollback works correctly"
-    met: false
-    reason: "unverified — see the rollback item above; no test exercises a failed details insert"
+    met: true
+    evidence: "apps/web/supabase/tests/database/character-create-rollback.test.sql:75"
   - text: "JSONB columns properly typed in TypeScript"
     met: true
     evidence: null
@@ -98,7 +98,7 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "Update is atomic"
-    reason: "updateCharacterAction commits the assets update (packages/features/assets/src/lib/server/character.mutations.ts:267) before upserting character_details (:356), and never reverts the first when the second fails"
+    reason: "updateCharacterAction commits the assets update (packages/features/assets/src/lib/server/character.mutations.ts:248) before upserting character_details (:356), and never reverts the first when the second fails"
     closed_by: "unassigned"
 open_questions: []
 notes: |

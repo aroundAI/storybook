@@ -65,8 +65,6 @@ const KNOWN: Record<string, [number, string]> = {
   // Rollbacks of a row the same action just inserted
   'packages/features/content-analytics/src/server/experiment-actions.ts | analytics_experiments | delete':
     [1, 'rollback of the row this action just inserted'],
-  'packages/features/assets/src/lib/server/character.mutations.ts | assets | delete':
-    [1, 'rollback of the row this action just inserted'],
 
   // Replace-sets
   'packages/features/content-analytics/src/server/taxonomy-actions.ts | publish_tags | delete':

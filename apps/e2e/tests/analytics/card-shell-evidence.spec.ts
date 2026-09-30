@@ -137,7 +137,7 @@ async function readCards(page: Page) {
 
   return cards.evaluateAll((all) =>
     all.map((card) => ({
-      title: card.querySelector('h3')?.textContent ?? '',
+      title: card.querySelector('h2')?.textContent ?? '',
       figure:
         card.querySelector('[data-test="card-figure"]')?.textContent ?? null,
       noFigure:

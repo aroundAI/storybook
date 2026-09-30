@@ -40,34 +40,34 @@ acceptance_criteria:
     evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:70`"
   - text: "`generateVoice()` respects voice settings (stability, similarity_boost, style, speed)"
     met: true
-    evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:95`"
+    evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:126`"
   - text: "`generateVoice()` returns audio buffer with correct format"
     met: true
     evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:88`"
   - text: "`generateVoice()` calculates cost accurately based on character count"
     met: true
-    evidence: "`packages/features/audio-generation/src/providers/elevenlabs.ts:72`; `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:519`"
+    evidence: "`packages/features/audio-generation/src/providers/elevenlabs.ts:72`; `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:550`"
   - text: "`generateVoice()` throws error for text exceeding 5000 characters"
     met: true
-    evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:218`"
+    evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:249`"
   - text: "`generateVoice()` throws error for invalid voice ID"
     met: true
-    evidence: "`packages/features/audio-generation/__tests__/http.test.ts:170` (a \"Bad voice id\" 422 throws, not retried); `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:227`"
+    evidence: "`packages/features/audio-generation/__tests__/http.test.ts:170` (a \"Bad voice id\" 422 throws, not retried); `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:258`"
   - text: "`listVoices()` returns all available voices from ElevenLabs"
     met: true
-    evidence: "named `getVoices()`; `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:283`"
+    evidence: "named `getVoices()`; `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:314`"
   - text: "`listVoices()` filters voices by language, gender, age, accent"
     met: false
     reason: "not met — language is read from the accent label (`packages/features/audio-generation/src/providers/elevenlabs.ts:167`), so filtering by `'en'` drops accented voices"
   - text: "`listVoices()` includes voice preview URLs"
     met: true
-    evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:369`"
+    evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:400`"
   - text: "`cloneVoice()` creates custom voice from audio samples"
     met: true
-    evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:404`"
+    evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:435`"
   - text: "`cloneVoice()` validates audio file count (1-25)"
     met: true
-    evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:448`, `:470`"
+    evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:479`, `:470`"
   - text: "Provider retries failed requests with exponential backoff (max 5 retries)"
     met: true
     evidence: "`packages/features/audio-generation/src/lib/http.ts:36` (5 attempts by default); `packages/features/audio-generation/__tests__/http.test.ts:89`, `:110`"
@@ -81,8 +81,8 @@ acceptance_criteria:
     met: false
     reason: "unverified — runtime timing against ElevenLabs; each attempt times out at 30 s by default (`packages/features/audio-generation/src/lib/http.ts:14`)"
   - text: "Provider supports concurrent requests (up to 10)"
-    met: false
-    reason: "unverified — no test; the class keeps no per-request state, and nothing reads `getRateLimits()` (`packages/features/audio-generation/src/providers/elevenlabs.ts:284`)"
+    met: true
+    evidence: "packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:95"
   - text: "All errors are logged with context"
     met: false
     reason: "not met — the provider never logs; it rethrows with provider and operation context (`packages/features/audio-generation/src/lib/http.ts:95`)"

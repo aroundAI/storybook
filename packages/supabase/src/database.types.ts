@@ -5451,14 +5451,16 @@ export type Database = {
       }
       create_character_with_details: {
         Args: {
-          p_description: string
-          p_element_prompt: string
+          p_description?: string
+          p_element_prompt?: string
           p_elevenlabs_voice_id?: string
+          p_file_url?: string
           p_name: string
-          p_personality: string
-          p_physical_attributes: Json
+          p_personality?: string
+          p_physical_attributes?: Json
           p_project_id: string
-          p_reference_images: string[]
+          p_reference_images?: string[]
+          p_thumbnail_url?: string
         }
         Returns: string
       }

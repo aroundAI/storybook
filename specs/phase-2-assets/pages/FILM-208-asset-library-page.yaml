@@ -35,7 +35,7 @@ acceptance_criteria:
     reason: "retired — renamed \"Cast\" / \"Story World\" by tab in 307d879b (apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:101-107)"
   - text: "Description displayed below title"
     met: false
-    reason: "not met — PageHeader renders the description above the title (packages/ui/src/makerkit/page.tsx:172-185)"
+    reason: "not met — PageHeader renders the description above the title (packages/ui/src/makerkit/page.tsx:218-231)"
   - text: "\"Create Asset\" button in page header"
     met: true
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:143-149"
@@ -61,8 +61,8 @@ acceptance_criteria:
     met: true
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:134-140"
   - text: "Sidebar highlights \"Assets\" when active"
-    met: false
-    reason: "not met — items test usePathname() for \"character\"/\"location\", which only appear in ?tab= (apps/web/app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx:461)"
+    met: true
+    evidence: "apps/e2e/tests/studio/sidebar-active.spec.ts:15"
   - text: "Page refreshes after asset creation"
     met: false
     reason: "not met — router.refresh() runs, but the gallery seeds its lists once (packages/features/assets/src/hooks/use-character-assets.ts:44); new assets stay hidden"
@@ -96,10 +96,7 @@ remaining:
     reason: "Never built; the page has a \"Back to Project\" link instead (apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:133-140)"
     closed_by: "unassigned"
   - criterion: "Description below title"
-    reason: "PageHeader renders description above the title (packages/ui/src/makerkit/page.tsx:172-185)"
-    closed_by: "unassigned"
-  - criterion: "Sidebar highlight"
-    reason: "\"Characters\" and \"Locations\" test usePathname() for a word that is only in ?tab= (apps/web/app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx:461, :471; same in mobile-studio-header.tsx:258, :268)"
+    reason: "PageHeader renders description above the title (packages/ui/src/makerkit/page.tsx:218-231)"
     closed_by: "unassigned"
   - criterion: "New asset shown after creation"
     reason: "router.refresh() (apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:46) cannot reach the gallery's client state: characters are seeded once (packages/features/assets/src/hooks/use-character-assets.ts:44), locations refetch only on a tab change (packages/features/assets/src/components/asset-gallery.tsx:138-142)"

@@ -97,6 +97,7 @@ export function AccountSelector({
         <PopoverTrigger asChild>
           <Button
             data-test={'account-selector-trigger'}
+            aria-label={selected?.label ?? t('personalAccount')}
             size={collapsed ? 'icon' : 'default'}
             variant="ghost"
             role="combobox"

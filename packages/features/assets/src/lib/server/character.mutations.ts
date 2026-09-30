@@ -29,12 +29,8 @@ import { mapRowToCharacterWithDetails } from '../types';
 import { isAssetInUse } from './asset.queries';
 
 /**
- * Create a new character with atomic insert into assets + character_details
- *
- * Transaction pattern:
- * 1. Insert into assets table
- * 2. Insert into character_details table
- * 3. If step 2 fails, rollback by deleting the asset
+ * Create a new character: an asset plus its details, made by one call to
+ * `create_character_with_details`, which does both inserts in one transaction.
  */
 const createCharacter = enhanceAction(
   async (data) => {
@@ -50,34 +46,10 @@ const createCharacter = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Step 1: Create the base asset
-    const { data: asset, error: assetError } = await client
-      .from('assets')
-      .insert({
-        project_id: data.projectId,
-        type: 'character',
-        name: data.name,
-        description: data.description ?? null,
-        file_url: data.fileUrl || null,
-        thumbnail_url: data.thumbnailUrl || null,
-        metadata: {} as Json,
-      })
-      .select()
-      .single();
-
-    if (assetError) {
-      if (assetError.code === '23505') {
-        throw new ActionRefusal(
-          `A character named "${data.name}" already exists in this project. Choose a different name.`,
-        );
-      }
-
-      logger.error({ ...ctx, error: assetError }, 'Failed to create asset');
-      throw new Error(`Failed to create character: ${assetError.message}`);
-    }
-
-    // Step 2: Create character_details entry
-    // Combine structured fields into physical_attributes JSONB
+    // One call, one transaction: the function inserts the asset and its
+    // details and undoes both if the second fails. Deleting the asset here
+    // afterwards could not: assets_delete admits only project owners and
+    // admins, so a member's failed create left the asset behind (FILM-202).
     const physicalAttributesJson = {
       physicalAttributes: data.physicalAttributes ?? null,
       personalityTraits: data.personalityTraits ?? null,
@@ -85,30 +57,39 @@ const createCharacter = enhanceAction(
       backstory: data.backstory ?? null,
     };
 
-    const { error: detailsError } = await client
-      .from('character_details')
-      .insert({
-        asset_id: asset.id,
-        physical_attributes: physicalAttributesJson as Json,
-        personality: data.personality ?? null,
-        element_prompt: data.elementPrompt ?? null,
-        reference_images: data.referenceImages ?? null,
-        elevenlabs_voice_id: data.voiceAssetId ?? null,
-      });
+    const { data: assetId, error: createError } = await client.rpc(
+      'create_character_with_details',
+      {
+        p_project_id: data.projectId,
+        p_name: data.name,
+        p_description: data.description ?? undefined,
+        p_physical_attributes: physicalAttributesJson as Json,
+        p_personality: data.personality ?? undefined,
+        p_element_prompt: data.elementPrompt ?? undefined,
+        p_reference_images: data.referenceImages ?? undefined,
+        p_elevenlabs_voice_id: data.voiceAssetId ?? undefined,
+        p_file_url: data.fileUrl || undefined,
+        p_thumbnail_url: data.thumbnailUrl || undefined,
+      },
+    );
 
-    if (detailsError) {
+    if (createError || !assetId) {
+      if (createError?.message.includes('duplicate key value')) {
+        throw new ActionRefusal(
+          `A character named "${data.name}" already exists in this project. Choose a different name.`,
+        );
+      }
+
       logger.error(
-        { ...ctx, error: detailsError, assetId: asset.id },
-        'Failed to create character details',
+        { ...ctx, error: createError },
+        'Failed to create character',
       );
-
-      // Rollback: delete the asset we just created
-      await client.from('assets').delete().eq('id', asset.id);
-
       throw new Error(
-        `Failed to create character details: ${detailsError.message}`,
+        `Failed to create character: ${createError?.message ?? 'no id returned'}`,
       );
     }
+
+    const asset = { id: assetId };
 
     // Fetch the complete character with joined details
     const { data: character, error: fetchError } = await client

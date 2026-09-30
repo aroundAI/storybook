@@ -18,10 +18,10 @@ interface StudioProjectCardProps {
 
 // Status badge color mapping
 const statusColors: Record<string, { bg: string; text: string }> = {
-  active: { bg: 'bg-green-500', text: 'text-white' },
-  archived: { bg: 'bg-red-500', text: 'text-white' },
-  draft: { bg: 'bg-gray-500', text: 'text-white' },
-  pending: { bg: 'bg-orange-500', text: 'text-white' },
+  active: { bg: 'bg-green-700', text: 'text-white' },
+  archived: { bg: 'bg-red-700', text: 'text-white' },
+  draft: { bg: 'bg-gray-600', text: 'text-white' },
+  pending: { bg: 'bg-orange-700', text: 'text-white' },
 };
 
 // Generate gradient backgrounds for projects without cover images

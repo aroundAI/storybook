@@ -47,8 +47,8 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "`createShotAction` respects RLS (cannot create for inaccessible project)"
-    met: false
-    reason: "unverified — policy `shots_create` exists (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:933`); no pgTAP test exercises it"
+    met: true
+    evidence: "apps/web/supabase/tests/database/create-policies-refuse-outsiders.test.sql:89"
   - text: "`batchCreateShotsAction` creates all shots atomically"
     met: true
     evidence: null

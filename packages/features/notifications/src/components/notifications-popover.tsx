@@ -111,12 +111,16 @@ export function NotificationsPopover(params: {
   return (
     <Popover modal open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button className={'relative h-9 w-9'} variant={'ghost'}>
-          <Bell className={'min-h-4 min-w-4'} />
+        <Button
+          className={'relative h-9 w-9'}
+          variant={'ghost'}
+          aria-label={t('common:notifications')}
+        >
+          <Bell className={'min-h-4 min-w-4'} aria-hidden="true" />
 
           <span
             className={cn(
-              `absolute top-1 right-1 mt-0 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[0.65rem] text-white animate-in fade-in zoom-in`,
+              `absolute top-1 right-1 mt-0 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-700 text-[0.65rem] text-white animate-in fade-in zoom-in`,
               {
                 hidden: !notifications.length,
               },

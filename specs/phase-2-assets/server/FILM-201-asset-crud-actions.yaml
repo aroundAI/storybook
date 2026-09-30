@@ -40,8 +40,8 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "createAssetAction respects RLS (cannot create for inaccessible project)"
-    met: false
-    reason: "unverified — policy exists (apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:719); no pgTAP test exercises it (apps/web/supabase/tests/database/authors-deletable.test.sql:62 only inserts a fixture as postgres)"
+    met: true
+    evidence: "apps/web/supabase/tests/database/create-policies-refuse-outsiders.test.sql:75"
   - text: "getProjectAssetsAction returns all non-deleted assets for project"
     met: true
     evidence: null

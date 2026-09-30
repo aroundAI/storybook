@@ -133,9 +133,9 @@ function Home() {
                       <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100/70 dark:bg-slate-500/10 dark:ring-1 dark:ring-white/5">
                         <Film className="h-4 w-4 text-slate-700 dark:text-slate-300" />
                       </div>
-                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                      <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
                         Visual Studio
-                      </h3>
+                      </h2>
                     </div>
                     <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
                       AI-powered shot lists with VEO 3.1 prompts
@@ -154,9 +154,9 @@ function Home() {
                       <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-100/70 dark:bg-indigo-500/10 dark:ring-1 dark:ring-white/5">
                         <Users className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
                       </div>
-                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                      <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
                         Character Bible
-                      </h3>
+                      </h2>
                     </div>
                     <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
                       Manage characters with AI consistency
@@ -175,9 +175,9 @@ function Home() {
                       <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-violet-100/70 dark:bg-violet-500/10 dark:ring-1 dark:ring-white/5">
                         <BookOpen className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                       </div>
-                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                      <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
                         Screenplay Editor
-                      </h3>
+                      </h2>
                     </div>
                     <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
                       Industry-standard format with AI co-pilot
@@ -196,9 +196,9 @@ function Home() {
                       <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-teal-100/70 dark:bg-teal-500/10 dark:ring-1 dark:ring-white/5">
                         <Sparkles className="h-4 w-4 text-teal-600 dark:text-teal-400" />
                       </div>
-                      <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                      <h2 className="text-sm font-semibold text-slate-900 dark:text-white">
                         Audio Studio
-                      </h3>
+                      </h2>
                     </div>
                     <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400">
                       AI voice generation and music

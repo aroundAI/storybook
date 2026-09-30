@@ -116,12 +116,12 @@ export function AnalyticsCard({
       <header className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           {Icon && <Icon className="size-4 shrink-0 text-muted-foreground" />}
-          <h3
+          <h2
             id={titleId}
             className="truncate text-sm font-medium text-muted-foreground"
           >
             {title}
-          </h3>
+          </h2>
           {description && (
             <TooltipProvider>
               <Tooltip>
@@ -277,7 +277,7 @@ function Disclosure({
 
         {(details.source || (sources && sources.length > 0)) && (
           <div className="flex flex-col gap-1">
-            <h4 className="text-xs font-medium">Where this comes from</h4>
+            <h3 className="text-xs font-medium">Where this comes from</h3>
             {details.source ? (
               <div className="text-xs text-muted-foreground">
                 {details.source}
@@ -294,7 +294,7 @@ function Disclosure({
 
         {details.method && (
           <div className="flex flex-col gap-1">
-            <h4 className="text-xs font-medium">How it’s computed</h4>
+            <h3 className="text-xs font-medium">How it’s computed</h3>
             <p className="text-xs text-muted-foreground">{details.method}</p>
           </div>
         )}

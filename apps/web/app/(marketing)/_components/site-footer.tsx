@@ -12,7 +12,10 @@ export function SiteFooter() {
   return (
     <>
       {/* Newsletter Section with Glass Card */}
-      <div className="relative overflow-hidden border-t border-slate-200/50 bg-gradient-to-b from-slate-50/80 via-white to-slate-50/50 py-8 dark:border-white/[0.08] dark:from-slate-950 dark:via-slate-900 dark:to-black">
+      <section
+        aria-label="Newsletter"
+        className="relative overflow-hidden border-t border-slate-200/50 bg-gradient-to-b from-slate-50/80 via-white to-slate-50/50 py-8 dark:border-white/[0.08] dark:from-slate-950 dark:via-slate-900 dark:to-black"
+      >
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-xl">
             <div className="group relative overflow-hidden rounded-xl border border-slate-200/50 bg-white/80 p-6 backdrop-blur-sm dark:border-white/[0.08] dark:bg-white/[0.03] dark:backdrop-blur-md">
@@ -44,7 +47,7 @@ export function SiteFooter() {
             </div>
           </div>
         </div>
-      </div>
+      </section>
       <Footer
         data-test="site-footer"
         logo={<AppLogo className="w-[85px] md:w-[95px]" />}

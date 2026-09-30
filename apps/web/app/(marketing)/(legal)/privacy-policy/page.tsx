@@ -158,10 +158,10 @@ async function PrivacyPolicyPage() {
           >
             <div className="space-y-6">
               <div>
-                <h4 className="mb-3 font-medium text-slate-900 dark:text-white">
+                <h3 className="mb-3 font-medium text-slate-900 dark:text-white">
                   1.1 Information You Provide
-                </h4>
-                <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+                </h3>
+                <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50 dark:bg-slate-800">
                       <tr>
@@ -215,9 +215,9 @@ async function PrivacyPolicyPage() {
               </div>
 
               <div>
-                <h4 className="mb-3 font-medium text-slate-900 dark:text-white">
+                <h3 className="mb-3 font-medium text-slate-900 dark:text-white">
                   1.2 Information Collected Automatically
-                </h4>
+                </h3>
                 <div className="grid gap-3 md:grid-cols-2">
                   {[
                     {
@@ -260,9 +260,9 @@ async function PrivacyPolicyPage() {
               </div>
 
               <div>
-                <h4 className="mb-3 font-medium text-slate-900 dark:text-white">
+                <h3 className="mb-3 font-medium text-slate-900 dark:text-white">
                   1.3 Information from Third Parties
-                </h4>
+                </h3>
                 <div className="space-y-3">
                   <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
                     <p className="mb-2 font-medium text-slate-900 dark:text-white">
@@ -308,9 +308,9 @@ async function PrivacyPolicyPage() {
               </div>
 
               <div data-test="privacy-platform-data">
-                <h4 className="mb-3 font-medium text-slate-900 dark:text-white">
+                <h3 className="mb-3 font-medium text-slate-900 dark:text-white">
                   1.4 What We Keep from Connected Platforms
-                </h4>
+                </h3>
                 <div className="space-y-3 text-sm">
                   <p>
                     <strong>What.</strong> The account&apos;s name, profile
@@ -352,7 +352,7 @@ async function PrivacyPolicyPage() {
                     <Link
                       data-test="privacy-data-deletion-link"
                       href="/data-deletion"
-                      className="text-indigo-600 hover:underline dark:text-indigo-400"
+                      className="text-indigo-600 underline dark:text-indigo-400"
                     >
                       Data Deletion
                     </Link>{' '}
@@ -402,9 +402,9 @@ async function PrivacyPolicyPage() {
           >
             <div className="space-y-6">
               <div>
-                <h4 className="mb-3 font-medium text-slate-900 dark:text-white">
+                <h3 className="mb-3 font-medium text-slate-900 dark:text-white">
                   3.1 AI Providers We Use
-                </h4>
+                </h3>
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
                     <p className="mb-1 font-medium text-slate-900 dark:text-white">
@@ -467,10 +467,10 @@ async function PrivacyPolicyPage() {
             color="pink"
           >
             <div className="space-y-4">
-              <h4 className="font-medium text-slate-900 dark:text-white">
+              <h3 className="font-medium text-slate-900 dark:text-white">
                 Service Providers
-              </h4>
-              <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+              </h3>
+              <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 dark:bg-slate-800">
                     <tr>
@@ -629,7 +629,7 @@ async function PrivacyPolicyPage() {
               To exercise these rights, contact us at{' '}
               <a
                 href={`mailto:${contactEmail}`}
-                className="text-indigo-600 hover:underline dark:text-indigo-400"
+                className="text-indigo-600 underline dark:text-indigo-400"
               >
                 {contactEmail}
               </a>
@@ -640,7 +640,7 @@ async function PrivacyPolicyPage() {
               step by step, on our{' '}
               <Link
                 href="/data-deletion"
-                className="text-indigo-600 hover:underline dark:text-indigo-400"
+                className="text-indigo-600 underline dark:text-indigo-400"
               >
                 Data Deletion
               </Link>{' '}
@@ -709,7 +709,7 @@ async function PrivacyPolicyPage() {
             </p>
             <a
               href={`mailto:${contactEmail}`}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 font-medium text-white transition-colors hover:bg-indigo-700"
+              className="inline-flex max-w-full items-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 font-medium break-all text-white transition-colors hover:bg-indigo-700"
             >
               <Mail className="h-4 w-4" />
               {contactEmail}
@@ -732,7 +732,7 @@ function ExternalPolicyLink({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-indigo-600 hover:underline dark:text-indigo-400"
+      className="text-indigo-600 underline dark:text-indigo-400"
     >
       {children}
     </a>
