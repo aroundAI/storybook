@@ -4,7 +4,7 @@ phase: 10
 phase_name: "Canon Management"
 category: component
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-30"
 effort: L
 dependencies: []
 summary: >
@@ -28,22 +28,22 @@ acceptance_criteria:
     reason: "unverified — action merges into `metadata.canon` (`apps/web/app/home/[account]/studio/[projectSlug]/settings/_components/canon-settings-actions.ts:49`); no E2E saves and reloads"
   - text: "Events, Threads, Characters pages render correctly"
     met: false
-    reason: "unverified — no such pages; they are tabs in the story canon panel (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/canon-dashboard.tsx:127`); rendering never checked"
-  - text: "CRUD operations work for all canon entities"
-    met: false
-    reason: "not met — UI only creates and lists events and threads; no edit or delete UI; character and world states are read-only"
+    reason: "unverified — no such pages; they are tabs in the story canon panel (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/canon-dashboard.tsx:132`); rendering never checked"
+  - text: "Canon entities can be managed as the design allows: events add and delete, threads add, edit and abandon, character states append the next state; world state is written by the canon commit"
+    met: true
+    evidence: "the dialogs (story/_components/delete-event-dialog.tsx, edit-thread-dialog.tsx, update-character-state-dialog.tsx, mounted in canon-dashboard.tsx:229, :295, :342 under apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/). Browser (passed 2026-09-30, real browser, retries off): apps/e2e/tests/canon/canon-edit-delete.spec.ts:26 'a thread is resolved with a payoff, and the change is audited' (payoff saved, one state_deltas row 'Thread status open -> resolved'), :72 'a character gets a next state, twice, and the first stays' (calm, grieving, resolute all kept in character_states), :104 'an event is deleted after confirming, and the deletion is audited' (Cancel changes nothing, the row is gone, one state_deltas row keeps the before state); canon-edit-delete-evidence.spec.ts:25 captures each dialog and the list after. Adding an event and a thread is covered by canon-events.spec.ts:113 and canon-write-scope.spec.ts:240, which were not part of the 2026-09-30 run; abandoning is the Abandoned value of the same status select the thread test drives with Resolved and is not asserted separately. By design immutable events have no edit (KB-17: a correction is a delete and a new event; the database blocks updates), threads are abandoned by status rather than deleted, and world state has no edit action"
   - text: "Canon Health Badge visible in episode header"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-header.tsx:121"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-header.tsx:123"
   - text: "Memory Context Preview shows on Ideation tab"
-    met: false
-    reason: "not met — `memory-context-preview.tsx` is never imported; the ideation page does not render it (only commit: 88a122b0)"
+    met: true
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/page.tsx:166 mounts MemoryContextPreview when canon is enabled and the episode has a project (component at ideation/_components/memory-context-preview.tsx:124). No E2E drives it"
   - text: "Inline warnings display on Story generation"
     met: true
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/story-screen.tsx:262"
   - text: "Continuity Sidebar shows scene constraints"
-    met: false
-    reason: "not met — no continuity sidebar in the screenplay route; `ContinuitySidebar` never existed (`git log -S` finds nothing)"
+    met: true
+    evidence: "screenplay/_components/continuity-sidebar.tsx, mounted at screenplay-screen.tsx:298 for the active scene when canon is enabled; view model tests screenplay/_components/__tests__/continuity-view.test.ts (8). Browser (passed 2026-09-30, real browser, retries off): apps/e2e/tests/canon/continuity-sidebar.spec.ts:18 'shows what the scene must not contradict, the open threads and the characters' (the event, the open thread and Mara's 'emotional: calm' state) and :40 'flags the dead character shown alive in the scene being read' (CANON_001 violation flag on scene 2); continuity-sidebar-evidence.spec.ts:25 captures scene 1, scene 2 with a violation, and the narrow viewport"
   - text: "Publish extracts and confirms canon changes"
     met: false
     reason: "unverified — generator mounted (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1440`); no E2E drives extract then commit"
@@ -54,17 +54,20 @@ acceptance_criteria:
     met: true
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/story-screen.tsx:339"
   - text: "Sidebar hides on narrow screens"
-    met: false
-    reason: "not met — the Continuity Sidebar it refers to does not exist"
+    met: true
+    evidence: "`hidden … lg:block` on the aside (screenplay/_components/continuity-sidebar.tsx:81); apps/e2e/tests/canon/continuity-sidebar.spec.ts:54 'is hidden below the lg breakpoint' (sidebar hidden at 800px; passed 2026-09-30, real browser, retries off)"
 remaining:
-  - criterion: "CRUD operations for all canon entities"
-    reason: "No UI edits or deletes events or threads, or records character or world states (`deleteImmutableEventAction`, `updateNarrativeThreadAction`, `updateCharacterStateAction` have no UI caller)"
+  - criterion: "Settings persist to `projects.metadata.canon`"
+    reason: "unverified — action merges into `metadata.canon` (`apps/web/app/home/[account]/studio/[projectSlug]/settings/_components/canon-settings-actions.ts:49`); no E2E saves and reloads"
     closed_by: "unassigned"
-  - criterion: "Memory Context Preview on Ideation"
-    reason: "Built but never rendered"
+  - criterion: "Events, Threads, Characters pages render correctly"
+    reason: "unverified — they are tabs in the story canon panel, not pages; the edit-delete spec opens the Threads and Characters tabs but asserts actions, not rendering"
     closed_by: "unassigned"
-  - criterion: "Continuity Sidebar, and hiding it on narrow screens"
-    reason: "Never built"
+  - criterion: "Publish extracts and confirms canon changes"
+    reason: "unverified — no E2E drives extract then commit"
+    closed_by: "unassigned"
+  - criterion: "All components work on desktop (1280px+)"
+    reason: "unverified — visual; needs a browser check at 1280px, none recorded"
     closed_by: "owner"
 open_questions: []
 notes: |

@@ -63,7 +63,7 @@ acceptance_criteria:
     evidence: "packages/features/audio-generation/src/providers/base.ts:20, :74"
   - text: "Both providers implement base interfaces"
     met: true
-    evidence: "packages/features/audio-generation/src/providers/elevenlabs.ts:23, packages/features/audio-generation/src/providers/elevenlabs-music.ts:49 (the music provider since FILM-514 retired Suno and Udio)"
+    evidence: "packages/features/audio-generation/src/providers/elevenlabs.ts:34, packages/features/audio-generation/src/providers/elevenlabs-music.ts:49 (the music provider since FILM-514 retired Suno and Udio)"
   - text: "Can be imported by other packages"
     met: true
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/music-timeline.tsx:33"

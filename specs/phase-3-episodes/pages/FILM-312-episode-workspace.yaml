@@ -4,7 +4,7 @@ phase: 3
 phase_name: "Episodes"
 category: page
 status: PARTIAL
-audited: "2026-09-25"
+audited: "2026-09-30"
 effort: L
 dependencies:
   - spec_id: "FILM-308"
@@ -71,16 +71,22 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "Accessibility (keyboard navigation, ARIA labels) - inherited from base components"
-    met: false
-    reason: "not met — the icon-only back link has no accessible name (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-header.tsx:55`); the tabs expose no current tab"
+    met: true
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-header.tsx:57 (aria-label=\"Back to episodes\" on the icon-only back link); test apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/__tests__/episode-workspace-header.test.tsx; the tab bar already marks the current tab with aria-current=\"page\" (apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:152, test episode-workspace-tabs.test.tsx)"
 test_plan:
   unit: []
   integration: []
   e2e: []
 remaining:
-  - criterion: "Accessibility (keyboard navigation, ARIA labels)"
-    reason: "the icon-only back link has no accessible name (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-header.tsx:55`); the tab bar sets no `aria-current` or tab roles (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx:150`)"
+  - criterion: "Story Studio tab is fully functional"
+    reason: "unverified — no Playwright spec drives the story stages (ideation, story, screenplay)"
     closed_by: "unassigned"
+  - criterion: "Responsive layout on mobile and desktop"
+    reason: "unverified — visual; needs a render at phone width"
+    closed_by: "owner"
+  - criterion: "Smooth transitions between tabs"
+    reason: "unverified — visual; needs a rendered check"
+    closed_by: "owner"
 open_questions: []
 notes: |
   ## Source header

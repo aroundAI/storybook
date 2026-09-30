@@ -4,7 +4,7 @@ phase: 7
 phase_name: "Publishing"
 category: oauth_flow
 status: PARTIAL
-audited: "2026-09-25"
+audited: "2026-09-30"
 effort: M
 dependencies:
   - spec_id: "FILM-CC-03"
@@ -67,7 +67,7 @@ test_plan:
   integration:
     - text: "Test OAuth flow with mocked TikTok endpoints"
       met: false
-      reason: "not met — only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)"
+      reason: "part — the callback's success path is now tested with mocked fetch (`apps/web/lib/platforms/__tests__/callback-success.test.ts:169`: PKCE verifier sent, row written with the granted scopes, state deleted, landing URL; :214 a refused exchange stores nothing); the browser-level run is not: the vendor sandbox has no TikTok OAuth route (`apps/vendor-sandbox/src/social/vendors/index.ts`, media route only). Failure branches: `apps/e2e/tests/platform-connections/connect-failure.spec.ts`"
     - text: "Test token refresh with rotation"
       met: true
       evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:482` — drives `ensureValidToken` against a local TikTok listener and asserts the stored rotated token (KB-29)"
@@ -77,7 +77,7 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "Test OAuth flow with mocked TikTok endpoints"
-    reason: "Only the connect failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`); the success path (authorize → token → user info → stored row) is not. The X stand-in in `apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts` is the pattern; wait for #397, which changes where TikTok's app credentials come from"
+    reason: "The callback's success path is tested with mocked fetch (`apps/web/lib/platforms/__tests__/callback-success.test.ts:169`) but not driven in a browser. The FILM-1802 TikTok sandbox vendor now serves the consent screen, code exchange and user info (`apps/vendor-sandbox/src/social/vendors/tiktok/`, `apps/vendor-sandbox/__tests__/tiktok-journey.test.ts`); what is missing is a Playwright spec that points the app's `VENDOR_URL_TIKTOK_*` at it and drives connect. The publish-side app defects the journeys found are KB-142, KB-143 and KB-144"
     closed_by: "unassigned"
 open_questions:
   - "Should we support TikTok for Business accounts? (post-MVP)"

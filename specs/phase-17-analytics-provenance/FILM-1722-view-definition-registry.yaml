@@ -4,6 +4,7 @@ phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
 status: PARTIAL
+audited: "2026-09-30"
 effort: M
 dependencies:
   - spec_id: "FILM-1721"
@@ -44,20 +45,23 @@ acceptance_criteria:
     evidence: "Widening AnalyticsPlatform fails typecheck at PLATFORM_COVERAGE, and listing the platform there fails view-definitions.test.ts until a definition exists. Both seen red"
   - text: "A chart crossing a boundary marks it rather than drawing a step change"
     met: false
-    reason: "Registry half only. viewDefinitionChangesBetween returns the boundaries; no chart calls it. See the adoption section"
+    reason: "held until FILM-1719 — owner ruling 2026-09-22 (FILM-1722 section 12). Registry half only: viewDefinitionChangesBetween returns the boundaries; no chart calls it. See the adoption section"
   - text: "No rate is computed without recording which denominator definition it used"
     met: false
-    reason: "Registry half only. The definition is available to stamp; the existing rate sites do not stamp it. This is FILM-1713's own criterion (\"every measure records … which view definition and its effective date\")"
+    reason: "held until FILM-1719 — owner ruling 2026-09-22 (FILM-1722 section 12). Registry half only: the definition is available to stamp; the existing rate sites do not stamp it. This is FILM-1713's own criterion (\"every measure records … which view definition and its effective date\")"
   - text: "Instagram's aggregates (total_views_count, total_like_count, total_comments_count) are requested and stored only once defined here, never as views"
     met: false
     reason: "moved here from FILM-1712 by owner decision (2026-09-29); not requested yet"
 remaining:
   - criterion: "A chart crossing a boundary marks it rather than drawing a step change"
-    reason: "Registry half only — viewDefinitionChangesBetween returns the boundaries; no chart calls it yet"
-    closed_by: "FILM-1707, FILM-1719"
+    reason: "Registry half only — viewDefinitionChangesBetween returns the boundaries; no chart calls it. Owner ruling 2026-09-22 (FILM-1722 section 12): displayed figures are held until FILM-1719; FILM-1719 now carries the criterion"
+    closed_by: "FILM-1719"
   - criterion: "No rate is computed without recording which denominator definition it used"
-    reason: "Registry half only — the definition is available to stamp; existing rate sites do not stamp it. Cohort growth and cohort medians specifically are FILM-1715's own criterion, general rates are FILM-1713's"
-    closed_by: "FILM-1713, FILM-1715"
+    reason: "Registry half only — the definition is available to stamp; existing rate sites do not stamp it. Owner ruling 2026-09-22: held until FILM-1719, which now carries the criterion; cohort growth and cohort medians specifically stay FILM-1715's own criterion"
+    closed_by: "FILM-1719"
+  - criterion: "Instagram's aggregates are requested and stored only once defined here, never as views"
+    reason: "Moved here from FILM-1712 by owner decision (2026-09-29); not requested yet"
+    closed_by: "unassigned"
 open_questions: []
 notes: |
   Partly shipped — the registry is done, its adoption is not. The registry is
@@ -308,7 +312,7 @@ notes: |
 
   | Site | What it compares |
   |---|---|
-  | computeCohortGrowth (packages/clickhouse/src/lib/cohort-growth.ts:72) → getCohortCurvesAction (packages/features/content-analytics/src/server/deep-dive-actions.ts:184) → deep-dive/cohort-curves-chart.tsx | cohort median views against the previous cohort — the literal "cohort median, growth figure" of §5 |
+  | computeCohortGrowth (packages/clickhouse/src/lib/cohort-growth.ts:72) → getCohortCurvesAction (packages/features/content-analytics/src/server/deep-dive-actions.ts:188) → deep-dive/cohort-curves-chart.tsx | cohort median views against the previous cohort — the literal "cohort median, growth figure" of §5 |
   | previousPeriodTotals (packages/features/content-analytics/src/server/account-dashboard-actions.ts:218, :257) → company-dashboard.tsx:42 | period-over-period totals |
   | viewsChange (packages/features/content-analytics/src/server/language-analytics.ts:296) → language-analytics-cards.tsx:137 | views vs the previous period, per language |
   | queryMedianViewsPerVideo (packages/clickhouse/src/queries-advanced.ts:273), queryRollingViews (:378), queryBackCatalogShare (:566) | view series and medians over long windows |

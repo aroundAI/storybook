@@ -4,7 +4,7 @@ phase: null
 phase_name: "Design System"
 category: design_guideline
 status: PARTIAL
-audited: "2026-09-25"
+audited: "2026-09-30"
 effort: M
 dependencies:
   - spec_id: "FILM-DS-01"
@@ -17,14 +17,14 @@ summary: >
   and accessibility.
 acceptance_criteria:
   - text: "Shot grid supports keyboard navigation"
-    met: false
-    reason: "no longer true — shot cards are `<div onClick>` with no tabIndex or key handler (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:93`); the keyboard grid went in 5b88db3a"
+    met: true
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx:90-91 (role=listbox, aria-multiselectable, arrows, Home, End, Escape), apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:100 (role=option, roving tabIndex, Enter and Space), apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-selection.ts nextFocusIndex; tests apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/__tests__/shot-selection.test.ts and shot-grid.test.tsx (FILM-410)"
   - text: "Timeline supports keyboard shortcuts for playback"
     met: false
     reason: "retired — the timeline this meant is FILM-601's TimelineEditor, retired with the Edit Suite (FILM-607); the audio-studio cue timelines were never in its scope"
   - text: "Drag and drop has clear visual feedback"
-    met: false
-    reason: "not met — of the live file drop zones, four show a drag-over state (`packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:82`, `packages/features/episodes/src/components/video-uploader.tsx:142`, `apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/upload-audio-dialog.tsx:243`, `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/upload-video-dialog.tsx:152`); the season generator's source drop zone has hover styles only (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:722`). The grid-reorder and asset-assignment drags in the patterns were never built"
+    met: true
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:731-745 (dragActive state, border-primary bg-primary/10, data-test=season-roadmap-dropzone), alongside the drag-over states in packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:82, packages/features/episodes/src/components/video-uploader.tsx:142, apps/web/app/home/[account]/studio/[projectSlug]/audio-library/_components/upload-audio-dialog.tsx:243 and the publish upload-video-dialog.tsx:152; the grid-reorder and asset-assignment drags in the patterns were never built and reorder was dropped from scope (FILM-410, owner decision 2026-09-30); no test"
   - text: "Loading states use skeletons (not spinners for content)"
     met: true
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/loading.tsx:3, apps/web/app/home/[account]/studio/[projectSlug]/episodes/loading.tsx:11"
@@ -38,17 +38,8 @@ acceptance_criteria:
     met: false
     reason: "unverified — needs a layout-shift measurement while notifications arrive; no test measures it"
 remaining:
-  - criterion: "Shot grid supports keyboard navigation"
-    reason: >
-      The live grid's shot cards are clickable `<div>`s with no tabIndex, role or key
-      handler
-      (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:93`).
-      The grid that had `role="grid"` and arrow-key handling lived in
-      `@kit/video-generation` and was deleted in 5b88db3a; `useShotGridKeyboard` in
-      `@kit/film-studio` was never wired up and went in 5f44d0e1
-    closed_by: "FILM-410"
-  - criterion: "Drag and drop has clear visual feedback"
-    reason: "The season generator's source drop zone gives no drag-over feedback (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/_components/season-generator-dialog.tsx:722`); the other live drop zones do"
+  - criterion: "Real-time updates don't cause layout shift"
+    reason: "unverified — needs a layout-shift measurement while notifications arrive; no test measures it"
     closed_by: "unassigned"
 open_questions:
   - "Should we implement undo/redo for shot reordering? (post-MVP)"

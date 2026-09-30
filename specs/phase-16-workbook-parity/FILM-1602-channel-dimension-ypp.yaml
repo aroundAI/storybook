@@ -3,8 +3,8 @@ title: "Channel Dimension & Per-Channel YPP Progress"
 phase: 16
 phase_name: "Workbook Parity"
 category: feature
-status: PARTIAL
-audited: "2026-09-23"
+status: DONE
+audited: "2026-09-30"
 effort: L
 dependencies:
   - spec_id: "FILM-1601"
@@ -33,15 +33,11 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "For a single-channel account, Σ per-channel watch hours equals the previous pooled number (regression guard)"
-    met: false
-    reason: "not met — no test compares per-channel and pooled totals; 2e44f648 added only SQL-shape tests"
+    met: true
+    evidence: "packages/clickhouse/scripts/verify-queries.ts:3292 — pooled account scope equals per-channel scope (5400 s from videos plus a 900 s channel_daily residual, 6300 s total) and the known edge is asserted too: a zero-UUID (unattributed) video is 600 s in the pool and 0 in any channel. Run against a real ClickHouse, 116 passed, 0 failed (2026-09-30). Red: a channel-window mutant (-20 days) failed with 'channel residual: expected 900, got 5900'"
   - text: "`YppChannelProgress` describes one channel, matching what the action returns"
     met: true
     evidence: null
-remaining:
-  - criterion: "Σ per-channel watch hours = pooled (regression guard)"
-    reason: "No such test exists. The per-channel figure filters `connection_id` (`packages/clickhouse/src/queries-advanced.ts:142`), so a video synced with the zero-UUID `UNATTRIBUTED_CONNECTION_ID` is in a pooled total and in no channel's — the guard would have to seed one to mean anything"
-    closed_by: "unassigned"
 open_questions: []
 feature:
   database:

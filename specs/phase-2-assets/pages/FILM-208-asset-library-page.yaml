@@ -4,7 +4,7 @@ phase: 2
 phase_name: "Assets"
 category: page
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-30"
 effort: M
 dependencies:
   - spec_id: "FILM-204"
@@ -28,47 +28,47 @@ acceptance_criteria:
     met: true
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx (the segment is now the project slug); E2E apps/e2e/tests/refusals/refusals.po.ts:181"
   - text: "Breadcrumb displays: Home > Studio > [Project Name] > Assets"
-    met: false
-    reason: "not met — never built; the page has a \"Back to Project\" link instead (apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:133-140)"
+    met: true
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:139-165 (Breadcrumb, data-test=assets-breadcrumb; it replaces the Back to Project link); e2e apps/e2e/tests/assets/asset-library.spec.ts:81 'the breadcrumb runs Home, Studio, the project, Assets' (four links in order, current page has aria-current) (passed 2026-09-30, real browser, retries off)"
   - text: "Page title: \"Asset Library\""
     met: false
-    reason: "retired — renamed \"Cast\" / \"Story World\" by tab in 307d879b (apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:101-107)"
+    reason: "retired — renamed \"Cast\" / \"Story World\" by tab in 307d879b (apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:108-114)"
   - text: "Description displayed below title"
-    met: false
-    reason: "not met — PageHeader renders the description above the title (packages/ui/src/makerkit/page.tsx:218-231)"
+    met: true
+    evidence: "packages/ui/src/makerkit/page.tsx:170-210 (PageHeader renders the description after the title row); e2e apps/e2e/tests/assets/asset-library.spec.ts:106 'the description sits below the title' (description box starts at or below the h1 box) (passed 2026-09-30, real browser, retries off)"
   - text: "\"Create Asset\" button in page header"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:143-149"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:167-169"
   - text: "Dropdown shows: Create Character, Create Location, Create Voice Profile"
     met: false
-    reason: "retired — voice option removed in a70af938; Character and Location remain (apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:63-70)"
+    reason: "retired — voice option removed in a70af938; Character and Location remain (apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:49-64)"
   - text: "Character dialog opens CharacterEditor"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:75-90"
+    evidence: "packages/features/assets/src/components/asset-gallery.tsx:576-590 (dialog state lives in apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/asset-create-provider.tsx)"
   - text: "Voice dialog opens VoiceProfileEditor"
     met: false
     reason: "retired — voice profiles removed in a70af938; see FILM-206"
   - text: "Location dialog shows placeholder (coming soon)"
     met: false
-    reason: "retired — replaced by a real LocationEditor in 41c76442 (apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:93-107)"
+    reason: "retired — replaced by a real LocationEditor in 41c76442 (packages/features/assets/src/components/asset-gallery.tsx:593-606)"
   - text: "AssetGallery renders with project assets"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:152-157; E2E apps/e2e/tests/refusals/refusals.po.ts:181-193"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:172-176; E2E apps/e2e/tests/refusals/refusals.po.ts:181-193"
   - text: "Tab selection persisted in URL (?tab=character)"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:59, packages/features/assets/src/components/asset-gallery.tsx:161"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:66, packages/features/assets/src/components/asset-gallery.tsx:169"
   - text: "Back link navigates to project dashboard"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:134-140"
+    evidence: "the project crumb in the breadcrumb links to the project dashboard (apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:154-158); the separate Back to Project link was replaced by it"
   - text: "Sidebar highlights \"Assets\" when active"
     met: true
-    evidence: "apps/e2e/tests/studio/sidebar-active.spec.ts:15"
+    evidence: "apps/e2e/tests/studio/sidebar-active.spec.ts:22"
   - text: "Page refreshes after asset creation"
-    met: false
-    reason: "not met — router.refresh() runs, but the gallery seeds its lists once (packages/features/assets/src/hooks/use-character-assets.ts:44); new assets stay hidden"
+    met: true
+    evidence: "packages/features/assets/src/components/asset-gallery.tsx:313-321 (handleCreateSuccess refreshes the router and refetches characters and locations); e2e apps/e2e/tests/assets/asset-library.spec.ts:42 'a new asset appears in the gallery without a reload, twice' (passed 2026-09-30, real browser, retries off)"
   - text: "Dialog closes after successful creation"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:44-46"
+    evidence: "packages/features/assets/src/components/asset-gallery.tsx:313-315 (handleCreateSuccess calls onCreateDialogClose)"
   - text: "Page loads within 2 seconds"
     met: true
     evidence: "apps/e2e/tests/performance/performance.spec.ts:101"
@@ -77,10 +77,10 @@ acceptance_criteria:
     reason: "unverified — needs viewport screenshots"
   - text: "SEO metadata generated dynamically"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:31-52"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:38-59"
   - text: "Keyboard shortcut Cmd/Ctrl+K opens create menu (future)"
-    met: false
-    reason: "not met — deferred at ship time: Cmd/Ctrl+K shortcut; no keydown handler in the assets page or package"
+    met: true
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:20-42 (keydown listener with cleanup, aria-keyshortcuts); e2e apps/e2e/tests/assets/asset-library.spec.ts:64 'Ctrl+K opens the create menu' (passed 2026-09-30, real browser, retries off)"
   - text: "TypeScript compiles without errors"
     met: true
     evidence: "main CI run 35779959194 (6dfa35a4; code unchanged since): web:typecheck ran uncached, no errors"
@@ -92,18 +92,9 @@ test_plan:
   integration: []
   e2e: []
 remaining:
-  - criterion: "Breadcrumb"
-    reason: "Never built; the page has a \"Back to Project\" link instead (apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:133-140)"
-    closed_by: "unassigned"
-  - criterion: "Description below title"
-    reason: "PageHeader renders description above the title (packages/ui/src/makerkit/page.tsx:218-231)"
-    closed_by: "unassigned"
-  - criterion: "New asset shown after creation"
-    reason: "router.refresh() (apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:46) cannot reach the gallery's client state: characters are seeded once (packages/features/assets/src/hooks/use-character-assets.ts:44), locations refetch only on a tab change (packages/features/assets/src/components/asset-gallery.tsx:138-142)"
-    closed_by: "unassigned"
-  - criterion: "Cmd/Ctrl+K opens create menu"
-    reason: "Deferred at ship time (\"future\"); not built"
-    closed_by: "unassigned"
+  - criterion: "Responsive layout on mobile, tablet, desktop"
+    reason: "unverified — needs viewport screenshots"
+    closed_by: "owner"
 open_questions: []
 notes: |
   ## Conversion notes (Markdown to YAML, 2026-09-23)

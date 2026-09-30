@@ -35,10 +35,10 @@ acceptance_criteria:
     evidence: null
   - text: "A channel with `joined_ypp_at` set reports as joined — `resolveYppTarget` returns `alreadyJoined`, unit-tested, and `YppProgressCard` early-returns on it. The *rendering* half is unverified in a browser because the card is mounted nowhere until FILM-1611."
     met: true
-    evidence: "now mounted, `packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:898`; the joined state still has no browser test"
+    evidence: "now mounted, `packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:983`; the joined state still has no browser test"
   - text: "`getYppProgressAction` returns a per-channel target and a basis per metric — **verified by unit test only.** `YppProgressCard` is mounted nowhere and the action has no caller outside the package barrel, so this output reaches no screen until FILM-1611. Not ticked on the strength of reading types; not claimed to be visible either."
     met: true
-    evidence: "now reaches the Deep Dive tab (`packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:406`); per-channel cards asserted in `apps/e2e/tests/deep-dive/deep-dive.spec.ts:145`"
+    evidence: "now reaches the Deep Dive tab (`packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:432`); per-channel cards asserted in `apps/e2e/tests/deep-dive/deep-dive.spec.ts:145`"
   - text: "Every account and channel settings write is an upsert; clearing a value writes `null` and never deletes a row"
     met: true
     evidence: null
@@ -106,7 +106,7 @@ notes: |
   two readers and **zero writers**.
 
   ```
-  packages/features/content-analytics/src/server/deep-dive-actions.ts:252   ypp_target_watch_hours, ypp_target_subscribers
+  packages/features/content-analytics/src/server/deep-dive-actions.ts:256   ypp_target_watch_hours, ypp_target_subscribers
   packages/features/content-analytics/src/server/taxonomy-actions.ts:325    tag_min_sample
   ```
 

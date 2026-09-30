@@ -3,8 +3,8 @@ title: "Canon Dashboard Facts Tab"
 phase: 11
 phase_name: "Canon Integration & Content Types"
 category: component
-status: PARTIAL
-audited: "2026-09-24"
+status: DONE
+audited: "2026-09-30"
 dependencies:
   - spec_id: "FILM-1135"
     note: null
@@ -19,29 +19,22 @@ acceptance_criteria:
     evidence: null
   - text: "Shows linked facts with source attribution"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/episode-facts-panel.tsx:50 — reads the action's `{ facts, totalCount }`; driven in `apps/e2e/tests/facts/episode-facts.spec.ts:120` (two links, a reload, three cards with their citations)"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/episode-facts-panel.tsx:53 — reads the action's `{ facts, totalCount }`; driven in `apps/e2e/tests/facts/episode-facts.spec.ts:120` (two links, a reload, three cards with their citations)"
   - text: "Link dialog allows searching and selecting facts"
     met: true
     evidence: null
   - text: "Unlink button removes fact from episode"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/episode-facts-panel.tsx:163 — the fact's id; `apps/e2e/tests/facts/episode-facts.spec.ts:167` unlinks one and reads two rows back; a viewer's unlink is refused in words (`:182`, KB-48)"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/episode-facts-panel.tsx:166 — the fact's id; `apps/e2e/tests/facts/episode-facts.spec.ts:167` unlinks one and reads two rows back; a viewer's unlink is refused in words (`:182`, KB-48)"
   - text: "Used facts show scene reference when available"
-    met: false
-    reason: "not met — nothing ever writes `episode_facts.scene_reference`; the cards that would show it render again (#344)"
+    met: true
+    evidence: "packages/features/episodes/src/server/episode-fact-actions.ts:22 (linkFactsToEpisodeAction takes an optional sceneReference), :56-69 (refused when it is not one of the episode's screenplay scenes or there is no screenplay), :81 writes `scene_reference`, :238 getEpisodeSceneOptionsAction feeds the scene picker in story/_components/link-facts-dialog.tsx; the fact card renders `Scene: n`; tests packages/features/episodes/src/lib/__tests__/episode-fact-links.test.ts:111. Caveat: the scene is set at link time only — episode_facts has no UPDATE policy, so an existing link's scene cannot be changed. No E2E"
   - text: "Empty state guides to Research library"
     met: true
     evidence: null
   - text: "Facts count shown in tab badge"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/episode-facts-panel.tsx:51 — `onCountChange(totalCount)`; the badge reads 3 after a reload (`apps/e2e/tests/facts/episode-facts.spec.ts:161`)"
-remaining:
-  - criterion: "Used facts show scene reference when available"
-    reason: >
-      No code writes `episode_facts.scene_reference` (no `markFactUsedAction`
-      or equivalent). The display renders once one does (the 3581f78f
-      regression was fixed in #344)
-    closed_by: "unassigned"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/episode-facts-panel.tsx:54 — `onCountChange(totalCount)`; the badge reads 3 after a reload (`apps/e2e/tests/facts/episode-facts.spec.ts:161`)"
 open_questions: []
 component:
   component_name: "EpisodeFactsPanel"

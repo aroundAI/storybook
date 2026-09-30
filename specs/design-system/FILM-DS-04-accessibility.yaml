@@ -4,7 +4,7 @@ phase: null
 phase_name: "Design System"
 category: design_guideline
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-30"
 effort: M
 dependencies:
   - spec_id: "FILM-DS-01"
@@ -19,7 +19,7 @@ summary: >
 acceptance_criteria:
   - text: "All interactive elements are keyboard accessible (useRovingTabIndex hook)"
     met: false
-    reason: "no longer true — shot cards are unfocusable `<div onClick>`s (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:93`); useRovingTabIndex was never mounted, deleted 5f44d0e1"
+    reason: "part — shot cards are focusable options with a roving tabindex and arrow-key movement (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:100`, FILM-410); the \"Add New Shot\" tile is still a non-focusable `role=\"presentation\"` div (`shot-grid.tsx:110`); useRovingTabIndex was never mounted, deleted 5f44d0e1"
   - text: "Focus is never lost during navigation (useFocusTrap hook)"
     met: false
     reason: "no longer true — the hand-rolled modal cited here, the Edit Suite export dialog, unmounted with focus inside and restored nothing; it was retired with the Edit Suite (FILM-607), other hand-rolled modals not re-checked; useFocusTrap deleted unused in 5f44d0e1"
@@ -36,8 +36,8 @@ acceptance_criteria:
     met: false
     reason: "no longer true — `@kit/ui` dialogs (Radix) trap focus, but `audio-studio/_components/music-timeline.tsx:887` is hand-rolled with no trap (the Edit Suite export dialog was another; retired with FILM-607)"
   - text: "Skip links allow bypassing navigation (SkipLinks component)"
-    met: false
-    reason: "no longer true — no skip link anywhere in `apps/web`; SkipLinks was never mounted and was deleted in 5f44d0e1"
+    met: true
+    evidence: "a skip link (`packages/ui/src/makerkit/skip-to-content.tsx:6`, used in `packages/features/auth/src/components/auth-layout.tsx:11` and `apps/web/app/home/[account]/studio/[projectSlug]/layout.tsx:122`, targeting a `main` with `id=main-content`); apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts:192 'the sign-in page skips to its main landmark' (first Tab focuses and shows the link, Enter moves focus to main#main-content, the next Tab lands inside the content) and :214 'the studio skips past the sidebar' (passed 2026-09-30, real browser, retries off, run twice (99/99), after a41b1fe6 fixed the violations). There is no \"Skip to navigation\" link"
   - text: "axe-core reports no critical violations (requires integration testing)"
     met: true
     evidence: "apps/e2e/tests/accessibility/axe.spec.ts:1"
@@ -48,43 +48,44 @@ test_plan:
   automated:
     - text: "Run axe-core on all pages"
       met: false
-      reason: "part: axe-core runs on 19 pages (ten public, nine studio, on a project with no episodes yet) in apps/e2e/tests/accessibility/axe.spec.ts; pages that need data (episode stages, audio studio, publish) are not covered"
+      reason: "part: apps/e2e/tests/accessibility/axe.spec.ts runs axe (WCAG A/AA, then page structure) on ten public pages, nine studio pages (project list, overview, episodes, characters, locations, audio library, narrative arcs, analytics, platforms) and the six episode stages (ideation, story, screenplay, visual-studio, audio-studio, publish; :184, on an episode seeded with a dialogue line and no audio rows), passed 2026-09-30, real browser, retries off, run twice (99/99), after a41b1fe6 fixed the violations. Not covered: the analytics sub-tabs, open dialogs and menus, project settings, canon and other sub-routes, account, billing and admin pages, and any page whose content needs production data"
     - text: "Validate HTML structure (headings, landmarks)"
       met: true
-      evidence: "apps/e2e/tests/accessibility/axe.spec.ts:107"
+      evidence: "apps/e2e/tests/accessibility/axe.spec.ts:112"
     - text: "Check color contrast ratios"
       met: true
-      evidence: "apps/e2e/tests/accessibility/axe.spec.ts:102"
+      evidence: "apps/e2e/tests/accessibility/axe.spec.ts:107"
     - text: "Verify ARIA attributes are valid"
       met: true
       evidence: "tooling/eslint/nextjs.js:9 (next/core-web-vitals enables jsx-a11y aria-props/aria-proptypes; warn-level, so CI lint reports but never fails)"
   manual:
     - text: "Navigate all functionality with keyboard only"
       met: false
-      reason: "part: sign-in and the studio sidebar are driven by keyboard alone (apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts); the rest of the product is not"
+      reason: "part: keyboard-only walks in apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts cover sign-in (:103), the studio sidebar (:129), the episode tabs (:248), the publish hub with no trap (:270) and the create-episode dialog with focus trap and return (:308), passed 2026-09-30, real browser, retries off, run twice (99/99), after a41b1fe6 fixed the violations. The rest of the product (analytics, visual and audio studio interactions, settings, canon, admin) has no keyboard test"
     - text: "Test with screen reader (VoiceOver/NVDA)"
       met: false
       reason: "owner check OC-8 (docs/OWNER-CHECKS.md) — needs VoiceOver on a Mac; no automated test can hear it"
     - text: "Verify focus order is logical"
       met: false
-      reason: "part: the sign-in form is checked email, then password, then submit (apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts); other pages are not"
+      reason: "part: order is asserted for the sign-in form (email, password, submit; :103), the episode tabs (:248) and the create-episode dialog (title, description, Cancel, Create; :308) with `expectFocusOrder`, passed 2026-09-30, real browser, retries off, run twice (99/99), after a41b1fe6 fixed the violations; the publish hub is checked for a visible focus indicator and no trap (:270), not for order. Other pages are not checked"
     - text: "Check skip links work"
-      met: false
-      reason: "not met — there are no skip links to check"
+      met: true
+      evidence: "apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts:192 'the sign-in page skips to its main landmark' and :214 'the studio skips past the sidebar' (passed 2026-09-30, real browser, retries off, run twice (99/99), after a41b1fe6 fixed the violations)"
     - text: "Test at 200% zoom"
       met: true
-      evidence: "apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts:1"
+      evidence: "apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts:58"
     - text: "Test with high contrast mode"
       met: false
       reason: "owner check OC-9 (docs/OWNER-CHECKS.md) — needs the operating system setting turned on"
 remaining:
   - criterion: "All interactive elements are keyboard accessible"
     reason: >
-      Shot cards and the "Add New Shot" tile are unfocusable `<div>`s
-      (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:93`,
-      `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx:55`);
+      The "Add New Shot" tile is a non-focusable `role="presentation"` div
+      (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx:110`).
+      Shot cards are now focusable options with a roving tabindex
+      (`.../visual-studio/_components/shot-card.tsx:100`, FILM-410);
       the shipped `useRovingTabIndex` was never mounted and was deleted in 5f44d0e1
-    closed_by: "FILM-410"
+    closed_by: "unassigned"
   - criterion: "Focus is never lost during navigation"
     reason: >
       The example here, the Edit Suite export dialog, unmounted with focus inside it
@@ -118,8 +119,11 @@ remaining:
       Edit Suite export dialog, was retired with FILM-607):
       `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/music-timeline.tsx:753`
     closed_by: "unassigned"
-  - criterion: "Skip links allow bypassing navigation"
-    reason: "No skip link exists in `apps/web`"
+  - criterion: "Run axe-core on all pages"
+    reason: "Covered: ten public pages, nine studio pages and the six episode stages (`apps/e2e/tests/accessibility/axe.spec.ts`). Not covered: analytics sub-tabs, open dialogs and menus, project settings, canon and other sub-routes, account, billing and admin pages, pages that need production data; the episode is seeded with a dialogue line and no audio rows"
+    closed_by: "unassigned"
+  - criterion: "Navigate all functionality with keyboard only; verify focus order"
+    reason: "Keyboard tests cover sign-in, the studio sidebar, the episode tabs, the publish hub (no trap) and the create-episode dialog (`apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts`); the rest of the product has no keyboard test, and focus order is asserted only for sign-in, the episode tabs and the create-episode dialog"
     closed_by: "unassigned"
 open_questions:
   - "Should we support reduced motion preferences for animations? (nice-to-have)"

@@ -4,7 +4,7 @@ phase: 7
 phase_name: "Publishing"
 category: provider
 status: PARTIAL
-audited: "2026-09-24"
+audited: "2026-09-30"
 effort: M
 dependencies:
   - spec_id: "FILM-708"
@@ -74,7 +74,7 @@ acceptance_criteria:
     reason: "no longer true — `getPostMetrics` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:319`) has no caller; no LinkedIn metrics are read anywhere"
   - text: "Delete post functionality"
     met: false
-    reason: "no longer true — `deletePost` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:346`) has no caller; unpublish skips LinkedIn (`apps/web/lambda/publish-worker/index.ts:237-242`)"
+    reason: "no longer true — `deletePost` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:346`) has no caller; unpublish skips LinkedIn (`apps/web/lambda/publish-worker/index.ts:241-245`)"
   - text: "Video duration validation (10 min personal, 15 min company)"
     met: false
     reason: "retired — owner decision 2026-09-30: the limits stay declared constants; LinkedIn rejects a too-long video itself"
@@ -92,7 +92,7 @@ test_plan:
   integration:
     - text: "Test OAuth flow with mock API"
       met: false
-      reason: "part — the connect half reaches a stand-in consent screen (`apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts`); the callback's success path is not driven. Failure branches: `apps/e2e/tests/platform-connections/connect-failure.spec.ts`"
+      reason: "part — the callback's success path is tested with mocked fetch (`apps/web/lib/platforms/__tests__/callback-success.test.ts:407`: `urn:li:person` id and personal scopes; :443 company scopes and no refresh token; :456 no member id stores nothing); the browser-level run is not: the connect half reaches a stand-in consent screen (`apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts`) but the stand-in cannot redirect back or serve `/oauth/v2/accessToken` and `/v2/userinfo`. Failure branches: `apps/e2e/tests/platform-connections/connect-failure.spec.ts`"
     - text: "Test video upload initialization"
       met: true
       evidence: "packages/features/publishing/__tests__/linkedin-provider.test.ts:133"
@@ -105,7 +105,10 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "OAuth 2.0 connection flow works for personal accounts (unverified)"
-    reason: "Connect is reachable from the Platforms page and driven to a stand-in consent screen (KB-86, #343); the callback's success path has never been run, and there is no live connect (FILM-1725 Check I). Refresh is fixed by KB-29"
+    reason: "Connect is reachable from the Platforms page and driven to a stand-in consent screen (KB-86, #343); the callback's success path is tested with mocked fetch (`apps/web/lib/platforms/__tests__/callback-success.test.ts:407`) but not driven in a browser, and there is no live connect (FILM-1725 Check I). Refresh is fixed by KB-29"
+    closed_by: "unassigned"
+  - criterion: "Test OAuth flow with mock API (browser level)"
+    reason: "The FILM-1802 LinkedIn sandbox vendor now serves the token and userinfo calls (`apps/vendor-sandbox/src/social/vendors/linkedin/`, `apps/vendor-sandbox/__tests__/linkedin-journey.test.ts`); what is missing is a Playwright spec that points `VENDOR_URL_LINKEDIN_OAUTH`/`_API` at it and drives connect through the callback. The publish-side app defect the journey found is KB-141"
     closed_by: "unassigned"
   - criterion: "OAuth 2.0 connection flow works for company pages"
     reason: "Company connect still stores the member URN (`apps/web/app/api/platforms/callback/linkedin/route.ts:174`); `getOrganizations` has no caller and no UI passes `type=company`. Organization publishing never existed (`urn:li:organization` appears nowhere in history)"
@@ -114,7 +117,7 @@ remaining:
     reason: "`getPostMetrics` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:319`) has no caller"
     closed_by: "unassigned"
   - criterion: "Delete post functionality"
-    reason: "`deletePost` has no caller; unpublish skips LinkedIn at the vendor (`apps/web/lambda/publish-worker/index.ts:237-242`)"
+    reason: "`deletePost` has no caller; unpublish skips LinkedIn at the vendor (`apps/web/lambda/publish-worker/index.ts:241-245`)"
     closed_by: "unassigned"
 open_questions: []
 notes: |

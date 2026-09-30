@@ -28,7 +28,7 @@ acceptance_criteria:
     evidence: null
   - text: "Story generation runs checkpoint 1 when canon enabled"
     met: false
-    reason: "no longer true — handler checkpoint removed in d5f6dbdc; replaced by the story agent's optional `checkContinuity` tool (`packages/features/episodes/src/agent/skills/continuity-skill.ts:179`)"
+    reason: "no longer true — handler checkpoint removed in d5f6dbdc; replaced by the story agent's optional `checkContinuity` tool (`packages/features/episodes/src/agent/skills/continuity-skill.ts:180`)"
   - text: "Screenplay conversion runs checkpoint 2 when canon enabled"
     met: false
     reason: "unverified — called at `apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:240`, but its imports reach `server-only`, which throws outside Next; likely always skipped"

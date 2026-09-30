@@ -52,7 +52,7 @@ acceptance_criteria:
     evidence: null
   - text: "`DeepDiveTab` holds its filter state in a single state object"
     met: false
-    reason: "retired — state lifted to the dashboard (`packages/features/content-analytics/src/components/analytics-dashboard.tsx:79`) in 96f534e0 (FILM-1615) so Deep Dive and the Video Log share one channel; the tab passes one `filters` object (`packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:155`)"
+    reason: "retired — state lifted to the dashboard (`packages/features/content-analytics/src/components/analytics-dashboard.tsx:80`) in 96f534e0 (FILM-1615) so Deep Dive and the Video Log share one channel; the tab passes one `filters` object (`packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:170`)"
   - text: "No new ClickHouse query is added by this spec"
     met: true
     evidence: null

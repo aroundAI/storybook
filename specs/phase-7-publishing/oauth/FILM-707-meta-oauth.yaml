@@ -4,7 +4,7 @@ phase: 7
 phase_name: "Publishing"
 category: oauth_flow
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-30"
 effort: M
 dependencies:
   - spec_id: "FILM-CC-03"
@@ -70,13 +70,13 @@ test_plan:
   integration:
     - text: "Test OAuth flow with mocked Meta endpoints"
       met: false
-      reason: "not met — only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)"
+      reason: "part — the callback's success path is now tested with mocked fetch (`apps/web/lib/platforms/__tests__/callback-success.test.ts:275`: short-to-long token exchange, `/me/accounts`, granted-only scopes, rows, landing); the browser-level run is not: the sandbox's Meta vendor exists (`apps/vendor-sandbox/src/social/vendors/meta/oauth.ts`) but no spec wires `VENDOR_URL_META_*` and the sandbox into the E2E server. Failure branches: `apps/e2e/tests/platform-connections/connect-failure.spec.ts`"
     - text: "Test token refresh"
       met: true
       evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:456`"
     - text: "Test Instagram-Page linking"
-      met: false
-      reason: "not met — callback linking untested; only refresh's use of `linked_page_id` is (`packages/features/publishing/__tests__/token-refresh.test.ts:458`)"
+      met: true
+      evidence: "apps/web/lib/platforms/__tests__/callback-success.test.ts:275 (the Instagram row's `linked_page_id` is the Page's id and it uses the Page token), :331 (no Instagram row for an unlinked Page), :344 (a failed lookup keeps the Page alone), :355 (several Pages); refresh's use of `linked_page_id`: `packages/features/publishing/__tests__/token-refresh.test.ts:458`"
   e2e: []
 remaining:
   - criterion: "Consent screen shows correct permissions"
@@ -84,6 +84,9 @@ remaining:
     closed_by: "owner"
   - criterion: "User can select which Pages to connect"
     reason: "No in-app choice: every Page `/me/accounts` returns is connected (`apps/web/app/api/platforms/callback/meta/route.ts:223`)"
+    closed_by: "unassigned"
+  - criterion: "Test OAuth flow with mocked Meta endpoints (browser level)"
+    reason: "The callback is tested with mocked fetch (`apps/web/lib/platforms/__tests__/callback-success.test.ts:275`); the sandbox's Meta vendor serves Facebook Login, Pages and the Instagram nodes (`apps/vendor-sandbox/__tests__/meta-fidelity.test.ts`), but no Playwright spec wires it into the server env and drives connect"
     closed_by: "unassigned"
 open_questions:
   - "Should we support multiple Pages per connection? (post-MVP)"

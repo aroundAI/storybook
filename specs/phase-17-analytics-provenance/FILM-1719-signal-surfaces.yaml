@@ -4,6 +4,7 @@ phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
 status: DRAFT
+audited: "2026-09-30"
 effort: L
 dependencies:
   - spec_id: "FILM-1706"
@@ -12,6 +13,10 @@ dependencies:
     note: null
   - spec_id: "FILM-1718"
     note: null
+  - spec_id: "FILM-1713"
+    note: "owns computeMeasure and the engagedViews switch across 2026-08-27; its surface adoption is held until this spec (owner ruling 2026-09-22)"
+  - spec_id: "FILM-1722"
+    note: "owns viewDefinitionChangesBetween and comparableAcross; chart boundary marking and denominator stamping are held until this spec (owner ruling 2026-09-22)"
 summary: >
   Everything below this spec produces facts; this one is where a creator
   meets them, under the constraint that Apple-like simplicity must not mean
@@ -64,6 +69,15 @@ acceptance_criteria:
   - text: "Depth 3 names the provider field and ingestion path"
     met: false
     reason: "not yet implemented — spec status is DRAFT, unaudited"
+  - text: "engagedViews backs any YouTube series crossing 2026-08-27"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited (moved here from FILM-1713: the module proves it, the surfaces are held until this spec, owner ruling 2026-09-22)"
+  - text: "A chart crossing a view-definition boundary marks it rather than drawing a step change"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited (moved here from FILM-1722: viewDefinitionChangesBetween exists, no chart calls it)"
+  - text: "No rate is computed without recording which denominator definition it used"
+    met: false
+    reason: "not yet implemented — spec status is DRAFT, unaudited (moved here from FILM-1722 and FILM-1713: the registry can stamp the definition, no surface does)"
 open_questions: []
 feature:
   database: null

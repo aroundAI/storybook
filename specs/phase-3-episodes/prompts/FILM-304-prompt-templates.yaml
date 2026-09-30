@@ -4,7 +4,7 @@ phase: 3
 phase_name: "Episodes"
 category: prompt_template
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-30"
 effort: S
 dependencies: []
 summary: >
@@ -48,17 +48,17 @@ acceptance_criteria:
     met: true
     evidence: "packages/features/prompt-engine/__tests__/story-generation-templates.test.ts:58"
   - text: "Output schemas match Zod validation schemas"
-    met: false
-    reason: "not met — `scene-shot-generation.json` requires `sceneViralScore`, absent from its own example and from `packages/features/prompt-engine/src/schemas/story-generation-schemas.ts:373`; untested"
+    met: true
+    evidence: "packages/features/prompt-engine/src/schemas/story-generation-schemas.ts:355-419 (SceneShotSchema and SceneShotGenerationOutputSchema carry sceneViralScore, sceneHookType, hookMoment, frameStrategy, the tracking shot type and the reaction timeline type); test packages/features/prompt-engine/__tests__/scene-shot-generation-schema.test.ts parses the template's own example output and checks key coverage. The runtime executor uses the template's embedded zod definition and the episodes package's own schema (packages/features/episodes/src/lib/schemas/shot-list.schema.ts:389), which does not import this one"
   - text: "Templates work with Claude, GPT-4, and Gemini"
     met: false
     reason: "owner check OC-2 (docs/OWNER-CHECKS.md) — needs a run on each vendor, which the audit rules forbid; all four templates pin Gemini"
   - text: "Generated outputs are parseable JSON"
     met: false
-    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM output; the executor retries truncated JSON (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:427`), but no run measures the rate"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM output; the executor retries truncated JSON (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:438`), but no run measures the rate"
   - text: "Prompts produce deterministic structured output"
     met: false
-    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM behaviour at temperature 0.4–0.8; structure is enforced by Zod (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:626`)"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM behaviour at temperature 0.4–0.8; structure is enforced by Zod (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:637`)"
   - text: "Templates are human-readable and editable"
     met: true
     evidence: "JSON files in `packages/features/prompt-engine/src/prompts/story-generation/`, loaded at runtime"
@@ -67,7 +67,7 @@ acceptance_criteria:
     evidence: "e.g. `premise`, `target_duration`, `scene_count_min`; `packages/features/prompt-engine/__tests__/story-generation-templates.test.ts:32`"
   - text: "Prompts produce consistent output format"
     met: false
-    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM behaviour; off-schema output is rejected (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:626`), but no run measures how often"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM behaviour; off-schema output is rejected (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:637`), but no run measures how often"
   - text: "JSON files are properly formatted"
     met: true
     evidence: "`packages/features/prompt-engine/__tests__/prompt-format.test.ts:108` (valid JSON, trailing newline)"
@@ -79,9 +79,18 @@ test_plan:
   integration: []
   e2e: []
 remaining:
-  - criterion: "Output schemas match Zod validation schemas"
-    reason: "`scene-shot-generation.json` requires `sceneViralScore`, which its own `example_output` and `SceneShotGenerationOutputSchema` (`packages/features/prompt-engine/src/schemas/story-generation-schemas.ts:373`) lack; no test covers this template"
-    closed_by: "unassigned"
+  - criterion: "Templates work with Claude, GPT-4, and Gemini"
+    reason: "owner check OC-2 (docs/OWNER-CHECKS.md) — needs a run on each vendor, which the audit rules forbid; all four templates pin Gemini"
+    closed_by: "owner"
+  - criterion: "Generated outputs are parseable JSON"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM output; no run measures the rate"
+    closed_by: "owner"
+  - criterion: "Prompts produce deterministic structured output"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM behaviour at temperature 0.4–0.8; structure is enforced by Zod"
+    closed_by: "owner"
+  - criterion: "Prompts produce consistent output format"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM behaviour; no run measures how often off-schema output is rejected"
+    closed_by: "owner"
 open_questions: []
 notes: |
   ## Source header

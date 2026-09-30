@@ -4,7 +4,7 @@ phase: 5
 phase_name: "Audio Generation"
 category: provider
 status: PARTIAL
-audited: "2026-09-23"
+audited: "2026-09-30"
 effort: M
 dependencies:
   - spec_id: "FILM-108"
@@ -46,49 +46,49 @@ acceptance_criteria:
     evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:88`"
   - text: "`generateVoice()` calculates cost accurately based on character count"
     met: true
-    evidence: "`packages/features/audio-generation/src/providers/elevenlabs.ts:72`; `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:550`"
+    evidence: "`packages/features/audio-generation/src/providers/elevenlabs.ts:83`; `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:602`"
   - text: "`generateVoice()` throws error for text exceeding 5000 characters"
     met: true
     evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:249`"
   - text: "`generateVoice()` throws error for invalid voice ID"
     met: true
-    evidence: "`packages/features/audio-generation/__tests__/http.test.ts:170` (a \"Bad voice id\" 422 throws, not retried); `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:258`"
+    evidence: "`packages/features/audio-generation/__tests__/http.test.ts:175` (a \"Bad voice id\" 422 throws, not retried); `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:258`"
   - text: "`listVoices()` returns all available voices from ElevenLabs"
     met: true
     evidence: "named `getVoices()`; `packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:314`"
   - text: "`listVoices()` filters voices by language, gender, age, accent"
-    met: false
-    reason: "not met — language is read from the accent label (`packages/features/audio-generation/src/providers/elevenlabs.ts:167`), so filtering by `'en'` drops accented voices"
+    met: true
+    evidence: "packages/features/audio-generation/src/providers/elevenlabs.ts:13 (getVoiceLanguage reads verified_languages, then the language label) and :201-214 (language matches the code or its regional variants; gender, age, accent exact); test packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:333 (filters by real language, keeping accented English voices)"
   - text: "`listVoices()` includes voice preview URLs"
     met: true
-    evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:400`"
+    evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:452`"
   - text: "`cloneVoice()` creates custom voice from audio samples"
     met: true
-    evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:435`"
+    evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:487`"
   - text: "`cloneVoice()` validates audio file count (1-25)"
     met: true
-    evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:479`, `:470`"
+    evidence: "`packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:531`, `:470`"
   - text: "Provider retries failed requests with exponential backoff (max 5 retries)"
     met: true
-    evidence: "`packages/features/audio-generation/src/lib/http.ts:36` (5 attempts by default); `packages/features/audio-generation/__tests__/http.test.ts:89`, `:110`"
+    evidence: "`packages/features/audio-generation/src/lib/http.ts:64` (5 attempts by default); `packages/features/audio-generation/__tests__/http.test.ts:94`, `:110`"
   - text: "Provider handles rate limit errors gracefully"
-    met: false
-    reason: "not met — a 429 counts as a permanent 4xx and is thrown at once (`packages/features/audio-generation/src/lib/http.ts:72`, since `b7f7cb53`); the spec wants backoff"
+    met: true
+    evidence: "packages/features/audio-generation/src/lib/http.ts:73-74,103-107 (a 429 is retried, Retry-After honoured and capped, injectable sleep); tests packages/features/audio-generation/__tests__/http.test.ts:197 (retry a 429 honouring Retry-After) and :225 (stop after maxRetries)"
   - text: "Provider validates API key before making requests"
-    met: false
-    reason: "not met — nothing checks the key before a request; the base class only stores the config (`packages/features/audio-generation/src/providers/base.ts:127`)"
+    met: true
+    evidence: "packages/features/audio-generation/src/lib/http.ts:142 (assertApiKey), called from packages/features/audio-generation/src/providers/base.ts:170 and :259 before each voice and music request (at first request, not in the constructor); tests packages/features/audio-generation/__tests__/http.test.ts:274 and elevenlabs-provider.test.ts:374"
   - text: "Voice generation completes within 30 seconds"
     met: false
-    reason: "owner check OC-10 (docs/OWNER-CHECKS.md) — runtime timing against ElevenLabs; each attempt times out at 30 s by default (`packages/features/audio-generation/src/lib/http.ts:14`)"
+    reason: "owner check OC-10 (docs/OWNER-CHECKS.md) — runtime timing against ElevenLabs; each attempt times out at 30 s by default (`packages/features/audio-generation/src/lib/http.ts:40`)"
   - text: "Provider supports concurrent requests (up to 10)"
     met: true
     evidence: "packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:95"
   - text: "All errors are logged with context"
-    met: false
-    reason: "not met — the provider never logs; it rethrows with provider and operation context (`packages/features/audio-generation/src/lib/http.ts:95`)"
+    met: true
+    evidence: "packages/features/audio-generation/src/lib/http.ts:152 (handleProviderError logs provider, operation and message with the key redacted), used by packages/features/audio-generation/src/providers/base.ts:159 and :249; test packages/features/audio-generation/__tests__/http.test.ts:291 (context present, key absent); no separate red run for this one"
   - text: "API keys are never logged or exposed"
     met: true
-    evidence: "the key is used only in the `xi-api-key` header (`packages/features/audio-generation/src/providers/elevenlabs.ts:53`); nothing in `src/providers/` or `src/lib/http.ts` logs"
+    evidence: "the key is used only in the `xi-api-key` header (`packages/features/audio-generation/src/providers/elevenlabs.ts:64`); nothing in `src/providers/` or `src/lib/http.ts` logs"
   - text: "TypeScript compiles without errors"
     met: true
     evidence: "CI run 35779959194 (`main` at `6dfa35a4`): `@kit/audio-generation:typecheck` executed clean; the package is unchanged since"
@@ -100,18 +100,9 @@ test_plan:
   integration: []
   e2e: []
 remaining:
-  - criterion: "`listVoices()` filters by language"
-    reason: "`language` is mapped from `labels.accent` (`packages/features/audio-generation/src/providers/elevenlabs.ts:167`) and filtered with `includes` (`:190`), so a language code filters against accent names"
-    closed_by: "unassigned"
-  - criterion: "Rate-limit handling"
-    reason: "a 429 is thrown at once as a permanent 4xx (`packages/features/audio-generation/src/lib/http.ts:72`, since `b7f7cb53`); the spec asks for backoff. Only `apps/web/lambda/voice-worker/index.ts:273` retries 429s, and it does not use this provider"
-    closed_by: "unassigned"
-  - criterion: "API key validated before requests"
-    reason: "no check anywhere in the provider (`packages/features/audio-generation/src/providers/base.ts:127`)"
-    closed_by: "unassigned"
-  - criterion: "All errors logged with context"
-    reason: "the provider has no logger; errors are rethrown with context (`packages/features/audio-generation/src/lib/http.ts:95`) and logging is left to callers"
-    closed_by: "unassigned"
+  - criterion: "Voice generation completes within 30 seconds"
+    reason: "owner check OC-10 (docs/OWNER-CHECKS.md) — runtime timing against ElevenLabs; each attempt times out at 30 s by default (packages/features/audio-generation/src/lib/http.ts:14)"
+    closed_by: "owner"
 open_questions: []
 notes: |
   ## Checklist structure in the source (added in the YAML conversion)
