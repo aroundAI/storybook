@@ -160,3 +160,28 @@ export async function uploadToTwitter(
     url: xPostUrl(tweetId),
   };
 }
+
+export async function deleteFromTwitter(
+  accessToken: string,
+  tweetId: string,
+): Promise<void> {
+  console.log(`[Twitter] Deleting tweet: ${tweetId}`);
+
+  const response = await fetch(`${X_API_BASE}/tweets/${tweetId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Twitter delete failed: ${response.status} ${error}`);
+  }
+
+  const { data } = await response.json();
+
+  if (!data?.deleted) {
+    throw new Error(`Twitter delete failed: tweet ${tweetId} was not deleted`);
+  }
+
+  console.log(`[Twitter] Tweet deleted: ${tweetId}`);
+}

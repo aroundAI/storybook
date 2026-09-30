@@ -15,9 +15,8 @@ import { vendorUrl } from './resolver';
  * end-of-life for it, so there is no expiry to record here.
  *
  * `/2/media/upload` requires the `media.write` scope on an OAuth 2.0 user
- * token. `TWITTER_OAUTH_CONFIG.scopes` does not request it, and adding a scope
- * is outside FILM-1723, so a video upload is refused until it is added and the
- * connection re-authorised.
+ * token. `TWITTER_OAUTH_CONFIG.scopes` requests it (FILM-1729); a connection
+ * made before that lacks it, and its upload is refused until it reconnects.
  */
 const X_API_HOST = vendorUrl('x-api');
 const X_API_VERSION = '2';

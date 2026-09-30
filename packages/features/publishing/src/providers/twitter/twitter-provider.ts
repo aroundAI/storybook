@@ -7,6 +7,7 @@ import {
   xPostUrl,
 } from '@kit/shared/vendors';
 
+import { tweetLength } from '../../lib/tweet-length';
 import type {
   TwitterMediaInit,
   TwitterUploadInput,
@@ -33,7 +34,7 @@ export class TwitterProvider {
     onProgress?: TwitterUploadProgress,
   ): Promise<TwitterUploadResult> {
     // Validate tweet length
-    if (input.text.length > TWITTER_CONSTRAINTS.maxTweetLength) {
+    if (tweetLength(input.text) > TWITTER_CONSTRAINTS.maxTweetLength) {
       throw new Error(
         `Tweet exceeds maximum length of ${TWITTER_CONSTRAINTS.maxTweetLength} characters`,
       );

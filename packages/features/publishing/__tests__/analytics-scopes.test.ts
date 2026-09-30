@@ -28,6 +28,19 @@ function states(access: ReturnType<typeof resolveAnalyticsAccess>) {
   );
 }
 
+describe('the X connect route', () => {
+  // FILM-1729: /2/media/upload is refused without media.write.
+  it('requests media.write alongside the posting scopes', () => {
+    expect(REQUESTED_SCOPES.twitter).toEqual([
+      'tweet.read',
+      'tweet.write',
+      'media.write',
+      'users.read',
+      'offline.access',
+    ]);
+  });
+});
+
 describe('parseGrantedScopes', () => {
   it('reads a space-delimited grant (Google, X)', () => {
     expect(parseGrantedScopes('tweet.read users.read')).toEqual([

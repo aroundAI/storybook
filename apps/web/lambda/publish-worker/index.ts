@@ -232,10 +232,13 @@ async function deleteFromPlatform(
       const { deleteFromFacebook } = await import('./handlers/facebook');
       return deleteFromFacebook(accessToken, job.platformContentId);
     }
+    case 'twitter': {
+      const { deleteFromTwitter } = await import('./handlers/twitter');
+      return deleteFromTwitter(accessToken, job.platformContentId);
+    }
     case 'tiktok':
     case 'instagram':
     case 'linkedin':
-    case 'twitter':
       console.warn(
         `[Publish Worker] Delete not implemented for ${job.platform}, skipping platform deletion.`,
       );
