@@ -35,6 +35,10 @@ export interface RawExportRow {
   watchTimeSeconds: number | null;
   subscribersGained: number | null;
   revenueCents: number;
+  /**
+   * That day's own impressions and click-through rate. Zero when the
+   * platform reported no reach for the day, which the file writes as blank.
+   */
   impressions: number;
   ctr: number;
   avgViewDurationSeconds: number | null;
@@ -59,6 +63,34 @@ export interface RawExportRow {
   viewsAt90: number | null;
   viewsAt180: number | null;
   viewsAt365: number | null;
+}
+
+export interface DailyReach {
+  videoId: string;
+  date: string;
+  impressions: number;
+  impressionsCtr: number;
+}
+
+/**
+ * Looks up a video's reach for one day, so each daily row carries that
+ * day's figure rather than the video's period total repeated on every row.
+ */
+export function dailyReachLookup(
+  rows: DailyReach[],
+): (videoId: string, date: string) => { impressions: number; ctr: number } {
+  const byVideoDate = new Map(
+    rows.map((row) => [`${row.videoId}:${row.date}`, row]),
+  );
+
+  return (videoId, date) => {
+    const row = byVideoDate.get(`${videoId}:${date}`);
+
+    return {
+      impressions: row?.impressions ?? 0,
+      ctr: row?.impressionsCtr ?? 0,
+    };
+  };
 }
 
 /** Blank for an unreached checkpoint, so it cannot be read as zero. */

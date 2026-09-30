@@ -369,10 +369,19 @@ async function processScheduledReport(
   if (report.report_type === 'raw_csv') {
     // Full per-video per-day dump, so a multi-year series survives
     // outside any dashboard's retention window
-    const { generateRawExportCSV, videoAgeInDays } = await import(
-      '@kit/content-analytics/lib/raw-export-generator'
+    const { dailyReachLookup, generateRawExportCSV, videoAgeInDays } =
+      await import('@kit/content-analytics/lib/raw-export-generator');
+    const { queryDailyReachForVideos, queryDailyStats } = await import(
+      '@kit/clickhouse/server'
     );
-    const { queryDailyStats } = await import('@kit/clickhouse/server');
+
+    const reachFor = dailyReachLookup(
+      await queryDailyReachForVideos({
+        videoIds,
+        startDate: formatDateStr(dateRange.start),
+        endDate: formatDateStr(dateRange.end),
+      }),
+    );
 
     const dailyRows = await queryDailyStats({
       videoIds,
@@ -518,6 +527,7 @@ async function processScheduledReport(
     const rawRows = dailyRows.map((row) => {
       const meta = metaByPublish.get(row.video_id);
       const quality = qualityMap.get(row.video_id);
+      const reach = reachFor(row.video_id, row.metric_date);
 
       return {
         date: row.metric_date,
@@ -543,11 +553,11 @@ async function processScheduledReport(
           ? row.subscribers_gained
           : null,
         revenueCents: row.revenue_cents,
-        // Reach is a period total rather than a per-day figure, so it is
-        // reported once per video on its own row set; CTR and AVD are the
-        // view-weighted period rates.
-        impressions: quality?.impressions ?? 0,
-        ctr: quality?.impressionsCtr ?? 0,
+        // Impressions and CTR are that day's own (video_reach_daily); a day
+        // the platform reported no reach for is blank. Average view duration
+        // is still the view-weighted period figure, repeated on each row.
+        impressions: reach.impressions,
+        ctr: reach.ctr,
         avgViewDurationSeconds: quality?.avgViewDurationSeconds ?? null,
         topTrafficSource:
           topSourceByVideoDate.get(`${row.video_id}:${row.metric_date}`) ?? '',

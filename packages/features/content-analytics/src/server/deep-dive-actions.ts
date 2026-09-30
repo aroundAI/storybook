@@ -21,6 +21,7 @@ import { getLogger } from '@kit/shared/logger';
 import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { subscribedSplit } from '../lib/returning-viewer-proxy';
 import { latestJoinDate } from '../lib/schemas/settings.schema';
 // Out of this file because it is `'use server'`: every export of such a
 // module must be an async function, so a schema with a synchronous
@@ -418,20 +419,8 @@ export const getReturningViewerProxyAction = enhanceAction(
       dimension: 'follower_status',
     });
 
-    let subscribedViews = 0;
-    let notSubscribedViews = 0;
-
-    for (const row of rows) {
-      if (row.key === 'subscribed') subscribedViews += row.views;
-      else notSubscribedViews += row.views;
-    }
-
-    const total = subscribedViews + notSubscribedViews;
-
     return {
-      subscribedViews,
-      notSubscribedViews,
-      subscribedShare: total > 0 ? subscribedViews / total : 0,
+      ...subscribedSplit(rows),
       isProxy: true as const,
     };
   },

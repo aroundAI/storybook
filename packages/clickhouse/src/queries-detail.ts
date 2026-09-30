@@ -326,6 +326,80 @@ export async function queryQualityMetricsForVideos(input: {
   );
 }
 
+/** One video's reach on one day, as the platform reported it. */
+export interface DailyReachRow {
+  videoId: string;
+  date: string;
+  impressions: number;
+  /** That day's own click-through rate, 0..1. */
+  impressionsCtr: number;
+}
+
+async function queryDailyReachForVideosSingle(input: {
+  videoIds: string[];
+  projectIds?: string[];
+  startDate: string;
+  endDate: string;
+}): Promise<DailyReachRow[]> {
+  if (input.videoIds.length === 0 || !isClickHouseEnabled()) return [];
+
+  const params: Record<string, unknown> = {
+    videoIds: input.videoIds,
+    startDate: input.startDate,
+    endDate: input.endDate,
+  };
+  const conditions = [
+    'video_id IN {videoIds: Array(String)}',
+    'metric_date >= {startDate: Date}',
+    'metric_date <= {endDate: Date}',
+  ];
+
+  pushProjectScope(conditions, params, input.projectIds);
+
+  const result = await getClickHouseClient().query({
+    query: `
+      SELECT video_id, toString(metric_date) as date, impressions, impressions_ctr
+      FROM video_reach_daily FINAL
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY video_id, metric_date
+    `,
+    query_params: params,
+    format: 'JSONEachRow',
+  });
+
+  const rows = await result.json<{
+    video_id: string;
+    date: string;
+    impressions: number;
+    impressions_ctr: number;
+  }>();
+
+  return rows.map((row) => ({
+    videoId: row.video_id,
+    date: row.date,
+    impressions: Number(row.impressions),
+    impressionsCtr: Number(row.impressions_ctr),
+  }));
+}
+
+/**
+ * Impressions and CTR per video per day. Rows are keyed by video and date,
+ * so chunks are disjoint and simply concatenate.
+ */
+export async function queryDailyReachForVideos(input: {
+  videoIds: string[];
+  projectIds?: string[];
+  startDate: string;
+  endDate: string;
+}): Promise<DailyReachRow[]> {
+  if (fitsOneChunk(input.videoIds))
+    return queryDailyReachForVideosSingle(input);
+
+  return concatByChunk(input.videoIds, (chunk) =>
+    queryDailyReachForVideosSingle({ ...input, videoIds: chunk }),
+  );
+}
+
 /**
  * Audience rows. Each row carries its `videoId` and its percentage is
  * relative to that video, so chunks are disjoint and simply concatenate —

@@ -32,3 +32,15 @@ export {
   WeeklyDiagnosticsTableSkeleton,
 } from './weekly-diagnostics-table';
 export type { DiagnosticRow } from './weekly-diagnostics-table';
+
+export {
+  Rolling90Card,
+  Rolling90CardSkeleton,
+  ROLLING_WINDOW_DAYS,
+} from './rolling-90-card';
+export type { RollingViewsEntry } from './rolling-90-card';
+
+export {
+  ReturningViewerProxyCard,
+  ReturningViewerProxyCardSkeleton,
+} from './returning-viewer-proxy-card';

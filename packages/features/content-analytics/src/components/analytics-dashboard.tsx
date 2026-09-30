@@ -36,6 +36,7 @@ import type {
 import { AIInsights } from './ai-insights';
 import { AudienceGrid } from './audience';
 import { ContentGrid } from './content';
+import { ContentTablePanel } from './content-table-panel';
 import type { DateRangeValue } from './date-range-picker';
 import { DateRangePicker } from './date-range-picker';
 import { DeepDiveTab } from './deep-dive/deep-dive-tab';
@@ -78,6 +79,7 @@ export function AnalyticsDashboard({
   // every channel.
   const [connectionId, setConnectionId] = useState<string | undefined>();
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [contentView, setContentView] = useState<'cards' | 'table'>('cards');
 
   // Fetch project analytics with 5-minute auto-refresh
   const {
@@ -295,7 +297,9 @@ export function AnalyticsDashboard({
           <TabsTrigger value="overview" data-test="analytics-tab-overview">
             Overview
           </TabsTrigger>
-          <TabsTrigger value="content">Content</TabsTrigger>
+          <TabsTrigger value="content" data-test="analytics-tab-content">
+            Content
+          </TabsTrigger>
           <TabsTrigger value="audience" data-test="analytics-tab-audience">
             Audience
           </TabsTrigger>
@@ -354,8 +358,35 @@ export function AnalyticsDashboard({
         </TabsContent>
 
         <TabsContent value="content" className="mt-6">
-          {/* New Content Grid with Card Layout */}
-          <ContentGrid data={contentList} isLoading={isContentLoading} />
+          <div
+            className="mb-4 flex gap-2"
+            role="group"
+            aria-label="Content view"
+          >
+            {(['cards', 'table'] as const).map((view) => (
+              <Button
+                key={view}
+                type="button"
+                size="sm"
+                variant={contentView === view ? 'default' : 'outline'}
+                aria-pressed={contentView === view}
+                onClick={() => setContentView(view)}
+                data-test={`content-view-${view}`}
+              >
+                {view === 'cards' ? 'Cards' : 'Table'}
+              </Button>
+            ))}
+          </div>
+          {contentView === 'cards' ? (
+            <ContentGrid data={contentList} isLoading={isContentLoading} />
+          ) : (
+            <ContentTablePanel
+              accountId={accountId}
+              projectId={projectId}
+              data={contentList}
+              isLoading={isContentLoading}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="audience" className="mt-6">

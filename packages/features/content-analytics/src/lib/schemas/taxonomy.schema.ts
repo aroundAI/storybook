@@ -51,9 +51,13 @@ export const SetPublishTagsSchema = z.object({
   tagIds: z.array(z.string().uuid()).max(50),
 });
 
+/** The most publishes and tags one bulk-tag call accepts. */
+export const BULK_TAG_MAX_PUBLISHES = 500;
+export const BULK_TAG_MAX_TAGS = 50;
+
 export const BulkTagPublishesSchema = z.object({
-  publishIds: z.array(z.string().uuid()).min(1).max(500),
-  tagIds: z.array(z.string().uuid()).min(1).max(50),
+  publishIds: z.array(z.string().uuid()).min(1).max(BULK_TAG_MAX_PUBLISHES),
+  tagIds: z.array(z.string().uuid()).min(1).max(BULK_TAG_MAX_TAGS),
   /** Replace existing assignments instead of adding to them. */
   replace: z.boolean().default(false),
 });

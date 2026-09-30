@@ -373,7 +373,9 @@ export async function queryMedianViewsPerVideo(input: {
 
 /**
  * Daily views with a rolling-window total (default use: 90-day rolling
- * views). Dates are zero-filled so the window covers days, not rows.
+ * views). Dates are zero-filled so the window covers days, not rows. WITH
+ * FILL's TO bound is exclusive, hence the `+ 1`: without it a quiet final day
+ * was missing rather than zero.
  */
 export async function queryRollingViews(input: {
   scope: DimScope;
@@ -411,7 +413,7 @@ export async function queryRollingViews(input: {
         AND metric_date <= {endDate: Date}
       GROUP BY metric_date
       ORDER BY metric_date ASC
-        WITH FILL FROM {startDate: Date} TO {endDate: Date} STEP 1
+        WITH FILL FROM {startDate: Date} TO {endDate: Date} + 1 STEP 1
     )
     ORDER BY date ASC
   `;

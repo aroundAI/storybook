@@ -44,6 +44,7 @@ import {
   queryCohortMedians,
   queryCompleteChannelWindowDays,
   queryConnectionVideoIds,
+  queryDailyReachForVideos,
   queryDailyStats,
   queryDailyTimeSeries,
   queryDailyTimeSeriesByPlatform,
@@ -2674,6 +2675,696 @@ async function provenanceSteps() {
   });
 }
 
+/**
+ * A run that must not depend on an earlier one: every fixture below is
+ * deleted first and again afterwards, so a re-run reads only what it seeds.
+ */
+async function clearFixtureRows(
+  projects: string[],
+  connections: string[],
+): Promise<void> {
+  const client = getClickHouseClient();
+
+  for (const table of [
+    'video_dim',
+    'video_metrics',
+    'video_traffic_sources',
+    'video_audience',
+  ]) {
+    for (const project of projects) {
+      await client.command({
+        query: `ALTER TABLE ${table} DELETE WHERE project_id = {project:UUID}`,
+        query_params: { project },
+        clickhouse_settings: { mutations_sync: '2' },
+      });
+    }
+  }
+
+  for (const connection of connections) {
+    await client.command({
+      query:
+        'ALTER TABLE channel_daily DELETE WHERE connection_id = {connection:UUID}',
+      query_params: { connection },
+      clickhouse_settings: { mutations_sync: '2' },
+    });
+  }
+}
+
+function expectEqual(label: string, actual: unknown, expected: unknown): void {
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new Error(
+      `${label}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`,
+    );
+  }
+}
+
+function expectClose(label: string, actual: number, expected: number): void {
+  if (!Number.isFinite(actual) || Math.abs(actual - expected) > 1e-6) {
+    throw new Error(`${label}: expected ${expected}, got ${actual}`);
+  }
+}
+
+const HAND_PROJECT = '66666666-6666-6666-6666-666666666666';
+const HAND_ACCOUNT = '66666666-6666-6666-6666-666666666667';
+const HAND_CHANNEL = '66666666-6666-6666-6666-666666666668';
+const YPP_PROJECT = '88888888-8888-8888-8888-888888888881';
+const YPP_ACCOUNT = '88888888-8888-8888-8888-888888888882';
+const YPP_CHANNEL = '88888888-8888-8888-8888-888888888883';
+const YPP_UNATTRIBUTED_PROJECT = '88888888-8888-8888-8888-888888888884';
+const YPP_UNATTRIBUTED_ACCOUNT = '88888888-8888-8888-8888-888888888885';
+const ZERO_CONNECTION = '00000000-0000-0000-0000-000000000000';
+
+/**
+ * Videos of the hand-computed fixture, all on one channel and account.
+ *
+ * | video | published  | daily views (date: views)                    | total |
+ * |-------|------------|----------------------------------------------|-------|
+ * | hand-a | 2026-01-05 | 01-06: 100 · 02-10: 50 · 03-20: 60           |   210 |
+ * | hand-b | 2026-01-10 | 01-11: 200                                   |   200 |
+ * | hand-c | 2026-01-20 | 01-21: 9,000 (the viral one)                 | 9,000 |
+ * | hand-d | 2026-02-03 | 02-04: 400 · 03-01: 100                      |   500 |
+ * | hand-e | 2025-11-01 | none: uploaded before the channel's ingest   |     - |
+ */
+const HAND_VIDEOS = [
+  {
+    id: 'hand-a',
+    published: '2026-01-05',
+    days: { '2026-01-06': 100, '2026-02-10': 50, '2026-03-20': 60 },
+  },
+  { id: 'hand-b', published: '2026-01-10', days: { '2026-01-11': 200 } },
+  { id: 'hand-c', published: '2026-01-20', days: { '2026-01-21': 9000 } },
+  {
+    id: 'hand-d',
+    published: '2026-02-03',
+    days: { '2026-02-04': 400, '2026-03-01': 100 },
+  },
+  { id: 'hand-e', published: '2025-11-01', days: {} },
+] as const;
+
+function dimFor(input: {
+  id: string;
+  project: string;
+  account: string;
+  connection: string;
+  published: string;
+}) {
+  return {
+    video_id: input.id,
+    project_id: input.project,
+    account_id: input.account,
+    episode_id: EPISODE,
+    connection_id: input.connection,
+    platform: 'youtube' as const,
+    content_type: 'full',
+    language: 'en',
+    channel_language: 'en',
+    title: input.id,
+    published_at: `${input.published} 00:00:00`,
+    episode_duration_seconds: 600,
+    asset_duration_seconds: null,
+    tags: [],
+  };
+}
+
+function metricFor(input: {
+  project: string;
+  id: string;
+  date: string;
+  views: number;
+  watchTimeSeconds?: number;
+  subscribersGained?: number;
+  subscribersLost?: number;
+}) {
+  return {
+    project_id: input.project,
+    video_id: input.id,
+    platform: 'youtube' as const,
+    metric_date: input.date,
+    views: input.views,
+    likes: 0,
+    comments: 0,
+    shares: 0,
+    saves: 0,
+    watch_time_seconds: input.watchTimeSeconds ?? 0,
+    revenue_cents: 0,
+    subscribers_gained: input.subscribersGained ?? 0,
+    subscribers_lost: input.subscribersLost ?? 0,
+    metric_source: 'analytics_api' as const,
+    extra_metrics: '{}',
+  };
+}
+
+function isoDaysAgo(days: number): string {
+  return new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+}
+
+/**
+ * Asserts a value, not a row count, for the queries FILM-1506 and FILM-1602
+ * list. Every expected figure is worked out by hand in the comment beside
+ * it from the fixture table above, never read back from the query.
+ */
+async function handComputedSteps() {
+  const projects = [HAND_PROJECT, YPP_PROJECT, YPP_UNATTRIBUTED_PROJECT];
+  const connections = [HAND_CHANNEL, YPP_CHANNEL];
+  const scope = { projectId: HAND_PROJECT };
+
+  await step('seed: hand-computed fixture', async () => {
+    await clearFixtureRows(projects, connections);
+
+    await insertVideoDims(
+      HAND_VIDEOS.map((video) =>
+        dimFor({
+          id: video.id,
+          project: HAND_PROJECT,
+          account: HAND_ACCOUNT,
+          connection: HAND_CHANNEL,
+          published: video.published,
+        }),
+      ),
+    );
+
+    await insertVideoMetrics(
+      HAND_VIDEOS.flatMap((video) =>
+        Object.entries<number>(video.days).map(([date, views]) =>
+          metricFor({ project: HAND_PROJECT, id: video.id, date, views }),
+        ),
+      ),
+    );
+
+    const traffic = (
+      id: string,
+      date: string,
+      source: string,
+      views: number,
+    ) => ({
+      project_id: HAND_PROJECT,
+      video_id: id,
+      platform: 'youtube' as const,
+      metric_date: date,
+      source,
+      views,
+      watch_time_minutes: views / 10,
+    });
+
+    await insertVideoTrafficSources([
+      traffic('hand-a', '2026-01-06', 'RELATED_VIDEO', 60),
+      traffic('hand-a', '2026-01-06', 'SUBSCRIBER', 20),
+      traffic('hand-a', '2026-01-06', 'YT_SEARCH', 20),
+      traffic('hand-b', '2026-01-11', 'YT_SEARCH', 20),
+      traffic('hand-b', '2026-01-11', 'EXTERNAL_URL', 80),
+      traffic('hand-a', '2026-02-10', 'YT_SEARCH', 25),
+      traffic('hand-d', '2026-02-04', 'SHORTS', 50),
+      traffic('hand-d', '2026-02-04', 'TS_99', 25),
+    ]);
+
+    await insertVideoReachDaily([
+      {
+        project_id: HAND_PROJECT,
+        video_id: 'hand-a',
+        platform: 'youtube' as const,
+        metric_date: '2026-01-06',
+        impressions: 1000,
+        impressions_ctr: 0.5,
+      },
+      {
+        project_id: HAND_PROJECT,
+        video_id: 'hand-a',
+        platform: 'youtube' as const,
+        metric_date: '2026-02-10',
+        impressions: 400,
+        impressions_ctr: 0.25,
+      },
+    ]);
+
+    await insertVideoAudience([
+      {
+        project_id: HAND_PROJECT,
+        video_id: 'hand-a',
+        platform: 'youtube' as const,
+        dimension: 'follower_status',
+        key: 'subscribed',
+        views: 300,
+        percentage: 30,
+      },
+      {
+        project_id: HAND_PROJECT,
+        video_id: 'hand-a',
+        platform: 'youtube' as const,
+        dimension: 'follower_status',
+        key: 'not_subscribed',
+        views: 700,
+        percentage: 70,
+      },
+      {
+        project_id: HAND_PROJECT,
+        video_id: 'hand-b',
+        platform: 'youtube' as const,
+        dimension: 'follower_status',
+        key: 'subscribed',
+        views: 50,
+        percentage: 25,
+      },
+      {
+        project_id: HAND_PROJECT,
+        video_id: 'hand-b',
+        platform: 'youtube' as const,
+        dimension: 'follower_status',
+        key: 'not_subscribed',
+        views: 150,
+        percentage: 75,
+      },
+    ]);
+  });
+
+  await step('assert: monthly median by upload month is by hand', async () => {
+    const buckets = await queryMedianViewsPerVideo({
+      scope,
+      bucket: 'month',
+      mode: 'cohort_views_to_date',
+    });
+    const january = buckets.find((b) => b.bucket === '2026-01-01');
+    const february = buckets.find((b) => b.bucket === '2026-02-01');
+
+    // January uploads a, b, c have 210, 200, 9000 views to date. Sorted
+    // [200, 210, 9000]: median is the middle, 210. p25 sits at position
+    // 0.5 of the way: 200 + 0.5 * (210 - 200) = 205. p75 at position 1.5:
+    // 210 + 0.5 * (9000 - 210) = 4605. Mean (200 + 210 + 9000) / 3 = 3136.667.
+    expectEqual('jan count', january?.videoCount, 3);
+    expectEqual('jan median', january?.medianViews, 210);
+    expectEqual('jan p25', january?.p25Views, 205);
+    expectEqual('jan p75', january?.p75Views, 4605);
+    expectClose('jan mean', january?.meanViews ?? NaN, 9410 / 3);
+    // February: d alone, 400 + 100 = 500.
+    expectEqual('feb count', february?.videoCount, 1);
+    expectEqual('feb median', february?.medianViews, 500);
+
+    if ((january?.medianViews ?? Infinity) > (january?.meanViews ?? 0)) {
+      throw new Error('median exceeds mean on right-skewed data');
+    }
+
+    return 'jan median 210 <= mean 3136.67; feb 500';
+  });
+
+  await step(
+    'assert: monthly median by calendar month is by hand',
+    async () => {
+      const buckets = await queryMedianViewsPerVideo({
+        scope,
+        bucket: 'month',
+        mode: 'views_in_period',
+      });
+      const byBucket = Object.fromEntries(buckets.map((b) => [b.bucket, b]));
+
+      // January's views per video: a 100, b 200, c 9000. Median 200,
+      // p25 = 100 + 0.5 * 100 = 150, p75 = 200 + 0.5 * 8800 = 4600,
+      // mean 9300 / 3 = 3100.
+      expectEqual('jan median', byBucket['2026-01-01']?.medianViews, 200);
+      expectEqual('jan p25', byBucket['2026-01-01']?.p25Views, 150);
+      expectEqual('jan p75', byBucket['2026-01-01']?.p75Views, 4600);
+      expectClose('jan mean', byBucket['2026-01-01']?.meanViews ?? NaN, 3100);
+      // February: a 50, d 400. Two rows: the median is their average, 225;
+      // p25 = 50 + 0.25 * 350 = 137.5, p75 = 50 + 0.75 * 350 = 312.5.
+      expectEqual('feb median', byBucket['2026-02-01']?.medianViews, 225);
+      expectEqual('feb p25', byBucket['2026-02-01']?.p25Views, 137.5);
+      expectEqual('feb p75', byBucket['2026-02-01']?.p75Views, 312.5);
+      // March: a 60, d 100, median 80.
+      expectEqual('mar median', byBucket['2026-03-01']?.medianViews, 80);
+
+      if (
+        (byBucket['2026-01-01']?.medianViews ?? Infinity) >
+        (byBucket['2026-01-01']?.meanViews ?? 0)
+      ) {
+        throw new Error('median exceeds mean on right-skewed data');
+      }
+
+      return 'jan median 200 <= mean 3100; feb 225; mar 80';
+    },
+  );
+
+  await step(
+    'assert: rolling-90 is the trailing 90 days, by hand',
+    async () => {
+      const points = await queryRollingViews({
+        scope,
+        windowDays: 90,
+        startDate: '2026-01-01',
+        endDate: '2026-04-15',
+      });
+      const at = (date: string) => points.find((p) => p.date === date);
+
+      // 2026-01-01 .. 2026-04-15 is 105 days, zero-filled, so a quiet day is a
+      // row rather than a gap.
+      expectEqual('rows', points.length, 105);
+      expectEqual('quiet day', at('2026-01-02')?.views, 0);
+      // 01-21: 100 + 200 + 9000 = 9300 (nothing yet from February on).
+      expectEqual('01-21', at('2026-01-21')?.rollingViews, 9300);
+      // 03-31 is day 89 of the range: its window is days 0..89, all seven
+      // view days: 100+200+9000+400+50+100+60 = 9910.
+      expectEqual('03-31', at('2026-03-31')?.rollingViews, 9910);
+      // 04-05 is day 94, window 5..94 still holds 01-06 (day 5): 9910.
+      expectEqual('04-05', at('2026-04-05')?.rollingViews, 9910);
+      // 04-06 drops 01-06's 100: 9810.
+      expectEqual('04-06', at('2026-04-06')?.rollingViews, 9810);
+      // 04-15 (day 104), window 15..104 also loses 01-11's 200: 9610.
+      expectEqual('04-15', at('2026-04-15')?.rollingViews, 9610);
+
+      return '01-21 9300 · 04-05 9910 · 04-06 9810 · 04-15 9610';
+    },
+  );
+
+  await step('assert: traffic share by month is by hand', async () => {
+    const buckets = await queryTrafficSourceBreakdown({
+      scope,
+      bucket: 'month',
+      startDate: '2026-01-01',
+      endDate: '2026-03-31',
+    });
+    const share = (bucket: string, group: string) => {
+      const row = buckets
+        .find((b) => b.bucket === bucket)
+        ?.groups.find((g) => g.group === group);
+
+      return { views: row?.views, share: row?.share };
+    };
+
+    // January total 60+20+20+20+80 = 200: browse_suggested (related 60 +
+    // subscriber 20) 80 -> 0.4, search (20 + 20) 40 -> 0.2, external 80 ->
+    // 0.4.
+    expectEqual(
+      'jan total',
+      buckets.find((b) => b.bucket === '2026-01-01')?.totalViews,
+      200,
+    );
+    expectEqual('jan browse', share('2026-01-01', 'browse_suggested'), {
+      views: 80,
+      share: 0.4,
+    });
+    expectEqual('jan search', share('2026-01-01', 'search'), {
+      views: 40,
+      share: 0.2,
+    });
+    expectEqual('jan external', share('2026-01-01', 'external'), {
+      views: 80,
+      share: 0.4,
+    });
+    // February total 25+50+25 = 100: search 0.25, shorts 0.5, and the
+    // unknown TS_99 is `other`, not dropped: 0.25.
+    expectEqual(
+      'feb total',
+      buckets.find((b) => b.bucket === '2026-02-01')?.totalViews,
+      100,
+    );
+    expectEqual('feb search', share('2026-02-01', 'search'), {
+      views: 25,
+      share: 0.25,
+    });
+    expectEqual('feb shorts', share('2026-02-01', 'shorts_feed'), {
+      views: 50,
+      share: 0.5,
+    });
+    expectEqual('feb other', share('2026-02-01', 'other'), {
+      views: 25,
+      share: 0.25,
+    });
+
+    return 'jan 0.4/0.2/0.4 · feb 0.25/0.5/0.25';
+  });
+
+  await step('assert: back-catalog share is by hand', async () => {
+    const buckets = await queryBackCatalogShare({
+      scope,
+      ageDays: 30,
+      startDate: '2026-01-01',
+      endDate: '2026-03-31',
+    });
+    const byBucket = Object.fromEntries(buckets.map((b) => [b.bucket, b]));
+
+    // A view is back catalogue when the video was published more than 30
+    // days before that day. January: every view is within a day or two of
+    // upload -> 0 of 9300. February: a's 02-10 views are 36 days old (>30),
+    // d's 02-04 are 1 -> 50 of 450 = 0.1111. March: a's 03-20 are 74 days
+    // old, d's 03-01 are 26 -> 60 of 160 = 0.375.
+    expectEqual(
+      'jan',
+      [
+        byBucket['2026-01-01']?.totalViews,
+        byBucket['2026-01-01']?.backCatalogViews,
+      ],
+      [9300, 0],
+    );
+    expectEqual(
+      'feb',
+      [
+        byBucket['2026-02-01']?.totalViews,
+        byBucket['2026-02-01']?.backCatalogViews,
+      ],
+      [450, 50],
+    );
+    expectClose('feb share', byBucket['2026-02-01']?.share ?? NaN, 50 / 450);
+    expectEqual(
+      'mar',
+      [
+        byBucket['2026-03-01']?.totalViews,
+        byBucket['2026-03-01']?.backCatalogViews,
+      ],
+      [160, 60],
+    );
+    expectClose('mar share', byBucket['2026-03-01']?.share ?? NaN, 0.375);
+
+    return 'jan 0/9300 · feb 50/450 · mar 60/160';
+  });
+
+  await step('assert: cohort medians at 30 days are by hand', async () => {
+    const cohorts = await queryCohortMedians({
+      scope,
+      bucket: 'month',
+      checkpoints: [30],
+      asOf: '2026-06-01 00:00:00',
+    });
+    const january = cohorts.find((c) => c.cohort === '2026-01-01');
+    const february = cohorts.find((c) => c.cohort === '2026-02-01');
+    const november = cohorts.find((c) => c.cohort === '2025-11-01');
+
+    // Views within each video's first 30 days: a 100 (02-10 and 03-20 are
+    // older), b 200, c 9000 -> median 200, p25 150, p75 4600, mean 3100.
+    expectEqual('jan mature', january?.checkpoints[30]?.matureVideoCount, 3);
+    expectEqual('jan median', january?.checkpoints[30]?.medianViews, 200);
+    expectEqual('jan p25', january?.checkpoints[30]?.p25Views, 150);
+    expectEqual('jan p75', january?.checkpoints[30]?.p75Views, 4600);
+    expectEqual('jan mean', january?.checkpoints[30]?.meanViews, 3100);
+    // d: 02-04 400 (age 1) + 03-01 100 (age 26) = 500; 03-01 is inside 30.
+    expectEqual('feb median', february?.checkpoints[30]?.medianViews, 500);
+    // e was uploaded 66 days before the channel's first ingested day
+    // (2025-11-01 -> 2026-01-06), longer than the 30-day window: its figure
+    // is unknowable, so it is counted as predating ingest, not as a zero.
+    expectEqual('nov mature', november?.checkpoints[30]?.matureVideoCount, 0);
+    expectEqual(
+      'nov predates',
+      november?.checkpoints[30]?.predatesIngestCount,
+      1,
+    );
+
+    return 'jan 200 (n=3) · feb 500 · nov predates ingest';
+  });
+
+  await step(
+    'assert: daily reach is one row per video-day, by hand',
+    async () => {
+      const rows = await queryDailyReachForVideos({
+        videoIds: ['hand-a', 'hand-b'],
+        projectIds: [HAND_PROJECT],
+        startDate: '2026-01-01',
+        endDate: '2026-03-31',
+      });
+
+      // Two reach days were seeded for hand-a and none for hand-b. Each day
+      // keeps its own figure (1000 and 400) rather than the period total 1400,
+      // and hand-b, with no reach row, is absent rather than zero.
+      expectEqual('rows', rows, [
+        {
+          videoId: 'hand-a',
+          date: '2026-01-06',
+          impressions: 1000,
+          impressionsCtr: 0.5,
+        },
+        {
+          videoId: 'hand-a',
+          date: '2026-02-10',
+          impressions: 400,
+          impressionsCtr: 0.25,
+        },
+      ]);
+
+      return '1000 on 01-06, 400 on 02-10, hand-b absent';
+    },
+  );
+
+  await step(
+    'assert: the returning-viewer proxy rows are by hand',
+    async () => {
+      const rows = await queryAudienceRows({
+        videoIds: ['hand-a', 'hand-b'],
+        projectIds: [HAND_PROJECT],
+        dimension: 'follower_status',
+      });
+      const sum = (key: string) =>
+        rows.filter((r) => r.key === key).reduce((n, r) => n + r.views, 0);
+
+      // Subscribed 300 + 50 = 350 of 1200 views: 350 / 1200 = 0.2917. The
+      // rows carry counts, so the share is arithmetic over them, never a
+      // percentage averaged across videos ((30 + 25) / 2 = 27.5 would be wrong).
+      expectEqual('subscribed', sum('subscribed'), 350);
+      expectEqual('not subscribed', sum('not_subscribed'), 850);
+      expectClose('share', 350 / (350 + 850), 0.291666666);
+
+      return 'subscribed 350 of 1200';
+    },
+  );
+
+  await step(
+    'assert: per-channel watch hours sum to the pooled total',
+    async () => {
+      const ended = isoDaysAgo(3);
+      const early = isoDaysAgo(10);
+      const outside = isoDaysAgo(100);
+
+      await insertVideoDims([
+        dimFor({
+          id: 'ypp-a',
+          project: YPP_PROJECT,
+          account: YPP_ACCOUNT,
+          connection: YPP_CHANNEL,
+          published: '2025-01-01',
+        }),
+        dimFor({
+          id: 'ypp-orphan',
+          project: YPP_UNATTRIBUTED_PROJECT,
+          account: YPP_UNATTRIBUTED_ACCOUNT,
+          connection: ZERO_CONNECTION,
+          published: '2025-01-01',
+        }),
+      ]);
+      await insertVideoMetrics([
+        metricFor({
+          project: YPP_PROJECT,
+          id: 'ypp-a',
+          date: ended,
+          views: 10,
+          watchTimeSeconds: 3600,
+          subscribersGained: 5,
+          subscribersLost: 2,
+        }),
+        metricFor({
+          project: YPP_PROJECT,
+          id: 'ypp-a',
+          date: early,
+          views: 10,
+          watchTimeSeconds: 1800,
+          subscribersGained: 1,
+        }),
+        metricFor({
+          project: YPP_PROJECT,
+          id: 'ypp-a',
+          date: outside,
+          views: 10,
+          watchTimeSeconds: 7200,
+        }),
+        metricFor({
+          project: YPP_UNATTRIBUTED_PROJECT,
+          id: 'ypp-orphan',
+          date: ended,
+          views: 1,
+          watchTimeSeconds: 600,
+        }),
+      ]);
+      await insertChannelDaily([
+        {
+          connection_id: YPP_CHANNEL,
+          metric_date: ended,
+          views: 5,
+          watch_time_seconds: 900,
+          engaged_views: 0,
+          subscribers_gained: 0,
+          subscribers_lost: 0,
+        },
+        {
+          connection_id: YPP_CHANNEL,
+          metric_date: isoDaysAgo(40),
+          views: 5,
+          watch_time_seconds: 5000,
+          engaged_views: 0,
+          subscribers_gained: 0,
+          subscribers_lost: 0,
+        },
+      ]);
+
+      const windowDays = 30;
+      const pooledVideos = await queryWatchWindowTotals({
+        scope: { accountId: YPP_ACCOUNT, platform: 'youtube' },
+        windowDays,
+      });
+      const channelVideos = await queryWatchWindowTotals({
+        scope: {
+          accountId: YPP_ACCOUNT,
+          connectionId: YPP_CHANNEL,
+          platform: 'youtube' as const,
+        },
+        windowDays,
+      });
+      const channelOnly = await queryChannelWatchWindow({
+        connectionIds: [YPP_CHANNEL],
+        windowDays,
+      });
+
+      // Inside 30 days: platform videos 3600 + 1800 = 5400 s (the 100-day-old
+      // 7200 is outside), net subscribers (5 + 1) - (2 + 0) = 4; the channel's
+      // own residual 900 s (the 40-day-old 5000 is outside). A channel is
+      // 5400 + 900 = 6300 s = 1.75 h, and with one channel that is the pool.
+      expectEqual('video watch seconds', channelVideos.watchTimeSeconds, 5400);
+      expectEqual('net subscribers', channelVideos.netSubscribers, 4);
+      expectEqual('channel residual', channelOnly.watchTimeSeconds, 900);
+      expectEqual(
+        'per-channel total',
+        channelVideos.watchTimeSeconds + channelOnly.watchTimeSeconds,
+        6300,
+      );
+      expectEqual(
+        'pooled video watch equals the one channel',
+        pooledVideos.watchTimeSeconds,
+        channelVideos.watchTimeSeconds,
+      );
+
+      // The known edge (FILM-1602 remaining): a video synced with the zero
+      // UUID is in the account's pooled total and in no channel's.
+      const orphanPooled = await queryWatchWindowTotals({
+        scope: { accountId: YPP_UNATTRIBUTED_ACCOUNT, platform: 'youtube' },
+        windowDays,
+      });
+      const orphanChannel = await queryWatchWindowTotals({
+        scope: {
+          accountId: YPP_UNATTRIBUTED_ACCOUNT,
+          connectionId: YPP_CHANNEL,
+          platform: 'youtube' as const,
+        },
+        windowDays,
+      });
+
+      expectEqual('unattributed pooled', orphanPooled.watchTimeSeconds, 600);
+      expectEqual(
+        'unattributed per channel',
+        orphanChannel.watchTimeSeconds,
+        0,
+      );
+
+      return 'channel 6300 s = pooled 6300 s; unattributed 600 s in the pool only';
+    },
+  );
+
+  await step('clear: hand-computed fixture', () =>
+    clearFixtureRows(projects, connections),
+  );
+}
+
 async function main() {
   if (!isClickHouseEnabled()) {
     console.error(
@@ -2688,6 +3379,7 @@ async function main() {
   await assertions();
   await watchedMetricSteps();
   await provenanceSteps();
+  await handComputedSteps();
   // Last: it fills a project with noise, and nothing above should see it.
   await scanScopeSteps();
 
