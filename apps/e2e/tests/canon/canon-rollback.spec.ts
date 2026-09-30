@@ -10,6 +10,9 @@ import { type CanonFixture, openStoryCanon, seedCanon } from './canon-fixture';
  * rollback appends a state restoring the earlier one; it does not delete.
  */
 
+const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
+const evidence = Boolean(process.env.CAPTURE_EVIDENCE);
+
 let canon: CanonFixture;
 let stale: CanonFixture;
 
@@ -38,8 +41,26 @@ test.describe('Canon rollback (FILM-1005)', () => {
     await byTest(page, 'canon-character-history-toggle').click();
     await expect(byTest(page, 'canon-character-delta')).toHaveCount(1);
 
+    if (evidence) {
+      await page.screenshot({
+        path: `${OUT}/rollback-01-history.png`,
+        animations: 'disabled',
+      });
+    }
+
     // Cancelling changes nothing.
     await byTest(page, 'canon-character-rollback').click();
+
+    if (evidence) {
+      await expect(
+        byTest(page, 'canon-character-rollback-confirm'),
+      ).toBeVisible();
+      await page.screenshot({
+        path: `${OUT}/rollback-02-confirm.png`,
+        animations: 'disabled',
+      });
+    }
+
     await page.getByRole('button', { name: 'Cancel' }).click();
     expect(await characterStates()).toEqual(['calm', 'grieving']);
 
@@ -60,6 +81,13 @@ test.describe('Canon rollback (FILM-1005)', () => {
       'Rollback of state change',
     );
     await expect(byTest(page, 'canon-character-rollback')).toHaveCount(1);
+
+    if (evidence) {
+      await page.screenshot({
+        path: `${OUT}/rollback-03-after.png`,
+        animations: 'disabled',
+      });
+    }
   });
 
   test('a change already followed by another is refused, in words', async ({
@@ -103,6 +131,13 @@ test.describe('Canon rollback (FILM-1005)', () => {
       'grieving',
       'resolute',
     ]);
+
+    if (evidence) {
+      await page.screenshot({
+        path: `${OUT}/rollback-04-refused.png`,
+        animations: 'disabled',
+      });
+    }
   });
 });
 
