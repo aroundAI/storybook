@@ -37,7 +37,7 @@ acceptance_criteria:
     evidence: "saved per report, never inside a run of equal createTimes, held while ClickHouse is off or a report is refused: `packages/features/content-analytics/__tests__/report-ingest-run.test.ts:416`, `:415`, `:365`, `:463`. The skip is YouTube's documented `createdAfter` filter (developers.google.com/youtube/reporting/v1/reports); the production-bundle run's second pass sent it and downloaded nothing, against a fake that applies it"
   - text: "One video/day cross-checked against YouTube Studio (views, impressions, CTR)"
     met: false
-    reason: "unverified — a manual check against YouTube Studio on a real channel, by the owner after the FILM-1503 cutover. It also settles the CTR unit: Google's definition says both 'percentage' and 'clicks divided by impressions'; the ingest assumes a ratio and refuses any report with a CTR above 1"
+    reason: "owner check OC-6 (docs/OWNER-CHECKS.md) — a manual check against YouTube Studio on a real channel, by the owner after the FILM-1503 cutover. It also settles the CTR unit: Google's definition says both 'percentage' and 'clicks divided by impressions'; the ingest assumes a ratio and refuses any report with a CTR above 1"
 remaining:
   - criterion: "One video/day cross-checked against YouTube Studio"
     reason: "Needs a real channel's reports and Studio side by side, which only the owner can do, and only once production ClickHouse exists (FILM-1503 cutover). Check engaged views on the same video/day, and that `engaged_views` is mostly non-null there (a high null share means the sync's `engagedViews` query is refused — FILM-CC-04 KB-50). Everything else is verified against fixtures, the local stack and the production bundle"

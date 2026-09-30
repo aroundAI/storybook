@@ -47,7 +47,7 @@ provider:
 acceptance_criteria:
   - text: "OAuth 2.0 connection flow works"
     met: false
-    reason: "unverified against X — no X credentials (FILM-1729 §2); FILM-1725 Check I. Against a local stand-in for X the whole flow now runs through the production build: Connect on the Platforms page (KB-86), X's authorize page, the real callback's token exchange and user lookup, and a landing on the platforms page with the new row (KB-87 — it used to land on the failure page); reconnecting re-attaches the same row; Disconnect revokes both tokens (KB-25) — `apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts`. Refresh is fixed by KB-15 (#326): `packages/features/publishing/__tests__/token-refresh.test.ts:687`"
+    reason: "owner check OC-5 (docs/OWNER-CHECKS.md) — no X credentials (FILM-1729 §2); FILM-1725 Check I. Against a local stand-in for X the whole flow now runs through the production build: Connect on the Platforms page (KB-86), X's authorize page, the real callback's token exchange and user lookup, and a landing on the platforms page with the new row (KB-87 — it used to land on the failure page); reconnecting re-attaches the same row; Disconnect revokes both tokens (KB-25) — `apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts`. Refresh is fixed by KB-15 (#326): `packages/features/publishing/__tests__/token-refresh.test.ts:687`"
   - text: "Video upload with chunked transfer"
     met: false
     reason: "not met — FILM-1729: `media.write` is never requested, so X refuses the upload (403); chunking itself is tested (`packages/features/publishing/__tests__/twitter-provider.test.ts:95`)"

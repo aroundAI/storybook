@@ -30,7 +30,7 @@ acceptance_criteria:
     reason: "no longer true — the live researcher skill returns the LLM's matches unvalidated (`packages/features/episodes/src/agent/skills/researcher-skill.ts:74`); facts can be verified since KB-18 (#314), so this is now the only gap"
   - text: "Unverified claims marked as 'needs_source'"
     met: false
-    reason: "unverified — LLM label via the prompt rule; the enforcing `researcher.ts:129` is never called; no test or eval"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM label via the prompt rule; the enforcing `researcher.ts:129` is never called; no test or eval"
   - text: "Research gaps identified"
     met: true
     evidence: null

@@ -56,7 +56,7 @@ provider:
 acceptance_criteria:
   - text: "OAuth 2.0 connection flow works for personal accounts"
     met: false
-    reason: "unverified — the Platforms page now has a LinkedIn card (KB-86, #343), and Connect is driven as far as LinkedIn's consent screen (a local stand-in, with our client id and the personal scopes — `apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts`); the callback's success path is not driven, and no live connect has run (FILM-1725 Check I). Refresh is fixed by KB-29 (`packages/features/publishing/__tests__/token-refresh.test.ts:426`)"
+    reason: "owner check OC-5 (docs/OWNER-CHECKS.md) — the Platforms page now has a LinkedIn card (KB-86, #343), and Connect is driven as far as LinkedIn's consent screen (a local stand-in, with our client id and the personal scopes — `apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts`); the callback's success path is not driven, and no live connect has run (FILM-1725 Check I). Refresh is fixed by KB-29 (`packages/features/publishing/__tests__/token-refresh.test.ts:426`)"
   - text: "OAuth 2.0 connection flow works for company pages"
     met: false
     reason: "no longer true — company connect stores the member URN (`apps/web/app/api/platforms/callback/linkedin/route.ts:174`); no organization is chosen; no UI offers `type=company`, and the LinkedIn card says personal profiles only (KB-86)"

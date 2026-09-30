@@ -96,7 +96,7 @@ acceptance_criteria:
     evidence: null
   - text: "Batch processing completes within reasonable time (10 min for 100 lines)"
     met: false
-    reason: "unverified — runtime timing; needs a timed run with 3 concurrent workers (`sst.config.ts:932`)"
+    reason: "owner check OC-10 (docs/OWNER-CHECKS.md) — runtime timing; needs a timed run with 3 concurrent workers (`sst.config.ts:932`)"
   - text: "Progress updates are atomic"
     met: true
     evidence: "one `UPDATE … RETURNING` per line (`apps/web/supabase/migrations/20260527094643_increment_batch_progress_rpc.sql:24`)"

@@ -32,7 +32,7 @@ provider:
 acceptance_criteria:
   - text: "Fetches video views, likes, comments, shares"
     met: false
-    reason: "unverified — the code asks the Display API for them (`packages/features/content-analytics/src/providers/tiktok/tiktok-analytics.ts:136`, mocked test `tiktok-analytics.test.ts:114`); live data waits on TikTok's review of `video.list` (FILM-1711)"
+    reason: "owner check OC-4 (docs/OWNER-CHECKS.md) — the code asks the Display API for them (`packages/features/content-analytics/src/providers/tiktok/tiktok-analytics.ts:136`, mocked test `tiktok-analytics.test.ts:114`); live data waits on TikTok's review of `video.list` (FILM-1711)"
   - text: "Fetches save count"
     met: false
     reason: "retired — FILM-1721: `save_count` exists for own videos on no creator-auth surface; reported as structural 0 since d818a603 (`tiktok-analytics.ts:195`)"

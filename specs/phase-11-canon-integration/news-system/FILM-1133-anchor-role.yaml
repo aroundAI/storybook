@@ -18,10 +18,10 @@ summary: >
 acceptance_criteria:
   - text: "Anchor role prompt generates valid broadcast scripts"
     met: false
-    reason: "unverified — LLM output used unvalidated (`packages/features/episodes/src/lib/server/services/anchor-service.ts:119`); no test or eval"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM output used unvalidated (`packages/features/episodes/src/lib/server/services/anchor-service.ts:119`); no test or eval"
   - text: "All claims are attributed to sources"
     met: false
-    reason: "unverified — prompt rule only (`packages/features/prompt-engine/src/prompts/news-generation/anchor-role.json`); LLM behaviour, no test"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — prompt rule only (`packages/features/prompt-engine/src/prompts/news-generation/anchor-role.json`); LLM behaviour, no test"
   - text: "Script includes ANCHOR, GRAPHIC, TRANSITION cues"
     met: false
     reason: "unverified — the prompt asks for all three types; nothing checks the output; no test"

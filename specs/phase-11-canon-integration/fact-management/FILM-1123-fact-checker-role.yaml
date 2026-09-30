@@ -27,13 +27,13 @@ acceptance_criteria:
     reason: "not met — no caller. Its slug was unregistered until KB-106's fix pointed it at `documentary/fact-checker-role` (`packages/features/episodes/src/lib/documentary/fact-checker.ts:134`); facts can now reach `verified` (KB-18, #314)"
   - text: "Critical issues are properly identified"
     met: false
-    reason: "unverified — LLM judgement in the live skill (`packages/features/episodes/src/agent/skills/fact-checker-skill.ts:72`); no test or eval; read-only audit, not run"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM judgement in the live skill (`packages/features/episodes/src/agent/skills/fact-checker-skill.ts:72`); no test or eval; read-only audit, not run"
   - text: "Unsourced claims are flagged"
     met: false
-    reason: "unverified — LLM judgement per the prompt rule; the skill surfaces only critical and warning issues; no test"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM judgement per the prompt rule; the skill surfaces only critical and warning issues; no test"
   - text: "Citation formatting is validated"
     met: false
-    reason: "unverified — LLM judgement; the skill drops `citations_valid` (`packages/features/episodes/src/agent/skills/fact-checker-skill.ts:72`); no test"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM judgement; the skill drops `citations_valid` (`packages/features/episodes/src/agent/skills/fact-checker-skill.ts:72`); no test"
   - text: "`shouldBlockContent` blocks on critical/low accuracy"
     met: true
     evidence: null
