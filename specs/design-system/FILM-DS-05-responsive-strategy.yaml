@@ -25,10 +25,10 @@ acceptance_criteria:
     reason: "unverified — needs screenshots at 390/768/1024/1280px; Playwright runs Desktop Chrome only (`apps/e2e/playwright.config.ts:137`)"
   - text: "Sidebar collapses to sheet on tablet/mobile"
     met: false
-    reason: "no longer true — only below 768px (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:136`); tablets keep the full sidebar (`apps/web/app/home/[account]/studio/[projectSlug]/layout.tsx:118`)"
+    reason: "no longer true — only below 768px (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:138`); tablets keep the full sidebar (`apps/web/app/home/[account]/studio/[projectSlug]/layout.tsx:118`)"
   - text: "Bottom navigation appears on mobile"
     met: false
-    reason: "no longer true — mobile navigation is a top header with a Sheet (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:136`); MobileNav never mounted, deleted 5f44d0e1"
+    reason: "no longer true — mobile navigation is a top header with a Sheet (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:138`); MobileNav never mounted, deleted 5f44d0e1"
   - text: "Touch gestures work on mobile devices"
     met: false
     reason: "no longer true — no touch handlers anywhere in `apps/web` or `packages`; useTouchGestures never mounted, deleted 5f44d0e1"
@@ -42,8 +42,8 @@ acceptance_criteria:
     met: false
     reason: "unverified — responsive sizes exist (e.g. `apps/web/app/home/[account]/studio/[projectSlug]/_components/hero-banner.tsx:38`); \"appropriately\" needs screenshots per breakpoint"
   - text: "No horizontal overflow at any breakpoint"
-    met: false
-    reason: "unverified — the example, the Edit Suite export dialog fixed at `w-[680px]`, was retired with the Edit Suite (FILM-607); no other surface has been checked"
+    met: true
+    evidence: "apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts:1"
 remaining:
   - criterion: "Sidebar collapses to sheet on tablet/mobile"
     reason: >
@@ -54,7 +54,7 @@ remaining:
   - criterion: "Bottom navigation appears on mobile"
     reason: >
       The product chose a top header with a Sheet
-      (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:136`);
+      (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:138`);
       the unused MobileNav was deleted in 5f44d0e1
     closed_by: "owner"
   - criterion: "Touch gestures work on mobile devices"

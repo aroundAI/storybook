@@ -1,5 +1,5 @@
 {
-  "feature": "Wave 1: create policies refuse outsiders (FILM-201, 301, 303, 810, 1507)",
+  "feature": "Wave 1 and 2: create policies, sequel context, insights handler, concurrency, atomic character create, sidebar active state (FILM-201, 202, 301, 303, 501, 808, 810, 901, 1113, 1507)",
   "mutations": [
     {
       "name": "WAVE1 R1 anyone may create an asset",
@@ -88,6 +88,48 @@
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/analytics-insights-handler.test.ts",
       "pattern": "plain fallback"
+    },
+    {
+      "name": "WAVE1 U5 a sidebar section matches a sibling that shares its prefix",
+      "kind": "unit",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/_lib/sidebar-active.ts",
+      "find": "return pathname === path || pathname.startsWith(`${path}/`);",
+      "replace": "return pathname === path || pathname.startsWith(path);",
+      "cwd": "apps/web",
+      "test": "test/studio-sidebar-active.test.ts",
+      "pattern": "sibling"
+    },
+    {
+      "name": "WAVE1 U6 the sidebar ignores the tab",
+      "kind": "unit",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/_lib/sidebar-active.ts",
+      "find": "return (tab === 'location' ? 'location' : 'character') === link;",
+      "replace": "return link === 'character';",
+      "cwd": "apps/web",
+      "test": "test/studio-sidebar-active.test.ts",
+      "pattern": "lights Locations"
+    },
+    {
+      "name": "WAVE1 U7 a created character loses its image URL",
+      "kind": "unit",
+      "file": "packages/features/assets/src/lib/server/character.mutations.ts",
+      "find": "p_file_url: data.fileUrl || undefined,",
+      "replace": "p_file_url: undefined,",
+      "cwd": "packages/features/assets",
+      "test": "__tests__/create-character-action.test.ts",
+      "pattern": "one call"
+    },
+    {
+      "name": "WAVE1 R9 the atomic character function is gone",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/character-create-rollback.test.sql",
+      "sql": "drop function public.create_character_with_details(uuid, varchar, text, jsonb, text, text, text[], text, text, text);"
+    },
+    {
+      "name": "WAVE1 R10 members may not call the atomic character function",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/character-create-rollback.test.sql",
+      "sql": "revoke execute on function public.create_character_with_details(uuid, varchar, text, jsonb, text, text, text[], text, text, text) from authenticated, public;"
     }
   ]
 }

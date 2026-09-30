@@ -47,8 +47,8 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "Active state correctly highlights current route"
-    met: false
-    reason: "no longer true — Characters and Locations test `pathname` for \"character\"/\"location\", which live in `?tab=`, so they never highlight — `apps/web/app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx:460`"
+    met: true
+    evidence: "apps/e2e/tests/studio/sidebar-active.spec.ts:15"
   - text: "Badge shows pending publish count (deferred to FILM-903)"
     met: false
     reason: "not met — deferred at ship time: no nav item carries a publish count, and FILM-903 is retired"
@@ -57,7 +57,7 @@ acceptance_criteria:
     evidence: null
   - text: "Sidebar collapsible on mobile (via existing ResponsiveLayout)"
     met: true
-    evidence: "now a `Sheet` in `MobileStudioHeader` (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:137`), the desktop sidebar being `hidden md:block` (`layout.tsx:117`); `ResponsiveLayout` went in 5f44d0e1"
+    evidence: "now a `Sheet` in `MobileStudioHeader` (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:139`), the desktop sidebar being `hidden md:block` (`layout.tsx:117`); `ResponsiveLayout` went in 5f44d0e1"
   - text: "Keyboard navigation works throughout (via Radix primitives)"
     met: false
     reason: "unverified — needs a keyboard-only walk-through or E2E; no test found"
@@ -67,8 +67,8 @@ test_plan:
       met: true
       evidence: "apps/web/config/__tests__/studio-navigation.test.ts:31"
     - text: "Test active state detection"
-      met: false
-      reason: "not met — no test found"
+      met: true
+      evidence: "apps/web/test/studio-sidebar-active.test.ts:1"
   integration:
     - text: "Test navigation between sections"
       met: false
@@ -77,10 +77,7 @@ test_plan:
       met: true
       evidence: "`apps/e2e/tests/refusals/refusals.po.ts:235` (a direct `goto` to `audio-studio`; incidental, no tab-state assertion)"
   e2e: []
-remaining:
-  - criterion: "Active state correctly highlights current route"
-    reason: "`studio-sidebar.tsx:460-471` mark Characters and Locations active when `pathname` includes \"character\"/\"location\"; their links are `assets?tab=character` / `assets?tab=location`, and `usePathname` carries no query string, so on the assets page neither highlights (or one does whenever the project slug contains the word). Found by reading; not run"
-    closed_by: "unassigned"
+remaining: []
 open_questions: []
 notes: |-
   ## Metadata
