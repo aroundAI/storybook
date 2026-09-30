@@ -228,6 +228,7 @@ export function SeasonGeneratorDialog({
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>('premise');
   const [isPending, startTransition] = useTransition();
+  const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Analysis State
@@ -582,8 +583,20 @@ export function SeasonGeneratorDialog({
     form.setValue('roadmap', text);
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+      setDragActive(false);
+    }
+  };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    setDragActive(false);
     const file = e.dataTransfer.files[0];
     if (file) handleFileUpload(file);
   };
@@ -719,8 +732,16 @@ export function SeasonGeneratorDialog({
                       </div>
                       <div className="h-full lg:col-span-4">
                         <div
-                          className="group flex h-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-zinc-300 bg-zinc-50 p-6 text-center transition-all hover:border-purple-400 hover:bg-white hover:shadow-md dark:border-zinc-700 dark:bg-zinc-800/50 dark:hover:bg-zinc-800"
-                          onDragOver={(e) => e.preventDefault()}
+                          className={cn(
+                            'group flex h-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-all hover:border-purple-400 hover:bg-white hover:shadow-md dark:hover:bg-zinc-800',
+                            dragActive
+                              ? 'border-primary bg-primary/10'
+                              : 'border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800/50',
+                          )}
+                          data-test="season-roadmap-dropzone"
+                          data-drag-active={dragActive}
+                          onDragOver={handleDragOver}
+                          onDragLeave={handleDragLeave}
                           onDrop={handleDrop}
                           onClick={() => fileInputRef.current?.click()}
                         >

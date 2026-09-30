@@ -8,7 +8,7 @@
 import { useCallback, useState } from 'react';
 
 import { AlertCircle, ImageIcon, Upload } from 'lucide-react';
-import { useDropzone } from 'react-dropzone';
+import { type FileRejection, useDropzone } from 'react-dropzone';
 
 import {
   UPLOAD_CONSTRAINTS,
@@ -34,6 +34,32 @@ interface ImageDropzoneProps {
   className?: string;
 }
 
+function describeRejection(
+  rejections: FileRejection[],
+  maxSize: number,
+  acceptedTypes: string[],
+) {
+  const codes = rejections.flatMap((r) => r.errors.map((e) => e.code));
+
+  if (codes.includes('too-many-files')) {
+    return 'Drop one image at a time.';
+  }
+
+  if (codes.includes('file-too-large')) {
+    return `That file is too large. The limit is ${formatFileSize(maxSize)}.`;
+  }
+
+  if (codes.includes('file-invalid-type')) {
+    const formats = acceptedTypes
+      .map((type) => type.replace('image/', '').toUpperCase())
+      .join(', ');
+
+    return `That file type is not supported. Use ${formats}.`;
+  }
+
+  return 'That file could not be used.';
+}
+
 export function ImageDropzone({
   onFileDrop,
   maxSize = UPLOAD_CONSTRAINTS.image.maxSize,
@@ -44,10 +70,12 @@ export function ImageDropzone({
   className,
 }: ImageDropzoneProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const [rejection, setRejection] = useState<string | null>(null);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
       setIsDragging(false);
+      setRejection(null);
       if (acceptedFiles.length > 0 && acceptedFiles[0]) {
         onFileDrop(acceptedFiles[0]);
       }
@@ -55,9 +83,18 @@ export function ImageDropzone({
     [onFileDrop],
   );
 
+  const onDropRejected = useCallback(
+    (rejections: FileRejection[]) => {
+      setIsDragging(false);
+      setRejection(describeRejection(rejections, maxSize, acceptedTypes));
+    },
+    [maxSize, acceptedTypes],
+  );
+
   const { getRootProps, getInputProps, isDragActive, isDragReject } =
     useDropzone({
       onDrop,
+      onDropRejected,
       accept: acceptedTypes.reduce(
         (acc, type) => ({ ...acc, [type]: [] }),
         {} as Record<string, string[]>,
@@ -70,7 +107,8 @@ export function ImageDropzone({
       onDragLeave: () => setIsDragging(false),
     });
 
-  const hasError = Boolean(error) || isDragReject;
+  const displayedError = error ?? rejection;
+  const hasError = Boolean(displayedError) || isDragReject;
 
   return (
     <div
@@ -132,10 +170,14 @@ export function ImageDropzone({
           </p>
         </div>
 
-        {error && (
+        {displayedError && (
           <div className="mt-2 space-y-2">
-            <p className="text-sm text-destructive" role="alert">
-              {error}
+            <p
+              className="text-sm text-destructive"
+              role="alert"
+              data-test="image-dropzone-error"
+            >
+              {displayedError}
             </p>
             {onRetry && (
               <Button

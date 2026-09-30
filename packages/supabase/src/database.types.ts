@@ -6198,6 +6198,15 @@ export type Database = {
         Args: { new_owner_id: string; target_account_id: string }
         Returns: undefined
       }
+      update_character_with_details: {
+        Args: {
+          p_asset_id: string
+          p_asset_patch?: Json
+          p_attributes_patch?: Json
+          p_details_patch?: Json
+        }
+        Returns: undefined
+      }
       update_episode_with_lock: {
         Args: {
           p_episode_id: string

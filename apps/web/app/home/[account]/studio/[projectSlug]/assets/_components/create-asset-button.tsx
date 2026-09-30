@@ -1,19 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 import { MapPin, Plus, User } from 'lucide-react';
 
-import { CharacterEditor, LocationEditor } from '@kit/assets/components';
 import { Button } from '@kit/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@kit/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,90 +12,56 @@ import {
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
 
-interface CreateAssetButtonProps {
-  projectId: string;
-  accountId: string;
-  account: string;
-}
+import { useAssetCreate } from './asset-create-provider';
 
-type AssetDialogType = 'character' | 'location' | null;
+export function CreateAssetButton() {
+  const { openCreate } = useAssetCreate();
+  const [menuOpen, setMenuOpen] = useState(false);
 
-export function CreateAssetButton({
-  projectId,
-  accountId,
-  account: _account,
-}: CreateAssetButtonProps) {
-  const router = useRouter();
-  const [openDialog, setOpenDialog] = useState<AssetDialogType>(null);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const isShortcut =
+        event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey);
 
-  const handleCreate = (type: AssetDialogType) => {
-    setOpenDialog(type);
-  };
+      if (!isShortcut || event.altKey || event.shiftKey) return;
 
-  const handleSuccess = (_result: unknown) => {
-    setOpenDialog(null);
-    router.refresh(); // Refresh to show new asset
-  };
+      event.preventDefault();
+      setMenuOpen(true);
+    };
 
-  const handleCancel = () => {
-    setOpenDialog(null);
-  };
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
 
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Asset
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => handleCreate('character')}>
-            <User className="mr-2 h-4 w-4" />
-            Create Character
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleCreate('location')}>
-            <MapPin className="mr-2 h-4 w-4" />
-            Create Location
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* Character Dialog */}
-      <Dialog
-        open={openDialog === 'character'}
-        onOpenChange={(open) => !open && handleCancel()}
-      >
-        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create Character</DialogTitle>
-          </DialogHeader>
-          <CharacterEditor
-            projectId={projectId}
-            accountId={accountId}
-            onSuccess={handleSuccess}
-            onCancel={handleCancel}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Location Dialog */}
-      <Dialog
-        open={openDialog === 'location'}
-        onOpenChange={(open) => !open && handleCancel()}
-      >
-        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create Location</DialogTitle>
-          </DialogHeader>
-          <LocationEditor
-            projectId={projectId}
-            onSuccess={handleSuccess}
-            onCancel={handleCancel}
-          />
-        </DialogContent>
-      </Dialog>
-    </>
+    <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          title="Create asset (Ctrl+K or Cmd+K)"
+          aria-keyshortcuts="Control+K Meta+K"
+          data-test="create-asset-button"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Create Asset
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          onClick={() => openCreate('character')}
+          data-test="create-character-item"
+        >
+          <User className="mr-2 h-4 w-4" />
+          Create Character
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => openCreate('location')}
+          data-test="create-location-item"
+        >
+          <MapPin className="mr-2 h-4 w-4" />
+          Create Location
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
