@@ -978,3 +978,101 @@ export async function storageObjectsUnder(
 
   return (JSON.parse(text) as { name: string }[]).map((object) => object.name);
 }
+
+/** A signed-in session's access token for a seeded team's owner. */
+export async function ownerToken(
+  team: Pick<SeededTeam, 'email' | 'password'>,
+): Promise<string> {
+  const session = await post('/auth/v1/token?grant_type=password', ANON_KEY, {
+    email: team.email,
+    password: team.password,
+  });
+
+  return session.access_token as string;
+}
+
+/**
+ * One call to the database's REST API as a signed-in person, and how long it
+ * took in milliseconds. This is the database work behind a server action, not
+ * the action itself, and is named that way wherever it is reported.
+ */
+export async function timedRest<T = unknown>(
+  method: 'GET' | 'POST',
+  path: string,
+  token: string,
+  body?: unknown,
+): Promise<{ ms: number; data: T }> {
+  const startedAt = performance.now();
+  const response = await fetch(`${SUPABASE_URL}${path}`, {
+    method,
+    headers: {
+      apikey: ANON_KEY,
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const text = await response.text();
+  const ms = performance.now() - startedAt;
+
+  if (!response.ok) {
+    throw new Error(`${method} ${path} failed (${response.status}): ${text}`);
+  }
+
+  return { ms, data: (text ? JSON.parse(text) : null) as T };
+}
+
+/** Characters made through the app's own atomic function, as the team owner. */
+export async function seedCharacters(
+  team: Pick<SeededTeam, 'email' | 'password'>,
+  projectId: string,
+  count: number,
+) {
+  const token = await ownerToken(team);
+
+  for (let n = 1; n <= count; n += 1) {
+    await timedRest(
+      'POST',
+      '/rest/v1/rpc/create_character_with_details',
+      token,
+      {
+        p_project_id: projectId,
+        p_name: `Character ${String(n).padStart(2, '0')}`,
+        p_description: `Seeded character ${n}`,
+      },
+    );
+  }
+}
+
+/** A screenplay with one line of dialogue, which is what unlocks the audio studio. */
+export async function seedScreenplayWithDialogue(episodeId: string) {
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/episodes?id=eq.${episodeId}`,
+    {
+      method: 'PATCH',
+      headers: {
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        screenplay_data: {
+          scenes: [
+            {
+              sceneNumber: 1,
+              heading: 'INT. HARBOUR - DUSK',
+              dialogue: [{ character: 'Mara', line: 'The tide is turning.' }],
+            },
+          ],
+        },
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `seeding a screenplay failed (${response.status}): ${await response.text()}`,
+    );
+  }
+}
