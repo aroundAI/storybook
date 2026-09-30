@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { fetchWithRetry, formatProviderError } from '../src/lib/http';
+import {
+  assertApiKey,
+  fetchWithRetry,
+  formatProviderError,
+  handleProviderError,
+} from '../src/lib/http';
 
 describe('HTTP Utilities', () => {
   describe('formatProviderError', () => {
@@ -189,6 +194,56 @@ describe('HTTP Utilities', () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
+    it('should retry a 429 honouring Retry-After, then succeed', async () => {
+      const sleep = vi.fn().mockResolvedValue(undefined);
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          statusText: 'Too Many Requests',
+          headers: new Headers({ 'retry-after': '3' }),
+          json: () => Promise.resolve({ detail: 'slow down' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
+      global.fetch = fetchMock;
+
+      const result = await fetchWithRetry(
+        'https://api.example.com/test',
+        { method: 'GET' },
+        { maxRetries: 3, sleep },
+      );
+
+      expect(result).toEqual({ success: true });
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(sleep).toHaveBeenCalledWith(3000);
+    });
+
+    it('should stop retrying a 429 after maxRetries', async () => {
+      const sleep = vi.fn().mockResolvedValue(undefined);
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 429,
+        statusText: 'Too Many Requests',
+        json: () => Promise.resolve({}),
+      });
+      global.fetch = fetchMock;
+
+      await expect(
+        fetchWithRetry(
+          'https://api.example.com/test',
+          { method: 'GET' },
+          { maxRetries: 3, baseDelay: 1, maxDelay: 5, sleep },
+        ),
+      ).rejects.toThrow('API error (429)');
+
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(sleep).toHaveBeenCalledTimes(2);
+    });
+
     it('should use custom config values', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
@@ -213,6 +268,40 @@ describe('HTTP Utilities', () => {
           signal: expect.any(AbortSignal),
         }),
       );
+    });
+  });
+
+  describe('assertApiKey', () => {
+    it('should reject empty and whitespace keys', () => {
+      expect(() => assertApiKey('elevenlabs', '')).toThrow(
+        'elevenlabs API key is missing or empty',
+      );
+      expect(() => assertApiKey('elevenlabs', '   ')).toThrow(
+        'API key is missing or empty',
+      );
+      expect(() => assertApiKey('elevenlabs', 'sk-real')).not.toThrow();
+    });
+  });
+
+  describe('handleProviderError', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('should log provider and operation context without the key', () => {
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const result = handleProviderError(
+        'elevenlabs',
+        'getVoices',
+        new Error('bad header xi-api-key: sk-secret-123'),
+        'sk-secret-123',
+      );
+
+      expect(result.message).toContain('elevenlabs getVoices failed');
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(JSON.stringify(spy.mock.calls)).toContain('getVoices');
+      expect(JSON.stringify(spy.mock.calls)).not.toContain('sk-secret-123');
     });
   });
 });

@@ -177,6 +177,7 @@ export function AudioStudioHeader({
             onClick={onZoomOut}
             className="h-6 w-6 p-0"
             title="Zoom out"
+            aria-label="Zoom out"
           >
             <Minus className="h-3 w-3" />
           </Button>
@@ -189,6 +190,7 @@ export function AudioStudioHeader({
             onClick={onZoomIn}
             className="h-6 w-6 p-0"
             title="Zoom in"
+            aria-label="Zoom in"
           >
             <Plus className="h-3 w-3" />
           </Button>
@@ -196,6 +198,7 @@ export function AudioStudioHeader({
             variant="outline"
             size="sm"
             onClick={onFitToWindow}
+            aria-label="Fit timeline to window"
             className="ml-0.5 h-6 px-1.5 text-[10px]"
           >
             Fit
