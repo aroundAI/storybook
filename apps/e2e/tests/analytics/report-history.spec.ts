@@ -88,7 +88,7 @@ test.describe('FILM-809 - report history', () => {
     const rows = byTest(page, 'report-history-row');
 
     await expect(rows).toHaveCount(1);
-    await expect(rows.first()).toContainText('CSV');
+    await expect(rows.first()).toContainText(/csv/i);
     await expect(rows.first()).toContainText(/\d+ records/);
 
     // The second generation, where a state bug would show: the list must

@@ -112,4 +112,96 @@ test.describe('FILM-1511 — rolling and returning-viewer cards', () => {
       }),
     );
   });
+  test('reads the hand-computed subscribed share per upload month', async ({
+    page,
+  }) => {
+    // The fixture of packages/clickhouse/scripts/verify-queries.ts: fixed
+    // upload dates, so the months do not depend on today. November has one
+    // upload with no split (a gap), January three uploads of which two carry
+    // a split (350 of 1,200 = 29%), February one (30 of 100 = 30%), and
+    // December has no upload at all.
+    const team = await seedTeamAccount();
+    const project = await seedProject(team);
+    const connection = await seedYouTubeConnection(team.accountId, 'Channel');
+    const uploads = [
+      { title: 'Nov', at: '2025-11-10T12:00:00Z', split: null },
+      { title: 'Jan A', at: '2026-01-06T12:00:00Z', split: [300, 700] },
+      { title: 'Jan B', at: '2026-01-15T12:00:00Z', split: [50, 150] },
+      { title: 'Jan C', at: '2026-01-20T12:00:00Z', split: null },
+      { title: 'Feb', at: '2026-02-10T12:00:00Z', split: [30, 70] },
+    ] as const;
+
+    const seeded: Array<{
+      video: SeededVideo;
+      split: readonly number[] | null;
+    }> = [];
+
+    for (const [index, upload] of uploads.entries()) {
+      const { publishId } = await seedPublishedEpisode(project.id, connection, {
+        number: index + 1,
+        title: upload.title,
+      });
+      const video: SeededVideo = {
+        videoId: publishId,
+        projectId: project.id,
+        accountId: team.accountId,
+        connectionId: connection,
+        title: upload.title,
+        publishedAt: new Date(upload.at),
+      };
+
+      await seedVideoDim(video);
+      await seedVideoMetrics(video, [{ ageDays: 1, views: 10 }]);
+      seeded.push({ video, split: upload.split });
+    }
+
+    await seedVideoAudience(
+      seeded.flatMap(({ video, split }) =>
+        split
+          ? [
+              {
+                video,
+                rows: [
+                  {
+                    dimension: 'follower_status',
+                    key: 'subscribed',
+                    views: split[0],
+                  },
+                  {
+                    dimension: 'follower_status',
+                    key: 'not_subscribed',
+                    views: split[1],
+                  },
+                ],
+              },
+            ]
+          : [],
+      ),
+    );
+
+    await signInAs(page, team);
+    await page.goto(`/home/${team.slug}/studio/${project.slug}/analytics`);
+    await byTest(page, 'analytics-tab-deep-dive').click();
+
+    const returning = byTest(page, 'deep-dive-returning-viewer');
+
+    await expect(returning.locator('[data-test="card-figure"]')).toHaveText(
+      '29%',
+    );
+    await expect(byTest(page, 'returning-viewer-trend-chart')).toBeVisible();
+
+    await returning.locator('summary').click();
+
+    const rows = byTest(page, 'returning-viewer-table').locator('tbody tr');
+
+    await expect(rows).toHaveCount(4);
+    await expect(rows.nth(0)).toHaveText(/Nov 2025\s*-\s*-\s*no data/);
+    await expect(rows.nth(1)).toHaveText(/Dec 2025\s*-\s*-\s*no data/);
+    await expect(rows.nth(2)).toHaveText(/Jan 2026\s*350\s*850\s*29%/);
+    await expect(rows.nth(3)).toHaveText(/Feb 2026\s*30\s*70\s*30%/);
+
+    await returning.screenshot({
+      path: `${OUT}/03-returning-viewer-trend-by-month.png`,
+    });
+  });
 });

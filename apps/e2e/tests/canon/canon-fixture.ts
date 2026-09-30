@@ -40,7 +40,7 @@ export async function seedCanon(prefix: string): Promise<CanonFixture> {
 
   const episode = await seedEpisodeWithShot(project.id);
   await updateRows('episodes', `id=eq.${episode.episodeId}`, {
-    status: 'screenplay',
+    status: 'story',
     number: 2,
     story_data: { fullStory: 'Mara held the gate until the last light.' },
     screenplay_data: {
@@ -108,6 +108,8 @@ export async function seedCanon(prefix: string): Promise<CanonFixture> {
     'assets',
     `project_id=eq.${project.id}&type=eq.character&select=id`,
   );
+
+  await updateRows('assets', `id=eq.${character!.id}`, { name: 'Mara' });
 
   await insertRow(
     'character_states',

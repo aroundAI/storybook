@@ -425,7 +425,7 @@ export function AnalyticsDashboard({
 
       {/* Export Dialog */}
       <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Export Reports</DialogTitle>
           </DialogHeader>

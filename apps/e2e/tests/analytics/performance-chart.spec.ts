@@ -67,7 +67,9 @@ async function openChart(page: Page) {
   const chart = byTest(page, 'performance-chart');
 
   await expect(chart).toBeVisible();
-  await expect(chart.locator('.recharts-surface')).toBeVisible();
+  await expect(
+    chart.locator('.recharts-wrapper > .recharts-surface'),
+  ).toBeVisible();
 
   return chart;
 }
@@ -107,7 +109,7 @@ test.describe('FILM-807 - the performance chart', () => {
       });
 
       const chart = await openChart(page);
-      const surface = chart.locator('.recharts-surface');
+      const surface = chart.locator('.recharts-wrapper > .recharts-surface');
 
       await expect(async () => {
         const box = await surface.boundingBox();
