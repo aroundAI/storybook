@@ -133,7 +133,9 @@ test.describe('Asset library', () => {
     await page.goto(
       `/home/${team.slug}/studio/${project.slug}/assets?tab=location`,
     );
-    await expect(page.getByText('No locations yet')).toBeVisible();
+    await expect(
+      page.getByText('No locations yet').filter({ visible: true }),
+    ).toBeVisible();
 
     const projectRequests = requests.filter((body) =>
       body.includes(project.id),

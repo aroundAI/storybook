@@ -300,11 +300,10 @@ test.describe('Project analytics page', () => {
 
     const beforeScheduled = calls.length;
 
-    // The dialog is taller than the viewport and does not scroll, so its tab
-    // list is off-screen and cannot be clicked. Radix tabs follow arrow keys,
-    // which is how a keyboard user would reach it too.
-    await dialog.getByRole('tab', { name: 'Generate Report' }).focus();
-    await page.keyboard.press('ArrowRight');
+    // The dialog scrolls (it used to be taller than a short viewport with its
+    // tab list above the fold, which this test worked around with arrow keys),
+    // so the tab is clicked the way anyone would.
+    await dialog.getByRole('tab', { name: 'Scheduled Reports' }).click();
 
     await expect(
       dialog.getByRole('tab', { name: 'Scheduled Reports' }),

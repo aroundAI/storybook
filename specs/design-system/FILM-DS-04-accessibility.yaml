@@ -51,10 +51,10 @@ test_plan:
       reason: "part: apps/e2e/tests/accessibility/axe.spec.ts runs axe (WCAG A/AA, then page structure) on ten public pages, nine studio pages (project list, overview, episodes, characters, locations, audio library, narrative arcs, analytics, platforms) and the six episode stages (ideation, story, screenplay, visual-studio, audio-studio, publish; :184, on an episode seeded with a dialogue line and no audio rows), passed 2026-09-30, real browser, retries off, run twice (99/99), after a41b1fe6 fixed the violations. Not covered: the analytics sub-tabs, open dialogs and menus, project settings, canon and other sub-routes, account, billing and admin pages, and any page whose content needs production data"
     - text: "Validate HTML structure (headings, landmarks)"
       met: true
-      evidence: "apps/e2e/tests/accessibility/axe.spec.ts:112"
+      evidence: "apps/e2e/tests/accessibility/axe.spec.ts:116"
     - text: "Check color contrast ratios"
       met: true
-      evidence: "apps/e2e/tests/accessibility/axe.spec.ts:107"
+      evidence: "apps/e2e/tests/accessibility/axe.spec.ts:111"
     - text: "Verify ARIA attributes are valid"
       met: true
       evidence: "tooling/eslint/nextjs.js:9 (next/core-web-vitals enables jsx-a11y aria-props/aria-proptypes; warn-level, so CI lint reports but never fails)"

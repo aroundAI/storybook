@@ -72,9 +72,13 @@ async function audit(page: Page, tags: string[]) {
   );
 }
 
-/** axe needs the page rendered; a heading of any level means the content is in. */
+/**
+ * axe needs the page rendered. Every page audited here has a level-one
+ * heading, and a route streaming in behind its loading boundary shows a lower
+ * heading first, so waiting on any heading audited a page still without one.
+ */
 async function settled(page: Page) {
-  await expect(page.getByRole('heading').first()).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
 }
 
 async function expectClean(page: Page) {

@@ -82,7 +82,7 @@ acceptance_criteria:
     evidence: "packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:102; packages/features/assets/__tests__/upload-validation.test.ts:90"
   - text: "Displays validation errors inline"
     met: true
-    evidence: "packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:37 (describeRejection), :86 (onDropRejected), :177-178 (role=alert, data-test=image-dropzone-error); e2e apps/e2e/tests/assets/asset-library.spec.ts:148 'a rejected drop says why, with a message per reason' (a .txt file gets 'not supported', an 11MB png gets 'too large', role=alert) (passed 2026-09-30, real browser, retries off)"
+    evidence: "packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:37 (describeRejection), :86 (onDropRejected), :177-178 (role=alert, data-test=image-dropzone-error); e2e apps/e2e/tests/assets/asset-library.spec.ts:150 'a rejected drop says why, with a message per reason' (a .txt file gets 'not supported', an 11MB png gets 'too large', role=alert) (passed 2026-09-30, real browser, retries off)"
   - text: "Shows progress bar during upload (0-100%)"
     met: true
     evidence: "packages/features/assets/src/components/image-uploader/use-image-upload.ts:144-153, packages/features/assets/src/components/image-uploader/ImageUploadProgress.tsx:70-73"
