@@ -11,6 +11,7 @@ import {
   CanonValidationError,
 } from '../src/lib/canon/canon-errors';
 import {
+  createNarrativeThreadAction,
   deleteImmutableEventAction,
   rollbackCharacterStateAction,
   updateNarrativeThreadAction,
@@ -113,6 +114,47 @@ describe('canon errors', () => {
       'CanonValidationError',
       'CanonPermissionError',
     ]);
+  });
+});
+
+describe('createNarrativeThreadAction audit (FILM-1005)', () => {
+  it('records the opened thread in state_deltas', async () => {
+    clientReturning(
+      {
+        data: {
+          id: THREAD,
+          thread_name: 'The locket',
+          thread_type: 'mystery',
+          status: 'open',
+        },
+        error: null,
+      },
+      { data: null, error: null },
+    );
+
+    await createNarrativeThreadAction({
+      projectId: '11111111-1111-4111-8111-111111111111',
+      threadName: 'The locket',
+      threadType: 'mystery',
+      openedAt: EPISODE,
+    });
+
+    expect(writes.find((w) => w.table === 'state_deltas')).toEqual({
+      table: 'state_deltas',
+      op: 'insert',
+      row: {
+        episode_id: EPISODE,
+        entity_type: 'thread',
+        entity_id: THREAD,
+        before_state: null,
+        after_state: {
+          status: 'open',
+          threadName: 'The locket',
+          threadType: 'mystery',
+        },
+        change_reason: 'Thread "The locket" opened',
+      },
+    });
   });
 });
 

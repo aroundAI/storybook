@@ -54,6 +54,51 @@ test.describe('Continuity Sidebar (FILM-1007)', () => {
     );
   });
 
+  for (const width of [1024, 1280, 1440]) {
+    test(`nothing in the sidebar sits under the characters button at ${width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await openScreenplay(page, canon);
+
+      const sidebar = byTest(page, 'continuity-sidebar');
+      await expect(byTest(sidebar, 'continuity-thread')).toContainText('open');
+
+      const button = await byTest(
+        page,
+        'screenplay-characters-toggle',
+      ).boundingBox();
+      expect(button).not.toBeNull();
+
+      const leaves = await sidebar
+        .locator('*:not(:has(*))')
+        .evaluateAll((nodes) =>
+          nodes
+            .map((node) => {
+              const { x, y, width, height } = node.getBoundingClientRect();
+              return {
+                text: node.textContent?.trim() ?? '',
+                x,
+                y,
+                width,
+                height,
+              };
+            })
+            .filter((box) => box.width > 0 && box.height > 0),
+        );
+      expect(leaves.length).toBeGreaterThan(0);
+
+      const covered = leaves.filter(
+        (box) =>
+          box.x < button!.x + button!.width &&
+          box.x + box.width > button!.x &&
+          box.y < button!.y + button!.height &&
+          box.y + box.height > button!.y,
+      );
+      expect(covered).toEqual([]);
+    });
+  }
+
   test('is hidden below the lg breakpoint', async ({ page }) => {
     await page.setViewportSize({ width: 800, height: 900 });
     await openScreenplay(page, canon);

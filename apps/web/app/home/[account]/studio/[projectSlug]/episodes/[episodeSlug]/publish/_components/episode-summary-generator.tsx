@@ -86,6 +86,7 @@ export function EpisodeSummaryGenerator({
     ExtractedThreadUpdate[]
   >([]);
   const [hasExtracted, setHasExtracted] = useState(false);
+  const [committed, setCommitted] = useState(false);
   const [memory, setMemory] = useState<
     Pick<
       Awaited<ReturnType<typeof extractCanonChangesAction>>,
@@ -104,6 +105,7 @@ export function EpisodeSummaryGenerator({
     }
 
     setIsExtracting(true);
+    setCommitted(false);
     try {
       const result = await extractCanonChangesAction({
         projectId,
@@ -164,6 +166,7 @@ export function EpisodeSummaryGenerator({
       });
 
       if (result) {
+        setCommitted(true);
         toast.success(
           `Canon updated: ${result.eventsCreated} events, ${result.threadsUpdated ?? 0} threads, summary ${result.summaryStored ? 'saved' : 'skipped'}`,
         );
@@ -185,7 +188,7 @@ export function EpisodeSummaryGenerator({
   const sentiment = getSentimentLabel(sentimentScore);
 
   return (
-    <Card>
+    <Card data-test="episode-summary-generator">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -202,6 +205,7 @@ export function EpisodeSummaryGenerator({
             size="sm"
             onClick={handleExtract}
             disabled={isExtracting || !storyContent}
+            data-test="canon-analyze"
           >
             {isExtracting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -224,6 +228,7 @@ export function EpisodeSummaryGenerator({
             onChange={(e) => setSummary(e.target.value)}
             placeholder="Episode summary will be generated from story content..."
             rows={3}
+            data-test="canon-episode-summary"
           />
         </div>
 
@@ -248,6 +253,7 @@ export function EpisodeSummaryGenerator({
                 <li
                   key={event.id}
                   className="flex items-center justify-between rounded bg-muted p-2 text-sm"
+                  data-test="canon-extracted-event"
                 >
                   <span>
                     <Badge variant="outline" className="mr-2">
@@ -284,6 +290,7 @@ export function EpisodeSummaryGenerator({
                 <li
                   key={`${thread.threadName}-${idx}`}
                   className="group relative rounded bg-muted p-3 text-sm"
+                  data-test="canon-extracted-thread"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -347,13 +354,17 @@ export function EpisodeSummaryGenerator({
         {/* Commit Button */}
         {hasExtracted && (
           <div className="flex justify-end border-t pt-4">
-            <Button onClick={handleCommit} disabled={isCommitting}>
+            <Button
+              onClick={handleCommit}
+              disabled={isCommitting || committed}
+              data-test="canon-commit"
+            >
               {isCommitting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Save className="mr-2 h-4 w-4" />
               )}
-              Save to Canon
+              {committed ? 'Saved to Canon' : 'Save to Canon'}
             </Button>
           </div>
         )}

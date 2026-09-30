@@ -84,7 +84,7 @@ export function ContinuitySidebar({
 
   return (
     <aside
-      className="hidden w-72 shrink-0 overflow-y-auto border-l border-white/5 bg-white/[0.02] p-4 lg:block"
+      className="hidden w-[22rem] shrink-0 overflow-y-auto border-l border-white/5 bg-white/[0.02] p-4 pr-[4.5rem] lg:block"
       aria-label="Continuity"
       data-test="continuity-sidebar"
     >
