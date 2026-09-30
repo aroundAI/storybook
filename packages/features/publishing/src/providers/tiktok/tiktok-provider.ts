@@ -13,6 +13,12 @@ import { TIKTOK_CONSTRAINTS } from './types';
 
 const TIKTOK_API_BASE = `${vendorUrl('tiktok')}/v2`;
 
+const PRIVACY_LEVELS: Record<TikTokUploadInput['privacy'], string> = {
+  PUBLIC: 'PUBLIC_TO_EVERYONE',
+  FRIENDS: 'MUTUAL_FOLLOW_FRIENDS',
+  SELF: 'SELF_ONLY',
+};
+
 /**
  * TikTok Provider
  * Handles video uploads using TikTok's Content Posting API with streaming chunked upload
@@ -51,14 +57,17 @@ export class TikTokProvider {
     const totalChunks = Math.ceil(videoSize / chunkSize);
 
     // 2. Initialize upload
-    const initResponse = await this.initUpload({
-      source: 'FILE_UPLOAD',
-      videoSize,
-      chunkSize,
-      totalChunkCount: totalChunks,
-    });
+    const initResponse = await this.initUpload(
+      {
+        source: 'FILE_UPLOAD',
+        videoSize,
+        chunkSize,
+        totalChunkCount: totalChunks,
+      },
+      input,
+    );
 
-    const { uploadId, uploadUrl } = initResponse;
+    const { publishId, uploadUrl } = initResponse;
 
     // 3. Upload chunks using streaming (memory-efficient)
     await this.uploadChunksStreaming(
@@ -69,11 +78,8 @@ export class TikTokProvider {
       onProgress,
     );
 
-    // 4. Complete upload and create post
-    const postResponse = await this.createPost(uploadId, input);
-
     return {
-      publishId: postResponse.publishId,
+      publishId,
       status: 'PROCESSING',
     };
   }
@@ -161,14 +167,37 @@ export class TikTokProvider {
   /**
    * Initializes the upload session
    */
-  private async initUpload(params: {
-    source: 'FILE_UPLOAD';
-    videoSize: number;
-    chunkSize: number;
-    totalChunkCount: number;
-  }): Promise<TikTokUploadInit> {
+  private async initUpload(
+    params: {
+      source: 'FILE_UPLOAD';
+      videoSize: number;
+      chunkSize: number;
+      totalChunkCount: number;
+    },
+    input: TikTokUploadInput,
+  ): Promise<TikTokUploadInit> {
+    const postInfo: Record<string, unknown> = {
+      title: input.caption,
+      privacy_level: PRIVACY_LEVELS[input.privacy],
+      disable_duet: input.disableDuet,
+      disable_stitch: input.disableStitch,
+      disable_comment: input.disableComment,
+    };
+
+    if (input.videoCoverTimestampMs !== undefined) {
+      postInfo.video_cover_timestamp_ms = input.videoCoverTimestampMs;
+    }
+
+    if (input.brandContentToggle !== undefined) {
+      postInfo.brand_content_toggle = input.brandContentToggle;
+    }
+
+    if (input.brandOrganicToggle !== undefined) {
+      postInfo.brand_organic_toggle = input.brandOrganicToggle;
+    }
+
     const response = await fetch(
-      `${TIKTOK_API_BASE}/post/publish/inbox/video/init/`,
+      `${TIKTOK_API_BASE}/post/publish/video/init/`,
       {
         method: 'POST',
         headers: {
@@ -176,6 +205,7 @@ export class TikTokProvider {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          post_info: postInfo,
           source_info: {
             source: params.source,
             video_size: params.videoSize,
@@ -194,12 +224,12 @@ export class TikTokProvider {
       );
     }
 
-    if (!data.data?.upload_id || !data.data?.upload_url) {
-      throw new Error('TikTok init failed: Missing upload_id or upload_url');
+    if (!data.data?.publish_id || !data.data?.upload_url) {
+      throw new Error('TikTok init failed: Missing publish_id or upload_url');
     }
 
     return {
-      uploadId: data.data.upload_id,
+      publishId: data.data.publish_id,
       uploadUrl: data.data.upload_url,
     };
   }
@@ -231,66 +261,6 @@ export class TikTokProvider {
       const errorText = await response.text();
       throw new Error(`Chunk upload failed: ${response.status} - ${errorText}`);
     }
-  }
-
-  /**
-   * Creates the post after upload is complete
-   */
-  private async createPost(
-    uploadId: string,
-    input: TikTokUploadInput,
-  ): Promise<{ publishId: string }> {
-    const postInfo: Record<string, unknown> = {
-      title: input.caption,
-      privacy_level: input.privacy,
-      disable_duet: input.disableDuet,
-      disable_stitch: input.disableStitch,
-      disable_comment: input.disableComment,
-    };
-
-    if (input.videoCoverTimestampMs !== undefined) {
-      postInfo.video_cover_timestamp_ms = input.videoCoverTimestampMs;
-    }
-
-    if (input.brandContentToggle !== undefined) {
-      postInfo.brand_content_toggle = input.brandContentToggle;
-    }
-
-    if (input.brandOrganicToggle !== undefined) {
-      postInfo.brand_organic_toggle = input.brandOrganicToggle;
-    }
-
-    const response = await fetch(
-      `${TIKTOK_API_BASE}/post/publish/video/init/`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          post_info: postInfo,
-          source_info: {
-            source: 'FILE_UPLOAD',
-            video_upload_id: uploadId,
-          },
-        }),
-      },
-    );
-
-    const data = await response.json();
-
-    if (data.error?.code !== 'ok' && data.error?.code !== undefined) {
-      throw new Error(
-        `TikTok post failed: ${data.error?.message || 'Unknown error'}`,
-      );
-    }
-
-    if (!data.data?.publish_id) {
-      throw new Error('TikTok post failed: Missing publish_id');
-    }
-
-    return { publishId: data.data.publish_id };
   }
 
   /**

@@ -37,7 +37,8 @@ const BEFORE_1711 = {
     `${G}youtube.force-ssl`,
     `${G}yt-analytics.readonly`,
   ],
-  tiktok: ['user.info.basic', 'video.upload'],
+  // video.publish is KB-143's, not FILM-1711's: it stays in the request with every analytics scope off.
+  tiktok: ['user.info.basic', 'video.upload', 'video.publish'],
   meta: [
     'pages_show_list',
     'pages_read_engagement',

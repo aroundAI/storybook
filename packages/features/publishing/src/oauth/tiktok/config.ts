@@ -12,6 +12,8 @@ export const TIKTOK_OAUTH_CONFIG = {
   scopes: [
     'user.info.basic',
     'video.upload',
+    // Direct post: the publish worker and TikTokProvider use /v2/post/publish/video/init/
+    'video.publish',
     // Analytics: /v2/video/query/ and follower_count — see analytics-scopes.ts
     'video.list',
     'user.info.stats',
