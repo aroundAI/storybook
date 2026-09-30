@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(6);
+select plan(8);
 
 -- KB-59. 20260205114500_create_readonly_viewer.sql created `readonly_viewer`
 -- (SELECT on every public table, now and in future, by default privileges)
@@ -84,6 +84,20 @@ select is_empty(
         and c.relkind in ('r', 'p', 'v', 'm')
         and has_table_privilege('myfriends', c.oid, 'SELECT') $$,
   'myfriends can SELECT no relation in the auth schema'
+);
+
+-- 5. It can log in, so what it can use up is bounded (KB-59, owner 2026-09-30).
+select is(
+  (select rolconnlimit from pg_roles where rolname = 'myfriends'),
+  5,
+  'myfriends holds at most five connections'
+);
+
+select is(
+  (select array_agg(c order by c) from pg_db_role_setting s, unnest(s.setconfig) c
+    where s.setrole = 'myfriends'::regrole),
+  array['idle_in_transaction_session_timeout=10s', 'statement_timeout=5s'],
+  'and its queries and idle transactions are cut off'
 );
 
 select * from finish();
