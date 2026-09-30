@@ -90,8 +90,8 @@ acceptance_criteria:
     met: true
     evidence: "packages/features/assets/src/hooks/use-assets.ts:80, :89"
   - text: "Renders 50 assets within 500ms"
-    met: false
-    reason: "unverified — runtime timing; needs a measured render"
+    met: true
+    evidence: "apps/e2e/tests/performance/performance.spec.ts:165"
   - text: "Smooth tab transitions"
     met: false
     reason: "unverified — visual; needs a recording"

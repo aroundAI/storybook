@@ -66,8 +66,8 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "Dashboard loads within 2 seconds"
-    met: false
-    reason: "unverified — needs a timed load on a production build. KB-13 measured RLS adding ~1s per 36,500 revenue rows; since KB-13's fix the same read takes ~9ms in the database, but no page load has been timed"
+    met: true
+    evidence: "apps/e2e/tests/performance/performance.spec.ts:119"
   - text: "Currency formatting respects user locale"
     met: false
     reason: "no longer true — every formatter pins `'en-US'`, since e84ba285 — `packages/features/content-analytics/src/lib/money.ts:166`, `packages/features/content-analytics/src/lib/format.ts:57`"

@@ -90,7 +90,7 @@ acceptance_criteria:
     evidence: null
   - text: "All actions complete within 3 seconds (except batch)"
     met: false
-    reason: "unverified — runtime timing; needs a timed run against a seeded database"
+    reason: "part: the database work behind the create and read actions is timed against the 3-second budget (apps/e2e/tests/performance/performance.spec.ts, a few milliseconds); the server action's own overhead is not, because a server action cannot be called without its build-specific id"
   - text: "Batch create handles 100+ shots"
     met: false
     reason: "no longer true — `BatchCreateShotsSchema` caps a batch at 100 (`packages/features/episodes/src/lib/schemas/shot.schema.ts:167`); 101 is refused"
