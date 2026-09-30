@@ -86,11 +86,11 @@ acceptance_criteria:
     met: true
     evidence: "`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/use-batch-generation.ts:179` (every 3 s), resumed on load (`:113`)"
   - text: "Component loads within 1 second"
-    met: false
-    reason: "unverified — runtime timing; needs a measured load"
+    met: true
+    evidence: "apps/e2e/tests/performance/performance.spec.ts:128"
   - text: "Tab switching is instant (<100ms)"
-    met: false
-    reason: "unverified — runtime timing; needs a measurement"
+    met: true
+    evidence: "apps/e2e/tests/performance/performance.spec.ts:128"
   - text: "No UI freezing during operations"
     met: false
     reason: "unverified — runtime behaviour; needs a profiled session"

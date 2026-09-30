@@ -76,7 +76,7 @@ acceptance_criteria:
     evidence: null
   - text: "All operations complete within 3 seconds"
     met: false
-    reason: "unverified — runtime timing; nothing measures it"
+    reason: "part: the database work behind the create and read actions is timed against the 3-second budget (apps/e2e/tests/performance/performance.spec.ts, a few milliseconds); the server action's own overhead is not, because a server action cannot be called without its build-specific id"
   - text: "Transaction rollback works correctly"
     met: true
     evidence: "apps/web/supabase/tests/database/character-create-rollback.test.sql:75"

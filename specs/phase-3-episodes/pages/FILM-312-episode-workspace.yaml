@@ -56,8 +56,8 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "Page loads within 1 second"
-    met: false
-    reason: "unverified — runtime timing; needs a timed load"
+    met: true
+    evidence: "apps/e2e/tests/performance/performance.spec.ts:110"
   - text: "Smooth transitions between tabs"
     met: false
     reason: "unverified — visual; needs a rendered check"

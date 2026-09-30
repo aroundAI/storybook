@@ -70,8 +70,8 @@ acceptance_criteria:
     met: true
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:44-46"
   - text: "Page loads within 2 seconds"
-    met: false
-    reason: "unverified — runtime timing; nothing measures it"
+    met: true
+    evidence: "apps/e2e/tests/performance/performance.spec.ts:101"
   - text: "Responsive layout on mobile, tablet, desktop"
     met: false
     reason: "unverified — needs viewport screenshots"

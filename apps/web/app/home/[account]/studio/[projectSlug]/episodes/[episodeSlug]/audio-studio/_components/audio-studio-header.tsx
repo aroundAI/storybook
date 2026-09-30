@@ -104,6 +104,7 @@ export function AudioStudioHeader({
         {/* Tab Switcher */}
         <div className="flex rounded-lg bg-gray-100 p-1 dark:bg-black/40">
           <button
+            data-test="audio-tab-dialogue"
             onClick={() => setActiveTab('dialogue')}
             className={`rounded-md px-3 py-1 text-xs font-semibold whitespace-nowrap transition-all ${
               activeTab === 'dialogue'
@@ -117,6 +118,7 @@ export function AudioStudioHeader({
             </span>
           </button>
           <button
+            data-test="audio-tab-music"
             onClick={() => setActiveTab('music')}
             className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
               activeTab === 'music'
