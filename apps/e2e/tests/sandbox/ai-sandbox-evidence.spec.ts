@@ -43,6 +43,7 @@ interface LedgerEntry {
   path: string;
   status: number;
   responseSummary?: string;
+  identified?: { kind: string; key?: string };
 }
 
 async function ledger(vendor: string, since = 0) {

@@ -64,9 +64,17 @@ test.describe('Asset library', () => {
   test('Ctrl+K opens the create menu', async ({ page }) => {
     await openAssets(page);
 
-    await page.keyboard.press('Control+K');
+    await expect(byTest(page, 'create-asset-button')).toBeVisible();
 
-    await expect(byTest(page, 'create-character-item')).toBeVisible();
+    // The shortcut's listener attaches on hydration, so a press that lands
+    // before it does nothing; press again until the menu answers.
+    await expect(async () => {
+      await page.keyboard.press('Control+k');
+      await expect(byTest(page, 'create-character-item')).toBeVisible({
+        timeout: 1_000,
+      });
+    }).toPass();
+
     await expect(byTest(page, 'create-location-item')).toBeVisible();
   });
 
@@ -81,7 +89,11 @@ test.describe('Asset library', () => {
       'Home',
       'Studio',
       project.name,
+      'Assets',
     ]);
+    await expect(
+      breadcrumb.getByRole('link', { name: 'Assets' }),
+    ).toHaveAttribute('aria-current', 'page');
     await expect(
       breadcrumb.getByRole('link', { name: 'Home' }),
     ).toHaveAttribute('href', `/home/${team.slug}`);

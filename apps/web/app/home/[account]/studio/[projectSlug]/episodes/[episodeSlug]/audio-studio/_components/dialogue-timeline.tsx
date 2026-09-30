@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Edit3, Keyboard, Play, RefreshCw, Volume2 } from 'lucide-react';
 
@@ -291,6 +291,12 @@ export function DialogueTimeline({
       .find((element) => element.dataset.dialogueId === dialogueId)
       ?.focus();
   };
+
+  const focusFirstMenuItem = useCallback((menu: HTMLDivElement | null) => {
+    menu
+      ?.querySelector<HTMLElement>('[role="menuitem"]:not(:disabled)')
+      ?.focus();
+  }, []);
 
   const closeMenu = () => {
     const returnToId = selectedDialogue?.id;
@@ -646,7 +652,7 @@ export function DialogueTimeline({
       </div>
 
       {/* Context Menu */}
-      {selectedDialogue && (
+      {selectedDialogue && !isEditModalOpen && (
         <>
           {/* Backdrop */}
           <div
@@ -656,6 +662,7 @@ export function DialogueTimeline({
           />
           {/* Menu */}
           <div
+            ref={focusFirstMenuItem}
             role="menu"
             aria-label="Dialogue line actions"
             data-test="dialogue-menu"
@@ -669,7 +676,6 @@ export function DialogueTimeline({
           >
             <button
               role="menuitem"
-              autoFocus
               onClick={handlePlay}
               disabled={!selectedDialogue.audioUrl}
               className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-700/50"

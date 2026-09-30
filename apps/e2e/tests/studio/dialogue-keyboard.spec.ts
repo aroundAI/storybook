@@ -7,6 +7,7 @@ import {
   uniqueStamp,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * FILM-505: the Audio Studio dialogue timeline is operable from the keyboard.
@@ -52,6 +53,38 @@ async function seedDialogueEpisode() {
     service,
   );
 
+  const ava = await insertRow<{ id: string }>(
+    'assets',
+    { project_id: project.id, type: 'character', name: 'Ava' },
+    service,
+  );
+  const ben = await insertRow<{ id: string }>(
+    'assets',
+    { project_id: project.id, type: 'character', name: 'Ben' },
+    service,
+  );
+
+  await insertRow(
+    'dialogue_lines',
+    {
+      episode_id: episode.id,
+      character_asset_id: ava.id,
+      text: 'The boats are late.',
+      sequence_number: 1,
+    },
+    service,
+  );
+  await insertRow(
+    'dialogue_lines',
+    {
+      episode_id: episode.id,
+      character_asset_id: ben.id,
+      text: 'The tide is against us.',
+      sequence_number: 2,
+    },
+    service,
+  );
+
   return { team, project, episode };
 }
 
@@ -66,8 +99,8 @@ test.describe('FILM-505: dialogue timeline keyboard operation', () => {
       `/home/${team.slug}/studio/${project.slug}/episodes/${episode.slug}/audio-studio`,
     );
 
-    const first = page.getByTestId('dialogue-block-0');
-    const second = page.getByTestId('dialogue-block-1');
+    const first = byTest(page, 'dialogue-block-0');
+    const second = byTest(page, 'dialogue-block-1');
 
     await expect(first).toHaveAttribute('role', 'button');
     await expect(first).toHaveAttribute(
@@ -102,7 +135,7 @@ test.describe('FILM-505: dialogue timeline keyboard operation', () => {
       `/home/${team.slug}/studio/${project.slug}/episodes/${episode.slug}/audio-studio`,
     );
 
-    await page.getByTestId('dialogue-block-0').focus();
+    await byTest(page, 'dialogue-block-0').focus();
     await page.keyboard.press('e');
 
     const textarea = page.getByRole('dialog', { name: 'Edit dialogue' });
