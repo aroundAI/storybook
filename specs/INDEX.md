@@ -432,7 +432,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-703 | [instagram-provider](./phase-7-publishing/providers/FILM-703-instagram-provider.yaml) | ✅ DONE | M | - |
 | FILM-704 | [facebook-provider](./phase-7-publishing/providers/FILM-704-facebook-provider.yaml) | ✅ DONE | M | - |
 | FILM-705 | [youtube-oauth](./phase-7-publishing/oauth/FILM-705-youtube-oauth.yaml) | ✅ DONE | M | FILM-CC-03 |
-| FILM-706 | [tiktok-oauth](./phase-7-publishing/oauth/FILM-706-tiktok-oauth.yaml) | 🟡 PARTIAL | M | FILM-CC-03 |
+| FILM-706 | [tiktok-oauth](./phase-7-publishing/oauth/FILM-706-tiktok-oauth.yaml) | ✅ DONE | M | FILM-CC-03 |
 | FILM-707 | [meta-oauth](./phase-7-publishing/oauth/FILM-707-meta-oauth.yaml) | 🟡 PARTIAL | M | FILM-CC-03 |
 | FILM-708 | [publish-hub](./phase-7-publishing/components/FILM-708-publish-hub.yaml) | 🟡 PARTIAL | L | FILM-701 |
 | FILM-709 | [platform-selector](./phase-7-publishing/components/FILM-709-platform-selector.yaml) | 🗑️ RETIRED (baa752eb) | M | FILM-708 |
@@ -455,7 +455,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-805 | [analytics-dashboard](./phase-8-analytics/components/FILM-805-analytics-dashboard.yaml) | 🟡 PARTIAL | L | FILM-804 |
 | FILM-806 | [metric-cards](./phase-8-analytics/components/FILM-806-metric-cards.yaml) | ✅ DONE | S | FILM-DS-02 |
 | FILM-807 | [performance-chart](./phase-8-analytics/components/FILM-807-performance-chart.yaml) | 🟡 PARTIAL | M | FILM-805 |
-| FILM-808 | [ai-insights](./phase-8-analytics/components/FILM-808-ai-insights.yaml) | 🟡 PARTIAL | M | FILM-805 |
+| FILM-808 | [ai-insights](./phase-8-analytics/components/FILM-808-ai-insights.yaml) | ✅ DONE | M | FILM-805 |
 | FILM-809 | [export-reports](./phase-8-analytics/components/FILM-809-export-reports.yaml) | 🟡 PARTIAL | M | FILM-805 |
 | FILM-810 | [revenue-tracking](./phase-8-analytics/components/FILM-810-revenue-tracking.yaml) | 🟡 PARTIAL | L | FILM-804, FILM-805 |
 
@@ -636,11 +636,11 @@ Local stand-ins for every social platform and AI vendor, on local ports: statefu
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
 | FILM-1801 | [vendor-base-url-resolver](./phase-18-local-vendor-sandbox/FILM-1801-vendor-base-url-resolver.yaml) | ✅ DONE | L | - (with or after FILM-1723) |
-| FILM-1802 | [social-platform-sandbox](./phase-18-local-vendor-sandbox/FILM-1802-social-platform-sandbox.yaml) | 🟡 PARTIAL | XL | FILM-1801, FILM-1721 |
-| FILM-1803 | [ai-generation-sandbox](./phase-18-local-vendor-sandbox/FILM-1803-ai-generation-sandbox.yaml) | PARTIAL | L | FILM-1801, FILM-1805 |
+| FILM-1802 | [social-platform-sandbox](./phase-18-local-vendor-sandbox/FILM-1802-social-platform-sandbox.yaml) | ✅ DONE | XL | FILM-1801, FILM-1721 |
+| FILM-1803 | [ai-generation-sandbox](./phase-18-local-vendor-sandbox/FILM-1803-ai-generation-sandbox.yaml) | DONE | L | FILM-1801, FILM-1805 |
 | FILM-1804 | [sandbox-backed-e2e-flows](./phase-18-local-vendor-sandbox/FILM-1804-sandbox-backed-e2e-flows.yaml) | DRAFT | L | FILM-1802, FILM-1803 |
 | FILM-1805 | [local-models-and-sdk-base-urls](./phase-18-local-vendor-sandbox/FILM-1805-local-models-and-sdk-base-urls.yaml) | PARTIAL | M | FILM-1801; FILM-513 for KB-21's lip-sync half |
-| FILM-1806 | [local-job-queue](./phase-18-local-vendor-sandbox/FILM-1806-local-job-queue.yaml) | 🟡 PARTIAL | M | FILM-1801, FILM-1803 |
+| FILM-1806 | [local-job-queue](./phase-18-local-vendor-sandbox/FILM-1806-local-job-queue.yaml) | ✅ DONE | M | FILM-1801, FILM-1803 |
 
 ### Spikes (5 specs)
 
@@ -712,8 +712,8 @@ reason when not.
 | 4. Video Gen | 14 | 0 | 2 | 0 | 12 | 0 |
 | 5. Audio Gen | 17 | 0 | 4 | 0 | 9 | 4 |
 | 6. Edit Suite | 8 | 0 | 0 | 0 | 6 | 2 |
-| 7. Publishing | 16 | 0 | 6 | 0 | 4 | 6 |
-| 8. Analytics | 10 | 0 | 7 | 0 | 0 | 3 |
+| 7. Publishing | 16 | 0 | 5 | 0 | 4 | 7 |
+| 8. Analytics | 10 | 0 | 6 | 0 | 0 | 4 |
 | 9. Integration | 6 | 0 | 0 | 0 | 3 | 3 |
 | 10. Canon Mgmt | 7 | 0 | 4 | 0 | 1 | 2 |
 | 11. Canon Integ | 22 | 0 | 15 | 0 | 1 | 6 |
@@ -723,10 +723,10 @@ reason when not.
 | 15. Deep Analytics | 11 | 0 | 3 | 0 | 2 | 6 |
 | 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 17 |
 | 17. Analytics Provenance | 30 | 17 | 5 | 2 | 0 | 6 |
-| 18. Vendor Sandbox | 6 | 1 | 4 | 0 | 0 | 1 |
+| 18. Vendor Sandbox | 6 | 1 | 1 | 0 | 0 | 4 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **233** | **18** | **67** | **2** | **54** | **92** |
+| **TOTAL** | **233** | **18** | **62** | **2** | **54** | **97** |
 
 No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose PR is open keeps the status it has on `main`.
 
@@ -735,14 +735,14 @@ No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose 
 | Scope | Total | Done | Partial | Retired | Draft / Deferred |
 |-------|-------|------|---------|---------|------------------|
 | MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 93 | 37 | 22 | 34 | 0 |
-| Post-MVP (Ph 6–9) | 40 | 14 | 13 | 13 | 0 |
+| Post-MVP (Ph 6–9) | 40 | 16 | 11 | 13 | 0 |
 | Canon (Ph 10–11) | 29 | 8 | 19 | 2 | 0 |
 | Scale & Hooks (Ph 12–13) | 4 | 2 | 0 | 2 | 0 |
 | Edit Suite v2 (Ph 14) | 1 | 0 | 0 | 1 | 0 |
 | Deep Analytics (Ph 15) | 11 | 6 | 3 | 2 | 0 |
 | Workbook Parity (Ph 16) | 17 | 17 | 0 | 0 | 0 |
 | Provenance & Signal (Ph 17) | 30 | 6 | 5 | 0 | 19 |
-| Vendor Sandbox (Ph 18) | 6 | 1 | 4 | 0 | 1 |
+| Vendor Sandbox (Ph 18) | 6 | 4 | 1 | 0 | 1 |
 | Public Sharing | 2 | 1 | 1 | 0 | 0 |
 
 ### Deferred at ship time, still open

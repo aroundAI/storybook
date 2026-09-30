@@ -3,8 +3,8 @@ title: "TikTok OAuth"
 phase: 7
 phase_name: "Publishing"
 category: oauth_flow
-status: PARTIAL
-audited: "2026-09-30"
+status: DONE
+audited: "2026-10-01"
 effort: M
 dependencies:
   - spec_id: "FILM-CC-03"
@@ -31,7 +31,7 @@ acceptance_criteria:
     evidence: "`apps/web/app/api/platforms/connect/tiktok/route.ts:108`"
   - text: "PKCE code challenge is properly generated"
     met: true
-    evidence: "`packages/features/publishing/src/oauth/tiktok/config.ts:43` (S256); sent at `apps/web/app/api/platforms/connect/tiktok/route.ts:104`"
+    evidence: "`packages/features/publishing/src/oauth/tiktok/config.ts:45` (S256); sent at `apps/web/app/api/platforms/connect/tiktok/route.ts:104`"
   - text: "Callback exchanges code for tokens with code verifier"
     met: true
     evidence: "`apps/web/app/api/platforms/callback/tiktok/route.ts:124`"
@@ -66,8 +66,8 @@ test_plan:
       evidence: "`apps/e2e/tests/platform-connections/connect-failure.spec.ts:139`, `apps/e2e/tests/platform-connections/connect-failure.spec.ts:185`"
   integration:
     - text: "Test OAuth flow with mocked TikTok endpoints"
-      met: false
-      reason: "part — the callback's success path is now tested with mocked fetch (`apps/web/lib/platforms/__tests__/callback-success.test.ts:169`: PKCE verifier sent, row written with the granted scopes, state deleted, landing URL; :214 a refused exchange stores nothing); the browser-level run is not: the vendor sandbox has no TikTok OAuth route (`apps/vendor-sandbox/src/social/vendors/index.ts`, media route only). Failure branches: `apps/e2e/tests/platform-connections/connect-failure.spec.ts`"
+      met: true
+      evidence: "the callback's success path with mocked fetch (apps/web/lib/platforms/__tests__/callback-success.test.ts:169, :214), and in a browser against the TikTok sandbox, green on two consecutive runs 2026-10-01, retries off: apps/e2e/tests/platform-connections/sandbox-connect-tiktok.spec.ts:55 (consent lists the 5 requested scopes; allow gives one active row named for the vendor's account; stored scopes are the granted ones; tokens encrypted and the decrypted access token is accepted by the sandbox's /v2/user/info/ and returns the row's open_id; second connect reuses the row with a new token), :144 (an unticked video.list is not recorded and the Platforms page shows the analytics notice), :172 (cancel gives access_denied and no row; an injected 500 at /v2/oauth/token gives token_exchange_failed and no row; the retry connects). Unconfirmed lead, not a filed bug: the connect route (apps/web/app/api/platforms/connect/tiktok/route.ts:83) needs NEXT_PUBLIC_APP_URL and does not fall back to NEXT_PUBLIC_SITE_URL as the callbacks do; seen only on a local lane that set the site URL alone"
     - text: "Test token refresh with rotation"
       met: true
       evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:482` — drives `ensureValidToken` against a local TikTok listener and asserts the stored rotated token (KB-29)"
@@ -75,10 +75,6 @@ test_plan:
       met: true
       evidence: "the action revokes at the vendor then disconnects through the RPC and keeps the row (`packages/features/publishing/__tests__/connection-actions.test.ts:436`); TikTok's revoke call with the app credentials, and its refusal without them (`packages/features/publishing/__tests__/revokers.test.ts:153`, `:173`)"
   e2e: []
-remaining:
-  - criterion: "Test OAuth flow with mocked TikTok endpoints"
-    reason: "The callback's success path is tested with mocked fetch (`apps/web/lib/platforms/__tests__/callback-success.test.ts:169`) but not driven in a browser. The FILM-1802 TikTok sandbox vendor now serves the consent screen, code exchange and user info (`apps/vendor-sandbox/src/social/vendors/tiktok/`, `apps/vendor-sandbox/__tests__/tiktok-journey.test.ts`); what is missing is a Playwright spec that points the app's `VENDOR_URL_TIKTOK_*` at it and drives connect. The publish-side app defects the journeys found are KB-142, KB-143 and KB-144"
-    closed_by: "unassigned"
 open_questions:
   - "Should we support TikTok for Business accounts? (post-MVP)"
   - "Should we use union_id for cross-app identification? (future)"

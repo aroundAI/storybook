@@ -4,7 +4,7 @@ phase: 7
 phase_name: "Publishing"
 category: provider
 status: PARTIAL
-audited: "2026-09-30"
+audited: "2026-10-01"
 effort: M
 dependencies:
   - spec_id: "FILM-708"
@@ -55,14 +55,14 @@ provider:
   webhooks: []
 acceptance_criteria:
   - text: "OAuth 2.0 connection flow works for personal accounts"
-    met: false
-    reason: "owner check OC-5 (docs/OWNER-CHECKS.md) — the Platforms page now has a LinkedIn card (KB-86, #343), and Connect is driven as far as LinkedIn's consent screen (a local stand-in, with our client id and the personal scopes — `apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts`); the callback's success path is not driven, and no live connect has run (FILM-1725 Check I). Refresh is fixed by KB-29 (`packages/features/publishing/__tests__/token-refresh.test.ts:426`)"
+    met: true
+    evidence: "apps/e2e/tests/platform-connections/sandbox-connect-linkedin.spec.ts:54 drives the real connect and callback routes against the LinkedIn sandbox (green on two consecutive runs, 2026-10-01, retries off): the consent screen lists the 4 personal scopes; allow gives one active row (urn:li:person:<sub>, isCompanyPage false) with encrypted tokens, the stored access token is accepted by the sandbox's /v2/userinfo and its sub and name match the row, the refresh token is stored; a second connect reuses the row with a new token. Refresh: KB-29 (packages/features/publishing/__tests__/token-refresh.test.ts:426). No live LinkedIn connect has run (owner check OC-5, FILM-1725 Check I). Known gap: the callback stores the requested scopes, not the granted ones (KB-145; test.fail at sandbox-connect-linkedin.spec.ts:191)"
   - text: "OAuth 2.0 connection flow works for company pages"
     met: false
     reason: "no longer true — company connect stores the member URN (`apps/web/app/api/platforms/callback/linkedin/route.ts:174`); no organization is chosen; no UI offers `type=company`, and the LinkedIn card says personal profiles only (KB-86)"
   - text: "Video upload with proper initialization and finalization"
     met: true
-    evidence: null
+    evidence: "packages/features/publishing/__tests__/linkedin-provider.test.ts:133; LinkedInProvider.uploadVideo end to end against the sandbox (apps/vendor-sandbox/__tests__/linkedin-journey.test.ts:214; KB-141 fixed in #489: createPost reads the post URN from x-restli-id)"
   - text: "Post composition with character limit enforcement"
     met: true
     evidence: null
@@ -71,10 +71,10 @@ acceptance_criteria:
     evidence: null
   - text: "Analytics retrieval (impressions, likes, comments, shares)"
     met: false
-    reason: "no longer true — `getPostMetrics` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:319`) has no caller; no LinkedIn metrics are read anywhere"
+    reason: "no longer true — `getPostMetrics` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:323`) has no caller; no LinkedIn metrics are read anywhere"
   - text: "Delete post functionality"
     met: false
-    reason: "no longer true — `deletePost` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:346`) has no caller; unpublish skips LinkedIn (`apps/web/lambda/publish-worker/index.ts:241-245`)"
+    reason: "no longer true — `deletePost` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:350`) has no caller; unpublish skips LinkedIn (`apps/web/lambda/publish-worker/index.ts:241-245`)"
   - text: "Video duration validation (10 min personal, 15 min company)"
     met: false
     reason: "retired — owner decision 2026-09-30: the limits stay declared constants; LinkedIn rejects a too-long video itself"
@@ -91,8 +91,8 @@ test_plan:
       reason: "retired — owner decision 2026-09-30: the feature is retired"
   integration:
     - text: "Test OAuth flow with mock API"
-      met: false
-      reason: "part — the callback's success path is tested with mocked fetch (`apps/web/lib/platforms/__tests__/callback-success.test.ts:407`: `urn:li:person` id and personal scopes; :443 company scopes and no refresh token; :456 no member id stores nothing); the browser-level run is not: the connect half reaches a stand-in consent screen (`apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts`) but the stand-in cannot redirect back or serve `/oauth/v2/accessToken` and `/v2/userinfo`. Failure branches: `apps/e2e/tests/platform-connections/connect-failure.spec.ts`"
+      met: true
+      evidence: "the callback's success path with mocked fetch (apps/web/lib/platforms/__tests__/callback-success.test.ts:407: urn:li:person id and personal scopes; :443 company scopes and no refresh token; :456 no member id stores nothing); and in a browser against the LinkedIn sandbox: apps/e2e/tests/platform-connections/sandbox-connect-linkedin.spec.ts:54 (connect, tokens, scopes, second connect) and :140 (cancel gives the failure page and no row; an injected 500 at /oauth/v2/accessToken gives token_exchange_failed and no row; the retry connects), green on two consecutive runs 2026-10-01, retries off. Failure branches also: apps/e2e/tests/platform-connections/connect-failure.spec.ts"
     - text: "Test video upload initialization"
       met: true
       evidence: "packages/features/publishing/__tests__/linkedin-provider.test.ts:133"
@@ -104,20 +104,14 @@ test_plan:
       evidence: "packages/features/publishing/__tests__/linkedin-provider.test.ts:246"
   e2e: []
 remaining:
-  - criterion: "OAuth 2.0 connection flow works for personal accounts (unverified)"
-    reason: "Connect is reachable from the Platforms page and driven to a stand-in consent screen (KB-86, #343); the callback's success path is tested with mocked fetch (`apps/web/lib/platforms/__tests__/callback-success.test.ts:407`) but not driven in a browser, and there is no live connect (FILM-1725 Check I). Refresh is fixed by KB-29"
-    closed_by: "unassigned"
-  - criterion: "Test OAuth flow with mock API (browser level)"
-    reason: "The FILM-1802 LinkedIn sandbox vendor now serves the token and userinfo calls (`apps/vendor-sandbox/src/social/vendors/linkedin/`, `apps/vendor-sandbox/__tests__/linkedin-journey.test.ts`); what is missing is a Playwright spec that points `VENDOR_URL_LINKEDIN_OAUTH`/`_API` at it and drives connect through the callback. The publish-side app defect the journey found is KB-141"
-    closed_by: "unassigned"
   - criterion: "OAuth 2.0 connection flow works for company pages"
-    reason: "Company connect still stores the member URN (`apps/web/app/api/platforms/callback/linkedin/route.ts:174`); `getOrganizations` has no caller and no UI passes `type=company`. Organization publishing never existed (`urn:li:organization` appears nowhere in history)"
+    reason: "No product surface offers company connect: no UI passes type=company, and the callback stores the member URN whatever the state says (apps/web/app/api/platforms/callback/linkedin/route.ts:174), so there is nothing to drive in a browser. getOrganizations has no caller. Organization publishing never existed (urn:li:organization appears nowhere in history)"
     closed_by: "unassigned"
   - criterion: "Analytics retrieval"
-    reason: "`getPostMetrics` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:319`) has no caller"
+    reason: "No product surface calls getPostMetrics (packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:319); the provider test covers it, but no LinkedIn metrics are read anywhere and the sandbox serves no LinkedIn analytics"
     closed_by: "unassigned"
   - criterion: "Delete post functionality"
-    reason: "`deletePost` has no caller; unpublish skips LinkedIn at the vendor (`apps/web/lambda/publish-worker/index.ts:241-245`)"
+    reason: "No product surface calls deletePost; unpublish skips LinkedIn at the vendor (apps/web/lambda/publish-worker/index.ts:241-245). The sandbox journey calls it through the provider (apps/vendor-sandbox/__tests__/linkedin-journey.test.ts:227), which proves the provider, not a user path"
     closed_by: "unassigned"
 open_questions: []
 notes: |

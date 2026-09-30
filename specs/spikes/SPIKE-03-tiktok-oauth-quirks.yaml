@@ -24,7 +24,7 @@ acceptance_criteria:
     reason: "not met — no upload/publishing quirks doc (`docs/tiktok-api-quirks.md` never created); FILM-706 and `docs/platform-capability-reference.md:155` cover OAuth and analytics quirks only"
   - text: "Error handling covers all known error scenarios"
     met: false
-    reason: "not met — provider and worker throw generic errors (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:192`); no rate-limit or spam-risk handling"
+    reason: "not met — provider and worker throw generic errors (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:222`); no rate-limit or spam-risk handling"
   - text: "Test suite covers OAuth, upload, and publishing flows"
     met: false
     reason: "not met — upload untested: nothing tests `tiktok-provider.ts` or `apps/web/lambda/publish-worker/handlers/tiktok.ts`; publish tests mock the provider"

@@ -4,7 +4,7 @@ phase: 7
 phase_name: "Publishing"
 category: oauth_flow
 status: PARTIAL
-audited: "2026-09-30"
+audited: "2026-10-01"
 effort: M
 dependencies:
   - spec_id: "FILM-CC-03"
@@ -37,7 +37,7 @@ acceptance_criteria:
     reason: "owner check OC-3 (docs/OWNER-CHECKS.md) — Meta renders it; needs a consent run on the owner's app (App Review pending, KB-20)"
   - text: "User can select which Pages to connect"
     met: false
-    reason: "unverified — no in-app choice: every Page `/me/accounts` returns is connected (`apps/web/app/api/platforms/callback/meta/route.ts:223`); only Meta's dialog could choose"
+    reason: "retired — owner decision 2026-09-30: every Page Meta returns is connected and an in-app Page choice is not wanted (apps/web/app/api/platforms/callback/meta/route.ts:223); the person's only choice is on Meta's own dialog, which the sandbox spec drives (apps/e2e/tests/platform-connections/sandbox-connect-meta.spec.ts:190)"
   - text: "Long-lived tokens are obtained (60-day)"
     met: true
     evidence: "`apps/web/app/api/platforms/callback/meta/route.ts:141`"
@@ -69,8 +69,8 @@ test_plan:
       reason: "retired — owner decision 2026-09-30: every Page Meta returns is connected; an in-app Page choice is not wanted"
   integration:
     - text: "Test OAuth flow with mocked Meta endpoints"
-      met: false
-      reason: "part — the callback's success path is now tested with mocked fetch (`apps/web/lib/platforms/__tests__/callback-success.test.ts:275`: short-to-long token exchange, `/me/accounts`, granted-only scopes, rows, landing); the browser-level run is not: the sandbox's Meta vendor exists (`apps/vendor-sandbox/src/social/vendors/meta/oauth.ts`) but no spec wires `VENDOR_URL_META_*` and the sandbox into the E2E server. Failure branches: `apps/e2e/tests/platform-connections/connect-failure.spec.ts`"
+      met: true
+      evidence: "the callback's success path with mocked fetch (apps/web/lib/platforms/__tests__/callback-success.test.ts:275), and in a browser against the Meta sandbox, green on two consecutive runs 2026-10-01, retries off: apps/e2e/tests/platform-connections/sandbox-connect-meta.spec.ts:64 (the dialog lists the 7 requested permissions; one connect yields the Page under Facebook and the linked Instagram account under Instagram, linked_page_id is the Page id, scopes are the granted ones, the Page token is on both rows and the long-lived user token is the refresh token, both accepted by the sandbox Graph /me/permissions; a second connect reuses both rows with a new user token), :190 (declining pages_show_list gives account_lookup_failed and stores nothing), :215 (cancel gives access_denied; an injected 500 at /oauth/access_token gives token_exchange_failed; the retry connects). Unconfirmed lead, not a filed bug: the app requests no read_insights although packages/features/publishing/src/oauth/analytics-scopes.ts:182 lists it as the Facebook insights requirement; the Platforms page showed no analytics notice after a Meta connect, so it is not confirmed as user-visible"
     - text: "Test token refresh"
       met: true
       evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:456`"
@@ -82,12 +82,6 @@ remaining:
   - criterion: "Consent screen shows correct permissions"
     reason: "Meta renders it; needs a consent run on the owner's app (App Review pending, KB-20)"
     closed_by: "owner"
-  - criterion: "User can select which Pages to connect"
-    reason: "No in-app choice: every Page `/me/accounts` returns is connected (`apps/web/app/api/platforms/callback/meta/route.ts:223`)"
-    closed_by: "unassigned"
-  - criterion: "Test OAuth flow with mocked Meta endpoints (browser level)"
-    reason: "The callback is tested with mocked fetch (`apps/web/lib/platforms/__tests__/callback-success.test.ts:275`); the sandbox's Meta vendor serves Facebook Login, Pages and the Instagram nodes (`apps/vendor-sandbox/__tests__/meta-fidelity.test.ts`), but no Playwright spec wires it into the server env and drives connect"
-    closed_by: "unassigned"
 open_questions:
   - "Should we support multiple Pages per connection? (post-MVP)"
   - "Should we store Page category for filtering? (future)"

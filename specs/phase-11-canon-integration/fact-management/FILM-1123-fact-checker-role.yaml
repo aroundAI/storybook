@@ -4,7 +4,7 @@ phase: 11
 phase_name: "Canon Integration & Content Types"
 category: feature
 status: PARTIAL
-audited: "2026-09-30"
+audited: "2026-10-01"
 effort: M
 dependencies:
   - spec_id: "FILM-1120"
@@ -38,12 +38,12 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "UI shows results with severity-based styling"
-    met: false
-    reason: "not verified — the section is built (apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/fact-check-section.tsx:128 styles each issue by severity, :109 shows the blocked notice) and mounted in the Facts tab, but no test or browser run drives it"
+    met: true
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/fact-check-section.tsx:128 styles each issue by severity (critical red, warning yellow, minor and info muted; cn/twMerge replaces the badge's default colour) and :109 shows the blocked notice; test story/_components/__tests__/fact-check-section.test.tsx (5: the classes per severity, verdict, score and missing items, the blocked notice, a refusal shown as text); emptying the severity class turned the styling test red. Component-level (jsdom); no browser run"
 remaining:
-  - criterion: "UI shows results with severity-based styling"
-    reason: "The fact-check section is built and mounted in the Facts tab; no test or browser run has rendered it"
-    closed_by: "unassigned"
+  - criterion: "Critical issues identified, unsourced claims flagged, citation formatting validated"
+    reason: "Critical issues, unsourced claims and citation formatting are LLM judgement in the live skill with no test or eval (owner check OC-1, docs/OWNER-CHECKS.md)"
+    closed_by: "owner"
 open_questions: []
 feature:
   database:
