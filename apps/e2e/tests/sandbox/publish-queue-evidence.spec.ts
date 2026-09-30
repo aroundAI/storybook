@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { Page, expect, test } from '@playwright/test';
 
 import {
   insertRow,
@@ -29,6 +29,8 @@ const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? 'http://127.0.0.1:55321';
 const CONTROL = process.env.SANDBOX_CONTROL_URL ?? 'http://127.0.0.1:4100';
 // The cron runs every five minutes in the local runner.
 const CRON_TIMEOUT = 7 * 60_000;
+const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
+const shoot = Boolean(process.env.CAPTURE_EVIDENCE);
 
 interface LedgerEntry {
   id: number;
@@ -36,6 +38,17 @@ interface LedgerEntry {
   path: string;
   method?: string;
   status: number;
+}
+
+/** A screenshot once every animation has finished: dialogs fade in and out. */
+async function settledShot(page: Page, name: string) {
+  if (!shoot) return;
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every((animation) => animation.playState !== 'running'),
+  );
+  await page.screenshot({ path: `${OUT}/${name}.png` });
 }
 
 async function ledger() {
@@ -121,6 +134,7 @@ test.describe('A scheduled publish through the local publish queue (FILM-1806)',
       .locator('[data-test="sandbox-consent-allow"]')
       .click({ timeout: 30_000 });
     await page.waitForURL(/\/settings\/platforms/);
+    await settledShot(page, 'pq-1-youtube-connected');
 
     const connections = await readRows<{ id: string }>(
       'platform_connections',
@@ -211,6 +225,7 @@ test.describe('A scheduled publish through the local publish queue (FILM-1806)',
       .locator('[data-test="publish-unpublish"]')
       .first()
       .click({ timeout: 60_000 });
+    await settledShot(page, 'pq-2-unpublish-dialog');
     await page
       .getByRole('dialog')
       .getByRole('button', { name: 'Unpublish' })
@@ -288,5 +303,12 @@ test.describe('A scheduled publish through the local publish queue (FILM-1806)',
         { timeout: 60_000 },
       )
       .toBe(0);
+
+    // What the person sees once it is all gone: the publish screen again.
+    await page.goto(
+      `/home/${team.slug}/studio/${project.slug}/episodes/${episodeSlug}/publish`,
+    );
+    await expect(byTest(page, 'publish-delete-all')).toHaveCount(0);
+    await settledShot(page, 'pq-3-after-delete-all');
   });
 });

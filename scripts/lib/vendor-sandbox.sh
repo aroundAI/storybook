@@ -192,6 +192,11 @@ start_local_queue() {
   local dir="$root/.sandbox"
   mkdir -p "$dir"
 
+  # Always recreated: a container made from another checkout keeps a bind
+  # mount of that checkout's elasticmq.conf, and `docker start` then fails
+  # with "not a directory" once that checkout is gone. It holds no state.
+  docker rm -f "$QUEUE_CONTAINER" > /dev/null 2>&1 || true
+
   # Loopback only, like the sandbox.
   start_container "$QUEUE_CONTAINER" -p 127.0.0.1:4120:9324 \
     -v "$root/apps/vendor-sandbox/queue/elasticmq.conf:/opt/elasticmq.conf:ro" "$QUEUE_IMAGE"

@@ -22,3 +22,22 @@ export async function encryptLikeTheApp(plaintext: string) {
 
   return Buffer.concat([iv, new Uint8Array(ciphertext)]).toString('base64');
 }
+
+/** The inverse of `encryptLikeTheApp`: what a callback stored, in the clear. */
+export async function decryptLikeTheApp(stored: string) {
+  const key = await webcrypto.subtle.importKey(
+    'raw',
+    Buffer.from(process.env.ENCRYPTION_KEY ?? '', 'base64'),
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['decrypt'],
+  );
+  const bytes = Buffer.from(stored, 'base64');
+  const plaintext = await webcrypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: bytes.subarray(0, 12), tagLength: 128 },
+    key,
+    bytes.subarray(12),
+  );
+
+  return new TextDecoder().decode(plaintext);
+}
