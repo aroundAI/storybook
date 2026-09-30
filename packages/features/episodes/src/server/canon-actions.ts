@@ -514,6 +514,16 @@ const updateCharacterState = enhanceAction(
 
 export const updateCharacterStateAction = returnRefusals(updateCharacterState);
 
+/** What a person calls a state: its first text value, quoted. */
+function describeState(state: unknown) {
+  const text =
+    state && typeof state === 'object'
+      ? Object.values(state).find((value) => typeof value === 'string')
+      : undefined;
+
+  return typeof text === 'string' ? `"${text}"` : 'an earlier state';
+}
+
 /**
  * Reverts a character-state change recorded in `state_deltas` (FILM-1005).
  *
@@ -600,7 +610,7 @@ const rollbackCharacterState = enhanceAction(
       episode_id: delta.episode_id,
       state_type: applied.state_type,
       state_value: delta.before_state,
-      trigger_event: reason,
+      trigger_event: `Rolled back the change to ${describeState(delta.after_state)}`,
       previous_state_id: applied.id,
       created_by: user.id,
     });

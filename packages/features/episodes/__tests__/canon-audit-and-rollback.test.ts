@@ -356,7 +356,7 @@ describe('rollbackCharacterStateAction (FILM-1005)', () => {
           episode_id: EPISODE,
           state_type: 'emotional',
           state_value: { mood: 'calm' },
-          trigger_event: `Rollback of state change ${DELTA}`,
+          trigger_event: 'Rolled back the change to "grieving"',
           previous_state_id: 'state-2',
           created_by: CALLER,
         },

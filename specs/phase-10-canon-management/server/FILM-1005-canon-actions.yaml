@@ -102,16 +102,16 @@ server_action:
 acceptance_criteria:
   - text: "All CRUD actions implemented with proper typing"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:293, packages/features/episodes/src/server/canon-actions.ts:615"
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:293, packages/features/episodes/src/server/canon-actions.ts:625"
   - text: "Authorization checks on all actions via RLS"
     met: true
     evidence: "apps/web/supabase/migrations/20260924181028_kb76-77-63-canon-write-scope.sql:60 — thread, world-state, summary, act-bridge, sequel-context, character-state and state-delta writes need `can_write_project`, with the author pinned (KB-76/77, tested by apps/web/supabase/tests/database/canon-write-scope.test.sql); immutable events by KB-17 (apps/web/supabase/migrations/20260923075604_kb17-immutable-events-immutable.sql); `commit_canon_changes` by KB-27 (apps/web/supabase/migrations/20260923044106_kb27-canon-write-scope.sql); `updateCanonSettingsAction` writes `projects` under `projects_update` (`can_edit_project`: owner or admin); every read is on `has_account_access`"
   - text: "Audit logging for all mutations with context"
     met: false
-    reason: "not met — audited now: addImmutableEventAction, createNarrativeThreadAction, deletes, thread edits, character-state changes, the commit action's events (looked up after the RPC) and newly opened threads (auditCommittedRows, packages/features/episodes/src/server/canon-actions.ts:1568; a post-commit failure is warned, not thrown), and world state set or replaced on both paths (packages/features/episodes/src/lib/canon/store-episode-memory.ts; warned on failure); tests packages/features/episodes/__tests__/canon-audit-and-rollback.test.ts and canon-conflicts-and-batches.test.ts (add event, commit events, commit threads, world replaced); making insertStateDeltas a no-op turned 7 red. Still not audited: the worker's auto-generated events, character states and threads (system writes, removed and rewritten on each regeneration by cleanupEpisodeCanon), thread progress and resolve inside the commit action (no before and after state is captured there), and the commit RPC's summary metadata write"
+    reason: "not met — audited now: addImmutableEventAction, createNarrativeThreadAction, deletes, thread edits, character-state changes, the commit action's events (looked up after the RPC) and newly opened threads (auditCommittedRows, packages/features/episodes/src/server/canon-actions.ts:1578; a post-commit failure is warned, not thrown), and world state set or replaced on both paths (packages/features/episodes/src/lib/canon/store-episode-memory.ts; warned on failure); tests packages/features/episodes/__tests__/canon-audit-and-rollback.test.ts and canon-conflicts-and-batches.test.ts (add event, commit events, commit threads, world replaced); making insertStateDeltas a no-op turned 7 red. Still not audited: the worker's auto-generated events, character states and threads (system writes, removed and rewritten on each regeneration by cleanupEpisodeCanon), thread progress and resolve inside the commit action (no before and after state is captured there), and the commit RPC's summary metadata write"
   - text: "State delta tracking for rollback capability"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:526 (rollbackCharacterStateAction, exported at :598) reads `state_deltas`, refuses non-character deltas, a first state, a missing produced state and a later change of the same state type (CanonConflictError), and otherwise appends a state restoring before_state plus its own delta; getStateDeltasAction at :606 lists an episode's deltas; tests packages/features/episodes/__tests__/canon-audit-and-rollback.test.ts:305. Scope: character-state deltas only — thread, immutable and world deltas are recorded but not rolled back (an immutable delete cannot be undone without re-adding). The state a delta produced is matched by (character, episode, value) because `state_deltas` carries no state type or state id"
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:536 (rollbackCharacterStateAction, exported at :598) reads `state_deltas`, refuses non-character deltas, a first state, a missing produced state and a later change of the same state type (CanonConflictError), and otherwise appends a state restoring before_state plus its own delta; getStateDeltasAction at :606 lists an episode's deltas; tests packages/features/episodes/__tests__/canon-audit-and-rollback.test.ts:305. Scope: character-state deltas only — thread, immutable and world deltas are recorded but not rolled back (an immutable delete cannot be undone without re-adding). The state a delta produced is matched by (character, episode, value) because `state_deltas` carries no state type or state id"
   - text: "UI trigger for rollbackCharacterStateAction"
     met: true
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/character-state-history.tsx (a History toggle on each character's latest state row in canon-dashboard.tsx; reads getStateDeltasAction; Rollback appears only on the newest change and only when it has a before state; rollback-state-dialog.tsx is the AlertDialog confirm, a refusal is shown inline as a value, and success reloads the history and the dashboard) with the pure character-history.ts; tests story/_components/__tests__/character-state-history.test.tsx (9) and canon-dashboard.test.tsx (6, including the reload after rollback); removing the dashboard block and stubbing the dialog action turned 5 red. Component-level only: the browser spec apps/e2e/tests/canon/canon-rollback.spec.ts is written, not yet run. Limit: the history is the episode's own audit log, so a change recorded in another episode is not listed"
@@ -123,19 +123,19 @@ acceptance_criteria:
     evidence: "packages/features/episodes/src/lib/canon/canon-errors.ts:17 (CanonError extends ActionRefusal; CanonNotFoundError :28, CanonConflictError :36, CanonValidationError :44, CanonPermissionError :52), used by add and delete event, thread update and rollback, and returned as values through returnRefusals so the message survives production builds; tests packages/features/episodes/__tests__/canon-audit-and-rollback.test.ts:84. Database failures still throw by design"
   - text: "Optimistic locking for concurrent updates"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:905, apps/web/supabase/migrations/20260129194541_add_narrative_threads_version.sql:4"
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:915, apps/web/supabase/migrations/20260129194541_add_narrative_threads_version.sql:4"
   - text: "Batch operations for efficient multi-record updates"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:1663"
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:1673"
   - text: "Rollback support for failed transactions"
     met: true
     evidence: "apps/web/supabase/migrations/20260130004332_add_commit_canon_changes_function.sql:5"
   - text: "**New**: Dashboard query actions for Canon Settings page"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:1020"
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:1030"
   - text: "**New**: Canon extraction actions for Publish page"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:1393"
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:1403"
   - text: "Unit tests for conflict detection"
     met: true
     evidence: "packages/features/episodes/__tests__/canon-conflicts-and-batches.test.ts:118"
