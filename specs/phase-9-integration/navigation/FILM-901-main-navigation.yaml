@@ -57,7 +57,7 @@ acceptance_criteria:
     evidence: null
   - text: "Sidebar collapsible on mobile (via existing ResponsiveLayout)"
     met: true
-    evidence: "now a `Sheet` in `MobileStudioHeader` (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:139`), the desktop sidebar being `hidden md:block` (`layout.tsx:117`); `ResponsiveLayout` went in 5f44d0e1"
+    evidence: "now a `Sheet` in `MobileStudioHeader` (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:141`), the desktop sidebar being `hidden md:block` (`layout.tsx:117`); `ResponsiveLayout` went in 5f44d0e1"
   - text: "Keyboard navigation works throughout (via Radix primitives)"
     met: false
     reason: "unverified — needs a keyboard-only walk-through or E2E; no test found"
