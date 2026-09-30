@@ -1,6 +1,9 @@
 import type { SocialOrigin } from './server';
 import { GOOGLE_SERVED } from './vendors/google/fields';
+import { LINKEDIN_SERVED } from './vendors/linkedin/fields';
 import { META_SERVED } from './vendors/meta/fields';
+import { TIKTOK_SERVED } from './vendors/tiktok/fields';
+import { X_SERVED } from './vendors/x/fields';
 
 /**
  * What each social endpoint may serve (FILM-1802 §3, the lead's ruling on
@@ -41,7 +44,10 @@ export interface ServedEndpoint {
  */
 export const SERVED: readonly ServedEndpoint[] = [
   ...GOOGLE_SERVED,
+  ...LINKEDIN_SERVED,
   ...META_SERVED,
+  ...TIKTOK_SERVED,
+  ...X_SERVED,
 ];
 
 /** Vendor documentation hosts an envelope citation may point at. */

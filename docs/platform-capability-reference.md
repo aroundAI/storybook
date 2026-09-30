@@ -914,6 +914,99 @@ impression_sources
 audience_countries
 ```
 
+<!-- fields: tiktok/oauth-token source: https://developers.tiktok.com/doc/oauth-user-access-token-management -->
+```text
+# The token endpoint's response. source not fetched 2026-09-30: developers.tiktok.com
+# refused connections from this network, as on 2026-09-21. Names rest on this
+# repository's callback and refresh code and the Login Kit's documented
+# response; FILM-1725 Check B is the live test. Scope is comma-separated.
+access_token
+expires_in                 # seconds; 24 hours
+open_id
+refresh_expires_in         # seconds; 365 days
+refresh_token              # a refresh returns a new one
+scope
+token_type                 # Bearer
+error                      # a string here, not the v2 envelope's object
+error_description
+log_id
+```
+
+<!-- fields: tiktok/user-info-response source: https://developers.tiktok.com/doc/tiktok-api-v2-get-user-info -->
+```text
+# GET /v2/user/info/ response body, in the v2 envelope. source not fetched
+# 2026-09-30, as above. The fields are split across three scopes:
+# user.info.basic, user.info.profile, user.info.stats.
+data
+user
+error
+code                       # "ok" on success; access_token_invalid, scope_not_authorized, invalid_params
+message
+log_id
+open_id
+union_id
+avatar_url
+avatar_url_100
+avatar_large_url
+display_name
+bio_description
+profile_deep_link
+is_verified
+username
+follower_count
+following_count
+likes_count
+video_count
+```
+
+<!-- fields: tiktok/video-query-response source: https://developers.tiktok.com/doc/tiktok-api-v2-video-query -->
+```text
+# POST /v2/video/query/ response body. source not fetched 2026-09-30, as above.
+# The video fields are tiktok/display-video's; none of the Business API's.
+data
+videos
+error
+code
+message
+log_id
+id
+create_time
+cover_image_url
+share_url
+video_description
+duration
+height
+width
+title
+embed_html
+embed_link
+like_count
+comment_count
+share_count
+view_count
+is_aigc
+```
+
+<!-- fields: tiktok/publish-response source: https://developers.tiktok.com/doc/content-posting-api-reference-direct-post -->
+```text
+# The Content Posting API's inits and the status fetch. source not fetched
+# 2026-09-30, as above. Init answers publish_id and, for FILE_UPLOAD,
+# upload_url - not the upload_id the app's TikTokProvider reads (inferred,
+# see the ledger). publicaly_available_post_id is spelled as TikTok spells it.
+data
+error
+code
+message
+log_id
+publish_id
+upload_url
+status                     # PROCESSING_UPLOAD, PROCESSING_DOWNLOAD, SEND_TO_USER_INBOX, PUBLISH_COMPLETE, FAILED
+fail_reason
+publicaly_available_post_id
+uploaded_bytes
+downloaded_bytes
+```
+
 <!-- fields: instagram/media-fields source: https://developers.facebook.com/docs/instagram-platform/reference/instagram-media/ -->
 ```text
 media_type                 # CAROUSEL_ALBUM / IMAGE / VIDEO - never REELS
@@ -1129,6 +1222,211 @@ playback_100_count
 view_count                 # public_metrics and organic_metrics - NOT non_public_metrics
 ```
 
+<!-- fields: x/oauth-token source: https://docs.x.com/fundamentals/authentication/oauth-2-0/user-access-token -->
+```text
+# The token and revoke endpoints, fetched 2026-09-30. token_type, expires_in,
+# access_token, scope and refresh_token are the page's response fields;
+# `revoked` is the revoke response's; error and error_description are RFC 6749's,
+# which the page does not restate (inferred, see the ledger).
+access_token
+expires_in
+refresh_token              # only when offline.access is granted
+scope
+token_type                 # bearer
+revoked
+error
+error_description
+```
+
+<!-- fields: x/users-me source: https://docs.x.com/x-api/users/get-my-user -->
+```text
+# fetched 2026-09-30; scopes users.read and tweet.read
+data
+id
+name
+username
+profile_image_url          # only when user.fields asks for it
+```
+
+<!-- fields: x/media-upload source: https://docs.x.com/x-api/media/media-upload-initialize -->
+```text
+# initialize, append, finalize and STATUS, fetched 2026-09-30 (each on its own
+# page under docs.x.com/x-api/media/). Scope media.write.
+data
+id                         # the upload session and the media id a post attaches
+media_key
+expires_after_secs
+expires_at                 # append: epoch seconds
+size
+video
+video_type
+processing_info
+state                      # pending, in_progress, failed, succeeded
+progress_percent
+check_after_secs
+```
+
+<!-- fields: x/post-create source: https://docs.x.com/x-api/posts/create-post -->
+```text
+# fetched 2026-09-30; 201 Created
+data
+id
+text
+edit_history_post_ids
+```
+
+<!-- fields: x/post-delete source: https://docs.x.com/x-api/posts/delete-post -->
+```text
+# fetched 2026-09-30; 200 with data.deleted
+data
+deleted
+```
+
+<!-- fields: x/post-lookup source: https://docs.x.com/x-api/posts/get-post-by-id -->
+```text
+# fetched 2026-09-30. The page lists non_public_metrics and organic_metrics as
+# available fields and states no age limit; the 30-day gate is on the metrics page.
+data
+id
+text
+edit_history_post_ids
+created_at
+author_id
+attachments
+media_keys
+public_metrics
+non_public_metrics
+organic_metrics
+includes
+media
+media_key
+type
+preview_image_url
+errors
+```
+
+<!-- fields: x/api-error source: https://docs.x.com/x-api/fundamentals/response-codes-and-errors -->
+```text
+# The problem object, fetched 2026-09-30: type, title and detail always, the rest by problem.
+type
+title
+detail
+status
+errors
+message
+value
+resource_type
+parameter
+resource_id
+client_id
+registration_url
+required_enrollment
+reason
+```
+
+<!-- fields: linkedin/oauth-token source: https://learn.microsoft.com/en-us/linkedin/shared/authentication/authorization-code-flow -->
+```text
+# The token endpoint's response, fetched 2026-09-30. refresh_token and
+# refresh_token_expires_in are for partners with programmatic refresh; the
+# page's own sample has neither. error and error_description are on the
+# page's error table.
+access_token
+expires_in                 # seconds; 60-day tokens
+refresh_token
+refresh_token_expires_in
+scope                      # space-delimited
+error
+error_description
+```
+
+<!-- fields: linkedin/userinfo source: https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2 -->
+```text
+# GET /v2/userinfo, fetched 2026-09-30. Needs openid; profile gates the
+# name, picture and locale claims, email gates email and email_verified.
+sub
+name
+given_name
+family_name
+picture
+locale
+email
+email_verified
+```
+
+<!-- fields: linkedin/videos source: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/videos-api -->
+```text
+# Videos API, fetched 2026-09-30: initializeUpload, finalizeUpload, get a video.
+value
+uploadUrlsExpireAt
+video
+uploadInstructions
+uploadUrl
+firstByte
+lastByte
+uploadToken
+id
+owner
+status                     # WAITING_UPLOAD, PROCESSING, AVAILABLE, PROCESSING_FAILED
+processingFailureReason    # only when PROCESSING_FAILED
+duration
+aspectRatioWidth
+aspectRatioHeight
+```
+
+<!-- fields: linkedin/assets source: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/vector-asset-api -->
+```text
+# Assets API registerUpload (superseded by Videos; the publish worker still calls it), fetched 2026-09-30.
+value
+mediaArtifact
+uploadMechanism
+com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest
+uploadUrl
+headers
+media-type-family
+asset
+assetRealTimeTopic
+```
+
+<!-- fields: linkedin/ugc-posts source: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/ugc-post-api -->
+```text
+# ugcPosts create (legacy). Source page not re-read 2026-09-30 (the fetch was too large
+# to check); the response body's id is what the publish worker reads.
+id
+```
+
+<!-- fields: linkedin/posts source: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api -->
+```text
+# Posts API, fetched 2026-09-30. Create answers 201 with the id in the x-restli-id
+# header and no body; get returns the post.
+id
+author
+commentary
+visibility
+lifecycleState
+lifecycleStateInfo
+isEditedByAuthor
+isReshareDisabledByAuthor
+distribution
+feedDistribution
+targetEntities
+thirdPartyDistributionChannels
+content
+media
+createdAt
+publishedAt
+lastModifiedAt
+```
+
+<!-- fields: linkedin/api-error source: https://learn.microsoft.com/en-us/linkedin/shared/api-guide/concepts/error-handling -->
+```text
+# fetched 2026-09-30: message, serviceErrorCode and status; code appears on the
+# Posts and Videos pages' error tables.
+message
+serviceErrorCode
+status
+code
+```
+
 _Verified: 2026-09-21_
 
 ---
@@ -1190,6 +1488,18 @@ labelled as such wherever they are used.
 | Reading a deleted Video gets code 100 (`GraphMethodException`, subcode 33) | The Graph API's usual answer for a missing object; not run after the delete above. The sandbox serves it | inferred |
 | Facebook `post_video_avg_time_watched` denominator is initial plays | Business Help Center; the API reference does not state it | inferred |
 | Instagram media insights ≈ 2 years, account ≈ 90 days | Two Meta pages disagree; this reconciles them | inferred |
+| A token missing a scope gets X 403 `{ "title": "Forbidden", "type": "about:blank", "status": 403, "detail": "Forbidden" }` | The problem-object page has no scope example; the app's upload hint says X's body does not name the scope. The sandbox (FILM-1802) serves this body | inferred |
+| Posting, deleting and reading a post on X need `tweet.read`, `tweet.write` and `users.read` together | The create-post and delete-post pages list the three as alternatives; posting with fewer is refused in practice. The sandbox requires all three | inferred |
+| X revoke answers `{ "revoked": true }` and ends only the token it is given | The user-access-token page documents the call, not the body or a cascade; the app revokes both tokens. The sandbox serves this | inferred |
+| X's Enterprise-only analytics endpoints answer 403 `client-not-enrolled` (title "Client Forbidden") | The problem-object page names the type without an example for these endpoints. The sandbox serves it | inferred |
+| X refuses the same text twice from one account with 403 "You are not allowed to create a Tweet with duplicate content." | Long-standing behaviour, not on the create-post page. The sandbox serves it | inferred |
+| LinkedIn 401s carry `serviceErrorCode` 65600 (invalid), 65601 (revoked) and 65604 (expired), and a missing scope is 403 `ACCESS_DENIED` "Not enough permissions to access: {resource}.{METHOD}.NO_VERSION" | The error-handling page names the cases and the `message`, `serviceErrorCode`, `status` shape; the specific codes and the 403 wording are LinkedIn's usual ones. The sandbox serves them | inferred |
+| LinkedIn's programmatic refresh returns the same refresh token with its remaining `refresh_token_expires_in` | The authorization-code-flow page says programmatic refresh exists for a limited set of partners and points to a page not read. The sandbox plays a partner that has it | inferred |
+| A LinkedIn video upload URL accepts POST and an `Authorization` header | The Assets API page says PUT and no OAuth token; the publish worker POSTs with a Bearer token. The sandbox accepts both rather than fail a call whose live behaviour is unknown | inferred |
+| The Posts API answers 201 with the id in `x-restli-id` and no body | Documented: "the response header `x-restli-id` contains the Post ID". `LinkedInProvider.createPost` reads `data.id` from the body instead; the sandbox serves the documented shape | **documented** |
+| TikTok's token endpoint answers errors with HTTP 400 (401 for a wrong client) and `{ error, error_description, log_id }`; a code challenge sent to authorize is checked at the token endpoint, in base64url or hex; revoke ends the whole grant | Login Kit page not reachable from this network (2026-09-30). The app's callback checks `tokens.error` without `response.ok`, which fits a 200 as well. FILM-1725 Check B | inferred |
+| The Content Posting init answers `publish_id` and `upload_url`, not `upload_id`; a missing scope on any TikTok v2 call is 401 `scope_not_authorized` | Content Posting and error-code pages not reachable (2026-09-30). `TikTokProvider` reads `upload_id` and sends `video_upload_id`, and `isAuthError` does not match `scope_not_authorized`; the sandbox serves what TikTok is understood to. FILM-702, FILM-1725 Check B | inferred |
+| TikTok's `publicaly_available_post_id` is an array of int64 | Documented as such; the sandbox serves the ids as strings because a 19-digit id does not survive `JSON.parse` in JavaScript | inferred |
 | TikTok app review takes 1–2 weeks | Third-party integrator reports, not TikTok | inferred |
 | Meta App Review takes 4–8 weeks | Community reports; **Meta publishes no SLA** | inferred |
 | ~~Graph v18.0 is past end-of-life~~ | **Resolved 2026-09-21.** Meta's changelog gives the expiry as 2026-01-26, and the versioning guide documents silent substitution. See [Graph API versions](#graph-api-versions) | **documented** |
