@@ -184,8 +184,8 @@ export const SDK_BASE_URL_VARIABLES = [
 ] as const;
 
 /**
- * The variables that are set and will not be used: every `VENDOR_URL_*` and
- * `LOCAL_API_URL` while the sandbox is disabled, any that names no vendor while it is enabled, and
+ * The variables that are set and will not be used: every `VENDOR_URL_*`,
+ * `LOCAL_API_URL` and `LLM_FORCE_PROVIDER` while the sandbox is disabled, any that names no vendor while it is enabled, and
  * any `SDK_BASE_URL_VARIABLES` at all. `apps/web/instrumentation.ts` logs
  * each as an error at server start - by name, never by value - so a deploy
  * that carries one says so instead of degrading silently.
@@ -202,7 +202,8 @@ export function ignoredVendorOverrides(env: Env = process.env) {
     .filter(
       (name) =>
         sdkVariables.has(name) ||
-        (name === 'LOCAL_API_URL' && !vendorSandboxEnabled(env)) ||
+        ((name === 'LOCAL_API_URL' || name === 'LLM_FORCE_PROVIDER') &&
+          !vendorSandboxEnabled(env)) ||
         (name.startsWith(OVERRIDE_PREFIX) &&
           (!vendorSandboxEnabled(env) || !known.has(name))),
     )

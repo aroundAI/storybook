@@ -11,7 +11,7 @@
  *
  * This is vendor-independent — works with any LLM provider supported by @kit/llm.
  */
-import { createLLMClient } from '@kit/llm';
+import { createLLMClient, forcedLocalConfig } from '@kit/llm';
 import type { LLMProvider } from '@kit/llm';
 
 import { BudgetExceededError, createBudgetTracker } from './budget';
@@ -361,8 +361,11 @@ export async function runAgent<T = unknown>(
   );
 
   // Create LLM client
-  const provider = (resolved.provider ?? 'gemini') as LLMProvider;
-  const model = resolved.model ?? 'gemini-3.1-flash-lite';
+  const forcedLocal = forcedLocalConfig();
+  const provider = (forcedLocal?.provider ??
+    resolved.provider ??
+    'gemini') as LLMProvider;
+  const model = forcedLocal?.model ?? resolved.model ?? 'gemini-3.1-flash-lite';
 
   console.log(
     `[Agent:${config.name}] Starting. Provider: ${provider}, Model: ${model}, ` +
@@ -370,14 +373,17 @@ export async function runAgent<T = unknown>(
       `SystemPrompt: ${systemPrompt.length} chars, UserPrompt: ${input.userPrompt.length} chars`,
   );
 
-  const llm = createLLMClient({
-    provider,
-    model,
-    apiKey: getApiKeyForProvider(provider),
-    vertexai: provider === 'gemini' && process.env.GEMINI_VERTEXAI === 'true',
-    project: process.env.GOOGLE_CLOUD_PROJECT,
-    location: process.env.GOOGLE_CLOUD_LOCATION,
-  });
+  const llm = createLLMClient(
+    forcedLocal ?? {
+      provider,
+      model,
+      apiKey: getApiKeyForProvider(provider),
+      baseUrl: provider === 'local' ? process.env.LOCAL_API_URL : undefined,
+      vertexai: provider === 'gemini' && process.env.GEMINI_VERTEXAI === 'true',
+      project: process.env.GOOGLE_CLOUD_PROJECT,
+      location: process.env.GOOGLE_CLOUD_LOCATION,
+    },
+  );
 
   // Start conversation
   conversationHistory.push({ role: 'user', content: input.userPrompt });

@@ -3,7 +3,7 @@
  * those is an endpoint anyone can call. No `server-only` either: the LLM
  * worker Lambda imports this, and `server-only` throws outside Next.
  */
-import { renderTemplate } from '../render-template';
+import { assertPromptLlm, renderTemplate } from '../render-template';
 import type { RenderedPrompt } from '../types';
 import { PROMPT_REGISTRY } from './prompt-registry';
 
@@ -42,6 +42,8 @@ export async function loadAndRenderPrompt(
         `2. Add an import and registry entry in prompt-registry.ts`,
     );
   }
+
+  assertPromptLlm(slug, template);
 
   // One renderer for both executors: an unfilled or undeclared
   // placeholder is an error, not a literal left in the text (KB-126)

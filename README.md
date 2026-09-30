@@ -124,17 +124,28 @@ LLM_PROVIDER=gemini
 LLM_MODEL=gemini-1.5-flash
 GOOGLE_API_KEY=AI...
 
-# Local (Development - FREE!)
+# Local (Development - FREE!) - Ollama, sandbox only
 LLM_PROVIDER=local
-LLM_MODEL=claude-sonnet-4-5
-LOCAL_API_URL=http://127.0.0.1:8000/v1
+LLM_MODEL=llama3.1
+LOCAL_API_URL=http://localhost:11434/v1
 ```
+
+**Every prompt on a local model, no API keys** (needs [Ollama](https://ollama.com)):
+
+```bash
+ollama pull llama3.1
+VENDOR_SANDBOX=1 LLM_FORCE_PROVIDER=local LLM_MODEL=llama3.1 pnpm --filter web dev
+```
+
+`LLM_FORCE_PROVIDER` is honoured only with `NODE_ENV` development or test,
+`VENDOR_SANDBOX=1` and outside AWS Lambda; anywhere else it is ignored and
+logged. See `packages/llm/CLAUDE.md`.
 
 **Supported Providers & Pricing:**
 
 | Provider | Cost (1M tokens) | Best Models | Best For |
 |----------|------------------|-------------|----------|
-| Local | **$0** | claude-sonnet-4-5 | Development, testing |
+| Local (Ollama) | **$0** | llama3.1 | Development, testing |
 | Gemini Flash 8B | $0.0375 | gemini-1.5-flash-8b | High-volume, cost-sensitive |
 | GPT-4o-mini | $0.15 | gpt-4o-mini | Production, balanced |
 | Claude 3.5 Sonnet | $3.00 | claude-3-5-sonnet | Complex reasoning |

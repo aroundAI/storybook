@@ -12,7 +12,7 @@ This file contains guidance for working with the LLM abstraction layer supportin
 
 | Provider | Cost (1M tokens) | Best Models | Best For | API Key Required |
 |----------|------------------|-------------|----------|------------------|
-| **Local** ⭐ | $0 (free) | claude-sonnet-4-5, claude-opus-4 | Development, testing, offline | ❌ No |
+| **Local** ⭐ | $0 (free) | llama3.1 (Ollama) | Development, testing, offline | ❌ No |
 | **OpenAI** | $0.15-$60 | gpt-4o, gpt-4o-mini | Production, function calling | ✅ Yes |
 | **Anthropic** | $0.25-$75 | claude-3-5-sonnet, claude-3-opus | Long context, complex reasoning | ✅ Yes |
 | **Gemini** | $0.0375-$5 | gemini-1.5-flash, gemini-1.5-pro | Cost-effective, multimodal | ✅ Yes |
@@ -30,27 +30,41 @@ This file contains guidance for working with the LLM abstraction layer supportin
 
 ## Configuration
 
-### Local Provider (Recommended for Development)
+### Local Provider (Ollama, development only)
+
+The `local` provider is a plain OpenAI-compatible client, pointed at Ollama by
+default. It constructs only inside a vendor sandbox (`NODE_ENV` development or
+test, `VENDOR_SANDBOX=1`, not an AWS Lambda) and throws a named error
+otherwise.
 
 ```bash
-# OpenAI-compatible local API (e.g., Claude Code API)
+ollama pull llama3.1
+
+# One command: every prompt and agent in the app runs on the local model
+VENDOR_SANDBOX=1 LLM_FORCE_PROVIDER=local LLM_MODEL=llama3.1 pnpm --filter web dev
+```
+
+`LLM_FORCE_PROVIDER=local` makes the prompt executor, the LLM worker's copy of
+it and the agent runner ignore the provider and model a prompt file pins and
+use `local` with `LLM_MODEL`. Outside the sandbox gate it is ignored, and
+named in a warning and in the start-up log.
+
+```bash
+# Or select it for code that reads the environment (loadConfigFromEnv)
 LLM_PROVIDER=local
-LLM_MODEL=claude-sonnet-4-5              # optional, this is default
-LOCAL_API_URL=http://127.0.0.1:8000/v1   # optional, this is default
+LLM_MODEL=llama3.1                       # optional, this is default
+LOCAL_API_URL=http://localhost:11434/v1  # optional, this is default
 
 # No API key required!
 ```
 
-**Available Local Models:**
-- `claude-sonnet-4-5` (default) - Latest Claude Sonnet 4.5
-- `claude-sonnet-4` - Claude Sonnet 4
-- `claude-opus-4` - Claude Opus 4 (most capable)
-- `claude-haiku-4` - Claude Haiku 4 (fastest)
-
 **Requirements:**
-- Local API server running at configured URL
-- Default: `http://127.0.0.1:8000/v1`
-- Compatible with OpenAI API format
+- Ollama running (`ollama serve`) with the model pulled, or any server that
+  speaks the OpenAI chat-completions protocol (LM Studio, vLLM, llama.cpp)
+- `LOCAL_API_URL` must name a local address: http(s), no credentials, query
+  or fragment. A bad value throws; it never falls back to the default port.
+- A small local model may not satisfy a prompt's Zod schema. That is a
+  result to record, not a reason to loosen validation.
 
 ### OpenAI Provider
 
@@ -369,11 +383,11 @@ const response = await llm.createChatCompletion({
 
 **Maps to Local API Request:**
 ```http
-POST http://127.0.0.1:8000/v1/chat/completions
+POST http://localhost:11434/v1/chat/completions
 Content-Type: application/json
 
 {
-  "model": "claude-sonnet-4-5",
+  "model": "llama3.1",
   "messages": [
     {
       "role": "system",
@@ -401,7 +415,7 @@ Content-Type: application/json
   "id": "chatcmpl-a57c54994bba44aa9e391aeb",
   "object": "chat.completion",
   "created": 1760698365,
-  "model": "claude-sonnet-4-5",
+  "model": "llama3.1",
   "choices": [{
     "index": 0,
     "message": {
@@ -423,7 +437,7 @@ Content-Type: application/json
 {
   id: 'chatcmpl-a57c54994bba44aa9e391aeb',
   provider: 'local',
-  model: 'claude-sonnet-4-5',
+  model: 'llama3.1',
   message: {
     role: 'assistant',
     content: '[{"frontend":"React 18","backend":"FastAPI",...}]'
@@ -474,9 +488,9 @@ import { createLLMClient } from '@kit/llm';
 // Override environment variables
 const llm = createLLMClient({
   provider: 'local',
-  model: 'claude-opus-4',
+  model: 'llama3.1',
   apiKey: '', // not needed for local
-  baseUrl: 'http://192.168.1.100:8000/v1', // custom URL
+  baseUrl: 'http://127.0.0.1:11500/v1', // custom URL
   temperature: 0.5,
   maxTokens: 2000
 });
@@ -519,9 +533,9 @@ const openai = new OpenAIClient({
 
 const local = new LocalClient({
   provider: 'local',
-  model: 'claude-sonnet-4-5',
+  model: 'llama3.1',
   apiKey: 'not-needed',
-  baseUrl: 'http://127.0.0.1:8000/v1'
+  baseUrl: 'http://localhost:11434/v1'
 });
 ```
 
@@ -640,8 +654,8 @@ const response = await llm.createChatCompletion({
 - Perfect for development and testing
 
 **Requirements:**
-- Local API server must be running
-- Default URL: `http://127.0.0.1:8000/v1`
+- Ollama (or another OpenAI-compatible server) must be running
+- Default URL: `http://localhost:11434/v1`
 - OpenAI-compatible API format
 
 **Connection Errors:**
@@ -659,7 +673,7 @@ try {
 **Custom Base URL:**
 ```bash
 # Use different local server
-LOCAL_API_URL=http://192.168.1.100:8000/v1
+LOCAL_API_URL=http://127.0.0.1:11500/v1
 ```
 
 ## Error Handling
@@ -829,7 +843,7 @@ sendToClient(response.message.content); // Long wait time
 **Problem:** `CONNECTION_REFUSED` error
 
 **Solution:**
-1. Check if local API is running: `curl http://127.0.0.1:8000/health`
+1. Check if local API is running: `curl http://localhost:11434/api/tags`
 2. Verify the URL: `echo $LOCAL_API_URL`
 3. Check firewall settings
 4. Try explicit base URL in code

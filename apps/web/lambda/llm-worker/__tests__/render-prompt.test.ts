@@ -66,3 +66,22 @@ describe('Lambda prompt rendering', () => {
     expect(differences).toEqual([]);
   });
 });
+
+describe('Lambda prompt provider and model (FILM-1805)', () => {
+  it('refuses a template without provider or model instead of defaulting to deepseek', () => {
+    const original = PROMPT_REGISTRY['season-generation']!;
+
+    PROMPT_REGISTRY['season-generation'] = {
+      ...original,
+      llm: { ...original.llm, model: '' },
+    };
+
+    try {
+      expect(() =>
+        loadAndRenderPromptForLambda('season-generation', analysis),
+      ).toThrow(/season-generation must set llm\.model/);
+    } finally {
+      PROMPT_REGISTRY['season-generation'] = original;
+    }
+  });
+});

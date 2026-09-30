@@ -351,3 +351,21 @@ describe('the vendor constants built on the resolver', () => {
     );
   });
 });
+
+describe('ignoredVendorOverrides: LLM_FORCE_PROVIDER (FILM-1805)', () => {
+  it('names it while the sandbox is off, and not while it is on', () => {
+    expect(
+      ignoredVendorOverrides({
+        NODE_ENV: 'production',
+        LLM_FORCE_PROVIDER: 'local',
+      }),
+    ).toEqual(['LLM_FORCE_PROVIDER']);
+    expect(
+      ignoredVendorOverrides({
+        NODE_ENV: 'development',
+        VENDOR_SANDBOX: '1',
+        LLM_FORCE_PROVIDER: 'local',
+      }),
+    ).toEqual([]);
+  });
+});

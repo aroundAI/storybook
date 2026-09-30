@@ -51,7 +51,7 @@ test.describe('A scheduled publish through the local publish queue (FILM-1806)',
   test('the cron queues it and the publish worker uploads it to YouTube', async ({
     page,
   }) => {
-    test.setTimeout(CRON_TIMEOUT + 120_000);
+    test.setTimeout(2 * CRON_TIMEOUT + 240_000);
 
     const team = await seedTeamAccount({ emailPrefix: 'publish-queue' });
     const project = await seedProject(team, {
@@ -147,34 +147,39 @@ test.describe('A scheduled publish through the local publish queue (FILM-1806)',
     expect(declared.status).toBeLessThan(300);
 
     const lastBefore = (await ledger())[0]?.id ?? 0;
-    const publish = await insertRow<Array<{ id: string }>>(
-      'publishes',
-      {
-        episode_id: episodeId,
-        platform_connection_id: connections[0]!.id,
-        platform: 'youtube',
-        content_type: 'full',
-        title: 'The Letter Under the Floorboards',
-        description: 'Episode 1',
-        status: 'scheduled',
-        scheduled_at: new Date(Date.now() - 60_000).toISOString(),
-        language: 'en',
-      },
-      auth,
-    );
-    const publishId = (Array.isArray(publish) ? publish[0] : publish)!.id;
+    const scheduleDuePublish = async () => {
+      const publish = await insertRow<Array<{ id: string }>>(
+        'publishes',
+        {
+          episode_id: episodeId,
+          platform_connection_id: connections[0]!.id,
+          platform: 'youtube',
+          content_type: 'full',
+          title: 'The Letter Under the Floorboards',
+          description: 'Episode 1',
+          status: 'scheduled',
+          scheduled_at: new Date(Date.now() - 60_000).toISOString(),
+          language: 'en',
+        },
+        auth,
+      );
+
+      return (Array.isArray(publish) ? publish[0] : publish)!.id;
+    };
+    const publishStatus = async (id: string) =>
+      (
+        await readRows<{ status: string }>(
+          'publishes',
+          `id=eq.${id}&select=status`,
+        )
+      )[0]?.status;
+    const publishId = await scheduleDuePublish();
 
     await expect
-      .poll(
-        async () =>
-          (
-            await readRows<{ status: string }>(
-              'publishes',
-              `id=eq.${publishId}&select=status`,
-            )
-          )[0]?.status,
-        { timeout: CRON_TIMEOUT, intervals: [5_000] },
-      )
+      .poll(() => publishStatus(publishId), {
+        timeout: CRON_TIMEOUT,
+        intervals: [5_000],
+      })
       .toBe('published');
 
     const [row] = await readRows<{
@@ -224,5 +229,65 @@ test.describe('A scheduled publish through the local publish queue (FILM-1806)',
         { timeout: 120_000 },
       )
       .toBeGreaterThan(0);
+
+    // The unpublish removed the record once the worker had deleted the video.
+    await expect
+      .poll(() => publishStatus(publishId), { timeout: 60_000 })
+      .toBeUndefined();
+
+    // Delete all, from the publish screen: a second publish goes out the same
+    // way, then deleteEpisodePublishesAction queues its delete and the
+    // worker's own handler removes the video from the sandbox and the record
+    // from the database.
+    const secondPublishId = await scheduleDuePublish();
+    await expect
+      .poll(() => publishStatus(secondPublishId), {
+        timeout: CRON_TIMEOUT,
+        intervals: [5_000],
+      })
+      .toBe('published');
+
+    const lastBeforeDeleteAll = (await ledger())[0]?.id ?? 0;
+    await page.goto(
+      `/home/${team.slug}/studio/${project.slug}/episodes/${episodeSlug}/publish`,
+    );
+    await page
+      .locator('[data-test="publish-delete-all"]')
+      .click({ timeout: 60_000 });
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Delete All' })
+      .click({ timeout: 30_000 });
+    await expect(page.getByText('Deleted 1 publish record(s)')).toBeVisible({
+      timeout: 30_000,
+    });
+
+    await expect
+      .poll(
+        async () =>
+          (await ledger()).filter(
+            (e) =>
+              e.id > lastBeforeDeleteAll &&
+              e.vendor === 'google' &&
+              e.method === 'DELETE' &&
+              e.path.startsWith('/youtube/v3/videos') &&
+              e.status === 204,
+          ).length,
+        { timeout: 120_000 },
+      )
+      .toBeGreaterThan(0);
+
+    await expect
+      .poll(
+        async () =>
+          (
+            await readRows<{ id: string }>(
+              'publishes',
+              `episode_id=eq.${episodeId}&select=id`,
+            )
+          ).length,
+        { timeout: 60_000 },
+      )
+      .toBe(0);
   });
 });
