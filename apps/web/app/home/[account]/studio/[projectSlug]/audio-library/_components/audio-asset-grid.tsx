@@ -141,9 +141,9 @@ export function AudioAssetGrid({
               <Music className="h-8 w-8 text-muted-foreground" />
             )}
           </div>
-          <h3 className="mb-1 text-lg font-semibold">
+          <h2 className="mb-1 text-lg font-semibold">
             {search ? 'No matching assets' : 'No audio assets yet'}
-          </h3>
+          </h2>
           <p className="mb-4 max-w-sm text-sm text-muted-foreground">
             {search
               ? 'Try a different search term'

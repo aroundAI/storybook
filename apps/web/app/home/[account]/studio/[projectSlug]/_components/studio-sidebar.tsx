@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import {
   ArrowLeft,
@@ -50,6 +50,8 @@ import {
 import { cn } from '@kit/ui/utils';
 
 import { ProfileAccountDropdownContainer } from '~/components/personal-account-dropdown-container';
+
+import { isAssetsTabActive, isPathActive } from '../_lib/sidebar-active';
 
 const SIDEBAR_COLLAPSED_KEY = 'studio-sidebar-collapsed';
 
@@ -98,6 +100,8 @@ function NavItem({
   const content = (
     <Link
       href={href}
+      data-test={`studio-nav-${label.toLowerCase().replace(/\s+/g, '-')}`}
+      aria-current={isActive ? 'page' : undefined}
       className={cn(
         'flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm transition-colors',
         'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
@@ -159,6 +163,7 @@ export function StudioSidebar({
   counts = {},
 }: StudioSidebarProps) {
   const pathname = usePathname() ?? '';
+  const tab = useSearchParams()?.get('tab') ?? null;
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [isProjectSwitcherOpen, setIsProjectSwitcherOpen] = useState(false);
@@ -182,12 +187,8 @@ export function StudioSidebar({
   const basePath = `/home/${account}/studio/${project.slug ?? project.id}`;
 
   // Check if a path is active
-  const isActive = (path: string, exact = false) => {
-    if (exact) {
-      return pathname === path;
-    }
-    return pathname.startsWith(path);
-  };
+  const isActive = (path: string, exact = false) =>
+    isPathActive(pathname, path, exact);
 
   // Filter projects by search
   const filteredProjects = recentProjects.filter((p) =>
@@ -415,7 +416,7 @@ export function StudioSidebar({
           {/* Application Section */}
           <div>
             <SectionHeader isCollapsed={isCollapsed}>Application</SectionHeader>
-            <nav className="space-y-0.5">
+            <nav aria-label="Application" className="space-y-0.5">
               <NavItem
                 href={basePath}
                 icon={<LayoutDashboard className="h-4 w-4" />}
@@ -437,7 +438,7 @@ export function StudioSidebar({
           {/* Story Section */}
           <div>
             <SectionHeader isCollapsed={isCollapsed}>Story</SectionHeader>
-            <nav className="space-y-0.5">
+            <nav aria-label="Story" className="space-y-0.5">
               <NavItem
                 href={`${basePath}/canon`}
                 icon={<ScrollText className="h-4 w-4" />}
@@ -451,15 +452,18 @@ export function StudioSidebar({
           {/* Assets Section */}
           <div>
             <SectionHeader isCollapsed={isCollapsed}>Assets</SectionHeader>
-            <nav className="space-y-0.5">
+            <nav aria-label="Assets" className="space-y-0.5">
               <NavItem
                 href={`${basePath}/assets?tab=character`}
                 icon={<Users className="h-4 w-4" />}
                 label="Characters"
                 count={counts.characters}
-                isActive={
-                  pathname.includes('/assets') && pathname.includes('character')
-                }
+                isActive={isAssetsTabActive(
+                  pathname,
+                  `${basePath}/assets`,
+                  tab,
+                  'character',
+                )}
                 isCollapsed={isCollapsed}
               />
               <NavItem
@@ -467,9 +471,12 @@ export function StudioSidebar({
                 icon={<MapPin className="h-4 w-4" />}
                 label="Locations"
                 count={counts.locations}
-                isActive={
-                  pathname.includes('/assets') && pathname.includes('location')
-                }
+                isActive={isAssetsTabActive(
+                  pathname,
+                  `${basePath}/assets`,
+                  tab,
+                  'location',
+                )}
                 isCollapsed={isCollapsed}
               />
               <NavItem
@@ -485,7 +492,7 @@ export function StudioSidebar({
           {/* Research Section */}
           <div>
             <SectionHeader isCollapsed={isCollapsed}>Research</SectionHeader>
-            <nav className="space-y-0.5">
+            <nav aria-label="Research" className="space-y-0.5">
               <NavItem
                 href={`${basePath}/research`}
                 icon={<BookOpen className="h-4 w-4" />}
@@ -503,7 +510,7 @@ export function StudioSidebar({
           {/* Settings Section */}
           <div>
             <SectionHeader isCollapsed={isCollapsed}>Settings</SectionHeader>
-            <nav className="space-y-0.5">
+            <nav aria-label="Settings" className="space-y-0.5">
               <NavItem
                 href={`${basePath}/analytics`}
                 icon={<BarChart3 className="h-4 w-4" />}

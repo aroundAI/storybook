@@ -22,9 +22,9 @@ export function StatsCards({
             <p className="mb-1 text-sm font-medium text-muted-foreground">
               Total Episodes
             </p>
-            <h3 className="text-4xl font-semibold tracking-tight text-foreground">
+            <p className="text-4xl font-semibold tracking-tight text-foreground">
               {episodeCount}
-            </h3>
+            </p>
           </div>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
             <svg
@@ -51,9 +51,9 @@ export function StatsCards({
             <p className="mb-1 text-sm font-medium text-muted-foreground">
               Characters
             </p>
-            <h3 className="text-4xl font-semibold tracking-tight text-foreground">
+            <p className="text-4xl font-semibold tracking-tight text-foreground">
               {characterCount}
-            </h3>
+            </p>
           </div>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-50 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400">
             <svg
@@ -83,9 +83,9 @@ export function StatsCards({
             <p className="mb-1 text-sm font-medium text-muted-foreground">
               Locations
             </p>
-            <h3 className="text-4xl font-semibold tracking-tight text-foreground">
+            <p className="text-4xl font-semibold tracking-tight text-foreground">
               {locationCount}
-            </h3>
+            </p>
           </div>
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-50 text-pink-600 dark:bg-pink-500/20 dark:text-pink-400">
             <svg
