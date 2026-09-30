@@ -148,6 +148,12 @@ def guard_command(entry, base_env):
     raise ValueError(f'no guard command for kind {kind}')
 
 
+# Seconds to wait after a mutation is written before the guard runs, per
+# attempt. Unit guards run at once; an E2E guard gets 4s, then 20s if the
+# first attempt stayed green.
+E2E_WAITS = (4, 20)
+
+
 def run_code_mutation(entry, base_env):
     path = os.path.join(ROOT, entry['file'])
     source = open(path).read()
@@ -174,10 +180,18 @@ def run_code_mutation(entry, base_env):
     try:
         with open(path, 'w') as handle:
             handle.write(mutated)
-        if entry['kind'] == 'e2e':
-            time.sleep(4)  # let the dev server pick the change up
         cmd, cwd, env = guard_command(entry, base_env)
-        code, output = run(cmd, cwd, env)
+        # An E2E guard mutates a file under a running dev server, and the test
+        # can start before the recompile lands and see the unmutated bundle:
+        # a random STAYED GREEN (KB-3, seen once on #290, green 12 of 12 on
+        # re-run). Nothing tells us the change was served, so a first green
+        # gets a second run after a much longer wait before it is believed.
+        waits = E2E_WAITS if entry['kind'] == 'e2e' else (0,)
+        for wait in waits:
+            time.sleep(wait)
+            code, output = run(cmd, cwd, env)
+            if code != 0:
+                break
         return ('RED' if code != 0 else 'STAYED GREEN'), output
     finally:
         shutil.copyfile(backup, path)

@@ -160,6 +160,17 @@ export function vendorUrl(vendor: Vendor, env: Env = process.env): string {
 }
 
 /**
+ * The `local` LLM provider's base URL (`LOCAL_API_URL`, or a `baseUrl` passed
+ * to the client), held to the same rules as a vendor override: http(s), a
+ * local address, no credentials, query or fragment. A bad value throws and
+ * never falls back to the default, so a typo cannot send prompts elsewhere
+ * (KB-21). The caller decides whether the sandbox is on.
+ */
+export function localApiUrl(value: string): string {
+  return localOverride('LOCAL_API_URL', value);
+}
+
+/**
  * The SDKs' own base-URL variables. Each SDK reads its variable only when it
  * is constructed without a base URL, and every construction site now passes
  * one from `vendorUrl()` (FILM-1805), so these are never used. They are named
@@ -173,8 +184,8 @@ export const SDK_BASE_URL_VARIABLES = [
 ] as const;
 
 /**
- * The variables that are set and will not be used: every `VENDOR_URL_*` while
- * the sandbox is disabled, any that names no vendor while it is enabled, and
+ * The variables that are set and will not be used: every `VENDOR_URL_*` and
+ * `LOCAL_API_URL` while the sandbox is disabled, any that names no vendor while it is enabled, and
  * any `SDK_BASE_URL_VARIABLES` at all. `apps/web/instrumentation.ts` logs
  * each as an error at server start - by name, never by value - so a deploy
  * that carries one says so instead of degrading silently.
@@ -191,6 +202,7 @@ export function ignoredVendorOverrides(env: Env = process.env) {
     .filter(
       (name) =>
         sdkVariables.has(name) ||
+        (name === 'LOCAL_API_URL' && !vendorSandboxEnabled(env)) ||
         (name.startsWith(OVERRIDE_PREFIX) &&
           (!vendorSandboxEnabled(env) || !known.has(name))),
     )

@@ -161,7 +161,11 @@ describe('queries-advanced', () => {
       });
 
       const { query, query_params } = lastQuery();
-      expect(query).toContain('quantileExact(0.5)');
+      // KB-124: the interpolating quantile, so an even count averages its two
+      // middle values; 0, not nan, when there are no rows
+      expect(query).toContain(
+        'ifNotFinite(quantileExactInclusive(0.5)(v.total_views), 0)',
+      );
       // cohort mode buckets by the video's publish date, not the metric date
       expect(query).toContain('toStartOfMonth(d.published_at)');
       expect(query_params.scopeProjectId).toBe(PROJECT);
@@ -864,7 +868,7 @@ describe('queries-advanced', () => {
       // yesterday drag down its cohort's 30-day figure.
       const { query } = lastQuery();
       expect(query).toContain(
-        'quantileExactIf(0.5)(v_30, age_days >= 30 AND ingest_lag_days < 30) as median_30',
+        'ifNotFinite(quantileExactInclusiveIf(0.5)(v_30, age_days >= 30 AND ingest_lag_days < 30), 0) as median_30',
       );
       expect(query).toContain(
         'countIf(age_days >= 30 AND ingest_lag_days < 30) as mature_count_30',
@@ -952,7 +956,7 @@ describe('queries-advanced', () => {
 
       // Cohorts are small; an approximate quantile would return a different
       // number run to run.
-      expect(lastQuery().query).toContain('quantileExactIf');
+      expect(lastQuery().query).toContain('quantileExactInclusiveIf');
       expect(lastQuery().query).not.toContain('quantileIf(');
     });
 

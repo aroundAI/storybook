@@ -1,0 +1,57 @@
+{
+  "feature": "Open known bugs fixed together (KB-21, KB-124, KB-129, KB-140)",
+  "mutations": [
+    {
+      "name": "KB-129 canon extraction records its usage under the project id",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/utils/commit-story-canon.ts",
+      "find": "        accountId,\n      },\n    });",
+      "replace": "        accountId: projectId,\n      },\n    });",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/usage-attribution.test.ts",
+      "pattern": "canon extraction"
+    },
+    {
+      "name": "KB-124 the median takes the upper middle of an even count",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "ifNotFinite(quantileExactInclusive(0.5)(v.total_views), 0)",
+      "replace": "quantileExact(0.5)(v.total_views)",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/queries-advanced.test.ts",
+      "pattern": "cohort"
+    },
+    {
+      "name": "KB-21 the local provider constructs outside a sandbox",
+      "kind": "unit",
+      "file": "packages/llm/src/providers/local.ts",
+      "find": "if (!vendorSandboxEnabled()) {",
+      "replace": "if (false as boolean) {",
+      "cwd": "packages/llm",
+      "test": "__tests__/factory.test.ts",
+      "pattern": "refuses to construct"
+    },
+    {
+      "name": "KB-21 a public LOCAL_API_URL is used as given",
+      "kind": "unit",
+      "file": "packages/llm/src/providers/local.ts",
+      "find": "? localApiUrl(config.baseUrl)",
+      "replace": "? config.baseUrl",
+      "cwd": "packages/llm",
+      "test": "__tests__/factory.test.ts",
+      "pattern": "rejects LOCAL_API_URL"
+    },
+    {
+      "name": "KB-140 create_character_with_details is gone",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/transaction-functions.test.sql",
+      "sql": "drop function public.create_character_with_details(uuid, varchar, text, jsonb, text, text, text[], text);"
+    },
+    {
+      "name": "KB-140 a failed details insert leaves the asset behind",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/transaction-functions.test.sql",
+      "sql": "create or replace function public.create_character_with_details(p_project_id uuid, p_name varchar, p_description text, p_physical_attributes jsonb, p_personality text, p_element_prompt text, p_reference_images text[], p_elevenlabs_voice_id text default null) returns uuid language plpgsql security definer set search_path = '' as $$ declare v_id uuid; begin if not exists (select 1 from public.project_members pm where pm.project_id = p_project_id and pm.user_id = auth.uid()) then raise exception 'Access denied: insufficient project permissions'; end if; insert into public.assets (project_id, type, name, description) values (p_project_id, 'character', p_name, p_description) returning id into v_id; begin insert into public.character_details (asset_id, physical_attributes, personality, element_prompt, reference_images, elevenlabs_voice_id) values (v_id, p_physical_attributes, p_personality, p_element_prompt, p_reference_images, p_elevenlabs_voice_id); exception when others then raise exception 'Failed to create character: %', sqlerrm; end; return v_id; end; $$;"
+    }
+  ]
+}

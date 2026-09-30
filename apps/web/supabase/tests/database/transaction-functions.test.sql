@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(19);
+select plan(29);
 
 -- FILM-103 (transaction functions). What each one guarantees and who may call
 -- it: optimistic locking on update_episode_with_lock, replace-all on
@@ -10,11 +10,7 @@ select plan(19);
 -- them does before it touches a row (they are SECURITY DEFINER, so RLS
 -- does not).
 --
--- create_character_with_details is covered only where it can be: a missing
--- name and a non-member. Its success path and its rollback are not tested
--- here because the function fails on every call: it writes
--- character_details.voice_asset_id, which 20251225160000 renamed to
--- elevenlabs_voice_id (KB-140). Fixture ids start with 1033.
+-- Fixture ids start with 1033.
 
 select tests.create_supabase_user('fn_owner', 'fn-owner@storybook.dev');
 select tests.create_supabase_user('fn_stranger', 'fn-stranger@storybook.dev');
@@ -53,6 +49,43 @@ select throws_like(
        '10330000-0000-4000-8000-000000000001', 'Ada', 'd', '{}'::jsonb, 'p', 'e', array['u']) $$,
   '%Access denied: insufficient project permissions',
   'someone outside the project cannot create a character in it'
+);
+
+select makerkit.authenticate_as('fn_owner');
+
+select lives_ok(
+  $$ select public.create_character_with_details(
+       '10330000-0000-4000-8000-000000000001', 'Mara', 'd', '{"age": 30}'::jsonb, 'p', 'e', array['u'], 'voice-abc') $$,
+  'a member can create a character with its details (KB-140: it failed on every call)'
+);
+
+select results_eq(
+  $$ select a.type::text, cd.elevenlabs_voice_id, cd.physical_attributes ->> 'age'
+       from public.assets a join public.character_details cd on cd.asset_id = a.id
+      where a.name = 'Mara' and a.project_id = '10330000-0000-4000-8000-000000000001' $$,
+  $$ values ('character', 'voice-abc', '30') $$,
+  'the asset and its details both exist, with the voice id and attributes'
+);
+
+-- A failure while writing the details must take the asset with it.
+set local role postgres;
+alter table public.character_details
+  add constraint fn103_no_boom check (personality is distinct from 'boom');
+select makerkit.authenticate_as('fn_owner');
+
+select throws_like(
+  $$ select public.create_character_with_details(
+       '10330000-0000-4000-8000-000000000001', 'Boom', 'd', '{}'::jsonb, 'boom', 'e', array['u']) $$,
+  'Failed to create character:%fn103_no_boom%',
+  'a failure writing the details is reported'
+);
+
+set local role postgres;
+select is(
+  (select count(*)::int from public.assets
+    where name = 'Boom' and project_id = '10330000-0000-4000-8000-000000000001'),
+  0,
+  'and the asset it had already inserted is rolled back'
 );
 
 -- ---------------------------------------------------------------------------
@@ -220,6 +253,61 @@ select throws_ok(
   $$ select * from public.get_project_generation_costs('10330000-0000-4000-8000-000000000001') $$,
   'P0001', 'Access denied: insufficient project permissions',
   'someone outside the project cannot read its generation costs'
+);
+
+-- ---------------------------------------------------------------------------
+-- soft_delete_episode
+-- ---------------------------------------------------------------------------
+set local role postgres;
+insert into public.episodes (id, project_id, number, title) values
+  ('10330000-0000-4000-8000-000000000012', '10330000-0000-4000-8000-000000000001', 2, 'To delete');
+insert into public.shots (id, episode_id, sequence_number, prompt) values
+  ('10330000-0000-4000-8000-0000000000a1', '10330000-0000-4000-8000-000000000012', 1, 'shot');
+insert into public.generation_jobs
+  (idempotency_key, account_id, project_id, job_type, provider, status, cost_cents, input_data, reference_type, reference_id)
+select 'fn103-sd-' || st, '10330000-0000-4000-8000-00000000000a', '10330000-0000-4000-8000-000000000001',
+       'video', 'kling', st, 0, '{}'::jsonb, 'shot', '10330000-0000-4000-8000-0000000000a1'
+from unnest(array['queued', 'processing', 'completed']) as st;
+
+select makerkit.authenticate_as('fn_stranger');
+select throws_ok(
+  $$ select public.soft_delete_episode('10330000-0000-4000-8000-000000000012') $$,
+  'P0001', 'Access denied: only project owners and admins can delete episodes',
+  'someone outside the project cannot delete its episode'
+);
+
+select makerkit.authenticate_as('fn_owner');
+select is(
+  public.soft_delete_episode('10330000-0000-4000-8000-000000000012'),
+  true,
+  'the owner soft-deletes the episode'
+);
+
+set local role postgres;
+select isnt(
+  (select deleted_at from public.episodes where id = '10330000-0000-4000-8000-000000000012'),
+  null,
+  'the episode is marked deleted, not removed'
+);
+
+select results_eq(
+  $$ select status::text from public.generation_jobs
+      where idempotency_key like 'fn103-sd-%' order by idempotency_key $$,
+  $$ values ('completed'), ('cancelled'), ('cancelled') $$,
+  'its queued and processing jobs are cancelled and a completed one is left alone'
+);
+
+select makerkit.authenticate_as('fn_owner');
+select is(
+  public.soft_delete_episode('10330000-0000-4000-8000-000000000012'),
+  false,
+  'deleting it again finds nothing and returns false'
+);
+
+select is(
+  public.soft_delete_episode('10330000-0000-4000-8000-0000000000ff'),
+  false,
+  'an episode that does not exist returns false'
 );
 
 select * from finish();

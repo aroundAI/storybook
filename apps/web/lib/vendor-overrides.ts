@@ -27,7 +27,7 @@ export async function reportIgnoredVendorOverrides(env: Env = process.env) {
       { name: 'vendor-overrides', ignored: overrides },
       vendorSandboxEnabled(env)
         ? 'VENDOR_URL_* set for a vendor the resolver does not know; ignored'
-        : 'VENDOR_URL_* is set but vendor overrides are disabled here (they need NODE_ENV=development or test, VENDOR_SANDBOX=1, and never run in a Lambda); ignored, real vendor hosts are in use',
+        : 'VENDOR_URL_* or LOCAL_API_URL is set but vendor overrides are disabled here (they need NODE_ENV=development or test, VENDOR_SANDBOX=1, and never run in a Lambda); ignored, real vendor hosts are in use',
     );
   }
 

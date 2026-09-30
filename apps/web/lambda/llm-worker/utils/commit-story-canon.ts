@@ -21,6 +21,8 @@ import type { Database } from '@kit/supabase/database';
 
 export interface CommitStoryCanonInput {
   projectId: string;
+  /** The account the job's LLM usage is recorded on (KB-129). */
+  accountId: string;
   episodeId: string;
   episodeNumber: number;
   season: number;
@@ -51,6 +53,7 @@ export async function commitStoryCanon(
 ): Promise<void> {
   const {
     projectId,
+    accountId,
     episodeId,
     episodeNumber,
     season,
@@ -88,6 +91,7 @@ export async function commitStoryCanon(
 
   // Step 4: Extract and commit narrative threads via LLM (non-fatal)
   await commitNarrativeThreadsViaLLM({
+    accountId,
     projectId,
     episodeId,
     storyContent,
@@ -323,11 +327,13 @@ interface LLMThreadUpdate {
  */
 async function commitNarrativeThreadsViaLLM({
   projectId,
+  accountId,
   episodeId,
   storyContent,
   supabase,
 }: {
   projectId: string;
+  accountId: string;
   episodeId: string;
   storyContent?: string;
   supabase: SupabaseClient<Database>;
@@ -390,7 +396,7 @@ async function commitNarrativeThreadsViaLLM({
       },
       context: {
         name: 'canon-extraction-auto',
-        accountId: projectId,
+        accountId,
       },
     });
 

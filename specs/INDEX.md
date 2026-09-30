@@ -307,7 +307,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-102a | [enable-rls](./phase-1-foundation/rls/FILM-102-enable-rls.yaml) | ✅ DONE | XS | FILM-101* |
 | FILM-102b | [project-policies](./phase-1-foundation/rls/FILM-102-project-policies.yaml) | ✅ DONE | M | FILM-102a |
 | FILM-102c | [account-policies](./phase-1-foundation/rls/FILM-102-account-policies.yaml) | ✅ DONE | S | FILM-102a |
-| FILM-103 | [transaction-functions](./phase-1-foundation/functions/FILM-103-transaction-functions.yaml) | 🟡 PARTIAL | M | FILM-101* |
+| FILM-103 | [transaction-functions](./phase-1-foundation/functions/FILM-103-transaction-functions.yaml) | ✅ DONE | M | FILM-101* |
 | FILM-104 | [film-studio-package](./phase-1-foundation/packages/FILM-104-film-studio-package.yaml) | 🗑️ RETIRED (5f44d0e1) | S | - |
 | FILM-105 | [assets-package](./phase-1-foundation/packages/FILM-105-assets-package.yaml) | ✅ DONE | S | - |
 | FILM-106 | [episodes-package](./phase-1-foundation/packages/FILM-106-episodes-package.yaml) | ✅ DONE | S | - |
@@ -704,7 +704,7 @@ reason when not.
 
 | Phase | Total | Draft | Partial | Deferred | Retired | Done |
 |-------|-------|-------|---------|----------|---------|------|
-| 1. Foundation | 26 | 0 | 4 | 0 | 5 | 17 |
+| 1. Foundation | 26 | 0 | 3 | 0 | 5 | 18 |
 | Cross-Cutting | 3 | 0 | 0 | 0 | 1 | 2 |
 | Design System | 5 | 0 | 3 | 0 | 1 | 1 |
 | 2. Assets | 9 | 0 | 6 | 0 | 3 | 0 |
@@ -726,7 +726,7 @@ reason when not.
 | 18. Vendor Sandbox | 6 | 1 | 4 | 0 | 0 | 1 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **233** | **18** | **78** | **2** | **53** | **82** |
+| **TOTAL** | **233** | **18** | **77** | **2** | **53** | **83** |
 
 No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose PR is open keeps the status it has on `main`.
 
@@ -734,7 +734,7 @@ No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose 
 
 | Scope | Total | Done | Partial | Retired | Draft / Deferred |
 |-------|-------|------|---------|---------|------------------|
-| MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 93 | 33 | 26 | 34 | 0 |
+| MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 93 | 34 | 25 | 34 | 0 |
 | Post-MVP (Ph 6–9) | 40 | 13 | 15 | 12 | 0 |
 | Canon (Ph 10–11) | 29 | 6 | 21 | 2 | 0 |
 | Scale & Hooks (Ph 12–13) | 4 | 2 | 0 | 2 | 0 |

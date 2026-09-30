@@ -1398,6 +1398,41 @@ async function assertions() {
     },
   );
 
+  // KB-124. quantileExact returned the upper of the two middle values for an
+  // even count; the median queries use quantileExactInclusive, which averages
+  // them, wrapped in ifNotFinite because it answers nan (not 0) for no rows.
+  await step(
+    'assert: the median of an even count averages the middle two, and of no rows is 0',
+    async () => {
+      const result = await getClickHouseClient().query({
+        query: `
+          SELECT
+            (SELECT ifNotFinite(quantileExactInclusive(0.5)(v), 0)
+               FROM (SELECT arrayJoin([1000, 3000]) AS v)) AS even_median,
+            (SELECT ifNotFinite(quantileExactInclusiveIf(0.5)(v, v > 0), 0)
+               FROM (SELECT arrayJoin([1000, 2000, 9000]) AS v)) AS odd_median,
+            (SELECT ifNotFinite(quantileExactInclusive(0.5)(v), 0)
+               FROM (SELECT arrayJoin([1000, 3000]) AS v) WHERE 0) AS empty_median`,
+        format: 'JSONEachRow',
+      });
+      const [row] = await result.json<{
+        even_median: number;
+        odd_median: number;
+        empty_median: number;
+      }>();
+
+      if (
+        Number(row?.even_median) !== 2000 ||
+        Number(row?.odd_median) !== 2000 ||
+        Number(row?.empty_median) !== 0
+      ) {
+        throw new Error(`unexpected medians ${JSON.stringify(row)}`);
+      }
+
+      return 'even 2000, odd 2000, empty 0';
+    },
+  );
+
   await step('assert: latest snapshot resolves', async () => {
     const snaps = await queryLatestSnapshots({
       videoIds: [NORMAL],

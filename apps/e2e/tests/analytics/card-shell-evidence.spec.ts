@@ -34,7 +34,7 @@ import { byTest, visible } from '../utils/visible';
  * | Platform Split           | both videos on YouTube                   | 100%   |
  * | Gender                   | 60/40 on 1,000 views, 20/80 on 3,000     | 70% (women: 400 + 2,400 of 4,000) |
  * | Top Regions              | IN 300 + 2,700 of 4,000 country views    | 75%    |
- * | Median views per video   | two videos, same month: 1,000 and 3,000  | 3.0K — `quantileExact(0.5)` takes the upper middle of an even count, not the average of the two |
+ * | Median views per video   | two videos, same month: 1,000 and 3,000  | 2.0K — `quantileExactInclusive(0.5)` averages the two middle values of an even count (KB-124) |
  * | Browse + Suggested share | last full week: 700 of 1,000             | 70%    |
  * | Where views came from    | the same rows over the window            | 70%    |
  */
@@ -45,7 +45,7 @@ const EXPECTED = {
   'Platform Split': '100%',
   Gender: '70%',
   'Top Regions': '75%',
-  'Median views per video': '3.0K',
+  'Median views per video': '2.0K',
   'Browse + Suggested share': '70%',
   'Where views came from': '70%',
 } as const;
