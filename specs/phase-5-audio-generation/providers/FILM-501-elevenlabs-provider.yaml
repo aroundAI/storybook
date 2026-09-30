@@ -79,7 +79,7 @@ acceptance_criteria:
     reason: "not met — nothing checks the key before a request; the base class only stores the config (`packages/features/audio-generation/src/providers/base.ts:127`)"
   - text: "Voice generation completes within 30 seconds"
     met: false
-    reason: "unverified — runtime timing against ElevenLabs; each attempt times out at 30 s by default (`packages/features/audio-generation/src/lib/http.ts:14`)"
+    reason: "owner check OC-10 (docs/OWNER-CHECKS.md) — runtime timing against ElevenLabs; each attempt times out at 30 s by default (`packages/features/audio-generation/src/lib/http.ts:14`)"
   - text: "Provider supports concurrent requests (up to 10)"
     met: true
     evidence: "packages/features/audio-generation/__tests__/elevenlabs-provider.test.ts:95"

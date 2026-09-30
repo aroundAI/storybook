@@ -130,7 +130,7 @@ acceptance_criteria:
     evidence: "focusable role=\"button\" root with react-dropzone key handling (packages/features/assets/src/components/image-uploader/ImageDropzone.tsx:77, :91-94)"
   - text: "Screen reader announces upload status"
     met: false
-    reason: "unverified — live region while uploading (packages/features/assets/src/components/image-uploader/ImageUploadProgress.tsx:43-44), alert on error; success unannounced"
+    reason: "owner check OC-8 (docs/OWNER-CHECKS.md) — live region while uploading (packages/features/assets/src/components/image-uploader/ImageUploadProgress.tsx:43-44), alert on error; success unannounced"
   - text: "Focus visible on interactive elements"
     met: false
     reason: "not met — zoom and remove sit in an opacity-0 overlay shown only on hover (packages/features/assets/src/components/image-uploader/ImagePreview.tsx:77)"

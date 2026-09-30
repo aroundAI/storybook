@@ -64,7 +64,7 @@ test_plan:
       reason: "part: sign-in and the studio sidebar are driven by keyboard alone (apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts); the rest of the product is not"
     - text: "Test with screen reader (VoiceOver/NVDA)"
       met: false
-      reason: "not met — no test or recorded pass found"
+      reason: "owner check OC-8 (docs/OWNER-CHECKS.md) — needs VoiceOver on a Mac; no automated test can hear it"
     - text: "Verify focus order is logical"
       met: false
       reason: "part: the sign-in form is checked email, then password, then submit (apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts); other pages are not"
@@ -76,7 +76,7 @@ test_plan:
       evidence: "apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts:1"
     - text: "Test with high contrast mode"
       met: false
-      reason: "not met — no test or recorded pass found"
+      reason: "owner check OC-9 (docs/OWNER-CHECKS.md) — needs the operating system setting turned on"
 remaining:
   - criterion: "All interactive elements are keyboard accessible"
     reason: >

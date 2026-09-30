@@ -18,7 +18,7 @@ summary: >
 acceptance_criteria:
   - text: "Producer role plans valid episode rundowns"
     met: false
-    reason: "unverified — LLM output used unvalidated (`packages/features/episodes/src/lib/server/services/producer-service.ts:137`); no test or eval"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM output used unvalidated (`packages/features/episodes/src/lib/server/services/producer-service.ts:137`); no test or eval"
   - text: "Segments are ordered by priority"
     met: false
     reason: "unverified — prompt rule only (`producer-role.json`); the service never sorts the rundown; no test"

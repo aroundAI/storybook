@@ -425,6 +425,9 @@ jobs:
       - name: Unchanged-code classifier - table test
         run: bash scripts/ci/code-patch-unchanged.test.sh
 
+      - name: Local CI stop.sh - process tree test
+        run: bash scripts/ci/local-ci-stop.test.sh
+
       # One list, shared with both deploy workflows: scripts/test-units.sh.
       - name: Run Unit Tests
         run: bash scripts/test-units.sh

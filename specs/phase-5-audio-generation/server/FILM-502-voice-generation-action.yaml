@@ -98,7 +98,7 @@ acceptance_criteria:
     evidence: "the async action reads the line through the user's client (`packages/features/audio-generation/src/server/voice-actions.ts:459`) before queueing; the worker then runs as service role"
   - text: "Actions complete within 60 seconds (timeout configured)"
     met: false
-    reason: "unverified — runtime timing; the action only queues, and the worker's limit is 5 minutes (`sst.config.ts:907`)"
+    reason: "owner check OC-10 (docs/OWNER-CHECKS.md) — runtime timing; the action only queues, and the worker's limit is 5 minutes (`sst.config.ts:907`)"
   - text: "Database updates use generation_jobs for tracking"
     met: false
     reason: "no longer true — the live path writes no `generation_jobs` row (see the cost item above)"

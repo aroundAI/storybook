@@ -26,7 +26,7 @@ server_action:
 acceptance_criteria:
   - text: "`generateStoryIdeasAction` generates 3-5 story ideas from premise"
     met: false
-    reason: "unverified — the count (1–5, `packages/features/episodes/src/lib/schemas/story.schema.ts:20`) is asked of an LLM agent; nothing enforces or tests it"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — the count (1–5, `packages/features/episodes/src/lib/schemas/story.schema.ts:20`) is asked of an LLM agent; nothing enforces or tests it"
   - text: "`generateStoryIdeasAction` validates output with Zod schema"
     met: true
     evidence: null
@@ -35,7 +35,7 @@ acceptance_criteria:
     reason: "no longer true — the ideation result reports `costCents: 0` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:128`); only per-call analytics carry cost"
   - text: "`generateStoryIdeasAction` completes within 15 seconds"
     met: false
-    reason: "unverified — runtime timing of an async agent job; needs a timed run"
+    reason: "owner check OC-10 (docs/OWNER-CHECKS.md) — runtime timing of an async agent job; needs a timed run"
   - text: "`generateFullStoryAction` generates 500-1000 word story"
     met: false
     reason: "retired — length now scales with target duration (`apps/web/lambda/llm-worker/handlers/story-generation.ts:236`)"
@@ -53,7 +53,7 @@ acceptance_criteria:
     reason: "no longer true — version checked only when queueing (`packages/features/episodes/src/server/story-actions.ts:185`); the worker's write drops the guard (f64c9648)"
   - text: "`generateFullStoryAction` completes within 30 seconds"
     met: false
-    reason: "unverified — runtime timing of an async agent job; needs a timed run"
+    reason: "owner check OC-10 (docs/OWNER-CHECKS.md) — runtime timing of an async agent job; needs a timed run"
   - text: "All actions enforce authentication"
     met: true
     evidence: null
@@ -74,7 +74,7 @@ acceptance_criteria:
     evidence: null
   - text: "Tracks costs accurately"
     met: false
-    reason: "unverified — per-call cost is logged (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:677`) from `packages/llm/src/pricing.ts`; rates not checked against vendor prices"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — per-call cost is logged (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:677`) from `packages/llm/src/pricing.ts`; rates not checked against vendor prices"
   - text: "TypeScript compiles without errors"
     met: true
     evidence: "`pnpm typecheck` runs `web`'s `typecheck`, whose second half is `tsc --noEmit -p lambda/tsconfig.json` (`apps/web/package.json:23`); that config includes every worker file (`apps/web/lambda/tsconfig.json:23`) and CI's TypeScript job runs it (`.github/workflows/workflow.yml:94`) — KB-14, #309. Passes on `main` at `b21bd33e` (KB-80), with `@kit/episodes`' own `tsc --noEmit`; `handlers/story-ideation.ts` and `handlers/story-generation.ts` are in the lambda program"

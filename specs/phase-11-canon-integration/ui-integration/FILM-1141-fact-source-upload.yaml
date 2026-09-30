@@ -18,8 +18,8 @@ acceptance_criteria:
     met: false
     reason: "unverified — parsers wired (`packages/features/episodes/src/lib/server/pdf-extractor.ts:58`, `:77`); no test uploads a file; read-only audit"
   - text: "URL fetch extracts text content"
-    met: false
-    reason: "unverified — HTML stripping at `packages/features/episodes/src/server/source-upload-actions.ts:192`; no test; needs a live fetch"
+    met: true
+    evidence: "packages/features/episodes/__tests__/fetch-url-content.test.ts:64"
   - text: "API sources can be configured with categories"
     met: true
     evidence: null
@@ -31,7 +31,7 @@ acceptance_criteria:
     reason: "no longer true — extraction is queued; the dialog reports done with 0 facts (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/upload-source-dialog.tsx:247`); `ExtractionStatusBanner` is never rendered"
   - text: "Extracted facts appear in Facts list"
     met: false
-    reason: "unverified — worker inserts into `verified_facts` (`apps/web/lambda/llm-worker/handlers/fact-extraction.ts:92`); needs a queued job run end to end"
+    reason: "owner check OC-7 (docs/OWNER-CHECKS.md) — worker inserts into `verified_facts` (`apps/web/lambda/llm-worker/handlers/fact-extraction.ts:92`); needs a queued job run end to end"
   - text: "Source credibility tier is stored"
     met: true
     evidence: null

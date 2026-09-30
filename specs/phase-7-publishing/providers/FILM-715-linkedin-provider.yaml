@@ -56,7 +56,7 @@ provider:
 acceptance_criteria:
   - text: "OAuth 2.0 connection flow works for personal accounts"
     met: false
-    reason: "unverified — the Platforms page now has a LinkedIn card (KB-86, #343), and Connect is driven as far as LinkedIn's consent screen (a local stand-in, with our client id and the personal scopes — `apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts`); the callback's success path is not driven, and no live connect has run (FILM-1725 Check I). Refresh is fixed by KB-29 (`packages/features/publishing/__tests__/token-refresh.test.ts:426`)"
+    reason: "owner check OC-5 (docs/OWNER-CHECKS.md) — the Platforms page now has a LinkedIn card (KB-86, #343), and Connect is driven as far as LinkedIn's consent screen (a local stand-in, with our client id and the personal scopes — `apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts`); the callback's success path is not driven, and no live connect has run (FILM-1725 Check I). Refresh is fixed by KB-29 (`packages/features/publishing/__tests__/token-refresh.test.ts:426`)"
   - text: "OAuth 2.0 connection flow works for company pages"
     met: false
     reason: "no longer true — company connect stores the member URN (`apps/web/app/api/platforms/callback/linkedin/route.ts:174`); no organization is chosen; no UI offers `type=company`, and the LinkedIn card says personal profiles only (KB-86)"
@@ -77,7 +77,7 @@ acceptance_criteria:
     reason: "no longer true — `deletePost` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:346`) has no caller; unpublish skips LinkedIn (`apps/web/lambda/publish-worker/index.ts:237-242`)"
   - text: "Video duration validation (10 min personal, 15 min company)"
     met: false
-    reason: "no longer true — only the never-mounted `LinkedInComposer` checks duration (`packages/features/publishing/src/components/linkedin-composer.tsx:42`); the provider checks size (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:45`)"
+    reason: "retired — owner decision 2026-09-30: the limits stay declared constants; LinkedIn rejects a too-long video itself"
 test_plan:
   unit:
     - text: "Test character counting"
@@ -85,10 +85,10 @@ test_plan:
       evidence: "packages/features/publishing/__tests__/linkedin-provider.test.ts:96"
     - text: "Test hashtag extraction"
       met: false
-      reason: "not built: the LinkedIn provider has no hashtag extraction"
+      reason: "retired — owner decision 2026-09-30: LinkedIn posts are not scanned for hashtags, and no feature depends on it"
     - text: "Test video duration validation for personal vs company"
       met: false
-      reason: "not built: the LinkedIn duration limits are constants that nothing enforces"
+      reason: "retired — owner decision 2026-09-30: the feature is retired"
   integration:
     - text: "Test OAuth flow with mock API"
       met: false
@@ -115,9 +115,6 @@ remaining:
     closed_by: "unassigned"
   - criterion: "Delete post functionality"
     reason: "`deletePost` has no caller; unpublish skips LinkedIn at the vendor (`apps/web/lambda/publish-worker/index.ts:237-242`)"
-    closed_by: "unassigned"
-  - criterion: "Video duration validation"
-    reason: "Only the never-mounted `LinkedInComposer` checks it"
     closed_by: "unassigned"
 open_questions: []
 notes: |

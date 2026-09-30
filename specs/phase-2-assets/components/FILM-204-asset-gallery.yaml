@@ -103,7 +103,7 @@ acceptance_criteria:
     reason: "unverified — Radix tabs and menus take keys; no keyboard-only test exists"
   - text: "Screen reader announces tabs and cards"
     met: false
-    reason: "unverified — needs a screen-reader run"
+    reason: "owner check OC-8 (docs/OWNER-CHECKS.md) — needs a screen-reader run"
   - text: "Focus visible on interactive elements"
     met: false
     reason: "not met — the card menu button sits in an opacity-0 wrapper shown only on hover (packages/features/assets/src/components/asset-card.tsx:258)"
