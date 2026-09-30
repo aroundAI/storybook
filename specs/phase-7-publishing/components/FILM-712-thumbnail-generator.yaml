@@ -3,7 +3,7 @@ title: "Thumbnail Generator"
 phase: 7
 phase_name: "Publishing"
 category: component
-status: PARTIAL
+status: RETIRED
 audited: "2026-09-23"
 effort: M
 dependencies:
@@ -77,35 +77,24 @@ test_plan:
       met: false
       reason: "not built: no thumbnail generator code exists (no frame extraction, overlay, size configuration or AI enhancement), so there is nothing to test"
   e2e: []
-remaining:
-  - criterion: "Extract 12 key frames"
-    reason: "Never built: none of the spec's files under `packages/features/publishing/src/` (`components/thumbnail-generator.tsx`, `server/thumbnail-actions.ts`, `lib/image-processing.ts`) nor its `thumbnails` table ever existed. What exists is one uploaded thumbnail per language (`episode_thumbnails`, via `packages/features/episodes/src/server/thumbnail-actions.ts`)"
-    closed_by: "owner"
-  - criterion: "Face detection"
-    reason: "Never built for thumbnails; the only `detectFacesAction` is a stub in the retired lip-sync feature that returns an empty list"
-    closed_by: "owner"
-  - criterion: "Platform-specific sizes"
-    reason: "Never built; thumbnails are per language, not per platform"
-    closed_by: "owner"
-  - criterion: "Text overlay"
-    reason: "Never built for thumbnails (the edit suite's text overlays applied to video; retired with FILM-607)"
-    closed_by: "owner"
-  - criterion: "AI enhancement"
-    reason: "Never built"
-    closed_by: "owner"
-  - criterion: "AI generation from a prompt"
-    reason: "Never built"
-    closed_by: "owner"
-  - criterion: "Download thumbnails"
-    reason: "Not reachable: the only thumbnail download is in the never-rendered `UploadOnlyMode` (`packages/features/publishing/src/components/upload-only-mode.tsx:197`; see FILM-713)"
-    closed_by: "owner"
+retirement:
+  commit: "#487"
+  date: "2026-09-30"
+  what_happened: >-
+    Never built. None of the spec's files under `packages/features/publishing/src/`
+    (`components/thumbnail-generator.tsx`, `server/thumbnail-actions.ts`, the frame,
+    size, overlay and enhancement libraries) exist, and no other code extracts frames,
+    detects faces, sizes a thumbnail per platform or overlays text. Thumbnails are
+    uploaded per language. The owner decided on 2026-09-30 not to build it.
+  replacement: null
+remaining: []
 open_questions: []
 notes: |
   ## Metadata
   - **Phase:** 7 - Publishing
   - **Priority:** P1 (Post-MVP Enhancement)
   - **Effort:** M (4-8 hours)
-  - **Status:** 🟡 PARTIAL (audit 2026-09-23; was ✅ DONE)
+  - **Status:** 🗑️ RETIRED (owner, 2026-09-30; never built)
   - **Dependencies:** FILM-708 (Publish Hub), FILM-401 (Kling Provider)
   - **Blocks:** None
 

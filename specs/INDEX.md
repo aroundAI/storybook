@@ -438,7 +438,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-709 | [platform-selector](./phase-7-publishing/components/FILM-709-platform-selector.yaml) | 🗑️ RETIRED (baa752eb) | M | FILM-708 |
 | FILM-710 | [metadata-editor](./phase-7-publishing/components/FILM-710-metadata-editor.yaml) | 🗑️ RETIRED (baa752eb) | M | FILM-708 |
 | FILM-711 | [shorts-clipper](./phase-7-publishing/components/FILM-711-shorts-clipper.yaml) | 🗑️ RETIRED (baa752eb) | L | FILM-708 |
-| FILM-712 | [thumbnail-generator](./phase-7-publishing/components/FILM-712-thumbnail-generator.yaml) | 🟡 PARTIAL | M | FILM-708 |
+| FILM-712 | [thumbnail-generator](./phase-7-publishing/components/FILM-712-thumbnail-generator.yaml) | 🗑️ RETIRED (#487) | M | FILM-708 |
 | FILM-713 | [upload-only-mode](./phase-7-publishing/components/FILM-713-upload-only-mode.yaml) | 🟡 PARTIAL | M | FILM-701-704 |
 | FILM-714 | [twitter-provider](./phase-7-publishing/providers/FILM-714-twitter-provider.yaml) | 🟡 PARTIAL | M | FILM-708 |
 | FILM-715 | [linkedin-provider](./phase-7-publishing/providers/FILM-715-linkedin-provider.yaml) | 🟡 PARTIAL | M | FILM-708 |
@@ -712,7 +712,7 @@ reason when not.
 | 4. Video Gen | 14 | 0 | 2 | 0 | 12 | 0 |
 | 5. Audio Gen | 17 | 0 | 4 | 0 | 9 | 4 |
 | 6. Edit Suite | 8 | 0 | 0 | 0 | 6 | 2 |
-| 7. Publishing | 16 | 0 | 7 | 0 | 3 | 6 |
+| 7. Publishing | 16 | 0 | 6 | 0 | 4 | 6 |
 | 8. Analytics | 10 | 0 | 7 | 0 | 0 | 3 |
 | 9. Integration | 6 | 0 | 1 | 0 | 3 | 2 |
 | 10. Canon Mgmt | 7 | 0 | 4 | 0 | 1 | 2 |
@@ -726,7 +726,7 @@ reason when not.
 | 18. Vendor Sandbox | 6 | 1 | 4 | 0 | 0 | 1 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **233** | **18** | **77** | **2** | **53** | **83** |
+| **TOTAL** | **233** | **18** | **76** | **2** | **54** | **83** |
 
 No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose PR is open keeps the status it has on `main`.
 
@@ -735,7 +735,7 @@ No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose 
 | Scope | Total | Done | Partial | Retired | Draft / Deferred |
 |-------|-------|------|---------|---------|------------------|
 | MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 93 | 34 | 25 | 34 | 0 |
-| Post-MVP (Ph 6–9) | 40 | 13 | 15 | 12 | 0 |
+| Post-MVP (Ph 6–9) | 40 | 13 | 14 | 13 | 0 |
 | Canon (Ph 10–11) | 29 | 6 | 21 | 2 | 0 |
 | Scale & Hooks (Ph 12–13) | 4 | 2 | 0 | 2 | 0 |
 | Edit Suite v2 (Ph 14) | 1 | 0 | 0 | 1 | 0 |

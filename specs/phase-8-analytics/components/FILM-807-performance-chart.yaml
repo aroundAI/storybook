@@ -66,7 +66,7 @@ test_plan:
   unit:
     - text: "Test data transformation for chart format"
       met: false
-      reason: "not built: the chart passes its DailyMetric rows to recharts unchanged, so there is no transformation to test"
+      reason: "retired — owner decision 2026-09-30: the chart takes its rows as they are; there is no transformation"
     - text: "Test platform color mapping"
       met: true
       evidence: "packages/features/content-analytics/__tests__/csv-and-platform-colors.test.ts:118"

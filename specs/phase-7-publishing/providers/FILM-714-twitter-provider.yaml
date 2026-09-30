@@ -56,7 +56,7 @@ acceptance_criteria:
     reason: "not met — no composer (`twitter-composer.tsx` never existed); the provider only rejects text over 280 (`packages/features/publishing/src/providers/twitter/twitter-provider.ts:36`)"
   - text: "Hashtag and mention tracking"
     met: false
-    reason: "not met — no hashtag or mention handling in any X code"
+    reason: "retired — owner decision 2026-09-30: X posts are not scanned for hashtags or mentions, and no feature depends on it"
   - text: "Analytics retrieval (views, likes, retweets, replies)"
     met: false
     reason: "not met — no X metrics are read anywhere (`public_metrics` appears nowhere); FILM-1727 is DRAFT"
@@ -65,7 +65,7 @@ acceptance_criteria:
     reason: "not met — the provider has no delete; unpublish skips X (`apps/web/lambda/publish-worker/index.ts:238-242`)"
   - text: "Video duration validation"
     met: false
-    reason: "not met — `TWITTER_CONSTRAINTS.maxDuration` (`packages/features/publishing/src/providers/twitter/types.ts:50`) is never read"
+    reason: "retired — owner decision 2026-09-30: the 140-second limit stays a declared constant; X rejects a too-long video itself"
 test_plan:
   unit:
     - text: "Test character counting"
@@ -73,10 +73,10 @@ test_plan:
       evidence: "packages/features/publishing/__tests__/twitter-provider.test.ts:198"
     - text: "Test hashtag/mention extraction"
       met: false
-      reason: "not built: the X provider has no hashtag or mention extraction"
+      reason: "retired — owner decision 2026-09-30: the feature is retired"
     - text: "Test video duration validation"
       met: false
-      reason: "not built: the X duration limit is a constant that nothing enforces"
+      reason: "retired — owner decision 2026-09-30: the feature is retired"
   integration:
     - text: "Test OAuth flow with mock API"
       met: true
@@ -98,17 +98,11 @@ remaining:
   - criterion: "Tweet composition with character limit"
     reason: "No composer exists; the provider only rejects text over 280 characters"
     closed_by: "unassigned"
-  - criterion: "Hashtag and mention tracking"
-    reason: "Not implemented for X (only LinkedIn's post editor counts hashtags)"
-    closed_by: "unassigned"
   - criterion: "Analytics retrieval"
     reason: "No X metrics are read anywhere"
     closed_by: "FILM-1727"
   - criterion: "Delete tweet functionality"
     reason: "The provider has no delete, and unpublish skips X at the vendor (`apps/web/lambda/publish-worker/index.ts:238-242`)"
-    closed_by: "unassigned"
-  - criterion: "Video duration validation"
-    reason: "The 140-second limit is declared and never checked"
     closed_by: "unassigned"
 open_questions: []
 notes: |

@@ -66,7 +66,7 @@ test_plan:
       evidence: "`apps/e2e/tests/platform-connections/connect-failure.spec.ts:139`, `apps/e2e/tests/platform-connections/connect-failure.spec.ts:185`"
     - text: "Test page selection logic"
       met: false
-      reason: "not met — no test found"
+      reason: "retired — owner decision 2026-09-30: every Page Meta returns is connected; an in-app Page choice is not wanted"
   integration:
     - text: "Test OAuth flow with mocked Meta endpoints"
       met: false
