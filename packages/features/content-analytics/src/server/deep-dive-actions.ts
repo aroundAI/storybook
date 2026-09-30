@@ -21,7 +21,10 @@ import { getLogger } from '@kit/shared/logger';
 import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import { subscribedSplit } from '../lib/returning-viewer-proxy';
+import {
+  subscribedShareSeries,
+  subscribedSplit,
+} from '../lib/returning-viewer-proxy';
 import { latestJoinDate } from '../lib/schemas/settings.schema';
 // Out of this file because it is `'use server'`: every export of such a
 // module must be an async function, so a schema with a synchronous
@@ -381,7 +384,8 @@ export const getReturningViewerProxyAction = enhanceAction(
   async ({ scope }) => {
     await assertScopeAccess(scope);
 
-    const { queryAudienceRows } = await import('@kit/clickhouse/server');
+    const { queryAudienceRows, queryFollowerStatusByUploadMonth } =
+      await import('@kit/clickhouse/server');
     const { getSupabaseServerClient: getClient } = await import(
       '@kit/supabase/server-client'
     );
@@ -418,9 +422,14 @@ export const getReturningViewerProxyAction = enhanceAction(
       ...(scope.projectId ? { projectIds: [scope.projectId] } : {}),
       dimension: 'follower_status',
     });
+    const months = await queryFollowerStatusByUploadMonth({
+      videoIds: publishIds,
+      ...(scope.projectId ? { projectIds: [scope.projectId] } : {}),
+    });
 
     return {
       ...subscribedSplit(rows),
+      trend: subscribedShareSeries(months),
       isProxy: true as const,
     };
   },

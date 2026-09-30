@@ -49,6 +49,7 @@ import {
   queryDailyTimeSeries,
   queryDailyTimeSeriesByPlatform,
   queryDataDaysForVideos,
+  queryFollowerStatusByUploadMonth,
   queryLanguagePairs,
   queryLatestSnapshots,
   queryLatestSubscriberLevels,
@@ -2933,6 +2934,24 @@ async function handComputedSteps() {
         views: 150,
         percentage: 75,
       },
+      {
+        project_id: HAND_PROJECT,
+        video_id: 'hand-d',
+        platform: 'youtube' as const,
+        dimension: 'follower_status',
+        key: 'subscribed',
+        views: 30,
+        percentage: 30,
+      },
+      {
+        project_id: HAND_PROJECT,
+        video_id: 'hand-d',
+        platform: 'youtube' as const,
+        dimension: 'follower_status',
+        key: 'not_subscribed',
+        views: 70,
+        percentage: 70,
+      },
     ]);
   });
 
@@ -3218,6 +3237,54 @@ async function handComputedSteps() {
       expectClose('share', 350 / (350 + 850), 0.291666666);
 
       return 'subscribed 350 of 1200';
+    },
+  );
+
+  await step(
+    'assert: the subscribed share by upload month is by hand',
+    async () => {
+      const months = await queryFollowerStatusByUploadMonth({
+        videoIds: HAND_VIDEOS.map((video) => video.id),
+        projectIds: [HAND_PROJECT],
+      });
+      const byMonth = Object.fromEntries(months.map((m) => [m.month, m]));
+
+      // 2025-11: hand-e only, uploaded that month, no follower-status row.
+      //   1 video, 0 with a split, 0 + 0 views: no denominator, so the
+      //   share is unknowable, not 0%.
+      expectEqual('nov', byMonth['2025-11-01'], {
+        month: '2025-11-01',
+        videoCount: 1,
+        videosWithSplit: 0,
+        subscribedViews: 0,
+        notSubscribedViews: 0,
+      });
+      // 2026-01: hand-a 300/700, hand-b 50/150, hand-c no row.
+      //   3 videos, 2 with a split; subscribed 300 + 50 = 350,
+      //   not subscribed 700 + 150 = 850; 350 / 1200 = 0.2917.
+      expectEqual('jan', byMonth['2026-01-01'], {
+        month: '2026-01-01',
+        videoCount: 3,
+        videosWithSplit: 2,
+        subscribedViews: 350,
+        notSubscribedViews: 850,
+      });
+      // 2026-02: hand-d 30/70. 30 / 100 = 0.30.
+      expectEqual('feb', byMonth['2026-02-01'], {
+        month: '2026-02-01',
+        videoCount: 1,
+        videosWithSplit: 1,
+        subscribedViews: 30,
+        notSubscribedViews: 70,
+      });
+      // December 2025 has no upload, so no row: the helper fills that gap.
+      expectEqual(
+        'months',
+        months.map((m) => m.month),
+        ['2025-11-01', '2026-01-01', '2026-02-01'],
+      );
+
+      return 'nov none · jan 350/1200 · feb 30/100';
     },
   );
 

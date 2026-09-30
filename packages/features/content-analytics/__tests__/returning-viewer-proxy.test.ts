@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { returningViewerClaim } from '../src/components/deep-dive/returning-viewer-proxy-card';
 import { rolling90Claim } from '../src/components/deep-dive/rolling-90-card';
 import { CAUSAL_VOCABULARY } from '../src/components/overview/card-claim';
-import { subscribedSplit } from '../src/lib/returning-viewer-proxy';
+import {
+  measurableRuns,
+  subscribedShareSeries,
+  subscribedSplit,
+} from '../src/lib/returning-viewer-proxy';
 
 describe('subscribedSplit', () => {
   it('shares subscribed views over all views, from the counts', () => {
@@ -25,6 +29,60 @@ describe('subscribedSplit', () => {
     expect(
       subscribedSplit([{ key: 'subscribed', views: 0 }]).subscribedShare,
     ).toBeNull();
+  });
+});
+
+const month = (
+  name: string,
+  subscribedViews: number,
+  notSubscribedViews: number,
+) => ({
+  month: name,
+  videoCount: 1,
+  videosWithSplit: subscribedViews + notSubscribedViews > 0 ? 1 : 0,
+  subscribedViews,
+  notSubscribedViews,
+});
+
+describe('subscribedShareSeries', () => {
+  it('shares each month over its own counts and gaps the empty ones', () => {
+    const series = subscribedShareSeries([
+      month('2026-02-01', 30, 70),
+      month('2025-11-01', 0, 0),
+      month('2026-01-01', 350, 850),
+    ]);
+
+    expect(series.map((m) => m.month)).toEqual([
+      '2025-11-01',
+      '2025-12-01',
+      '2026-01-01',
+      '2026-02-01',
+    ]);
+    // Nov has a video but no views; Dec has no upload: both unmeasured.
+    expect(series.map((m) => m.subscribedShare)).toEqual([
+      null,
+      null,
+      350 / 1200,
+      0.3,
+    ]);
+  });
+
+  it('is empty when there are no months', () => {
+    expect(subscribedShareSeries([])).toEqual([]);
+  });
+});
+
+describe('measurableRuns', () => {
+  it('breaks the line at a null month instead of joining across it', () => {
+    const series = subscribedShareSeries([
+      month('2026-01-01', 50, 50),
+      month('2026-03-01', 100, 0),
+    ]);
+    const runs = measurableRuns(series, 200, 100);
+
+    expect(runs).toHaveLength(2);
+    expect(runs[0]).toEqual([{ month: '2026-01-01', x: 0, y: 50 }]);
+    expect(runs[1]).toEqual([{ month: '2026-03-01', x: 200, y: 0 }]);
   });
 });
 

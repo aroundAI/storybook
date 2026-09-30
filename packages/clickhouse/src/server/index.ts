@@ -36,6 +36,7 @@ export {
   queryAudienceRows,
   queryDailyReachForVideos,
   queryDataDaysForVideos,
+  queryFollowerStatusByUploadMonth,
   queryNetSubscribersForVideos,
   queryQualityMetricsForVideos,
   queryRetentionCurve,
@@ -45,6 +46,7 @@ export {
 export type {
   DailyReachRow,
   DataDaySource,
+  FollowerStatusMonth,
   RetentionPoint,
   VideoQualityMetrics,
   VideoSubscriberTotals,
