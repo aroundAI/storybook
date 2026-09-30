@@ -106,6 +106,7 @@
     "./bordered-navigation-menu": "./src/makerkit/bordered-navigation-menu.tsx",
     "./spinner": "./src/makerkit/spinner.tsx",
     "./page": "./src/makerkit/page.tsx",
+    "./skip-to-content": "./src/makerkit/skip-to-content.tsx",
     "./image-uploader": "./src/makerkit/image-uploader.tsx",
     "./global-loader": "./src/makerkit/global-loader.tsx",
     "./auth-change-listener": "./src/makerkit/auth-change-listener.tsx",

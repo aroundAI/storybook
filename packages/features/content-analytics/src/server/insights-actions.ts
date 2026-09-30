@@ -74,6 +74,7 @@ const AggregateAnalyticsSchema = z
 const GenerateInsightsSchema = z.object({
   projectId: z.string().uuid(),
   analytics: AggregateAnalyticsSchema,
+  refresh: z.boolean().optional(),
 });
 
 /**
@@ -98,6 +99,7 @@ const generateInsights = enhanceAction(
   async function ({
     projectId,
     analytics,
+    refresh,
   }): Promise<InsightsResult & { queued?: boolean }> {
     const logger = await getLogger();
     const ctx = { name: 'analytics.generateInsights' };
@@ -146,6 +148,7 @@ const generateInsights = enhanceAction(
         projectId,
         analytics,
         userId: user.id,
+        refresh,
       },
     });
 

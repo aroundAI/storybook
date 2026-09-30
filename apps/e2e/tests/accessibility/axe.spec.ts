@@ -1,7 +1,12 @@
 import AxeBuilder from '@axe-core/playwright';
 import { Page, expect, test } from '@playwright/test';
 
-import { SeededTeam, seedProject, seedTeamAccount } from '../utils/seed';
+import {
+  SeededTeam,
+  seedEpisodeWorkspace,
+  seedProject,
+  seedTeamAccount,
+} from '../utils/seed';
 import { signInAs } from '../utils/session';
 
 /**
@@ -171,6 +176,43 @@ test.describe('Accessibility: the studio', () => {
     test(`${studioPage.name} has a sound page structure`, async ({ page }) => {
       await signInAs(page, team);
       await page.goto(studioPage.path());
+      await expectStructure(page);
+    });
+  }
+});
+
+test.describe('Accessibility: the studio with an episode in it', () => {
+  let team: SeededTeam;
+  let episodePath = '';
+
+  test.beforeAll(async () => {
+    team = await seedTeamAccount({ emailPrefix: 'axe-episode' });
+
+    const project = await seedProject(team);
+    const { slug } = await seedEpisodeWorkspace(project.id);
+
+    episodePath = `/home/${team.slug}/studio/${project.slug}/episodes/${slug}`;
+  });
+
+  const STAGES = [
+    'ideation',
+    'story',
+    'screenplay',
+    'visual-studio',
+    'audio-studio',
+    'publish',
+  ];
+
+  for (const stage of STAGES) {
+    test(`${stage} has no WCAG A/AA violations`, async ({ page }) => {
+      await signInAs(page, team);
+      await page.goto(`${episodePath}/${stage}`);
+      await expectClean(page);
+    });
+
+    test(`${stage} has a sound page structure`, async ({ page }) => {
+      await signInAs(page, team);
+      await page.goto(`${episodePath}/${stage}`);
       await expectStructure(page);
     });
   }

@@ -1,6 +1,11 @@
-import { Page, expect, test } from '@playwright/test';
+import { Locator, Page, expect, test } from '@playwright/test';
 
-import { SeededTeam, seedProject, seedTeamAccount } from '../utils/seed';
+import {
+  SeededTeam,
+  seedEpisodeWorkspace,
+  seedProject,
+  seedTeamAccount,
+} from '../utils/seed';
 import { signInAs } from '../utils/session';
 
 /**
@@ -159,5 +164,185 @@ test.describe('Keyboard only', () => {
         `${await link.textContent()} shows no focus indicator`,
       ).toBe(true);
     }
+  });
+});
+
+/** Presses Tab until `target` has focus; fails if it is not reached in `limit` presses. */
+async function tabTo(page: Page, target: Locator, limit = 40) {
+  for (let presses = 1; presses <= limit; presses += 1) {
+    await page.keyboard.press('Tab');
+
+    if (await target.evaluate((el) => el === document.activeElement)) {
+      return presses;
+    }
+  }
+
+  throw new Error(`Tab did not reach the target in ${limit} presses`);
+}
+
+/** The controls, in the order Tab must reach them. */
+async function expectFocusOrder(page: Page, controls: Locator[]) {
+  for (const control of controls) {
+    await tabTo(page, control);
+    await expect(control).toBeFocused();
+  }
+}
+
+test.describe('Keyboard only: skip links (FILM-DS-04)', () => {
+  test('the sign-in page skips to its main landmark', async ({ page }) => {
+    await page.goto('/auth/sign-in');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+
+    const skip = page.locator('[data-test="skip-to-content"]');
+
+    await page.keyboard.press('Tab');
+    await expect(skip).toBeFocused();
+    await expect(skip).toBeVisible();
+
+    await page.keyboard.press('Enter');
+
+    await expect(page).toHaveURL(/#main-content$/);
+    await expect(page.locator('main#main-content')).toBeFocused();
+
+    // The next Tab lands inside the content, not back in the navigation.
+    await page.keyboard.press('Tab');
+    await expect(
+      page.locator('main#main-content').locator(':focus'),
+    ).toHaveCount(1);
+  });
+
+  test('the studio skips past the sidebar', async ({ page }) => {
+    const team = await seedTeamAccount({ emailPrefix: 'keyboard-skip' });
+    const project = await seedProject(team);
+
+    await signInAs(page, team);
+    await page.goto(`/home/${team.slug}/studio/${project.slug}`);
+
+    const skip = page.locator('[data-test="skip-to-content"]');
+
+    await expect(page.locator('main#main-content')).toBeVisible();
+
+    await page.keyboard.press('Tab');
+    await expect(skip).toBeFocused();
+
+    await page.keyboard.press('Enter');
+    await expect(page.locator('main#main-content')).toBeFocused();
+  });
+});
+
+test.describe('Keyboard only: an episode (FILM-DS-04)', () => {
+  let team: SeededTeam;
+  let projectPath = '';
+  let episodePath = '';
+
+  test.beforeAll(async () => {
+    team = await seedTeamAccount({ emailPrefix: 'keyboard-episode' });
+
+    const project = await seedProject(team);
+    const { slug } = await seedEpisodeWorkspace(project.id);
+
+    projectPath = `/home/${team.slug}/studio/${project.slug}`;
+    episodePath = `${projectPath}/episodes/${slug}`;
+  });
+
+  test('the episode tabs are reached in order and open with Enter', async ({
+    page,
+  }) => {
+    await signInAs(page, team);
+    await page.goto(`${episodePath}/ideation`);
+
+    const ids = ['ideation', 'story', 'screenplay', 'shot-list', 'audio'];
+    const tabs = ids.map((id) =>
+      page.locator(`[data-test="episode-tab-${id}"]:visible`),
+    );
+
+    await expect(tabs[0]!).toBeVisible();
+    await tabs[0]!.focus();
+    await expectFocusOrder(page, tabs.slice(1));
+
+    const story = tabs[1]!;
+
+    await story.focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/story$/);
+  });
+
+  test('the publish hub can be walked by keyboard without a trap', async ({
+    page,
+  }) => {
+    await signInAs(page, team);
+    await page.goto(`${episodePath}/publish`);
+    await expect(page.getByRole('heading').first()).toBeVisible();
+
+    const stops: string[] = [];
+
+    for (let press = 0; press < 30; press += 1) {
+      await page.keyboard.press('Tab');
+
+      const stop = await page.evaluate(() => {
+        const el = document.activeElement;
+
+        if (!el || el === document.body) return null;
+
+        const style = getComputedStyle(el);
+
+        return {
+          id: `${el.tagName}:${el.getAttribute('data-test') ?? el.textContent?.trim().slice(0, 30) ?? ''}`,
+          indicator:
+            (style.outlineStyle !== 'none' && style.outlineWidth !== '0px') ||
+            style.boxShadow !== 'none',
+        };
+      });
+
+      if (!stop) break;
+
+      expect(stop.indicator, `${stop.id} shows no focus indicator`).toBe(true);
+      stops.push(stop.id);
+    }
+
+    // Focus moved through several controls, and never sat on one (a trap).
+    expect(new Set(stops).size).toBeGreaterThan(3);
+    expect(stops.slice(-1)).not.toEqual(stops.slice(-2, -1));
+  });
+
+  test('the create-episode dialog takes focus, keeps it, and gives it back', async ({
+    page,
+  }) => {
+    await signInAs(page, team);
+    await page.goto(`${projectPath}/episodes`);
+
+    const trigger = page
+      .getByRole('button', { name: 'Create Episode' })
+      .first();
+
+    await expect(trigger).toBeVisible();
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+
+    const dialog = page.getByRole('dialog');
+
+    await expect(dialog).toBeVisible();
+
+    // Focus is inside the dialog, and the form reads title, description,
+    // then Cancel and Create.
+    const title = dialog.getByLabel('Title');
+    const description = dialog.getByLabel('Description (Optional)');
+    const cancel = dialog.getByRole('button', { name: 'Cancel' });
+    const create = dialog.getByRole('button', { name: 'Create Episode' });
+
+    await title.focus();
+    await expectFocusOrder(page, [description, cancel, create]);
+
+    // Tab does not leave the dialog.
+    for (let press = 0; press < 6; press += 1) {
+      await page.keyboard.press('Tab');
+      expect(
+        await dialog.evaluate((el) => el.contains(document.activeElement)),
+      ).toBe(true);
+    }
+
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await expect(trigger).toBeFocused();
   });
 });

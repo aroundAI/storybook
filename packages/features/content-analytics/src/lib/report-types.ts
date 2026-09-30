@@ -155,3 +155,16 @@ export interface DatePresetConfig {
   label: string;
   getRange: () => { start: Date; end: Date } | null;
 }
+
+/**
+ * One row of an account's report history (FILM-809)
+ */
+export interface GeneratedReportRecord {
+  id: string;
+  reportType: 'pdf' | 'csv';
+  fileName: string;
+  dateRangeStart: string;
+  dateRangeEnd: string;
+  recordCount: number;
+  createdAt: string;
+}

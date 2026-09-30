@@ -275,7 +275,11 @@ export function AnalyticsDashboard({
             onChange={setSelectedPlatforms}
           />
           <DateRangePicker value={dateRange} onChange={setDateRange} />
-          <Button variant="outline" onClick={() => setShowExportDialog(true)}>
+          <Button
+            variant="outline"
+            onClick={() => setShowExportDialog(true)}
+            data-test="analytics-export"
+          >
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>

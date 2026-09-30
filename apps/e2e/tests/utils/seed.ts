@@ -485,6 +485,50 @@ export async function seedEpisodeWithShot(
 }
 
 /**
+ * An episode far enough along that every stage page has content: a story, a
+ * screenplay with a line of dialogue (which is what the audio studio lists),
+ * a shot list and a shot row (which is what unlocks Publish).
+ */
+export async function seedEpisodeWorkspace(
+  projectId: string,
+  options: { number?: number } = {},
+): Promise<{ episodeId: string; slug: string }> {
+  const auth = { key: SERVICE_ROLE_KEY };
+  const number = options.number ?? 1;
+  const slug = `seeded-workspace-${uniqueStamp()}`;
+
+  const episode = await insertRow<{ id: string }>(
+    'episodes',
+    {
+      project_id: projectId,
+      number,
+      title: `Seeded Episode ${number}`,
+      slug,
+      story_data: { title: 'The Lighthouse' },
+      screenplay_data: {
+        scenes: [
+          {
+            sceneNumber: 1,
+            heading: 'INT. HARBOUR - DUSK',
+            dialogue: [{ character: 'Mara', line: 'The tide is turning.' }],
+          },
+        ],
+      },
+      shot_list: { shots: [] },
+    },
+    auth,
+  );
+
+  await insertRow(
+    'shots',
+    { episode_id: episode.id, sequence_number: 1, prompt: 'Seeded shot' },
+    auth,
+  );
+
+  return { episodeId: episode.id, slug };
+}
+
+/**
  * Adds an existing user to another team as a member, skipping the invitation
  * flow — which has its own specs, and is not the subject of a test that only
  * needs someone to belong to two teams.

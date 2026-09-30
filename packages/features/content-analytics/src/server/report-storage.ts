@@ -43,6 +43,15 @@ export async function storeReport(
     throw new Error(`Failed to upload report: ${uploadError.message}`);
   }
 
+  return signReportUrl(client, path, expiresInSeconds);
+}
+
+export async function signReportUrl(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: SupabaseClient<any, any, any>,
+  path: string,
+  expiresInSeconds: number,
+): Promise<{ url: string; expiresAt: Date }> {
   const { data, error: signError } = await client.storage
     .from(REPORTS_BUCKET)
     .createSignedUrl(path, expiresInSeconds);
@@ -55,6 +64,18 @@ export async function storeReport(
     url: data.signedUrl,
     expiresAt: new Date(Date.now() + expiresInSeconds * 1000),
   };
+}
+
+export async function removeReportFile(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: SupabaseClient<any, any, any>,
+  path: string,
+): Promise<void> {
+  const { error } = await client.storage.from(REPORTS_BUCKET).remove([path]);
+
+  if (error) {
+    throw new Error(`Failed to delete report file: ${error.message}`);
+  }
 }
 
 /** A scheduled report's file, in its account's own folder (KB-74) */

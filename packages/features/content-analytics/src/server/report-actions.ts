@@ -14,6 +14,7 @@ import {
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
+import { getLogger } from '@kit/shared/logger';
 import { chunkIds, fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -25,6 +26,7 @@ import type {
   AnalyticsDataRow,
   Branding,
   GeneratedReport,
+  GeneratedReportRecord,
   ReportMetric,
   ReportPlatform,
   ScheduledReport,
@@ -33,10 +35,18 @@ import {
   CreateScheduledReportSchema,
   DeleteScheduledReportSchema,
   GenerateReportSchema,
+  GeneratedReportIdSchema,
   GetScheduledReportsSchema,
+  ListGeneratedReportsSchema,
   UpdateScheduledReportSchema,
 } from '../lib/schemas/report.schema';
-import { storeReport } from './report-storage';
+import {
+  deleteGeneratedReportRow,
+  findGeneratedReportPath,
+  listGeneratedReports,
+  recordGeneratedReport,
+} from './report-history';
+import { removeReportFile, signReportUrl, storeReport } from './report-storage';
 
 const SIGNED_URL_EXPIRY_SECONDS = 3600;
 
@@ -262,20 +272,23 @@ async function uploadAndGetSignedUrl(
   buffer: Buffer,
   filename: string,
   contentType: string,
-): Promise<{ url: string; expiresAt: Date }> {
-  return storeReport(
+): Promise<{ url: string; expiresAt: Date; storagePath: string }> {
+  const storagePath = `exports/${accountId}/${Date.now()}-${filename}`;
+  const signed = await storeReport(
     getSupabaseServerClient(),
-    `exports/${accountId}/${Date.now()}-${filename}`,
+    storagePath,
     { buffer, contentType, cacheControl: '3600' },
     SIGNED_URL_EXPIRY_SECONDS,
   );
+
+  return { ...signed, storagePath };
 }
 
 /**
  * Generate and return a report with signed download URL
  */
 const generateReport = enhanceAction(
-  async function (data): Promise<GeneratedReport> {
+  async function (data, user): Promise<GeneratedReport> {
     const { accountId, config } = data;
 
     const dateRange =
@@ -323,12 +336,38 @@ const generateReport = enhanceAction(
       contentType = 'application/pdf';
     }
 
-    const { url, expiresAt } = await uploadAndGetSignedUrl(
+    const { url, expiresAt, storagePath } = await uploadAndGetSignedUrl(
       accountId,
       buffer,
       filename,
       contentType,
     );
+
+    // The file exists and the link works; a history row that cannot be
+    // written must not take the download away.
+    try {
+      await recordGeneratedReport(getSupabaseServerClient(), {
+        accountId,
+        createdBy: user.id,
+        reportType: config.type,
+        fileName: filename,
+        storagePath,
+        dateRangeStart: dateRange.start,
+        dateRangeEnd: dateRange.end,
+        recordCount: analyticsData.length,
+        config: {
+          metrics: config.metrics,
+          platforms: config.platforms,
+          projectIds: config.projectIds ?? null,
+          preset: config.dateRange.preset ?? null,
+        },
+      });
+    } catch (error) {
+      (await getLogger()).error(
+        { name: 'analytics.generateReport', accountId, error },
+        'Report was generated but its history row was not saved',
+      );
+    }
 
     return {
       downloadUrl: url,
@@ -345,6 +384,90 @@ const generateReport = enhanceAction(
 );
 
 export const generateReportAction = returnRefusals(generateReport);
+
+/**
+ * The account's generated reports, newest first, one page at a time
+ */
+const listGeneratedReportsForAccount = enhanceAction(
+  async function (
+    data,
+  ): Promise<{ reports: GeneratedReportRecord[]; hasMore: boolean }> {
+    return listGeneratedReports(getSupabaseServerClient(), data.accountId, {
+      limit: data.limit,
+      offset: data.offset,
+    });
+  },
+  {
+    auth: true,
+    schema: ListGeneratedReportsSchema,
+  },
+);
+
+export const listGeneratedReportsAction = returnRefusals(
+  listGeneratedReportsForAccount,
+);
+
+/**
+ * A fresh signed link for a report already generated
+ */
+const getGeneratedReportDownload = enhanceAction(
+  async function (data): Promise<{ downloadUrl: string; expiresAt: Date }> {
+    const client = getSupabaseServerClient();
+    const path = await findGeneratedReportPath(client, data.id);
+
+    if (!path) {
+      throw new ActionRefusal('That report is not in your history.');
+    }
+
+    const { url, expiresAt } = await signReportUrl(
+      client,
+      path,
+      SIGNED_URL_EXPIRY_SECONDS,
+    );
+
+    return { downloadUrl: url, expiresAt };
+  },
+  {
+    auth: true,
+    schema: GeneratedReportIdSchema,
+  },
+);
+
+export const getGeneratedReportDownloadAction = returnRefusals(
+  getGeneratedReportDownload,
+);
+
+/**
+ * Remove a report from history, and its file with it
+ */
+const deleteGeneratedReport = enhanceAction(
+  async function (data): Promise<{ success: boolean }> {
+    const client = getSupabaseServerClient();
+    const path = await findGeneratedReportPath(client, data.id);
+
+    if (!path) {
+      throw new ActionRefusal('That report is not in your history.');
+    }
+
+    await removeReportFile(client, path);
+
+    const deleted = await deleteGeneratedReportRow(client, data.id);
+
+    if (deleted === 0) {
+      throw new ActionRefusal("That report wasn't deleted.");
+    }
+
+    return { success: true };
+  },
+  {
+    auth: true,
+    schema: GeneratedReportIdSchema,
+  },
+);
+
+export const deleteGeneratedReportAction = returnRefusals(
+  deleteGeneratedReport,
+);
 
 /**
  * Create a new scheduled report

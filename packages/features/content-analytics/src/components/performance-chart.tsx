@@ -215,9 +215,9 @@ export const PerformanceChart = React.memo(function PerformanceChart({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-test="performance-chart">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <ToggleGroup
             type="single"
             value={selectedMetric}
@@ -260,6 +260,7 @@ export const PerformanceChart = React.memo(function PerformanceChart({
             size="icon"
             onClick={handleExport}
             aria-label="Export chart as PNG"
+            data-test="performance-chart-export"
           >
             <Download className="h-4 w-4" />
           </Button>

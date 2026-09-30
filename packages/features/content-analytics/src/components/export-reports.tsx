@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { endOfMonth, format, startOfMonth, subDays, subMonths } from 'date-fns';
 import {
   Calendar as CalendarIcon,
@@ -37,6 +38,7 @@ import type {
   ReportPlatform,
 } from '../lib/report-types';
 import { generateReportAction } from '../server/report-actions';
+import { ReportHistory, reportHistoryKey } from './report-history';
 import { ScheduledReportsManager } from './scheduled-reports-manager';
 
 const METRIC_OPTIONS: {
@@ -119,6 +121,7 @@ export function ExportReports({ accountId }: ExportReportsProps) {
     companyName?: string;
   }>({});
 
+  const queryClient = useQueryClient();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedReport, setGeneratedReport] =
     useState<GeneratedReport | null>(null);
@@ -165,6 +168,9 @@ export function ExportReports({ accountId }: ExportReportsProps) {
       );
 
       setGeneratedReport(result);
+      await queryClient.invalidateQueries({
+        queryKey: reportHistoryKey(accountId),
+      });
     } catch (err) {
       setError(refusalMessage(err, 'Failed to generate report'));
     } finally {
@@ -193,6 +199,9 @@ export function ExportReports({ accountId }: ExportReportsProps) {
       <Tabs defaultValue="generate">
         <TabsList>
           <TabsTrigger value="generate">Generate Report</TabsTrigger>
+          <TabsTrigger value="history" data-test="report-history-tab">
+            History
+          </TabsTrigger>
           <TabsTrigger value="scheduled">Scheduled Reports</TabsTrigger>
         </TabsList>
 
@@ -222,6 +231,7 @@ export function ExportReports({ accountId }: ExportReportsProps) {
                 <button
                   type="button"
                   onClick={() => setReportType('csv')}
+                  data-test="export-format-csv"
                   className={`rounded-lg border-2 p-4 transition-colors ${
                     reportType === 'csv'
                       ? 'border-primary bg-primary/5'
@@ -412,6 +422,7 @@ export function ExportReports({ accountId }: ExportReportsProps) {
             size="lg"
             className="w-full"
             onClick={handleGenerate}
+            data-test="export-generate"
             disabled={
               isGenerating ||
               selectedMetrics.length === 0 ||
@@ -433,7 +444,10 @@ export function ExportReports({ accountId }: ExportReportsProps) {
 
           {/* Success */}
           {generatedReport && (
-            <Card className="border-green-200 bg-green-50">
+            <Card
+              className="border-green-200 bg-green-50"
+              data-test="export-report-ready"
+            >
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -452,6 +466,10 @@ export function ExportReports({ accountId }: ExportReportsProps) {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="history">
+          <ReportHistory accountId={accountId} />
         </TabsContent>
 
         <TabsContent value="scheduled">
