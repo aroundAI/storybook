@@ -1,0 +1,93 @@
+{
+  "feature": "Wave 1: create policies refuse outsiders (FILM-201, 301, 303, 810, 1507)",
+  "mutations": [
+    {
+      "name": "WAVE1 R1 anyone may create an asset",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/create-policies-refuse-outsiders.test.sql",
+      "sql": "alter policy assets_create on public.assets with check (true);"
+    },
+    {
+      "name": "WAVE1 R2 anyone may create an episode",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/create-policies-refuse-outsiders.test.sql",
+      "sql": "alter policy episodes_create on public.episodes with check (true);"
+    },
+    {
+      "name": "WAVE1 R3 anyone may create a shot",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/create-policies-refuse-outsiders.test.sql",
+      "sql": "alter policy shots_create on public.shots with check (true);"
+    },
+    {
+      "name": "WAVE1 R4 anyone may create a revenue report",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/create-policies-refuse-outsiders.test.sql",
+      "sql": "alter policy revenue_reports_create on public.revenue_reports with check (true);"
+    },
+    {
+      "name": "WAVE1 R5 anyone may create a revenue alert",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/create-policies-refuse-outsiders.test.sql",
+      "sql": "alter policy revenue_alerts_create on public.revenue_alerts with check (true);"
+    },
+    {
+      "name": "WAVE1 R6 anyone may create a content tag",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/create-policies-refuse-outsiders.test.sql",
+      "sql": "alter policy content_tags_create on public.content_tags with check (true);"
+    },
+    {
+      "name": "WAVE1 R7 anyone may read the account's revenue reports",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/create-policies-refuse-outsiders.test.sql",
+      "sql": "alter policy revenue_reports_read on public.revenue_reports using (true);"
+    },
+    {
+      "name": "WAVE1 R8 anyone may read the account's content tags",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/create-policies-refuse-outsiders.test.sql",
+      "sql": "alter policy content_tags_read on public.content_tags using (true);"
+    },
+    {
+      "name": "WAVE1 U1 everyone in a parent project is alive",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/sequel-system.ts",
+      "find": "        isAlive: !isDead,",
+      "replace": "        isAlive: true,",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/sequel-context-build.test.ts",
+      "pattern": "marks a character dead"
+    },
+    {
+      "name": "WAVE1 U2 a second parent replaces the first",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/canon/sequel-system.ts",
+      "find": "sequel_of: [...currentSequelOf, parentProjectId],",
+      "replace": "sequel_of: [parentProjectId],",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/sequel-context-build.test.ts",
+      "pattern": "adds a second parent"
+    },
+    {
+      "name": "WAVE1 U3 the insights send eight top titles",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/analytics-insights.ts",
+      "find": "data.analytics.topContent?.slice(0, 5)",
+      "replace": "data.analytics.topContent?.slice(0, 8)",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/analytics-insights-handler.test.ts",
+      "pattern": "five top titles"
+    },
+    {
+      "name": "WAVE1 U4 an insights failure is an error",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/analytics-insights.ts",
+      "find": "    console.error('[Analytics Insights] Error:', error);\n    return {\n      success: true,",
+      "replace": "    console.error('[Analytics Insights] Error:', error);\n    return {\n      success: false,",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/analytics-insights-handler.test.ts",
+      "pattern": "plain fallback"
+    }
+  ]
+}

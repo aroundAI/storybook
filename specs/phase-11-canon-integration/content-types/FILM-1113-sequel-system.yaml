@@ -32,11 +32,11 @@ acceptance_criteria:
     met: true
     evidence: null
   - text: "`linkAsSequel` function works for single and multiple parents"
-    met: false
-    reason: "unverified — never called in the product and untested; tests cover `formatParentContextsForPrompt` only"
+    met: true
+    evidence: "packages/features/episodes/__tests__/sequel-context-build.test.ts:314"
   - text: "Parent context correctly identifies dead vs alive characters"
-    met: false
-    reason: "unverified — logic at `packages/features/episodes/src/lib/canon/sequel-system.ts:302`; no test exercises `buildParentContext`"
+    met: true
+    evidence: "packages/features/episodes/__tests__/sequel-context-build.test.ts:133"
   - text: "Parent immutable events inherited to sequel validation"
     met: false
     reason: "no longer true — no validator or generation path reads parent contexts; `getSequelParentContexts` has no caller since 15f9940f"

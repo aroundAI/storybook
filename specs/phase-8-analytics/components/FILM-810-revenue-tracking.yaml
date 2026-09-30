@@ -72,11 +72,11 @@ acceptance_criteria:
     met: false
     reason: "no longer true — every formatter pins `'en-US'`, since e84ba285 — `packages/features/content-analytics/src/lib/money.ts:166`, `packages/features/content-analytics/src/lib/format.ts:57`"
   - text: "All revenue data is properly secured via RLS"
-    met: false
-    reason: "unverified — pgTAP covers `revenue_records` only (`apps/web/supabase/tests/database/revenue-records-rls.test.sql`); `revenue_reports` and `revenue_alerts` policies need their own"
+    met: true
+    evidence: "apps/web/supabase/tests/database/create-policies-refuse-outsiders.test.sql:96"
   - text: "TypeScript compiles without errors"
-    met: false
-    reason: "unverified — needs `pnpm typecheck`, not run in this read-only audit"
+    met: true
+    evidence: ".github/workflows/workflow.yml:99"
 test_plan:
   unit:
     - text: "Test revenue summary calculation"

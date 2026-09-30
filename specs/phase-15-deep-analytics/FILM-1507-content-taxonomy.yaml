@@ -15,8 +15,8 @@ summary: >
   `hook_type` is included now so FILM-1510's aggregate layer comes for free (per FILM-1301 §9.6 Hybrid decision).
 acceptance_criteria:
   - text: "Tags are account-scoped, unique per (dimension, slug); RLS blocks other accounts"
-    met: false
-    reason: "unverified — scope and unique key at `apps/web/supabase/migrations/20260827102452_content-taxonomy.sql:16`; no pgTAP test proves the policies refuse another account"
+    met: true
+    evidence: "apps/web/supabase/tests/database/create-policies-refuse-outsiders.test.sql:110"
   - text: "Tagging/bulk-tagging updates `video_dim.tags` within the same action"
     met: true
     evidence: "`packages/features/content-analytics/src/server/taxonomy-actions.ts:218`, `:275`; tags built at `packages/features/content-analytics/src/server/dim-sync.ts:230`"

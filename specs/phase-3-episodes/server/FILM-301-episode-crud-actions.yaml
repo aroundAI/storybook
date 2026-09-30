@@ -45,8 +45,8 @@ acceptance_criteria:
     met: true
     evidence: "packages/features/episodes/src/server/actions.ts:94"
   - text: "`createEpisodeAction` respects RLS (cannot create for inaccessible project)"
-    met: false
-    reason: "unverified — policy `episodes_create` exists (`apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:667`); no pgTAP test exercises it"
+    met: true
+    evidence: "apps/web/supabase/tests/database/create-policies-refuse-outsiders.test.sql:82"
   - text: "`getEpisodeWithShotsAction` returns episode with all related shots"
     met: true
     evidence: "packages/features/episodes/src/server/actions.ts:575"
