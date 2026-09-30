@@ -132,7 +132,7 @@ export function createContinuitySkill(deps: ContinuitySkillDeps): Skill {
    * Tool: Check Plot Continuity
    *
    * Validates a plot skeleton against the established canon.
-   * Runs all 9 validation rules (CANON_001-009).
+   * Runs the validation rules (CANON_001-009, CANON_011, CANON_012).
    */
   const checkContinuityTool = createTool({
     name: 'checkContinuity',
@@ -157,6 +157,7 @@ export function createContinuitySkill(deps: ContinuitySkillDeps): Skill {
             location: z.string().optional(),
             charactersPresent: z.array(z.string()),
             keyEvents: z.array(z.string()).optional(),
+            dependsOnScenes: z.array(z.number()).optional(),
           }),
         ),
       }),
@@ -276,6 +277,8 @@ export function createContinuitySkill(deps: ContinuitySkillDeps): Skill {
 - CANON_005: Content cannot contradict established world facts
 - CANON_006: References must point to existing events/characters
 - CANON_007: Narrative threads must connect (setups need payoffs)
+- CANON_011: A scene cannot build on the outcome of a later scene (HARD FAIL)
+- CANON_012: An episode should call back to established characters, threads, locations or events
 
 Violations with severity "error" MUST be fixed before proceeding.
 Violations with severity "warning" should be addressed if possible.`,

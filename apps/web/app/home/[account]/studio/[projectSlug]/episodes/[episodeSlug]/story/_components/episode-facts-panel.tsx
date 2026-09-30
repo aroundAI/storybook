@@ -14,11 +14,13 @@ import { Button } from '@kit/ui/button';
 import { Card, CardContent } from '@kit/ui/card';
 import { toast } from '@kit/ui/sonner';
 
+import { FactCheckSection } from './fact-check-section';
 import { LinkFactsDialog } from './link-facts-dialog';
 
 interface EpisodeFactsPanelProps {
   episodeId: string;
   projectId: string;
+  storyContent?: string;
   onCountChange?: (count: number) => void;
 }
 
@@ -37,6 +39,7 @@ const STATUS_COLORS: Record<string, string> = {
 export function EpisodeFactsPanel({
   episodeId,
   projectId,
+  storyContent,
   onCountChange,
 }: EpisodeFactsPanelProps) {
   const [isPending, startTransition] = useTransition();
@@ -181,6 +184,10 @@ export function EpisodeFactsPanel({
         linkedFactIds={facts.map((f) => f.id)}
         onFactsLinked={loadFacts}
       />
+
+      {storyContent && (
+        <FactCheckSection projectId={projectId} storyContent={storyContent} />
+      )}
     </div>
   );
 }

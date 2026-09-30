@@ -108,7 +108,9 @@ export class ExternalContextAggregator {
 
     const { data: sources, error } = await supabase
       .from('external_sources')
-      .select('id, category, provider_type, credibility_tier, config')
+      .select(
+        'id, category, provider_type, credibility_tier, bias_label, config',
+      )
       .eq('is_active', true)
       // Built-ins only. This instance is cached for the whole process, built
       // from whichever caller's RLS view arrived first, so a team's or a
@@ -145,6 +147,7 @@ export class ExternalContextAggregator {
             newsapiId,
             credibilityTier: (source.credibility_tier ??
               'tier_3') as CredibilityTier,
+            biasLabel: source.bias_label ?? undefined,
           });
         } else {
           console.warn(

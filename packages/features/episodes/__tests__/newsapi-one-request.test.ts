@@ -19,25 +19,26 @@ import {
  */
 
 const BUILTINS = [
-  ['reuters', 'reuters', 'tier_1'],
-  ['ap-news', 'associated-press', 'tier_1'],
-  ['afp', 'agence-france-presse', 'tier_1'],
-  ['bbc-news', 'bbc-news', 'tier_2'],
-  ['nytimes', 'the-new-york-times', 'tier_2'],
-  ['guardian', 'the-guardian-uk', 'tier_2'],
-  ['wsj', 'the-wall-street-journal', 'tier_2'],
-  ['aljazeera', 'al-jazeera-english', 'tier_2'],
-  ['cnn', 'cnn', 'tier_2'],
-  ['npr', 'npr', 'tier_2'],
-  ['fox-news', 'fox-news', 'tier_2'],
-  ['daily-telegraph', 'the-telegraph', 'tier_2'],
+  ['reuters', 'reuters', 'tier_1', 'center'],
+  ['ap-news', 'associated-press', 'tier_1', 'center'],
+  ['afp', 'agence-france-presse', 'tier_1', 'center'],
+  ['bbc-news', 'bbc-news', 'tier_2', 'center_left'],
+  ['nytimes', 'the-new-york-times', 'tier_2', 'center_left'],
+  ['guardian', 'the-guardian-uk', 'tier_2', 'left'],
+  ['wsj', 'the-wall-street-journal', 'tier_2', 'center_right'],
+  ['aljazeera', 'al-jazeera-english', 'tier_2', 'center'],
+  ['cnn', 'cnn', 'tier_2', 'center_left'],
+  ['npr', 'npr', 'tier_2', 'center_left'],
+  ['fox-news', 'fox-news', 'tier_2', 'center_right'],
+  ['daily-telegraph', 'the-telegraph', 'tier_2', 'center_right'],
 ] as const;
 
-const rows = BUILTINS.map(([slug, newsapiId, tier]) => ({
+const rows = BUILTINS.map(([slug, newsapiId, tier, bias]) => ({
   id: `row-${slug}`,
   category: 'news',
   provider_type: 'newsapi',
   credibility_tier: tier,
+  bias_label: bias,
   config: { source_id: newsapiId, api_key_env: 'NEWSAPI_KEY' },
 }));
 
@@ -172,6 +173,24 @@ describe('a live news search over the NewsAPI built-ins', () => {
     expect(bySource).toEqual({
       'https://example.test/r1': ['row-reuters', 'tier_1'],
       'https://example.test/b1': ['row-bbc-news', 'tier_2'],
+    });
+  });
+
+  it('carries each source’s bias label onto its articles, so the balance check sees it (FILM-1133)', async () => {
+    const result = await search();
+
+    const bias = Object.fromEntries(result.content.map((c) => [c.url, c.biasLabel]));
+    expect(bias).toEqual({
+      'https://example.test/r1': 'center',
+      'https://example.test/b1': 'center_left',
+    });
+
+    const { checkSourceBalance } = await import(
+      '../src/lib/server/services/anchor-service'
+    );
+    expect(checkSourceBalance(result.content).biasDistribution).toEqual({
+      center: 1,
+      center_left: 1,
     });
   });
 });

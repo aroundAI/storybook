@@ -9,6 +9,7 @@ import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { sceneOptionsOf } from '../lib/episode-fact-scenes';
 import { EPISODE_FACT_REFUSALS } from './episode-fact-refusals';
 
 // =============================================================================
@@ -18,6 +19,7 @@ import { EPISODE_FACT_REFUSALS } from './episode-fact-refusals';
 const LinkFactsToEpisodeSchema = z.object({
   episodeId: z.string().uuid(),
   factIds: z.array(z.string().uuid()).min(1).max(50),
+  sceneReference: z.string().min(1).max(20).optional(),
 });
 
 const UnlinkFactFromEpisodeSchema = z.object({
@@ -51,10 +53,32 @@ const linkFactsToEpisode = enhanceAction(
       throw new Error('Authentication required');
     }
 
+    if (data.sceneReference !== undefined) {
+      const { data: episode, error: episodeError } = await client
+        .from('episodes')
+        .select('screenplay_data')
+        .eq('id', data.episodeId)
+        .single();
+
+      if (episodeError && episodeError.code !== 'PGRST116') {
+        logger.error({ ...ctx, error: episodeError }, 'Failed to read scenes');
+        throw new Error(`Failed to read episode scenes: ${episodeError.message}`);
+      }
+
+      const known = sceneOptionsOf(episode?.screenplay_data).some(
+        (scene) => scene.value === data.sceneReference,
+      );
+
+      if (!known) {
+        throw new ActionRefusal(EPISODE_FACT_REFUSALS.scene);
+      }
+    }
+
     const rows = data.factIds.map((factId) => ({
       episode_id: data.episodeId,
       fact_id: factId,
       linked_by: user.id,
+      ...(data.sceneReference ? { scene_reference: data.sceneReference } : {}),
     }));
 
     const { data: upserted, error } = await client
@@ -200,6 +224,32 @@ export const getEpisodeFactsAction = enhanceAction(
       .filter((f): f is NonNullable<typeof f> => f !== null);
 
     return { facts, totalCount: facts.length };
+  },
+  {
+    auth: true,
+    schema: GetEpisodeFactsSchema,
+  },
+);
+
+/**
+ * The scenes of an episode's screenplay, for choosing the scene a fact is
+ * used in. Empty until the screenplay exists.
+ */
+export const getEpisodeSceneOptionsAction = enhanceAction(
+  async (data: z.infer<typeof GetEpisodeFactsSchema>) => {
+    const client = getSupabaseServerClient();
+
+    const { data: episode, error } = await client
+      .from('episodes')
+      .select('screenplay_data')
+      .eq('id', data.episodeId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      throw new Error(`Failed to read episode scenes: ${error.message}`);
+    }
+
+    return { scenes: sceneOptionsOf(episode?.screenplay_data) };
   },
   {
     auth: true,

@@ -59,9 +59,11 @@ export function MemoryContextPreview({
   const [isExpanded, setIsExpanded] = useState(false);
   const [context, setContext] = useState<UIMemoryContext | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasFailed, setHasFailed] = useState(false);
 
   const loadContext = useCallback(async () => {
     setIsLoading(true);
+    setHasFailed(false);
     try {
       const result = await buildMemoryContextAction({
         projectId,
@@ -99,23 +101,30 @@ export function MemoryContextPreview({
       }
     } catch (error) {
       console.error('Error loading memory context:', error);
+      setHasFailed(true);
     } finally {
       setIsLoading(false);
     }
   }, [projectId, episodeNumber]);
 
   useEffect(() => {
-    if (isExpanded && !context) {
+    if (isExpanded && !context && !hasFailed) {
       loadContext();
     }
-  }, [isExpanded, context, loadContext]);
+  }, [isExpanded, context, hasFailed, loadContext]);
 
-  const tokenPercentage = context?.tokenBudget.percentage ?? 0;
+  const tokenPercentage = Math.round(context?.tokenBudget.percentage ?? 0);
+  const isEmpty =
+    context !== null &&
+    context.immutableEvents.length === 0 &&
+    context.activeThreads.length === 0 &&
+    context.characterStates.length === 0;
 
   return (
-    <Card className="border-dashed">
+    <Card className="border-dashed" data-test="memory-context-preview">
       <CardHeader
         className="cursor-pointer py-3"
+        data-test="memory-context-toggle"
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center justify-between">
@@ -141,7 +150,20 @@ export function MemoryContextPreview({
       {isExpanded && (
         <CardContent className="space-y-4 pt-0">
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading context...</p>
+            <p
+              className="text-sm text-muted-foreground"
+              data-test="memory-context-loading"
+            >
+              Loading context...
+            </p>
+          ) : isEmpty ? (
+            <p
+              className="text-sm text-muted-foreground"
+              data-test="memory-context-empty"
+            >
+              Nothing in canon yet. Earlier episodes&apos; events, threads and
+              character changes appear here once they are committed.
+            </p>
           ) : context ? (
             <>
               {/* Immutable Facts */}
@@ -216,8 +238,11 @@ export function MemoryContextPreview({
               </div>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Unable to load memory context.
+            <p
+              className="text-sm text-muted-foreground"
+              data-test="memory-context-error"
+            >
+              Unable to load memory context. Ideation still works without it.
             </p>
           )}
         </CardContent>

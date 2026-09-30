@@ -182,7 +182,7 @@ async function loadImmutableEvents(
     createdBy: row.created_by ?? undefined,
   }));
 
-  return fitToBudget(events, tokenBudget);
+  return events;
 }
 
 /**
@@ -455,10 +455,7 @@ async function loadEpisodeSummaries(
     projectType,
   );
 
-  return fitToBudget(
-    ranked.map((r) => r.item),
-    tokenBudget,
-  );
+  return ranked.map((r) => r.item);
 }
 
 /**
@@ -509,7 +506,7 @@ async function loadSources(
     confidence: row.confidence_score ?? undefined,
   }));
 
-  return fitToBudget(sources, tokenBudget);
+  return sources;
 }
 
 /**
@@ -587,6 +584,58 @@ export function allocateTokenBudget(
   };
 }
 
+const REDISTRIBUTION_ORDER = [
+  'immutableEvents',
+  'characterStates',
+  'narrativeThreads',
+  'episodeSummaries',
+  'sourcesCitations',
+] as const;
+
+type RedistributableCategory = (typeof REDISTRIBUTION_ORDER)[number];
+
+function tokensOf(items: unknown[]): number {
+  return items.reduce<number>((sum, item) => sum + estimateTokens(item), 0);
+}
+
+/**
+ * Moves the budget a category leaves unused to the categories that overflow
+ * it (FILM-1004). `needs` is what each category would take if it were
+ * unlimited. The pool is the sum of every category's unused share; overflowing
+ * categories draw from it in `REDISTRIBUTION_ORDER`, each up to its own
+ * overflow. A category that needs less than its share is capped at its need,
+ * so the result is deterministic and never exceeds the total.
+ * `worldStates` gives up its unused share but takes none, and `parentContext`
+ * is left alone: it is reserved for a sequel's parent (FILM-1113), not spare.
+ */
+export function redistributeBudgets(
+  budgets: MemoryBudgets,
+  needs: Record<RedistributableCategory, number> & { worldStates: number },
+): MemoryBudgets {
+  const unused = (category: RedistributableCategory | 'worldStates') =>
+    Math.max(0, budgets[category] - needs[category]);
+
+  let pool =
+    unused('worldStates') +
+    REDISTRIBUTION_ORDER.reduce((sum, category) => sum + unused(category), 0);
+
+  const result = { ...budgets, worldStates: needs.worldStates };
+
+  for (const category of REDISTRIBUTION_ORDER) {
+    const overflow = needs[category] - budgets[category];
+    if (overflow <= 0 || budgets[category] <= 0) {
+      result[category] = Math.min(budgets[category], needs[category]);
+      continue;
+    }
+
+    const granted = Math.min(overflow, pool);
+    result[category] = budgets[category] + granted;
+    pool -= granted;
+  }
+
+  return result;
+}
+
 /**
  * Builds memory context for LLM generation.
  *
@@ -641,21 +690,26 @@ export async function buildMemoryContext(
   const { projectType } = resolvedType;
 
   // Load all data in parallel
-  const [immutableEvents, characters, threads, recentSummaries, sources] =
-    await Promise.all([
-      loadImmutableEvents(client, projectId, budgets.immutableEvents),
-      loadCharacters(client, projectId, budgets.characterStates),
-      loadActiveThreads(client, projectId, budgets.narrativeThreads),
-      loadEpisodeSummaries(
-        client,
-        projectId,
-        projectType,
-        episodeNumber,
-        memoryHorizon,
-        budgets.episodeSummaries,
-      ),
-      loadSources(client, projectId, budgets.sourcesCitations),
-    ]);
+  const [
+    candidateEvents,
+    characters,
+    threads,
+    candidateSummaries,
+    candidateSources,
+  ] = await Promise.all([
+    loadImmutableEvents(client, projectId, budgets.immutableEvents),
+    loadCharacters(client, projectId, budgets.characterStates),
+    loadActiveThreads(client, projectId, budgets.narrativeThreads),
+    loadEpisodeSummaries(
+      client,
+      projectId,
+      projectType,
+      episodeNumber,
+      memoryHorizon,
+      budgets.episodeSummaries,
+    ),
+    loadSources(client, projectId, budgets.sourcesCitations),
+  ]);
 
   // Rank threads and characters by the episode they were last active in
   // (FILM-1111), then fit each to its budget.
@@ -671,43 +725,67 @@ export async function buildMemoryContext(
     lastActiveEpisodeNumber: threadLastActiveEpisode(thread, episodeNumbers),
   }));
 
-  const activeThreads = fitToBudget(
-    rankByPriority(
-      threadsWithLastActive.map((thread) => ({
-        item: thread,
-        id: thread.id,
-        episode: thread.lastActiveEpisodeNumber,
-        mentions: thread.episodesTouched?.length,
-      })),
-      episodeNumber,
-      projectType,
-    ).map((r) => r.item),
-    budgets.narrativeThreads,
-  );
+  const rankedThreads = rankByPriority(
+    threadsWithLastActive.map((thread) => ({
+      item: thread,
+      id: thread.id,
+      episode: thread.lastActiveEpisodeNumber,
+      mentions: thread.episodesTouched?.length,
+    })),
+    episodeNumber,
+    projectType,
+  ).map((r) => r.item);
 
-  const characterStates = fitToBudget(
-    rankByPriority(
-      characters.map((character) => ({
-        item: character,
-        id: character.characterId,
-        episode: latestEpisode(
-          character.currentStates.map((s) => s.episodeId),
-          episodeNumbers,
-        ),
-      })),
-      episodeNumber,
-      projectType,
-    ).map((r) => r.item),
-    budgets.characterStates,
-  );
+  const rankedCharacters = rankByPriority(
+    characters.map((character) => ({
+      item: character,
+      id: character.characterId,
+      episode: latestEpisode(
+        character.currentStates.map((s) => s.episodeId),
+        episodeNumbers,
+      ),
+    })),
+    episodeNumber,
+    projectType,
+  ).map((r) => r.item);
 
-  // Load world state (depends on having recent summaries)
-  const latestEpisodeId = recentSummaries[0]?.episodeId ?? null;
+  // World state follows the most relevant summary
+  const latestEpisodeId = candidateSummaries[0]?.episodeId ?? null;
   const worldState = await loadWorldState(
     client,
     projectId,
     latestEpisodeId,
     budgets.worldStates,
+  );
+
+  const effectiveBudgets = redistributeBudgets(budgets, {
+    immutableEvents: tokensOf(candidateEvents),
+    characterStates: tokensOf(rankedCharacters),
+    narrativeThreads: tokensOf(rankedThreads),
+    episodeSummaries: tokensOf(candidateSummaries),
+    sourcesCitations: tokensOf(candidateSources),
+    worldStates: estimateTokens(worldState),
+  });
+
+  const immutableEvents = fitToBudget(
+    candidateEvents,
+    effectiveBudgets.immutableEvents,
+  );
+  const characterStates = fitToBudget(
+    rankedCharacters,
+    effectiveBudgets.characterStates,
+  );
+  const activeThreads = fitToBudget(
+    rankedThreads,
+    effectiveBudgets.narrativeThreads,
+  );
+  const recentSummaries = fitToBudget(
+    candidateSummaries,
+    effectiveBudgets.episodeSummaries,
+  );
+  const sources = fitToBudget(
+    candidateSources,
+    effectiveBudgets.sourcesCitations,
   );
 
   // Calculate actual token usage

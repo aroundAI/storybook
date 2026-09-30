@@ -10,17 +10,28 @@ import { revalidatePath } from 'next/cache';
 
 import { z } from 'zod';
 
-import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
 import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
-import { whyNoRow } from '@kit/shared/rows';
+import { readFailed, whyNoRow } from '@kit/shared/rows';
 import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
+  CanonConflictError,
+  CanonNotFoundError,
+  CanonPermissionError,
+  CanonValidationError,
+} from '../lib/canon/canon-errors';
+import {
   buildMemoryContext,
   resolveEpisodeNumbers,
 } from '../lib/canon/memory-context-builder';
+import {
+  type ExtractedWorldState,
+  describeStateChange,
+  toEpisodeSummaryRow,
+  toWorldStateRow,
+} from '../lib/canon/memory-rows';
 import {
   MAX_MEMORY_HORIZON,
   MIN_MEMORY_HORIZON,
@@ -157,6 +168,7 @@ type NarrativeThreadRow = {
   description: string | null;
   created_at: string | null;
   updated_at: string | null;
+  version?: number | null;
   opened_episode?: EpisodeJoinRow;
   resolved_episode?: EpisodeJoinRow;
 };
@@ -192,6 +204,7 @@ function mapNarrativeThread(row: NarrativeThreadRow): NarrativeThread {
     description: row.description ?? undefined,
     createdAt: row.created_at ?? new Date().toISOString(),
     updatedAt: row.updated_at ?? new Date().toISOString(),
+    version: row.version ?? undefined,
     openedEpisode: row.opened_episode ?? undefined,
     resolvedEpisode: row.resolved_episode ?? undefined,
   };
@@ -210,6 +223,38 @@ const CANON_WRITE_REFUSAL = "You can't change this project's canon.";
 
 const INSUFFICIENT_PRIVILEGE = '42501';
 
+type ServerClient = ReturnType<typeof getSupabaseServerClient<Database>>;
+
+/**
+ * Appends one row to the canon audit log (FILM-1005). A change the log
+ * cannot record fails the action, as for character states (KB-77).
+ */
+async function recordStateDelta(
+  client: ServerClient,
+  delta: {
+    episodeId: string;
+    entityType: 'character' | 'world' | 'thread' | 'immutable';
+    entityId: string;
+    before: unknown;
+    after: unknown;
+    reason: string;
+  },
+): Promise<void> {
+  const { error } = await client.from('state_deltas').insert({
+    episode_id: delta.episodeId,
+    entity_type: delta.entityType,
+    entity_id: delta.entityId,
+    before_state: (delta.before ?? null) as Json,
+    after_state: (delta.after ?? null) as Json,
+    change_reason: delta.reason,
+  });
+
+  if (error) {
+    console.error('Error recording state delta:', error);
+    throw new Error(`Failed to record state delta: ${error.message}`);
+  }
+}
+
 /**
  * Adds an immutable event to the canon.
  */
@@ -226,7 +271,7 @@ const addImmutableEvent = enhanceAction(
       .single();
 
     if (existing) {
-      throw new ActionRefusal(
+      throw new CanonConflictError(
         `Event key "${data.eventKey}" already exists. Immutable events cannot be duplicated.`,
       );
     }
@@ -248,7 +293,7 @@ const addImmutableEvent = enhanceAction(
       .single();
 
     if (error?.code === INSUFFICIENT_PRIVILEGE) {
-      throw new ActionRefusal(CANON_WRITE_REFUSAL);
+      throw new CanonPermissionError(CANON_WRITE_REFUSAL);
     }
 
     if (error) {
@@ -308,7 +353,7 @@ export const getImmutableEventsAction = enhanceAction(
 const deleteImmutableEvent = enhanceAction(
   async (data: { eventId: string; confirm: boolean }) => {
     if (!data.confirm) {
-      throw new Error(
+      throw new CanonValidationError(
         'Deletion requires confirmation. Set confirm: true to proceed.',
       );
     }
@@ -319,16 +364,31 @@ const deleteImmutableEvent = enhanceAction(
       .from('immutable_events')
       .delete()
       .eq('id', data.eventId)
-      .select('id');
+      .select('id, event_type, event_key, description, established_in');
 
     if (error) {
       console.error('Error deleting immutable event:', error);
       throw new Error(`Failed to delete immutable event: ${error.message}`);
     }
 
-    if (!deleted?.length) {
-      throw new ActionRefusal(CANON_WRITE_REFUSAL);
+    const [event] = deleted ?? [];
+
+    if (!event) {
+      throw new CanonPermissionError(CANON_WRITE_REFUSAL);
     }
+
+    await recordStateDelta(client, {
+      episodeId: event.established_in,
+      entityType: 'immutable',
+      entityId: event.id,
+      before: {
+        eventType: event.event_type,
+        eventKey: event.event_key,
+        description: event.description,
+      },
+      after: null,
+      reason: `Immutable event "${event.event_key}" deleted`,
+    });
 
     revalidatePath(
       `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
@@ -385,7 +445,7 @@ const updateCharacterState = enhanceAction(
       .single();
 
     if (error?.code === INSUFFICIENT_PRIVILEGE) {
-      throw new ActionRefusal(CANON_WRITE_REFUSAL);
+      throw new CanonPermissionError(CANON_WRITE_REFUSAL);
     }
 
     if (error) {
@@ -393,20 +453,14 @@ const updateCharacterState = enhanceAction(
       throw new Error(`Failed to update character state: ${error.message}`);
     }
 
-    // Record state delta for audit trail (FILM-1005)
-    const { error: deltaError } = await client.from('state_deltas').insert({
-      episode_id: data.episodeId,
-      entity_type: 'character',
-      entity_id: data.characterId,
-      before_state: (previousState?.state_value ?? null) as Json,
-      after_state: data.stateValue as Json,
-      change_reason: data.triggerEvent,
+    await recordStateDelta(client, {
+      episodeId: data.episodeId,
+      entityType: 'character',
+      entityId: data.characterId,
+      before: previousState?.state_value,
+      after: data.stateValue,
+      reason: data.triggerEvent,
     });
-
-    if (deltaError) {
-      console.error('Error recording state delta:', deltaError);
-      throw new Error(`Failed to record state delta: ${deltaError.message}`);
-    }
 
     revalidatePath(
       `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
@@ -421,6 +475,161 @@ const updateCharacterState = enhanceAction(
 );
 
 export const updateCharacterStateAction = returnRefusals(updateCharacterState);
+
+/**
+ * Reverts a character-state change recorded in `state_deltas` (FILM-1005).
+ *
+ * Character states are append-only, so a rollback appends: a new state that
+ * restores the delta's `before_state`, and a delta recording it. It is
+ * refused when a later change to the same character and state type exists,
+ * because reverting past it would silently undo that change too. The
+ * database applies the same write scope as for any character state.
+ */
+const rollbackCharacterState = enhanceAction(
+  async (data: { deltaId: string }, user) => {
+    const client = getSupabaseServerClient();
+
+    const deltaResult = await client
+      .from('state_deltas')
+      .select(
+        'id, episode_id, entity_type, entity_id, before_state, after_state, created_at',
+      )
+      .eq('id', data.deltaId)
+      .single();
+
+    if (readFailed(deltaResult.error)) {
+      throw new Error(whyNoRow(deltaResult.error, 'State change not found'));
+    }
+
+    const delta = deltaResult.data;
+
+    if (!delta) {
+      throw new CanonNotFoundError('State change not found.');
+    }
+
+    if (delta.entity_type !== 'character') {
+      throw new CanonValidationError(
+        'Only a character state change can be rolled back.',
+      );
+    }
+
+    if (delta.before_state === null) {
+      throw new CanonValidationError(
+        'This was the first state recorded for the character; there is nothing to restore.',
+      );
+    }
+
+    const { data: states, error: statesError } = await client
+      .from('character_states')
+      .select('id, state_type, state_value, episode_id, created_at')
+      .eq('character_id', delta.entity_id)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false });
+
+    if (statesError) {
+      console.error('Error reading character states:', statesError);
+      throw new Error(`Failed to read character states: ${statesError.message}`);
+    }
+
+    const applied = (states ?? []).find(
+      (state) =>
+        state.episode_id === delta.episode_id &&
+        JSON.stringify(state.state_value) === JSON.stringify(delta.after_state),
+    );
+
+    if (!applied) {
+      throw new CanonNotFoundError(
+        'The state this change produced no longer exists.',
+      );
+    }
+
+    const latestOfType = (states ?? []).find(
+      (state) => state.state_type === applied.state_type,
+    );
+
+    if (latestOfType?.id !== applied.id) {
+      throw new CanonConflictError(
+        'The character changed again after this. Roll back the later change first.',
+      );
+    }
+
+    const reason = `Rollback of state change ${delta.id}`;
+
+    const { error } = await client.from('character_states').insert({
+      character_id: delta.entity_id,
+      episode_id: delta.episode_id,
+      state_type: applied.state_type,
+      state_value: delta.before_state,
+      trigger_event: reason,
+      previous_state_id: applied.id,
+      created_by: user.id,
+    });
+
+    if (error?.code === INSUFFICIENT_PRIVILEGE) {
+      throw new CanonPermissionError(CANON_WRITE_REFUSAL);
+    }
+
+    if (error) {
+      console.error('Error rolling back character state:', error);
+      throw new Error(`Failed to roll back character state: ${error.message}`);
+    }
+
+    await recordStateDelta(client, {
+      episodeId: delta.episode_id,
+      entityType: 'character',
+      entityId: delta.entity_id,
+      before: delta.after_state,
+      after: delta.before_state,
+      reason,
+    });
+
+    revalidatePath(
+      `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
+      'page',
+    );
+
+    return { restoredStateType: applied.state_type };
+  },
+  {
+    schema: z.object({ deltaId: z.string().uuid() }),
+  },
+);
+
+export const rollbackCharacterStateAction = returnRefusals(
+  rollbackCharacterState,
+);
+
+/**
+ * Lists the audit log for an episode, newest first (FILM-1005): what a
+ * rollback reads.
+ */
+export const getStateDeltasAction = enhanceAction(
+  async (data: { episodeId: string; limit?: number }) => {
+    const client = getSupabaseServerClient();
+
+    const { data: deltas, error } = await client
+      .from('state_deltas')
+      .select(
+        'id, episode_id, entity_type, entity_id, before_state, after_state, change_reason, created_at',
+      )
+      .eq('episode_id', data.episodeId)
+      .order('created_at', { ascending: false })
+      .limit(data.limit ?? 100);
+
+    if (error) {
+      console.error('Error getting state deltas:', error);
+      throw new Error(`Failed to get state deltas: ${error.message}`);
+    }
+
+    return deltas ?? [];
+  },
+  {
+    schema: z.object({
+      episodeId: z.string().uuid(),
+      limit: z.number().int().positive().max(500).optional(),
+    }),
+  },
+);
 
 /**
  * Gets character states for a specific character.
@@ -546,7 +755,7 @@ const createNarrativeThread = enhanceAction(
       .single();
 
     if (error?.code === INSUFFICIENT_PRIVILEGE) {
-      throw new ActionRefusal(CANON_WRITE_REFUSAL);
+      throw new CanonPermissionError(CANON_WRITE_REFUSAL);
     }
 
     if (error) {
@@ -573,8 +782,9 @@ export const createNarrativeThreadAction = returnRefusals(
 /**
  * Updates a narrative thread's status or adds payoffs.
  * Uses optimistic locking via version column to prevent race conditions.
+ * Each change is recorded in `state_deltas` (FILM-1005).
  */
-export const updateNarrativeThreadAction = enhanceAction(
+const updateNarrativeThread = enhanceAction(
   async (data: {
     threadId: string;
     expectedVersion: number;
@@ -588,19 +798,23 @@ export const updateNarrativeThreadAction = enhanceAction(
     // Get current thread to merge arrays
     const { data: current, error: fetchError } = await client
       .from('narrative_threads')
-      .select('id, payoffs, episodes_touched, version')
+      .select('id, status, payoffs, episodes_touched, version, opened_at')
       .eq('id', data.threadId)
       .single();
 
-    if (fetchError || !current) {
+    if (readFailed(fetchError)) {
       throw new Error(whyNoRow(fetchError, 'Thread not found'));
+    }
+
+    if (!current) {
+      throw new CanonNotFoundError('Thread not found.');
     }
 
     // Verify version matches (optimistic locking)
     // Note: version column added in migration 20260129194541
     const currentVersion = (current as { version?: number }).version ?? 1;
     if (currentVersion !== data.expectedVersion) {
-      throw new Error(
+      throw new CanonConflictError(
         'Thread was modified by another user. Please refresh and try again.',
       );
     }
@@ -640,14 +854,37 @@ export const updateNarrativeThreadAction = enhanceAction(
       .single();
 
     if (error) {
+      if (error.code === INSUFFICIENT_PRIVILEGE) {
+        throw new CanonPermissionError(CANON_WRITE_REFUSAL);
+      }
+
       if (error.code === 'PGRST116') {
-        throw new Error(
+        throw new CanonConflictError(
           'Thread was modified by another user. Please refresh and try again.',
         );
       }
       console.error('Error updating narrative thread:', error);
       throw new Error(`Failed to update narrative thread: ${error.message}`);
     }
+
+    await recordStateDelta(client, {
+      episodeId: data.episodeTouched ?? current.opened_at,
+      entityType: 'thread',
+      entityId: data.threadId,
+      before: {
+        status: current.status,
+        payoffs: current.payoffs ?? [],
+        version: currentVersion,
+      },
+      after: {
+        status: thread.status,
+        payoffs: thread.payoffs ?? [],
+        version: data.expectedVersion + 1,
+      },
+      reason: data.status
+        ? `Thread status ${current.status ?? 'open'} -> ${data.status}`
+        : 'Thread updated',
+    });
 
     revalidatePath(
       `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
@@ -669,6 +906,8 @@ export const updateNarrativeThreadAction = enhanceAction(
     }),
   },
 );
+
+export const updateNarrativeThreadAction = returnRefusals(updateNarrativeThread);
 
 /**
  * Gets active narrative threads for a project.
@@ -1090,6 +1329,9 @@ export interface CanonExtractionResult {
   stateChanges: ExtractedStateChange[];
   episodeSummary: string;
   sentimentScore: number;
+  keyEvents: string[];
+  characterChanges: string[];
+  worldState?: ExtractedWorldState;
 }
 
 /**
@@ -1183,6 +1425,7 @@ export const extractCanonChangesAction = enhanceAction(
           episodeSummary: string;
           sentimentScore: number;
           keyEvents: string[];
+          worldState?: ExtractedWorldState;
         };
       }>({
         templateSlug: 'canon-extraction',
@@ -1226,6 +1469,13 @@ export const extractCanonChangesAction = enhanceAction(
           0,
           Math.min(1, extraction.sentimentScore ?? 0.5),
         ),
+        keyEvents: extraction.keyEvents ?? [],
+        characterChanges: (extraction.characterStateChanges ?? []).map(
+          describeStateChange,
+        ),
+        worldState: extraction.worldState?.location
+          ? extraction.worldState
+          : undefined,
       };
     } catch (err) {
       console.warn(
@@ -1242,6 +1492,8 @@ export const extractCanonChangesAction = enhanceAction(
         episodeSummary:
           words.length > 100 ? words.substring(0, 200) + '...' : words,
         sentimentScore: 0.5,
+        keyEvents: [],
+        characterChanges: [],
       };
     }
   },
@@ -1253,6 +1505,80 @@ export const extractCanonChangesAction = enhanceAction(
     }),
   },
 );
+
+/**
+ * Writes the episode's `episode_summaries` row and, when the extraction named
+ * a location, its `world_states` row (FILM-1004). Both are one row per
+ * episode, so committing again replaces them. Neither is required for the
+ * commit to have worked, so a failure is reported, not thrown.
+ */
+async function storeEpisodeMemory(
+  client: ServerClient,
+  data: {
+    projectId: string;
+    episodeId: string;
+    changes: Parameters<typeof toEpisodeSummaryRow>[1];
+  },
+): Promise<{ episodeSummary: boolean; worldState: boolean }> {
+  const stored = { episodeSummary: false, worldState: false };
+
+  try {
+    await writeEpisodeMemory(client, data, stored);
+  } catch (error) {
+    console.warn('[commitCanonChanges] Episode memory not stored:', error);
+  }
+
+  return stored;
+}
+
+async function writeEpisodeMemory(
+  client: ServerClient,
+  data: {
+    projectId: string;
+    episodeId: string;
+    changes: Parameters<typeof toEpisodeSummaryRow>[1];
+  },
+  stored: { episodeSummary: boolean; worldState: boolean },
+): Promise<void> {
+  const summaryRow = toEpisodeSummaryRow(data.episodeId, data.changes);
+
+  if (summaryRow) {
+    const { error } = await client
+      .from('episode_summaries')
+      .upsert(summaryRow, { onConflict: 'episode_id' });
+
+    if (error) {
+      console.warn('[commitCanonChanges] Episode summary not stored:', error);
+    } else {
+      stored.episodeSummary = true;
+    }
+  }
+
+  const worldRow = toWorldStateRow(data.projectId, data.episodeId, data.changes);
+
+  if (worldRow) {
+    const { data: existing, error: readError } = await client
+      .from('world_states')
+      .select('id')
+      .eq('project_id', data.projectId)
+      .eq('episode_id', data.episodeId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const { error } = readError
+      ? { error: readError }
+      : existing
+        ? await client.from('world_states').update(worldRow).eq('id', existing.id)
+        : await client.from('world_states').insert(worldRow);
+
+    if (error) {
+      console.warn('[commitCanonChanges] World state not stored:', error);
+    } else {
+      stored.worldState = true;
+    }
+  }
+}
 
 /**
  * Commits extracted canon changes to the database.
@@ -1268,6 +1594,9 @@ export const commitCanonChangesAction = enhanceAction(
       threadUpdates: ExtractedThreadUpdate[];
       episodeSummary: string;
       sentimentScore: number;
+      keyEvents?: string[];
+      characterChanges?: string[];
+      worldState?: ExtractedWorldState;
     };
   }) => {
     const client = getSupabaseServerClient();
@@ -1419,6 +1748,8 @@ export const commitCanonChangesAction = enhanceAction(
       console.warn('[commitCanonChanges] Thread updates failed:', threadError);
     }
 
+    const memoryStored = await storeEpisodeMemory(client, data);
+
     revalidatePath(
       `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
       'page',
@@ -1432,6 +1763,7 @@ export const commitCanonChangesAction = enhanceAction(
       summaryStored:
         (result as { eventsCreated: number; summaryStored: boolean })
           ?.summaryStored ?? false,
+      memoryStored,
     };
   },
   {
@@ -1477,6 +1809,16 @@ export const commitCanonChangesAction = enhanceAction(
         ),
         episodeSummary: z.string(),
         sentimentScore: z.number().min(0).max(1),
+        keyEvents: z.array(z.string()).optional(),
+        characterChanges: z.array(z.string()).optional(),
+        worldState: z
+          .object({
+            location: z.string(),
+            timePeriod: z.string().optional(),
+            atmosphere: z.string().optional(),
+            activeConflicts: z.array(z.string()).optional(),
+          })
+          .optional(),
       }),
     }),
   },

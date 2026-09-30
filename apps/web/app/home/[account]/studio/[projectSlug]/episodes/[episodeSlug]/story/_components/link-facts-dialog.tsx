@@ -6,6 +6,7 @@ import { Check, Loader2, Search } from 'lucide-react';
 import { z } from 'zod';
 
 import {
+  getEpisodeSceneOptionsAction,
   getProjectFactsAction,
   linkFactsToEpisodeAction,
 } from '@kit/episodes/server';
@@ -22,6 +23,13 @@ import {
   DialogTitle,
 } from '@kit/ui/dialog';
 import { Input } from '@kit/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@kit/ui/select';
 import { toast } from '@kit/ui/sonner';
 
 interface LinkFactsDialogProps {
@@ -31,6 +39,13 @@ interface LinkFactsDialogProps {
   projectId: string;
   linkedFactIds: string[];
   onFactsLinked: () => void;
+}
+
+const NO_SCENE = 'none';
+
+interface SceneOption {
+  value: string;
+  label: string;
 }
 
 interface ProjectFact {
@@ -54,6 +69,8 @@ export function LinkFactsDialog({
   const [facts, setFacts] = useState<ProjectFact[]>([]);
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [scenes, setScenes] = useState<SceneOption[]>([]);
+  const [sceneReference, setSceneReference] = useState(NO_SCENE);
 
   const loadFacts = useCallback(() => {
     startTransition(async () => {
@@ -96,6 +113,15 @@ export function LinkFactsDialog({
     });
   }, [projectId, search]);
 
+  const loadScenes = useCallback(async () => {
+    try {
+      const result = await getEpisodeSceneOptionsAction({ episodeId });
+      setScenes(result.scenes);
+    } catch {
+      setScenes([]);
+    }
+  }, [episodeId]);
+
   // n2: debounce search to avoid a DB query per keystroke
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -109,12 +135,14 @@ export function LinkFactsDialog({
         search ? 300 : 0,
       );
       setSelectedIds(new Set());
+      setSceneReference(NO_SCENE);
+      void loadScenes();
     }
 
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [open, search, loadFacts]);
+  }, [open, search, loadFacts, loadScenes]);
 
   const toggleFact = (factId: string) => {
     setSelectedIds((prev) => {
@@ -137,6 +165,7 @@ export function LinkFactsDialog({
           linkFactsToEpisodeAction({
             episodeId,
             factIds: Array.from(selectedIds),
+            ...(sceneReference === NO_SCENE ? {} : { sceneReference }),
           }),
         );
 
@@ -218,6 +247,25 @@ export function LinkFactsDialog({
             )}
           </div>
         </div>
+
+        {scenes.length > 0 && (
+          <div className="space-y-1.5" data-test="link-facts-scene">
+            <p className="text-sm font-medium">Used in scene (optional)</p>
+            <Select value={sceneReference} onValueChange={setSceneReference}>
+              <SelectTrigger data-test="link-facts-scene-select">
+                <SelectValue placeholder="No scene" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_SCENE}>No scene</SelectItem>
+                {scenes.map((scene) => (
+                  <SelectItem key={scene.value} value={scene.value}>
+                    {scene.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

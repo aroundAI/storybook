@@ -619,6 +619,7 @@ export function StoryScreen({
                     episodeNumber={episode.number ?? 1}
                     season={episode.season?.number ?? 1}
                     canonEnabled={canonEnabled}
+                    storyContent={storyData?.fullStory}
                   />
                 ) : null
               ) : sidebarTab === 'refine' ? (

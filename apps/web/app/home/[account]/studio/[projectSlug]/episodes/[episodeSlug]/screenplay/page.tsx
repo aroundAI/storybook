@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 
 import { useRouter } from 'next/navigation';
 
+import type { CanonSettings } from '@kit/episodes';
 // import { useActiveGenerationJob } from '@kit/episodes/hooks'; // Removed
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
@@ -17,7 +18,7 @@ import { ScreenplayScreen } from './_components/screenplay-screen';
 
 export default function ScreenplayPage() {
   const router = useRouter();
-  const { episode, accountSlug, projectSlug, refetchEpisode } =
+  const { episode, accountSlug, projectSlug, projectMetadata, refetchEpisode } =
     useEpisodeContext();
 
   // Check if screenplay already has data
@@ -95,6 +96,10 @@ export default function ScreenplayPage() {
         episode={episode}
         onShotListComplete={handleShotListComplete}
         refetchEpisode={refetchEpisode}
+        canonEnabled={
+          (projectMetadata as { canon?: CanonSettings } | null)?.canon
+            ?.enabled ?? false
+        }
       />
     </div>
   );

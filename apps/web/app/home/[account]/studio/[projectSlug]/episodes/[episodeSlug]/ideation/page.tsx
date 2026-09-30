@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
-import type { NarrativeThread } from '@kit/episodes';
+import type { CanonSettings, NarrativeThread } from '@kit/episodes';
 import type { ContentStyle } from '@kit/episodes/lib';
 import {
   generateFullStoryAction,
@@ -16,6 +16,7 @@ import { toast } from '@kit/ui/sonner';
 
 import { useEpisodeContext } from '../_components/episode-context-provider';
 import { IdeationScreen } from './_components/ideation-screen';
+import { MemoryContextPreview } from './_components/memory-context-preview';
 import type { RefinedStoryIdea } from './_components/refine-idea-modal';
 import {
   type ThreadCandidate,
@@ -128,6 +129,10 @@ export default function IdeationPage() {
     });
   };
 
+  const isCanonEnabled =
+    (projectMetadata as { canon?: CanonSettings } | null)?.canon?.enabled ??
+    false;
+
   // Extract character and location IDs from episode metadata
   const characterIds = (episode.metadata?.character_ids as string[]) ?? [];
   const locationIds = (episode.metadata?.location_ids as string[]) ?? [];
@@ -155,6 +160,15 @@ export default function IdeationPage() {
           onSelectionChange={setThreadCandidates}
         />
       </div>
+
+      {isCanonEnabled && episode.projectId && (
+        <div className="mx-auto mt-6 max-w-5xl">
+          <MemoryContextPreview
+            projectId={episode.projectId}
+            episodeNumber={episode.number ?? 1}
+          />
+        </div>
+      )}
     </div>
   );
 }

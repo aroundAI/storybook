@@ -26,12 +26,14 @@ import { cn } from '@kit/ui/utils';
 
 import { useEpisodeContext } from '../../_components/episode-context-provider';
 import { SceneIndexSidebar } from './scene-index-sidebar';
+import { ContinuitySidebar } from './continuity-sidebar';
 import { ScreenplayPaper } from './screenplay-paper';
 
 interface ScreenplayScreenProps {
   episode: EpisodeWithShots;
   onShotListComplete: () => void;
   refetchEpisode: () => void;
+  canonEnabled?: boolean;
 }
 
 function parseScenes(screenplayData: ScreenplayData | null): ScreenplayScene[] {
@@ -70,6 +72,7 @@ export function ScreenplayScreen({
   episode,
   onShotListComplete,
   refetchEpisode,
+  canonEnabled = false,
 }: ScreenplayScreenProps) {
   const { setIsGenerating } = useEpisodeContext();
   const [isPending, _startTransition] = useTransition();
@@ -80,6 +83,8 @@ export function ScreenplayScreen({
 
   const scenes = parseScenes(episode.screenplayData);
   const metadata = episode.screenplayData?.metadata;
+  const activeScene =
+    scenes.find((scene) => scene.number === activeSceneNumber) ?? scenes[0];
   const hasShotList = Boolean(episode.shotList) || episode.shots.length > 0;
 
   // WebSocket for shot-generation async LLM results
@@ -289,6 +294,15 @@ export function ScreenplayScreen({
             activeSceneNumber={activeSceneNumber}
           />
         </div>
+
+        {canonEnabled && activeScene && episode.projectId && (
+          <ContinuitySidebar
+            projectId={episode.projectId}
+            episodeId={episode.id}
+            episodeNumber={episode.number ?? 1}
+            scene={activeScene}
+          />
+        )}
       </div>
 
       {/* Collapsible Glass Sidebar */}

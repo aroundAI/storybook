@@ -25,6 +25,7 @@ export function SceneIndexSidebar({
           {scenes.map((scene) => (
             <button
               key={scene.number}
+              data-test={`scene-index-item-${scene.number}`}
               onClick={() => onSceneSelect(scene.number)}
               className={cn(
                 'group flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left transition-colors',
