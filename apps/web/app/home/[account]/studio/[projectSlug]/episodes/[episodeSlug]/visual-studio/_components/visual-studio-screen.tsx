@@ -23,11 +23,7 @@ import { ShortsPanel } from './shorts-panel';
 import type { ShortsCandidateScene } from './shorts-panel';
 import { ShotDetailsSidebar } from './shot-details-sidebar';
 import { ShotGrid } from './shot-grid';
-import {
-  EMPTY_SELECTION,
-  orderedShotIds,
-  selectShot,
-} from './shot-selection';
+import { EMPTY_SELECTION, orderedShotIds, selectShot } from './shot-selection';
 import { ViralScorecard } from './viral-scorecard';
 import type { ShotFilter } from './visual-studio-utils';
 

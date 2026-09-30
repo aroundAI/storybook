@@ -54,12 +54,18 @@ test.describe('Canon edit and delete (FILM-1007)', () => {
       payoffs: ['The key was in the lamp'],
     });
 
-    const deltas = await readRows<{ entity_type: string; change_reason: string }>(
+    const deltas = await readRows<{
+      entity_type: string;
+      change_reason: string;
+    }>(
       'state_deltas',
       `entity_id=eq.${canon.threadId}&select=entity_type,change_reason`,
     );
     expect(deltas).toEqual([
-      { entity_type: 'thread', change_reason: 'Thread status open -> resolved' },
+      {
+        entity_type: 'thread',
+        change_reason: 'Thread status open -> resolved',
+      },
     ]);
   });
 
@@ -117,7 +123,10 @@ test.describe('Canon edit and delete (FILM-1007)', () => {
       await readRows('immutable_events', `id=eq.${canon.eventId}&select=id`),
     ).toEqual([]);
 
-    const deltas = await readRows<{ entity_type: string; before_state: unknown }>(
+    const deltas = await readRows<{
+      entity_type: string;
+      before_state: unknown;
+    }>(
       'state_deltas',
       `entity_id=eq.${canon.eventId}&select=entity_type,before_state`,
     );

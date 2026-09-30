@@ -119,7 +119,10 @@ describe('deleteImmutableEventAction', () => {
 
   it('reports success when the event was deleted', async () => {
     clientReturning(
-      { data: [{ id: input.eventId, event_key: 'k', established_in: 'e1' }], error: null },
+      {
+        data: [{ id: input.eventId, event_key: 'k', established_in: 'e1' }],
+        error: null,
+      },
       { data: null, error: null },
     );
 

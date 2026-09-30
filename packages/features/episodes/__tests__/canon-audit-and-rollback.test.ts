@@ -53,7 +53,14 @@ function clientReturning(...results: Result[]) {
     const result = results.shift() ?? { data: null, error: null };
     const chain: Record<string, unknown> = {};
 
-    for (const method of ['select', 'eq', 'order', 'limit', 'single', 'delete']) {
+    for (const method of [
+      'select',
+      'eq',
+      'order',
+      'limit',
+      'single',
+      'delete',
+    ]) {
       chain[method] = vi.fn(() => chain);
     }
 
@@ -225,13 +232,17 @@ describe('updateNarrativeThreadAction audit (FILM-1005)', () => {
 
     await expect(updateNarrativeThreadAction(edit)).resolves.toEqual({
       ok: false,
-      error: 'Thread was modified by another user. Please refresh and try again.',
+      error:
+        'Thread was modified by another user. Please refresh and try again.',
     });
     expect(writes).toEqual([]);
   });
 
   it('returns a missing thread as a refusal', async () => {
-    clientReturning({ data: null, error: { code: 'PGRST116', message: 'none' } });
+    clientReturning({
+      data: null,
+      error: { code: 'PGRST116', message: 'none' },
+    });
 
     await expect(updateNarrativeThreadAction(edit)).resolves.toEqual({
       ok: false,
@@ -252,7 +263,10 @@ describe('updateNarrativeThreadAction audit (FILM-1005)', () => {
   });
 
   it('still throws a failed read', async () => {
-    clientReturning({ data: null, error: { code: '57014', message: 'timeout' } });
+    clientReturning({
+      data: null,
+      error: { code: '57014', message: 'timeout' },
+    });
 
     await expect(updateNarrativeThreadAction(edit)).rejects.toThrow(
       'Thread not found: the read failed (timeout)',
@@ -384,7 +398,10 @@ describe('rollbackCharacterStateAction (FILM-1005)', () => {
   });
 
   it('refuses an unknown delta', async () => {
-    clientReturning({ data: null, error: { code: 'PGRST116', message: 'none' } });
+    clientReturning({
+      data: null,
+      error: { code: 'PGRST116', message: 'none' },
+    });
 
     await expect(
       rollbackCharacterStateAction({ deltaId: DELTA }),

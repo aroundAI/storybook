@@ -9,7 +9,9 @@ import {
 const userPrompt = sceneShotGeneration.user_prompt;
 
 const promptExample = JSON.parse(
-  userPrompt.slice(userPrompt.indexOf('## OUTPUT JSON') + '## OUTPUT JSON'.length),
+  userPrompt.slice(
+    userPrompt.indexOf('## OUTPUT JSON') + '## OUTPUT JSON'.length,
+  ),
 ) as {
   shots: Array<Record<string, unknown>>;
   [key: string]: unknown;
@@ -60,7 +62,9 @@ describe('SceneShotGenerationOutputSchema (FILM-304)', () => {
     const topLevel = Object.keys(SceneShotGenerationOutputSchema.shape);
     const perShot = Object.keys(SceneShotSchema.shape);
 
-    expect(topLevel).toEqual(expect.arrayContaining(Object.keys(promptExample)));
+    expect(topLevel).toEqual(
+      expect.arrayContaining(Object.keys(promptExample)),
+    );
     expect(perShot).toEqual(
       expect.arrayContaining(Object.keys(promptExample.shots[0]!)),
     );
@@ -69,9 +73,9 @@ describe('SceneShotGenerationOutputSchema (FILM-304)', () => {
   it('requires the scene reel score the prompt demands', () => {
     const { sceneViralScore: _omitted, ...withoutScore } = concreteExample;
 
-    expect(SceneShotGenerationOutputSchema.safeParse(withoutScore).success).toBe(
-      false,
-    );
+    expect(
+      SceneShotGenerationOutputSchema.safeParse(withoutScore).success,
+    ).toBe(false);
   });
 
   it('accepts a reaction timeline event, which the prompt template allows', () => {
@@ -96,8 +100,8 @@ describe('SceneShotGenerationOutputSchema (FILM-304)', () => {
       ],
     };
 
-    expect(SceneShotGenerationOutputSchema.safeParse(withReaction).success).toBe(
-      true,
-    );
+    expect(
+      SceneShotGenerationOutputSchema.safeParse(withReaction).success,
+    ).toBe(true);
   });
 });

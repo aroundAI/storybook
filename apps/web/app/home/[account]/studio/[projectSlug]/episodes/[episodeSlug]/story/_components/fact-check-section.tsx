@@ -72,9 +72,7 @@ export function FactCheckSection({
           disabled={isPending}
           data-test="fact-check-run"
         >
-          {isPending ? (
-            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-          ) : null}
+          {isPending ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : null}
           {result ? 'Check again' : 'Fact-check'}
         </Button>
       </div>

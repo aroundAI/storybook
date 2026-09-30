@@ -147,9 +147,7 @@ describe('CANON_001 resurrection failure', () => {
     const result = validatePlotSkeleton(
       skeletonOf({
         characters: [{ characterId: 'c1', name: 'Mara', role: 'lead' }],
-        scenes: [
-          { sceneNumber: 2, summary: 'x', charactersPresent: ['c1'] },
-        ],
+        scenes: [{ sceneNumber: 2, summary: 'x', charactersPresent: ['c1'] }],
       }),
       context,
     );
@@ -329,7 +327,9 @@ describe('CANON_005 world contradiction', () => {
   it('flags magic in a world with no magic', () => {
     const result = validatePlotSkeleton(
       skeletonOf({
-        scenes: [{ sceneNumber: 1, summary: 'She uses magic', charactersPresent: [] }],
+        scenes: [
+          { sceneNumber: 1, summary: 'She uses magic', charactersPresent: [] },
+        ],
       }),
       contextOf({
         immutableEvents: [event('world_fact', 'world:no_magic', 'No magic')],
@@ -342,7 +342,13 @@ describe('CANON_005 world contradiction', () => {
   it('flags a scene set in a destroyed location', () => {
     const result = validatePlotSkeleton(
       skeletonOf({
-        scenes: [{ sceneNumber: 3, summary: 'They meet at the harbor', charactersPresent: [] }],
+        scenes: [
+          {
+            sceneNumber: 3,
+            summary: 'They meet at the harbor',
+            charactersPresent: [],
+          },
+        ],
       }),
       contextOf({
         immutableEvents: [
@@ -358,7 +364,9 @@ describe('CANON_005 world contradiction', () => {
   it('is quiet with no world facts', () => {
     const result = validatePlotSkeleton(
       skeletonOf({
-        scenes: [{ sceneNumber: 1, summary: 'She uses magic', charactersPresent: [] }],
+        scenes: [
+          { sceneNumber: 1, summary: 'She uses magic', charactersPresent: [] },
+        ],
       }),
       contextOf(),
     );
@@ -397,8 +405,12 @@ describe('CANON_006 reference violation', () => {
 });
 
 describe('CANON_008 escalation overflow', () => {
-  const grim = { plotSummary: 'A massacre' } as MemoryContext['recentSummaries'][number];
-  const calm = { plotSummary: 'A picnic' } as MemoryContext['recentSummaries'][number];
+  const grim = {
+    plotSummary: 'A massacre',
+  } as MemoryContext['recentSummaries'][number];
+  const calm = {
+    plotSummary: 'A picnic',
+  } as MemoryContext['recentSummaries'][number];
   const highStakes = skeletonOf({
     scenes: [
       { sceneNumber: 1, summary: 'war breaks out', charactersPresent: [] },
@@ -429,12 +441,19 @@ describe('CANON_009 tone drift', () => {
   function summaries(scores: Array<number | undefined>) {
     return scores.map(
       (sentimentScore) =>
-        ({ plotSummary: 'x', sentimentScore }) as MemoryContext['recentSummaries'][number],
+        ({
+          plotSummary: 'x',
+          sentimentScore,
+        }) as MemoryContext['recentSummaries'][number],
     );
   }
   const joyful = skeletonOf({
     scenes: [
-      { sceneNumber: 1, summary: 'hope and joy and love', charactersPresent: [] },
+      {
+        sceneNumber: 1,
+        summary: 'hope and joy and love',
+        charactersPresent: [],
+      },
     ],
   });
 
@@ -521,7 +540,13 @@ describe('CANON_012 standalone episode', () => {
     activeThreads: [thread('The missing key', 9), thread('The tide', 9)],
   });
   const standalone = skeletonOf({
-    scenes: [{ sceneNumber: 1, summary: 'A new stranger arrives', charactersPresent: [] }],
+    scenes: [
+      {
+        sceneNumber: 1,
+        summary: 'A new stranger arrives',
+        charactersPresent: [],
+      },
+    ],
   });
 
   it('flags a series episode that touches none of four canon items', () => {
@@ -529,7 +554,9 @@ describe('CANON_012 standalone episode', () => {
 
     const violation = result.violations.find((v) => v.code === 'CANON_012');
     expect(violation?.severity).toBe('info');
-    expect(violation?.message).toContain('0 callback(s) to 4 established canon item(s)');
+    expect(violation?.message).toContain(
+      '0 callback(s) to 4 established canon item(s)',
+    );
   });
 
   it('accepts an episode that calls back to a thread and a character', () => {
@@ -537,7 +564,11 @@ describe('CANON_012 standalone episode', () => {
       skeletonOf({
         characters: [{ characterId: 'c1', name: 'Mara', role: 'lead' }],
         scenes: [
-          { sceneNumber: 1, summary: 'The missing key resurfaces', charactersPresent: ['c1'] },
+          {
+            sceneNumber: 1,
+            summary: 'The missing key resurfaces',
+            charactersPresent: ['c1'],
+          },
         ],
       }),
       canon,
@@ -582,8 +613,12 @@ describe('CANON_012 standalone episode', () => {
       metadata: { projectType: 'news' } as MemoryContext['metadata'],
     });
 
-    expect(codes(validatePlotSkeleton(standalone, documentary))).toContain('CANON_012');
-    expect(codes(validatePlotSkeleton(standalone, news))).not.toContain('CANON_012');
+    expect(codes(validatePlotSkeleton(standalone, documentary))).toContain(
+      'CANON_012',
+    );
+    expect(codes(validatePlotSkeleton(standalone, news))).not.toContain(
+      'CANON_012',
+    );
   });
 
   it('applies to screenplay scene blocks by their text', () => {

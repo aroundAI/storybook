@@ -5,7 +5,10 @@ import { z } from 'zod';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
 import { withRefusals } from '@kit/next/refusals';
 
-import { runFactCheck, shouldBlockContent } from '../lib/documentary/fact-checker';
+import {
+  runFactCheck,
+  shouldBlockContent,
+} from '../lib/documentary/fact-checker';
 
 const FactCheckContentSchema = z.object({
   projectId: z.string().uuid(),

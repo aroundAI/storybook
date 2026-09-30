@@ -35,7 +35,9 @@ export function sceneOptionsOf(screenplayData: unknown): SceneOption[] {
     return [
       {
         value: String(scene.number),
-        label: heading ? `Scene ${scene.number}: ${heading}` : `Scene ${scene.number}`,
+        label: heading
+          ? `Scene ${scene.number}: ${heading}`
+          : `Scene ${scene.number}`,
       },
     ];
   });

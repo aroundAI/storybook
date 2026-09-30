@@ -118,7 +118,9 @@ describe('runFactCheck (FILM-1123)', () => {
       citations_valid: false,
     });
 
-    const result = await runFactCheck('project-1', 'text', ['Height of the dam']);
+    const result = await runFactCheck('project-1', 'text', [
+      'Height of the dam',
+    ]);
 
     expect(result.overallVerdict).toBe('fail');
     expect(result.issues).toEqual([

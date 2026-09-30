@@ -715,7 +715,9 @@ function checkStandaloneEpisode(
     .toLowerCase();
   const mentions = (name: string) =>
     name.length > 0 && text.includes(name.toLowerCase());
-  const plotCharacterIds = new Set(skeleton.characters.map((c) => c.characterId));
+  const plotCharacterIds = new Set(
+    skeleton.characters.map((c) => c.characterId),
+  );
 
   const callbacks =
     context.characterStates.filter(
@@ -725,7 +727,8 @@ function checkStandaloneEpisode(
     (context.worldState && mentions(context.worldState.location) ? 1 : 0) +
     context.immutableEvents.filter((e) => mentions(e.eventKey)).length;
 
-  const minRatio = MIN_CONNECTIVITY_RATIO[context.metadata?.projectType ?? 'series'];
+  const minRatio =
+    MIN_CONNECTIVITY_RATIO[context.metadata?.projectType ?? 'series'];
   const ratio = callbacks / targets;
   if (ratio >= minRatio) return [];
 

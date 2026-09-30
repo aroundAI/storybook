@@ -62,7 +62,9 @@ const linkFactsToEpisode = enhanceAction(
 
       if (episodeError && episodeError.code !== 'PGRST116') {
         logger.error({ ...ctx, error: episodeError }, 'Failed to read scenes');
-        throw new Error(`Failed to read episode scenes: ${episodeError.message}`);
+        throw new Error(
+          `Failed to read episode scenes: ${episodeError.message}`,
+        );
       }
 
       const known = sceneOptionsOf(episode?.screenplay_data).some(

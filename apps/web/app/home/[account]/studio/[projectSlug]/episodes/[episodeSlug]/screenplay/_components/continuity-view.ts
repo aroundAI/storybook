@@ -133,7 +133,9 @@ export function buildContinuityView(
     }));
 
   const openThreads = context.activeThreads
-    .filter((thread) => thread.status === 'open' || thread.status === 'progressed')
+    .filter(
+      (thread) => thread.status === 'open' || thread.status === 'progressed',
+    )
     .map((thread, index) => ({
       thread,
       index,

@@ -138,8 +138,10 @@ describe('orderedShotIds', () => {
 
 describe('nextFocusIndex', () => {
   const sceneLengths = [5, 3];
-  const move = (key: Parameters<typeof nextFocusIndex>[0]['key'], index: number) =>
-    nextFocusIndex({ key, index, sceneLengths, columns: 2 });
+  const move = (
+    key: Parameters<typeof nextFocusIndex>[0]['key'],
+    index: number,
+  ) => nextFocusIndex({ key, index, sceneLengths, columns: 2 });
 
   it('steps through every card with left and right, across scenes', () => {
     expect(move('ArrowRight', 4)).toBe(5);

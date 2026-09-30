@@ -92,9 +92,7 @@ function clientReturning(
     from: (table: string) => {
       if (!MEMORY_TABLES.includes(table)) return from();
 
-      const chain = query(
-        memoryResults[table] ?? { data: null, error: null },
-      );
+      const chain = query(memoryResults[table] ?? { data: null, error: null });
       memory.push({ table, chain });
       return chain;
     },
@@ -431,7 +429,10 @@ describe('memory rows: commitCanonChangesAction (FILM-1004)', () => {
       },
     });
 
-  const rpcOk = { data: { eventsCreated: 0, summaryStored: true }, error: null };
+  const rpcOk = {
+    data: { eventsCreated: 0, summaryStored: true },
+    error: null,
+  };
 
   it('upserts the episode summary row, one per episode', async () => {
     const { memory } = clientReturning([], rpcOk);
@@ -486,7 +487,7 @@ describe('memory rows: commitCanonChangesAction (FILM-1004)', () => {
     );
   });
 
-  it('updates the episode\'s world state when it already has one', async () => {
+  it("updates the episode's world state when it already has one", async () => {
     const { memory } = clientReturning([], rpcOk, {
       world_states: { data: { id: 'w1' }, error: null },
     });
@@ -516,4 +517,3 @@ describe('memory rows: commitCanonChangesAction (FILM-1004)', () => {
     });
   });
 });
-

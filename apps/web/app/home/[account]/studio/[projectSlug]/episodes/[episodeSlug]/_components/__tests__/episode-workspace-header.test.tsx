@@ -49,8 +49,6 @@ describe('EpisodeWorkspaceHeader (FILM-312)', () => {
 
     const link = screen.getByRole('link', { name: 'Back to episodes' });
 
-    expect(link.getAttribute('href')).toBe(
-      '/home/team/studio/film/episodes',
-    );
+    expect(link.getAttribute('href')).toBe('/home/team/studio/film/episodes');
   });
 });

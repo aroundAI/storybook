@@ -46,9 +46,12 @@ describe('breakCountFor', () => {
     [1800, 3, 2],
     [600, 1, 0],
     [600, 0, 0],
-  ])('%is over %i segments has %i breaks', (seconds, segmentCount, expected) => {
-    expect(breakCountFor(seconds, segmentCount)).toBe(expected);
-  });
+  ])(
+    '%is over %i segments has %i breaks',
+    (seconds, segmentCount, expected) => {
+      expect(breakCountFor(seconds, segmentCount)).toBe(expected);
+    },
+  );
 });
 
 describe('computeBreakPositions', () => {
@@ -67,7 +70,9 @@ describe('computeBreakPositions', () => {
 
   it('follows the running time, not the segment count', () => {
     // A long lead: 400s then four 25s pieces. The middle of 500s is 250s.
-    expect(computeBreakPositions(segments(400, 25, 25, 25, 25), 1)).toEqual([1]);
+    expect(computeBreakPositions(segments(400, 25, 25, 25, 25), 1)).toEqual([
+      1,
+    ]);
   });
 
   it('never uses a boundary twice or the end of the last segment', () => {
@@ -119,7 +124,11 @@ describe('planEpisodeRundown (FILM-1134)', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
-  const options = { episodeTitle: 'Evening', totalDuration: 10, accountId: 'a' };
+  const options = {
+    episodeTitle: 'Evening',
+    totalDuration: 10,
+    accountId: 'a',
+  };
 
   it('returns the LLM rundown with its breaks validated', async () => {
     executeLLM.mockResolvedValue({

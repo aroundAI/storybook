@@ -45,7 +45,10 @@ test.describe('Continuity Sidebar -- evidence', () => {
     await page.screenshot({ path: `${OUT}/02-scene-2-violation.png` });
     measured.push({
       state: 'scene 2, 1440px',
-      violations: await byTest(sidebar, 'continuity-violation').allTextContents(),
+      violations: await byTest(
+        sidebar,
+        'continuity-violation',
+      ).allTextContents(),
     });
 
     await page.setViewportSize({ width: 800, height: 900 });

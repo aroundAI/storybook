@@ -1,8 +1,14 @@
 'use client';
 
-import { AlertTriangle, GitBranch, Loader2, Shield, Skull, User } from 'lucide-react';
-
 import { useQuery } from '@tanstack/react-query';
+import {
+  AlertTriangle,
+  GitBranch,
+  Loader2,
+  Shield,
+  Skull,
+  User,
+} from 'lucide-react';
 
 import {
   buildMemoryContextAction,
@@ -148,7 +154,9 @@ export function ContinuitySidebar({
                   )}
                   data-test="continuity-violation"
                 >
-                  <span className="font-mono text-[10px]">{violation.code}</span>{' '}
+                  <span className="font-mono text-[10px]">
+                    {violation.code}
+                  </span>{' '}
                   {violation.message}
                 </li>
               ))}

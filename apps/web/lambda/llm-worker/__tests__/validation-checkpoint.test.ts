@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { runValidationCheckpoint } from '../utils/validation-checkpoint';
+
 const buildMemoryContext = vi.fn();
 vi.mock('@kit/episodes/lib/canon/memory-context-builder', () => ({
   buildMemoryContext: (...args: unknown[]) => buildMemoryContext(...args),
 }));
-
-import { runValidationCheckpoint } from '../utils/validation-checkpoint';
 
 const canonWithDeadMara = {
   projectId: 'p',
@@ -62,7 +62,10 @@ describe('runValidationCheckpoint writes validation_runs (FILM-1003)', () => {
     expect(result.passed).toBe(true);
     expect(from).toHaveBeenCalledWith('validation_runs');
     expect(insert).toHaveBeenCalledTimes(1);
-    const row = (insert.mock.calls[0] as unknown[])[0] as Record<string, unknown>;
+    const row = (insert.mock.calls[0] as unknown[])[0] as Record<
+      string,
+      unknown
+    >;
     expect(row).toMatchObject({
       project_id: 'p',
       episode_number: 4,

@@ -55,7 +55,9 @@ test.describe('Continuity Sidebar (FILM-1007)', () => {
     await page.setViewportSize({ width: 800, height: 900 });
     await openScreenplay(page, canon);
 
-    await expect(page.getByText('Screenplay', { exact: true }).first()).toBeVisible();
+    await expect(
+      page.getByText('Screenplay', { exact: true }).first(),
+    ).toBeVisible();
     await expect(page.locator('[data-test="continuity-sidebar"]')).toBeHidden();
   });
 });

@@ -27,16 +27,16 @@ import {
   resolveEpisodeNumbers,
 } from '../lib/canon/memory-context-builder';
 import {
+  MAX_MEMORY_HORIZON,
+  MIN_MEMORY_HORIZON,
+  effectiveMemoryHorizon,
+} from '../lib/canon/memory-horizon';
+import {
   type ExtractedWorldState,
   describeStateChange,
   toEpisodeSummaryRow,
   toWorldStateRow,
 } from '../lib/canon/memory-rows';
-import {
-  MAX_MEMORY_HORIZON,
-  MIN_MEMORY_HORIZON,
-  effectiveMemoryHorizon,
-} from '../lib/canon/memory-horizon';
 import {
   isThreadStale,
   threadEpisodeIds,
@@ -528,7 +528,9 @@ const rollbackCharacterState = enhanceAction(
 
     if (statesError) {
       console.error('Error reading character states:', statesError);
-      throw new Error(`Failed to read character states: ${statesError.message}`);
+      throw new Error(
+        `Failed to read character states: ${statesError.message}`,
+      );
     }
 
     const applied = (states ?? []).find(
@@ -907,7 +909,9 @@ const updateNarrativeThread = enhanceAction(
   },
 );
 
-export const updateNarrativeThreadAction = returnRefusals(updateNarrativeThread);
+export const updateNarrativeThreadAction = returnRefusals(
+  updateNarrativeThread,
+);
 
 /**
  * Gets active narrative threads for a project.
@@ -1554,7 +1558,11 @@ async function writeEpisodeMemory(
     }
   }
 
-  const worldRow = toWorldStateRow(data.projectId, data.episodeId, data.changes);
+  const worldRow = toWorldStateRow(
+    data.projectId,
+    data.episodeId,
+    data.changes,
+  );
 
   if (worldRow) {
     const { data: existing, error: readError } = await client
@@ -1569,7 +1577,10 @@ async function writeEpisodeMemory(
     const { error } = readError
       ? { error: readError }
       : existing
-        ? await client.from('world_states').update(worldRow).eq('id', existing.id)
+        ? await client
+            .from('world_states')
+            .update(worldRow)
+            .eq('id', existing.id)
         : await client.from('world_states').insert(worldRow);
 
     if (error) {

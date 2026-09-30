@@ -68,8 +68,8 @@ export function DeleteEventDialog({
           <AlertDialogTitle>Delete this immutable event?</AlertDialogTitle>
           <AlertDialogDescription>
             &ldquo;{description}&rdquo; stops constraining new episodes. Events
-            are not edited: to correct one, delete it and add the right one.
-            The deletion is recorded in the canon audit log.
+            are not edited: to correct one, delete it and add the right one. The
+            deletion is recorded in the canon audit log.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

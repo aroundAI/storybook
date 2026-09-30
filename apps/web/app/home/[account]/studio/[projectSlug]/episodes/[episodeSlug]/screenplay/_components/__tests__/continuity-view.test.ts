@@ -26,7 +26,12 @@ const context: ContinuityContextInput = {
   immutableEvents: [
     event('e1', 'world_fact', 'world:no_magic', 'Magic does not exist'),
     event('e2', 'death', 'character:ilya:dead', 'Ilya died in the flood'),
-    event('e3', 'timeline', 'timeline:pact', 'The pact was sworn at the lighthouse'),
+    event(
+      'e3',
+      'timeline',
+      'timeline:pact',
+      'The pact was sworn at the lighthouse',
+    ),
   ],
   activeThreads: [
     { id: 't1', threadName: 'The tide', status: 'open' },
@@ -112,7 +117,9 @@ describe('buildContinuityView', () => {
             characterId: 'c3',
             characterName: 'Mara',
             constraints: [],
-            currentStates: [{ stateType: 'physical', stateValue: { hurt: true } }],
+            currentStates: [
+              { stateType: 'physical', stateValue: { hurt: true } },
+            ],
           },
         ],
       },

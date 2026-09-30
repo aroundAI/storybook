@@ -179,7 +179,9 @@ describe('a live news search over the NewsAPI built-ins', () => {
   it('carries each source’s bias label onto its articles, so the balance check sees it (FILM-1133)', async () => {
     const result = await search();
 
-    const bias = Object.fromEntries(result.content.map((c) => [c.url, c.biasLabel]));
+    const bias = Object.fromEntries(
+      result.content.map((c) => [c.url, c.biasLabel]),
+    );
     expect(bias).toEqual({
       'https://example.test/r1': 'center',
       'https://example.test/b1': 'center_left',

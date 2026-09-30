@@ -25,8 +25,8 @@ import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
 import { useEpisodeContext } from '../../_components/episode-context-provider';
-import { SceneIndexSidebar } from './scene-index-sidebar';
 import { ContinuitySidebar } from './continuity-sidebar';
+import { SceneIndexSidebar } from './scene-index-sidebar';
 import { ScreenplayPaper } from './screenplay-paper';
 
 interface ScreenplayScreenProps {

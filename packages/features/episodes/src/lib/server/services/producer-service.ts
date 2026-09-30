@@ -374,16 +374,18 @@ export function computeBreakPositions(
   rundown: RundownSegment[],
   count: number,
 ): number[] {
-  const boundaries = rundown.slice(0, -1).reduce<
-    Array<{ segmentNumber: number; endsAt: number }>
-  >((acc, segment) => {
-    const previous = acc.at(-1)?.endsAt ?? 0;
-    acc.push({
-      segmentNumber: segment.segmentNumber,
-      endsAt: previous + segment.duration,
-    });
-    return acc;
-  }, []);
+  const boundaries = rundown
+    .slice(0, -1)
+    .reduce<
+      Array<{ segmentNumber: number; endsAt: number }>
+    >((acc, segment) => {
+      const previous = acc.at(-1)?.endsAt ?? 0;
+      acc.push({
+        segmentNumber: segment.segmentNumber,
+        endsAt: previous + segment.duration,
+      });
+      return acc;
+    }, []);
 
   const total = rundown.reduce((sum, segment) => sum + segment.duration, 0);
   const chosen: number[] = [];
