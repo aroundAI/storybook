@@ -17,13 +17,19 @@ import type { Database } from '@kit/supabase/database';
 
 export const INSIGHTS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Part of the cache key: an answer stored under an earlier prompt, with no
+ * trends or top performers, must not be served for the same figures.
+ */
+export const INSIGHTS_PROMPT_VERSION = 2;
+
 type InsightsData = {
   summary: string;
   trends: string[];
   contentRecommendations: string[];
   postingStrategy: string[];
   audienceInsights: string[];
-  topPerformers: string[];
+  topPerformers: Array<{ title: string; analysis: string }>;
   actionItems: string[];
 };
 
@@ -50,6 +56,49 @@ function canonicalJson(value: unknown): string {
 
 export function insightsInputHash(input: unknown): string {
   return createHash('sha256').update(canonicalJson(input)).digest('hex');
+}
+
+function stringList(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
+}
+
+/**
+ * Only performers the model names by an id it was given are kept, and the
+ * title shown is the one supplied, not the model's rendering of it.
+ */
+function groundedPerformers(
+  value: unknown,
+  topContent: Array<{ id: string; title: string }> | undefined,
+): InsightsData['topPerformers'] {
+  if (!topContent?.length || !Array.isArray(value)) return [];
+
+  const performers: InsightsData['topPerformers'] = [];
+  const seen = new Set<string>();
+
+  for (const item of value) {
+    const { contentId, analysis } = (item ?? {}) as {
+      contentId?: unknown;
+      analysis?: unknown;
+    };
+    const content = topContent.find((c) => c.id === contentId);
+
+    if (!content || seen.has(content.id)) continue;
+    if (typeof analysis !== 'string' || !analysis.trim()) continue;
+
+    seen.add(content.id);
+    performers.push({ title: content.title, analysis });
+  }
+
+  return performers;
+}
+
+function hasSplits(audience: Record<string, unknown> | undefined): boolean {
+  return Object.values(audience ?? {}).some(
+    (split) =>
+      !!split && typeof split === 'object' && Object.keys(split).length > 0,
+  );
 }
 
 function isInsightsData(value: unknown): value is InsightsData {
@@ -161,11 +210,15 @@ export async function processAnalyticsInsights(
     platformBreakdown: data.analytics.platformMetrics,
     topContent: data.analytics.topContent?.slice(0, 5),
     audience: data.analytics.audience,
+    trendFacts: data.analytics.trendFacts,
     contentCount: data.analytics.contentCount,
     avgEngagementRate: data.analytics.avgEngagementRate,
   };
 
-  const inputHash = insightsInputHash(analyticsSummary);
+  const inputHash = insightsInputHash({
+    ...analyticsSummary,
+    promptVersion: INSIGHTS_PROMPT_VERSION,
+  });
 
   if (!data.refresh) {
     const cached = await readCachedInsights(
@@ -188,7 +241,8 @@ export async function processAnalyticsInsights(
     contentRecommendations: string[];
     postingStrategy: string[];
     audienceInsights: string[];
-    topPerformers: string[];
+    trends: string[];
+    topPerformers: Array<{ contentId: string; analysis: string }>;
     actionItems: string[];
   }
 
@@ -214,11 +268,18 @@ export async function processAnalyticsInsights(
 
     const insights: InsightsData = {
       summary: result.data.performanceSummary || 'Analysis complete.',
-      trends: [],
+      trends: data.analytics.trendFacts?.length
+        ? stringList(result.data.trends)
+        : [],
       contentRecommendations: result.data.contentRecommendations || [],
       postingStrategy: result.data.postingStrategy || [],
-      audienceInsights: result.data.audienceInsights || [],
-      topPerformers: [],
+      audienceInsights: hasSplits(data.analytics.audience)
+        ? stringList(result.data.audienceInsights)
+        : [],
+      topPerformers: groundedPerformers(
+        result.data.topPerformers,
+        data.analytics.topContent,
+      ),
       actionItems: result.data.actionItems || [],
     };
 

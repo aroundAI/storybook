@@ -56,6 +56,14 @@ const AudienceDataSchema = z.object({
   geography: z.record(z.number()).optional(),
 });
 
+const TrendFactSchema = z.object({
+  metric: z.enum(['views', 'likes', 'comments', 'shares']),
+  platform: z.string(),
+  current: z.number(),
+  previous: z.number(),
+  changePercent: z.number(),
+});
+
 const AggregateAnalyticsSchema = z
   .object({
     totals: AnalyticsTotalsSchema,
@@ -63,6 +71,7 @@ const AggregateAnalyticsSchema = z
     platformMetrics: z.array(PlatformBreakdownSchema).optional(),
     topContent: z.array(TopContentSchema).optional(),
     audience: AudienceDataSchema.optional(),
+    trendFacts: z.array(TrendFactSchema).max(40).optional(),
     contentCount: z.number(),
     avgEngagementRate: z.number(),
   })
@@ -85,7 +94,7 @@ interface _InsightsLLMOutput {
   contentRecommendations: string[];
   postingStrategy: string[];
   audienceInsights: string[];
-  topPerformers: string[];
+  topPerformers: Array<{ contentId: string; analysis: string }>;
   actionItems: string[];
 }
 

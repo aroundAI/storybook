@@ -212,6 +212,18 @@ const AnalyticsInsights = z.object({
       )
       .optional(),
     audience: metricsRecord.optional(),
+    trendFacts: z
+      .array(
+        z.object({
+          metric: z.enum(['views', 'likes', 'comments', 'shares']),
+          platform: z.string(),
+          current: z.number(),
+          previous: z.number(),
+          changePercent: z.number(),
+        }),
+      )
+      .max(40)
+      .optional(),
     contentCount: z.number(),
     avgEngagementRate: z.number(),
   }),
