@@ -49,7 +49,7 @@ export function EmptyAssetState({ assetType, onCreate }: EmptyAssetStateProps) {
       <div className="mb-4 rounded-full bg-muted p-6">
         <Icon className="h-12 w-12 text-muted-foreground" />
       </div>
-      <h3 className="mb-2 text-lg font-semibold">{config.title}</h3>
+      <h2 className="mb-2 text-lg font-semibold">{config.title}</h2>
       <p className="mb-6 max-w-sm text-muted-foreground">
         {config.description}
       </p>
