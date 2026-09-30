@@ -115,6 +115,13 @@ async function getAccountElevenLabsApiKey(
     );
   }
 
+  // FILM-101n: best effort, a failed stamp must not fail the generation.
+  await supabase
+    .from('external_api_keys')
+    .update({ last_used_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('provider', 'elevenlabs');
+
   return decrypt(storedKey.encrypted_key);
 }
 

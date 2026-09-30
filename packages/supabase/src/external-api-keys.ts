@@ -121,7 +121,27 @@ export async function readExternalApiKey(
     activeOnly,
   });
 
+  if (key) {
+    await recordExternalApiKeyUse(accountId, provider);
+  }
+
   return key ?? null;
+}
+
+/**
+ * Stamp `last_used_at` when a key is handed out for use (FILM-101n). Best
+ * effort: a failed stamp must not fail the call the key was fetched for.
+ */
+async function recordExternalApiKeyUse(accountId: string, provider: string) {
+  const { error } = await getSupabaseServerAdminClient()
+    .from('external_api_keys')
+    .update({ last_used_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('provider', provider);
+
+  if (error) {
+    console.warn(`api_key_last_used failed: ${error.message}`);
+  }
 }
 
 async function ownerCheckFailure(

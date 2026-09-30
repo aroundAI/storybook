@@ -22,6 +22,7 @@ const admin = vi.hoisted(() => ({
   calls: [] as Array<[string, ...unknown[]]>,
   result: { data: [] as unknown[], error: null as unknown },
   upsertError: null as unknown,
+  updateError: null as unknown,
 }));
 
 vi.mock('../src/clients/server-admin-client', () => ({
@@ -46,9 +47,27 @@ function adminQuery() {
       admin.calls.push(['upsert', ...args]);
       return Promise.resolve({ error: admin.upsertError });
     },
+    update: (...args: unknown[]) => {
+      admin.calls.push(['update', ...args]);
+      return updateChain();
+    },
   };
 
   return query;
+}
+
+/** `.update(...).eq(...).eq(...)` is awaited; each `.eq` is recorded. */
+function updateChain() {
+  const chain = {
+    eq: (...args: unknown[]) => {
+      admin.calls.push(['update-eq', ...args]);
+      return chain;
+    },
+    then: (resolve: (value: { error: unknown }) => void) =>
+      resolve({ error: admin.updateError }),
+  };
+
+  return chain;
 }
 
 function callerWithAccess(answer: { data: unknown; error: unknown }) {
@@ -67,6 +86,7 @@ beforeEach(() => {
   admin.calls = [];
   admin.result = { data: [ROW], error: null };
   admin.upsertError = null;
+  admin.updateError = null;
   admin.from.mockReset().mockImplementation((table: string) => {
     admin.calls.push(['from', table]);
     return adminQuery();
@@ -156,6 +176,39 @@ describe('readExternalApiKey (KB-84)', () => {
     });
 
     expect(admin.calls).not.toContainEqual(['eq', 'is_active', true]);
+  });
+
+  it('stamps last_used_at on the key it hands out (FILM-101n)', async () => {
+    const { client } = callerWithAccess({ data: true, error: null });
+
+    await readExternalApiKey(client, ACCOUNT, 'elevenlabs');
+
+    const stamp = admin.calls.find(([call]) => call === 'update');
+    expect(stamp?.[1]).toEqual({ last_used_at: expect.any(String) });
+    expect(admin.calls).toContainEqual(['update-eq', 'account_id', ACCOUNT]);
+    expect(admin.calls).toContainEqual(['update-eq', 'provider', 'elevenlabs']);
+  });
+
+  it('stamps nothing when no key is handed out', async () => {
+    const { client } = callerWithAccess({ data: true, error: null });
+    admin.result = { data: [], error: null };
+
+    await readExternalApiKey(client, ACCOUNT, 'elevenlabs');
+
+    expect(admin.calls.map(([call]) => call)).not.toContain('update');
+  });
+
+  it('still returns the key when the stamp fails', async () => {
+    const { client } = callerWithAccess({ data: true, error: null });
+    admin.updateError = { message: 'boom' };
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    await expect(
+      readExternalApiKey(client, ACCOUNT, 'elevenlabs'),
+    ).resolves.toEqual(ROW);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('boom'));
+
+    warn.mockRestore();
   });
 
   it('returns null when no key is stored, or the caller may not see it', async () => {
