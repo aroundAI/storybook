@@ -158,7 +158,7 @@ export function IdeationScreen({
                 <CollapsibleTrigger asChild>
                   <button
                     type="button"
-                    className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-0.5 text-xs font-normal text-slate-400 backdrop-blur-sm transition-colors hover:bg-white/[0.08]"
+                    className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-0.5 text-xs font-normal text-slate-600 backdrop-blur-sm transition-colors hover:bg-white/[0.08] dark:text-slate-400"
                   >
                     <Sparkles className="h-3 w-3" />
                     {numberOfIdeas} variations
@@ -169,7 +169,7 @@ export function IdeationScreen({
             </h2>
 
             <div className="flex items-center gap-3">
-              <span className="text-xs font-medium text-gray-400 dark:text-gray-500">
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-500">
                 {premiseLength}/2000
               </span>
               <Button
@@ -265,14 +265,14 @@ export function IdeationScreen({
           <div className="group relative mb-8">
             <div className="cinema-focus relative p-8 transition-all hover:border-indigo-500/30">
               {/* Label above card */}
-              <div className="absolute -top-3 left-6 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-0.5 text-xs font-semibold tracking-wide text-indigo-400 uppercase backdrop-blur-sm">
+              <div className="absolute -top-3 left-6 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-0.5 text-xs font-semibold tracking-wide text-indigo-700 uppercase backdrop-blur-sm dark:text-indigo-400">
                 Draft Concept
               </div>
 
               {/* Description */}
               <label
                 htmlFor="premise"
-                className="mb-4 block text-sm font-medium text-gray-500 dark:text-gray-400"
+                className="mb-4 block text-sm font-medium text-gray-600 dark:text-gray-400"
               >
                 Draft the core concept of your story. What happens? Who is
                 involved?

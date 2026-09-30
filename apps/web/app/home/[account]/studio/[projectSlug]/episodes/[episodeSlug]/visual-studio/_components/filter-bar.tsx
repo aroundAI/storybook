@@ -61,7 +61,7 @@ export function FilterBar({
           })
         }
       >
-        <SelectTrigger className="w-36">
+        <SelectTrigger className="w-36" aria-label="Filter by scene">
           <Filter className="mr-2 h-4 w-4" />
           <SelectValue placeholder="Scene" />
         </SelectTrigger>
@@ -85,7 +85,7 @@ export function FilterBar({
           })
         }
       >
-        <SelectTrigger className="w-36">
+        <SelectTrigger className="w-36" aria-label="Filter by status">
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>

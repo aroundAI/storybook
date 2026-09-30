@@ -484,7 +484,7 @@ export function DialogueTimeline({
 
   if (dialogueLines.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center text-gray-500 dark:text-gray-400">
+      <div className="flex h-full items-center justify-center text-gray-600 dark:text-gray-400">
         <div className="text-center">
           <Volume2 className="mx-auto mb-3 h-12 w-12 opacity-30" />
           <p>No dialogue lines found</p>

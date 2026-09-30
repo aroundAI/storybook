@@ -17,7 +17,7 @@ export function SceneIndexSidebar({
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-4">
-        <h3 className="mb-4 text-xs font-semibold tracking-wider text-gray-400 uppercase dark:text-gray-500">
+        <h3 className="mb-4 text-xs font-semibold tracking-wider text-gray-600 uppercase dark:text-gray-500">
           Scene Index
         </h3>
 

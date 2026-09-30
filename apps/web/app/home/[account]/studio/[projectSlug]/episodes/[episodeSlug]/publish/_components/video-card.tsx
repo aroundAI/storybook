@@ -64,6 +64,7 @@ export const VideoCard = ({
             variant="ghost"
             size="sm"
             onClick={() => onRemoveVideo(lang)}
+            aria-label={`Remove ${LANG_INFO[lang]?.name} video`}
             disabled={isPending}
             className="text-red-500 opacity-0 transition-opacity group-hover:opacity-100"
           >

@@ -64,12 +64,12 @@ function extractCharacters(shot: Shot): string[] {
 
 const STATUS_STYLES: Record<ShotStatus, string> = {
   pending:
-    'bg-orange-200/80 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300',
+    'bg-orange-200/80 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300',
   generating:
-    'bg-blue-200/80 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+    'bg-blue-200/80 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
   completed:
-    'bg-green-200/80 text-green-700 dark:bg-green-900/50 dark:text-green-300',
-  failed: 'bg-red-200/80 text-red-700 dark:bg-red-900/50 dark:text-red-300',
+    'bg-green-200/80 text-green-800 dark:bg-green-900/50 dark:text-green-300',
+  failed: 'bg-red-200/80 text-red-800 dark:bg-red-900/50 dark:text-red-300',
 };
 
 const STATUS_ICONS: Record<ShotStatus, React.ReactNode> = {

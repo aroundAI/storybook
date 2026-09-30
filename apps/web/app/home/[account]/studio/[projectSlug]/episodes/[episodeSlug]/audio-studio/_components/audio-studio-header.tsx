@@ -109,11 +109,11 @@ export function AudioStudioHeader({
             className={`rounded-md px-3 py-1 text-xs font-semibold whitespace-nowrap transition-all ${
               activeTab === 'dialogue'
                 ? 'bg-white text-gray-900 shadow-sm dark:bg-[#3B82F6] dark:text-white dark:shadow-[0_0_10px_rgba(59,130,246,0.25)]'
-                : 'text-gray-500 hover:text-gray-800 dark:text-[#A3A3A3] dark:hover:text-white'
+                : 'text-gray-600 hover:text-gray-800 dark:text-[#A3A3A3] dark:hover:text-white'
             }`}
           >
             Dialogue{' '}
-            <span className="ml-1 font-normal text-gray-400">
+            <span className="ml-1 font-normal text-gray-600 dark:text-gray-400">
               {dialogueStats.total}
             </span>
           </button>
@@ -123,11 +123,11 @@ export function AudioStudioHeader({
             className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
               activeTab === 'music'
                 ? 'bg-white text-gray-900 shadow-sm dark:bg-[#3B82F6] dark:text-white dark:shadow-[0_0_10px_rgba(59,130,246,0.25)]'
-                : 'text-gray-500 hover:text-gray-800 dark:text-[#A3A3A3] dark:hover:text-white'
+                : 'text-gray-600 hover:text-gray-800 dark:text-[#A3A3A3] dark:hover:text-white'
             }`}
           >
             Music{' '}
-            <span className="ml-1 font-normal text-gray-400">
+            <span className="ml-1 font-normal text-gray-600 dark:text-gray-400">
               {musicStats.total}
             </span>
           </button>
@@ -137,11 +137,11 @@ export function AudioStudioHeader({
             className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
               activeTab === 'sfx'
                 ? 'bg-white text-gray-900 shadow-sm dark:bg-[#3B82F6] dark:text-white dark:shadow-[0_0_10px_rgba(59,130,246,0.25)]'
-                : 'text-gray-500 hover:text-gray-800 dark:text-[#A3A3A3] dark:hover:text-white'
+                : 'text-gray-600 hover:text-gray-800 dark:text-[#A3A3A3] dark:hover:text-white'
             }`}
           >
             SFX{' '}
-            <span className="ml-1 font-normal text-gray-400">
+            <span className="ml-1 font-normal text-gray-600 dark:text-gray-400">
               {sfxStats.total}
             </span>
           </button>

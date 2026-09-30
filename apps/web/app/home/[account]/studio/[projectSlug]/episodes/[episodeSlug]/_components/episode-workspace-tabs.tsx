@@ -135,7 +135,7 @@ export function EpisodeWorkspaceTabs() {
         <div
           key={tab.id}
           data-test={`episode-tab-${tab.id}`}
-          className="flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-400 dark:text-gray-500"
+          className="flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400"
           title={`Complete previous steps to unlock ${tab.label}`}
         >
           <Lock className="h-3.5 w-3.5" />
@@ -151,10 +151,10 @@ export function EpisodeWorkspaceTabs() {
         data-test={`episode-tab-${tab.id}`}
         aria-current={isActive ? 'page' : undefined}
         className={cn(
-          'flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200',
+          'flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none',
           isActive
             ? 'bg-white text-blue-600 shadow-sm dark:bg-[#3B82F6] dark:text-white dark:shadow-[0_0_12px_rgba(59,130,246,0.30)]'
-            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:text-[#A3A3A3] dark:hover:bg-[#1A1A1A] dark:hover:text-white',
+            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-700 dark:text-[#A3A3A3] dark:hover:bg-[#1A1A1A] dark:hover:text-white',
         )}
       >
         <TabIcon className="h-3.5 w-3.5" />

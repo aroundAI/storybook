@@ -527,6 +527,7 @@ function TitleCardsSection({
                 type="file"
                 className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
                 onChange={handleFileUpload}
+                aria-label={`Upload ${title}`}
                 accept="video/*,image/*"
                 disabled={isPending}
               />
@@ -682,6 +683,7 @@ function UploadDropzone({
             type="file"
             className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
             onChange={onUpload}
+            aria-label={`Upload ${title}`}
             accept="video/*,image/*"
             disabled={isPending}
           />
