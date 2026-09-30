@@ -23,6 +23,11 @@ import { ShortsPanel } from './shorts-panel';
 import type { ShortsCandidateScene } from './shorts-panel';
 import { ShotDetailsSidebar } from './shot-details-sidebar';
 import { ShotGrid } from './shot-grid';
+import {
+  EMPTY_SELECTION,
+  orderedShotIds,
+  selectShot,
+} from './shot-selection';
 import { ViralScorecard } from './viral-scorecard';
 import type { ShotFilter } from './visual-studio-utils';
 
@@ -67,7 +72,7 @@ export function VisualStudioScreen({
 }: VisualStudioScreenProps) {
   const [_isPending, _startTransition] = useTransition();
   const [filter, setFilter] = useState<ShotFilter>({});
-  const [selectedShot, setSelectedShot] = useState<Shot | null>(null);
+  const [selection, setSelection] = useState(EMPTY_SELECTION);
   const [showShortsOnly, setShowShortsOnly] = useState(false);
   const viralQuality = episode.viralQuality as
     | EpisodeViralQuality
@@ -95,21 +100,6 @@ export function VisualStudioScreen({
     }
   }, [shotGenStatus, shotGenResult, shotGenError, refetchEpisode]);
 
-  // Sync selectedShot with updated episode data after refetch
-  // We intentionally only depend on episode.shots because we want to update
-  // the selectedShot when the episode data changes, not when selectedShot changes
-  useEffect(() => {
-    setSelectedShot((currentShot) => {
-      if (currentShot) {
-        const updatedShot = episode.shots.find((s) => s.id === currentShot.id);
-        if (updatedShot) {
-          return updatedShot;
-        }
-      }
-      return currentShot;
-    });
-  }, [episode.shots]);
-
   // Fetch project characters to get descriptions for shot prompts
   const { assets: projectCharacters, fetchAssets: fetchCharacters } = useAssets(
     {
@@ -133,6 +123,13 @@ export function VisualStudioScreen({
   }, [fetchCharacters, fetchLocations]);
 
   const shots = episode.shots;
+
+  const selectedShot = shots.find((s) => s.id === selection.primaryId) ?? null;
+  const selectedShotIds = useMemo(
+    () => new Set(selection.selectedIds),
+    [selection.selectedIds],
+  );
+  const clearSelection = () => setSelection(EMPTY_SELECTION);
 
   // Get unique scene numbers for filter
   const sceneNumbers = useMemo(() => {
@@ -847,21 +844,43 @@ export function VisualStudioScreen({
         <div className="flex-1 overflow-y-auto bg-slate-950/50 p-8">
           <ShotGrid
             shotsByScene={shotsByScene}
-            selectedShotId={selectedShot?.id ?? null}
-            onShotSelect={setSelectedShot}
+            selectedShotIds={selectedShotIds}
+            onShotSelect={(shot, modifiers) =>
+              setSelection((current) =>
+                selectShot(
+                  current,
+                  orderedShotIds(shotsByScene),
+                  shot.id,
+                  modifiers,
+                ),
+              )
+            }
+            onClearSelection={clearSelection}
           />
+          {selectedShotIds.size > 1 && (
+            <div
+              role="status"
+              data-test="shot-selection-bar"
+              className="sticky bottom-0 mt-6 flex items-center justify-between rounded-lg bg-blue-600 px-4 py-2 text-sm text-white shadow-lg"
+            >
+              <span>{selectedShotIds.size} shots selected</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                data-test="shot-selection-clear"
+                className="text-white hover:bg-blue-500 hover:text-white"
+                onClick={clearSelection}
+              >
+                Clear
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Fixed Sidebar Overlay */}
       {selectedShot && (
         <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-20 bg-black/10"
-            onClick={() => setSelectedShot(null)}
-          />
-
           {/* Sidebar */}
           <div className="fixed top-0 right-0 z-30 h-full">
             <ShotDetailsSidebar
@@ -901,7 +920,7 @@ export function VisualStudioScreen({
                       c !== null,
                   );
               })()}
-              onClose={() => setSelectedShot(null)}
+              onClose={clearSelection}
               onUpdate={refetchEpisode}
             />
           </div>

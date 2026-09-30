@@ -587,6 +587,7 @@ export const getEpisodeWithShotsAction = enhanceAction(
       `,
       )
       .eq('episode_id', data.episodeId)
+      .is('deleted_at', null)
       .order('sequence_number', { ascending: true });
 
     if (shotsError) {
@@ -664,7 +665,7 @@ export const getEpisodeWithShotsAction = enhanceAction(
         updatedAt: shot.updated_at,
         deletedAt: shot.deleted_at,
       })),
-      season: episode.season?.[0] ?? null,
+      season: episode.season ?? null,
       titleCards: mappedTitleCards,
       masterVideoAsset: episode.master_video
         ? mapRowToAsset(episode.master_video as AssetRow)
@@ -1063,13 +1064,12 @@ const deleteEpisode = enhanceAction(
       "The episode wasn't deleted: it's already gone, or you can't delete it. Reload the page.",
     );
 
-    // Hard delete related shots (shots table doesn't have deleted_at column)
-    // TODO: Add deleted_at column to shots table in FILM-303 for soft delete consistency
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: shotsError } = await (client as any)
       .from('shots')
-      .delete()
-      .eq('episode_id', data.episodeId);
+      .update({ deleted_at: now })
+      .eq('episode_id', data.episodeId)
+      .is('deleted_at', null);
 
     if (shotsError) {
       logger.error(

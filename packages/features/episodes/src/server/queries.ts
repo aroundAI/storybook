@@ -156,6 +156,7 @@ export const getEpisodeWithShots = cache(async function getEpisodeWithShots(
     `,
     )
     .eq('episode_id', episodeId)
+    .is('deleted_at', null)
     .order('sequence_number', { ascending: true });
 
   if (shotsError) {
@@ -166,7 +167,7 @@ export const getEpisodeWithShots = cache(async function getEpisodeWithShots(
     data: {
       ...episode,
       shots: shots ?? [],
-      season: episode.season?.[0] ?? null,
+      season: episode.season ?? null,
     } as EpisodeWithShots,
     error: null,
   };
@@ -242,6 +243,7 @@ export const getShotsByEpisode = cache(async function getShotsByEpisode(
     `,
     )
     .eq('episode_id', episodeId)
+    .is('deleted_at', null)
     .order('sequence_number', { ascending: true })
     .limit(200);
 
@@ -273,6 +275,7 @@ export const getShot = cache(async function getShot(shotId: string) {
     `,
     )
     .eq('id', shotId)
+    .is('deleted_at', null)
     .single();
 
   if (error) {
@@ -306,6 +309,7 @@ export const getShotsByScene = cache(async function getShotsByScene(
     `,
     )
     .eq('episode_id', episodeId)
+    .is('deleted_at', null)
     .eq('scene_number', sceneNumber)
     .order('sequence_number', { ascending: true });
 

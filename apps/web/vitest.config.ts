@@ -144,6 +144,10 @@ export default defineConfig({
         __dirname,
         '../../packages/supabase/src/require-user.ts',
       ),
+      '@kit/supabase/hooks/use-supabase': path.resolve(
+        __dirname,
+        '../../packages/supabase/src/hooks/use-supabase.ts',
+      ),
       '@kit/accounts/api': path.resolve(
         __dirname,
         '../../packages/features/accounts/src/server/api.ts',
@@ -203,6 +207,14 @@ export default defineConfig({
       '@kit/episodes/agent/translation-orchestrator': path.resolve(
         __dirname,
         '../../packages/features/episodes/src/agent/translation-orchestrator.ts',
+      ),
+      '@kit/episodes/lib/canon/memory-context-builder': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/lib/canon/memory-context-builder.ts',
+      ),
+      '@kit/episodes/lib/canon/continuity-validator': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/lib/canon/continuity-validator.ts',
       ),
       '@kit/episodes/lib': path.resolve(
         __dirname,
@@ -315,6 +327,10 @@ export default defineConfig({
         __dirname,
         '../../packages/ui/src/shadcn/tabs.tsx',
       ),
+      '@kit/ui/tooltip': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/tooltip.tsx',
+      ),
       '@kit/ui/trans': path.resolve(
         __dirname,
         '../../packages/ui/src/makerkit/trans.tsx',
@@ -343,6 +359,26 @@ export default defineConfig({
         __dirname,
         '../../packages/features/publishing/src/lib/takedown.ts',
       ),
+      '@kit/publishing/oauth/analytics-scopes': path.resolve(
+        __dirname,
+        '../../packages/features/publishing/src/oauth/analytics-scopes.ts',
+      ),
+      '@kit/publishing/oauth/meta': path.resolve(
+        __dirname,
+        '../../packages/features/publishing/src/oauth/meta/index.ts',
+      ),
+      '@kit/publishing/oauth/tiktok': path.resolve(
+        __dirname,
+        '../../packages/features/publishing/src/oauth/tiktok/index.ts',
+      ),
+      '@kit/publishing/oauth/linkedin': path.resolve(
+        __dirname,
+        '../../packages/features/publishing/src/oauth/linkedin/index.ts',
+      ),
+      '@kit/publishing/server/oauth-app-credentials': path.resolve(
+        __dirname,
+        '../../packages/features/publishing/src/server/oauth-app-credentials.ts',
+      ),
       '@kit': path.resolve(__dirname, '../../packages'),
       '~/lib/server/require-user-in-server-component': path.resolve(
         __dirname,
@@ -350,6 +386,7 @@ export default defineConfig({
       ),
       '~/lib': path.resolve(__dirname, './lib'),
       '~/config': path.resolve(__dirname, './config'),
+      '~/components': path.resolve(__dirname, './components'),
       '~': path.resolve(__dirname, './app'),
       'server-only': path.resolve(__dirname, './__mocks__/server-only.ts'),
     },

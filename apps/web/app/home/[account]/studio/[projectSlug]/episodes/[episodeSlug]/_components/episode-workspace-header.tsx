@@ -54,9 +54,11 @@ export function EpisodeWorkspaceHeader() {
         <div className="flex items-center gap-3">
           <Link
             href={`/home/${accountSlug}/studio/${projectSlug}/episodes`}
+            aria-label="Back to episodes"
+            data-test="episode-back-link"
             className="rounded-full p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-[#A3A3A3] dark:hover:bg-[#1A1A1A] dark:hover:text-white"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           </Link>
           <nav className="flex items-center text-xs text-gray-500 dark:text-[#A3A3A3]">
             <Link

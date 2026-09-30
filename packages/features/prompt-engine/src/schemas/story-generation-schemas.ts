@@ -314,6 +314,7 @@ export const TimelineEventTypeSchema = z.enum([
   'action',
   'dialogue',
   'transition',
+  'reaction',
 ]);
 
 export type TimelineEventType = z.infer<typeof TimelineEventTypeSchema>;
@@ -349,14 +350,41 @@ export type VeoPromptV2 = z.infer<typeof VeoPromptV2Schema>;
 
 /**
  * Single shot from scene-shot-generation (v2 format)
+ * Mirrors the output definition embedded in scene-shot-generation.json
  */
 export const SceneShotSchema = z.object({
   shotNumber: z.number(),
-  shotType: ShotTypeSchema,
+  shotType: z.enum([...ShotTypeSchema.options, 'tracking']),
   cameraDirection: CameraDirectionSchema,
   description: z.string(),
   characters: z.array(z.string()),
   duration: z.number().min(3).max(10),
+  hookMoment: z.string().optional(),
+  emotionalTone: z.string().optional(),
+  transitionType: z
+    .enum(['continuation', 'cut', 'match_cut', 'j_cut', 'l_cut'])
+    .optional()
+    .default('cut'),
+  frameStrategy: z
+    .enum([
+      'character_focus',
+      'environment_focus',
+      'two_shot',
+      'group',
+      'detail_insert',
+    ])
+    .optional()
+    .default('environment_focus'),
+  primarySubject: z
+    .object({
+      type: z.enum(['character', 'location', 'object']),
+      name: z.string(),
+    })
+    .optional(),
+  firstFrameDescription: z.string().nullish(),
+  lastFrameDescription: z.string().nullish(),
+  locationArea: z.string().nullish(),
+  locationEnvironmentDescription: z.string().nullish(),
   veoPrompt: VeoPromptV2Schema,
   metadata: z.object({
     location: z.string(),
@@ -368,11 +396,29 @@ export const SceneShotSchema = z.object({
 export type SceneShot = z.infer<typeof SceneShotSchema>;
 
 /**
+ * Scene-level reel hook types the LLM may return
+ */
+export const SceneHookTypeSchema = z.enum([
+  'humor',
+  'reveal',
+  'conflict',
+  'visual',
+  'cliffhanger',
+  'character',
+  'action',
+  'reaction',
+  'punchline',
+]);
+
+/**
  * Scene shot generation output (per-scene pipeline)
  */
 export const SceneShotGenerationOutputSchema = z.object({
   shots: z.array(SceneShotSchema),
   sceneSummary: z.string(),
+  sceneViralScore: z.number().min(1).max(10),
+  sceneHookType: SceneHookTypeSchema.nullish(),
+  sceneStandaloneSummary: z.string().nullish(),
 });
 
 export type SceneShotGenerationOutput = z.infer<
