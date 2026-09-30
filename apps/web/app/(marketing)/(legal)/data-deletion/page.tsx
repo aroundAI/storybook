@@ -206,7 +206,7 @@ async function DataDeletionPage() {
                               href={item.href}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-indigo-600 hover:underline dark:text-indigo-400"
+                              className="text-indigo-600 underline dark:text-indigo-400"
                             >
                               {item.where}
                             </a>
@@ -248,7 +248,7 @@ async function DataDeletionPage() {
               go to the same address. The{' '}
               <Link
                 href="/privacy-policy"
-                className="text-indigo-600 hover:underline dark:text-indigo-400"
+                className="text-indigo-600 underline dark:text-indigo-400"
               >
                 Privacy Policy
               </Link>{' '}
@@ -279,7 +279,7 @@ function ContactLink({
     <a
       data-test={dataTest}
       href={`mailto:${email}`}
-      className="text-indigo-600 hover:underline dark:text-indigo-400"
+      className="text-indigo-600 underline dark:text-indigo-400"
     >
       {email}
     </a>

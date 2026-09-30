@@ -39,7 +39,10 @@ async function SignUpPage({ searchParams }: Props) {
   return (
     <>
       <div className={'flex flex-col items-center gap-1'}>
-        <Heading level={4} className={'tracking-tight'}>
+        <Heading
+          level={1}
+          className={'text-lg font-semibold tracking-tight lg:text-xl'}
+        >
           <Trans i18nKey={'auth:signUpHeading'} />
         </Heading>
 

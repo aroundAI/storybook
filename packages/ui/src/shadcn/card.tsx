@@ -25,7 +25,7 @@ const CardTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = ({
   className,
   ...props
 }) => (
-  <h3
+  <h2
     className={cn('leading-none font-semibold tracking-tight', className)}
     {...props}
   />

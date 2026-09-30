@@ -352,7 +352,7 @@ async function PrivacyPolicyPage() {
                     <Link
                       data-test="privacy-data-deletion-link"
                       href="/data-deletion"
-                      className="text-indigo-600 hover:underline dark:text-indigo-400"
+                      className="text-indigo-600 underline dark:text-indigo-400"
                     >
                       Data Deletion
                     </Link>{' '}
@@ -629,7 +629,7 @@ async function PrivacyPolicyPage() {
               To exercise these rights, contact us at{' '}
               <a
                 href={`mailto:${contactEmail}`}
-                className="text-indigo-600 hover:underline dark:text-indigo-400"
+                className="text-indigo-600 underline dark:text-indigo-400"
               >
                 {contactEmail}
               </a>
@@ -640,7 +640,7 @@ async function PrivacyPolicyPage() {
               step by step, on our{' '}
               <Link
                 href="/data-deletion"
-                className="text-indigo-600 hover:underline dark:text-indigo-400"
+                className="text-indigo-600 underline dark:text-indigo-400"
               >
                 Data Deletion
               </Link>{' '}
@@ -732,7 +732,7 @@ function ExternalPolicyLink({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-indigo-600 hover:underline dark:text-indigo-400"
+      className="text-indigo-600 underline dark:text-indigo-400"
     >
       {children}
     </a>
