@@ -55,8 +55,8 @@
       "name": "PLATFORMS drifts from the platform_connections CHECK",
       "kind": "unit",
       "file": "packages/features/publishing/src/lib/platforms.ts",
-      "find": "  'twitter',\n",
-      "replace": "",
+      "find": "  'facebook',\n  'twitter',\n  'linkedin',\n] as const;",
+      "replace": "  'facebook',\n  'linkedin',\n] as const;",
       "cwd": "packages/features/publishing",
       "test": "__tests__/platforms.test.ts",
       "pattern": "is exactly the set the platform_connections CHECK allows"

@@ -97,6 +97,8 @@ select results_eq(
        -- account id, both supplied by the caller — an oracle to someone who
        -- already holds both UUIDs, and no row data (KB-98)
        ('public.tag_in_account'),
+       -- can_write_project of the character's project; a missing character is refused the same way (FILM-202)
+       ('public.update_character_with_details'),
        -- project_members owner/admin/member
        ('public.update_episode_with_lock'),
        -- can_write_project (KB-28)

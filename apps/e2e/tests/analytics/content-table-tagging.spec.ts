@@ -131,10 +131,10 @@ test.describe('FILM-1507 — content table tagging', () => {
 
     // The second submission: one row, another tag. Stale picker or selection
     // state would tag all three again, or re-apply the first tag.
-    await rows
-      .filter({ hasText: 'Tagging video 2' })
-      .locator('[data-test="content-row-select"]')
-      .click();
+    await byTest(
+      rows.filter({ hasText: 'Tagging video 2' }),
+      'content-row-select',
+    ).click();
     await expect(byTest(browserPage, 'content-selected-count')).toHaveText(
       '1 selected',
     );
@@ -149,14 +149,10 @@ test.describe('FILM-1507 — content table tagging', () => {
       'Tagged 1 video.',
     );
     await expect(
-      rows
-        .filter({ hasText: 'Tagging video 2' })
-        .locator('[data-test="content-row-tags"]'),
+      byTest(rows.filter({ hasText: 'Tagging video 2' }), 'content-row-tags'),
     ).toContainText('Oceans');
     await expect(
-      rows
-        .filter({ hasText: 'Tagging video 1' })
-        .locator('[data-test="content-row-tags"]'),
+      byTest(rows.filter({ hasText: 'Tagging video 1' }), 'content-row-tags'),
     ).not.toContainText('Oceans');
 
     // What is in the database, not what the page says.

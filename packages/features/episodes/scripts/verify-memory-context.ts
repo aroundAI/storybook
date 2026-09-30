@@ -298,7 +298,12 @@ async function verifyStrategies(
     });
 
     // A budget with room for the first-ranked character and half of the
-    // second: series gives characters 25% of the total, so total = 4 × that.
+    // second. Unused budget moves to the categories that overflow it
+    // (FILM-1004), characters first, and this project has no events,
+    // summaries or world state: their shares (35% + 10% + 10% of a series
+    // total) join the characters' own 25%, so characters can use 80% of the
+    // total and total = room / 0.8. Threads rank after characters and take
+    // only what is left.
     const tokens = (value: unknown) =>
       Math.ceil(JSON.stringify(value).length / 4);
     const [first, second] = full.characterStates;
@@ -306,7 +311,7 @@ async function verifyStrategies(
     const tight = await buildMemoryContext(admin, {
       projectId,
       episodeNumber: 60,
-      tokenBudgetPercent: (roomForOne * 4 * 100) / 40_000,
+      tokenBudgetPercent: (Math.ceil(roomForOne / 0.8) * 100) / 40_000,
     });
 
     const got = {

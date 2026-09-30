@@ -38,7 +38,7 @@ acceptance_criteria:
     evidence: "now mounted, `packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:983`; the joined state still has no browser test"
   - text: "`getYppProgressAction` returns a per-channel target and a basis per metric — **verified by unit test only.** `YppProgressCard` is mounted nowhere and the action has no caller outside the package barrel, so this output reaches no screen until FILM-1611. Not ticked on the strength of reading types; not claimed to be visible either."
     met: true
-    evidence: "now reaches the Deep Dive tab (`packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:432`); per-channel cards asserted in `apps/e2e/tests/deep-dive/deep-dive.spec.ts:145`"
+    evidence: "now reaches the Deep Dive tab (`packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:432`); per-channel cards asserted in `apps/e2e/tests/deep-dive/deep-dive.spec.ts:147`"
   - text: "Every account and channel settings write is an upsert; clearing a value writes `null` and never deletes a row"
     met: true
     evidence: null

@@ -43,7 +43,7 @@ acceptance_criteria:
     reason: "unverified — responsive sizes exist (e.g. `apps/web/app/home/[account]/studio/[projectSlug]/_components/hero-banner.tsx:38`); \"appropriately\" needs screenshots per breakpoint"
   - text: "No horizontal overflow at any breakpoint"
     met: true
-    evidence: "apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts:12"
+    evidence: "apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts:13"
 remaining:
   - criterion: "Sidebar collapses to sheet on tablet/mobile"
     reason: >

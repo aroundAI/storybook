@@ -55,8 +55,8 @@
       "name": "VS6 the unpublish list claims a platform the worker cannot delete on",
       "kind": "unit",
       "file": "packages/features/publishing/src/lib/platforms.ts",
-      "find": "export const PLATFORMS_DELETED_ON_UNPUBLISH = [\n  'youtube',\n  'facebook',\n]",
-      "replace": "export const PLATFORMS_DELETED_ON_UNPUBLISH = [\n  'youtube',\n  'facebook',\n  'tiktok',\n]",
+      "find": "export const PLATFORMS_DELETED_ON_UNPUBLISH = [\n  'youtube',\n  'facebook',\n  'twitter',\n]",
+      "replace": "export const PLATFORMS_DELETED_ON_UNPUBLISH = [\n  'youtube',\n  'facebook',\n  'twitter',\n  'tiktok',\n]",
       "cwd": "packages/features/publishing",
       "test": "__tests__/unpublish-platforms.test.ts",
       "pattern": "delete handler"

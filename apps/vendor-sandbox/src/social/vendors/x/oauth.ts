@@ -15,7 +15,7 @@ import { KNOWN_SCOPES, SCOPE } from './errors';
 /**
  * X's OAuth 2.0 authorization code flow with PKCE
  * (https://docs.x.com/fundamentals/authentication/oauth-2-0/user-access-token):
- * the authorize page on x.com, the token endpoint (code and refresh grants)
+ * the authorize page on the OAuth host, the token endpoint (code and refresh grants)
  * and revoke on the API host. PKCE is required, so a request without a
  * challenge is refused. A confidential client authenticates by Basic auth.
  *

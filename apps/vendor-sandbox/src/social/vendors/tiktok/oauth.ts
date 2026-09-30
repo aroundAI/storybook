@@ -16,7 +16,7 @@ import { KNOWN_SCOPES } from './errors';
 /**
  * TikTok Login Kit for the web
  * (https://developers.tiktok.com/doc/oauth-user-access-token-management):
- * the authorize page on www.tiktok.com, the token endpoint (code and refresh
+ * the authorize page on the OAuth host, the token endpoint (code and refresh
  * grants) and revoke, on the API host. Scopes are comma-separated, on the
  * request and in the token response.
  *

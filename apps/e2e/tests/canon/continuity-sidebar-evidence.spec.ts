@@ -10,6 +10,9 @@ import { type CanonFixture, openScreenplay, seedCanon } from './canon-fixture';
  */
 const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
 
+/** Raw on purpose: byTest() drops hidden matches, and these assert hidden. */
+const HIDDEN_SIDEBAR = '[data-test="continuity-sidebar"]';
+
 let canon: CanonFixture;
 
 test.describe('Continuity Sidebar -- evidence', () => {
@@ -52,12 +55,12 @@ test.describe('Continuity Sidebar -- evidence', () => {
     });
 
     await page.setViewportSize({ width: 800, height: 900 });
-    await expect(page.locator('[data-test="continuity-sidebar"]')).toBeHidden();
+    await expect(page.locator(HIDDEN_SIDEBAR)).toBeHidden();
     await page.screenshot({ path: `${OUT}/03-narrow-hidden.png` });
     measured.push({
       state: '800px',
       sidebarDisplay: await page
-        .locator('[data-test="continuity-sidebar"]')
+        .locator(HIDDEN_SIDEBAR)
         .evaluate((el) => getComputedStyle(el).display),
     });
 

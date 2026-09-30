@@ -43,7 +43,7 @@ acceptance_criteria:
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/story-screen.tsx:262"
   - text: "Continuity Sidebar shows scene constraints"
     met: true
-    evidence: "screenplay/_components/continuity-sidebar.tsx, mounted at screenplay-screen.tsx:298 for the active scene when canon is enabled; view model tests screenplay/_components/__tests__/continuity-view.test.ts (8). Browser (passed 2026-09-30, real browser, retries off): apps/e2e/tests/canon/continuity-sidebar.spec.ts:18 'shows what the scene must not contradict, the open threads and the characters' (the event, the open thread and Mara's 'emotional: calm' state) and :40 'flags the dead character shown alive in the scene being read' (CANON_001 violation flag on scene 2); continuity-sidebar-evidence.spec.ts:25 captures scene 1, scene 2 with a violation, and the narrow viewport"
+    evidence: "screenplay/_components/continuity-sidebar.tsx, mounted at screenplay-screen.tsx:298 for the active scene when canon is enabled; view model tests screenplay/_components/__tests__/continuity-view.test.ts (8). Browser (passed 2026-09-30, real browser, retries off): apps/e2e/tests/canon/continuity-sidebar.spec.ts:21 'shows what the scene must not contradict, the open threads and the characters' (the event, the open thread and Mara's 'emotional: calm' state) and :40 'flags the dead character shown alive in the scene being read' (CANON_001 violation flag on scene 2); continuity-sidebar-evidence.spec.ts:25 captures scene 1, scene 2 with a violation, and the narrow viewport"
   - text: "Publish extracts and confirms canon changes"
     met: false
     reason: "unverified — generator mounted (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1440`); no E2E drives extract then commit"
@@ -55,7 +55,7 @@ acceptance_criteria:
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/story-screen.tsx:339"
   - text: "Sidebar hides on narrow screens"
     met: true
-    evidence: "`hidden … lg:block` on the aside (screenplay/_components/continuity-sidebar.tsx:81); apps/e2e/tests/canon/continuity-sidebar.spec.ts:54 'is hidden below the lg breakpoint' (sidebar hidden at 800px; passed 2026-09-30, real browser, retries off)"
+    evidence: "`hidden … lg:block` on the aside (screenplay/_components/continuity-sidebar.tsx:81); apps/e2e/tests/canon/continuity-sidebar.spec.ts:57 'is hidden below the lg breakpoint' (sidebar hidden at 800px; passed 2026-09-30, real browser, retries off)"
 remaining:
   - criterion: "Settings persist to `projects.metadata.canon`"
     reason: "unverified — action merges into `metadata.canon` (`apps/web/app/home/[account]/studio/[projectSlug]/settings/_components/canon-settings-actions.ts:49`); no E2E saves and reloads"

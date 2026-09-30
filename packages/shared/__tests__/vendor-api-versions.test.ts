@@ -74,13 +74,17 @@ const TEST_FILE =
 const PUBLIC_PAGES = [
   /www\.facebook\.com\/(?:plugins\/video\.php|sharer\/|watch\/|USER\/videos\/|\$\{pageId\}\/videos\/)/g,
   /www\.facebook\.com\$\{data\.permalink_url\}/g,
-  /www\.tiktok\.com\/(?:@|creator)/g,
+  /www\.tiktok\.com\/(?:@|creator|embed\/)/g,
   /www\.linkedin\.com\/(?:feed\/update\/|sharing\/share-offsite\/)/g,
   /(?<![\w.-])x\.com\/storybook/g,
   /www\.facebook\.com\/settings/g,
   /(?<![\w.-])x\.com\/settings\//g,
   /www\.linkedin\.com\/mypreferences\//g,
   /archive\.org\/details\//g,
+  // An identifier in X's error bodies (`type`), never requested; the sandbox
+  // must reproduce it byte for byte, and importing the resolver there would
+  // freeze its constants before a test stubs VENDOR_URL_*.
+  /api\.x\.com\/2\/problems\//g,
 ];
 
 const VERSION_RULES: Rule[] = [

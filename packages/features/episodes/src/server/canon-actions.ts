@@ -1574,17 +1574,24 @@ async function writeEpisodeMemory(
       .limit(1)
       .maybeSingle();
 
-    const { error } = readError
-      ? { error: readError }
-      : existing
-        ? await client
-            .from('world_states')
-            .update(worldRow)
-            .eq('id', existing.id)
-        : await client.from('world_states').insert(worldRow);
+    let failure: unknown = readError;
 
-    if (error) {
-      console.warn('[commitCanonChanges] World state not stored:', error);
+    if (!readError && existing) {
+      const { data: updated, error } = await client
+        .from('world_states')
+        .update(worldRow)
+        .eq('id', existing.id)
+        .select('id');
+
+      // RLS filters a refused update to no rows, without an error (KB-105).
+      failure = error ?? (updated?.length ? null : 'update matched no row');
+    } else if (!readError) {
+      const { error } = await client.from('world_states').insert(worldRow);
+      failure = error;
+    }
+
+    if (failure) {
+      console.warn('[commitCanonChanges] World state not stored:', failure);
     } else {
       stored.worldState = true;
     }

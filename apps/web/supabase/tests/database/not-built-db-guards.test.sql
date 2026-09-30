@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(13);
+select plan(14);
 
 -- FILM-101e, FILM-101h, FILM-809, FILM-808, FILM-1003. Fixture ids start
 -- with 9a1d.
@@ -116,6 +116,17 @@ select makerkit.authenticate_as('nb_stranger');
 select is(
   (select count(*)::int from public.validation_runs), 0,
   'a stranger reads none'
+);
+
+-- KB-99: generated_reports is team-only like every account-keyed table
+set local role postgres;
+select throws_ok(
+  format($$ insert into public.generated_reports
+      (account_id, report_type, file_name, storage_path, date_range_start, date_range_end, record_count)
+    values (%L, 'csv', 'r.csv', 'p/r.csv', '2026-01-01', '2026-01-31', 0) $$,
+    tests.get_supabase_uid('nb_owner')),
+  '23514', null,
+  'generated_reports refuses a row on a personal account'
 );
 
 select * from finish();

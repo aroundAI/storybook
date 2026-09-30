@@ -80,21 +80,13 @@ test.describe('FILM-1511 — rolling and returning-viewer cards', () => {
     const rolling = byTest(page, 'deep-dive-rolling');
     const returning = byTest(page, 'deep-dive-returning-viewer');
 
-    await expect(rolling.locator('[data-test="card-figure"]')).toHaveText(
-      '890',
-    );
-    await expect(rolling.locator('[data-test="card-sentence"]')).toContainText(
-      'against 300',
-    );
+    await expect(byTest(rolling, 'card-figure')).toHaveText('890');
+    await expect(byTest(rolling, 'card-sentence')).toContainText('against 300');
     await expect(byTest(page, 'rolling-90-chart')).toBeVisible();
     await expect(byTest(page, 'rolling-error')).toHaveCount(0);
 
-    await expect(returning.locator('[data-test="card-figure"]')).toHaveText(
-      '30%',
-    );
-    await expect(
-      returning.locator('[data-test="card-sentence"]'),
-    ).toContainText('proxy');
+    await expect(byTest(returning, 'card-figure')).toHaveText('30%');
+    await expect(byTest(returning, 'card-sentence')).toContainText('proxy');
     await expect(byTest(page, 'returning-viewer-split')).toContainText('300');
     await expect(byTest(page, 'returning-viewer-split')).toContainText('700');
 
@@ -185,9 +177,7 @@ test.describe('FILM-1511 — rolling and returning-viewer cards', () => {
 
     const returning = byTest(page, 'deep-dive-returning-viewer');
 
-    await expect(returning.locator('[data-test="card-figure"]')).toHaveText(
-      '29%',
-    );
+    await expect(byTest(returning, 'card-figure')).toHaveText('29%');
     await expect(byTest(page, 'returning-viewer-trend-chart')).toBeVisible();
 
     await returning.locator('summary').click();

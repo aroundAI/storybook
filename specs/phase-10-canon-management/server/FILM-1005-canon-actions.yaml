@@ -123,7 +123,7 @@ acceptance_criteria:
     evidence: "packages/features/episodes/src/server/canon-actions.ts:854, apps/web/supabase/migrations/20260129194541_add_narrative_threads_version.sql:4"
   - text: "Batch operations for efficient multi-record updates"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:1654"
+    evidence: "packages/features/episodes/src/server/canon-actions.ts:1661"
   - text: "Rollback support for failed transactions"
     met: true
     evidence: "apps/web/supabase/migrations/20260130004332_add_commit_canon_changes_function.sql:5"

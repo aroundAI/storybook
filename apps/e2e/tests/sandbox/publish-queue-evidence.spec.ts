@@ -8,6 +8,7 @@ import {
   serviceRoleAuth,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * FILM-1806's publish queue: a scheduled publish goes out the way production
@@ -251,9 +252,7 @@ test.describe('A scheduled publish through the local publish queue (FILM-1806)',
     await page.goto(
       `/home/${team.slug}/studio/${project.slug}/episodes/${episodeSlug}/publish`,
     );
-    await page
-      .locator('[data-test="publish-delete-all"]')
-      .click({ timeout: 60_000 });
+    await byTest(page, 'publish-delete-all').click({ timeout: 60_000 });
     await page
       .getByRole('dialog')
       .getByRole('button', { name: 'Delete All' })

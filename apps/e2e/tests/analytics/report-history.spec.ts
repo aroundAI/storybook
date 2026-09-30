@@ -66,8 +66,8 @@ test.describe('FILM-809 - report history', () => {
   }
 
   async function generateCsv(page: Page) {
-    await page.locator('[data-test="export-format-csv"]:visible').click();
-    await page.locator('[data-test="export-generate"]:visible').click();
+    await byTest(page, 'export-format-csv').click();
+    await byTest(page, 'export-generate').click();
 
     await expect(byTest(page, 'export-report-ready')).toBeVisible();
   }

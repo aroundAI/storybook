@@ -60,7 +60,7 @@ acceptance_criteria:
     evidence: "now a `Sheet` in `MobileStudioHeader` (`apps/web/app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx:141`), the desktop sidebar being `hidden md:block` (`layout.tsx:117`); `ResponsiveLayout` went in 5f44d0e1"
   - text: "Keyboard navigation works throughout (via Radix primitives)"
     met: true
-    evidence: "apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts:129 'every control in the studio sidebar can be reached and shows focus' and :248 'the episode tabs are reached in order and open with Enter' (passed 2026-09-30, real browser, retries off; the suite ran twice, 99/99)"
+    evidence: "apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts:130 'every control in the studio sidebar can be reached and shows focus' and :248 'the episode tabs are reached in order and open with Enter' (passed 2026-09-30, real browser, retries off; the suite ran twice, 99/99)"
 test_plan:
   unit:
     - text: "Test `getStudioNavigation` with different params"

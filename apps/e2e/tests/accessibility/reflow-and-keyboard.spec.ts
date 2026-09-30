@@ -7,6 +7,7 @@ import {
   seedTeamAccount,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * FILM-DS-04 and FILM-DS-05. Two things a person does that axe cannot: make
@@ -193,7 +194,7 @@ test.describe('Keyboard only: skip links (FILM-DS-04)', () => {
     await page.goto('/auth/sign-in');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
-    const skip = page.locator('[data-test="skip-to-content"]');
+    const skip = byTest(page, 'skip-to-content');
 
     await page.keyboard.press('Tab');
     await expect(skip).toBeFocused();
@@ -218,7 +219,7 @@ test.describe('Keyboard only: skip links (FILM-DS-04)', () => {
     await signInAs(page, team);
     await page.goto(`/home/${team.slug}/studio/${project.slug}`);
 
-    const skip = page.locator('[data-test="skip-to-content"]');
+    const skip = byTest(page, 'skip-to-content');
 
     await expect(page.locator('main#main-content')).toBeVisible();
 
@@ -252,9 +253,7 @@ test.describe('Keyboard only: an episode (FILM-DS-04)', () => {
     await page.goto(`${episodePath}/ideation`);
 
     const ids = ['ideation', 'story', 'screenplay', 'shot-list', 'audio'];
-    const tabs = ids.map((id) =>
-      page.locator(`[data-test="episode-tab-${id}"]:visible`),
-    );
+    const tabs = ids.map((id) => byTest(page, `episode-tab-${id}`));
 
     await expect(tabs[0]!).toBeVisible();
     await tabs[0]!.focus();

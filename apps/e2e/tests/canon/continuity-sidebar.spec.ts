@@ -8,6 +8,9 @@ import { type CanonFixture, openScreenplay, seedCanon } from './canon-fixture';
  * Continuity Sidebar, and hides it below the `lg` breakpoint (1024px).
  */
 
+/** Raw on purpose: byTest() drops hidden matches, and these assert hidden. */
+const HIDDEN_SIDEBAR = '[data-test="continuity-sidebar"]';
+
 let canon: CanonFixture;
 
 test.beforeAll(async () => {
@@ -58,6 +61,6 @@ test.describe('Continuity Sidebar (FILM-1007)', () => {
     await expect(
       page.getByText('Screenplay', { exact: true }).first(),
     ).toBeVisible();
-    await expect(page.locator('[data-test="continuity-sidebar"]')).toBeHidden();
+    await expect(page.locator(HIDDEN_SIDEBAR)).toBeHidden();
   });
 });
