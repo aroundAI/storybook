@@ -49,7 +49,7 @@ acceptance_criteria:
     evidence: "packages/features/assets/src/components/asset-gallery.tsx:92, :161"
   - text: "Only active tab assets loaded (no unnecessary requests)"
     met: true
-    evidence: "packages/features/assets/src/hooks/use-character-assets.ts:20,43,139 (the fetch runs only while `enabled`), packages/features/assets/src/components/asset-gallery.tsx:117 (enabled: activeTab === 'character'); e2e apps/e2e/tests/assets/asset-library.spec.ts:122 'only the active tab loads its assets' (passed 2026-09-30, real browser, retries off)"
+    evidence: "packages/features/assets/src/hooks/use-character-assets.ts:20,43,139 (the fetch runs only while `enabled`), packages/features/assets/src/components/asset-gallery.tsx:117 (enabled: activeTab === 'character'); e2e apps/e2e/tests/assets/asset-library.spec.ts:124 'only the active tab loads its assets' (passed 2026-09-30, real browser, retries off)"
   - text: "Assets displayed in responsive grid (1-4 columns)"
     met: true
     evidence: "packages/features/assets/src/components/asset-grid.tsx:39"

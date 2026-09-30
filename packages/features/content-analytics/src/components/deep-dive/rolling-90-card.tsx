@@ -45,7 +45,7 @@ export function rolling90Claim(
   if (!latest || points.length < windowDays) {
     return {
       figure: null,
-      noFigure: 'Not enough history yet.',
+      noFigure: `Fewer than ${windowDays} days recorded.`,
       sentence: `A ${windowDays}-day total needs ${windowDays} days of history.`,
     };
   }

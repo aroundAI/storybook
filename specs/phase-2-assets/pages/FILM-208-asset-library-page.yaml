@@ -29,13 +29,13 @@ acceptance_criteria:
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx (the segment is now the project slug); E2E apps/e2e/tests/refusals/refusals.po.ts:181"
   - text: "Breadcrumb displays: Home > Studio > [Project Name] > Assets"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:139-165 (Breadcrumb, data-test=assets-breadcrumb; it replaces the Back to Project link); e2e apps/e2e/tests/assets/asset-library.spec.ts:81 'the breadcrumb runs Home, Studio, the project, Assets' (four links in order, current page has aria-current) (passed 2026-09-30, real browser, retries off)"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:139-165 (Breadcrumb, data-test=assets-breadcrumb; it replaces the Back to Project link); e2e apps/e2e/tests/assets/asset-library.spec.ts:83 'the breadcrumb runs Home, Studio, the project, Assets' (four links in order, current page has aria-current) (passed 2026-09-30, real browser, retries off)"
   - text: "Page title: \"Asset Library\""
     met: false
     reason: "retired — renamed \"Cast\" / \"Story World\" by tab in 307d879b (apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:108-114)"
   - text: "Description displayed below title"
     met: true
-    evidence: "packages/ui/src/makerkit/page.tsx:170-210 (PageHeader renders the description after the title row); e2e apps/e2e/tests/assets/asset-library.spec.ts:106 'the description sits below the title' (description box starts at or below the h1 box) (passed 2026-09-30, real browser, retries off)"
+    evidence: "packages/ui/src/makerkit/page.tsx:170-210 (PageHeader renders the description after the title row); e2e apps/e2e/tests/assets/asset-library.spec.ts:108 'the description sits below the title' (description box starts at or below the h1 box) (passed 2026-09-30, real browser, retries off)"
   - text: "\"Create Asset\" button in page header"
     met: true
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:167-169"
@@ -65,7 +65,7 @@ acceptance_criteria:
     evidence: "apps/e2e/tests/studio/sidebar-active.spec.ts:22"
   - text: "Page refreshes after asset creation"
     met: true
-    evidence: "packages/features/assets/src/components/asset-gallery.tsx:313-321 (handleCreateSuccess refreshes the router and refetches characters and locations); e2e apps/e2e/tests/assets/asset-library.spec.ts:42 'a new asset appears in the gallery without a reload, twice' (passed 2026-09-30, real browser, retries off)"
+    evidence: "packages/features/assets/src/components/asset-gallery.tsx:313-321 (handleCreateSuccess refreshes the router and refetches characters and locations); e2e apps/e2e/tests/assets/asset-library.spec.ts:44 'a new asset appears in the gallery without a reload, twice' (passed 2026-09-30, real browser, retries off)"
   - text: "Dialog closes after successful creation"
     met: true
     evidence: "packages/features/assets/src/components/asset-gallery.tsx:313-315 (handleCreateSuccess calls onCreateDialogClose)"
@@ -80,7 +80,7 @@ acceptance_criteria:
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:38-59"
   - text: "Keyboard shortcut Cmd/Ctrl+K opens create menu (future)"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:20-42 (keydown listener with cleanup, aria-keyshortcuts); e2e apps/e2e/tests/assets/asset-library.spec.ts:64 'Ctrl+K opens the create menu' (passed 2026-09-30, real browser, retries off)"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:20-42 (keydown listener with cleanup, aria-keyshortcuts); e2e apps/e2e/tests/assets/asset-library.spec.ts:66 'Ctrl+K opens the create menu' (passed 2026-09-30, real browser, retries off)"
   - text: "TypeScript compiles without errors"
     met: true
     evidence: "main CI run 35779959194 (6dfa35a4; code unchanged since): web:typecheck ran uncached, no errors"

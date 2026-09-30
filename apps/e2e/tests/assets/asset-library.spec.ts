@@ -31,7 +31,9 @@ test.describe('Asset library', () => {
   test('the empty-state button opens the create dialog', async ({ page }) => {
     await openAssets(page);
 
-    await expect(page.getByText('No characters yet')).toBeVisible();
+    await expect(
+      page.getByText('No characters yet').filter({ visible: true }),
+    ).toBeVisible();
 
     await page.getByRole('button', { name: 'Create Character' }).click();
 
@@ -137,13 +139,18 @@ test.describe('Asset library', () => {
       page.getByText('No locations yet').filter({ visible: true }),
     ).toBeVisible();
 
-    const projectRequests = requests.filter((body) =>
-      body.includes(project.id),
-    );
+    const projectRequests = () =>
+      requests.filter((body) => body.includes(project.id));
 
-    expect(projectRequests.length).toBeGreaterThan(0);
+    // The empty state is what the gallery shows before its fetch has gone out,
+    // so it being visible says nothing about the requests: wait for the
+    // locations request itself, then for the page to go quiet, and only then
+    // read what was asked for.
+    await expect.poll(() => projectRequests().length).toBeGreaterThan(0);
+    await page.waitForLoadState('networkidle');
+
     expect(
-      projectRequests.every((body) => body.includes('"type":"location"')),
+      projectRequests().every((body) => body.includes('"type":"location"')),
     ).toBe(true);
   });
 

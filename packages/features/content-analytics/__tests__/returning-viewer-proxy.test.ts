@@ -154,7 +154,7 @@ describe('rolling90Claim', () => {
     );
 
     expect(claim.figure).toBeNull();
-    expect(claim.noFigure).toBe('Not enough history yet.');
+    expect(claim.noFigure).toBe('Fewer than 90 days recorded.');
   });
 
   it('gives no figure when every day is empty', () => {
