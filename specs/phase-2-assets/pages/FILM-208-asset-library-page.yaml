@@ -29,16 +29,16 @@ acceptance_criteria:
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx (the segment is now the project slug); E2E apps/e2e/tests/refusals/refusals.po.ts:181"
   - text: "Breadcrumb displays: Home > Studio > [Project Name] > Assets"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:139-165 (Breadcrumb, data-test=assets-breadcrumb; it replaces the Back to Project link); e2e apps/e2e/tests/assets/asset-library.spec.ts:83 'the breadcrumb runs Home, Studio, the project, Assets' (four links in order, current page has aria-current) (passed 2026-09-30, real browser, retries off)"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/assets-breadcrumb.tsx:23-66 (data-test=assets-breadcrumb, rendered by page.tsx:131; it replaces the Back to Project link; written out, not composed from @kit/ui/breadcrumb, because with that module on the page a tab switch intermittently took five seconds to commit and the FILM-204 performance budget caught it); e2e apps/e2e/tests/assets/asset-library.spec.ts:83 'the breadcrumb runs Home, Studio, the project, Assets' (four links in order, current page has aria-current) (passed 2026-09-30, real browser, retries off)"
   - text: "Page title: \"Asset Library\""
     met: false
-    reason: "retired — renamed \"Cast\" / \"Story World\" by tab in 307d879b (apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:108-114)"
+    reason: "retired — renamed \"Cast\" / \"Story World\" by tab in 307d879b (apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:100-106)"
   - text: "Description displayed below title"
     met: true
     evidence: "packages/ui/src/makerkit/page.tsx:170-210 (PageHeader renders the description after the title row); e2e apps/e2e/tests/assets/asset-library.spec.ts:108 'the description sits below the title' (description box starts at or below the h1 box) (passed 2026-09-30, real browser, retries off)"
   - text: "\"Create Asset\" button in page header"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:167-169"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:137-139"
   - text: "Dropdown shows: Create Character, Create Location, Create Voice Profile"
     met: false
     reason: "retired — voice option removed in a70af938; Character and Location remain (apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:49-64)"
@@ -53,13 +53,13 @@ acceptance_criteria:
     reason: "retired — replaced by a real LocationEditor in 41c76442 (packages/features/assets/src/components/asset-gallery.tsx:593-606)"
   - text: "AssetGallery renders with project assets"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:172-176; E2E apps/e2e/tests/refusals/refusals.po.ts:181-193"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:142-146; E2E apps/e2e/tests/refusals/refusals.po.ts:181-193"
   - text: "Tab selection persisted in URL (?tab=character)"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:66, packages/features/assets/src/components/asset-gallery.tsx:169"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:58, packages/features/assets/src/components/asset-gallery.tsx:169"
   - text: "Back link navigates to project dashboard"
     met: true
-    evidence: "the project crumb in the breadcrumb links to the project dashboard (apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:154-158); the separate Back to Project link was replaced by it"
+    evidence: "the project crumb in the breadcrumb links to the project dashboard (apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/assets-breadcrumb.tsx:46-50); the separate Back to Project link was replaced by it"
   - text: "Sidebar highlights \"Assets\" when active"
     met: true
     evidence: "apps/e2e/tests/studio/sidebar-active.spec.ts:22"
@@ -77,7 +77,7 @@ acceptance_criteria:
     reason: "unverified — needs viewport screenshots"
   - text: "SEO metadata generated dynamically"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:38-59"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:30-51"
   - text: "Keyboard shortcut Cmd/Ctrl+K opens create menu (future)"
     met: true
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:20-42 (keydown listener with cleanup, aria-keyshortcuts); e2e apps/e2e/tests/assets/asset-library.spec.ts:66 'Ctrl+K opens the create menu' (passed 2026-09-30, real browser, retries off)"

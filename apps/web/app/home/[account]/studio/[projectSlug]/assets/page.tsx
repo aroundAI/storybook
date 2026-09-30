@@ -1,18 +1,9 @@
 import type { Metadata } from 'next';
 
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { listCharacters } from '@kit/assets/character/queries';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@kit/ui/breadcrumb';
 import { PageBody, PageHeader } from '@kit/ui/page';
 
 import { cached } from '~/lib/cache/data-cache';
@@ -20,6 +11,7 @@ import { withI18n } from '~/lib/i18n/with-i18n';
 
 import { AssetCreateProvider } from './_components/asset-create-provider';
 import { AssetLibraryGallery } from './_components/asset-library-gallery';
+import { AssetsBreadcrumb } from './_components/assets-breadcrumb';
 import { CreateAssetButton } from './_components/create-asset-button';
 
 // ISR: Revalidate every 60 seconds
@@ -136,33 +128,11 @@ async function AssetLibraryPage({
 
   return (
     <AssetCreateProvider>
-      <Breadcrumb className="px-6 pt-6" data-test="assets-breadcrumb">
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link href={`/home/${account}`}>Home</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link href={`/home/${account}/studio`}>Studio</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link href={`/home/${account}/studio/${project.slug}`}>
-                {project.name}
-              </Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>Assets</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      <AssetsBreadcrumb
+        account={account}
+        projectSlug={project.slug}
+        projectName={project.name}
+      />
 
       <PageHeader title={title} description={description}>
         <CreateAssetButton />
