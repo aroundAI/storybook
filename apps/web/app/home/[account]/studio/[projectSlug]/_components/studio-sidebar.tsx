@@ -105,6 +105,7 @@ function NavItem({
       className={cn(
         'flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm transition-colors',
         'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+        'focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
         isActive
           ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
           : 'text-sidebar-foreground',

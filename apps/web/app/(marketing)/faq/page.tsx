@@ -84,7 +84,11 @@ async function FAQPage() {
           </div>
 
           <div>
-            <Button asChild variant={'outline'}>
+            <Button
+              asChild
+              variant={'outline'}
+              className={'h-auto max-w-full py-2 whitespace-normal'}
+            >
               <Link href={'/contact'}>
                 <span>
                   <Trans i18nKey={'marketing:contactFaq'} />

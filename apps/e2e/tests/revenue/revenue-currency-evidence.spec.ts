@@ -112,7 +112,7 @@ async function measure(page: Page, revenue: RevenueCurrencyPageObject) {
     daily: await texts('[data-test="revenue-tile-daily"]'),
     rpm: await texts('[data-test="revenue-tile-rpm"]'),
     projection: await texts('[data-test="revenue-tile-projection"]'),
-    charts: await texts('[data-test="revenue-chart-card"] h3'),
+    charts: await texts('[data-test="revenue-chart-card"] h2'),
     mix: await texts('[data-test="revenue-mix-card"]:visible'),
   };
 

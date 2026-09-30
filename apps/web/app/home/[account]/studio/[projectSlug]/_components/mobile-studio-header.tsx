@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import {
   ArrowLeft,
@@ -34,6 +34,8 @@ import { Sheet, SheetContent, SheetTrigger } from '@kit/ui/sheet';
 import { cn } from '@kit/ui/utils';
 
 import { ProfileAccountDropdownContainer } from '~/components/personal-account-dropdown-container';
+
+import { isAssetsTabActive, isPathActive } from '../_lib/sidebar-active';
 
 interface MobileStudioHeaderProps {
   project: {
@@ -108,6 +110,7 @@ export function MobileStudioHeader({
   counts,
 }: MobileStudioHeaderProps) {
   const pathname = usePathname() ?? '';
+  const tab = useSearchParams()?.get('tab') ?? null;
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isProjectSwitcherOpen, setIsProjectSwitcherOpen] = useState(false);
@@ -116,8 +119,7 @@ export function MobileStudioHeader({
   const basePath = `/home/${account}/studio/${project.slug ?? project.id}`;
 
   const isActive = (path: string, exact = false) => {
-    if (exact) return pathname === path;
-    return pathname.startsWith(path);
+    return isPathActive(pathname, path, exact);
   };
 
   const filteredProjects = recentProjects.filter((p) =>
@@ -254,10 +256,12 @@ export function MobileStudioHeader({
                     icon={<Users className="h-4 w-4" />}
                     label="Characters"
                     count={counts.characters}
-                    isActive={
-                      pathname.includes('/assets') &&
-                      pathname.includes('character')
-                    }
+                    isActive={isAssetsTabActive(
+                      pathname,
+                      `${basePath}/assets`,
+                      tab,
+                      'character',
+                    )}
                     onClick={closeSheet}
                   />
                   <NavItem
@@ -265,10 +269,12 @@ export function MobileStudioHeader({
                     icon={<MapPin className="h-4 w-4" />}
                     label="Locations"
                     count={counts.locations}
-                    isActive={
-                      pathname.includes('/assets') &&
-                      pathname.includes('location')
-                    }
+                    isActive={isAssetsTabActive(
+                      pathname,
+                      `${basePath}/assets`,
+                      tab,
+                      'location',
+                    )}
                     onClick={closeSheet}
                   />
                   <NavItem

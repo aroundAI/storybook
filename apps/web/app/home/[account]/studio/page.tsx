@@ -40,7 +40,7 @@ async function FilmStudioPage({ params }: PageProps) {
   const basePath = `/home/${account}/studio`;
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="mx-auto w-full max-w-7xl px-4 py-8">
       <Suspense fallback={<StudioSkeleton />}>
         <StudioProjectsLoader accountId={accountId} basePath={basePath} />
       </Suspense>

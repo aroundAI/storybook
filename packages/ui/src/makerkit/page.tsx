@@ -12,6 +12,11 @@ type PageProps = React.PropsWithChildren<{
   contentContainerClassName?: string;
   className?: string;
   sticky?: boolean;
+  /**
+   * The content is the page's `<main>` landmark. Turn off where the content
+   * brings its own (the studio project layout), so a page never has two.
+   */
+  contentIsMain?: boolean;
 }>;
 
 const ENABLE_SIDEBAR_TRIGGER = process.env.NEXT_PUBLIC_ENABLE_SIDEBAR_TRIGGER
@@ -41,17 +46,30 @@ function PageWithSidebar(props: PageProps) {
       <div
         className={
           props.contentContainerClassName ??
-          'mx-auto flex h-screen w-full flex-col bg-inherit'
+          'mx-auto flex h-screen w-full min-w-0 flex-col bg-inherit'
         }
       >
         {MobileNavigation}
 
-        <div className={'flex flex-1 flex-col bg-background px-4 lg:px-0'}>
+        <PageContent
+          isMain={props.contentIsMain}
+          className={'flex flex-1 flex-col bg-background px-4 lg:px-0'}
+        >
           {Children}
-        </div>
+        </PageContent>
       </div>
     </div>
   );
+}
+
+function PageContent({
+  isMain = true,
+  className,
+  children,
+}: React.PropsWithChildren<{ isMain?: boolean; className: string }>) {
+  const Element = isMain ? 'main' : 'div';
+
+  return <Element className={className}>{children}</Element>;
 }
 
 export function PageMobileNavigation(
@@ -98,7 +116,12 @@ function PageWithHeader(props: PageProps) {
           {MobileNavigation}
         </div>
 
-        <div className={'container flex flex-1 flex-col'}>{Children}</div>
+        <PageContent
+          isMain={props.contentIsMain}
+          className={'container flex flex-1 flex-col'}
+        >
+          {Children}
+        </PageContent>
       </div>
     </div>
   );
@@ -115,7 +138,7 @@ export function PageBody(
 }
 
 export function PageNavigation(props: React.PropsWithChildren) {
-  return <div className={'flex-1 bg-inherit'}>{props.children}</div>;
+  return <aside className={'flex-1 bg-inherit'}>{props.children}</aside>;
 }
 
 export function PageDescription(props: React.PropsWithChildren) {

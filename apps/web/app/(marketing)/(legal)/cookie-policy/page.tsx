@@ -163,7 +163,7 @@ async function CookiePolicyPage() {
                 <strong>cannot be disabled</strong>.
               </p>
             </div>
-            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 dark:bg-slate-800">
                   <tr>
@@ -225,7 +225,7 @@ async function CookiePolicyPage() {
             <p className="mb-4">
               These cookies enable enhanced functionality and personalization.
             </p>
-            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 dark:bg-slate-800">
                   <tr>
@@ -279,7 +279,7 @@ async function CookiePolicyPage() {
               These cookies help us understand how visitors interact with the
               Service.
             </p>
-            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 dark:bg-slate-800">
                   <tr>
@@ -378,7 +378,7 @@ async function CookiePolicyPage() {
             <p className="mb-4">
               In addition to cookies, we use browser storage technologies:
             </p>
-            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+            <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 dark:bg-slate-800">
                   <tr>
@@ -443,9 +443,9 @@ async function CookiePolicyPage() {
           >
             <div className="space-y-6">
               <div>
-                <h4 className="mb-3 font-medium text-slate-900 dark:text-white">
+                <h3 className="mb-3 font-medium text-slate-900 dark:text-white">
                   Browser Settings
-                </h4>
+                </h3>
                 <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
                   Most browsers allow you to manage cookies through their
                   settings:
@@ -482,9 +482,9 @@ async function CookiePolicyPage() {
               </div>
 
               <div>
-                <h4 className="mb-3 font-medium text-slate-900 dark:text-white">
+                <h3 className="mb-3 font-medium text-slate-900 dark:text-white">
                   Consequences of Disabling
-                </h4>
+                </h3>
                 <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
                   <p className="text-sm text-amber-700 dark:text-amber-300">
                     <strong>Warning:</strong> Disabling essential cookies may
@@ -495,9 +495,9 @@ async function CookiePolicyPage() {
               </div>
 
               <div>
-                <h4 className="mb-3 font-medium text-slate-900 dark:text-white">
+                <h3 className="mb-3 font-medium text-slate-900 dark:text-white">
                   Opt-Out Links
-                </h4>
+                </h3>
                 <a
                   href="https://tools.google.com/dlpage/gaoptout"
                   target="_blank"
@@ -522,7 +522,7 @@ async function CookiePolicyPage() {
             </p>
             <a
               href={`mailto:${contactEmail}`}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 font-medium text-white transition-colors hover:bg-indigo-700"
+              className="inline-flex max-w-full items-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 font-medium break-all text-white transition-colors hover:bg-indigo-700"
             >
               <Mail className="h-4 w-4" />
               {contactEmail}

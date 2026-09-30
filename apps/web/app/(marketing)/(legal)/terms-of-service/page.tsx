@@ -427,7 +427,7 @@ async function TermsOfServicePage() {
             </p>
             <a
               href={`mailto:${contactEmail}`}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 font-medium text-white transition-colors hover:bg-indigo-700"
+              className="inline-flex max-w-full items-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 font-medium break-all text-white transition-colors hover:bg-indigo-700"
             >
               <Mail className="h-4 w-4" />
               {contactEmail}

@@ -45,6 +45,7 @@ export function ConditionalSidebarLayout({
   return (
     <Page
       style={'sidebar'}
+      contentIsMain={!isStudioProject}
       // When in studio project mode, use h-full with overflow-hidden
       // This contains the studio layout's h-screen and prevents double scroll
       contentContainerClassName={
