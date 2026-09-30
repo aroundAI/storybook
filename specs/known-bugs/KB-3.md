@@ -31,7 +31,19 @@ Also observed: the first E2E run after a database reset and a fresh dev
 server had 11 flaky tests while routes compiled; the same run warm had 1.
 Not a code defect, but a local-run pitfall worth knowing.
 
-**Proposed fix:** look for a fixed wait or an unscoped locator in each;
+**Measured again (2026-09-30, `main` 4bc52779, production test build, `CI=1`,
+retries off).** The three specs did not fail once: `deep-dive.spec.ts`,
+`read-failures.spec.ts` and `admin.spec.ts`, 10 rounds each at one worker (231
+runs, 16.9 min) and 5 rounds at four workers (116 runs, 2.5 min), all passed.
+The delete-user flow and the read-failure error states had been reworked since
+this entry was filed (URL wait instead of a fixed timeout, a clean browser
+context for the sign-in check, an explicit 20s timeout on the error states).
+The one fixed wait left is `waitForLoadState('networkidle')` at
+`deep-dive.spec.ts:138`; it did not fail in these runs either, so it is not
+changed on a guess. No fix is made here: without a failure there is nothing to
+show red first. Reopen the work from the first recurrence, with its log.
+
+**Proposed fix (original):** look for a fixed wait or an unscoped locator in each;
 none were investigated.
 
 ### A mutation guard can stay green by accident (added 2026-09-22)
