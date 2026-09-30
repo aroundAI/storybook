@@ -1,0 +1,17 @@
+{
+  "feature": "KB-59 the myfriends login is bounded",
+  "mutations": [
+    {
+      "name": "KB-59 myfriends may hold unlimited connections",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/readonly-viewer-reach.test.sql",
+      "sql": "alter role myfriends connection limit -1;"
+    },
+    {
+      "name": "KB-59 myfriends queries never time out",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/readonly-viewer-reach.test.sql",
+      "sql": "alter role myfriends reset statement_timeout;"
+    }
+  ]
+}
