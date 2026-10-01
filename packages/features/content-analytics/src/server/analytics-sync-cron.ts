@@ -992,9 +992,13 @@ async function ingestCumulativeSnapshot(
 }
 
 /**
- * Normalizes platform-specific analytics to database schema
+ * Normalizes platform-specific analytics to database schema.
+ *
+ * `revenue_measured` is true only for a YouTube read the connection was
+ * authorised for. Every other platform's revenue figures are zeros that
+ * measured nothing (FILM-1726), so they never touch revenue rows.
  */
-function normalizeAnalytics(
+export function normalizeAnalytics(
   publishId: string,
   snapshotDate: string,
   platform: SyncPlatform,
