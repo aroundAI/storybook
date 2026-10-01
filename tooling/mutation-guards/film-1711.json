@@ -204,8 +204,8 @@
       "name": "S1 A switched-off platform's connect request still names the new scopes",
       "kind": "unit",
       "file": "packages/features/publishing/src/oauth/analytics-scope-switch.ts",
-      "find": "  if (enabled.has(platform)) return [...configScopes];",
-      "replace": "  if (enabled.size >= 0) return [...configScopes];",
+      "find": "      (platform) => REQUEST_OF[platform] === request && !enabled.has(platform),",
+      "replace": "      (platform) => REQUEST_OF[platform] === request && enabled.size < 0,",
       "cwd": "packages/features/publishing",
       "test": "__tests__/analytics-scope-switch.test.ts",
       "pattern": "pre-FILM-1711 scopes when a platform is off"
