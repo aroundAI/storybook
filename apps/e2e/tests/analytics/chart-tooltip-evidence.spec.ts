@@ -14,7 +14,7 @@ import { LanguageTabFixture, LanguageTabPageObject } from './language-tab.po';
 /**
  * KB-146 — the Language tab's two chart tooltips paint a background.
  *
- * Both styled themselves `hsl(var(--popover))` / `hsl(var(--card))`. The
+ * Both wrapped the `--popover` / `--card` tokens in `hsl()`. The
  * tokens are full colours, so that is `hsl(#161616)`: invalid at computed
  * time, and the background fell back to transparent and the border to none,
  * leaving the tooltip text over the chart lines. Only a browser resolves
