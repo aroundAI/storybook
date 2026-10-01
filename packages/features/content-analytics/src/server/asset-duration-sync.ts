@@ -20,9 +20,12 @@ import { createYouTubeAnalyticsProvider } from '../providers/youtube';
 type Client = SupabaseClient<any, any, any>;
 
 /**
- * The single writer of `publishes.duration_seconds` (FILM-1710).
+ * The writer of `publishes.duration_seconds` for YouTube and TikTok
+ * (FILM-1710). Instagram's is written at publish time from the uploaded
+ * file, by `recordUploadedFileDuration` in `@kit/publishing`: Meta has
+ * nothing to ask.
  *
- * One writer on purpose. A nullable column filled by only some of several
+ * One writer per platform on purpose. A nullable column filled by only some of several
  * paths is the defect `revenue_cents` had — literal 0 in every writer,
  * silent and invisible in tests. Both callers come through here: the hourly
  * sync, for the publishes it is about to sync, and the one-off backfill, for

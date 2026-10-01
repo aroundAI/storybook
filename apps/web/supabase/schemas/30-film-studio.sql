@@ -580,9 +580,11 @@ create table if not exists public.publishes (
     check (language is null or char_length(btrim(language)) >= 2),
   -- The published asset's duration in whole seconds, as the platform reports
   -- it (FILM-1710, migration 20260921200942). Null is `duration_unknown` —
-  -- never the episode's duration, and never 0. Written only by the analytics
-  -- asset-duration sync; `publishes_keep_asset_duration` (same migration)
-  -- keeps an end-user session from changing it.
+  -- never the episode's duration, and never 0. Written by the analytics
+  -- asset-duration sync (YouTube, TikTok) and, for Instagram, from the
+  -- uploaded file's MP4 header at publish time (migration 20261001192225);
+  -- `publishes_keep_asset_duration` (same migration) keeps an end-user
+  -- session from changing it.
   duration_seconds integer,
   constraint publishes_duration_seconds_positive_check
     check (duration_seconds > 0),

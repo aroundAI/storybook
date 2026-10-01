@@ -139,15 +139,19 @@ reports it; ClickHouse carries it as `video_dim.asset_duration_seconds`
 Short cut from a 22-minute episode has 45 in one and 1,320 in the other. They
 are not interchangeable, and neither falls back to the other.
 
-- **One writer:** `syncAssetDurations` in `server/asset-duration-sync.ts`, called
-  by the hourly sync for publishes still missing one and by
-  `POST /api/analytics/asset-duration-backfill` for history. A database trigger
-  keeps browser sessions from writing the column. It only ever fills a null.
+- **One writer per platform:** `syncAssetDurations` in
+  `server/asset-duration-sync.ts` for YouTube and TikTok, called by the hourly
+  sync for publishes still missing one and by
+  `POST /api/analytics/asset-duration-backfill` for history; and, for
+  Instagram, `recordUploadedFileDuration` (`@kit/publishing`), which measures
+  the uploaded file's MP4 header at publish time. A database trigger keeps
+  browser sessions from writing the column. Both only ever fill a null.
 - **Sources:** YouTube `contentDetails.duration`
   (`YouTubeAnalyticsProvider.getVideoDurations`, 50 ids a call) and TikTok
   `duration` on `/v2/video/query/` (`TikTokAnalyticsProvider.getVideoDurations`,
   20 ids a call — needs `video.list`, so it is a `scope_missing` gap until
-  FILM-1711). **Instagram has no duration field** and is never asked.
+  FILM-1711). **Instagram has no duration field** and is never asked: its
+  duration is the file we sent, or null when that file's header cannot be read.
 - **Unknown is a state, not a zero.** Read a duration through `AssetDuration`
   (`lib/asset-duration.ts`): `{ known: true, seconds } | { known: false, reason:
 'duration_unknown' }`. `retentionAtSeconds` and `detectRetentionCliff` take
