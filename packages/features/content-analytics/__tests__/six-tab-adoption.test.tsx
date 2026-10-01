@@ -160,6 +160,27 @@ describe('a card on a date axis', () => {
   });
 });
 
+describe('a date-axis card under a fetch-dated selection', () => {
+  it('dims with the fetch-dated sentence, not a platform-only note', () => {
+    const { container } = renderWithCoverage(
+      <AnalyticsCard
+        title={'Median views per video'}
+        metricFamily={'engagement'}
+        onDateAxis
+        claim={{ figure: '200', sentence: 'January’s median upload.' }}
+      />,
+      { selectedPlatforms: ['instagram'] },
+    );
+
+    expect(container.querySelector('[data-dimmed="true"]')).not.toBeNull();
+    expect(
+      container.querySelector('[data-test="card-dimmed-reason"]')?.textContent,
+    ).toBe(
+      'Instagram isn’t shown here — it reports running totals, not daily views.',
+    );
+  });
+});
+
 describe('an account-level audience is not per-video measurement', () => {
   it('states the matrix’s account-wide note in the card, not only behind the chip', () => {
     const result = coverageResult({

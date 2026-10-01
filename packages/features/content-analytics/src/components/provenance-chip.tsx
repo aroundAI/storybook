@@ -21,6 +21,7 @@ import {
   type DateAxisScope,
   dateAxisScope,
   fetchDatedSentence,
+  isFetchDated,
 } from '../lib/row-dating';
 import { useCoverageView } from './coverage-context';
 import {
@@ -138,11 +139,18 @@ export function useCardProvenance(
     }
 
     const plotted = dateAxis?.platforms ?? platforms;
+    const dimming = cardDimming(families, view.selectedPlatforms, plotted);
+    // Dimmed because the selection is only platforms a date axis leaves
+    // out: say that, not "this card is about YouTube only".
+    const fetchDated = view.selectedPlatforms.filter(isFetchDated);
 
     return {
       chip: provenanceChip(view, families, plotted),
       windowLabel: view.windowLabel,
-      dimming: cardDimming(families, view.selectedPlatforms, plotted),
+      dimming:
+        dateAxis && dimming.dimmed && fetchDated.length > 0
+          ? { dimmed: true, reasons: [fetchDatedSentence(fetchDated)] }
+          : dimming,
       dateAxis,
     };
   }, [view, metricFamily, platforms, note, onDateAxis]);
