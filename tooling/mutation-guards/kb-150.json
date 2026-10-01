@@ -1,0 +1,65 @@
+{
+  "feature": "KB-150",
+  "mutations": [
+    {
+      "name": "KB150-U1 a failed sync reads as no problem",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/sync-status.ts",
+      "find": "  const failed =\n    status.lastSyncStatus !== null && status.lastSyncStatus !== 'success';",
+      "replace": "  const failed = false;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/sync-status.test.ts",
+      "pattern": "a rate limit: says so"
+    },
+    {
+      "name": "KB150-U2 the sync records this app's paraphrase, not TikTok's reason",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/sync-status.ts",
+      "find": "  const reason = platformReasonOf(error) ?? message;",
+      "replace": "  const reason = message;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/sync-status.test.ts",
+      "pattern": "own reason for a rate limit"
+    },
+    {
+      "name": "KB150-U3 a TikTok error body is passed on as raw JSON",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/tiktok/tiktok-analytics.ts",
+      "find": "    return tiktokFailure(body.error) ?? text;",
+      "replace": "    return text;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/sync-status.test.ts",
+      "pattern": "a 5xx keeps TikTok"
+    },
+    {
+      "name": "KB150-U4 a paused publish is told it will be retried",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/sync-status.ts",
+      "find": "  if (status.schedule === 'eligible') {",
+      "replace": "  if (status.schedule !== 'never') {",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/sync-status.test.ts",
+      "pattern": "(paused until a reconnect|failures in a row)"
+    },
+    {
+      "name": "KB150-E1 the episode analytics page does not show the sync status",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/analytics/page.tsx",
+      "find": "          <EpisodeSyncStatus episodeId={episode.id} />",
+      "replace": "          {null}",
+      "spec": "tests/analytics/sync-status.spec.ts",
+      "grep": "a rate-limited sync is shown"
+    },
+    {
+      "name": "KB150-E2 the Video Log does not flag a failed sync",
+      "kind": "e2e",
+      "needs": "sandbox",
+      "file": "packages/features/content-analytics/src/components/video-log/video-log-table.tsx",
+      "find": "                    {syncById[row.videoId] ? (",
+      "replace": "                    {false ? (",
+      "spec": "tests/analytics/sandbox-sync-failure.spec.ts",
+      "grep": "429: TikTok rate-limits the sync",
+      "env": { "SANDBOX_E2E": "1" }
+    }
+  ]
+}

@@ -16,6 +16,7 @@ import dynamic from 'next/dynamic';
 import { useQuery } from '@tanstack/react-query';
 
 import {
+  EpisodeSyncStatus,
   RetentionCurveChart,
   RetentionCurveChartSkeleton,
 } from '@kit/content-analytics/components';
@@ -73,6 +74,13 @@ export default function EpisodeAnalyticsPage() {
         description="Track performance for this episode."
       />
       <PageBody>
+        {/* Its own read, beside the figures and not inside them: a failed
+            sync has to be visible whether or not there are figures to show,
+            and whether or not the figures could be loaded (KB-150). */}
+        <div className="mb-6 empty:hidden">
+          <EpisodeSyncStatus episodeId={episode.id} />
+        </div>
+
         {analyticsQuery.isLoading ? (
           <AnalyticsSkeleton />
         ) : analyticsQuery.isError ? (

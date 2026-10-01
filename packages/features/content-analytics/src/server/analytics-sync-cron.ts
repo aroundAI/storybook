@@ -17,26 +17,14 @@ import { readFailed, whyNoRow } from '@kit/shared/rows';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import { planRevenueRowWrites } from '../lib/revenue-mix';
-import {
-  FacebookInsightsScopeError,
-  createFacebookInsightsProvider,
-} from '../providers/facebook';
+import { MAX_CONSECUTIVE_FAILURES } from '../lib/sync-status';
 import type { FacebookInsightsResult } from '../providers/facebook';
-import {
-  InstagramInsightsScopeError,
-  createInstagramInsightsProvider,
-} from '../providers/instagram';
+import { createFacebookInsightsProvider } from '../providers/facebook';
+import { createInstagramInsightsProvider } from '../providers/instagram';
 import type { InstagramInsightsResult } from '../providers/instagram';
-import {
-  TikTokAnalyticsScopeError,
-  TikTokRateLimitError,
-  createTikTokAnalyticsProvider,
-} from '../providers/tiktok';
+import { createTikTokAnalyticsProvider } from '../providers/tiktok';
 import type { TikTokAnalyticsResult } from '../providers/tiktok';
-import {
-  YouTubeAnalyticsScopeError,
-  createYouTubeAnalyticsProvider,
-} from '../providers/youtube';
+import { createYouTubeAnalyticsProvider } from '../providers/youtube';
 import type { YouTubeAnalyticsResult } from '../providers/youtube';
 import { syncAssetDurations } from './asset-duration-sync';
 import type { AssetDurationCandidate } from './asset-duration-sync';
@@ -63,6 +51,7 @@ import {
   toConnectionGrant,
 } from './sync-authorisation';
 import type { ConnectionGrant } from './sync-authorisation';
+import { classifySyncFailure } from './sync-status';
 import { SYNC_PLATFORMS } from './types';
 import type {
   NormalizedAnalytics,
@@ -74,7 +63,6 @@ import type {
 } from './types';
 
 const BATCH_SIZE = 50;
-const MAX_CONSECUTIVE_FAILURES = 5;
 const REVENUE_REQUIREMENT = 'youtube.revenue';
 
 // Use generic SupabaseClient type to avoid strict type checking issues
@@ -578,32 +566,17 @@ async function syncSinglePublish(
       metricsUpdated: true,
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    let errorType: SyncResult['errorType'] = 'unknown';
-    let syncStatus: NonNullable<PublishMetadata['sync']>['last_sync_status'] =
-      'failed';
-
-    // Handle specific error types
-    if (
-      error instanceof YouTubeAnalyticsScopeError ||
-      error instanceof TikTokAnalyticsScopeError ||
-      error instanceof InstagramInsightsScopeError ||
-      error instanceof FacebookInsightsScopeError
-    ) {
-      errorType = 'scope';
-      syncStatus = 'scope_error';
-    } else if (error instanceof TikTokRateLimitError) {
-      errorType = 'rate_limit';
-      syncStatus = 'rate_limited';
-    }
+    const failure = classifySyncFailure(error);
+    const errorMessage = failure.message;
+    const errorType = failure.errorType;
 
     // Update metadata with failure info
     const currentMetadata = publish.metadata as PublishMetadata | null;
     const currentFailures = currentMetadata?.sync?.consecutive_failures ?? 0;
 
     await updatePublishSyncMetadata(client, publish.id, {
-      last_sync_status: syncStatus,
-      last_error: errorMessage,
+      last_sync_status: failure.status,
+      last_error: failure.reason,
       consecutive_failures: currentFailures + 1,
       requires_reauth: errorType === 'scope',
       last_failed_at: new Date().toISOString(),

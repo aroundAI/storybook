@@ -21,13 +21,17 @@ const TIKTOK_VIDEO_QUERY_MAX_IDS = 20;
  * or the access token is invalid.
  */
 export class TikTokAnalyticsScopeError extends Error {
-  constructor(message?: string) {
+  /** What TikTok said, when it said anything (KB-150). */
+  readonly platformReason: string | null;
+
+  constructor(message?: string, platformReason?: string) {
     super(
       message ??
         'TikTok Analytics access denied. Your TikTok connection may be missing required permissions. ' +
           'Please disconnect and reconnect your TikTok account to grant the required analytics permissions.',
     );
     this.name = 'TikTokAnalyticsScopeError';
+    this.platformReason = platformReason ?? null;
   }
 }
 
@@ -45,11 +49,15 @@ export class TikTokVideoNotFoundError extends Error {
  * Error thrown when rate limited by TikTok API
  */
 export class TikTokRateLimitError extends Error {
-  constructor() {
+  /** What TikTok said, when it said anything (KB-150). */
+  readonly platformReason: string | null;
+
+  constructor(platformReason?: string) {
     super(
       'TikTok API rate limit exceeded. Please try again later. (1000 requests/day limit)',
     );
     this.name = 'TikTokRateLimitError';
+    this.platformReason = platformReason ?? null;
   }
 }
 
@@ -64,6 +72,26 @@ function tiktokFailure(error: { code: string; message: string } | undefined) {
   if (!error || error.code === 'ok') return null;
 
   return error.message ? `${error.code}: ${error.message}` : error.code;
+}
+
+/**
+ * A non-2xx answer's reason. TikTok sends its envelope on errors too, so its
+ * own `code: message` is kept (KB-150: the creator is shown it) rather than
+ * the raw JSON body; a body that is not the envelope is passed on as it came.
+ */
+async function httpFailure(response: Response) {
+  const text = await response.text();
+
+  try {
+    const body = JSON.parse(text) as TikTokApiResponse<unknown>;
+    return tiktokFailure(body.error) ?? text;
+  } catch {
+    return text;
+  }
+}
+
+function reasonOf(error: unknown) {
+  return error instanceof Error ? error.message : undefined;
 }
 
 /**
@@ -150,8 +178,7 @@ export class TikTokAnalyticsProvider {
       );
 
       if (!metricsResponse.ok) {
-        const errorText = await metricsResponse.text();
-        throw new Error(errorText);
+        throw new Error(await httpFailure(metricsResponse));
       }
 
       const metricsData = (await metricsResponse.json()) as TikTokApiResponse<{
@@ -207,10 +234,10 @@ export class TikTokAnalyticsProvider {
         throw error;
       }
       if (isAuthError(error)) {
-        throw new TikTokAnalyticsScopeError();
+        throw new TikTokAnalyticsScopeError(undefined, reasonOf(error));
       }
       if (isRateLimitError(error)) {
-        throw new TikTokRateLimitError();
+        throw new TikTokRateLimitError(reasonOf(error));
       }
       throw error;
     }
@@ -254,7 +281,7 @@ export class TikTokAnalyticsProvider {
         );
 
         if (!response.ok) {
-          throw new Error(await response.text());
+          throw new Error(await httpFailure(response));
         }
 
         const body = (await response.json()) as TikTokApiResponse<{
@@ -275,10 +302,10 @@ export class TikTokAnalyticsProvider {
       }
     } catch (error) {
       if (isAuthError(error)) {
-        throw new TikTokAnalyticsScopeError();
+        throw new TikTokAnalyticsScopeError(undefined, reasonOf(error));
       }
       if (isRateLimitError(error)) {
-        throw new TikTokRateLimitError();
+        throw new TikTokRateLimitError(reasonOf(error));
       }
       throw error;
     }
@@ -342,8 +369,7 @@ export class TikTokAnalyticsProvider {
       );
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText);
+        throw new Error(await httpFailure(response));
       }
 
       const data = (await response.json()) as TikTokApiResponse<{
@@ -364,10 +390,10 @@ export class TikTokAnalyticsProvider {
       };
     } catch (error) {
       if (isAuthError(error)) {
-        throw new TikTokAnalyticsScopeError();
+        throw new TikTokAnalyticsScopeError(undefined, reasonOf(error));
       }
       if (isRateLimitError(error)) {
-        throw new TikTokRateLimitError();
+        throw new TikTokRateLimitError(reasonOf(error));
       }
       throw error;
     }

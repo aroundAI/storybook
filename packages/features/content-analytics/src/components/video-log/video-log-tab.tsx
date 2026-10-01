@@ -26,6 +26,7 @@ import {
   getVideoLogAction,
 } from '../../server/video-log-actions';
 import { ChannelFilter } from '../deep-dive/channel-filter';
+import { useSyncStatuses } from '../sync-status/sync-status';
 import { useProjectChannels } from '../use-project-channels';
 import { VideoLogTable } from './video-log-table';
 
@@ -104,6 +105,15 @@ export function VideoLogTab({
 
   const { rows, hasMore } = videoLogPage(query.data ?? []);
 
+  // KB-150: a row whose latest sync failed says so, rather than showing
+  // figures that silently stopped moving.
+  const syncQuery = useSyncStatuses({
+    publishIds: rows.map((row) => row.videoId),
+  });
+  const syncById = Object.fromEntries(
+    (syncQuery.data ?? []).map((status) => [status.publishId, status]),
+  );
+
   // Which page the rows on screen actually are. While the next page is
   // being read the previous one is still shown (`keepPreviousData`), and
   // `view.page` has already moved — so a label built from it announced
@@ -168,8 +178,20 @@ export function VideoLogTab({
         />
       ) : (
         <>
+          {syncQuery.isError ? (
+            <p
+              className={'text-sm text-muted-foreground'}
+              role={'alert'}
+              data-test={'video-log-sync-status-error'}
+            >
+              Whether these videos&rsquo; latest syncs succeeded could not be
+              loaded.
+            </p>
+          ) : null}
+
           <VideoLogTable
             rows={rows}
+            syncById={syncById}
             checkpoints={CHECKPOINTS}
             view={view}
             onSort={onSort}

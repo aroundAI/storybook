@@ -7,11 +7,15 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { readFailed, whyNoRow } from '@kit/shared/rows';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { SYNCED_PLATFORMS, type SyncStatusResponse } from '../lib/sync-status';
 import { syncSinglePublishById } from './analytics-sync-cron';
-import type { PublishMetadata, SyncResult, SyncStatusResponse } from './types';
+import { type SyncStatusRow, toSyncStatus } from './sync-status';
+import type { SyncResult } from './types';
+import { withRefusals } from './with-refusals';
 
 /**
  * Schema for manual sync action
@@ -23,9 +27,10 @@ const ManualSyncSchema = z.object({
 /**
  * Schema for get sync status action
  */
-const GetSyncStatusSchema = z.object({
-  publishId: z.string().uuid(),
-});
+const GetSyncStatusSchema = z.union([
+  z.object({ episodeId: z.string().uuid() }),
+  z.object({ publishIds: z.array(z.string().uuid()).min(1).max(500) }),
+]);
 
 /**
  * Triggers an immediate analytics sync for a specific publish.
@@ -83,41 +88,53 @@ export const manualSyncAction = enhanceAction(
 );
 
 /**
- * Gets the sync status for a specific publish.
+ * Each synced publish's analytics sync record (KB-150): when its figures were
+ * last refreshed, whether the latest attempt failed and why, and whether the
+ * schedule will try again. For one episode's publishes (the episode
+ * analytics page) or a list of them (the Video Log's page of rows).
  *
- * @param data - Contains publishId to check
- * @returns Current sync status including last sync time and errors
+ * Read on the user-scoped client, so RLS decides which publishes the caller
+ * sees. A failed read is returned as a refusal, never as an empty list: "no
+ * sync record" and "could not read the sync record" are different answers.
  */
-export const getSyncStatusAction = enhanceAction(
-  async function (data): Promise<SyncStatusResponse | null> {
-    const client = getSupabaseServerClient();
+export const getSyncStatusAction = withRefusals(
+  'load the analytics sync status',
+  enhanceAction(
+    async function (data): Promise<SyncStatusResponse[]> {
+      const client = getSupabaseServerClient();
 
-    // Fetch publish with metadata
-    const { data: publish, error } = await client
-      .from('publishes')
-      .select('id, platform, metadata')
-      .eq('id', data.publishId)
-      .single();
+      const select = () =>
+        client
+          .from('publishes')
+          .select(
+            'id, platform, metadata, platform_connections!publishes_platform_connection_id_fkey(scopes, metadata, disconnected_at)',
+          )
+          .eq('status', 'published')
+          .not('platform_content_id', 'is', null)
+          .in('platform', [...SYNCED_PLATFORMS]);
 
-    if (error || !publish) {
-      return null;
-    }
+      const rows =
+        'episodeId' in data
+          ? await fetchAllRows<SyncStatusRow>(
+              (from, to) =>
+                select()
+                  .eq('episode_id', data.episodeId)
+                  .order('id')
+                  .range(from, to),
+              'episode sync status',
+            )
+          : await fetchAllByIds<SyncStatusRow>(
+              data.publishIds,
+              (chunk, from, to) =>
+                select().in('id', chunk).order('id').range(from, to),
+              'publish sync status',
+            );
 
-    const metadata = publish.metadata as PublishMetadata | null;
-    const syncMeta = metadata?.sync;
-
-    return {
-      publishId: publish.id,
-      platform: publish.platform,
-      lastSyncedAt: syncMeta?.last_synced_at ?? null,
-      lastSyncStatus: syncMeta?.last_sync_status ?? null,
-      lastError: syncMeta?.last_error ?? null,
-      consecutiveFailures: syncMeta?.consecutive_failures ?? 0,
-      requiresReauth: syncMeta?.requires_reauth ?? false,
-    };
-  },
-  {
-    auth: true,
-    schema: GetSyncStatusSchema,
-  },
+      return rows.map(toSyncStatus);
+    },
+    {
+      auth: true,
+      schema: GetSyncStatusSchema,
+    },
+  ),
 );
