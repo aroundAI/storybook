@@ -75,7 +75,7 @@
       "name": "SD8 too few judged shares no_clear_pattern's sentence",
       "kind": "unit",
       "file": "packages/clickhouse/src/lib/stage-diagnosis.ts",
-      "find": "      sentence: tooFewSentence(coverage.judgedCount, coverage.stageCount),",
+      "find": "      sentence: tooFewSentence(coverage.judgedCount, patternJudged),",
       "replace": "      sentence: NO_CLEAR_PATTERN_SENTENCE,",
       "cwd": "packages/clickhouse",
       "test": "__tests__/stage-diagnosis.test.ts",
