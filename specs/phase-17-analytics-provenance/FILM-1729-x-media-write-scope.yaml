@@ -3,7 +3,8 @@ title: "X Video Publishing — the media.write Scope"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: DEFERRED
+status: PARTIAL
+audited: "2026-10-01"
 effort: S
 dependencies:
   - spec_id: "FILM-1723"
@@ -16,28 +17,42 @@ summary: >
   OAuth 2.0 user tokens either, so X video publishing did not work before.
   It was unowned across three specs (FILM-1723 excludes scope changes,
   FILM-1711 audits analytics scopes only, FILM-1727 is X analytics) until
-  this spec claimed it. Deferred because we hold no X credentials to
-  exercise the consent screen or the upload, and red-before-green cannot be
-  met without one.
+  this spec claimed it. It was deferred for want of X credentials; #488
+  then shipped the scope and the connect-page notice (FILM-714), and the
+  2026-10-01 re-audit (§7) built the code-only parts. What still needs a
+  real X account stays open for FILM-1725.
 acceptance_criteria:
   - text: "media.write requested, from the single X_MEDIA_UPLOAD_SCOPE constant; the scopes comment is true"
-    met: false
-    reason: "deferred — no X developer app with pay-per-use credentials held"
+    met: true
+    evidence: "#488: TWITTER_OAUTH_CONFIG.scopes includes X_MEDIA_UPLOAD_SCOPE (packages/features/publishing/src/oauth/twitter/config.ts:23, the constant from packages/shared/src/vendors/x.ts:30), and the comment \"Required scopes for video upload and tweet creation\" (config.ts:19) is now true. Asserted by packages/features/publishing/__tests__/analytics-scopes.test.ts:33 and on the wire by apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts:237 (the authorize request's scope). The upload lambda takes the same constant (apps/web/lambda/publish-worker/handlers/twitter.ts:47) and validates nothing itself, so there is one source of truth. That a real token carrying it uploads is the last criterion, not this one"
   - text: "Publishing-scope audit table for all five platforms in the capability reference, cited to vendor docs; any other gap found is fixed or filed"
-    met: false
-    reason: "deferred — no X developer app with pay-per-use credentials held"
+    met: true
+    evidence: "#TBD: docs/platform-capability-reference.md:594 \"Publishing scopes\" — YouTube, TikTok, Instagram, Facebook, X and LinkedIn, each endpoint we call, the vendor's scope and whether we request it, cited to the vendor page read 2026-10-01 (TikTok's Content Posting pages refused connections both days, so its row is marked inferred). One gap found and filed as a lead, not a KB, because it cannot be reproduced without a live account: Instagram publishing for a Business-Manager Page role also needs ads_management and ads_read, which we do not request (specs/known-bugs/leads/2026-10-01-publishing-scopes.md)"
   - text: "A connection lacking the scope is detected and sent to re-authorise; the refusal is returned as a value and its text asserted in a production-build E2E"
     met: false
-    reason: "deferred — no X developer app with pay-per-use credentials held"
+    reason: "part — #TBD detects it from the grant stored at connect time and returns the refusal as a value naming the account and the fix (disconnect X and connect it again), before any row is written, in publishToAllAction and retryPublishAction (packages/features/publishing/src/server/publish-actions.ts:184 and :712, packages/features/publishing/src/lib/x-upload-scope.ts); packages/features/publishing/__tests__/publish-x-upload-scope.test.ts, 3 of 4 red before the fix. Not yet asserted in a production-build E2E. Scheduled publishes still fail in the worker with the 403 hint (handlers/twitter.ts:47), not this refusal"
   - text: "X token refresh exists, or is shown not to be needed, with evidence"
     met: false
-    reason: "partly met — KB-15 added X refresh (`refreshXToken`), with unit evidence against a local stand-in for X; one live refresh against X is still deferred — no X developer app with pay-per-use credentials held"
+    reason: "partly met — KB-15 added X refresh (`refreshXToken`, packages/features/publishing/src/lib/token-refresh.ts:617), with unit evidence against a local stand-in for X; one live refresh against X is still deferred — no X developer app with pay-per-use credentials held"
   - text: "Playwright spec covers: publish refused → re-authorise → second publish accepted; screenshots of each state in the PR"
     met: false
-    reason: "deferred — no X developer app with pay-per-use credentials held"
+    reason: "not built. The refusal and the reconnect could run against FILM-1802's X sandbox, which enforces media.write; the accepted second publish there proves our side only"
   - text: "A real video is published to X end to end with a token carrying media.write"
     met: false
     reason: "cannot be ticked without the credential — FILM-1725 Check E; nothing above substitutes for it"
+remaining:
+  - criterion: "A connection lacking the scope is detected and sent to re-authorise; the refusal is returned as a value and its text asserted in a production-build E2E"
+    reason: "detection and the refusal value are built and unit-tested (#TBD); the production-build E2E assertion is not written"
+    closed_by: "unassigned"
+  - criterion: "X token refresh exists, or is shown not to be needed, with evidence"
+    reason: "refreshXToken exists with unit evidence (KB-15); one live refresh against X needs the credential"
+    closed_by: "FILM-1725"
+  - criterion: "Playwright spec covers: publish refused → re-authorise → second publish accepted; screenshots of each state in the PR"
+    reason: "not built; reachable against FILM-1802's X sandbox without a credential"
+    closed_by: "unassigned"
+  - criterion: "A real video is published to X end to end with a token carrying media.write"
+    reason: "needs an X developer app with pay-per-use credit (FILM-1725 Check E)"
+    closed_by: "FILM-1725"
 open_questions: []
 notes: |
   ## 1. Why this exists
@@ -133,6 +148,25 @@ notes: |
   re-authorise once. Ship the detection and the prompt (§4.3) in the same release as
   the scope, never the scope alone — otherwise existing connections fail exactly as
   they do today, with a message telling users about a scope they cannot grant.
+
+  ## 7. Re-audit, 2026-10-01
+
+  #488 (FILM-714) added `media.write` to the X scopes and a notice on the
+  platforms page telling anyone who connected X earlier to reconnect. That
+  shipped the scope ahead of §6's rule (scope and detection together); this
+  re-audit closes most of the gap:
+
+  - Detection (§4.3): `holdsXUploadScope` reads the grant stored at connect
+    time. `publishToAllAction` and `retryPublishAction` refuse an X
+    connection without it as a value, naming the account and the fix, before
+    anything is written. A connection with no recorded scopes predates the
+    scope and is refused the same way. Scheduled publishes still reach the
+    worker and fail there with the 403 hint.
+  - One source of truth (§4.2): the provider, the lambda and the OAuth config
+    all take `X_MEDIA_UPLOAD_SCOPE`; neither upload path checks scopes itself.
+  - The audit (§4.2): the "Publishing scopes" table in the capability
+    reference. One gap, filed as a lead (Instagram, Business-Manager Page
+    roles).
 feature:
   database: null
   queries: []
