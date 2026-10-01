@@ -34,6 +34,7 @@ import {
   formatNumber,
   formatPercent,
 } from '../lib/format';
+import { VIEWS_NOT_MEASURED_REASON } from '../lib/views';
 import type { AnalyticsTotals } from '../types';
 import { CoverageContext } from './coverage-context';
 import { ProvenanceChipFor } from './provenance-chip';
@@ -89,12 +90,14 @@ export function MetricCards({
     {
       key: 'views',
       label: 'Views',
-      value: data?.views || 0,
+      value: data ? data.views : null,
       previousValue: previousData ? previousData.views : null,
       formatter: formatNumber,
       description: 'Total video views',
       icon: Eye,
       metricFamily: 'engagement',
+      // Facebook has no single view (KB-153); a 0 here read as none (KB-162).
+      notMeasuredReason: VIEWS_NOT_MEASURED_REASON,
     },
     {
       key: 'likes',
@@ -194,6 +197,8 @@ export interface MetricConfig {
   icon: React.ComponentType<{ className?: string }>;
   /** What the figure is, for its chip and for whether any platform supplies it. */
   metricFamily: MetricFamily;
+  /** This figure's own reason when null, over the cards' shared one. */
+  notMeasuredReason?: string;
 }
 
 /**
@@ -232,7 +237,10 @@ export function MetricCard({
     icon: Icon,
   } = metric;
 
-  const unmeasured = unmeasuredReason(metric, notMeasuredReason);
+  const unmeasured = unmeasuredReason(
+    metric,
+    metric.notMeasuredReason ?? notMeasuredReason,
+  );
   const change =
     unmeasured === null && value !== null
       ? calculateChange(value, previousValue)

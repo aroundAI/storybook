@@ -70,6 +70,36 @@
       "spec": "tests/analytics/company-dashboard-evidence.spec.ts",
       "grep": "an all-TikTok team",
       "env": { "CLICKHOUSE_EVIDENCE": "1" }
+    },
+    {
+      "name": "KB-162 the Views card shows a Facebook-only team's views as 0",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "      value: data ? data.views : null,",
+      "replace": "      value: data?.views || 0,",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/components/__tests__/metric-cards-views.test.tsx",
+      "pattern": "says Views were not measured"
+    },
+    {
+      "name": "KB-162 the Views card gives the watch-time reason for unmeasured views",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "              title={metric.notMeasuredReason ?? notMeasuredReason}",
+      "replace": "              title={notMeasuredReason}",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/components/__tests__/metric-cards-views.test.tsx",
+      "pattern": "says Views were not measured"
+    },
+    {
+      "name": "KB-162 the company dashboard's Views card shows a Facebook-only team as 0",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "      value: data ? data.views : null,",
+      "replace": "      value: data?.views || 0,",
+      "spec": "tests/analytics/company-dashboard-evidence.spec.ts",
+      "grep": "a Facebook-only team",
+      "env": { "CLICKHOUSE_EVIDENCE": "1" }
     }
   ]
 }

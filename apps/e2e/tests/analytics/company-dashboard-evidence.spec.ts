@@ -32,7 +32,7 @@ const SERVICE_ROLE_KEY =
   process.env.E2E_SUPABASE_SERVICE_ROLE_KEY ??
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
 
-type Platform = 'tiktok' | 'youtube';
+type Platform = 'tiktok' | 'youtube' | 'facebook';
 
 interface Seeded {
   team: SeededTeam;
@@ -82,30 +82,39 @@ async function seedTeam(page: Page, platforms: Platform[]): Promise<Seeded> {
  * Two days inside the dashboard's 30-day window. TikTok: 100 + 80 views and
  * no watch time, follower gain or saves (NULL, as its sync writes them).
  * YouTube: 200 views, 600 seconds watched (10m), 4 followers gained.
+ * Facebook: no views at all (NULL, KB-153), 7 likes on each of two days.
  */
 function metricRows(projectId: string, videoId: string, platform: Platform) {
   const tiktok = platform === 'tiktok';
   const row = (
     date: Date,
-    views: number,
+    views: number | null,
     watch: number | null,
     subscribers: number | null,
+    likes = 1,
   ) => ({
     project_id: projectId,
     video_id: videoId,
     platform,
     metric_date: clickHouseDate(date),
     views,
-    likes: 1,
+    likes,
     comments: 0,
     shares: 0,
     saves: null,
     watch_time_seconds: watch,
     revenue_cents: 0,
     subscribers_gained: subscribers,
-    metric_source: tiktok ? 'snapshot_delta' : 'analytics_api',
+    metric_source: platform === 'youtube' ? 'analytics_api' : 'snapshot_delta',
     extra_metrics: '{}',
   });
+
+  if (platform === 'facebook') {
+    return [
+      row(daysAgo(2), null, null, null, 7),
+      row(daysAgo(3), null, null, null, 7),
+    ];
+  }
 
   return tiktok
     ? [row(daysAgo(2), 100, null, null), row(daysAgo(3), 80, null, null)]
@@ -190,5 +199,23 @@ test.describe('Company dashboard: a figure no platform measured (KB-162)', () =>
     await expect(byTest(card(page, 'views'), 'metric-value')).toHaveText('380');
 
     await shoot(page, '2-tiktok-and-youtube-team');
+  });
+
+  test('a Facebook-only team: Views say Not measured, never 0', async ({
+    page,
+  }) => {
+    const fixture = await seedTeam(page, ['facebook']);
+    seeded.push(fixture);
+
+    await openDashboard(page, fixture.team);
+
+    await expect(byTest(card(page, 'views'), 'metric-not-measured')).toHaveText(
+      'Not measured',
+    );
+    await expect(byTest(card(page, 'views'), 'metric-value')).toHaveCount(0);
+    // Facebook's likes are measured: 7 + 7.
+    await expect(byTest(card(page, 'likes'), 'metric-value')).toHaveText('14');
+
+    await shoot(page, '3-facebook-team');
   });
 });
