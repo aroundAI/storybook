@@ -700,9 +700,13 @@ export const TAB_FAMILIES = {
     'follower_status',
     'channel_totals',
     'watch_time',
+    'reach',
+    'retention_curve',
   ],
-  'video-log': ['engagement'],
-  language: ['engagement'],
+  'video-log': ['engagement', 'reach', 'watch_time', 'revenue'],
+  language: ['engagement', 'geography', 'revenue'],
+  // A model's reading of the page's own figures: what it was given is the
+  // page's engagement totals, so that is what the strip speaks for.
   insights: ['engagement'],
 } as const satisfies Record<string, readonly MetricFamily[]>;
 

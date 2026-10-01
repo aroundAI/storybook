@@ -370,7 +370,9 @@ export function AnalyticsDashboard({
           <TabsTrigger value="language" data-test="analytics-tab-language">
             Language
           </TabsTrigger>
-          <TabsTrigger value="insights">AI Insights</TabsTrigger>
+          <TabsTrigger value="insights" data-test="analytics-tab-insights">
+            AI Insights
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6 space-y-6">
@@ -460,7 +462,11 @@ export function AnalyticsDashboard({
           {isPreviousLoading || isContentLoading || isAudienceLoading ? (
             <Skeleton className="h-64 w-full" />
           ) : (
-            <AIInsights projectId={projectId} analytics={aggregateAnalytics} />
+            <AIInsights
+              projectId={projectId}
+              analytics={aggregateAnalytics}
+              windowLabel={`${localDateOf(dateRange.from)} to ${localDateOf(dateRange.to)}`}
+            />
           )}
         </TabsContent>
 
