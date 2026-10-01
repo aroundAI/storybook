@@ -38,9 +38,17 @@ cd apps/web && npx next dev --turbo -p 3100
 
 In CI, E2E entries run in the `🧬 E2E guards & evidence` job, which runs a
 dev server (a production build cannot recompile after a mutation) against a
-real ClickHouse, next to the happy-flow evidence specs. It runs as three
-parallel shards (`--shard 1/3` … `3/3`): the E2E guards together outgrew a
-45-minute job.
+real ClickHouse, next to the happy-flow evidence specs. It runs as parallel
+shards (`--shard 1/5` … `5/5`): the E2E guards together outgrew a 45-minute
+job.
+
+A shard is chosen by measured duration, not position: longest first, each
+entry goes to the shard with the least time so far, using the median seconds
+in `e2e-durations.tsv` (an unmeasured entry counts as the median). Position
+round-robin put 36 minutes on one shard and 16 on another in the same run,
+and the long ones hit the job timeout (#519, #521). Each guard's line ends
+with its seconds; refresh the file from recent green queue runs with
+`python3 tooling/mutation-guards/durations.py <run-id>…`.
 
 ## What each outcome means
 
@@ -49,8 +57,8 @@ parallel shards (`--shard 1/3` … `3/3`): the E2E guards together outgrew a
 | `RED` | The test failed with its fix removed. It guards. | Nothing |
 | `STAYED GREEN` | The test passed with its fix removed. | The test no longer checks what it claims. Fix the test |
 | `MISSING` | The mutation's target text is not in the file. | The code moved. Update `find` to the new code — deliberately a failure, so a refactor cannot quietly orphan a guard |
-| `NOT GREEN` | The test fails even on the real code — or, for an E2E guard, every test it selects skipped, so it could never fail. | Fix the test first; a failure under mutation would prove nothing. For a skip, give the run what the skip asks for (K11 needed `ENCRYPTION_KEY`) |
-| `TIMED OUT` | The guard never finished, on the real code or the mutated one. Either Playwright ended it at its `--global-timeout` (10 minutes, or the entry's `timeout`), or its command ran past 15 minutes (`GUARD_TIMEOUT`) and was killed with every process it started. It proved nothing either way, and is never counted as `RED`. The run goes on to the next entry, so a shard still reports every guard (KB-165). | Read the output printed under it: it is the test's own report up to the hang. A Playwright test has a 2-minute timeout, and that runs inside the worker, so a run this long means the worker itself stopped answering |
+| `NOT GREEN` | The test fails even on the real code — or, for an E2E guard, every test it selects skipped, so it could never fail. An E2E baseline whose every failed attempt is a navigation timeout (`page.goto`, `page.waitForURL`, … `Timeout Nms exceeded`) is first re-run once, after 30 seconds, and its line says `[baseline retried after a navigation timeout]`; it is `NOT GREEN` only if the re-run fails too. Any other failure is not re-run. | Fix the test first; a failure under mutation would prove nothing. For a skip, give the run what the skip asks for (K11 needed `ENCRYPTION_KEY`) |
+| `TIMED OUT` | The guard never finished, on the real code or the mutated one. Either Playwright ended it at its `--global-timeout` (10 minutes, or the entry's `timeout`), or its command ran 90 seconds past that and was killed with every process it started (a unit or pgTAP command: 15 minutes, `GUARD_TIMEOUT`). The 90 seconds are there because Playwright's own runner can freeze too: on #521 KB-95 ran to a flat 15 minutes with a 150-second budget. It proved nothing either way, and is never counted as `RED`. The run goes on to the next entry, so a shard still reports every guard (KB-165). | Read the output printed under it: it is the test's own report up to the hang. A Playwright test has a 2-minute timeout, and that runs inside the worker, so a run this long means the worker itself stopped answering |
 | `AMBIGUOUS` | A `find` matches more than once in its file (counted after the entry's earlier edits), or an edit names a `file` other than the entry's. Checked before any test runs, and for every entry by `--self-test`. | Extend `find` with surrounding lines until it names one place. The runner used to mutate the first match, which after a rebase can be another copy of the line (#350) |
 
 Any outcome but `RED` fails the run, with one exception. An E2E entry may
