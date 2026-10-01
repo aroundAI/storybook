@@ -9,6 +9,11 @@
  *    `facebook` = 4 is kept: a MODIFY that left it out would drop it.
  *    `PLATFORM_ENUM_VALUES` in `lib/platform-enum.ts` must match.
  *
+ *    The three tables without the enum need nothing: `video_dim.platform` is
+ *    a `LowCardinality(String)` that already holds `twitter` rows copied from
+ *    publishes (FILM-1716's format families read them), and `channel_daily`
+ *    and `channel_subscribers` carry no platform column.
+ *
  * 2. `shares` becomes Nullable on video_metrics and video_snapshots. X's
  *    pay-per-use posts lookup reports no shares — X's `shares` is an
  *    Enterprise metric, and reposts have their own column (018) — so an X row

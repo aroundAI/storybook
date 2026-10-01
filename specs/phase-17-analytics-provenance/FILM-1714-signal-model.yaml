@@ -39,7 +39,7 @@ acceptance_criteria:
     evidence: "SignalDefinition.inputs is a non-empty tuple of MetricFamily (packages/clickhouse/src/lib/signal-map.ts:149). computeSignalSupport reads CAPABILITY_MATRIX at call time (packages/clickhouse/src/lib/signal-map.ts:424). packages/clickhouse/__tests__/signal-map.test.ts:422 checks every signal x platform against weakestSupport over the matrix. #500"
   - text: "No entry is added to CAPABILITY_MATRIX by this spec"
     met: true
-    evidence: "packages/clickhouse/__tests__/signal-map.test.ts:411 fails an assignment to CAPABILITY_MATRIX or an authored native/derived level in signal-map.ts (guard SM15), and the matrix's keys still equal METRIC_FAMILIES. Field-level gaps live in SIGNAL_INPUT_GAPS (packages/clickhouse/src/lib/signal-map.ts:385), which can only weaken support; it is empty since KB-151 stored Instagram's two (#509). #500"
+    evidence: "packages/clickhouse/__tests__/signal-map.test.ts:411 fails an assignment to CAPABILITY_MATRIX or an authored native/derived level in signal-map.ts (guard SM15), and the matrix's keys still equal METRIC_FAMILIES. Field-level gaps live in SIGNAL_INPUT_GAPS (packages/clickhouse/src/lib/signal-map.ts:385), which can only weaken support; KB-151 stored Instagram's two (#509), and the one left is X's shares (FILM-1727, #522). #500, #522"
   - text: "The full input list survives to the consumer, not only the weakest level"
     met: true
     evidence: "SignalSupport.inputs lists every family with its level, blocker and the matrix note (packages/clickhouse/src/lib/signal-map.ts:406). packages/clickhouse/__tests__/signal-map.test.ts:438 checks TikTok views_per_follower = derived with engagement derived and channel_totals native (guard SM8). #500"
@@ -69,7 +69,7 @@ acceptance_criteria:
     evidence: "reposts_per_reach reads the reposts family (packages/clickhouse/src/lib/signal-map.ts:324), whose Instagram entry cites reposts_count. It is derived today because FILM-1712 ingests it. packages/clickhouse/__tests__/signal-map.test.ts:622. #500"
   - text: "Until FILM-1712 requests those fields, both Instagram bindings render dark with FILM-1712 named as the blocker — never as a zero"
     met: true
-    evidence: "FILM-1712 is DONE, and KB-151 (#509) stored the two fields it left out, so neither binding is dark on a missing field any more. reposts_count is ingested (#472), so reposts per reach is derived. ig_reels_avg_watch_time is requested and now stored as reported (packages/features/content-analytics/src/server/ingest.ts:132, migration 023), so SIGNAL_INPUT_GAPS is empty (packages/clickhouse/src/lib/signal-map.ts:385) and Instagram Attention reads measurable (packages/clickhouse/__tests__/signal-map.test.ts:638). reels_skip_rate is requested for REELS (packages/features/content-analytics/src/providers/instagram/instagram-insights.ts:165) and stored, but Meta does not say whether its percentage is 0–100 or 0–1, so a pending unit check owned by the owner keeps it dark, never a figure (packages/clickhouse/src/lib/signal-map.ts:281). The gap rules still fire, on probes: stale (packages/clickhouse/__tests__/signal-map.test.ts:521, guard SM11), redundant (:529, guard SM12), weakening (:538, guard SM9). #500, #509"
+    evidence: "FILM-1712 is DONE, and KB-151 (#509) stored the two fields it left out, so neither binding is dark on a missing field any more. reposts_count is ingested (#472), so reposts per reach is derived. ig_reels_avg_watch_time is requested and now stored as reported (packages/features/content-analytics/src/server/ingest.ts:132, migration 023), so SIGNAL_INPUT_GAPS holds no Instagram gap (packages/clickhouse/src/lib/signal-map.ts:385) and Instagram Attention reads measurable (packages/clickhouse/__tests__/signal-map.test.ts:638). reels_skip_rate is requested for REELS (packages/features/content-analytics/src/providers/instagram/instagram-insights.ts:165) and stored, but Meta does not say whether its percentage is 0–100 or 0–1, so a pending unit check owned by the owner keeps it dark, never a figure (packages/clickhouse/src/lib/signal-map.ts:281). The gap rules still fire, on probes: stale (packages/clickhouse/__tests__/signal-map.test.ts:521, guard SM11), redundant (:529, guard SM12), weakening (:538, guard SM9). #500, #509"
   - text: "Instagram watch time is not shown until its unit (milliseconds, inferred) is confirmed against a live response"
     met: true
     evidence: "SignalDefinition.unitCheck (packages/clickhouse/src/lib/signal-map.ts:258): a pending unit makes a signal not_ingested, with the confirmer as blocker (packages/clickhouse/__tests__/signal-map.test.ts:570, guard SM10). ig_reels_avg_watch_time carries FILM-1712's live confirmation: milliseconds, owner's account, 2026-09-29 (packages/clickhouse/__tests__/signal-map.test.ts:578). #500"
@@ -325,7 +325,8 @@ notes: |
     `CAPABILITY_MATRIX`.
   - **KB-151 closed both gaps (2026-10-01, #509).** The average and the
     skip rate are stored on `video_snapshots` as Meta reports them
-    (migration 023), and `SIGNAL_INPUT_GAPS` is empty. Instagram Attention
+    (migration 023), and `SIGNAL_INPUT_GAPS` holds no Instagram gap; its one
+    entry is X's shares (FILM-1727). Instagram Attention
     reads measurable on the average. The two closed gaps stay in the test
     as probes, so the stale, redundant and weakening rules are still seen to
     fire. The skip rate stays dark on a unit check (below).

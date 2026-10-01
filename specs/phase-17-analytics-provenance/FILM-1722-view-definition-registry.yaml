@@ -162,12 +162,13 @@ notes: |
   const VIEW_DEFINITIONS: readonly ViewDefinition[];
   ```
 
-  `platform` is deliberately not `AnalyticsPlatform`. That union was
-  'youtube' | 'tiktok' | 'instagram' until FILM-1720 added 'facebook'
-  (packages/clickhouse/src/types.ts:11, 2026-10-01); FILM-1727 widens it for
-  X. §1 and §3 required Facebook and X rows before either landed — Facebook's
-  four denominators are the clearest example in the whole registry and would
-  be lost if the type forbade them.
+  `platform` was deliberately not `AnalyticsPlatform` when this was written. That
+  union was 'youtube' | 'tiktok' | 'instagram' until FILM-1720 and FILM-1727
+  widened it (packages/clickhouse/src/types.ts:13, now five values, X as
+  `twitter`, so PlatformId and AnalyticsPlatform are the same), but §1 and §3
+  required Facebook and X rows before either was ingested — Facebook's four
+  denominators are the clearest example in the whole registry and would have
+  been lost if the type forbade them.
 
   **FILM-1720 (2026-10-01, #504).** Facebook is ingested now and still has no
   definition behind `video_metrics.views`: the owner chose (option A) to write
