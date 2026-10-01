@@ -37,9 +37,13 @@ it('chips a page-built summary as a page summary, not a measurement', () => {
     <AIInsightCard summary="10 views." author="page" />,
   );
 
-  expect(container.querySelector('[data-test="provenance-chip"]')?.textContent).toContain('Page summary');
   expect(
-    container.querySelector('[data-test="overview-ai-insight"]')?.getAttribute('data-metric-family'),
+    container.querySelector('[data-test="provenance-chip"]')?.textContent,
+  ).toContain('Page summary');
+  expect(
+    container
+      .querySelector('[data-test="overview-ai-insight"]')
+      ?.getAttribute('data-metric-family'),
   ).toBe('summary');
 });
 
@@ -48,5 +52,7 @@ it('chips a model-written summary as not measured', () => {
     <AIInsightCard summary="Views held." author="model" />,
   );
 
-  expect(container.querySelector('[data-test="provenance-chip"]')?.textContent).toContain('Not measured');
+  expect(
+    container.querySelector('[data-test="provenance-chip"]')?.textContent,
+  ).toContain('Not measured');
 });

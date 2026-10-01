@@ -16,7 +16,8 @@ import { TRUE_DAILY_PLATFORMS } from '../../lib/row-dating';
  * release, not state anyone else needs, and it need not outlive a release
  * or two (FILM-1707 §2).
  */
-export const DATE_AXIS_NOTE_KEY = 'analytics.deep-dive.date-axis-note.dismissed';
+export const DATE_AXIS_NOTE_KEY =
+  'analytics.deep-dive.date-axis-note.dismissed';
 
 function readDismissed(): boolean {
   try {
@@ -86,8 +87,8 @@ export function DateAxisNote({
           on a date axis, and now use {kept} only. {left}{' '}
           {excluded.length === 1 ? 'reports' : 'report'} running totals, which
           we can only date to the day we checked, so a gap between checks put
-          those views in the wrong week or month — the figures shown here
-          before mixed the two.
+          those views in the wrong week or month — the figures shown here before
+          mixed the two.
         </span>
         <span>
           Totals over a video’s life still include every platform, because the

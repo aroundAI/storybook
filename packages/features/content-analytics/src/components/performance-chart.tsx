@@ -23,10 +23,7 @@ import { ToggleGroup, ToggleGroupItem } from '@kit/ui/toggle-group';
 
 import { formatDate, formatNumber } from '../lib/format';
 import { PLATFORM_COLORS } from '../lib/platform-colors';
-import {
-  type ViewDefinitionMark,
-  isoDay,
-} from '../lib/view-definition-marks';
+import { type ViewDefinitionMark, isoDay } from '../lib/view-definition-marks';
 import type { DailyMetric } from '../types';
 
 type MetricType = 'views' | 'likes' | 'comments' | 'shares';
@@ -85,7 +82,9 @@ export const PerformanceChart = React.memo(function PerformanceChart({
       marks.flatMap((mark) => {
         const point = data.find((d) => isoDay(d.date) >= mark.date);
 
-        return point ? [{ key: `${mark.platform}:${mark.date}`, x: point.date }] : [];
+        return point
+          ? [{ key: `${mark.platform}:${mark.date}`, x: point.date }]
+          : [];
       }),
     [marks, data],
   );

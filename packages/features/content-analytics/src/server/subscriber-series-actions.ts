@@ -63,22 +63,18 @@ async function resolveConnectionIds(
 
     const client = getSupabaseServerAdminClient();
 
-    const rows = await fetchAllRows<{ id: string }>(
-      (rangeFrom, rangeTo) =>
-        {
-          let query = client
-            .from('platform_connections')
-            .select('id')
-            .eq('is_active', true)
-            .eq('account_id', accountId);
+    const rows = await fetchAllRows<{ id: string }>((rangeFrom, rangeTo) => {
+      let query = client
+        .from('platform_connections')
+        .select('id')
+        .eq('is_active', true)
+        .eq('account_id', accountId);
 
-          // The Deep Dive's platform switcher (FILM-1707), like the channel.
-          if (scope.platform) query = query.eq('platform', scope.platform);
+      // The Deep Dive's platform switcher (FILM-1707), like the channel.
+      if (scope.platform) query = query.eq('platform', scope.platform);
 
-          return query.order('id').range(rangeFrom, rangeTo);
-        },
-      'subscriber series connections',
-    );
+      return query.order('id').range(rangeFrom, rangeTo);
+    }, 'subscriber series connections');
 
     ids = rows.map((r) => r.id);
   }

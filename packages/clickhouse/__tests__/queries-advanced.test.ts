@@ -1652,12 +1652,15 @@ describe('queries-advanced', () => {
         ['cohort medians', (q) => q.queryCohortMedians({ scope })],
       ];
 
-    it.each(dateAxisQueries)('%s reads no snapshot_delta row', async (_, run) => {
-      const { query } = await issued(run);
+    it.each(dateAxisQueries)(
+      '%s reads no snapshot_delta row',
+      async (_, run) => {
+        const { query } = await issued(run);
 
-      expect(query).toContain("metric_source != 'snapshot_delta'");
-      expect(query).not.toContain('video_daily_stats');
-    });
+        expect(query).toContain("metric_source != 'snapshot_delta'");
+        expect(query).not.toContain('video_daily_stats');
+      },
+    );
 
     it.each(dateAxisQueries)(
       '%s leaves out videos on fetch-dated platforms, read from the matrix',

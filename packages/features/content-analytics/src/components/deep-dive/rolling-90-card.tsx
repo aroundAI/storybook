@@ -109,7 +109,12 @@ export function Rolling90Card({
 
     return index < 0
       ? []
-      : [{ key: `${mark.platform}:${mark.date}`, x: (index / (points.length - 1)) * WIDTH }];
+      : [
+          {
+            key: `${mark.platform}:${mark.date}`,
+            x: (index / (points.length - 1)) * WIDTH,
+          },
+        ];
   });
 
   return (

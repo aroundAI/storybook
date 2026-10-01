@@ -155,9 +155,7 @@ export function AnalyticsCard({
       data-test={dataTest}
       data-card-shell={'analytics'}
       data-metric-family={
-        typeof metricFamily === 'string'
-          ? metricFamily
-          : metricFamily.join(',')
+        typeof metricFamily === 'string' ? metricFamily : metricFamily.join(',')
       }
       data-date-axis={onDateAxis ? 'true' : undefined}
       data-dimmed={dimming.dimmed ? 'true' : undefined}

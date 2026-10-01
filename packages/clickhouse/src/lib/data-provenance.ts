@@ -1552,7 +1552,8 @@ export function allowedMetricSources(
  * The `metric_source` of a row dated to the day we fetched it rather than
  * the day it describes: a lifetime counter's change since the last check.
  */
-export const FETCH_DATED_METRIC_SOURCE = 'snapshot_delta' satisfies MetricSource;
+export const FETCH_DATED_METRIC_SOURCE =
+  'snapshot_delta' satisfies MetricSource;
 
 /**
  * Whether a platform's daily views are fetch-dated (FILM-1707 §2).

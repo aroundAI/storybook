@@ -5203,7 +5203,12 @@ async function fetchDatedSteps() {
       connection: DATED_YOUTUBE,
       published: '2026-01-10',
       source: 'analytics_api',
-      days: { '2026-01-11': 100, '2026-01-31': 50, '2026-02-01': 30, '2026-02-02': 20 },
+      days: {
+        '2026-01-11': 100,
+        '2026-01-31': 50,
+        '2026-02-01': 30,
+        '2026-02-02': 20,
+      },
     },
     {
       id: 'yt-b',
@@ -5247,7 +5252,11 @@ async function fetchDatedSteps() {
           metric_source: video.source,
           // TikTok does not measure these; NULL, as ingest writes them.
           ...(video.platform === 'tiktok'
-            ? { saves: null, watch_time_seconds: null, subscribers_gained: null }
+            ? {
+                saves: null,
+                watch_time_seconds: null,
+                subscribers_gained: null,
+              }
             : {}),
         })),
       ),
@@ -5339,19 +5348,26 @@ async function fetchDatedSteps() {
     // is not in the cohort; pooled, median [200, 1200] was 700.
     expectEqual('jan videos', january?.videoCount, 1);
     expectEqual('jan @30 median', january?.checkpoints[30]?.medianViews, 200);
-    expectEqual('jan @30 mature', january?.checkpoints[30]?.matureVideoCount, 1);
+    expectEqual(
+      'jan @30 mature',
+      january?.checkpoints[30]?.matureVideoCount,
+      1,
+    );
   });
 
-  await step('assert: a lifetime total still pools every platform', async () => {
-    const totals = await queryTotals({
-      projectId: DATED_PROJECT,
-      startDate: '2026-01-01',
-      endDate: '2026-02-28',
-    });
+  await step(
+    'assert: a lifetime total still pools every platform',
+    async () => {
+      const totals = await queryTotals({
+        projectId: DATED_PROJECT,
+        startDate: '2026-01-01',
+        endDate: '2026-02-28',
+      });
 
-    // 240 YouTube + 1,200 TikTok: fetch-day dating cannot move a sum.
-    expectEqual('total views', totals.views, 1440);
-  });
+      // 240 YouTube + 1,200 TikTok: fetch-day dating cannot move a sum.
+      expectEqual('total views', totals.views, 1440);
+    },
+  );
 
   await step('clear: fetch-dated fixture', () =>
     clearFixtureRows([DATED_PROJECT], []),

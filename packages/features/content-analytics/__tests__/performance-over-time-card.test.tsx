@@ -35,7 +35,10 @@ describe('Performance Over Time', () => {
   it('marks the view-definition change a YouTube window crosses', () => {
     const { container } = renderWithCoverage(
       <PerformanceOverTimeCard
-        data={[day('2026-08-20', 'youtube', 100), day('2026-09-03', 'youtube', 400)]}
+        data={[
+          day('2026-08-20', 'youtube', 100),
+          day('2026-09-03', 'youtube', 400),
+        ]}
         platforms={['youtube', 'tiktok', 'instagram']}
         isLoading={false}
         from="2026-08-20"
@@ -60,7 +63,10 @@ describe('Performance Over Time', () => {
   it('marks nothing when the window is wholly on one side', () => {
     const { container } = renderWithCoverage(
       <PerformanceOverTimeCard
-        data={[day('2026-09-01', 'youtube', 100), day('2026-09-20', 'youtube', 100)]}
+        data={[
+          day('2026-09-01', 'youtube', 100),
+          day('2026-09-20', 'youtube', 100),
+        ]}
         platforms={['youtube']}
         isLoading={false}
         from="2026-09-01"
@@ -76,7 +82,10 @@ describe('Performance Over Time', () => {
   it('marks nothing for a platform whose definition did not change', () => {
     const { container } = renderWithCoverage(
       <PerformanceOverTimeCard
-        data={[day('2026-08-20', 'tiktok', 100), day('2026-09-03', 'tiktok', 100)]}
+        data={[
+          day('2026-08-20', 'tiktok', 100),
+          day('2026-09-03', 'tiktok', 100),
+        ]}
         platforms={['youtube', 'tiktok']}
         isLoading={false}
         from="2026-08-20"

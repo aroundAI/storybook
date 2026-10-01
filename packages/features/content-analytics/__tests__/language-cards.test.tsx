@@ -121,7 +121,9 @@ describe('LanguagePerformanceCard (FILM-1702)', () => {
   });
 
   it('names the dimension it is grouped by', () => {
-    const { rerender } = renderWithCoverage(<LanguagePerformanceCard data={ROWS} />);
+    const { rerender } = renderWithCoverage(
+      <LanguagePerformanceCard data={ROWS} />,
+    );
 
     expect(byTest('language-dimension-label-performance').textContent).toBe(
       'By content language',
@@ -183,7 +185,9 @@ describe('PlatformLanguageMatrix (FILM-1702)', () => {
   });
 
   it('heads each column with the language name, not only a flag', () => {
-    renderWithCoverage(<PlatformLanguageMatrix data={[entry('es', 1), entry(null, 9)]} />);
+    renderWithCoverage(
+      <PlatformLanguageMatrix data={[entry('es', 1), entry(null, 9)]} />,
+    );
 
     expect(byTest('matrix-language-es').textContent).toContain('Spanish');
     expect(byTest('matrix-language-__not_set__').textContent).toBe(

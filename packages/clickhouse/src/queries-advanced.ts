@@ -347,7 +347,8 @@ function scopedDailyStats(
  * Platforms whose rows are dated to the fetch, not the day (FILM-1707 §2),
  * read from the matrix by `isFetchDated` — never a platform written here.
  */
-const FETCH_DATED_PLATFORMS: string[] = ANALYTICS_PLATFORMS.filter(isFetchDated);
+const FETCH_DATED_PLATFORMS: string[] =
+  ANALYTICS_PLATFORMS.filter(isFetchDated);
 
 /**
  * `scopedDailyStats` for a figure on a date axis: the same scoping, from

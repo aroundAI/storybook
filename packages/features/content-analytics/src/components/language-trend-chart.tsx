@@ -45,10 +45,12 @@ interface LanguageTrendChartProps {
 const TITLE = 'Language Performance Trend';
 
 function dayInWords(date: string): string {
-  return new Date(`${isoDay(date)}T00:00:00.000Z`).toLocaleDateString(
-    'en-GB',
-    { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' },
-  );
+  return new Date(`${isoDay(date)}T00:00:00.000Z`).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
 }
 
 /** The views the chart stacks, over the days it draws. */
@@ -62,7 +64,8 @@ export function languageTrendClaim(
     return {
       figure: null,
       noFigure: 'No trend data yet.',
-      sentence: 'Daily views by language appear once published content has views.',
+      sentence:
+        'Daily views by language appear once published content has views.',
     };
   }
 

@@ -1,6 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-
 import { describe, expect, it } from 'vitest';
 
 /**

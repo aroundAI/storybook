@@ -153,7 +153,9 @@ describe('a card on a date axis', () => {
     expect(chipOf(container).textContent).toBe('Not on a date axis');
     expect(
       container.querySelector('[data-test="card-coverage-note"]')?.textContent,
-    ).toBe('TikTok isn’t shown here — it reports running totals, not daily views.');
+    ).toBe(
+      'TikTok isn’t shown here — it reports running totals, not daily views.',
+    );
   });
 });
 
@@ -242,9 +244,9 @@ describe('view-definition marks (FILM-1722 §5)', () => {
         ({ date }) => date,
       ),
     ).toEqual(['2026-08-27']);
-    expect(viewDefinitionMarks(['youtube'], '2026-09-01', '2026-09-30')).toEqual(
-      [],
-    );
+    expect(
+      viewDefinitionMarks(['youtube'], '2026-09-01', '2026-09-30'),
+    ).toEqual([]);
     expect(viewDefinitionMarks(['tiktok'], '2026-08-01', '2026-09-30')).toEqual(
       [],
     );

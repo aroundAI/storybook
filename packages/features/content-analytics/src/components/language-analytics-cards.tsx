@@ -223,11 +223,9 @@ function bestCombination(
 ): PlatformLanguageEntry | undefined {
   return data
     .filter((entry) => entry.language !== null)
-    .reduce<PlatformLanguageEntry | undefined>(
-      (best, entry) =>
-        !best || entry.engagementRate > best.engagementRate ? entry : best,
-      undefined,
-    );
+    .reduce<
+      PlatformLanguageEntry | undefined
+    >((best, entry) => (!best || entry.engagementRate > best.engagementRate ? entry : best), undefined);
 }
 
 export function platformLanguageClaim(

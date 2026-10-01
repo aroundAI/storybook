@@ -8,7 +8,6 @@ import {
   type ViewDefinitionMark,
   markedBuckets,
 } from '../../lib/view-definition-marks';
-
 import type { CardClaim } from '../overview/card-claim';
 import { ChartMark, ChartMarks } from './chart-marks';
 
