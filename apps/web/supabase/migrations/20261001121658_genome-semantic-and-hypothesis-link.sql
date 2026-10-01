@@ -55,6 +55,9 @@ alter table public.content_tags
 -- hypothesis is not a row (no new table): it is its key, the attribute and
 -- the funnel stage it is scored on, `dimension:slug@stage` — the stage is
 -- what the experiment was about, without a second stage vocabulary.
+--
+-- Both kinds of experiment carry it: a Change log entry (FILM-1610) and a
+-- channel experiment (FILM-1724, 20261001114902).
 alter table public.analytics_experiments
   add column genome_hypothesis varchar(120);
 
@@ -62,6 +65,16 @@ alter table public.analytics_experiments
   add constraint analytics_experiments_genome_hypothesis_check check (
     genome_hypothesis ~ '^[a-z0-9_]+:[a-z0-9]+(-[a-z0-9]+)*@(reach|hook|attention|transmission|audience)$'
   );
+
+alter table public.channel_experiments
+  add column genome_hypothesis varchar(120);
+
+alter table public.channel_experiments
+  add constraint channel_experiments_genome_hypothesis_check check (
+    genome_hypothesis ~ '^[a-z0-9_]+:[a-z0-9]+(-[a-z0-9]+)*@(reach|hook|attention|transmission|audience)$'
+  );
+
+comment on column public.channel_experiments.genome_hypothesis is 'The content genome hypothesis this experiment tests, as dimension:slug@stage (FILM-1717); null when it did not come from one';
 
 comment on column public.analytics_experiments.genome_hypothesis is 'The content genome hypothesis this change tests, as dimension:slug@stage (FILM-1717); null when it did not come from one';
 
@@ -88,4 +101,8 @@ $$;
 
 create trigger analytics_experiments_freeze_genome_hypothesis
   before update of genome_hypothesis on public.analytics_experiments
+  for each row execute function public.freeze_genome_hypothesis();
+
+create trigger channel_experiments_freeze_genome_hypothesis
+  before update of genome_hypothesis on public.channel_experiments
   for each row execute function public.freeze_genome_hypothesis();

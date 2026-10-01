@@ -18,7 +18,11 @@
 import type { GenomeAnalysis } from './genome';
 import type { GenomeAttribute } from './genome-attributes';
 import type { CausalBacking, Evidence, GenomeFinding } from './genome-evidence';
-import { evidenceLabel, rankingDistance } from './genome-evidence';
+import {
+  causalTestOf,
+  evidenceLabel,
+  rankingDistance,
+} from './genome-evidence';
 import type { FunnelStage } from './signal-map';
 import { FUNNEL_STAGES, FUNNEL_STAGE_LABEL } from './signal-map';
 
@@ -119,15 +123,13 @@ export function applyLinkedTests(
     const key = genomeHypothesisKey(finding.attribute, analysis.stage);
     const testedBy = tests
       .filter((test) => test.hypothesis === key)
-      .map((test) => test.backing)
+      .map((test) => causalTestOf(test.backing))
       .sort((a, b) => b.concludedOn.localeCompare(a.concludedOn));
 
     if (testedBy.length === 0) return finding;
 
-    const rejected = testedBy.some((backing) => backing.outcome === 'rejected');
-    const confirmed = testedBy.find(
-      (backing) => backing.outcome === 'confirmed',
-    );
+    const rejected = testedBy.some((test) => test.outcome === 'rejected');
+    const confirmed = testedBy.find((test) => test.outcome === 'confirmed');
 
     return {
       ...finding,
@@ -136,7 +138,7 @@ export function applyLinkedTests(
         confirmed && !rejected
           ? {
               ...finding.evidence,
-              claim: { strength: 'causal', backing: confirmed },
+              claim: { strength: 'causal', backing: confirmed.backing },
             }
           : finding.evidence,
     };

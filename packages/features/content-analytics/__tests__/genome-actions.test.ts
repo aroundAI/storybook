@@ -20,8 +20,11 @@ const state: {
   rows: Array<Record<string, unknown>>;
   /** analytics_experiments rows the paged read returns. */
   tests: Array<Record<string, unknown>>;
-  /** Filters the experiments read received, as [method, column, value]. */
+  /** channel_experiments rows (FILM-1724) the paged read returns. */
+  channelTests: Array<Record<string, unknown>>;
+  /** Filters the experiments reads received, as [method, column, value]. */
   filters: Array<[string, string, unknown]>;
+  channelFilters: Array<[string, string, unknown]>;
 } = {
   calls: [],
   platform: 'youtube',
@@ -29,7 +32,9 @@ const state: {
   measureCalls: [],
   rows: [],
   tests: [],
+  channelTests: [],
   filters: [],
+  channelFilters: [],
 };
 
 vi.mock('@kit/next/actions', () => ({
@@ -52,22 +57,26 @@ vi.mock('../src/server/scope-access', () => ({
 vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: () => ({
     from: (table: string) => {
+      const filters =
+        table === 'channel_experiments' ? state.channelFilters : state.filters;
       const builder = {
         select: () => builder,
         eq: (column: string, value: unknown) => {
-          if (table === 'analytics_experiments') {
-            state.filters.push(['eq', column, value]);
+          if (table !== 'platform_connections') {
+            filters.push(['eq', column, value]);
           }
           return builder;
         },
         not: (column: string, operator: string, value: unknown) => {
-          state.filters.push(['not', column, `${operator} ${value}`]);
+          filters.push(['not', column, `${operator} ${value}`]);
           return builder;
         },
         order: () => builder,
         range: async (from: number, to: number) => {
-          state.calls.push('experiments');
-          return { data: state.tests.slice(from, to + 1), error: null };
+          state.calls.push(table);
+          const rows =
+            table === 'channel_experiments' ? state.channelTests : state.tests;
+          return { data: rows.slice(from, to + 1), error: null };
         },
         single: async () => {
           state.calls.push('connection');
@@ -119,7 +128,9 @@ beforeEach(() => {
   state.clickhouse = true;
   state.measureCalls = [];
   state.tests = [];
+  state.channelTests = [];
   state.filters = [];
+  state.channelFilters = [];
   state.rows = Array.from({ length: 10 }, (_, index) => {
     const value = (index + 1) / 100;
     return row(`v${index + 1}`, value, [
@@ -137,7 +148,8 @@ describe('getGenomeFindingsAction', () => {
       'scope',
       'connection',
       'clickhouse',
-      'experiments',
+      'analytics_experiments',
+      'channel_experiments',
     ]);
     expect(state.measureCalls[0]).toMatchObject({
       measure: 'share_rate',
@@ -214,6 +226,79 @@ describe('getGenomeFindingsAction', () => {
       ['eq', 'status', 'concluded'],
       ['not', 'genome_hypothesis', 'is null'],
     ]);
+    expect(state.channelFilters).toEqual([
+      ['eq', 'account_id', ACCOUNT],
+      ['eq', 'connection_id', CHANNEL],
+      ['eq', 'status', 'concluded'],
+      ['not', 'genome_hypothesis', 'is null'],
+    ]);
+  });
+
+  it('makes a finding causal from a concluded channel experiment (FILM-1724) whose styles separated', async () => {
+    const style = (styleId: string, median: number) => ({
+      styleId,
+      name: styleId,
+      measured: 6,
+      pending: 0,
+      notMeasurable: 0,
+      distribution: { p25: median - 1, median, p75: median + 1 },
+      confidence: 'directional',
+    });
+    state.channelTests = [
+      {
+        id: 'x1',
+        account_id: ACCOUNT,
+        connection_id: CHANNEL,
+        format_family: 'long_horizontal',
+        title: 'Result first or not',
+        hypothesis: null,
+        expected_outcome: null,
+        status: 'concluded',
+        started_at: '2026-07-01',
+        ended_at: '2026-09-10',
+        conclusion: 'Result first wins',
+        outcome_status: 'confirmed',
+        genome_hypothesis: 'result_first:yes@transmission',
+        result_snapshot: {
+          version: 1,
+          asOf: '2026-09-10T00:00:00.000Z',
+          results: [
+            {
+              measure: 'views',
+              checkpointDays: 30,
+              styles: [style('first', 50), style('last', 10)],
+              verdict: {
+                kind: 'compared',
+                threshold: 5,
+                pairs: [
+                  { styleId: 'first', otherStyleId: 'last', relation: 'ahead' },
+                  {
+                    styleId: 'last',
+                    otherStyleId: 'first',
+                    relation: 'behind',
+                  },
+                ],
+                anyClearDifference: true,
+              },
+            },
+          ],
+        },
+        channel_experiment_styles: [
+          { id: 'first', name: 'Result first', description: null },
+          { id: 'last', name: 'Result last', description: null },
+        ],
+      },
+    ];
+    const result = await getGenomeFindingsAction(input);
+    if (result.status !== 'analysed') throw new Error(result.status);
+
+    const finding = result.analysis.findings.find(
+      (entry) => entry.attribute.tag === 'result_first:yes',
+    );
+    expect(finding?.evidence.claim).toMatchObject({
+      strength: 'causal',
+      backing: { kind: 'concluded_channel_experiment', experimentId: 'x1' },
+    });
   });
 
   it('makes a finding causal when a concluded test on this channel confirmed it (v2)', async () => {

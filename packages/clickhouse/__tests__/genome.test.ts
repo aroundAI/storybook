@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { toConcludedChannelExperiment } from '../src/lib/channel-experiments';
 import type { GenomeVideo } from '../src/lib/genome';
 import {
   MIN_PREVALENCE_GAP,
@@ -15,7 +16,6 @@ import type {
 } from '../src/lib/genome-evidence';
 import {
   concludedChangeLogEntry,
-  concludedChannelExperiment,
   evidenceLabel,
   liftPair,
   rankingDistance,
@@ -332,11 +332,21 @@ describe('claim strength', () => {
       ended_at: null,
       outcome_status: 'pending',
     });
-    const planned = concludedChannelExperiment({
+    const planned = toConcludedChannelExperiment({
       id: 'x1',
+      account_id: 'a1',
+      connection_id: CHANNEL,
+      format_family: 'long_horizontal',
+      title: 'Hooks',
+      hypothesis: null,
+      expected_outcome: null,
       status: 'planned',
+      started_at: null,
       ended_at: null,
+      conclusion: null,
       outcome_status: 'pending',
+      result_snapshot: {},
+      styles: [],
     });
     // Ended, with an outcome, but abandoned: not a concluded test.
     const abandoned = concludedChangeLogEntry({

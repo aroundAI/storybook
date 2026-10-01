@@ -2,14 +2,13 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import type { ChannelExperimentResults } from '../src/lib/channel-experiments';
+import { toConcludedChannelExperiment } from '../src/lib/channel-experiments';
 import type { GenomeAnalysis, GenomeVideo } from '../src/lib/genome';
 import { analyseGenome } from '../src/lib/genome';
 import { parseVideoTag } from '../src/lib/genome-attributes';
 import type { CausalBacking } from '../src/lib/genome-evidence';
-import {
-  concludedChangeLogEntry,
-  concludedChannelExperiment,
-} from '../src/lib/genome-evidence';
+import { concludedChangeLogEntry } from '../src/lib/genome-evidence';
 import type { CreativeTemplate } from '../src/lib/genome-loop';
 import {
   GENOME_HYPOTHESIS_PATTERN,
@@ -69,6 +68,72 @@ function analyse(stage: FunnelStage = 'transmission'): GenomeAnalysis {
       'youtube',
     ),
   });
+}
+
+/**
+ * A concluded channel experiment (FILM-1724), built the only way one is:
+ * from its record. `separated` decides whether its two styles' ranges
+ * cleared each other at 30 days.
+ */
+function channelExperiment(
+  id: string,
+  outcome: string,
+  separated: boolean,
+): CausalBacking {
+  const style = (styleId: string, median: number) => ({
+    styleId,
+    name: styleId,
+    measured: 6,
+    pending: 0,
+    notMeasurable: 0,
+    distribution: { p25: median - 1, median, p75: median + 1 },
+    confidence: 'directional' as const,
+  });
+  const results: ChannelExperimentResults = {
+    version: 1,
+    asOf: '2026-09-10T00:00:00.000Z',
+    results: [
+      {
+        measure: 'views',
+        checkpointDays: 30,
+        styles: [style('cold-open', 50), style('slow-open', 10)],
+        verdict: {
+          kind: 'compared',
+          threshold: 5,
+          pairs: [
+            {
+              styleId: 'cold-open',
+              otherStyleId: 'slow-open',
+              relation: separated ? 'ahead' : 'no_clear_difference',
+            },
+            {
+              styleId: 'slow-open',
+              otherStyleId: 'cold-open',
+              relation: separated ? 'behind' : 'no_clear_difference',
+            },
+          ],
+          anyClearDifference: separated,
+        },
+      },
+    ],
+  };
+
+  return toConcludedChannelExperiment({
+    id,
+    account_id: 'a1',
+    connection_id: CHANNEL,
+    format_family: 'long_horizontal',
+    title: 'Hooks',
+    hypothesis: null,
+    expected_outcome: null,
+    status: 'concluded',
+    started_at: '2026-07-01',
+    ended_at: '2026-09-10',
+    conclusion: 'Cold opens win',
+    outcome_status: outcome,
+    result_snapshot: results,
+    styles: [],
+  })!;
 }
 
 function changeLog(
@@ -150,28 +215,53 @@ describe('the confidence update from concluded tests', () => {
     const claim = identity(updated).evidence.claim;
 
     expect(claim.strength).toBe('causal');
-    if (claim.strength === 'causal') {
-      expect(claim.backing.kind).toBe('change_log');
-      expect(claim.backing.id).toBe('e1');
-    }
+    expect(claim).toMatchObject({
+      strength: 'causal',
+      backing: { kind: 'change_log', id: 'e1' },
+    });
     expect(hypothesesFrom(updated).map((h) => h.key)).not.toContain(key);
   });
 
-  it('accepts a concluded channel experiment as the backing, by its kind', () => {
-    const experiment = concludedChannelExperiment({
-      id: 'x1',
-      status: 'concluded',
-      ended_at: '2026-09-10',
-      outcome_status: 'confirmed',
-    })!;
-    const claim = identity(
-      applyLinkedTests(analyse(), [{ hypothesis: key, backing: experiment }]),
-    ).evidence.claim;
+  it('accepts a concluded channel experiment (FILM-1724) whose styles separated, by its kind', () => {
+    const finding = identity(
+      applyLinkedTests(analyse(), [
+        {
+          hypothesis: key,
+          backing: channelExperiment('x1', 'confirmed', true),
+        },
+      ]),
+    );
 
-    expect(claim).toMatchObject({
+    expect(finding.evidence.claim).toMatchObject({
       strength: 'causal',
-      backing: { kind: 'channel_experiment', id: 'x1' },
+      backing: { kind: 'concluded_channel_experiment', experimentId: 'x1' },
     });
+    expect(finding.testedBy).toMatchObject([
+      {
+        kind: 'concluded_channel_experiment',
+        id: 'x1',
+        concludedOn: '2026-09-10',
+        outcome: 'confirmed',
+      },
+    ]);
+  });
+
+  it('does not treat a confirmed channel experiment whose styles never separated as causal', () => {
+    const finding = identity(
+      applyLinkedTests(analyse(), [
+        {
+          hypothesis: key,
+          backing: channelExperiment('x2', 'confirmed', false),
+        },
+      ]),
+    );
+
+    // experimentFindings finds no non-overlapping pair: whatever the owner
+    // concluded, the experiment showed no clear difference.
+    expect(finding.evidence.claim.strength).toBe('observed');
+    expect(finding.testedBy).toMatchObject([
+      { id: 'x2', outcome: 'inconclusive' },
+    ]);
   });
 
   it('keeps a rejected finding observational, and says it was tested', () => {

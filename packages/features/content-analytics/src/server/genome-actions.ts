@@ -24,6 +24,7 @@ import {
   parseGenomeHypothesisKey,
   recommendFrom,
   stageMeasureFor,
+  toConcludedChannelExperiment,
 } from '@kit/clickhouse';
 import {
   isClickHouseEnabled,
@@ -156,11 +157,10 @@ export const getGenomeFindingsAction = enhanceAction(
       provenance: metricProvenanceFor(measure.signal, platform),
     });
 
-    // Concluded Change log entries on this channel that tested a genome
-    // hypothesis. Paged: the update is wrong if a test is missed. A test on
-    // another channel says nothing about this one, as the genome never
-    // compares across creators. Channel experiments (FILM-1724) join here
-    // once their table exists.
+    // Concluded tests on this channel that tested a genome hypothesis: Change
+    // log entries (FILM-1610) and channel experiments (FILM-1724). Paged: the
+    // update is wrong if a test is missed. A test on another channel says
+    // nothing about this one, as the genome never compares across creators.
     const tested = await fetchAllRows<{
       id: string;
       status: string;
@@ -181,12 +181,61 @@ export const getGenomeFindingsAction = enhanceAction(
       'genome hypothesis tests',
     );
 
-    const tests = tested.flatMap((row): LinkedTest[] => {
-      const hypothesis = parseGenomeHypothesisKey(row.genome_hypothesis);
-      const backing = concludedChangeLogEntry(row);
+    const channelTested = await fetchAllRows<{
+      id: string;
+      account_id: string;
+      connection_id: string;
+      format_family: string;
+      title: string;
+      hypothesis: string | null;
+      expected_outcome: string | null;
+      status: string;
+      started_at: string | null;
+      ended_at: string | null;
+      conclusion: string | null;
+      outcome_status: string;
+      result_snapshot: unknown;
+      genome_hypothesis: string | null;
+      channel_experiment_styles: {
+        id: string;
+        name: string;
+        description: string | null;
+      }[];
+    }>(
+      (from, to) =>
+        client
+          .from('channel_experiments')
+          .select(
+            'id, account_id, connection_id, format_family, title, hypothesis, expected_outcome, status, started_at, ended_at, conclusion, outcome_status, result_snapshot, genome_hypothesis, channel_experiment_styles(id, name, description)',
+          )
+          .eq('account_id', input.accountId)
+          .eq('connection_id', input.connectionId)
+          .eq('status', 'concluded')
+          .not('genome_hypothesis', 'is', null)
+          .order('id')
+          .range(from, to),
+      'genome hypothesis channel experiments',
+    );
 
-      return hypothesis && backing ? [{ hypothesis, backing }] : [];
-    });
+    const tests = [
+      ...tested.flatMap((row): LinkedTest[] => {
+        const hypothesis = parseGenomeHypothesisKey(row.genome_hypothesis);
+        const backing = concludedChangeLogEntry(row);
+
+        return hypothesis && backing ? [{ hypothesis, backing }] : [];
+      }),
+      ...channelTested.flatMap((row): LinkedTest[] => {
+        const hypothesis = parseGenomeHypothesisKey(row.genome_hypothesis);
+        // Null unless concluded with the results the table froze: a
+        // running experiment's associations never back a claim.
+        const backing = toConcludedChannelExperiment({
+          ...row,
+          styles: row.channel_experiment_styles,
+        });
+
+        return hypothesis && backing ? [{ hypothesis, backing }] : [];
+      }),
+    ];
 
     const updated = applyLinkedTests(analysis, tests);
 

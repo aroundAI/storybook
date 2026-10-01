@@ -85,8 +85,8 @@
       "name": "GN9 an abandoned Change log entry backs a causal claim",
       "kind": "unit",
       "file": "packages/clickhouse/src/lib/genome-evidence.ts",
-      "find": "  if (status !== 'concluded' || !endedAt) return null;",
-      "replace": "  if (!endedAt) return null;",
+      "find": "  if (row.status !== 'concluded' || !row.ended_at) return null;",
+      "replace": "  if (!row.ended_at) return null;",
       "cwd": "packages/clickhouse",
       "test": "__tests__/genome.test.ts",
       "pattern": "names a concluded Change log entry"
@@ -125,7 +125,7 @@
       "name": "GN15 any concluded test makes a claim causal",
       "kind": "unit",
       "file": "packages/clickhouse/src/lib/genome-loop.ts",
-      "find": "    const confirmed = testedBy.find(\n      (backing) => backing.outcome === 'confirmed',\n    );",
+      "find": "    const confirmed = testedBy.find((test) => test.outcome === 'confirmed');",
       "replace": "    const confirmed = testedBy[0];",
       "cwd": "packages/clickhouse",
       "test": "__tests__/genome-loop.test.ts",
@@ -152,14 +152,44 @@
       "pattern": "keyed dimension:slug@stage"
     },
     {
-      "name": "GN18 another channel's test backs this channel's claim",
+      "name": "GN18 another channel's Change log entry backs this channel's claim",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/server/genome-actions.ts",
-      "find": "          .eq('connection_id', input.connectionId)\n",
-      "replace": "",
+      "find": "          .select('id, status, ended_at, outcome_status, genome_hypothesis')\n          .eq('account_id', input.accountId)\n          .eq('connection_id', input.connectionId)\n",
+      "replace": "          .select('id, status, ended_at, outcome_status, genome_hypothesis')\n          .eq('account_id', input.accountId)\n",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/genome-actions.test.ts",
       "pattern": "reads only this channel"
+    },
+    {
+      "name": "GN19 a confirmed channel experiment whose styles never separated is causal",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome-evidence.ts",
+      "find": "      backing.outcomeStatus === 'confirmed' && !separated",
+      "replace": "      false",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome-loop.test.ts",
+      "pattern": "styles never separated"
+    },
+    {
+      "name": "GN20 another channel's experiment backs this channel's claim",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/genome-actions.ts",
+      "find": "          )\n          .eq('account_id', input.accountId)\n          .eq('connection_id', input.connectionId)\n",
+      "replace": "          )\n          .eq('account_id', input.accountId)\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/genome-actions.test.ts",
+      "pattern": "reads only this channel"
+    },
+    {
+      "name": "GN21 the action never reads concluded channel experiments",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/genome-actions.ts",
+      "find": "        const backing = toConcludedChannelExperiment({",
+      "replace": "        const backing = null && toConcludedChannelExperiment({",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/genome-actions.test.ts",
+      "pattern": "concluded channel experiment"
     },
     {
       "name": "GN-DB1 a closed genome dimension takes any value",
@@ -178,6 +208,12 @@
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/genome-hypothesis-link.test.sql",
       "sql": "alter table public.analytics_experiments drop constraint analytics_experiments_genome_hypothesis_check;"
+    },
+    {
+      "name": "GN-DB4 a started channel experiment's genome hypothesis can be rewritten",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/genome-hypothesis-link.test.sql",
+      "sql": "drop trigger channel_experiments_freeze_genome_hypothesis on public.channel_experiments;"
     },
     {
       "name": "GN-E1 a closed dimension's refusal lands on a field nobody sees",

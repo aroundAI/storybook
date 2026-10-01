@@ -6,8 +6,10 @@
  * exists so that it cannot overclaim by construction:
  *
  * - a claim's strength is a type, and `causal` takes a reference to a
- *   concluded Change log entry (FILM-1610) or a concluded channel experiment
- *   (FILM-1724), branded so only the guards below can produce one;
+ *   concluded Change log entry (FILM-1610, branded so only
+ *   `concludedChangeLogEntry` builds one) or a concluded channel experiment
+ *   (FILM-1724's `ConcludedChannelExperiment`, built only by
+ *   `toConcludedChannelExperiment`);
  * - every claim carries an `Evidence`, which carries both comparable sets,
  *   both lifts and a `MetricProvenance`;
  * - a `Recommendation` has no constructor but `recommendFrom`, which takes a
@@ -15,6 +17,8 @@
  *
  * Pure and client-safe.
  */
+import type { ConcludedChannelExperiment } from './channel-experiments';
+import { experimentFindings } from './channel-experiments';
 import type { DurationBand, GenomeAttribute } from './genome-attributes';
 import type { MetricProvenance, SegmentMeasure } from './genome-measures';
 import type { SegmentConfidence } from './segment-stats';
@@ -71,28 +75,54 @@ export interface ConcludedChangeLogEntry {
 }
 
 /**
- * A channel experiment (FILM-1724, `channel_experiments`) that has concluded.
- * Compares styles across new uploads.
- *
- * FILM-1724 is not built yet. This is the seam its rows plug into: the
- * lifecycle below is the one its spec gives (§3, "planned → running →
- * concluded or abandoned"), and nothing in this repository can produce one
- * until that table exists.
+ * Names which kind backs the claim: they answer different questions. A
+ * Change log entry compares the same published videos before and after a
+ * change; a channel experiment (FILM-1724) compares styles across new
+ * uploads, and is FILM-1724's own concluded type with its frozen results.
  */
-export interface ConcludedChannelExperiment {
-  readonly kind: 'channel_experiment';
-  readonly id: string;
-  readonly concludedOn: string;
-  readonly outcome: 'confirmed' | 'rejected' | 'inconclusive';
-  readonly [concluded]: true;
-}
-
-/** Names which kind backs the claim: they answer different questions. */
 export type CausalBacking =
   | ConcludedChangeLogEntry
   | ConcludedChannelExperiment;
 
-export type ExperimentOutcome = 'pending' | ConcludedChangeLogEntry['outcome'];
+/** A concluded test, summarised the same way whichever kind it is. */
+export interface CausalTest {
+  kind: CausalBacking['kind'];
+  id: string;
+  concludedOn: string;
+  /**
+   * For a channel experiment, `confirmed` only when its frozen results hold
+   * a pair of styles whose ranges did not overlap (FILM-1724's
+   * `experimentFindings`); a confirmation with no such pair showed no clear
+   * difference, and reads as inconclusive.
+   */
+  outcome: ConcludedChangeLogEntry['outcome'];
+  backing: CausalBacking;
+}
+
+export function causalTestOf(backing: CausalBacking): CausalTest {
+  if (backing.kind === 'change_log') {
+    return {
+      kind: backing.kind,
+      id: backing.id,
+      concludedOn: backing.concludedOn,
+      outcome: backing.outcome,
+      backing,
+    };
+  }
+
+  const separated = experimentFindings(backing).length > 0;
+
+  return {
+    kind: backing.kind,
+    id: backing.experimentId,
+    concludedOn: backing.endedAt,
+    outcome:
+      backing.outcomeStatus === 'confirmed' && !separated
+        ? 'inconclusive'
+        : backing.outcomeStatus,
+    backing,
+  };
+}
 
 /** The columns of an `analytics_experiments` row this reads. */
 export interface ChangeLogRow {
@@ -102,20 +132,11 @@ export interface ChangeLogRow {
   outcome_status: string;
 }
 
-/** The columns a `channel_experiments` row will have (FILM-1724 §3). */
-export interface ChannelExperimentRow {
-  id: string;
-  status: 'planned' | 'running' | 'concluded' | 'abandoned';
-  ended_at: string | null;
-  outcome_status: ExperimentOutcome;
-}
-
-function concludedOutcome(
-  status: string,
-  endedAt: string | null,
-  outcome: string,
-): ConcludedChangeLogEntry['outcome'] | null {
-  if (status !== 'concluded' || !endedAt) return null;
+export function concludedChangeLogEntry(
+  row: ChangeLogRow,
+): ConcludedChangeLogEntry | null {
+  const outcome = row.outcome_status;
+  if (row.status !== 'concluded' || !row.ended_at) return null;
   if (
     outcome !== 'confirmed' &&
     outcome !== 'rejected' &&
@@ -124,43 +145,12 @@ function concludedOutcome(
     return null;
   }
 
-  return outcome;
-}
-
-export function concludedChangeLogEntry(
-  row: ChangeLogRow,
-): ConcludedChangeLogEntry | null {
-  const outcome = concludedOutcome(
-    row.status,
-    row.ended_at,
-    row.outcome_status,
-  );
-  if (!outcome || !row.ended_at) return null;
-
   return {
     kind: 'change_log',
     id: row.id,
     concludedOn: row.ended_at,
     outcome,
   } as ConcludedChangeLogEntry;
-}
-
-export function concludedChannelExperiment(
-  row: ChannelExperimentRow,
-): ConcludedChannelExperiment | null {
-  const outcome = concludedOutcome(
-    row.status,
-    row.ended_at,
-    row.outcome_status,
-  );
-  if (!outcome || !row.ended_at) return null;
-
-  return {
-    kind: 'channel_experiment',
-    id: row.id,
-    concludedOn: row.ended_at,
-    outcome,
-  } as ConcludedChannelExperiment;
 }
 
 // ---------------------------------------------------------------------------
@@ -319,7 +309,7 @@ export interface GenomeFinding {
    * rejected or inconclusive test keeps the finding visible and says so;
    * only a confirmed, uncontested one makes the claim causal.
    */
-  testedBy: readonly CausalBacking[];
+  testedBy: readonly CausalTest[];
 }
 
 declare const recommendation: unique symbol;
