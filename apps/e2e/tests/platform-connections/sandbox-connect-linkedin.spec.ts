@@ -176,16 +176,13 @@ test.describe('Connecting LinkedIn through the sandbox (FILM-715)', () => {
     expect(await storedConnections(team.accountId, 'linkedin')).toHaveLength(1);
   });
 
-  // The callback records the scopes it asked for, not the ones LinkedIn's token
-  // response says were granted (`scope`), so a person who unticks posting is
-  // recorded as having granted it. TikTok and Meta record the grant. This is
-  // expected to fail until the callback reads `tokens.scope`; when it passes,
-  // Playwright reports the unexpected pass and the marker comes off.
+  // KB-145: the callback records the `scope` LinkedIn's token response says
+  // was granted, not the list it asked for. Real LinkedIn's consent is
+  // all-or-nothing; the sandbox lets a scope be unticked so the grant can
+  // differ from the request.
   test('a scope the person unticks is not recorded as granted', async ({
     page,
   }) => {
-    test.fail(true, 'callback/linkedin records requested, not granted, scopes');
-
     const team = await seedTeamAccount({ emailPrefix: 'sbx-linkedin-scope' });
     await signInAs(page, team);
     await openPlatforms(page, team.slug);
@@ -199,6 +196,6 @@ test.describe('Connecting LinkedIn through the sandbox (FILM-715)', () => {
     await page.waitForURL(new RegExp(`/home/${team.slug}/settings/platforms`));
 
     const [stored] = await storedConnections(team.accountId, 'linkedin');
-    expect(stored!.scopes).not.toContain('w_member_social');
+    expect([...stored!.scopes!].sort()).toEqual(['email', 'openid', 'profile']);
   });
 });

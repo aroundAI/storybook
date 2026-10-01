@@ -398,6 +398,7 @@ describe('LinkedIn callback success (FILM-715)', () => {
               access_token: 'li-access',
               refresh_token: 'li-refresh',
               expires_in: 5_184_000,
+              scope: 'email,openid,profile,w_member_social',
             },
           )
         : (overrides.profile ??
@@ -410,7 +411,7 @@ describe('LinkedIn callback success (FILM-715)', () => {
     );
   }
 
-  it('stores the member as urn:li:person with the personal scopes', async () => {
+  it('stores the member as urn:li:person with the scopes LinkedIn granted', async () => {
     const fetchMock = linkedin();
     const { GET } = await import('~/api/platforms/callback/linkedin/route');
 
@@ -431,11 +432,12 @@ describe('LinkedIn callback success (FILM-715)', () => {
         platform_account_name: 'Acme Founder',
         access_token_encrypted: 'enc(li-access)',
         refresh_token_encrypted: 'enc(li-refresh)',
-        scopes: ['openid', 'profile', 'email', 'w_member_social'],
+        scopes: ['email', 'openid', 'profile', 'w_member_social'],
         metadata: {
           picture: 'https://cdn.example.test/li.png',
           email: 'founder@acme.test',
           isCompanyPage: false,
+          scopes_granted_at: expect.any(String),
         },
       }),
     ]);
@@ -447,7 +449,13 @@ describe('LinkedIn callback success (FILM-715)', () => {
   });
 
   it('stores the company scopes for a company page and no refresh token when none is issued', async () => {
-    linkedin({ tokens: { access_token: 'li-access', expires_in: 5_184_000 } });
+    linkedin({
+      tokens: {
+        access_token: 'li-access',
+        expires_in: 5_184_000,
+        scope: 'openid profile email w_member_social w_organization_social',
+      },
+    });
     const { GET } = await import('~/api/platforms/callback/linkedin/route');
 
     await GET(callbackRequest('linkedin', { isCompanyPage: true }));
@@ -457,6 +465,33 @@ describe('LinkedIn callback success (FILM-715)', () => {
       scopes: expect.arrayContaining(['w_organization_social']),
       metadata: expect.objectContaining({ isCompanyPage: true }),
     });
+  });
+
+  // KB-145. LinkedIn's token response names what was granted in `scope`
+  // ("URL-encoded, space-delimited list of member permissions", per
+  // learn.microsoft.com/en-us/linkedin/shared/authentication/authorization-code-flow).
+  it('stores the scopes LinkedIn granted, not the ones the app asked for', async () => {
+    linkedin({
+      tokens: {
+        access_token: 'li-access',
+        expires_in: 5_184_000,
+        scope: 'openid profile email',
+      },
+    });
+    const { GET } = await import('~/api/platforms/callback/linkedin/route');
+
+    await GET(callbackRequest('linkedin', {}));
+
+    expect(state.stored[0]?.scopes).toEqual(['openid', 'profile', 'email']);
+  });
+
+  it('records no scopes when LinkedIn sends none, rather than the ones asked for', async () => {
+    linkedin({ tokens: { access_token: 'li-access', expires_in: 5_184_000 } });
+    const { GET } = await import('~/api/platforms/callback/linkedin/route');
+
+    await GET(callbackRequest('linkedin', {}));
+
+    expect(state.stored[0]?.scopes).toEqual([]);
   });
 
   it('stores nothing when LinkedIn returns no member id', async () => {
