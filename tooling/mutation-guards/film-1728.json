@@ -80,6 +80,16 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/platform-field-names.test.ts",
       "pattern": "total_video_impressions"
+    },
+    {
+      "name": "The expiry check waits for the expiry itself",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/vendor-api-versions.test.ts",
+      "find": "  if (daysLeft > WARN_DAYS) return null;",
+      "replace": "  if (daysLeft > 0) return null;",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "goes red at T-120 days"
     }
   ]
 }

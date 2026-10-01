@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   META_GRAPH_VERSION,
   META_GRAPH_VERSION_EXPIRES,
+  META_GRAPH_VERSION_EXPIRY_IS_FLOOR,
   META_GRAPH_VERSION_RELEASED,
   VENDORS,
   type Vendor,
@@ -262,29 +263,177 @@ describe('vendor API versions are declared once (FILM-1723)', () => {
  * end-of-life. Those are claims, so they are bound to the table FILM-1721
  * researched rather than trusted: bump the version without its dates, or edit
  * the table without the constant, and this fails.
+ *
+ * FILM-1728: an expiry Meta has not published yet is entered as the
+ * guaranteed floor (two years from release) and labelled `(floor)` in the
+ * row, the "Pinned" line and `META_GRAPH_VERSION_EXPIRY_IS_FLOOR` alike, so an
+ * inferred date can never pass for a documented one.
  */
+const META_FILE = `${VENDORS_DIR}/meta.ts`;
+const FLOOR_NOTE = " (a floor: Meta has not published this version's end date)";
+
+function pinnedLine(version: string, expires: string, isFloor: boolean) {
+  return `**Pinned: \`${version}\`, upgrade before ${expires}${isFloor ? FLOOR_NOTE : ''}.**`;
+}
+
 describe('the Graph pin carries the dates the reference documents', () => {
   const doc = readFileSync(join(REPO, REFERENCE), 'utf8');
   const row = new RegExp(
-    String.raw`^\| ${META_GRAPH_VERSION.replace('.', '\\.')} \| (\d{4}-\d{2}-\d{2}) \| \**(\d{4}-\d{2}-\d{2})\** \|`,
+    String.raw`^\| ${META_GRAPH_VERSION.replace('.', '\\.')} \| (\d{4}-\d{2}-\d{2}) \| \**(\d{4}-\d{2}-\d{2})\**( \(floor\))? \|`,
     'm',
   ).exec(doc);
+  const pinned = /^\*\*Pinned: `(v\d+\.0)`/m.exec(doc)?.[1];
 
   it('is a version the reference lists', () => {
     expect(
       row,
-      `${META_GRAPH_VERSION} missing from ${REFERENCE}`,
+      `${META_GRAPH_VERSION} has no dated row in ${REFERENCE}'s Graph API versions table`,
     ).not.toBeNull();
+  });
+
+  it('is the version the reference says is pinned', () => {
+    expect(
+      META_GRAPH_VERSION,
+      `${REFERENCE} pins ${pinned}; META_GRAPH_VERSION in ${META_FILE} says otherwise`,
+    ).toBe(pinned);
   });
 
   it('matches the documented release and expiry', () => {
     expect(META_GRAPH_VERSION_RELEASED).toBe(row?.[1]);
     expect(META_GRAPH_VERSION_EXPIRES).toBe(row?.[2]);
+    expect(
+      META_GRAPH_VERSION_EXPIRY_IS_FLOOR,
+      'the row says (floor) exactly when META_GRAPH_VERSION_EXPIRY_IS_FLOOR does',
+    ).toBe(Boolean(row?.[3]));
   });
 
   it('names the pin and its expiry where a reader of the reference will see it', () => {
     expect(doc).toContain(
-      `**Pinned: \`${META_GRAPH_VERSION}\`, upgrade before ${META_GRAPH_VERSION_EXPIRES}.**`,
+      pinnedLine(
+        META_GRAPH_VERSION,
+        META_GRAPH_VERSION_EXPIRES,
+        META_GRAPH_VERSION_EXPIRY_IS_FLOOR,
+      ),
     );
+  });
+});
+
+/**
+ * FILM-1728 §7.3.B. An expiry that cannot be missed: this goes red 120 days
+ * before a pinned version expires, which is what "not worrying for years"
+ * means in practice — a reminder nobody had to set, four months ahead.
+ *
+ * One entry per vendor that publishes an end date. Today that is only Meta:
+ * LinkedIn's monthly versions and X's unversioned v2 have no published one.
+ */
+const WARN_DAYS = 120;
+const DAY_MS = 86_400_000;
+
+interface PinnedExpiry {
+  vendor: string;
+  version: string;
+  expires: string;
+  isFloor: boolean;
+}
+
+const EXPIRING_PINS: PinnedExpiry[] = [
+  {
+    vendor: 'Meta Graph',
+    version: META_GRAPH_VERSION,
+    expires: META_GRAPH_VERSION_EXPIRES,
+    isFloor: META_GRAPH_VERSION_EXPIRY_IS_FLOOR,
+  },
+];
+
+/** Null while more than WARN_DAYS remain; otherwise what to do about it. */
+export function expiryProblem(pin: PinnedExpiry, today: Date) {
+  const daysLeft = Math.floor(
+    (Date.parse(`${pin.expires}T00:00:00Z`) - today.getTime()) / DAY_MS,
+  );
+  if (daysLeft > WARN_DAYS) return null;
+
+  const files = `${META_FILE}, ${REFERENCE} (the "Pinned" line, the versions table and the findings table), and this test's expectations`;
+
+  return pin.isFloor
+    ? `${pin.vendor} ${pin.version}: ${daysLeft} days to ${pin.expires}, which is only the guaranteed floor. Re-read Meta's changelog first: if the next version has shipped, ${pin.version}'s real end date is published and is probably later — enter it and clear the floor flag. Otherwise bump the pin. FILM-1728; files: ${files}.`
+    : `${pin.vendor} ${pin.version} expires on ${pin.expires}, in ${daysLeft} days. Bump the pin to a version with at least a year left, reading the changelog of every version crossed. FILM-1728; files: ${files}.`;
+}
+
+describe('no pinned vendor version is within 120 days of its end (FILM-1728)', () => {
+  it.each(EXPIRING_PINS.map((pin) => [pin.vendor, pin] as const))(
+    '%s',
+    (_vendor, pin) => {
+      expect(expiryProblem(pin, new Date())).toBeNull();
+    },
+  );
+
+  it('goes red at T-120 days, naming FILM-1728 and the files (fixture date)', () => {
+    const pin = { ...EXPIRING_PINS[0]!, expires: '2028-07-29', isFloor: false };
+    const at = (iso: string) => expiryProblem(pin, new Date(iso));
+
+    expect(at('2028-03-29T12:00:00Z')).toBeNull();
+    expect(at('2028-03-30T12:00:00Z')).toMatch(/in 120 days/);
+    expect(at('2028-03-30T12:00:00Z')).toContain('FILM-1728');
+    expect(at('2028-03-30T12:00:00Z')).toContain(META_FILE);
+    expect(at('2028-03-30T12:00:00Z')).not.toMatch(/floor/);
+  });
+
+  it('says to re-read the changelog first when the date is only a floor', () => {
+    const floor = {
+      ...EXPIRING_PINS[0]!,
+      expires: '2028-07-29',
+      isFloor: true,
+    };
+
+    expect(expiryProblem(floor, new Date('2028-03-30T12:00:00Z'))).toMatch(
+      /only the guaranteed floor\. Re-read Meta's changelog first/,
+    );
+  });
+});
+
+/**
+ * FILM-1728 §7.3.D. Reading the changelog becomes a checklist item that
+ * cannot be skipped: the reference keeps a dated row per Graph version this
+ * repository has crossed, and a bump that skips one fails here. The first row
+ * is the baseline (FILM-1723's pin); every version from it to the pin needs a
+ * row, with the day its changelog was read.
+ */
+describe('every Graph version crossed has a dated findings row (FILM-1728)', () => {
+  const doc = readFileSync(join(REPO, REFERENCE), 'utf8');
+  const table =
+    /<!-- graph-version-findings -->\n([\s\S]*?)\n\n/.exec(doc)?.[1] ?? '';
+  const rows = [
+    ...table.matchAll(/^\| v(\d+)\.0 \| (\d{4}-\d{2}-\d{2}) \|/gm),
+  ].map(([, major, read]) => ({ major: Number(major), read: read! }));
+
+  it('has the table', () => {
+    expect(
+      rows.length,
+      `no <!-- graph-version-findings --> table in ${REFERENCE}`,
+    ).toBeGreaterThan(0);
+  });
+
+  it('has a row for every version from the baseline to the pin', () => {
+    const pin = Number(META_GRAPH_VERSION.slice(1, -2));
+    const first = Math.min(...rows.map((r) => r.major));
+    const missing = Array.from(
+      { length: pin - first + 1 },
+      (_, i) => first + i,
+    ).filter((major) => !rows.some((r) => r.major === major));
+
+    expect(
+      missing.map((major) => `v${major}.0`),
+      `Read each version's changelog (https://developers.facebook.com/docs/graph-api/changelog/version<N>.0) and add a dated row for it`,
+    ).toEqual([]);
+  });
+
+  it('dates each row with a real day, not in the future', () => {
+    const latest = new Date(Date.now() + 14 * 3600_000)
+      .toISOString()
+      .slice(0, 10);
+
+    expect(
+      rows.filter((r) => Number.isNaN(Date.parse(r.read)) || r.read > latest),
+    ).toEqual([]);
   });
 });

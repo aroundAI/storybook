@@ -42,6 +42,12 @@ import { vendorUrl } from './resolver';
 export const META_GRAPH_VERSION = 'v23.0';
 export const META_GRAPH_VERSION_RELEASED = '2025-05-29';
 export const META_GRAPH_VERSION_EXPIRES = '2027-10-08';
+/**
+ * True when `META_GRAPH_VERSION_EXPIRES` is the guaranteed floor (two years
+ * from release) because Meta has not yet published the end date; false when
+ * it is the date the changelog states (FILM-1728 §3).
+ */
+export const META_GRAPH_VERSION_EXPIRY_IS_FLOOR = false;
 
 const META_GRAPH_HOST = vendorUrl('meta-graph');
 const META_GRAPH_VIDEO_HOST = vendorUrl('meta-graph-video');

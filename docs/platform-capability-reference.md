@@ -482,6 +482,8 @@ Measured 2026-09-21 against
 | v19.0 | 2024-01-23 | **2026-05-21** | **expired ~4 months ago** |
 | v20.0 | 2024-05-21 | 2026-09-24 | **expires in 3 days** |
 | v23.0 | 2025-05-29 | 2027-10-08 | current |
+| v24.0 | 2025-10-08 | 2028-02-18 | |
+| v25.0 | 2026-02-18 | 2028-07-29 | |
 | v26.0 | 2026-07-29 | TBD | latest |
 
 **An expired version does not fail. It is silently upgraded.** Meta's
@@ -530,7 +532,20 @@ requests did not change, and v21-v23 alter nothing on the OAuth, Page, publishin
 container endpoints called here. **Not yet verified against a live Meta connection** -
 no fixture has one; see FILM-1723's acceptance criteria.
 
-_Verified: 2026-09-21_
+### Per-version findings
+
+One row per Graph version this repository has crossed: what its changelog
+changes on the surfaces we call (the inventory is FILM-1728 §7.1), and the day
+it was read. `vendor-api-versions.test.ts` fails a pin with no row for any
+version between the first row and the pin, so reading every changelog crossed
+is a step a bump cannot skip. A future bump appends rows; it never edits one.
+
+<!-- graph-version-findings -->
+| Version | Changelog read | What it changes on our surfaces | Source |
+|---|---|---|---|
+| v23.0 | 2026-09-21 | Baseline (FILM-1723's pin). v21-v23 change nothing on the OAuth, Page, publishing or container endpoints; insights metrics removed in that window (`video_views` in v21; `plays`, `impressions`, `clips_replays_count`, `ig_reels_aggregated_all_plays_count` everywhere from 2025-04-21) are in the forbidden block | [changelog](https://developers.facebook.com/docs/graph-api/changelog/) |
+
+_Verified: 2026-10-01_
 
 ---
 
