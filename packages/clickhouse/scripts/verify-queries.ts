@@ -2291,6 +2291,15 @@ async function scanScopeSteps() {
       // ClickHouse already holds, and only the difference means the same
       // thing in both. The property is exactly the one that broke — a
       // tenant's read must not grow when an unrelated tenant's data does.
+      //
+      // Cleared *before* the baseline (KB-147). A persistent ClickHouse —
+      // a developer's, local CI's lane A — still holds the previous run's
+      // noise, and a baseline read over it already contains every noise
+      // row: the difference is then zero whatever the read's SQL says, and
+      // an unscoped read passed. Clearing only before the insert, below,
+      // made this a guard on a fresh container and nowhere else.
+      await clearNoise();
+
       const before: Record<string, number> = {};
       for (const [name, read] of Object.entries(reads)) {
         before[name] = await read();
@@ -2348,8 +2357,8 @@ async function scanScopeSteps() {
       // reuse, so ReplacingMergeTree keeps both and the count comes out at
       // a multiple of NOISE_ROWS — which fails against the *generator*
       // rather than against the leftovers. CI never sees it (fresh service
-      // container); every developer with a persistent ClickHouse does.
-      await clearNoise();
+      // container); every developer with a persistent ClickHouse does. The
+      // clear above the baseline covers it.
 
       // Every table a scoped read touches, not just video_metrics. A read
       // of video_audience cannot be enlarged by noise in video_metrics, so
