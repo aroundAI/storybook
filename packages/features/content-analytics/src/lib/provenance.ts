@@ -287,6 +287,13 @@ export interface ProvenanceChip {
   lines: { platform: AnalyticsPlatform; kind: ChipState; text: string[] }[];
   /** The lines for the chip's own state, for the card body when nothing is covered. */
   bodyLines: string[];
+  /**
+   * What a covered platform's figure describes when it is not the asset —
+   * Instagram's audience is the account's followers, copied onto every post
+   * (`account_level`). Said on the card, not only behind the chip, so the
+   * figure cannot be read as per-video measurement (FILM-1707).
+   */
+  scopeLines: string[];
   /** For a figure no platform reports — recorded, or generated — what it is instead. */
   note?: string;
 }
@@ -336,6 +343,39 @@ export function provenanceChip(
   families: readonly MetricFamily[],
   platforms: readonly AnalyticsPlatform[] = ANALYTICS_PLATFORMS,
 ): ProvenanceChip {
+  const chip = chipFor(view, families, platforms);
+
+  return {
+    ...chip,
+    scopeLines: accountLevelLines(
+      families,
+      chip.lines
+        .filter(({ kind }) => kind === 'covered')
+        .map(({ platform }) => platform),
+    ),
+  };
+}
+
+/** The matrix's note for each covered platform whose figure is the account's. */
+export function accountLevelLines(
+  families: readonly MetricFamily[],
+  covered: readonly AnalyticsPlatform[],
+): string[] {
+  return unique(
+    covered.flatMap((platform) =>
+      families
+        .map((family) => capabilityFor(family, platform))
+        .filter((capability) => capability.method === 'account_level')
+        .map(({ note }) => note),
+    ),
+  );
+}
+
+function chipFor(
+  view: CoverageView,
+  families: readonly MetricFamily[],
+  platforms: readonly AnalyticsPlatform[],
+): Omit<ProvenanceChip, 'scopeLines'> {
   const per = platforms.map((platform) => {
     const coverage = platformCoverage(view, families, platform);
 
@@ -386,7 +426,7 @@ export function provenanceChip(
     state: ChipState,
     muted: boolean,
     upTo = false,
-  ): ProvenanceChip => {
+  ): Omit<ProvenanceChip, 'scopeLines'> => {
     const { tone, suffix } = toneFor(families, named, total);
 
     return {

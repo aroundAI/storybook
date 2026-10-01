@@ -17,13 +17,22 @@ export { platformLabel };
  * spans them. `recorded` for figures a person or an import wrote down
  * (the revenue records), which the capability matrix — a description of
  * platform APIs — has no row for. `generated` for a language model's
- * reading, which is not a measurement at all.
+ * reading, which is not a measurement at all. `summary` for a sentence
+ * this page puts together from its own figures by a fixed rule — neither a
+ * measurement nor a model's reading (FILM-1707). `not_collected` for a
+ * slot that says what we do not collect, and shows no figure.
  */
 export type CardMetricFamily =
   | MetricFamily
   | readonly [MetricFamily, ...MetricFamily[]]
+  | NotFromAPlatform;
+
+/** The kinds of card whose figure no platform reported. */
+export type NotFromAPlatform =
   | 'recorded'
-  | 'generated';
+  | 'generated'
+  | 'summary'
+  | 'not_collected';
 
 /**
  * The one claim a card leads with: a figure and the sentence that says
@@ -47,6 +56,33 @@ export const RECORDED_SOURCE =
 export const GENERATED_SOURCE =
   'Written by a language model from the figures on this page. It is a reading of them, not a measurement.';
 
+export const SUMMARY_SOURCE =
+  'Put together on this page from the figures above by a fixed rule. Nothing new is measured, and no language model wrote it.';
+
+export const NOT_COLLECTED_SOURCE =
+  'Nothing we collect from a connected channel answers this, so there is no figure to show.';
+
+const NOT_FROM_A_PLATFORM_SOURCE = {
+  recorded: RECORDED_SOURCE,
+  generated: GENERATED_SOURCE,
+  summary: SUMMARY_SOURCE,
+  not_collected: NOT_COLLECTED_SOURCE,
+} as const satisfies Record<NotFromAPlatform, string>;
+
+export function isNotFromAPlatform(
+  metricFamily: CardMetricFamily,
+): metricFamily is NotFromAPlatform {
+  return (
+    typeof metricFamily === 'string' &&
+    Object.hasOwn(NOT_FROM_A_PLATFORM_SOURCE, metricFamily)
+  );
+}
+
+/** What a card no platform reported says about where its content comes from. */
+export function notFromAPlatformSource(kind: NotFromAPlatform): string {
+  return NOT_FROM_A_PLATFORM_SOURCE[kind];
+}
+
 /**
  * Where a card's figure comes from, in the capability matrix's own
  * creator-facing sentences: one per platform that has the data at all.
@@ -56,8 +92,9 @@ export function sourceNotesFor(
   metricFamily: CardMetricFamily,
   platforms: readonly AnalyticsPlatform[] = ANALYTICS_PLATFORMS,
 ): string[] {
-  if (metricFamily === 'recorded') return [RECORDED_SOURCE];
-  if (metricFamily === 'generated') return [GENERATED_SOURCE];
+  if (isNotFromAPlatform(metricFamily)) {
+    return [notFromAPlatformSource(metricFamily)];
+  }
 
   const families: readonly MetricFamily[] =
     typeof metricFamily === 'string' ? [metricFamily] : metricFamily;

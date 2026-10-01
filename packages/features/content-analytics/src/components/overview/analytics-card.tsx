@@ -23,6 +23,7 @@ import {
 } from '@kit/ui/tooltip';
 import { cn } from '@kit/ui/utils';
 
+import type { ViewDefinitionMark } from '../../lib/view-definition-marks';
 import { ProvenanceChip, useCardProvenance } from '../provenance-chip';
 import {
   type CardClaim,
@@ -63,6 +64,21 @@ interface AnalyticsCardProps {
    * Never a runtime list of who has rows: the coverage provider says that.
    */
   platforms?: readonly AnalyticsPlatform[];
+  /**
+   * For a card no platform reported (`generated`, `summary`, …): what it is
+   * made from, in place of the standing note — a generated reading's
+   * provenance is which numbers it was given and when (FILM-1707 §3).
+   */
+  provenanceNote?: string;
+  /**
+   * The figure is on a date axis, so fetch-dated rows are not in it
+   * (FILM-1707 §2). The chip then names only what the card can plot, and
+   * the card says which platforms it leaves out — when the project
+   * publishes to any.
+   */
+  onDateAxis?: boolean;
+  /** Where the chart crosses a change in what counts as a view (FILM-1722). */
+  marks?: readonly ViewDefinitionMark[];
   claim: CardClaim | 'loading';
   /** `null` for a card that has nothing to say beyond its claim. */
   details?: CardDetails | null;
@@ -75,7 +91,7 @@ interface AnalyticsCardProps {
 }
 
 /**
- * The shared shell for the Overview and Deep Dive cards (FILM-1706).
+ * The one card shell for every analytics tab (FILM-1706, FILM-1707).
  *
  * One claim per card, evidence one gesture away: an eyebrow, one figure
  * with one sentence, the chart, and a "Details" disclosure for breakdown,
@@ -88,6 +104,9 @@ export function AnalyticsCard({
   description,
   metricFamily,
   platforms,
+  provenanceNote,
+  onDateAxis,
+  marks = [],
   claim,
   details,
   colSpan = 1,
@@ -96,8 +115,11 @@ export function AnalyticsCard({
   'data-test': dataTest,
 }: AnalyticsCardProps) {
   const titleId = useId();
-  const provenance = useCardProvenance(metricFamily, platforms);
-  const { chip, dimming } = provenance;
+  const provenance = useCardProvenance(metricFamily, platforms, {
+    note: provenanceNote,
+    onDateAxis,
+  });
+  const { chip, dimming, dateAxis } = provenance;
   // "Where this comes from" names the platforms the figure covers in this
   // window, once coverage says which; until then, those it can cover.
   const covered = chip.lines
@@ -105,7 +127,18 @@ export function AnalyticsCard({
     .map(({ platform }) => platform);
   const sources = details?.source
     ? null
-    : sourceNotesFor(metricFamily, covered.length > 0 ? covered : platforms);
+    : sourceNotesFor(
+        metricFamily,
+        covered.length > 0 ? covered : (dateAxis?.platforms ?? platforms),
+      );
+  // Said in the card, not only behind the chip: which platforms a date axis
+  // leaves out, and what an account-level figure describes.
+  const scopeLines = [
+    ...(dateAxis?.sentence && dateAxis.platforms.length > 0
+      ? [dateAxis.sentence]
+      : []),
+    ...chip.scopeLines,
+  ];
   const hasDetails =
     details !== null &&
     Boolean(
@@ -120,6 +153,13 @@ export function AnalyticsCard({
     <section
       aria-labelledby={titleId}
       data-test={dataTest}
+      data-card-shell={'analytics'}
+      data-metric-family={
+        typeof metricFamily === 'string'
+          ? metricFamily
+          : metricFamily.join(',')
+      }
+      data-date-axis={onDateAxis ? 'true' : undefined}
       data-dimmed={dimming.dimmed ? 'true' : undefined}
       className={cn(
         'flex flex-col gap-4 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-sm',
@@ -178,6 +218,17 @@ export function AnalyticsCard({
       >
         <Claim claim={claim} />
 
+        {scopeLines.length > 0 && (
+          <ul
+            className="flex flex-col gap-1 text-xs text-muted-foreground"
+            data-test="card-scope-note"
+          >
+            {scopeLines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        )}
+
         {chip.bodyLines.length > 0 && (
           <ul
             className="flex flex-col gap-1 text-xs text-muted-foreground"
@@ -190,6 +241,26 @@ export function AnalyticsCard({
         )}
 
         {children && <div className="flex flex-1 flex-col">{children}</div>}
+
+        {marks.length > 0 && (
+          <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
+            {marks.map((mark) => (
+              <li
+                key={`${mark.platform}:${mark.date}`}
+                className="flex items-start gap-1.5"
+                data-test="view-definition-mark"
+                data-date={mark.date}
+                data-platform={mark.platform}
+              >
+                <span
+                  aria-hidden
+                  className="mt-1.5 h-0 w-3 shrink-0 border-t border-dashed border-current"
+                />
+                {mark.sentence}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {footer && (

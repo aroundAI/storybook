@@ -2,7 +2,11 @@
 
 import { useMemo } from 'react';
 
-import type { AnalyticsPlatform, MetricFamily } from '@kit/clickhouse';
+import {
+  ANALYTICS_PLATFORMS,
+  type AnalyticsPlatform,
+  type MetricFamily,
+} from '@kit/clickhouse';
 import { badgeVariants } from '@kit/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@kit/ui/popover';
 import { cn } from '@kit/ui/utils';
@@ -13,32 +17,76 @@ import {
   cardDimming,
   provenanceChip,
 } from '../lib/provenance';
+import {
+  type DateAxisScope,
+  dateAxisScope,
+  fetchDatedSentence,
+} from '../lib/row-dating';
 import { useCoverageView } from './coverage-context';
 import {
   type CardMetricFamily,
-  GENERATED_SOURCE,
-  RECORDED_SOURCE,
+  type NotFromAPlatform,
+  isNotFromAPlatform,
+  notFromAPlatformSource,
 } from './overview/card-claim';
 
 export interface CardProvenance {
   chip: Chip;
   windowLabel: string;
   dimming: ReturnType<typeof cardDimming>;
+  /** For a figure on a date axis: which platforms it may plot, and what it leaves out. */
+  dateAxis: DateAxisScope | null;
+}
+
+export interface CardProvenanceOptions {
+  /**
+   * Replaces the standing note of a card no platform reported — what a
+   * generated reading was given and when, what a slot does not collect.
+   */
+  note?: string;
+  /**
+   * The figure sits on a date axis, so fetch-dated rows are not in it
+   * (FILM-1707 §2): the chip names only the platforms it can plot, and the
+   * card says which it left out.
+   */
+  onDateAxis?: boolean;
 }
 
 /**
  * A figure no platform reported has no platform coverage to state. Its chip
  * says what kind of thing it is instead, so it cannot read as a measurement.
  */
-const NOT_REPORTED_BY_A_PLATFORM = {
-  recorded: { label: 'Recorded', text: RECORDED_SOURCE },
-  generated: { label: 'Not measured', text: GENERATED_SOURCE },
-} as const;
+const NOT_FROM_A_PLATFORM_LABEL = {
+  recorded: 'Recorded',
+  generated: 'Not measured',
+  summary: 'Page summary',
+  not_collected: 'Not collected',
+} as const satisfies Record<NotFromAPlatform, string>;
 
 function familiesOf(metricFamily: CardMetricFamily): MetricFamily[] {
-  if (metricFamily === 'recorded' || metricFamily === 'generated') return [];
+  if (isNotFromAPlatform(metricFamily)) return [];
 
   return typeof metricFamily === 'string' ? [metricFamily] : [...metricFamily];
+}
+
+/**
+ * The chip of a date-axis card left with no platform it may plot — every
+ * candidate reports running totals. Says so, rather than "Not reported",
+ * which would be untrue of a platform that reports plenty.
+ */
+function nothingToPlot(candidates: readonly AnalyticsPlatform[]): Chip {
+  const sentence = fetchDatedSentence(candidates);
+
+  return {
+    label: 'Not on a date axis',
+    tone: 'partial',
+    muted: true,
+    state: 'unsupported',
+    lines: [],
+    bodyLines: [sentence],
+    scopeLines: [],
+    note: sentence,
+  };
 }
 
 /**
@@ -49,37 +97,55 @@ function familiesOf(metricFamily: CardMetricFamily): MetricFamily[] {
 export function useCardProvenance(
   metricFamily: CardMetricFamily,
   platforms?: readonly AnalyticsPlatform[],
+  { note, onDateAxis = false }: CardProvenanceOptions = {},
 ): CardProvenance {
   const view = useCoverageView();
 
   return useMemo(() => {
-    const families = familiesOf(metricFamily);
-
-    if (families.length === 0) {
-      const { label, text } =
-        NOT_REPORTED_BY_A_PLATFORM[metricFamily as 'recorded' | 'generated'];
-
+    if (isNotFromAPlatform(metricFamily)) {
       return {
         chip: {
-          label,
+          label: NOT_FROM_A_PLATFORM_LABEL[metricFamily],
           tone: 'native',
           muted: false,
           state: 'covered',
           lines: [],
           bodyLines: [],
-          note: text,
+          scopeLines: [],
+          note: note ?? notFromAPlatformSource(metricFamily),
         },
         windowLabel: view.windowLabel,
         dimming: { dimmed: false },
+        dateAxis: null,
       };
     }
 
+    const families = familiesOf(metricFamily);
+    const dateAxis = onDateAxis
+      ? dateAxisScope(
+          platforms ?? ANALYTICS_PLATFORMS,
+          (view.channels ?? []).map(({ platform }) => platform),
+        )
+      : null;
+
+    if (dateAxis && dateAxis.platforms.length === 0) {
+      return {
+        chip: nothingToPlot(platforms ?? ANALYTICS_PLATFORMS),
+        windowLabel: view.windowLabel,
+        dimming: { dimmed: false },
+        dateAxis,
+      };
+    }
+
+    const plotted = dateAxis?.platforms ?? platforms;
+
     return {
-      chip: provenanceChip(view, families, platforms),
+      chip: provenanceChip(view, families, plotted),
       windowLabel: view.windowLabel,
-      dimming: cardDimming(families, view.selectedPlatforms, platforms),
+      dimming: cardDimming(families, view.selectedPlatforms, plotted),
+      dateAxis,
     };
-  }, [view, metricFamily, platforms]);
+  }, [view, metricFamily, platforms, note, onDateAxis]);
 }
 
 /**
@@ -171,12 +237,14 @@ export function ProvenanceChipFor({
   metricFamily,
   platforms,
   title,
+  note,
 }: {
   metricFamily: CardMetricFamily;
   platforms?: readonly AnalyticsPlatform[];
   title: string;
+  note?: string;
 }) {
-  const provenance = useCardProvenance(metricFamily, platforms);
+  const provenance = useCardProvenance(metricFamily, platforms, { note });
 
   return <ProvenanceChip provenance={provenance} title={title} />;
 }
