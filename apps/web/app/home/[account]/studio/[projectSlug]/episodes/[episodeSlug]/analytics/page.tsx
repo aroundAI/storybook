@@ -43,7 +43,7 @@ const EpisodeAnalytics = dynamic(
 );
 
 export default function EpisodeAnalyticsPage() {
-  const { episode } = useEpisodeContext();
+  const { episode, projectId } = useEpisodeContext();
 
   const analyticsQuery = useQuery({
     queryKey: ['episode-analytics', episode.id],
@@ -94,7 +94,10 @@ export default function EpisodeAnalyticsPage() {
             </p>
           </div>
         ) : analyticsQuery.data ? (
-          <EpisodeAnalytics data={analyticsQuery.data as never} />
+          <EpisodeAnalytics
+            data={analyticsQuery.data as never}
+            projectId={projectId}
+          />
         ) : (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <p className="text-muted-foreground">

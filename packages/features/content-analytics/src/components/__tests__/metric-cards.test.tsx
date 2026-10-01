@@ -99,6 +99,59 @@ describe('MetricCards', () => {
     expect(screen.queryByText('$0')).toBeNull();
   });
 
+  it('says why revenue was not measured, once per reason', () => {
+    render(
+      <MetricCards
+        data={{ ...mockData, revenueCents: null }}
+        previousData={null}
+        isLoading={false}
+        revenueAccess={[
+          {
+            platform: 'youtube',
+            state: 'scope_missing',
+            owner: 'us',
+            note: 'Reconnect it to grant that permission.',
+          },
+          {
+            platform: 'tiktok',
+            state: 'unsupported',
+            owner: 'platform',
+            note: 'TikTok does not report what a video earned.',
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByText('Reconnect it to grant that permission.'),
+    ).toBeDefined();
+    expect(
+      screen.getByText('TikTok does not report what a video earned.'),
+    ).toBeDefined();
+  });
+
+  it('keeps the reasons off a measured figure', () => {
+    render(
+      <MetricCards
+        data={mockData}
+        previousData={null}
+        isLoading={false}
+        revenueAccess={[
+          {
+            platform: 'tiktok',
+            state: 'unsupported',
+            owner: 'platform',
+            note: 'TikTok does not report what a video earned.',
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.queryByText('TikTok does not report what a video earned.'),
+    ).toBeNull();
+  });
+
   it('should render 7 skeleton cards when loading', () => {
     render(
       <MetricCards

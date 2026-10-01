@@ -142,6 +142,26 @@
       "pattern": "is false for TikTok and Instagram"
     },
     {
+      "name": "MS17 The not-measured reasons show beside a measured figure",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "    data !== null && data.revenueCents === null ? revenueAccess : [];",
+      "replace": "    revenueAccess;",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/components/__tests__/metric-cards.test.tsx",
+      "pattern": "keeps the reasons off a measured figure"
+    },
+    {
+      "name": "MS18 A channel nothing stands in the way of is given a reason",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/revenue-access.ts",
+      "find": "    if (access.owner === null) continue;\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-access.test.ts",
+      "pattern": "says nothing for a channel nothing stands in the way of"
+    },
+    {
       "name": "DB MS15 A person's entry may have no amount",
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/revenue-records-unmeasured.test.sql",

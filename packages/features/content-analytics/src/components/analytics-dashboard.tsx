@@ -42,6 +42,7 @@ import {
   getProjectAnalyticsAction,
   getProjectAudienceDataAction,
   getProjectDailyMetricsAction,
+  getProjectRevenueAccessAction,
   getProjectRevenueByCurrencyAction,
 } from '../server/dashboard-actions';
 import type {
@@ -134,6 +135,13 @@ export function AnalyticsDashboard({
   const isLoading = anySelected && isProjectLoading;
 
   const previousRange = previousPeriod(dateRange);
+
+  // Why revenue is not measured, when it is not (FILM-1726): per channel,
+  // not per window, so it is read once.
+  const { data: revenueAccess } = useQuery({
+    queryKey: ['project-revenue-access', projectId],
+    queryFn: () => getProjectRevenueAccessAction({ projectId }),
+  });
 
   // The window before the selected one, for the AI Insights trends only
   const { data: previousProjectData, isLoading: isPreviousLoading } = useQuery({
@@ -339,6 +347,7 @@ export function AnalyticsDashboard({
         notMeasuredReason={NOT_COLLECTED_HERE_REASON}
         viewsScope={projectData?.viewsScope ?? null}
         noFigureReason={anySelected ? undefined : 'No platform selected'}
+        revenueAccess={revenueAccess ?? []}
       />
 
       {/* Tabs */}

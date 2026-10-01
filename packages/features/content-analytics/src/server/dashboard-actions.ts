@@ -4,12 +4,18 @@ import { z } from 'zod';
 
 import { LANGUAGE_DIMENSIONS } from '@kit/clickhouse';
 import { enhanceAction } from '@kit/next/actions';
+import { resolveAnalyticsAccess } from '@kit/publishing/oauth/analytics-scopes';
+import { analyticsScopesEnabled } from '@kit/publishing/server/analytics-scope-switch';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
   type ProjectRevenue,
   foldProjectRevenue,
 } from '../lib/project-revenue';
+import {
+  type RevenueAccessNote,
+  revenueAccessNotes,
+} from '../lib/revenue-access';
 import type { SummaryRevenueRow } from '../lib/revenue-by-currency';
 import { PlatformSelectionSchema } from '../lib/schemas/platforms.schema';
 import {
@@ -151,6 +157,61 @@ export const getProjectRevenueByCurrencyAction = enhanceAction(
   },
   {
     schema: GetProjectRevenueSchema,
+    auth: true,
+  },
+);
+
+/**
+ * Why the project's channels have no measured revenue, one sentence per
+ * reason (FILM-1726): the platform's, the creator's or ours. Read from the
+ * account's connected channels and what each was granted. Null when the
+ * caller may not read the project.
+ */
+export const getProjectRevenueAccessAction = enhanceAction(
+  async ({ projectId }): Promise<RevenueAccessNote[] | null> => {
+    const client = getSupabaseServerClient();
+
+    try {
+      await assertProjectAccess(client, projectId);
+    } catch {
+      return null;
+    }
+
+    const { data: project, error: projectError } = await client
+      .from('projects')
+      .select('account_id')
+      .eq('id', projectId)
+      .maybeSingle();
+
+    if (projectError) throw projectError;
+    if (!project) return null;
+
+    const { data: connections, error } = await client
+      .from('platform_connections')
+      .select('platform, scopes, metadata')
+      .eq('account_id', project.account_id)
+      .is('disconnected_at', null)
+      .order('id');
+
+    if (error) throw error;
+
+    const scopesEnabled = analyticsScopesEnabled();
+
+    return revenueAccessNotes(
+      (connections ?? []).map((connection) => ({
+        platform: connection.platform,
+        entries:
+          resolveAnalyticsAccess({
+            platform: connection.platform,
+            grantedScopes: connection.scopes,
+            metadata: connection.metadata,
+            scopesEnabled,
+          })?.entries ?? null,
+      })),
+    );
+  },
+  {
+    schema: z.object({ projectId: z.string().uuid() }),
     auth: true,
   },
 );

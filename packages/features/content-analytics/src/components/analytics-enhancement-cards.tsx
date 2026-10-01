@@ -311,7 +311,7 @@ function ShortsROIBody({
         </div>
         <div className="flex items-center justify-between rounded-lg bg-muted/30 p-2">
           <span className="text-sm">Revenue/view (shorts)</span>
-          <Badge variant="outline">
+          <Badge variant="outline" data-test="roi-revenue-per-view">
             {shortsRevenuePerView === null
               ? REVENUE_NOT_MEASURED
               : `$${(shortsRevenuePerView / 100).toFixed(4)}`}
