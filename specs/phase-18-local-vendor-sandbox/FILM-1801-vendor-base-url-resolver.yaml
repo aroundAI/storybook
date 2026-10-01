@@ -249,14 +249,15 @@ notes: |
 
   Left alone, deliberately.
 
-  - OPENAI_BASE_URL, ANTHROPIC_BASE_URL,
-    GOOGLE_GEMINI_BASE_URL, LOCAL_API_URL: existing overrides that are
-    honoured in production today, with none of §3's conditions. They predate this
-    spec and FILM-1803 relies on them. Whether to bring them under the same rule is
-    a product decision, because a deploy may be using one for a legitimate proxy.
-    (Closed by FILM-1805, which retires the SDK ones and gates LOCAL_API_URL.
+  - (No longer left alone.) OPENAI_BASE_URL, ANTHROPIC_BASE_URL,
+    GOOGLE_GEMINI_BASE_URL and LOCAL_API_URL were on this list, honoured in
+    production with none of §3's conditions. FILM-1805 closed them: every
+    LLM SDK client is built with a base URL from vendorUrl(), so the SDK
+    variables are never read (Half A, #360), and LOCAL_API_URL is read only
+    under vendorSandboxEnabled() and held to the resolver's rules (Half B,
+    #482). FILM-1803 reaches the LLM vendors through VENDOR_URL_* instead.
     SYNCLABS_BASE_URL and WAV2LIP_API_URL were also on this list; FILM-513
-    deleted lip-sync and both variables with it.)
+    deleted lip-sync and both variables with it (#371).
   - Resend (packages/mailers/resend, the email-worker lambda): §5 - local mail goes
     to Inbucket.
   - LinkedIn has no revoke call anywhere, so there was nothing to route.
