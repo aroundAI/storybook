@@ -45,8 +45,8 @@
       "name": "A second Graph version is declared beside the pin",
       "kind": "unit",
       "file": "packages/shared/src/vendors/meta.ts",
-      "find": "export const META_GRAPH_VERSION = 'v23.0';",
-      "replace": "export const META_GRAPH_VERSION = 'v23.0';\nexport const META_LEGACY_GRAPH_VERSION = 'v18.0';",
+      "find": "export const META_GRAPH_VERSION = 'v26.0';",
+      "replace": "export const META_GRAPH_VERSION = 'v26.0';\nexport const META_LEGACY_GRAPH_VERSION = 'v18.0';",
       "cwd": "packages/shared",
       "test": "__tests__/vendor-api-versions.test.ts",
       "pattern": "declares each pin exactly once"
@@ -55,8 +55,8 @@
       "name": "The Graph pin moves without its expiry date",
       "kind": "unit",
       "file": "packages/shared/src/vendors/meta.ts",
-      "find": "export const META_GRAPH_VERSION = 'v23.0';",
-      "replace": "export const META_GRAPH_VERSION = 'v26.0';",
+      "find": "export const META_GRAPH_VERSION = 'v26.0';",
+      "replace": "export const META_GRAPH_VERSION = 'v27.0';",
       "cwd": "packages/shared",
       "test": "__tests__/vendor-api-versions.test.ts",
       "pattern": "the Graph pin carries the dates"

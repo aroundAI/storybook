@@ -90,6 +90,26 @@
       "cwd": "packages/shared",
       "test": "__tests__/vendor-api-versions.test.ts",
       "pattern": "goes red at T-120 days"
+    },
+    {
+      "name": "The pin crosses a version whose changelog has no findings row",
+      "kind": "unit",
+      "file": "docs/platform-capability-reference.md",
+      "find": "| v25.0 | 2026-10-01 | Nothing we call. Deprecates 41 Page, Post, Video and Story insight metrics for every version once v26.0 shipped, four of which this reference wrongly listed for Facebook (corrected above, FILM-1725 Check J); `metadata=1` returns no metadata from 2026-05-19. Both in the forbidden block | [v25.0](https://developers.facebook.com/docs/graph-api/changelog/version25.0) |\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "has a row for every version from the baseline to the pin"
+    },
+    {
+      "name": "The pin's floor is dressed as a published end date",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/meta.ts",
+      "find": "export const META_GRAPH_VERSION_EXPIRY_IS_FLOOR = true;",
+      "replace": "export const META_GRAPH_VERSION_EXPIRY_IS_FLOOR = false;",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "the Graph pin carries the dates"
     }
   ]
 }

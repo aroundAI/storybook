@@ -465,26 +465,36 @@ _Verified: 2026-10-01_
 
 ## Graph API versions
 
-**Pinned: `v23.0`, upgrade before 2027-10-08.** One constant,
-`META_GRAPH_VERSION` in `packages/shared/src/vendors/meta.ts`, read by every Meta
-call in the repository (FILM-1723). `vendor-api-versions.test.ts` fails if this
-line, the table row below and the constant disagree, or if a version literal is
-written anywhere else. Meta's cadence makes the next bump a scheduled task: by
-**2027-10-08**, move to a version with at least a year left, reading the
-changelog of every version crossed.
+**Pinned: `v26.0`, upgrade before 2028-07-29 (a floor: Meta has not published this version's end date).**
+One constant, `META_GRAPH_VERSION` in `packages/shared/src/vendors/meta.ts`, read
+by every Meta call in the repository through `metaFetch` (FILM-1723, FILM-1728).
+`vendor-api-versions.test.ts` fails if this line, the table row below and the
+constant disagree, if a version literal is written anywhere else, if a version
+crossed has no [findings row](#per-version-findings), and from **120 days before
+the date above**.
 
-Measured 2026-09-21 against
-[Meta's changelog](https://developers.facebook.com/docs/graph-api/changelog/):
+**That date is a floor, not a fact.** Meta publishes a version's end date only
+when the next version ships, and guarantees "at least two years from release":
+v26.0 lives until no earlier than 2028-07-29. Its predecessors lasted about two
+years and three months, so early 2029 is likely, but that is a pattern, not a
+promise. `META_GRAPH_VERSION_EXPIRY_IS_FLOOR` says so in code, and the 120-day
+failure tells whoever meets it to re-read the changelog before bumping: once
+v27.0 ships, v26.0's real date appears and the floor is replaced.
 
-| Version | Released | Expires | Status today (2026-09-21) |
+Measured 2026-10-01 against
+[Meta's changelog](https://developers.facebook.com/docs/graph-api/changelog/)
+(first measured 2026-09-21 for FILM-1723):
+
+| Version | Released | Expires | Status today (2026-10-01) |
 |---|---|---|---|
-| v18.0 | 2023-09-12 | **2026-01-26** | **expired ~8 months ago** |
-| v19.0 | 2024-01-23 | **2026-05-21** | **expired ~4 months ago** |
-| v20.0 | 2024-05-21 | 2026-09-24 | **expires in 3 days** |
-| v23.0 | 2025-05-29 | 2027-10-08 | current |
+| v18.0 | 2023-09-12 | **2026-01-26** | **expired** |
+| v19.0 | 2024-01-23 | **2026-05-21** | **expired** |
+| v20.0 | 2024-05-21 | **2026-09-24** | **expired** |
+| v21.0 | 2024-10-02 | 2027-01-21 | oldest usable: what an unusable version is served as |
+| v23.0 | 2025-05-29 | 2027-10-08 | FILM-1723's pin |
 | v24.0 | 2025-10-08 | 2028-02-18 | |
 | v25.0 | 2026-02-18 | 2028-07-29 | |
-| v26.0 | 2026-07-29 | TBD | latest |
+| v26.0 | 2026-07-29 | 2028-07-29 (floor) | **pinned** (FILM-1728); Meta: "TBD"; v27.0 not released |
 
 **An expired version does not fail. It is silently upgraded.** Meta's
 [versioning guide](https://developers.facebook.com/docs/graph-api/guides/versioning)
@@ -509,6 +519,12 @@ and settles it. Run 2026-09-21T20:00Z for FILM-1723, unauthenticated, against
 | `v23.0` | `v23.0` |
 | `v26.0` | `v26.0` |
 
+Re-run 2026-10-01T08:21Z for FILM-1728, the same way: `v26.0` → **`v26.0`**,
+`v23.0` → `v23.0`, and `v27.0` — not yet released — → **`v21.0`**, the oldest
+version still usable since v20.0 expired on 2026-09-24. A typo in the pin would
+not fail either. Every call now reads this header through `metaFetch`, which
+logs the first mismatch a process sees; the vendor sandbox sends it too.
+
 So token refresh was not failing: it was running on v20.0, three days from its own
 expiry, after which the same requests would have been served as v21.0.
 
@@ -526,11 +542,29 @@ FILM-1723 was written for. That spec listed "Graph v18.0 is past end-of-life" as
 *inferred*; it is now documented with a date, and the case is stronger than the spec
 assumed, because the failure mode is substitution rather than rejection.
 
-All of those now read the single pin. v23.0 was chosen over v26.0 because it is the
-only version this repository had already run deliberately, so Instagram insights
-requests did not change, and v21-v23 alter nothing on the OAuth, Page, publishing or
-container endpoints called here. **Not yet verified against a live Meta connection** -
-no fixture has one; see FILM-1723's acceptance criteria.
+All of those now read the single pin. FILM-1723 chose v23.0 because it was the only
+version this repository had already run deliberately; FILM-1728 moved it to v26.0
+on 2026-10-01 after reading the v24.0, v25.0 and v26.0 changelogs (the findings
+table below). **Not yet verified against a live Meta connection** - no fixture
+has one. FILM-1725 Check D (one forced token refresh) is owed at the first
+production deploy carrying FILM-1728, and one run against v26.0 closes it for
+FILM-1723 too.
+
+### The next bump
+
+1. Read Meta's [Instagram Platform overview](https://developers.facebook.com/docs/instagram-platform/)
+   first. We use "Instagram API with Facebook Login" (graph.facebook.com, a
+   Page's `instagram_business_account`). The newer "Instagram API with Instagram
+   Login" (graph.instagram.com) gains features first. If Meta retires the
+   Facebook Login path, no version pin helps: it is a new host, token and app
+   review. Nothing indicates that on 2026-10-01, and the Facebook Login path is
+   the one that publishes to Pages.
+2. Read the changelog of every version crossed and append a findings row for
+   each.
+3. Change `META_GRAPH_VERSION`, `_RELEASED`, `_EXPIRES` and `_EXPIRY_IS_FLOOR`
+   together, and this section's Pinned line and row with them.
+4. After the deploy, force one Meta token refresh (FILM-1725 Check D) and watch
+   for `[meta-graph] served version is not the pin` in the logs.
 
 ### Per-version findings
 
@@ -544,6 +578,9 @@ is a step a bump cannot skip. A future bump appends rows; it never edits one.
 | Version | Changelog read | What it changes on our surfaces | Source |
 |---|---|---|---|
 | v23.0 | 2026-09-21 | Baseline (FILM-1723's pin). v21-v23 change nothing on the OAuth, Page, publishing or container endpoints; insights metrics removed in that window (`video_views` in v21; `plays`, `impressions`, `clips_replays_count`, `ig_reels_aggregated_all_plays_count` everywhere from 2025-04-21) are in the forbidden block | [changelog](https://developers.facebook.com/docs/graph-api/changelog/) |
+| v24.0 | 2026-10-01 | Nothing on our surfaces. Its changes are the Marketing API, certificate-transparency endpoints (removed) and Live Video's `overlay_url` (removed); none is called here | [v24.0](https://developers.facebook.com/docs/graph-api/changelog/version24.0) |
+| v25.0 | 2026-10-01 | Nothing we call. Deprecates 41 Page, Post, Video and Story insight metrics for every version once v26.0 shipped, four of which this reference wrongly listed for Facebook (corrected above, FILM-1725 Check J); `metadata=1` returns no metadata from 2026-05-19. Both in the forbidden block | [v25.0](https://developers.facebook.com/docs/graph-api/changelog/version25.0) |
+| v26.0 | 2026-10-01 | Nothing we call. Retires `pretty`, `debug` (and its `__debug__` envelope), `If-None-Match`, `date_format` and root `GET /?ids=` for every version from 2026-10-27; Page legacy fields `current_location`, `genre`, `network`, `parking`, `start_info`, `auto_publish_page_info_updates` (not requested). The forbidden block holds the parameters. Instagram Platform changelog to 2026-06-22 adds `is_ai_generated`, `link_clicks` and media `*_count` fields (FILM-1712, FILM-1720 inputs; nothing removed) | [v26.0](https://developers.facebook.com/docs/graph-api/changelog/version26.0), [Instagram](https://developers.facebook.com/docs/instagram-platform/changelog/) |
 
 _Verified: 2026-10-01_
 
