@@ -109,10 +109,7 @@ export function LanguageComparisonChart({
                 layout="vertical"
                 margin={{ left: 60 }}
               >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  className="stroke-muted"
-                />
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis type="number" tickFormatter={(v) => formatNumber(v)} />
                 <YAxis dataKey="name" type="category" width={60} />
                 <Tooltip

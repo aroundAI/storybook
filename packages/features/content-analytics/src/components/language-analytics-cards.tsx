@@ -397,7 +397,9 @@ export function contentTypeClaim(
   const families = data.families.length;
 
   return {
-    figure: formatNumber(data.families.reduce((sum, row) => sum + row.views, 0)),
+    figure: formatNumber(
+      data.families.reduce((sum, row) => sum + row.views, 0),
+    ),
     sentence: `Views across ${videos} ${videos === 1 ? 'video' : 'videos'} in ${families} format ${families === 1 ? 'family' : 'families'}, one row each below.`,
   };
 }
