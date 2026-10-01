@@ -1,0 +1,15 @@
+{
+  "feature": "KB-161",
+  "mutations": [
+    {
+      "name": "G1 the app's token check answers a failed read with NOT_FOUND again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/token-refresh.ts",
+      "find": "  // per row or per request (KB-161, KB-138).\n  if (readFailed(error)) {\n    throw new Error(whyNoRow(error, 'Platform connection not found'));\n  }\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "failed read"
+    }
+  ]
+}

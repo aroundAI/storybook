@@ -681,5 +681,28 @@ describe('Connection Actions', () => {
       expect(mockSupabaseClient.eq).toHaveBeenCalledWith('id', CONNECTION_ID);
       expect(ensureValidToken).toHaveBeenCalledWith(CONNECTION_ID, true);
     });
+
+    // KB-161: a failed read is a fault, not a refusal saying the connection
+    // is gone, so it is thrown and production shows its generic sentence.
+    it('throws a failed token read rather than refusing as not found', async () => {
+      mockSupabaseClient.maybeSingle.mockResolvedValueOnce({
+        data: { id: CONNECTION_ID, platform: 'youtube' },
+        error: null,
+      });
+
+      const { refreshConnectionAction } = await import(
+        '../src/server/connection-actions'
+      );
+      const { ensureValidToken } = await import('../src/lib/token-refresh');
+      vi.mocked(ensureValidToken).mockRejectedValueOnce(
+        new Error(
+          'Platform connection not found: the read failed (connection reset)',
+        ),
+      );
+
+      await expect(
+        refreshConnectionAction({ connectionId: CONNECTION_ID }),
+      ).rejects.toThrow('the read failed (connection reset)');
+    });
   });
 });
