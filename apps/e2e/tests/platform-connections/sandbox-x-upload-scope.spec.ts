@@ -3,11 +3,11 @@ import { mkdirSync } from 'node:fs';
 
 import { headerOnlyMp4 } from '../utils/mp4';
 import {
-  SANDBOX_CONNECT,
   lastLedgerId,
   ledger,
   openPlatforms,
   platformCard,
+  sandboxRun,
   storedConnections,
 } from '../utils/sandbox';
 import {
@@ -29,7 +29,7 @@ import { byTest } from '../utils/visible';
  * second publish through, and the sandbox receives the upload and the post.
  *
  * Needs the sandbox and an app started with local.env's vendor block, as the
- * other sandbox-connect specs do; skipped unless SANDBOX_CONNECT=1.
+ * other sandbox-connect specs do; skipped unless SANDBOX_E2E=1.
  */
 
 const SUPABASE_URL = process.env.E2E_SUPABASE_URL ?? 'http://127.0.0.1:55321';
@@ -114,10 +114,7 @@ async function publishToX(page: Page, publishUrl: string) {
 }
 
 test.describe('Publishing to X without media.write, then with it (FILM-1729)', () => {
-  test.skip(
-    !SANDBOX_CONNECT,
-    'Set SANDBOX_CONNECT=1, with the sandbox and a local.env app running.',
-  );
+  sandboxRun();
 
   test('refused with the reason on screen → reconnect → published', async ({
     page,

@@ -201,6 +201,14 @@ test.describe('Publishing to a sandbox channel (FILM-1804)', () => {
       expect(row!.platform_content_id).toBeNull();
       expect(row!.metadata?.error).toBe(vendorMessage);
 
+      // The dialog's error stage keeps the platform's row and says why
+      // inline (#495), in the vendor's words.
+      const failedRow = byTest(page, 'publish-platform-status');
+      await expect(failedRow).toHaveAttribute('data-status', 'error');
+      await expect(byTest(failedRow, 'publish-platform-error')).toHaveText(
+        vendorMessage,
+      );
+
       // The screen's record of the attempt says it failed, and why, in the
       // vendor's words: not a blank, and not "Unknown error".
       await byTest(page, 'publish-dialog-close').click();
