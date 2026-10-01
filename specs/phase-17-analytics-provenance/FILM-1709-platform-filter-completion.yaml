@@ -25,13 +25,13 @@ summary: >
 acceptance_criteria:
   - text: "Every tab either honours the platform selection or visibly states that it cannot, and no tab silently ignores it"
     met: true
-    evidence: "All seven honour it: the dashboard passes one ordered selection to every read (packages/features/content-analytics/src/components/analytics-dashboard.tsx:104) — Overview, Content, Audience, Deep Dive, Video Log, Language and AI Insights. Read off the page per tab, before and after a platform is deselected, apps/e2e/tests/analytics/platform-filter.spec.ts:305; the selection survives every tab, :207 (#TBD-1709)"
+    evidence: "All seven honour it: the dashboard passes one ordered selection to every read (packages/features/content-analytics/src/components/analytics-dashboard.tsx:104) — Overview, Content, Audience, Deep Dive, Video Log, Language and AI Insights. Read off the page per tab, before and after a platform is deselected, apps/e2e/tests/analytics/platform-filter.spec.ts:314; the selection survives every tab, :207 (#TBD-1709)"
   - text: "The seven MetricCards honour the selection"
     met: true
-    evidence: "getProjectAnalyticsAction takes `platforms` and narrows the publishes and the platform split in the query (packages/features/content-analytics/src/server/aggregation-queries.ts:379); a card the selection cannot cover dims with its reason through the shell's useCardProvenance (packages/features/content-analytics/src/components/metric-cards.tsx:208). Views and Likes read off the page under six selections, apps/e2e/tests/analytics/platform-filter.spec.ts:305 (#TBD-1709)"
+    evidence: "getProjectAnalyticsAction takes `platforms` and narrows the publishes and the platform split in the query (packages/features/content-analytics/src/server/aggregation-queries.ts:379); a card the selection cannot cover dims with its reason through the shell's useCardProvenance (packages/features/content-analytics/src/components/metric-cards.tsx:211). Views and Likes read off the page under six selections, apps/e2e/tests/analytics/platform-filter.spec.ts:314 (#TBD-1709)"
   - text: "Deselecting a platform changes the headline Views figure"
     met: true
-    evidence: "465 with all three, 165 with TikTok deselected, 345 without YouTube, 300 / 120 / 45 alone — read off the page, apps/e2e/tests/analytics/platform-filter.spec.ts:305. Built with the predicates removed, the same spec read 465 after TikTok was deselected (red run, §9) (#TBD-1709)"
+    evidence: "465 with all three, 165 with TikTok deselected, 345 without YouTube, 300 / 120 / 45 alone — read off the page, apps/e2e/tests/analytics/platform-filter.spec.ts:314. Built with the predicates removed, the same spec read 465 after TikTok was deselected (red run, §9) (#TBD-1709)"
   - text: "Filtering happens in the query wherever the query supports it, not on an already-aggregated response"
     met: true
     evidence: "Publishes narrowed with `.in('platform', …)` in the season, audience, content and revenue reads; ClickHouse `platform IN` in the breakdown, the daily series and every DimScope read (packages/clickhouse/src/queries.ts:240, packages/clickhouse/src/queries-advanced.ts:47). The dashboard's client-side filtering of platformTotals and daily metrics is gone. packages/features/content-analytics/__tests__/platform-filter-queries.test.ts:166 (#TBD-1709)"
@@ -49,10 +49,10 @@ acceptance_criteria:
     evidence: "One builder, absenceSentence (packages/features/content-analytics/src/lib/provenance.ts:217), for the strip, the filter's reason, the chip's lines and a card's body. packages/features/content-analytics/__tests__/platform-filter-surfaces.test.tsx:105 asserts a card and the strip say the same sentence (#TBD-1709)"
   - text: "Selecting no platforms is handled deliberately, not as an empty `IN ()`"
     met: true
-    evidence: "Nothing is asked for: one panel replaces every tab and the MetricCards say 'No platform selected' with no digits (packages/features/content-analytics/src/components/analytics-dashboard.tsx:536). An empty list is refused by the schema and by assertPlatformSelection; it used to read as every platform (packages/clickhouse/__tests__/platform-filter.test.ts:68). Driven in the browser, apps/e2e/tests/analytics/platform-filter.spec.ts:259 (#TBD-1709)"
+    evidence: "Nothing is asked for: one panel replaces every tab and the MetricCards say 'No platform selected' with no digits (packages/features/content-analytics/src/components/analytics-dashboard.tsx:536). An empty list is refused by the schema and by assertPlatformSelection; it used to read as every platform (packages/clickhouse/__tests__/platform-filter.test.ts:68). Driven in the browser, apps/e2e/tests/analytics/platform-filter.spec.ts:268 (#TBD-1709)"
   - text: "The selection survives tab switches"
     met: true
-    evidence: "apps/e2e/tests/analytics/platform-filter.spec.ts:207 deselects TikTok, walks four tabs and back, and reads the ticked boxes and the Deep Dive switcher (#TBD-1709)"
+    evidence: "apps/e2e/tests/analytics/platform-filter.spec.ts:214 deselects TikTok, walks four tabs and back, and reads the ticked boxes and the Deep Dive switcher (#TBD-1709)"
 open_questions:
   - "With Facebook an analytics platform (FILM-1720, #504) and X to follow (FILM-1727), the filter offers every AnalyticsPlatform and starts with all of them selected. That default was decided while rebasing (r1719, 2026-10-02) and is the owner's to confirm."
 notes: |
