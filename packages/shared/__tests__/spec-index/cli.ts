@@ -1,13 +1,21 @@
 /**
- * `pnpm specs:index` lists every way `specs/INDEX.md` disagrees with the spec
- * files; `--write` rewrites its counts (the Progress Tracker, By scope and the
- * `(N specs)` headings) and then lists what is left, which needs a person.
+ * `pnpm specs:index` lists every way `specs/INDEX.md`'s rows disagree with
+ * the spec files, then prints the totals by phase and by scope. INDEX.md
+ * stores no count; `--write` removes one that crept back (a `(N specs)`
+ * heading, a Progress Tracker or By scope table) and changes nothing else.
  * `--specs <dir>` checks another tree, e.g. an old commit's `git archive`.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-import { SPECS_DIR, analyse, checkIndex, repoSources } from './tracker';
+import {
+  SPECS_DIR,
+  analyse,
+  checkIndex,
+  formatTotals,
+  repoSources,
+  withoutCounts,
+} from './tracker';
 
 const args = process.argv.slice(2);
 const write = args.includes('--write');
@@ -18,13 +26,16 @@ const sources = repoSources(specsDir);
 
 let markdown = readFileSync(indexFile, 'utf8');
 if (write) {
-  const { rendered } = analyse(markdown, sources);
-  if (rendered !== markdown) {
-    writeFileSync(indexFile, rendered);
-    console.log(`Rewrote the counts in ${indexFile}.`);
+  const rows = withoutCounts(markdown);
+  if (rows !== markdown) {
+    writeFileSync(indexFile, rows);
+    console.log(`Removed the stored counts from ${indexFile}.`);
   }
-  markdown = rendered;
+  markdown = rows;
 }
+
+console.log(formatTotals(analyse(markdown, sources).totals));
+console.log('');
 
 const problems = checkIndex(markdown, sources);
 for (const problem of problems) console.log(problem);

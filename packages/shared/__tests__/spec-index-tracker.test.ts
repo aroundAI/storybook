@@ -8,16 +8,19 @@ import {
   type SpecSources,
   analyse,
   checkIndex,
+  formatTotals,
   keyword,
   parseSections,
   repoSources,
+  withoutCounts,
 } from './spec-index/tracker';
 
 /**
- * specs/INDEX.md's per-spec status cells, `(N specs)` headings, Progress
- * Tracker and By scope table agree with the spec files' own `status:`.
- * The rule and its history are in spec-index/tracker.ts. To fix a failure:
- * correct any status cell or link by hand, then `pnpm specs:index --write`.
+ * specs/INDEX.md's per-spec status cells agree with the spec files' own
+ * `status:`, and INDEX.md stores no count: `pnpm specs:index` prints the
+ * totals. The rule and its history are in spec-index/tracker.ts. To fix a
+ * failure: correct any status cell or link by hand; a stored count is
+ * removed by `pnpm specs:index --write`.
  */
 
 describe('specs/INDEX.md agrees with the spec files', () => {
@@ -32,9 +35,31 @@ describe('specs/INDEX.md agrees with the spec files', () => {
     expect(checkIndex(markdown, repoSources())).toEqual([]);
   });
 
-  it('has counts that --write would leave as they are', () => {
+  // The merge queue (2026-10-01): counts in INDEX.md made every merge
+  // conflict with every open PR that touched a status. They are printed by
+  // `pnpm specs:index`, never stored.
+  it('INDEX.md has no count tables', () => {
     const markdown = readFileSync(INDEX_FILE, 'utf8');
-    expect(analyse(markdown, repoSources()).rendered).toBe(markdown);
+    const lines = markdown.split('\n');
+    expect(
+      lines.filter((l) => /^\| (Phase|Scope) \| Total \|/.test(l)),
+    ).toEqual([]);
+    expect(
+      lines.filter((l) => /^### .+ \(\d+ (specs?|docs?)\)\s*$/.test(l)),
+    ).toEqual([]);
+  });
+
+  it('is left as it is by --write', () => {
+    const markdown = readFileSync(INDEX_FILE, 'utf8');
+    expect(withoutCounts(markdown)).toBe(markdown);
+  });
+
+  it('totals every row but the register', () => {
+    const markdown = readFileSync(INDEX_FILE, 'utf8');
+    const rows = parseSections(markdown.split('\n')).flatMap((s) => s.rows);
+    const { total } = analyse(markdown, repoSources()).totals;
+    const sum = Object.values(total).reduce((a, b) => a + b, 0);
+    expect(sum).toBe(rows.length - 1);
   });
 });
 
@@ -62,20 +87,20 @@ describe('positive control: a planted index', () => {
     '',
     '## By Phase',
     '',
-    '### Phase 1: Alpha (3 specs)',
+    '### Phase 1: Alpha',
     '',
     ...HEADER,
     '| FILM-1 | [one](./p1/FILM-1.yaml) | ✅ DONE | S | - |',
     '| FILM-2 | [two](./p1/FILM-2.yaml) | 🟡 PARTIAL | S | - |',
     '| FILM-3 | [three](./p1/FILM-3.yaml) | 🗑️ RETIRED (abc12345) | S | - |',
     '',
-    '### Cross-Cutting Concerns (2 specs)',
+    '### Cross-Cutting Concerns',
     '',
     ...HEADER,
     '| FILM-CC-01 | [upload](./cc/FILM-CC-01.yaml) | DRAFT | M | - |',
     '| FILM-CC-04 | [known-bugs](./cross-cutting/FILM-CC-04-known-bugs.md) | OPEN | M | - |',
     '',
-    '### Docs (1 doc)',
+    '### Docs',
     '',
     ...HEADER,
     '| DOC-1 | [doc](./DOC-1.md) | ⏸️ DEFERRED | — | — |',
@@ -84,6 +109,14 @@ describe('positive control: a planted index', () => {
     '',
     '## Progress Tracker',
     '',
+    'Run `pnpm specs:index` for the counts.',
+    '',
+    '---',
+    '',
+  ].join('\n');
+
+  // The tables INDEX.md used to store, as `pnpm specs:index` now prints them.
+  const TOTALS = [
     '| Phase | Total | Draft | Partial | Deferred | Retired | Done |',
     '|-------|-------|-------|---------|----------|---------|------|',
     '| 1. Alpha | 3 | 0 | 1 | 0 | 1 | 1 |',
@@ -91,15 +124,10 @@ describe('positive control: a planted index', () => {
     '| Docs | 1 | 0 | 0 | 1 | 0 | 0 |',
     '| **TOTAL** | **5** | **1** | **1** | **1** | **1** | **1** |',
     '',
-    '### By scope',
-    '',
     '| Scope | Total | Done | Partial | Retired | Draft / Deferred |',
     '|-------|-------|------|---------|---------|------------------|',
     '| Core | 4 | 1 | 1 | 1 | 1 |',
     '| Other | 1 | 0 | 0 | 0 | 1 |',
-    '',
-    '---',
-    '',
   ].join('\n');
 
   const baseFiles: Record<string, SpecFile> = {
@@ -133,7 +161,9 @@ describe('positive control: a planted index', () => {
 
   it('passes a correct index, counting Markdown rows and not the register', () => {
     expect(check(index)).toEqual([]);
-    expect(analyse(index, sources(), layout).rendered).toBe(index);
+    expect(formatTotals(analyse(index, sources(), layout).totals)).toBe(
+      TOTALS,
+    );
   });
 
   it('reads the first status word of a cell', () => {
@@ -216,42 +246,33 @@ describe('positive control: a planted index', () => {
     );
   });
 
-  it('flags a heading count, and --write fixes it', () => {
-    const text = edit('Alpha (3 specs)', 'Alpha (4 specs)');
+  it('flags a stored heading count, and --write removes it', () => {
+    const text = edit('### Phase 1: Alpha', '### Phase 1: Alpha (3 specs)');
     expect(check(text)).toEqual([
-      'INDEX.md:5: "Phase 1: Alpha" says 4 specs, and has 3 rows',
-      'Run `pnpm specs:index --write` to rewrite the counts.',
+      'INDEX.md:5: stores a count, which INDEX.md no longer keeps: ### Phase 1: Alpha (3 specs)',
+      'Run `pnpm specs:index --write` to remove it; `pnpm specs:index` prints the totals.',
     ]);
-    expect(analyse(text, sources(), layout).rendered).toBe(index);
+    expect(withoutCounts(text)).toBe(index);
   });
 
-  it.each([
-    [
-      'a phase row',
-      '| 1. Alpha | 3 | 0 | 1 | 0 | 1 | 1 |',
-      '| 1. Alpha | 3 | 0 | 2 | 0 | 0 | 1 |',
-    ],
-    [
-      'the TOTAL row',
-      '| **TOTAL** | **5** | **1** | **1** | **1** | **1** | **1** |',
-      '| **TOTAL** | **6** | **1** | **2** | **1** | **1** | **1** |',
-    ],
-    [
-      'a scope row',
-      '| Other | 1 | 0 | 0 | 0 | 1 |',
-      '| Other | 1 | 1 | 0 | 0 | 0 |',
-    ],
-  ])(
-    'flags %s with the expected line, and --write fixes it',
-    (_, good, bad) => {
-      const text = edit(good, bad);
-      const problems = check(text);
-      expect(problems).toHaveLength(2);
-      expect(problems[0]).toContain(`have     ${bad}`);
-      expect(problems[0]).toContain(`expected ${good}`);
-      expect(analyse(text, sources(), layout).rendered).toBe(index);
-    },
-  );
+  it('flags a stored count table, and --write removes it and nothing else', () => {
+    const text = edit(
+      'Run `pnpm specs:index` for the counts.\n',
+      `Run \`pnpm specs:index\` for the counts.\n\n${TOTALS}\n`,
+    );
+    expect(check(text)).toEqual([
+      'INDEX.md:32: stores a count, which INDEX.md no longer keeps: | Phase | Total | Draft | Partial | Deferred | Retired | Done |',
+      'INDEX.md:39: stores a count, which INDEX.md no longer keeps: | Scope | Total | Done | Partial | Retired | Draft / Deferred |',
+      'Run `pnpm specs:index --write` to remove it; `pnpm specs:index` prints the totals.',
+    ]);
+    // The blank lines around the tables stay; the rows of By Phase are untouched.
+    expect(withoutCounts(text)).toBe(
+      edit(
+        'Run `pnpm specs:index` for the counts.\n',
+        'Run `pnpm specs:index` for the counts.\n\n\n',
+      ),
+    );
+  });
 
   it('recounts after a status change, the edit every PR makes', () => {
     const files = {
@@ -259,18 +280,19 @@ describe('positive control: a planted index', () => {
       'p1/FILM-2.yaml': { status: 'DONE', specId: 'FILM-2' },
     };
     const text = edit('| 🟡 PARTIAL | S |', '| ✅ DONE | S |');
-    const { rendered } = analyse(text, sources(files), layout);
+    const printed = formatTotals(analyse(text, sources(files), layout).totals);
 
-    expect(rendered).toContain('| 1. Alpha | 3 | 0 | 0 | 0 | 1 | 2 |');
-    expect(rendered).toContain(
+    expect(printed).toContain('| 1. Alpha | 3 | 0 | 0 | 0 | 1 | 2 |');
+    expect(printed).toContain(
       '| **TOTAL** | **5** | **1** | **0** | **1** | **1** | **2** |',
     );
-    expect(rendered).toContain('| Core | 4 | 2 | 0 | 1 | 1 |');
-    expect(checkIndex(rendered, sources(files), layout)).toEqual([]);
+    expect(printed).toContain('| Core | 4 | 2 | 0 | 1 | 1 |');
+    // Only the row changed: nothing else in INDEX.md has to.
+    expect(checkIndex(text, sources(files), layout)).toEqual([]);
   });
 
   it('flags a section that LAYOUT does not know', () => {
-    const text = edit('### Docs (1 doc)', '### Phase 19: New (1 doc)');
+    const text = edit('### Docs', '### Phase 19: New');
     const problems = check(text).join('\n');
     expect(problems).toContain('section "Phase 19: New" is not in LAYOUT');
     expect(problems).toContain(
@@ -278,17 +300,9 @@ describe('positive control: a planted index', () => {
     );
   });
 
-  it('refuses to parse an index without its anchors', () => {
+  it('refuses to parse an index without its anchor', () => {
     expect(() => check(edit('## By Phase', '## Phases'))).toThrow(
       'no "## By Phase" heading',
-    );
-    expect(() =>
-      check(
-        edit('| Phase | Total | Draft |', '| Phase | Total | New | Draft |'),
-      ),
-    ).toThrow('update tracker.ts');
-    expect(() => check(edit('Alpha (3 specs)', 'Alpha'))).toThrow(
-      'needs a "(N specs)" count',
     );
   });
 });

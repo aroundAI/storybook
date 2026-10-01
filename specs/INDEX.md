@@ -286,7 +286,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 
 ## By Phase
 
-### Phase 1: Foundation (26 specs)
+### Phase 1: Foundation
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -317,7 +317,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-110 | [project-extension](./phase-1-foundation/packages/FILM-110-project-extension.yaml) | ✅ DONE | M | FILM-104 |
 | FILM-111 | [project-templates](./phase-1-foundation/packages/FILM-111-project-templates.yaml) | 🗑️ RETIRED (5f44d0e1) | M | FILM-110 |
 
-### Cross-Cutting Concerns (4 specs)
+### Cross-Cutting Concerns
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -326,7 +326,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-CC-03 | [oauth-token-refresh](./cross-cutting/FILM-CC-03-oauth-token-refresh.yaml) | ✅ DONE | M | - |
 | FILM-CC-04 | [known-bugs](./known-bugs/README.md) | OPEN | M | - |
 
-### Design System (5 specs)
+### Design System
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -336,7 +336,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-DS-04 | [accessibility](./design-system/FILM-DS-04-accessibility.yaml) | 🟡 PARTIAL | M | FILM-DS-01 |
 | FILM-DS-05 | [responsive-strategy](./design-system/FILM-DS-05-responsive-strategy.yaml) | 🟡 PARTIAL | S | FILM-DS-01 |
 
-### Phase 2: Assets (9 specs)
+### Phase 2: Assets
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -350,7 +350,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-208 | [asset-library-page](./phase-2-assets/pages/FILM-208-asset-library-page.yaml) | 🟡 PARTIAL | M | FILM-204 |
 | FILM-209 | [element-prompt-generation](./phase-2-assets/lib/FILM-209-element-prompt-generation.yaml) | 🗑️ RETIRED (never wired) | M | FILM-202 |
 
-### Phase 3: Episodes & Story (14 specs)
+### Phase 3: Episodes & Story
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -369,7 +369,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-313 | [continuity-checker](./phase-3-episodes/server/FILM-313-continuity-checker.yaml) | 🗑️ RETIRED (never mounted) | M | FILM-305, FILM-202 |
 | FILM-314 | [batch-episode-creation](./phase-3-episodes/server/FILM-314-batch-episode-creation.yaml) | 🗑️ RETIRED (never mounted) | M | FILM-301 |
 
-### Phase 4: Video Generation (14 specs)
+### Phase 4: Video Generation
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -388,7 +388,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-411 | [generation-progress](./phase-4-video-generation/components/FILM-411-generation-progress.yaml) | 🗑️ RETIRED (5b88db3a) | M | FILM-408 |
 | FILM-412 | [cost-tracking](./phase-4-video-generation/lib/FILM-412-cost-tracking.yaml) | 🗑️ RETIRED (5b88db3a) | M | FILM-405 |
 
-### Phase 5: Audio Generation (17 specs)
+### Phase 5: Audio Generation
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -410,7 +410,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-514 | [retire-suno-and-udio](./phase-5-audio-generation/providers/FILM-514-retire-suno-and-udio.yaml) | ✅ DONE | M | - |
 | FILM-512 | [multi-language-dubbing](./phase-5-audio-generation/providers/FILM-512-multi-language-dubbing.yaml) | 🗑️ RETIRED (5b88db3a) | L | FILM-502, FILM-510 |
 
-### Phase 6: Edit Suite (8 specs)
+### Phase 6: Edit Suite
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -423,7 +423,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-607 | [retire-edit-suite](./phase-6-edit-suite/FILM-607-retire-edit-suite.yaml) | ✅ DONE | M | KB-28, KB-27 for coordination only |
 | FILM-608 | [drop-edit-suite-tables](./phase-6-edit-suite/FILM-608-drop-edit-suite-tables.yaml) | ✅ DONE | S | FILM-607 |
 
-### Phase 7: Publishing (16 specs)
+### Phase 7: Publishing
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -444,7 +444,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-715 | [linkedin-provider](./phase-7-publishing/providers/FILM-715-linkedin-provider.yaml) | 🟡 PARTIAL | M | FILM-708 |
 | FILM-716 | [master-video-record-keeping](./phase-7-publishing/FILM-716-master-video-record-keeping.yaml) | ✅ DONE | — | — |
 
-### Phase 8: Analytics (10 specs)
+### Phase 8: Analytics
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -459,7 +459,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-809 | [export-reports](./phase-8-analytics/components/FILM-809-export-reports.yaml) | 🟡 PARTIAL | M | FILM-805 |
 | FILM-810 | [revenue-tracking](./phase-8-analytics/components/FILM-810-revenue-tracking.yaml) | 🟡 PARTIAL | L | FILM-804, FILM-805 |
 
-### Phase 9: Integration (6 specs)
+### Phase 9: Integration
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -470,7 +470,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-905 | [generation-settings](./phase-9-integration/settings/FILM-905-generation-settings.yaml) | 🗑️ RETIRED (5f44d0e1) | M | - |
 | FILM-906 | [platform-connections](./phase-9-integration/settings/FILM-906-platform-connections.yaml) | ✅ DONE | M | FILM-706 |
 
-### Phase 10: Canon Management (7 specs)
+### Phase 10: Canon Management
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -482,7 +482,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-1006 | [llm-role-separation](./phase-10-canon-management/prompts/FILM-1006-llm-role-separation.yaml) | 🗑️ RETIRED (2f23eb4e) | M | FILM-304 |
 | FILM-1007 | [canon-ui-components](./phase-10-canon-management/ui/FILM-1007-canon-ui-components.yaml) | 🟡 PARTIAL | L | FILM-1005 |
 
-### Phase 11: Canon Integration & Content Types (22 specs)
+### Phase 11: Canon Integration & Content Types
 
 > **Status**: 🟡 PARTIAL — built across PRs #175–178, #181–185, #188; the 2026-09-23 audit found 19 of its 22 specs with open criteria (18 since FILM-1110, 17 since FILM-1111), and canon no longer reaching story generation since #213 (FILM-1102, FILM-1104). See [phase-11-canon-integration/README.md](./phase-11-canon-integration/README.md).
 
@@ -511,21 +511,21 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-1142 | [Canon Dashboard Facts Tab](./phase-11-canon-integration/ui-integration/FILM-1142-canon-dashboard-facts.yaml) | ✅ DONE | M | #344 | FILM-1140 |
 | FILM-1143 | [Generate Season Integration](./phase-11-canon-integration/ui-integration/FILM-1143-generate-season-integration.yaml) | 🟡 PARTIAL | M | — | FILM-1120, FILM-1122 |
 
-### Phase 12: Scale & Network Strategy (2 specs)
+### Phase 12: Scale & Network Strategy
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
 | FILM-1201 | [clickhouse-migration](./phase-12-scale/database/FILM-1201-clickhouse-migration.yaml) | ✅ DONE | L | FILM-804 |
 | FILM-1202 | [network-strategy](./phase-12-scale/strategy/FILM-1202-network-strategy.yaml) | ✅ DONE | M | FILM-805, FILM-810 |
 
-### Phase 13: Hook Optimization (2 specs)
+### Phase 13: Hook Optimization
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
 | FILM-1301 | [hook-testing-engine](./phase-13-hook-optimization/FILM-1301-hook-testing-engine.yaml) | 🗑️ RETIRED (with FILM-1510) | L | FILM-1201, FILM-716 |
 | FILM-1302 | [cultural-audit-workflow](./phase-13-hook-optimization/FILM-1302-cultural-audit-workflow.yaml) | 🗑️ RETIRED (unbuilt; phase closed) | M | FILM-1301 |
 
-### Phase 14: Edit Suite v2 (1 spec)
+### Phase 14: Edit Suite v2
 
 One engineering document rather than task specs. Shipped in c3de1674 ("complete Phase 14"); retired with the whole Edit Suite on 2026-09-23 (FILM-607).
 
@@ -533,7 +533,7 @@ One engineering document rather than task specs. Shipped in c3de1674 ("complete 
 |---------|------|--------|--------|--------------|
 | PHASE-14 | [edit-suite-v2](./phase-14-edit-suite-v2/ENGINEERING.md) | 🗑️ RETIRED (FILM-607) | — | — |
 
-### Phase 15: Deep Analytics Discipline (11 specs)
+### Phase 15: Deep Analytics Discipline
 
 See [phase-15-deep-analytics/README.md](./phase-15-deep-analytics/README.md) for the dependency graph and locked decisions.
 
@@ -551,7 +551,7 @@ See [phase-15-deep-analytics/README.md](./phase-15-deep-analytics/README.md) for
 | FILM-1510 | [hook-lab](./phase-15-deep-analytics/FILM-1510-hook-lab.yaml) | 🗑️ RETIRED (removed; FILM-CC-04 KB-9, KB-10; redesigned as FILM-1724) | L | FILM-1505, FILM-1506, FILM-1507, FILM-1301 |
 | FILM-1511 | [deep-analytics-ui-reports](./phase-15-deep-analytics/FILM-1511-deep-analytics-ui-reports.yaml) | 🟡 PARTIAL | L | FILM-1504, FILM-1505, FILM-1506, FILM-1507, FILM-1508 |
 
-### Phase 16: Workbook Parity (17 specs)
+### Phase 16: Workbook Parity
 
 See [phase-16-workbook-parity/README.md](./phase-16-workbook-parity/README.md) for the dependency graph, locked decisions and known limits.
 
@@ -584,7 +584,7 @@ All workbook-parity scope is now specified. FILM-1611 was split — what the bac
 
 It must not read `video_dim.duration_seconds` either way. This is the only reason FILM-1710 is ordered ahead of the rest of phase 17.
 
-### Phase 17: Analytics Provenance and Signal (31 specs)
+### Phase 17: Analytics Provenance and Signal
 
 See [phase-17-analytics-provenance/README.md](./phase-17-analytics-provenance/README.md) for the dependency graph, locked decisions, known limits and open product questions.
 
@@ -628,7 +628,7 @@ Three parts. **Provenance** (1701–1709) answers *where did this number come fr
 
 FILM-1710 fixes a latent write-only defect: `video_dim.duration_seconds` is the episode's duration, not the published clip's. Nothing reads the column today — the Hook Lab divides by `hook_variants.duration_seconds` — so it ships ahead of FILM-1616, the first thing that would read it, rather than ahead of the whole phase. FILM-1711 records that TikTok and Instagram analytics were never authorised. FILM-1721 exists because the first draft of the signal specs cited our own TypeScript types as evidence of platform capability and was wrong in five places on TikTok alone — its rule is that a metric name may not appear in a spec, a type or a request unless FILM-1721 documents it with a vendor citation. The declarative schema-drift repair this investigation surfaced shipped separately as PR #253.
 
-### Phase 18: Local Vendor Sandbox (6 specs)
+### Phase 18: Local Vendor Sandbox
 
 See [phase-18-local-vendor-sandbox/README.md](./phase-18-local-vendor-sandbox/README.md) for the problem table, locked decisions and known limits.
 
@@ -643,7 +643,7 @@ Local stand-ins for every social platform and AI vendor, on local ports: statefu
 | FILM-1805 | [local-models-and-sdk-base-urls](./phase-18-local-vendor-sandbox/FILM-1805-local-models-and-sdk-base-urls.yaml) | ✅ DONE | M | FILM-1801; FILM-513 for KB-21's lip-sync half |
 | FILM-1806 | [local-job-queue](./phase-18-local-vendor-sandbox/FILM-1806-local-job-queue.yaml) | ✅ DONE | M | FILM-1801, FILM-1803 |
 
-### Spikes (5 specs)
+### Spikes
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -653,7 +653,7 @@ Local stand-ins for every social platform and AI vendor, on local ports: statefu
 | SPIKE-04 | [video-stitching](./spikes/SPIKE-04-video-stitching.yaml) | ✅ DONE | M | - |
 | SPIKE-05 | [character-consistency](./spikes/SPIKE-05-character-consistency.yaml) | ✅ DONE | M | - |
 
-### Public Sharing (2 docs)
+### Public Sharing
 
 A requirements document and an engineering document for one feature, shipped in PR #126 (2026-01-08).
 
@@ -674,12 +674,14 @@ A requirements document and an engineering document for one feature, shipped in 
 > `5f44d0e1` (the owner's dead-code cleanup, 2026-02-19) — were recorded nowhere
 > here. Recount from the files' `status:` lines, never by hand.
 >
-> **The counts below, and each section's `(N specs)`, are generated and
-> checked.** After changing a spec's `status:` and its row's Status cell, run
-> `pnpm specs:index --write`; on a rebase conflict in these tables, take either
-> side and run it again. `packages/shared/__tests__/spec-index-tracker.test.ts`
-> fails any PR where a row disagrees with its file or a count with the rows.
-> **What counts:** every row under By Phase, one per linked file, by that file's
+> **This file stores no count; `pnpm specs:index` prints them** — by phase,
+> TOTAL and by scope — from the rows below and the files they link (the merge
+> queue, 2026-10-01: stored counts changed with every status flip, so each
+> merge conflicted with every open PR that flipped one). After changing a
+> spec's `status:`, change its row's Status cell and nothing else.
+> `packages/shared/__tests__/spec-index-tracker.test.ts` fails any PR where a
+> row disagrees with its file, or that puts a count back; `pnpm specs:index
+> --write` removes one. **What counts:** every row under By Phase, one per linked file, by that file's
 > own frontmatter `status:`: the YAML task specs *and* the Markdown documents
 > (PHASE-14 and the two Public Sharing docs). A recount of `*.yaml` alone comes
 > out 3 short, which is how #337 and #343 reported a drift that wasn't there.
@@ -695,7 +697,7 @@ A requirements document and an engineering document for one feature, shipped in 
 | ⏸️ DEFERRED | Blocked on something outside the code — a credential or account not held |
 | ✅ DONE | Code merged and every acceptance criterion met, or genuinely unverifiable by reading and marked so |
 | 🗑️ RETIRED | Dropped, removed or superseded — not outstanding work. The cell names the commit; the spec's note says what, if anything, replaced it |
-| OPEN | [FILM-CC-04](./known-bugs/README.md) only: a living register of known bugs, not a spec, and not counted below |
+| OPEN | [FILM-CC-04](./known-bugs/README.md) only: a living register of known bugs, not a spec, and not counted |
 
 **In every spec file**, `status:` in the frontmatter is the source of truth, and
 `audited: 2026-09-23` marks one checked against the code that day. An audited box
@@ -703,48 +705,7 @@ carries its evidence: `*audit:* path:line` when ticked, or `*audit: not met*`,
 `*audit: unverified*`, `*audit: retired*` or `*audit: no longer true*` with a
 reason when not.
 
-| Phase | Total | Draft | Partial | Deferred | Retired | Done |
-|-------|-------|-------|---------|----------|---------|------|
-| 1. Foundation | 26 | 0 | 0 | 0 | 5 | 21 |
-| Cross-Cutting | 3 | 0 | 0 | 0 | 1 | 2 |
-| Design System | 5 | 0 | 3 | 0 | 1 | 1 |
-| 2. Assets | 9 | 0 | 6 | 0 | 3 | 0 |
-| 3. Episodes | 14 | 0 | 7 | 0 | 3 | 4 |
-| 4. Video Gen | 14 | 0 | 2 | 0 | 12 | 0 |
-| 5. Audio Gen | 17 | 0 | 4 | 0 | 9 | 4 |
-| 6. Edit Suite | 8 | 0 | 0 | 0 | 6 | 2 |
-| 7. Publishing | 16 | 0 | 5 | 0 | 4 | 7 |
-| 8. Analytics | 10 | 0 | 6 | 0 | 0 | 4 |
-| 9. Integration | 6 | 0 | 0 | 0 | 3 | 3 |
-| 10. Canon Mgmt | 7 | 0 | 4 | 0 | 1 | 2 |
-| 11. Canon Integ | 22 | 0 | 15 | 0 | 1 | 6 |
-| 12. Scale | 2 | 0 | 0 | 0 | 0 | 2 |
-| 13. Hook Opt | 2 | 0 | 0 | 0 | 2 | 0 |
-| 14. Edit Suite v2 | 1 | 0 | 0 | 0 | 1 | 0 |
-| 15. Deep Analytics | 11 | 0 | 3 | 0 | 2 | 6 |
-| 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 17 |
-| 17. Analytics Provenance | 31 | 12 | 7 | 1 | 0 | 11 |
-| 18. Vendor Sandbox | 6 | 0 | 0 | 0 | 0 | 6 |
-| Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
-| Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **234** | **12** | **63** | **1** | **54** | **104** |
-
-No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose PR is open keeps the status it has on `main`.
-
-### By scope
-
-| Scope | Total | Done | Partial | Retired | Draft / Deferred |
-|-------|-------|------|---------|---------|------------------|
-| MVP (Ph 1–5, Cross-Cutting, Design System, Spikes) | 93 | 37 | 22 | 34 | 0 |
-| Post-MVP (Ph 6–9) | 40 | 16 | 11 | 13 | 0 |
-| Canon (Ph 10–11) | 29 | 8 | 19 | 2 | 0 |
-| Scale & Hooks (Ph 12–13) | 4 | 2 | 0 | 2 | 0 |
-| Edit Suite v2 (Ph 14) | 1 | 0 | 0 | 1 | 0 |
-| Deep Analytics (Ph 15) | 11 | 6 | 3 | 2 | 0 |
-| Workbook Parity (Ph 16) | 17 | 17 | 0 | 0 | 0 |
-| Provenance & Signal (Ph 17) | 31 | 11 | 7 | 0 | 13 |
-| Vendor Sandbox (Ph 18) | 6 | 6 | 0 | 0 | 0 |
-| Public Sharing | 2 | 1 | 1 | 0 | 0 |
+The printed counts have no column for In Progress: it is not a file status (SCHEMA.md), so a spec whose PR is open keeps the status it has on `main`.
 
 ### Deferred at ship time, still open
 
