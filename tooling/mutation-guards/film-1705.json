@@ -1,0 +1,75 @@
+{
+  "feature": "FILM-1705",
+  "mutations": [
+    {
+      "name": "FILM-1705 the chip names what a platform could cover, not what it does",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/provenance.ts",
+      "find": "  if (covered.length > 0) return labelled(covered, 'covered', false);",
+      "replace": "  if (covered.length > 0) return labelled(capable, 'covered', false);",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/provenance.test.ts",
+      "pattern": "on the median card says what it pools"
+    },
+    {
+      "name": "FILM-1705 not authorised collapses into no data in the window",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/provenance.ts",
+      "find": "      active.every((channel) => channel.analyticsAccess === 'not_authorised')",
+      "replace": "      active.every((channel) => channel.analyticsAccess === 'never')",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/provenance.test.ts",
+      "pattern": "keeps not authorised apart"
+    },
+    {
+      "name": "FILM-1705 a connected Facebook channel is dropped from the strip",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/provenance.ts",
+      "find": "    items.push({\n      platform,\n      kind: 'unsupported_platform',",
+      "replace": "    void items.concat({\n      platform,\n      kind: 'unsupported_platform',",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/provenance.test.ts",
+      "pattern": "names a connected Facebook channel"
+    },
+    {
+      "name": "FILM-1705 a card none of whose platforms is selected stays undimmed",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/provenance.ts",
+      "find": "  if (selected.some((platform) => capable.includes(platform))) {",
+      "replace": "  if (selected.length > 0) {",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/provenance-surfaces.test.tsx",
+      "pattern": "dims — never blanks"
+    },
+    {
+      "name": "FILM-1705 the filter removes an unavailable platform instead of dimming it",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/platform-filter.tsx",
+      "find": "      PLATFORMS.map((platform) => ({\n        ...platform,\n        available: available.includes(platform.id),\n      })),",
+      "replace": "      PLATFORMS.filter((platform) => available.includes(platform.id)).map(\n        (platform) => ({ ...platform, available: true }),\n      ),",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/provenance-surfaces.test.tsx",
+      "pattern": "offers an unavailable platform dimmed"
+    },
+    {
+      "name": "FILM-1705 a MetricCard draws a number nothing measured",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "  return metric.value === null ? 'Not totalled here' : null;",
+      "replace": "  return null;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/provenance-surfaces.test.tsx",
+      "pattern": "stop drawing a number for what was not measured"
+    },
+    {
+      "name": "FILM-1705 a card hand-writes a platform name again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "      description: 'Estimated ad revenue',",
+      "replace": "      description: 'Estimated ad revenue (YouTube only)',",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/provenance-copy.test.ts",
+      "pattern": "names no platform outside a label map"
+    }
+  ]
+}

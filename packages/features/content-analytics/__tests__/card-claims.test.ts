@@ -278,7 +278,7 @@ describe('caveats that moved into details', () => {
     [
       'traffic breakdown',
       TRAFFIC_BREAKDOWN_DETAILS.caveats,
-      'these percentages will not match YouTube Studio exactly',
+      'these percentages will not match the platform’s own analytics exactly',
     ],
     [
       'traffic share: the newest week may be partial',

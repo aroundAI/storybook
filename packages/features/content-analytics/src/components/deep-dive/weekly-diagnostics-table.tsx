@@ -2,6 +2,7 @@
 
 import { AlertTriangle } from 'lucide-react';
 
+import { REPORTING_LAG_DAYS, platformsWithData } from '@kit/clickhouse';
 import { Skeleton } from '@kit/ui/skeleton';
 import {
   Table,
@@ -11,6 +12,22 @@ import {
   TableHeader,
   TableRow,
 } from '@kit/ui/table';
+
+import { platformLabel } from '../../lib/platform-labels';
+
+/**
+ * When impressions and CTR arrive, and from whom — the matrix's platforms
+ * for `reach` and the reporting lag, both stated once in `@kit/clickhouse`.
+ * This read "need the YouTube bulk report ingest and appear about two days
+ * after publishing", typed here by hand (FILM-1705).
+ */
+const REACH_ARRIVAL = `Impressions and CTR are reported by ${platformsWithData(
+  'reach',
+)
+  .map(platformLabel)
+  .join(' and ')} only, and arrive ${REPORTING_LAG_DAYS.min}–${
+  REPORTING_LAG_DAYS.max
+} days after the day they describe.`;
 
 /** One recently-published video's diagnostic numbers. */
 export interface DiagnosticRow {
@@ -204,8 +221,7 @@ export function WeeklyDiagnosticsTable({
       <p className={'text-xs text-muted-foreground'}>
         Diagnostic only. Flags point at a specific video&apos;s packaging or
         intro — they are not a reason to change the channel&apos;s strategy.
-        Impressions and CTR need the YouTube bulk report ingest and appear about
-        two days after publishing.
+        {REACH_ARRIVAL}
       </p>
     </div>
   );

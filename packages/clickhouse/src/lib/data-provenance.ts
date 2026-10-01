@@ -1371,6 +1371,16 @@ export type CoverageMatrix = Record<
  */
 export const COVERAGE_STALE_AFTER_DAYS = 14;
 
+/**
+ * How far a day's data on a reporting surface — YouTube's bulk reports:
+ * traffic sources, impressions, channel totals — trails the day it
+ * describes, by design. The reason `COVERAGE_STALE_AFTER_DAYS` is generous,
+ * and the one place a surface reads when it has to say when such figures
+ * arrive (FILM-1705: the diagnostics table said "about two days" on its
+ * own).
+ */
+export const REPORTING_LAG_DAYS = { min: 1, max: 3 } as const;
+
 const DAY_MS = 86_400_000;
 
 function dayNumber(isoDate: string): number {

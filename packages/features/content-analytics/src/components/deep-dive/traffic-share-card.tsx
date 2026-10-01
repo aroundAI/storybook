@@ -351,7 +351,7 @@ export function trafficBreakdownClaim(
 export const TRAFFIC_BREAKDOWN_DETAILS = {
   method: 'Each source’s share of all views across the whole window shown.',
   caveats: [
-    'Shares cover videos published through this platform. Views on channel videos that never matched a publish are not counted, so these percentages will not match YouTube Studio exactly.',
+    'Shares cover videos published through this platform. Views on channel videos that never matched a publish are not counted, so these percentages will not match the platform’s own analytics exactly.',
   ],
 } as const;
 

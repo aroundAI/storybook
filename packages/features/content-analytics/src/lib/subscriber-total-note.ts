@@ -1,5 +1,6 @@
 import { isSubscriberTracked } from '@kit/clickhouse';
 
+import { PLATFORM_LABELS, platformLabel } from './platform-labels';
 import {
   NO_SUBSCRIBER_LEVEL,
   formatSubscriberDay,
@@ -12,18 +13,16 @@ import type { PlatformSubscriberSum } from './subscriber-series-sum';
  * leaves out.
  */
 
-const PLATFORM_LABELS: Record<string, string> = {
-  youtube: 'YouTube',
-  tiktok: 'TikTok',
-  instagram: 'Instagram',
-  facebook: 'Facebook',
-  twitter: 'X',
-  linkedin: 'LinkedIn',
-};
+const UNTRACKED_PLATFORMS = Object.keys(PLATFORM_LABELS)
+  .filter((platform) => !isSubscriberTracked(platform))
+  .map(platformLabel);
 
-/** Said of every channel on a platform no snapshot is ever taken for. */
-export const UNTRACKED_PLATFORMS_SENTENCE =
-  'Subscriber counts aren’t tracked for Facebook, X or LinkedIn channels.';
+/**
+ * Said of every channel on a platform no snapshot is ever taken for. Built
+ * from the label map and the tracked list, so it cannot name a platform the
+ * list has started tracking (FILM-1705: no platform name typed in copy).
+ */
+export const UNTRACKED_PLATFORMS_SENTENCE = `Subscriber counts aren’t tracked for ${UNTRACKED_PLATFORMS.slice(0, -1).join(', ')} or ${UNTRACKED_PLATFORMS.at(-1)} channels.`;
 
 /** The same sentence, leading into a list of the channels it applies to. */
 export function describeUntrackedChannels(names: string[]): string {
@@ -74,9 +73,7 @@ export function describeChannelStatus(status: ChannelStatus): string | null {
   }
 }
 
-export function platformLabel(platform: string): string {
-  return PLATFORM_LABELS[platform] ?? platform;
-}
+export { platformLabel };
 
 export function describeTotal(
   total: PlatformSubscriberSum,
