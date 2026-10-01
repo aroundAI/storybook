@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { X_MAX_POST_READS_PER_UTC_DAY } from '../lib/x-read-budget';
 import { SYNC_PLATFORMS } from './types';
 import type { RateLimitConfig, SyncPlatform } from './types';
 
@@ -29,6 +30,13 @@ const RATE_LIMITS: Record<SyncPlatform, RateLimitConfig> = {
   facebook: {
     requestsPerMinute: 6,
     requestsPerDay: 960,
+  },
+  // X allows 3,500 GET /2/tweets a 15 minutes per app
+  // (https://docs.x.com/x-api/fundamentals/rate-limits, read 2026-10-01);
+  // what binds is cost, so the day is the read budget (FILM-1727).
+  twitter: {
+    requestsPerMinute: 30,
+    requestsPerDay: X_MAX_POST_READS_PER_UTC_DAY,
   },
 };
 

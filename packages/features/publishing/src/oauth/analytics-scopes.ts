@@ -481,6 +481,7 @@ const VIDEO_SYNC_REQUIREMENT: Record<string, string | undefined> = {
   tiktok: 'tiktok.video-metrics',
   instagram: 'instagram.insights',
   facebook: 'facebook.video-insights',
+  twitter: 'x.post-analytics',
 };
 
 export function holdsRequirement(

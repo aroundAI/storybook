@@ -22,6 +22,36 @@
       "pattern": "counts the reads granted earlier in the same run"
     },
     {
+      "name": "X3 X publishes are fetched while X analytics is switched off",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/analytics-sync-cron.ts",
+      "find": "  const platforms: SyncPlatform[] = xEnabled",
+      "replace": "  const platforms: SyncPlatform[] = true",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/x-sync-budget.test.ts",
+      "pattern": "does not even ask for X publishes"
+    },
+    {
+      "name": "X4 the sync ignores the X read plan",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/analytics-sync-cron.ts",
+      "find": "      (p) => p.platform !== 'twitter' || allowed.has(p.id),",
+      "replace": "      (p) => p.platform !== 'twitter' || allowed.size >= 0,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/x-sync-budget.test.ts",
+      "pattern": "the budget holds across the run"
+    },
+    {
+      "name": "X5 the sync authorisation map has no X entry",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/analytics-scopes.ts",
+      "find": "  instagram: 'instagram.insights',\n  twitter: 'x.post-analytics',\n};",
+      "replace": "  instagram: 'instagram.insights',\n};",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/x-sync-budget.test.ts",
+      "pattern": "asks for them once it is"
+    },
+    {
       "name": "X6 a platform breakdown reads X's NULL shares as 0",
       "kind": "unit",
       "file": "packages/clickhouse/src/queries.ts",

@@ -11,6 +11,7 @@ import {
   TikTokAnalyticsScopeError,
   TikTokRateLimitError,
 } from '../providers/tiktok';
+import { XAnalyticsScopeError, XRateLimitError } from '../providers/twitter';
 import { YouTubeAnalyticsScopeError } from '../providers/youtube';
 import { syncEligibility, toConnectionGrant } from './sync-authorisation';
 import type { PublishMetadata, SyncMetadata, SyncResult } from './types';
@@ -74,12 +75,13 @@ export function classifySyncFailure(error: unknown): {
     error instanceof YouTubeAnalyticsScopeError ||
     error instanceof TikTokAnalyticsScopeError ||
     error instanceof InstagramInsightsScopeError ||
-    error instanceof FacebookInsightsScopeError
+    error instanceof FacebookInsightsScopeError ||
+    error instanceof XAnalyticsScopeError
   ) {
     return { status: 'scope_error', errorType: 'scope', message, reason };
   }
 
-  if (error instanceof TikTokRateLimitError) {
+  if (error instanceof TikTokRateLimitError || error instanceof XRateLimitError) {
     return { status: 'rate_limited', errorType: 'rate_limit', message, reason };
   }
 
