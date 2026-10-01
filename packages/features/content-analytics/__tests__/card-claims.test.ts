@@ -36,6 +36,7 @@ const group = (name: string, views: number, total: number) => ({
   views,
   watchTimeMinutes: 0,
   share: total > 0 ? views / total : 0,
+  sources: [],
 });
 
 const trafficBucket = (bucket: string, browse: number, search: number) => {

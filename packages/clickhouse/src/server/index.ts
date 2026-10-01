@@ -172,6 +172,7 @@ export {
   groupForSource,
   groupTrafficRows,
   sourcesInGroup,
+  windowTrafficMix,
 } from '../lib/traffic-groups';
 export type {
   TrafficBucket,
@@ -179,6 +180,9 @@ export type {
   TrafficGroupShare,
   TrafficSourceGroup,
   TrafficSourceRow,
+  TrafficSourceShare,
+  WindowGroupShare,
+  WindowSourceShare,
 } from '../lib/traffic-groups';
 
 // Language dimensions (FILM-1702).

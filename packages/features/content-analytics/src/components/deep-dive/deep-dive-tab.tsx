@@ -308,6 +308,7 @@ export function DeepDiveTab({
             views: 0,
             watchTimeMinutes: 0,
             share: 0,
+            sources: [],
           })),
         },
       );
