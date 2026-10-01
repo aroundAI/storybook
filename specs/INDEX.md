@@ -606,7 +606,7 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1712 | [metric-recovery](./phase-17-analytics-provenance/FILM-1712-metric-recovery.yaml) | ✅ DONE | L | FILM-1711, FILM-1721 |
 | FILM-1713 | [normalised-measures-velocity](./phase-17-analytics-provenance/FILM-1713-normalised-measures-velocity.yaml) | PARTIAL | M | FILM-1722 (registry, on main) |
 | FILM-1714 | [signal-model](./phase-17-analytics-provenance/FILM-1714-signal-model.yaml) | DONE | M | FILM-1703, FILM-1713, FILM-1716 |
-| FILM-1715 | [self-benchmarking](./phase-17-analytics-provenance/FILM-1715-self-benchmarking.yaml) | DRAFT | M | FILM-1703, FILM-1713, FILM-1716, FILM-1721 |
+| FILM-1715 | [self-benchmarking](./phase-17-analytics-provenance/FILM-1715-self-benchmarking.yaml) | PARTIAL | M | FILM-1703, FILM-1713, FILM-1716, FILM-1721 |
 | FILM-1716 | [format-families](./phase-17-analytics-provenance/FILM-1716-format-families.yaml) | DONE | M | FILM-1710 |
 | FILM-1717 | [content-genome](./phase-17-analytics-provenance/FILM-1717-content-genome.yaml) | DRAFT | XL | FILM-1606, FILM-1610, FILM-1715, FILM-1716 |
 | FILM-1718 | [stage-diagnosis](./phase-17-analytics-provenance/FILM-1718-stage-diagnosis.yaml) | DRAFT | M | FILM-1714, FILM-1715 |
