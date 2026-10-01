@@ -48,7 +48,7 @@ export function formatDuration(seconds: number): string {
  * Formats **US dollars**, whole units.
  *
  * Only for figures that are dollars by construction: ClickHouse's
- * `video_metrics.revenue_cents`, which has no currency column and only
+ * `video_revenue_daily.revenue_cents`, which has no currency column and only
  * USD-sourced writers (`revenue-writers.test.ts`). Anything read from
  * `revenue_records` may be in any currency and goes through `formatMoney`
  * / `formatCurrencyAmount` in `./money` instead (KB-12).

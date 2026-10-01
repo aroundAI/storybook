@@ -1,3 +1,4 @@
+import type { EstimatedRevenue } from './lib/estimated-revenue';
 import type { Views } from './lib/views';
 
 /**
@@ -19,7 +20,8 @@ export interface AnalyticsTotals {
   watchTimeSeconds: number | null;
   /** Null when not measured: TikTok and Instagram report none (KB-149). */
   subscribersGained: number | null;
-  revenueCents: number;
+  /** The platform's estimate in USD; null where no day was measured (FILM-1726). */
+  revenueCents: EstimatedRevenue;
   /** Ad revenue portion (YouTube) */
   adRevenueCents?: number;
   /** YouTube Premium revenue portion */

@@ -32,6 +32,7 @@ import type {
   SnapshotTotals,
   VideoMetric,
   VideoReachDaily,
+  VideoRevenueDaily,
   VideoSnapshot,
   VideoTrafficSource,
 } from './types';
@@ -89,6 +90,26 @@ export async function insertVideoReachDaily(
 
   await client.insert({
     table: 'video_reach_daily',
+    values: rows,
+    format: 'JSONEachRow',
+  });
+}
+
+/**
+ * Insert one measured day of earnings per video (FILM-1726). USD only, and
+ * only for a day the platform reported: a missing row is "not measured".
+ * Its own table, never a `video_metrics` column, because the two YouTube
+ * writers of that row replace each other whole (KB-94).
+ */
+export async function insertVideoRevenueDaily(
+  rows: VideoRevenueDaily[],
+): Promise<void> {
+  if (rows.length === 0 || !isClickHouseEnabled()) return;
+
+  const client = getClickHouseClient();
+
+  await client.insert({
+    table: 'video_revenue_daily',
     values: rows,
     format: 'JSONEachRow',
   });
@@ -337,7 +358,8 @@ const NO_ROWS_TOTALS: ScopeTotals = {
   shares: null,
   saves: null,
   watch_time_seconds: null,
-  revenue_cents: 0,
+  // Not measured, not $0: the identity a measured chunk replaces (FILM-1726).
+  revenue_cents: null,
   subscribers_gained: null,
 };
 
@@ -492,7 +514,7 @@ async function queryTotalsSingle(
       row.watch_time_seconds,
       row.watch_time_seconds_measured,
     ),
-    revenue_cents: Number(row.revenue_cents),
+    revenue_cents: nullableNumber(row.revenue_cents),
     subscribers_gained: measuredSum(
       row.subscribers_gained,
       row.subscribers_gained_measured,
@@ -548,7 +570,7 @@ async function queryDailyTimeSeriesSingle(
       row.watch_time_seconds,
       row.watch_time_seconds_measured,
     ),
-    revenue_cents: Number(row.revenue_cents),
+    revenue_cents: nullableNumber(row.revenue_cents),
   }));
 }
 
@@ -600,7 +622,7 @@ async function queryPlatformBreakdownSingle(
     // One platform's sum: null when none of its rows measured shares (X).
     shares: measuredSum(row.shares, row.shares_measured),
     saves: measuredSum(row.saves, row.saves_measured),
-    revenue_cents: Number(row.revenue_cents),
+    revenue_cents: nullableNumber(row.revenue_cents),
   }));
 }
 
@@ -660,7 +682,7 @@ async function queryPerVideoTotalsSingle(
       // says whether that 0 is one (KB-114).
       saves: Number(row.saves),
       watch_time_seconds: Number(row.watch_time_seconds),
-      revenue_cents: Number(row.revenue_cents),
+      revenue_cents: nullableNumber(row.revenue_cents),
       subscribers_gained: Number(row.subscribers_gained),
       measured: measuredFlags(row),
     });
@@ -809,7 +831,7 @@ async function queryDailyStatsSingle(
     shares: Number(row.shares),
     saves: Number(row.saves),
     watch_time_seconds: Number(row.watch_time_seconds),
-    revenue_cents: Number(row.revenue_cents),
+    revenue_cents: nullableNumber(row.revenue_cents),
     subscribers_gained: Number(row.subscribers_gained),
     measured: measuredFlags(row),
   }));

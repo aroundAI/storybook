@@ -40,11 +40,19 @@ describe('generateCSV', () => {
     ).split('\n');
 
     expect(header).toBe(
-      'Date,Platform,Project,Content,Views (blank = not measured by the platform),Likes,Revenue (USD)',
+      'Date,Platform,Project,Content,Views (blank = not measured by the platform),Likes,Revenue (USD) (blank = not measured by the platform)',
     );
     expect(line).toBe(
       '2026-09-01,youtube,Harbour,Harbour at dusk,1200,48,123.45',
     );
+  });
+
+  it('leaves unmeasured earnings blank, never $0.00 (FILM-1726)', () => {
+    const [, line] = generateCSV([row({ revenueCents: null })], [
+      'revenue',
+    ]).split('\n');
+
+    expect(line).toBe('2026-09-01,youtube,Harbour,Harbour at dusk,');
   });
 
   it('leaves a Facebook row’s views blank, never 0 (KB-153)', () => {

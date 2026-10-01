@@ -35,7 +35,8 @@ export interface RawExportRow {
   saves: number | null;
   watchTimeSeconds: number | null;
   subscribersGained: number | null;
-  revenueCents: number;
+  /** Null when not measured (FILM-1726); blank in the file, never 0. */
+  revenueCents: number | null;
   /**
    * That day's own impressions and click-through rate. Zero when the
    * platform reported no reach for the day, which the file writes as blank.
@@ -136,8 +137,9 @@ const COLUMNS: Array<{
     // stays. It is also true: the figure is ClickHouse's, which holds only
     // USD-sourced revenue (KB-12; bound by `revenue-writers.test.ts`), and
     // never a manual entry in another currency.
+    // Blank when not measured (FILM-1726), under the same fixed header.
     header: 'Revenue (USD)',
-    getValue: (r) => (r.revenueCents / 100).toFixed(2),
+    getValue: (r) => measuredCell(r.revenueCents, (v) => (v / 100).toFixed(2)),
   },
   {
     header: 'Impressions',

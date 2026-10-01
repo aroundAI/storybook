@@ -368,7 +368,6 @@ test.describe('Experiment log — evidence', () => {
       shares: 0,
       saves: 0,
       watch_time_seconds: 0,
-      revenue_cents: 0,
       subscribers_gained: gained,
       subscribers_lost: 0,
       metric_source: 'analytics_api',
@@ -463,7 +462,6 @@ test.describe('Experiment log — evidence', () => {
       shares: 0,
       saves: 0,
       watch_time_seconds: 0,
-      revenue_cents: 0,
       extra_metrics: '{}',
     };
 

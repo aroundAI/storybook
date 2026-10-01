@@ -32,7 +32,8 @@ export interface ExperimentMetricSnapshot {
     shares: number;
     /** Null where no video measured it (KB-162). */
     watchTimeSeconds: number | null;
-    revenueCents: number;
+    /** Null where no earnings were measured (FILM-1726). */
+    revenueCents: number | null;
   };
   /** FILM-1610. Absent on snapshots written before it; null when unwatched. */
   watched?: WatchedValue | null;
@@ -197,6 +198,7 @@ function DeltaRow({
   after,
 }: {
   label: string;
+  /** Null when not measured: no delta is drawn from it. */
   before: number | null;
   after: number | null;
 }) {

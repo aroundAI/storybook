@@ -20,7 +20,6 @@ export function calculateReportSummary(
   let totalLikes = 0;
   let totalComments = 0;
   let totalShares = 0;
-  let totalRevenueCents = 0;
   let impressions = 0;
   let clicks = 0;
 
@@ -35,13 +34,13 @@ export function calculateReportSummary(
     totalLikes += row.likes;
     totalComments += row.comments;
     totalShares += row.shares;
-    totalRevenueCents += row.revenueCents;
     impressions += row.impressions;
     clicks += row.impressions * row.ctr;
   }
 
   const watchTime = sumMeasured(data.map((row) => row.watchTimeSeconds));
   const subscribers = sumMeasured(data.map((row) => row.subscribersGained));
+  const revenue = sumMeasured(data.map((row) => row.revenueCents));
   const avgViewDuration = weightedMeasured(
     data.map((row) => ({
       value: row.avgViewDurationSeconds,
@@ -62,8 +61,9 @@ export function calculateReportSummary(
       watchTime: watchTime.coverage,
       subscribers: subscribers.coverage,
       avgViewDuration: avgViewDuration.coverage,
+      revenue: revenue.coverage,
     },
-    totalRevenueCents,
+    totalRevenueCents: revenue.value,
     contentCount: new Set(data.map((d) => d.contentTitle)).size,
     platformBreakdown,
   };

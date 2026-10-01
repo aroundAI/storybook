@@ -55,6 +55,7 @@ export type {
   VideoDim,
   VideoMetric,
   VideoReachDaily,
+  VideoRevenueDaily,
   VideoSnapshot,
   VideoTrafficSource,
   YouTubeVideoMetric,
@@ -63,7 +64,7 @@ export type {
 } from './types';
 export { FACEBOOK_DENOMINATOR_COLUMNS } from './types';
 export { PLATFORM_ENUM_TYPE, PLATFORM_ENUM_VALUES } from './lib/platform-enum';
-export { addViews } from './lib/views';
+export { addMeasured, addViews } from './lib/views';
 
 export { formatDateStr } from './utils';
 

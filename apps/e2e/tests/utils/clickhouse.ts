@@ -170,7 +170,6 @@ export interface DailyMetric {
   ageDays: number;
   /** Null for a Facebook row: no single view (migration 020, KB-153). */
   views: number | null;
-  revenueCents?: number;
   avgViewDurationSeconds?: number;
   avgViewPercentage?: number;
 }
@@ -189,7 +188,6 @@ function videoMetricRow(video: SeededVideo, day: DailyMetric) {
     shares: 0,
     saves: 0,
     watch_time_seconds: (day.views ?? 0) * 60,
-    revenue_cents: day.revenueCents ?? 0,
     subscribers_gained: 0,
     // Facebook reports no average (FILM-1720): null, as ingest writes it.
     avg_view_duration_seconds:

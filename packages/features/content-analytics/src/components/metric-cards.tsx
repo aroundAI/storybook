@@ -35,6 +35,7 @@ import {
   formatNumber,
   formatPercent,
 } from '../lib/format';
+import type { RevenueAccessNote } from '../lib/revenue-access';
 import { type ViewsScope, viewsNotMeasuredReason } from '../lib/views';
 import type { AnalyticsTotals } from '../types';
 import { CoverageContext } from './coverage-context';
@@ -79,6 +80,11 @@ interface MetricCardsProps {
    * `data` keeps its old meaning.
    */
   noFigureReason?: string;
+  /**
+   * Why revenue may not be measured, one sentence per reason (FILM-1726).
+   * Shown only when the revenue figure is not measured.
+   */
+  revenueAccess?: readonly RevenueAccessNote[];
 }
 
 export function MetricCards({
@@ -88,6 +94,7 @@ export function MetricCards({
   notMeasuredReason = PLATFORM_NOT_MEASURED_REASON,
   viewsScope,
   noFigureReason,
+  revenueAccess = [],
 }: MetricCardsProps) {
   // The chip needs the page's coverage. Outside the analytics page — the
   // project, season and episode dashboards mount no provider — the cards
@@ -171,7 +178,8 @@ export function MetricCards({
     {
       key: 'revenue',
       label: 'Revenue',
-      value: data?.revenueCents || 0,
+      // Null is not measured, never $0 (FILM-1726).
+      value: data ? data.revenueCents : null,
       previousValue: previousData ? previousData.revenueCents : null,
       formatter: (v) => formatCurrency(v / 100),
       description: 'Estimated ad revenue',
@@ -183,25 +191,52 @@ export function MetricCards({
   // Nothing was asked for: every card says so, rather than a figure (FILM-1709).
   const noFigure = data === null ? noFigureReason : undefined;
 
+  // Said once, under the cards, rather than inside the revenue card, which
+  // would stretch the whole row to its height.
+  const revenueReasons =
+    data !== null && data.revenueCents === null ? revenueAccess : [];
+
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
-      {metrics.map((metric) =>
-        withProvenance ? (
-          <MetricCardWithProvenance
-            key={metric.key}
-            metric={metric}
-            notMeasuredReason={notMeasuredReason}
-            noFigureReason={noFigure}
-          />
-        ) : (
-          <MetricCard
-            key={metric.key}
-            metric={metric}
-            notMeasuredReason={notMeasuredReason}
-            noFigureReason={noFigure}
-          />
-        ),
-      )}
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
+        {metrics.map((metric) =>
+          withProvenance ? (
+            <MetricCardWithProvenance
+              key={metric.key}
+              metric={metric}
+              notMeasuredReason={notMeasuredReason}
+              noFigureReason={noFigure}
+            />
+          ) : (
+            <MetricCard
+              key={metric.key}
+              metric={metric}
+              notMeasuredReason={notMeasuredReason}
+              noFigureReason={noFigure}
+            />
+          ),
+        )}
+      </div>
+      {revenueReasons.length > 0 ? (
+        <div
+          className="rounded-lg border px-4 py-3 text-sm text-muted-foreground"
+          data-test="revenue-not-measured-reasons"
+        >
+          <p className="font-medium text-foreground">
+            Why revenue is not measured
+          </p>
+          <ul className="mt-1 list-disc space-y-1 pl-5">
+            {revenueReasons.map((access) => (
+              <li
+                key={`${access.platform}:${access.note}`}
+                data-test="metric-not-measured-reason"
+              >
+                {access.note}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 }

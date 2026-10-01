@@ -98,7 +98,6 @@ async function seedFamilies(fixture: LanguageTabFixture) {
       shares: 0,
       saves: 0,
       watch_time_seconds: row.views * 30,
-      revenue_cents: 0,
       subscribers_gained: 0,
       avg_view_duration_seconds: 30,
       avg_view_percentage: 40,

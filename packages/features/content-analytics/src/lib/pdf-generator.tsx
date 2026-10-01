@@ -208,7 +208,10 @@ function getMetricValue(
         coverage: summary.coverage.subscribers,
       };
     case 'revenue':
-      return { value: summary.totalRevenueCents };
+      return {
+        value: summary.totalRevenueCents,
+        coverage: summary.coverage.revenue,
+      };
     case 'ctr':
       return { value: summary.ctr === null ? null : summary.ctr * 100 };
     case 'avgViewDuration':

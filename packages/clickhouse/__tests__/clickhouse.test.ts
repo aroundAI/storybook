@@ -356,7 +356,8 @@ describe('@kit/clickhouse', () => {
         });
 
         expect(result.views).toBeNull();
-        expect(result.revenue_cents).toBe(0);
+        // No row measured revenue: not measured, never $0 (FILM-1726).
+        expect(result.revenue_cents).toBeNull();
       });
 
       it('should include date range filters in query', async () => {

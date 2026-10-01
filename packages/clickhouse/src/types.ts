@@ -57,17 +57,10 @@ export interface VideoMetric extends Partial<FacebookDenominators> {
    */
   saves: number | null;
   watch_time_seconds: number | null;
-  /**
-   * **US dollars, or zero** — this table has no currency column (KB-12).
-   * Every reader prints it as dollars, which holds only because every
-   * writer writes USD-sourced figures: today a literal 0 on every ingest
-   * path, and YouTube's estimate (requested without a `currency`, so USD)
-   * if that ever changes. Revenue in any other currency is entered by a
-   * person and lives in Postgres `revenue_records`, beside its currency.
-   * `revenue-writers.test.ts` in @kit/content-analytics binds this to the
-   * writers, so a new one cannot make it quietly untrue.
-   */
-  revenue_cents: number;
+  // No `revenue_cents`. The column is NULL on every row since migration 022
+  // and nothing reads it. Revenue is `VideoRevenueDaily`, in its own table,
+  // because the two YouTube writers of this row replace each other whole
+  // and only one of them can see revenue (KB-94, FILM-1726).
   /** Null for TikTok, which reports no per-video follower gains (KB-114). */
   subscribers_gained: number | null;
   /**
@@ -313,6 +306,26 @@ export interface VideoReachDaily {
 }
 
 /**
+ * One day's estimated earnings for one video (migration 022, FILM-1726).
+ *
+ * **US dollars, in cents.** ClickHouse has no currency column (KB-12), and
+ * every reader prints this as dollars. That holds because the only writer
+ * is YouTube's estimate, which is requested without a `currency` and so
+ * comes back in USD. Revenue in any other currency is entered by a person
+ * and lives in Postgres `revenue_records`, beside its currency.
+ * `revenue-writers.test.ts` in @kit/content-analytics binds the writers.
+ *
+ * A row exists only for a measured day. No row means not measured.
+ */
+export interface VideoRevenueDaily {
+  project_id: string;
+  video_id: string;
+  platform: AnalyticsPlatform;
+  metric_date: string;
+  revenue_cents: number;
+}
+
+/**
  * Traffic-source row per video/day/source.
  */
 export interface VideoTrafficSource {
@@ -454,7 +467,8 @@ export interface DailyStats {
   shares: number;
   saves: number;
   watch_time_seconds: number;
-  revenue_cents: number;
+  /** US dollars from `video_revenue_daily`; null when no day was measured (FILM-1726). */
+  revenue_cents: number | null;
   subscribers_gained: number;
   /** Which of the sometimes-unmeasured sums had any measured row (KB-114). */
   measured: MeasuredColumns;
@@ -494,7 +508,8 @@ export interface AggregatedTotals {
   shares: number;
   saves: number;
   watch_time_seconds: number;
-  revenue_cents: number;
+  /** US dollars from `video_revenue_daily`; null when no day was measured (FILM-1726). */
+  revenue_cents: number | null;
   subscribers_gained: number;
 }
 
@@ -526,7 +541,8 @@ export interface DailyDataPoint {
   saves: number | null;
   /** Null on a day no row measured it (KB-162). */
   watch_time_seconds: number | null;
-  revenue_cents: number;
+  /** US dollars from `video_revenue_daily`; null when no day was measured (FILM-1726). */
+  revenue_cents: number | null;
 }
 
 /**
@@ -542,7 +558,8 @@ export interface PlatformBreakdown {
   shares: number | null;
   /** Null where none of the platform's rows measured it (KB-162). */
   saves: number | null;
-  revenue_cents: number;
+  /** US dollars from `video_revenue_daily`; null when no day was measured (FILM-1726). */
+  revenue_cents: number | null;
 }
 
 /**

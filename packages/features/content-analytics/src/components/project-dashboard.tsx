@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { VIEWS_NOT_MEASURED, formatViews } from '../lib/views';
 import type { ProjectAnalytics as ProjectAnalyticsData } from '../server/aggregation-queries';
 import { MetricCards, NOT_COLLECTED_HERE_REASON } from './metric-cards';
+import { formatRevenueCents } from '../lib/estimated-revenue';
 
 interface ProjectDashboardProps {
   data: ProjectAnalyticsData;
@@ -42,7 +43,7 @@ export function ProjectDashboard({ data }: ProjectDashboardProps) {
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold text-green-600">
-            ${(data.totalRevenueCents / 100).toFixed(2)}
+            {formatRevenueCents(data.totalRevenueCents)}
           </p>
           <p className="text-sm text-muted-foreground">Total Revenue</p>
         </div>
@@ -131,7 +132,7 @@ export function ProjectDashboard({ data }: ProjectDashboardProps) {
                         {formatViews(season.views)}
                       </td>
                       <td className="py-3 text-right text-green-600">
-                        ${(season.revenue / 100).toFixed(2)}
+                        {formatRevenueCents(season.revenue)}
                       </td>
                     </tr>
                   ))
@@ -155,7 +156,7 @@ export function ProjectDashboard({ data }: ProjectDashboardProps) {
                       {formatViews(data.totalViews)}
                     </td>
                     <td className="pt-3 text-right text-green-600">
-                      ${(data.totalRevenueCents / 100).toFixed(2)}
+                      {formatRevenueCents(data.totalRevenueCents)}
                     </td>
                   </tr>
                 </tfoot>
@@ -194,10 +195,11 @@ export function ProjectDashboard({ data }: ProjectDashboardProps) {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold text-green-600">
-              $
-              {data.contentCount > 0
-                ? (data.totalRevenueCents / 100 / data.contentCount).toFixed(2)
-                : '0.00'}
+              {formatRevenueCents(
+                data.totalRevenueCents === null || data.contentCount === 0
+                  ? data.totalRevenueCents
+                  : data.totalRevenueCents / data.contentCount,
+              )}
             </p>
           </CardContent>
         </Card>

@@ -24,6 +24,8 @@ import {
 import { fetchAllByIds } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { addRevenue } from '../lib/estimated-revenue';
+import type { EstimatedRevenue } from '../lib/estimated-revenue';
 import { measuredFigure, sumMeasured } from '../lib/export-coverage';
 import type { LanguageDivergence } from '../lib/language-divergence';
 import { summariseLanguagePairs } from '../lib/language-divergence';
@@ -83,7 +85,8 @@ export interface LanguagePerformance {
   comments: number;
   shares: number;
   engagement: number; // engagementRatio (FILM-1713), as a percentage
-  revenueCents: number;
+  /** USD; null where no day's earnings were measured (FILM-1726). */
+  revenueCents: EstimatedRevenue;
   contentCount: number;
   /** Every published video in this language, with or without views. */
   videoCount: number;
@@ -106,7 +109,8 @@ export interface PlatformLanguageEntry {
   comments: number;
   shares: number;
   engagementRate: number;
-  revenueCents: number;
+  /** USD; null where no day's earnings were measured (FILM-1726). */
+  revenueCents: EstimatedRevenue;
   contentCount: number;
 }
 
@@ -118,7 +122,8 @@ export interface FormatFamilyTotals {
   comments: number;
   shares: number;
   engagement: number;
-  revenueCents: number;
+  /** USD; null where no day's earnings were measured (FILM-1726). */
+  revenueCents: EstimatedRevenue;
   /** Null where no video measured it: only YouTube reports it (KB-162). */
   subscribersGained: number | null;
   contentCount: number;
@@ -269,7 +274,8 @@ export async function getLanguagePerformance(
       likes: number;
       comments: number;
       shares: number;
-      revenueCents: number;
+      /** USD; null where no day's earnings were measured (FILM-1726). */
+      revenueCents: EstimatedRevenue;
       publishCount: number;
       videoCount: number;
     }
@@ -282,7 +288,7 @@ export async function getLanguagePerformance(
       likes: 0,
       comments: 0,
       shares: 0,
-      revenueCents: 0,
+      revenueCents: null,
       publishCount: 0,
       videoCount: 0,
     };
@@ -300,7 +306,10 @@ export async function getLanguagePerformance(
     current.likes += stats.likes;
     current.comments += stats.comments;
     current.shares += stats.shares;
-    current.revenueCents += stats.revenue_cents;
+    current.revenueCents = addRevenue(
+      current.revenueCents,
+      stats.revenue_cents,
+    );
     current.publishCount++;
   }
 
@@ -405,7 +414,8 @@ export async function getPlatformLanguageMatrix(
       likes: number;
       comments: number;
       shares: number;
-      revenueCents: number;
+      /** USD; null where no day's earnings were measured (FILM-1726). */
+      revenueCents: EstimatedRevenue;
       publishCount: number;
     }
   >();
@@ -422,7 +432,7 @@ export async function getPlatformLanguageMatrix(
       likes: 0,
       comments: 0,
       shares: 0,
-      revenueCents: 0,
+      revenueCents: null,
       publishCount: 0,
     };
 
@@ -430,7 +440,10 @@ export async function getPlatformLanguageMatrix(
     current.likes += stats.likes;
     current.comments += stats.comments;
     current.shares += stats.shares;
-    current.revenueCents += stats.revenue_cents;
+    current.revenueCents = addRevenue(
+      current.revenueCents,
+      stats.revenue_cents,
+    );
     current.publishCount++;
 
     matrix.set(key, current);
@@ -524,7 +537,7 @@ export async function getContentTypeComparison(
       likes: 0,
       comments: 0,
       shares: 0,
-      revenueCents: 0,
+      revenueCents: null,
       subscribersGained: null,
       contentCount: 0,
     };
@@ -533,7 +546,7 @@ export async function getContentTypeComparison(
     target.likes += stats.likes;
     target.comments += stats.comments;
     target.shares += stats.shares;
-    target.revenueCents += stats.revenue_cents;
+    target.revenueCents = addRevenue(target.revenueCents, stats.revenue_cents);
     // Only a measured gain adds; none measured stays null (KB-162).
     target.subscribersGained = sumMeasured([
       target.subscribersGained,

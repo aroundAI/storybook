@@ -87,7 +87,7 @@ export const METRIC_FAMILIES = [
   'reposts', // a post's reposts                 → video_metrics
   'all_surface_engagement', // incl. boosted     → video_metrics
   'watch_time', //                                 → video_metrics
-  'revenue', //                                    → video_metrics
+  'revenue', // estimated earnings, USD            → video_revenue_daily
   'traffic_sources', //                            → video_traffic_sources
   'retention_curve', //                            → video_retention_curves
   'reach', // impressions, CTR                     → video_reach_daily
@@ -118,6 +118,7 @@ export type SourceTable =
   | 'video_traffic_sources'
   | 'video_retention_curves'
   | 'video_reach_daily'
+  | 'video_revenue_daily'
   | 'channel_daily'
   | 'channel_reach_daily'
   | 'channel_subscribers'
@@ -1861,6 +1862,7 @@ export const TABLE_WRITERS: Record<SourceTable, string> = {
   video_traffic_sources: 'insertVideoTrafficSources',
   video_retention_curves: 'insertRetentionCurves',
   video_reach_daily: 'insertVideoReachDaily',
+  video_revenue_daily: 'insertVideoRevenueDaily',
   channel_daily: 'insertChannelDaily',
   channel_reach_daily: 'insertChannelReachDaily',
   channel_subscribers: 'insertSubscriberSnapshot',
@@ -1903,6 +1905,7 @@ export const WRITER_CALL_SITES: Record<SourceTable, readonly string[]> = {
     VERIFY_SCRIPT,
     `${CONTENT_ANALYTICS}/server/reporting/report-ingest.ts`,
   ],
+  video_revenue_daily: [VERIFY_SCRIPT],
   channel_daily: [
     VERIFY_SCRIPT,
     `${CONTENT_ANALYTICS}/server/reporting/report-ingest.ts`,

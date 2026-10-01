@@ -86,6 +86,19 @@ describe('MetricCards', () => {
     contentCount: 8,
   };
 
+  it('says revenue was not measured instead of showing $0 (FILM-1726)', () => {
+    render(
+      <MetricCards
+        data={{ ...mockData, revenueCents: null }}
+        previousData={mockPreviousData}
+        isLoading={false}
+      />,
+    );
+
+    expect(screen.getByText('Not measured')).toBeDefined();
+    expect(screen.queryByText('$0')).toBeNull();
+  });
+
   it('should render 7 skeleton cards when loading', () => {
     render(
       <MetricCards

@@ -99,7 +99,12 @@ export interface AnalyticsDataRow {
    */
   watchTimeSeconds: number | null;
   subscribersGained: number | null;
-  revenueCents: number;
+  /**
+   * The platform's estimated earnings in USD; null when not measured
+   * (FILM-1726): no monetary scope, outside the Partner Program, or a
+   * platform with no earnings API. Never 0 for that.
+   */
+  revenueCents: number | null;
   retentionData: Record<string, number> | null;
   /** Thumbnail impressions (YouTube Reporting API). */
   impressions: number;
@@ -131,8 +136,10 @@ export interface ReportSummary {
     watchTime: Coverage;
     subscribers: Coverage;
     avgViewDuration: Coverage;
+    revenue: Coverage;
   };
-  totalRevenueCents: number;
+  /** Over the rows that measured earnings; null when none did (FILM-1726). */
+  totalRevenueCents: number | null;
   contentCount: number;
   platformBreakdown: Record<string, number>;
 }
