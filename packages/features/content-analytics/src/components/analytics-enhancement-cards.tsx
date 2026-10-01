@@ -22,7 +22,6 @@ import {
 import { FORMAT_FAMILY_LABEL } from '@kit/clickhouse';
 import type { FormatFamily, LanguageDimension } from '@kit/clickhouse';
 import { Badge } from '@kit/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Skeleton } from '@kit/ui/skeleton';
 
 import { formatNumber } from '../lib/format';
@@ -40,6 +39,8 @@ import type {
   LanguagePerformance,
 } from '../server/language-analytics';
 import { LanguageDimensionLabel } from './language-dimension-label';
+import { AnalyticsCard } from './overview/analytics-card';
+import type { CardClaim } from './overview/card-claim';
 
 // =============================================================================
 // Language Comparison Chart (Side-by-Side)
@@ -52,48 +53,38 @@ interface LanguageComparisonChartProps {
   isLoading?: boolean;
 }
 
+/** How many language buckets the bars compare, and how many views they hold. */
+export function languageComparisonClaim(
+  data: readonly LanguagePerformance[] | null,
+): CardClaim {
+  const shown = (data ?? []).slice(0, 6);
+
+  if (shown.length === 0) {
+    return {
+      figure: null,
+      noFigure: 'No language data yet.',
+      sentence: 'Publish content to compare views across languages.',
+    };
+  }
+
+  return {
+    figure: formatNumber(shown.reduce((sum, lang) => sum + lang.views, 0)),
+    sentence: `Views across the ${shown.length} largest language ${shown.length === 1 ? 'bucket' : 'buckets'}, side by side.`,
+  };
+}
+
+const COMPARISON_TITLE = 'Language Comparison';
+
 export function LanguageComparisonChart({
   data,
   dimension = 'content',
   isLoading,
 }: LanguageComparisonChartProps) {
   if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <BarChart3 className="h-4 w-4" />
-            Language Comparison
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-64 w-full" />
-        </CardContent>
-      </Card>
-    );
+    return <LanguageComparisonChartSkeleton />;
   }
 
-  if (!data || data.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <BarChart3 className="h-4 w-4" />
-            Language Comparison
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            No language data available. Publish content to see language
-            performance comparison.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Prepare chart data
-  const chartData = data.slice(0, 6).map((lang) => ({
+  const chartData = (data ?? []).slice(0, 6).map((lang) => ({
     name: languageName(lang.language, dimension),
     code: languageKey(lang.language),
     color: languageColor(lang.language),
@@ -101,45 +92,54 @@ export function LanguageComparisonChart({
   }));
 
   return (
-    <Card data-test="language-comparison-chart">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <BarChart3 className="h-4 w-4" />
-          Language Comparison
-        </CardTitle>
+    <AnalyticsCard
+      title={COMPARISON_TITLE}
+      icon={BarChart3}
+      metricFamily={'engagement'}
+      claim={languageComparisonClaim(data)}
+      data-test={'language-comparison-chart'}
+    >
+      <div className="space-y-4">
         <LanguageDimensionLabel dimension={dimension} card="comparison" />
-      </CardHeader>
-      <CardContent>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} layout="vertical" margin={{ left: 60 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis type="number" tickFormatter={(v) => formatNumber(v)} />
-              <YAxis dataKey="name" type="category" width={60} />
-              <Tooltip
-                formatter={formatLanguageComparisonTooltip}
-                contentStyle={{
-                  backgroundColor: 'var(--card)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '8px',
-                }}
-              />
-              <Legend />
-              <Bar
-                dataKey="views"
-                fill="#3B82F6"
-                name={LANGUAGE_COMPARISON_SERIES.views.name}
-                radius={[0, 4, 4, 0]}
+        {chartData.length > 0 && (
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={chartData}
+                layout="vertical"
+                margin={{ left: 60 }}
               >
-                {chartData.map((entry) => (
-                  <Cell key={entry.code} fill={entry.color} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </CardContent>
-    </Card>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  className="stroke-muted"
+                />
+                <XAxis type="number" tickFormatter={(v) => formatNumber(v)} />
+                <YAxis dataKey="name" type="category" width={60} />
+                <Tooltip
+                  formatter={formatLanguageComparisonTooltip}
+                  contentStyle={{
+                    backgroundColor: 'var(--card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                  }}
+                />
+                <Legend />
+                <Bar
+                  dataKey="views"
+                  fill="#3B82F6"
+                  name={LANGUAGE_COMPARISON_SERIES.views.name}
+                  radius={[0, 4, 4, 0]}
+                >
+                  {chartData.map((entry) => (
+                    <Cell key={entry.code} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+    </AnalyticsCard>
   );
 }
 
@@ -177,49 +177,84 @@ interface ShortsROICardProps {
   isLoading?: boolean;
 }
 
+/**
+ * Views per video in the clip family against views per video in the source
+ * family (FILM-1716). No ratio — rather than a 0 — when either side has
+ * nothing to divide.
+ */
+export function shortsReachClaim(
+  contentTypeData: ContentTypeComparison | null,
+): CardClaim {
+  if (!contentTypeData) {
+    return {
+      figure: null,
+      noFigure: 'No shorts data yet.',
+      sentence: 'Publish shorts and long-form videos to compare them.',
+    };
+  }
+
+  const clips = familyTotals(contentTypeData, CLIP_FAMILY);
+  const sources = familyTotals(contentTypeData, SOURCE_FAMILY);
+  const clipLabel = FORMAT_FAMILY_LABEL[CLIP_FAMILY];
+  const sourceLabel = FORMAT_FAMILY_LABEL[SOURCE_FAMILY];
+
+  if (clips.contentCount === 0 || sources.contentCount === 0) {
+    return {
+      figure: null,
+      noFigure: 'No ratio yet.',
+      sentence: `A ratio needs both: ${clips.contentCount} ${clipLabel} and ${sources.contentCount} ${sourceLabel} videos so far.`,
+    };
+  }
+
+  const viewsPerSource = sources.views / sources.contentCount;
+
+  if (viewsPerSource === 0) {
+    return {
+      figure: null,
+      noFigure: 'No ratio yet.',
+      sentence: `${sourceLabel} videos have no views yet, so there is nothing to compare against.`,
+    };
+  }
+
+  const multiplier = clips.views / clips.contentCount / viewsPerSource;
+
+  return {
+    figure: `${multiplier.toFixed(1)}×`,
+    sentence: `Views per ${clipLabel} video, as a multiple of views per ${sourceLabel} video.`,
+  };
+}
+
+const ROI_TITLE = 'Shorts ROI Calculator';
+
 export function ShortsROICard({
   contentTypeData,
   isLoading,
 }: ShortsROICardProps) {
   if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Scissors className="h-4 w-4" />
-            Shorts ROI Calculator
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
-        </CardContent>
-      </Card>
-    );
+    return <ShortsROICardSkeleton />;
   }
 
-  if (!contentTypeData) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Scissors className="h-4 w-4" />
-            Shorts ROI Calculator
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            No shorts data available. Publish shorts to see ROI analysis.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+  return (
+    <AnalyticsCard
+      title={ROI_TITLE}
+      icon={Scissors}
+      metricFamily={['engagement', 'revenue']}
+      claim={shortsReachClaim(contentTypeData)}
+      data-test={'shorts-roi-card'}
+    >
+      {contentTypeData && <ShortsROIBody contentTypeData={contentTypeData} />}
+    </AnalyticsCard>
+  );
+}
 
+function ShortsROIBody({
+  contentTypeData,
+}: {
+  contentTypeData: ContentTypeComparison;
+}) {
   const clips = familyTotals(contentTypeData, CLIP_FAMILY);
   const sources = familyTotals(contentTypeData, SOURCE_FAMILY);
 
-  // Calculate ROI metrics
   const viewsPerShort =
     clips.contentCount > 0 ? clips.views / clips.contentCount : 0;
   const viewsPerSource =
@@ -231,67 +266,54 @@ export function ShortsROICard({
     clips.views > 0 ? clips.revenueCents / clips.views : 0;
 
   return (
-    <Card data-test="shorts-roi-card">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Scissors className="h-4 w-4" />
-          Shorts ROI Calculator
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Views per content piece */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-lg bg-muted/50 p-4">
-            <div className="mb-1 text-xs text-muted-foreground">
-              Views per {FORMAT_FAMILY_LABEL[CLIP_FAMILY]}
-            </div>
-            <div className="text-2xl font-bold" data-test="roi-views-per-clip">
-              {formatNumber(viewsPerShort)}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {clips.contentCount} published
-            </div>
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="rounded-lg bg-muted/50 p-4">
+          <div className="mb-1 text-xs text-muted-foreground">
+            Views per {FORMAT_FAMILY_LABEL[CLIP_FAMILY]}
           </div>
-          <div className="rounded-lg bg-muted/50 p-4">
-            <div className="mb-1 text-xs text-muted-foreground">
-              Views per {FORMAT_FAMILY_LABEL[SOURCE_FAMILY]}
-            </div>
-            <div
-              className="text-2xl font-bold"
-              data-test="roi-views-per-source"
-            >
-              {formatNumber(viewsPerSource)}
-            </div>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {sources.contentCount} published
-            </div>
+          <div className="text-2xl font-bold" data-test="roi-views-per-clip">
+            {formatNumber(viewsPerShort)}
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {clips.contentCount} published
           </div>
         </div>
+        <div className="rounded-lg bg-muted/50 p-4">
+          <div className="mb-1 text-xs text-muted-foreground">
+            Views per {FORMAT_FAMILY_LABEL[SOURCE_FAMILY]}
+          </div>
+          <div className="text-2xl font-bold" data-test="roi-views-per-source">
+            {formatNumber(viewsPerSource)}
+          </div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {sources.contentCount} published
+          </div>
+        </div>
+      </div>
 
-        {/* ROI Insights */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between rounded-lg bg-muted/30 p-2">
-            <span className="text-sm">Shorts reach multiplier</span>
-            <Badge variant={shortsMultiplier > 1 ? 'default' : 'secondary'}>
-              {shortsMultiplier > 0 ? `${shortsMultiplier.toFixed(1)}x` : 'N/A'}
-            </Badge>
-          </div>
-          <div className="flex items-center justify-between rounded-lg bg-muted/30 p-2">
-            <span className="text-sm">Engagement difference</span>
-            <Badge variant={engagementDiff > 0 ? 'default' : 'secondary'}>
-              {engagementDiff > 0 ? '+' : ''}
-              {engagementDiff.toFixed(1)}%
-            </Badge>
-          </div>
-          <div className="flex items-center justify-between rounded-lg bg-muted/30 p-2">
-            <span className="text-sm">Revenue/view (shorts)</span>
-            <Badge variant="outline">
-              ${(shortsRevenuePerView / 100).toFixed(4)}
-            </Badge>
-          </div>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between rounded-lg bg-muted/30 p-2">
+          <span className="text-sm">Shorts reach multiplier</span>
+          <Badge variant={shortsMultiplier > 1 ? 'default' : 'secondary'}>
+            {shortsMultiplier > 0 ? `${shortsMultiplier.toFixed(1)}x` : 'N/A'}
+          </Badge>
         </div>
-      </CardContent>
-    </Card>
+        <div className="flex items-center justify-between rounded-lg bg-muted/30 p-2">
+          <span className="text-sm">Engagement difference</span>
+          <Badge variant={engagementDiff > 0 ? 'default' : 'secondary'}>
+            {engagementDiff > 0 ? '+' : ''}
+            {engagementDiff.toFixed(1)}%
+          </Badge>
+        </div>
+        <div className="flex items-center justify-between rounded-lg bg-muted/30 p-2">
+          <span className="text-sm">Revenue/view (shorts)</span>
+          <Badge variant="outline">
+            ${(shortsRevenuePerView / 100).toFixed(4)}
+          </Badge>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -305,38 +327,38 @@ interface BestEpisodesToClipProps {
   isLoading?: boolean;
 }
 
+interface ClipRecommendation {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  priority: 'high' | 'medium' | 'low';
+}
+
+/**
+ * Suggestions built on this page by fixed rules from the tab's own figures
+ * — not a measurement, and no language model wrote them, so the card is a
+ * `summary` (FILM-1707).
+ */
+const CLIPPING_CLAIM: CardClaim = {
+  figure: null,
+  noFigure: 'Suggestions, not measurements.',
+  sentence:
+    'Put together by fixed rules from the shorts and language figures on this tab.',
+};
+
+const CLIPPING_TITLE = 'Clipping Recommendations';
+
 export function BestEpisodesToClipCard({
   languageData,
   contentTypeData,
   isLoading,
 }: BestEpisodesToClipProps) {
   if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Award className="h-4 w-4" />
-            Clipping Recommendations
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </CardContent>
-      </Card>
-    );
+    return <BestEpisodesToClipCardSkeleton />;
   }
 
-  // Generate recommendations based on language and content type data
-  const recommendations: {
-    icon: React.ReactNode;
-    title: string;
-    description: string;
-    priority: 'high' | 'medium' | 'low';
-  }[] = [];
+  const recommendations: ClipRecommendation[] = [];
 
-  // Check if shorts are performing well
   if (contentTypeData) {
     const clips = familyTotals(contentTypeData, CLIP_FAMILY);
     const sources = familyTotals(contentTypeData, SOURCE_FAMILY);
@@ -380,7 +402,6 @@ export function BestEpisodesToClipCard({
       });
     }
 
-    // Find underutilized language with high engagement
     const highEngagementLang = labelledLanguages.find(
       (l) => l.engagement > 5 && l.contentCount < 5,
     );
@@ -394,7 +415,6 @@ export function BestEpisodesToClipCard({
     }
   }
 
-  // Default recommendation if none generated
   if (recommendations.length === 0) {
     recommendations.push({
       icon: <Scissors className="h-4 w-4 text-muted-foreground" />,
@@ -406,14 +426,15 @@ export function BestEpisodesToClipCard({
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Award className="h-4 w-4" />
-          Clipping Recommendations
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <AnalyticsCard
+      title={CLIPPING_TITLE}
+      icon={Award}
+      metricFamily={'summary'}
+      claim={CLIPPING_CLAIM}
+      details={null}
+      data-test={'clipping-recommendations-card'}
+    >
+      <div className="space-y-3">
         {recommendations.map((rec, index) => (
           <div
             key={index}
@@ -442,35 +463,39 @@ export function BestEpisodesToClipCard({
             </div>
           </div>
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </AnalyticsCard>
   );
 }
 
 // =============================================================================
-// Skeleton Components
+// Skeleton Components — the same shell, with its claim loading
 // =============================================================================
 
 export function LanguageComparisonChartSkeleton() {
   return (
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-5 w-40" />
-      </CardHeader>
-      <CardContent>
-        <Skeleton className="h-64 w-full" />
-      </CardContent>
-    </Card>
+    <AnalyticsCard
+      title={COMPARISON_TITLE}
+      icon={BarChart3}
+      metricFamily={'engagement'}
+      claim={'loading'}
+      details={null}
+    >
+      <Skeleton className="h-64 w-full" />
+    </AnalyticsCard>
   );
 }
 
 export function ShortsROICardSkeleton() {
   return (
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-5 w-36" />
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <AnalyticsCard
+      title={ROI_TITLE}
+      icon={Scissors}
+      metricFamily={['engagement', 'revenue']}
+      claim={'loading'}
+      details={null}
+    >
+      <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
@@ -479,22 +504,25 @@ export function ShortsROICardSkeleton() {
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </AnalyticsCard>
   );
 }
 
 export function BestEpisodesToClipCardSkeleton() {
   return (
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-5 w-44" />
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <AnalyticsCard
+      title={CLIPPING_TITLE}
+      icon={Award}
+      metricFamily={'summary'}
+      claim={'loading'}
+      details={null}
+    >
+      <div className="space-y-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <Skeleton key={i} className="h-16 w-full" />
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </AnalyticsCard>
   );
 }
