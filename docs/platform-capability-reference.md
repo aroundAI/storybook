@@ -283,10 +283,9 @@ seconds" — is the only curve-like surface, but **not** the whole attention sto
 `ig_reels_video_view_total_time` ("the total amount of time the reel was played")
 are both documented for REELS.
 
-⚠️ **We request neither.** `instagram-insights.ts` asks for `views, reach,
-total_interactions, likes, comments, saved` (and `shares` only on a branch that never
-runs — see below), so Instagram watch time is documented and discarded. FILM-1712
-owns requesting it.
+Requested for REELS since FILM-1712 (both watch-time metrics) and KB-151
+(`reels_skip_rate`), and stored as reported: the total as daily watch time, the
+average and the skip rate on the snapshot (migration 023).
 
 ⚠️ **Our provider branches on the wrong field.** It reads `media_type` and tests for
 `REELS`, but `media_type` is only ever `CAROUSEL_ALBUM`, `IMAGE` or `VIDEO`; `REELS`
@@ -1179,7 +1178,7 @@ saved
 shares
 profile_visits             # FEED + STORY only, NOT REELS
 follows                    # FEED + STORY only, NOT REELS
-reels_skip_rate
+reels_skip_rate            # REELS only; "percentage", but 0–100 or 0–1 is undocumented (see note)
 ig_reels_avg_watch_time    # milliseconds, observed (see note); NOT total_time / views
 ig_reels_video_view_total_time
 ```
@@ -1194,6 +1193,15 @@ seconds; as seconds it would be 1.7 hours) and `ig_reels_video_view_total_time`
 not by views (which count every play and display, replays included). Whether
 121 is the Reel's accounts reached or its first plays is not yet confirmed.
 Store both figures as reported; never derive one from the other.
+
+**`reels_skip_rate` has no documented scale (re-read 2026-10-01).** The
+[media insights reference](https://developers.facebook.com/docs/instagram-platform/reference/instagram-media/insights/)
+describes it as "the percentage of views from people who skipped during the
+first 3 seconds of the reel", REELS only, tagged "Metric is estimated and in
+development", and shows no value. Whether 25% arrives as 25 or as 0.25 is not
+said. KB-151 stores it unscaled (`video_snapshots.ig_reels_skip_rate`), and
+FILM-1714 withholds it until a live Reel's value is read beside what the
+Instagram app shows.
 
 <!-- fields: instagram/media-insights-2026 source: https://developers.facebook.com/docs/instagram-platform/changelog -->
 ```text

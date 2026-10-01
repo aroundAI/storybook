@@ -27,52 +27,52 @@ summary: >
 acceptance_criteria:
   - text: "Stages are platform-independent and defined in one place"
     met: true
-    evidence: "packages/clickhouse/src/lib/signal-map.ts:57 FUNNEL_STAGES, with FUNNEL_STAGE_QUESTION beside it; no platform key anywhere on a stage. packages/clickhouse/__tests__/signal-map.test.ts:366 fails any other file under packages/ or apps/ that spells the stage tuple out. #500"
+    evidence: "packages/clickhouse/src/lib/signal-map.ts:57 FUNNEL_STAGES, with FUNNEL_STAGE_QUESTION beside it; no platform key anywhere on a stage. packages/clickhouse/__tests__/signal-map.test.ts:367 fails any other file under packages/ or apps/ that spells the stage tuple out. #500"
   - text: "A stage can be unbound with a named reason, and unbound is distinguishable from dark"
     met: true
-    evidence: "StageBinding's unbound arm carries reason (UnboundReason, packages/clickhouse/src/lib/signal-map.ts:563) and note (packages/clickhouse/src/lib/signal-map.ts:576). stageReading returns 'unbound', 'dark' or 'measurable' (packages/clickhouse/src/lib/signal-map.ts:842, packages/clickhouse/src/lib/signal-map.ts:888). packages/clickhouse/__tests__/signal-map.test.ts:174 and :184, guard SM4. YouTube Shorts Reach is unbound with platform_does_not_expose_an_impression_equivalent (packages/clickhouse/src/lib/signal-map.ts:637, packages/clickhouse/__tests__/signal-map.test.ts:616), and TikTok Attention is dark with FILM-1730 (packages/clickhouse/__tests__/signal-map.test.ts:287). #500"
+    evidence: "StageBinding's unbound arm carries reason (UnboundReason, packages/clickhouse/src/lib/signal-map.ts:494) and note (packages/clickhouse/src/lib/signal-map.ts:507). stageReading returns 'unbound', 'dark' or 'measurable' (packages/clickhouse/src/lib/signal-map.ts:702, packages/clickhouse/src/lib/signal-map.ts:748). packages/clickhouse/__tests__/signal-map.test.ts:175 and :184, guard SM4. YouTube Shorts Reach is unbound with platform_does_not_expose_an_impression_equivalent (packages/clickhouse/src/lib/signal-map.ts:568, packages/clickhouse/__tests__/signal-map.test.ts:670), and TikTok Attention is dark with FILM-1730 (packages/clickhouse/__tests__/signal-map.test.ts:288). #500"
   - text: "A stage carries a primary signal, supporting signals, and named unavailable ones"
     met: true
-    evidence: "StageBinding { primary, supporting, unavailable } (packages/clickhouse/src/lib/signal-map.ts:576, UnavailableSignal packages/clickhouse/src/lib/signal-map.ts:570). packages/clickhouse/__tests__/signal-map.test.ts:213. #500"
+    evidence: "StageBinding { primary, supporting, unavailable } (packages/clickhouse/src/lib/signal-map.ts:507, UnavailableSignal packages/clickhouse/src/lib/signal-map.ts:501). packages/clickhouse/__tests__/signal-map.test.ts:214. #500"
   - text: "A signal declares its input families and its support is computed, not authored"
     met: true
-    evidence: "SignalDefinition.inputs is a non-empty tuple of MetricFamily (packages/clickhouse/src/lib/signal-map.ts:153). computeSignalSupport reads CAPABILITY_MATRIX at call time (packages/clickhouse/src/lib/signal-map.ts:493). packages/clickhouse/__tests__/signal-map.test.ts:421 checks every signal x platform against weakestSupport over the matrix. #500"
+    evidence: "SignalDefinition.inputs is a non-empty tuple of MetricFamily (packages/clickhouse/src/lib/signal-map.ts:149). computeSignalSupport reads CAPABILITY_MATRIX at call time (packages/clickhouse/src/lib/signal-map.ts:424). packages/clickhouse/__tests__/signal-map.test.ts:422 checks every signal x platform against weakestSupport over the matrix. #500"
   - text: "No entry is added to CAPABILITY_MATRIX by this spec"
     met: true
-    evidence: "packages/clickhouse/__tests__/signal-map.test.ts:410 fails an assignment to CAPABILITY_MATRIX or an authored native/derived level in signal-map.ts (guard SM15), and the matrix's keys still equal METRIC_FAMILIES. The Instagram field-level gaps live in SIGNAL_INPUT_GAPS (packages/clickhouse/src/lib/signal-map.ts:432), which can only weaken support. #500"
+    evidence: "packages/clickhouse/__tests__/signal-map.test.ts:411 fails an assignment to CAPABILITY_MATRIX or an authored native/derived level in signal-map.ts (guard SM15), and the matrix's keys still equal METRIC_FAMILIES. Field-level gaps live in SIGNAL_INPUT_GAPS (packages/clickhouse/src/lib/signal-map.ts:385), which can only weaken support; it is empty since KB-151 stored Instagram's two (#TBD). #500"
   - text: "The full input list survives to the consumer, not only the weakest level"
     met: true
-    evidence: "SignalSupport.inputs lists every family with its level, blocker and the matrix note (packages/clickhouse/src/lib/signal-map.ts:475). packages/clickhouse/__tests__/signal-map.test.ts:437 checks TikTok views_per_follower = derived with engagement derived and channel_totals native (guard SM8). #500"
+    evidence: "SignalSupport.inputs lists every family with its level, blocker and the matrix note (packages/clickhouse/src/lib/signal-map.ts:406). packages/clickhouse/__tests__/signal-map.test.ts:438 checks TikTok views_per_follower = derived with engagement derived and channel_totals native (guard SM8). #500"
   - text: "Arithmetic composition is a separate axis from ingestion support level"
     met: true
-    evidence: "SignalComposition 'measured' | 'ratio' | 'interpolated' (packages/clickhouse/src/lib/signal-map.ts:100), carried apart from level. packages/clickhouse/__tests__/signal-map.test.ts:449: YouTube share_rate is a ratio and native; Instagram accounts_reached is measured and derived. #500"
+    evidence: "SignalComposition 'measured' | 'ratio' | 'interpolated' (packages/clickhouse/src/lib/signal-map.ts:100), carried apart from level. packages/clickhouse/__tests__/signal-map.test.ts:450: YouTube share_rate is a ratio and native; Instagram accounts_reached is measured and derived. #500"
   - text: "SUPPORT_ORDER is explicit and its ordering argued in a comment"
     met: true
-    evidence: "packages/clickhouse/src/lib/data-provenance.ts:125 SUPPORT_ORDER, with the argument at packages/clickhouse/src/lib/data-provenance.ts:108 (not_ingested above unsupported: a signal with an unsupported input can never exist, so unsupported wins) and weakestSupport at packages/clickhouse/src/lib/data-provenance.ts:133. packages/clickhouse/__tests__/signal-map.test.ts:383, :392, :400; guard SM7. #500"
+    evidence: "packages/clickhouse/src/lib/data-provenance.ts:124 SUPPORT_ORDER, with the argument at packages/clickhouse/src/lib/data-provenance.ts:107 (not_ingested above unsupported: a signal with an unsupported input can never exist, so unsupported wins) and weakestSupport at packages/clickhouse/src/lib/data-provenance.ts:132. packages/clickhouse/__tests__/signal-map.test.ts:384, :392, :400; guard SM7. #500"
   - text: "Adding a platform fails two test suites until both the matrix and the map are extended"
     met: true
-    evidence: "Both suites read the AnalyticsPlatform union out of types.ts: packages/clickhouse/__tests__/signal-map.test.ts:104 and packages/clickhouse/__tests__/data-provenance.test.ts:383. Guards SM1 and SM2 add 'facebook', and both went red. #500"
+    evidence: "Both suites read the AnalyticsPlatform union out of types.ts: packages/clickhouse/__tests__/signal-map.test.ts:105 and packages/clickhouse/__tests__/data-provenance.test.ts:383. Guards SM1 and SM2 add 'facebook', and both went red. #500"
   - text: "Binding a stage to an unsupported input fails the test"
     met: true
-    evidence: "packages/clickhouse/__tests__/signal-map.test.ts:273. Guard SM3 adds audience_retention to Instagram Attention, and it went red. #500"
+    evidence: "packages/clickhouse/__tests__/signal-map.test.ts:274. Guard SM3 adds audience_retention to Instagram Attention, and it went red. #500"
   - text: "Binding to a not_ingested input is allowed, and surfaces as dark with its blocker"
     met: true
-    evidence: "packages/clickhouse/__tests__/signal-map.test.ts:287: TikTok Attention is dark, blocker FILM-1730, with the matrix's note carried through. packages/clickhouse/__tests__/signal-map.test.ts:299 keeps at least one dark stage. #500"
+    evidence: "packages/clickhouse/__tests__/signal-map.test.ts:288: TikTok Attention is dark, blocker FILM-1730, with the matrix's note carried through. packages/clickhouse/__tests__/signal-map.test.ts:300 keeps at least one dark stage. #500"
   - text: "Every native family feeds at least one signal or is allowlisted with a reason"
     met: true
-    evidence: "packages/clickhouse/__tests__/signal-map.test.ts:314 and :327 against FAMILIES_OUTSIDE_THE_FUNNEL (packages/clickhouse/src/lib/signal-map.ts:911: demographics, geography and device as lenses rather than stages; channel_accounts_reached as channel-level). Guard SM6. #500"
+    evidence: "packages/clickhouse/__tests__/signal-map.test.ts:315 and :327 against FAMILIES_OUTSIDE_THE_FUNNEL (packages/clickhouse/src/lib/signal-map.ts:771: demographics, geography and device as lenses rather than stages; channel_accounts_reached as channel-level). Guard SM6. #500"
   - text: "Instagram Attention binds ig_reels_avg_watch_time as primary and reels_skip_rate as supporting; no Instagram binding uses \"average % viewed\", which Instagram does not report"
     met: true
-    evidence: "packages/clickhouse/src/lib/signal-map.ts:694 INSTAGRAM_REELS, bound for every Instagram format a Reel lands in. Average percentage viewed and the retention curve are listed as unavailable, not bound. packages/clickhouse/__tests__/signal-map.test.ts:556 and :565. #500"
+    evidence: "packages/clickhouse/src/lib/signal-map.ts:625 INSTAGRAM_REELS, bound for every Instagram format a Reel lands in. Average percentage viewed and the retention curve are listed as unavailable, not bound. packages/clickhouse/__tests__/signal-map.test.ts:605 and :565. #500"
   - text: "Instagram Transmission includes reposts per reach, from reposts_count"
     met: true
-    evidence: "reposts_per_reach reads the reposts family (packages/clickhouse/src/lib/signal-map.ts:317), whose Instagram entry cites reposts_count. It is derived today because FILM-1712 ingests it. packages/clickhouse/__tests__/signal-map.test.ts:573. #500"
+    evidence: "reposts_per_reach reads the reposts family (packages/clickhouse/src/lib/signal-map.ts:324), whose Instagram entry cites reposts_count. It is derived today because FILM-1712 ingests it. packages/clickhouse/__tests__/signal-map.test.ts:622. #500"
   - text: "Until FILM-1712 requests those fields, both Instagram bindings render dark with FILM-1712 named as the blocker — never as a zero"
     met: true
-    evidence: "FILM-1712 is DONE, so the blocker this criterion named is no longer the true one. reposts_count is ingested (#472), so reposts per reach is derived, which is a figure, correctly. ig_reels_avg_watch_time is requested but discarded at ingest, and reels_skip_rate is never requested. The family level calls Instagram watch_time derived because of the stored total, so both are held by SIGNAL_INPUT_GAPS (packages/clickhouse/src/lib/signal-map.ts:432). Both Attention signals render dark with KB-151 as the blocker, never as a figure (packages/clickhouse/__tests__/signal-map.test.ts:587, guard SM9). Each gap goes red once its field is collected (guard SM11). #500"
+    evidence: "FILM-1712 is DONE, and KB-151 (#TBD) stored the two fields it left out, so neither binding is dark on a missing field any more. reposts_count is ingested (#472), so reposts per reach is derived. ig_reels_avg_watch_time is requested and now stored as reported (packages/features/content-analytics/src/server/ingest.ts:132, migration 023), so SIGNAL_INPUT_GAPS is empty (packages/clickhouse/src/lib/signal-map.ts:385) and Instagram Attention reads measurable (packages/clickhouse/__tests__/signal-map.test.ts:638). reels_skip_rate is requested for REELS (packages/features/content-analytics/src/providers/instagram/instagram-insights.ts:165) and stored, but Meta does not say whether its percentage is 0–100 or 0–1, so a pending unit check owned by the owner keeps it dark, never a figure (packages/clickhouse/src/lib/signal-map.ts:281). The gap rules still fire, on probes: stale (packages/clickhouse/__tests__/signal-map.test.ts:521, guard SM11), redundant (:529, guard SM12), weakening (:538, guard SM9). #500, #TBD"
   - text: "Instagram watch time is not shown until its unit (milliseconds, inferred) is confirmed against a live response"
     met: true
-    evidence: "SignalDefinition.unitCheck (packages/clickhouse/src/lib/signal-map.ts:262): a pending unit makes a signal not_ingested, with the confirmer as blocker (packages/clickhouse/__tests__/signal-map.test.ts:521, guard SM10). ig_reels_avg_watch_time carries FILM-1712's live confirmation: milliseconds, owner's account, 2026-09-29 (packages/clickhouse/__tests__/signal-map.test.ts:529). #500"
+    evidence: "SignalDefinition.unitCheck (packages/clickhouse/src/lib/signal-map.ts:258): a pending unit makes a signal not_ingested, with the confirmer as blocker (packages/clickhouse/__tests__/signal-map.test.ts:570, guard SM10). ig_reels_avg_watch_time carries FILM-1712's live confirmation: milliseconds, owner's account, 2026-09-29 (packages/clickhouse/__tests__/signal-map.test.ts:578). #500"
 open_questions: []
 feature:
   database: null
@@ -323,10 +323,19 @@ notes: |
     support. It goes red once its code marker appears (stale), or when the
     families are already that weak (redundant). It is never written into
     `CAPABILITY_MATRIX`.
+  - **KB-151 closed both gaps (2026-10-01, #TBD).** The average and the
+    skip rate are stored on `video_snapshots` as Meta reports them
+    (migration 023), and `SIGNAL_INPUT_GAPS` is empty. Instagram Attention
+    reads measurable on the average. The two closed gaps stay in the test
+    as probes, so the stale, redundant and weakening rules are still seen to
+    fire. The skip rate stays dark on a unit check (below).
   - **Unit check.** `SignalDefinition.unitCheck` withholds a figure in an
     unconfirmed unit by making it `not_ingested`, with the confirmer as
     blocker. Instagram's average carries FILM-1712's confirmation
-    (milliseconds, 2026-09-29).
+    (milliseconds, 2026-09-29). `reels_skip_rate` carries a pending one
+    (unit `percent`, owner `owner`): Meta calls it a percentage but shows
+    no value, so 0–100 against 0–1 is open until a live Reel is read
+    (KB-151).
   - **The unbound arm carries `reason` as well as `note`.** The reason is a
     closed `UnboundReason` that code can branch on. The note is the
     sentence a creator reads. Every reason is a fact about the platform or
