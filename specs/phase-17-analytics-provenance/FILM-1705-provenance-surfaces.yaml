@@ -3,7 +3,7 @@ title: "Provenance Surfaces"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: L
 dependencies:
   - spec_id: "FILM-1701"
@@ -27,37 +27,41 @@ summary: >
 acceptance_criteria:
   - text: "Every card on all six tabs carries a chip, and the chip is derived from the matrix rather than typed into the card"
     met: false
-    reason: "not met — spec not yet built"
-  - text: "`grep` finds no platform name in a user-facing string outside `data-provenance.ts` and the platform label maps. Handed on by FILM-1703 (whose 'no consumer restates a platform list' criterion retired into this one, 2026-09-25), and naming the five sites on main then: packages/features/content-analytics/src/components/metric-cards.tsx:123 ('(YouTube only)' on a revenue figure the matrix calls not_ingested on every platform); packages/features/content-analytics/src/components/deep-dive/weekly-diagnostics-table.tsx:207 ('need the YouTube bulk report ingest and appear about two days after publishing' — the lag is not in the matrix, so it needs its own home). Three more were removed by FILM-1706 (#402): the traffic-share card's 'the YouTube bulk report ingest' (twice), and the likes and comments cards' 'Aggregated across all platforms' footer (static under the filter, and silent that two of three are derived)"
-    met: false
-    reason: "not met — spec not yet built"
+    reason: "Built on every card on four tabs and the strip above them: Overview's ten AnalyticsCards and Deep Dive's nine (the shell draws the chip from its required metricFamily, analytics-card.tsx:158), the seven MetricCards and the four Audience data cards (ProvenanceChipFor on their own shells). Not yet on the Content tab's per-publish cards, the Video Log, the Language tab, AI Insights, or Overview's two @kit/ui/card panels (Performance Over Time, Platform Distribution) — FILM-1707 re-shells those and reconciles the Content badge, as §5 here says"
+  - text: "`grep` finds no platform name in a user-facing string outside `data-provenance.ts` and the platform label maps. Handed on by FILM-1703 (whose 'no consumer restates a platform list' criterion retired into this one, 2026-09-25), and naming the five sites on main then: packages/features/content-analytics/src/components/metric-cards.tsx ('(YouTube only)' on a revenue figure the matrix calls not_ingested on every platform); packages/features/content-analytics/src/components/deep-dive/weekly-diagnostics-table.tsx ('need the YouTube bulk report ingest and appear about two days after publishing' — the lag is not in the matrix, so it needs its own home). Three more were removed by FILM-1706 (#402): the traffic-share card's 'the YouTube bulk report ingest' (twice), and the likes and comments cards' 'Aggregated across all platforms' footer (static under the filter, and silent that two of three are derived)"
+    met: true
+    evidence: "packages/features/content-analytics/__tests__/provenance-copy.test.ts:89 parses components/ and lib/ with the TypeScript parser and fails on a platform name in any string, template or JSX text that is not a label map entry (`youtube: 'YouTube'`, `label: 'YouTube'`); red with metric-cards.tsx's '(YouTube only)' put back (tooling/mutation-guards/film-1705.json). The sites it found were rewritten: the revenue MetricCard draws no figure (the matrix has no platform for it); weekly-diagnostics-table.tsx reads platformsWithData('reach') and REPORTING_LAG_DAYS, the lag's one home beside COVERAGE_STALE_AFTER_DAYS in data-provenance.ts; the proxy, traffic, content and Partner Programme copy take names from lib/platform-labels.ts (#TBD)"
   - text: "The chip on a Deep Dive traffic card says YouTube only; the chip on the median card beside it says what it actually pools"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/features/content-analytics/__tests__/provenance.test.ts:95 and :101 — the traffic chip is 'YouTube only'; the median (engagement) chip names what has rows, '2 of 3 platforms · partly derived' when YouTube and TikTok both do, 'YouTube only' when only YouTube does. In the browser, apps/e2e/tests/analytics/provenance-surfaces.spec.ts:144 reads 'YouTube only' off the traffic card on the seeded page (#TBD)"
   - text: "The strip distinguishes not-connected, connected-but-empty, not-yet-ingested and not-reported, in four distinguishable sentences"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/features/content-analytics/src/lib/provenance.ts:475 (coverageStrip); provenance.test.ts:289 asserts not_connected, no_data_in_window, not_ingested and not_reported give four different sentences. Seeded page, read off the DOM: 'Instagram: not connected.' / 'TikTok: connected (@seedstudio), but no data for 2026-09-01 to 2026-10-01.' / 'YouTube: data through 2026-09-21.' (.local-ci/evidence/film-1705/film-1705-measured.json) (#TBD)"
   - text: "Deselecting a platform dims the cards that cannot cover it rather than blanking or silently dropping them"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/features/content-analytics/src/lib/provenance.ts:612 (cardDimming) and analytics-card.tsx:123 — a card none of whose platforms is selected gets data-dimmed and the matrix's note per selected platform, and keeps its figure; provenance-surfaces.test.tsx:89. In the browser (apps/e2e/tests/analytics/provenance-surfaces.spec.ts:144) Instagram alone selected dims the traffic card with 'Instagram does not report where a post’s views came from.' and reselecting YouTube restores it; red in the browser with the dimming rule mutated (#TBD)"
   - text: "The platform filter receives `available` and shows unavailable platforms dimmed with a reason, still selectable"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/features/content-analytics/src/components/platform-filter.tsx:51 — `available` and `reasons` props; an unavailable platform is offered dimmed with its reason and its checkbox still toggles (provenance-surfaces.test.tsx:122, red when unavailable rows are filtered out). Wired by CoveragePlatformFilter (analytics-dashboard.tsx:324) from the strip of the active tab's families (filterAvailability, provenance.ts:582) (#TBD)"
   - text: "A connected Facebook channel appears in the strip as unsupported rather than being invisible"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/features/content-analytics/src/lib/provenance.ts:563 — a connection on a platform outside AnalyticsPlatform is a strip item, 'Facebook (Seed Studio Page): connected, but analytics doesn’t support Facebook.'; provenance.test.ts:283 (red with the item dropped) and apps/e2e/tests/analytics/provenance-surfaces.spec.ts:144 (#TBD)"
   - text: "The two MetricCards hardcoded to zero either carry a coverage state or stop rendering a number"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/features/content-analytics/src/components/analytics-dashboard.tsx:238 passes null for watch time and subscribers; metric-cards.tsx:198 (unmeasuredReason) draws 'Not totalled here' and no digits, and every MetricCard carries a chip on the analytics page (metric-cards.tsx:167). provenance-surfaces.test.tsx:211 (red with the reason removed) and in the browser. The same zeros still reach AI Insights' payload: KB-154 (#TBD)"
   - text: "A project with no connections renders an intelligible page"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/features/content-analytics/src/lib/provenance.ts:472 — with nothing connected and nothing covered the strip says one sentence, and every chip reads 'Not connected'; provenance.test.ts:315, and apps/e2e/tests/analytics/provenance-surfaces.spec.ts:255 in the browser on the header and Deep Dive (#TBD)"
   - text: "The strip's window matches the tab's window — Deep Dive's strip describes 52 weeks, the others the picker's range"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:486 mounts Deep Dive's own strip inside its 52-week CoverageProvider, and the header's is hidden on that tab (analytics-dashboard.tsx:341); apps/e2e/tests/analytics/provenance-surfaces.spec.ts:144 reads data-window='the last 52 complete weeks' and the measured TikTok sentence ends 'no data for the last 52 complete weeks.', the header's 'no data for 2026-09-01 to 2026-10-01.' (#TBD)"
   - text: "`not_authorised` is distinguishable from `no_data_in_window` everywhere both can appear — moved here from FILM-1711 (decision 2026-09-25), which provides `not_authorised` (`AnalyticsAccess.summary`); `no_data_in_window` arrives with FILM-1704"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "ChannelRef carries resolveAnalyticsAccess's summary (packages/features/content-analytics/src/server/channels.ts), and a connected platform with no rows whose every active channel is not_authorised reads 'not_authorised', not 'no_data_in_window' (provenance.ts:171), in the chip's lines and body and in the strip ('connected, but analytics access isn’t granted — reconnect it in settings'); provenance.test.ts:183, red with the overlay removed (#TBD)"
+remaining:
+  - criterion: "Every card on all six tabs carries a chip, and the chip is derived from the matrix rather than typed into the card"
+    reason: "The Content tab's per-publish cards, the Video Log, the Language tab, AI Insights and Overview's two @kit/ui/card panels use other shells; re-shelling them, and reconciling the Content cards' platform badge with the chip, is FILM-1707's (§5 here, FILM-1707 §3)"
+    closed_by: "FILM-1707"
 open_questions: []
 notes: |
   ## 1. Overview
@@ -195,6 +199,59 @@ notes: |
   disclosure pattern is the mitigation — the chip stays on the front, the
   explanation moves behind it — and the two specs should be reviewed together
   even though they land separately.
+  ## 10. As built (2026-10-01, #TBD)
+
+  Names FILM-1707 and FILM-1709 build on — keep them as they are:
+
+  | Name | Where | What |
+  |---|---|---|
+  | `provenanceChip(view, families, platforms?)` | `lib/provenance.ts` | The chip: `label`, `tone` (`native` / `derived` / `partial` — level, never platform), `muted`, `state`, per-platform `lines`, and `bodyLines` for a card with nothing covered |
+  | `coverageStrip(view, families)` | `lib/provenance.ts` | One `StripItem` per platform, plus every connected platform outside `AnalyticsPlatform`; `summary` when nothing is connected |
+  | `filterAvailability(strip)` | `lib/provenance.ts` | `{ available, reasons }` for the filter: dims only window-independent reasons (not connected, not collected, not reported) |
+  | `cardDimming(families, selected, platforms?)` | `lib/provenance.ts` | Dims a card none of whose platforms is selected, with the matrix's notes |
+  | `platformCoverage(view, families, platform)` | `lib/provenance.ts` | The per-platform state all of the above read, including `not_authorised` |
+  | `TAB_FAMILIES`, `isAnalyticsTab` | `lib/provenance.ts` | The families each tab's cards read; `provenance.test.ts` fails when a card on Overview, Deep Dive or Audience declares one missing here |
+  | `CoverageView`, `useCoverageView()` | `lib/provenance.ts`, `components/coverage-context.tsx` | What a surface reads from the nearest provider; the provider now also carries `selectedPlatforms`, inherited by a nested one |
+  | `ProvenanceChip`, `ProvenanceChipFor`, `useCardProvenance` | `components/provenance-chip.tsx` | The chip, for the AnalyticsCard shell (which draws it from `metricFamily`) and for any other shell |
+  | `CoverageStrip`, `CoveragePlatformFilter` | `components/coverage-strip.tsx` | The strip (`data-test` defaults to `coverage-strip`) and the filter wired to it |
+  | `PLATFORM_LABELS`, `platformLabel` | `lib/platform-labels.ts` | The one label map copy reads names from |
+  | `REPORTING_LAG_DAYS` | `@kit/clickhouse` (`data-provenance.ts`) | The reporting surfaces' 1–3 day lag, stated once |
+
+  Decisions the spec left open, made here:
+
+  - **The chip names what has rows, and only says "up to" what it cannot
+    check.** Covered platforms first ("YouTube only", "2 of 3 platforms");
+    connected-but-empty platforms muted; otherwise the capable, connected
+    platforms as "Up to N of 3 platforms" while the answer is pending or
+    cannot be measured (ClickHouse off, or an audience / subscriber /
+    channel-window family the coverage query does not read). A derived
+    platform adds "· derived" / "· partly derived" in words, not only colour.
+  - **FILM-1704's known limits, worded rather than fixed.** A covered cell
+    for a family that shares `video_metrics` with others says it was
+    checked by whether the platform has any video data in the window, "not
+    whether each video carries this figure". A family read from a table
+    outside the coverage check says whether it has data "isn’t checked for
+    this kind of figure yet".
+  - **The chip's denominator is the three analytics platforms**, never the
+    filter's selection: the MetricCards, Deep Dive and Audience figures do
+    not follow the filter (FILM-1709), so a chip scoped to the selection
+    would describe a number the card is not showing. The selection only
+    dims.
+  - **Runtime platform lists left the shell.** `platforms` on AnalyticsCard
+    is for a real narrowing (the Partner Programme card); "platforms with
+    views" and "the project's channels" are coverage, and the chip reads
+    coverage.
+  - **The filter dims only for window-independent reasons**, because it
+    sits above every tab's window; "connected but empty" is the strip's.
+  - **The MetricCards show a chip only inside a coverage provider.** The
+    project, season and episode dashboards mount none and render as before.
+  - **Revenue draws no number on any MetricCard**: the matrix has no
+    platform supplying it, and the ClickHouse total it showed is a column
+    nothing writes but 0.
+
+  Found on the way: **KB-154** — the dashboard's hardcoded zero watch time
+  and subscribers still reach AI Insights' payload, which this spec's
+  MetricCards no longer draw.
 feature:
   database:
     tables: []
