@@ -127,11 +127,12 @@ describe('REVENUE_CATEGORY_COLOR', () => {
     // utility until theme.css maps `--color-chart-7` inside `@theme`;
     // delete that one line and `bg-chart-7` resolves to nothing while a
     // declaration-only check stays green — the transparent wedge again.
-    // Counted, not collected. shadcn-ui.css declares the palette three
+    // Counted, not collected. shadcn-ui.css declared the palette three
     // times — `:root.light`, `:root`, `.dark` — and scanning the file as
     // one blob let a token declared in a single block pass while the wedge
-    // rendered transparent in the other two themes. Requiring the same
-    // occurrence count as chart-1 means "present in every block".
+    // rendered transparent in the other two themes. FILM-1708 made it one
+    // block; requiring the same occurrence count as chart-1 still means
+    // "present wherever chart-1 is".
     const counts = new Map<string, number>();
 
     for (const match of css.matchAll(/--(chart-\d+)\s*:/g)) {

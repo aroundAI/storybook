@@ -35,7 +35,11 @@ import {
 } from '../../server/diagnostics-actions';
 import { getSubscriberSeriesAction } from '../../server/subscriber-series-actions';
 import { AnalyticsCard } from '../overview/analytics-card';
-import { type CardClaim, claimFromQuery } from '../overview/card-claim';
+import {
+  type CardClaim,
+  claimFromQuery,
+  sourceNotesFor,
+} from '../overview/card-claim';
 import { useProjectChannels } from '../use-project-channels';
 import {
   BackCatalogCard,
@@ -74,11 +78,11 @@ import {
   SubscriberSeriesCardSkeleton,
 } from './subscriber-series-card';
 import {
-  TRAFFIC_BREAKDOWN_DETAILS,
   TrafficBreakdownCard,
   TrafficShareCard,
   TrafficShareCardSkeleton,
   trafficBreakdownClaim,
+  trafficBreakdownDetails,
   trafficShareClaim,
   trafficShareDetails,
 } from './traffic-share-card';
@@ -587,7 +591,10 @@ export function DeepDiveTab({
             () => trafficBreakdownClaim(trafficBuckets, TRAFFIC_WINDOW_LABEL),
             TRAFFIC_FAILURE,
           )}
-          details={TRAFFIC_BREAKDOWN_DETAILS}
+          details={trafficBreakdownDetails(
+            trafficBuckets,
+            sourceNotesFor('traffic_sources', scopePlatforms),
+          )}
           data-test={'deep-dive-traffic-breakdown'}
         >
           {trafficBreakdownQuery.isLoading ? (

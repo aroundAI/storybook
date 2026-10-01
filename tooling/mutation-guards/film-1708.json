@@ -1,0 +1,85 @@
+{
+  "feature": "FILM-1708",
+  "mutations": [
+    {
+      "name": "Groups stop carrying their native codes",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/traffic-groups.ts",
+      "find": "    addSource(bucket.sources, group, row.source, row);\n",
+      "replace": "",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/traffic-groups.test.ts",
+      "pattern": "carries the observed codes"
+    },
+    {
+      "name": "An unrecognised code passes as a member of the taxonomy",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/traffic-groups.ts",
+      "find": "recognised: members.has(source.source),",
+      "replace": "recognised: true,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/traffic-groups.test.ts",
+      "pattern": "unrecognised code"
+    },
+    {
+      "name": "The chart ramp is declared per theme again",
+      "kind": "unit",
+      "file": "apps/web/styles/shadcn-ui.css",
+      "find": "        /* Analytics chart colors - Light mode */\n",
+      "replace": "        --chart-1: var(--color-orange-400);\n\n        /* Analytics chart colors - Light mode */\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/chart-ramp.test.ts",
+      "pattern": "exactly once"
+    },
+    {
+      "name": "Blue and violet share a lightness again",
+      "kind": "unit",
+      "file": "apps/web/styles/shadcn-ui.css",
+      "find": "--chart-5: oklch(65% 0.19 295);",
+      "replace": "--chart-5: oklch(53% 0.19 295);",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/chart-ramp.test.ts",
+      "pattern": "colour-blind or not"
+    },
+    {
+      "name": "Direct and Other go back to two alphas of one grey",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/deep-dive/traffic-share-card.tsx",
+      "find": "  direct: 'bg-chart-neutral-strong',",
+      "replace": "  direct: 'bg-chart-neutral-soft/40',",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/chart-ramp.test.ts",
+      "pattern": "full opacity"
+    },
+    {
+      "name": "A floored slice reports a rounded share again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/deep-dive/chart-marks.tsx",
+      "find": "  return `${(share * 100).toFixed(1)}%`;",
+      "replace": "  return `${Math.round(share * 100)}%`;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/traffic-drilldown.test.tsx",
+      "pattern": "floored slice"
+    },
+    {
+      "name": "Chart marks drop out of the tab order",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/deep-dive/chart-marks.tsx",
+      "find": "          tabIndex={isActive ? 0 : -1}",
+      "replace": "          tabIndex={-1}",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/traffic-drilldown.test.tsx",
+      "pattern": "one tab stop"
+    },
+    {
+      "name": "The drill-down hides the unrecognised code",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/deep-dive/traffic-share-card.tsx",
+      "find": "                  {group.sources.map((source) => (",
+      "replace": "                  {group.sources.filter((source) => source.recognised).map((source) => (",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/traffic-drilldown.test.tsx",
+      "pattern": "unrecognised code"
+    }
+  ]
+}
