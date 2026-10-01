@@ -225,8 +225,19 @@ notes: |
   **The consumer.** The Language tab's "Shorts vs Long-form" card was the
   short/long lookup: `short` and `teaser` in one bucket, the rest in the
   other, every platform pooled. It is now "By format family", a row per
-  family and no ratio between rows, and says how many were placed by
+  family and no ratio between rows. It drops the revenue column: every
+  pipeline writer stores a video's revenue as a literal 0 (FILM-1703), so
+  "$0" was a zero nobody measured. It says how many were placed by
   declared type and how many no family covers. The Shorts ROI card and the
   clipping advice compare two named families (`short_vertical`,
   `long_horizontal`) rather than a pooled split. Evidence screenshots come
-  from `apps/e2e/tests/analytics/format-family-evidence.spec.ts`.
+  from `apps/e2e/tests/analytics/format-family-evidence.spec.ts`, read off
+  the page against a seeded ClickHouse: short 3 / 210 views, long vertical
+  2 / 120, long horizontal 1 / 400, trailer 1 / 30; three placed by declared
+  type, one (a `podcast` row) not covered and counted. Main's card showed
+  shorts 4 / 260 and long-form 4 / 505 for the same rows.
+
+  No `clip` row can appear on that card today: `video_metrics.platform` is
+  an enum of the ingested platforms, so an X or LinkedIn publish has a dim
+  row and no figures. The family is still resolved for it, which is what
+  FILM-1714's signal map and FILM-1715's cohorts need.

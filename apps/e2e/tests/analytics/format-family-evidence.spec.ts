@@ -26,11 +26,18 @@ import { LanguageTabFixture, LanguageTabPageObject } from './language-tab.po';
  * | tt full        | tiktok   | full         | unknown | 70    | long_vertical   |
  * | yt full        | youtube  | full         | 1,320   | 400   | long_horizontal |
  * | yt trailer     | youtube  | trailer      | unknown | 30    | trailer         |
- * | x short        | twitter  | short        | unknown | 20    | clip            |
+ * | yt podcast     | youtube  | podcast      | unknown | 5     | none — counted  |
+ * | x short        | twitter  | short        | unknown | —     | clip, no figures |
  *
  * By family: short 3 / 210 · long vertical 2 / 120 · long horizontal 1 / 400
- * · trailer 1 / 30 · clip 1 / 20. Four placed by declared type (unknown).
- * The old card: shorts 5 / 280, long-form 3 / 500.
+ * · trailer 1 / 30. Three placed by declared type (unknown duration), one
+ * not covered by any family. The old card: shorts 4 / 260, long-form 4 / 505
+ * (the podcast counted as long-form).
+ *
+ * The X clip has a dim row and no metrics: `video_metrics.platform` is an
+ * enum of the platforms we ingest, so an X publish has no figures to show
+ * and no row here. That a clip is its own family is proven in the unit and
+ * verify-queries suites.
  */
 const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
 const RELOADED = { timeout: 90_000 };
@@ -39,7 +46,8 @@ const FIXTURE: {
   platform: string;
   contentType: string;
   asset: number | null;
-  views: number;
+  /** null: no metrics row, as for every platform we do not ingest. */
+  views: number | null;
 }[] = [
   { platform: 'youtube', contentType: 'short', asset: 45, views: 100 },
   { platform: 'youtube', contentType: 'short', asset: 45, views: 100 },
@@ -48,7 +56,8 @@ const FIXTURE: {
   { platform: 'tiktok', contentType: 'full', asset: null, views: 70 },
   { platform: 'youtube', contentType: 'full', asset: 1320, views: 400 },
   { platform: 'youtube', contentType: 'trailer', asset: null, views: 30 },
-  { platform: 'twitter', contentType: 'short', asset: null, views: 20 },
+  { platform: 'youtube', contentType: 'podcast', asset: null, views: 5 },
+  { platform: 'twitter', contentType: 'short', asset: null, views: null },
 ];
 
 async function seedFamilies(fixture: LanguageTabFixture) {
@@ -75,6 +84,8 @@ async function seedFamilies(fixture: LanguageTabFixture) {
       tags: [],
       updated_at: clickHouseDateTime(new Date()),
     });
+
+    if (row.views === null) return;
 
     metrics.push({
       project_id: fixture.project.id,
@@ -113,15 +124,14 @@ test.describe('FILM-1716 — figures by format family', () => {
     const tab = new LanguageTabPageObject(page);
     const fixture = await tab.setup();
 
-    await seedFamilies(fixture);
-
     try {
+      await seedFamilies(fixture);
       await tab.open(fixture.team.slug, fixture.project.slug);
 
       const card = byTest(page, 'format-family-card');
       const rows = card.locator('[data-test^="format-family-row-"]');
 
-      await expect(rows).toHaveCount(5, RELOADED);
+      await expect(rows).toHaveCount(4, RELOADED);
 
       const read = async (family: string) => {
         const row = byTest(card, `format-family-row-${family}`);
@@ -138,7 +148,6 @@ test.describe('FILM-1716 — figures by format family', () => {
         long_vertical: await read('long_vertical'),
         long_horizontal: await read('long_horizontal'),
         trailer: await read('trailer'),
-        clip: await read('clip'),
       };
 
       expect(measured).toEqual({
@@ -158,7 +167,6 @@ test.describe('FILM-1716 — figures by format family', () => {
           views: '400',
         },
         trailer: { name: 'Trailer', videos: '1', views: '30' },
-        clip: { name: 'Timeline clip', videos: '1', views: '20' },
       });
 
       // In FORMAT_FAMILIES order, whatever the views.
@@ -166,16 +174,21 @@ test.describe('FILM-1716 — figures by format family', () => {
         'data-test',
         'format-family-row-short_vertical',
       );
-      await expect(rows.nth(4)).toHaveAttribute(
+      await expect(rows.nth(3)).toHaveAttribute(
         'data-test',
-        'format-family-row-clip',
+        'format-family-row-trailer',
       );
 
       await expect(
         byTest(card, 'format-family-duration-unknown'),
-      ).toContainText('4 placed by their declared type');
-      await expect(byTest(card, 'format-family-unclassified')).toHaveCount(0);
+      ).toContainText('3 placed by their declared type');
+      // Counted and said, not folded into a family.
+      await expect(byTest(card, 'format-family-unclassified')).toContainText(
+        '1 not shown',
+      );
       await expect(card).not.toContainText('Shorts vs Long-form');
+      // Revenue is a literal 0 from every writer (FILM-1703): not shown.
+      await expect(card).not.toContainText('Revenue');
 
       // The ROI card names the two families it compares, and reads only them.
       const roi = byTest(page, 'shorts-roi-card');

@@ -385,6 +385,9 @@ const FORMAT_CARD_TITLE = 'By format family';
  * Deliberately no ratio between rows: a Short and a long-form video count
  * a view differently (FILM-1722) and are chosen for different reasons, so
  * "3x the views" across families compares two different measures.
+ *
+ * No revenue column: every pipeline writer stores a video's revenue as a
+ * literal 0 (FILM-1703), so a "$0" here would be a zero nobody measured.
  */
 export function ContentTypeCard({ data, isLoading }: ContentTypeCardProps) {
   if (isLoading) {
@@ -427,11 +430,12 @@ export function ContentTypeCard({ data, isLoading }: ContentTypeCardProps) {
             <thead>
               <tr className="border-b">
                 <th className="py-2 text-left font-medium">Format</th>
-                <th className="py-2 text-right font-medium">Videos</th>
-                <th className="py-2 text-right font-medium">Views</th>
-                <th className="py-2 text-right font-medium">Engagement</th>
-                <th className="py-2 text-right font-medium">Subscribers</th>
-                <th className="py-2 text-right font-medium">Revenue</th>
+                <th className="py-2 pl-3 text-right font-medium">Videos</th>
+                <th className="py-2 pl-3 text-right font-medium">Views</th>
+                <th className="py-2 pl-3 text-right font-medium">Engagement</th>
+                <th className="py-2 pl-3 text-right font-medium">
+                  Subscribers
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -448,28 +452,25 @@ export function ContentTypeCard({ data, isLoading }: ContentTypeCardProps) {
                     {FORMAT_FAMILY_LABEL[row.family]}
                   </td>
                   <td
-                    className="py-3 text-right tabular-nums"
+                    className="py-3 pl-3 text-right tabular-nums"
                     data-test="format-family-videos"
                   >
                     {row.contentCount}
                   </td>
                   <td
-                    className="py-3 text-right tabular-nums"
+                    className="py-3 pl-3 text-right tabular-nums"
                     data-test="format-family-views"
                   >
                     {formatNumber(row.views)}
                   </td>
                   <td
-                    className="py-3 text-right tabular-nums"
+                    className="py-3 pl-3 text-right tabular-nums"
                     data-test="format-family-engagement"
                   >
                     {formatPercent(row.engagement)}
                   </td>
-                  <td className="py-3 text-right tabular-nums">
+                  <td className="py-3 pl-3 text-right tabular-nums">
                     {formatNumber(row.subscribersGained)}
-                  </td>
-                  <td className="py-3 text-right tabular-nums">
-                    ${(row.revenueCents / 100).toFixed(0)}
                   </td>
                 </tr>
               ))}
