@@ -58,10 +58,6 @@ acceptance_criteria:
   - text: "`not_authorised` is distinguishable from `no_data_in_window` everywhere both can appear — moved here from FILM-1711 (decision 2026-09-25), which provides `not_authorised` (`AnalyticsAccess.summary`); `no_data_in_window` arrives with FILM-1704"
     met: true
     evidence: "ChannelRef carries resolveAnalyticsAccess's summary (packages/features/content-analytics/src/server/channels.ts), and a connected platform with no rows whose every active channel is not_authorised reads 'not_authorised', not 'no_data_in_window' (provenance.ts:171), in the chip's lines and body and in the strip ('connected, but analytics access isn’t granted — reconnect it in settings'); provenance.test.ts:183, red with the overlay removed (#513)"
-remaining:
-  - criterion: "Every card on all six tabs carries a chip, and the chip is derived from the matrix rather than typed into the card"
-    reason: "The Content tab's per-publish cards, the Video Log, the Language tab, AI Insights and Overview's two @kit/ui/card panels use other shells; re-shelling them, and reconciling the Content cards' platform badge with the chip, is FILM-1707's (§5 here, FILM-1707 §3)"
-    closed_by: "FILM-1707"
 open_questions: []
 notes: |
   ## 1. Overview
