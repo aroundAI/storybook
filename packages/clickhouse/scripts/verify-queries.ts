@@ -32,6 +32,7 @@ import {
 } from '../src/lib/format-families';
 import type { FormatFamily } from '../src/lib/format-families';
 import { VIEWS_DATA_WINDOWS } from '../src/lib/self-benchmark';
+import { addViews } from '../src/lib/views';
 import {
   getClickHouseClient,
   insertChannelDaily,
@@ -1384,7 +1385,7 @@ async function assertions() {
       expectEqual('one at a time', singles, [120, 300, 45]);
       expectEqual(
         'sum of singles',
-        singles.reduce((sum, value) => sum + value, 0),
+        singles.reduce<number | null>(addViews, 0),
         all,
       );
       expectEqual('TikTok deselected', withoutTikTok, 165);

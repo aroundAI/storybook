@@ -4,6 +4,7 @@
 import { cleanup } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { ANALYTICS_PLATFORMS } from '@kit/clickhouse';
 import type { MetricFamily, ObservedCoverageRow } from '@kit/clickhouse';
 
 import { PlatformSwitcher } from '../src/components/deep-dive/platform-switcher';
@@ -70,8 +71,8 @@ describe('the selection, at the action boundary', () => {
       'tiktok',
     ]);
     expect(PlatformSelectionSchema.safeParse([]).success).toBe(false);
-    // Offered for export, connectable — never sent to a ClickHouse query.
-    expect(PlatformSelectionSchema.safeParse(['facebook']).success).toBe(false);
+    // Not an analytics platform: never sent to a ClickHouse query.
+    expect(PlatformSelectionSchema.safeParse(['linkedin']).success).toBe(false);
   });
 
   it('is a list in the Deep Dive scope, every choice kept', () => {
@@ -207,10 +208,7 @@ describe('the Deep Dive switcher, as a view of the page’s selection', () => {
 
   it('reads all platforms, or the one', () => {
     const all = renderWithCoverage(
-      <PlatformSwitcher
-        value={['youtube', 'tiktok', 'instagram']}
-        onChange={() => {}}
-      />,
+      <PlatformSwitcher value={[...ANALYTICS_PLATFORMS]} onChange={() => {}} />,
     );
 
     expect(

@@ -4,7 +4,11 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { type ObservedCoverageRow, capabilityFor } from '@kit/clickhouse';
+import {
+  ANALYTICS_PLATFORMS,
+  type ObservedCoverageRow,
+  capabilityFor,
+} from '@kit/clickhouse';
 
 import { CoverageStrip } from '../src/components/coverage-strip';
 import { MetricCards } from '../src/components/metric-cards';
@@ -165,7 +169,7 @@ describe('the platform filter', () => {
     fireEvent.click(screen.getByText('Platforms'));
     fireEvent.click(screen.getByText('All'));
 
-    expect(onChange).toHaveBeenCalledWith(['youtube', 'tiktok', 'instagram']);
+    expect(onChange).toHaveBeenCalledWith([...ANALYTICS_PLATFORMS]);
   });
 });
 

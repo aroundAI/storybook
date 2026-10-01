@@ -154,7 +154,9 @@ describe('the headline figures follow the platform filter (FILM-1709)', () => {
 
     expect(all).toBe(465);
     expect(singles).toEqual([120, 300, 45]);
-    expect(singles.reduce((sum, views) => sum + views, 0)).toBe(all);
+    expect(singles.reduce<number>((sum, views) => sum + (views ?? 0), 0)).toBe(
+      all,
+    );
   });
 
   it('takes a deselected platform out of the headline Views', async () => {

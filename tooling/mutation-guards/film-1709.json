@@ -2,6 +2,16 @@
   "feature": "FILM-1709",
   "mutations": [
     {
+      "name": "FILM-1709 the platform filter offers only the first three analytics platforms",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/platform-filter.tsx",
+      "find": "const PLATFORMS = ANALYTICS_PLATFORMS.map((id) => ({",
+      "replace": "const PLATFORMS = ANALYTICS_PLATFORMS.slice(0, 3).map((id) => ({",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/provenance-surfaces.test.tsx",
+      "pattern": "selects every platform with All"
+    },
+    {
       "name": "FILM-1709 an empty platform list reads as every platform again",
       "kind": "unit",
       "file": "packages/clickhouse/src/queries.ts",

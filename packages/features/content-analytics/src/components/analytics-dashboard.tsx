@@ -87,10 +87,9 @@ export function AnalyticsDashboard({
     from: subDays(new Date(), 30),
     to: new Date(),
   });
+  // Every analytics platform, selected (FILM-1709 × FILM-1720).
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([
-    'youtube',
-    'tiktok',
-    'instagram',
+    ...ANALYTICS_PLATFORMS,
   ]);
   const [activeTab, setActiveTab] = useState('overview');
   // The channel filter, shared by the Deep Dive and the Video Log: picking a

@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { PLATFORM_ENUM_TYPE } from '../src/lib/platform-enum';
+
 /**
  * The platform filter's boundary with SQL (FILM-1709): what a selection
  * becomes in a query, and the two selections that must never reach one.
@@ -50,7 +52,7 @@ describe('platform filter in SQL (FILM-1709)', () => {
       const { query, query_params } = lastQuery();
 
       expect(query).toContain(
-        "platform IN {platforms: Array(Enum('youtube', 'tiktok', 'instagram'))}",
+        `platform IN {platforms: Array(${PLATFORM_ENUM_TYPE})}`,
       );
       expect(query_params.platforms).toEqual(['youtube', 'instagram']);
     });
@@ -80,9 +82,9 @@ describe('platform filter in SQL (FILM-1709)', () => {
           projectId: PROJECT,
           // A name a caller could only get here by casting: the type is
           // AnalyticsPlatform, the guard is for what the type cannot see.
-          platforms: ['youtube', 'facebook'] as unknown as ['youtube'],
+          platforms: ['youtube', 'myspace'] as unknown as ['youtube'],
         }),
-      ).rejects.toThrow(/Not an analytics platform: facebook/);
+      ).rejects.toThrow(/Not an analytics platform: myspace/);
       expect(mockClient.query).not.toHaveBeenCalled();
     });
   });
@@ -118,10 +120,10 @@ describe('platform filter in SQL (FILM-1709)', () => {
         queryVideoLanguages({
           scope: {
             projectId: PROJECT,
-            platforms: ['facebook'] as unknown as ['youtube'],
+            platforms: ['myspace'] as unknown as ['youtube'],
           },
         }),
-      ).rejects.toThrow(/Not an analytics platform: facebook/);
+      ).rejects.toThrow(/Not an analytics platform: myspace/);
     });
   });
 });
