@@ -610,7 +610,7 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1714 | [signal-model](./phase-17-analytics-provenance/FILM-1714-signal-model.yaml) | DONE | M | FILM-1703, FILM-1713, FILM-1716 |
 | FILM-1715 | [self-benchmarking](./phase-17-analytics-provenance/FILM-1715-self-benchmarking.yaml) | PARTIAL | M | FILM-1703, FILM-1713, FILM-1716, FILM-1721 |
 | FILM-1716 | [format-families](./phase-17-analytics-provenance/FILM-1716-format-families.yaml) | DONE | M | FILM-1710 |
-| FILM-1717 | [content-genome](./phase-17-analytics-provenance/FILM-1717-content-genome.yaml) | DRAFT | XL | FILM-1606, FILM-1610, FILM-1715, FILM-1716 |
+| FILM-1717 | [content-genome](./phase-17-analytics-provenance/FILM-1717-content-genome.yaml) | PARTIAL | XL | FILM-1606, FILM-1610, FILM-1714, FILM-1715, FILM-1716 |
 | FILM-1718 | [stage-diagnosis](./phase-17-analytics-provenance/FILM-1718-stage-diagnosis.yaml) | DONE | M | FILM-1714, FILM-1715 |
 | FILM-1719 | [signal-surfaces](./phase-17-analytics-provenance/FILM-1719-signal-surfaces.yaml) | DRAFT | L | FILM-1706, FILM-1717, FILM-1718 |
 | FILM-1720 | [facebook-analytics](./phase-17-analytics-provenance/FILM-1720-facebook-analytics.yaml) | PARTIAL | L | FILM-1711, FILM-1714, FILM-1721, FILM-1723 |
