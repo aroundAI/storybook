@@ -4,10 +4,12 @@ import { mkdirSync } from 'node:fs';
 
 import {
   episodeVideoUrl,
+  insertRow,
   seedEpisodeWithShot,
   seedProject,
   seedTeamAccount,
   seedYouTubeConnection,
+  serviceRoleAuth,
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
@@ -39,7 +41,24 @@ async function capture(page: Page, name: string) {
       .every((animation) => animation.playState !== 'running'),
   );
   await page.screenshot({ path: `${OUT}/film-1729-${name}.png` });
+
+  // KB-157: the same screen in both themes, without reloading the dialog away
+  for (const theme of ['light', 'dark'] as const) {
+    await page.evaluate((value) => {
+      const root = document.documentElement;
+      root.classList.remove('light', 'dark');
+      root.classList.add(value);
+      root.style.colorScheme = value;
+    }, theme);
+    await page.screenshot({ path: `${OUT}/kb-157-${name}-${theme}.png` });
+  }
 }
+
+/** What the person reads (KB-157); the code stays on the element for support. */
+const EXPIRED =
+  'Your YouTube connection has expired. Reconnect YouTube in Settings → Platforms to publish.';
+const STOPPED =
+  'Your YouTube connection has stopped working. Reconnect YouTube in Settings → Platforms to publish.';
 
 test.describe('A refused platform says why, inline (FILM-1729)', () => {
   test('after a failed publish, and again after a second one', async ({
@@ -96,8 +115,10 @@ test.describe('A refused platform says why, inline (FILM-1729)', () => {
     const first = await publish();
     const reason = byTest(first, 'publish-platform-error');
 
-    // The token check's own reason: the stored token cannot be refreshed.
-    await expect(reason).toHaveText('NO_REFRESH_TOKEN');
+    // The token check's own reason: the stored token cannot be refreshed,
+    // worded for the person, with the code kept for support (KB-157).
+    await expect(reason).toHaveText(EXPIRED);
+    await expect(reason).toHaveAttribute('data-error-code', 'NO_REFRESH_TOKEN');
     await capture(page, '01-refused-inline');
 
     // Second submission, from the state the first left behind. That failure
@@ -108,9 +129,55 @@ test.describe('A refused platform says why, inline (FILM-1729)', () => {
 
     const second = await publish();
 
-    await expect(byTest(second, 'publish-platform-error')).toHaveText(
+    const secondReason = byTest(second, 'publish-platform-error');
+
+    await expect(secondReason).toHaveText(STOPPED);
+    await expect(secondReason).toHaveAttribute(
+      'data-error-code',
       'CONNECTION_INACTIVE',
     );
     await capture(page, '02-refused-again');
+  });
+
+  test('a failure stored as a bare code reads as a sentence in Published Content (KB-157)', async ({
+    page,
+  }) => {
+    const team = await seedTeamAccount({ emailPrefix: 'kb157' });
+    const project = await seedProject(team);
+    const { episodeId, slug } = await seedEpisodeWithShot(project.id);
+    const connectionId = await seedYouTubeConnection(
+      team.accountId,
+      'KB-157 channel',
+      { platformAccountId: `UC-kb157-${randomUUID()}` },
+    );
+
+    // What the scheduled-publish job and the publish worker stored for a
+    // token refusal before KB-157: the bare code, as the failure's text.
+    await insertRow(
+      'publishes',
+      {
+        episode_id: episodeId,
+        platform_connection_id: connectionId,
+        platform: 'youtube',
+        status: 'failed',
+        title: 'KB-157 video',
+        metadata: { error: 'NO_REFRESH_TOKEN' },
+      },
+      serviceRoleAuth(),
+    );
+
+    await signInAs(page, team);
+    await page.goto(
+      `/home/${team.slug}/studio/${project.slug}/episodes/${slug}/publish`,
+    );
+
+    const recorded = byTest(page, 'published-content-error');
+
+    await expect(recorded).toHaveText(EXPIRED);
+    await expect(recorded).toHaveAttribute(
+      'data-error-code',
+      'NO_REFRESH_TOKEN',
+    );
+    await capture(page, '03-published-content-record');
   });
 });
