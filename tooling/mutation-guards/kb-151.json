@@ -35,8 +35,8 @@
       "name": "KB-151 the snapshot writer drops the attention figures",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/server/ingest.ts",
-      "find": "    ...input.totals,\n    ...reelsAttention(input.platform, input.analytics),\n",
-      "replace": "    ...input.totals,\n",
+      "find": "    ...denominators,\n    ...reelsAttention(input.platform, input.analytics),\n",
+      "replace": "    ...denominators,\n",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/ingest.test.ts",
       "pattern": "reaches the snapshot row the sync inserts"
