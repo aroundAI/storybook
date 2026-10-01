@@ -143,9 +143,19 @@ export function useCardProvenance(
     // Dimmed because the selection is only platforms a date axis leaves
     // out: say that, not "this card is about YouTube only".
     const fetchDated = view.selectedPlatforms.filter(isFetchDated);
+    // The figure is the selected platforms' since FILM-1709 filters in the
+    // query, so the chip speaks for those alone. A dimmed card keeps the
+    // platforms it is about: its chip says what it would cover.
+    const inFigure = (plotted ?? ANALYTICS_PLATFORMS).filter((platform) =>
+      view.selectedPlatforms.includes(platform),
+    );
 
     return {
-      chip: provenanceChip(view, families, plotted),
+      chip: provenanceChip(
+        view,
+        families,
+        dimming.dimmed || inFigure.length === 0 ? plotted : inFigure,
+      ),
       windowLabel: view.windowLabel,
       dimming:
         dateAxis && dimming.dimmed && fetchDated.length > 0

@@ -24,6 +24,7 @@ import { Button } from '@kit/ui/button';
 
 import { unwrap } from '../../lib/action-result';
 import { platformLabel } from '../../lib/platform-labels';
+import { isSelected, selectsEveryPlatform } from '../../lib/platform-selection';
 import { TAB_FAMILIES } from '../../lib/provenance';
 import { isUnavailable } from '../../lib/query-state';
 import { dateAxisScope, isFetchDated } from '../../lib/row-dating';
@@ -111,6 +112,14 @@ interface DeepDiveTabProps {
   /** Project the deep-dive analysis is scoped to */
   projectId: string;
   /**
+   * The page's platform filter (FILM-1709), in its own order and never
+   * empty. This tab's scope is that list — every platform when all are
+   * selected — and its switcher is a shortcut onto the same selection,
+   * not a second one.
+   */
+  platforms: AnalyticsPlatform[];
+  onPlatformsChange: (platforms: AnalyticsPlatform[]) => void;
+  /**
    * The channel filter. It lives in the dashboard so this tab and the Video
    * Log show the same channel: two pickers with their own state on one page
    * is how the tabs start disagreeing about what is selected.
@@ -181,15 +190,20 @@ const DIAGNOSTICS_LIMIT = 25;
 export function DeepDiveTab({
   projectId,
   accountId,
+  platforms,
+  onPlatformsChange,
   connectionId,
   onConnectionChange,
 }: DeepDiveTabProps) {
   const [medianMode, setMedianMode] = useState<MedianMode>(
     'cohort_views_to_date',
   );
-  // FILM-1707 §2: the platform is explicit in the scope and changeable.
-  // Every platform by default, under the date-axis rule.
-  const [platform, setPlatform] = useState<AnalyticsPlatform | undefined>();
+  // FILM-1707 §2: the platform is explicit in the scope and changeable —
+  // since FILM-1709, from the page's filter. Every platform by default,
+  // under the date-axis rule; all selected leaves the key out.
+  const scopePlatforms = selectsEveryPlatform(platforms)
+    ? undefined
+    : platforms;
 
   /**
    * The filters this tab narrows its scope by. Channel comes from the
@@ -197,7 +211,7 @@ export function DeepDiveTab({
    * content type and language, which join this object when they get a
    * control.
    */
-  const filters = { connectionId, platform };
+  const filters = { connectionId, platforms: scopePlatforms };
 
   // "All" leaves a key out of the scope entirely rather than sending a
   // sentinel, so the actions see exactly the scope the reader chose.
@@ -205,9 +219,17 @@ export function DeepDiveTab({
     () => ({
       projectId,
       ...(filters.connectionId ? { connectionId: filters.connectionId } : {}),
-      ...(filters.platform ? { platform: filters.platform } : {}),
+      ...(filters.platforms ? { platforms: filters.platforms } : {}),
     }),
-    [projectId, filters.connectionId, filters.platform],
+    [projectId, filters.connectionId, filters.platforms],
+  );
+
+  const coverageScope = useMemo(
+    () => ({
+      projectId,
+      ...(filters.connectionId ? { connectionId: filters.connectionId } : {}),
+    }),
+    [projectId, filters.connectionId],
   );
 
   const channelsQuery = useProjectChannels(projectId);
@@ -215,29 +237,30 @@ export function DeepDiveTab({
   // The channel list follows the platform: a channel on another platform
   // could only ever answer "nothing".
   const channels = (channelsQuery.data ?? []).filter(
-    (channel) => !filters.platform || channel.platform === filters.platform,
+    (channel) =>
+      !filters.platforms || isSelected(filters.platforms, channel.platform),
   );
 
-  const onPlatformChange = (next: AnalyticsPlatform | undefined) => {
+  const onPlatformChange = (next: AnalyticsPlatform[]) => {
     const current = channelsQuery.data?.find(
       (channel) => channel.connectionId === filters.connectionId,
     );
 
-    if (next && current && current.platform !== next) {
+    if (current && !isSelected(next, current.platform)) {
       onConnectionChange(undefined);
     }
 
-    setPlatform(next);
+    onPlatformsChange(next);
   };
 
   // A single fetch-dated platform has nothing true to put on a date axis:
   // those cards say why instead of asking (FILM-1707 §2).
   const nothingDated =
-    filters.platform !== undefined && isFetchDated(filters.platform);
+    filters.platforms !== undefined && filters.platforms.every(isFetchDated);
 
   // What the date-axis cards plot, and the fetch-dated platforms this
   // project publishes to, for the one-time note.
-  const selection = filters.platform ? [filters.platform] : ANALYTICS_PLATFORMS;
+  const selection = filters.platforms ?? ANALYTICS_PLATFORMS;
   const plotted = dateAxisScope(selection, []).platforms;
   const excluded = dateAxisScope(
     ANALYTICS_PLATFORMS,
@@ -252,7 +275,7 @@ export function DeepDiveTab({
   // YouTube channel, and the gate is YouTube's, so any other selection skips
   // the query and says why.
   const yppApplies =
-    (!filters.platform || filters.platform === YPP_PLATFORM) &&
+    (!filters.platforms || filters.platforms.includes(YPP_PLATFORM)) &&
     (!filters.connectionId ||
       (selectedChannel?.platform === 'youtube' && selectedChannel.isActive));
 
@@ -263,7 +286,7 @@ export function DeepDiveTab({
       'deep-dive-median',
       projectId,
       filters.connectionId,
-      filters.platform,
+      filters.platforms,
       medianMode,
     ],
     queryFn: () =>
@@ -324,7 +347,7 @@ export function DeepDiveTab({
       'deep-dive-traffic-breakdown',
       projectId,
       filters.connectionId,
-      filters.platform,
+      filters.platforms,
       trafficWindow.key,
     ],
     queryFn: () =>
@@ -430,7 +453,7 @@ export function DeepDiveTab({
       'deep-dive-back-catalog',
       projectId,
       filters.connectionId,
-      filters.platform,
+      filters.platforms,
     ],
     queryFn: () => getBackCatalogAction({ scope, ageDays: 90 }),
     enabled: !nothingDated,
@@ -441,7 +464,7 @@ export function DeepDiveTab({
       'deep-dive-rolling',
       projectId,
       filters.connectionId,
-      filters.platform,
+      filters.platforms,
     ],
     queryFn: () =>
       getRollingViewsAction({ scope, windowDays: ROLLING_WINDOW_DAYS }),
@@ -453,7 +476,7 @@ export function DeepDiveTab({
       'deep-dive-returning-viewer',
       projectId,
       filters.connectionId,
-      filters.platform,
+      filters.platforms,
     ],
     queryFn: () => getReturningViewerProxyAction({ scope }),
   });
@@ -463,7 +486,7 @@ export function DeepDiveTab({
       'deep-dive-cohorts',
       projectId,
       filters.connectionId,
-      filters.platform,
+      filters.platforms,
     ],
     queryFn: () =>
       getCohortCurvesAction({
@@ -512,7 +535,7 @@ export function DeepDiveTab({
       'deep-dive-subscriber-series',
       projectId,
       filters.connectionId,
-      filters.platform,
+      filters.platforms,
       today,
     ],
     queryFn: () =>
@@ -602,10 +625,7 @@ export function DeepDiveTab({
       <DateAxisNote excluded={excluded} />
 
       <div className={'flex flex-wrap items-center justify-end gap-2'}>
-        <PlatformSwitcher
-          value={filters.platform}
-          onChange={onPlatformChange}
-        />
+        <PlatformSwitcher value={platforms} onChange={onPlatformChange} />
         <ChannelFilter
           channels={channels}
           value={filters.connectionId}
@@ -620,7 +640,7 @@ export function DeepDiveTab({
           title={'Median views per video'}
           icon={TrendingUp}
           metricFamily={'engagement'}
-          platforms={filters.platform ? [filters.platform] : undefined}
+          platforms={filters.platforms}
           onDateAxis
           marks={medianMarks}
           claim={dateAxisClaim(
@@ -740,7 +760,7 @@ export function DeepDiveTab({
             'Share of views from videos over 90 days old — the compounding signal.'
           }
           metricFamily={'engagement'}
-          platforms={filters.platform ? [filters.platform] : undefined}
+          platforms={filters.platforms}
           onDateAxis
           marks={backCatalogMarks}
           claim={dateAxisClaim(
@@ -773,7 +793,7 @@ export function DeepDiveTab({
             'Views over the trailing 90 days, which monthly totals are too noisy to show.'
           }
           metricFamily={'engagement'}
-          platforms={filters.platform ? [filters.platform] : undefined}
+          platforms={filters.platforms}
           onDateAxis
           marks={rollingMarks}
           claim={dateAxisClaim(
@@ -835,7 +855,7 @@ export function DeepDiveTab({
           title={'Upload cohorts'}
           icon={CalendarRange}
           metricFamily={'engagement'}
-          platforms={filters.platform ? [filters.platform] : undefined}
+          platforms={filters.platforms}
           onDateAxis
           claim={dateAxisClaim(
             nothingDated,
@@ -929,7 +949,7 @@ export function DeepDiveTab({
       <WeeklyDiagnosticsSection
         projectId={projectId}
         connectionId={filters.connectionId}
-        platform={filters.platform}
+        platforms={filters.platforms}
       />
     </div>
   );
@@ -940,13 +960,13 @@ export function DeepDiveTab({
   // Nested on purpose (FILM-1704 §4) — not a duplicate to fold into one.
   return (
     <CoverageProvider
-      scope={scope}
+      // Without the platforms: which platforms have data does not depend on
+      // which are selected, so a filter change does not ask again (FILM-1709
+      // §8). The selection itself is inherited from the page's provider.
+      scope={coverageScope}
       from={trafficWindow.from.toISOString().slice(0, 10)}
       to={trafficWindow.to.toISOString().slice(0, 10)}
       windowLabel={TRAFFIC_WINDOW_LABEL}
-      // One platform chosen here narrows what the cards dim for; otherwise
-      // the header filter's selection carries through.
-      selectedPlatforms={filters.platform ? [filters.platform] : undefined}
     >
       {tab}
     </CoverageProvider>
@@ -965,11 +985,12 @@ export function DeepDiveTab({
 function WeeklyDiagnosticsSection({
   projectId,
   connectionId,
-  platform,
+  platforms,
 }: {
   projectId: string;
   connectionId: string | undefined;
-  platform: AnalyticsPlatform | undefined;
+  /** Undefined is every platform. */
+  platforms: AnalyticsPlatform[] | undefined;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -980,7 +1001,7 @@ function WeeklyDiagnosticsSection({
       'weekly-diagnostics',
       projectId,
       connectionId ?? 'all',
-      platform ?? 'all',
+      platforms ?? 'all',
     ],
     queryFn: () =>
       unwrap(
@@ -988,7 +1009,7 @@ function WeeklyDiagnosticsSection({
           scope: {
             projectId,
             ...(connectionId ? { connectionId } : {}),
-            ...(platform ? { platform } : {}),
+            ...(platforms ? { platforms } : {}),
           },
           sinceDays: DIAGNOSTICS_WINDOW_DAYS,
           limit: DIAGNOSTICS_LIMIT,

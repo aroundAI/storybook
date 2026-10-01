@@ -11,6 +11,7 @@ import {
 
 import type { ChannelRef } from '../server/channels';
 import { platformLabel } from './platform-labels';
+import { NO_PLATFORM_SELECTED } from './platform-selection';
 
 /**
  * Provenance surfaces (FILM-1705): what the chip on a card, the strip under
@@ -201,10 +202,34 @@ function names(
   );
 }
 
-function connectedAs(view: CoverageView, platform: string) {
+function connectedAs(view: Pick<CoverageView, 'channels'>, platform: string) {
   const list = names(view.channels, platform);
 
   return list.length > 0 ? ` (${list.join(', ')})` : '';
+}
+
+/**
+ * Why a platform is absent from a figure, in the strip's words — and in the
+ * chip's, the card body's and the filter's (FILM-1709 §4). One builder, so
+ * selecting TikTok alone reads the same explanation on every card as the
+ * strip gives above them, rather than one empty state per card.
+ */
+export function absenceSentence(
+  view: Pick<CoverageView, 'windowLabel' | 'channels'>,
+  platform: AnalyticsPlatform,
+  kind: 'no_data_in_window' | 'not_authorised' | 'not_connected',
+): string {
+  const name = platformLabel(platform);
+  const as = connectedAs(view, platform);
+
+  switch (kind) {
+    case 'no_data_in_window':
+      return `${name}: connected${as}, but no data for ${view.windowLabel}.`;
+    case 'not_authorised':
+      return `${name}: connected${as}, but analytics access isn’t granted — reconnect it in settings.`;
+    case 'not_connected':
+      return `${name}: not connected. Connect a channel in settings to include it.`;
+  }
 }
 
 const UNKNOWN_SENTENCE = {
@@ -250,17 +275,9 @@ export function coverageLines(
       ];
     }
     case 'no_data_in_window':
-      return [
-        `${name} is connected${connectedAs(view, platform)}, but has no data for ${window}.`,
-      ];
     case 'not_authorised':
-      return [
-        `${name} is connected${connectedAs(view, platform)}, but hasn’t given us access to its analytics. Reconnecting it in settings asks again.`,
-      ];
     case 'not_connected':
-      return [
-        `No ${name} channel is connected to this project. Connect one to include ${name} here.`,
-      ];
+      return [absenceSentence(view, platform, coverage.kind)];
     case 'not_ingested':
     case 'unsupported':
       return coverage.notes;
@@ -304,6 +321,12 @@ function coverageWords(
   upTo: boolean,
 ) {
   if (platforms.length === 1) return `${platformLabel(platforms[0]!)} only`;
+
+  // Every platform the filter left in: named, since "All 2 platforms"
+  // reads as though there were only two (FILM-1709).
+  if (platforms.length === total && total < ANALYTICS_PLATFORMS.length) {
+    return `${upTo ? 'Up to ' : ''}${platforms.map(platformLabel).join(' + ')}`;
+  }
 
   const prefix = upTo ? 'Up to ' : '';
 
@@ -521,7 +544,6 @@ export function coverageStrip(
   const items: StripItem[] = ANALYTICS_PLATFORMS.map((platform) => {
     const name = platformLabel(platform);
     const coverage = platformCoverage(view, families, platform);
-    const as = connectedAs(view, platform);
 
     switch (coverage.kind) {
       case 'covered':
@@ -537,22 +559,12 @@ export function coverageStrip(
               sentence: `${name}: data through ${coverage.latestDate}.`,
             };
       case 'no_data_in_window':
-        return {
-          platform,
-          kind: 'no_data_in_window',
-          sentence: `${name}: connected${as}, but no data for ${window}.`,
-        };
       case 'not_authorised':
-        return {
-          platform,
-          kind: 'not_authorised',
-          sentence: `${name}: connected${as}, but analytics access isn’t granted — reconnect it in settings.`,
-        };
       case 'not_connected':
         return {
           platform,
-          kind: 'not_connected',
-          sentence: `${name}: not connected.`,
+          kind: coverage.kind,
+          sentence: absenceSentence(view, platform, coverage.kind),
         };
       case 'not_ingested':
         return {
@@ -657,10 +669,7 @@ export function cardDimming(
   if (families.length === 0) return { dimmed: false };
 
   if (selected.length === 0) {
-    return {
-      dimmed: true,
-      reasons: ['No platform is selected in the filter.'],
-    };
+    return { dimmed: true, reasons: [NO_PLATFORM_SELECTED] };
   }
 
   const capable = platforms.filter((platform) =>

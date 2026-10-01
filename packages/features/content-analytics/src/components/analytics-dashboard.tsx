@@ -7,6 +7,7 @@ import { subDays } from 'date-fns';
 import { formatDistanceToNow } from 'date-fns';
 import { Download, PieChart, TrendingUp } from 'lucide-react';
 
+import { ANALYTICS_PLATFORMS } from '@kit/clickhouse';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -28,6 +29,10 @@ import {
 import { localDateOf } from '../lib/local-date';
 import { ABSENT, measured } from '../lib/measured';
 import { platformLabel } from '../lib/platform-labels';
+import {
+  NO_PLATFORM_SELECTED,
+  orderedSelection,
+} from '../lib/platform-selection';
 import { TAB_FAMILIES, isAnalyticsTab } from '../lib/provenance';
 import { isoDay, viewDefinitionMarks } from '../lib/view-definition-marks';
 import { VIEWS_NOT_MEASURED, viewsShare, viewsToAdd } from '../lib/views';
@@ -95,15 +100,23 @@ export function AnalyticsDashboard({
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [contentView, setContentView] = useState<'cards' | 'table'>('cards');
 
+  // The filter's selection, in its own order (FILM-1709). Every read below
+  // takes it and filters in its query; none filters a response afterwards.
+  // Empty is the page's to say — nothing is asked for, and every tab and
+  // headline figure says no platform is selected.
+  const platforms = orderedSelection(selectedPlatforms);
+  const anySelected = platforms.length > 0;
+
   // Fetch project analytics with 5-minute auto-refresh
   const {
     data: projectData,
-    isLoading,
+    isLoading: isProjectLoading,
     dataUpdatedAt,
   } = useQuery({
     queryKey: [
       'project-analytics',
       projectId,
+      platforms,
       dateRange.from?.toISOString(),
       dateRange.to?.toISOString(),
     ],
@@ -112,9 +125,14 @@ export function AnalyticsDashboard({
         projectId,
         from: dateRange.from,
         to: dateRange.to,
+        platforms,
       }),
     refetchInterval: 5 * 60 * 1000, // 5 min auto-refresh
+    enabled: anySelected,
   });
+  // A disabled query is "pending" but not loading: without the selection
+  // in it, the page would draw an empty result for a question not asked.
+  const isLoading = anySelected && isProjectLoading;
 
   const previousRange = previousPeriod(dateRange);
 
@@ -123,6 +141,7 @@ export function AnalyticsDashboard({
     queryKey: [
       'project-analytics',
       projectId,
+      platforms,
       previousRange?.from.toISOString(),
       previousRange?.to.toISOString(),
     ],
@@ -131,8 +150,9 @@ export function AnalyticsDashboard({
         projectId,
         from: previousRange?.from,
         to: previousRange?.to,
+        platforms,
       }),
-    enabled: activeTab === 'insights' && !!previousRange,
+    enabled: activeTab === 'insights' && !!previousRange && anySelected,
   });
 
   // Fetch content list for Content tab
@@ -140,21 +160,22 @@ export function AnalyticsDashboard({
     queryKey: [
       'content-list',
       projectId,
-      selectedPlatforms,
+      platforms,
       dateRange.from?.toISOString(),
       dateRange.to?.toISOString(),
     ],
     queryFn: () =>
       getContentListAction({
         projectId,
-        platforms: selectedPlatforms,
+        platforms,
         from: dateRange.from,
         to: dateRange.to,
       }),
     enabled:
-      activeTab === 'content' ||
-      activeTab === 'overview' ||
-      activeTab === 'insights',
+      anySelected &&
+      (activeTab === 'content' ||
+        activeTab === 'overview' ||
+        activeTab === 'insights'),
   });
 
   // Fetch daily metrics for Performance Over Time chart
@@ -162,6 +183,7 @@ export function AnalyticsDashboard({
     queryKey: [
       'daily-metrics',
       projectId,
+      platforms,
       dateRange.from?.toISOString(),
       dateRange.to?.toISOString(),
     ],
@@ -170,8 +192,9 @@ export function AnalyticsDashboard({
         projectId,
         from: dateRange.from,
         to: dateRange.to,
+        platforms,
       }),
-    enabled: activeTab === 'overview',
+    enabled: anySelected && activeTab === 'overview',
   });
 
   // Recorded revenue per currency, for the Overview's revenue card (KB-16).
@@ -180,6 +203,7 @@ export function AnalyticsDashboard({
     queryKey: [
       'project-revenue-by-currency',
       projectId,
+      platforms,
       dateRange.from?.toISOString(),
       dateRange.to?.toISOString(),
     ],
@@ -188,8 +212,9 @@ export function AnalyticsDashboard({
         projectId,
         from: dateRange.from,
         to: dateRange.to,
+        platforms,
       }),
-    enabled: activeTab === 'overview',
+    enabled: anySelected && activeTab === 'overview',
   });
 
   // Audience data, for the Audience tab and for Overview's Top Regions and
@@ -200,6 +225,7 @@ export function AnalyticsDashboard({
     queryKey: [
       'audience-data',
       projectId,
+      platforms,
       dateRange.from?.toISOString(),
       dateRange.to?.toISOString(),
     ],
@@ -208,18 +234,17 @@ export function AnalyticsDashboard({
         projectId,
         from: dateRange.from,
         to: dateRange.to,
+        platforms,
       }),
     enabled:
-      activeTab === 'audience' ||
-      activeTab === 'overview' ||
-      activeTab === 'insights',
+      anySelected &&
+      (activeTab === 'audience' ||
+        activeTab === 'overview' ||
+        activeTab === 'insights'),
   });
 
-  // Filter data by selected platforms
-  // projectData.platformTotals has { platform, views, likes, comments, shares, percentage }
-  const filteredPlatformTotals = projectData?.platformTotals?.filter((p) =>
-    selectedPlatforms.includes(p.platform as Platform),
-  );
+  // Already the selected platforms': filtered in the query, not here.
+  const platformTotals = projectData?.platformTotals;
 
   // Transform flat ProjectAnalytics into AnalyticsTotals format
   // getProjectAnalytics returns flat fields (totalViews, totalLikes, etc.)
@@ -247,7 +272,7 @@ export function AnalyticsDashboard({
 
   // Build aggregate analytics object for AIInsights
   // Map platformTotals to PlatformBreakdown format (platform needs to be union type)
-  const platformMetrics = filteredPlatformTotals?.map((p) => ({
+  const platformMetrics = platformTotals?.map((p) => ({
     platform: p.platform as 'youtube' | 'tiktok' | 'instagram',
     views: p.views,
     likes: p.likes,
@@ -270,42 +295,8 @@ export function AnalyticsDashboard({
       }
     : null;
 
-  // Filter daily metrics by selected platforms
-  const filteredDailyMetrics: DailyMetric[] = (dailyMetrics || []).map(
-    (day) => {
-      // Sum metrics for selected platforms only
-      let views = 0;
-      let likes = 0;
-      let comments = 0;
-      let shares = 0;
-      const filteredByPlatform: Record<
-        string,
-        { views: Views; likes: number; comments: number; shares: number }
-      > = {};
-
-      if (day.byPlatform) {
-        for (const platform of selectedPlatforms) {
-          const platformData = day.byPlatform[platform];
-          if (platformData) {
-            views += viewsToAdd(platformData.views);
-            likes += platformData.likes;
-            comments += platformData.comments;
-            shares += platformData.shares;
-            filteredByPlatform[platform] = platformData;
-          }
-        }
-      }
-
-      return {
-        date: day.date,
-        views,
-        likes,
-        comments,
-        shares,
-        byPlatform: filteredByPlatform,
-      };
-    },
-  );
+  // The selected platforms' days, summed in the query (FILM-1709).
+  const performanceData: DailyMetric[] = dailyMetrics ?? [];
 
   const page = (
     <div className="space-y-6">
@@ -343,11 +334,12 @@ export function AnalyticsDashboard({
 
       {/* Metric Cards */}
       <MetricCards
-        data={totals}
+        data={anySelected ? totals : null}
         previousData={null}
         isLoading={isLoading}
         notMeasuredReason={NOT_COLLECTED_HERE_REASON}
         viewsScope={projectData?.viewsScope ?? null}
+        noFigureReason={anySelected ? undefined : 'No platform selected'}
       />
 
       {/* Tabs */}
@@ -376,91 +368,116 @@ export function AnalyticsDashboard({
           </TabsTrigger>
         </TabsList>
 
+        {!anySelected && (
+          <NoPlatformSelected
+            onSelectAll={() => setSelectedPlatforms([...ANALYTICS_PLATFORMS])}
+          />
+        )}
+
         <TabsContent value="overview" className="mt-6 space-y-6">
-          {/* New Overview Grid with Masonry Layout */}
-          <OverviewGrid
-            analytics={aggregateAnalytics}
-            audience={audienceData ?? undefined}
-            contentList={contentList}
-            revenue={revenueByCurrency ? measured(revenueByCurrency) : ABSENT}
-            isLoading={isLoading || isContentLoading || isRevenueLoading}
-            onViewAllContent={() => setActiveTab('content')}
-            onViewAIReport={() => setActiveTab('insights')}
-          />
+          {anySelected && (
+            <>
+              <OverviewGrid
+                analytics={aggregateAnalytics}
+                audience={audienceData ?? undefined}
+                contentList={contentList}
+                revenue={
+                  revenueByCurrency ? measured(revenueByCurrency) : ABSENT
+                }
+                isLoading={isLoading || isContentLoading || isRevenueLoading}
+                onViewAllContent={() => setActiveTab('content')}
+                onViewAIReport={() => setActiveTab('insights')}
+              />
 
-          <PerformanceOverTimeCard
-            data={filteredDailyMetrics}
-            platforms={selectedPlatforms}
-            isLoading={isLoading || isDailyMetricsLoading}
-            from={localDateOf(dateRange.from)}
-            to={localDateOf(dateRange.to)}
-          />
+              <PerformanceOverTimeCard
+                data={performanceData}
+                platforms={platforms}
+                isLoading={isLoading || isDailyMetricsLoading}
+                from={localDateOf(dateRange.from)}
+                to={localDateOf(dateRange.to)}
+              />
 
-          {/* Platform Breakdown (legacy - kept for detailed view) */}
-          {filteredPlatformTotals && filteredPlatformTotals.length > 0 && (
-            <PlatformDistributionCard data={filteredPlatformTotals} />
+              {/* Platform Breakdown (legacy - kept for detailed view) */}
+              {platformTotals && platformTotals.length > 0 && (
+                <PlatformDistributionCard data={platformTotals} />
+              )}
+            </>
           )}
         </TabsContent>
 
         <TabsContent value="content" className="mt-6">
-          <div
-            className="mb-4 flex gap-2"
-            role="group"
-            aria-label="Content view"
-          >
-            {(['cards', 'table'] as const).map((view) => (
-              <Button
-                key={view}
-                type="button"
-                size="sm"
-                variant={contentView === view ? 'default' : 'outline'}
-                aria-pressed={contentView === view}
-                onClick={() => setContentView(view)}
-                data-test={`content-view-${view}`}
+          {anySelected && (
+            <>
+              <div
+                className="mb-4 flex gap-2"
+                role="group"
+                aria-label="Content view"
               >
-                {view === 'cards' ? 'Cards' : 'Table'}
-              </Button>
-            ))}
-          </div>
-          {contentView === 'cards' ? (
-            <ContentGrid data={contentList} isLoading={isContentLoading} />
-          ) : (
-            <ContentTablePanel
-              accountId={accountId}
-              projectId={projectId}
-              data={contentList}
-              isLoading={isContentLoading}
-            />
+                {(['cards', 'table'] as const).map((view) => (
+                  <Button
+                    key={view}
+                    type="button"
+                    size="sm"
+                    variant={contentView === view ? 'default' : 'outline'}
+                    aria-pressed={contentView === view}
+                    onClick={() => setContentView(view)}
+                    data-test={`content-view-${view}`}
+                  >
+                    {view === 'cards' ? 'Cards' : 'Table'}
+                  </Button>
+                ))}
+              </div>
+              {contentView === 'cards' ? (
+                <ContentGrid data={contentList} isLoading={isContentLoading} />
+              ) : (
+                <ContentTablePanel
+                  accountId={accountId}
+                  projectId={projectId}
+                  data={contentList}
+                  isLoading={isContentLoading}
+                />
+              )}
+            </>
           )}
         </TabsContent>
 
         <TabsContent value="audience" className="mt-6">
-          {/* New Audience Grid with Masonry Layout */}
-          <AudienceGrid
-            data={audienceData ?? undefined}
-            isLoading={isAudienceLoading}
-          />
+          {anySelected && (
+            <AudienceGrid
+              data={audienceData ?? undefined}
+              isLoading={isAudienceLoading}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="deep-dive" className="mt-6">
-          <DeepDiveTab
-            projectId={projectId}
-            accountId={accountId}
-            connectionId={connectionId}
-            onConnectionChange={setConnectionId}
-          />
+          {anySelected && (
+            <DeepDiveTab
+              projectId={projectId}
+              accountId={accountId}
+              platforms={platforms}
+              onPlatformsChange={setSelectedPlatforms}
+              connectionId={connectionId}
+              onConnectionChange={setConnectionId}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="video-log" className="mt-6">
-          <VideoLogTab
-            projectId={projectId}
-            connectionId={connectionId}
-            onConnectionChange={setConnectionId}
-          />
+          {anySelected && (
+            <VideoLogTab
+              projectId={projectId}
+              platforms={platforms}
+              connectionId={connectionId}
+              onConnectionChange={setConnectionId}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="insights" className="mt-6">
-          {isPreviousLoading || isContentLoading || isAudienceLoading ? (
+          {!anySelected ? null : isPreviousLoading ||
+            isContentLoading ||
+            isAudienceLoading ? (
             <Skeleton className="h-64 w-full" />
           ) : (
             <AIInsights
@@ -472,7 +489,13 @@ export function AnalyticsDashboard({
         </TabsContent>
 
         <TabsContent value="language" className="mt-6">
-          <LanguageTab projectId={projectId} dateRange={dateRange} />
+          {anySelected && (
+            <LanguageTab
+              projectId={projectId}
+              dateRange={dateRange}
+              platforms={platforms}
+            />
+          )}
         </TabsContent>
       </Tabs>
 
@@ -503,6 +526,35 @@ export function AnalyticsDashboard({
     >
       {page}
     </CoverageProvider>
+  );
+}
+
+/**
+ * In place of every tab when the filter selects nothing (FILM-1709): a
+ * consequence of the selection, said once, with the way back — not fifteen
+ * cards each failing to load.
+ */
+function NoPlatformSelected({ onSelectAll }: { onSelectAll: () => void }) {
+  return (
+    <div
+      className="mt-6 flex flex-col items-start gap-3 rounded-2xl border border-dashed border-border bg-card p-6 text-sm text-muted-foreground"
+      data-test="analytics-no-platform-selected"
+      role="status"
+    >
+      <p className="font-medium text-foreground">{NO_PLATFORM_SELECTED}</p>
+      <p>
+        Every figure on this page is for the platforms the filter selects, so
+        with none selected there is nothing to show.
+      </p>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={onSelectAll}
+        data-test="analytics-select-all-platforms"
+      >
+        Select every platform
+      </Button>
+    </div>
   );
 }
 

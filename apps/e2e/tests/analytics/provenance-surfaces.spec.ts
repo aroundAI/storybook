@@ -151,7 +151,7 @@ test.describe('Provenance surfaces (FILM-1705)', () => {
     const strip = byTest(page, 'coverage-strip');
 
     await expect(byTest(strip, 'coverage-strip-instagram')).toHaveText(
-      'Instagram: not connected.',
+      'Instagram: not connected. Connect a channel in settings to include it.',
       SLOW,
     );
     await expect(byTest(strip, 'coverage-strip-instagram')).toHaveAttribute(
@@ -224,7 +224,9 @@ test.describe('Provenance surfaces (FILM-1705)', () => {
     await expect(instagram).toHaveAttribute('data-available', 'false');
     await expect(
       byTest(options, 'platform-filter-instagram-reason'),
-    ).toHaveText('Instagram: not connected.');
+    ).toHaveText(
+      'Instagram: not connected. Connect a channel in settings to include it.',
+    );
 
     // …and still selectable. Leave Instagram alone selected.
     await toggle(options, 'youtube');

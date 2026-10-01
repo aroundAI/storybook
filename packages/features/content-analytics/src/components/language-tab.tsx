@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { LANGUAGE_DIMENSIONS } from '@kit/clickhouse';
-import type { LanguageDimension } from '@kit/clickhouse';
+import type { AnalyticsPlatform, LanguageDimension } from '@kit/clickhouse';
 import { ToggleGroup, ToggleGroupItem } from '@kit/ui/toggle-group';
 
 import type { LanguageDivergence } from '../lib/language-divergence';
@@ -33,6 +33,11 @@ import {
 interface LanguageTabProps {
   projectId: string;
   dateRange: DateRangeValue;
+  /**
+   * The page's platform filter (FILM-1709), in its own order and never
+   * empty: the dashboard says "no platform selected" in place of the tab.
+   */
+  platforms: AnalyticsPlatform[];
 }
 
 /**
@@ -48,7 +53,11 @@ interface LanguageTabProps {
  * refetches every card, and a control that disappears while its own effect
  * loads cannot be seen to have changed.
  */
-export function LanguageTab({ projectId, dateRange }: LanguageTabProps) {
+export function LanguageTab({
+  projectId,
+  dateRange,
+  platforms,
+}: LanguageTabProps) {
   const [dimension, setDimension] = useState<LanguageDimension>('content');
 
   const input = {
@@ -56,12 +65,14 @@ export function LanguageTab({ projectId, dateRange }: LanguageTabProps) {
     from: dateRange.from,
     to: dateRange.to,
     dimension,
+    platforms,
   };
 
   const key = (name: string) => [
     name,
     projectId,
     dimension,
+    platforms,
     dateRange.from?.toISOString(),
     dateRange.to?.toISOString(),
   ];
@@ -82,6 +93,7 @@ export function LanguageTab({ projectId, dateRange }: LanguageTabProps) {
     queryKey: [
       'content-type-comparison',
       projectId,
+      platforms,
       dateRange.from?.toISOString(),
       dateRange.to?.toISOString(),
     ],
@@ -90,6 +102,7 @@ export function LanguageTab({ projectId, dateRange }: LanguageTabProps) {
         projectId,
         from: dateRange.from,
         to: dateRange.to,
+        platforms,
       }),
   });
 
@@ -109,8 +122,8 @@ export function LanguageTab({ projectId, dateRange }: LanguageTabProps) {
   });
 
   const divergence = useQuery({
-    queryKey: ['language-divergence', projectId],
-    queryFn: () => getLanguageDivergenceAction({ projectId }),
+    queryKey: ['language-divergence', projectId, platforms],
+    queryFn: () => getLanguageDivergenceAction({ projectId, platforms }),
   });
 
   const isLoading =

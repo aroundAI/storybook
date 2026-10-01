@@ -127,7 +127,10 @@ describe('the platform filter', () => {
         selected={['youtube']}
         onChange={onChange}
         available={['youtube', 'tiktok']}
-        reasons={{ instagram: 'Instagram: not connected.' }}
+        reasons={{
+          instagram:
+            'Instagram: not connected. Connect a channel in settings to include it.',
+        }}
       />,
     );
 
@@ -139,7 +142,9 @@ describe('the platform filter', () => {
 
     expect(instagram.getAttribute('data-available')).toBe('false');
     expect(instagram.className).toContain('opacity-60');
-    expect(instagram.textContent).toContain('Instagram: not connected.');
+    expect(instagram.textContent).toContain(
+      'Instagram: not connected. Connect a channel in settings to include it.',
+    );
 
     fireEvent.click(instagram.querySelector('button[role="checkbox"]')!);
 

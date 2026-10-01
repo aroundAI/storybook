@@ -10,6 +10,7 @@ import {
 } from '@kit/ui/select';
 
 import { platformLabel } from '../../lib/platform-labels';
+import { selectsEveryPlatform } from '../../lib/platform-selection';
 
 /** Radix `Select` cannot hold an empty value; "All platforms" needs a token. */
 const ALL_PLATFORMS = 'all';
@@ -19,32 +20,44 @@ function isPlatform(value: string): value is AnalyticsPlatform {
 }
 
 /**
- * The Deep Dive's platform (FILM-1707 §2, option 1's switcher): makes
- * `scope.platform` explicit and changeable.
+ * The Deep Dive's platform (FILM-1707 §2, option 1's switcher): makes the
+ * scope's platform explicit and changeable on the tab.
  *
- * All platforms by default — not YouTube, which was option 1's default and
- * is not what was chosen. One platform at a time, because `DimScope.platform`
- * is one value; the header's multi-select reaching this tab is FILM-1709's.
+ * Since FILM-1709 it is a shortcut onto the page's filter, not a second
+ * selection: it shows that selection and sets it. "All platforms" or one
+ * platform; a selection of two, made in the header, is named as such here
+ * and stays exactly as chosen — never quietly narrowed to its first.
  */
 export function PlatformSwitcher({
   value,
   onChange,
 }: {
-  /** `undefined` is every platform. */
-  value: AnalyticsPlatform | undefined;
-  onChange: (platform: AnalyticsPlatform | undefined) => void;
+  /** The page's selection, in its own order; never empty here. */
+  value: readonly AnalyticsPlatform[];
+  onChange: (platforms: AnalyticsPlatform[]) => void;
 }) {
+  const current = selectsEveryPlatform(value)
+    ? ALL_PLATFORMS
+    : value.length === 1
+      ? value[0]!
+      : // Radix shows the placeholder for an empty value: the header's
+        // several platforms, named.
+        '';
+
   return (
     <Select
-      value={value ?? ALL_PLATFORMS}
-      onValueChange={(next) => onChange(isPlatform(next) ? next : undefined)}
+      value={current}
+      onValueChange={(next) =>
+        onChange(isPlatform(next) ? [next] : [...ANALYTICS_PLATFORMS])
+      }
     >
       <SelectTrigger
-        className={'w-44'}
+        className={'w-56'}
         aria-label={'Platform'}
         data-test={'deep-dive-platform-switcher'}
+        data-selection={value.join(',')}
       >
-        <SelectValue />
+        <SelectValue placeholder={value.map(platformLabel).join(' + ')} />
       </SelectTrigger>
 
       <SelectContent>
