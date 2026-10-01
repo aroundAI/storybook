@@ -220,6 +220,25 @@ async function readCards(page: Page) {
 
 const chipOf = (card: Locator) => byTest(card, 'provenance-chip').first();
 
+/** Tabs whose cards are drawn whatever the data: the shell says what is missing. */
+const ALWAYS_CARDS = ['overview', 'deep-dive', 'video-log', 'language'];
+
+/**
+ * A tab has drawn its cards: the first one on tabs that always have them,
+ * and the requests settled on the others, which show an empty state of
+ * their own when nothing was reported (Content, Audience) or wait on a
+ * model (AI Insights).
+ */
+async function cardsDrawn(page: Page, tab: (typeof TABS)[number]) {
+  if (ALWAYS_CARDS.includes(tab)) {
+    await expect(
+      visible(page, '[data-card-shell="analytics"]').first(),
+    ).toBeVisible(SLOW);
+  } else {
+    await page.waitForLoadState('networkidle');
+  }
+}
+
 test.describe('Six-tab adoption (FILM-1707)', () => {
   test('every card on every tab is the one shell, with a family and a chip', async ({
     page,
@@ -230,13 +249,7 @@ test.describe('Six-tab adoption (FILM-1707)', () => {
 
     for (const tab of TABS) {
       await openTab(page, tab);
-      // A tab's cards are drawn once its first card has: the overview's
-      // views card, or any card on the others.
-      if (tab !== 'insights') {
-        await expect(
-          visible(page, '[data-card-shell="analytics"]').first(),
-        ).toBeVisible(SLOW);
-      }
+      await cardsDrawn(page, tab);
 
       const cards = await readCards(page);
 
@@ -381,9 +394,15 @@ test.describe('Six-tab adoption, measured (FILM-1707)', () => {
     const catalog = await barTitles(backCatalog);
 
     await byTest(page, 'median-mode-period').click();
+    // Two bars again, and not the upload-month ones: the skeleton between
+    // has none.
     await expect
-      .poll(async () => (await barTitles(median)).join('|'), SLOW)
-      .not.toBe(byUpload.join('|'));
+      .poll(async () => {
+        const titles = await barTitles(median);
+
+        return titles.length === 2 && titles.join('|') !== byUpload.join('|');
+      }, SLOW)
+      .toBe(true);
 
     const byPeriod = await barTitles(median);
 
@@ -461,6 +480,10 @@ test.describe('Six-tab adoption evidence (FILM-1707)', () => {
   test('all seven tabs, in both themes', async ({ page }) => {
     test.setTimeout(240_000);
 
+    // Tall enough for a tab's cards, which scroll inside the page's own
+    // container rather than the window.
+    await page.setViewportSize({ width: 1440, height: 2600 });
+
     const { url } = await seedPage(page);
 
     mkdirSync(OUT, { recursive: true });
@@ -480,10 +503,8 @@ test.describe('Six-tab adoption evidence (FILM-1707)', () => {
           await expect(
             byTest(byTest(page, 'deep-dive-rolling'), 'card-figure'),
           ).toHaveText('240', SLOW);
-        } else if (tab !== 'insights') {
-          await expect(
-            visible(page, '[data-card-shell="analytics"]').first(),
-          ).toBeVisible(SLOW);
+        } else {
+          await cardsDrawn(page, tab);
         }
 
         await page.screenshot({
