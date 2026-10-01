@@ -76,6 +76,7 @@ import type {
   VideoType,
 } from './publish-types';
 import { PublishedContentSection } from './published-content-section';
+import { publishedUploadStatus } from './published-upload-status';
 import { ShortsSection } from './shorts-section';
 import { UnpublishDialog } from './unpublish-dialog';
 import { UploadVideoDialog } from './upload-video-dialog';
@@ -1219,25 +1220,19 @@ export function PublishScreen({
 
       try {
         // Upload single platform
-        const results = await unwrap(
+        const [result] = await unwrap(
           publishToAllAction({
             episodeId: episode.id,
             platforms: [config],
           }),
         );
 
-        const result = results[0] as
-          | { status: string; url?: string; error?: string; errorCode?: string }
-          | undefined;
-
         // API returns 'completed' for success, 'failed' for failure
         if (result?.status === 'completed') {
           successCount++;
           setPlatformStatuses((prev) =>
             prev.map((s, idx) =>
-              idx === i
-                ? { ...s, status: 'success' as const, url: result.url }
-                : s,
+              idx === i ? publishedUploadStatus(s, result) : s,
             ),
           );
         } else {
