@@ -19,37 +19,34 @@ summary: >
   FILM-1711 audits analytics scopes only, FILM-1727 is X analytics) until
   this spec claimed it. It was deferred for want of X credentials; #488
   then shipped the scope and the connect-page notice (FILM-714), and the
-  2026-10-01 re-audit (§7) built the code-only parts. What still needs a
-  real X account stays open for FILM-1725.
+  2026-10-01 re-audit (§7) built the rest that needs no X account: the
+  publish screen now sends X its videos (owner decision, §8), anything X
+  would refuse is refused on the screen first, and the whole flow runs
+  against FILM-1802's X sandbox. A live refresh and a live upload stay open
+  for FILM-1725.
 acceptance_criteria:
   - text: "media.write requested, from the single X_MEDIA_UPLOAD_SCOPE constant; the scopes comment is true"
     met: true
-    evidence: "#488: TWITTER_OAUTH_CONFIG.scopes includes X_MEDIA_UPLOAD_SCOPE (packages/features/publishing/src/oauth/twitter/config.ts:23, the constant from packages/shared/src/vendors/x.ts:30), and the comment \"Required scopes for video upload and tweet creation\" (config.ts:19) is now true. Asserted by packages/features/publishing/__tests__/analytics-scopes.test.ts:33 and on the wire by apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts:237 (the authorize request's scope). The upload lambda takes the same constant (apps/web/lambda/publish-worker/handlers/twitter.ts:47) and validates nothing itself, so there is one source of truth. That a real token carrying it uploads is the last criterion, not this one"
+    evidence: "#488: TWITTER_OAUTH_CONFIG.scopes includes X_MEDIA_UPLOAD_SCOPE (packages/features/publishing/src/oauth/twitter/config.ts:23, the constant from packages/shared/src/vendors/x.ts:30), and the comment \"Required scopes for video upload and tweet creation\" (config.ts:19) is now true. Asserted by packages/features/publishing/__tests__/analytics-scopes.test.ts:33 and on the wire by apps/e2e/tests/platform-connections/disconnect-revoke.spec.ts:237 (the authorize request's scope). The upload lambda takes the same constant (apps/web/lambda/publish-worker/handlers/twitter.ts:65) and validates nothing itself, so there is one source of truth. That a real token carrying it uploads is the last criterion, not this one"
   - text: "Publishing-scope audit table for all five platforms in the capability reference, cited to vendor docs; any other gap found is fixed or filed"
     met: true
     evidence: "#TBD: docs/platform-capability-reference.md:594 \"Publishing scopes\" — YouTube, TikTok, Instagram, Facebook, X and LinkedIn, each endpoint we call, the vendor's scope and whether we request it, cited to the vendor page read 2026-10-01 (TikTok's Content Posting pages refused connections both days, so its row is marked inferred). One gap found and filed as a lead, not a KB, because it cannot be reproduced without a live account: Instagram publishing for a Business-Manager Page role also needs ads_management and ads_read, which we do not request (specs/known-bugs/leads/2026-10-01-publishing-scopes.md)"
   - text: "A connection lacking the scope is detected and sent to re-authorise; the refusal is returned as a value and its text asserted in a production-build E2E"
-    met: false
-    reason: "part — #TBD detects it from the grant stored at connect time and returns the refusal as a value naming the account and the fix (disconnect X and connect it again), before any row is written, in publishToAllAction and retryPublishAction (packages/features/publishing/src/server/publish-actions.ts:184 and :712, packages/features/publishing/src/lib/x-upload-scope.ts); packages/features/publishing/__tests__/publish-x-upload-scope.test.ts, 3 of 4 red before the fix. Not yet asserted in a production-build E2E. Scheduled publishes still fail in the worker with the 403 hint (handlers/twitter.ts:47), not this refusal"
+    met: true
+    evidence: "#TBD. Detected from the grant stored at connect time (holdsXUploadScope, packages/shared/src/vendors/x.ts:38) before any row is written: publishToAllAction's pre-flight (packages/features/publishing/src/server/publish-actions.ts:194, called at :357) and retryPublishAction (:766) return the refusal as a value naming the account and the fix — disconnect X and connect it again; the scheduled-publish worker fails the job with the same words before INIT (apps/web/lambda/publish-worker/handlers/twitter.ts:28). Unit: packages/features/publishing/__tests__/publish-x-upload-scope.test.ts (3 of 4 red before the fix), apps/web/lambda/publish-worker/__tests__/twitter.test.ts (2 red before). Production build: apps/e2e/tests/platform-connections/sandbox-x-upload-scope.spec.ts asserts the exact text on screen; red with the pre-flight removed, when the screen showed X's raw `Twitter upload init failed: 403 …` instead. The text is visible at all because the publish dialog now keeps each failed platform's reason inline (publish-progress-dialog.tsx; apps/e2e/tests/publishing/publish-error-inline.spec.ts, red against the old dialog: the rows were not rendered on the error stage)"
   - text: "X token refresh exists, or is shown not to be needed, with evidence"
     met: false
     reason: "partly met — KB-15 added X refresh (`refreshXToken`, packages/features/publishing/src/lib/token-refresh.ts:617), with unit evidence against a local stand-in for X; one live refresh against X is still deferred — no X developer app with pay-per-use credentials held"
   - text: "Playwright spec covers: publish refused → re-authorise → second publish accepted; screenshots of each state in the PR"
-    met: false
-    reason: "not built. The refusal and the reconnect could run against FILM-1802's X sandbox, which enforces media.write; the accepted second publish there proves our side only"
+    met: true
+    evidence: "#TBD: apps/e2e/tests/platform-connections/sandbox-x-upload-scope.spec.ts, against a production build and FILM-1802's X sandbox (2026-10-01, 2 passed with publish-error-inline.spec.ts): consent with media.write unticked → the stored grant lacks it → Publish All refused with the reason inline and no /2/media request in the sandbox ledger → reconnect granting it, same connection row → second publish accepted, the ledger showing initialize 200 and POST /2/tweets 201. Red with the pre-flight removed (above). Screenshots of each state: .local-ci/evidence/film-1729/film-1729-x-1-consent-without.png, -x-2-refused.png, -x-3-consent-granting.png, -x-4-published.png, and film-1729-01-refused-inline.png / -02-refused-again.png for the inline reasons. The sandbox proves our side against X's documented contract; a live upload is the next criterion"
   - text: "A real video is published to X end to end with a token carrying media.write"
     met: false
     reason: "cannot be ticked without the credential — FILM-1725 Check E; nothing above substitutes for it"
 remaining:
-  - criterion: "A connection lacking the scope is detected and sent to re-authorise; the refusal is returned as a value and its text asserted in a production-build E2E"
-    reason: "detection and the refusal value are built and unit-tested (#TBD); the production-build E2E assertion is not written"
-    closed_by: "unassigned"
   - criterion: "X token refresh exists, or is shown not to be needed, with evidence"
     reason: "refreshXToken exists with unit evidence (KB-15); one live refresh against X needs the credential"
     closed_by: "FILM-1725"
-  - criterion: "Playwright spec covers: publish refused → re-authorise → second publish accepted; screenshots of each state in the PR"
-    reason: "not built; reachable against FILM-1802's X sandbox without a credential"
-    closed_by: "unassigned"
   - criterion: "A real video is published to X end to end with a token carrying media.write"
     reason: "needs an X developer app with pay-per-use credit (FILM-1725 Check E)"
     closed_by: "FILM-1725"
@@ -160,13 +157,47 @@ notes: |
     time. `publishToAllAction` and `retryPublishAction` refuse an X
     connection without it as a value, naming the account and the fix, before
     anything is written. A connection with no recorded scopes predates the
-    scope and is refused the same way. Scheduled publishes still reach the
-    worker and fail there with the 403 hint.
+    scope and is refused the same way. A scheduled publish fails in the
+    worker with the same words, before INIT, instead of X's 403.
   - One source of truth (§4.2): the provider, the lambda and the OAuth config
     all take `X_MEDIA_UPLOAD_SCOPE`; neither upload path checks scopes itself.
   - The audit (§4.2): the "Publishing scopes" table in the capability
     reference. One gap, filed as a lead (Instagram, Business-Manager Page
     roles).
+
+  ## 8. X on the publish screen (owner decision, 2026-10-01)
+
+  Building the Playwright flow found that nothing in the product published
+  to X: the episode publish screen sent full videos only to YouTube and
+  Facebook and Shorts only to YouTube, Instagram, Facebook and TikTok, and
+  PublishHub, which lists X, is mounted nowhere (KB-148). The owner's
+  decision: X goes on the publish screen, for both full videos and Shorts,
+  and a video X would refuse is refused on the screen, as a value with a
+  clear reason, before any row is written — not discovered in the worker.
+
+  - The two lists, which were repeated seven times across three files, are
+    one pair in `@kit/publishing/lib/constants` (`FULL_VIDEO_PLATFORMS`,
+    `SHORTS_PLATFORMS`, `takesVideo()`), both now including X.
+  - X's limits, from https://docs.x.com/x-api/media/quickstart/best-practices
+    read 2026-10-01, in `X_VIDEO_LIMITS` (packages/shared/src/vendors/x.ts):
+    at least 0.5 s and at most 20 minutes (the default account; 125 for
+    Premium, which we cannot see, so the default applies), at most 8 GB, and
+    an aspect ratio between 1:3 and 3:1. A post's text, which is the title,
+    at most 280 characters (https://docs.x.com/fundamentals/counting-characters,
+    same day; counted per code point, while X weighs CJK and emoji as two, so
+    a title near the limit in those scripts can still be refused by X).
+  - Not enforced, and why: the same page says dimensions "must be between
+    32x32 and 1280x1024" and that subscribers "can upload a 1080p video" —
+    a contradiction, so no maximum is applied; frame rate, codec and pixel
+    format need the sample tables, not the header read here.
+  - The video's length and shape come from its own MP4 header, read with
+    HTTP range requests (`readMp4Facts`, packages/features/publishing/src/lib/mp4-facts.ts):
+    nothing is downloaded, a `moov` after the media is found by stepping
+    over box headers, and a rotated recording is reported in the shape it
+    plays. A file it cannot read is refused with a reason ("upload it again
+    as an MP4"), since X would refuse it too.
+  - Scheduled publishes are checked for scope in the worker; their video
+    limits are checked only when the publish is created on the screen.
 feature:
   database: null
   queries: []
