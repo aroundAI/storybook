@@ -216,7 +216,7 @@ test.describe('Connecting and disconnecting, and what the platform is asked (KB-
 
     await expect(x).toBeVisible();
     await expect(byTest(x, 'platform-limitation-twitter')).toContainText(
-      "Publishing to X doesn't work yet",
+      'Video uploads to X need the media.write permission',
     );
     await capture(page, '01-x-card');
 

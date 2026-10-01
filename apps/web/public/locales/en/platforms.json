@@ -23,7 +23,7 @@
     "scheduled_other": "{{count}} scheduled posts on this channel won't go out unless you reconnect before their time."
   },
   "limitation": {
-    "twitter": "Publishing to X doesn't work yet: X accepts video uploads only with a permission (media.write) that we don't request yet.",
+    "twitter": "Video uploads to X need the media.write permission. If you connected X before it was requested, disconnect and connect again.",
     "linkedin": "Personal profiles only. Connecting a company page isn't supported yet."
   },
   "disconnected": {
