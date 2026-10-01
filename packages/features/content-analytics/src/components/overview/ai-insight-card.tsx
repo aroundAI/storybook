@@ -40,7 +40,7 @@ const BY_AUTHOR = {
   },
   page: {
     title: 'Performance summary',
-    metricFamily: 'engagement',
+    metricFamily: 'summary',
     claim: {
       figure: null,
       noFigure: 'Nothing new is measured here.',
@@ -49,7 +49,7 @@ const BY_AUTHOR = {
   },
 } as const satisfies Record<
   'model' | 'page',
-  { title: string; metricFamily: 'generated' | 'engagement'; claim: CardClaim }
+  { title: string; metricFamily: 'generated' | 'summary'; claim: CardClaim }
 >;
 
 export function AIInsightCard({

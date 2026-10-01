@@ -5,10 +5,9 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { subDays } from 'date-fns';
 import { formatDistanceToNow } from 'date-fns';
-import { Download } from 'lucide-react';
+import { Download, PieChart, TrendingUp } from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -30,6 +29,7 @@ import { localDateOf } from '../lib/local-date';
 import { ABSENT, measured } from '../lib/measured';
 import { platformLabel } from '../lib/platform-labels';
 import { TAB_FAMILIES, isAnalyticsTab } from '../lib/provenance';
+import { isoDay, viewDefinitionMarks } from '../lib/view-definition-marks';
 import { VIEWS_NOT_MEASURED, viewsShare, viewsToAdd } from '../lib/views';
 import type { Views } from '../lib/views';
 import {
@@ -57,6 +57,8 @@ import { ExportReports } from './export-reports';
 import { LanguageTab } from './language-tab';
 import { MetricCards, NOT_COLLECTED_HERE_REASON } from './metric-cards';
 import { OverviewGrid } from './overview';
+import { AnalyticsCard } from './overview/analytics-card';
+import { type CardClaim, platformSplitClaim } from './overview/card-claim';
 import { PerformanceChart } from './performance-chart';
 import type { Platform } from './platform-filter';
 import { VideoLogTab } from './video-log';
@@ -383,33 +385,17 @@ export function AnalyticsDashboard({
             onViewAIReport={() => setActiveTab('insights')}
           />
 
-          {/* Performance Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance Over Time</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading || isDailyMetricsLoading ? (
-                <Skeleton className="h-[350px] w-full" />
-              ) : (
-                <PerformanceChart
-                  data={filteredDailyMetrics}
-                  platforms={selectedPlatforms}
-                />
-              )}
-            </CardContent>
-          </Card>
+          <PerformanceOverTimeCard
+            data={filteredDailyMetrics}
+            platforms={selectedPlatforms}
+            isLoading={isLoading || isDailyMetricsLoading}
+            from={localDateOf(dateRange.from)}
+            to={localDateOf(dateRange.to)}
+          />
 
           {/* Platform Breakdown (legacy - kept for detailed view) */}
           {filteredPlatformTotals && filteredPlatformTotals.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Platform Distribution (Detailed)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <PlatformBreakdownCard data={filteredPlatformTotals} />
-              </CardContent>
-            </Card>
+            <PlatformDistributionCard data={filteredPlatformTotals} />
           )}
         </TabsContent>
 
@@ -513,56 +499,121 @@ export function AnalyticsDashboard({
   );
 }
 
-interface PlatformBreakdownCardProps {
+/**
+ * Views per day over the header's window (FILM-1707: on the one shell). Not
+ * `onDateAxis`: §2's exclusion is Deep Dive's decision, and this chart's
+ * data is unchanged. It marks a view-definition change inside the window
+ * rather than drawing the step as though viewers made it (FILM-1722).
+ */
+export function PerformanceOverTimeCard({
+  data,
+  platforms,
+  isLoading,
+  from,
+  to,
+}: {
+  data: DailyMetric[];
+  platforms: Platform[];
+  isLoading: boolean;
+  from: string;
+  to: string;
+}) {
+  const plotted = platforms.filter((platform) =>
+    data.some((day) => (day.byPlatform?.[platform]?.views ?? 0) > 0),
+  );
+  const marks = viewDefinitionMarks(
+    plotted,
+    data[0] ? isoDay(data[0].date) : undefined,
+    data.at(-1) ? isoDay(data.at(-1)!.date) : undefined,
+  );
+  const total = data.reduce((sum, day) => sum + day.views, 0);
+
+  const claim: CardClaim | 'loading' = isLoading
+    ? 'loading'
+    : data.length === 0
+      ? {
+          figure: null,
+          noFigure: 'No daily figures in this period.',
+          sentence: `Nothing was recorded for the selected platforms from ${from} to ${to}.`,
+        }
+      : {
+          figure: formatNumber(total),
+          sentence: `Views per day, ${from} to ${to}.`,
+        };
+
+  return (
+    <AnalyticsCard
+      title="Performance Over Time"
+      icon={TrendingUp}
+      metricFamily="engagement"
+      platforms={platforms}
+      claim={claim}
+      marks={marks}
+      colSpan={2}
+      data-test="overview-performance"
+    >
+      {isLoading ? (
+        <Skeleton className="h-[350px] w-full" />
+      ) : (
+        <PerformanceChart data={data} platforms={platforms} marks={marks} />
+      )}
+    </AnalyticsCard>
+  );
+}
+
+interface PlatformDistributionCardProps {
   data: {
     platform: string;
     views: Views;
     likes: number;
     comments: number;
-    shares: number;
+    shares: number | null;
   }[];
 }
 
-function PlatformBreakdownCard({ data }: PlatformBreakdownCardProps) {
+/** Views, likes, comments and shares per platform, in neutral tokens: colour is never a platform. */
+function PlatformDistributionCard({ data }: PlatformDistributionCardProps) {
   const totalViews = data.reduce((sum, p) => sum + viewsToAdd(p.views), 0);
 
-  const PLATFORM_COLORS: Record<string, string> = {
-    youtube: 'bg-red-500',
-    tiktok: 'bg-black',
-    instagram: 'bg-gradient-to-r from-purple-500 to-pink-500',
-  };
-
   return (
-    <div className="space-y-4">
-      {data.map((platform) => {
-        const percentage = viewsShare(platform.views, totalViews);
-        return (
-          <div key={platform.platform} className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <div
-                  className={`h-3 w-3 rounded-full ${PLATFORM_COLORS[platform.platform] || 'bg-gray-500'}`}
-                />
+    <AnalyticsCard
+      title="Platform Distribution (Detailed)"
+      icon={PieChart}
+      metricFamily="engagement"
+      claim={platformSplitClaim(data)}
+      colSpan={2}
+      data-test="overview-platform-distribution"
+    >
+      <div className="space-y-4">
+        {data.map((platform) => {
+          const percentage = viewsShare(platform.views, totalViews);
+          return (
+            <div key={platform.platform} className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
                 <span className="font-medium">
                   {platformLabel(platform.platform)}
                 </span>
+                <span className="text-muted-foreground tabular-nums">
+                  {platform.views === null || percentage === null
+                    ? `Views ${VIEWS_NOT_MEASURED.toLowerCase()}`
+                    : `${formatNumber(platform.views)} views (${percentage.toFixed(1)}%)`}
+                </span>
               </div>
-              <div className="text-muted-foreground">
-                {platform.views === null || percentage === null
-                  ? `Views ${VIEWS_NOT_MEASURED.toLowerCase()}`
-                  : `${formatNumber(platform.views)} views (${percentage.toFixed(1)}%)`}
+              <Progress value={percentage ?? 0} className="h-2" />
+              <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
+                <span>{formatNumber(platform.likes)} likes</span>
+                <span>{formatNumber(platform.comments)} comments</span>
+                <span>
+                  {platform.shares === null
+                    ? 'shares not reported'
+                    : `${formatNumber(platform.shares)} shares`}
+                </span>
               </div>
             </div>
-            <Progress value={percentage ?? 0} className="h-2" />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{formatNumber(platform.likes)} likes</span>
-              <span>{formatNumber(platform.comments)} comments</span>
-              <span>{formatNumber(platform.shares)} shares</span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+    </AnalyticsCard>
   );
 }
 

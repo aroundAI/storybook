@@ -26,3 +26,27 @@ it('renders a summary as text, never as markup', () => {
   expect(container.querySelector('script')).toBeNull();
   expect(container.textContent).toContain('<img src=x onerror=');
 });
+
+/**
+ * FILM-1707: the Overview builds its summary from this page's own figures
+ * by a fixed rule. Its chip says that — not a platform's coverage, which
+ * would read as a measurement, and not "Not measured", which is a model's.
+ */
+it('chips a page-built summary as a page summary, not a measurement', () => {
+  const { container } = renderWithCoverage(
+    <AIInsightCard summary="10 views." author="page" />,
+  );
+
+  expect(container.querySelector('[data-test="provenance-chip"]')?.textContent).toContain('Page summary');
+  expect(
+    container.querySelector('[data-test="overview-ai-insight"]')?.getAttribute('data-metric-family'),
+  ).toBe('summary');
+});
+
+it('chips a model-written summary as not measured', () => {
+  const { container } = renderWithCoverage(
+    <AIInsightCard summary="Views held." author="model" />,
+  );
+
+  expect(container.querySelector('[data-test="provenance-chip"]')?.textContent).toContain('Not measured');
+});
