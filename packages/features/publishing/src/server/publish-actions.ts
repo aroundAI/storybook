@@ -41,6 +41,7 @@ import {
 } from '../lib/schemas/publish.schema';
 import { TAKEDOWN_REFUSAL, canTakeDown, projectRoleOf } from '../lib/takedown';
 import type { Platform, PublishResult } from '../lib/types';
+import { holdsXUploadScope, xUploadScopeRefusal } from '../lib/x-upload-scope';
 import {
   type YouTubeChannelDeclaration,
   type YouTubeDeclaration,
@@ -177,6 +178,40 @@ async function declareYouTubeUploads(platforms: PublishPlatformInput[]) {
 }
 
 /**
+ * FILM-1729. Refuses the whole request, naming every X account that cannot
+ * upload video, before anything is written.
+ */
+async function assertXUploadScope(platforms: PublishPlatformInput[]) {
+  const connectionIds = [
+    ...new Set(
+      platforms
+        .filter((platform) => platform.platform === 'twitter')
+        .map((platform) => platform.connectionId),
+    ),
+  ];
+
+  if (connectionIds.length === 0) return;
+
+  const { data: connections, error } = await getSupabaseServerClient()
+    .from('platform_connections')
+    .select('id, platform_account_name, scopes')
+    .in('id', connectionIds);
+
+  if (error) {
+    throw new Error('Could not read the X accounts being published to');
+  }
+
+  const lacking = connectionIds
+    .map((id) => connections?.find((row) => row.id === id))
+    .filter((row) => !row || !holdsXUploadScope(row.scopes))
+    .map((row) => row?.platform_account_name ?? 'this X account');
+
+  if (lacking.length > 0) {
+    throw new ActionRefusal(xUploadScopeRefusal(lacking));
+  }
+}
+
+/**
  * Publish video to all selected platforms
  */
 const publishToAllHandler = enhanceAction(
@@ -263,6 +298,9 @@ const publishToAllHandler = enhanceAction(
     // creator chose. Resolve them all before anything is written, so a
     // publish nobody declared leaves no row behind.
     const declared = await declareYouTubeUploads(platforms);
+
+    // FILM-1729: an X connection without media.write cannot upload video
+    await assertXUploadScope(platforms);
 
     // Publish to all platforms in parallel
     const results = await Promise.allSettled(
@@ -662,13 +700,25 @@ const retryPublish = enhanceAction(
     const { data: connection } = await client
       .from('platform_connections')
       .select(
-        'platform_account_id, platform_account_name, youtube_made_for_kids, youtube_category_id',
+        'platform_account_id, platform_account_name, youtube_made_for_kids, youtube_category_id, scopes',
       )
       .eq('id', publish.platform_connection_id)
       .single();
 
     if (!connection) {
       throw new ActionRefusal('Platform connection not found');
+    }
+
+    // FILM-1729: a retry cannot succeed until the account is reconnected
+    if (
+      publish.platform === 'twitter' &&
+      !holdsXUploadScope(connection.scopes)
+    ) {
+      throw new ActionRefusal(
+        xUploadScopeRefusal([
+          connection.platform_account_name ?? 'this X account',
+        ]),
+      );
     }
 
     // KB-30: a row scheduled before the audience was asked for carries no

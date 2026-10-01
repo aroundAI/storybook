@@ -62,6 +62,18 @@ function table(name: string) {
   const query = {
     select: () => query,
     eq: () => query,
+    // FILM-1729: the X account holds media.write, as one connected now does
+    in: () =>
+      Promise.resolve({
+        data: [
+          {
+            id: CONNECTIONS.twitter,
+            platform_account_name: 'Acme',
+            scopes: ['tweet.read', 'tweet.write', 'media.write', 'users.read'],
+          },
+        ],
+        error: null,
+      }),
     order: () => Promise.resolve({ data: db.publishRows, error: null as null }),
     insert: (row: Record<string, unknown>) => {
       db.inserted.push(row);
