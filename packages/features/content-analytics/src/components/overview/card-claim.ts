@@ -116,6 +116,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   youtube: 'YouTube',
   tiktok: 'TikTok',
   instagram: 'Instagram',
+  facebook: 'Facebook',
 };
 
 /**

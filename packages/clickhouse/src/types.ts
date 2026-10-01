@@ -8,7 +8,7 @@
 /**
  * Platform types supported by the analytics system
  */
-export type AnalyticsPlatform = 'youtube' | 'tiktok' | 'instagram';
+export type AnalyticsPlatform = 'youtube' | 'tiktok' | 'instagram' | 'facebook';
 
 /**
  * Origin of a metric row. Reporting-API rows are authoritative and replace

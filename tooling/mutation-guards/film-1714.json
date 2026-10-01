@@ -5,8 +5,8 @@
       "name": "SM1 A platform is added to AnalyticsPlatform (signal map)",
       "kind": "unit",
       "file": "packages/clickhouse/src/types.ts",
-      "find": "export type AnalyticsPlatform = 'youtube' | 'tiktok' | 'instagram';",
-      "replace": "export type AnalyticsPlatform = 'youtube' | 'tiktok' | 'instagram' | 'facebook';",
+      "find": "export type AnalyticsPlatform = 'youtube' | 'tiktok' | 'instagram' | 'facebook';",
+      "replace": "export type AnalyticsPlatform =\n  | 'youtube'\n  | 'tiktok'\n  | 'instagram'\n  | 'facebook'\n  | 'linkedin';",
       "cwd": "packages/clickhouse",
       "test": "__tests__/signal-map.test.ts",
       "pattern": "lists exactly the members of AnalyticsPlatform"
@@ -15,8 +15,8 @@
       "name": "SM2 A platform is added to AnalyticsPlatform (capability matrix)",
       "kind": "unit",
       "file": "packages/clickhouse/src/types.ts",
-      "find": "export type AnalyticsPlatform = 'youtube' | 'tiktok' | 'instagram';",
-      "replace": "export type AnalyticsPlatform = 'youtube' | 'tiktok' | 'instagram' | 'facebook';",
+      "find": "export type AnalyticsPlatform = 'youtube' | 'tiktok' | 'instagram' | 'facebook';",
+      "replace": "export type AnalyticsPlatform =\n  | 'youtube'\n  | 'tiktok'\n  | 'instagram'\n  | 'facebook'\n  | 'linkedin';",
       "cwd": "packages/clickhouse",
       "test": "__tests__/data-provenance.test.ts",
       "pattern": "lists exactly the members of AnalyticsPlatform"

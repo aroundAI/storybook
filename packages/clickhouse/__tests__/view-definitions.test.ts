@@ -38,8 +38,9 @@ describe('VIEW_DEFINITIONS', () => {
   });
 
   it('gives every ingested platform a definition behind its views column', () => {
-    // The three platforms `video_metrics.views` can hold today. Facebook and
-    // X are recorded but inert, so no definition of theirs claims the column.
+    // The three platforms `video_metrics.views` holds a figure for. Facebook
+    // writes NULL there (FILM-1720, migration 020) and X is not ingested, so
+    // no definition of theirs claims the column.
     for (const platform of ['youtube', 'tiktok', 'instagram'] as const) {
       expect(
         definitionsFor(platform).some((entry) => entry.role === 'views_column'),
@@ -141,6 +142,40 @@ describe('VIEW_DEFINITIONS', () => {
         'three_seconds',
       ]),
     );
+  });
+
+  it('marks the two Facebook fields Meta retired, with the changelog and replacements', () => {
+    const retired = VIEW_DEFINITIONS.filter(
+      (entry) => entry.availability === 'retired',
+    );
+
+    expect(retired.map((entry) => entry.id).sort()).toEqual([
+      'facebook.post_impressions_unique',
+      'facebook.total_video_impressions',
+    ]);
+
+    for (const entry of retired) {
+      if (entry.availability !== 'retired') continue;
+
+      expect(entry.retiredOn, entry.id).toBe('2026-07-29');
+      expect(entry.retiredBy, entry.id).toBe(
+        'https://developers.facebook.com/docs/graph-api/changelog/version25.0',
+      );
+
+      for (const id of entry.replacedBy) {
+        expect(definition(id), `${entry.id} -> ${id}`).toMatchObject({
+          platform: entry.platform,
+          availability: 'organic',
+        });
+      }
+    }
+
+    expect(definition('facebook.total_video_impressions')).toMatchObject({
+      replacedBy: ['facebook.post_media_view'],
+    });
+    expect(definition('facebook.post_impressions_unique')).toMatchObject({
+      replacedBy: ['facebook.post_total_media_view_unique'],
+    });
   });
 
   it('marks ThruPlay ads-only, with no organic field to request', () => {
@@ -297,13 +332,28 @@ describe('viewDefinitionAt', () => {
 
     expect(lookup.candidates.map((entry) => entry.field)).toEqual(
       expect.arrayContaining([
-        'total_video_impressions',
+        'post_media_view',
         'blue_reels_play_count',
         'total_video_views',
       ]),
     );
     // Not a candidate: there is no organic field to read it from.
     expect(lookup.candidates).not.toContain(definition('facebook.thruplay'));
+    // Nor are the fields Meta retired: requesting one is an error.
+    expect(lookup.candidates).not.toContain(
+      definition('facebook.total_video_impressions'),
+    );
+  });
+
+  it('resolves no lookup to a field the vendor retired', () => {
+    for (const field of [
+      'total_video_impressions',
+      'post_impressions_unique',
+    ]) {
+      expect(() =>
+        viewDefinitionAt('facebook', '2026-09-01', { field }),
+      ).toThrow(RangeError);
+    }
   });
 
   it('resolves a named field on a platform with no views column', () => {

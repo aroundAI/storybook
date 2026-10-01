@@ -121,6 +121,13 @@ export const SIGNAL_IDS = [
   'reposts_per_reach',
   'subscriber_conversion',
   'subscriber_view_share',
+  // Facebook (FILM-1720): its own denominators, each named for what it divides by.
+  'media_views',
+  'click_to_play_share',
+  'watch_time_per_play',
+  'watch_time_per_3s_view',
+  'complete_view_rate',
+  'follows_per_reach',
 ] as const;
 
 export type SignalId = (typeof SIGNAL_IDS)[number];
@@ -328,6 +335,60 @@ export const SIGNALS: Record<SignalId, SignalDefinition> = {
     composition: 'ratio',
     definition:
       'The share of views that came from people already subscribed. This is not new viewers against returning ones.',
+  },
+  // Facebook's impression replacement since Graph v26.0. A count of plays
+  // and displays, not of people: never a denominator beside a YouTube view.
+  media_views: {
+    id: 'media_views',
+    stage: 'reach',
+    inputs: ['reach'],
+    composition: 'measured',
+    definition:
+      'How many times Facebook played or showed the video, as Facebook counts it.',
+  },
+  // An intent split no other platform here offers: neither half is "views".
+  click_to_play_share: {
+    id: 'click_to_play_share',
+    stage: 'hook',
+    inputs: ['engagement'],
+    composition: 'ratio',
+    definition:
+      'Of the plays that lasted 3 seconds, the share that started because someone clicked play rather than because it played by itself.',
+  },
+  // Not `average_view_duration`, and not Facebook's own average: the time
+  // includes replays and the plays do not, so it can exceed the video's
+  // length. Divided here, so the denominator is ours to name.
+  watch_time_per_play: {
+    id: 'watch_time_per_play',
+    stage: 'attention',
+    inputs: ['watch_time', 'engagement'],
+    composition: 'ratio',
+    definition:
+      'Time watched, replays included, divided by first plays. It can be longer than the reel itself, because replays add time but not plays.',
+  },
+  watch_time_per_3s_view: {
+    id: 'watch_time_per_3s_view',
+    stage: 'attention',
+    inputs: ['watch_time', 'engagement'],
+    composition: 'ratio',
+    definition:
+      'Time watched divided by the plays that lasted at least 3 seconds. Plays shorter than that add time but are not counted.',
+  },
+  complete_view_rate: {
+    id: 'complete_view_rate',
+    stage: 'attention',
+    inputs: ['engagement'],
+    composition: 'ratio',
+    definition:
+      'Of the plays that lasted 3 seconds, the share that reached 97% of the video.',
+  },
+  follows_per_reach: {
+    id: 'follows_per_reach',
+    stage: 'audience',
+    inputs: ['engagement', 'accounts_reached'],
+    composition: 'ratio',
+    definition:
+      'Follows Facebook credits to the reel, per person who viewed it.',
   },
 };
 
@@ -661,6 +722,68 @@ const INSTAGRAM_REELS: FormatStageMap = {
   ),
 };
 
+const NO_IMPRESSIONS_FACEBOOK: UnavailableSignal = {
+  name: 'impressions',
+  note: 'Facebook stopped reporting how often a video was shown, and how many people saw it, with Graph API v26.0 in 2026.',
+};
+
+const FACEBOOK_OWN_AVERAGE: UnavailableSignal = {
+  name: 'average time watched, as Facebook reports it',
+  note: 'Facebook’s own average counts replay time but divides by first plays, so it can run longer than the video and is not comparable to an average view duration; we divide the totals ourselves instead.',
+};
+
+const NO_SAVES_FACEBOOK: UnavailableSignal = {
+  name: 'saves',
+  note: 'Facebook does not report saves for a video.',
+};
+
+/**
+ * Facebook Reels: every short, teaser and trailer published there. Bound to
+ * Facebook's own denominators (FILM-1720), none of which is a view in
+ * YouTube's sense, so no signal here divides by views.
+ */
+const FACEBOOK_REELS: FormatStageMap = {
+  reach: bound('accounts_reached', ['media_views'], [NO_IMPRESSIONS_FACEBOOK]),
+  hook: bound('click_to_play_share'),
+  attention: bound(
+    'watch_time_per_play',
+    ['complete_view_rate', 'audience_retention'],
+    [FACEBOOK_OWN_AVERAGE],
+  ),
+  transmission: bound(
+    'shares_per_reach',
+    ['comments_per_reach'],
+    [NO_SAVES_FACEBOOK],
+  ),
+  audience: bound('follows_per_reach'),
+};
+
+/** A Facebook video in the player: the Reels-only figures are absent. */
+const FACEBOOK_PLAYER: FormatStageMap = {
+  reach: bound('accounts_reached', ['media_views'], [NO_IMPRESSIONS_FACEBOOK]),
+  hook: bound('click_to_play_share'),
+  attention: bound(
+    'watch_time_per_3s_view',
+    ['complete_view_rate', 'audience_retention'],
+    [
+      FACEBOOK_OWN_AVERAGE,
+      {
+        name: 'plays',
+        note: 'Facebook counts first plays and replays for reels only, so a video in the player is divided by its 3-second plays.',
+      },
+    ],
+  ),
+  transmission: bound(
+    'shares_per_reach',
+    ['comments_per_reach'],
+    [NO_SAVES_FACEBOOK],
+  ),
+  audience: unbound(
+    'platform_does_not_expose_per_video_follows',
+    'Facebook credits follows to reels only, so who followed you from a video in the player cannot be known.',
+  ),
+};
+
 /**
  * Every platform × format × stage, with no defaults. The type rejects a
  * missing cell. `signal-map.test.ts` rejects a cell that claims more than
@@ -700,6 +823,15 @@ export const SIGNAL_MAP: Record<
     trailer: INSTAGRAM_REELS,
     clip: notPublished('Instagram', 'timeline clip'),
     live: notPublished('Instagram', 'live stream'),
+  },
+  facebook: {
+    short_vertical: FACEBOOK_REELS,
+    long_vertical: notPublished('Facebook', 'vertical long-form video'),
+    long_horizontal: FACEBOOK_PLAYER,
+    teaser: FACEBOOK_REELS,
+    trailer: FACEBOOK_REELS,
+    clip: notPublished('Facebook', 'timeline clip'),
+    live: notPublished('Facebook', 'live stream'),
   },
 };
 

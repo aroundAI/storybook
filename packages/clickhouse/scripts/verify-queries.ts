@@ -3000,6 +3000,8 @@ const ZERO_CONNECTION = '00000000-0000-0000-0000-000000000000';
  * | hand-d | 2026-02-03 | 02-04: 400 · 03-01: 100                      |   500 |
  * | hand-e | 2025-11-01 | none: uploaded before the channel's ingest   |     - |
  */
+const HAND_FACEBOOK = 'hand-fb';
+
 const HAND_VIDEOS = [
   {
     id: 'hand-a',
@@ -3104,6 +3106,47 @@ async function handComputedSteps() {
           metricFor({ project: HAND_PROJECT, id: video.id, date, views }),
         ),
       ),
+    );
+
+    // A Facebook reel beside them (FILM-1720): `views` is NULL, its own
+    // denominators are not. Every views figure below is worked out without
+    // it, because a Facebook play is not a YouTube view: a reader that
+    // counts it as a video with 0 views, or adds a denominator to views,
+    // moves an expected figure.
+    await insertVideoDims([
+      {
+        ...dimFor({
+          id: HAND_FACEBOOK,
+          project: HAND_PROJECT,
+          account: HAND_ACCOUNT,
+          connection: HAND_CHANNEL,
+          published: '2026-01-15',
+        }),
+        platform: 'facebook',
+        content_type: 'short',
+      },
+    ]);
+    await insertVideoMetrics(
+      ['2026-01-16', '2026-02-12'].map((date) => ({
+        ...metricFor({
+          project: HAND_PROJECT,
+          id: HAND_FACEBOOK,
+          date,
+          views: 0,
+        }),
+        platform: 'facebook' as const,
+        views: null,
+        likes: 7,
+        comments: 2,
+        shares: 1,
+        saves: null,
+        subscribers_lost: null,
+        metric_source: 'snapshot_delta' as const,
+        plays: 900,
+        views_3s: 500,
+        views_3s_organic: 400,
+        views_3s_paid: 100,
+      })),
     );
 
     const traffic = (
@@ -3406,6 +3449,54 @@ async function handComputedSteps() {
 
     return 'jan 0/9300 · feb 50/450 · mar 60/160';
   });
+
+  await step(
+    'assert: a Facebook reel adds nothing to views, by hand',
+    async () => {
+      const totals = await queryTotals({ projectId: HAND_PROJECT });
+      const facebook = await queryTotals({
+        projectId: HAND_PROJECT,
+        platforms: ['facebook'],
+      });
+
+      // Views: 210 + 200 + 9000 + 500 from the YouTube videos; the reel's
+      // two rows are NULL, so 9910. Likes: 0 on YouTube, 7 + 7 on the reel.
+      expectEqual('pooled views', totals.views, 9910);
+      expectEqual('pooled likes', totals.likes, 14);
+      // A Facebook-only selection has no views at all: the sum is NULL,
+      // which this reader reads as 0 (a sum over nothing).
+      expectEqual('facebook likes', facebook.likes, 14);
+
+      const client = getClickHouseClient();
+      const [kept] = await (
+        await client.query({
+          query: `
+            SELECT
+              countIf(views IS NULL) AS null_views,
+              sum(plays) AS plays,
+              sum(views_3s) AS views_3s,
+              sum(views_3s_organic) AS organic,
+              sum(views_3s_paid) AS paid
+            FROM video_metrics FINAL
+            WHERE project_id = {project: UUID} AND platform = 'facebook'
+          `,
+          query_params: { project: HAND_PROJECT },
+          format: 'JSONEachRow',
+        })
+      ).json<Record<string, string>>();
+
+      // Two rows of 900 plays, 500 three-second views (400 organic, 100 paid).
+      expectEqual('facebook denominators', kept, {
+        null_views: '2',
+        plays: '1800',
+        views_3s: '1000',
+        organic: '800',
+        paid: '200',
+      });
+
+      return 'views 9910 without the reel; its plays 1800, 3s 800 organic + 200 paid';
+    },
+  );
 
   await step('assert: cohort medians at 30 days are by hand', async () => {
     const cohorts = await queryCohortMedians({

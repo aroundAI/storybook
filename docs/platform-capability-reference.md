@@ -1277,6 +1277,8 @@ total_video_avg_time_watched
 total_video_view_total_time
 total_video_retention_graph
 total_video_complete_views
+total_video_views_organic  # 3s, organic reach (read 2026-10-01, FILM-1720)
+total_video_views_paid     # 3s, promoted (read 2026-10-01, FILM-1720)
 total_video_views_autoplayed
 total_video_views_clicked_to_play
 total_video_views_sound_on
@@ -1284,6 +1286,8 @@ total_video_10s_views
 total_video_30s_views
 total_video_60s_excludes_shorter_views
 total_video_view_time_by_age_bucket_and_gender
+total_video_views_by_age_bucket_and_gender # read 2026-10-01, FILM-1720; not ingested
+total_video_views_by_country_id # read 2026-10-01, FILM-1720; not ingested
 total_video_reactions_by_type_total
 blue_reels_play_count
 fb_reels_replay_count
@@ -1302,7 +1306,34 @@ creator_monetization_qualified_views
 
 <!-- fields: facebook/page-insights source: https://developers.facebook.com/docs/graph-api/reference/insights/ -->
 ```text
-page_media_view            # the only follower/non-follower split: is_from_followers
+page_media_view            # played or displayed; breakdowns is_from_ads, is_from_followers
+page_total_media_view_unique # unique media viewers; day, week, days_28 (read 2026-10-01)
+```
+
+<!-- fields: facebook/post-insights source: https://developers.facebook.com/docs/graph-api/reference/insights/ -->
+```text
+# GET /{post-id}/insights, read 2026-10-01 (FILM-1720). Graph v25.0's changelog
+# names these two in place of the retired post_impressions_unique.
+post_media_view            # "played or displayed"; lifetime; breakdowns is_from_ads, is_from_followers
+post_total_media_view_unique # "total unique media viewers for FB post"; lifetime
+```
+
+<!-- fields: facebook/video-fields source: https://developers.facebook.com/docs/graph-api/reference/video/ -->
+```text
+# GET /{video-id}?fields=… (FILM-1720), read 2026-10-01.
+post_id                    # the Page post the video belongs to
+comments                   # edge; .summary(true) answers summary.total_count
+```
+
+<!-- fields: facebook/post-fields source: https://developers.facebook.com/docs/graph-api/reference/post/ -->
+```text
+# GET /{post-id}?fields=shares (FILM-1720), read 2026-10-01.
+shares                     # {count}; absent on a post nobody has shared (inferred, see ledger)
+```
+
+<!-- fields: facebook/page-fields source: https://developers.facebook.com/docs/graph-api/reference/page/ -->
+```text
+followers_count            # the Page's followers; not recorded yet (FILM-1720 remaining)
 ```
 
 <!-- fields: x/media-analytics source: https://docs.x.com/x-api/media/get-media-analytics -->

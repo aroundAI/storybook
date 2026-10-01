@@ -48,6 +48,7 @@ import { groupTrafficRows } from './lib/traffic-groups';
 import type { TrafficBucket } from './lib/traffic-groups';
 import { computeIngestLagDays, computeMaturity } from './lib/video-age';
 import type { ViewsColumn } from './lib/view-definitions';
+import { VIEWS_COLUMN_PLATFORMS } from './lib/view-definitions';
 import type { VideoDim } from './types';
 
 export interface DimScope {
@@ -161,7 +162,17 @@ function assertDimScope(scope: DimScope): void {
 /**
  * WHERE conditions selecting video_dim rows for a scope.
  */
-function buildDimConditions(scope: DimScope): {
+function buildDimConditions(
+  scope: DimScope,
+  options: {
+    /**
+     * Keep to platforms whose `views` holds a figure (FILM-1720). Required
+     * of every reader that counts videos or takes a quantile of their
+     * views: a Facebook video's views are NULL, and counted it is a zero.
+     */
+    viewsOnly?: boolean;
+  } = {},
+): {
   conditions: string;
   /**
    * Filters on a column whose value changes over a video's life, applied
@@ -189,6 +200,10 @@ function buildDimConditions(scope: DimScope): {
   if (scope.platform) {
     conditions.push('platform = {scopePlatform: String}');
     params.scopePlatform = scope.platform;
+  }
+  if (options.viewsOnly) {
+    conditions.push('platform IN {viewsPlatforms: Array(String)}');
+    params.viewsPlatforms = [...VIEWS_COLUMN_PLATFORMS];
   }
   if (typeof scope.contentType === 'string') {
     if (scope.contentType) {
@@ -442,7 +457,9 @@ export async function queryMedianViewsPerVideo(input: {
   assertDimScope(input.scope);
 
   const client = getClickHouseClient();
-  const { conditions, latest, params } = buildDimConditions(input.scope);
+  const { conditions, latest, params } = buildDimConditions(input.scope, {
+    viewsOnly: true,
+  });
   const bucketFn =
     input.bucket === 'quarter' ? 'toStartOfQuarter' : 'toStartOfMonth';
 
@@ -843,7 +860,9 @@ export async function queryCohortMedians(input: {
   ).sort((a, b) => a - b);
 
   const client = getClickHouseClient();
-  const { conditions, latest, params } = buildDimConditions(input.scope);
+  const { conditions, latest, params } = buildDimConditions(input.scope, {
+    viewsOnly: true,
+  });
   const column = viewsColumnOf(input.viewsColumn);
 
   // Applied to the newest dim row (HAVING), like the other `latest` filters,
@@ -1634,7 +1653,9 @@ export async function querySegmentPerformance(input: {
   assertDimScope(input.scope);
 
   const client = getClickHouseClient();
-  const { conditions, latest, params } = buildDimConditions(input.scope);
+  const { conditions, latest, params } = buildDimConditions(input.scope, {
+    viewsOnly: true,
+  });
 
   // Floored to an integer, so it is safe to interpolate.
   const days = Math.max(1, Math.floor(input.checkpointDays ?? 30));
