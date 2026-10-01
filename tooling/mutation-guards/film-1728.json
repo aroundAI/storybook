@@ -110,6 +110,26 @@
       "cwd": "packages/shared",
       "test": "__tests__/vendor-api-versions.test.ts",
       "pattern": "the Graph pin carries the dates"
+    },
+    {
+      "name": "Facebook insights asks the resolver for Graph, past metaFetch",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/facebook/facebook-insights.ts",
+      "find": "              await metaFetch(`/${postId}?fields=shares`, { token }),",
+      "replace": "              await fetch(`${vendorUrl('meta-graph')}/${META_GRAPH_VERSION}/${postId}?fields=shares`),",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "has no vendor host or version literal outside"
+    },
+    {
+      "name": "The guard stops recognising graph.instagram.com",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/vendor-api-versions.test.ts",
+      "find": "    pattern: /graph(?:-video)?\\.facebook\\.com|graph\\.instagram\\.com/,",
+      "replace": "    pattern: /graph(?:-video)?\\.facebook\\.com/,",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "fails on a bare Meta fetch"
     }
   ]
 }

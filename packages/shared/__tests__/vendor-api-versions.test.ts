@@ -93,7 +93,9 @@ const PUBLIC_PAGES = [
 const VERSION_RULES: Rule[] = [
   {
     name: 'Meta Graph API host',
-    pattern: /graph(?:-video)?\.facebook\.com/,
+    // graph.instagram.com is the Instagram-Login API (§7.5): not called
+    // today, and if it ever is, through metaFetch.
+    pattern: /graph(?:-video)?\.facebook\.com|graph\.instagram\.com/,
     use: 'META_GRAPH_BASE or META_GRAPH_VIDEO_BASE',
   },
   {
@@ -112,8 +114,10 @@ const VERSION_RULES: Rule[] = [
     // FILM-1728 §7.3.A. With the hosts already confined to this directory,
     // these constants are the only way to build a Graph URL, so a caller that
     // names one is a bare fetch( of Meta that skips the served-version check.
+    // So is the resolver asked for a Graph origin directly.
     name: 'Meta Graph URL outside metaFetch',
-    pattern: /\bMETA_(?:GRAPH_BASE|GRAPH_VIDEO_BASE|OAUTH_TOKEN_URL)\b/,
+    pattern:
+      /\bMETA_(?:GRAPH_BASE|GRAPH_VIDEO_BASE|OAUTH_TOKEN_URL)\b|vendorUrl\(\s*['"`]meta-graph/,
     skipTests: true,
     use: "metaFetch('/path', { token })",
   },
@@ -196,32 +200,35 @@ const ANY_RULE = new RegExp(
   RULES.map((rule) => `(?:${rule.pattern.source})`).join('|'),
 );
 
+/** What the scan reports for `source`, as if it were the file at `file`. */
+function sourceViolations(file: string, source: string) {
+  const rules = RULES.filter(
+    (rule) =>
+      (rule.appliesTo?.test(file) ?? true) &&
+      !(rule.skipTests && TEST_FILE.test(file)),
+  );
+
+  return source.split('\n').flatMap((line, index) => {
+    if (!ANY_RULE.test(line)) return [];
+
+    const rest = withoutPublicPages(line);
+
+    return rules
+      .filter((rule) => rule.pattern.test(rest))
+      .map(
+        (rule) =>
+          `${file}:${index + 1} ${rule.name} - import ${rule.use} from @kit/shared/vendors`,
+      );
+  });
+}
+
 function violations() {
   return ROOTS.flatMap(sourceFiles)
     .map((file) => relative(REPO, join(REPO, file)).split(sep).join('/'))
     .filter((file) => !file.startsWith(`${VENDORS_DIR}/`) && file !== THIS_FILE)
-    .flatMap((file) => {
-      const rules = RULES.filter(
-        (rule) =>
-          (rule.appliesTo?.test(file) ?? true) &&
-          !(rule.skipTests && TEST_FILE.test(file)),
-      );
-
-      return readFileSync(join(REPO, file), 'utf8')
-        .split('\n')
-        .flatMap((line, index) => {
-          if (!ANY_RULE.test(line)) return [];
-
-          const rest = withoutPublicPages(line);
-
-          return rules
-            .filter((rule) => rule.pattern.test(rest))
-            .map(
-              (rule) =>
-                `${file}:${index + 1} ${rule.name} - import ${rule.use} from @kit/shared/vendors`,
-            );
-        });
-    });
+    .flatMap((file) =>
+      sourceViolations(file, readFileSync(join(REPO, file), 'utf8')),
+    );
 }
 
 describe('vendor API versions are declared once (FILM-1723)', () => {
@@ -244,6 +251,45 @@ describe('vendor API versions are declared once (FILM-1723)', () => {
       expect(violations()).toEqual([]);
     },
   );
+
+  /**
+   * FILM-1728 §7.3.A. Each way a caller could still reach Graph without
+   * metaFetch — and skip the served-version check — fed to the scan as a
+   * line of an ordinary source file.
+   */
+  it.each([
+    ["fetch('https://graph.facebook.com/v26.0/me')", 'Meta Graph API host'],
+    [
+      'fetch(`https://graph-video.facebook.com/${id}/videos`)',
+      'Meta Graph API host',
+    ],
+    ["fetch('https://graph.instagram.com/me/media')", 'Meta Graph API host'],
+    [
+      'fetch(`${META_GRAPH_BASE}/me/accounts`)',
+      'Meta Graph URL outside metaFetch',
+    ],
+    [
+      "fetch(`${vendorUrl('meta-graph')}/${META_GRAPH_VERSION}/me`)",
+      'Meta Graph URL outside metaFetch',
+    ],
+    [
+      'fetch(`${vendorUrl("meta-graph-video")}/${version}/${pageId}/videos`)',
+      'Meta Graph URL outside metaFetch',
+    ],
+  ])('fails on a bare Meta fetch: %s', (line, rule) => {
+    const found = sourceViolations('packages/example/src/client.ts', line);
+
+    expect(found.join('\n')).toContain(rule);
+  });
+
+  it('passes a metaFetch call', () => {
+    expect(
+      sourceViolations(
+        'packages/example/src/client.ts',
+        "metaFetch('/me/accounts?fields=id', { token })",
+      ),
+    ).toEqual([]);
+  });
 
   it('declares each pin exactly once inside the vendors directory', () => {
     const declared = sourceFiles(VENDORS_DIR)
