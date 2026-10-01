@@ -213,6 +213,8 @@ describe('YouTubeAnalyticsProvider', () => {
 
       expect(asked.filter((metrics) => /revenue/i.test(metrics))).toEqual([]);
       expect(result.revenueAccess).toBe('scope_missing');
+      // Not measured, so no day carries a figure (FILM-1726).
+      expect(result.dailyRevenue).toEqual([]);
       expect(result.totals).toEqual({
         ...NON_REVENUE_TOTALS,
         estimatedRevenue: 0,
@@ -222,8 +224,16 @@ describe('YouTubeAnalyticsProvider', () => {
     });
 
     it('fetches revenue in its own query and merges it into the totals', async () => {
+      // By day, so ClickHouse can hold each day's estimate (FILM-1726).
       answerByMetrics(() =>
-        Promise.resolve({ data: { rows: [[12.5, 10, 2.5]] } }),
+        Promise.resolve({
+          data: {
+            rows: [
+              ['2025-01-01', 5, 4, 1],
+              ['2025-01-02', 7.5, 6, 1.5],
+            ],
+          },
+        }),
       );
 
       const result = await provider.getVideoAnalytics({
@@ -238,7 +248,17 @@ describe('YouTubeAnalyticsProvider', () => {
       expect(revenueCalls).toEqual([
         'estimatedRevenue,estimatedAdRevenue,estimatedRedPartnerRevenue',
       ]);
+      expect(
+        mockReportsQuery.mock.calls
+          .map(([params]) => params as { metrics: string; dimensions?: string })
+          .find((params) => /revenue/i.test(params.metrics))?.dimensions,
+      ).toBe('day');
       expect(result.revenueAccess).toBe('authorised');
+      // 5 dollars = 500 cents; 7.5 = 750. The totals are the days summed.
+      expect(result.dailyRevenue).toEqual([
+        { date: '2025-01-01', estimatedRevenue: 500 },
+        { date: '2025-01-02', estimatedRevenue: 750 },
+      ]);
       expect(result.totals).toEqual({
         ...NON_REVENUE_TOTALS,
         estimatedRevenue: 1250, // 12.5 * 100 = 1250 cents
@@ -258,6 +278,7 @@ describe('YouTubeAnalyticsProvider', () => {
       expect(result.revenueAccess).toBe('account_type_gated');
       expect(result.totals.views).toBe(1000);
       expect(result.totals.estimatedRevenue).toBe(0);
+      expect(result.dailyRevenue).toEqual([]);
     });
 
     it('does not read a quota 403 on revenue as an access state', async () => {

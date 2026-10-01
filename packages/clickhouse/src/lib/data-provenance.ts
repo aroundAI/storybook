@@ -817,15 +817,14 @@ export const CAPABILITY_MATRIX: Record<
     // seen revenue come back (FILM-1725 Checks F and G), so it is pending.
     // A connection made before FILM-1711 does not hold it at all; that is
     // per connection, and `resolveAnalyticsAccess` (publishing) answers it.
+    // `monetisationAccess` turns the two into one creator's sentence.
     //
-    // `level` is ClickHouse ingestion, a separate axis:
-    // `video_metrics.revenue_cents` is still a literal 0 on every sync path,
-    // and FILM-1711's pipeline writes Postgres `revenue_records` instead.
-    // Whether revenue ever lands in ClickHouse is FILM-1726's decision.
+    // `level` is ClickHouse ingestion, a separate axis. Since FILM-1726 the
+    // sync writes each day YouTube reports to `video_revenue_daily`, and
+    // only for an authorised read. A day with no row was not measured.
     youtube: {
-      level: 'not_ingested',
-      table: null,
-      blockedBy: 'FILM-1726',
+      level: 'native',
+      table: 'video_revenue_daily',
       access: 'authorised',
       pendingVerification: {
         owner: 'FILM-1725',
@@ -835,7 +834,7 @@ export const CAPABILITY_MATRIX: Record<
       accountGate: YOUTUBE_PARTNER_PROGRAM,
       availability: 'included',
       window: YOUTUBE_ANALYTICS.window,
-      note: 'YouTube reports earnings, and we can now ask for permission to read them, but this figure is not that number yet, so YouTube revenue here is only what you enter yourself.',
+      note: 'YouTube reports estimated earnings for each day, in US dollars, once your channel has given permission to read them; a day without that permission shows as not measured, not as $0.',
       reference: {
         section: 'YouTube',
         surface: 'youtube/analytics-metrics',
@@ -1905,7 +1904,10 @@ export const WRITER_CALL_SITES: Record<SourceTable, readonly string[]> = {
     VERIFY_SCRIPT,
     `${CONTENT_ANALYTICS}/server/reporting/report-ingest.ts`,
   ],
-  video_revenue_daily: [VERIFY_SCRIPT],
+  video_revenue_daily: [
+    VERIFY_SCRIPT,
+    `${CONTENT_ANALYTICS}/server/analytics-sync-cron.ts`,
+  ],
   channel_daily: [
     VERIFY_SCRIPT,
     `${CONTENT_ANALYTICS}/server/reporting/report-ingest.ts`,

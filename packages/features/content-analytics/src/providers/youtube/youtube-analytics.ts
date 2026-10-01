@@ -22,6 +22,7 @@ import type {
   YouTubeAnalyticsInput,
   YouTubeAnalyticsResult,
   YouTubeDailyMetrics,
+  YouTubeDailyRevenue,
   YouTubeRevenueAccess,
   YouTubeTotals,
   YouTubeVideoInfo,
@@ -90,7 +91,15 @@ type RevenueTotals = Pick<
   'estimatedRevenue' | 'estimatedAdRevenue' | 'estimatedRedPartnerRevenue'
 >;
 
-function noRevenue(access: Exclude<YouTubeRevenueAccess, 'authorised'>) {
+interface RevenueRead {
+  access: YouTubeRevenueAccess;
+  totals: RevenueTotals;
+  daily: YouTubeDailyRevenue[];
+}
+
+function noRevenue(
+  access: Exclude<YouTubeRevenueAccess, 'authorised'>,
+): RevenueRead {
   return {
     access,
     totals: {
@@ -98,6 +107,7 @@ function noRevenue(access: Exclude<YouTubeRevenueAccess, 'authorised'>) {
       estimatedAdRevenue: 0,
       estimatedRedPartnerRevenue: 0,
     },
+    daily: [],
   };
 }
 
@@ -173,6 +183,7 @@ export class YouTubeAnalyticsProvider {
         period: { startDate: startDateStr, endDate: endDateStr },
         totals: { ...totalsFromDays(dailyData), ...revenue.totals },
         revenueAccess: revenue.access,
+        dailyRevenue: revenue.daily,
         dailyData,
         retention,
         demographics,
@@ -209,8 +220,10 @@ export class YouTubeAnalyticsProvider {
     videoId: string,
     startDate: string,
     endDate: string,
-  ): Promise<{ access: YouTubeRevenueAccess; totals: RevenueTotals }> {
+  ): Promise<RevenueRead> {
     try {
+      // By day, so each day's estimate can be stored (FILM-1726). The
+      // totals are those days summed, then rounded to cents once.
       const response = await this.youtubeAnalytics.reports.query({
         ids: 'channel==MINE',
         startDate,
@@ -220,18 +233,31 @@ export class YouTubeAnalyticsProvider {
           'estimatedAdRevenue',
           'estimatedRedPartnerRevenue',
         ].join(','),
+        dimensions: 'day',
         filters: `video==${videoId}`,
+        sort: 'day',
       });
 
-      const row = (response.data.rows?.[0] as number[] | undefined) ?? [];
+      const rows = (response.data.rows ?? []) as [
+        string,
+        number,
+        number,
+        number,
+      ][];
+      const sum = (column: 1 | 2 | 3) =>
+        rows.reduce((total, row) => total + (row[column] ?? 0), 0);
 
       return {
         access: 'authorised',
         totals: {
-          estimatedRevenue: Math.round((row[0] ?? 0) * 100), // cents
-          estimatedAdRevenue: Math.round((row[1] ?? 0) * 100),
-          estimatedRedPartnerRevenue: Math.round((row[2] ?? 0) * 100),
+          estimatedRevenue: Math.round(sum(1) * 100), // cents
+          estimatedAdRevenue: Math.round(sum(2) * 100),
+          estimatedRedPartnerRevenue: Math.round(sum(3) * 100),
         },
+        daily: rows.map(([date, revenue]) => ({
+          date,
+          estimatedRevenue: Math.round((revenue ?? 0) * 100),
+        })),
       };
     } catch (error) {
       return noRevenue(

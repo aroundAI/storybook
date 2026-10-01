@@ -2819,12 +2819,9 @@ const PRESENCE_PROBES: Record<MetricFamily, string | null> = {
   // existing says nothing about whether watch time was measured.
   watch_time: `SELECT DISTINCT platform FROM video_metrics
                WHERE ${NOT_NOISE} AND watch_time_seconds > 0`,
-  // Not checked, and said so rather than skipped silently. Fixtures — this
-  // one, and the E2E evidence seeds — carry `revenue_cents` on YouTube rows to
-  // exercise the sums, while every pipeline writer sets it to a literal 0. A
-  // probe here would be testing the fixtures. What binds `revenue` is the
-  // OAuth-scope marker in data-provenance.test.ts.
-  revenue: null,
+  // Its own table since migration 022 (FILM-1726): a row exists only for
+  // a measured day, so a row is the presence.
+  revenue: `SELECT DISTINCT platform FROM video_revenue_daily WHERE ${NOT_NOISE}`,
   traffic_sources: `SELECT DISTINCT platform FROM video_traffic_sources WHERE ${NOT_NOISE}`,
   retention_curve: `SELECT DISTINCT platform FROM video_retention_curves WHERE ${NOT_NOISE}`,
   reach: `SELECT DISTINCT platform FROM video_reach_daily WHERE ${NOT_NOISE}`,

@@ -7,6 +7,7 @@ import {
   insertRetentionCurves,
   insertVideoAudience,
   insertVideoMetrics,
+  insertVideoRevenueDaily,
   insertVideoSnapshots,
   queryLatestSnapshots,
 } from '@kit/clickhouse/server';
@@ -45,6 +46,7 @@ import {
   buildSnapshotRow,
   buildXQuartilePoints,
   buildYouTubeDailyRows,
+  buildYouTubeRevenueRows,
   computeSnapshotDelta,
   computeYouTubeWindow,
   facebookCumulativeTotals,
@@ -832,6 +834,14 @@ async function ingestYouTubeDaily(
   });
 
   await insertVideoMetrics(rows);
+  await insertVideoRevenueDaily(
+    buildYouTubeRevenueRows({
+      projectId,
+      videoId: publish.id,
+      revenueAccess: analytics.revenueAccess,
+      dailyRevenue: analytics.dailyRevenue,
+    }),
+  );
 
   await insertRetentionCurves(
     buildRetentionPoints({ projectId, videoId: publish.id, analytics }),

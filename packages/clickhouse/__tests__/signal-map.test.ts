@@ -835,6 +835,11 @@ describe('Monetisation (FILM-1726)', () => {
       expect(boundSignals(binding), format).toContain('estimated_revenue');
     }
     expect(SIGNALS.revenue_per_mille.inputs).toEqual(['revenue', 'engagement']);
+    // Ingested by day since FILM-1726: whether one creator's figure exists
+    // is `monetisationAccess`'s question, not the map's.
+    expect(stageReading('youtube', 'long_horizontal', 'monetisation').status).toBe(
+      'measurable',
+    );
   });
 
   it('reads a Short’s earnings, and names per-view earnings as unavailable', () => {

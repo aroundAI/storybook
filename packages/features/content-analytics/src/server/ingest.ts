@@ -9,6 +9,7 @@ import type {
   SnapshotTotals,
   VideoAudienceRow,
   VideoMetric,
+  VideoRevenueDaily,
   VideoSnapshot,
   YouTubeVideoMetric,
 } from '@kit/clickhouse';
@@ -31,6 +32,8 @@ import type {
 import type {
   YouTubeAnalyticsResult,
   YouTubeDailyMetrics,
+  YouTubeDailyRevenue,
+  YouTubeRevenueAccess,
 } from '../providers/youtube/types';
 
 /**
@@ -316,6 +319,33 @@ export function buildYouTubeDailyRows(input: {
     // and an omitted field would erase its figure (KB-50).
     engaged_views: engagedViewsFor(day),
     extra_metrics: NO_EXTRA_METRICS,
+  }));
+}
+
+/**
+ * YouTube's estimated earnings, one `video_revenue_daily` row per day it
+ * reported (FILM-1726). USD cents: the revenue query names no `currency`,
+ * and YouTube answers such a query in USD (KB-12).
+ *
+ * Only an authorised read writes anything. Without the monetary scope, or
+ * outside the Partner Program, YouTube measured nothing, and a missing row
+ * is how "not measured" is stored. A reported 0 is a measurement, and is
+ * written.
+ */
+export function buildYouTubeRevenueRows(input: {
+  projectId: string;
+  videoId: string;
+  revenueAccess: YouTubeRevenueAccess;
+  dailyRevenue: readonly YouTubeDailyRevenue[];
+}): VideoRevenueDaily[] {
+  if (input.revenueAccess !== 'authorised') return [];
+
+  return input.dailyRevenue.map((day) => ({
+    project_id: input.projectId,
+    video_id: input.videoId,
+    platform: 'youtube' as const,
+    metric_date: day.date,
+    revenue_cents: day.estimatedRevenue,
   }));
 }
 

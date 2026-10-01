@@ -55,7 +55,7 @@ type Store =
   | 'none';
 
 /** What may be written to ClickHouse as `revenue_cents`. */
-const EXPECTED_CLICKHOUSE_WRITERS: string[] = [];
+const EXPECTED_CLICKHOUSE_WRITERS = ['day.estimatedRevenue'];
 
 const WRITERS: Record<string, Array<{ value: string; store: Store }>> = {
   'packages/clickhouse/src/queries.ts': [
@@ -79,6 +79,11 @@ const WRITERS: Record<string, Array<{ value: string; store: Store }>> = {
     { value: 'Math.max(0, uncategorized)', store: 'none' },
     // …written with `currency: 'USD'`, asserted below.
     { value: 'write.revenueCents', store: 'postgres' },
+  ],
+  'packages/features/content-analytics/src/server/ingest.ts': [
+    // YouTube's estimate for one day, to `video_revenue_daily`: USD, since
+    // the query names no currency (next test), and only when authorised.
+    { value: 'day.estimatedRevenue', store: 'clickhouse' },
   ],
   'packages/features/content-analytics/src/server/revenue-actions.ts': [
     // The manual form: any currency, stored beside the figure.
