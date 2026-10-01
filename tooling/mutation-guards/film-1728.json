@@ -70,6 +70,16 @@
       "cwd": "apps/vendor-sandbox",
       "test": "__tests__/meta-version.test.ts",
       "pattern": "sends the header on a versioned Graph path"
+    },
+    {
+      "name": "A Facebook request asks for a metric Graph v25.0 deprecated",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/providers/facebook/facebook-provider.ts",
+      "find": "      `/${videoId}?fields=status,permalink_url`,",
+      "replace": "      `/${videoId}?fields=status,permalink_url,total_video_impressions`,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "total_video_impressions"
     }
   ]
 }
