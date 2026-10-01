@@ -34,6 +34,7 @@ import {
   getWeeklyDiagnosticsAction,
 } from '../../server/diagnostics-actions';
 import { getSubscriberSeriesAction } from '../../server/subscriber-series-actions';
+import { CoverageProvider } from '../coverage-context';
 import { AnalyticsCard } from '../overview/analytics-card';
 import {
   type CardClaim,
@@ -487,7 +488,7 @@ export function DeepDiveTab({
         }),
       );
 
-  return (
+  const tab = (
     <div className={'flex flex-col gap-4'} data-test={'deep-dive-tab'}>
       <div className={'flex items-center justify-end'}>
         <ChannelFilter
@@ -788,6 +789,21 @@ export function DeepDiveTab({
         connectionId={filters.connectionId}
       />
     </div>
+  );
+
+  // Its own coverage, for its own window. This tab ignores the header's
+  // date range and reads TRAFFIC_WINDOW_WEEKS complete weeks, so the
+  // dashboard's provider would describe a window these cards do not show.
+  // Nested on purpose (FILM-1704 §4) — not a duplicate to fold into one.
+  return (
+    <CoverageProvider
+      scope={scope}
+      from={trafficWindow.from.toISOString().slice(0, 10)}
+      to={trafficWindow.to.toISOString().slice(0, 10)}
+      windowLabel={TRAFFIC_WINDOW_LABEL}
+    >
+      {tab}
+    </CoverageProvider>
   );
 }
 

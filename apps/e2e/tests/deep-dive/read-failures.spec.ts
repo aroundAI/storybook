@@ -1,6 +1,7 @@
 import { Page, expect, test } from '@playwright/test';
 
 import { RevenuePageObject } from '../revenue/revenue.po';
+import { actionIdOf } from '../utils/action-ids';
 import { byTest } from '../utils/visible';
 import { DeepDivePageObject } from './deep-dive.po';
 
@@ -27,15 +28,16 @@ const ERROR_STATE = { timeout: 20_000 };
 const RETRIED_ATTEMPTS = 4;
 async function abortActionMatching(
   page: Page,
-  matches: (body: string) => boolean,
+  matches: (body: string, action: string) => boolean,
 ) {
   await page.route('**/*', async (route) => {
     const request = route.request();
+    const action = request.headers()['next-action'];
 
     if (
       request.method() === 'POST' &&
-      request.headers()['next-action'] &&
-      matches(request.postData() ?? '')
+      action &&
+      matches(request.postData() ?? '', action)
     ) {
       await route.abort('failed');
       return;
@@ -96,21 +98,12 @@ test.describe('Failed reads', () => {
     const deepDive = new DeepDivePageObject(page);
     const fixture = await deepDive.setup();
 
-    // `getSubscriberSeriesAction` is the only call whose argument is exactly
-    // a scope and a date window. The traffic breakdown also sends `scope`,
-    // `from` and `to`, but carries `bucket` too.
-    await abortActionMatching(page, (body) => {
-      try {
-        const [args] = JSON.parse(body) as Array<Record<string, unknown>>;
-        return (
-          Object.keys(args ?? {})
-            .sort()
-            .join() === 'from,scope,to'
-        );
-      } catch {
-        return false;
-      }
-    });
+    // By action id: Deep Dive's coverage request (FILM-1704) takes exactly a
+    // scope and a date window too, so the argument's shape no longer names
+    // the subscriber series alone.
+    const series = actionIdOf('getSubscriberSeriesAction');
+
+    await abortActionMatching(page, (_body, action) => action === series);
 
     await deepDive.goToDeepDive(fixture.team.slug, fixture.project.slug);
 

@@ -28,7 +28,7 @@ summary: >
 acceptance_criteria:
   - text: "A video is benchmarked against its own channel's history at the same checkpoint age"
     met: true
-    evidence: "queryVideoBenchmark (packages/clickhouse/src/queries-advanced.ts:953) joins the video's own figure with queryCohortMedians over the same channel (connection_id, across the account's projects), format family and language, published in the 24 months before it, at each checkpoint; both sides come from one per-video SQL builder (packages/clickhouse/src/queries-advanced.ts:365). Hand-computed on ClickHouse 24.8: sb-subject @30 500 against a median of 300 over n=5, @90 1,499 against 350 over n=6 (packages/clickhouse/scripts/verify-queries.ts:3942), 137/137 green. #501"
+    evidence: "queryVideoBenchmark (packages/clickhouse/src/queries-advanced.ts:954) joins the video's own figure with queryCohortMedians over the same channel (connection_id, across the account's projects), format family and language, published in the 24 months before it, at each checkpoint; both sides come from one per-video SQL builder (packages/clickhouse/src/queries-advanced.ts:366). Hand-computed on ClickHouse 24.8: sb-subject @30 500 against a median of 300 over n=5, @90 1,499 against 350 over n=6 (packages/clickhouse/scripts/verify-queries.ts:3966), 137/137 green. #501"
   - text: "Checkpoints are per platform, not a global constant"
     met: true
     evidence: "benchmarkCheckpointsFor (packages/clickhouse/src/lib/self-benchmark.ts:145) applies each platform's views data window (VIEWS_DATA_WINDOWS, packages/clickhouse/src/lib/self-benchmark.ts:102 — the FILM-1703 matrix for YouTube/TikTok/Instagram, the capability reference for Facebook and X): X on its 30-day path is judgable at 30 days only, YouTube at all four (packages/clickhouse/__tests__/self-benchmark.test.ts:259, :275). Guard SB4. #501"
@@ -52,7 +52,7 @@ acceptance_criteria:
     reason: "Data half met: below MIN_MATURE_VIDEOS the result is insufficient_cohort with no band and no lift, never 'below' (packages/clickhouse/__tests__/self-benchmark.test.ts:70, guard SB2; packages/clickhouse/__tests__/self-benchmark-query.test.ts:184). Rendering is FILM-1719's"
   - text: "Relaxation is ordered, bounded, and reported via relaxedAxes"
     met: true
-    evidence: "BENCHMARK_RELAXATION (packages/clickhouse/src/lib/self-benchmark.ts:67): 24 months, then 48, then any language, then stop; chooseRelaxation (packages/clickhouse/src/lib/self-benchmark.ts:647) takes the first step with n >= MIN_MATURE_VIDEOS and otherwise reports the widest. On ClickHouse: sb-es-subject relaxes to ['window', 'language'] at n=7 (packages/clickhouse/scripts/verify-queries.ts:3997). Guard SB7. #501"
+    evidence: "BENCHMARK_RELAXATION (packages/clickhouse/src/lib/self-benchmark.ts:67): 24 months, then 48, then any language, then stop; chooseRelaxation (packages/clickhouse/src/lib/self-benchmark.ts:647) takes the first step with n >= MIN_MATURE_VIDEOS and otherwise reports the widest. On ClickHouse: sb-es-subject relaxes to ['window', 'language'] at n=7 (packages/clickhouse/scripts/verify-queries.ts:4021). Guard SB7. #501"
   - text: "The channel axis cannot be relaxed"
     met: true
     evidence: "RelaxableAxis is 'window' | 'language' (packages/clickhouse/src/lib/self-benchmark.ts:53) and BenchmarkCohortScope requires connectionId (packages/clickhouse/src/lib/self-benchmark.ts:86); @ts-expect-error proves both at packages/clickhouse/__tests__/self-benchmark.test.ts:424. Every cohort query carries the channel (packages/clickhouse/__tests__/self-benchmark-query.test.ts:143, guard SB10), and dropping it goes red on ClickHouse (sb-elsewhere's 99,999 joins). #501"
@@ -61,7 +61,7 @@ acceptance_criteria:
     evidence: "formatFamily is required on BenchmarkCohortScope and absent from RelaxableAxis (packages/clickhouse/src/lib/self-benchmark.ts:86); every step filters by DimScope.formatFamily (packages/clickhouse/__tests__/self-benchmark-query.test.ts:143, guard SB11), and dropping it goes red on ClickHouse (sb-short's 50,000 joins). #501"
   - text: "observedLift and adjustedLift both survive to the raw layer"
     met: true
-    evidence: "Both are fields of BenchmarkComparison (packages/clickhouse/src/lib/self-benchmark.ts:530, :439); asserted at packages/clickhouse/__tests__/self-benchmark.test.ts:56 and against ClickHouse at packages/clickhouse/scripts/verify-queries.ts:3942. #501"
+    evidence: "Both are fields of BenchmarkComparison (packages/clickhouse/src/lib/self-benchmark.ts:530, :439); asserted at packages/clickhouse/__tests__/self-benchmark.test.ts:56 and against ClickHouse at packages/clickhouse/scripts/verify-queries.ts:3966. #501"
   - text: "A two-video cohort cannot outrank a hundred-video one"
     met: true
     evidence: "shrinkLift (packages/clickhouse/src/lib/self-benchmark.ts:515): 1 + (lift - 1) * n / (n + 15). The naive control ranks 2.8x on n=2 first; adjusted, 1.21x falls below 1.30x on n=100 (packages/clickhouse/__tests__/self-benchmark.test.ts:224, :227, guard SB1); and a two-video comparison is insufficient_cohort, which rankingLift never ranks (packages/clickhouse/__tests__/self-benchmark.test.ts:234). #501"
@@ -70,23 +70,23 @@ acceptance_criteria:
     evidence: "benchmarkVideoAgainstCohort calls resolveConfidence (packages/clickhouse/src/lib/self-benchmark.ts:596); MIN_MATURE_VIDEOS is now CONFIDENCE_DIRECTIONAL_MIN imported, not a second 5 (packages/clickhouse/src/lib/cohort-growth.ts:16). Asserted at packages/clickhouse/__tests__/self-benchmark.test.ts:119, :136; guard SB8. #501"
   - text: "A video excluded from the cohort denominator is also suppressed on the numerator side"
     met: true
-    evidence: "On ClickHouse, sb-late is counted as predating ingest in its successor's cohort (predatesIngestCount 1) and is not_judgable predates_ingest (lag 36) as itself (packages/clickhouse/scripts/verify-queries.ts:4028); a late-evening upload is mature on both sides (packages/clickhouse/scripts/verify-queries.ts:4078). Both sides read the channel's ingest start from one function (packages/clickhouse/src/queries-advanced.ts:338). Removing the subject-side rule, or the calendar-day fix (KB-152), was seen red there. Guards SB6, SB9, KB152 M1/M2. #501"
+    evidence: "On ClickHouse, sb-late is counted as predating ingest in its successor's cohort (predatesIngestCount 1) and is not_judgable predates_ingest (lag 36) as itself (packages/clickhouse/scripts/verify-queries.ts:4052); a late-evening upload is mature on both sides (packages/clickhouse/scripts/verify-queries.ts:4102). Both sides read the channel's ingest start from one function (packages/clickhouse/src/queries-advanced.ts:339). Removing the subject-side rule, or the calendar-day fix (KB-152), was seen red there. Guards SB6, SB9, KB152 M1/M2. #501"
   - text: "A cohort median, growth figure or benchmark whose window crosses a view-definition change is computed on the continuous alternative where it covers the window, and otherwise suppressed with `view_definition_changed` and the date — both via `viewsDenominatorFor` (FILM-1722)"
     met: false
-    reason: "Benchmark half met: each step's range goes through viewsDenominatorFor (benchmarkStepSeries, packages/clickhouse/src/lib/self-benchmark.ts:368). Where the continuous series begins inside the window, the window starts there and the result carries peerWindow (owner decision 2026-10-01; packages/clickhouse/__tests__/self-benchmark.test.ts:542, guard SB14) — on ClickHouse, sb-f-subj is compared with 16 of 24 months on engaged views (packages/clickhouse/scripts/verify-queries.ts:4165). A change with no continuous series stays suppressed with its date: an Instagram Reel across 2025-04-21 (packages/clickhouse/__tests__/self-benchmark.test.ts:575, packages/clickhouse/scripts/verify-queries.ts:4140). The Deep Dive cohort curves' medians and growth (getCohortCurvesAction) still read views across a change"
+    reason: "Benchmark half met: each step's range goes through viewsDenominatorFor (benchmarkStepSeries, packages/clickhouse/src/lib/self-benchmark.ts:368). Where the continuous series begins inside the window, the window starts there and the result carries peerWindow (owner decision 2026-10-01; packages/clickhouse/__tests__/self-benchmark.test.ts:542, guard SB14) — on ClickHouse, sb-f-subj is compared with 16 of 24 months on engaged views (packages/clickhouse/scripts/verify-queries.ts:4189). A change with no continuous series stays suppressed with its date: an Instagram Reel across 2025-04-21 (packages/clickhouse/__tests__/self-benchmark.test.ts:575, packages/clickhouse/scripts/verify-queries.ts:4164). The Deep Dive cohort curves' medians and growth (getCohortCurvesAction) still read views across a change"
 open_questions: []
 feature:
   database: null
   queries:
     - name: "queryVideoBenchmark"
       purpose: "one video against its own channel at each checkpoint: subject figure and cohort quantiles from the same per-video SQL, relaxation, views series from viewsDenominatorFor, judged by lib/self-benchmark.ts"
-      file: "packages/clickhouse/src/queries-advanced.ts:953"
+      file: "packages/clickhouse/src/queries-advanced.ts:954"
     - name: "queryVideoViewsAtAge"
       purpose: "a video's views at 30/90/180/365 days, gated by matureAt, with ingestLagDays"
-      file: "packages/clickhouse/src/queries-advanced.ts:1980"
+      file: "packages/clickhouse/src/queries-advanced.ts:2101"
     - name: "queryCohortMedians"
       purpose: "the channel's own median/p25/p75 at the same checkpoint ages, quantileExact so deterministic, maturity judged per video per checkpoint, LEFT JOIN so a zero-view video counts as zero; now also one 'all' cohort over a publish window, on a chosen views series"
-      file: "packages/clickhouse/src/queries-advanced.ts:810"
+      file: "packages/clickhouse/src/queries-advanced.ts:811"
   actions: []
   ui: []
   provider_integration: null

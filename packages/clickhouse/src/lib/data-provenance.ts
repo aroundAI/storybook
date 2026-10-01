@@ -1096,6 +1096,216 @@ export function coverageSummary(
   return summary;
 }
 
+// ---------------------------------------------------------------------------
+// Observed coverage (FILM-1704). The matrix above says what a platform *can*
+// report; this says what a project *has*, in one window. The query lives in
+// `queries-advanced.ts` (`queryObservedCoverage`); the fold lives here so it
+// is pure and testable without a database.
+// ---------------------------------------------------------------------------
+
+/**
+ * The fact tables `queryObservedCoverage` reads, once each, in one
+ * statement. A family read from any other table (`video_audience`,
+ * `channel_subscribers`, `channel_windows`) gets no observed answer from it
+ * — see `foldObservedCoverage`.
+ */
+export const OBSERVED_COVERAGE_TABLES = [
+  'video_metrics',
+  'video_traffic_sources',
+  'video_reach_daily',
+  'video_retention_curves',
+  'channel_daily',
+] as const satisfies readonly SourceTable[];
+
+/** One (table, platform) answer from `queryObservedCoverage`. */
+export interface ObservedCoverageRow {
+  table: SourceTable;
+  /**
+   * `null` for a `channel_daily` row whose connection could not be resolved
+   * to a platform: that table has no platform column, and a row is never
+   * labelled `youtube` because that happens to be true today.
+   */
+  platform: string | null;
+  rows: number;
+  /**
+   * Newest `metric_date` in the window. `video_retention_curves` has no
+   * metric date — a curve is a video's lifetime — so for it this is the day
+   * the newest curve was fetched.
+   */
+  latestDate: string | null;
+  /** `metric_source` values seen; only `video_metrics` has the column. */
+  metricSources: string[];
+}
+
+/**
+ * Why a (family, platform) cell shows what it shows. Four kinds, from three
+ * sources, never collapsed:
+ *
+ * - `unsupported` / `not_ingested` — the matrix: the platform can't, or we
+ *   haven't. No query needed.
+ * - `not_connected` — Postgres: no channel on that platform.
+ * - `no_data_in_window` / `covered` — ClickHouse, in this window.
+ */
+export type CoverageState =
+  | { kind: 'unsupported' | 'not_ingested'; note: string }
+  | { kind: 'not_connected' }
+  | { kind: 'no_data_in_window' }
+  | { kind: 'covered'; rows: number; latestDate: string; stale: boolean };
+
+/**
+ * Every family × platform. `null` means *cannot measure*: ClickHouse was not
+ * read, or the family's table is not one of `OBSERVED_COVERAGE_TABLES`. It
+ * never means empty — empty is `no_data_in_window`.
+ */
+export type CoverageMatrix = Record<
+  MetricFamily,
+  Record<AnalyticsPlatform, CoverageState | null>
+>;
+
+/**
+ * Days the newest row may trail the window's end before a covered cell is
+ * `stale`. Defined once, here, and never per card.
+ *
+ * YouTube's reporting ingest lags one to three days by design, so a
+ * threshold near that cries wolf about healthy ingest. A channel with no
+ * activity can also go a few days without a row on a reporting table. Two
+ * weeks is far enough past both that a stale flag means ingest stopped, and
+ * close enough that six weeks of silence is caught well before anyone
+ * reads it as a quiet channel.
+ */
+export const COVERAGE_STALE_AFTER_DAYS = 14;
+
+const DAY_MS = 86_400_000;
+
+function dayNumber(isoDate: string): number {
+  return Math.floor(Date.parse(`${isoDate.slice(0, 10)}T00:00:00Z`) / DAY_MS);
+}
+
+/**
+ * The day staleness is measured to: the window's end, or today when the
+ * window runs past it. A March window whose newest row is 29 March is
+ * healthy whatever today is — nothing after March was asked for.
+ */
+export function coverageAsOf(windowEnd: string, today: string): string {
+  return windowEnd < today ? windowEnd : today;
+}
+
+export function isCoverageStale(latestDate: string, asOf: string): boolean {
+  return dayNumber(asOf) - dayNumber(latestDate) > COVERAGE_STALE_AFTER_DAYS;
+}
+
+/**
+ * The half of a cell the matrix answers alone, so it can render before any
+ * query resolves. `null` where the platform can have data and only an
+ * observation can say whether it does.
+ */
+export function capabilityCoverage(
+  capability: PlatformCapability,
+): CoverageState | null {
+  return capability.level === 'unsupported' ||
+    capability.level === 'not_ingested'
+    ? { kind: capability.level, note: capability.note }
+    : null;
+}
+
+function isObservedTable(table: SourceTable): boolean {
+  return (OBSERVED_COVERAGE_TABLES as readonly SourceTable[]).includes(table);
+}
+
+/**
+ * Folds `queryObservedCoverage`'s rows into a `CoverageMatrix`, per cell:
+ *
+ * 1. the matrix: `unsupported` / `not_ingested` need nothing observed;
+ * 2. rows in the family's table for the platform → `covered`. Rows win over
+ *    the connection list: a disconnected channel keeps its history, and a
+ *    card showing that history must not be labelled "not connected";
+ * 3. no connection on the platform → `not_connected`;
+ * 4. connected, observed, no rows → `no_data_in_window`; and `null` where
+ *    nothing was observed (`rows` is `null`, or the table is not one of the
+ *    five).
+ *
+ * The table → family mapping is the matrix's `table`, so this module stays
+ * the one place it is stated.
+ */
+export function foldObservedCoverage(
+  rows: readonly ObservedCoverageRow[] | null,
+  matrix: typeof CAPABILITY_MATRIX,
+  context: {
+    /** Platforms with a connection in scope, from `platform_connections`. */
+    connectedPlatforms: readonly string[];
+    /** See `coverageAsOf`. */
+    asOf: string;
+  },
+): CoverageMatrix {
+  const observed = new Map<
+    string,
+    { rows: number; latestDate: string | null }
+  >();
+
+  for (const row of rows ?? []) {
+    // Unresolved: never guessed at.
+    if (row.platform === null) continue;
+
+    const key = `${row.table}:${row.platform}`;
+    const seen = observed.get(key);
+    const latestDate =
+      seen?.latestDate && row.latestDate
+        ? seen.latestDate > row.latestDate
+          ? seen.latestDate
+          : row.latestDate
+        : (seen?.latestDate ?? row.latestDate);
+
+    observed.set(key, { rows: (seen?.rows ?? 0) + row.rows, latestDate });
+  }
+
+  const cell = (
+    capability: PlatformCapability,
+    platform: AnalyticsPlatform,
+  ): CoverageState | null => {
+    const fromMatrix = capabilityCoverage(capability);
+
+    if (fromMatrix) return fromMatrix;
+
+    const table = capability.table;
+
+    // Unreachable: a level with data always names its table.
+    if (table === null) return null;
+
+    const seen = observed.get(`${table}:${platform}`);
+
+    if (seen && seen.rows > 0) {
+      return seen.latestDate === null
+        ? null
+        : {
+            kind: 'covered',
+            rows: seen.rows,
+            latestDate: seen.latestDate,
+            stale: isCoverageStale(seen.latestDate, context.asOf),
+          };
+    }
+
+    if (!context.connectedPlatforms.includes(platform)) {
+      return { kind: 'not_connected' };
+    }
+
+    return rows === null || !isObservedTable(table)
+      ? null
+      : { kind: 'no_data_in_window' };
+  };
+
+  return Object.fromEntries(
+    METRIC_FAMILIES.map((family) => [
+      family,
+      Object.fromEntries(
+        ANALYTICS_PLATFORMS.map((platform) => [
+          platform,
+          cell(matrix[family][platform], platform),
+        ]),
+      ),
+    ]),
+  ) as CoverageMatrix;
+}
+
 /** Which `video_audience` dimensions answer each audience family. */
 export const AUDIENCE_FAMILY_DIMENSIONS = {
   demographics: ['age_group', 'gender'],

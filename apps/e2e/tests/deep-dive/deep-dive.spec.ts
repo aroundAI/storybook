@@ -1,5 +1,6 @@
 import { Page, Request, expect, test } from '@playwright/test';
 
+import { actionIdOf } from '../utils/action-ids';
 import {
   seedMembership,
   seedProject,
@@ -29,14 +30,19 @@ function recordActionCalls(page: Page) {
   const calls: ActionArgs[] = [];
 
   page.on('request', (request: Request) => {
-    if (request.method() !== 'POST' || !request.headers()['next-action']) {
+    const action = request.headers()['next-action'];
+
+    if (request.method() !== 'POST' || !action) {
       return;
     }
 
     try {
       const [args] = JSON.parse(request.postData() ?? '[]') as ActionArgs[];
 
-      if (args) calls.push(args);
+      if (args) {
+        actionOf.set(args, action);
+        calls.push(args);
+      }
     } catch {
       // Multipart bodies (uploads) are not action calls this test inspects.
     }
@@ -45,8 +51,29 @@ function recordActionCalls(page: Page) {
   return calls;
 }
 
-const deepDiveCalls = (calls: ActionArgs[]) =>
-  calls.filter((call) => call.scope !== undefined);
+/**
+ * Which action each recorded call was, by id. Beside the arguments rather
+ * than in them, so their keys and serialisation stay exactly what was sent.
+ * An action is recognised by id, never by its input's shape: Deep Dive's
+ * coverage request (FILM-1704) takes `{ scope, from, to }`, exactly as the
+ * subscriber series does.
+ */
+const actionOf = new WeakMap<ActionArgs, string>();
+
+const callsOf = (calls: ActionArgs[], exportedName: string) => {
+  const id = actionIdOf(exportedName);
+
+  return calls.filter((call) => actionOf.get(call) === id);
+};
+
+/** The cards' own actions: everything scoped except the coverage request. */
+const deepDiveCalls = (calls: ActionArgs[]) => {
+  const coverage = actionIdOf('getCoverageMatrixAction');
+
+  return calls.filter(
+    (call) => call.scope !== undefined && actionOf.get(call) !== coverage,
+  );
+};
 
 const yppCalls = (calls: ActionArgs[]) =>
   calls.filter((call) => call.windowDays !== undefined && call.accountId);
@@ -127,6 +154,20 @@ test.describe('Deep Dive channel filter', () => {
     }
 
     expect(yppCalls(calls.slice(beforeSelect))[0]).toMatchObject({
+      connectionId: fixture.activeChannelId,
+    });
+
+    // The tab's coverage (FILM-1704) follows the channel too, once.
+    await expect
+      .poll(
+        () =>
+          callsOf(calls.slice(beforeSelect), 'getCoverageMatrixAction').length,
+      )
+      .toBe(1);
+    expect(
+      callsOf(calls.slice(beforeSelect), 'getCoverageMatrixAction')[0]?.scope,
+    ).toEqual({
+      projectId: fixture.project.id,
       connectionId: fixture.activeChannelId,
     });
 
@@ -224,13 +265,10 @@ test.describe('Deep Dive subscribers (FILM-1617)', () => {
     const deepDive = new DeepDivePageObject(page);
     const fixture = await deepDive.setup();
 
-    // Exactly a scope and a date window. The traffic breakdown also sends
-    // `scope`, `from` and `to`, plus `bucket`, so matching on `to` alone
-    // picks it up.
+    // By action id. Matched on its keys — exactly a scope and a date window —
+    // it also matched Deep Dive's coverage request, which takes the same.
     const seriesCalls = (from = 0) =>
-      calls
-        .slice(from)
-        .filter((call) => Object.keys(call).sort().join() === 'from,scope,to');
+      callsOf(calls.slice(from), 'getSubscriberSeriesAction');
 
     await expect.poll(() => seriesCalls().length).toBeGreaterThanOrEqual(1);
 

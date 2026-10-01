@@ -26,6 +26,7 @@ import {
   previousPeriod,
   topContentForInsights,
 } from '../lib/insights-inputs';
+import { localDateOf } from '../lib/local-date';
 import { ABSENT, measured } from '../lib/measured';
 import {
   getContentListAction,
@@ -43,6 +44,7 @@ import { AIInsights } from './ai-insights';
 import { AudienceGrid } from './audience';
 import { ContentGrid } from './content';
 import { ContentTablePanel } from './content-table-panel';
+import { CoverageProvider } from './coverage-context';
 import type { DateRangeValue } from './date-range-picker';
 import { DateRangePicker } from './date-range-picker';
 import { DeepDiveTab } from './deep-dive/deep-dive-tab';
@@ -291,7 +293,7 @@ export function AnalyticsDashboard({
     },
   );
 
-  return (
+  const page = (
     <div className="space-y-6">
       {/* Header Row */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -471,6 +473,22 @@ export function AnalyticsDashboard({
         </DialogContent>
       </Dialog>
     </div>
+  );
+
+  const coverageFrom = localDateOf(dateRange.from);
+  const coverageTo = localDateOf(dateRange.to);
+
+  // Coverage for the header's window, fetched once for every card on the
+  // page (FILM-1704). Deep Dive mounts its own, for the window it reads.
+  return (
+    <CoverageProvider
+      scope={{ projectId }}
+      from={coverageFrom}
+      to={coverageTo}
+      windowLabel={`${coverageFrom} to ${coverageTo}`}
+    >
+      {page}
+    </CoverageProvider>
   );
 }
 

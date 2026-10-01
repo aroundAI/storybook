@@ -113,6 +113,7 @@ function channelOf(s: SubscriberScenario) {
     name: s.name,
     thumbnailUrl: null,
     isActive: s.isActive,
+    language: 'en',
   };
 }
 

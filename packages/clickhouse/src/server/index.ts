@@ -58,6 +58,7 @@ export {
   queryChannelWatchWindow,
   queryCohortMedians,
   queryMedianViewsPerVideo,
+  queryObservedCoverage,
   queryRollingViews,
   querySegmentMembership,
   querySegmentPerformance,

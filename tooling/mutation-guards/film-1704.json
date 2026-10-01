@@ -1,0 +1,145 @@
+{
+  "feature": "FILM-1704",
+  "mutations": [
+    {
+      "name": "FILM-1704 coverage reads a fact table with FINAL",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "      FROM ${table}\n      WHERE ${scoped}",
+      "replace": "      FROM ${table} FINAL\n      WHERE ${scoped}",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/observed-coverage-query.test.ts",
+      "pattern": "avoids FINAL"
+    },
+    {
+      "name": "FILM-1704 channel_daily coverage is labelled YouTube instead of resolved",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "        toString(channels.platform) AS platform,",
+      "replace": "        'youtube' AS platform,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/observed-coverage-query.test.ts",
+      "pattern": "resolves channel_daily to a platform"
+    },
+    {
+      "name": "FILM-1704 coverage with ClickHouse off reads as an empty list",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "): Promise<ObservedCoverageRow[] | null> {\n  if (!isClickHouseEnabled()) return null;",
+      "replace": "): Promise<ObservedCoverageRow[] | null> {\n  if (!isClickHouseEnabled()) return [];",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/observed-coverage-query.test.ts",
+      "pattern": "returns null"
+    },
+    {
+      "name": "FILM-1704 not connected collapses into no data in window",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "    if (!context.connectedPlatforms.includes(platform)) {\n      return { kind: 'not_connected' };\n    }",
+      "replace": "",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/observed-coverage.test.ts",
+      "pattern": "is not connected"
+    },
+    {
+      "name": "FILM-1704 an unresolved channel_daily row is credited to YouTube",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "    if (row.platform === null) continue;\n\n    const key = `${row.table}:${row.platform}`;",
+      "replace": "    const key = `${row.table}:${row.platform ?? 'youtube'}`;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/observed-coverage.test.ts",
+      "pattern": "never credits an unresolved row"
+    },
+    {
+      "name": "FILM-1704 the staleness threshold cries wolf at the YouTube reporting lag",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "export const COVERAGE_STALE_AFTER_DAYS = 14;",
+      "replace": "export const COVERAGE_STALE_AFTER_DAYS = 2;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/observed-coverage.test.ts",
+      "pattern": "does not report healthy ingest"
+    },
+    {
+      "name": "FILM-1704 ClickHouse unread is folded as no data rather than unknown",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "    return rows === null || !isObservedTable(table)",
+      "replace": "    return !isObservedTable(table)",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/observed-coverage.test.ts",
+      "pattern": "when ClickHouse could not be read"
+    },
+    {
+      "name": "FILM-1704 a project with no connections still scans ClickHouse",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/coverage-actions.ts",
+      "find": "      channels.length === 0 ? [] : await queryObservedCoverage(scope, from, to);",
+      "replace": "      await queryObservedCoverage(scope, from, to);",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/coverage-actions.test.ts",
+      "pattern": "a project with no connections"
+    },
+    {
+      "name": "FILM-1704 an inactive connection counts as connected",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/coverage-actions.ts",
+      "find": "      .filter((channel) => channel.isActive)\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/coverage-actions.test.ts",
+      "pattern": "an inactive connection"
+    },
+    {
+      "name": "FILM-1704 the channel filter is ignored by the connected half",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/coverage-actions.ts",
+      "find": "        (!scope.connectionId || channel.connectionId === scope.connectionId) &&",
+      "replace": "        true &&",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/coverage-actions.test.ts",
+      "pattern": "a channel filter narrows"
+    },
+    {
+      "name": "FILM-1704 channels stop carrying their target language",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/channels.ts",
+      "find": "    language: row.language,\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/channels-language.test.ts",
+      "pattern": "target language"
+    },
+    {
+      "name": "FILM-1704 every date-picker click re-scans five tables",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/coverage-context.tsx",
+      "find": "  const window = useSettledWindow(from, to);",
+      "replace": "  const window = { from, to };",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/coverage-context.test.tsx",
+      "pattern": "a date picker passing through"
+    },
+    {
+      "name": "FILM-1704 coverage is not cached across window changes",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/coverage-context.tsx",
+      "find": "const COVERAGE_STALE_TIME_MS = 30 * 60 * 1000;",
+      "replace": "const COVERAGE_STALE_TIME_MS = 0;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/coverage-context.test.tsx",
+      "pattern": "served from the cache"
+    },
+    {
+      "name": "FILM-1704 capability waits for the coverage query to paint",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/coverage-context.tsx",
+      "find": "        if (fromMatrix) return [platform, fromMatrix];\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/coverage-context.test.tsx",
+      "pattern": "paints capability before"
+    }
+  ]
+}

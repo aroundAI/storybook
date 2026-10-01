@@ -16,6 +16,8 @@ export interface ChannelRef {
   name: string;
   thumbnailUrl: string | null;
   isActive: boolean;
+  /** The channel's target language (`platform_connections.language`). */
+  language: string;
 }
 
 interface ConnectionRow {
@@ -24,6 +26,7 @@ interface ConnectionRow {
   platform_account_name: string | null;
   is_active: boolean | null;
   metadata: { thumbnail_url?: string } | null;
+  language: string;
 }
 
 function toChannelRef(row: ConnectionRow): ChannelRef {
@@ -33,6 +36,7 @@ function toChannelRef(row: ConnectionRow): ChannelRef {
     name: row.platform_account_name ?? row.platform,
     thumbnailUrl: row.metadata?.thumbnail_url ?? null,
     isActive: row.is_active ?? false,
+    language: row.language,
   };
 }
 
@@ -90,7 +94,9 @@ export async function listProjectChannels(
     (chunk, from, to) =>
       client
         .from('platform_connections')
-        .select('id, platform, platform_account_name, is_active, metadata')
+        .select(
+          'id, platform, platform_account_name, is_active, metadata, language',
+        )
         .in('id', chunk)
         .order('id')
         .range(from, to),
@@ -115,7 +121,9 @@ export async function listAccountChannels(
   const connections = await fetchAllRows<ConnectionRow>((from, to) => {
     let query = client
       .from('platform_connections')
-      .select('id, platform, platform_account_name, is_active, metadata')
+      .select(
+        'id, platform, platform_account_name, is_active, metadata, language',
+      )
       .eq('account_id', accountId);
 
     if (options?.platform) {
