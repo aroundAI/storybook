@@ -1372,7 +1372,9 @@ async function assertions() {
       });
       const refused = await queryTotals({
         projectId: project,
-        platforms: ['facebook'] as unknown as AnalyticsPlatform[],
+        // Connectable, not an analytics platform (Facebook is one since
+        // FILM-1720).
+        platforms: ['linkedin'] as unknown as AnalyticsPlatform[],
       }).then(
         () => 'sent',
         (error: Error) => error.message,
@@ -1402,8 +1404,8 @@ async function assertions() {
         dimVideos.map((v) => v.videoId).sort(),
         ['f1709-ig-a', 'f1709-ig-b', 'f1709-tt'],
       );
-      if (!refused.startsWith('Not an analytics platform: facebook')) {
-        throw new Error(`facebook reached the server: ${refused}`);
+      if (!refused.startsWith('Not an analytics platform: linkedin')) {
+        throw new Error(`linkedin reached the server: ${refused}`);
       }
 
       return { all, singles, withoutTikTok };
