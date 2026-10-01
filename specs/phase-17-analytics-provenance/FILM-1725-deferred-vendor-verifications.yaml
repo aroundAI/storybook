@@ -301,7 +301,7 @@ notes: |
   | Status today | (1) and (2) are hypotheses. The provider reads a non-quota 403 on the revenue query as account_type_gated; if non-partner channels get zero rows instead, they will read as authorised with no revenue, which is wrong in the quiet direction |
   | Why it did not run | Needs a real YouTube token, and for (3) a monetised channel |
   | Cost to settle | Three calls |
-  | Blocks | FILM-1711's last three criteria; FILM-1726's stage, which since #TBD reads each day's estimate from video_revenue_daily: the query below now carries dimensions=day, and (3) should also see one row per day there |
+  | Blocks | FILM-1711's last three criteria; FILM-1726's stage, which since #TBD-1726 reads each day's estimate from video_revenue_daily: the query below now carries dimensions=day, and (3) should also see one row per day there |
 
   ```bash
   # (1) on a token WITHOUT the monetary scope — the old shape:

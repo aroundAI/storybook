@@ -27,31 +27,34 @@ summary: >
 acceptance_criteria:
   - text: "README.md's locked decision is restated with a true premise, whichever way this concludes"
     met: true
-    evidence: "specs/phase-17-analytics-provenance/README.md:224 — the locked decision now reads 'Monetisation is the sixth stage', with each platform's access and whose it is to change, and the retired premise quoted as a fact about our writers. #TBD"
+    evidence: "specs/phase-17-analytics-provenance/README.md:224 — the locked decision now reads 'Monetisation is the sixth stage', with each platform's access and whose it is to change, and the retired premise quoted as a fact about our writers. #TBD-1726"
   - text: "The conclusion is argued from product value or from access states, never from \"revenue_cents is zero\""
     met: true
-    evidence: "notes §8. The owner's yes (2026-10-01) rests on product value: a paid creator judges a video by what it earned, and an outcome belongs at the end of the funnel. Coverage is argued from access states per platform (README.md:224's table), and revenue_cents is mentioned only as the premise being retired. #TBD"
+    evidence: "notes §8. The owner's yes (2026-10-01) rests on product value: a paid creator judges a video by what it earned, and an outcome belongs at the end of the funnel. Coverage is argued from access states per platform (README.md:224's table), and revenue_cents is mentioned only as the premise being retired. #TBD-1726"
   - text: "scope_missing, account_type_gated (YPP) and unsupported are distinguishable for revenue, per platform"
     met: true
-    evidence: "monetisationAccess (packages/clickhouse/src/lib/monetisation-access.ts:82) returns unsupported (owner: platform) for TikTok and Instagram, account_type_gated (owner: creator) for a channel outside the Partner Program or a Page the token may not read earnings for, and scope_missing / not_requested / review_* (owner: us) for ours, each with its own sentence. Facebook's gate is FACEBOOK_PAGE_EARNINGS (packages/clickhouse/src/lib/data-provenance.ts:446). Tested in packages/clickhouse/__tests__/monetisation-access.test.ts:23 (three owners, three sentences), :40 and :60; guards MS4, MS5. #TBD"
+    evidence: "monetisationAccess (packages/clickhouse/src/lib/monetisation-access.ts:82) returns unsupported (owner: platform) for TikTok and Instagram, account_type_gated (owner: creator) for a channel outside the Partner Program or a Page the token may not read earnings for, and scope_missing / not_requested / review_* (owner: us) for ours, each with its own sentence. Facebook's gate is FACEBOOK_PAGE_EARNINGS (packages/clickhouse/src/lib/data-provenance.ts:446). Tested in packages/clickhouse/__tests__/monetisation-access.test.ts:23 (three owners, three sentences), :40 and :60; guards MS4, MS5. #TBD-1726"
   - text: "The zero-valued source = 'api' rows are either fixed or assigned an owner"
     met: true
-    evidence: "Fixed. FILM-1711 stopped new ones; apps/web/supabase/migrations/20261001140344_revenue-records-unmeasured.sql:42 marks the existing ones NULL (not deleted, lead's instruction 2026-10-01: it runs against production). A check keeps a person's entry non-null (:35), revenue_cents_by_publish sums measured rows only (:67), and every revenue_records reader skips NULL (packages/features/content-analytics/src/server/revenue-queries.ts, revenue-actions.ts). TikTok and Instagram mark revenue unmeasured (analytics-sync-cron.ts:959, :993). pgTAP revenue-records-unmeasured.test.sql 7/7, red 4 of 7 without the migration; a data check on pre-existing rows showed the api 0 became NULL while an api 500 and a manual 0 were untouched. #TBD"
+    evidence: "Fixed. FILM-1711 stopped new ones; apps/web/supabase/migrations/20261001140344_revenue-records-unmeasured.sql:42 marks the existing ones NULL (not deleted, lead's instruction 2026-10-01: it runs against production). A check keeps a person's entry non-null (:35), revenue_cents_by_publish sums measured rows only (:67), and every revenue_records reader skips NULL (packages/features/content-analytics/src/server/revenue-queries.ts, revenue-actions.ts). TikTok and Instagram mark revenue unmeasured (analytics-sync-cron.ts:959, :993). pgTAP revenue-records-unmeasured.test.sql 7/7, red 4 of 7 without the migration; a data check on pre-existing rows showed the api 0 became NULL while an api 500 and a manual 0 were untouched. #TBD-1726"
   - text: "If the answer is no, the reason is written where the next person will find it before re-deriving this"
     met: true
-    evidence: "Not applicable: the answer is yes (owner, 2026-10-01). Notes §8 keeps the argument a 'no' would have had to make (product value, not data availability), so a later reversal starts from it rather than from the retired premise. #TBD"
+    evidence: "Not applicable: the answer is yes (owner, 2026-10-01). Notes §8 keeps the argument a 'no' would have had to make (product value, not data availability), so a later reversal starts from it rather than from the retired premise. #TBD-1726"
   - text: "If the answer is yes, §5's downstream cost is scheduled, not discovered"
     met: true
-    evidence: "Built here: FILM-1714's FUNNEL_STAGES gains monetisation (packages/clickhouse/src/lib/signal-map.ts:70) with every cell bound or unbound with a reason (signal-map.test.ts:708). Scheduled in the downstream records: FILM-1718's six rows each have their monetisation requirement written in FILM-1718's notes and in §11 here; FILM-1719's strip and FILM-1717's hypothesis vocabulary are recorded in their specs, including FILM-1717's SQL check that lists five stages. #TBD"
+    evidence: "Built here: FILM-1714's FUNNEL_STAGES gains monetisation (packages/clickhouse/src/lib/signal-map.ts:70) with every cell bound or unbound with a reason (signal-map.test.ts:708). Scheduled in the downstream records: FILM-1718's six rows each have their monetisation requirement written in FILM-1718's notes and in §11 here; FILM-1719's strip and FILM-1717's hypothesis vocabulary are recorded in their specs, including FILM-1717's SQL check that lists five stages. #TBD-1726"
+  - text: "FILM-1718's six patterns state their monetisation requirement in code"
+    met: true
+    evidence: "Restacked onto FILM-1718 (#502), this branch merged second and filled the rows as §11 says: 'any' on five (packages/clickhouse/src/lib/stage-diagnosis.ts:167) and 'above_where_judged' on above_at_every_judged_stage (:232). The overlap test (packages/clickhouse/__tests__/stage-diagnosis.test.ts:342) then found the minimum needed a change, recorded at the end of §11: only PATTERN_STAGES count toward it (packages/clickhouse/src/lib/stage-diagnosis.ts:256), tested at packages/clickhouse/__tests__/stage-diagnosis.test.ts:442, guard MS19 RED. #TBD-1726"
   - text: "YouTube's estimated earnings reach the stage, by day, only for an authorised read"
     met: true
-    evidence: "fetchRevenue asks dimensions=day (packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:236); buildYouTubeRevenueRows (packages/features/content-analytics/src/server/ingest.ts:256) writes nothing unless revenueAccess is authorised; the sync inserts them (analytics-sync-cron.ts:771) into video_revenue_daily (packages/clickhouse/src/migrations/022_video_revenue_daily.ts:92). Tests: youtube-analytics.test.ts, ingest.test.ts; guards MS10, MS11. #TBD"
+    evidence: "fetchRevenue asks dimensions=day (packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:236); buildYouTubeRevenueRows (packages/features/content-analytics/src/server/ingest.ts:256) writes nothing unless revenueAccess is authorised; the sync inserts them (analytics-sync-cron.ts:771) into video_revenue_daily (packages/clickhouse/src/migrations/022_video_revenue_daily.ts:92). Tests: youtube-analytics.test.ts, ingest.test.ts; guards MS10, MS11. #TBD-1726"
   - text: "Not measured never reads as $0: a day with metrics and no revenue reads NULL, and a re-synced day counts once"
     met: true
-    evidence: "video_daily_stats LEFT JOINs video_revenue_daily FINAL with a Nullable right side (022_video_revenue_daily.ts:77). verify-queries.ts:2937 on ClickHouse 24.8, hand-computed: project 1300 = 1234 + 66 with day one inserted twice; the scope-missing video reads null beside 80 views. Red with FINAL removed (2534) and with the right side non-Nullable (0 for null). Readers keep the null: metric-cards.tsx:123, report exports blank with coverage, experiment snapshots, insights. #TBD"
+    evidence: "video_daily_stats LEFT JOINs video_revenue_daily FINAL with a Nullable right side (022_video_revenue_daily.ts:77). verify-queries.ts:2937 on ClickHouse 24.8, hand-computed: project 1300 = 1234 + 66 with day one inserted twice; the scope-missing video reads null beside 80 views. Red with FINAL removed (2534) and with the right side non-Nullable (0 for null). Readers keep the null: metric-cards.tsx:123, report exports blank with coverage, experiment snapshots, insights. #TBD-1726"
   - text: "Every surface whose revenue text changed shows the measured figure where authorised, and Not measured with the access-state sentence otherwise, in a browser"
     met: true
-    evidence: "apps/e2e/tests/analytics/monetisation-evidence.spec.ts on a production build with ClickHouse on (lane B, migrations 021 and 022 applied, 20261001140344 by migration up), values read off the DOM into .local-ci/evidence/film-1726/film-1726-measured.json: project card $13, episode $12.34 / $12, Shorts ROI $0.0013 a view, experiment 1,000 → 1,300; the unmeasured team reads Not measured on all four, with the three reasons (scope missing, Partner Program, TikTok) listed under the cards (packages/features/content-analytics/src/components/metric-cards.tsx:153, from getProjectRevenueAccessAction, packages/features/content-analytics/src/server/dashboard-actions.ts:158). 16 screenshots, light and dark. Red with the card's fix reverted: 3 of 3 failed, $0 for Not measured. The guard apps/e2e/tests/analytics/monetisation.spec.ts and the touched specs (experiments, overview, language-tab, revenue-currency, card-shell) pass on a production build with CLICKHOUSE_ENABLED=false, 26/26. #TBD"
+    evidence: "apps/e2e/tests/analytics/monetisation-evidence.spec.ts on a production build with ClickHouse on (lane B, migrations 021 and 022 applied, 20261001140344 by migration up), values read off the DOM into .local-ci/evidence/film-1726/film-1726-measured.json: project card $13, episode $12.34 / $12, Shorts ROI $0.0013 a view, experiment 1,000 → 1,300; the unmeasured team reads Not measured on all four, with the three reasons (scope missing, Partner Program, TikTok) listed under the cards (packages/features/content-analytics/src/components/metric-cards.tsx:153, from getProjectRevenueAccessAction, packages/features/content-analytics/src/server/dashboard-actions.ts:158). 16 screenshots, light and dark. Red with the card's fix reverted: 3 of 3 failed, $0 for Not measured. The guard apps/e2e/tests/analytics/monetisation.spec.ts and the touched specs (experiments, overview, language-tab, revenue-currency, card-shell) pass on a production build with CLICKHOUSE_ENABLED=false, 26/26. #TBD-1726"
 remaining:
   - criterion: "YouTube's daily revenue seen against a real Partner Program channel"
     reason: "Built against fixtures. That reports.query answers estimatedRevenue with dimensions=day and filters=video==ID for a Partner channel, and what a non-partner channel gets back, have not been seen live."
@@ -59,9 +62,6 @@ remaining:
   - criterion: "Facebook's ad-break earnings stored"
     reason: "Requested and parsed (behind FILM-1720's dark switch), stored nowhere: Meta does not document total_video_ad_break_earnings' unit or currency, and ClickHouse revenue is USD by construction (KB-12). FILM-1725 Check K reads one live response; until then revenue × facebook is not_ingested, blocked by FILM-1725."
     closed_by: "FILM-1725"
-  - criterion: "FILM-1718's six patterns state their monetisation requirement in code"
-    reason: "FILM-1718 (#502) is not in this branch. Its STAGE_PATTERNS rows fail to compile with a sixth stage (TS2741) until each is given the requirement written in §11; whichever of the two merges second fills them in."
-    closed_by: "FILM-1718"
   - criterion: "The stage strip renders six stages"
     reason: "FILM-1719 renders the strip and reads stageReadings, so it gains the stage with no change of its own; its copy says 'five-stage strip' in three places, recorded there."
     closed_by: "FILM-1719"
@@ -274,7 +274,7 @@ notes: |
   Instagram now mark revenue unmeasured, because their zero was hardcoded,
   not reported.
 
-  ## 10. As built (#TBD)
+  ## 10. As built (#TBD-1726)
 
   - Stage and signals: `packages/clickhouse/src/lib/signal-map.ts`
     (`FUNNEL_STAGES`, three signals, `platform_does_not_expose_revenue`).
@@ -318,6 +318,20 @@ notes: |
   change: they iterate `FUNNEL_STAGES`. The exhaustive test becomes 3^6
   combinations plus the unjudged cases, as FILM-1718's verification
   section already anticipates.
+
+  **`MIN_JUDGED_STAGES` did need a change** (decided by the lead
+  2026-10-01 under the owner's overnight authorisation; owner to confirm).
+  "Need no change" held for the exclusions and the coverage sentence, not
+  for the minimum. Counted toward it, Reach and Monetisation alone made two
+  judged stages with every content stage unjudged, so rows 1 and 2 spoke
+  of content signals nobody had read: 768 combinations each, and a 256-way
+  overlap of rows 2 and 6 (Reach and Monetisation above, nothing else
+  judged), which the overlap test exists to catch. Only `PATTERN_STAGES`,
+  distribution and content, count toward the minimum now
+  (packages/clickhouse/src/lib/stage-diagnosis.ts:256); Monetisation is
+  still judged, shown and counted in "Judged on N of 6". The exhaustive
+  counts over the 729 fully judged combinations are 3, 3, 81, 81, 27, 1
+  and 533 with no clear pattern. Guard MS19 (FILM-1726) holds it. #TBD-1726
 feature:
   database:
     tables: ["video_revenue_daily"]
