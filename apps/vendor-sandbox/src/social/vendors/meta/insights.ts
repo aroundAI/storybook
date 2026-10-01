@@ -33,6 +33,14 @@ const INSIGHTS_SCOPE = ['instagram_manage_insights'];
  * a fixed share of its shares: lifetime, and never falling, as Meta's is.
  */
 const REPOSTS_PER_SHARE = 0.4;
+
+/**
+ * The all-surface aggregates (`total_*_count`, FILM-1722) fold in boosted
+ * placements on top of the organic figure. The growth model draws no paid
+ * share, so they are the organic cumulative plus a fixed boosted share:
+ * never below the organic figure, and lifetime like it.
+ */
+const BOOSTED_SHARE = 0.25;
 const BASIC_SCOPE = ['instagram_basic', 'instagram_manage_insights'];
 
 /** Meta's longest `since`/`until` span for account insights. */
@@ -190,6 +198,19 @@ const nodes: SocialRoute = ({ url, method, req, res, social, self, about }) => {
     permalink: `https://www.instagram.com/reel/${shortcode(post.id)}/`,
     reposts_count: Math.floor(
       social.cumulative(post, 'shares') * REPOSTS_PER_SHARE,
+    ),
+    ...Object.fromEntries(
+      (
+        [
+          ['total_views_count', 'views'],
+          ['total_like_count', 'likes'],
+          ['total_comments_count', 'comments'],
+        ] as const
+      ).map(([field, organic]) => {
+        const count = social.cumulative(post, organic);
+
+        return [field, count + Math.floor(count * BOOSTED_SHARE)];
+      }),
     ),
   };
   sendJson(res, 200, {
