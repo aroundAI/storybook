@@ -196,18 +196,26 @@ export function PublishProgressDialog({
             )}
 
           {/* Uploading Stage */}
-          {(publishStage === 'uploading' || publishStage === 'complete') && (
+          {/* The rows stay on the error stage: each says why it failed. */}
+          {(publishStage === 'uploading' ||
+            publishStage === 'complete' ||
+            (publishStage === 'error' && platformStatuses.length > 0)) && (
             <div className="space-y-3">
               <p className="text-sm text-gray-500">
                 {publishStage === 'uploading'
                   ? 'Uploading videos to each platform...'
-                  : 'All uploads completed:'}
+                  : publishStage === 'error'
+                    ? 'Nothing was published:'
+                    : 'All uploads completed:'}
               </p>
               <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700">
                 {platformStatuses.map((s, i) => (
                   <div
                     key={i}
-                    className="flex items-center gap-3 rounded-md bg-gray-50 p-2 dark:bg-gray-800"
+                    data-test="publish-platform-status"
+                    data-platform={s.platform}
+                    data-status={s.status}
+                    className="flex flex-wrap items-center gap-3 rounded-md bg-gray-50 p-2 dark:bg-gray-800"
                   >
                     <PlatformIcon platform={s.platform} size="lg" />
                     <div className="min-w-0 flex-1">
@@ -258,6 +266,14 @@ export function PublishProgressDialog({
                         </TooltipProvider>
                       )}
                     </div>
+                    {s.status === 'error' && s.error && (
+                      <p
+                        data-test="publish-platform-error"
+                        className="w-full text-xs text-red-600 dark:text-red-400"
+                      >
+                        {s.error}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
