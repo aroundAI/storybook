@@ -330,3 +330,27 @@ export type {
   VideoBenchmark,
   VideoCheckpointBenchmark,
 } from './lib/self-benchmark';
+
+// Which stage is the constraint, read from the stage bands together
+// (FILM-1718). Pure; FILM-1719 renders the diagnosis and its coverage.
+export {
+  MIN_JUDGED_STAGES,
+  NO_CLEAR_PATTERN_SENTENCE,
+  STAGE_EXCLUSIONS,
+  STAGE_PATTERNS,
+  diagnoseStages,
+  judgeStage,
+  judgeStages,
+  matchPattern,
+} from './lib/stage-diagnosis';
+export type {
+  JudgedStage,
+  StageCoverage,
+  StageDiagnosis,
+  StageExclusion,
+  StageJudgement,
+  StageJudgements,
+  StagePattern,
+  StagePatternId,
+  StageRequirement,
+} from './lib/stage-diagnosis';
