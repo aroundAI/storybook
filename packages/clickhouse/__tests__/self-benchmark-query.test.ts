@@ -251,7 +251,7 @@ describe('queryVideoBenchmark (FILM-1715)', () => {
     for (const fragment of [
       "dateDiff('day', d.published_at, {asOf: DateTime}) as age_days",
       "greatest(0, dateDiff('day', d.published_at, toDateTime(any(i.ingest_start))))",
-      "sumIf(m.views, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < 30) as v_30",
+      "sumIf(ifNull(m.views, 0), dateDiff('day', d.published_at, toDateTime(m.metric_date)) < 30) as v_30",
     ]) {
       expect(subject?.query).toContain(fragment);
       expect(cohort?.query).toContain(fragment);
@@ -328,7 +328,7 @@ describe('queryCohortMedians ingest start (FILM-1715)', () => {
     });
 
     const call = mockClickHouseClient.query.mock.calls[0]?.[0];
-    expect(call!.query).toContain('sumIf(m.engaged_views,');
+    expect(call!.query).toContain('sumIf(ifNull(m.engaged_views, 0),');
     expect(call!.query).toContain('FROM video_metrics FINAL');
   });
 });
