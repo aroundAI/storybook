@@ -46,13 +46,16 @@ test.describe('Overview truth (KB-16)', () => {
     // not "+100.0%", and not the "0.0%" a zero baseline used to draw. The
     // metric row sits between the Export button and the tab list; read by
     // text so the unfixed page, which has no `data-test` there, is measured
-    // by the same rule.
+    // by the same rule. Each card now carries its provenance chip between
+    // its label and its figure (FILM-1705), so the figure is read by id.
     const metricRow = text.slice(
       text.indexOf('Export'),
       text.indexOf('Overview Content'),
     );
 
-    expect(metricRow).toContain('Views 0');
+    await expect(
+      byTest(byTest(page, 'metric-card-views'), 'metric-value'),
+    ).toHaveText('0');
     expect(metricRow).not.toMatch(/\d+\.\d%/);
     await expect(overview.metricChanges()).toHaveCount(0);
     await expect(page.locator('[data-test^="metric-card-"]')).toHaveCount(7);
