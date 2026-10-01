@@ -1,0 +1,68 @@
+{
+  "feature": "FILM-1804",
+  "mutations": [
+    {
+      "name": "F1 the ledger drops the query string",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/server.ts",
+      "find": "        query: url.search\n          ? summarise(redactSecrets(url.search.slice(1)))\n          : undefined,",
+      "replace": "        query: undefined,",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/social-server.test.ts",
+      "pattern": "records the query string"
+    },
+    {
+      "name": "F2 the ledger records a query's access token",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/server.ts",
+      "find": "          ? summarise(redactSecrets(url.search.slice(1)))",
+      "replace": "          ? summarise(url.search.slice(1))",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/social-server.test.ts",
+      "pattern": "records the query string"
+    },
+    {
+      "name": "F3 a media-insights breakdown is ignored instead of refused",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/vendors/meta/insights.ts",
+      "find": "  if (breakdown !== null) {",
+      "replace": "  if (breakdown === 'never') {",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/meta-fidelity.test.ts",
+      "pattern": "(dialog → code|a breakdown on media insights is refused)"
+    },
+    {
+      "name": "F4 #279 reverted: TikTok's success envelope read as a failure",
+      "kind": "e2e",
+      "needs": "sandbox",
+      "file": "packages/features/content-analytics/src/providers/tiktok/tiktok-analytics.ts",
+      "find": "  if (!error || error.code === 'ok') return null;",
+      "replace": "  if (!error) return null;",
+      "spec": "tests/analytics/sandbox-sync.spec.ts",
+      "grep": "TikTok: the sync records success",
+      "env": { "SANDBOX_E2E": "1" }
+    },
+    {
+      "name": "F5 #278 reverted: a Reel is never asked for shares",
+      "kind": "e2e",
+      "needs": "sandbox",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "              'shares',\n              // Reels only",
+      "replace": "              // Reels only",
+      "spec": "tests/analytics/sandbox-sync.spec.ts",
+      "grep": "Instagram: a Reel stores the shares",
+      "env": { "SANDBOX_E2E": "1" }
+    },
+    {
+      "name": "F6 #278 reverted: a Reel's insights ask for the follow_type breakdown",
+      "kind": "e2e",
+      "needs": "sandbox",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "          metric: metrics.join(','),\n          access_token: this.accessToken,",
+      "replace": "          metric: metrics.join(','),\n          breakdown: 'follow_type',\n          access_token: this.accessToken,",
+      "spec": "tests/analytics/sandbox-sync.spec.ts",
+      "grep": "Instagram: a Reel stores the shares",
+      "env": { "SANDBOX_E2E": "1" }
+    }
+  ]
+}

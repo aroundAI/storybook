@@ -639,7 +639,7 @@ Local stand-ins for every social platform and AI vendor, on local ports: statefu
 | FILM-1801 | [vendor-base-url-resolver](./phase-18-local-vendor-sandbox/FILM-1801-vendor-base-url-resolver.yaml) | ✅ DONE | L | - (with or after FILM-1723) |
 | FILM-1802 | [social-platform-sandbox](./phase-18-local-vendor-sandbox/FILM-1802-social-platform-sandbox.yaml) | ✅ DONE | XL | FILM-1801, FILM-1721 |
 | FILM-1803 | [ai-generation-sandbox](./phase-18-local-vendor-sandbox/FILM-1803-ai-generation-sandbox.yaml) | DONE | L | FILM-1801, FILM-1805 |
-| FILM-1804 | [sandbox-backed-e2e-flows](./phase-18-local-vendor-sandbox/FILM-1804-sandbox-backed-e2e-flows.yaml) | DRAFT | L | FILM-1802, FILM-1803 |
+| FILM-1804 | [sandbox-backed-e2e-flows](./phase-18-local-vendor-sandbox/FILM-1804-sandbox-backed-e2e-flows.yaml) | ✅ DONE | L | FILM-1802, FILM-1803 |
 | FILM-1805 | [local-models-and-sdk-base-urls](./phase-18-local-vendor-sandbox/FILM-1805-local-models-and-sdk-base-urls.yaml) | ✅ DONE | M | FILM-1801; FILM-513 for KB-21's lip-sync half |
 | FILM-1806 | [local-job-queue](./phase-18-local-vendor-sandbox/FILM-1806-local-job-queue.yaml) | ✅ DONE | M | FILM-1801, FILM-1803 |
 
@@ -724,10 +724,10 @@ reason when not.
 | 15. Deep Analytics | 11 | 0 | 3 | 0 | 2 | 6 |
 | 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 17 |
 | 17. Analytics Provenance | 31 | 16 | 6 | 1 | 0 | 8 |
-| 18. Vendor Sandbox | 6 | 1 | 0 | 0 | 0 | 5 |
+| 18. Vendor Sandbox | 6 | 0 | 0 | 0 | 0 | 6 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **234** | **17** | **62** | **1** | **54** | **100** |
+| **TOTAL** | **234** | **16** | **62** | **1** | **54** | **101** |
 
 No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose PR is open keeps the status it has on `main`.
 
@@ -743,7 +743,7 @@ No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose 
 | Deep Analytics (Ph 15) | 11 | 6 | 3 | 2 | 0 |
 | Workbook Parity (Ph 16) | 17 | 17 | 0 | 0 | 0 |
 | Provenance & Signal (Ph 17) | 31 | 8 | 6 | 0 | 17 |
-| Vendor Sandbox (Ph 18) | 6 | 5 | 0 | 0 | 1 |
+| Vendor Sandbox (Ph 18) | 6 | 6 | 0 | 0 | 0 |
 | Public Sharing | 2 | 1 | 1 | 0 | 0 |
 
 ### Deferred at ship time, still open

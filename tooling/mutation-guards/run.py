@@ -115,6 +115,13 @@ def unknown_names(entries, only):
     return [name for name in (only or []) if name not in names]
 
 
+def needs_sandbox(entry):
+    """An entry that drives the vendor sandbox (FILM-1804). CI starts no
+    sandbox, so there its spec skips, passes with and without the mutation,
+    and would be reported STAYED GREEN; it is selected only on request."""
+    return entry.get('needs') == 'sandbox'
+
+
 def duplicate_names(entries):
     """Names used by more than one entry: `--only` could not tell them apart."""
     seen, duplicates = set(), set()
@@ -351,6 +358,9 @@ def self_test(base_env):
     if duplicate_names(named + [{'name': 'U1 tag scope dropped'}]) != ['U1 tag scope dropped']:
         print('SELF-TEST FAILED: duplicate_names missed a repeated name')
         return 1
+    if not needs_sandbox({'needs': 'sandbox'}) or needs_sandbox({'kind': 'e2e'}):
+        print('SELF-TEST FAILED: needs_sandbox does not tell a sandbox entry apart')
+        return 1
     duplicates = duplicate_names(load_entries())
     if duplicates:
         print('SELF-TEST FAILED: entry names must be unique for --only:',
@@ -397,6 +407,11 @@ def main():
     parser.add_argument('--file-prefix', action='append', metavar='PREFIX',
                         help='run only entries whose every mutated file starts with '
                              'one of these, e.g. specs/ for the docs-only CI job')
+    parser.add_argument('--with-sandbox', action='store_true',
+                        help='include entries marked "needs": "sandbox" (FILM-1804), '
+                             'which need the vendor sandbox and a local.env app; '
+                             'CI has neither, so they run only when asked for, '
+                             'here or by name with --only')
     parser.add_argument('--self-test', action='store_true')
     parser.add_argument('--shard', metavar='I/N',
                         help='run every Nth selected entry, starting at I (1-based), '
@@ -434,6 +449,7 @@ def main():
         entry for entry in all_entries
         if (not args.kind or entry['kind'] in args.kind)
         and (not args.only or entry['name'] in args.only)
+        and (args.with_sandbox or args.only or not needs_sandbox(entry))
         and (not args.file_prefix
              or all(path is not None and path.startswith(tuple(args.file_prefix))
                     for path in mutated_files(entry)))

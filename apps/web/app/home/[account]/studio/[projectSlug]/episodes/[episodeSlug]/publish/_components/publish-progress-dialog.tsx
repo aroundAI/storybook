@@ -282,7 +282,10 @@ export function PublishProgressDialog({
 
           {/* Error Stage */}
           {publishStage === 'error' && publishError && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+            <div
+              className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20"
+              data-test="publish-error"
+            >
               <p className="text-sm text-red-700 dark:text-red-400">
                 {publishError}
               </p>

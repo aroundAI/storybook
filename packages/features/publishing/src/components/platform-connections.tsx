@@ -451,6 +451,7 @@ function ConnectionRow({
               variant="outline"
               size="sm"
               onClick={() => initiateOAuth(platform.id, connection.accountSlug)}
+              data-test="reconnect-expired"
             >
               <RefreshCw className="mr-1 h-4 w-4" />
               <Trans i18nKey="platforms:reconnect" defaults="Reconnect" />

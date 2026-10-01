@@ -64,14 +64,21 @@ export function EpisodeAnalytics({ data }: EpisodeAnalyticsProps) {
                     ? (platform.views / data.totalViews) * 100
                     : 0;
                 return (
-                  <div key={platform.platform} className="space-y-2">
+                  <div
+                    key={platform.platform}
+                    className="space-y-2"
+                    data-test="platform-breakdown-row"
+                    data-platform={platform.platform}
+                  >
                     <div className="flex items-center justify-between">
                       <span className="font-medium capitalize">
                         {platform.platform}
                       </span>
                       <span className="text-muted-foreground">
-                        {platform.views.toLocaleString()} views (
-                        {percentage.toFixed(1)}%)
+                        <span data-test="platform-views">
+                          {platform.views.toLocaleString()}
+                        </span>{' '}
+                        views ({percentage.toFixed(1)}%)
                       </span>
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-muted">
@@ -81,9 +88,24 @@ export function EpisodeAnalytics({ data }: EpisodeAnalyticsProps) {
                       />
                     </div>
                     <div className="flex gap-4 text-sm text-muted-foreground">
-                      <span>❤️ {platform.likes.toLocaleString()}</span>
-                      <span>💬 {platform.comments.toLocaleString()}</span>
-                      <span>🔗 {platform.shares.toLocaleString()}</span>
+                      <span>
+                        ❤️{' '}
+                        <span data-test="platform-likes">
+                          {platform.likes.toLocaleString()}
+                        </span>
+                      </span>
+                      <span>
+                        💬{' '}
+                        <span data-test="platform-comments">
+                          {platform.comments.toLocaleString()}
+                        </span>
+                      </span>
+                      <span>
+                        🔗{' '}
+                        <span data-test="platform-shares">
+                          {platform.shares.toLocaleString()}
+                        </span>
+                      </span>
                     </div>
                   </div>
                 );

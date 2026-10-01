@@ -357,6 +357,22 @@ describe('Meta sandbox: Instagram reads, through the app provider', () => {
     ).toEqual([]);
   });
 
+  it('a breakdown on media insights is refused with code 100, not ignored (#278)', async () => {
+    const refused = await graph(`/${SEEDED_REEL}/insights`, {
+      access_token: pageToken,
+      metric: 'reach',
+      breakdown: 'follow_type',
+    });
+    expect(refused.status).toBe(400);
+    expect((refused.body as { error: { code: number } }).error.code).toBe(100);
+
+    const plain = await graph(`/${SEEDED_REEL}/insights`, {
+      access_token: pageToken,
+      metric: 'reach',
+    });
+    expect(plain.status).toBe(200);
+  });
+
   it('a token without instagram_manage_insights is refused with code 10', async () => {
     const refused = await graph(`/${igId}/insights`, {
       access_token: 'sbx.facebook.unknown',

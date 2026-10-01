@@ -3,7 +3,7 @@ title: "Sandbox-Backed E2E Flows"
 phase: 18
 phase_name: "Local Vendor Sandbox"
 category: feature
-status: DRAFT
+status: DONE
 effort: L
 dependencies:
   - spec_id: "FILM-1802"
@@ -23,23 +23,23 @@ summary: >
   proven to fail against the code before its fix.
 acceptance_criteria:
   - text: "Every flow in §2 has a spec, or a written reason it cannot run yet"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "Connect: apps/e2e/tests/platform-connections/sandbox-connect-tiktok.spec.ts:51, sandbox-connect-meta.spec.ts:60, sandbox-connect-linkedin.spec.ts:50, sandbox-connect-youtube-x.spec.ts:51 (YouTube and X; X has had a button since KB-86). Disconnect and reconnect: apps/e2e/tests/platform-connections/sandbox-disconnect-refresh.spec.ts:56 (YouTube, TikTok, X; LinkedIn offers no revoke, KB-25). Token refresh: apps/e2e/tests/platform-connections/sandbox-disconnect-refresh.spec.ts:115 (YouTube, TikTok, X, LinkedIn, Meta; X has a refresh path today, refreshXToken). Publish: apps/e2e/tests/publishing/sandbox-publish.spec.ts:130 (Publish All, inline, YouTube) and apps/e2e/tests/sandbox/publish-queue-evidence.spec.ts (scheduled, FILM-1806). Sync to dashboard: apps/e2e/tests/analytics/sandbox-sync.spec.ts:144 (TikTok, with stored saves and watch time NULL, not 0) and :206 (Instagram). Studio pipeline: apps/e2e/tests/sandbox/studio-flow-evidence.spec.ts (ideation → story → screenplay → shots → voice, FILM-1806) and apps/e2e/tests/sandbox/ai-sandbox-evidence.spec.ts (the inline stages, FILM-1803). Vendor errors: apps/e2e/tests/platform-connections/sandbox-vendor-errors.spec.ts:35 and :85, apps/e2e/tests/publishing/sandbox-publish.spec.ts:169, apps/e2e/tests/analytics/sandbox-sync.spec.ts:266. The map is in apps/e2e/README.md, \"Sandbox-backed flows\" (#496)"
   - text: "No spec in this set asserts a hardcoded metric value; every figure is compared with the ledger"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "apps/e2e/tests/analytics/sandbox-sync.spec.ts:144, :206 and :266 compare the episode page's per-platform figures with servedTotals (apps/e2e/tests/utils/sandbox.ts:143), the newest response the sandbox served for that video; no figure is a constant. The other specs in the set assert tokens, rows and messages, not metrics (#496)"
   - text: "The #278 and #279 regression flows exist, and each goes red with its fix reverted"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "#279: apps/e2e/tests/analytics/sandbox-sync.spec.ts:144, guard F4 (tooling/mutation-guards/film-1804.json:35) RED — with the 'ok' check removed the sync records last_error \"ok\". #278: apps/e2e/tests/analytics/sandbox-sync.spec.ts:206, guards F5 (shares no longer requested: \"the app asked Meta for no `shares` on this Reel\", :46) and F6 (follow_type breakdown requested: the sync records \"Failed to fetch media insights: HTTP 400\", :57) RED. Run with run.py --kind e2e --with-sandbox; all three entries are \"needs\": \"sandbox\" so CI, which has no sandbox, leaves them out (#496)"
   - text: "Each vendor error path in §2 renders the product's intended message"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "Rate limit (YouTube answers 403 quotaExceeded) and 5xx on an upload: the publish dialog's error stage (\"All 1 platform(s) failed to publish.\") with the vendor's reason inline on the platform's row (#495), and the attempt in Published Content marked failed with the vendor's own message, read off the ledger; then a retry from the same screen publishes (apps/e2e/tests/publishing/sandbox-publish.spec.ts:169). Expired token (the vendor refuses the refresh): the row reads Expired with Reconnect, and a notification is stored; Reconnect makes it active (apps/e2e/tests/platform-connections/sandbox-vendor-errors.spec.ts:35). 5xx at the revoke: KB-45's warning with the settings link (:85). 5xx at the token exchange: each sandbox-connect-*.spec.ts. A rate limit on the analytics sync is recorded on the publish and the next sync recovers (apps/e2e/tests/analytics/sandbox-sync.spec.ts:266), but no screen shows a failed sync at all, so there is no message to assert: filed as KB-150 (#496)"
   - text: "A failed run prints the sandbox seed, and replaying it reproduces the failure"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "sandboxRun (apps/e2e/tests/utils/sandbox.ts:90) resets the sandbox per file, under SANDBOX_SEED when set, and prints the seed and the replay command on a failure (:111); replayableVideoId (:126) keeps the test's own video ids on the seed. Shown with guard F4's mutation: run 1 failed under seed 724078916 (Received \"ok\"), and SANDBOX_SEED=724078916 failed the same way with the same TikTok, Instagram and Facebook accounts drawn (#496)"
   - text: "apps/e2e/README.md documents the sandbox helpers and SANDBOX_E2E"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "apps/e2e/README.md:321 (\"Sandbox-backed flows (FILM-1804)\": SANDBOX_E2E, the helpers table, the seed replay, the guards) (#496)"
 open_questions: []
 notes: |
   ## 1. Overview
@@ -121,6 +121,31 @@ notes: |
   assertions read what was served for the request the page made, so growth between the
   request and the assertion does not matter; a test that instead re-reads current
   state is the bug to avoid, and the helper does not offer it.
+
+  ## 10. As built (#496)
+
+  - One flag, SANDBOX_E2E, gates every flow; it replaces #489's
+    SANDBOX_CONNECT. Not in CI: §6's decision is still open, and the flows
+    run locally on lane A (sandbox-sync reads ClickHouse), one worker.
+  - The sandbox needed two changes for §4: the ledger now records each
+    call's query string, credentials redacted (a media-insights breakdown
+    was invisible in a path-only ledger), and Meta's media insights now
+    refuse a breakdown with code 100, as FILM-1802 §3 says Meta does —
+    before, the sandbox ignored it. Guards F1–F3.
+  - The sync flows hold an existing video (a publish row with a vendor id
+    the sandbox adopts, FILM-1802 §4); the connection is made through the
+    consent screen, never inserted. Publishing is its own flow.
+  - X: §2 expected no button and no refresh path. Since KB-86 X has a
+    card, and refreshXToken exists, so both are driven, not recorded.
+  - Publish is driven from the Publishing Studio for YouTube only. Publish
+    All to TikTok or Instagram was not attempted in this PR; their
+    vendor-side publishing is covered at the sandbox level (FILM-1802's
+    journeys), and a browser flow for them is follow-up work.
+  - Found while building them: KB-149 (the episode analytics page shows
+    TikTok's unmeasured watch time and follower gain as 0m and 0) and
+    KB-150 (a failed analytics sync is shown nowhere).
+  - Mutation guards for these flows are kind e2e with "needs": "sandbox";
+    run.py leaves them out unless --with-sandbox or --only names them.
 feature:
   database: null
   queries: []
