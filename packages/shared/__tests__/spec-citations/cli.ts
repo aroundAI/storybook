@@ -1,21 +1,25 @@
 /**
  * KB-81. `pnpm specs:citations` lists spec citations that no longer point at
- * the code they name; `--fix` rewrites the ones that only moved.
+ * the code they name; `--fix` rewrites the ones that only moved. A moved
+ * citation is a warning and does not fail the run; changed, gone or
+ * past-the-end ones do (the merge queue, 2026-10-01).
  */
-import { checkAll, describeCitation, fixMoved } from './citations';
+import { checkAll, describeCitation, fixMoved, triage } from './citations';
 
 const fix = process.argv.includes('--fix');
 const citations = checkAll();
-const drifted = citations.filter((c) => c.verdict.kind !== 'ok');
+const { warnings, failures } = triage(citations);
 
 if (fix) {
-  const fixed = fixMoved(drifted);
+  const fixed = fixMoved(warnings);
   console.log(`Rewrote ${fixed} moved citation(s).`);
+} else {
+  for (const c of warnings) console.log(`warning: ${describeCitation(c)}`);
 }
 
-const left = drifted.filter((c) => !fix || c.verdict.kind !== 'moved');
-for (const c of left) console.log(describeCitation(c));
+for (const c of failures) console.log(describeCitation(c));
 console.log(
-  `${citations.length} citations checked; ${left.length} need attention.`,
+  `${citations.length} citations checked; ${failures.length} need attention` +
+    (fix ? '.' : `, ${warnings.length} moved (warnings; --fix re-points them).`),
 );
-process.exit(left.length > 0 ? 1 : 0);
+process.exit(failures.length > 0 ? 1 : 0);

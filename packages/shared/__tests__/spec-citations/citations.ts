@@ -252,6 +252,25 @@ export function checkAll(): Citation[] {
   return specFiles().flatMap(checkSpec);
 }
 
+/**
+ * Which drifted citations fail the check, and which are only reported (the
+ * merge queue, 2026-10-01). A `moved` citation's text is still in its file,
+ * one `--fix` away, so it is a warning: failing on it made every merge that
+ * shifted a cited line fail every other open PR. Text that changed, a file
+ * that is gone, a line past the end: those fail, since the spec now names
+ * code that is not there.
+ */
+export function triage(citations: Citation[]): {
+  warnings: Citation[];
+  failures: Citation[];
+} {
+  const drifted = citations.filter((c) => c.verdict.kind !== 'ok');
+  return {
+    warnings: drifted.filter((c) => c.verdict.kind === 'moved'),
+    failures: drifted.filter((c) => c.verdict.kind !== 'moved'),
+  };
+}
+
 export function describeCitation(c: Citation): string {
   const where = `${c.specId} ${c.specFile}:${c.specLine} → ${c.raw}`;
   switch (c.verdict.kind) {

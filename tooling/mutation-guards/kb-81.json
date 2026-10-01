@@ -2,14 +2,34 @@
   "feature": "KB-81",
   "mutations": [
     {
-      "name": "M1 Code above cited lines moves, and the specs still name the old lines",
+      "name": "M1 A cited line's code is rewritten, and the specs still cite it (FILM-706, FILM-707 cite token-refresh.ts:392)",
       "kind": "unit",
       "file": "packages/features/publishing/src/lib/token-refresh.ts",
-      "find": "import 'server-only';",
-      "replace": "// planted by the KB-81 mutation guard\nimport 'server-only';",
+      "find": "  const credentials = await getOAuthAppCredentials(app);\n",
+      "replace": "  const credentials = await getOAuthAppCredentials(app, 'planted by the KB-81 mutation guard');\n",
       "cwd": "packages/shared",
       "test": "__tests__/spec-citation-drift.test.ts",
-      "pattern": "no citation has moved"
+      "pattern": "no cited text has changed"
+    },
+    {
+      "name": "M3 A citation whose text is gone passes as a warning",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/spec-citations/citations.ts",
+      "find": "    failures: drifted.filter((c) => c.verdict.kind !== 'moved'),",
+      "replace": "    failures: drifted.filter(() => false),",
+      "cwd": "packages/shared",
+      "test": "__tests__/spec-citation-drift.test.ts",
+      "pattern": "a moved citation warns"
+    },
+    {
+      "name": "M4 A moved citation is dropped instead of reported as a warning",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/spec-citations/citations.ts",
+      "find": "    warnings: drifted.filter((c) => c.verdict.kind === 'moved'),",
+      "replace": "    warnings: [],",
+      "cwd": "packages/shared",
+      "test": "__tests__/spec-citation-drift.test.ts",
+      "pattern": "a moved citation warns"
     },
     {
       "name": "M2 The line mapper stops shifting lines after an insertion",
