@@ -2,6 +2,7 @@
  * Twitter/X Provider Types
  * Types for Twitter video upload and tweet management
  */
+import { X_VIDEO_LIMITS } from '@kit/shared/vendors';
 
 export interface TwitterUploadInput {
   /** Local file path or URL to the video */
@@ -42,17 +43,14 @@ export interface TwitterMediaInit {
 export type TwitterUploadProgress = (progress: number) => void;
 
 /**
- * Twitter Video Constraints
- * Based on Twitter API documentation
+ * Twitter Video Constraints. The video limits are X_VIDEO_LIMITS's, the one
+ * reading of X's docs (FILM-1729): this held v1.1's 140 s and 512 MB, which
+ * no longer apply, and refused videos the publish screen had accepted.
  */
 export const TWITTER_CONSTRAINTS = {
-  /** Maximum video duration in seconds (free tier) */
-  maxDuration: 140,
-  /** Maximum video duration in seconds (premium tier) */
-  maxDurationPremium: 240,
-  /** Maximum file size in bytes (512MB) */
-  maxFileSizeBytes: 512 * 1024 * 1024,
-  /** Maximum tweet length in characters */
+  maxDuration: X_VIDEO_LIMITS.maxSeconds,
+  maxFileSizeBytes: X_VIDEO_LIMITS.maxBytes,
+  /** Maximum tweet length, as tweetLength() counts it */
   maxTweetLength: 280,
   /** Recommended chunk size (5MB) - Twitter recommends 1-5MB */
   chunkSizeBytes: 5 * 1024 * 1024,

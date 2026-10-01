@@ -23,7 +23,6 @@ import {
   awsClientOptions,
   holdsXUploadScope,
   queueUrlFromEnv,
-  xPostTextRefusal,
   xUploadScopeRefusal,
   xVideoRefusal,
 } from '@kit/shared/vendors';
@@ -48,6 +47,7 @@ import {
   RetryPublishSchema,
 } from '../lib/schemas/publish.schema';
 import { TAKEDOWN_REFUSAL, canTakeDown, projectRoleOf } from '../lib/takedown';
+import { tweetLength } from '../lib/tweet-length';
 import type { Platform, PublishResult } from '../lib/types';
 import {
   type YouTubeChannelDeclaration,
@@ -60,6 +60,7 @@ import { InstagramProvider } from '../providers/instagram';
 import { LinkedInProvider } from '../providers/linkedin';
 import { TikTokProvider } from '../providers/tiktok';
 import { TwitterProvider } from '../providers/twitter';
+import { TWITTER_CONSTRAINTS } from '../providers/twitter/types';
 import { assertConnectionOfAccount } from './connection-account';
 import { getAccessToken } from './connection-tokens';
 import { uploadToYouTube } from './youtube-upload';
@@ -203,9 +204,14 @@ async function assertXWillAccept(
   const connections = await assertXUploadScope(toX);
 
   for (const platform of toX) {
-    const textRefusal = xPostTextRefusal(platform.title);
+    // The title is the post's text, measured as X measures it (FILM-714)
+    const postLength = tweetLength(platform.title);
 
-    if (textRefusal) throw new ActionRefusal(textRefusal);
+    if (postLength > TWITTER_CONSTRAINTS.maxTweetLength) {
+      throw new ActionRefusal(
+        `X can't take this post: its title is ${postLength} characters, and an X post takes at most ${TWITTER_CONSTRAINTS.maxTweetLength}. Shorten the title for X.`,
+      );
+    }
 
     const language =
       platform.language ??

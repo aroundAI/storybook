@@ -123,23 +123,6 @@ export function xVideoRefusal(facts: VideoFacts): string | null {
   return null;
 }
 
-/**
- * X's post length for an account without Premium: 280 characters
- * (https://docs.x.com/fundamentals/counting-characters, read 2026-10-01).
- * The publish sends the title as the post's text. Counted per code point,
- * which is X's count for Latin text; X weighs CJK and emoji as two, so a
- * title near the limit in those scripts may still be refused by X.
- */
-export const X_POST_MAX_CHARACTERS = 280;
-
-export function xPostTextRefusal(text: string): string | null {
-  const length = [...text].length;
-
-  return length > X_POST_MAX_CHARACTERS
-    ? `X can't take this post: its title is ${length} characters, and an X post takes at most ${X_POST_MAX_CHARACTERS}. Shorten the title for X.`
-    : null;
-}
-
 /** Followed by the user's browser, not called by the server. */
 export const X_OAUTH_AUTHORIZE_URL = `${X_WEB_HOST}/i/oauth2/authorize`;
 
