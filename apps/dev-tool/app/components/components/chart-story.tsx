@@ -75,31 +75,31 @@ const radialData = [
 const chartConfig = {
   desktop: {
     label: 'Desktop',
-    color: 'hsl(var(--chart-1))',
+    color: 'var(--chart-1)',
   },
   mobile: {
     label: 'Mobile',
-    color: 'hsl(var(--chart-2))',
+    color: 'var(--chart-2)',
   },
   tablet: {
     label: 'Tablet',
-    color: 'hsl(var(--chart-3))',
+    color: 'var(--chart-3)',
   },
   chrome: {
     label: 'Chrome',
-    color: 'hsl(var(--chart-1))',
+    color: 'var(--chart-1)',
   },
   firefox: {
     label: 'Firefox',
-    color: 'hsl(var(--chart-2))',
+    color: 'var(--chart-2)',
   },
   safari: {
     label: 'Safari',
-    color: 'hsl(var(--chart-3))',
+    color: 'var(--chart-3)',
   },
   edge: {
     label: 'Edge',
-    color: 'hsl(var(--chart-4))',
+    color: 'var(--chart-4)',
   },
 } as const;
 
@@ -172,7 +172,7 @@ export default function ChartStory() {
       className: 'h-[300px]',
     });
 
-    const configCode = `const chartConfig = {\n  desktop: {\n    label: 'Desktop',\n    color: 'hsl(var(--chart-1))',\n  },\n  mobile: {\n    label: 'Mobile',\n    color: 'hsl(var(--chart-2))',\n  },\n} as const;\n\nconst data = [\n  { month: 'Jan', desktop: 186, mobile: 80 },\n  { month: 'Feb', desktop: 305, mobile: 200 },\n  { month: 'Mar', desktop: 237, mobile: 120 },\n  // ... more data\n];`;
+    const configCode = `const chartConfig = {\n  desktop: {\n    label: 'Desktop',\n    color: 'var(--chart-1)',\n  },\n  mobile: {\n    label: 'Mobile',\n    color: 'var(--chart-2)',\n  },\n} as const;\n\nconst data = [\n  { month: 'Jan', desktop: 186, mobile: 80 },\n  { month: 'Feb', desktop: 305, mobile: 200 },\n  { month: 'Mar', desktop: 237, mobile: 120 },\n  // ... more data\n];`;
 
     const fullExample = `${chartImport}\n${rechartsImport}\n\n${configCode}\n\nfunction Chart() {\n  return (\n    <ChartContainer${containerProps}>\n      ${chartComponent}\n    </ChartContainer>\n  );\n}`;
 
@@ -581,11 +581,11 @@ export default function ChartStory() {
                 {`const chartConfig = {
   desktop: {
     label: 'Desktop',
-    color: 'hsl(var(--chart-1))',
+    color: 'var(--chart-1)',
   },
   mobile: {
     label: 'Mobile',
-    color: 'hsl(var(--chart-2))',
+    color: 'var(--chart-2)',
   },
   // ... more data series
 } as const;`}
@@ -616,7 +616,7 @@ const data = [
 const config = {
   desktop: {
     label: 'Desktop',
-    color: 'hsl(var(--chart-1))',
+    color: 'var(--chart-1)',
   },
 };
 
