@@ -6,7 +6,10 @@ name: PR records
 # Its own workflow, not a job in workflow.yml: it must re-run when the title
 # or labels change, and those events must not re-run the paid suite.
 on:
+  # Only pull requests into main, as workflow.yml. `edited` covers a stacked
+  # PR being retargeted to main, so its records are checked then.
   pull_request:
+    branches: [ main ]
     types: [opened, synchronize, reopened, edited, labeled, unlabeled]
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
