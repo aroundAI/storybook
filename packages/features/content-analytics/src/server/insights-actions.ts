@@ -23,8 +23,9 @@ const AnalyticsTotalsSchema = z.object({
   likes: z.number(),
   comments: z.number(),
   shares: z.number(),
-  watchTimeSeconds: z.number(),
-  subscribersGained: z.number(),
+  // Null is "not measured" (KB-149), never sent to the model as 0.
+  watchTimeSeconds: z.number().nullable(),
+  subscribersGained: z.number().nullable(),
   revenueCents: z.number(),
   contentCount: z.number(),
 });

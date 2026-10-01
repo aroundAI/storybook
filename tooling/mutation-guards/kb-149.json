@@ -1,0 +1,66 @@
+{
+  "feature": "KB-149",
+  "mutations": [
+    {
+      "name": "KB-149 an episode total counts an unmeasured publish as 0",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "  if (!measured) return total;\n  return (total ?? 0) + value;",
+      "replace": "  return (total ?? 0) + value;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/episode-analytics-unmeasured.test.ts",
+      "pattern": "gives no watch time, follower gain or saves"
+    },
+    {
+      "name": "KB-149 episode watch time is averaged over every publish, measured or not",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "totalWatchTime === null ? null : totalWatchTime / watchTimePublishes,",
+      "replace": "totalWatchTime === null ? null : totalWatchTime / perVideoTotals.size,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/episode-analytics-unmeasured.test.ts",
+      "pattern": "averages watch time over the publishes that measured it"
+    },
+    {
+      "name": "KB-149 the Watch Time card shows an unmeasured figure as 0m",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "      value: data ? data.watchTimeSeconds : null,",
+      "replace": "      value: data?.watchTimeSeconds || 0,",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/components/__tests__/metric-cards.test.tsx",
+      "pattern": "never 0m or 0"
+    },
+    {
+      "name": "KB-149 the insights job refuses a watch time that was not measured",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/lib/llm-job-payloads.ts",
+      "find": "      watchTimeSeconds: z.number().nullable(),\n      subscribersGained: z.number().nullable(),",
+      "replace": "      watchTimeSeconds: z.number(),\n      subscribersGained: z.number(),",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/analytics-insights-handler.test.ts",
+      "pattern": "accepts a watch time that was not measured"
+    },
+    {
+      "name": "KB-149 the insights job sends a -100% change for an unmeasured watch time",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/analytics-insights.ts",
+      "find": "    if (current[key] === null || previous[key] === null) continue;\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/analytics-insights-handler.test.ts",
+      "pattern": "accepts a watch time that was not measured"
+    },
+    {
+      "name": "KB-149 the episode page passes Subscribers as 0 again",
+      "kind": "e2e",
+      "needs": "sandbox",
+      "file": "packages/features/content-analytics/src/components/episode-analytics.tsx",
+      "find": "    subscribersGained: data.subscribersGained,",
+      "replace": "    subscribersGained: 0,",
+      "spec": "tests/analytics/sandbox-sync.spec.ts",
+      "grep": "TikTok: the sync records success",
+      "env": { "SANDBOX_E2E": "1" }
+    }
+  ]
+}

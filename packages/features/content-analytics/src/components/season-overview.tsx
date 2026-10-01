@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 
 import { compareViewsDesc, formatViews } from '../lib/views';
 import type { SeasonAnalytics as SeasonAnalyticsData } from '../server/aggregation-queries';
-import { MetricCards } from './metric-cards';
+import { MetricCards, NOT_COLLECTED_HERE_REASON } from './metric-cards';
 
 interface SeasonOverviewProps {
   data: SeasonAnalyticsData;
@@ -26,8 +26,8 @@ export function SeasonOverview({ data }: SeasonOverviewProps) {
     likes: data.totalLikes,
     comments: data.totalComments,
     shares: data.totalShares,
-    watchTimeSeconds: 0,
-    subscribersGained: 0,
+    watchTimeSeconds: null,
+    subscribersGained: null,
     revenueCents: data.totalRevenueCents,
     contentCount: data.episodeCount,
   };
@@ -56,7 +56,12 @@ export function SeasonOverview({ data }: SeasonOverviewProps) {
       </div>
 
       {/* Metric Cards */}
-      <MetricCards data={totals} previousData={null} isLoading={false} />
+      <MetricCards
+        data={totals}
+        previousData={null}
+        isLoading={false}
+        notMeasuredReason={NOT_COLLECTED_HERE_REASON}
+      />
 
       {/* Episode Comparison */}
       <Card>

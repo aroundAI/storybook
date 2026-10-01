@@ -11,8 +11,13 @@ export interface AnalyticsTotals {
   shares: number;
   /** Saves (bookmarks) - primarily TikTok and Instagram */
   saves?: number;
-  watchTimeSeconds: number;
-  subscribersGained: number;
+  /**
+   * Null when not measured — TikTok reports no watch time — and the card
+   * says so rather than showing 0m (KB-149).
+   */
+  watchTimeSeconds: number | null;
+  /** Null when not measured: TikTok and Instagram report none (KB-149). */
+  subscribersGained: number | null;
   revenueCents: number;
   /** Ad revenue portion (YouTube) */
   adRevenueCents?: number;

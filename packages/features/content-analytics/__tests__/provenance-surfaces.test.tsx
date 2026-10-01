@@ -220,8 +220,8 @@ describe('the MetricCards', () => {
 
       expect(card.querySelector('[data-test="metric-value"]')).toBeNull();
       expect(
-        card.querySelector('[data-test="metric-unmeasured"]')?.textContent,
-      ).toBeTruthy();
+        card.querySelector('[data-test="metric-not-measured"]')?.textContent,
+      ).toBe('Not measured');
     }
 
     expect(

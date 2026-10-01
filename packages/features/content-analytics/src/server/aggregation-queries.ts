@@ -33,9 +33,14 @@ export interface EpisodeAnalytics {
   totalLikes: number;
   totalComments: number;
   totalShares: number;
-  totalSaves: number;
+  /** Null where no publish measured it: TikTok reports no saves (KB-149). */
+  totalSaves: number | null;
   totalRevenueCents: number;
-  avgWatchTimeSeconds: number;
+  /**
+   * Per publish that measured it; null when none did — TikTok reports no
+   * watch time, nor does an Instagram post that is not a Reel (KB-149).
+   */
+  avgWatchTimeSeconds: number | null;
   engagementRate: number | null;
   platformBreakdown: {
     platform: string;
@@ -43,7 +48,7 @@ export interface EpisodeAnalytics {
     likes: number;
     comments: number;
     shares: number;
-    saves: number;
+    saves: number | null;
   }[];
   dailyTrend: {
     date: string;
@@ -51,6 +56,8 @@ export interface EpisodeAnalytics {
     likes: number;
     comments: number;
   }[];
+  /** Null where no publish measured it: only YouTube reports it (KB-149). */
+  subscribersGained: number | null;
 }
 
 /**
@@ -135,13 +142,27 @@ function emptyEpisodeAnalytics(
     totalLikes: 0,
     totalComments: 0,
     totalShares: 0,
-    totalSaves: 0,
+    totalSaves: null,
     totalRevenueCents: 0,
-    avgWatchTimeSeconds: 0,
+    avgWatchTimeSeconds: null,
     engagementRate: 0,
     platformBreakdown: [],
     dailyTrend: [],
+    subscribersGained: null,
   };
+}
+
+/**
+ * A running total of a figure some platforms do not measure: an unmeasured
+ * part adds nothing, and a total of nothing measured stays null (KB-149).
+ */
+function addMeasured(
+  total: number | null,
+  value: number,
+  measured: boolean,
+): number | null {
+  if (!measured) return total;
+  return (total ?? 0) + value;
 }
 
 /**
@@ -199,9 +220,11 @@ export async function getEpisodeAnalytics(
   let totalLikes = 0;
   let totalComments = 0;
   let totalShares = 0;
-  let totalSaves = 0;
+  let totalSaves: number | null = null;
   let totalRevenue = 0;
-  let totalWatchTime = 0;
+  let totalWatchTime: number | null = null;
+  let watchTimePublishes = 0;
+  let subscribersGained: number | null = null;
 
   const platformMap = new Map<
     string,
@@ -210,7 +233,7 @@ export async function getEpisodeAnalytics(
       likes: number;
       comments: number;
       shares: number;
-      saves: number;
+      saves: number | null;
     }
   >();
 
@@ -222,23 +245,33 @@ export async function getEpisodeAnalytics(
     totalLikes += stats.likes;
     totalComments += stats.comments;
     totalShares += stats.shares;
-    totalSaves += stats.saves;
+    totalSaves = addMeasured(totalSaves, stats.saves, stats.measured.saves);
     totalRevenue += stats.revenue_cents;
-    totalWatchTime += stats.watch_time_seconds;
+    totalWatchTime = addMeasured(
+      totalWatchTime,
+      stats.watch_time_seconds,
+      stats.measured.watch_time_seconds,
+    );
+    if (stats.measured.watch_time_seconds) watchTimePublishes += 1;
+    subscribersGained = addMeasured(
+      subscribersGained,
+      stats.subscribers_gained,
+      stats.measured.subscribers_gained,
+    );
 
     const current = platformMap.get(publish.platform) ?? {
       views: null,
       likes: 0,
       comments: 0,
       shares: 0,
-      saves: 0,
+      saves: null,
     };
     platformMap.set(publish.platform, {
       views: addViews(current.views, stats.views),
       likes: current.likes + stats.likes,
       comments: current.comments + stats.comments,
       shares: current.shares + stats.shares,
-      saves: current.saves + stats.saves,
+      saves: addMeasured(current.saves, stats.saves, stats.measured.saves),
     });
   }
 
@@ -278,8 +311,10 @@ export async function getEpisodeAnalytics(
     totalShares,
     totalSaves,
     totalRevenueCents: totalRevenue,
+    // Over the publishes that measured it: a TikTok publish in the
+    // denominator would read as a video nobody watched (KB-149).
     avgWatchTimeSeconds:
-      perVideoTotals.size > 0 ? totalWatchTime / perVideoTotals.size : 0,
+      totalWatchTime === null ? null : totalWatchTime / watchTimePublishes,
     engagementRate,
     platformBreakdown: Array.from(platformMap.entries()).map(
       ([platform, data]) => ({
@@ -288,6 +323,7 @@ export async function getEpisodeAnalytics(
       }),
     ),
     dailyTrend,
+    subscribersGained,
   };
 }
 

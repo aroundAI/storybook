@@ -55,7 +55,7 @@ import { DateRangePicker } from './date-range-picker';
 import { DeepDiveTab } from './deep-dive/deep-dive-tab';
 import { ExportReports } from './export-reports';
 import { LanguageTab } from './language-tab';
-import { MetricCards, type MetricTotals } from './metric-cards';
+import { MetricCards, NOT_COLLECTED_HERE_REASON } from './metric-cards';
 import { OverviewGrid } from './overview';
 import { PerformanceChart } from './performance-chart';
 import type { Platform } from './platform-filter';
@@ -228,17 +228,13 @@ export function AnalyticsDashboard({
         likes: projectData.totalLikes,
         comments: projectData.totalComments,
         shares: projectData.totalShares,
-        watchTimeSeconds: 0, // Not available at project level
-        subscribersGained: 0, // Not available at project level
+        // Not totalled for a project: the cards say so, not 0 (FILM-1705 §5,
+        // KB-149).
+        watchTimeSeconds: null,
+        subscribersGained: null,
         revenueCents: projectData.totalRevenueCents,
         contentCount: projectData.contentCount,
       }
-    : null;
-
-  // Watch time and subscribers are not totalled for a project, so the cards
-  // say that instead of drawing the zeros above (FILM-1705 §5).
-  const metricTotals: MetricTotals | null = totals
-    ? { ...totals, watchTimeSeconds: null, subscribersGained: null }
     : null;
 
   // What the strip and the filter speak for: the families the active tab's
@@ -345,9 +341,10 @@ export function AnalyticsDashboard({
 
       {/* Metric Cards */}
       <MetricCards
-        data={metricTotals}
+        data={totals}
         previousData={null}
         isLoading={isLoading}
+        notMeasuredReason={NOT_COLLECTED_HERE_REASON}
       />
 
       {/* Tabs */}

@@ -38,22 +38,19 @@ import type { AnalyticsTotals } from '../types';
 import { CoverageContext } from './coverage-context';
 import { ProvenanceChipFor } from './provenance-chip';
 
-/**
- * The totals the cards read. Watch time and subscribers may be `null`:
- * "not measured for this scope", which the card says in words. They were a
- * literal 0 on the analytics page, a coverage statement drawn as a
- * measurement (FILM-1705 §5).
- */
-export type MetricTotals = Omit<
-  AnalyticsTotals,
-  'watchTimeSeconds' | 'subscribersGained'
-> & {
-  watchTimeSeconds: number | null;
-  subscribersGained: number | null;
-};
+const PLATFORM_NOT_MEASURED_REASON =
+  'The platforms behind these figures did not report it: TikTok sends no watch time or follower gain, and Instagram sends no follower gain.';
+
+/** For the analytics, project and season views, which do not read these figures. */
+export const NOT_COLLECTED_HERE_REASON =
+  'Watch time and follower gain are not collected for a whole project or season. Open an episode to see them.';
+
+/** For a family no platform supplies — revenue, today (FILM-1705). */
+export const NOT_COLLECTED_YET_REASON =
+  'Not collected yet: no platform the app reads reports this figure.';
 
 interface MetricCardsProps {
-  data: MetricTotals | null;
+  data: AnalyticsTotals | null;
   /**
    * The period before, or null when none was measured. Null is "no
    * comparison" and draws nothing — it was read as zero, which made every
@@ -61,12 +58,15 @@ interface MetricCardsProps {
    */
   previousData: AnalyticsTotals | null;
   isLoading: boolean;
+  /** Why a null figure has no value, where it is not the platforms' doing. */
+  notMeasuredReason?: string;
 }
 
 export function MetricCards({
   data,
   previousData,
   isLoading,
+  notMeasuredReason = PLATFORM_NOT_MEASURED_REASON,
 }: MetricCardsProps) {
   // The chip needs the page's coverage. Outside the analytics page — the
   // project, season and episode dashboards mount no provider — the cards
@@ -127,7 +127,7 @@ export function MetricCards({
     {
       key: 'watchTime',
       label: 'Watch Time',
-      value: data ? data.watchTimeSeconds : 0,
+      value: data ? data.watchTimeSeconds : null,
       previousValue: previousData ? previousData.watchTimeSeconds : null,
       formatter: formatDuration,
       description: 'Total time viewers spent watching',
@@ -137,7 +137,7 @@ export function MetricCards({
     {
       key: 'subscribers',
       label: 'Subscribers',
-      value: data ? data.subscribersGained : 0,
+      value: data ? data.subscribersGained : null,
       previousValue: previousData ? previousData.subscribersGained : null,
       formatter: formatNumber,
       description: 'New followers and subscribers gained',
@@ -170,6 +170,7 @@ export function MetricCards({
               />
             ) : undefined
           }
+          notMeasuredReason={notMeasuredReason}
         />
       ))}
     </div>
@@ -179,7 +180,10 @@ export function MetricCards({
 export interface MetricConfig {
   key: string;
   label: string;
-  /** `null` when this scope does not measure it: the card says so, no digits. */
+  /**
+   * `null` when this scope or the platforms behind it did not measure it:
+   * the card says so, no digits (FILM-1705 §5, KB-149).
+   */
   value: number | null;
   /** Null when no previous period was measured. */
   previousValue: number | null;
@@ -195,21 +199,27 @@ export interface MetricConfig {
  * platform supplies — revenue, today — is never drawn as a number, whatever
  * the total says: that total is a column nothing writes but a 0.
  */
-export function unmeasuredReason(metric: MetricConfig): string | null {
+export function unmeasuredReason(
+  metric: MetricConfig,
+  notMeasured: string,
+): string | null {
   if (platformsWithData(metric.metricFamily).length === 0) {
-    return 'Not collected yet';
+    return NOT_COLLECTED_YET_REASON;
   }
 
-  return metric.value === null ? 'Not totalled here' : null;
+  return metric.value === null ? notMeasured : null;
 }
 
 export function MetricCard({
   metric,
   chip,
+  notMeasuredReason = PLATFORM_NOT_MEASURED_REASON,
 }: {
   metric: MetricConfig;
   /** FILM-1705's provenance chip, when the page has coverage to give one. */
   chip?: ReactNode;
+  /** Why a null figure has no value: the tooltip of its "Not measured". */
+  notMeasuredReason?: string;
 }) {
   const {
     label,
@@ -220,7 +230,7 @@ export function MetricCard({
     icon: Icon,
   } = metric;
 
-  const unmeasured = unmeasuredReason(metric);
+  const unmeasured = unmeasuredReason(metric, notMeasuredReason);
   const change =
     unmeasured === null && value !== null
       ? calculateChange(value, previousValue)
@@ -257,11 +267,14 @@ export function MetricCard({
 
         <div className="flex items-baseline justify-between">
           {unmeasured !== null || value === null ? (
+            // As the reach overview's cards do: words, not a 0 that reads
+            // as "nobody watched" (KB-149), and the reason on hover.
             <span
-              className="text-sm font-medium text-muted-foreground"
-              data-test="metric-unmeasured"
+              className="text-lg font-medium text-muted-foreground"
+              title={unmeasured ?? notMeasuredReason}
+              data-test="metric-not-measured"
             >
-              {unmeasured}
+              Not measured
             </span>
           ) : (
             <span
