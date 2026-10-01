@@ -64,7 +64,6 @@ describe('a moved citation warns, a gone citation fails (merge queue)', () => {
     from: 10,
     column: 0,
     raw: 'packages/x.ts:10',
-    lead: 'packages/x.ts:',
     verdict,
   });
   const ok = cite({ kind: 'ok' });

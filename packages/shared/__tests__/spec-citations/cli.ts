@@ -20,6 +20,8 @@ if (fix) {
 for (const c of failures) console.log(describeCitation(c));
 console.log(
   `${citations.length} citations checked; ${failures.length} need attention` +
-    (fix ? '.' : `, ${warnings.length} moved (warnings; --fix re-points them).`),
+    (fix
+      ? '.'
+      : `, ${warnings.length} moved (warnings; --fix re-points them).`),
 );
 process.exit(failures.length > 0 ? 1 : 0);

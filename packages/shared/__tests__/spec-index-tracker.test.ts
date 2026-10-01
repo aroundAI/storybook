@@ -161,9 +161,7 @@ describe('positive control: a planted index', () => {
 
   it('passes a correct index, counting Markdown rows and not the register', () => {
     expect(check(index)).toEqual([]);
-    expect(formatTotals(analyse(index, sources(), layout).totals)).toBe(
-      TOTALS,
-    );
+    expect(formatTotals(analyse(index, sources(), layout).totals)).toBe(TOTALS);
   });
 
   it('reads the first status word of a cell', () => {
