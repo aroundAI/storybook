@@ -27,6 +27,7 @@ import { migration as m017 } from './017_snapshot_unmeasured_null';
 import { migration as m018 } from './018_reposts';
 import { migration as m019 } from './019_all_surface_aggregates';
 import { migration as m020 } from './020_facebook';
+import { migration as m023 } from './023_reels_attention';
 import type { ClickHouseMigration } from './migration-types';
 
 const MIGRATIONS: ClickHouseMigration[] = [
@@ -50,6 +51,8 @@ const MIGRATIONS: ClickHouseMigration[] = [
   m018,
   m019,
   m020,
+  // 021 and 022 are taken by open branches (FILM-1727, FILM-1726).
+  m023,
 ];
 
 const MIGRATION_TABLE = `

@@ -10,7 +10,7 @@ import {
   insertVideoSnapshots,
   queryLatestSnapshots,
 } from '@kit/clickhouse/server';
-import type { SnapshotTotals, VideoSnapshot } from '@kit/clickhouse/server';
+import type { SnapshotTotals } from '@kit/clickhouse/server';
 import { getLogger } from '@kit/shared/logger';
 import { fetchAllByIds } from '@kit/shared/pagination';
 import { readFailed, whyNoRow } from '@kit/shared/rows';
@@ -45,6 +45,7 @@ import {
   buildFacebookRetentionPoints,
   buildRetentionPoints,
   buildSnapshotDeltaRow,
+  buildSnapshotRow,
   buildYouTubeDailyRows,
   computeSnapshotDelta,
   computeYouTubeWindow,
@@ -866,17 +867,16 @@ async function ingestCumulativeSnapshot(
     ]);
   }
 
-  const { denominators, ...counters } = currentTotals;
-  const snapshot: VideoSnapshot = {
-    project_id: projectId,
-    video_id: publish.id,
-    platform,
-    snapshot_date: formatDateStr(new Date()),
-    ...counters,
-    ...denominators,
-  };
-
-  await insertVideoSnapshots([snapshot]);
+  await insertVideoSnapshots([
+    buildSnapshotRow({
+      projectId,
+      videoId: publish.id,
+      platform,
+      snapshotDate: formatDateStr(new Date()),
+      totals: currentTotals,
+      analytics,
+    }),
+  ]);
 
   if (platform === 'facebook') {
     // Facebook's audience breakdowns are not collected yet (FILM-1720

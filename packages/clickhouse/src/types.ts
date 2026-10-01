@@ -153,6 +153,25 @@ export const FACEBOOK_DENOMINATOR_COLUMNS = [
 ] as const satisfies readonly (keyof FacebookDenominators)[];
 
 /**
+ * Instagram's Reels attention figures (KB-151, migration 023), lifetime and
+ * as Meta reports them. Each is Meta's own quotient, so neither is a counter:
+ * they live on the snapshot only, never as a day's delta, and are never
+ * derived from the total. **Null means not measured** — every YouTube,
+ * TikTok and Facebook row, a post that is not a Reel, or a field Meta omitted.
+ *
+ * - `ig_reels_avg_watch_time_ms`: `ig_reels_avg_watch_time`, milliseconds
+ *   (confirmed live, 2026-09-29). Meta divides by its own count, not views,
+ *   so it is not `avg_view_duration_seconds`, YouTube's per-view figure.
+ * - `ig_reels_skip_rate`: `reels_skip_rate`, the share of views skipped in
+ *   the first 3 seconds. Meta does not document whether it is 0–100 or 0–1,
+ *   so it is stored unscaled and FILM-1714 withholds it until confirmed.
+ */
+export interface InstagramReelsAttention {
+  ig_reels_avg_watch_time_ms: number | null;
+  ig_reels_skip_rate: number | null;
+}
+
+/**
  * A YouTube `video_metrics` row. Two writers share its key — the Reporting
  * ingest and the Analytics-API sync/backfill — and the later row replaces the
  * whole row, so a column one of them leaves out is erased from the other's
@@ -246,7 +265,8 @@ export interface VideoAudienceRow {
  */
 export interface VideoSnapshot
   extends AllSurfaceAggregates,
-    Partial<FacebookDenominators> {
+    Partial<FacebookDenominators>,
+    InstagramReelsAttention {
   project_id: string;
   video_id: string;
   platform: AnalyticsPlatform;

@@ -43,6 +43,7 @@ export type {
   DailyPlatformBreakdown,
   DailyStats,
   FacebookDenominators,
+  InstagramReelsAttention,
   MetricSource,
   PlatformBreakdown,
   PlatformEngagement,

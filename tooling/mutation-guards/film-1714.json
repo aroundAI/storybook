@@ -82,14 +82,14 @@
       "pattern": "keeps the full input list"
     },
     {
-      "name": "SM9 The Instagram average watch time gap is dropped, so a discarded field reads as measurable",
+      "name": "SM9 computeSignalSupport ignores an input gap, so a field nobody stores reads as measurable",
       "kind": "unit",
       "file": "packages/clickhouse/src/lib/signal-map.ts",
       "find": "  const gap =\n    gaps.find(",
-      "replace": "  const gap =\n    gaps.filter((candidate) => candidate.signal !== 'ig_reels_avg_watch_time').find(",
+      "replace": "  const gap =\n    gaps.filter(() => false).find(",
       "cwd": "packages/clickhouse",
       "test": "__tests__/signal-map.test.ts",
-      "pattern": "both Attention signals render dark with KB-151 named"
+      "pattern": "weakens support to not_ingested, with its blocker"
     },
     {
       "name": "SM10 A pending unit check is ignored",
@@ -102,24 +102,24 @@
       "pattern": "reads as dark with the confirmer as blocker while pending"
     },
     {
-      "name": "SM11 A gap outlives the code that collects its field",
+      "name": "SM11 KB-151's average is dropped at ingest again, and its closed gap no longer reads as stale",
       "kind": "unit",
-      "file": "packages/clickhouse/src/lib/signal-map.ts",
-      "find": "    within: `${CONTENT_ANALYTICS}/providers/instagram`,\n    marker: 'reels_skip_rate',",
-      "replace": "    within: `${CONTENT_ANALYTICS}/providers/instagram`,\n    marker: 'ig_reels_avg_watch_time',",
+      "file": "packages/features/content-analytics/src/server/ingest.ts",
+      "find": "    ig_reels_avg_watch_time_ms: totals.avgWatchTimeMs,",
+      "replace": "    ig_reels_avg_watch_time_ms: null,",
       "cwd": "packages/clickhouse",
       "test": "__tests__/signal-map.test.ts",
-      "pattern": "is stale once its marker appears"
+      "pattern": "flags a closed gap as stale"
     },
     {
-      "name": "SM12 A gap is written where the families are already absent",
+      "name": "SM12 A gap on a platform whose families are already absent is not flagged redundant",
       "kind": "unit",
-      "file": "packages/clickhouse/src/lib/signal-map.ts",
-      "find": "    signal: 'reels_skip_rate',\n    platform: 'instagram',",
-      "replace": "    signal: 'reels_skip_rate',\n    platform: 'tiktok',",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "    tiktok: {\n      level: 'not_ingested',\n      table: null,\n      blockedBy: 'FILM-1730',\n      ...TIKTOK_BUSINESS,\n      note: 'TikTok does report watch time",
+      "replace": "    tiktok: {\n      level: 'derived',\n      table: null,\n      blockedBy: 'FILM-1730',\n      ...TIKTOK_BUSINESS,\n      note: 'TikTok does report watch time",
       "cwd": "packages/clickhouse",
       "test": "__tests__/signal-map.test.ts",
-      "pattern": "is redundant where the families are already that weak"
+      "pattern": "flags a gap on a signal whose families are already not ingested"
     },
     {
       "name": "SM13 A signal is bound in a stage it does not answer",

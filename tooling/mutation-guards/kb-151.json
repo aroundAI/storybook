@@ -1,0 +1,55 @@
+{
+  "feature": "FILM-CC-04 KB-151",
+  "mutations": [
+    {
+      "name": "KB-151 a Reel is not asked for its skip rate",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "                    'ig_reels_video_view_total_time',\n                    'reels_skip_rate',\n",
+      "replace": "                    'ig_reels_video_view_total_time',\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/providers/instagram/__tests__/instagram-insights.test.ts",
+      "pattern": "asks a Reel for its average watch time and skip rate"
+    },
+    {
+      "name": "KB-151 a metric Meta returns with no value is read as 0",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "      if (value !== undefined && value !== null) metrics[item.name] = value;",
+      "replace": "      metrics[item.name] = value ?? 0;",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/providers/instagram/__tests__/instagram-insights.test.ts",
+      "pattern": "reads a metric Meta returns with no value as not measured"
+    },
+    {
+      "name": "KB-151 the average is derived as total over views",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/ingest.ts",
+      "find": "    ig_reels_avg_watch_time_ms: totals.avgWatchTimeMs,",
+      "replace": "    ig_reels_avg_watch_time_ms:\n      totals.watchTimeMs === null ? null : totals.watchTimeMs / totals.views,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/ingest.test.ts",
+      "pattern": "stores Meta's average, not total"
+    },
+    {
+      "name": "KB-151 the snapshot writer drops the attention figures",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/ingest.ts",
+      "find": "    ...input.totals,\n    ...reelsAttention(input.platform, input.analytics),\n",
+      "replace": "    ...input.totals,\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/ingest.test.ts",
+      "pattern": "reaches the snapshot row the sync inserts"
+    },
+    {
+      "name": "KB-151 the skip rate is shown before its scale is confirmed",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/signal-map.ts",
+      "find": "    unitCheck: {\n      unit: 'percent',\n      pending: {",
+      "replace": "    unitCheck: {\n      unit: 'percent',\n      confirmed: { on: '2026-10-01', how: 'assumed' },\n      pending0: {",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "Attention is measurable once KB-151 stores the average"
+    }
+  ]
+}

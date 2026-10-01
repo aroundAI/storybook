@@ -154,10 +154,16 @@ export class InstagramInsightsProvider {
               'comments',
               'saved',
               'shares',
-              // Reels only, in milliseconds (confirmed on a live account
-              // by the owner, 2026-09-29). The average is not total ÷ views.
+              // Reels only. Watch time is in milliseconds (confirmed on a
+              // live account by the owner, 2026-09-29), and the average is
+              // not total ÷ views. Meta tags the skip rate estimated and in
+              // development, and does not say 0–100 or 0–1 (KB-151).
               ...(isReels
-                ? ['ig_reels_avg_watch_time', 'ig_reels_video_view_total_time']
+                ? [
+                    'ig_reels_avg_watch_time',
+                    'ig_reels_video_view_total_time',
+                    'reels_skip_rate',
+                  ]
                 : []),
             ];
 
@@ -186,6 +192,7 @@ export class InstagramInsightsProvider {
           shares: metrics.shares ?? 0,
           watchTimeMs: metrics.ig_reels_video_view_total_time ?? null,
           avgWatchTimeMs: metrics.ig_reels_avg_watch_time ?? null,
+          reelsSkipRate: metrics.reels_skip_rate ?? null,
           reposts: mediaInfo.reposts_count ?? null,
           allSurfaceViews: mediaInfo.total_views_count ?? null,
           allSurfaceLikes: mediaInfo.total_like_count ?? null,
@@ -530,15 +537,21 @@ export class InstagramInsightsProvider {
   /**
    * Parses metric values from insights response
    */
-  private parseMetrics(data: InsightsDataItem[]): Record<string, number> {
-    return data.reduce(
-      (acc, item) => {
-        acc[item.name] =
-          item.values?.[0]?.value ?? item.total_value?.value ?? 0;
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
+  /**
+   * A metric whose item carries no value is left out, not read as 0, so a
+   * figure that is null when unmeasured stays null (KB-151).
+   */
+  private parseMetrics(
+    data: InsightsDataItem[],
+  ): Partial<Record<string, number>> {
+    const metrics: Partial<Record<string, number>> = {};
+
+    for (const item of data) {
+      const value = item.values?.[0]?.value ?? item.total_value?.value;
+      if (value !== undefined && value !== null) metrics[item.name] = value;
+    }
+
+    return metrics;
   }
 }
 

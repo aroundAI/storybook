@@ -297,8 +297,71 @@ async function seed() {
         all_surface_views: null,
         all_surface_likes: null,
         all_surface_comments: null,
+        ig_reels_avg_watch_time_ms: null,
+        ig_reels_skip_rate: null,
       },
     ]),
+  );
+
+  // KB-151, migration 023. Hand-computed: FILM-1712's live Reel read a total
+  // of 749,526 ms over 221 views with Meta's average 6,194, so the stored
+  // average must be 6194 and not 749526 / 221 = 3391.5. A second Reel's
+  // fields were omitted, so both columns must read NULL, not 0.
+  await step(
+    'assert: Instagram Reels attention lands on the snapshot as reported, NULL kept',
+    async () => {
+      const reel = (
+        videoId: string,
+        avg: number | null,
+        skip: number | null,
+      ) => ({
+        project_id: PROJECT,
+        video_id: videoId,
+        platform: 'instagram' as const,
+        snapshot_date: '2026-10-01',
+        views: 221,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        saves: 0,
+        watch_time_seconds: 750,
+        subscribers_gained: null,
+        accounts_reached: 121,
+        reposts: null,
+        all_surface_views: null,
+        all_surface_likes: null,
+        all_surface_comments: null,
+        ig_reels_avg_watch_time_ms: avg,
+        ig_reels_skip_rate: skip,
+      });
+
+      await insertVideoSnapshots([
+        reel('kb151-measured', 6194, 37.5),
+        reel('kb151-omitted', null, null),
+      ]);
+
+      const result = await getClickHouseClient().query({
+        query: `SELECT video_id,
+                  argMax(tuple(ig_reels_avg_watch_time_ms), fetched_at).1 AS avg,
+                  argMax(tuple(ig_reels_skip_rate), fetched_at).1 AS skip
+                FROM video_snapshots
+                WHERE video_id IN ('kb151-measured', 'kb151-omitted')
+                GROUP BY video_id ORDER BY video_id`,
+        format: 'JSONEachRow',
+      });
+      const rows = await result.json<{
+        video_id: string;
+        avg: number | null;
+        skip: number | null;
+      }>();
+      const got = JSON.stringify(rows);
+      const want = JSON.stringify([
+        { video_id: 'kb151-measured', avg: 6194, skip: 37.5 },
+        { video_id: 'kb151-omitted', avg: null, skip: null },
+      ]);
+      if (got !== want) throw new Error(`expected ${want}, got ${got}`);
+      return got;
+    },
   );
 
   await step('insertVideoReachDaily', () =>
@@ -1665,6 +1728,8 @@ async function assertions() {
           all_surface_views: null,
           all_surface_likes: null,
           all_surface_comments: null,
+          ig_reels_avg_watch_time_ms: null,
+          ig_reels_skip_rate: null,
         },
       ]);
 
