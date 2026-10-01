@@ -2,7 +2,6 @@ import { expect, test } from '@playwright/test';
 
 import { decryptLikeTheApp } from '../utils/crypto';
 import {
-  SANDBOX_CONNECT,
   connectionRow,
   consentScopes,
   failNext,
@@ -10,6 +9,7 @@ import {
   ledger,
   openPlatforms,
   platformCard,
+  sandboxRun,
   storedConnections,
 } from '../utils/sandbox';
 import { seedTeamAccount } from '../utils/seed';
@@ -24,7 +24,7 @@ import { byTest } from '../utils/visible';
  * connection. Nothing is mocked in the app; the sandbox is the vendor.
  *
  * Needs the sandbox and an app started with local.env's vendor block; skipped
- * unless SANDBOX_CONNECT=1 (docs/ENGINEERING-WORKFLOW.md, "Sandbox-backed
+ * unless SANDBOX_E2E=1 (docs/ENGINEERING-WORKFLOW.md, "Sandbox-backed
  * E2E"), so CI, which has neither, does not run it.
  */
 const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
@@ -45,12 +45,8 @@ async function accountOnConsent(page: import('@playwright/test').Page) {
 }
 
 test.describe('Connecting TikTok through the sandbox (FILM-706)', () => {
-  test.skip(
-    !SANDBOX_CONNECT,
-    'Set SANDBOX_CONNECT=1, with the sandbox and a local.env app running.',
-  );
   // The sandbox has one TikTok account and one failure queue: in order.
-  test.describe.configure({ mode: 'default' });
+  sandboxRun();
 
   test('consent, then the row, the stored tokens and scopes, and a second connect', async ({
     page,

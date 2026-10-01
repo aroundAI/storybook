@@ -2,7 +2,6 @@ import { Page, expect, test } from '@playwright/test';
 
 import { decryptLikeTheApp } from '../utils/crypto';
 import {
-  SANDBOX_CONNECT,
   connectionRow,
   consentScopes,
   failNext,
@@ -10,6 +9,7 @@ import {
   ledger,
   openPlatforms,
   platformCard,
+  sandboxRun,
   storedConnections,
 } from '../utils/sandbox';
 import { seedTeamAccount } from '../utils/seed';
@@ -30,7 +30,7 @@ import { byTest } from '../utils/visible';
  * is the consequence: every Page the vendor lists is connected, and the
  * person's only choice is on Meta's own dialog, where they can decline.
  *
- * Skipped unless SANDBOX_CONNECT=1 (docs/ENGINEERING-WORKFLOW.md,
+ * Skipped unless SANDBOX_E2E=1 (docs/ENGINEERING-WORKFLOW.md,
  * "Sandbox-backed E2E"); CI has no sandbox.
  */
 const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
@@ -54,12 +54,8 @@ async function pageOnDialog(page: Page) {
 }
 
 test.describe('Connecting Facebook and Instagram through the sandbox (FILM-707)', () => {
-  test.skip(
-    !SANDBOX_CONNECT,
-    'Set SANDBOX_CONNECT=1, with the sandbox and a local.env app running.',
-  );
   // One Meta user in the sandbox, and one failure queue: in order.
-  test.describe.configure({ mode: 'default' });
+  sandboxRun();
 
   test('the dialog, then the Page and its Instagram account connected with their tokens and granted permissions, and a second connect', async ({
     page,

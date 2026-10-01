@@ -318,6 +318,88 @@ So `test:prod` pins `PORT=3010` and `PLAYWRIGHT_BASE_URL` to match. If you
 override either, override both, and check nothing else is on the port first.
 CI is unaffected — it starts its own server and never calls `test:prod`.
 
+## Sandbox-backed flows (FILM-1804)
+
+The connect, refresh, disconnect, publish and sync flows run against the
+vendor sandbox (`apps/vendor-sandbox`, FILM-1802/1803) rather than seeded
+rows: the app's real connect route, the sandbox's consent screen, the real
+callback, the real cron routes. They skip unless **`SANDBOX_E2E=1`**, so CI,
+which starts no sandbox, never runs them.
+
+```bash
+./scripts/local-env.sh up          # Supabase, ClickHouse, the sandbox, the job queue
+./scripts/local-env.sh status      # "Vendor sandbox: pid …"
+
+# the app, with local.env (the sandbox's VENDOR_URL_* block, ENCRYPTION_KEY, CRON_SECRET)
+set -a; . deployment/config/local.env; set +a
+export NEXT_PUBLIC_SITE_URL=http://localhost:3150 NEXT_PUBLIC_APP_URL=http://localhost:3150
+(cd apps/web && npx next dev --turbo -p 3150) &
+
+# the flows: same shell, one worker (one sandbox, one failure queue)
+cd apps/e2e
+SANDBOX_E2E=1 PLAYWRIGHT_BASE_URL=http://localhost:3150 \
+  npx playwright test sandbox- --project=chromium --workers=1 --retries=0
+```
+
+On a shared machine take the lane lock first (`scripts/local-ci/dblock.sh`,
+lane **A**: `sandbox-sync` reads ClickHouse). Load `local.env` in the
+Playwright shell too: the specs decrypt stored tokens with its
+`ENCRYPTION_KEY` and call the cron routes with its `CRON_SECRET`.
+
+| Flow (FILM-1804 §2) | Spec |
+|---|---|
+| Connect, one per platform | `platform-connections/sandbox-connect-{tiktok,meta,linkedin,youtube-x}.spec.ts` |
+| Disconnect and reconnect; token refresh | `platform-connections/sandbox-disconnect-refresh.spec.ts` |
+| Publish | `publishing/sandbox-publish.spec.ts` (inline); `sandbox/publish-queue-evidence.spec.ts` (scheduled, FILM-1806) |
+| Sync to dashboard, #278, #279 | `analytics/sandbox-sync.spec.ts` |
+| Studio pipeline | `sandbox/studio-flow-evidence.spec.ts` (FILM-1806), `sandbox/ai-sandbox-evidence.spec.ts` (FILM-1803) — gated by their own flags |
+| Vendor errors | `platform-connections/sandbox-vendor-errors.spec.ts`, the error tests in `sandbox-publish` and each `sandbox-connect-*` |
+
+### Never write a figure in advance
+
+The sandbox's data is random per run, so a spec cannot know that a video has
+4,512 views. It reads what the sandbox **served** for the request the app
+made, and compares the page with that. `tests/utils/sandbox.ts`:
+
+| Helper | What it gives |
+|---|---|
+| `sandboxRun()` | Call inside each `describe`: skips without `SANDBOX_E2E`, runs the file in order, starts it on a fresh sandbox run (`reset`), and prints the seed when a test fails |
+| `ledger(vendor, since)`, `ledgerFor(objectId, since)`, `lastLedgerId()` | Every call the app made, newest first — method, path, query (credentials redacted), status, what was served |
+| `servedTotals(platform, objectId, since)` | The figures in the newest successful response about one video; throws when the app never asked |
+| `failNext({vendor, status, pathIncludes, count})` | The next calls to that endpoint fail with the vendor's own error body: 429, 401, 5xx |
+| `reset(seed?)`, `sandboxSeed()` | A fresh run, under a given seed or a new one |
+| `replayableVideoId(prefix)` | A vendor-shaped id drawn from the run's seed, for a video the app already holds |
+| `connectThroughSandbox(page, slug, card)`, `vendorAccepts(platform, token)`, `cronHeaders()` | Connect as a person does; ask the vendor whether a token still works; call a cron route |
+
+There is deliberately no helper that reads an object's *current* figures:
+they grow while the test runs, so only what was served is comparable.
+
+### A failure prints its seed; the seed replays it
+
+```
+[sandbox] "TikTok: the sync records success, …" failed under seed 724078916.
+Replay: SANDBOX_SEED=724078916 SANDBOX_E2E=1 npx playwright test analytics/sandbox-sync.spec.ts -g "…" --retries=0
+```
+
+Under the same seed the sandbox draws the same accounts, tokens and videos —
+`replayableVideoId` keeps the test's own ids on the seed too — so the replay
+meets the same data. Growth still runs on the real clock, so figures move by
+the seconds between the runs; the assertions read them from the ledger
+either way.
+
+### Their mutation guards
+
+The #278 and #279 regression flows have `kind: e2e` entries in
+`tooling/mutation-guards/film-1804.json`, marked `"needs": "sandbox"`. CI's
+`--kind e2e` leaves them out (it has no sandbox, so they would skip and read
+as STAYED GREEN); run them with the stack above:
+
+```bash
+set -a; . deployment/config/local.env; set +a
+PLAYWRIGHT_BASE_URL=http://localhost:3150 \
+  python3 tooling/mutation-guards/run.py --kind e2e --with-sandbox
+```
+
 ## Proving a UI fix with a browser test
 
 > Part of [docs/ENGINEERING-WORKFLOW.md](../../docs/ENGINEERING-WORKFLOW.md),

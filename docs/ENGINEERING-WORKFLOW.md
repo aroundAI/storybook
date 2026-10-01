@@ -374,7 +374,7 @@ NODE_OPTIONS="--import $PWD/../../apps/vendor-sandbox/scripts/egress-guard.mjs" 
 # the specs (same shell, so local.env's ENCRYPTION_KEY is in the run's environment)
 cd ../e2e
 export PLAYWRIGHT_BASE_URL=http://localhost:3144 CAPTURE_EVIDENCE=1 EVIDENCE_DIR=/tmp/evidence
-SANDBOX_CONNECT=1 npx playwright test sandbox-connect --retries=0          # TikTok, Meta, LinkedIn: ~25 s
+SANDBOX_E2E=1 npx playwright test sandbox- --workers=1 --retries=0       # FILM-1804's flows (apps/e2e/README.md)
 AI_SANDBOX_EVIDENCE=1 npx playwright test ai-sandbox-evidence --retries=0   # Gemini, ElevenLabs flows: ~20 s
 PUBLISH_QUEUE_EVIDENCE=1 npx playwright test publish-queue-evidence --retries=0  # waits for the 5-minute cron: ~5 min
 ```

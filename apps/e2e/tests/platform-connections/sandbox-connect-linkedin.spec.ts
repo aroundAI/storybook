@@ -2,7 +2,6 @@ import { Page, expect, test } from '@playwright/test';
 
 import { decryptLikeTheApp } from '../utils/crypto';
 import {
-  SANDBOX_CONNECT,
   connectionRow,
   consentScopes,
   failNext,
@@ -10,6 +9,7 @@ import {
   ledger,
   openPlatforms,
   platformCard,
+  sandboxRun,
   storedConnections,
 } from '../utils/sandbox';
 import { seedTeamAccount } from '../utils/seed';
@@ -28,7 +28,7 @@ import { byTest } from '../utils/visible';
  * caller, and the sandbox serves no analytics) and delete post (`deletePost`
  * has no caller; unpublish skips LinkedIn). Publishing itself is KB-141's.
  *
- * Skipped unless SANDBOX_CONNECT=1 (docs/ENGINEERING-WORKFLOW.md,
+ * Skipped unless SANDBOX_E2E=1 (docs/ENGINEERING-WORKFLOW.md,
  * "Sandbox-backed E2E"); CI has no sandbox.
  */
 const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
@@ -44,12 +44,8 @@ async function memberOnConsent(page: Page) {
 }
 
 test.describe('Connecting LinkedIn through the sandbox (FILM-715)', () => {
-  test.skip(
-    !SANDBOX_CONNECT,
-    'Set SANDBOX_CONNECT=1, with the sandbox and a local.env app running.',
-  );
   // One LinkedIn member in the sandbox, and one failure queue: in order.
-  test.describe.configure({ mode: 'default' });
+  sandboxRun();
 
   test('consent, then the member connected with tokens and scopes, and a second connect', async ({
     page,
