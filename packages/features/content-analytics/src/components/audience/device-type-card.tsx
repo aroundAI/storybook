@@ -12,6 +12,7 @@ import {
 import type { DeviceBreakdownData } from '../../providers/youtube/types';
 import type { DeviceTypeBreakdown } from '../../server/aggregation-queries';
 import { AudienceCard, AudienceCardEmpty } from './audience-card';
+import { topDeviceClaim } from './audience-claims';
 
 interface DeviceTypeCardProps {
   /**
@@ -92,6 +93,7 @@ export function DeviceTypeCard({ deviceType }: DeviceTypeCardProps) {
         title="Device Type"
         icon={Smartphone}
         metricFamily="device"
+        claim={topDeviceClaim([])}
         data-test="audience-card-device"
       >
         <AudienceCardEmpty heading="No device data" data-test="device-empty">
@@ -106,6 +108,12 @@ export function DeviceTypeCard({ deviceType }: DeviceTypeCardProps) {
       title="Device Type"
       icon={Smartphone}
       metricFamily="device"
+      claim={topDeviceClaim(
+        deviceType.devices.map(({ device, percentage }) => ({
+          label: styleFor(device).label,
+          percentage,
+        })),
+      )}
       data-test="audience-card-device"
       footerInsight={
         <span data-test="device-total-views">

@@ -4,19 +4,24 @@ import Image from 'next/image';
 
 import { format } from 'date-fns';
 
+import type { AnalyticsPlatform } from '@kit/clickhouse';
+
 import { formatNumber, formatPercent } from '../../lib/format';
-import { VIEWS_NOT_MEASURED, formatViews } from '../../lib/views';
+import { VIEWS_NOT_MEASURED } from '../../lib/views';
 import type { Views } from '../../lib/views';
+import { AnalyticsCard } from '../overview/analytics-card';
+import type { CardClaim } from '../overview/card-claim';
 
 interface ContentCardProps {
+  publishId?: string;
   /** Content title */
   title: string;
   /** Episode or subtitle */
   subtitle?: string;
   /** Thumbnail URL */
   thumbnailUrl?: string;
-  /** Platform name */
-  platform: string;
+  /** The platform the item was published to */
+  platform: AnalyticsPlatform;
   /** Published date */
   publishedAt: string;
   /** View count */
@@ -32,22 +37,45 @@ interface ContentCardProps {
   onClick?: () => void;
 }
 
-const PLATFORM_BADGE_STYLES: Record<string, { bg: string; dot: string }> = {
-  tiktok: {
-    bg: 'bg-black text-white',
-    dot: 'bg-cyan-400',
-  },
-  youtube: {
-    bg: 'bg-red-600 text-white',
-    dot: 'bg-white',
-  },
-  instagram: {
-    bg: 'bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 text-white',
-    dot: 'bg-white',
-  },
-};
+/** The card's claim: its views, and when it went out. */
+export function contentCardClaim({
+  views,
+  publishedAt,
+  engagementRate,
+}: Pick<
+  ContentCardProps,
+  'views' | 'publishedAt' | 'engagementRate'
+>): CardClaim {
+  const published = `Published ${format(new Date(publishedAt), 'MMM d, yyyy')}`;
 
+  // No single view on this platform (KB-153): not measured, never 0.
+  if (views === null) {
+    return {
+      figure: null,
+      noFigure: `Views ${VIEWS_NOT_MEASURED.toLowerCase()}`,
+      sentence: `${published}.`,
+    };
+  }
+
+  return {
+    figure: formatNumber(views),
+    sentence:
+      engagementRate === null
+        ? `Views to date. ${published}.`
+        : `Views to date. ${published} · ${formatPercent(engagementRate)} engagement.`,
+  };
+}
+
+/**
+ * One published item (FILM-1707: on the one card shell).
+ *
+ * Its platform is said once, by the provenance chip — "TikTok only ·
+ * derived" says which platform and how its figures arrive. The brand-coloured
+ * badge that said the same thing beside it is gone: two indications of one
+ * fact, one of them in a colour that competes with the data (FILM-1705 §2).
+ */
 export function ContentCard({
+  publishId,
   title,
   subtitle,
   thumbnailUrl,
@@ -59,107 +87,78 @@ export function ContentCard({
   engagementRate,
   onClick,
 }: ContentCardProps) {
-  const platformKey = platform.toLowerCase();
-  const platformStyle = PLATFORM_BADGE_STYLES[platformKey] || {
-    bg: 'bg-gray-500 text-white',
-    dot: 'bg-white',
-  };
-
-  // Determine engagement color
-  const engagementColor =
-    engagementRate !== null && engagementRate > 5
-      ? 'text-green-600 dark:text-green-400'
-      : engagementRate !== null && engagementRate > 2
-        ? 'text-yellow-600 dark:text-yellow-400'
-        : 'text-gray-500 dark:text-gray-400';
-
-  return (
-    <div
-      className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all duration-300 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900"
-      onClick={onClick}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
+  const card = (
+    <AnalyticsCard
+      title={title}
+      metricFamily={'engagement'}
+      platforms={[platform]}
+      claim={contentCardClaim({ views, publishedAt, engagementRate })}
+      details={null}
+      data-test={'content-card'}
     >
-      {/* Thumbnail */}
-      <div className="relative aspect-video bg-gray-200 dark:bg-gray-800">
-        {thumbnailUrl ? (
-          <Image
-            src={thumbnailUrl}
-            alt={title}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, 400px"
-            unoptimized
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <span className="text-2xl text-gray-400">🎬</span>
-          </div>
+      <div className="flex flex-col gap-3">
+        {subtitle && (
+          <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
         )}
-        {/* Platform Badge */}
-        <div
-          className={`absolute top-3 right-3 flex items-center rounded-full px-2 py-1 text-[10px] font-bold shadow-lg ${platformStyle.bg}`}
-        >
-          <span
-            className={`mr-1.5 h-1.5 w-1.5 rounded-full ${platformStyle.dot}`}
-          />
-          {platform.charAt(0).toUpperCase() + platform.slice(1)}
-        </div>
-      </div>
 
-      {/* Content */}
-      <div className="flex flex-1 flex-col p-4">
-        {/* Title Section */}
-        <div className="mb-3">
-          <h3
-            className="truncate font-semibold text-gray-900 dark:text-white"
-            title={title}
-          >
-            {title}
-          </h3>
-          {subtitle && (
-            <p className="truncate text-xs text-gray-500 dark:text-gray-400">
-              {subtitle}
-            </p>
+        <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
+          {thumbnailUrl ? (
+            <Image
+              src={thumbnailUrl}
+              alt={title}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 400px"
+              unoptimized
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <span className="text-2xl text-muted-foreground">🎬</span>
+            </div>
           )}
         </div>
 
-        {/* Metrics Grid */}
-        <div className="mt-auto grid grid-cols-2 gap-x-2 gap-y-3 border-t border-gray-200 pt-3 text-sm dark:border-gray-700">
-          <div className="flex flex-col">
-            <span className="mb-0.5 text-xs text-gray-400">Views</span>
-            <span className="font-medium text-gray-900 dark:text-white">
-              {formatViews(views, formatNumber)}
-            </span>
-          </div>
-          <div className="flex flex-col">
-            <span className="mb-0.5 text-xs text-gray-400">Likes</span>
-            <span className="font-medium text-gray-900 dark:text-white">
-              {formatNumber(likes)}
-            </span>
-          </div>
-          <div className="flex flex-col">
-            <span className="mb-0.5 text-xs text-gray-400">Comments</span>
-            <span className="font-medium text-gray-900 dark:text-white">
-              {formatNumber(comments)}
-            </span>
-          </div>
-          <div className="flex flex-col">
-            <span className="mb-0.5 text-xs text-gray-400">Engagement</span>
-            <span className={`font-medium ${engagementColor}`}>
-              {engagementRate === null
+        <dl className="grid grid-cols-3 gap-2 border-t border-border pt-3 text-sm">
+          <ContentMetric label="Likes" value={formatNumber(likes)} />
+          <ContentMetric label="Comments" value={formatNumber(comments)} />
+          <ContentMetric
+            label="Engagement"
+            value={
+              engagementRate === null
                 ? VIEWS_NOT_MEASURED
-                : formatPercent(engagementRate)}
-            </span>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-3 flex items-center justify-between border-t border-dashed border-gray-200 pt-2 text-[10px] text-gray-400 dark:border-gray-700 dark:text-gray-500">
-          <span>Published</span>
-          <span>{format(new Date(publishedAt), 'MMM d, yyyy')}</span>
-        </div>
+                : formatPercent(engagementRate)
+            }
+          />
+        </dl>
       </div>
+    </AnalyticsCard>
+  );
+
+  if (!onClick) {
+    return <div data-publish-id={publishId}>{card}</div>;
+  }
+
+  return (
+    <div
+      data-publish-id={publishId}
+      className="cursor-pointer"
+      onClick={onClick}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') onClick();
+      }}
+      role="button"
+      tabIndex={0}
+    >
+      {card}
+    </div>
+  );
+}
+
+function ContentMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col">
+      <dt className="mb-0.5 text-xs text-muted-foreground">{label}</dt>
+      <dd className="font-medium tabular-nums">{value}</dd>
     </div>
   );
 }
