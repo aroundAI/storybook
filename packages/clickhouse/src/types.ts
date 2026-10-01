@@ -26,12 +26,17 @@ export type MetricSource =
  * platform data date; re-inserting the same key replaces the row
  * (ReplacingMergeTree on inserted_at).
  */
-export interface VideoMetric {
+export interface VideoMetric extends Partial<FacebookDenominators> {
   project_id: string;
   video_id: string;
   platform: AnalyticsPlatform;
   metric_date: string;
-  views: number;
+  /**
+   * Null for Facebook (migration 020): it reports four kinds of view and
+   * none is a view in this column's sense (FILM-1722), so a pooled views
+   * figure never adds one. Its kinds are `FacebookDenominators`.
+   */
+  views: number | null;
   likes: number;
   comments: number;
   shares: number;
@@ -107,6 +112,47 @@ export interface AllSurfaceAggregates {
 }
 
 /**
+ * Facebook's own denominators (migration 020, FILM-1720), each its own
+ * column so none is summed into another or into `views`. Lifetime on a
+ * snapshot, the day's increase on a `video_metrics` row; **null means not
+ * measured** — every row of every other platform, and a metric Meta left
+ * out (the Reels-only ones on an ordinary video).
+ */
+export interface FacebookDenominators {
+  /** `post_media_view`: played or displayed — the impression replacement. */
+  media_views: number | null;
+  /** `blue_reels_play_count`: at least 1 ms, replays excluded. */
+  plays: number | null;
+  /** `fb_reels_replay_count`. */
+  replays: number | null;
+  /** `total_video_views`: 3 seconds, or nearly the whole of a shorter video. */
+  views_3s: number | null;
+  /** `total_video_views_organic` and `_paid`: Meta's split, kept apart. */
+  views_3s_organic: number | null;
+  views_3s_paid: number | null;
+  /** `total_video_views_autoplayed` and `_clicked_to_play`: intent, kept apart. */
+  views_3s_autoplayed: number | null;
+  views_3s_clicked_to_play: number | null;
+  /** `total_video_15s_views`. Not ThruPlay, which is an Ads metric. */
+  views_15s: number | null;
+  /** `total_video_complete_views`: 97% or more of the video. */
+  complete_views: number | null;
+}
+
+export const FACEBOOK_DENOMINATOR_COLUMNS = [
+  'media_views',
+  'plays',
+  'replays',
+  'views_3s',
+  'views_3s_organic',
+  'views_3s_paid',
+  'views_3s_autoplayed',
+  'views_3s_clicked_to_play',
+  'views_15s',
+  'complete_views',
+] as const satisfies readonly (keyof FacebookDenominators)[];
+
+/**
  * A YouTube `video_metrics` row. Two writers share its key — the Reporting
  * ingest and the Analytics-API sync/backfill — and the later row replaces the
  * whole row, so a column one of them leaves out is erased from the other's
@@ -118,6 +164,7 @@ export interface AllSurfaceAggregates {
  */
 export type YouTubeVideoMetric = Omit<
   VideoMetric,
+  | 'views'
   | 'saves'
   | 'watch_time_seconds'
   | 'subscribers_gained'
@@ -130,6 +177,8 @@ export type YouTubeVideoMetric = Omit<
   | keyof AllSurfaceAggregates
 > & {
   platform: 'youtube';
+  /** YouTube's views are measured: the column's own definition. */
+  views: number;
   /** YouTube reports no per-video unique reach. */
   accounts_reached?: null;
   /** YouTube reports no reposts. */
@@ -195,12 +244,15 @@ export interface VideoAudienceRow {
  * Baseline store for TikTok/Instagram delta derivation, whose APIs only
  * expose lifetime counters.
  */
-export interface VideoSnapshot extends AllSurfaceAggregates {
+export interface VideoSnapshot
+  extends AllSurfaceAggregates,
+    Partial<FacebookDenominators> {
   project_id: string;
   video_id: string;
   platform: AnalyticsPlatform;
   snapshot_date: string;
-  views: number;
+  /** Null for Facebook (migration 020), as on `VideoMetric`. */
+  views: number | null;
   likes: number;
   comments: number;
   shares: number;
@@ -334,9 +386,12 @@ export interface VideoDim {
 /**
  * Latest-snapshot totals returned by queryLatestSnapshots, keyed by video_id.
  */
-export interface SnapshotTotals extends AllSurfaceAggregates {
+export interface SnapshotTotals
+  extends AllSurfaceAggregates,
+    Partial<FacebookDenominators> {
   snapshot_date: string;
-  views: number;
+  /** Null for Facebook (migration 020), as on `VideoMetric`. */
+  views: number | null;
   likes: number;
   comments: number;
   shares: number;

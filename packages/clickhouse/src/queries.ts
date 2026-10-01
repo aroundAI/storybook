@@ -12,6 +12,8 @@ import {
   sumTotalsByChunk,
 } from './chunked';
 import { getClickHouseClient, isClickHouseEnabled } from './client';
+import { PLATFORM_ENUM_TYPE } from './lib/platform-enum';
+import { FACEBOOK_DENOMINATOR_COLUMNS } from './types';
 import type {
   AggregatedTotals,
   ChannelDaily,
@@ -160,7 +162,8 @@ async function queryLatestSnapshotsSingle(input: {
     SELECT
       video_id,
       toString(argMax(snapshot_date, fetched_at)) as snapshot_date,
-      argMax(views, fetched_at) as views,
+      -- Nullable since migration 020 (Facebook), so the tuple form below.
+      argMax(tuple(views), fetched_at).1 as views,
       argMax(likes, fetched_at) as likes,
       argMax(comments, fetched_at) as comments,
       argMax(shares, fetched_at) as shares,
@@ -176,7 +179,10 @@ async function queryLatestSnapshotsSingle(input: {
       argMax(tuple(reposts), fetched_at).1 as reposts,
       argMax(tuple(all_surface_views), fetched_at).1 as all_surface_views,
       argMax(tuple(all_surface_likes), fetched_at).1 as all_surface_likes,
-      argMax(tuple(all_surface_comments), fetched_at).1 as all_surface_comments
+      argMax(tuple(all_surface_comments), fetched_at).1 as all_surface_comments,
+      ${FACEBOOK_DENOMINATOR_COLUMNS.map(
+        (column) => `argMax(tuple(${column}), fetched_at).1 as ${column}`,
+      ).join(',\n      ')}
     FROM (
       SELECT * FROM video_snapshots
       WHERE video_id IN {videoIds: Array(String)}
@@ -197,7 +203,7 @@ async function queryLatestSnapshotsSingle(input: {
   for (const row of rows) {
     map.set(row.video_id, {
       snapshot_date: row.snapshot_date,
-      views: Number(row.views),
+      views: nullableNumber(row.views),
       likes: Number(row.likes),
       comments: Number(row.comments),
       shares: Number(row.shares),
@@ -217,10 +223,21 @@ async function queryLatestSnapshotsSingle(input: {
         row.all_surface_comments == null
           ? null
           : Number(row.all_surface_comments),
+      ...Object.fromEntries(
+        FACEBOOK_DENOMINATOR_COLUMNS.map((column) => [
+          column,
+          nullableNumber(row[column]),
+        ]),
+      ),
     });
   }
 
   return map;
+}
+
+/** ClickHouse sends UInt64 as a string; NULL stays null, never 0. */
+function nullableNumber(value: number | string | null | undefined) {
+  return value == null ? null : Number(value);
 }
 
 // ==========================================
@@ -280,9 +297,7 @@ function buildWhereClause(filters: QueryFilters): {
   }
 
   if (filters.platforms && filters.platforms.length > 0) {
-    conditions.push(
-      `platform IN {platforms: Array(Enum('youtube', 'tiktok', 'instagram'))}`,
-    );
+    conditions.push(`platform IN {platforms: Array(${PLATFORM_ENUM_TYPE})}`);
     params.platforms = filters.platforms;
   }
 

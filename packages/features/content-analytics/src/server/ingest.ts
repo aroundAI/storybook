@@ -23,7 +23,8 @@ import type {
  * per-day breakdown (TikTok, Instagram).
  */
 export interface CumulativeTotals extends AllSurfaceAggregates {
-  views: number;
+  /** Null for Facebook, which has no single view (migration 020). */
+  views: number | null;
   likes: number;
   comments: number;
   shares: number;
@@ -89,7 +90,7 @@ export function computeSnapshotDelta(
   const clamp = (a: number, b: number) => Math.max(0, a - b);
 
   return {
-    views: clamp(current.views, baseline.views),
+    views: measuredDelta(current.views, baseline.views),
     likes: clamp(current.likes, baseline.likes),
     comments: clamp(current.comments, baseline.comments),
     shares: clamp(current.shares, baseline.shares),

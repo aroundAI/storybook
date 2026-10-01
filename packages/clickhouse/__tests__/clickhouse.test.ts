@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { FACEBOOK_DENOMINATOR_COLUMNS } from '../src/types';
+
 // Mock the @clickhouse/client module before importing our code
 vi.mock('@clickhouse/client', () => ({
   createClient: vi.fn(() => mockClickHouseClient),
@@ -178,6 +180,44 @@ describe('@kit/clickhouse', () => {
     });
 
     describe('queryLatestSnapshots', () => {
+      it('keeps a Facebook snapshot’s NULL views null, never 0 (migration 020)', async () => {
+        mockQueryResult.json.mockResolvedValue([
+          {
+            video_id: 'fb-1',
+            snapshot_date: '2026-09-30',
+            views: null,
+            likes: '5',
+            comments: '1',
+            shares: '1',
+            saves: null,
+            watch_time_seconds: '90',
+            subscribers_gained: '2',
+            plays: '40',
+            views_3s_organic: '20',
+            views_3s_paid: '5',
+          },
+        ]);
+
+        const { queryLatestSnapshots } = await import('../src/queries');
+        const result = await queryLatestSnapshots({
+          videoIds: ['fb-1'],
+          beforeDate: '2026-10-01',
+        });
+
+        expect(result.get('fb-1')).toMatchObject({
+          views: null,
+          plays: 40,
+          views_3s_organic: 20,
+          views_3s_paid: 5,
+          replays: null,
+        });
+
+        // A bare argMax skips NULLs and would hand back an older figure.
+        const call = mockClickHouseClient.query.mock.calls[0]![0];
+        expect(call.query).toContain('argMax(tuple(views), fetched_at).1');
+        expect(call.query).toContain('argMax(tuple(plays), fetched_at).1');
+      });
+
       it('should return a Map of video_id to latest snapshot totals', async () => {
         mockQueryResult.json.mockResolvedValue([
           {
@@ -212,6 +252,10 @@ describe('@kit/clickhouse', () => {
           accounts_reached: null,
           reposts: null,
           ...ALL_SURFACE_UNMEASURED,
+          // Facebook's own denominators: not measured on any other platform.
+          ...Object.fromEntries(
+            FACEBOOK_DENOMINATOR_COLUMNS.map((column) => [column, null]),
+          ),
         });
 
         const call = mockClickHouseClient.query.mock.calls[0]![0];

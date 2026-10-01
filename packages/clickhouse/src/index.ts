@@ -42,6 +42,7 @@ export type {
   DailyDataPoint,
   DailyPlatformBreakdown,
   DailyStats,
+  FacebookDenominators,
   MetricSource,
   PlatformBreakdown,
   PlatformEngagement,
@@ -58,6 +59,8 @@ export type {
   MeasuredColumns,
   PerVideoTotals,
 } from './types';
+export { FACEBOOK_DENOMINATOR_COLUMNS } from './types';
+export { PLATFORM_ENUM_TYPE, PLATFORM_ENUM_VALUES } from './lib/platform-enum';
 
 export { formatDateStr } from './utils';
 
