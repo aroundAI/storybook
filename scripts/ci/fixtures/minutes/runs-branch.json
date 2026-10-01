@@ -1,0 +1,104 @@
+{
+  "total_count": 11,
+  "workflow_runs": [
+    {
+      "id": 36881420290,
+      "name": "Workflow",
+      "event": "pull_request",
+      "conclusion": "success",
+      "head_branch": "feat/film-1718-stage-diagnosis",
+      "html_url": "https://github.com/aroundAI/storybook/actions/runs/36881420290",
+      "run_attempt": 1
+    },
+    {
+      "id": 36881420142,
+      "name": "PR records",
+      "event": "pull_request",
+      "conclusion": "success",
+      "head_branch": "feat/film-1718-stage-diagnosis",
+      "html_url": "https://github.com/aroundAI/storybook/actions/runs/36881420142",
+      "run_attempt": 1
+    },
+    {
+      "id": 36856745589,
+      "name": "Workflow",
+      "event": "pull_request",
+      "conclusion": "success",
+      "head_branch": "feat/film-1718-stage-diagnosis",
+      "html_url": "https://github.com/aroundAI/storybook/actions/runs/36856745589",
+      "run_attempt": 1
+    },
+    {
+      "id": 36856745397,
+      "name": "PR records",
+      "event": "pull_request",
+      "conclusion": "success",
+      "head_branch": "feat/film-1718-stage-diagnosis",
+      "html_url": "https://github.com/aroundAI/storybook/actions/runs/36856745397",
+      "run_attempt": 1
+    },
+    {
+      "id": 36856626414,
+      "name": "Workflow",
+      "event": "pull_request",
+      "conclusion": "cancelled",
+      "head_branch": "feat/film-1718-stage-diagnosis",
+      "html_url": "https://github.com/aroundAI/storybook/actions/runs/36856626414",
+      "run_attempt": 1
+    },
+    {
+      "id": 36856626382,
+      "name": "PR records",
+      "event": "pull_request",
+      "conclusion": "cancelled",
+      "head_branch": "feat/film-1718-stage-diagnosis",
+      "html_url": "https://github.com/aroundAI/storybook/actions/runs/36856626382",
+      "run_attempt": 1
+    },
+    {
+      "id": 36856605043,
+      "name": "PR records",
+      "event": "pull_request",
+      "conclusion": "cancelled",
+      "head_branch": "feat/film-1718-stage-diagnosis",
+      "html_url": "https://github.com/aroundAI/storybook/actions/runs/36856605043",
+      "run_attempt": 1
+    },
+    {
+      "id": 36856605011,
+      "name": "PR records",
+      "event": "pull_request",
+      "conclusion": "cancelled",
+      "head_branch": "feat/film-1718-stage-diagnosis",
+      "html_url": "https://github.com/aroundAI/storybook/actions/runs/36856605011",
+      "run_attempt": 1
+    },
+    {
+      "id": 36856604746,
+      "name": "PR records",
+      "event": "pull_request",
+      "conclusion": "cancelled",
+      "head_branch": "feat/film-1718-stage-diagnosis",
+      "html_url": "https://github.com/aroundAI/storybook/actions/runs/36856604746",
+      "run_attempt": 1
+    },
+    {
+      "id": 36856605577,
+      "name": "PR records",
+      "event": "pull_request",
+      "conclusion": "cancelled",
+      "head_branch": "feat/film-1718-stage-diagnosis",
+      "html_url": "https://github.com/aroundAI/storybook/actions/runs/36856605577",
+      "run_attempt": 1
+    },
+    {
+      "id": 36856604985,
+      "name": "Workflow",
+      "event": "pull_request",
+      "conclusion": "cancelled",
+      "head_branch": "feat/film-1718-stage-diagnosis",
+      "html_url": "https://github.com/aroundAI/storybook/actions/runs/36856604985",
+      "run_attempt": 1
+    }
+  ]
+}

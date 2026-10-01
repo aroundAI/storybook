@@ -1,0 +1,23 @@
+{
+  "total_count": 2,
+  "workflow_runs": [
+    {
+      "id": 1000000001,
+      "name": "Workflow",
+      "event": "merge_group",
+      "conclusion": "success",
+      "head_branch": "gh-readonly-queue/main/pr-502-985e0dc7a0000000000000000000000000000000",
+      "html_url": "https://github.com/aroundAI/storybook/actions/runs/1000000001",
+      "run_attempt": 2
+    },
+    {
+      "id": 1000000002,
+      "name": "Workflow",
+      "event": "merge_group",
+      "conclusion": "success",
+      "head_branch": "gh-readonly-queue/main/pr-5021-985e0dc7a0000000000000000000000000000000",
+      "html_url": "https://github.com/aroundAI/storybook/actions/runs/1000000002",
+      "run_attempt": 1
+    }
+  ]
+}
