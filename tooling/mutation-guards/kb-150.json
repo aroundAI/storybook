@@ -60,6 +60,16 @@
       "spec": "tests/analytics/sandbox-sync-failure.spec.ts",
       "grep": "429: TikTok rate-limits the sync",
       "env": { "SANDBOX_E2E": "1" }
+    },
+    {
+      "name": "KB150-U5 a Facebook Page without insights access is recorded as failed, not a scope error",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/sync-status.ts",
+      "find": "    error instanceof InstagramInsightsScopeError ||\n    error instanceof FacebookInsightsScopeError\n  ) {",
+      "replace": "    error instanceof InstagramInsightsScopeError\n  ) {",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/sync-status.test.ts",
+      "pattern": "records a Page without insights access as a scope error"
     }
   ]
 }

@@ -5,6 +5,7 @@ import {
   type SyncStatusResponse,
   describeSyncStatus,
 } from '../src/lib/sync-status';
+import { FacebookInsightsScopeError } from '../src/providers/facebook';
 import {
   TikTokAnalyticsProvider,
   TikTokAnalyticsScopeError,
@@ -251,6 +252,12 @@ describe('classifySyncFailure: what a failed attempt is recorded as', () => {
       errorType: 'scope',
       reason: 'access_token_invalid: nope',
     });
+  });
+
+  it('records a Page without insights access as a scope error, as the other platforms are', () => {
+    expect(
+      classifySyncFailure(new FacebookInsightsScopeError('(#10) denied')),
+    ).toMatchObject({ status: 'scope_error', errorType: 'scope' });
   });
 
   it('records anything else as failed, with its message', () => {
