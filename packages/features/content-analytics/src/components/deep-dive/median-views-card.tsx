@@ -174,34 +174,33 @@ export function MedianViewsCard({
               marked.has(bucket.bucket) ? 'true' : undefined
             }
             className={cn(
-              'group relative flex flex-1 flex-col justify-end',
+              'group relative h-full flex-1',
               marked.has(bucket.bucket) && VIEW_DEFINITION_BUCKET,
             )}
             style={{ height: '100%' }}
             detail={`${formatBucket(bucket.bucket)}: median ${formatViews(bucket.medianViews)}, mean ${formatViews(bucket.meanViews)} (${bucket.videoCount} videos)`}
             data-test={'median-bar'}
           >
-            {/* p25–p75 band shows the spread the median summarizes */}
+            {/* p25–p75 band shows the spread the median summarizes. Placed
+                by `bottom`, never a percentage margin: a vertical margin's
+                percentage is of the width, which drew every band hundreds
+                of pixels above the chart (KB-155). */}
             <div
-              className={'relative w-full rounded-sm bg-primary/20'}
+              className={'absolute right-0 left-0 rounded-sm bg-primary/20'}
+              data-test={'median-band'}
               style={{
+                bottom: `${(bucket.p25Views / max) * 100}%`,
                 height: `${((bucket.p75Views - bucket.p25Views) / max) * 100}%`,
-                marginBottom: `${(bucket.p25Views / max) * 100}%`,
               }}
-            >
-              <div
-                className={'absolute right-0 left-0 h-0.5 bg-primary'}
-                style={{
-                  bottom: `${
-                    bucket.p75Views > bucket.p25Views
-                      ? ((bucket.medianViews - bucket.p25Views) /
-                          (bucket.p75Views - bucket.p25Views)) *
-                        100
-                      : 0
-                  }%`,
-                }}
-              />
-            </div>
+            />
+            <div
+              className={'absolute right-0 left-0 h-0.5 bg-primary'}
+              data-test={'median-line'}
+              // Kept inside the bucket when the median is the tallest value.
+              style={{
+                bottom: `min(${(bucket.medianViews / max) * 100}%, calc(100% - 2px))`,
+              }}
+            />
           </ChartMark>
         ))}
       </ChartMarks>

@@ -14,6 +14,7 @@ import {
   DATE_AXIS_NOTE_KEY,
   DateAxisNote,
 } from '../src/components/deep-dive/date-axis-note';
+import { MedianViewsCard } from '../src/components/deep-dive/median-views-card';
 import { AnalyticsCard } from '../src/components/overview/analytics-card';
 import {
   TRUE_DAILY_PLATFORMS,
@@ -346,5 +347,51 @@ describe('the one-time note that the figures moved (§2)', () => {
     expect(
       document.querySelector('[data-test="deep-dive-date-axis-note"]'),
     ).toBeNull();
+  });
+});
+
+describe('the median chart draws inside itself (KB-155)', () => {
+  it('places every band by its bottom, never by a percentage margin', () => {
+    const { container } = render(
+      <MedianViewsCard
+        buckets={[
+          {
+            bucket: '2026-08-01',
+            videoCount: 1,
+            medianViews: 200,
+            p25Views: 200,
+            p75Views: 200,
+            meanViews: 200,
+          },
+          {
+            bucket: '2026-09-01',
+            videoCount: 2,
+            medianViews: 45,
+            p25Views: 42.5,
+            p75Views: 47.5,
+            meanViews: 45,
+          },
+        ]}
+      />,
+    );
+
+    const styled = [...container.querySelectorAll<HTMLElement>('[style]')];
+
+    // A vertical margin's percentage is of the width: it lifted each band
+    // hundreds of pixels above a 96px chart.
+    expect(
+      styled.filter(({ style }) =>
+        /%/.test(style.marginBottom + style.marginTop),
+      ),
+    ).toEqual([]);
+
+    const bands = container.querySelectorAll<HTMLElement>(
+      '[data-test="median-band"]',
+    );
+
+    expect([...bands].map(({ style }) => style.bottom)).toEqual([
+      '100%',
+      '21.25%',
+    ]);
   });
 });
