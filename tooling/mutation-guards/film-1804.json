@@ -58,8 +58,8 @@
       "kind": "e2e",
       "needs": "sandbox",
       "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
-      "find": "          metric: metrics.join(','),\n          access_token: this.accessToken,",
-      "replace": "          metric: metrics.join(','),\n          breakdown: 'follow_type',\n          access_token: this.accessToken,",
+      "find": "          metric: metrics.join(','),\n        }),\n      { token: this.accessToken },",
+      "replace": "          metric: metrics.join(','),\n          breakdown: 'follow_type',\n        }),\n      { token: this.accessToken },",
       "spec": "tests/analytics/sandbox-sync.spec.ts",
       "grep": "Instagram: a Reel stores the shares",
       "env": { "SANDBOX_E2E": "1" }

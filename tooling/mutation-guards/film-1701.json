@@ -95,8 +95,8 @@
       "name": "E1 the audience read enabled on the Audience tab alone",
       "kind": "e2e",
       "file": "packages/features/content-analytics/src/components/analytics-dashboard.tsx",
-      "find": "    enabled: activeTab === 'audience' || activeTab === 'overview',",
-      "replace": "    enabled: activeTab === 'audience',",
+      "find": "      activeTab === 'audience' ||\n      activeTab === 'overview' ||\n      activeTab === 'insights',",
+      "replace": "      activeTab === 'audience' ||\n      activeTab === 'insights',",
       "spec": "tests/audience/audience-evidence.spec.ts",
       "grep": "first load of Overview",
       "env": {
