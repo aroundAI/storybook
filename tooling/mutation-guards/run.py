@@ -19,7 +19,8 @@ Outcomes per entry:
   MISSING       the mutation's target text is gone — the code moved; update
                 the entry with it, or the guard is guarding nothing
   NOT GREEN     the guard fails even without the mutation, so a failure under
-                the mutation would prove nothing
+                the mutation would prove nothing — or, for an E2E guard, no
+                test passed because every one it selects skipped
   AMBIGUOUS     a `find` matches more than once (or an edit names another
                 file), so the mutation might not break what the guard tests;
                 checked before any test runs
@@ -160,6 +161,18 @@ def guard_command(entry, base_env):
 # first attempt stayed green.
 E2E_WAITS = (4, 20)
 
+# Playwright's summary line for tests that ran and passed, after the line
+# reporter's cursor escapes. `flaky` passed on a retry, which a baseline allows.
+PLAYWRIGHT_PASSED = re.compile(
+    r'^(?:\x1b\[[0-9;]*[A-Za-z])*\s*\d+ (?:passed|flaky)\b', re.MULTILINE)
+
+
+def nothing_passed(entry, output):
+    """An E2E baseline whose tests all skipped. Playwright exits 0 for it, and
+    the mutated run skips the same way, so the guard reads as STAYED GREEN with
+    no test ever run — K11 did, on a runner without ENCRYPTION_KEY."""
+    return entry['kind'] == 'e2e' and not PLAYWRIGHT_PASSED.search(output)
+
 
 def run_code_mutation(entry, base_env):
     path = os.path.join(ROOT, entry['file'])
@@ -175,6 +188,11 @@ def run_code_mutation(entry, base_env):
     code, output = run(cmd, cwd, env)
     if code != 0:
         return 'NOT GREEN', output
+    if nothing_passed(entry, output):
+        return 'NOT GREEN', ('No test passed on the real code: every test the '
+                             'guard selects was skipped, so it cannot fail '
+                             'either. Give the run what the skip asks for.\n'
+                             + output)
 
     mutated = source
     for edit in edits_of(entry):
@@ -358,6 +376,18 @@ def self_test(base_env):
     if duplicate_names(named + [{'name': 'U1 tag scope dropped'}]) != ['U1 tag scope dropped']:
         print('SELF-TEST FAILED: duplicate_names missed a repeated name')
         return 1
+    e2e, cursor = {'kind': 'e2e'}, '\x1b[1A\x1b[2K'
+    for label, entry, output, want in [
+        ('passed', e2e, '  1 passed (9.1s)\n', False),
+        ('passed after a cursor escape', e2e, f'{cursor}  2 passed (9.1s)\n', False),
+        ('flaky', e2e, f'{cursor}  1 flaky\n', False),
+        ('all skipped', e2e, f'{cursor}  1 skipped\n', True),
+        ('"passed" in a title only', e2e, '  ✓ 1 passed check › x\n  1 skipped\n', True),
+        ('a unit guard', {'kind': 'unit'}, ' Tests  1 skipped\n', False),
+    ]:
+        if nothing_passed(entry, output) != want:
+            print(f'SELF-TEST FAILED: nothing_passed {label}: expected {want}')
+            return 1
     if not needs_sandbox({'needs': 'sandbox'}) or needs_sandbox({'kind': 'e2e'}):
         print('SELF-TEST FAILED: needs_sandbox does not tell a sandbox entry apart')
         return 1
