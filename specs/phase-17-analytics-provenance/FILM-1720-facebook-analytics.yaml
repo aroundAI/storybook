@@ -34,7 +34,7 @@ acceptance_criteria:
     evidence: "packages/clickhouse/src/migrations/020_facebook.ts:55 appends 'facebook' = 4; packages/clickhouse/src/lib/platform-enum.ts:19 states the ordinals once and packages/clickhouse/__tests__/platform-enum.test.ts fails a drift between them. Run against a throwaway ClickHouse 24.8 over rows written under the old enum: the six columns read Enum8(... 'facebook' = 4), old YouTube and Instagram rows read back unchanged, a Facebook row with NULL views was accepted, and 020 re-ran cleanly. Red: without the video_daily_stats recreate the stale view failed with \"Unexpected value 4 in enum\". #TBD"
   - text: "All seven enum-bearing tables, AnalyticsPlatform, SyncPlatform and QueryFilters accept facebook, and the three without the enum are handled explicitly rather than assumed"
     met: true
-    evidence: "Six live tables carry the enum (packages/clickhouse/src/migrations/020_facebook.ts:57): 001's video_metrics is the seventh in the count and 002 drops it; channel_windows has had 'facebook' = 4 since 016. AnalyticsPlatform packages/clickhouse/src/types.ts:11, SYNC_PLATFORMS packages/features/content-analytics/src/server/types.ts:9, QueryFilters' parameter enum packages/clickhouse/src/queries.ts:289 (built from PLATFORM_ENUM_TYPE, no longer a literal). The three without it: video_dim.platform is a String, so dim-sync now decides (next criterion); channel_daily and channel_subscribers have no platform column and Facebook writes neither: channel_totals is not_ingested (packages/clickhouse/src/lib/data-provenance.ts:999). #TBD"
+    evidence: "Six live tables carry the enum (packages/clickhouse/src/migrations/020_facebook.ts:57): 001's video_metrics is the seventh in the count and 002 drops it; channel_windows has had 'facebook' = 4 since 016. AnalyticsPlatform packages/clickhouse/src/types.ts:11, SYNC_PLATFORMS packages/features/content-analytics/src/server/types.ts:9, QueryFilters' parameter enum packages/clickhouse/src/queries.ts:290 (built from PLATFORM_ENUM_TYPE, no longer a literal). The three without it: video_dim.platform is a String, so dim-sync now decides (next criterion); channel_daily and channel_subscribers have no platform column and Facebook writes neither: channel_totals is not_ingested (packages/clickhouse/src/lib/data-provenance.ts:999). #TBD"
   - text: "dim-sync no longer creates dimension rows for platforms that cannot have metrics"
     met: true
     evidence: "packages/features/content-analytics/src/server/dim-sync.ts:98 reads only AnalyticsPlatform publishes and :168 skips any other row. packages/features/content-analytics/__tests__/dim-sync.test.ts:102 went red first (four rows for yt, fb, li, x where two belong), guard FB1. #TBD"
@@ -69,9 +69,6 @@ remaining:
   - criterion: "Facebook switched on"
     reason: "read_insights and pages_manage_engagement are requested only once ANALYTICS_SCOPES_ENABLED names facebook, which waits on Meta App Review (docs/vendor-review-status.md)."
     closed_by: "owner"
-  - criterion: "Per-video lists and the platform split say Facebook views are not measured"
-    reason: "Reproduced: queryPerVideoTotals, queryVideoViewsAtAge and queryPlatformBreakdown read a Facebook row's NULL views as 0. The reach page is fixed here; the rest is KB-153."
-    closed_by: "KB-153"
   - criterion: "Facebook's other reported figures are ingested"
     reason: "Documented and not collected: the Page's followers (channel_totals), its 1/7/28-day unique viewers (channel_accounts_reached), each video's views by age and gender and by country, and post_media_view's follower split. Each is not_ingested in the matrix, blocked by FILM-1720."
     closed_by: "unassigned"
@@ -129,8 +126,11 @@ notes: |
   quantile of their views now keep to VIEWS_COLUMN_PLATFORMS; every
   hand-computed figure held. The reach page read Facebook's NULL as 0 on
   its Facebook line; it now says not measured (evidence spec
-  reach-evidence.spec.ts, screenshots reach-06 to reach-08). Three more
-  readers do the same and are KB-153.
+  reach-evidence.spec.ts, screenshots reach-06 to reach-08). Every other
+  reader that hands back views does the same since KB-153 (fixed in this
+  PR): per-video totals, views at age, the platform split, the daily
+  series, the dashboards, the reports and the insights payload all say
+  not measured, and the LEFT JOIN readers read a miss as 0 again.
 
   **Registry (handed over by FILM-1728).** facebook.total_video_impressions
   and facebook.post_impressions_unique are `availability: 'retired'`,
