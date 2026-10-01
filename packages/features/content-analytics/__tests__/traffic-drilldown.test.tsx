@@ -14,6 +14,7 @@ import {
   trafficBreakdownDetails,
 } from '../src/components/deep-dive/traffic-share-card';
 import { AnalyticsCard } from '../src/components/overview/analytics-card';
+import { renderWithCoverage } from './helpers/coverage';
 
 /**
  * FILM-1708. The drill-down and the chart tooltips, rendered.
@@ -52,7 +53,7 @@ const buckets = groupTrafficRows([
 ]);
 
 function renderBreakdown() {
-  return render(
+  return renderWithCoverage(
     <AnalyticsCard
       title={'Where views came from'}
       metricFamily={'traffic_sources'}

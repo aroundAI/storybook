@@ -9,6 +9,7 @@ import { Badge } from '@kit/ui/badge';
 import { Skeleton } from '@kit/ui/skeleton';
 import { cn } from '@kit/ui/utils';
 
+import { platformLabel } from '../../lib/platform-labels';
 import type { CardDetails } from '../overview/analytics-card';
 import type { CardClaim } from '../overview/card-claim';
 import { ChartMark, ChartMarks, formatTrueShare } from './chart-marks';
@@ -395,7 +396,7 @@ function TrafficSourceDrillDown({
       ) : (
         <>
           <p>
-            YouTube’s own traffic-source codes behind each group, as a share of
+            {platformLabel('youtube')}’s own traffic-source codes behind each group, as a share of
             all {windowViews.toLocaleString()} views. Only codes that occurred
             are listed.
           </p>

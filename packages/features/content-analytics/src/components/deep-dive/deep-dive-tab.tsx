@@ -594,7 +594,7 @@ export function DeepDiveTab({
           )}
           details={trafficBreakdownDetails(
             trafficBuckets,
-            sourceNotesFor('traffic_sources', scopePlatforms),
+            sourceNotesFor('traffic_sources'),
           )}
           data-test={'deep-dive-traffic-breakdown'}
         >
