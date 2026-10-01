@@ -20,6 +20,7 @@
  * Pure and client-safe.
  */
 import type { AnalyticsPlatform } from '../types';
+import { quantileInclusive } from './channel-experiments';
 import type { FormatFamily } from './format-families';
 import type { DurationBand, GenomeAttribute } from './genome-attributes';
 import {
@@ -118,7 +119,9 @@ export interface GenomeAnalysis {
 /**
  * ClickHouse's `quantileExactInclusive(p)`: linear interpolation at
  * position (n − 1)·p over the sorted values. The segment query's medians are
- * this function, so the genome's must be too.
+ * this function, so the genome's must be too. The arithmetic is FILM-1724's
+ * `quantileInclusive`, one implementation; this sorts first and answers NaN
+ * for no values.
  */
 export function quantileExactInclusive(
   values: readonly number[],
@@ -126,13 +129,10 @@ export function quantileExactInclusive(
 ): number {
   if (values.length === 0) return Number.NaN;
 
-  const sorted = [...values].sort((a, b) => a - b);
-  const position = (sorted.length - 1) * p;
-  const lower = Math.floor(position);
-  const upper = Math.ceil(position);
-  const low = sorted[lower]!;
-
-  return low + (sorted[upper]! - low) * (position - lower);
+  return quantileInclusive(
+    [...values].sort((a, b) => a - b),
+    p,
+  );
 }
 
 interface MeasuredVideo {
