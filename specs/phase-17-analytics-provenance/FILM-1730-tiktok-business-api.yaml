@@ -32,13 +32,13 @@ acceptance_criteria:
     evidence: "packages/clickhouse/src/lib/data-provenance.ts — watch_time, traffic_sources, reach and geography × tiktok; pinned by 'the TikTok Business gaps are owned by FILM-1730' and the structural rule 'a TikTok Business gap is blocked by the TikTok Business integration' in packages/clickhouse/__tests__/data-provenance.test.ts; mutation guard 'A TikTok Business gap goes back to the FILM-1712 placeholder' (tooling/mutation-guards/film-1703.json)"
   - text: "Business section of the capability reference re-verified against the endpoint's own reference page, cited, dated; auth, scopes, limits, pagination and time semantics recorded"
     met: false
-    reason: "not yet implemented — DRAFT; reference section last verified 2026-09-14, blocked on developers.tiktok.com refusing connections on 2026-09-21"
+    reason: "not yet implemented — DRAFT; reference section last verified 2026-09-14, blocked on developers.tiktok.com refusing connections on 2026-09-21, and again on 2026-10-01 when every TikTok docs host and mirror was unreachable (notes §0.2; the six pages needed are listed in §0.3)"
   - text: "Business developer app registered and approved (owner action; blocks every criterion below that says \"live\")"
     met: false
     reason: "not yet implemented — owner action, app not held"
   - text: "Connection model decided and written into this spec before code; Business and Display connections cannot break each other"
     met: false
-    reason: "not yet implemented — DRAFT"
+    reason: "decided 2026-10-01 (notes §0.4: a surface column in platform_connections_unique), not built — the second half, that neither connection can break the other, needs the migration and its test, which wait for the docs (§0.2)"
   - text: "Host and version live once in @kit/shared/vendors; the version guard covers them"
     met: false
     reason: "not yet implemented — DRAFT"
@@ -68,6 +68,78 @@ acceptance_criteria:
     reason: "filed as a FILM-1725 check until it can run"
 open_questions: []
 notes: |
+  ## 0. Where this stands (2026-10-01)
+
+  ### 0.1 Owner decision, 2026-10-01
+
+  Build FILM-1730 against the local vendor sandbox (FILM-1802) and ship it
+  dark: the integration stays off unless Business API credentials are
+  configured, until a TikTok Business developer app exists. The live checks
+  (the app registration, a real Business account connected, one sync checked
+  against TikTok Studio's own numbers) stay with the owner. When the sandbox
+  build lands, this spec moves to PARTIAL, with those checks in `remaining:`
+  with closed_by `owner` or `FILM-1725`. It does not go DONE until they have run.
+
+  ### 0.2 Docs unreachable, 2026-10-01: nothing built
+
+  That decision says build from TikTok's published Business API
+  documentation, citing each page and the date it was read. On 2026-10-01 none
+  of it could be read from this network. So no sandbox vendor, provider,
+  migration or test was written, and the spec stays DRAFT. What was tried:
+
+  | Source | Result, 2026-10-01 |
+  |---|---|
+  | `business-api.tiktok.com/portal/docs` (fetch and curl) | ECONNREFUSED / connect timeout (curl exit 28) |
+  | `developers.tiktok.com` | connect timeout (curl exit 28), as on 2026-09-21 |
+  | `ads.tiktok.com/gateway/docs` (TikTok's own mirror of the portal) | ECONNREFUSED |
+  | Wayback Machine, `business-api.tiktok.com/portal/docs/*` | captures exist for rate-limits, permission-scope, return-codes-appendix, generic-authorization and obtain-a-long-term-access-token, but every one is a ~6.5 KB single-page-app shell with no content; `/business/video/list/` was never captured |
+  | Wayback Machine, `ads.tiktok.com/gateway/docs` | also a client-rendered shell; the doc ids a search engine associates with `/business/video/list/` and `/tt_user/oauth2/token/` (1762228421622786, 1768506960432130) were not captured (404) |
+  | TikTok's Postman workspace (`postman.com/tiktok/tiktok-api-for-business`) | client-rendered; the fetch returned an empty page |
+  | TikTok's GitHub SDK (`github.com/tiktok/tiktok-business-api-sdk`, docs and Changelog.md) | reachable, but covers ads endpoints only; no `/business/` or `/tt_user/` path anywhere in it |
+  | Web-search summaries | reachable, but paraphrases, and at least one was wrong: it attributed new `/business/video/list/` fields (e.g. `video_view_retention`) to TikTok's SDK changelog, which has no `/business/` endpoints. Rejected as a source (lead, 2026-10-01): no field name, limit or behaviour in this spec rests on a search snippet |
+
+  The lead confirmed the same timeouts from a second shell on the same day:
+  TikTok is blocked on this network, not just down.
+
+  ### 0.3 The pages needed before building
+
+  Someone on another network captures these (saved HTML or PDF, with the date
+  captured). They are then cited by URL and capture date, and the
+  `<!-- fields: tiktok/business -->` block in
+  docs/platform-capability-reference.md is re-verified from them (step zero,
+  §2):
+
+  1. `/business/video/list/`: request parameters, fields, pagination contract,
+     the empty-after-7-days and 365-day statements, and whether figures are
+     lifetime totals or daily (§4.6)
+  2. `/tt_user/oauth2/token/`: the authorization-code exchange, the response
+     fields, token lifetime
+  3. `/tt_user/oauth2/refresh_token/`: the refresh behaviour, and whether the
+     refresh token rotates
+  4. Permission scope: the scopes the video-list call needs
+  5. Rate limits
+  6. Return codes appendix: the error envelope and codes, including the code for
+     a non-Business account and for a missing scope, which must stay distinct
+     states (`account_type_gated` vs `scope_missing`)
+
+  Where those pages are silent on a behaviour, this spec says so; the sandbox
+  does not invent it.
+
+  ### 0.4 Connection model, decided 2026-10-01 (§4.2)
+
+  A second row, not an upgrade, as §4.2 recommended (lead's approval,
+  2026-10-01). `platform_connections` gains a `surface` column,
+  `'display' | 'business'`, default `'display'`, and the column joins the
+  unique constraint, which is today
+  `platform_connections_unique UNIQUE(account_id, platform, platform_account_id, language)`.
+  Without it a Business row for the same TikTok account collides with the
+  Display row. Every existing row is a Display row and stays as it is.
+  Revoking either connection cannot touch the other, and FILM-1711's scope
+  audit gains the Business surface. Rejected: a new `platform` value
+  (`tiktok_business`), which would touch every list of platforms, and
+  upgrading the row in place, which §4.2 argues against. It is built when the
+  docs are in hand, not before.
+
   ## 1. Why this exists
 
   Everything we know about a TikTok video today comes from the Display API
