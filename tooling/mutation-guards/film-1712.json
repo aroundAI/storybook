@@ -35,8 +35,8 @@
       "name": "R1 reposts are read without being requested",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
-      "find": "?fields=media_type,media_product_type,reposts_count`",
-      "replace": "?fields=media_type,media_product_type`",
+      "find": "media_product_type,reposts_count,${INSTAGRAM_AGGREGATE_FIELDS}",
+      "replace": "media_product_type,${INSTAGRAM_AGGREGATE_FIELDS}",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/provider-result-fields.test.ts",
       "pattern": "every total is read from a requested field"
