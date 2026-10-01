@@ -76,7 +76,7 @@ acceptance_criteria:
     evidence: "apps/web/supabase/tests/database/create-policies-refuse-outsiders.test.sql:96"
   - text: "TypeScript compiles without errors"
     met: true
-    evidence: ".github/workflows/workflow.yml:103"
+    evidence: ".github/workflows/workflow.yml:120"
 test_plan:
   unit:
     - text: "Test revenue summary calculation"

@@ -14,7 +14,7 @@ summary: >
 acceptance_criteria:
   - text: "`pnpm --filter @kit/clickhouse migrate` applies pending migrations in order and is a no-op on re-run"
     met: true
-    evidence: "`packages/clickhouse/src/migrations/run.ts:79` (skips recorded names), `.github/workflows/workflow.yml:204`"
+    evidence: "`packages/clickhouse/src/migrations/run.ts:79` (skips recorded names), `.github/workflows/workflow.yml:221`"
   - text: "Double-inserting the same (video, platform, day) row yields exactly one row under `SELECT … FINAL`, with the latest values"
     met: false
     reason: "unverified — engine is right (`002_metrics_v2.ts:41`); CI's re-insert assertion covers `channel_subscribers`, not `video_metrics`"
