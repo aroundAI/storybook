@@ -22,7 +22,7 @@ summary: >
 acceptance_criteria:
   - text: "The policy question is answered and the answer recorded here with its source: is the AI info label required, expected or optional for the Reels this product publishes"
     met: false
-    reason: "not answered — a policy decision for the owner, from Meta's own policy and help pages (DRAFT, filed 2026-10-01 by FILM-1728)"
+    reason: "not answered — a policy decision for the owner. Meta's own pages were read 2026-10-02 and are quoted in the notes ('Instagram: what Meta's pages say'), with a recommended answer under 'Owner decision needed' (#TBD-FILM-1731)"
   - text: "If the label applies to some publishes, the product knows which: the creator declares it per publish (or per project), and the declaration is stored with the publish"
     met: false
     reason: "blocked on the answer above"
@@ -33,8 +33,8 @@ acceptance_criteria:
     met: false
     reason: "blocked on the answer above"
   - text: "Whether the same question exists on the other platforms we publish to is checked and recorded, each with its own source"
-    met: false
-    reason: "not researched — see the notes"
+    met: true
+    evidence: "notes, 'Other platforms we publish to': YouTube, TikTok, X, LinkedIn and Facebook each checked against their own first-party policy page and API reference, quoted with URL and read date 2026-10-02; the two pages this network could not read (X's policy page, TikTok's support page) are named, not guessed (#TBD-FILM-1731)"
 open_questions:
   - "Is Instagram's AI info label required, expected, or merely available for the Reels this product publishes — and does the answer differ between the owner's own account and other creators'?"
 notes: |
@@ -73,12 +73,291 @@ notes: |
   project default) and a control in the publish flow, which makes this a UI
   change with a Playwright spec and screenshots if the answer is "required".
 
-  ## Other platforms, not researched
+  ## Instagram: what Meta's pages say (read 2026-10-02)
 
-  The same disclosure question probably exists elsewhere: YouTube and TikTok
-  both have disclosure settings for AI-generated or altered content. Neither
-  has been read for this spec. Each needs its own first-party source before
-  anything is claimed about it.
+  Three questions, each answered from Meta's own pages. Every page below was
+  read on 2026-10-02 unless it says otherwise.
+
+  1. Is the label required, expected or optional for Reels made with
+     generative AI and published via the API?
+
+     The policy requires disclosure for photorealistic AI video and
+     realistic AI audio, whatever the upload path. The API parameter itself
+     is optional.
+
+     - Meta Community Standards, Misinformation
+       (https://transparency.meta.com/policies/community-standards/misinformation,
+       change log's latest dated entry Apr 7, 2025): "We require people to
+       disclose, using our AI-disclosure tool, whenever they post organic
+       content with photorealistic video or realistic-sounding audio that
+       was digitally created or altered, and we may apply penalties if they
+       fail to do so."
+     - Meta newsroom, "Labeling AI-Generated Images on Facebook, Instagram
+       and Threads", Nick Clegg, 2024-02-06
+       (https://about.fb.com/news/2024/02/labeling-ai-generated-images-on-facebook-instagram-and-threads/):
+       "We'll require people to use this disclosure and label tool when they
+       post organic content with a photorealistic video or realistic-sounding
+       audio that was digitally created or altered, and we may apply
+       penalties if they fail to do so."
+     - Meta newsroom, "Our Approach to Labeling AI-Generated Content and
+       Manipulated Media" (https://about.fb.com/news/2024/04/metas-approach-to-labeling-ai-generated-content-and-manipulated-media/),
+       update of 2024-07-01: "we're updating the 'Made with AI' label to 'AI
+       info' across our apps". The labels are "based on our detection of
+       industry-shared signals of AI images or people self-disclosing that
+       they're uploading AI-generated content."
+
+     None of these pages distinguishes the app from the API: the
+     requirement attaches to the content (photorealistic video, realistic
+     audio), not to how it was posted. None of them names a different rule
+     for the owner's own account and another creator's. The rule does not
+     reach non-photorealistic video (animation, an obviously stylised
+     look), and none of the three quotes requires it for images.
+
+  2. Does the API accept the parameter?
+
+     Yes, as an optional boolean on the container request.
+
+     - IG User Media reference
+       (https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media/):
+       "is_ai_generated <TRUE_OR_FALSE> An optional parameter to provide a
+       self-disclosure of AI usage in the post. Not available for carousel
+       children."
+     - Instagram Platform changelog
+       (https://developers.facebook.com/docs/instagram-platform/changelog/),
+       June 22, 2026: "The Content Publishing API now supports
+       self-disclosure of AI-generated content at publish time. Set the new
+       is_ai_generated parameter to true when creating a media container to
+       apply the AI info label." It is also readable back:
+       GET /{ig_media_id}?fields=is_ai_generated.
+     - Content Publishing guide
+       (https://developers.facebook.com/docs/instagram-platform/content-publishing/):
+       "To provide a self-disclosure of AI usage in the media, you can set
+       is_ai_generated parameter to true".
+
+  3. What happens if it is not sent?
+
+     The API documentation does not say; nothing in the reference, guide or
+     changelog describes an error or a default label, so an unflagged
+     container publishes as it does today. The consequence is in the policy
+     instead: for photorealistic AI video, not disclosing breaks the rule
+     quoted in (1), and "we may apply penalties if they fail to do so".
+     The Misinformation standard adds that "Accounts that repeatedly share
+     the misinformation listed below may ... receive decreased
+     distribution, limitations on their ability to advertise, or be removed
+     from our platforms" — that sentence is about misinformation, not about
+     a missing label, and is quoted here only so the owner sees the ceiling.
+     Meta may also label it without being told: the 2024-04 newsroom post
+     says labels come from "detection of industry-shared signals" as well as
+     self-disclosure, so an AI file carrying C2PA/IPTC markers can be
+     labelled whether or not the flag is sent.
+
+  Not readable from this network on 2026-10-02:
+
+  - Meta's help-centre article "How AI-generated content is identified and
+    labeled on Meta" (https://www.facebook.com/help/1783222608822690). curl
+    gets HTTP 200 with that title but an empty script-rendered shell with no
+    article text; WebFetch got Facebook's "This page isn't available" page.
+    Its content is not recorded here.
+  - No Instagram help-centre article on the AI info label was found by
+    search. The nearest, "Label AI content on Threads"
+    (https://help.instagram.com/407718162047721/), returned the same empty
+    shell. The answers above therefore rest on the Community Standards, the
+    newsroom posts and the developer docs, not on the help centre.
+
+  ## Other platforms we publish to (read 2026-10-02)
+
+  Each checked against its own first-party policy page and its own API
+  reference, for the endpoint this product's provider actually calls
+  (packages/features/publishing/src/providers/). Read 2026-10-02 unless it
+  says otherwise.
+
+  | Platform | Disclosure rule for realistic AI video | API field on the call we make | Sent today |
+  |---|---|---|---|
+  | Instagram | required (photorealistic) | is_ai_generated, optional | no |
+  | Facebook Page | required (same Meta rule) | none found on POST /{page-id}/videos | n/a |
+  | YouTube | required (realistic) | status.containsSyntheticMedia | no |
+  | TikTok | required (realistic-looking) | post_info.is_aigc, required: false | no |
+  | X | not read (page refused) | made_with_ai | no |
+  | LinkedIn | only for a person shown saying/doing what they did not | none found | n/a |
+
+  ### YouTube
+
+  - Policy — YouTube Help, "Disclosing use of GenAI content"
+    (https://support.google.com/youtube/answer/14328491?hl=en): "we require
+    creators to disclose when they use AI to meaningfully alter or generate
+    photorealistic content. Creators must disclose GenAI content that: Makes
+    a real person appear to say or do something they didn't do. Alters
+    footage of a real event or place. Generates a realistic scene that
+    didn't actually occur." Not needed for unrealistic content; the page's
+    examples include "Someone riding a unicorn through a fantastical world".
+    It also says "Disclosing AI content won't limit a video's audience or
+    impact its eligibility to earn money."
+  - If not disclosed: "Creators who consistently choose not to disclose
+    this information may be subject to manual application of a label, or
+    penalties from YouTube, including removal of content or suspension from
+    the YouTube Partner Program." And "YouTube may automatically apply an AI
+    label ... for: Content made using YouTube's GenAI tools; Content that
+    contains C2PA metadata; Content that our internal systems detect is AI
+    generated or altered."
+  - API — YouTube Data API, Videos resource
+    (https://developers.google.com/youtube/v3/docs/videos):
+    "status.containsSyntheticMedia boolean In a videos.insert or
+    videos.update request, this property allows the channel owner to
+    disclose that a video contains realistic Altered or Synthetic (A/S)
+    content." Added per the revision history
+    (https://developers.google.com/youtube/v3/revision_history), October
+    30, 2024: "The API now supports the ability to identify videos that
+    contain realistic Altered or Synthetic (A/S) content."
+  - Our call: YouTubeProvider builds status with privacyStatus, madeForKids
+    and selfDeclaredMadeForKids only; containsSyntheticMedia is not sent.
+
+  ### TikTok
+
+  TikTok's own hosts refused the connection from this network
+  (developers.tiktok.com, support.tiktok.com and www.tiktok.com: "connect
+  ECONNREFUSED" to 202.56.230.30 and 13.127.247.216). Two of TikTok's pages
+  were read instead as Internet Archive captures of TikTok's own URL — the
+  text is TikTok's, but it is as of the capture date, not today:
+
+  - Policy — TikTok Community Guidelines, Integrity and Authenticity
+    (https://www.tiktok.com/community-guidelines/en/integrity-authenticity/,
+    capture 2026-03-22 07:34:57 UTC,
+    https://web.archive.org/web/20260322073457/https://www.tiktok.com/community-guidelines/en/integrity-authenticity/):
+    "we require creators to label AI-generated or significantly edited
+    content that shows realistic-looking scenes or people. Unlabeled content
+    may be removed, restricted, or labeled by our team, depending on the
+    harm it could cause." And "You must label content that uses AI or
+    includes significant edits to show realistic-looking people or scenes.
+    You can add your own clear caption, sticker, or watermark. For
+    AI-generated content, you can also use our AIGC label." Not needed for
+    "Using artistic styles, like anime".
+  - API — Content Posting API, Direct Post reference
+    (https://developers.tiktok.com/doc/content-posting-api-reference-direct-post,
+    capture 2026-08-24 13:00:27 UTC of
+    https://developers.tiktok.com/docs/en/content-posting-api-reference-direct-post),
+    post_info row: "is_aigc | bool | Set to true if the video is AI
+    generated content. If set, the video will be labelled with Creator
+    labeled as AI-generated tag in video's description. | false" (the last
+    column is Required). This is the endpoint our provider calls,
+    POST /v2/post/publish/video/init/.
+  - Not read: TikTok's support article on AI-generated content
+    (https://support.tiktok.com/en/using-tiktok/creating-videos/ai-generated-content)
+    — refused directly and has no archive capture. Its content is not
+    recorded here.
+  - Our call: TikTokProvider.initUpload sends privacy, duet/stitch/comment,
+    cover and brand toggles; is_aigc is not sent. (The vendor sandbox knows
+    is_aigc only as a field TikTok returns on a video read, in
+    apps/vendor-sandbox/src/social/vendors/tiktok/data.ts; its publish
+    init does not model it yet.)
+
+  ### X
+
+  - Policy — not read. X's synthetic and manipulated media policy
+    (https://help.x.com/en/rules-and-policies/manipulated-media) and its
+    authenticity page (https://help.x.com/en/rules-and-policies/authenticity)
+    both returned HTTP 403 to curl and to WebFetch; the archive had no
+    capture of the first and was offline for a second attempt. Nothing is
+    claimed here about what X requires.
+  - API — X API, Create Post (https://docs.x.com/x-api/posts/create-post),
+    request body of POST /2/tweets: "made_with_ai boolean Disclose that the
+    tweet contains AI-generated media." It is not in the body's required
+    list. This is the endpoint our TwitterProvider calls.
+  - Our call: made_with_ai is not sent.
+
+  ### LinkedIn
+
+  - Policy — LinkedIn Professional Community Policies
+    (https://www.linkedin.com/legal/professional-community-policies): "Do
+    not share synthetic or manipulated media that depicts a person saying
+    something they did not say or doing something they did not do without
+    clearly disclosing the fake or altered nature of the material." That is
+    narrower than Meta's, YouTube's or TikTok's rule: it covers a depicted
+    person, not any realistic scene, and asks for clear disclosure without
+    naming a tool.
+  - LinkedIn Help, "Content credentials"
+    (https://www.linkedin.com/help/linkedin/answer/a6282984, "Last updated:
+    11 months ago"): LinkedIn is "adopting the C2PA standard" and "it's not
+    yet possible to identify and label all AI-generated and modified
+    content". Labelling comes from C2PA metadata in the file, not from a
+    poster's flag.
+  - API — Posts API and Post schema (li-lms-2026-09,
+    https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/post-api-schema?view=li-lms-2026-09)
+    and the Videos API
+    (https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/videos-api?view=li-lms-2026-09):
+    no field for AI or synthetic content. Searched for synthetic,
+    AI-generated, generative, "made with" and provenance; the positive
+    control (isReshareDisabledByAuthor, contentCallToActionLabel) was found
+    in the same text. The only disclosure the API allows is in the
+    commentary.
+
+  ### Facebook
+
+  - Policy — the same Meta Community Standards rule quoted for Instagram
+    above. The 2024-02-06 newsroom post that introduced it is titled
+    "Labeling AI-Generated Images on Facebook, Instagram and Threads", so
+    it covers Facebook as well.
+  - API — Graph API v26.0 Page Videos reference
+    (https://developers.facebook.com/docs/graph-api/reference/page/videos/):
+    no AI-disclosure parameter. Searched for is_ai_generated, "AI info",
+    ai_generated and synthetic; the positive control (file_url,
+    content_category) was found in the same text. FacebookProvider publishes
+    through POST /{page-id}/videos only.
+  - That leaves a gap: Meta requires disclosure "using our AI-disclosure
+    tool", and the Page videos API as documented today has no way to use
+    it. A photorealistic AI video published to a Facebook Page through this
+    product cannot be disclosed the way Meta's rule asks.
+
+  ## Owner decision needed
+
+  The first criterion is the owner's to answer. Recommended answer, with
+  its reasoning:
+
+  **Required, for photorealistic or realistic-looking AI video (and
+  realistic AI audio); not required for animation or a clearly stylised
+  look; the same answer for the owner's account and for other creators'.**
+
+  Why:
+
+  - Instagram, YouTube and TikTok each say "require" in their own policy,
+    each for realistic content, and each names penalties up to removal or
+    loss of monetisation. None makes an exception for API publishing or for
+    the account type. The studio writes VEO 3.1 prompts for photorealistic
+    shots with real-looking people, so much of what is uploaded will fall
+    inside the rule.
+  - The cost is lopsided. Disclosing has no stated penalty (YouTube says in
+    as many words that it does not limit audience or monetisation), while
+    not disclosing does. A false "yes" on a real video mislabels it; a
+    false "no" on an AI video breaks the rule. So the product should ask,
+    not guess, and should not default to "no".
+  - The platforms label from their own signals too (Meta's "industry-shared
+    signals", YouTube's C2PA metadata and internal detection, LinkedIn's
+    C2PA), so leaving the flag off does not reliably keep a label off; it
+    only removes the creator's own disclosure. Whether VEO output carries
+    C2PA metadata was not checked for this spec.
+
+  What that means for the build (criteria 2–4, once answered):
+
+  - One declaration per publish — "this video is AI-generated or
+    realistically AI-altered" — defaulted from the project and asked
+    explicitly at publish time, stored with the publish. Not a per-platform
+    setting: the rules agree closely enough that one answer maps to every
+    platform.
+  - Map it to every field that exists: is_ai_generated (Instagram),
+    containsSyntheticMedia (YouTube), is_aigc (TikTok), made_with_ai (X).
+    That widens this spec past Instagram. The owner decides whether
+    FILM-1731 takes all four, or files a sibling spec for the other three.
+  - Facebook Pages and LinkedIn have no field. Recommended: for LinkedIn,
+    add a one-line disclosure to the commentary when the declaration is yes
+    (its policy asks for clear disclosure and names no tool). For Facebook,
+    the owner decides between a caption disclosure (does not satisfy
+    "using our AI-disclosure tool" to the letter) and not offering
+    Facebook for declared photorealistic AI video until Meta's Page API
+    has the parameter.
+  - Before this decision is recorded, two pages above could not be read
+    (X's policy; TikTok's support article), and TikTok's are captures from
+    2026-03 and 2026-08. Reading them from another network would close
+    that gap; it does not change the recommendation, since the X and TikTok
+    API fields exist either way.
 feature:
   database: null
   queries: []
