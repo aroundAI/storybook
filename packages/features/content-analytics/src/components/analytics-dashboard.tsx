@@ -532,7 +532,7 @@ export function PerformanceOverTimeCard({
     data[0] ? isoDay(data[0].date) : undefined,
     data.at(-1) ? isoDay(data.at(-1)!.date) : undefined,
   );
-  const total = data.reduce((sum, day) => sum + day.views, 0);
+  const total = data.reduce((sum, day) => sum + viewsToAdd(day.views), 0);
 
   const claim: CardClaim | 'loading' = isLoading
     ? 'loading'

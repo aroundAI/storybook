@@ -2,6 +2,7 @@
 
 import { z } from 'zod';
 
+import { ANALYTICS_PLATFORMS } from '@kit/clickhouse';
 import { querySubscriberSeries } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
 import { fetchAllRows } from '@kit/shared/pagination';
@@ -22,7 +23,7 @@ const ScopeSchema = z
     connectionId: z.string().uuid().optional(),
     // The Deep Dive's platform switcher (FILM-1707). Listed, not passed
     // through: zod strips a key the schema does not name.
-    platform: z.enum(['youtube', 'tiktok', 'instagram']).optional(),
+    platform: z.enum(ANALYTICS_PLATFORMS).optional(),
   })
   .refine((scope) => scope.projectId || scope.accountId, {
     message: 'projectId or accountId is required',

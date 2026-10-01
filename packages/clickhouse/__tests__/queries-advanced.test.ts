@@ -1675,6 +1675,7 @@ describe('queries-advanced', () => {
         expect(query_params.fetchDatedPlatforms).toEqual([
           'tiktok',
           'instagram',
+          'facebook',
         ]);
       },
     );

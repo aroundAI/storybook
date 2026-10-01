@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { TRAFFIC_SOURCE_BUCKETS } from '@kit/clickhouse';
+import { ANALYTICS_PLATFORMS, TRAFFIC_SOURCE_BUCKETS } from '@kit/clickhouse';
 
 /**
  * Schemas for the deep-dive analytics actions.
@@ -30,7 +30,7 @@ export const ScopeSchema = z
     projectId: z.string().uuid().optional(),
     accountId: z.string().uuid().optional(),
     connectionId: z.string().uuid().optional(),
-    platform: z.enum(['youtube', 'tiktok', 'instagram']).optional(),
+    platform: z.enum(ANALYTICS_PLATFORMS).optional(),
     contentType: z.string().max(50).optional(),
     language: z.string().max(10).optional(),
   })

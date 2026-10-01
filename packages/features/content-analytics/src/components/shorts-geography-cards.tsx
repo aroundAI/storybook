@@ -45,6 +45,16 @@ export function topShortsClaim(
     };
   }
 
+  // Not measured sorts last, so a top short without views means none has
+  // them (KB-153): no figure, never a 0.
+  if (top.views === null) {
+    return {
+      figure: null,
+      noFigure: `Views ${VIEWS_NOT_MEASURED.toLowerCase()}`,
+      sentence: 'No short here has a views figure to rank by.',
+    };
+  }
+
   const level = data.filter((short) => short.views === top.views).length;
 
   return level > 1
