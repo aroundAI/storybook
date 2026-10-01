@@ -58,7 +58,7 @@ _Verified: 2026-10-01_
 | TikTok (basic) | Display API `/v2/video/query/` | `video.list` + `user.info.stats` **requested since FILM-1711; TikTok app review outstanding** | included | unbounded backwards |
 | TikTok (deep) | **Business API** `/business/video/list/` | not implemented; separate app | included | stops updating 365d after publish |
 | Instagram | Graph `/{ig-media-id}/insights` | `instagram_manage_insights` **requested since FILM-1711; App Review + Business Verification outstanding** | included | media ~2y; account ~90d (*inferred*) |
-| Facebook | Graph `/{video-id}/video_insights` + the video's Page post insights | `read_insights` + `pages_manage_engagement` **in the Meta config since FILM-1720, withheld until `ANALYTICS_SCOPES_ENABLED` names `facebook`; App Review outstanding**. **No reach or impressions since Graph v26.0** (FILM-1728); `post_media_view` and `post_total_media_view_unique` in their place | included | 2 years |
+| Facebook | Graph `/{video-id}/video_insights` + the video's Page post insights | `read_insights` + `pages_manage_engagement` **in the Meta config since FILM-1720, withheld until `ANALYTICS_SCOPES_ENABLED` names `facebook`; App Review outstanding**. **No reach or impressions since Graph v26.0** (FILM-1728); `post_media_view` and `post_total_media_view_unique` in their place | included | 2 years back from the **request** |
 | X (degraded) | `media.non_public_metrics` via posts lookup | **held** — `tweet.read` + `users.read` are requested for publishing; provider built and dark (FILM-1727) | metered — $0.005 per post read | **30d from post creation** |
 | X (full) | `/2/media/analytics` | **held** (same scopes) | **tier gated — Enterprise** (*inferred*) | **undocumented** |
 
@@ -400,7 +400,12 @@ _Verified: 2026-09-21_
 ## Facebook
 
 `GET /{video-id}/video_insights` — Pages only, not groups or user profiles. Data is
-retained 2 years. Requires a Page token from someone with the **`ANALYZE`** task;
+retained 2 years, counted back from the request: "Data is only available for the
+past 2 years" ([video_insights reference](https://developers.facebook.com/docs/graph-api/reference/video/video_insights/),
+read 2026-10-02; the [Insights reference](https://developers.facebook.com/docs/graph-api/reference/insights/)
+says "Only the last two years of insights data is available"). Nothing ends a video's
+insights two years after it was posted, so the matrix anchors this window on
+`request_date` (KB-163). Requires a Page token from someone with the **`ANALYZE`** task;
 the current `video_insights` reference names `pages_manage_engagement` +
 `read_insights`. An older Meta page names `pages_read_engagement`; request all three
 until one authorised call settles it (FILM-1720 §8).

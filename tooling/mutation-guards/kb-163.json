@@ -1,0 +1,25 @@
+{
+  "feature": "KB-163",
+  "mutations": [
+    {
+      "name": "KB163-1 self-benchmark restates Facebook's window",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/self-benchmark.ts",
+      "find": "  facebook: capabilityFor('engagement', 'facebook').window,",
+      "replace": "  facebook: { maxAgeDays: 730, anchoredOn: 'request_date' },",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/self-benchmark.test.ts",
+      "pattern": "never a restated copy"
+    },
+    {
+      "name": "KB163-2 Facebook's two years are anchored on publish",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "const FACEBOOK_VIDEO = {\n  access: 'review_required',\n  availability: 'included',\n  window: { maxAgeDays: 730, anchoredOn: 'request_date' },",
+      "replace": "const FACEBOOK_VIDEO = {\n  access: 'review_required',\n  availability: 'included',\n  window: { maxAgeDays: 730, anchoredOn: 'publish_date' },",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "counts Facebook’s two years back from the request"
+    }
+  ]
+}

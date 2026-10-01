@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { MIN_MATURE_VIDEOS } from '../src/lib/cohort-growth';
+import { CAPABILITY_MATRIX, capabilityFor } from '../src/lib/data-provenance';
 import {
   CONFIDENCE_DIRECTIONAL_MIN,
   resolveConfidence,
@@ -334,6 +335,24 @@ describe('per-platform checkpoints', () => {
       maxAgeDays: 730,
       anchoredOn: 'publish_date',
     });
+  });
+
+  it('takes every platform’s window from the capability matrix, never a restated copy', () => {
+    // `toBe`, not `toEqual`: a literal copy of today's values is still a
+    // second statement of the window, and drifts from the matrix the day
+    // either is corrected (KB-163).
+    const platforms = Object.keys(
+      VIEWS_DATA_WINDOWS,
+    ) as (keyof typeof VIEWS_DATA_WINDOWS)[];
+
+    expect(platforms.sort()).toEqual(
+      Object.keys(CAPABILITY_MATRIX.engagement).sort(),
+    );
+    for (const platform of platforms) {
+      expect(VIEWS_DATA_WINDOWS[platform], platform).toBe(
+        capabilityFor('engagement', platform).window,
+      );
+    }
   });
 });
 

@@ -563,6 +563,16 @@ describe('what the platform cannot do is kept apart from what we have not done',
       'publish_date',
     );
   });
+
+  it('counts Facebook’s two years back from the request, not from publish (KB-163)', () => {
+    // Meta: "Data is only available for the past 2 years" (video_insights
+    // reference, read 2026-10-02). Nothing there ends a video's insights two
+    // years after it was posted.
+    expect(capabilityFor('engagement', 'facebook').window).toEqual({
+      maxAgeDays: 730,
+      anchoredOn: 'request_date',
+    });
+  });
 });
 
 describe('the invariants are in the type, not only in this suite', () => {
