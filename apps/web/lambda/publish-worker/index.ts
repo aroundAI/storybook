@@ -36,6 +36,10 @@ import {
   ownedEpisodeVideo,
 } from '@kit/publishing/lib/owned-episode-video';
 import { ownedEpisodeThumbnail } from '@kit/publishing/lib/owned-thumbnail';
+import {
+  TokenRefusal,
+  tokenErrorCodeOf,
+} from '@kit/publishing/lib/token-errors';
 import type { YouTubeChannelDeclaration } from '@kit/publishing/lib/youtube-declaration';
 import {
   LINKEDIN_REST_VERSION,
@@ -291,6 +295,7 @@ async function updatePublishStatus(
 
     updateData.metadata = mergeFailureMetadata(existing?.metadata, {
       error: data.error,
+      errorCode: data.errorCode,
       errorStack: data.errorStack,
       failedAt: data.failedAt,
     });
@@ -362,7 +367,10 @@ async function processPublish(job: PublishJobMessage): Promise<void> {
     supabase,
   );
   if (!tokenResult.valid) {
-    throw new Error(tokenResult.error || 'Failed to get access token');
+    throw new TokenRefusal(
+      tokenResult.error ?? 'NO_ACCESS_TOKEN',
+      job.platform,
+    );
   }
 
   // Inject platform-specific account IDs from connection record if available
@@ -498,7 +506,10 @@ async function processSocialTextPost(
     supabase,
   );
   if (!tokenResult.valid) {
-    throw new Error(tokenResult.error || 'Failed to get access token');
+    throw new TokenRefusal(
+      tokenResult.error ?? 'NO_ACCESS_TOKEN',
+      job.platform,
+    );
   }
 
   // 2. Create text-only LinkedIn post
@@ -600,7 +611,11 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
           error instanceof Error ? error.message : String(error);
         const errorStack = error instanceof Error ? error.stack : undefined;
 
-        console.error(`[Publish Worker] FAILED: ${errorMessage}`);
+        const errorCode = tokenErrorCodeOf(error);
+
+        console.error(
+          `[Publish Worker] FAILED${errorCode ? ` (${errorCode})` : ''}: ${errorMessage}`,
+        );
         if (errorStack) {
           console.error(`[Publish Worker] Stack trace:\n${errorStack}`);
         }
@@ -641,6 +656,7 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
                   metadata: {
                     ...existingMetadata,
                     error: errorMessage,
+                    errorCode,
                     errorStack: errorStack?.split('\n').slice(0, 5).join('\n'),
                     failedAt: new Date().toISOString(),
                   },
@@ -653,6 +669,7 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
                 'failed',
                 {
                   error: errorMessage,
+                  errorCode,
                   errorStack: errorStack?.split('\n').slice(0, 5).join('\n'),
                   failedAt: new Date().toISOString(),
                 },

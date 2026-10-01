@@ -27,6 +27,7 @@ import {
   RegenerateVariantsSchema,
   UpdateSocialPostSchema,
 } from '../lib/schemas/social-post.schema';
+import { TokenRefusal, tokenErrorCodeOf } from '../lib/token-errors';
 import { createLinkedInProvider } from '../providers/linkedin';
 import { assertConnectionOfAccount } from './connection-account';
 import { getAccessToken } from './connection-tokens';
@@ -470,8 +471,8 @@ const publishSocialPostHandler = enhanceAction(
     try {
       // Get access token
       const tokenResult = await getAccessToken(post.platform_connection_id);
-      if (tokenResult.error || !tokenResult.accessToken) {
-        throw new Error(tokenResult.error ?? 'Failed to get access token');
+      if (tokenResult.error !== undefined) {
+        throw new TokenRefusal(tokenResult.error, 'linkedin');
       }
 
       // Get the author URN from the platform connection
@@ -528,13 +529,14 @@ const publishSocialPostHandler = enhanceAction(
           metadata: {
             ...(post.metadata as object),
             error: errorMessage,
+            errorCode: tokenErrorCodeOf(error),
             failedAt: new Date().toISOString(),
           },
         })
         .eq('id', input.postId);
 
       logger.error(
-        { ...ctx, error: errorMessage },
+        { ...ctx, error: errorMessage, errorCode: tokenErrorCodeOf(error) },
         'Social post publish failed',
       );
       throw error;

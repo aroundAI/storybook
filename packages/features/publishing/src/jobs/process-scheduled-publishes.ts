@@ -13,6 +13,7 @@ import {
   ownedEpisodeVideo,
 } from '../lib/owned-episode-video';
 import { ownedEpisodeThumbnail } from '../lib/owned-thumbnail';
+import { TokenRefusal, tokenErrorCodeOf } from '../lib/token-errors';
 import { ensureValidToken } from '../lib/token-refresh';
 import type { Platform } from '../lib/types';
 import type { YouTubeChannelDeclaration } from '../lib/youtube-declaration';
@@ -233,8 +234,9 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
         publish.platform_connection_id,
       );
       if (!tokenResult.valid || !tokenResult.accessToken) {
-        throw new Error(
-          tokenResult.error || 'Failed to get valid access token',
+        throw new TokenRefusal(
+          tokenResult.error ?? 'NO_ACCESS_TOKEN',
+          publish.platform,
         );
       }
 
@@ -404,6 +406,7 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
           metadata: {
             ...(publish.metadata ?? {}),
             error: errorMessage,
+            errorCode: tokenErrorCodeOf(err),
             errorStack: errorStack?.split('\n').slice(0, 5).join('\n'), // First 5 lines of stack
             failedAt: new Date().toISOString(),
           },
@@ -417,7 +420,12 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
         console.error(`[ScheduledPublish] Stack trace:\n${errorStack}`);
       }
       logger.error(
-        { ...publishCtx, error: errorMessage, stack: errorStack },
+        {
+          ...publishCtx,
+          error: errorMessage,
+          errorCode: tokenErrorCodeOf(err),
+          stack: errorStack,
+        },
         'Scheduled publish failed',
       );
     }

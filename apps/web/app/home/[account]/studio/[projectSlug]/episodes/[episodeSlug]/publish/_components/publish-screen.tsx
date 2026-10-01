@@ -1227,7 +1227,7 @@ export function PublishScreen({
         );
 
         const result = results[0] as
-          | { status: string; url?: string; error?: string }
+          | { status: string; url?: string; error?: string; errorCode?: string }
           | undefined;
 
         // API returns 'completed' for success, 'failed' for failure
@@ -1249,6 +1249,7 @@ export function PublishScreen({
                     ...s,
                     status: 'error' as const,
                     error: result?.error || 'Unknown error',
+                    errorCode: result?.errorCode,
                   }
                 : s,
             ),

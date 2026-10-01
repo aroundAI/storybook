@@ -16,16 +16,17 @@ import { checkConnectionToken } from '../token';
  */
 
 const NOW = new Date('2026-09-23T12:00:00.000Z');
-const EXPIRED_TEXT =
-  'Token expired - please reconnect your account or wait for refresh';
 
-function fakeClient(row: Record<string, unknown> | null) {
+function fakeClient(
+  row: Record<string, unknown> | null,
+  readError = { code: 'PGRST116', message: 'no rows' },
+) {
   const query = {
     select: () => query,
     eq: () => query,
     single: async () => ({
       data: row,
-      error: row ? null : { message: 'no rows' },
+      error: row ? null : readError,
     }),
   };
 
@@ -65,23 +66,24 @@ describe('checkConnectionToken', () => {
     });
   });
 
-  it('refuses an X token the app would refresh first, with the text users already see', async () => {
+  it('refuses an X token the app would refresh first', async () => {
     const client = fakeClient(await xConnection(4));
 
     expect(await checkConnectionToken('conn-x', client, NOW)).toEqual({
       valid: false,
-      error: EXPIRED_TEXT,
+      error: 'EXPIRED',
     });
   });
 
-  it('keeps its user-visible refusals word for word', async () => {
+  // KB-157: a code, which `TokenRefusal` words for the person
+  it('refuses with a token code, never with text for the page', async () => {
     expect(
       await checkConnectionToken(
         'conn-x',
         fakeClient(await xConnection(-1)),
         NOW,
       ),
-    ).toEqual({ valid: false, error: EXPIRED_TEXT });
+    ).toEqual({ valid: false, error: 'EXPIRED' });
 
     expect(
       await checkConnectionToken(
@@ -89,6 +91,30 @@ describe('checkConnectionToken', () => {
         fakeClient(await xConnection(120, false)),
         NOW,
       ),
-    ).toEqual({ valid: false, error: 'Platform connection is inactive' });
+    ).toEqual({ valid: false, error: 'CONNECTION_INACTIVE' });
+
+    expect(await checkConnectionToken('conn-x', fakeClient(null), NOW)).toEqual(
+      { valid: false, error: 'NOT_FOUND' },
+    );
+
+    expect(
+      await checkConnectionToken(
+        'conn-x',
+        fakeClient({
+          ...(await xConnection(120)),
+          access_token_encrypted: 'not-a-ciphertext',
+        }),
+        NOW,
+      ),
+    ).toEqual({ valid: false, error: 'TOKEN_UNREADABLE' });
+  });
+
+  // KB-138: NOT_FOUND reads "no longer exists", so a failed read must not get it
+  it('throws a failed read rather than answering NOT_FOUND', async () => {
+    const timeout = { code: '57014', message: 'statement timeout' };
+
+    await expect(
+      checkConnectionToken('conn-x', fakeClient(null, timeout), NOW),
+    ).rejects.toThrow('the read failed (statement timeout)');
   });
 });

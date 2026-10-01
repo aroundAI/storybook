@@ -131,6 +131,8 @@ export interface PublishResult {
   platformContentId?: string;
   platformUrl?: string;
   error?: string;
+  /** The token code behind `error`, for support (KB-157). */
+  errorCode?: string;
   publishId?: string;
 }
 

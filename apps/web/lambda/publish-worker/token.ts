@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { TokenErrorCode } from '@kit/publishing/lib/token-errors';
 import { isWithinRefreshWindow } from '@kit/publishing/lib/token-expiry';
 import { readFailed, whyNoRow } from '@kit/shared/rows';
 import type { Database } from '@kit/supabase/database';
@@ -23,7 +24,8 @@ export async function checkConnectionToken(
   valid: boolean;
   accessToken?: string;
   platformAccountId?: string | null;
-  error?: string;
+  /** A code; the job's failure is worded by `TokenRefusal` (KB-157). */
+  error?: TokenErrorCode;
 }> {
   // Get platform connection
   const { data: connection, error } = await client
@@ -42,15 +44,15 @@ export async function checkConnectionToken(
   }
 
   if (error || !connection) {
-    return { valid: false, error: 'Platform connection not found' };
+    return { valid: false, error: 'NOT_FOUND' };
   }
 
   if (!connection.is_active) {
-    return { valid: false, error: 'Platform connection is inactive' };
+    return { valid: false, error: 'CONNECTION_INACTIVE' };
   }
 
   if (!connection.access_token_encrypted) {
-    return { valid: false, error: 'No access token available' };
+    return { valid: false, error: 'NO_ACCESS_TOKEN' };
   }
 
   // Check if token is expired
@@ -59,20 +61,15 @@ export async function checkConnectionToken(
     : null;
 
   if (expiresAt && isWithinRefreshWindow(expiresAt, now)) {
-    // The text below reaches the publish screen, so it stays as it was; the
-    // log line carries what an operator needs to tell a lagging cron from a
-    // long-dead token.
+    // The log line carries what an operator needs to tell a lagging cron
+    // from a long-dead token.
     const minutesLeft = Math.round(
       (expiresAt.getTime() - now.getTime()) / 60_000,
     );
     console.warn(
       `[Publish Worker] ${connection.platform} token for connection ${connectionId} not refreshed yet (minutesLeft=${minutesLeft})`,
     );
-    return {
-      valid: false,
-      error:
-        'Token expired - please reconnect your account or wait for refresh',
-    };
+    return { valid: false, error: 'EXPIRED' };
   }
 
   // Decrypt and return the token
@@ -88,6 +85,6 @@ export async function checkConnectionToken(
       `[Publish Worker] Failed to decrypt access token:`,
       decryptError,
     );
-    return { valid: false, error: 'Failed to decrypt access token' };
+    return { valid: false, error: 'TOKEN_UNREADABLE' };
   }
 }
