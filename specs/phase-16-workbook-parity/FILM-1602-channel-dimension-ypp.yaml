@@ -34,7 +34,7 @@ acceptance_criteria:
     evidence: null
   - text: "For a single-channel account, Σ per-channel watch hours equals the previous pooled number (regression guard)"
     met: true
-    evidence: "packages/clickhouse/scripts/verify-queries.ts:3311 — pooled account scope equals per-channel scope (5400 s from videos plus a 900 s channel_daily residual, 6300 s total) and the known edge is asserted too: a zero-UUID (unattributed) video is 600 s in the pool and 0 in any channel. Run against a real ClickHouse, 116 passed, 0 failed (2026-09-30). Red: a channel-window mutant (-20 days) failed with 'channel residual: expected 900, got 5900'"
+    evidence: "packages/clickhouse/scripts/verify-queries.ts:3519 — pooled account scope equals per-channel scope (5400 s from videos plus a 900 s channel_daily residual, 6300 s total) and the known edge is asserted too: a zero-UUID (unattributed) video is 600 s in the pool and 0 in any channel. Run against a real ClickHouse, 116 passed, 0 failed (2026-09-30). Red: a channel-window mutant (-20 days) failed with 'channel residual: expected 900, got 5900'"
   - text: "`YppChannelProgress` describes one channel, matching what the action returns"
     met: true
     evidence: null

@@ -3,7 +3,7 @@ title: "Format Families"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: DRAFT
+status: DONE
 effort: M
 dependencies:
   - spec_id: "FILM-1710"
@@ -20,40 +20,51 @@ summary: >
   episode's duration until FILM-1710 lands.
 acceptance_criteria:
   - text: "Format family is a first-class type, distinct from content_type"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "packages/clickhouse/src/lib/format-families.ts:32 — FormatFamily, from FORMAT_FAMILIES (packages/clickhouse/src/lib/format-families.ts:18); ContentType is its own union, read off publishes' CHECK (packages/clickhouse/__tests__/format-families.test.ts:42). #497"
   - text: "The mapping is explicit and exported, not inferred at call sites"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "packages/clickhouse/src/lib/format-families.ts:88 FORMAT_BY_CONTENT_TYPE, a Record on content type x platform with no default, exported from @kit/clickhouse with resolveFormatFamily (packages/clickhouse/src/lib/format-families.ts:198); the one analytics call site that split short/long now resolves through it (packages/features/content-analytics/src/server/language-analytics.ts:461). #497"
   - text: "Every content_type present in video_dim has a mapping, asserted against the live table"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "packages/clickhouse/scripts/verify-queries.ts:2814 runs SELECT DISTINCT platform, content_type FROM video_dim FINAL and fails on any pair unmappedFormatPairs returns; 128/128 green against ClickHouse 24.8, and seen red (youtube/podcast added to the fixture: 127 passed, 1 failed). #497"
   - text: "A new content_type fails CI rather than defaulting"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "packages/clickhouse/__tests__/format-families.test.ts:42 reads publishes.content_type's CHECK out of the migration, seen red with 'podcast' added to it; resolveFormatFamily returns unmapped_content_type, never a family (packages/clickhouse/src/lib/format-families.ts:211, packages/clickhouse/__tests__/format-families.test.ts:115); and the live check above. Mutation guards FF3 (tooling/mutation-guards/film-1716.json). #497"
   - text: "teaser and trailer resolve to a family and are not dropped"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "Their own families on every platform (packages/clickhouse/__tests__/format-families.test.ts:79, guard FF1); the Language tab's comparison keeps a trailer as a trailer (packages/features/content-analytics/__tests__/language-analytics.test.ts:330, guard FF8), where it used to fold it into long-form and teasers into shorts. #497"
   - text: "The same clip on two platforms can resolve to different families"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "short is short_vertical on YouTube, TikTok, Instagram and Facebook and clip on X and LinkedIn (packages/clickhouse/__tests__/format-families.test.ts:86, guard FF2); full is long_horizontal on YouTube and long_vertical on TikTok (packages/clickhouse/__tests__/format-families.test.ts:108). #497"
   - text: "A publish with no asset duration falls back to its declared type rather than being guessed"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "resolveFormatFamily requires an AssetDuration; known: false gives the declared family with basis 'declared' (packages/clickhouse/src/lib/format-families.ts:242, packages/clickhouse/__tests__/format-families.test.ts:140, guard FF4). The one refinement, a YouTube short over 180 s, needs a known duration (packages/clickhouse/src/lib/format-families.ts:142, sourced in docs/platform-capability-reference.md). The SQL filter does the same with ifNull (packages/clickhouse/__tests__/format-families.test.ts:230, guard FF5), checked row for row against the TS resolver by packages/clickhouse/scripts/verify-queries.ts:2848. #497"
   - text: "Either DimScope accepts a list of content types, or the one-to-one restriction is documented and enforced"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "DimScope.contentType takes a list, bound with IN; an empty list is refused (packages/clickhouse/src/queries-advanced.ts:46, packages/clickhouse/src/queries-advanced.ts:179, packages/clickhouse/__tests__/queries-advanced.test.ts:1424, guard FF7). DimScope.formatFamily selects a family, on the newest dim row (packages/clickhouse/src/queries-advanced.ts:53, packages/clickhouse/__tests__/queries-advanced.test.ts:1451, guard FF6). #497"
   - text: "No consumer keys a lookup on 'short' | 'long'"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "packages/clickhouse/__tests__/format-families.test.ts:273 scans packages/clickhouse/src and packages/features/content-analytics/src; seen red on main's getContentTypeComparison and its two cards (32 lines), green after they moved to format families. #497"
 open_questions: []
 feature:
   database:
     tables: ["video_dim"]
     columns_added: []
-  queries: []
-  actions: []
-  ui: []
+  queries:
+    - name: "queryVideoLanguages"
+      purpose: "Carries each video's asset duration, and takes DimScope.formatFamily and a content-type list like every DimScope query"
+      file: "packages/clickhouse/src/queries-advanced.ts"
+  actions:
+    - name: "getContentTypeComparisonAction"
+      file: "packages/features/content-analytics/src/server/dashboard-actions.ts"
+      schema: null
+      auth: null
+  ui:
+    - component: "ContentTypeCard"
+      file: "packages/features/content-analytics/src/components/language-analytics-cards.tsx"
+    - component: "ShortsROICard"
+      file: "packages/features/content-analytics/src/components/analytics-enhancement-cards.tsx"
   provider_integration: null
 notes: |
   ## Overview
@@ -161,3 +172,72 @@ notes: |
   produce the same signal map and the same benchmark pool, they are one
   family with two names, and the taxonomy work belongs in FILM-1717
   instead.
+
+  ## Implementation notes (#497)
+
+  **The API** (`@kit/clickhouse`, `packages/clickhouse/src/lib/format-families.ts`), for FILM-1714, FILM-1715,
+  FILM-1717 and FILM-1724:
+
+  | Export | What it is |
+  |---|---|
+  | `FormatFamily`, `FORMAT_FAMILIES` | The seven families, in display order |
+  | `FORMAT_FAMILY_LABEL` | What a card calls each |
+  | `ContentType`, `CONTENT_TYPES` | publishes.content_type's CHECK |
+  | `PublishPlatform`, `PUBLISH_PLATFORMS` | publishes.platform's CHECK (X is `twitter`) |
+  | `FORMAT_BY_CONTENT_TYPE` | content type x platform -> declared family |
+  | `DURATION_REFINEMENTS` | where a known duration overrides it |
+  | `resolveFormatFamily({ platform, contentType, assetDuration })` | `{ ok, family, declared, basis, duration }` or `{ ok: false, reason }` |
+  | `formatFamilyOfDim(row)` | the same over a video_dim row |
+  | `contentTypesFor(family, platform)` | declared content types in a family |
+  | `unmappedFormatPairs(pairs)` | what the live check fails on |
+  | `formatFamilyPredicate(family)` | the SQL for `DimScope.formatFamily` |
+  | `DimScope.formatFamily`, `DimScope.contentType: string \| string[]` | scope by family, or by several declared types |
+
+  `AssetDuration` moved from `@kit/content-analytics` to `@kit/clickhouse`
+  (`lib/asset-duration.ts`) so the resolver can take one; content-analytics
+  re-exports it unchanged, and FILM-1710's two guards follow the file.
+
+  **Mapping choices.** `full` is horizontal where long-form plays in a
+  player (YouTube, Facebook, X, LinkedIn) and vertical where it is the same
+  full-screen feed (TikTok, Instagram). `short` is `short_vertical` in a
+  swipe feed and `clip` in a scrolling timeline (X, LinkedIn). `teaser` and
+  `trailer` are their own families. `live` maps from nothing.
+
+  **The one duration refinement** is YouTube's own rule: a vertical upload
+  over three minutes is not a Short (60 s before 2024-10-15), sourced and
+  dated in `docs/platform-capability-reference.md`. So a YouTube `short`
+  with a known duration over 180 s is `long_vertical`. 61-180 s keeps the
+  declared type, because the upload date is not an input.
+  `creatorContentType` would be the platform's own answer if it were
+  ingested.
+
+  **SQL and TS agree by construction and by test.** `formatFamilyPredicate`
+  is generated from the same two tables, binds `platform:content_type` keys
+  as `Array(String)` (the JS client cannot send `Array(Tuple(...))`, found
+  only by running it), and applies on the newest dim row (HAVING), because
+  the asset duration arrives after a publish's first dim row. verify-queries
+  checks every family row for row against `resolveFormatFamily`, including a
+  superseded row whose duration was still null. That check passed with the
+  filter in the wrong clause until the fixture was inserted with
+  `optimize_on_insert: 0`; ReplacingMergeTree had collapsed the superseded
+  row on the way in.
+
+  **The consumer.** The Language tab's "Shorts vs Long-form" card was the
+  short/long lookup: `short` and `teaser` in one bucket, the rest in the
+  other, every platform pooled. It is now "By format family", a row per
+  family and no ratio between rows. It drops the revenue column: every
+  pipeline writer stores a video's revenue as a literal 0 (FILM-1703), so
+  "$0" was a zero nobody measured. It says how many were placed by
+  declared type and how many no family covers. The Shorts ROI card and the
+  clipping advice compare two named families (`short_vertical`,
+  `long_horizontal`) rather than a pooled split. Evidence screenshots come
+  from `apps/e2e/tests/analytics/format-family-evidence.spec.ts`, read off
+  the page against a seeded ClickHouse: short 3 / 210 views, long vertical
+  2 / 120, long horizontal 1 / 400, trailer 1 / 30; three placed by declared
+  type, one (a `podcast` row) not covered and counted. Main's card showed
+  shorts 4 / 260 and long-form 4 / 505 for the same rows.
+
+  No `clip` row can appear on that card today: `video_metrics.platform` is
+  an enum of the ingested platforms, so an X or LinkedIn publish has a dim
+  row and no figures. The family is still resolved for it, which is what
+  FILM-1714's signal map and FILM-1715's cohorts need.

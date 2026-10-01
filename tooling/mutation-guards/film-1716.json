@@ -1,0 +1,95 @@
+{
+  "feature": "FILM-1716",
+  "mutations": [
+    {
+      "name": "FF1 A trailer folds into long-form",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/format-families.ts",
+      "find": "  trailer: {\n    youtube: 'trailer',",
+      "replace": "  trailer: {\n    youtube: 'long_horizontal',",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/format-families.test.ts",
+      "pattern": "teaser and trailer"
+    },
+    {
+      "name": "FF2 An X short is pooled with YouTube Shorts",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/format-families.ts",
+      "find": "    twitter: 'clip',\n    linkedin: 'clip',",
+      "replace": "    twitter: 'short_vertical',\n    linkedin: 'clip',",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/format-families.test.ts",
+      "pattern": "two platforms"
+    },
+    {
+      "name": "FF3 An unknown content type defaults to long-form",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/format-families.ts",
+      "find": "  if (!isContentType(contentType)) {\n    return {",
+      "replace": "  if (!isContentType(contentType)) {\n    return resolveFormatFamily({ platform, contentType: 'full', assetDuration });\n    return {",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/format-families.test.ts",
+      "pattern": "rather than defaulting"
+    },
+    {
+      "name": "FF4 An unknown duration is guessed past the Shorts limit",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/format-families.ts",
+      "find": "  if (assetDuration.known) {\n    const refinement = DURATION_REFINEMENTS.find(\n      (rule) =>\n        rule.platform === platform &&\n        rule.contentType === contentType &&\n        assetDuration.seconds > rule.aboveSeconds,",
+      "replace": "  if (assetDuration.known || platform === 'youtube') {\n    const refinement = DURATION_REFINEMENTS.find(\n      (rule) =>\n        rule.platform === platform &&\n        rule.contentType === contentType &&\n        (assetDuration.known ? assetDuration.seconds : 1320) > rule.aboveSeconds,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/format-families.test.ts",
+      "pattern": "duration is unknown"
+    },
+    {
+      "name": "FF5 The SQL family filter drops a null duration out of every family",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/format-families.ts",
+      "find": "` AND ifNull(asset_duration_seconds, 0) > {",
+      "replace": "` AND asset_duration_seconds > {",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/format-families.test.ts",
+      "pattern": "declared pairs"
+    },
+    {
+      "name": "FF6 The family filter reads a superseded dim row",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "    latest.push(family.sql);",
+      "replace": "    conditions.push(family.sql);",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/queries-advanced.test.ts",
+      "pattern": "newest dim row"
+    },
+    {
+      "name": "FF7 An empty content-type list is read as no filter",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "    if (scope.contentType.length === 0) {",
+      "replace": "    if (scope.contentType.length === -1) {",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/queries-advanced.test.ts",
+      "pattern": "refuses an empty one"
+    },
+    {
+      "name": "FF8 The comparison folds trailers into long-form again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
+      "find": "    const target = totals.get(placed.family) ?? {\n      family: placed.family,",
+      "replace": "    const folded = placed.family === 'trailer' ? 'long_horizontal' : placed.family;\n    const target = totals.get(folded) ?? {\n      family: folded,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/language-analytics.test.ts",
+      "pattern": "keeps trailers"
+    },
+    {
+      "name": "FF9 The comparison drops what it cannot place without counting it",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
+      "find": "    if (!placed?.ok) {\n      unclassified++;",
+      "replace": "    if (!placed?.ok) {",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/language-analytics.test.ts",
+      "pattern": "counts what it cannot place"
+    }
+  ]
+}

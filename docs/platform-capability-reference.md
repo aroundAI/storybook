@@ -110,6 +110,18 @@ Shorts vs long-form: the `creatorContentType` dimension. Confirmed 2026-09-21:
 values are `SHORTS`, `VIDEO_ON_DEMAND`, `LIVE_STREAM`, `STORY`, `UNSPECIFIED`,
 with data from 2019-01-01.
 
+**How long a Short can be.** "Videos uploaded on or after October 15, 2024
+with a square or vertical aspect ratio up to three minutes in length will be
+categorized as Shorts" — [Understand three-minute YouTube Shorts](https://support.google.com/youtube/answer/15424877)
+(read 2026-10-01); before that date the limit was 60 seconds. So an upload
+over 180 seconds is never a Short in either era. FILM-1716's format families
+use exactly that and no more (`DURATION_REFINEMENTS` in
+`packages/clickhouse/src/lib/format-families.ts`): a `short` with a known
+asset duration above 180 seconds is vertical long-form. Between 61 and 180
+seconds the answer depends on the upload date, which the family table does
+not take, so it keeps the declared type. `creatorContentType` above is the
+platform's own answer and would replace the rule if it were ingested.
+
 **`views` was redefined again on 2026-08-27** — it now counts from "the moment a
 video begins to play", including autoplay, while `engagedViews` carries the
 older "past the first frame" methodology. The 2025-03-31 change (announced

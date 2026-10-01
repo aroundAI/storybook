@@ -22,7 +22,7 @@ acceptance_criteria:
     evidence: "`apps/e2e/tests/audience/audience-evidence.spec.ts:280`, `packages/features/content-analytics/__tests__/project-audience.test.ts:172`"
   - text: "`getGeographyByLanguage` returns per-country rows"
     met: false
-    reason: "unverified — reads country rows (`packages/features/content-analytics/src/server/language-analytics.ts:703`); no test runs it (mocked in `language-insights-actions.test.ts:48`)"
+    reason: "unverified — reads country rows (`packages/features/content-analytics/src/server/language-analytics.ts:705`); no test runs it (mocked in `language-insights-actions.test.ts:48`)"
   - text: "Re-sync replaces (not duplicates) retention curve points and audience rows"
     met: true
     evidence: "reads take `argMax(…, fetched_at)` per point/key: `packages/clickhouse/src/queries-detail.ts:114`, `:246`"

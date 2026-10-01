@@ -311,8 +311,8 @@ notes: |
   |---|---|
   | computeCohortGrowth (packages/clickhouse/src/lib/cohort-growth.ts:72) → getCohortCurvesAction (packages/features/content-analytics/src/server/deep-dive-actions.ts:188) → deep-dive/cohort-curves-chart.tsx | cohort median views against the previous cohort — the literal "cohort median, growth figure" of §5 |
   | previousPeriodTotals (packages/features/content-analytics/src/server/account-dashboard-actions.ts:218, :257) → company-dashboard.tsx:42 | period-over-period totals |
-  | viewsChange (packages/features/content-analytics/src/server/language-analytics.ts:296) → language-analytics-cards.tsx:137 | views vs the previous period, per language |
-  | queryMedianViewsPerVideo (packages/clickhouse/src/queries-advanced.ts:273), queryRollingViews (:378), queryBackCatalogShare (:566) | view series and medians over long windows |
+  | viewsChange (packages/features/content-analytics/src/server/language-analytics.ts:311) → language-analytics-cards.tsx:137 | views vs the previous period, per language |
+  | queryMedianViewsPerVideo (packages/clickhouse/src/queries-advanced.ts:307), queryRollingViews (:378), queryBackCatalogShare (:566) | view series and medians over long windows |
   | performance-chart.tsx, language-trend-chart.tsx, comparison-chart.tsx (packages/features/content-analytics/src/components/) | views over time, drawn straight across the boundary |
   | engagement rate: packages/features/content-analytics/src/server/aggregation-queries.ts:37, account-dashboard-actions.ts:197, language-analytics.ts:63 | (likes + comments + shares) / views — among the duplicate sites FILM-1713 §2 collapses |
   | RPM: packages/features/content-analytics/src/server/revenue-actions.ts:41, packages/clickhouse/src/lib/segment-stats.ts:61 | revenue per thousand views |

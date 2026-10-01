@@ -4,6 +4,7 @@ import { resolveConfidence } from '@kit/clickhouse';
 
 import { LANGUAGE_NOT_SET_KEY } from '../src/lib/language-labels';
 import {
+  getContentTypeComparison,
   getLanguageDivergence,
   getLanguagePerformance,
   getLanguageTrend,
@@ -58,6 +59,8 @@ function video(
 const state: {
   hasAccess: boolean;
   calls: Array<{ name: string; input: unknown }>;
+  /** Replaces VIDEOS for one test. */
+  videos?: unknown[];
 } = { hasAccess: true, calls: [] };
 
 function builder(row: unknown, rows: unknown[] = []) {
@@ -102,7 +105,7 @@ vi.mock('@kit/clickhouse/server', async () => {
     fromDimLanguage: pure.fromDimLanguage,
     queryVideoLanguages: async (input: unknown) => {
       record('queryVideoLanguages', input);
-      return VIDEOS;
+      return state.videos ?? VIDEOS;
     },
     queryTotalsByVideoIds: async (ids: string[]) => {
       record('queryTotalsByVideoIds', ids);
@@ -169,6 +172,7 @@ const viewsBy = (rows: Array<{ language: string | null; views: number }>) =>
 beforeEach(() => {
   state.hasAccess = true;
   state.calls = [];
+  state.videos = undefined;
 });
 
 describe('getLanguagePerformance', () => {
@@ -308,5 +312,45 @@ describe('getLanguageDivergence', () => {
       divergentVideos: 1,
       contentNotSetVideos: 1,
     });
+  });
+});
+
+describe('getContentTypeComparison (FILM-1716)', () => {
+  const placed = (
+    videoId: string,
+    platform: string,
+    contentType: string,
+    assetDurationSeconds: number | null,
+  ) => ({
+    ...video(videoId, 'en', 'en', platform),
+    contentType,
+    assetDurationSeconds,
+  });
+
+  it('groups by format family, keeps trailers, and counts what it cannot place', async () => {
+    state.videos = [
+      placed('a', 'youtube', 'short', 45),
+      placed('b', 'youtube', 'trailer', null),
+      placed('c', 'twitter', 'short', null),
+      placed('d', 'youtube', 'podcast', null),
+    ];
+
+    const result = await getContentTypeComparison('project-1');
+
+    expect(
+      result.families.map(({ family, views, contentCount }) => ({
+        family,
+        views,
+        contentCount,
+      })),
+    ).toEqual([
+      // A YouTube Short and an X clip are not one product, and a trailer
+      // is not long-form.
+      { family: 'short_vertical', views: 1000, contentCount: 1 },
+      { family: 'trailer', views: 300, contentCount: 1 },
+      { family: 'clip', views: 5000, contentCount: 1 },
+    ]);
+    expect(result.unclassified).toBe(1);
+    expect(result.durationUnknown).toBe(2);
   });
 });

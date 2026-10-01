@@ -1395,6 +1395,7 @@ describe('queries-advanced', () => {
           episode_id: 'e1',
           platform: 'youtube',
           content_type: 'short',
+          asset_duration_seconds: 45,
           title: 'A',
           language: '',
           channel_language: 'hi',
@@ -1411,12 +1412,71 @@ describe('queries-advanced', () => {
           episodeId: 'e1',
           platform: 'youtube',
           contentType: 'short',
+          assetDurationSeconds: 45,
           title: 'A',
           language: null,
           channelLanguage: 'hi',
         },
       ]);
       expect(mockClickHouseClient.query).toHaveBeenCalledTimes(1);
+    });
+
+    it('binds a list of content types with IN, and refuses an empty one (FILM-1716)', async () => {
+      mockQueryResult.json.mockResolvedValue([]);
+      const { queryMedianViewsPerVideo } = await import(
+        '../src/queries-advanced'
+      );
+
+      await queryMedianViewsPerVideo({
+        scope: { projectId: PROJECT, contentType: ['full', 'teaser'] },
+        bucket: 'month',
+        mode: 'cohort_views_to_date',
+      });
+
+      const { query, query_params } = lastQuery();
+      expect(query).toContain(
+        'content_type IN {scopeContentTypes: Array(String)}',
+      );
+      expect(query_params.scopeContentTypes).toEqual(['full', 'teaser']);
+
+      await expect(
+        queryMedianViewsPerVideo({
+          scope: { projectId: PROJECT, contentType: [] },
+          bucket: 'month',
+          mode: 'cohort_views_to_date',
+        }),
+      ).rejects.toThrow(/empty list/);
+    });
+
+    it('filters a format family on the newest dim row, at both HAVING sites (FILM-1716)', async () => {
+      mockQueryResult.json.mockResolvedValue([]);
+      const { queryMedianViewsPerVideo, queryVideoLanguages } = await import(
+        '../src/queries-advanced'
+      );
+
+      await queryMedianViewsPerVideo({
+        scope: { projectId: PROJECT, formatFamily: 'short_vertical' },
+        bucket: 'month',
+        mode: 'cohort_views_to_date',
+      });
+      const median = lastQuery();
+
+      await queryVideoLanguages({
+        scope: { projectId: PROJECT, formatFamily: 'short_vertical' },
+      });
+      const languages = lastQuery();
+
+      for (const { query, query_params } of [median, languages]) {
+        expect(query).toContain(
+          'argMax(asset_duration_seconds, updated_at) as asset_duration_seconds',
+        );
+        expect(query).toMatch(
+          /HAVING \(\(concat\(platform, ':', content_type\) IN \{scopeFormatDeclared/,
+        );
+        // Not in the inner WHERE, where a superseded row would still match.
+        expect(query).not.toMatch(/WHERE[^)]*scopeFormatDeclared/);
+        expect(query_params.scopeFormatDeclared).toContain('youtube:short');
+      }
     });
 
     it('refuses the language reads without a scope', async () => {

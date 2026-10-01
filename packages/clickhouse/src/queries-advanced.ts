@@ -9,6 +9,9 @@
  */
 import { concatByChunk } from './chunked';
 import { getClickHouseClient, isClickHouseEnabled } from './client';
+import { normalizeAssetDurationSeconds } from './lib/asset-duration';
+import type { FormatFamily } from './lib/format-families';
+import { formatFamilyPredicate } from './lib/format-families';
 import type { LanguageDimension } from './lib/language-dimension';
 import { fromDimLanguage } from './lib/language-dimension';
 import type { SegmentConfidence } from './lib/segment-stats';
@@ -32,7 +35,22 @@ export interface DimScope {
    */
   connectionId?: string;
   platform?: string;
-  contentType?: string;
+  /**
+   * The declared `content_type`, or a list of them (matched with IN). An
+   * empty list is refused rather than read as "no filter" or "nothing".
+   *
+   * This is the declared type, not a format family: a family depends on the
+   * platform too, and on a known asset duration. To select a family, use
+   * `formatFamily` — never a content-type list standing in for one.
+   */
+  contentType?: string | readonly string[];
+  /**
+   * The rows `resolveFormatFamily` puts in this family (FILM-1716), built
+   * from the same tables by `formatFamilyPredicate`. Applied to the newest
+   * dim row, because the asset duration that can refine a family arrives
+   * after the first row is written.
+   */
+  formatFamily?: FormatFamily;
   /**
    * The published asset's language (`video_dim.language`).
    *
@@ -147,9 +165,24 @@ function buildDimConditions(scope: DimScope): {
     conditions.push('platform = {scopePlatform: String}');
     params.scopePlatform = scope.platform;
   }
-  if (scope.contentType) {
-    conditions.push('content_type = {scopeContentType: String}');
-    params.scopeContentType = scope.contentType;
+  if (typeof scope.contentType === 'string') {
+    if (scope.contentType) {
+      conditions.push('content_type = {scopeContentType: String}');
+      params.scopeContentType = scope.contentType;
+    }
+  } else if (scope.contentType !== undefined) {
+    if (scope.contentType.length === 0) {
+      throw new Error(
+        'DimScope.contentType is an empty list — pass undefined for no filter',
+      );
+    }
+    conditions.push('content_type IN {scopeContentTypes: Array(String)}');
+    params.scopeContentTypes = [...scope.contentType];
+  }
+  if (scope.formatFamily !== undefined) {
+    const family = formatFamilyPredicate(scope.formatFamily, 'scopeFormat');
+    latest.push(family.sql);
+    Object.assign(params, family.params);
   }
   if (scope.language !== undefined) {
     latest.push('language = {scopeLanguage: String}');
@@ -210,6 +243,7 @@ function dimSubquery(conditions: string, latest: string): string {
       argMax(connection_id, updated_at) as connection_id,
       argMax(platform, updated_at) as platform,
       argMax(content_type, updated_at) as content_type,
+      argMax(asset_duration_seconds, updated_at) as asset_duration_seconds,
       argMax(language, updated_at) as language,
       argMax(channel_language, updated_at) as channel_language
     FROM (SELECT * FROM video_dim WHERE ${conditions})
@@ -1294,6 +1328,8 @@ export interface VideoLanguageRow {
   episodeId: string;
   platform: string;
   contentType: string;
+  /** The published asset's duration; null is `duration_unknown` (FILM-1710). */
+  assetDurationSeconds: number | null;
   title: string;
   /** The published asset's language; null when nobody set one. */
   language: string | null;
@@ -1348,6 +1384,7 @@ export async function queryVideoLanguages(input: {
           toString(argMax(episode_id, updated_at)) as episode_id,
           argMax(platform, updated_at) as platform,
           argMax(content_type, updated_at) as content_type,
+          argMax(asset_duration_seconds, updated_at) as asset_duration_seconds,
           argMax(title, updated_at) as title,
           argMax(language, updated_at) as language,
           argMax(channel_language, updated_at) as channel_language
@@ -1369,6 +1406,7 @@ export async function queryVideoLanguages(input: {
       episode_id: string;
       platform: string;
       content_type: string;
+      asset_duration_seconds: number | null;
       title: string;
       language: string;
       channel_language: string;
@@ -1380,6 +1418,9 @@ export async function queryVideoLanguages(input: {
         episodeId: String(row.episode_id),
         platform: String(row.platform),
         contentType: String(row.content_type),
+        assetDurationSeconds: normalizeAssetDurationSeconds(
+          row.asset_duration_seconds,
+        ),
         title: String(row.title ?? ''),
         language: fromDimLanguage(String(row.language ?? '')),
         channelLanguage: fromDimLanguage(row.channel_language),

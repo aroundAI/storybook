@@ -1,7 +1,15 @@
 import 'server-only';
 
-import { displayedEngagementRatePercent } from '@kit/clickhouse';
-import type { LanguageDimension, SegmentConfidence } from '@kit/clickhouse';
+import {
+  FORMAT_FAMILIES,
+  displayedEngagementRatePercent,
+  formatFamilyOfDim,
+} from '@kit/clickhouse';
+import type {
+  FormatFamily,
+  LanguageDimension,
+  SegmentConfidence,
+} from '@kit/clickhouse';
 import {
   LANGUAGE_DIMENSION_SEGMENTS,
   fromDimLanguage,
@@ -89,30 +97,37 @@ export interface PlatformLanguageEntry {
   contentCount: number;
 }
 
+/** One format family's totals over the window (FILM-1716). */
+export interface FormatFamilyTotals {
+  family: FormatFamily;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  engagement: number;
+  revenueCents: number;
+  subscribersGained: number;
+  contentCount: number;
+}
+
 /**
- * Content type comparison (shorts vs long-form)
+ * A project's figures by format family (FILM-1716).
+ *
+ * This was "shorts vs long-form": `short` and `teaser` in one bucket,
+ * everything else in the other, every platform pooled. A trailer read as
+ * long-form, a YouTube Short and an X timeline clip as the same product.
  */
 export interface ContentTypeComparison {
-  longForm: {
-    views: number;
-    likes: number;
-    comments: number;
-    shares: number;
-    engagement: number;
-    revenueCents: number;
-    subscribersGained: number;
-    contentCount: number;
-  };
-  shorts: {
-    views: number;
-    likes: number;
-    comments: number;
-    shares: number;
-    engagement: number;
-    revenueCents: number;
-    subscribersGained: number;
-    contentCount: number;
-  };
+  /** Families with at least one video, in `FORMAT_FAMILIES` order. */
+  families: FormatFamilyTotals[];
+  /**
+   * Videos no family maps — counted here, never folded into one. Zero
+   * unless `video_dim` holds a value the family table does not know, which
+   * verify-queries also fails on.
+   */
+  unclassified: number;
+  /** Videos placed by their declared type, their asset duration unknown. */
+  durationUnknown: number;
 }
 
 // =============================================================================
@@ -418,11 +433,11 @@ export async function getPlatformLanguageMatrix(
 }
 
 // =============================================================================
-// Content Type Comparison (shorts vs long-form)
+// Format family comparison (FILM-1716)
 // =============================================================================
 
 /**
- * Get content type comparison (shorts vs long-form)
+ * A project's figures by format family over a window
  */
 export async function getContentTypeComparison(
   projectId: string,
@@ -440,11 +455,16 @@ export async function getContentTypeComparison(
   const startDateStr = startDate.toISOString().split('T')[0]!;
   const endDateStr = endDate.toISOString().split('T')[0]!;
 
-  // Build content type map
-  const publishContentTypeMap = new Map<string, string>();
-  for (const video of videos) {
-    publishContentTypeMap.set(video.videoId, video.contentType || 'full');
-  }
+  const familyByVideo = new Map(
+    videos.map((video) => [
+      video.videoId,
+      formatFamilyOfDim({
+        platform: video.platform,
+        content_type: video.contentType,
+        asset_duration_seconds: video.assetDurationSeconds,
+      }),
+    ]),
+  );
 
   const perVideoTotals = await queryTotalsByVideoIds(videoIds, {
     startDate: startDateStr,
@@ -452,30 +472,32 @@ export async function getContentTypeComparison(
     projectIds: [projectId],
   });
 
-  // Aggregate by content type
-  const longForm = {
-    views: 0,
-    likes: 0,
-    comments: 0,
-    shares: 0,
-    revenueCents: 0,
-    subscribersGained: 0,
-    contentCount: 0,
-  };
-  const shorts = {
-    views: 0,
-    likes: 0,
-    comments: 0,
-    shares: 0,
-    revenueCents: 0,
-    subscribersGained: 0,
-    contentCount: 0,
-  };
+  const totals = new Map<
+    FormatFamily,
+    Omit<FormatFamilyTotals, 'engagement'>
+  >();
+  let unclassified = 0;
+  let durationUnknown = 0;
 
   for (const [publishId, stats] of perVideoTotals) {
-    const contentType = publishContentTypeMap.get(publishId) || 'full';
-    const isShort = contentType === 'short' || contentType === 'teaser';
-    const target = isShort ? shorts : longForm;
+    const placed = familyByVideo.get(publishId);
+
+    if (!placed?.ok) {
+      unclassified++;
+      continue;
+    }
+    if (!placed.duration.known) durationUnknown++;
+
+    const target = totals.get(placed.family) ?? {
+      family: placed.family,
+      views: 0,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      revenueCents: 0,
+      subscribersGained: 0,
+      contentCount: 0,
+    };
 
     target.views += stats.views;
     target.likes += stats.likes;
@@ -484,43 +506,23 @@ export async function getContentTypeComparison(
     target.revenueCents += stats.revenue_cents;
     target.subscribersGained += stats.subscribers_gained;
     target.contentCount++;
+    totals.set(placed.family, target);
   }
 
   return {
-    longForm: {
-      ...longForm,
-      engagement: displayedEngagementRatePercent(longForm),
-    },
-    shorts: {
-      ...shorts,
-      engagement: displayedEngagementRatePercent(shorts),
-    },
+    families: FORMAT_FAMILIES.flatMap((family) => {
+      const total = totals.get(family);
+      return total
+        ? [{ ...total, engagement: displayedEngagementRatePercent(total) }]
+        : [];
+    }),
+    unclassified,
+    durationUnknown,
   };
 }
 
 function getEmptyComparison(): ContentTypeComparison {
-  return {
-    longForm: {
-      views: 0,
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      engagement: 0,
-      revenueCents: 0,
-      subscribersGained: 0,
-      contentCount: 0,
-    },
-    shorts: {
-      views: 0,
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      engagement: 0,
-      revenueCents: 0,
-      subscribersGained: 0,
-      contentCount: 0,
-    },
-  };
+  return { families: [], unclassified: 0, durationUnknown: 0 };
 }
 
 // =============================================================================

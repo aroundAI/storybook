@@ -607,7 +607,7 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1713 | [normalised-measures-velocity](./phase-17-analytics-provenance/FILM-1713-normalised-measures-velocity.yaml) | PARTIAL | M | FILM-1722 (registry, on main) |
 | FILM-1714 | [signal-model](./phase-17-analytics-provenance/FILM-1714-signal-model.yaml) | DRAFT | M | FILM-1703, FILM-1713, FILM-1716 |
 | FILM-1715 | [self-benchmarking](./phase-17-analytics-provenance/FILM-1715-self-benchmarking.yaml) | DRAFT | M | FILM-1703, FILM-1713, FILM-1716, FILM-1721 |
-| FILM-1716 | [format-families](./phase-17-analytics-provenance/FILM-1716-format-families.yaml) | DRAFT | M | FILM-1710 |
+| FILM-1716 | [format-families](./phase-17-analytics-provenance/FILM-1716-format-families.yaml) | DONE | M | FILM-1710 |
 | FILM-1717 | [content-genome](./phase-17-analytics-provenance/FILM-1717-content-genome.yaml) | DRAFT | XL | FILM-1606, FILM-1610, FILM-1715, FILM-1716 |
 | FILM-1718 | [stage-diagnosis](./phase-17-analytics-provenance/FILM-1718-stage-diagnosis.yaml) | DRAFT | M | FILM-1714, FILM-1715 |
 | FILM-1719 | [signal-surfaces](./phase-17-analytics-provenance/FILM-1719-signal-surfaces.yaml) | DRAFT | L | FILM-1706, FILM-1717, FILM-1718 |
@@ -723,11 +723,11 @@ reason when not.
 | 14. Edit Suite v2 | 1 | 0 | 0 | 0 | 1 | 0 |
 | 15. Deep Analytics | 11 | 0 | 3 | 0 | 2 | 6 |
 | 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 17 |
-| 17. Analytics Provenance | 31 | 17 | 6 | 1 | 0 | 7 |
+| 17. Analytics Provenance | 31 | 16 | 6 | 1 | 0 | 8 |
 | 18. Vendor Sandbox | 6 | 1 | 0 | 0 | 0 | 5 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **234** | **18** | **62** | **1** | **54** | **99** |
+| **TOTAL** | **234** | **17** | **62** | **1** | **54** | **100** |
 
 No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose PR is open keeps the status it has on `main`.
 
@@ -742,7 +742,7 @@ No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose 
 | Edit Suite v2 (Ph 14) | 1 | 0 | 0 | 1 | 0 |
 | Deep Analytics (Ph 15) | 11 | 6 | 3 | 2 | 0 |
 | Workbook Parity (Ph 16) | 17 | 17 | 0 | 0 | 0 |
-| Provenance & Signal (Ph 17) | 31 | 7 | 6 | 0 | 18 |
+| Provenance & Signal (Ph 17) | 31 | 8 | 6 | 0 | 17 |
 | Vendor Sandbox (Ph 18) | 6 | 5 | 0 | 0 | 1 |
 | Public Sharing | 2 | 1 | 1 | 0 | 0 |
 

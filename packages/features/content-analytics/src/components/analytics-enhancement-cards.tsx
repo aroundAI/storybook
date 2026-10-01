@@ -19,7 +19,8 @@ import {
   YAxis,
 } from 'recharts';
 
-import type { LanguageDimension } from '@kit/clickhouse';
+import { FORMAT_FAMILY_LABEL } from '@kit/clickhouse';
+import type { FormatFamily, LanguageDimension } from '@kit/clickhouse';
 import { Badge } from '@kit/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Skeleton } from '@kit/ui/skeleton';
@@ -151,6 +152,31 @@ export function LanguageComparisonChart({
 // Shorts ROI Calculator
 // =============================================================================
 
+/**
+ * The two families the ROI card and the clipping advice set side by side
+ * (FILM-1716). Named families, not a short/long split: a teaser, a trailer,
+ * an X clip or a vertical long-form upload is in neither, rather than
+ * silently counted as one of them. The format family card shows them all.
+ */
+const CLIP_FAMILY: FormatFamily = 'short_vertical';
+const SOURCE_FAMILY: FormatFamily = 'long_horizontal';
+
+function familyTotals(data: ContentTypeComparison, family: FormatFamily) {
+  return (
+    data.families.find((row) => row.family === family) ?? {
+      family,
+      views: 0,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      engagement: 0,
+      revenueCents: 0,
+      subscribersGained: 0,
+      contentCount: 0,
+    }
+  );
+}
+
 interface ShortsROICardProps {
   contentTypeData: ContentTypeComparison | null;
   isLoading?: boolean;
@@ -195,23 +221,22 @@ export function ShortsROICard({
     );
   }
 
-  const { longForm, shorts } = contentTypeData;
+  const clips = familyTotals(contentTypeData, CLIP_FAMILY);
+  const sources = familyTotals(contentTypeData, SOURCE_FAMILY);
 
   // Calculate ROI metrics
   const viewsPerShort =
-    shorts.contentCount > 0 ? shorts.views / shorts.contentCount : 0;
-  const viewsPerLongForm =
-    longForm.contentCount > 0 ? longForm.views / longForm.contentCount : 0;
+    clips.contentCount > 0 ? clips.views / clips.contentCount : 0;
+  const viewsPerSource =
+    sources.contentCount > 0 ? sources.views / sources.contentCount : 0;
   const shortsMultiplier =
-    viewsPerLongForm > 0 ? viewsPerShort / viewsPerLongForm : 0;
-  const engagementDiff = shorts.engagement - longForm.engagement;
-  const revenuePerView = {
-    shorts: shorts.views > 0 ? shorts.revenueCents / shorts.views : 0,
-    longForm: longForm.views > 0 ? longForm.revenueCents / longForm.views : 0,
-  };
+    viewsPerSource > 0 ? viewsPerShort / viewsPerSource : 0;
+  const engagementDiff = clips.engagement - sources.engagement;
+  const shortsRevenuePerView =
+    clips.views > 0 ? clips.revenueCents / clips.views : 0;
 
   return (
-    <Card>
+    <Card data-test="shorts-roi-card">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Scissors className="h-4 w-4" />
@@ -223,22 +248,27 @@ export function ShortsROICard({
         <div className="grid grid-cols-2 gap-4">
           <div className="rounded-lg bg-muted/50 p-4">
             <div className="mb-1 text-xs text-muted-foreground">
-              Views/Short
+              Views per {FORMAT_FAMILY_LABEL[CLIP_FAMILY]}
             </div>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold" data-test="roi-views-per-clip">
               {formatNumber(viewsPerShort)}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
-              {shorts.contentCount} shorts published
+              {clips.contentCount} published
             </div>
           </div>
           <div className="rounded-lg bg-muted/50 p-4">
-            <div className="mb-1 text-xs text-muted-foreground">Views/Long</div>
-            <div className="text-2xl font-bold">
-              {formatNumber(viewsPerLongForm)}
+            <div className="mb-1 text-xs text-muted-foreground">
+              Views per {FORMAT_FAMILY_LABEL[SOURCE_FAMILY]}
+            </div>
+            <div
+              className="text-2xl font-bold"
+              data-test="roi-views-per-source"
+            >
+              {formatNumber(viewsPerSource)}
             </div>
             <div className="mt-1 text-xs text-muted-foreground">
-              {longForm.contentCount} long-form published
+              {sources.contentCount} published
             </div>
           </div>
         </div>
@@ -261,7 +291,7 @@ export function ShortsROICard({
           <div className="flex items-center justify-between rounded-lg bg-muted/30 p-2">
             <span className="text-sm">Revenue/view (shorts)</span>
             <Badge variant="outline">
-              ${(revenuePerView.shorts / 100).toFixed(4)}
+              ${(shortsRevenuePerView / 100).toFixed(4)}
             </Badge>
           </div>
         </div>
@@ -313,22 +343,23 @@ export function BestEpisodesToClipCard({
 
   // Check if shorts are performing well
   if (contentTypeData) {
-    const { longForm, shorts } = contentTypeData;
+    const clips = familyTotals(contentTypeData, CLIP_FAMILY);
+    const sources = familyTotals(contentTypeData, SOURCE_FAMILY);
 
-    if (shorts.engagement > longForm.engagement) {
+    if (clips.engagement > sources.engagement) {
       recommendations.push({
         icon: <TrendingUp className="h-4 w-4 text-green-500" />,
-        title: 'Shorts outperform long-form',
-        description: `Shorts have ${(shorts.engagement - longForm.engagement).toFixed(1)}% higher engagement. Create more clips from high-performing episodes.`,
+        title: 'Shorts outperform horizontal long-form',
+        description: `Shorts have ${(clips.engagement - sources.engagement).toFixed(1)}% higher engagement. Create more clips from high-performing episodes.`,
         priority: 'high',
       });
     }
 
-    if (shorts.contentCount < longForm.contentCount) {
+    if (clips.contentCount < sources.contentCount) {
       recommendations.push({
         icon: <Scissors className="h-4 w-4 text-blue-500" />,
         title: 'Increase shorts production',
-        description: `You have ${longForm.contentCount} long-form but only ${shorts.contentCount} shorts. Consider clipping more content.`,
+        description: `You have ${sources.contentCount} horizontal long-form videos but only ${clips.contentCount} shorts. Consider clipping more content.`,
         priority: 'medium',
       });
     }

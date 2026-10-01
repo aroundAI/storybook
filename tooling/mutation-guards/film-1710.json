@@ -24,7 +24,7 @@
     {
       "name": "Zero passes for a measured duration",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/lib/asset-duration.ts",
+      "file": "packages/clickhouse/src/lib/asset-duration.ts",
       "find": "  return seconds > 0 ? seconds : null;",
       "replace": "  return seconds;",
       "cwd": "packages/features/content-analytics",
@@ -84,7 +84,7 @@
     {
       "name": "Instagram is asked for a duration Meta does not have",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/lib/asset-duration.ts",
+      "file": "packages/clickhouse/src/lib/asset-duration.ts",
       "find": "export const ASSET_DURATION_PLATFORMS = ['youtube', 'tiktok'] as const;",
       "replace": "export const ASSET_DURATION_PLATFORMS = ['youtube', 'tiktok', 'instagram'] as const;",
       "cwd": "packages/features/content-analytics",

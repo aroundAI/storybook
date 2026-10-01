@@ -23,6 +23,12 @@ import {
 } from '../src/lib/data-provenance';
 import type { MetricFamily } from '../src/lib/data-provenance';
 import {
+  FORMAT_FAMILIES,
+  formatFamilyOfDim,
+  unmappedFormatPairs,
+} from '../src/lib/format-families';
+import type { FormatFamily } from '../src/lib/format-families';
+import {
   getClickHouseClient,
   insertChannelDaily,
   insertChannelReachDaily,
@@ -2696,6 +2702,208 @@ async function provenanceSteps() {
   });
 }
 
+/** A project holding only the format-family fixture below. */
+const FORMAT_PROJECT = '33333333-3333-3333-3333-333333333333';
+
+/**
+ * One video per case the family mapping has to get right (FILM-1716). The
+ * `superseded` row is the same video's first dim row, written before its
+ * asset duration was known: a filter that read it instead of the newest
+ * row would put a 200-second upload back among the Shorts.
+ */
+const FORMAT_FIXTURE: {
+  video_id: string;
+  platform: string;
+  content_type: string;
+  asset_duration_seconds: number | null;
+  superseded?: { asset_duration_seconds: number | null };
+}[] = [
+  {
+    video_id: 'fmt-yt-short-45',
+    platform: 'youtube',
+    content_type: 'short',
+    asset_duration_seconds: 45,
+  },
+  {
+    video_id: 'fmt-yt-short-200',
+    platform: 'youtube',
+    content_type: 'short',
+    asset_duration_seconds: 200,
+    superseded: { asset_duration_seconds: null },
+  },
+  {
+    video_id: 'fmt-yt-short-null',
+    platform: 'youtube',
+    content_type: 'short',
+    asset_duration_seconds: null,
+  },
+  {
+    video_id: 'fmt-yt-full',
+    platform: 'youtube',
+    content_type: 'full',
+    asset_duration_seconds: 1320,
+  },
+  {
+    video_id: 'fmt-tt-full',
+    platform: 'tiktok',
+    content_type: 'full',
+    asset_duration_seconds: null,
+  },
+  {
+    video_id: 'fmt-x-short',
+    platform: 'twitter',
+    content_type: 'short',
+    asset_duration_seconds: null,
+  },
+  {
+    video_id: 'fmt-ig-trailer',
+    platform: 'instagram',
+    content_type: 'trailer',
+    asset_duration_seconds: null,
+  },
+  {
+    video_id: 'fmt-fb-teaser',
+    platform: 'facebook',
+    content_type: 'teaser',
+    asset_duration_seconds: null,
+  },
+];
+
+/**
+ * Format families against the live table (FILM-1716).
+ *
+ * The first step is the one that matters over time: every `(platform,
+ * content_type)` actually in `video_dim` must be covered by
+ * `FORMAT_BY_CONTENT_TYPE`, so a new content type fails here rather than
+ * falling silently out of every family. The second proves the SQL filter
+ * and `resolveFormatFamily` agree row for row — they are built from the
+ * same tables, and this is what says so.
+ */
+async function formatFamilySteps() {
+  const client = getClickHouseClient();
+  const dimRow = (
+    row: (typeof FORMAT_FIXTURE)[number],
+    asset: number | null,
+    updatedAt: string,
+  ) => ({
+    video_id: row.video_id,
+    project_id: FORMAT_PROJECT,
+    account_id: FORMAT_PROJECT,
+    episode_id: EPISODE,
+    connection_id: CHANNEL,
+    platform: row.platform,
+    content_type: row.content_type,
+    language: 'en',
+    channel_language: 'en',
+    title: row.video_id,
+    published_at: '2026-01-10 00:00:00',
+    episode_duration_seconds: 1320,
+    asset_duration_seconds: asset,
+    tags: [],
+    updated_at: updatedAt,
+  });
+
+  await step('format families: seed', async () => {
+    await client.command({
+      query: 'ALTER TABLE video_dim DELETE WHERE project_id = {project:UUID}',
+      query_params: { project: FORMAT_PROJECT },
+      clickhouse_settings: { mutations_sync: '2' },
+    });
+    await client.insert({
+      table: 'video_dim',
+      format: 'JSONEachRow',
+      // Otherwise ReplacingMergeTree collapses the superseded row into the
+      // newest one on the way in, and the case it exists for never occurs —
+      // the guard below then passes with the filter in the wrong clause.
+      clickhouse_settings: { optimize_on_insert: 0 },
+      values: FORMAT_FIXTURE.flatMap((row) => [
+        ...(row.superseded
+          ? [
+              dimRow(
+                row,
+                row.superseded.asset_duration_seconds,
+                '2020-01-01 00:00:00',
+              ),
+            ]
+          : []),
+        dimRow(row, row.asset_duration_seconds, '2026-01-11 00:00:00'),
+      ]),
+    });
+  });
+
+  await step('format families: every live pair is mapped', async () => {
+    const result = await client.query({
+      query: `SELECT DISTINCT platform, content_type FROM video_dim FINAL
+              WHERE ${NOT_NOISE}`,
+      query_params: { noiseProject: NOISE_PROJECT },
+      format: 'JSONEachRow',
+    });
+    const observed = await result.json<{
+      platform: string;
+      content_type: string;
+    }>();
+    const unmapped = unmappedFormatPairs(observed);
+
+    if (unmapped.length > 0) {
+      throw new Error(
+        `video_dim holds ${unmapped
+          .map((pair) => `${pair.platform}/${pair.content_type}`)
+          .join(', ')} — no format family maps it; add it to ` +
+          `FORMAT_BY_CONTENT_TYPE rather than letting it fall out of every family`,
+      );
+    }
+
+    return `${observed.length} pair(s), all mapped`;
+  });
+
+  const expected = (family: FormatFamily) =>
+    FORMAT_FIXTURE.filter((row) => {
+      const resolved = formatFamilyOfDim(row);
+      return resolved.ok && resolved.family === family;
+    })
+      .map((row) => row.video_id)
+      .sort();
+
+  for (const family of FORMAT_FAMILIES) {
+    await step(`format families: ${family} in SQL = in TS`, async () => {
+      const rows = await queryVideoLanguages({
+        scope: { projectId: FORMAT_PROJECT, formatFamily: family },
+      });
+      const got = rows.map((row) => row.videoId).sort();
+      const want = expected(family);
+
+      if (JSON.stringify(got) !== JSON.stringify(want)) {
+        throw new Error(
+          `SQL selected [${got.join(', ')}], resolveFormatFamily says [${want.join(', ')}]`,
+        );
+      }
+
+      return got.join(', ') || 'none';
+    });
+  }
+
+  await step('format families: a content-type list binds as IN', async () => {
+    const rows = await queryVideoLanguages({
+      scope: { projectId: FORMAT_PROJECT, contentType: ['teaser', 'trailer'] },
+    });
+    const got = rows.map((row) => row.videoId).sort();
+
+    if (got.join() !== 'fmt-fb-teaser,fmt-ig-trailer') {
+      throw new Error(`selected [${got.join(', ')}]`);
+    }
+
+    return got.join(', ');
+  });
+
+  await step('format families: cleanup', () =>
+    client.command({
+      query: 'ALTER TABLE video_dim DELETE WHERE project_id = {project:UUID}',
+      query_params: { project: FORMAT_PROJECT },
+      clickhouse_settings: { mutations_sync: '2' },
+    }),
+  );
+}
+
 /**
  * A run that must not depend on an earlier one: every fixture below is
  * deleted first and again afterwards, so a re-run reads only what it seeds.
@@ -3466,6 +3674,7 @@ async function main() {
   await assertions();
   await watchedMetricSteps();
   await provenanceSteps();
+  await formatFamilySteps();
   await handComputedSteps();
   // Last: it fills a project with noise, and nothing above should see it.
   await scanScopeSteps();

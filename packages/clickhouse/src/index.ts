@@ -188,6 +188,39 @@ export type {
   VelocityReading,
 } from './lib/velocity';
 
+// A published asset's duration or the reason there is none (FILM-1710), and
+// the format family axis it can refine (FILM-1716). Pure, so a card and a
+// query agree on which family a video is in.
+export {
+  ASSET_DURATION_PLATFORMS,
+  DURATION_UNKNOWN,
+  normalizeAssetDurationSeconds,
+  resolveAssetDuration,
+} from './lib/asset-duration';
+export type {
+  AssetDuration,
+  AssetDurationPlatform,
+} from './lib/asset-duration';
+export {
+  CONTENT_TYPES,
+  DURATION_REFINEMENTS,
+  FORMAT_BY_CONTENT_TYPE,
+  FORMAT_FAMILIES,
+  FORMAT_FAMILY_LABEL,
+  PUBLISH_PLATFORMS,
+  contentTypesFor,
+  formatFamilyOfDim,
+  formatFamilyPredicate,
+  resolveFormatFamily,
+  unmappedFormatPairs,
+} from './lib/format-families';
+export type {
+  ContentType,
+  FormatFamily,
+  FormatFamilyResolution,
+  PublishPlatform,
+} from './lib/format-families';
+
 // What "a view" means per platform, and when it changed (FILM-1722). Pure,
 // so a chart can ask where a boundary falls without reaching the server.
 export {
