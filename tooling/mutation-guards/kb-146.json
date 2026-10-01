@@ -1,0 +1,24 @@
+{
+  "feature": "KB-146",
+  "mutations": [
+    {
+      "name": "A colour token is wrapped in hsl() again",
+      "kind": "unit",
+      "file": "packages/ui/src/shadcn/sidebar.tsx",
+      "find": "shadow-[0_0_0_1px_var(--sidebar-border)]",
+      "replace": "shadow-[0_0_0_1px_hsl(var(--sidebar-border))]",
+      "cwd": "packages/shared",
+      "test": "__tests__/colour-tokens-not-hsl.test.ts",
+      "pattern": "leaves no hsl"
+    },
+    {
+      "name": "The language trend tooltip wraps --popover in hsl() again",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/language-trend-chart.tsx",
+      "find": "                backgroundColor: 'var(--popover)',",
+      "replace": "                backgroundColor: 'hsl(var(--popover))',",
+      "spec": "tests/analytics/chart-tooltip-evidence.spec.ts",
+      "grep": "the trend and comparison tooltips"
+    }
+  ]
+}

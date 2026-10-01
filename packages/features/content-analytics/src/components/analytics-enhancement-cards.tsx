@@ -99,7 +99,7 @@ export function LanguageComparisonChart({
   }));
 
   return (
-    <Card>
+    <Card data-test="language-comparison-chart">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <BarChart3 className="h-4 w-4" />
@@ -124,8 +124,8 @@ export function LanguageComparisonChart({
                   name.charAt(0).toUpperCase() + name.slice(1),
                 ]}
                 contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
+                  backgroundColor: 'var(--card)',
+                  border: '1px solid var(--border)',
                   borderRadius: '8px',
                 }}
               />

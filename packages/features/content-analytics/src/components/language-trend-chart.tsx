@@ -134,8 +134,8 @@ export function LanguageTrendChart({
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'hsl(var(--popover))',
-                border: '1px solid hsl(var(--border))',
+                backgroundColor: 'var(--popover)',
+                border: '1px solid var(--border)',
                 borderRadius: '6px',
               }}
               labelFormatter={(value) => {
