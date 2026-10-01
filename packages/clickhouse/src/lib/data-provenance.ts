@@ -40,6 +40,43 @@ export const ANALYTICS_PLATFORMS = [
 // one being left out, and vitest does not typecheck, so the suite reads the
 // union out of types.ts and compares.
 
+export function isAnalyticsPlatform(value: string): value is AnalyticsPlatform {
+  return (ANALYTICS_PLATFORMS as readonly string[]).includes(value);
+}
+
+/**
+ * The guard every platform predicate passes before it reaches SQL
+ * (FILM-1709). Two mistakes it refuses, both of which used to answer
+ * quietly:
+ *
+ * - **An empty list.** `platforms.length > 0 &&` read "none selected" as
+ *   "no filter", so clearing the filter showed every platform. No platform
+ *   selected is the page's state to say, never a query's to guess.
+ * - **A name outside `AnalyticsPlatform`.** Facebook is offered for export
+ *   and connected channels can be anything; the metric tables' `platform`
+ *   column is an Enum of three, so an unknown name is a server error there
+ *   and an empty answer on `video_dim`, which is a String.
+ */
+export function assertPlatformSelection(
+  platforms: readonly string[],
+): asserts platforms is readonly AnalyticsPlatform[] {
+  if (platforms.length === 0) {
+    throw new Error(
+      'A platform filter needs at least one platform; leave it out to read every platform',
+    );
+  }
+
+  const unknown = platforms.filter(
+    (platform) => !isAnalyticsPlatform(platform),
+  );
+
+  if (unknown.length > 0) {
+    throw new Error(
+      `Not an analytics platform: ${unknown.join(', ')} (expected ${ANALYTICS_PLATFORMS.join(', ')})`,
+    );
+  }
+}
+
 /**
  * What a card can be showing. One family is one question a creator asks —
  * "how long did they watch?" — not one column.

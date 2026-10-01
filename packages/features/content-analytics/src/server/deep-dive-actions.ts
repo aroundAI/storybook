@@ -48,7 +48,7 @@ function toDimScope(scope: Scope): DimScope {
     projectId: scope.projectId,
     accountId: scope.accountId,
     connectionId: scope.connectionId,
-    platform: scope.platform,
+    platforms: scope.platforms,
     contentType: scope.contentType,
     language: scope.language,
   };
@@ -306,7 +306,7 @@ export const getYppProgressAction = enhanceAction(
               scope: {
                 accountId,
                 connectionId: channel.connectionId,
-                platform: 'youtube',
+                platforms: ['youtube'],
               },
               windowDays,
             }),
@@ -410,9 +410,9 @@ export const getReturningViewerProxyAction = enhanceAction(
         );
       }
 
-      // The Deep Dive's platform switcher (FILM-1707).
-      if (scope.platform) {
-        publishQuery = publishQuery.eq('platform', scope.platform);
+      // The page's platform filter (FILM-1709).
+      if (scope.platforms) {
+        publishQuery = publishQuery.in('platform', scope.platforms);
       }
 
       return publishQuery.order('id').range(from, to);

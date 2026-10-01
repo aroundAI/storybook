@@ -14,6 +14,7 @@ import { MIN_MATURE_VIDEOS } from './lib/cohort-growth';
 import {
   ANALYTICS_PLATFORMS,
   FETCH_DATED_METRIC_SOURCE,
+  assertPlatformSelection,
   isFetchDated,
 } from './lib/data-provenance';
 import type { ObservedCoverageRow, SourceTable } from './lib/data-provenance';
@@ -54,7 +55,7 @@ import type { TrafficBucket } from './lib/traffic-groups';
 import { computeIngestLagDays, computeMaturity } from './lib/video-age';
 import type { ViewsColumn } from './lib/view-definitions';
 import { VIEWS_COLUMN_PLATFORMS } from './lib/view-definitions';
-import type { VideoDim } from './types';
+import type { AnalyticsPlatform, VideoDim } from './types';
 
 export interface DimScope {
   projectId?: string;
@@ -65,7 +66,13 @@ export interface DimScope {
    * scope of its own — assertDimScope still requires project or account.
    */
   connectionId?: string;
-  platform?: string;
+  /**
+   * The platform filter's selection (FILM-1709): a list, because the
+   * filter is a multi-select. It was one `platform`, which the Deep Dive
+   * could fill with only one of the page's choices. Absent is every
+   * platform; an empty list is refused by `assertPlatformSelection`.
+   */
+  platforms?: readonly AnalyticsPlatform[];
   /**
    * The declared `content_type`, or a list of them (matched with IN). An
    * empty list is refused rather than read as "no filter" or "nothing".
@@ -209,9 +216,10 @@ function buildDimConditions(
     conditions.push('connection_id = {scopeConnectionId: UUID}');
     params.scopeConnectionId = scope.connectionId;
   }
-  if (scope.platform) {
-    conditions.push('platform = {scopePlatform: String}');
-    params.scopePlatform = scope.platform;
+  if (scope.platforms !== undefined) {
+    assertPlatformSelection(scope.platforms);
+    conditions.push('platform IN {scopePlatforms: Array(String)}');
+    params.scopePlatforms = scope.platforms;
   }
   if (viewsOnly) {
     conditions.push('platform IN {viewsPlatforms: Array(String)}');

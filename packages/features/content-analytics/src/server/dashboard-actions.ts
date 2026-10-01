@@ -11,6 +11,7 @@ import {
   foldProjectRevenue,
 } from '../lib/project-revenue';
 import type { SummaryRevenueRow } from '../lib/revenue-by-currency';
+import { PlatformSelectionSchema } from '../lib/schemas/platforms.schema';
 import {
   getContentList,
   getProjectAnalytics,
@@ -32,16 +33,20 @@ const GetProjectAnalyticsSchema = z.object({
   projectId: z.string().uuid(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
+  /** The page's platform filter (FILM-1709); absent is every platform. */
+  platforms: PlatformSelectionSchema.optional(),
 });
 
 /**
- * Get project analytics data
+ * Get project analytics data: the headline MetricCards and the Overview's
+ * per-platform split, both narrowed in the query by `platforms`.
  */
 export const getProjectAnalyticsAction = enhanceAction(
-  async ({ projectId, from, to }) => {
+  async ({ projectId, from, to, platforms }) => {
     return getProjectAnalytics(projectId, {
       startDate: from,
       endDate: to,
+      platforms,
     });
   },
   {
@@ -55,7 +60,10 @@ export const getProjectAnalyticsAction = enhanceAction(
  */
 const GetContentListSchema = z.object({
   projectId: z.string().uuid(),
-  platforms: z.array(z.string()).optional(),
+  // An `AnalyticsPlatform` list, not any string: this was
+  // `z.array(z.string())`, so a name the analytics tables cannot hold
+  // reached the publish query (FILM-1709).
+  platforms: PlatformSelectionSchema.optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
 });
@@ -80,20 +88,17 @@ export const getContentListAction = enhanceAction(
 /**
  * Schema for getProjectDailyMetricsAction
  */
-const GetProjectDailyMetricsSchema = z.object({
-  projectId: z.string().uuid(),
-  from: z.coerce.date().optional(),
-  to: z.coerce.date().optional(),
-});
+const GetProjectDailyMetricsSchema = GetProjectAnalyticsSchema;
 
 /**
- * Get daily metrics for the performance chart
+ * Get daily metrics for the performance chart, for the selected platforms
  */
 export const getProjectDailyMetricsAction = enhanceAction(
-  async ({ projectId, from, to }) => {
+  async ({ projectId, from, to, platforms }) => {
     return getProjectDailyMetrics(projectId, {
       startDate: from,
       endDate: to,
+      platforms,
     });
   },
   {
@@ -106,6 +111,7 @@ const GetProjectRevenueSchema = z.object({
   projectId: z.string().uuid(),
   from: z.coerce.date(),
   to: z.coerce.date(),
+  platforms: PlatformSelectionSchema.optional(),
 });
 
 /**
@@ -114,7 +120,12 @@ const GetProjectRevenueSchema = z.object({
  * caller may not read the project, as `getProjectAnalytics` answers.
  */
 export const getProjectRevenueByCurrencyAction = enhanceAction(
-  async ({ projectId, from, to }): Promise<ProjectRevenue[] | null> => {
+  async ({
+    projectId,
+    from,
+    to,
+    platforms,
+  }): Promise<ProjectRevenue[] | null> => {
     const client = getSupabaseServerClient();
 
     try {
@@ -133,6 +144,7 @@ export const getProjectRevenueByCurrencyAction = enhanceAction(
       from.toISOString().split('T')[0]!,
       to.toISOString().split('T')[0]!,
       (row) => rows.push(row),
+      { platforms },
     );
 
     return foldProjectRevenue(rows);
@@ -146,20 +158,18 @@ export const getProjectRevenueByCurrencyAction = enhanceAction(
 /**
  * Schema for getProjectAudienceDataAction
  */
-const GetProjectAudienceDataSchema = z.object({
-  projectId: z.string().uuid(),
-  from: z.coerce.date().optional(),
-  to: z.coerce.date().optional(),
-});
+const GetProjectAudienceDataSchema = GetProjectAnalyticsSchema;
 
 /**
- * Get audience demographics and geography data
+ * Get audience demographics and geography data, over the selected
+ * platforms' videos only
  */
 export const getProjectAudienceDataAction = enhanceAction(
-  async ({ projectId, from, to }) => {
+  async ({ projectId, from, to, platforms }) => {
     return getProjectAudienceData(projectId, {
       startDate: from,
       endDate: to,
+      platforms,
     });
   },
   {
@@ -181,17 +191,20 @@ const GetLanguageAnalyticsSchema = z.object({
    * on.
    */
   dimension: z.enum(LANGUAGE_DIMENSIONS).default('content'),
+  /** The page's platform filter (FILM-1709); absent is every platform. */
+  platforms: PlatformSelectionSchema.optional(),
 });
 
 /**
  * Get language performance data for the Language tab
  */
 export const getLanguagePerformanceAction = enhanceAction(
-  async ({ projectId, from, to, dimension }) => {
+  async ({ projectId, from, to, dimension, platforms }) => {
     return getLanguagePerformance(projectId, {
       startDate: from,
       endDate: to,
       dimension,
+      platforms,
     });
   },
   {
@@ -204,11 +217,12 @@ export const getLanguagePerformanceAction = enhanceAction(
  * Get platform × language matrix for the Language tab
  */
 export const getPlatformLanguageMatrixAction = enhanceAction(
-  async ({ projectId, from, to, dimension }) => {
+  async ({ projectId, from, to, dimension, platforms }) => {
     return getPlatformLanguageMatrix(projectId, {
       startDate: from,
       endDate: to,
       dimension,
+      platforms,
     });
   },
   {
@@ -221,10 +235,11 @@ export const getPlatformLanguageMatrixAction = enhanceAction(
  * Get content type comparison for the Language tab
  */
 export const getContentTypeComparisonAction = enhanceAction(
-  async ({ projectId, from, to }) => {
+  async ({ projectId, from, to, platforms }) => {
     return getContentTypeComparison(projectId, {
       startDate: from,
       endDate: to,
+      platforms,
     });
   },
   {
@@ -239,12 +254,13 @@ export const getContentTypeComparisonAction = enhanceAction(
  * Get shorts source performance for Phase 3
  */
 export const getShortsSourcePerformanceAction = enhanceAction(
-  async ({ projectId, from, to, dimension }) => {
+  async ({ projectId, from, to, dimension, platforms }) => {
     const { getShortsSourcePerformance } = await import('./language-analytics');
     return getShortsSourcePerformance(projectId, {
       startDate: from,
       endDate: to,
       dimension,
+      platforms,
       limit: 10,
     });
   },
@@ -258,12 +274,13 @@ export const getShortsSourcePerformanceAction = enhanceAction(
  * Get geography by language for Phase 4
  */
 export const getGeographyByLanguageAction = enhanceAction(
-  async ({ projectId, from, to, dimension }) => {
+  async ({ projectId, from, to, dimension, platforms }) => {
     const { getGeographyByLanguage } = await import('./language-analytics');
     return getGeographyByLanguage(projectId, {
       startDate: from,
       endDate: to,
       dimension,
+      platforms,
     });
   },
   {
@@ -276,12 +293,13 @@ export const getGeographyByLanguageAction = enhanceAction(
  * Get language trend over time for trend chart
  */
 export const getLanguageTrendAction = enhanceAction(
-  async ({ projectId, from, to, dimension }) => {
+  async ({ projectId, from, to, dimension, platforms }) => {
     const { getLanguageTrend } = await import('./language-analytics');
     return getLanguageTrend(projectId, {
       startDate: from,
       endDate: to,
       dimension,
+      platforms,
     });
   },
   {
@@ -298,12 +316,15 @@ export const getLanguageTrendAction = enhanceAction(
  * way the Language tab is set.
  */
 export const getLanguageDivergenceAction = enhanceAction(
-  async ({ projectId }) => {
+  async ({ projectId, platforms }) => {
     const { getLanguageDivergence } = await import('./language-analytics');
-    return getLanguageDivergence(projectId);
+    return getLanguageDivergence(projectId, { platforms });
   },
   {
-    schema: z.object({ projectId: z.string().uuid() }),
+    schema: z.object({
+      projectId: z.string().uuid(),
+      platforms: PlatformSelectionSchema.optional(),
+    }),
     auth: true,
   },
 );

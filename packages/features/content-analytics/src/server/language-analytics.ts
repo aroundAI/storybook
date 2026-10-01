@@ -6,6 +6,7 @@ import {
   formatFamilyOfDim,
 } from '@kit/clickhouse';
 import type {
+  AnalyticsPlatform,
   FormatFamily,
   LanguageDimension,
   SegmentConfidence,
@@ -47,6 +48,11 @@ interface LanguageReadOptions {
    * these pass it through from their input, which can be anything.
    */
   dimension?: LanguageDimension;
+  /**
+   * The page's platform filter (FILM-1709). Narrows the video set every
+   * Language figure is built from, so all six follow it.
+   */
+  platforms?: AnalyticsPlatform[];
 }
 
 /** A language's figures at a fixed video age, from querySegmentPerformance. */
@@ -155,6 +161,7 @@ async function resolveProjectVideos(
   projectId: string,
   dimensionInput: unknown,
   contentType?: string,
+  platforms?: AnalyticsPlatform[],
 ) {
   const dimension = resolveLanguageDimension(dimensionInput);
 
@@ -165,7 +172,7 @@ async function resolveProjectVideos(
   }
 
   const videos = await queryVideoLanguages({
-    scope: { projectId, contentType },
+    scope: { projectId, contentType, platforms },
   });
 
   if (videos.length === 0) return null;
@@ -210,7 +217,12 @@ export async function getLanguagePerformance(
     previousEndDate.getTime() - periodDays * 24 * 60 * 60 * 1000,
   );
 
-  const resolved = await resolveProjectVideos(projectId, options?.dimension);
+  const resolved = await resolveProjectVideos(
+    projectId,
+    options?.dimension,
+    undefined,
+    options?.platforms,
+  );
   if (!resolved) return [];
 
   const { videos, videoIds, languageByVideo, dimension } = resolved;
@@ -236,7 +248,7 @@ export async function getLanguagePerformance(
       projectIds: [projectId],
     }),
     querySegmentPerformance({
-      scope: { projectId },
+      scope: { projectId, platforms: options?.platforms },
       segment: { kind: LANGUAGE_DIMENSION_SEGMENTS[dimension] },
       minVideos: 1,
       checkpointDays: LANGUAGE_CHECKPOINT_DAYS,
@@ -354,7 +366,12 @@ export async function getPlatformLanguageMatrix(
   const startDate =
     options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
 
-  const resolved = await resolveProjectVideos(projectId, options?.dimension);
+  const resolved = await resolveProjectVideos(
+    projectId,
+    options?.dimension,
+    undefined,
+    options?.platforms,
+  );
   if (!resolved) return [];
 
   const { videos, videoIds, languageByVideo } = resolved;
@@ -445,13 +462,18 @@ export async function getPlatformLanguageMatrix(
  */
 export async function getContentTypeComparison(
   projectId: string,
-  options?: { startDate?: Date; endDate?: Date },
+  options?: Omit<LanguageReadOptions, 'dimension'>,
 ): Promise<ContentTypeComparison> {
   const endDate = options?.endDate || new Date();
   const startDate =
     options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
 
-  const resolved = await resolveProjectVideos(projectId, undefined);
+  const resolved = await resolveProjectVideos(
+    projectId,
+    undefined,
+    undefined,
+    options?.platforms,
+  );
   if (!resolved) return getEmptyComparison();
 
   const { videos, videoIds } = resolved;
@@ -573,6 +595,7 @@ export async function getShortsSourcePerformance(
     projectId,
     options?.dimension,
     'short',
+    options?.platforms,
   );
 
   if (!resolved) return [];
@@ -696,7 +719,12 @@ export async function getGeographyByLanguage(
   const startDate =
     options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
 
-  const resolved = await resolveProjectVideos(projectId, options?.dimension);
+  const resolved = await resolveProjectVideos(
+    projectId,
+    options?.dimension,
+    undefined,
+    options?.platforms,
+  );
   if (!resolved) return [];
 
   const { videoIds, languageByVideo } = resolved;
@@ -796,7 +824,12 @@ export async function getLanguageTrend(
   const startDate =
     options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
 
-  const resolved = await resolveProjectVideos(projectId, options?.dimension);
+  const resolved = await resolveProjectVideos(
+    projectId,
+    options?.dimension,
+    undefined,
+    options?.platforms,
+  );
   if (!resolved) return [];
 
   const { videoIds, languageByVideo } = resolved;
@@ -854,6 +887,7 @@ export async function getLanguageTrend(
  */
 export async function getLanguageDivergence(
   projectId: string,
+  options?: Pick<LanguageReadOptions, 'platforms'>,
 ): Promise<LanguageDivergence | null> {
   try {
     await assertScopeAccess({ projectId });
@@ -862,6 +896,8 @@ export async function getLanguageDivergence(
   }
 
   return summariseLanguagePairs(
-    await queryLanguagePairs({ scope: { projectId } }),
+    await queryLanguagePairs({
+      scope: { projectId, platforms: options?.platforms },
+    }),
   );
 }

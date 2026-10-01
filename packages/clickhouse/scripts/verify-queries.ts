@@ -618,7 +618,7 @@ async function queries() {
   await step('queryVideoViewsAtAge', () => queryVideoViewsAtAge({ scope }));
   await step('queryWatchWindowTotals', () =>
     queryWatchWindowTotals({
-      scope: { accountId: ACCOUNT, platform: 'youtube' },
+      scope: { accountId: ACCOUNT, platforms: ['youtube'] },
       windowDays: 365,
     }),
   );
@@ -643,7 +643,7 @@ async function queries() {
   // Every scope filter, since each one is an alias that shadowed its column.
   for (const [label, narrowed] of [
     ['connectionId', { ...scope, connectionId: CHANNEL }],
-    ['platform', { ...scope, platform: 'youtube' }],
+    ['platforms', { ...scope, platforms: ['youtube', 'tiktok'] }],
     ['contentType', { ...scope, contentType: 'full' }],
     ['language', { ...scope, language: 'en' }],
     ['channelLanguage', { ...scope, channelLanguage: 'en' }],
@@ -1274,6 +1274,138 @@ async function assertions() {
       if (got !== want) throw new Error(`expected ${want}, got ${got}`);
 
       return rows;
+    },
+  );
+
+  await step(
+    'assert: every platform selected sums to its single-platform totals (FILM-1709)',
+    async () => {
+      // The page's decisive property: deselecting a platform takes out
+      // exactly what it put in. Views by hand — YouTube 100 + 20, TikTok
+      // 300, Instagram 40 + 5: all 465, the three alone 120 + 300 + 45.
+      const client = getClickHouseClient();
+      const project = '17091709-1709-4709-8709-170917091709';
+      const clear = async () => {
+        for (const table of ['video_metrics', 'video_dim']) {
+          await client.command({
+            query: `ALTER TABLE ${table} DELETE WHERE project_id = {project:UUID}`,
+            query_params: { project },
+            clickhouse_settings: { mutations_sync: '2' },
+          });
+        }
+      };
+      const row = (
+        video_id: string,
+        platform: AnalyticsPlatform,
+        metric_date: string,
+        views: number,
+      ): VideoMetric => ({
+        project_id: project,
+        video_id,
+        platform,
+        metric_date,
+        views,
+        likes: 1,
+        comments: 0,
+        shares: 0,
+        saves: null,
+        watch_time_seconds: null,
+        subscribers_gained: null,
+        revenue_cents: 0,
+        extra_metrics: '{}',
+        metric_source:
+          platform === 'youtube' ? 'reporting_api' : 'snapshot_delta',
+      });
+
+      await clear();
+      await insertVideoMetrics([
+        row('f1709-yt', 'youtube', '2026-09-10', 100),
+        row('f1709-yt', 'youtube', '2026-09-11', 20),
+        row('f1709-tt', 'tiktok', '2026-09-10', 300),
+        row('f1709-ig-a', 'instagram', '2026-09-10', 40),
+        row('f1709-ig-b', 'instagram', '2026-09-12', 5),
+      ]);
+      await insertVideoDims(
+        (
+          [
+            ['f1709-yt', 'youtube'],
+            ['f1709-tt', 'tiktok'],
+            ['f1709-ig-a', 'instagram'],
+            ['f1709-ig-b', 'instagram'],
+          ] as const
+        ).map(([video_id, platform]) => ({
+          video_id,
+          project_id: project,
+          account_id: project,
+          episode_id: project,
+          connection_id: project,
+          platform,
+          content_type: 'short',
+          language: 'en',
+          channel_language: 'en',
+          title: video_id,
+          published_at: '2026-09-01 00:00:00',
+          episode_duration_seconds: 60,
+          asset_duration_seconds: null,
+          tags: [],
+        })),
+      );
+
+      const views = async (platforms?: AnalyticsPlatform[]) =>
+        (await queryTotals({ projectId: project, platforms })).views;
+
+      const all = await views(['youtube', 'tiktok', 'instagram']);
+      const unfiltered = await views();
+      const singles = [
+        await views(['youtube']),
+        await views(['tiktok']),
+        await views(['instagram']),
+      ];
+      const withoutTikTok = await views(['youtube', 'instagram']);
+      const breakdown = await queryPlatformBreakdown({
+        projectId: project,
+        platforms: ['youtube', 'instagram'],
+      });
+      const dimVideos = await queryVideoLanguages({
+        scope: { projectId: project, platforms: ['tiktok', 'instagram'] },
+      });
+      const refused = await queryTotals({
+        projectId: project,
+        platforms: ['facebook'] as unknown as AnalyticsPlatform[],
+      }).then(
+        () => 'sent',
+        (error: Error) => error.message,
+      );
+
+      await clear();
+
+      expectEqual('every platform', all, 465);
+      expectEqual('no filter', unfiltered, 465);
+      expectEqual('one at a time', singles, [120, 300, 45]);
+      expectEqual(
+        'sum of singles',
+        singles.reduce((sum, value) => sum + value, 0),
+        all,
+      );
+      expectEqual('TikTok deselected', withoutTikTok, 165);
+      expectEqual(
+        'breakdown without TikTok',
+        breakdown.map((p) => [p.platform, p.views]).sort(),
+        [
+          ['instagram', 45],
+          ['youtube', 120],
+        ],
+      );
+      expectEqual(
+        'video_dim narrowed to two platforms',
+        dimVideos.map((v) => v.videoId).sort(),
+        ['f1709-ig-a', 'f1709-ig-b', 'f1709-tt'],
+      );
+      if (!refused.startsWith('Not an analytics platform: facebook')) {
+        throw new Error(`facebook reached the server: ${refused}`);
+      }
+
+      return { all, singles, withoutTikTok };
     },
   );
 
@@ -3924,14 +4056,14 @@ async function handComputedSteps() {
 
       const windowDays = 30;
       const pooledVideos = await queryWatchWindowTotals({
-        scope: { accountId: YPP_ACCOUNT, platform: 'youtube' },
+        scope: { accountId: YPP_ACCOUNT, platforms: ['youtube'] },
         windowDays,
       });
       const channelVideos = await queryWatchWindowTotals({
         scope: {
           accountId: YPP_ACCOUNT,
           connectionId: YPP_CHANNEL,
-          platform: 'youtube' as const,
+          platforms: ['youtube' as const],
         },
         windowDays,
       });
@@ -3961,14 +4093,14 @@ async function handComputedSteps() {
       // The known edge (FILM-1602 remaining): a video synced with the zero
       // UUID is in the account's pooled total and in no channel's.
       const orphanPooled = await queryWatchWindowTotals({
-        scope: { accountId: YPP_UNATTRIBUTED_ACCOUNT, platform: 'youtube' },
+        scope: { accountId: YPP_UNATTRIBUTED_ACCOUNT, platforms: ['youtube'] },
         windowDays,
       });
       const orphanChannel = await queryWatchWindowTotals({
         scope: {
           accountId: YPP_UNATTRIBUTED_ACCOUNT,
           connectionId: YPP_CHANNEL,
-          platform: 'youtube' as const,
+          platforms: ['youtube' as const],
         },
         windowDays,
       });
@@ -4871,7 +5003,7 @@ async function observedCoverageSteps() {
     'assert: a platform filter narrows observed coverage to that platform',
     async () => {
       const rows = await queryObservedCoverage(
-        { projectId: COVER_PROJECT, platform: 'tiktok' },
+        { projectId: COVER_PROJECT, platforms: ['tiktok'] },
         '2026-01-01',
         window.to,
       );

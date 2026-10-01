@@ -176,12 +176,14 @@ export async function forEachProjectRevenueRow(
   from: string,
   to: string,
   onRow: (row: AccountRevenueRow) => void,
+  /** The analytics page's platform filter (FILM-1709); absent is every platform. */
+  options?: { platforms?: readonly string[] },
 ): Promise<void> {
   await forEachPage<
     StoredRevenueRow & { publishes?: { episode_id?: string | null } }
   >(
-    (pageFrom, pageTo) =>
-      client
+    (pageFrom, pageTo) => {
+      let query = client
         .from('revenue_records')
         .select(
           `id,
@@ -200,9 +202,14 @@ export async function forEachProjectRevenueRow(
         )
         .eq('publishes.episodes.project_id', projectId)
         .gte('record_date', from)
-        .lte('record_date', to)
-        .order('id')
-        .range(pageFrom, pageTo),
+        .lte('record_date', to);
+
+      if (options?.platforms) {
+        query = query.in('platform', options.platforms);
+      }
+
+      return query.order('id').range(pageFrom, pageTo);
+    },
     (batch) => {
       for (const { publishes, ...row } of batch) {
         onRow(toAccountRevenueRow(row, publishes?.episode_id ?? null));

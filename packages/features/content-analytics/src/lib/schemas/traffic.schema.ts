@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
-import { ANALYTICS_PLATFORMS, TRAFFIC_SOURCE_BUCKETS } from '@kit/clickhouse';
+import { TRAFFIC_SOURCE_BUCKETS } from '@kit/clickhouse';
+
+import { PlatformSelectionSchema } from './platforms.schema';
 
 /**
  * Schemas for the deep-dive analytics actions.
@@ -30,7 +32,11 @@ export const ScopeSchema = z
     projectId: z.string().uuid().optional(),
     accountId: z.string().uuid().optional(),
     connectionId: z.string().uuid().optional(),
-    platform: z.enum(ANALYTICS_PLATFORMS).optional(),
+    /**
+     * The page's platform filter (FILM-1709). A list, as the filter is a
+     * multi-select; absent is every platform.
+     */
+    platforms: PlatformSelectionSchema.optional(),
     contentType: z.string().max(50).optional(),
     language: z.string().max(10).optional(),
   })
