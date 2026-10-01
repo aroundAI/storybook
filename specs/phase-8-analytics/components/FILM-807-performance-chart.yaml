@@ -69,7 +69,7 @@ test_plan:
       reason: "retired — owner decision 2026-09-30: the chart takes its rows as they are; there is no transformation"
     - text: "Test platform color mapping"
       met: true
-      evidence: "packages/features/content-analytics/__tests__/csv-and-platform-colors.test.ts:135"
+      evidence: "packages/features/content-analytics/__tests__/csv-and-platform-colors.test.ts:136"
   integration: []
   e2e: []
   visual:
