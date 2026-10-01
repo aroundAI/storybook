@@ -396,9 +396,9 @@ function TrafficSourceDrillDown({
       ) : (
         <>
           <p>
-            {platformLabel('youtube')}’s own traffic-source codes behind each group, as a share of
-            all {windowViews.toLocaleString()} views. Only codes that occurred
-            are listed.
+            {platformLabel('youtube')}’s own traffic-source codes behind each
+            group, as a share of all {windowViews.toLocaleString()} views. Only
+            codes that occurred are listed.
           </p>
           <ul className={'flex flex-col gap-2'}>
             {occurred.map((group) => (
