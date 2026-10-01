@@ -1,7 +1,6 @@
 import { type Page, type Request, expect, test } from '@playwright/test';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
+import { actionIdOf } from '../utils/action-ids';
 import {
   seedProject,
   seedPublishedEpisode,
@@ -46,37 +45,13 @@ async function answerOf(page: Page, call: CoverageCall) {
 }
 
 /**
- * `getCoverageMatrixAction`'s id, from the build the server is serving.
- * Matched on the id rather than the input: the subscriber series action
- * also takes a scope and two calendar days, and was counted as coverage.
- * Counted as requests leave, so a slow server cannot hide one that has not
- * answered yet.
+ * Coverage requests, by action id: the subscriber series also takes a scope
+ * and two calendar days. Counted as requests leave, so a slow server cannot
+ * hide one that has not answered yet.
  */
-function coverageActionId(): string {
-  const manifest = JSON.parse(
-    readFileSync(
-      join(
-        __dirname,
-        '../../../web/.next/server/server-reference-manifest.json',
-      ),
-      'utf8',
-    ),
-  ) as { node: Record<string, { exportedName?: string }> };
-
-  const id = Object.entries(manifest.node).find(
-    ([, entry]) => entry.exportedName === 'getCoverageMatrixAction',
-  )?.[0];
-
-  if (!id) {
-    throw new Error('getCoverageMatrixAction is not in the served build');
-  }
-
-  return id;
-}
-
 function recordCoverage(page: Page) {
   const calls: CoverageCall[] = [];
-  const actionId = coverageActionId();
+  const actionId = actionIdOf('getCoverageMatrixAction');
 
   page.on('request', (request) => {
     if (
