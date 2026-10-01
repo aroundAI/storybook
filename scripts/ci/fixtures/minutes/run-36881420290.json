@@ -1,0 +1,9 @@
+{
+  "id": 36881420290,
+  "name": "Workflow",
+  "event": "pull_request",
+  "conclusion": "success",
+  "head_branch": "feat/film-1718-stage-diagnosis",
+  "html_url": "https://github.com/aroundAI/storybook/actions/runs/36881420290",
+  "run_attempt": 1
+}

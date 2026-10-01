@@ -3,11 +3,14 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 
 /**
- * `specs/INDEX.md`'s counts, derived from the spec files instead of kept by
- * hand. `pnpm specs:index` checks them; `--write` rewrites them.
+ * `specs/INDEX.md`'s rows checked against the spec files, and the totals
+ * derived from them. `pnpm specs:index` checks the rows and prints the
+ * totals; INDEX.md stores no count (the merge queue, 2026-10-01): a stored
+ * count changed with every status flip, so every merge conflicted with every
+ * open PR that touched one, and each resolution cost a CI run.
  *
  * The rule, which is also INDEX's note above its legend: every row in a
- * `### … (N specs)` table under `## By Phase` is one spec, counted by its
+ * `### …` table under `## By Phase` is one spec, counted by its
  * linked file's own frontmatter `status:` — YAML task specs and the Markdown
  * documents (PHASE-14, the two Public Sharing docs) alike. FILM-CC-04, the
  * known-bugs register, is the one OPEN row and is not counted.
@@ -19,9 +22,9 @@ import { join, relative, resolve } from 'node:path';
  *
  * Checked: each row's link exists; its status cell names the same status as
  * the file; its Task ID is the file's `spec_id`; every `specs/**∕*.yaml` has
- * exactly one row; each heading's N is its row count; the Progress Tracker's
- * phase rows, TOTAL and By scope rows are the sums. `--write` rewrites only
- * those numbers. It never edits a status cell: which status is right is a
+ * exactly one row; and INDEX.md stores no count — no `(N specs)` heading, no
+ * Progress Tracker or By scope table. `--write` removes any such count and
+ * nothing else. It never edits a status cell: which status is right is a
  * judgement about the code, not arithmetic.
  */
 
@@ -50,7 +53,8 @@ const TRACKER_HEADER =
   '| Phase | Total | Draft | Partial | Deferred | Retired | Done |';
 const SCOPE_HEADER =
   '| Scope | Total | Done | Partial | Retired | Draft / Deferred |';
-const HEADING = /^### (.+) \((\d+) (specs?|docs?)\)\s*$/;
+const COUNTED_HEADING = /^### (.+) \(\d+ (?:specs?|docs?)\)\s*$/;
+const COUNT_TABLE = /^\| (Phase|Scope) \| Total \|/;
 
 export interface Layout {
   /** Every `###` section under By Phase, in tracker order. */
@@ -174,8 +178,6 @@ export interface IndexRow {
 
 export interface IndexSection {
   name: string;
-  claimed: number;
-  noun: string;
   line: number;
   rows: IndexRow[];
 }
@@ -207,19 +209,9 @@ export function parseSections(lines: string[]): IndexSection[] {
   for (let i = start + 1; i < lines.length && !/^## /.test(lines[i]!); i++) {
     const line = lines[i]!;
     if (line.startsWith('### ')) {
-      const m = HEADING.exec(line);
-      if (!m) {
-        throw new Error(
-          `INDEX.md:${i + 1}: a By Phase heading needs a "(N specs)" count: ${line}`,
-        );
-      }
-      current = {
-        name: m[1]!,
-        claimed: Number(m[2]),
-        noun: m[3]!,
-        line: i,
-        rows: [],
-      };
+      // A stored `(N specs)` is reported by checkIndex; the name is the same.
+      const name = (COUNTED_HEADING.exec(line)?.[1] ?? line.slice(4)).trim();
+      current = { name, line: i, rows: [] };
       sections.push(current);
       continue;
     }
@@ -243,19 +235,6 @@ export function parseSections(lines: string[]): IndexSection[] {
   return sections;
 }
 
-function tableBody(lines: string[], header: string) {
-  const at = lines.findIndex((l) => l.startsWith(header.slice(0, 16)));
-  if (at === -1) throw new Error(`INDEX.md: no table headed "${header}"`);
-  if (lines[at]!.trim() !== header) {
-    throw new Error(
-      `INDEX.md:${at + 1}: the table header is now "${lines[at]}"; update tracker.ts to match`,
-    );
-  }
-  let end = at + 2;
-  while (lines[end]?.startsWith('|')) end++;
-  return { start: at + 2, end };
-}
-
 const zero = (): Counts => ({
   DRAFT: 0,
   PARTIAL: 0,
@@ -276,16 +255,19 @@ function scopeRow(label: string, c: Counts) {
   return `| ${label} | ${cells.join(' | ')} |`;
 }
 
-function plural(noun: string, n: number) {
-  const stem = noun.replace(/s$/, '');
-  return n === 1 ? stem : `${stem}s`;
+export interface Totals {
+  /** Per `###` section, in LAYOUT order, by its tracker label. */
+  phases: { label: string; counts: Counts }[];
+  total: Counts;
+  /** Per By scope label, in LAYOUT order. */
+  scopes: { label: string; counts: Counts }[];
 }
 
 export interface Analysis {
-  /** Row and file disagreements `--write` cannot fix. */
+  /** Row and file disagreements, for a person to fix. */
   problems: string[];
-  /** The index with every count recomputed. */
-  rendered: string;
+  /** The counts, from the files' own `status:`. Printed, never stored. */
+  totals: Totals;
 }
 
 export function analyse(
@@ -295,8 +277,6 @@ export function analyse(
 ): Analysis {
   const lines = markdown.split('\n');
   const sections = parseSections(lines);
-  const tracker = tableBody(lines, TRACKER_HEADER);
-  const scope = tableBody(lines, SCOPE_HEADER);
   const problems: string[] = [];
   const listed = new Map<string, string>();
   const bySection = new Map<string, Counts>();
@@ -317,7 +297,7 @@ export function analyse(
       const cellStatus = keyword(row.cell);
       if (!file) {
         problems.push(`${where}: links ${row.link}, which does not exist`);
-        // Count it by its cell, so `--write` stays right about the row count
+        // Count it by its cell, so the totals stay right about the row count
         // while the link is fixed by hand.
         if (cellStatus && cellStatus !== 'OPEN') counts[cellStatus]++;
         continue;
@@ -394,54 +374,61 @@ export function analyse(
     return c;
   };
 
-  const trackerLines = [
-    ...layout.sections.map((s) =>
-      trackerRow(s.label, bySection.get(s.heading) ?? zero()),
-    ),
-    trackerRow(
-      'TOTAL',
-      sum(() => true),
-      true,
-    ),
-  ];
-  const scopeLines = layout.scopes.map((label) =>
-    scopeRow(
-      label,
-      sum((s) => s.scope === label),
-    ),
-  );
-
-  const out = [...lines];
-  for (const s of sections) {
-    out[s.line] =
-      `### ${s.name} (${s.rows.length} ${plural(s.noun, s.rows.length)})`;
-  }
-  // The scope table follows the tracker, so splice it first.
-  out.splice(scope.start, scope.end - scope.start, ...scopeLines);
-  out.splice(tracker.start, tracker.end - tracker.start, ...trackerLines);
-
-  return { problems, rendered: out.join('\n') };
+  return {
+    problems,
+    totals: {
+      phases: layout.sections.map((s) => ({
+        label: s.label,
+        counts: bySection.get(s.heading) ?? zero(),
+      })),
+      total: sum(() => true),
+      scopes: layout.scopes.map((label) => ({
+        label,
+        counts: sum((s) => s.scope === label),
+      })),
+    },
+  };
 }
 
-function countDiffs(
-  lines: string[],
-  body: { start: number; end: number },
-  expected: string[],
-  what: string,
-): string[] {
-  const have = lines.slice(body.start, body.end);
-  if (have.length !== expected.length) {
-    return [
-      `INDEX.md:${body.start + 1}: the ${what} has ${have.length} rows, expected ${expected.length}:\n    ${expected.join('\n    ')}`,
-    ];
+/** The totals as the two Markdown tables INDEX.md used to store. */
+export function formatTotals(totals: Totals): string {
+  return [
+    TRACKER_HEADER,
+    '|-------|-------|-------|---------|----------|---------|------|',
+    ...totals.phases.map((p) => trackerRow(p.label, p.counts)),
+    trackerRow('TOTAL', totals.total, true),
+    '',
+    SCOPE_HEADER,
+    '|-------|-------|------|---------|---------|------------------|',
+    ...totals.scopes.map((s) => scopeRow(s.label, s.counts)),
+  ].join('\n');
+}
+
+/** Each line of INDEX.md that stores a count (0-based), and whether it is a heading. */
+function storedCounts(lines: string[]): { line: number; heading: boolean }[] {
+  const found: { line: number; heading: boolean }[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (COUNTED_HEADING.test(lines[i]!)) found.push({ line: i, heading: true });
+    if (COUNT_TABLE.test(lines[i]!)) {
+      for (let j = i; lines[j]?.startsWith('|'); j++) {
+        found.push({ line: j, heading: false });
+      }
+    }
   }
-  return have.flatMap((line, i) =>
-    line.trim() === expected[i]
-      ? []
-      : [
-          `INDEX.md:${body.start + i + 1}: ${what} row\n    have     ${line}\n    expected ${expected[i]}`,
-        ],
-  );
+  return found;
+}
+
+/** INDEX.md with no stored count: `(N specs)` dropped, count tables removed. */
+export function withoutCounts(markdown: string): string {
+  const lines = markdown.split('\n');
+  const stored = new Set(storedCounts(lines).map((c) => c.line));
+  return lines
+    .flatMap((line, i) => {
+      if (!stored.has(i)) return [line];
+      const heading = COUNTED_HEADING.exec(line);
+      return heading ? [`### ${heading[1]!.trim()}`] : [];
+    })
+    .join('\n');
 }
 
 /** Every disagreement between INDEX.md and the spec files; `[]` when none. */
@@ -450,40 +437,20 @@ export function checkIndex(
   sources: SpecSources,
   layout: Layout = LAYOUT,
 ): string[] {
-  const { problems, rendered } = analyse(markdown, sources, layout);
+  const { problems } = analyse(markdown, sources, layout);
   const lines = markdown.split('\n');
-  const next = rendered.split('\n');
-
-  const counts: string[] = [];
-  for (const s of parseSections(lines)) {
-    if (s.claimed !== s.rows.length) {
-      counts.push(
-        `INDEX.md:${s.line + 1}: "${s.name}" says ${s.claimed} ${s.noun}, and has ${s.rows.length} rows`,
-      );
-    }
-  }
-  counts.push(
-    ...countDiffs(
-      lines,
-      tableBody(lines, TRACKER_HEADER),
-      next.slice(...span(tableBody(next, TRACKER_HEADER))),
-      'Progress Tracker',
-    ),
-    ...countDiffs(
-      lines,
-      tableBody(lines, SCOPE_HEADER),
-      next.slice(...span(tableBody(next, SCOPE_HEADER))),
-      'By scope',
-    ),
-  );
+  const counts = storedCounts(lines)
+    .filter((c) => c.heading || COUNT_TABLE.test(lines[c.line]!))
+    .map(
+      (c) =>
+        `INDEX.md:${c.line + 1}: stores a count, which INDEX.md no longer keeps: ${lines[c.line]}`,
+    );
   if (counts.length > 0) {
-    counts.push('Run `pnpm specs:index --write` to rewrite the counts.');
+    counts.push(
+      'Run `pnpm specs:index --write` to remove it; `pnpm specs:index` prints the totals.',
+    );
   }
   return [...problems, ...counts];
-}
-
-function span(body: { start: number; end: number }): [number, number] {
-  return [body.start, body.end];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

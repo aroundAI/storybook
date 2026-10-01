@@ -49,6 +49,26 @@
       "cwd": "packages/shared",
       "test": "__tests__/spec-index-tracker.test.ts",
       "pattern": "has no disagreement on the repo"
+    },
+    {
+      "name": "I6 A count stored in INDEX.md goes unreported (merge queue, 2026-10-01)",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/spec-index/tracker.ts",
+      "find": "    .filter((c) => c.heading || COUNT_TABLE.test(lines[c.line]!))\n",
+      "replace": "    .filter(() => false)\n",
+      "cwd": "packages/shared",
+      "test": "__tests__/spec-index-tracker.test.ts",
+      "pattern": "flags a stored"
+    },
+    {
+      "name": "I7 --write keeps a stored count table",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/spec-index/tracker.ts",
+      "find": "      return heading ? [`### ${heading[1]!.trim()}`] : [];\n",
+      "replace": "      return heading ? [`### ${heading[1]!.trim()}`] : [line];\n",
+      "cwd": "packages/shared",
+      "test": "__tests__/spec-index-tracker.test.ts",
+      "pattern": "removes it and nothing else"
     }
   ]
 }

@@ -1,0 +1,26 @@
+{
+  "total_count": 3,
+  "jobs": [
+    {
+      "name": "⚫️ Test",
+      "conclusion": "success",
+      "started_at": "2026-10-02T10:00:00Z",
+      "completed_at": "2026-10-02T10:30:01Z",
+      "run_attempt": 2
+    },
+    {
+      "name": "🔎 Changes",
+      "conclusion": "failure",
+      "started_at": "2026-10-02T09:00:00Z",
+      "completed_at": "2026-10-02T09:00:59Z",
+      "run_attempt": 1
+    },
+    {
+      "name": "🧬 E2E guards",
+      "conclusion": null,
+      "started_at": null,
+      "completed_at": null,
+      "run_attempt": 2
+    }
+  ]
+}

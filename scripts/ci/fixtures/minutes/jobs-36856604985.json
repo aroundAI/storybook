@@ -1,0 +1,110 @@
+{
+  "total_count": 15,
+  "jobs": [
+    {
+      "name": "🔎 Changes",
+      "conclusion": "success",
+      "started_at": "2026-10-01T11:38:15Z",
+      "completed_at": "2026-10-01T11:38:22Z",
+      "run_attempt": 1
+    },
+    {
+      "name": "🐘 Supabase DB",
+      "conclusion": "cancelled",
+      "started_at": "2026-10-01T11:38:24Z",
+      "completed_at": "2026-10-01T11:40:02Z",
+      "run_attempt": 1
+    },
+    {
+      "name": "ʦ TypeScript",
+      "conclusion": "cancelled",
+      "started_at": "2026-10-01T11:38:24Z",
+      "completed_at": "2026-10-01T11:40:04Z",
+      "run_attempt": 1
+    },
+    {
+      "name": "🧪 Unit Tests",
+      "conclusion": "cancelled",
+      "started_at": "2026-10-01T11:38:25Z",
+      "completed_at": "2026-10-01T11:39:54Z",
+      "run_attempt": 1
+    },
+    {
+      "name": "🗄️ ClickHouse SQL",
+      "conclusion": "cancelled",
+      "started_at": "2026-10-01T11:38:24Z",
+      "completed_at": "2026-10-01T11:39:27Z",
+      "run_attempt": 1
+    },
+    {
+      "name": "🧪 Unit guards (4)",
+      "conclusion": "cancelled",
+      "started_at": "2026-10-01T11:38:24Z",
+      "completed_at": "2026-10-01T11:39:54Z",
+      "run_attempt": 1
+    },
+    {
+      "name": "🧬 E2E evidence",
+      "conclusion": "cancelled",
+      "started_at": "2026-10-01T11:38:24Z",
+      "completed_at": "2026-10-01T11:39:57Z",
+      "run_attempt": 1
+    },
+    {
+      "name": "🧪 Unit guards (3)",
+      "conclusion": "cancelled",
+      "started_at": "2026-10-01T11:38:24Z",
+      "completed_at": "2026-10-01T11:39:56Z",
+      "run_attempt": 1
+    },
+    {
+      "name": "💅 Format",
+      "conclusion": "cancelled",
+      "started_at": "2026-10-01T11:38:22Z",
+      "completed_at": "2026-10-01T11:38:25Z",
+      "run_attempt": 1
+    },
+    {
+      "name": "⚫️ Test",
+      "conclusion": "cancelled",
+      "started_at": "2026-10-01T11:38:24Z",
+      "completed_at": "2026-10-01T11:39:54Z",
+      "run_attempt": 1
+    },
+    {
+      "name": "🧪 Unit guards (1)",
+      "conclusion": "cancelled",
+      "started_at": "2026-10-01T11:38:24Z",
+      "completed_at": "2026-10-01T11:39:55Z",
+      "run_attempt": 1
+    },
+    {
+      "name": "🧪 Unit guards (2)",
+      "conclusion": "cancelled",
+      "started_at": "2026-10-01T11:38:22Z",
+      "completed_at": "2026-10-01T11:38:25Z",
+      "run_attempt": 1
+    },
+    {
+      "name": "📚 Docs checks",
+      "conclusion": "skipped",
+      "started_at": "2026-10-01T11:38:22Z",
+      "completed_at": "2026-10-01T11:38:22Z",
+      "run_attempt": 1
+    },
+    {
+      "name": "🧬 E2E guards",
+      "conclusion": "skipped",
+      "started_at": "2026-10-01T11:38:22Z",
+      "completed_at": "2026-10-01T11:38:22Z",
+      "run_attempt": 1
+    },
+    {
+      "name": "🧪 Unit guards",
+      "conclusion": "failure",
+      "started_at": "2026-10-01T11:39:58Z",
+      "completed_at": "2026-10-01T11:40:01Z",
+      "run_attempt": 1
+    }
+  ]
+}

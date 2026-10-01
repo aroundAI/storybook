@@ -115,8 +115,8 @@ here; it doesn't restate per-spec status.
 1. Create the file in its phase folder as `FILM-<id>-<name>.yaml` (or
    `SPIKE-<id>-<name>.yaml`), following [SCHEMA.md](./SCHEMA.md): the common
    core fields plus the block for whichever category fits
-2. Add a row to INDEX.md *By Phase*, and to the phase README
-3. Recount that phase's row in the INDEX *Progress Tracker*
+2. Add a row to INDEX.md *By Phase*, and to the phase README. INDEX.md stores
+   no count: `pnpm specs:index` checks the row and prints the totals
 
 ---
 

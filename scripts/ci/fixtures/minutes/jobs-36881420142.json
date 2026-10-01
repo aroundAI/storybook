@@ -1,0 +1,12 @@
+{
+  "total_count": 1,
+  "jobs": [
+    {
+      "name": "📋 PR records",
+      "conclusion": "success",
+      "started_at": "2026-10-01T15:04:38Z",
+      "completed_at": "2026-10-01T15:05:39Z",
+      "run_attempt": 1
+    }
+  ]
+}

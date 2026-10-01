@@ -273,13 +273,28 @@ with any file Prettier would change, so an unformatted push is a red build.
 - **A rebase that only resolves a docs conflict doesn't re-run the suite.**
   When a push leaves the PR's code patch identical (same `git patch-id` over
   non-docs paths) and the previous head's run passed, 🔎 Changes reuses that
-  verdict: heavy jobs skip and 📚 Docs checks runs
+  verdict: the fast lane skips and 📚 Docs checks runs
   (`scripts/ci/code-patch-unchanged.sh`). Touch any code line in the same
-  push and the full suite runs. The PR's code on top of the *new* main is
-  then first fully tested by the push-to-`main` run.
-- **No Actions minutes?** [LOCAL-CI.md](LOCAL-CI.md) is the process: the same
-  jobs run locally (`scripts/local-ci/`) and a merge train merges only the
-  exact commit it verified.
+  push and the fast lane runs. The PR's code on top of the *new* main is
+  fully tested by its merge-queue run.
+- **The merge queue is the gate** (2026-10-01). A PR run is the fast lane
+  (🔎 Changes, ʦ TypeScript, 💅 Format, 🧪 Unit Tests, 🗄️ ClickHouse SQL, or
+  📚 Docs checks); the heavy jobs (🧪 Unit guards, 🐘 Supabase DB, ⚫️ Test,
+  🧬 E2E evidence and guards) run once, when the PR is queued, on main + the
+  PR, and nothing runs after the merge. The one required check is
+  **✅ CI result**. Actions → Workflow → Run workflow runs the full suite on
+  a branch on demand. `scripts/ci/minutes.sh <pr|run-id>` reports what a PR
+  or run cost in runner-minutes.
+- **Don't push while a run is in progress.** The push cancels it, and a
+  cancelled run is still billed. Batch fixes into one push; queue a PR only
+  when its fast lane is green.
+- **Merges no longer force rebases for records.** INDEX.md stores no count
+  (`pnpm specs:index` prints the totals), and a citation that only moved is a
+  warning (`pnpm specs:citations --fix` re-points it); only cited text that
+  is gone fails. Rebase when git reports a real conflict, not to recount.
+- **No Actions minutes?** [LOCAL-CI.md](LOCAL-CI.md) is the fallback: the
+  same jobs run locally (`scripts/local-ci/`) and a merge train merges only
+  the exact commit it verified.
 - **Use the script, not a bare `npx prettier`.** The script runs each
   package's own `format` with the shared config; a one-off run from one
   directory is how formatting used to differ by which file a run started
@@ -791,6 +806,11 @@ other PRs, before the description is opened.
   at the fix, and name it in the fix's banner.
 - `docs`, `test`, `chore`, `ci`, `refactor`, `perf` and `build` owe no record
   unless they change a criterion.
+- **INDEX.md: change the spec's row, nothing else.** It stores no count;
+  `pnpm specs:index` checks the rows and prints the totals.
+- **Citations:** one whose line only moved is a warning, re-pointed by
+  `pnpm specs:citations --fix` when convenient; one whose cited text is gone
+  fails, and is corrected by hand.
 
 **Labels** mirror the title: `type: <type>`; `known-bug` when a KB is in the
 scope; `spec` when a FILM spec is; `area: <area>` from that spec's phase.
@@ -814,8 +834,10 @@ pnpm prs:records --since 2026-09-22       # audit everything merged since a date
 
 It is a CI step: 📋 PR records (`.github/workflows/pr-records.yml`) re-runs it
 whenever the PR is pushed, retitled or relabelled, and local CI runs it, so a
-gap fails the run. When required checks go back on for `main`, require it too
-(LOCAL-CI.md). Run `pnpm prs:records --pr <n>` yourself before asking for a merge.
+gap fails the run. It is not a required check and must not become one: it
+runs on PR events only (a merge group carries no PR number), so the merge
+queue would wait for it forever; ✅ CI result is the one required check. Read
+it on the PR before queueing. Run `pnpm prs:records --pr <n>` yourself before asking for a merge.
 It exits non-zero on any gap, and PRs merged into a branch other than main
 are skipped (their work reaches main in a later PR, which is the one checked).
 

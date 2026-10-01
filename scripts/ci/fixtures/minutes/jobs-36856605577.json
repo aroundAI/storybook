@@ -1,0 +1,12 @@
+{
+  "total_count": 1,
+  "jobs": [
+    {
+      "name": "📋 PR records",
+      "conclusion": "cancelled",
+      "started_at": "2026-10-01T11:38:16Z",
+      "completed_at": "2026-10-01T11:39:21Z",
+      "run_attempt": 1
+    }
+  ]
+}
