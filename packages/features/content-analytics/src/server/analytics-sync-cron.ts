@@ -1045,9 +1045,9 @@ function normalizeAnalytics(
         revenue_cents: 0, // TikTok doesn't expose revenue
         ad_revenue_cents: 0,
         red_revenue_cents: 0,
-        // True, as before: these platforms' zeros reconcile against any
-        // 'api' row. See the cost note in upsertRevenueRecords.
-        revenue_measured: true,
+        // TikTok and Instagram report no earnings on any API: their zero
+        // measures nothing, so it never touches revenue rows (FILM-1726).
+        revenue_measured: false,
         subscribed_views: 0,
         unsubscribed_views: 0,
         device_breakdown: null, // TikTok API doesn't expose device breakdown
@@ -1079,9 +1079,9 @@ function normalizeAnalytics(
         revenue_cents: 0,
         ad_revenue_cents: 0,
         red_revenue_cents: 0,
-        // True, as before: these platforms' zeros reconcile against any
-        // 'api' row. See the cost note in upsertRevenueRecords.
-        revenue_measured: true,
+        // TikTok and Instagram report no earnings on any API: their zero
+        // measures nothing, so it never touches revenue rows (FILM-1726).
+        revenue_measured: false,
         subscribed_views: 0,
         unsubscribed_views: 0,
         device_breakdown: null, // Instagram API doesn't expose device breakdown
@@ -1489,21 +1489,9 @@ async function upsertRevenueRecords(
 
   const logger = await getLogger();
 
-  // One read for the whole day rather than one per category.
-  //
-  // Honest about the cost, because it is not a straight win: on YouTube this
-  // replaces up to three round-trips with one, but on TikTok and Instagram —
-  // whose normalizers hardcode all three figures to zero — it replaces *none*
-  // with one, on every publish of every run. That is the price of reconciling
-  // against zero rather than filtering it out, and the price of not hardcoding
-  // "these platforms never report revenue" here, which is an assumption that
-  // silently rots the day one of them starts.
-  //
-  // Judged acceptable because the caller already makes a provider API call per
-  // publish, next to which one indexed lookup on (publish_id, record_date) is
-  // noise. If it ever stops being noise, the fix is a `revenue_supported` flag
-  // on `NormalizedAnalytics` — set where the zeros are hardcoded, so adding
-  // revenue to a platform cannot forget to update it.
+  // One read for the whole day rather than one per category. Only YouTube
+  // reaches here: TikTok, Instagram and Facebook mark revenue unmeasured
+  // (FILM-1726), so their hardcoded zeros never cost a lookup or touch a row.
   const { data: existingRows, error: existingError } = await client
     .from('revenue_records')
     .select('id, category, revenue_cents')

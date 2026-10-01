@@ -347,7 +347,8 @@ export const addManualRevenueAction = enhanceAction(
           | 'linkedin'
           | 'manual',
         date: record.record_date,
-        revenueCents: record.revenue_cents,
+        // A manual row always has a figure (revenue_records_manual_has_amount).
+        revenueCents: record.revenue_cents ?? revenueCents,
         currency: record.currency ?? 'USD',
         source: record.source as 'api' | 'manual',
         breakdown: record.breakdown as Record<string, number> | undefined,
@@ -588,6 +589,8 @@ export const getTopContentByRevenueAction = enhanceAction(
           )
           .gte('record_date', startDate)
           .lte('record_date', endDate)
+          // Not measured is not revenue (FILM-1726).
+          .not('revenue_cents', 'is', null)
           .eq('publishes.episodes.projects.account_id', accountId)
           .order('id')
           .range(from, to),

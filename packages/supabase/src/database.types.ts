@@ -4219,7 +4219,7 @@ export type Database = {
           platform: string
           publish_id: string | null
           record_date: string
-          revenue_cents: number
+          revenue_cents: number | null
           source: string
           updated_at: string
         }
@@ -4235,7 +4235,7 @@ export type Database = {
           platform: string
           publish_id?: string | null
           record_date: string
-          revenue_cents?: number
+          revenue_cents?: number | null
           source?: string
           updated_at?: string
         }
@@ -4251,7 +4251,7 @@ export type Database = {
           platform?: string
           publish_id?: string | null
           record_date?: string
-          revenue_cents?: number
+          revenue_cents?: number | null
           source?: string
           updated_at?: string
         }
