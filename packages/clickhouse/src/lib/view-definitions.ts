@@ -16,13 +16,13 @@
 import type { AnalyticsPlatform, VideoMetric } from '../types';
 
 /**
- * Deliberately wider than `AnalyticsPlatform`, so a platform's definitions
- * can be recorded before it is ingested. An entry for a platform outside
- * `AnalyticsPlatform` is inert: recorded, tested, and unreachable by any
- * query until FILM-1727 (X) widens that union. Facebook joined it in
- * FILM-1720.
+ * Every platform the registry records. It was wider than `AnalyticsPlatform`
+ * while Facebook and X were recorded but not ingested; FILM-1720 and
+ * FILM-1727 brought both into the union, so the two are now the same. X is
+ * `twitter`, the value Postgres stores (FILM-1727 §4). A platform recorded
+ * ahead of its ingestion widens this again.
  */
-export type PlatformId = AnalyticsPlatform | 'x';
+export type PlatformId = AnalyticsPlatform;
 
 // A Record rather than an array so that widening either union is a type
 // error here, which is what forces the new platform into PLATFORM_IDS —
@@ -32,7 +32,7 @@ const PLATFORM_COVERAGE: Record<PlatformId, true> = {
   tiktok: true,
   instagram: true,
   facebook: true,
-  x: true,
+  twitter: true,
 };
 
 export const PLATFORM_IDS = Object.keys(PLATFORM_COVERAGE) as PlatformId[];
@@ -463,8 +463,8 @@ export const VIEW_DEFINITIONS: readonly ViewDefinition[] = [
     reference: '#the-four-denominators',
   },
   {
-    id: 'x.media_analytics.video_views',
-    platform: 'x',
+    id: 'twitter.media_analytics.video_views',
+    platform: 'twitter',
     field: 'video_views',
     surface: 'x/media-analytics',
     availability: 'organic',
@@ -480,13 +480,15 @@ export const VIEW_DEFINITIONS: readonly ViewDefinition[] = [
     reference: '#enterprise--get-2mediaanalytics',
   },
   {
-    id: 'x.media.view_count',
-    platform: 'x',
+    // What X's `video_metrics.views` holds (FILM-1727): the media object's
+    // `public_metrics.view_count`, read through the posts lookup.
+    id: 'twitter.media.view_count',
+    platform: 'twitter',
     field: 'view_count',
     surface: 'x/media-object',
     availability: 'organic',
     label: 'View count (public and organic metrics)',
-    role: 'concurrent',
+    role: 'views_column',
     countsFrom: 'unknown',
     minimumWatch: null,
     includesReplays: 'undocumented',
@@ -812,7 +814,7 @@ export const VIEWS_COLUMN_PLATFORMS: readonly AnalyticsPlatform[] = [
       (entry) => entry.platform,
     ),
   ),
-].filter((platform): platform is AnalyticsPlatform => platform !== 'x');
+];
 
 /** The `video_metrics` columns a views denominator can be read from. */
 export type ViewsColumn = Extract<keyof VideoMetric, 'views' | 'engaged_views'>;

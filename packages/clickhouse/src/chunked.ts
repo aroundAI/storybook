@@ -95,7 +95,8 @@ function addNumericFields<T extends object>(target: T, row: T): void {
 
   for (const [field, value] of Object.entries(row)) {
     if (typeof value !== 'number') continue;
-    // A null is not measured (KB-153): it takes the other side's figure.
+    // A null is not measured (KB-153; X's shares, FILM-1727): it takes the
+    // other side's figure.
     if (into[field] === null) into[field] = value;
     else if (typeof into[field] === 'number') {
       into[field] = (into[field] as number) + value;

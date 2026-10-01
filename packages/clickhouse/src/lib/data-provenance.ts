@@ -34,6 +34,7 @@ export const ANALYTICS_PLATFORMS = [
   'tiktok',
   'instagram',
   'facebook',
+  'twitter',
 ] as const satisfies readonly AnalyticsPlatform[];
 
 // `satisfies` stops a name that is not a platform getting in. It cannot stop
@@ -229,8 +230,13 @@ export interface AccessPendingVerification {
 export type Availability = 'included' | 'metered' | 'tier_gated' | 'unknown';
 
 export interface DataWindow {
-  /** How far back the platform serves data. `null` = unbounded. */
-  maxAgeDays: number | null;
+  /**
+   * How far back the platform serves data. `null` = unbounded.
+   * `'undocumented'` = the vendor does not say; only with `availability:
+   * 'unknown'`, whose owner and question are what settles it (X's
+   * `/2/media/analytics`, FILM-1727 §3).
+   */
+  maxAgeDays: number | null | 'undocumented';
   /**
    * What the window is measured from, which matters as much as its length.
    * YouTube's reporting backfill is 30 days from **job creation**, so it
@@ -482,6 +488,46 @@ const FACEBOOK_VIDEO = {
   window: { maxAgeDays: 730, anchoredOn: 'publish_date' },
 } as const satisfies SurfaceAxes;
 
+/**
+ * X's posts lookup on the pay-per-use tier (FILM-1727): `tweet.read` and
+ * `users.read`, already requested for publishing. Metered at $0.005 a post
+ * read, and the playback quartiles are non-public metrics, which X serves
+ * only for posts under 30 days old, from the post's creation. Every X figure
+ * comes from that one call, so the wall bounds them all: the sync stops a day
+ * inside it (`lib/x-read-budget.ts` in @kit/content-analytics).
+ */
+const X_POSTS_LOOKUP = {
+  access: 'authorised',
+  pendingVerification: {
+    owner: 'FILM-1725',
+    question:
+      'Has a real X account, on a funded pay-per-use plan, been seen returning a video’s non_public_metrics through GET /2/tweets, and when?',
+  },
+  availability: 'metered',
+  window: { maxAgeDays: 30, anchoredOn: 'publish_date' },
+} as const satisfies SurfaceAxes;
+
+/**
+ * X's Enterprise analytics, `/2/media/analytics` and `/2/tweets/analytics`.
+ * Declared and dark: nothing calls them. Whether they are Enterprise-only is
+ * FILM-1725 Check A; how far back they serve, and at what price, only X
+ * sales can say, in writing. Until then the availability is `unknown`, which
+ * is FILM-1703's own example of it.
+ */
+const X_ENTERPRISE = {
+  access: 'authorised',
+  pendingVerification: {
+    owner: 'FILM-1725',
+    question:
+      'Check A: does GET /2/media/analytics answer a pay-per-use token, or refuse it as Enterprise-only?',
+  },
+  availability: 'unknown',
+  unknownOwner: 'owner',
+  unknownQuestion:
+    'X sales, in writing: how far back does GET /2/media/analytics serve data, and what does the Enterprise tier cost?',
+  window: { maxAgeDays: 'undocumented', anchoredOn: 'request_date' },
+} as const satisfies SurfaceAxes;
+
 const YOUTUBE_PARTNER_PROGRAM: AccountTypeGate = {
   requirement: 'YouTube Partner Program membership',
   note: 'YouTube only reports earnings for channels in the YouTube Partner Program, so there is nothing to show until your channel joins it.',
@@ -546,6 +592,20 @@ export const CAPABILITY_MATRIX: Record<
         ],
       },
     },
+    // X's shares are Enterprise-only, so `shares` is NULL on every X row
+    // (migration 021). Its reposts are the `reposts` family.
+    twitter: {
+      level: 'derived',
+      table: 'video_metrics',
+      method: 'snapshot_delta_fetch_day',
+      ...X_POSTS_LOOKUP,
+      note: 'X only reports lifetime views, likes, replies and bookmarks, so each day shows the change since we last checked, dated to the day we checked, and X shares are not reported at all.',
+      reference: {
+        section: 'X',
+        surface: 'x/post-metrics',
+        fields: ['like_count', 'reply_count', 'bookmark_count'],
+      },
+    },
   },
 
   // Its own family, not engagement: `reposts_count` is a Media node field,
@@ -586,6 +646,18 @@ export const CAPABILITY_MATRIX: Record<
       ...FACEBOOK_VIDEO,
       note: 'Facebook does not report how often a video was reposted; its shares are counted under engagement.',
       reference: { section: 'Facebook', surface: null, fields: [] },
+    },
+    twitter: {
+      level: 'derived',
+      table: 'video_metrics',
+      method: 'snapshot_delta_fetch_day',
+      ...X_POSTS_LOOKUP,
+      note: 'X reports how many times a post has been reposted so far, so each day shows the reposts since we last checked, dated to the day we checked.',
+      reference: {
+        section: 'X',
+        surface: 'x/post-metrics',
+        fields: ['retweet_count'],
+      },
     },
   },
 
@@ -701,6 +773,18 @@ export const CAPABILITY_MATRIX: Record<
         fields: ['total_video_view_total_time', 'post_video_view_time'],
       },
     },
+    twitter: {
+      level: 'not_ingested',
+      table: null,
+      blockedBy: 'FILM-1727',
+      ...X_ENTERPRISE,
+      note: 'X reports watch time only on its Enterprise plan, which we do not hold, so no X watch time is shown.',
+      reference: {
+        section: 'X',
+        surface: 'x/media-analytics',
+        fields: ['watch_time_ms'],
+      },
+    },
   },
 
   revenue: {
@@ -768,6 +852,14 @@ export const CAPABILITY_MATRIX: Record<
         fields: ['total_video_ad_break_earnings'],
       },
     },
+    twitter: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...X_POSTS_LOOKUP,
+      note: 'X does not report what a post earned, so X revenue is only what you enter yourself.',
+      reference: { section: 'X', surface: null, fields: [] },
+    },
   },
 
   traffic_sources: {
@@ -813,6 +905,14 @@ export const CAPABILITY_MATRIX: Record<
       note: 'Facebook does not report where a video’s views came from, only whether they were organic or paid.',
       reference: { section: 'Facebook', surface: null, fields: [] },
     },
+    twitter: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...X_POSTS_LOOKUP,
+      note: 'X does not report where a post’s views came from.',
+      reference: { section: 'X', surface: null, fields: [] },
+    },
   },
 
   retention_curve: {
@@ -854,6 +954,26 @@ export const CAPABILITY_MATRIX: Record<
         section: 'Facebook',
         surface: 'facebook/video-insights',
         fields: ['total_video_retention_graph'],
+      },
+    },
+    // Five points, not a curve: the share of plays that reached 0, 25, 50,
+    // 75 and 100% of the video. A different quotient from YouTube's, so its
+    // signal is `quartile_retention`, never `audience_retention`.
+    twitter: {
+      level: 'native',
+      table: 'video_retention_curves',
+      ...X_POSTS_LOOKUP,
+      note: 'X reports how many plays reached a quarter, half, three quarters and the end of a video, so its curve has those five points rather than a full line.',
+      reference: {
+        section: 'X',
+        surface: 'x/media-object',
+        fields: [
+          'playback_0_count',
+          'playback_25_count',
+          'playback_50_count',
+          'playback_75_count',
+          'playback_100_count',
+        ],
       },
     },
   },
@@ -909,6 +1029,20 @@ export const CAPABILITY_MATRIX: Record<
         fields: ['post_media_view'],
       },
     },
+    // `impression_count` is on the same call; storing it needs a lifetime
+    // impressions baseline we do not keep yet.
+    twitter: {
+      level: 'not_ingested',
+      table: null,
+      blockedBy: 'FILM-1727',
+      ...X_POSTS_LOOKUP,
+      note: 'X reports how many times a post was seen, but we do not record that figure yet, so X reach is not shown.',
+      reference: {
+        section: 'X',
+        surface: 'x/post-metrics',
+        fields: ['impression_count'],
+      },
+    },
   },
 
   // Unique accounts, not views: one person counted once. Never summed across
@@ -958,6 +1092,14 @@ export const CAPABILITY_MATRIX: Record<
         fields: ['post_total_media_view_unique'],
       },
     },
+    twitter: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...X_POSTS_LOOKUP,
+      note: 'X reports how many times a post was seen, not how many different people saw it.',
+      reference: { section: 'X', surface: null, fields: [] },
+    },
   },
 
   // A channel's unique accounts over a whole window (7, 30 and the 23 days
@@ -1006,6 +1148,14 @@ export const CAPABILITY_MATRIX: Record<
         surface: 'facebook/page-insights',
         fields: ['page_total_media_view_unique'],
       },
+    },
+    twitter: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...X_POSTS_LOOKUP,
+      note: 'X does not report how many different people saw anything of yours over a period.',
+      reference: { section: 'X', surface: null, fields: [] },
     },
   },
 
@@ -1058,6 +1208,18 @@ export const CAPABILITY_MATRIX: Record<
         fields: ['followers_count'],
       },
     },
+    twitter: {
+      level: 'not_ingested',
+      table: null,
+      blockedBy: 'FILM-1727',
+      ...X_POSTS_LOOKUP,
+      note: 'X reports your follower count, but we do not record it yet, so no X follower history is shown.',
+      reference: {
+        section: 'X',
+        surface: 'x/users-me',
+        fields: ['followers_count'],
+      },
+    },
   },
 
   demographics: {
@@ -1103,6 +1265,14 @@ export const CAPABILITY_MATRIX: Record<
         surface: 'facebook/video-insights',
         fields: ['total_video_views_by_age_bucket_and_gender'],
       },
+    },
+    twitter: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...X_POSTS_LOOKUP,
+      note: 'X does not report the age or gender of a post’s viewers.',
+      reference: { section: 'X', surface: null, fields: [] },
     },
   },
 
@@ -1154,6 +1324,14 @@ export const CAPABILITY_MATRIX: Record<
         fields: ['total_video_views_by_country_id'],
       },
     },
+    twitter: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...X_POSTS_LOOKUP,
+      note: 'X does not report where a post’s viewers are.',
+      reference: { section: 'X', surface: null, fields: [] },
+    },
   },
 
   device: {
@@ -1191,6 +1369,14 @@ export const CAPABILITY_MATRIX: Record<
       ...FACEBOOK_VIDEO,
       note: 'Facebook does not report which devices a video was watched on.',
       reference: { section: 'Facebook', surface: null, fields: [] },
+    },
+    twitter: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...X_POSTS_LOOKUP,
+      note: 'X does not report which devices a post was watched on.',
+      reference: { section: 'X', surface: null, fields: [] },
     },
   },
 
@@ -1238,6 +1424,14 @@ export const CAPABILITY_MATRIX: Record<
         surface: 'facebook/post-insights',
         fields: ['post_media_view'],
       },
+    },
+    twitter: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...X_POSTS_LOOKUP,
+      note: 'X does not report whether a post’s viewers were already following you.',
+      reference: { section: 'X', surface: null, fields: [] },
     },
   },
 };

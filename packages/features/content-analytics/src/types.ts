@@ -34,7 +34,8 @@ export interface PlatformMetrics {
   views: Views;
   likes: number;
   comments: number;
-  shares: number;
+  /** Null where the platform reports no shares: X (FILM-1727). */
+  shares: number | null;
 }
 
 /**
@@ -59,7 +60,8 @@ export interface PlatformBreakdown {
   views: Views;
   likes: number;
   comments: number;
-  shares: number;
+  /** Null where the platform reports no shares: X (FILM-1727). */
+  shares: number | null;
 }
 
 /**

@@ -38,17 +38,22 @@ describe('VIEW_DEFINITIONS', () => {
   });
 
   it('gives every ingested platform a definition behind its views column', () => {
-    // The three platforms `video_metrics.views` holds a figure for. Facebook
-    // writes NULL there (FILM-1720, migration 020) and X is not ingested, so
-    // no definition of theirs claims the column.
-    for (const platform of ['youtube', 'tiktok', 'instagram'] as const) {
+    // The platforms `video_metrics.views` holds a figure for: X's is its
+    // video's view_count (FILM-1727). Facebook writes NULL there (FILM-1720,
+    // migration 020), so no definition of its claims the column.
+    for (const platform of [
+      'youtube',
+      'tiktok',
+      'instagram',
+      'twitter',
+    ] as const) {
       expect(
         definitionsFor(platform).some((entry) => entry.role === 'views_column'),
         `${platform} has nothing behind video_metrics.views`,
       ).toBe(true);
     }
 
-    for (const platform of ['facebook', 'x'] as const) {
+    for (const platform of ['facebook'] as const) {
       expect(
         definitionsFor(platform).every((entry) => entry.role === 'concurrent'),
       ).toBe(true);

@@ -115,6 +115,26 @@ describe('sumRowsByKey', () => {
     expect(merged).toHaveLength(2);
     expect(merged.every((r) => r.percentage === 50)).toBe(true);
   });
+
+  it('keeps a null "not measured" null, and never drops a measured figure into it', () => {
+    // Migration 021: an X row's shares are NULL. Two chunks that both
+    // measured nothing stay null; one that did measure is not lost.
+    const merged = sumRowsByKey<{ k: string; shares: number | null }>(
+      [
+        { k: 'x', shares: null },
+        { k: 'x', shares: null },
+        { k: 'mixed', shares: null },
+        { k: 'mixed', shares: 4 },
+        { k: 'mixed', shares: 3 },
+      ],
+      (row) => row.k,
+    );
+
+    expect(merged).toEqual([
+      { k: 'x', shares: null },
+      { k: 'mixed', shares: 7 },
+    ]);
+  });
 });
 
 describe('sumByChunk', () => {

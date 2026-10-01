@@ -14,7 +14,7 @@ import {
 import { getClickHouseClient, isClickHouseEnabled } from './client';
 import { assertPlatformSelection } from './lib/data-provenance';
 import { PLATFORM_ENUM_TYPE } from './lib/platform-enum';
-import { addViews } from './lib/views';
+import { addMeasured, addViews } from './lib/views';
 import { FACEBOOK_DENOMINATOR_COLUMNS } from './types';
 import type {
   AggregatedTotals,
@@ -169,7 +169,8 @@ async function queryLatestSnapshotsSingle(input: {
       argMax(tuple(views), fetched_at).1 as views,
       argMax(likes, fetched_at) as likes,
       argMax(comments, fetched_at) as comments,
-      argMax(shares, fetched_at) as shares,
+      -- Nullable since migration 021 (X), so the tuple form.
+      argMax(tuple(shares), fetched_at).1 as shares,
       -- The latest snapshot's own values, NULL included: a bare argMax skips
       -- NULLs and would hand back an older figure (migration 017).
       argMax(tuple(saves), fetched_at).1 as saves,
@@ -209,7 +210,7 @@ async function queryLatestSnapshotsSingle(input: {
       views: nullableNumber(row.views),
       likes: Number(row.likes),
       comments: Number(row.comments),
-      shares: Number(row.shares),
+      shares: nullableNumber(row.shares),
       saves: row.saves == null ? null : Number(row.saves),
       watch_time_seconds:
         row.watch_time_seconds == null ? null : Number(row.watch_time_seconds),
@@ -332,7 +333,7 @@ const NO_ROWS_TOTALS: ScopeTotals = {
   views: 0,
   likes: 0,
   comments: 0,
-  shares: 0,
+  shares: null,
   saves: null,
   watch_time_seconds: null,
   revenue_cents: 0,
@@ -453,7 +454,7 @@ async function queryTotalsSingle(
       sum(views) as views,
       sum(likes) as likes,
       sum(comments) as comments,
-      sum(shares) as shares,
+      ${measuredSumSql('shares')},
       ${measuredSumSql('saves')},
       ${measuredSumSql('watch_time_seconds')},
       sum(revenue_cents) as revenue_cents,
@@ -484,7 +485,7 @@ async function queryTotalsSingle(
     views: Number(row.row_count) === 0 ? 0 : nullableNumber(row.views),
     likes: Number(row.likes),
     comments: Number(row.comments),
-    shares: Number(row.shares),
+    shares: measuredSum(row.shares, row.shares_measured),
     saves: measuredSum(row.saves, row.saves_measured),
     watch_time_seconds: measuredSum(
       row.watch_time_seconds,
@@ -568,7 +569,7 @@ async function queryPlatformBreakdownSingle(
       sum(views) as views,
       sum(likes) as likes,
       sum(comments) as comments,
-      sum(shares) as shares,
+      ${measuredSumSql('shares')},
       ${measuredSumSql('saves')},
       sum(revenue_cents) as revenue_cents
     FROM video_daily_stats
@@ -586,7 +587,8 @@ async function queryPlatformBreakdownSingle(
   });
 
   const rows = await result.json<
-    PlatformBreakdown & Pick<MeasuredFlagsRow, 'saves_measured'>
+    PlatformBreakdown &
+      Pick<MeasuredFlagsRow, 'shares_measured' | 'saves_measured'>
   >();
 
   return rows.map((row) => ({
@@ -594,7 +596,8 @@ async function queryPlatformBreakdownSingle(
     views: nullableNumber(row.views),
     likes: Number(row.likes),
     comments: Number(row.comments),
-    shares: Number(row.shares),
+    // One platform's sum: null when none of its rows measured shares (X).
+    shares: measuredSum(row.shares, row.shares_measured),
     saves: measuredSum(row.saves, row.saves_measured),
     revenue_cents: Number(row.revenue_cents),
   }));
@@ -625,6 +628,7 @@ async function queryPerVideoTotalsSingle(
       sum(subscribers_gained) as subscribers_gained,
       -- \`count(col)\` must read the column, not the \`sum(col) AS col\` alias
       -- above it; prefer_column_name_to_alias below makes it (KB-114).
+      count(shares) > 0 as shares_measured,
       count(saves) > 0 as saves_measured,
       count(watch_time_seconds) > 0 as watch_time_seconds_measured,
       count(subscribers_gained) > 0 as subscribers_gained_measured
@@ -740,7 +744,7 @@ export async function queryDailyTimeSeriesByPlatform(
             views: addViews(current.views, engagement.views),
             likes: current.likes + engagement.likes,
             comments: current.comments + engagement.comments,
-            shares: current.shares + engagement.shares,
+            shares: addMeasured(current.shares, engagement.shares),
           }
         : { ...engagement };
     }
@@ -775,6 +779,7 @@ async function queryDailyStatsSingle(
       sum(subscribers_gained) as subscribers_gained,
       -- \`count(col)\` must read the column, not the \`sum(col) AS col\` alias
       -- above it; prefer_column_name_to_alias below makes it (KB-114).
+      count(shares) > 0 as shares_measured,
       count(saves) > 0 as saves_measured,
       count(watch_time_seconds) > 0 as watch_time_seconds_measured,
       count(subscribers_gained) > 0 as subscribers_gained_measured
@@ -811,6 +816,7 @@ async function queryDailyStatsSingle(
 
 /** The `<col>_measured` flags the per-video and daily reads select. */
 interface MeasuredFlagsRow {
+  shares_measured: number | boolean;
   saves_measured: number | boolean;
   watch_time_seconds_measured: number | boolean;
   subscribers_gained_measured: number | boolean;
@@ -818,6 +824,7 @@ interface MeasuredFlagsRow {
 
 function measuredFlags(row: MeasuredFlagsRow): MeasuredColumns {
   return {
+    shares: Boolean(Number(row.shares_measured)),
     saves: Boolean(Number(row.saves_measured)),
     watch_time_seconds: Boolean(Number(row.watch_time_seconds_measured)),
     subscribers_gained: Boolean(Number(row.subscribers_gained_measured)),
@@ -905,12 +912,13 @@ async function queryDailyTimeSeriesByPlatformSingle(
     const v = nullableNumber(row.views);
     const l = Number(row.likes);
     const c = Number(row.comments);
-    const s = Number(row.shares);
+    const s = nullableNumber(row.shares);
 
     existing.views = addViews(existing.views, v);
     existing.likes += l;
     existing.comments += c;
-    existing.shares += s;
+    // The day's total is the shares of the platforms that report them.
+    existing.shares += s ?? 0;
     existing.byPlatform[row.platform] = {
       views: v,
       likes: l,

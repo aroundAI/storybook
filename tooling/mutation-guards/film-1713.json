@@ -184,8 +184,8 @@
     {
       "name": "NM19 YouTube saves claimed as reported against the reference",
       "file": "packages/clickhouse/src/lib/measures.ts",
-      "find": "  youtube: {\n    saves: {\n      support: 'not_reported',\n      candidates: NO_SAVES,\n      absentFrom: [\n        'youtube/analytics-metrics',",
-      "replace": "  youtube: {\n    saves: {\n      support: 'not_reported',\n      candidates: [...NO_SAVES, 'likes'],\n      absentFrom: [\n        'youtube/analytics-metrics',",
+      "find": "      block: 'youtube/analytics-metrics',\n    },\n    saves: {\n      support: 'not_reported',\n      candidates: NO_SAVES,\n      absentFrom: [\n        'youtube/analytics-metrics',",
+      "replace": "      block: 'youtube/analytics-metrics',\n    },\n    saves: {\n      support: 'not_reported',\n      candidates: [...NO_SAVES, 'likes'],\n      absentFrom: [\n        'youtube/analytics-metrics',",
       "kind": "unit",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/measure-input-sources.test.ts"

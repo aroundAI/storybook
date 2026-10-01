@@ -1214,10 +1214,27 @@ async function assertions() {
         instagramSaves: totals.get(instagram)?.saves,
         measuredMovement,
       });
+      // Shares: every one of these platforms measures them; X does not
+      // (migration 021), checked in the X steps.
       const flags = [
-        { saves: false, watch_time_seconds: true, subscribers_gained: true },
-        { saves: false, watch_time_seconds: false, subscribers_gained: false },
-        { saves: true, watch_time_seconds: false, subscribers_gained: false },
+        {
+          shares: true,
+          saves: false,
+          watch_time_seconds: true,
+          subscribers_gained: true,
+        },
+        {
+          shares: true,
+          saves: false,
+          watch_time_seconds: false,
+          subscribers_gained: false,
+        },
+        {
+          shares: true,
+          saves: true,
+          watch_time_seconds: false,
+          subscribers_gained: false,
+        },
       ];
       const want = JSON.stringify({
         totals: flags,
@@ -5509,6 +5526,209 @@ async function fetchDatedSteps() {
   );
 }
 
+const X_PROJECT = '99999999-9999-9999-9999-999999999271';
+const X_POST = 'x-post';
+const X_YOUTUBE = 'x-yt';
+
+/** Every row of the X fixture, from the three tables it writes. */
+async function clearXRows(): Promise<void> {
+  const client = getClickHouseClient();
+
+  for (const table of [
+    'video_metrics',
+    'video_snapshots',
+    'video_retention_curves',
+  ]) {
+    await client.command({
+      query: `ALTER TABLE ${table} DELETE WHERE project_id = {project:UUID}`,
+      query_params: { project: X_PROJECT },
+      clickhouse_settings: { mutations_sync: '2' },
+    });
+  }
+}
+
+/**
+ * X joins the tables (FILM-1727, migration 021), checked by hand.
+ *
+ * | video  | platform | day   | views | likes | replies | shares | bookmarks | reposts |
+ * |--------|----------|-------|-------|-------|---------|--------|-----------|---------|
+ * | x-yt   | youtube  | 01-06 |   100 |    10 |       2 |      6 |      NULL |       - |
+ * | x-post | twitter  | 01-06 |   300 |     5 |       2 |   NULL |         3 |       4 |
+ * | x-post | twitter  | 01-07 |   200 |     3 |       1 |   NULL |         1 |       2 |
+ *
+ * X reports no shares on the tier we use, so its rows hold NULL there: a
+ * reader that turns that into 0 makes X look measured and unshared, and one
+ * that adds a row with NULL into arithmetic drops the row. Both move a
+ * figure below.
+ */
+async function xSteps() {
+  await step('seed: X rows with NULL shares (migration 021)', async () => {
+    await clearXRows();
+
+    const youtube = {
+      ...metricFor({
+        project: X_PROJECT,
+        id: X_YOUTUBE,
+        date: '2026-01-06',
+        views: 100,
+      }),
+      likes: 10,
+      comments: 2,
+      shares: 6,
+      saves: null,
+    };
+    const x = (
+      date: string,
+      counts: [number, number, number, number, number],
+    ) => ({
+      ...metricFor({ project: X_PROJECT, id: X_POST, date, views: counts[0] }),
+      platform: 'twitter' as const,
+      likes: counts[1],
+      comments: counts[2],
+      shares: null,
+      saves: counts[3],
+      reposts: counts[4],
+      watch_time_seconds: null,
+      subscribers_gained: null,
+      subscribers_lost: null,
+      metric_source: 'snapshot_delta' as const,
+    });
+
+    await insertVideoMetrics([
+      youtube,
+      x('2026-01-06', [300, 5, 2, 3, 4]),
+      x('2026-01-07', [200, 3, 1, 1, 2]),
+    ]);
+
+    await insertVideoSnapshots([
+      {
+        project_id: X_PROJECT,
+        video_id: X_POST,
+        platform: 'twitter',
+        snapshot_date: '2026-01-07',
+        views: 500,
+        likes: 8,
+        comments: 3,
+        shares: null,
+        saves: 4,
+        watch_time_seconds: null,
+        subscribers_gained: null,
+        accounts_reached: null,
+        reposts: 6,
+      },
+    ]);
+
+    // Five points: 1000 plays started, 700, 480, 300 and 150 reached each quarter.
+    await insertRetentionCurves(
+      [
+        [0, 1],
+        [0.25, 0.7],
+        [0.5, 0.48],
+        [0.75, 0.3],
+        [1, 0.15],
+      ].map(([elapsed, ratio]) => ({
+        project_id: X_PROJECT,
+        video_id: X_POST,
+        platform: 'twitter' as const,
+        elapsed_ratio: elapsed!,
+        audience_watch_ratio: ratio!,
+      })),
+    );
+
+    return '3 metric rows, 1 snapshot, 5 curve points';
+  });
+
+  await step(
+    'assert: X shares are NULL, never a measured 0, by hand',
+    async () => {
+      const totals = await queryTotals({ projectId: X_PROJECT });
+
+      // Views 100 + 300 + 200; likes 10 + 5 + 3; replies 2 + 2 + 1. Shares
+      // are YouTube's 6 alone: X's rows are left out, not counted as 0.
+      expectEqual(
+        'pooled',
+        [totals.views, totals.likes, totals.comments, totals.shares],
+        [600, 18, 5, 6],
+      );
+
+      const breakdown = await queryPlatformBreakdown({ projectId: X_PROJECT });
+      const byPlatform = Object.fromEntries(
+        breakdown.map((row) => [
+          row.platform,
+          [row.views, row.likes, row.shares],
+        ]),
+      );
+      expectEqual('by platform', byPlatform, {
+        twitter: [500, 8, null],
+        youtube: [100, 10, 6],
+      });
+
+      const perVideo = await queryPerVideoTotals({
+        projectId: X_PROJECT,
+        videoIds: [X_POST, X_YOUTUBE],
+      });
+      expectEqual(
+        'shares measured',
+        [
+          perVideo.get(X_POST)?.measured.shares,
+          perVideo.get(X_YOUTUBE)?.measured.shares,
+        ],
+        [false, true],
+      );
+
+      const daily = await queryDailyTimeSeriesByPlatform({
+        projectId: X_PROJECT,
+      });
+      const first = daily.find((day) => day.date === '2026-01-06');
+      expectEqual(
+        '01-06',
+        [
+          first?.views,
+          first?.shares,
+          first?.byPlatform.twitter?.shares,
+          first?.byPlatform.youtube?.shares,
+        ],
+        [400, 6, null, 6],
+      );
+
+      const onlyX = await queryTotals({
+        projectId: X_PROJECT,
+        platforms: ['twitter'],
+      });
+      expectEqual('X-only views, likes', [onlyX.views, onlyX.likes], [500, 8]);
+
+      const snapshot = (
+        await queryLatestSnapshots({
+          videoIds: [X_POST],
+          beforeDate: '2026-02-01',
+        })
+      ).get(X_POST);
+      expectEqual(
+        'X snapshot',
+        [snapshot?.views, snapshot?.shares, snapshot?.reposts],
+        [500, null, 6],
+      );
+
+      const curve = await queryRetentionCurve({ videoId: X_POST });
+      expectEqual(
+        'X quartiles',
+        curve.map((point) => [point.elapsedRatio, point.audienceWatchRatio]),
+        [
+          [0, 1],
+          [0.25, 0.7],
+          [0.5, 0.48],
+          [0.75, 0.3],
+          [1, 0.15],
+        ],
+      );
+
+      return 'shares 6 pooled, X null by platform; quartiles 1 → 0.15';
+    },
+  );
+
+  await step('clear: X rows', () => clearXRows());
+}
+
 async function main() {
   if (!isClickHouseEnabled()) {
     console.error(
@@ -5526,6 +5746,7 @@ async function main() {
   await formatFamilySteps();
   await selfBenchmarkSteps();
   await channelExperimentSteps();
+  await xSteps();
   await handComputedSteps();
   await fetchDatedSteps();
   await observedCoverageSteps();

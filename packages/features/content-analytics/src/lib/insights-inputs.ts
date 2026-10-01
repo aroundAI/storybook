@@ -15,7 +15,8 @@ interface PlatformRow {
   views: Views;
   likes: number;
   comments: number;
-  shares: number;
+  /** Null where the platform reports no shares: X (FILM-1727). */
+  shares: number | null;
 }
 
 interface ContentRow {
@@ -67,6 +68,7 @@ function fact(
   ];
 }
 
+/** The rows that measured `metric`, summed; a platform that does not is left out. */
 function sum(rows: PlatformRow[], metric: TrendMetric): number {
   return rows.reduce((total, row) => total + (row[metric] ?? 0), 0);
 }
@@ -104,7 +106,8 @@ export function buildTrendFacts(
     for (const metric of TREND_METRICS) {
       const now = row[metric];
       const then = before[metric];
-      // Facebook has no views to compare (KB-153): no fact, never a 0.
+      // Facebook has no views and X no shares to compare (KB-153,
+      // FILM-1727): no fact, never a 0.
       if (now === null || then === null) continue;
       facts.push(...fact(metric, row.platform, now, then));
     }

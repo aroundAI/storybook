@@ -219,10 +219,25 @@ const RULES: Array<{
   },
   {
     rule: 'has a window that is unbounded or a positive number of days',
+    applies: ({ window }) => window?.maxAgeDays !== 'undocumented',
     holds: ({ window }) =>
       window?.maxAgeDays === null ||
       (typeof window?.maxAgeDays === 'number' && window.maxAgeDays > 0),
     broken: { ...NATIVE, window: { anchoredOn: 'publish_date' } },
+  },
+  {
+    // FILM-1727 §3: X does not say how far back /2/media/analytics serves.
+    // "Undocumented" is only honest while someone owns asking.
+    rule: 'an undocumented window is an unknown availability, with its owner',
+    applies: ({ window }) => window?.maxAgeDays === 'undocumented',
+    holds: ({ availability, unknownOwner, unknownQuestion }) =>
+      availability === 'unknown' &&
+      isText(unknownOwner) &&
+      isText(unknownQuestion),
+    broken: {
+      ...NATIVE,
+      window: { maxAgeDays: 'undocumented', anchoredOn: 'request_date' },
+    },
   },
   {
     rule: 'derived names its method',
@@ -686,6 +701,7 @@ describe('platformsWithData', () => {
       'tiktok',
       'instagram',
       'facebook',
+      'twitter',
     ]);
     expect(platformsWithData('traffic_sources')).toEqual(['youtube']);
     expect(platformsWithData('revenue')).toEqual([]);
@@ -707,7 +723,7 @@ describe('coverageSummary', () => {
     expect(coverageSummary('watch_time')).toEqual({
       measured: ['youtube'],
       derived: ['instagram', 'facebook'],
-      absent: ['tiktok'],
+      absent: ['tiktok', 'twitter'],
       caveats: [
         {
           platform: 'tiktok',
@@ -724,6 +740,11 @@ describe('coverageSummary', () => {
           level: 'derived',
           note: capabilityFor('watch_time', 'facebook').note,
         },
+        {
+          platform: 'twitter',
+          level: 'not_ingested',
+          note: capabilityFor('watch_time', 'twitter').note,
+        },
       ],
     });
   });
@@ -737,6 +758,7 @@ describe('coverageSummary', () => {
       ['tiktok', 'not_ingested'],
       ['instagram', 'unsupported'],
       ['facebook', 'unsupported'],
+      ['twitter', 'unsupported'],
     ]);
   });
 
@@ -810,9 +832,16 @@ describe('unclaimedPlatforms', () => {
   });
 
   it('reports a platform it has never heard of', () => {
-    // X is outside AnalyticsPlatform until FILM-1727; Facebook joined it.
-    expect(unclaimedPlatforms('engagement', ['twitter'])).toEqual(['twitter']);
+    // LinkedIn is a publish platform with no analytics; Facebook (FILM-1720)
+    // and X (FILM-1727) joined AnalyticsPlatform.
+    expect(unclaimedPlatforms('engagement', ['linkedin'])).toEqual([
+      'linkedin',
+    ]);
     expect(unclaimedPlatforms('engagement', ['facebook'])).toEqual([]);
+    expect(unclaimedPlatforms('engagement', ['twitter'])).toEqual([]);
+    // X's five playback points are claimed; its watch time is not.
+    expect(unclaimedPlatforms('retention_curve', ['twitter'])).toEqual([]);
+    expect(unclaimedPlatforms('watch_time', ['twitter'])).toEqual(['twitter']);
   });
 });
 

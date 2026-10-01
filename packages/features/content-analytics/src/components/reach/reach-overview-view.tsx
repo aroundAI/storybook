@@ -34,6 +34,7 @@ const PLATFORM_LABEL: Record<AnalyticsPlatform, string> = {
   tiktok: 'TikTok',
   instagram: 'Instagram',
   facebook: 'Facebook',
+  twitter: 'X',
 };
 
 interface ReachOverviewViewProps {

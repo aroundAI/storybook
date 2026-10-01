@@ -35,7 +35,7 @@ const PlatformBreakdownSchema = z.object({
   views: z.number().nullable(),
   likes: z.number(),
   comments: z.number(),
-  shares: z.number(),
+  shares: z.number().nullable(),
 });
 
 const TopContentSchema = z.object({
