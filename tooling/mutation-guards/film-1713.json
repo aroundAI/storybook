@@ -52,20 +52,10 @@
       "pattern": "computed inline nowhere else"
     },
     {
-      "name": "NM6 The long-form split re-inlines the engagement formula",
+      "name": "NM6 The format family split re-inlines the engagement formula",
       "file": "packages/features/content-analytics/src/server/language-analytics.ts",
-      "find": "displayedEngagementRatePercent(longForm)",
-      "replace": "((longForm.likes + longForm.comments + longForm.shares) / longForm.views) * 100",
-      "kind": "unit",
-      "cwd": "packages/clickhouse",
-      "test": "__tests__/engagement-rate-one-definition.test.ts",
-      "pattern": "computed inline nowhere else"
-    },
-    {
-      "name": "NM7 The shorts split re-inlines the engagement formula",
-      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
-      "find": "displayedEngagementRatePercent(shorts)",
-      "replace": "((shorts.likes + shorts.comments + shorts.shares) / shorts.views) * 100",
+      "find": "engagement: displayedEngagementRatePercent(total)",
+      "replace": "engagement: ((total.likes + total.comments + total.shares) / total.views) * 100",
       "kind": "unit",
       "cwd": "packages/clickhouse",
       "test": "__tests__/engagement-rate-one-definition.test.ts",
