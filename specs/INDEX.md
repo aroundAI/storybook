@@ -615,7 +615,7 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1721 | [platform-capability-reference](./phase-17-analytics-provenance/FILM-1721-platform-capability-reference.yaml) | ✅ DONE | L | - |
 | FILM-1722 | [view-definition-registry](./phase-17-analytics-provenance/FILM-1722-view-definition-registry.yaml) | 🟡 PARTIAL | M | FILM-1721 |
 | FILM-1723 | [api-version-consolidation](./phase-17-analytics-provenance/FILM-1723-api-version-consolidation.yaml) | 🟡 PARTIAL | M | - |
-| FILM-1724 | [channel-experiments](./phase-17-analytics-provenance/FILM-1724-channel-experiments.yaml) | DRAFT | L | FILM-1610, FILM-1715, FILM-1716; FILM-1710 for hook tests |
+| FILM-1724 | [channel-experiments](./phase-17-analytics-provenance/FILM-1724-channel-experiments.yaml) | ✅ DONE | L | FILM-1610, FILM-1715, FILM-1716; FILM-1710 for hook tests |
 | FILM-1725 | [deferred-vendor-verifications](./phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.yaml) | ⏸️ DEFERRED | S | FILM-1721 |
 | FILM-1726 | [monetisation-stage](./phase-17-analytics-provenance/FILM-1726-monetisation-stage.yaml) | DRAFT | M | FILM-1703, FILM-1711, FILM-1720 |
 | FILM-1727 | [x-analytics](./phase-17-analytics-provenance/FILM-1727-x-analytics.yaml) | DRAFT | L | FILM-1711, FILM-1714, FILM-1721, FILM-1723; FILM-1725 Check A for the Enterprise tier only |
