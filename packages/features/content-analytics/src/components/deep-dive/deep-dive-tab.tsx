@@ -60,18 +60,19 @@ import {
   backCatalogClaim,
 } from './back-catalog-card';
 import { ChannelFilter } from './channel-filter';
-import { DateAxisNote } from './date-axis-note';
 import {
   CohortCurvesChart,
   CohortCurvesChartSkeleton,
 } from './cohort-curves-chart';
 import type { CohortEntry } from './cohort-curves-chart';
+import { DateAxisNote } from './date-axis-note';
 import {
   MedianViewsCard,
   MedianViewsCardSkeleton,
   medianViewsClaim,
   medianViewsDetails,
 } from './median-views-card';
+import { PlatformSwitcher } from './platform-switcher';
 import {
   RetentionCurveChart,
   RetentionCurveChartSkeleton,
@@ -104,7 +105,6 @@ import {
   WeeklyDiagnosticsTable,
   WeeklyDiagnosticsTableSkeleton,
 } from './weekly-diagnostics-table';
-import { PlatformSwitcher } from './platform-switcher';
 import { YppProgressCard, YppProgressCardSkeleton } from './ypp-progress-card';
 
 interface DeepDiveTabProps {
@@ -602,7 +602,10 @@ export function DeepDiveTab({
       <DateAxisNote excluded={excluded} />
 
       <div className={'flex flex-wrap items-center justify-end gap-2'}>
-        <PlatformSwitcher value={filters.platform} onChange={onPlatformChange} />
+        <PlatformSwitcher
+          value={filters.platform}
+          onChange={onPlatformChange}
+        />
         <ChannelFilter
           channels={channels}
           value={filters.connectionId}
@@ -633,6 +636,7 @@ export function DeepDiveTab({
             <div className={'flex gap-2 text-xs'}>
               <button
                 type={'button'}
+                data-test={'median-mode-cohort'}
                 onClick={() => setMedianMode('cohort_views_to_date')}
                 className={
                   medianMode === 'cohort_views_to_date'
@@ -644,6 +648,7 @@ export function DeepDiveTab({
               </button>
               <button
                 type={'button'}
+                data-test={'median-mode-period'}
                 onClick={() => setMedianMode('views_in_period')}
                 className={
                   medianMode === 'views_in_period'
@@ -1028,61 +1033,61 @@ function WeeklyDiagnosticsSection({
         colSpan={2}
         data-test={'weekly-diagnostics-section'}
       >
-      <div className={'flex flex-col gap-4'}>
-      <p className={'max-w-2xl text-sm text-muted-foreground'}>
-        A breakage check, not a strategy input. A low click-through rate means
-        the packaging failed on that video and a sharp early drop means its
-        intro did — fix the specific thing rather than generalising from one
-        upload. Follows the channel selected above.
-      </p>
-
-      <QueryState
-        query={diagnosticsQuery}
-        skeleton={<WeeklyDiagnosticsTableSkeleton />}
-        message={'The weekly diagnostics could not be loaded.'}
-        dataTest={'weekly-diagnostics-error'}
-      >
-        <WeeklyDiagnosticsTable
-          rows={diagnosticsQuery.data ?? []}
-          onSelect={setSelected}
-          selectedPublishId={selected}
-        />
-      </QueryState>
-
-      {selected ? (
-        <div
-          id={'retention-drilldown'}
-          className={'flex flex-col gap-2'}
-          data-test={'retention-drilldown'}
-        >
-          <div className={'flex items-center justify-between'}>
-            <h4 className={'text-sm font-medium'}>Audience retention</h4>
-            <Button
-              variant={'ghost'}
-              size={'sm'}
-              onClick={() => setSelected(null)}
-              data-test={'retention-drilldown-close'}
-            >
-              Close
-            </Button>
-          </div>
+        <div className={'flex flex-col gap-4'}>
+          <p className={'max-w-2xl text-sm text-muted-foreground'}>
+            A breakage check, not a strategy input. A low click-through rate
+            means the packaging failed on that video and a sharp early drop
+            means its intro did — fix the specific thing rather than
+            generalising from one upload. Follows the channel selected above.
+          </p>
 
           <QueryState
-            query={curveQuery}
-            skeleton={<RetentionCurveChartSkeleton />}
-            message={'That retention curve could not be loaded.'}
-            dataTest={'retention-curve-error'}
+            query={diagnosticsQuery}
+            skeleton={<WeeklyDiagnosticsTableSkeleton />}
+            message={'The weekly diagnostics could not be loaded.'}
+            dataTest={'weekly-diagnostics-error'}
           >
-            {/* The asset's own duration (FILM-1710), or `duration_unknown` —
-                in which case the cliff is described without a timestamp. */}
-            <RetentionCurveChart
-              points={curveQuery.data?.points ?? []}
-              duration={curveQuery.data?.duration}
+            <WeeklyDiagnosticsTable
+              rows={diagnosticsQuery.data ?? []}
+              onSelect={setSelected}
+              selectedPublishId={selected}
             />
           </QueryState>
+
+          {selected ? (
+            <div
+              id={'retention-drilldown'}
+              className={'flex flex-col gap-2'}
+              data-test={'retention-drilldown'}
+            >
+              <div className={'flex items-center justify-between'}>
+                <h4 className={'text-sm font-medium'}>Audience retention</h4>
+                <Button
+                  variant={'ghost'}
+                  size={'sm'}
+                  onClick={() => setSelected(null)}
+                  data-test={'retention-drilldown-close'}
+                >
+                  Close
+                </Button>
+              </div>
+
+              <QueryState
+                query={curveQuery}
+                skeleton={<RetentionCurveChartSkeleton />}
+                message={'That retention curve could not be loaded.'}
+                dataTest={'retention-curve-error'}
+              >
+                {/* The asset's own duration (FILM-1710), or `duration_unknown` —
+                in which case the cliff is described without a timestamp. */}
+                <RetentionCurveChart
+                  points={curveQuery.data?.points ?? []}
+                  duration={curveQuery.data?.duration}
+                />
+              </QueryState>
+            </div>
+          ) : null}
         </div>
-      ) : null}
-      </div>
       </AnalyticsCard>
     </div>
   );
