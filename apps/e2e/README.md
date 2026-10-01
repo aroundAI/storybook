@@ -353,7 +353,8 @@ Playwright shell too: the specs decrypt stored tokens with its
 | Publish | `publishing/sandbox-publish.spec.ts` (inline); `sandbox/publish-queue-evidence.spec.ts` (scheduled, FILM-1806) |
 | Sync to dashboard, #278, #279 | `analytics/sandbox-sync.spec.ts` |
 | Studio pipeline | `sandbox/studio-flow-evidence.spec.ts` (FILM-1806), `sandbox/ai-sandbox-evidence.spec.ts` (FILM-1803) — gated by their own flags |
-| Vendor errors | `platform-connections/sandbox-vendor-errors.spec.ts`, the error tests in `sandbox-publish`, `sandbox-sync` (a rate-limited sync; no screen shows it, KB-150) and each `sandbox-connect-*` |
+| Vendor errors | `platform-connections/sandbox-vendor-errors.spec.ts`, the error tests in `sandbox-publish`, `sandbox-sync` (a rate-limited sync) and each `sandbox-connect-*` |
+| A failed sync shown, and cleared by the next (KB-150) | `analytics/sandbox-sync-failure.spec.ts`: 429, 401 and 503 on TikTok's video query; the episode analytics page and the Video Log |
 
 ### Never write a figure in advance
 

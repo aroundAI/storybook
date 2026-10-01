@@ -3,22 +3,23 @@ import { type Page, expect, test } from '@playwright/test';
 import { countClickHouse } from '../utils/clickhouse';
 import {
   connectThroughSandbox,
-  cronHeaders,
   failNext,
   lastLedgerId,
   ledgerFor,
-  replayableVideoId,
   sandboxRun,
   servedTotals,
   storedConnections,
 } from '../utils/sandbox';
 import {
+  type SyncedVideo,
+  publishedVideo,
+  runSync,
+  syncMeta,
+} from '../utils/sandbox-sync';
+import {
   type SeededTeam,
-  insertRow,
-  readRows,
   seedProject,
   seedTeamAccount,
-  serviceRoleAuth,
   updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
@@ -41,74 +42,6 @@ import { byTest } from '../utils/visible';
  */
 const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
 const shoot = Boolean(process.env.CAPTURE_EVIDENCE);
-
-interface SyncedVideo {
-  publishId: string;
-  episodeSlug: string;
-  videoId: string;
-}
-
-/** An episode with one published video on `connectionId`, as the app holds it. */
-async function publishedVideo(
-  projectId: string,
-  connectionId: string,
-  platform: 'tiktok' | 'instagram',
-  title: string,
-): Promise<SyncedVideo> {
-  const auth = serviceRoleAuth();
-  const videoId = replayableVideoId(platform === 'tiktok' ? '73' : '179');
-  const episodeSlug = `sandbox-sync-${platform}-${crypto.randomUUID()}`;
-
-  const episode = await insertRow<{ id: string }>(
-    'episodes',
-    { project_id: projectId, number: 1, title, slug: episodeSlug },
-    auth,
-  );
-  const publish = await insertRow<{ id: string }>(
-    'publishes',
-    {
-      episode_id: episode.id,
-      platform_connection_id: connectionId,
-      platform,
-      status: 'published',
-      title,
-      platform_content_id: videoId,
-      // Under a day old, so the first sync dates the lifetime to the
-      // publish (`shouldWriteMetricRow`) and the page has a row to show.
-      published_at: new Date().toISOString(),
-    },
-    auth,
-  );
-
-  return { publishId: publish.id, episodeSlug, videoId };
-}
-
-async function runSync(page: Page) {
-  const response = await page.request.post('/api/analytics/sync', {
-    headers: cronHeaders(),
-    timeout: 120_000,
-  });
-  expect(response.status(), await response.text()).toBe(200);
-
-  return (await response.json()) as {
-    byPlatform: Record<string, { processed: number; successful: number }>;
-  };
-}
-
-interface SyncMeta {
-  last_sync_status?: string;
-  last_error?: string;
-  last_synced_at?: string;
-}
-
-async function syncMeta(publishId: string) {
-  const [row] = await readRows<{ metadata: { sync?: SyncMeta } | null }>(
-    'publishes',
-    `id=eq.${publishId}&select=metadata`,
-  );
-
-  return row?.metadata?.sync ?? {};
-}
 
 /** The episode page's figures for one platform, as numbers. */
 async function breakdownOn(
@@ -263,7 +196,7 @@ test.describe('Sync to dashboard, against the sandbox (FILM-1804)', () => {
       });
   });
 
-  test('TikTok rate-limits the sync: the publish records it, and the next sync recovers (KB-150: no screen shows it)', async ({
+  test('TikTok rate-limits the sync: the publish records it, and the next sync recovers (what the creator sees: sandbox-sync-failure.spec.ts, KB-150)', async ({
     page,
   }) => {
     const team = await seedTeamAccount({ emailPrefix: 'sbx-sync-429' });
