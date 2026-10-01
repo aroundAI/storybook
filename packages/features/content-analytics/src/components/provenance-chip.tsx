@@ -82,10 +82,16 @@ export function useCardProvenance(
   }, [view, metricFamily, platforms]);
 }
 
-const VARIANT = {
-  native: 'outline',
-  derived: 'warning',
-  partial: 'info',
+/**
+ * The level is the dot's colour; the words stay in the text colour. The
+ * badge's own warning and info variants colour the text too, and at this
+ * size orange-500 and blue-500 on a card fail WCAG AA contrast — axe
+ * flagged the MetricCards' chips.
+ */
+const DOT = {
+  native: 'bg-muted-foreground',
+  derived: 'bg-orange-500',
+  partial: 'bg-blue-500',
 } as const;
 
 /**
@@ -114,12 +120,15 @@ export function ProvenanceChip({
           data-tone={chip.tone}
           data-muted={chip.muted ? 'true' : 'false'}
           className={cn(
-            badgeVariants({ variant: VARIANT[chip.tone] }),
+            badgeVariants({ variant: 'outline' }),
             'shrink-0 gap-1.5 font-medium whitespace-nowrap',
-            chip.muted && 'border-dashed opacity-70',
+            chip.muted && 'border-dashed text-muted-foreground',
           )}
         >
-          <span aria-hidden className="size-1.5 rounded-full bg-current" />
+          <span
+            aria-hidden
+            className={cn('size-1.5 rounded-full', DOT[chip.tone])}
+          />
           {chip.label}
         </button>
       </PopoverTrigger>
