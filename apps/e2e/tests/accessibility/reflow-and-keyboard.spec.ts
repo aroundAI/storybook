@@ -108,6 +108,9 @@ test.describe('Keyboard only', () => {
 
     await page.goto('/auth/sign-in');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    // The form is server-rendered, so it is there before React has hydrated;
+    // a submit that early is a plain form post, not the sign-in.
+    await page.waitForLoadState('networkidle');
 
     const email = page.locator('input[name="email"]');
     const password = page.locator('input[name="password"]');

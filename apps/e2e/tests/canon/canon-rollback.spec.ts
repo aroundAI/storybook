@@ -38,6 +38,12 @@ test.describe('Canon rollback (FILM-1005)', () => {
       page.getByText('Character state recorded').first(),
     ).toBeVisible();
 
+    // The toast comes with the action's result; the page it revalidated
+    // streams in behind it and, when it commits, replaces the cards and closes
+    // a history opened before it. Let the response finish first (GitHub's
+    // runner is slow enough for the click to land in between).
+    await page.waitForLoadState('networkidle');
+
     await byTest(page, 'canon-character-history-toggle').click();
     await expect(byTest(page, 'canon-character-delta')).toHaveCount(1);
 
@@ -103,6 +109,12 @@ test.describe('Canon rollback (FILM-1005)', () => {
     await expect(
       page.getByText('Character state recorded').first(),
     ).toBeVisible();
+
+    // The toast comes with the action's result; the page it revalidated
+    // streams in behind it and, when it commits, replaces the cards and closes
+    // a history opened before it. Let the response finish first (GitHub's
+    // runner is slow enough for the click to land in between).
+    await page.waitForLoadState('networkidle');
 
     await byTest(page, 'canon-character-history-toggle').click();
     await expect(byTest(page, 'canon-character-delta')).toHaveCount(1);
