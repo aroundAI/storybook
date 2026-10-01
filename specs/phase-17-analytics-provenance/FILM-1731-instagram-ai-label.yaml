@@ -1,0 +1,90 @@
+spec_id: "FILM-1731"
+title: "Instagram AI Info Label — Do Our Reels Need is_ai_generated?"
+phase: 17
+phase_name: "Analytics Provenance and Signal"
+category: feature
+status: DRAFT
+effort: S
+dependencies:
+  - spec_id: "FILM-1728"
+    note: "found it in the Instagram Platform changelog, read 2026-10-01"
+summary: >
+  Since 2026-06-22 Instagram's content publishing API takes an
+  is_ai_generated parameter on POST /{ig-user-id}/media, which applies
+  Instagram's "AI info" label to the container. Our Reels are published
+  without it. Whether the label is required, expected or only available for
+  what this product publishes is a product and policy question, not a code
+  one, and it has no owner. An unlabelled AI video is a plausible reason for
+  a future enforcement action against a creator's account. This spec holds
+  the question until it is answered, and the small change that follows the
+  answer. It must be answered before the product is opened to creators other
+  than the owner.
+acceptance_criteria:
+  - text: "The policy question is answered and the answer recorded here with its source: is the AI info label required, expected or optional for the Reels this product publishes"
+    met: false
+    reason: "not answered — a policy decision for the owner, from Meta's own policy and help pages (DRAFT, filed 2026-10-01 by FILM-1728)"
+  - text: "If the label applies to some publishes, the product knows which: the creator declares it per publish (or per project), and the declaration is stored with the publish"
+    met: false
+    reason: "blocked on the answer above"
+  - text: "If it applies, is_ai_generated is sent on the container request from the one Instagram flow (InstagramProvider; the lambda calls it since FILM-1728), and the capability reference documents the parameter with its source"
+    met: false
+    reason: "blocked on the answer above"
+  - text: "If it applies, a test asserts the parameter is sent exactly when the declaration says so, seen red first; the sandbox accepts it"
+    met: false
+    reason: "blocked on the answer above"
+  - text: "Whether the same question exists on the other platforms we publish to is checked and recorded, each with its own source"
+    met: false
+    reason: "not researched — see the notes"
+open_questions:
+  - "Is Instagram's AI info label required, expected, or merely available for the Reels this product publishes — and does the answer differ between the owner's own account and other creators'?"
+notes: |
+  ## Where this came from
+
+  FILM-1728 §4.4 read the Instagram Platform changelog
+  (https://developers.facebook.com/docs/instagram-platform/changelog/) on
+  2026-10-01. The 2026-06-22 entry: "AI Info Label — Set the new
+  is_ai_generated parameter to true" when publishing media, to apply the AI
+  disclosure label. It is a parameter on the container request, so it must be
+  decided before the container is created; it cannot be added after publishing
+  through this API.
+
+  ## Why it is a question and not a change
+
+  - The product no longer generates video itself (in-app video generation was
+    retired 2026-09-23): video is made outside and uploaded. Much of it is
+    likely AI-generated, since the studio writes VEO prompts, but the app does
+    not know which uploads are. Sending true for everything would mislabel any
+    video that is not; sending nothing may be what Meta's policy forbids.
+  - The changelog says the parameter exists. It does not say when Meta
+    expects it. That is in Meta's policy and help pages, which this spec has
+    not read; the answer must cite them, with the date read.
+  - The owner is the first and only user today, publishing for one company.
+    The risk grows when other creators are onboarded: an enforcement action
+    lands on their account, not ours.
+
+  ## Where the code would change
+
+  The container is created in one place since FILM-1728:
+  InstagramProvider.createMediaContainer
+  (packages/features/publishing/src/providers/instagram/instagram-provider.ts),
+  which the publish lambda now calls. On main before FILM-1728 there is a
+  second copy in apps/web/lambda/publish-worker/handlers/instagram.ts; FILM-1728
+  removes it. A declaration needs somewhere to live (publish metadata, or a
+  project default) and a control in the publish flow, which makes this a UI
+  change with a Playwright spec and screenshots if the answer is "required".
+
+  ## Other platforms, not researched
+
+  The same disclosure question probably exists elsewhere: YouTube and TikTok
+  both have disclosure settings for AI-generated or altered content. Neither
+  has been read for this spec. Each needs its own first-party source before
+  anything is claimed about it.
+feature:
+  database: null
+  queries: []
+  actions: []
+  ui: []
+  provider_integration:
+    vendor: "Meta Graph API (Instagram API with Facebook Login)"
+    endpoints:
+      - "POST /{ig-user-id}/media — is_ai_generated (Instagram Platform changelog, 2026-06-22)"
