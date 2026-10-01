@@ -35,8 +35,8 @@
       "name": "O4 the metric card draws an indicator with no baseline",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
-      "find": "          {change.kind === 'change' ? (",
-      "replace": "          {change.kind !== 'absent' ? (",
+      "find": "          {change?.kind === 'change' ? (",
+      "replace": "          {change && change.kind !== 'absent' ? (",
       "cwd": "packages/features/content-analytics",
       "test": "src/components/__tests__/metric-cards.test.tsx",
       "pattern": "draws no change indicator when there is no previous period"
@@ -45,8 +45,8 @@
       "name": "O5 the shares card grows a breakdown default again",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/components/overview/shares-card.tsx",
-      "find": "export function SharesCard({ shares, platforms }: SharesCardProps) {",
-      "replace": "export function SharesCard({ shares, platforms, breakdown }: SharesCardProps & { breakdown?: { direct: number; copyLink: number } }) {\n  const shareBreakdown = breakdown || { direct: 83, copyLink: 17 };",
+      "find": "export function SharesCard({ shares }: SharesCardProps) {",
+      "replace": "export function SharesCard({ shares, breakdown }: SharesCardProps & { breakdown?: { direct: number; copyLink: number } }) {\n  const shareBreakdown = breakdown || { direct: 83, copyLink: 17 };",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/no-literal-fallbacks-overview.test.ts",
       "pattern": "never falls back to an object literal of figures"

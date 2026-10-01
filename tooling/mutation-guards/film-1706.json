@@ -85,7 +85,7 @@
       "name": "The traffic breakdown loses its Studio caveat",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/components/deep-dive/traffic-share-card.tsx",
-      "find": "so these percentages will not match YouTube Studio exactly.",
+      "find": "so these percentages will not match the platform’s own analytics exactly.",
       "replace": "so these percentages may differ.",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/card-claims.test.ts",
