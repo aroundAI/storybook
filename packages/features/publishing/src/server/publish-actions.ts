@@ -23,7 +23,9 @@ import {
   awsClientOptions,
   holdsXUploadScope,
   queueUrlFromEnv,
+  xPostTextRefusal,
   xUploadScopeRefusal,
+  xVideoRefusal,
 } from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -33,6 +35,7 @@ import {
   resolveEpisodeVideo,
 } from '../lib/episode-video';
 import type { DeleteJobMessage } from '../lib/job-types';
+import { readMp4Facts } from '../lib/mp4-facts';
 import {
   EPISODE_VIDEO_PUBLISH_REFUSAL,
   type ProjectOfEpisode,
@@ -182,9 +185,56 @@ async function declareYouTubeUploads(platforms: PublishPlatformInput[]) {
 }
 
 /**
- * FILM-1729. Refuses the whole request, naming every X account that cannot
- * upload video, before anything is written.
+ * FILM-1729. Refuses the whole request, before anything is written, when X
+ * would refuse it: an X account that cannot upload video, or a video outside
+ * X's limits (owner, 2026-10-01: refused on the screen, not found in the
+ * worker). Each X video is the one the upload below would send, read from
+ * its own MP4 header.
  */
+async function assertXWillAccept(
+  platforms: PublishPlatformInput[],
+  episode: Parameters<typeof resolveEpisodeVideo>[0] & { project_id: string },
+  episodeId: string,
+) {
+  const toX = platforms.filter((platform) => platform.platform === 'twitter');
+
+  if (toX.length === 0) return;
+
+  const connections = await assertXUploadScope(toX);
+
+  for (const platform of toX) {
+    const textRefusal = xPostTextRefusal(platform.title);
+
+    if (textRefusal) throw new ActionRefusal(textRefusal);
+
+    const language =
+      platform.language ??
+      connections.find((row) => row.id === platform.connectionId)?.language;
+    const short = platform.contentType === 'short';
+    const resolved = resolveEpisodeVideo(episode, {
+      language: language ?? 'en',
+      short,
+      shortsGroupId: short ? platform.shortsGroupId : null,
+      ...PUBLISH_NOW_PRECEDENCE,
+    });
+    const videoUrl =
+      resolved &&
+      (await ownedEpisodeVideo(
+        resolved.url,
+        { episodeId, projectId: episode.project_id },
+        projectOfEpisodeVia(getSupabaseServerClient()),
+      ));
+
+    // The upload refuses these itself, with its own words.
+    if (!videoUrl) continue;
+
+    const refusal = xVideoRefusal(await readMp4Facts(videoUrl));
+
+    if (refusal) throw new ActionRefusal(refusal);
+  }
+}
+
+/** Refuses every X account that cannot upload video; returns the accounts. */
 async function assertXUploadScope(platforms: PublishPlatformInput[]) {
   const connectionIds = [
     ...new Set(
@@ -194,11 +244,9 @@ async function assertXUploadScope(platforms: PublishPlatformInput[]) {
     ),
   ];
 
-  if (connectionIds.length === 0) return;
-
   const { data: connections, error } = await getSupabaseServerClient()
     .from('platform_connections')
-    .select('id, platform_account_name, scopes')
+    .select('id, platform_account_name, scopes, language')
     .in('id', connectionIds);
 
   if (error) {
@@ -213,6 +261,8 @@ async function assertXUploadScope(platforms: PublishPlatformInput[]) {
   if (lacking.length > 0) {
     throw new ActionRefusal(xUploadScopeRefusal(lacking));
   }
+
+  return connections ?? [];
 }
 
 /**
@@ -303,8 +353,8 @@ const publishToAllHandler = enhanceAction(
     // publish nobody declared leaves no row behind.
     const declared = await declareYouTubeUploads(platforms);
 
-    // FILM-1729: an X connection without media.write cannot upload video
-    await assertXUploadScope(platforms);
+    // FILM-1729: nothing goes to X that X would refuse
+    await assertXWillAccept(platforms, episode, episodeId);
 
     // Publish to all platforms in parallel
     const results = await Promise.allSettled(

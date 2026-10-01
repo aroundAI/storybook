@@ -62,6 +62,84 @@ export const X_MEDIA_UPLOAD = {
     `${X_MEDIA_UPLOAD_URL}?command=STATUS&media_id=${mediaId}`,
 } as const;
 
+/**
+ * X's limits on a Post video that hold for every account (FILM-1729), from
+ * https://docs.x.com/x-api/media/quickstart/best-practices, read 2026-10-01:
+ * "Duration: must be at least 0.5 seconds … 20 minutes by default for Post
+ * video", "File size: … 8 GB default for Post video", "Aspect ratio: must be
+ * between 1:3 and 3:1". Premium accounts get 125 minutes and 16 GB; we cannot
+ * tell which an account is, so the default applies.
+ *
+ * Not enforced, deliberately: the same page says dimensions "must be between
+ * 32x32 and 1280x1024" yet that subscribers "can upload a 1080p video", so the
+ * maximum is not a rule we can apply; frame rate and codec need the sample
+ * tables, not the header this reads.
+ */
+export const X_VIDEO_LIMITS = {
+  minSeconds: 0.5,
+  maxSeconds: 20 * 60,
+  maxBytes: 8 * 1024 ** 3,
+  minAspect: 1 / 3,
+  maxAspect: 3,
+} as const;
+
+/** What a video's MP4 header says about it; null where it could not be read. */
+export interface VideoFacts {
+  bytes: number | null;
+  durationSeconds: number | null;
+  width: number | null;
+  height: number | null;
+}
+
+/**
+ * Why X would refuse this video, in words for the person publishing it, or
+ * null when it is within X's limits.
+ */
+export function xVideoRefusal(facts: VideoFacts): string | null {
+  const { bytes, durationSeconds, width, height } = facts;
+
+  if (durationSeconds === null || !width || !height) {
+    return "X can't take this video: we couldn't read its length and shape from the file, so it can't be checked against X's limits. Upload it again as an MP4.";
+  }
+
+  if (durationSeconds < X_VIDEO_LIMITS.minSeconds) {
+    return `X can't take this video: it is ${durationSeconds.toFixed(1)} seconds long, and X needs at least ${X_VIDEO_LIMITS.minSeconds} seconds.`;
+  }
+
+  if (durationSeconds > X_VIDEO_LIMITS.maxSeconds) {
+    return `X can't take this video: it is ${Math.ceil(durationSeconds / 60)} minutes long, and X takes at most ${X_VIDEO_LIMITS.maxSeconds / 60} minutes. Publish a Short to X instead.`;
+  }
+
+  if (bytes !== null && bytes > X_VIDEO_LIMITS.maxBytes) {
+    return `X can't take this video: it is ${(bytes / 1024 ** 3).toFixed(1)} GB, and X takes at most 8 GB.`;
+  }
+
+  const aspect = width / height;
+
+  if (aspect < X_VIDEO_LIMITS.minAspect || aspect > X_VIDEO_LIMITS.maxAspect) {
+    return `X can't take this video: it is ${width}×${height}, and X needs a shape between 1:3 (tall) and 3:1 (wide).`;
+  }
+
+  return null;
+}
+
+/**
+ * X's post length for an account without Premium: 280 characters
+ * (https://docs.x.com/fundamentals/counting-characters, read 2026-10-01).
+ * The publish sends the title as the post's text. Counted per code point,
+ * which is X's count for Latin text; X weighs CJK and emoji as two, so a
+ * title near the limit in those scripts may still be refused by X.
+ */
+export const X_POST_MAX_CHARACTERS = 280;
+
+export function xPostTextRefusal(text: string): string | null {
+  const length = [...text].length;
+
+  return length > X_POST_MAX_CHARACTERS
+    ? `X can't take this post: its title is ${length} characters, and an X post takes at most ${X_POST_MAX_CHARACTERS}. Shorten the title for X.`
+    : null;
+}
+
 /** Followed by the user's browser, not called by the server. */
 export const X_OAUTH_AUTHORIZE_URL = `${X_WEB_HOST}/i/oauth2/authorize`;
 

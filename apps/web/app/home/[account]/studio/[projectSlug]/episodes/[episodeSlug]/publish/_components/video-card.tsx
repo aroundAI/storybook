@@ -6,6 +6,7 @@ import { Check, Film, Loader2, Upload } from 'lucide-react';
 
 import type { SupportedLanguage } from '@kit/publishing/lib/constants';
 import { LANG_INFO } from '@kit/publishing/lib/constants';
+import { takesVideo } from '@kit/publishing/lib/constants';
 import { Button } from '@kit/ui/button';
 
 import { ChannelBadge } from './platform-ui';
@@ -37,10 +38,8 @@ export const VideoCard = ({
 }: VideoCardProps) => {
   const relevantChannels =
     type === 'full'
-      ? channels.filter((c) => ['youtube', 'facebook'].includes(c.platform))
-      : channels.filter((c) =>
-          ['youtube', 'instagram', 'facebook', 'tiktok'].includes(c.platform),
-        );
+      ? channels.filter((c) => takesVideo('full', c.platform))
+      : channels.filter((c) => takesVideo('short', c.platform));
 
   const thumbnailInputId = `thumbnail-input-${type}-${lang}`;
 

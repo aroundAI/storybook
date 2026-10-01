@@ -1,0 +1,65 @@
+{
+  "feature": "FILM-1729",
+  "mutations": [
+    {
+      "name": "XS1 Publishing to X skips the pre-flight",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "    await assertXWillAccept(platforms, episode, episodeId);\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-x-upload-scope.test.ts",
+      "pattern": "FILM-1729"
+    },
+    {
+      "name": "XS2 A retry to X skips the scope check",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "      publish.platform === 'twitter' &&\n      !holdsXUploadScope(connection.scopes)",
+      "replace": "      publish.platform === 'twitter' &&\n      false",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-x-upload-scope.test.ts",
+      "pattern": "refuses a retry"
+    },
+    {
+      "name": "XS3 X's 20-minute limit is lifted",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/x.ts",
+      "find": "  maxSeconds: 20 * 60,\n",
+      "replace": "  maxSeconds: 200 * 60,\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-x-upload-scope.test.ts",
+      "pattern": "longer than 20 minutes"
+    },
+    {
+      "name": "XS4 An over-long X post title is not checked",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "    if (textRefusal) throw new ActionRefusal(textRefusal);\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-x-upload-scope.test.ts",
+      "pattern": "longer than an X post"
+    },
+    {
+      "name": "XS5 The worker uploads for a connection without media.write",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/handlers/twitter.ts",
+      "find": "  if (!holdsXUploadScope(grant.scopes)) {",
+      "replace": "  if (false) {",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/twitter.test.ts",
+      "pattern": "reconnect text"
+    },
+    {
+      "name": "XS6 A rotated recording is read in its stored shape",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/mp4-facts.ts",
+      "find": "          const turned = a === 0;\n",
+      "replace": "          const turned = false;\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/mp4-facts.test.ts",
+      "pattern": "rotated"
+    }
+  ]
+}

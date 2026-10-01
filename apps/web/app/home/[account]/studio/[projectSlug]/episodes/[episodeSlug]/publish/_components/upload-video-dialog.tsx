@@ -7,6 +7,7 @@ import { useDropzone } from 'react-dropzone';
 
 import type { SupportedLanguage } from '@kit/publishing/lib/constants';
 import { LANG_INFO } from '@kit/publishing/lib/constants';
+import { takesVideo } from '@kit/publishing/lib/constants';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -80,8 +81,8 @@ export function UploadVideoDialog({
 
   const relevantChannels = channelsForLanguage.filter((c) =>
     uploadType === 'full'
-      ? ['youtube', 'facebook'].includes(c.platform)
-      : ['youtube', 'instagram', 'facebook', 'tiktok'].includes(c.platform),
+      ? takesVideo('full', c.platform)
+      : takesVideo('short', c.platform),
   );
 
   return (

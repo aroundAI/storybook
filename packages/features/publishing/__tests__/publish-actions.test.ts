@@ -175,6 +175,16 @@ vi.mock('../src/providers/twitter', () => ({
   })),
 }));
 
+// FILM-1729: the X video's header, within every limit X sets
+vi.mock('../src/lib/mp4-facts', () => ({
+  readMp4Facts: vi.fn(async () => ({
+    bytes: 5_000_000,
+    durationSeconds: 60,
+    width: 1920,
+    height: 1080,
+  })),
+}));
+
 vi.mock('../src/providers/linkedin', () => ({
   LinkedInProvider: vi.fn().mockImplementation(() => ({
     uploadVideo: providers.linkedinUpload,

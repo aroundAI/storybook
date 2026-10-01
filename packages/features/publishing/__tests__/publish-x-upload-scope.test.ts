@@ -33,6 +33,20 @@ vi.mock('../src/server/connection-tokens', () => ({
 
 const uploadVideo = vi.fn();
 
+// FILM-1729: the video's header, as the pre-flight reads it
+const videoFacts = vi.hoisted(() => ({
+  current: {
+    bytes: 5_000_000 as number | null,
+    durationSeconds: 45 as number | null,
+    width: 1080 as number | null,
+    height: 1920 as number | null,
+  },
+}));
+
+vi.mock('../src/lib/mp4-facts', () => ({
+  readMp4Facts: vi.fn(async () => videoFacts.current),
+}));
+
 vi.mock('../src/providers/twitter', () => ({
   TwitterProvider: vi.fn().mockImplementation(() => ({ uploadVideo })),
 }));
@@ -149,6 +163,12 @@ describe('publishing to an X connection without media.write (FILM-1729)', () => 
   beforeEach(() => {
     inserted.length = 0;
     updated.length = 0;
+    videoFacts.current = {
+      bytes: 5_000_000,
+      durationSeconds: 45,
+      width: 1080,
+      height: 1920,
+    };
     uploadVideo.mockReset();
     uploadVideo.mockResolvedValue({
       tweetId: 't1',
@@ -216,5 +236,88 @@ describe('publishing to an X connection without media.write (FILM-1729)', () => 
     expect(result.ok === false && result.error).toContain('media.write');
     expect(updated).toEqual([]);
     expect(uploadVideo).not.toHaveBeenCalled();
+  });
+});
+
+describe('publishing a video X would refuse (FILM-1729, owner 2026-10-01)', () => {
+  beforeEach(() => {
+    inserted.length = 0;
+    uploadVideo.mockReset();
+    uploadVideo.mockResolvedValue({ tweetId: 't1', tweetUrl: '' });
+    connection = {
+      id: CONNECTION,
+      platform: 'twitter',
+      platform_account_name: 'acme_on_x',
+      platform_account_id: 'x-1',
+      scopes: [...POSTING, 'media.write'],
+    };
+  });
+
+  it.each([
+    [
+      'longer than 20 minutes',
+      { bytes: 9e8, durationSeconds: 25 * 60, width: 1920, height: 1080 },
+      'it is 25 minutes long, and X takes at most 20 minutes',
+    ],
+    [
+      'shorter than half a second',
+      { bytes: 9e3, durationSeconds: 0.2, width: 720, height: 1280 },
+      'X needs at least 0.5 seconds',
+    ],
+    [
+      'wider than 3:1',
+      { bytes: 9e6, durationSeconds: 30, width: 2000, height: 500 },
+      'it is 2000×500, and X needs a shape between 1:3 (tall) and 3:1 (wide)',
+    ],
+    [
+      'not a readable MP4',
+      { bytes: 4096, durationSeconds: null, width: null, height: null },
+      "we couldn't read its length and shape",
+    ],
+  ])(
+    'is refused when %s, before anything is written',
+    async (_, facts, says) => {
+      videoFacts.current = facts;
+      const { publishToAllAction } = await import(
+        '../src/server/publish-actions'
+      );
+
+      const result = await publishToAllAction(publishToX);
+
+      expect(result.ok === false && result.error).toContain(says);
+      expect(inserted).toEqual([]);
+      expect(uploadVideo).not.toHaveBeenCalled();
+    },
+  );
+
+  it('is refused when the title is longer than an X post', async () => {
+    const { publishToAllAction } = await import(
+      '../src/server/publish-actions'
+    );
+
+    const result = await publishToAllAction({
+      ...publishToX,
+      platforms: [{ ...publishToX.platforms[0]!, title: 'a'.repeat(281) }],
+    });
+
+    expect(result.ok === false && result.error).toContain(
+      'its title is 281 characters, and an X post takes at most 280',
+    );
+    expect(inserted).toEqual([]);
+  });
+
+  it('goes ahead with a video inside every limit', async () => {
+    videoFacts.current = {
+      bytes: 5_000_000,
+      durationSeconds: 45,
+      width: 1080,
+      height: 1920,
+    };
+    const { publishToAllAction } = await import(
+      '../src/server/publish-actions'
+    );
+
+    expect((await publishToAllAction(publishToX)).ok).toBe(true);
+    expect(uploadVideo).toHaveBeenCalledTimes(1);
   });
 });

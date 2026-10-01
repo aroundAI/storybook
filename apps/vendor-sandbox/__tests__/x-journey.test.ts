@@ -155,7 +155,10 @@ describe('X, end to end through the app’s own clients', () => {
       description: 'Filmed on the last morning of the season.',
       metadata: {},
     } as unknown as PublishJobMessage;
-    const published = await uploadToTwitter(tokens.access_token, job);
+    const published = await uploadToTwitter(tokens.access_token, job, {
+      accountName: 'harbour_films',
+      scopes: tokens.scope.split(' '),
+    });
     expect(sandbox.social.hasObject('x', published.contentId)).toBe(true);
 
     await deleteFromTwitter(tokens.access_token, published.contentId);
@@ -196,13 +199,31 @@ describe('X, end to end through the app’s own clients', () => {
     const { uploadToTwitter } = await import(
       '../../web/lambda/publish-worker/handlers/twitter'
     );
+    const job = {
+      videoUrl,
+      title: 'Refused too',
+      description: '',
+      metadata: {},
+    } as unknown as PublishJobMessage;
+    const before = sandbox.state.ledger.list({ vendor: 'x' }).length;
+
+    // FILM-1729: the stored grant says so, and the worker stops before X
     await expect(
-      uploadToTwitter(narrow.access_token, {
-        videoUrl,
-        title: 'Refused too',
-        description: '',
-        metadata: {},
-      } as unknown as PublishJobMessage),
+      uploadToTwitter(narrow.access_token, job, {
+        accountName: 'harbour_films',
+        scopes: narrow.scope.split(' '),
+      }),
+    ).rejects.toThrow(
+      '@harbour_films was connected before X allowed us to upload video',
+    );
+    expect(sandbox.state.ledger.list({ vendor: 'x' })).toHaveLength(before);
+
+    // A grant that claims the scope the token lacks still reaches X's 403
+    await expect(
+      uploadToTwitter(narrow.access_token, job, {
+        accountName: 'harbour_films',
+        scopes: [...narrow.scope.split(' '), 'media.write'],
+      }),
     ).rejects.toThrow(/INIT failed: 403/);
   });
 
