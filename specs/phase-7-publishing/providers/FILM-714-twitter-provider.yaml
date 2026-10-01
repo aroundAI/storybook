@@ -62,7 +62,7 @@ acceptance_criteria:
     reason: "not met — no X metrics are read anywhere (`public_metrics` appears nowhere); needs a read scope/tier decision; FILM-1727 is DRAFT"
   - text: "Delete tweet functionality"
     met: true
-    evidence: "`apps/web/lambda/publish-worker/handlers/twitter.ts:182` (DELETE /2/tweets/:id, refuses an answer without `deleted: true`), wired in `apps/web/lambda/publish-worker/index.ts:255`, and X joins `PLATFORMS_DELETED_ON_UNPUBLISH` (`packages/features/publishing/src/lib/platforms.ts:39`); tests `apps/web/lambda/publish-worker/__tests__/twitter.test.ts:193`"
+    evidence: "`apps/web/lambda/publish-worker/handlers/twitter.ts:182` (DELETE /2/tweets/:id, refuses an answer without `deleted: true`), wired in `apps/web/lambda/publish-worker/index.ts:259`, and X joins `PLATFORMS_DELETED_ON_UNPUBLISH` (`packages/features/publishing/src/lib/platforms.ts:39`); tests `apps/web/lambda/publish-worker/__tests__/twitter.test.ts:193`"
   - text: "Video duration validation"
     met: false
     reason: "retired — owner decision 2026-09-30: the 140-second limit stays a declared constant; X rejects a too-long video itself"

@@ -74,7 +74,7 @@ acceptance_criteria:
     reason: "no longer true — `getPostMetrics` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:323`) has no caller; no LinkedIn metrics are read anywhere"
   - text: "Delete post functionality"
     met: false
-    reason: "no longer true — `deletePost` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:350`) has no caller; unpublish skips LinkedIn (`apps/web/lambda/publish-worker/index.ts:260-264`)"
+    reason: "no longer true — `deletePost` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:350`) has no caller; unpublish skips LinkedIn (`apps/web/lambda/publish-worker/index.ts:264-268`)"
   - text: "Video duration validation (10 min personal, 15 min company)"
     met: false
     reason: "retired — owner decision 2026-09-30: the limits stay declared constants; LinkedIn rejects a too-long video itself"
@@ -111,7 +111,7 @@ remaining:
     reason: "No product surface calls getPostMetrics (packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:319); the provider test covers it, but no LinkedIn metrics are read anywhere and the sandbox serves no LinkedIn analytics"
     closed_by: "unassigned"
   - criterion: "Delete post functionality"
-    reason: "No product surface calls deletePost; unpublish skips LinkedIn at the vendor (apps/web/lambda/publish-worker/index.ts:260-264). The sandbox journey calls it through the provider (apps/vendor-sandbox/__tests__/linkedin-journey.test.ts:227), which proves the provider, not a user path"
+    reason: "No product surface calls deletePost; unpublish skips LinkedIn at the vendor (apps/web/lambda/publish-worker/index.ts:264-268). The sandbox journey calls it through the provider (apps/vendor-sandbox/__tests__/linkedin-journey.test.ts:227), which proves the provider, not a user path"
     closed_by: "unassigned"
 open_questions: []
 notes: |

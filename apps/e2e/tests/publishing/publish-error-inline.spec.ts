@@ -178,6 +178,7 @@ test.describe('A refused platform says why, inline (FILM-1729)', () => {
       'data-error-code',
       'NO_REFRESH_TOKEN',
     );
+    await recorded.scrollIntoViewIfNeeded();
     await capture(page, '03-published-content-record');
   });
 });
