@@ -172,9 +172,7 @@ test.describe('Channel experiments (FILM-1724)', () => {
     const assign = byTest(page, 'ce-assign-form');
     await expect(byTest(assign, 'ce-assign-style')).toHaveText(/Mouth open/);
     await byTest(assign, 'ce-assign-video').click();
-    await expect(
-      page.locator(`[data-test="ce-assign-video-option-${old}"]`),
-    ).toHaveCount(0);
+    await expect(byTest(page, `ce-assign-video-option-${old}`)).toHaveCount(0);
     await page.keyboard.press('Escape');
 
     await po.assign(first);
@@ -292,7 +290,7 @@ test.describe('Channel experiments (FILM-1724)', () => {
     const scenario = await seedResultsScenario(page, po);
     const { open, closed } = scenario;
 
-    await expect(page.locator('[data-test="ce-evidence"]')).toHaveAttribute(
+    await expect(byTest(page, 'ce-evidence')).toHaveAttribute(
       'data-evidence',
       'association',
     );
@@ -359,7 +357,7 @@ test.describe('Channel experiments (FILM-1724)', () => {
       .fill('Closed mouths win at 7 days');
     await po.inDetail('ce-conclude-confirmed').click();
     await expect(po.inDetail('ce-status')).toHaveText('concluded');
-    await expect(page.locator('[data-test="ce-evidence"]')).toHaveAttribute(
+    await expect(byTest(page, 'ce-evidence')).toHaveAttribute(
       'data-evidence',
       'concluded_experiment',
     );

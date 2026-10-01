@@ -89,9 +89,7 @@ export class ChannelExperimentsPage {
   }
 
   async open(experimentId: string) {
-    await this.page
-      .locator(`[data-test="ce-row-${experimentId}"]:visible`)
-      .click();
+    await byTest(this.page, `ce-row-${experimentId}`).click();
     await expect(this.detail()).toBeVisible();
   }
 

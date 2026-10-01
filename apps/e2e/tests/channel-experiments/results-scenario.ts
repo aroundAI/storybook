@@ -8,6 +8,7 @@ import {
 } from '../utils/clickhouse';
 import type { SeededVideo } from '../utils/clickhouse';
 import { seedPublishedEpisode, seedPublishedVideos } from '../utils/seed';
+import { byTest } from '../utils/visible';
 import {
   ChannelExperimentsPage,
   daysAgoIso,
@@ -182,7 +183,5 @@ export function cell(
   styleId: string,
   part: string,
 ) {
-  return page.locator(
-    `[data-test="ce-cell-${measure}-${checkpoint}-${styleId}-${part}"]`,
-  );
+  return byTest(page, `ce-cell-${measure}-${checkpoint}-${styleId}-${part}`);
 }
