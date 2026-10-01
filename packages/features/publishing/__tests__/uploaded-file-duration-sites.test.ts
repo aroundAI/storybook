@@ -1,6 +1,5 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
-
 import { describe, expect, it } from 'vitest';
 
 /**
@@ -19,7 +18,8 @@ import { describe, expect, it } from 'vitest';
 const ROOT = resolve(__dirname, '../../../..');
 const SEARCHED = ['packages/features/publishing/src', 'apps/web/lambda'];
 
-const UPLOAD_WRITE = /platform_content_id:\s*(?:uploadResult|result)\.contentId/g;
+const UPLOAD_WRITE =
+  /platform_content_id:\s*(?:uploadResult|result)\.contentId/g;
 const RECORDED = /recordUploadedFileDuration\(/g;
 
 function sourceFiles(dir: string): string[] {

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Database } from '@kit/supabase/database';
@@ -53,7 +54,9 @@ const url = 'https://storage/episodes/ep/short.mp4';
 describe('recordUploadedFileDuration', () => {
   it('records the uploaded 45-second clip as 45, filling only a null', async () => {
     const { client, writes } = fakeClient();
-    const { fetcher } = serve(mp4({ seconds: 44.6, width: 1080, height: 1920 }));
+    const { fetcher } = serve(
+      mp4({ seconds: 44.6, width: 1080, height: 1920 }),
+    );
 
     expect(
       await recordUploadedFileDuration(client, instagram, url, fetcher),
