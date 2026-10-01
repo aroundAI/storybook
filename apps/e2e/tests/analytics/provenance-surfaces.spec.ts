@@ -229,8 +229,10 @@ test.describe('Provenance surfaces (FILM-1705)', () => {
     );
 
     // …and still selectable. Leave Instagram alone selected.
+    // Facebook is offered and selected by default since FILM-1720.
     await toggle(options, 'youtube');
     await toggle(options, 'tiktok');
+    await toggle(options, 'facebook');
     await expect(instagram.locator('button[role="checkbox"]')).toHaveAttribute(
       'data-state',
       'checked',

@@ -247,6 +247,22 @@ describe('the MetricCards', () => {
     ).toBe('Not yet supported');
   });
 
+  it('say views are not measured when no row behind the total has one', () => {
+    const { container } = render(
+      <MetricCards
+        data={{ ...totals, views: null }}
+        previousData={null}
+        isLoading={false}
+      />,
+    );
+    const views = container.querySelector('[data-test="metric-card-views"]')!;
+
+    expect(views.querySelector('[data-test="metric-value"]')).toBeNull();
+    expect(
+      views.querySelector('[data-test="metric-unmeasured"]')?.textContent,
+    ).toBe('Not measured');
+  });
+
   it('render without a chip on a page with no coverage provider', () => {
     const { container } = render(
       <MetricCards

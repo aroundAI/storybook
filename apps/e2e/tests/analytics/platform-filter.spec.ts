@@ -187,7 +187,14 @@ async function ticked(page: Page) {
   const options = await openFilter(page);
   const states: Record<string, string | null> = {};
 
-  for (const platform of ['youtube', 'tiktok', 'instagram'] as const) {
+  // Facebook is offered and selected by default since FILM-1720; the
+  // seeded project has nothing there, so it adds no figure.
+  for (const platform of [
+    'youtube',
+    'tiktok',
+    'instagram',
+    'facebook',
+  ] as const) {
     states[platform] = await byTest(options, `platform-filter-${platform}`)
       .locator('button[role="checkbox"]')
       .getAttribute('data-state');
@@ -214,24 +221,25 @@ test.describe('Platform filter completion (FILM-1709)', () => {
 
     for (const tab of ['audience', 'deep-dive', 'language', 'overview']) {
       await openTab(page, tab);
-      await expect(byTest(page, 'platform-filter-trigger')).toContainText('2');
+      await expect(byTest(page, 'platform-filter-trigger')).toContainText('3');
     }
 
     expect(await ticked(page)).toEqual({
       youtube: 'checked',
       tiktok: 'unchecked',
       instagram: 'checked',
+      facebook: 'checked',
     });
 
-    // The Deep Dive switcher shows the header's two, named — not the first.
+    // The Deep Dive switcher shows the header's three, named — not the first.
     await openTab(page, 'deep-dive');
 
     const switcher = byTest(page, 'deep-dive-platform-switcher');
 
-    await expect(switcher).toHaveText('YouTube + Instagram');
+    await expect(switcher).toHaveText('YouTube + Instagram + Facebook');
     await expect(switcher).toHaveAttribute(
       'data-selection',
-      'youtube,instagram',
+      'youtube,instagram,facebook',
     );
 
     // And sets it: TikTok alone, in the header too.
@@ -244,6 +252,7 @@ test.describe('Platform filter completion (FILM-1709)', () => {
       youtube: 'unchecked',
       tiktok: 'checked',
       instagram: 'unchecked',
+      facebook: 'unchecked',
     });
 
     // The second change, where state bugs hide: back to every platform.
@@ -357,7 +366,7 @@ test.describe('Platform filter completion, measured (FILM-1709)', () => {
 
     await openTab(page, 'deep-dive');
     await expect(byTest(page, 'deep-dive-platform-switcher')).toHaveText(
-      'YouTube + Instagram',
+      'YouTube + Instagram + Facebook',
     );
 
     // ── YouTube deselected instead: the audience splits move ──────────
@@ -426,7 +435,7 @@ test.describe('Platform filter completion, measured (FILM-1709)', () => {
 
       await openTab(page, 'deep-dive');
       await expect(byTest(page, 'deep-dive-platform-switcher')).toHaveText(
-        'YouTube + Instagram',
+        'YouTube + Instagram + Facebook',
       );
       await page.screenshot({
         path: `${OUT}/film-1709-deep-dive-two-platforms-${theme}.png`,
