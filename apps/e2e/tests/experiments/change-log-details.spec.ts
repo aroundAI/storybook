@@ -203,4 +203,33 @@ test.describe('Change log: signed out mid-session (round 5, H11)', () => {
     );
     expect(row!.status).toBe('planned');
   });
+
+  // KB-159. Reading the change back after the redirect queued more actions
+  // in front of the navigation, each redirected again, and on a slow server
+  // the sign-in page never arrived. Counted, not timed: the Start is the
+  // only action the page may send.
+  test('a start after the session ended sends no other action before sign-in', async ({
+    page,
+    context,
+  }) => {
+    const log = new ExperimentsPageObject(page);
+    const team = await log.setup();
+    const id = await seedExperiment(team.accountId, { title: 'Signed out' });
+    await log.goTo(team.slug);
+
+    await byTest(page, `experiment-row-${id}`).click();
+    await expect(
+      page.getByRole('button', { name: 'Start', exact: true }),
+    ).toBeEnabled();
+    await context.clearCookies();
+
+    const actions: string[] = [];
+    page.on('request', (request) => {
+      if (request.headers()['next-action']) actions.push(request.url());
+    });
+    await page.getByRole('button', { name: 'Start', exact: true }).click();
+
+    await expect(page).toHaveURL(/\/auth\/sign-in/);
+    expect(actions).toHaveLength(1);
+  });
 });
