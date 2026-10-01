@@ -230,6 +230,19 @@
       "cwd": "packages/features/publishing",
       "test": "__tests__/uploaded-file-duration-sites.test.ts",
       "pattern": "process-scheduled-publishes.ts records it once per upload"
+    },
+    {
+      "name": "Instagram E1 a sandbox Instagram publish records no duration",
+      "kind": "e2e",
+      "needs": "sandbox",
+      "file": "packages/features/publishing/src/jobs/process-scheduled-publishes.ts",
+      "find": "      await recordUploadedFileDuration(\n        () => client,\n        { id: publish.id, platform: publish.platform },\n        videoUrl,\n      );",
+      "replace": "",
+      "spec": "tests/publishing/sandbox-instagram-duration.spec.ts",
+      "grep": "a 45-second file published to Instagram reads 45 seconds",
+      "env": {
+        "SANDBOX_E2E": "1"
+      }
     }
   ]
 }
