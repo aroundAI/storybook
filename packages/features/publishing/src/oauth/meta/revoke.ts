@@ -1,11 +1,12 @@
 import 'server-only';
 
+import { metaFetch } from '@kit/shared/vendors';
+
 import {
   type RevokeOutcome,
   type RevokeTokens,
   requestRevocation,
 } from '../revoke-request';
-import { META_OAUTH_CONFIG } from './config';
 
 /**
  * Removes every permission the Facebook login granted the app. An Instagram
@@ -17,7 +18,8 @@ export function revokeMetaAccess({
   accessToken,
 }: RevokeTokens): Promise<RevokeOutcome> {
   return requestRevocation(
-    `${META_OAUTH_CONFIG.graphUrl}/me/permissions?access_token=${encodeURIComponent(accessToken)}`,
+    '/me/permissions',
     { method: 'DELETE' },
+    (path, init) => metaFetch(path, { ...init, token: accessToken }),
   );
 }

@@ -152,7 +152,7 @@ export const ANALYTICS_SCOPE_REQUIREMENTS: readonly AnalyticsScopeRequirement[] 
     {
       id: 'instagram.insights',
       platform: 'instagram',
-      // The Facebook Login triple (META_GRAPH_BASE, @kit/shared/vendors).
+      // The Facebook Login triple (Graph, called through metaFetch).
       // The Instagram Login path has a different vocabulary and host, and
       // is not the one in use.
       scopes: [

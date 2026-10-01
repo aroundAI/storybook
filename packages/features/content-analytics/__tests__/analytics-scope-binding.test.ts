@@ -90,20 +90,23 @@ function vendorCalls(): VendorCall[] {
     const platform = DIRECTORY_PLATFORM[directory] ?? `unmapped:${directory}`;
     const source = withoutComments(readFileSync(file, 'utf8'));
 
-    const fetches = [...source.matchAll(/\bfetch\(\s*/g)].map((match) => {
-      const start = match.index + match[0].length;
-      const url =
-        source[start] === '`'
-          ? source.slice(start + 1, source.indexOf('`', start + 1))
-          : '';
+    // Meta's calls go through `metaFetch('/path', …)` (FILM-1728).
+    const fetches = [...source.matchAll(/\b(?:fetch|metaFetch)\(\s*/g)].map(
+      (match) => {
+        const start = match.index + match[0].length;
+        const url =
+          source[start] === '`'
+            ? source.slice(start + 1, source.indexOf('`', start + 1))
+            : '';
 
-      return {
-        file: path,
-        line: lineOf(source, match.index),
-        platform,
-        text: url,
-      };
-    });
+        return {
+          file: path,
+          line: lineOf(source, match.index),
+          platform,
+          text: url,
+        };
+      },
+    );
 
     const clients = [
       ...source.matchAll(/\bthis\.(\w+\.(?:\w+\.)*\w+)\(/g),

@@ -64,9 +64,10 @@ export const REVOKE_TIMEOUT_MS = 10_000;
 export async function requestRevocation(
   url: string,
   init: RequestInit,
+  send: (url: string, init: RequestInit) => Promise<Response> = fetch,
 ): Promise<RevokeOutcome> {
   try {
-    const response = await fetch(url, {
+    const response = await send(url, {
       ...init,
       signal: AbortSignal.timeout(REVOKE_TIMEOUT_MS),
     });

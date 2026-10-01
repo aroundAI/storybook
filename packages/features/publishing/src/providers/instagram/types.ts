@@ -17,6 +17,10 @@ export const INSTAGRAM_CONSTRAINTS = {
   maxPollingAttempts: 60,
   /** Polling interval in milliseconds */
   pollingIntervalMs: 5000,
+  /** Reads of a just-published Reel before giving up on its permalink */
+  permalinkAttempts: 10,
+  /** Wait between those reads */
+  permalinkIntervalMs: 2000,
 } as const;
 
 /**

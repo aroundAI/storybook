@@ -1,4 +1,4 @@
-import { META_GRAPH_BASE } from '@kit/shared/vendors';
+import { metaFetch } from '@kit/shared/vendors';
 
 import type {
   InstagramAccount,
@@ -8,8 +8,6 @@ import type {
   InstagramUploadResult,
 } from './types';
 import { INSTAGRAM_CONSTRAINTS } from './types';
-
-const GRAPH_API_BASE = META_GRAPH_BASE;
 
 /**
  * Instagram Provider
@@ -75,13 +73,13 @@ export class InstagramProvider {
     const mediaId = await this.publishContainer(container.id);
 
     // 4. Get permalink
-    const media = await this.getMedia(mediaId);
+    const permalink = await this.getPermalink(mediaId);
 
     return {
       mediaId,
       containerId: container.id,
       status: 'FINISHED',
-      permalink: media.permalink,
+      permalink,
     };
   }
 
@@ -96,7 +94,6 @@ export class InstagramProvider {
       video_url: input.videoUrl,
       caption: input.caption,
       share_to_feed: input.shareToFeed.toString(),
-      access_token: this.accessToken,
     });
 
     if (input.coverUrl) {
@@ -111,9 +108,9 @@ export class InstagramProvider {
       params.set('collaborators', input.collaborators.join(','));
     }
 
-    const response = await fetch(
-      `${GRAPH_API_BASE}/${this.instagramAccountId}/media?${params}`,
-      { method: 'POST' },
+    const response = await metaFetch(
+      `/${this.instagramAccountId}/media?${params}`,
+      { method: 'POST', token: this.accessToken },
     );
 
     const data = await response.json();
@@ -133,8 +130,9 @@ export class InstagramProvider {
   private async getContainerStatus(
     containerId: string,
   ): Promise<InstagramContainerStatus> {
-    const response = await fetch(
-      `${GRAPH_API_BASE}/${containerId}?fields=status_code,status&access_token=${this.accessToken}`,
+    const response = await metaFetch(
+      `/${containerId}?fields=status_code,status`,
+      { token: this.accessToken },
     );
 
     const data = await response.json();
@@ -156,15 +154,13 @@ export class InstagramProvider {
    * Publishes a ready container
    */
   private async publishContainer(containerId: string): Promise<string> {
-    const response = await fetch(
-      `${GRAPH_API_BASE}/${this.instagramAccountId}/media_publish`,
+    const response = await metaFetch(
+      `/${this.instagramAccountId}/media_publish`,
       {
         method: 'POST',
+        token: this.accessToken,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          creation_id: containerId,
-          access_token: this.accessToken,
-        }),
+        body: JSON.stringify({ creation_id: containerId }),
       },
     );
 
@@ -178,28 +174,50 @@ export class InstagramProvider {
   }
 
   /**
-   * Gets media details
+   * The published Reel's link. Meta can answer the publish before the media
+   * node has a permalink, so this asks again, briefly; a shortcode is enough
+   * to build the link. Undefined when neither arrives: the caller decides
+   * whether a post without a link is a failure, never a made-up URL.
    */
-  private async getMedia(mediaId: string): Promise<{ permalink: string }> {
-    const response = await fetch(
-      `${GRAPH_API_BASE}/${mediaId}?fields=permalink&access_token=${this.accessToken}`,
-    );
+  private async getPermalink(mediaId: string): Promise<string | undefined> {
+    for (
+      let attempt = 0;
+      attempt < INSTAGRAM_CONSTRAINTS.permalinkAttempts;
+      attempt++
+    ) {
+      if (attempt > 0) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, INSTAGRAM_CONSTRAINTS.permalinkIntervalMs),
+        );
+      }
 
-    const data = await response.json();
+      const response = await metaFetch(
+        `/${mediaId}?fields=permalink,shortcode`,
+        { token: this.accessToken },
+      );
 
-    if (data.error) {
-      throw new Error(`Failed to get media details: ${data.error.message}`);
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(`Failed to get media details: ${data.error.message}`);
+      }
+
+      if (data.permalink) return data.permalink as string;
+      if (data.shortcode) {
+        return `https://www.instagram.com/reel/${data.shortcode}/`;
+      }
     }
 
-    return { permalink: data.permalink };
+    return undefined;
   }
 
   /**
    * Gets connected Instagram account info
    */
   async getAccount(): Promise<InstagramAccount> {
-    const response = await fetch(
-      `${GRAPH_API_BASE}/${this.instagramAccountId}?fields=username,name,profile_picture_url,followers_count&access_token=${this.accessToken}`,
+    const response = await metaFetch(
+      `/${this.instagramAccountId}?fields=username,name,profile_picture_url,followers_count`,
+      { token: this.accessToken },
     );
 
     const data = await response.json();
@@ -221,8 +239,9 @@ export class InstagramProvider {
    * Searches for locations (Facebook Places)
    */
   async searchLocations(query: string): Promise<InstagramLocation[]> {
-    const response = await fetch(
-      `${GRAPH_API_BASE}/pages/search?q=${encodeURIComponent(query)}&fields=id,name,location&access_token=${this.accessToken}`,
+    const response = await metaFetch(
+      `/pages/search?q=${encodeURIComponent(query)}&fields=id,name,location`,
+      { token: this.accessToken },
     );
 
     const data = await response.json();

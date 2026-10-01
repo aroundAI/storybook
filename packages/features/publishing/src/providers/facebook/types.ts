@@ -2,8 +2,6 @@
  * Facebook Provider Types
  * Types for Facebook video upload and Page management
  */
-import { META_GRAPH_BASE, META_GRAPH_VERSION } from '@kit/shared/vendors';
-
 export interface FacebookUploadInput {
   /** Local file path or URL to the video */
   videoPath: string;
@@ -13,6 +11,13 @@ export interface FacebookUploadInput {
   description: string;
   /** Upload as Reel (true) or regular video (false) */
   isReel: boolean;
+  /**
+   * `videoPath` is a public URL and Meta fetches it (`file_url`) in one
+   * non-resumable call, whatever its size: the publish lambda's path, which
+   * never holds the file. Without it, a URL is measured first and anything
+   * over 1GB is streamed through this process in chunks.
+   */
+  fetchFromUrl?: boolean;
   /** Local file path or URL to custom thumbnail */
   thumbnailPath?: string;
   /** Publish immediately (true) or save as draft (false) */
@@ -84,10 +89,3 @@ export const FACEBOOK_CONSTRAINTS = {
   /** Recommended chunk size for resumable upload (based on server suggestion) */
   defaultChunkSizeBytes: 64 * 1024 * 1024,
 } as const;
-
-/**
- * Aliases of the single Graph pin in `@kit/shared/vendors`, kept because they
- * are part of this package's public exports.
- */
-export const FACEBOOK_API_VERSION = META_GRAPH_VERSION;
-export const FACEBOOK_GRAPH_API_BASE = META_GRAPH_BASE;

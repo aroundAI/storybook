@@ -395,6 +395,14 @@ export default defineConfig({
         __dirname,
         '../../packages/features/publishing/src/oauth/meta/index.ts',
       ),
+      '@kit/publishing/providers/facebook': path.resolve(
+        __dirname,
+        '../../packages/features/publishing/src/providers/facebook/index.ts',
+      ),
+      '@kit/publishing/providers/instagram': path.resolve(
+        __dirname,
+        '../../packages/features/publishing/src/providers/instagram/index.ts',
+      ),
       '@kit/publishing/oauth/tiktok': path.resolve(
         __dirname,
         '../../packages/features/publishing/src/oauth/tiktok/index.ts',

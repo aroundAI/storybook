@@ -76,8 +76,9 @@ const FORBIDDEN = forbiddenNames();
  */
 const PROVIDERS = 'packages/features/content-analytics/src/providers';
 
-// Up to the next `fetch(`, so a pattern cannot borrow another call's literal.
-const WITHIN_CALL = String.raw`(?:(?!fetch\()[\s\S])*?`;
+// Up to the next `fetch(` or `metaFetch(`, so a pattern cannot borrow
+// another call's literal.
+const WITHIN_CALL = String.raw`(?:(?![fF]etch\()[\s\S])*?`;
 const LITERAL = String.raw`('[^']*'|"[^"]*")`;
 
 const REQUEST_SITES: Array<{

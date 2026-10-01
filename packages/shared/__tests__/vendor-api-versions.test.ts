@@ -106,6 +106,27 @@ const VERSION_RULES: Rule[] = [
     use: 'META_GRAPH_VERSION',
   },
   {
+    // FILM-1728 §7.3.A. With the hosts already confined to this directory,
+    // these constants are the only way to build a Graph URL, so a caller that
+    // names one is a bare fetch( of Meta that skips the served-version check.
+    name: 'Meta Graph URL outside metaFetch',
+    pattern: /\bMETA_(?:GRAPH_BASE|GRAPH_VIDEO_BASE|OAUTH_TOKEN_URL)\b/,
+    skipTests: true,
+    use: "metaFetch('/path', { token })",
+  },
+  {
+    // FILM-1728 §7.4. A token in a URL reaches logs and proxies; metaFetch
+    // sends it as Authorization: Bearer.
+    name: 'Meta access token in a URL or body',
+    pattern:
+      /access_token=|\baccess_token['"]?\s*:\s*(?:this\.)?\w*[tT]oken\b|append\(\s*['"]access_token['"]/,
+    // The sandbox serves tokens in its responses; it does not send them.
+    appliesTo:
+      /^(?!apps\/vendor-sandbox\/).*(?:meta|facebook|instagram|token-refresh)/i,
+    skipTests: true,
+    use: "metaFetch's token option, which sends Authorization: Bearer,",
+  },
+  {
     name: 'X API host',
     pattern: /(?:api|upload)\.(?:twitter|x)\.com/,
     use: 'X_API_BASE',

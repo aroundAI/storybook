@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { parseMetaGrantedPermissions } from '@kit/publishing/oauth/analytics-scopes';
-import { META_OAUTH_CONFIG, MetaOAuthState } from '@kit/publishing/oauth/meta';
+import type { MetaOAuthState } from '@kit/publishing/oauth/meta';
 import { getOAuthAppCredentials } from '@kit/publishing/server/oauth-app-credentials';
 import { encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
+import { metaFetch } from '@kit/shared/vendors';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { accountIdFromUnverifiedState } from '~/lib/platforms/connect-failure';
@@ -114,16 +115,14 @@ async function handleCallback(request: NextRequest) {
   }
 
   // Exchange code for short-lived token
-  const tokenUrl = new URL(META_OAUTH_CONFIG.tokenUrl);
-  tokenUrl.searchParams.set('client_id', credentials.clientId);
-  tokenUrl.searchParams.set('client_secret', credentials.clientSecret);
-  tokenUrl.searchParams.set(
-    'redirect_uri',
-    `${appUrl}/api/platforms/callback/meta`,
-  );
-  tokenUrl.searchParams.set('code', code);
+  const tokenQuery = new URLSearchParams({
+    client_id: credentials.clientId,
+    client_secret: credentials.clientSecret,
+    redirect_uri: `${appUrl}/api/platforms/callback/meta`,
+    code,
+  });
 
-  const tokenResponse = await fetch(tokenUrl.toString());
+  const tokenResponse = await metaFetch(`/oauth/access_token?${tokenQuery}`);
   const shortLivedToken = await tokenResponse.json();
 
   if (shortLivedToken.error || !shortLivedToken.access_token) {
@@ -139,18 +138,16 @@ async function handleCallback(request: NextRequest) {
   }
 
   // Exchange for long-lived token
-  const longLivedUrl = new URL(
-    `${META_OAUTH_CONFIG.graphUrl}/oauth/access_token`,
-  );
-  longLivedUrl.searchParams.set('grant_type', 'fb_exchange_token');
-  longLivedUrl.searchParams.set('client_id', credentials.clientId);
-  longLivedUrl.searchParams.set('client_secret', credentials.clientSecret);
-  longLivedUrl.searchParams.set(
-    'fb_exchange_token',
-    shortLivedToken.access_token,
-  );
+  const longLivedQuery = new URLSearchParams({
+    grant_type: 'fb_exchange_token',
+    client_id: credentials.clientId,
+    client_secret: credentials.clientSecret,
+    fb_exchange_token: shortLivedToken.access_token,
+  });
 
-  const longLivedResponse = await fetch(longLivedUrl.toString());
+  const longLivedResponse = await metaFetch(
+    `/oauth/access_token?${longLivedQuery}`,
+  );
   const longLivedToken = await longLivedResponse.json();
 
   if (longLivedToken.error || !longLivedToken.access_token) {
@@ -171,14 +168,10 @@ async function handleCallback(request: NextRequest) {
   );
 
   // Get user's Pages with Instagram accounts
-  const pagesUrl = new URL(`${META_OAUTH_CONFIG.graphUrl}/me/accounts`);
-  pagesUrl.searchParams.set('access_token', userAccessToken);
-  pagesUrl.searchParams.set(
-    'fields',
-    'id,name,access_token,category,picture,instagram_business_account',
+  const pagesResponse = await metaFetch(
+    '/me/accounts?fields=id,name,access_token,category,picture,instagram_business_account',
+    { token: userAccessToken },
   );
-
-  const pagesResponse = await fetch(pagesUrl.toString());
   const pagesData = await pagesResponse.json();
 
   if (pagesData.error) {
@@ -202,12 +195,9 @@ async function handleCallback(request: NextRequest) {
   // `/me/permissions` lists declined and expired permissions beside granted
   // ones. `[]` when the lookup fails, which reads as "no recorded grant"
   // rather than as a grant of everything we asked for.
-  const permissionsUrl = new URL(
-    `${META_OAUTH_CONFIG.graphUrl}/me/permissions`,
-  );
-  permissionsUrl.searchParams.set('access_token', userAccessToken);
-
-  const grantedScopes = await fetch(permissionsUrl.toString())
+  const grantedScopes = await metaFetch('/me/permissions', {
+    token: userAccessToken,
+  })
     .then((response) => response.json())
     .then(parseMetaGrantedPermissions)
     .catch(() => []);
@@ -266,15 +256,11 @@ async function handleCallback(request: NextRequest) {
         const igAccountId = page.instagram_business_account.id;
 
         // Get Instagram account details
-        const igUrl = new URL(`${META_OAUTH_CONFIG.graphUrl}/${igAccountId}`);
-        igUrl.searchParams.set('access_token', page.access_token);
-        igUrl.searchParams.set(
-          'fields',
-          'username,name,profile_picture_url,followers_count',
-        );
-
         try {
-          const igResponse = await fetch(igUrl.toString());
+          const igResponse = await metaFetch(
+            `/${igAccountId}?fields=username,name,profile_picture_url,followers_count`,
+            { token: page.access_token },
+          );
           const igAccount: InstagramAccountResponse = await igResponse.json();
 
           if (igAccount.id) {

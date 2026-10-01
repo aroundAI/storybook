@@ -1,0 +1,65 @@
+{
+  "feature": "FILM-1728",
+  "mutations": [
+    {
+      "name": "metaFetch stops reading the served version",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/meta-fetch.ts",
+      "find": "  reportServedVersion(response.headers, `${init.method ?? 'GET'} ${path}`);\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/meta-fetch.test.ts",
+      "pattern": "reports a served version that is not the pin"
+    },
+    {
+      "name": "metaFetch puts the token back in the URL",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/meta-fetch.ts",
+      "find": "  if (token) sent.set('Authorization', `Bearer ${token}`);",
+      "replace": "  if (token) path = `${path}${path.includes('?') ? '&' : '?'}access_token=${token}`;",
+      "cwd": "packages/shared",
+      "test": "__tests__/meta-fetch.test.ts",
+      "pattern": "sends the token as Authorization"
+    },
+    {
+      "name": "A lambda calls Graph with a bare fetch, past metaFetch",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/handlers/facebook.ts",
+      "find": "  await new FacebookProvider(accessToken, '').deleteVideo(videoId);",
+      "replace": "  const { META_GRAPH_BASE } = await import('@kit/shared/vendors');\n  await fetch(`${META_GRAPH_BASE}/${videoId}`, { method: 'DELETE' });",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "no vendor host or version literal"
+    },
+    {
+      "name": "A provider puts a Meta token in a URL again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/providers/instagram/instagram-provider.ts",
+      "find": "      `/${this.instagramAccountId}?fields=username,name,profile_picture_url,followers_count`,",
+      "replace": "      `/${this.instagramAccountId}?fields=username,name,profile_picture_url,followers_count&access_token=${this.accessToken}`,",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "no vendor host or version literal"
+    },
+    {
+      "name": "The Instagram lambda publishes past a failed container",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/handlers/instagram.ts",
+      "find": "  if (result.status !== 'FINISHED') {",
+      "replace": "  if (result.status === 'IN_PROGRESS') {",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/meta-handlers.test.ts",
+      "pattern": "fails the job when Meta reports the container failed"
+    },
+    {
+      "name": "The publish lambda bundle carries a second Graph version",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/handlers/instagram.ts",
+      "find": "  if (result.status !== 'FINISHED') {",
+      "replace": "  console.log('[Instagram] legacy graph', 'v19.0');\n  if (result.status !== 'FINISHED') {",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/meta-bundle.test.ts",
+      "pattern": "carries exactly one Graph version literal"
+    }
+  ]
+}

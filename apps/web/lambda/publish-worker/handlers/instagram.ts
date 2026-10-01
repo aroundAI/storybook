@@ -1,14 +1,16 @@
 /**
- * Instagram Upload Handler (via Meta Graph API)
+ * Instagram Upload Handler: glue over `InstagramProvider` (FILM-1728 §7.3.C).
+ * The container → poll → publish → permalink flow, and every Graph call, live
+ * in the provider, so a field that changes in a future Graph version is fixed
+ * once.
  */
 import type { PublishJobMessage } from '@kit/publishing/lib/job-types';
-import { META_GRAPH_BASE } from '@kit/shared/vendors';
+import { InstagramProvider } from '@kit/publishing/providers/instagram';
 
 export async function uploadToInstagram(
   accessToken: string,
   job: PublishJobMessage,
 ): Promise<{ contentId: string; url: string }> {
-  // Get Instagram account ID from metadata
   const accountId = job.metadata.accountId as string;
   if (!accountId) {
     throw new Error('Instagram account ID not provided in metadata');
@@ -16,141 +18,28 @@ export async function uploadToInstagram(
 
   console.log(`[Instagram] Starting video upload to account ${accountId}...`);
 
-  // Step 1: Create container for video
-  const containerResponse = await fetch(
-    `${META_GRAPH_BASE}/${accountId}/media`,
+  const result = await new InstagramProvider(accessToken, accountId).uploadReel(
     {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        access_token: accessToken,
-        media_type: 'REELS',
-        video_url: job.videoUrl,
-        caption: `${job.title}\n\n${job.description}`,
-        share_to_feed: true,
-        // Thumbnails removed as per request
-        // ...(job.thumbnailUrl && { cover_url: job.thumbnailUrl }),
-      }),
+      videoUrl: job.videoUrl,
+      caption: `${job.title}\n\n${job.description}`,
+      shareToFeed: true,
     },
   );
 
-  if (!containerResponse.ok) {
-    const error = await containerResponse.text();
-    throw new Error(`Instagram container creation failed: ${error}`);
-  }
-
-  const containerData = await containerResponse.json();
-  const containerId = containerData.id;
-
-  if (!containerId) {
-    throw new Error('Failed to get container ID from Instagram');
-  }
-
-  console.log(`[Instagram] Container created: ${containerId}`);
-
-  // Step 2: Poll for container to be ready
-  const maxAttempts = 60;
-  const pollInterval = 5000;
-
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    await new Promise((resolve) => setTimeout(resolve, pollInterval));
-
-    const statusResponse = await fetch(
-      `${META_GRAPH_BASE}/${containerId}?fields=status_code&access_token=${accessToken}`,
-    );
-
-    if (!statusResponse.ok) {
-      console.warn(`[Instagram] Status check failed, retrying...`);
-      continue;
-    }
-
-    const statusData = await statusResponse.json();
-    const status = statusData.status_code;
-
-    if (status === 'FINISHED') {
-      break;
-    }
-
-    if (status === 'ERROR') {
-      throw new Error('Instagram video processing failed');
-    }
-
-    console.log(
-      `[Instagram] Processing status: ${status} (attempt ${attempt + 1}/${maxAttempts})`,
+  if (result.status !== 'FINISHED') {
+    throw new Error(
+      `Instagram video processing failed: ${result.errorMessage ?? result.status}`,
     );
   }
 
-  // Step 3: Publish the container
-  const publishResponse = await fetch(
-    `${META_GRAPH_BASE}/${accountId}/media_publish`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        access_token: accessToken,
-        creation_id: containerId,
-      }),
-    },
-  );
+  console.log(`[Instagram] Published: ${result.mediaId}`);
 
-  if (!publishResponse.ok) {
-    const error = await publishResponse.text();
-    throw new Error(`Instagram publish failed: ${error}`);
+  // A post without a link is a failure, never a made-up URL.
+  if (!result.permalink) {
+    throw new Error(
+      `Instagram published (ID: ${result.mediaId}) but failed to retrieve a valid permalink.`,
+    );
   }
 
-  const publishData = await publishResponse.json();
-  const mediaId = publishData.id;
-
-  console.log(`[Instagram] Published: ${mediaId}`);
-
-  // Step 4: Robust Polling for Permalink
-  // We poll until the permalink is available or timeout.
-  // Guaranteed "tight" system: No fallback to broken links.
-  const permalinkAttempts = 10;
-  const permalinkInterval = 2000; // 2 seconds
-
-  for (let i = 0; i < permalinkAttempts; i++) {
-    await new Promise((resolve) => setTimeout(resolve, permalinkInterval));
-
-    try {
-      const detailsResponse = await fetch(
-        `${META_GRAPH_BASE}/${mediaId}?fields=shortcode,permalink&access_token=${accessToken}`,
-      );
-
-      if (detailsResponse.ok) {
-        const details = await detailsResponse.json();
-
-        // Return immediately if we have the permalink (Preferred)
-        if (details.permalink) {
-          return {
-            contentId: mediaId,
-            url: details.permalink,
-          };
-        }
-
-        // Or if we have a shortcode (acceptable alternative)
-        if (details.shortcode) {
-          return {
-            contentId: mediaId,
-            url: `https://www.instagram.com/reel/${details.shortcode}/`,
-          };
-        }
-      }
-    } catch (err) {
-      console.warn(
-        `[Instagram] Error polling for details (attempt ${i + 1}/${permalinkAttempts}):`,
-        err,
-      );
-    }
-  }
-
-  // If we reach here, we failed to get a valid link.
-  // Throw error to mark job as failed/warning rather than storing bad data.
-  throw new Error(
-    `Instagram published (ID: ${mediaId}) but failed to retrieve valid permalink after ${permalinkAttempts} attempts.`,
-  );
+  return { contentId: result.mediaId, url: result.permalink };
 }

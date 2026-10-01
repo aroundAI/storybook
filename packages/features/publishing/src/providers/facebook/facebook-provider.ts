@@ -1,5 +1,7 @@
 import { promises as fsPromises } from 'fs';
 
+import { metaFetch } from '@kit/shared/vendors';
+
 import type {
   FacebookPage,
   FacebookResumableSession,
@@ -7,7 +9,7 @@ import type {
   FacebookUploadProgress,
   FacebookUploadResult,
 } from './types';
-import { FACEBOOK_CONSTRAINTS, FACEBOOK_GRAPH_API_BASE } from './types';
+import { FACEBOOK_CONSTRAINTS } from './types';
 
 /**
  * Facebook Provider
@@ -32,6 +34,10 @@ export class FacebookProvider {
     // Reels use a different API endpoint with required 3-phase upload
     if (input.isReel) {
       return this.uploadReel(input, onProgress);
+    }
+
+    if (input.fetchFromUrl) {
+      return this.simpleUpload(input, onProgress);
     }
 
     const fileSize = await this.getFileSize(input.videoPath);
@@ -60,19 +66,17 @@ export class FacebookProvider {
     input: FacebookUploadInput,
     onProgress?: FacebookUploadProgress,
   ): Promise<FacebookUploadResult> {
-    const endpoint = `${FACEBOOK_GRAPH_API_BASE}/${this.pageId}/video_reels`;
+    const endpoint = `/${this.pageId}/video_reels`;
 
     // Phase 1: Initialize upload session
-    const startResponse = await fetch(
-      `${endpoint}?access_token=${this.accessToken}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          upload_phase: 'start',
-        }),
-      },
-    );
+    const startResponse = await metaFetch(endpoint, {
+      method: 'POST',
+      token: this.accessToken,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        upload_phase: 'start',
+      }),
+    });
 
     if (!startResponse.ok) {
       const errorText = await startResponse.text();
@@ -119,20 +123,18 @@ export class FacebookProvider {
     onProgress?.(70);
 
     // Phase 3: Publish the Reel (finish)
-    const finishResponse = await fetch(
-      `${endpoint}?access_token=${this.accessToken}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          upload_phase: 'finish',
-          video_id: videoId,
-          title: input.title,
-          description: input.description,
-          video_state: 'PUBLISHED',
-        }),
-      },
-    );
+    const finishResponse = await metaFetch(endpoint, {
+      method: 'POST',
+      token: this.accessToken,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        upload_phase: 'finish',
+        video_id: videoId,
+        title: input.title,
+        description: input.description,
+        video_state: 'PUBLISHED',
+      }),
+    });
 
     if (!finishResponse.ok) {
       const errorText = await finishResponse.text();
@@ -157,8 +159,9 @@ export class FacebookProvider {
   }
 
   /**
-   * Simple upload for videos < 1GB
-   * Uses a single POST request with FormData
+   * Non-resumable upload: one POST to graph-video with FormData. Used for a
+   * file under 1GB, and for any size when `fetchFromUrl` is set, since Meta
+   * then fetches the file itself and nothing passes through this process.
    */
   private async simpleUpload(
     input: FacebookUploadInput,
@@ -188,9 +191,11 @@ export class FacebookProvider {
       );
     }
 
-    // Add thumbnail if provided (URL only for simple upload)
+    // `thumb` is a file, not a URL: download it and attach the bytes. A
+    // thumbnail that cannot be fetched does not stop the video.
     if (input.thumbnailPath?.startsWith('http')) {
-      formData.append('thumb', input.thumbnailPath);
+      const thumb = await this.downloadThumbnail(input.thumbnailPath);
+      if (thumb) formData.append('thumb', thumb, 'thumbnail.jpg');
     }
 
     // Add targeting if provided
@@ -212,18 +217,12 @@ export class FacebookProvider {
       }
     }
 
-    // Select endpoint based on content type
-    const endpoint = input.isReel
-      ? `${FACEBOOK_GRAPH_API_BASE}/${this.pageId}/video_reels`
-      : `${FACEBOOK_GRAPH_API_BASE}/${this.pageId}/videos`;
-
-    const response = await fetch(
-      `${endpoint}?access_token=${this.accessToken}`,
-      {
-        method: 'POST',
-        body: formData,
-      },
-    );
+    const response = await metaFetch(`/${this.pageId}/videos`, {
+      method: 'POST',
+      token: this.accessToken,
+      host: 'video',
+      body: formData,
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -306,17 +305,15 @@ export class FacebookProvider {
   private async startResumableSession(
     fileSize: number,
   ): Promise<FacebookResumableSession> {
-    const response = await fetch(
-      `${FACEBOOK_GRAPH_API_BASE}/${this.pageId}/videos?access_token=${this.accessToken}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          upload_phase: 'start',
-          file_size: fileSize,
-        }),
-      },
-    );
+    const response = await metaFetch(`/${this.pageId}/videos`, {
+      method: 'POST',
+      token: this.accessToken,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        upload_phase: 'start',
+        file_size: fileSize,
+      }),
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -347,19 +344,17 @@ export class FacebookProvider {
     chunk: Buffer,
     startOffset: number,
   ): Promise<{ startOffset: number; endOffset: number }> {
-    const response = await fetch(
-      `${FACEBOOK_GRAPH_API_BASE}/${this.pageId}/videos?access_token=${this.accessToken}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          upload_phase: 'transfer',
-          upload_session_id: uploadSessionId,
-          start_offset: startOffset,
-          video_file_chunk: chunk.toString('base64'),
-        }),
-      },
-    );
+    const response = await metaFetch(`/${this.pageId}/videos`, {
+      method: 'POST',
+      token: this.accessToken,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        upload_phase: 'transfer',
+        upload_session_id: uploadSessionId,
+        start_offset: startOffset,
+        video_file_chunk: chunk.toString('base64'),
+      }),
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -407,14 +402,12 @@ export class FacebookProvider {
       finishData.thumb = input.thumbnailPath;
     }
 
-    const response = await fetch(
-      `${FACEBOOK_GRAPH_API_BASE}/${this.pageId}/videos?access_token=${this.accessToken}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(finishData),
-      },
-    );
+    const response = await metaFetch(`/${this.pageId}/videos`, {
+      method: 'POST',
+      token: this.accessToken,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(finishData),
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -441,8 +434,9 @@ export class FacebookProvider {
    * Gets the processing status of a video
    */
   async getVideoStatus(videoId: string): Promise<FacebookUploadResult> {
-    const response = await fetch(
-      `${FACEBOOK_GRAPH_API_BASE}/${videoId}?fields=status,permalink_url&access_token=${this.accessToken}`,
+    const response = await metaFetch(
+      `/${videoId}?fields=status,permalink_url`,
+      { token: this.accessToken },
     );
 
     if (!response.ok) {
@@ -475,8 +469,9 @@ export class FacebookProvider {
    * Note: This uses the user access token, not page access token
    */
   async getPages(userAccessToken: string): Promise<FacebookPage[]> {
-    const response = await fetch(
-      `${FACEBOOK_GRAPH_API_BASE}/me/accounts?fields=id,name,picture,fan_count,access_token&access_token=${userAccessToken}`,
+    const response = await metaFetch(
+      '/me/accounts?fields=id,name,picture,fan_count,access_token',
+      { token: userAccessToken },
     );
 
     if (!response.ok) {
@@ -526,10 +521,10 @@ export class FacebookProvider {
    * Note: This permanently deletes the video and cannot be undone
    */
   async deleteVideo(videoId: string): Promise<void> {
-    const response = await fetch(
-      `${FACEBOOK_GRAPH_API_BASE}/${videoId}?access_token=${this.accessToken}`,
-      { method: 'DELETE' },
-    );
+    const response = await metaFetch(`/${videoId}`, {
+      method: 'DELETE',
+      token: this.accessToken,
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -542,6 +537,20 @@ export class FacebookProvider {
     if (data.error) {
       throw new Error(`Facebook delete failed: ${data.error.message}`);
     }
+  }
+
+  /** The thumbnail's bytes, or null (logged) when it cannot be fetched. */
+  private async downloadThumbnail(url: string): Promise<Blob | null> {
+    try {
+      const response = await fetch(url);
+      if (response.ok) return await response.blob();
+      console.warn(
+        `[Facebook] Failed to download thumbnail: ${response.status} ${response.statusText}`,
+      );
+    } catch (error) {
+      console.warn('[Facebook] Error downloading thumbnail:', error);
+    }
+    return null;
   }
 
   /**
