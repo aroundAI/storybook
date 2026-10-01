@@ -150,8 +150,9 @@ describe('attributes flow through the existing tag store, with no ClickHouse mig
       join(REPO, 'packages/clickhouse/src/migrations'),
     ).filter((name) => /^\d{3}_/.test(name));
 
-    // 018 was the last before FILM-1717; the genome must not add one.
-    expect(clickhouse.sort().at(-1)).toBe('018_reposts.ts');
+    // 019 (FILM-1722, #492) was the last before FILM-1717; the genome must
+    // not add one.
+    expect(clickhouse.sort().at(-1)).toBe('019_all_surface_aggregates.ts');
   });
 });
 
