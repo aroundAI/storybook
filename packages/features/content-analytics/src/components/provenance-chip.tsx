@@ -84,7 +84,9 @@ function nothingToPlot(candidates: readonly AnalyticsPlatform[]): Chip {
     muted: true,
     state: 'unsupported',
     lines: [],
-    bodyLines: [sentence],
+    // Said once, as why the card dims (FILM-1709): the same sentence a
+    // fetch-dated pick gives on a card that can plot something else.
+    bodyLines: [],
     scopeLines: [],
     note: sentence,
   };
@@ -133,7 +135,10 @@ export function useCardProvenance(
       return {
         chip: nothingToPlot(platforms ?? ANALYTICS_PLATFORMS),
         windowLabel: view.windowLabel,
-        dimming: { dimmed: false },
+        dimming: {
+          dimmed: true,
+          reasons: [fetchDatedSentence(platforms ?? ANALYTICS_PLATFORMS)],
+        },
         dateAxis,
       };
     }
