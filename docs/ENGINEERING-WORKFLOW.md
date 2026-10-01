@@ -287,7 +287,17 @@ database, ClickHouse, E2E, format and mutation-shard jobs are skipped, and
 records guard and the mutation guards that target `specs/` or `docs/`. Every
 other `.json` and `.yaml` is code: prompts, locales, `package.json`, the
 mutation guards and the lockfile are all read by a build or a test. So is a
-change to the classifier or `workflow.yml`, which always runs the full suite.
+change to the classifier or `workflow.yml`, which is never docs-only.
+
+**The merge queue is the gate; a PR run is the fast lane** (2026-10-01). A
+push to a PR runs 🔎 Changes, ʦ TypeScript, 💅 Format, 🧪 Unit Tests and
+🗄️ ClickHouse SQL (or 📚 Docs checks). The heavy jobs (🧪 Unit guards,
+🐘 Supabase DB, ⚫️ Test, 🧬 E2E evidence and guards) run once, in the merge
+queue, on main + the PR: the exact commit that lands. Nothing runs after the
+merge. The one required check is ✅ CI result. A green PR run is therefore not
+the whole verdict: run the heavy layer's checks locally for what you touched
+(pgTAP, the guards, the E2E specs), or start the full suite on the branch with
+Actions → Workflow → Run workflow before queueing a risky change.
 
 ---
 

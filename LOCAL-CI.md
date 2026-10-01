@@ -1,5 +1,11 @@
 # Local CI and the merge train
 
+> **Since 2026-10-01 GitHub's merge queue is the gate**, not this. A PR run is
+> the fast lane; the full suite runs once in the queue, on main + the PR, and
+> ✅ CI result is the one required check (CLAUDE.md, "The merge queue is the
+> gate"). Use what follows only when Actions cannot run. It mirrors the jobs,
+> not the triggers: a local run is the full suite, as the queue's is.
+
 How to verify and merge pull requests **without GitHub Actions**. First used
 2026-09-24/25, when the org hit its 50,000-minute limit: twelve PRs
 (#338–#352, #354) were verified with these scripts and merged in one day.
@@ -36,8 +42,8 @@ same commands:
 | ⚫️ Test | `build:test`, `next start -p 3000`, `supabase:test`, Playwright (see Gotchas for `CI=1`) |
 | 🧬 E2E evidence | a second `build:test` with ClickHouse on, the KB-58 action-manifest guard, the evidence specs |
 
-Not run, as on a PR in CI: 🧬 E2E guards (push to `main` only) and 📚 Docs
-checks (CI runs them only instead of the heavy jobs).
+Not run: 🧬 E2E guards (the merge queue only) and 📚 Docs checks (CI runs
+them only instead of the heavy jobs).
 
 One full run takes **about 20 minutes** per PR. Most of it is the Playwright
 suite (~11 min at one worker) and the guards (~5 min).
@@ -171,9 +177,11 @@ LANE=B scripts/local-ci/pipeline.sh 352  # lane B, at the same time
 
 ## When Actions is back
 
-1. Re-add the required status checks on `main`, including 📋 PR records
-   (`pr-records.yml`, added after the checks went off).
+1. Re-add the required status check on `main`: ✅ CI result, and only that.
+   Not 📋 PR records: it never runs in the merge queue, so the queue would
+   wait for it forever.
 2. Remove the $0 Actions budget.
-3. **Run the full suite once on `main`** before any new work. It's the audit
+3. **Run the full suite once on `main`** (Actions → Workflow → Run workflow)
+   before any new work. It's the audit
    for what was merged locally: PRs merged on a re-check never ran the full
    suite on the final `main`. Each PR's comment says what it was tested against.
