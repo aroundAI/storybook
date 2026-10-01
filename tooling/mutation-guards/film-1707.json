@@ -80,6 +80,16 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/provenance.test.ts",
       "pattern": "lists every family the language cards declare"
+    },
+    {
+      "name": "FILM-1707 the benchmark's peers drop fetch-dated rows its video keeps",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "      viewsColumn: column,\n      onDateAxis: false,\n",
+      "replace": "      viewsColumn: column,\n      onDateAxis: true,\n",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/self-benchmark-query.test.ts",
+      "pattern": "reads the video and its peers from the same per-video SQL"
     }
   ]
 }
