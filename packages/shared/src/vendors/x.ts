@@ -30,6 +30,27 @@ const X_MEDIA_UPLOAD_URL = `${X_API_BASE}/media/upload`;
 export const X_MEDIA_UPLOAD_SCOPE = 'media.write';
 
 /**
+ * FILM-1729. Refresh cannot add a scope, so an X connection made before
+ * `media.write` was requested can never upload video until it reconnects.
+ * Read from the grant stored at connect time; a connection that recorded
+ * none predates the scope.
+ */
+export function holdsXUploadScope(scopes: readonly string[] | null): boolean {
+  return (scopes ?? []).includes(X_MEDIA_UPLOAD_SCOPE);
+}
+
+/**
+ * The words shown in place of an X publish such a connection cannot make:
+ * by the publish action as a refusal value, and by the worker as the
+ * failed job's error.
+ */
+export function xUploadScopeRefusal(accountNames: readonly string[]): string {
+  const accounts = accountNames.map((name) => `@${name}`).join(', ');
+
+  return `${accounts} was connected before X allowed us to upload video (the ${X_MEDIA_UPLOAD_SCOPE} permission). In Settings → Platforms, disconnect X and connect it again, then publish.`;
+}
+
+/**
  * The chunked upload's endpoints, here once because the provider and the
  * publish lambda each walk the protocol themselves.
  */

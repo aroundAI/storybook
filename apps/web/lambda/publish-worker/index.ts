@@ -179,7 +179,11 @@ async function uploadToPlatform(
     }
     case 'twitter': {
       const { uploadToTwitter } = await import('./handlers/twitter');
-      return uploadToTwitter(accessToken, job);
+      return uploadToTwitter(
+        accessToken,
+        job,
+        await readXGrant(job.platformConnectionId),
+      );
     }
     case 'linkedin': {
       const { uploadToLinkedIn } = await import('./handlers/linkedin');
@@ -188,6 +192,21 @@ async function uploadToPlatform(
     default:
       throw new Error(`Unsupported platform: ${job.platform}`);
   }
+}
+
+/** The X account's name and the scopes it granted at connect (FILM-1729). */
+async function readXGrant(connectionId: string) {
+  const { data, error } = await supabase
+    .from('platform_connections')
+    .select('platform_account_name, scopes')
+    .eq('id', connectionId)
+    .single();
+
+  if (error) {
+    throw new Error(`Could not read the X connection: ${error.message}`);
+  }
+
+  return { accountName: data.platform_account_name, scopes: data.scopes };
 }
 
 /**

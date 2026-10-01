@@ -19,7 +19,12 @@ import {
   returnRefusals,
 } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
-import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
+import {
+  awsClientOptions,
+  holdsXUploadScope,
+  queueUrlFromEnv,
+  xUploadScopeRefusal,
+} from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -41,7 +46,6 @@ import {
 } from '../lib/schemas/publish.schema';
 import { TAKEDOWN_REFUSAL, canTakeDown, projectRoleOf } from '../lib/takedown';
 import type { Platform, PublishResult } from '../lib/types';
-import { holdsXUploadScope, xUploadScopeRefusal } from '../lib/x-upload-scope';
 import {
   type YouTubeChannelDeclaration,
   type YouTubeDeclaration,

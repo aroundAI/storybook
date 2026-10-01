@@ -22,6 +22,12 @@ const job = {
   description: 'Description',
 } as PublishJobMessage;
 
+/** A connection made since FILM-1729, which holds media.write. */
+const HOLDS = {
+  accountName: 'acme_on_x',
+  scopes: ['tweet.read', 'tweet.write', 'media.write', 'users.read'],
+};
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -94,7 +100,7 @@ describe('uploadToTwitter', () => {
   });
 
   it('walks initialize, append, finalize, status and then posts', async () => {
-    const result = await uploadToTwitter('token', job);
+    const result = await uploadToTwitter('token', job, HOLDS);
 
     expect(calls.map((call) => `${call.method} ${call.url}`)).toEqual([
       `POST ${X_MEDIA_UPLOAD.initialize}`,
@@ -108,7 +114,7 @@ describe('uploadToTwitter', () => {
   });
 
   it('sends the v2 bodies: JSON to initialize, no command field on append', async () => {
-    await uploadToTwitter('token', job);
+    await uploadToTwitter('token', job, HOLDS);
 
     expect(JSON.parse(calls[0]!.body as string)).toEqual({
       media_type: 'video/mp4',
@@ -127,7 +133,7 @@ describe('uploadToTwitter', () => {
   it('skips the status poll when finalize reports the media ready', async () => {
     finalizeState = 'succeeded';
 
-    await uploadToTwitter('token', job);
+    await uploadToTwitter('token', job, HOLDS);
 
     expect(calls.map((call) => call.url)).not.toContain(
       X_MEDIA_UPLOAD.status(MEDIA_ID),
@@ -137,7 +143,7 @@ describe('uploadToTwitter', () => {
   it('does not post when processing fails', async () => {
     statusStates = ['in_progress', 'failed'];
 
-    await expect(uploadToTwitter('token', job)).rejects.toThrow(
+    await expect(uploadToTwitter('token', job, HOLDS)).rejects.toThrow(
       'unsupported codec',
     );
 
@@ -151,8 +157,27 @@ describe('uploadToTwitter', () => {
         : json({ title: 'Forbidden', status: 403 }, 403),
     );
 
-    await expect(uploadToTwitter('token', job)).rejects.toThrow('media.write');
+    await expect(uploadToTwitter('token', job, HOLDS)).rejects.toThrow(
+      'media.write',
+    );
   });
+
+  // FILM-1729: a scheduled publish on a connection made before media.write
+  // fails with the same words the publish screen uses, before any upload.
+  it.each([
+    ['lacks media.write', ['tweet.read', 'tweet.write', 'users.read']],
+    ['recorded no scopes', null],
+  ])(
+    'refuses a connection that %s with the reconnect text, before any request',
+    async (_, scopes) => {
+      await expect(
+        uploadToTwitter('token', job, { accountName: 'acme_on_x', scopes }),
+      ).rejects.toThrow(
+        '@acme_on_x was connected before X allowed us to upload video (the media.write permission). In Settings → Platforms, disconnect X and connect it again, then publish.',
+      );
+      expect(fetch).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe('deleteFromTwitter', () => {
