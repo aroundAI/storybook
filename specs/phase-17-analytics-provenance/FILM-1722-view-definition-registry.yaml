@@ -44,8 +44,8 @@ acceptance_criteria:
     met: true
     evidence: "Widening AnalyticsPlatform fails typecheck at PLATFORM_COVERAGE, and listing the platform there fails view-definitions.test.ts until a definition exists. Both seen red"
   - text: "A chart crossing a boundary marks it rather than drawing a step change"
-    met: false
-    reason: "held until FILM-1719 — owner ruling 2026-09-22 (FILM-1722 section 12). Registry half only: viewDefinitionChangesBetween returns the boundaries; no chart calls it. See the adoption section"
+    met: true
+    evidence: "FILM-1707 (#TBD): packages/features/content-analytics/src/lib/view-definition-marks.ts calls viewDefinitionChangesBetween for the platforms each chart plots; every mounted views-over-time chart draws the mark and says what changed — Overview's Performance Over Time, the Language trend, Deep Dive's median, back-catalog, rolling and both traffic cards (FILM-1707 §9). Suppressing the comparisons that span it stays FILM-1715/FILM-1719's"
   - text: "No rate is computed without recording which denominator definition it used"
     met: false
     reason: "Registry half only: the definition is available to stamp; the existing rate sites (engagement rate, RPM) do not stamp it. Owned by FILM-1732 since 2026-10-02 (owner accepted the recommendation that it gets its own spec); it was FILM-1719's before that. FILM-1713's measures already record it (\"every measure records … which view definition and its effective date\")"
@@ -53,9 +53,6 @@ acceptance_criteria:
     met: true
     evidence: "#492. Defined in INSTAGRAM_AGGREGATES (packages/clickhouse/src/lib/view-definitions.ts:964), and the provider's request takes its field list from that table, never by name (packages/features/content-analytics/src/providers/instagram/instagram-insights.ts:115, `${INSTAGRAM_AGGREGATE_FIELDS}`). Stored in all_surface_views / _likes / _comments (ClickHouse migration 019): lifetime in video_snapshots, the day's increase in video_metrics, null when not measured; AllSurfaceColumn is disjoint from ViewsColumn, so no views denominator can read one. Tests, each seen red first: packages/clickhouse/__tests__/view-definitions.test.ts:720, packages/features/content-analytics/__tests__/provider-result-fields.test.ts:150, __tests__/ingest.test.ts:620, apps/vendor-sandbox/__tests__/meta-fidelity.test.ts:265 (the sandbox serves the three); `pnpm --filter @kit/clickhouse verify` against ClickHouse 24.8, 118 passed, and red (117/1, `got 10400 and 8000`) with a bare argMax; guards VD6–VD9 in tooling/mutation-guards/film-1722.json, all RED"
 remaining:
-  - criterion: "A chart crossing a boundary marks it rather than drawing a step change"
-    reason: "Registry half only — viewDefinitionChangesBetween returns the boundaries; no chart calls it. Owner ruling 2026-09-22 (FILM-1722 section 12): displayed figures are held until FILM-1719; FILM-1719 now carries the criterion"
-    closed_by: "FILM-1719"
   - criterion: "No rate is computed without recording which denominator definition it used"
     reason: "Registry half only — the definition is available to stamp; the engagement-rate and RPM sites do not stamp it. Stamping changes no figure, so the 2026-09-22 ruling (which held changing figures until FILM-1719) does not hold it, but it changes the result type of those reads and every card that reads them. The owner accepted on 2026-10-02 that this gets its own spec: FILM-1732 (#535). Cohort growth and cohort medians specifically stay FILM-1715's own criterion"
     closed_by: "FILM-1732"

@@ -106,7 +106,7 @@ acceptance_criteria:
     evidence: null
   - text: "`getSubscriberSeriesAction` takes an `accountId` uuid scope, not a slug, and passes it to `assertScopeAccess` unchanged"
     met: true
-    evidence: "widened to the uuid `ScopeSchema` (project or account) in d7a7056c, still passed unchanged: `packages/features/content-analytics/src/server/subscriber-series-actions.ts:87`"
+    evidence: "widened to the uuid `ScopeSchema` (project or account) in d7a7056c, still passed unchanged: `packages/features/content-analytics/src/server/subscriber-series-actions.ts:93`"
   - text: "The action returns one series per connection and never sums across channels"
     met: true
     evidence: null
