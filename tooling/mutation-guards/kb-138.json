@@ -17,9 +17,9 @@
       "file": "apps/web/lambda/publish-worker/token.ts",
       "find": "  if (readFailed(error)) {\n    throw new Error(whyNoRow(error, 'Platform connection not found'));\n  }\n",
       "replace": "",
-      "cwd": "packages/next",
-      "test": "__tests__/kb138-errors-not-not-found.test.ts",
-      "pattern": "thrown or returned"
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/token.test.ts",
+      "pattern": "throws a failed read rather than answering NOT_FOUND"
     },
     {
       "name": "G3 PGRST116 stops meaning no row",

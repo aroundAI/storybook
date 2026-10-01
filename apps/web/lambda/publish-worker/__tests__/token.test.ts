@@ -17,13 +17,16 @@ import { checkConnectionToken } from '../token';
 
 const NOW = new Date('2026-09-23T12:00:00.000Z');
 
-function fakeClient(row: Record<string, unknown> | null) {
+function fakeClient(
+  row: Record<string, unknown> | null,
+  readError = { code: 'PGRST116', message: 'no rows' },
+) {
   const query = {
     select: () => query,
     eq: () => query,
     single: async () => ({
       data: row,
-      error: row ? null : { code: 'PGRST116', message: 'no rows' },
+      error: row ? null : readError,
     }),
   };
 
@@ -104,5 +107,14 @@ describe('checkConnectionToken', () => {
         NOW,
       ),
     ).toEqual({ valid: false, error: 'TOKEN_UNREADABLE' });
+  });
+
+  // KB-138: NOT_FOUND reads "no longer exists", so a failed read must not get it
+  it('throws a failed read rather than answering NOT_FOUND', async () => {
+    const timeout = { code: '57014', message: 'statement timeout' };
+
+    await expect(
+      checkConnectionToken('conn-x', fakeClient(null, timeout), NOW),
+    ).rejects.toThrow('the read failed (statement timeout)');
   });
 });
