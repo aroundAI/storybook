@@ -56,6 +56,15 @@
       "sql": "alter policy \"channel_experiment_styles_create\" on public.channel_experiment_styles with check (true);"
     },
     {
+      "name": "CE-E1 the assignment form keeps the last choice, not the new suggestion",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/analytics/channel-experiments/_components/channel-experiment-detail.tsx",
+      "find": "          key={`${data.suggestedStyleId}:${data.videos.length}`}",
+      "replace": "          key={'kept'}",
+      "spec": "tests/channel-experiments/channel-experiments.spec.ts",
+      "grep": "records an override"
+    },
+    {
       "name": "CE-U1 a pending video counts as a zero",
       "kind": "unit",
       "file": "packages/clickhouse/src/lib/channel-experiments.ts",

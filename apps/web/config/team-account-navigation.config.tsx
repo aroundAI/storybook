@@ -8,6 +8,7 @@ import {
   MessageSquareText,
   Settings,
   Share2,
+  Split,
   Tags,
   Target,
   Users,
@@ -59,6 +60,11 @@ const getRoutes = (account: string) => [
         label: 'common:routes.experiments',
         path: `/home/${account}/studio/analytics/experiments`,
         Icon: <FlaskConical className={iconClasses} />,
+      },
+      {
+        label: 'common:routes.channelExperiments',
+        path: `/home/${account}/studio/analytics/channel-experiments`,
+        Icon: <Split className={iconClasses} />,
       },
       {
         label: 'common:routes.analyticsSettings',
