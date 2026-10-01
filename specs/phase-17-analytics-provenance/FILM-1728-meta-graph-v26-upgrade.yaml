@@ -25,7 +25,7 @@ summary: >
 acceptance_criteria:
   - text: "(Bump) v24.0, v25.0, v26.0 and Instagram Platform changelogs read on the implementation day; §4 re-confirmed or corrected with the date"
     met: true
-    evidence: "docs/platform-capability-reference.md:589 — findings table, one row per version, each read 2026-10-01 and linked to its changelog page; corrections to §4 (the Video list is 16 names, 42 entries / 41 distinct; v26.0 also retires six Page legacy fields; the debug envelope §7.2 relied on is gone) are in this spec's \"Implementation\" notes (#493)"
+    evidence: "docs/platform-capability-reference.md:615 — findings table, one row per version, each read 2026-10-01 and linked to its changelog page; corrections to §4 (the Video list is 16 names, 42 entries / 41 distinct; v26.0 also retires six Page legacy fields; the debug envelope §7.2 relied on is gone) are in this spec's \"Implementation\" notes (#493)"
   - text: "(Bump) Forbidden block extended: §4.2's five parameters and §4.3's 41 metrics; platform-field-names.test.ts green"
     met: true
     evidence: "docs/platform-capability-reference.md:1575 (41 metrics, then pretty, debug, If-None-Match, date_format, /?ids and v25.0's metadata=1); platform-field-names.test.ts 70/70 green, its retired-names scan widened to every Meta request site (#493)"
@@ -34,13 +34,13 @@ acceptance_criteria:
     evidence: "docs/platform-capability-reference.md:380 (correction and the two-documents contradiction, read 2026-10-01); FILM-1725 Check J, specs/phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.yaml:222 (#493)"
   - text: "(Bump) META_GRAPH_VERSION, _RELEASED, _EXPIRES updated together; expiry is the published date or the floor labelled as a floor"
     met: true
-    evidence: "packages/shared/src/vendors/meta.ts:41 (v26.0, 2026-07-29, 2028-07-29) and :50 META_GRAPH_VERSION_EXPIRY_IS_FLOOR = true; the reference row docs/platform-capability-reference.md:509 and Pinned line :468 say (floor); Meta's table lists v26.0's end as TBD and no v27.0 (read 2026-10-01) (#493)"
+    evidence: "packages/shared/src/vendors/meta.ts:41 (v26.0, 2026-07-29, 2028-07-29) and :50 META_GRAPH_VERSION_EXPIRY_IS_FLOOR = true; the reference row docs/platform-capability-reference.md:535 and Pinned line :468 say (floor); Meta's table lists v26.0's end as TBD and no v27.0 (read 2026-10-01) (#493)"
   - text: "(Bump) vendor-api-versions.test.ts seen red on each half-bump, then green; mutation-guard entries added"
     met: true
     evidence: "constant only: 5 failed, naming the missing v26.0 row, the Pinned line and findings rows v24.0-v26.0; reference only: 2 failed, naming META_GRAPH_VERSION in meta.ts; both: 13/13 green. tooling/mutation-guards/film-1728.json (11 entries) and film-1723.json retargeted; all 25 RED (#493)"
   - text: "(Bump) facebook-api-version: v26.0 confirmed by the header probe on the day; bundled publish lambda carries exactly one Graph version literal"
     met: true
-    evidence: "curl -sI https://graph.facebook.com/v26.0/me at 2026-10-01T08:21Z returned facebook-api-version: v26.0 (and v27.0 returned v21.0), recorded at docs/platform-capability-reference.md:534; apps/web/lambda/publish-worker/__tests__/meta-bundle.test.ts:49 bundles index.ts as SST does and finds exactly one, the pin (#493)"
+    evidence: "curl -sI https://graph.facebook.com/v26.0/me at 2026-10-01T08:21Z returned facebook-api-version: v26.0 (and v27.0 returned v21.0), recorded at docs/platform-capability-reference.md:560; apps/web/lambda/publish-worker/__tests__/meta-bundle.test.ts:49 bundles index.ts as SST does and finds exactly one, the pin (#493)"
   - text: "(Bump) FILM-1725 Check C re-worded for v26.0; Check D amended to require a re-run on this deploy — stays open until the owner runs it"
     met: true
     evidence: "specs/phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.yaml:165 (Check C on v26.0, Bearer header) and :215 (Check D amended; its criterion at :39 stays met: false until the owner's forced refresh) (#493)"
@@ -58,7 +58,7 @@ acceptance_criteria:
     evidence: "apps/web/lambda/publish-worker/handlers/instagram.ts:21 and facebook.ts:22 call InstagramProvider and FacebookProvider (the non-resumable graph-video path kept as the provider option fetchFromUrl, facebook-provider.ts:39); apps/web/lambda/publish-worker/__tests__/meta-bundle.test.ts:67 loads the bundled handlers in plain Node; meta-handlers.test.ts:81 (#493)"
   - text: "(Durability §7.3.D) per-version findings table exists with rows for v24–v26; the test asserts a row per version crossed"
     met: true
-    evidence: "docs/platform-capability-reference.md:589; packages/shared/__tests__/vendor-api-versions.test.ts:416 (#493)"
+    evidence: "docs/platform-capability-reference.md:615; packages/shared/__tests__/vendor-api-versions.test.ts:416 (#493)"
   - text: "(Follow-up) is_ai_generated labelling (§4.4) filed as its own item with the policy question stated"
     met: true
     evidence: "FILM-1731, a DRAFT spec on its own branch docs/film-1731-instagram-ai-label (lead's decision, 2026-10-01): is the AI info label required, expected or optional for us, answered before onboarding other creators"

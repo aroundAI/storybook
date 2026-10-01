@@ -7,6 +7,11 @@ Provides analytics providers for fetching performance metrics from social media 
 - `providers/youtube/` - YouTube Analytics API integration
 - `providers/tiktok/` - TikTok Creator Tools API integration
 - `providers/instagram/` - Instagram Insights API integration
+- `providers/facebook/` - Facebook Page video insights (FILM-1720). Shipped
+  dark: its scopes are requested only once `ANALYTICS_SCOPES_ENABLED` names
+  `facebook`. A Facebook row has **no `views`** (NULL, migration 020): its
+  kinds of view are their own columns, and a reader that counts videos or
+  shows views per platform must say "not measured" for it, never 0 (KB-153)
 - `lib/` - Shared utilities
 
 ## YouTube Analytics Provider

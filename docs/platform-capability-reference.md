@@ -30,7 +30,7 @@ the [ledger](#documented-vs-inferred-ledger). Anything nobody can answer is in
 | TikTok (basic) | Display API `/v2/video/query/` | `video.list` + `user.info.stats` **requested since FILM-1711; TikTok app review outstanding** | included | unbounded backwards |
 | TikTok (deep) | **Business API** `/business/video/list/` | not implemented; separate app | included | stops updating 365d after publish |
 | Instagram | Graph `/{ig-media-id}/insights` | `instagram_manage_insights` **requested since FILM-1711; App Review + Business Verification outstanding** | included | media ~2y; account ~90d (*inferred*) |
-| Facebook | Graph `/{video-id}/video_insights` | **permission missing** (`read_insights`) — not requested until a provider uses it, FILM-1720. **No reach or impressions since Graph v26.0** (FILM-1728) | included | 2 years |
+| Facebook | Graph `/{video-id}/video_insights` + the video's Page post insights | `read_insights` + `pages_manage_engagement` **in the Meta config since FILM-1720, withheld until `ANALYTICS_SCOPES_ENABLED` names `facebook`; App Review outstanding**. **No reach or impressions since Graph v26.0** (FILM-1728); `post_media_view` and `post_total_media_view_unique` in their place | included | 2 years |
 | X (degraded) | `media.non_public_metrics` via posts lookup | **held** — `tweet.read` + `users.read` are requested for publishing; no provider | metered | **30d from post creation** |
 | X (full) | `/2/media/analytics` | **held** (same scopes) | **tier gated — Enterprise** (*inferred*) | **undocumented** |
 
@@ -104,7 +104,7 @@ Reporting API (bulk) — the only source of thumbnail impressions and CTR:
 Retention: `dimensions=elapsedVideoTimeRatio` (0.01–1.0, 100 points),
 `filters=video==ID` required, metrics `audienceWatchRatio`,
 `relativeRetentionPerformance`, `startedWatching`, `stoppedWatching`.
-**YouTube has the finest retention curve here** (100 points, per video). Facebook has one too — `total_video_retention_graph` (40 equal intervals) and `post_video_retention_graph` (segment count undocumented) — but not yet an integration (FILM-1720). TikTok, Instagram and X have none.
+**YouTube has the finest retention curve here** (100 points, per video). Facebook has one too — `total_video_retention_graph` (40 equal intervals, ingested since FILM-1720) and `post_video_retention_graph` (segment count undocumented, not requested). TikTok, Instagram and X have none.
 
 Shorts vs long-form: the `creatorContentType` dimension. Confirmed 2026-09-21:
 values are `SHORTS`, `VIDEO_ON_DEMAND`, `LIVE_STREAM`, `STORY`, `UNSPECIFIED`,
@@ -465,8 +465,34 @@ this.
 Safest approach: compute our own average explicitly and label which denominator was
 used, rather than shipping Meta's precomputed figure as comparable.
 
-Not available: **follower vs non-follower reach for video or Reels.** Only the
-page-level `page_media_view` carries `is_from_followers`.
+Not available: **follower vs non-follower reach for video or Reels.** Narrower
+than first recorded (FILM-1720, the [Insights reference](https://developers.facebook.com/docs/graph-api/reference/insights/)
+read 2026-10-01): the Page post's `post_media_view` takes an `is_from_followers`
+breakdown too, so a video's *plays and displays* can be split by follower; its
+*people* (`post_total_media_view_unique`) cannot. Not requested yet (FILM-1720
+remaining).
+
+### What FILM-1720 reads (built 2026-10-01, shipped dark)
+
+Built against the vendor sandbox and switched off until App Review grants
+`read_insights` (owner, 2026-10-01). Per Facebook video, through `metaFetch`:
+
+- `video_insights`, lifetime: `total_video_views` with its `_organic`/`_paid`
+  and `_autoplayed`/`_clicked_to_play` splits, `total_video_15s_views`,
+  `total_video_complete_views`, `total_video_view_total_time`,
+  `total_video_retention_graph`, `total_video_reactions_by_type_total`; and the
+  Reels metrics `blue_reels_play_count`, `fb_reels_replay_count`,
+  `post_video_view_time`, `post_video_followers`,
+  `post_video_likes_by_reaction_type`, in a second call Meta may refuse for a
+  video in the player.
+- The video node's `post_id` and `comments` count, the post's `shares`, and the
+  post's `post_media_view` and `post_total_media_view_unique` — the replacements
+  Graph v25.0's changelog names for `post_impressions_unique`.
+
+Not requested: either of Meta's averages (we divide the totals ourselves and
+name the denominator), the ad-break metrics (FILM-1726), and every name in the
+forbidden block. `video_metrics.views` is NULL for every Facebook row; each
+kind of view has its own column (migration 020).
 
 Rate limits: Page tokens use BUC `4800 × engaged users` per 24h; app/user tokens use
 `200 × users` per hour. The Page throttle error code is **80001**.
@@ -1701,6 +1727,9 @@ labelled as such wherever they are used.
 | `DELETE /{video-id}` answers `{ "success": true }` | The Video reference has no Deleting section. Observed on the owner's Page, 2026-09-29 | **observed** |
 | Reading a deleted Video gets code 100 (`GraphMethodException`, subcode 33) | The Graph API's usual answer for a missing object; not run after the delete above. The sandbox serves it | inferred |
 | Facebook `post_video_avg_time_watched` denominator is initial plays | Business Help Center; the API reference does not state it | inferred |
+| A Facebook post nobody has shared has no `shares` field, so its absence is 0 | The Post reference documents `shares` but not its absence; widely observed. The provider reads absence as 0 only when the post itself came back. The sandbox omits it at 0 (FILM-1720) | inferred |
+| A video_insights metric with nothing to count is left out of an answer that otherwise came back | Not stated on the reference. The provider reads a missing reaction count as 0 inside an answer that arrived, and every other missing metric as not measured (FILM-1720) | inferred |
+| `total_video_retention_graph` values are fractions of 1, keyed 0–40 | "40 equal intervals", "as a percentage of all views"; neither the key range nor the scale is stated. The provider drops a graph with any value above 1 rather than rescale it (FILM-1720) | inferred |
 | Instagram media insights ≈ 2 years, account ≈ 90 days | Two Meta pages disagree; this reconciles them | inferred |
 | A token missing a scope gets X 403 `{ "title": "Forbidden", "type": "about:blank", "status": 403, "detail": "Forbidden" }` | The problem-object page has no scope example; the app's upload hint says X's body does not name the scope. The sandbox (FILM-1802) serves this body | inferred |
 | Posting, deleting and reading a post on X need `tweet.read`, `tweet.write` and `users.read` together | The create-post and delete-post pages list the three as alternatives; posting with fewer is refused in practice. The sandbox requires all three | inferred |
