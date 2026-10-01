@@ -56,10 +56,10 @@ provider:
 acceptance_criteria:
   - text: "OAuth 2.0 connection flow works for personal accounts"
     met: true
-    evidence: "apps/e2e/tests/platform-connections/sandbox-connect-linkedin.spec.ts:50 drives the real connect and callback routes against the LinkedIn sandbox (green on two consecutive runs, 2026-10-01, retries off): the consent screen lists the 4 personal scopes; allow gives one active row (urn:li:person:<sub>, isCompanyPage false) with encrypted tokens, the stored access token is accepted by the sandbox's /v2/userinfo and its sub and name match the row, the refresh token is stored; a second connect reuses the row with a new token. Refresh: KB-29 (packages/features/publishing/__tests__/token-refresh.test.ts:426). No live LinkedIn connect has run (owner check OC-5, FILM-1725 Check I). Known gap: the callback stores the requested scopes, not the granted ones (KB-145; test.fail at sandbox-connect-linkedin.spec.ts:191)"
+    evidence: "apps/e2e/tests/platform-connections/sandbox-connect-linkedin.spec.ts:50 drives the real connect and callback routes against the LinkedIn sandbox (green on two consecutive runs, 2026-10-01, retries off): the consent screen lists the 4 personal scopes; allow gives one active row (urn:li:person:<sub>, isCompanyPage false) with encrypted tokens, the stored access token is accepted by the sandbox's /v2/userinfo and its sub and name match the row, the refresh token is stored; a second connect reuses the row with a new token. Refresh: KB-29 (packages/features/publishing/__tests__/token-refresh.test.ts:426). No live LinkedIn connect has run (owner check OC-5, FILM-1725 Check I). The stored scopes are the grant LinkedIn's token response names, not the request: a scope unticked on the consent screen is not stored (sandbox-connect-linkedin.spec.ts:183; KB-145 fixed in #TBD)"
   - text: "OAuth 2.0 connection flow works for company pages"
     met: false
-    reason: "no longer true — company connect stores the member URN (`apps/web/app/api/platforms/callback/linkedin/route.ts:174`); no organization is chosen; no UI offers `type=company`, and the LinkedIn card says personal profiles only (KB-86)"
+    reason: "no longer true — company connect stores the member URN (`apps/web/app/api/platforms/callback/linkedin/route.ts:170`); no organization is chosen; no UI offers `type=company`, and the LinkedIn card says personal profiles only (KB-86)"
   - text: "Video upload with proper initialization and finalization"
     met: true
     evidence: "packages/features/publishing/__tests__/linkedin-provider.test.ts:133; LinkedInProvider.uploadVideo end to end against the sandbox (apps/vendor-sandbox/__tests__/linkedin-journey.test.ts:214; KB-141 fixed in #489: createPost reads the post URN from x-restli-id)"
@@ -92,7 +92,7 @@ test_plan:
   integration:
     - text: "Test OAuth flow with mock API"
       met: true
-      evidence: "the callback's success path with mocked fetch (apps/web/lib/platforms/__tests__/callback-success.test.ts:413: urn:li:person id and personal scopes; :443 company scopes and no refresh token; :456 no member id stores nothing); and in a browser against the LinkedIn sandbox: apps/e2e/tests/platform-connections/sandbox-connect-linkedin.spec.ts:50 (connect, tokens, scopes, second connect) and :140 (cancel gives the failure page and no row; an injected 500 at /oauth/v2/accessToken gives token_exchange_failed and no row; the retry connects), green on two consecutive runs 2026-10-01, retries off. Failure branches also: apps/e2e/tests/platform-connections/connect-failure.spec.ts"
+      evidence: "the callback's success path with mocked fetch (apps/web/lib/platforms/__tests__/callback-success.test.ts:414: urn:li:person id and the scopes the token response granted; :451 company scopes and no refresh token; :473 a narrower grant is stored as granted, not as requested, and :488 no `scope` stores none (KB-145); :497 no member id stores nothing); and in a browser against the LinkedIn sandbox: apps/e2e/tests/platform-connections/sandbox-connect-linkedin.spec.ts:50 (connect, tokens, scopes, second connect) and :140 (cancel gives the failure page and no row; an injected 500 at /oauth/v2/accessToken gives token_exchange_failed and no row; the retry connects), green on two consecutive runs 2026-10-01, retries off. Failure branches also: apps/e2e/tests/platform-connections/connect-failure.spec.ts"
     - text: "Test video upload initialization"
       met: true
       evidence: "packages/features/publishing/__tests__/linkedin-provider.test.ts:133"
@@ -105,7 +105,7 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "OAuth 2.0 connection flow works for company pages"
-    reason: "No product surface offers company connect: no UI passes type=company, and the callback stores the member URN whatever the state says (apps/web/app/api/platforms/callback/linkedin/route.ts:174), so there is nothing to drive in a browser. getOrganizations has no caller. Organization publishing never existed (urn:li:organization appears nowhere in history)"
+    reason: "No product surface offers company connect: no UI passes type=company, and the callback stores the member URN whatever the state says (apps/web/app/api/platforms/callback/linkedin/route.ts:170), so there is nothing to drive in a browser. getOrganizations has no caller. Organization publishing never existed (urn:li:organization appears nowhere in history)"
     closed_by: "unassigned"
   - criterion: "Analytics retrieval"
     reason: "No product surface calls getPostMetrics (packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:319); the provider test covers it, but no LinkedIn metrics are read anywhere and the sandbox serves no LinkedIn analytics"
