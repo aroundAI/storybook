@@ -35,16 +35,16 @@ component:
 acceptance_criteria:
   - text: "Generates natural language summary of performance"
     met: true
-    evidence: "the panel unwraps the delivered `{ success, data }` (`packages/features/content-analytics/src/lib/insights-result.ts:11`, used at `packages/features/content-analytics/src/components/ai-insights.tsx:57`; test `packages/features/content-analytics/__tests__/insights-result.test.ts:18`); shown at `packages/features/content-analytics/src/components/ai-insights.tsx:142`. Unit-tested only, not reproduced in a browser"
+    evidence: "the panel unwraps the delivered `{ success, data }` (`packages/features/content-analytics/src/lib/insights-result.ts:11`, used at `packages/features/content-analytics/src/components/ai-insights.tsx:73`; test `packages/features/content-analytics/__tests__/insights-result.test.ts:18`); shown at `packages/features/content-analytics/src/components/ai-insights.tsx:142`. Unit-tested only, not reproduced in a browser"
   - text: "Identifies 3-4 key trends in data"
     met: true
     evidence: "buildTrendFacts (packages/features/content-analytics/src/lib/insights-inputs.ts:78) builds trend facts from the window and the previous one (the dashboard fetches both, analytics-dashboard.tsx:114, :248); they ride the job payload and the prompt (insights-generation.json, v2) and the worker returns trends only when trend facts were sent (apps/web/lambda/llm-worker/handlers/analytics-insights.ts:273); the panel shows a Key Trends section (ai-insights.tsx:148). Tests: packages/features/content-analytics/__tests__/insights-inputs.test.ts, apps/web/lambda/llm-worker/__tests__/analytics-insights-handler.test.ts:345 (describe 'trends, audience and top performers'), packages/features/content-analytics/__tests__/ai-insights-panel.test.tsx; mutation-checked (previous >= 0, trends ungated, trendFacts dropped from the payload schema, empty text removed each turned a test red). Unit-tested only, not seen in a browser. Limit: watch time and subscribers are not available at project level (the dashboard sends 0), so they have no trend facts; engagement is counts of likes, comments and shares, not a rate"
   - text: "Provides specific content recommendations"
     met: true
-    evidence: "shown once the wrapper is unwrapped (`packages/features/content-analytics/src/components/ai-insights.tsx:164`; `packages/features/content-analytics/src/lib/insights-result.ts:11`, test `packages/features/content-analytics/__tests__/insights-result.test.ts:18`); unit-tested only, not reproduced in a browser"
+    evidence: "shown once the wrapper is unwrapped (`packages/features/content-analytics/src/components/ai-insights.tsx:188`; `packages/features/content-analytics/src/lib/insights-result.ts:11`, test `packages/features/content-analytics/__tests__/insights-result.test.ts:18`); unit-tested only, not reproduced in a browser"
   - text: "Suggests optimal posting times"
     met: true
-    evidence: "`postingStrategy` shown once the wrapper is unwrapped (`packages/features/content-analytics/src/components/ai-insights.tsx:174`; test `packages/features/content-analytics/__tests__/insights-result.test.ts:18`); unit-tested only, not reproduced in a browser"
+    evidence: "`postingStrategy` shown once the wrapper is unwrapped (`packages/features/content-analytics/src/components/ai-insights.tsx:196`; test `packages/features/content-analytics/__tests__/insights-result.test.ts:18`); unit-tested only, not reproduced in a browser"
   - text: "Analyzes audience demographics and behavior"
     met: true
     evidence: "audienceForInsights (insights-inputs.ts:134) keeps only measured splits (top 10 countries); the dashboard passes it and the worker returns an empty audienceInsights when no split exists (analytics-insights-handler.test.ts:409); the panel has an empty state. Unit-tested only, not seen in a browser. Limit: the audience is project-wide, not platform-filtered (the action takes a project), and the prompt says the percentages cover the viewers the platforms reported on"
@@ -53,13 +53,13 @@ acceptance_criteria:
     evidence: "topContentForInsights (insights-inputs.ts:111) sends the top 5 titles with views above 0; the model returns {contentId, analysis}, and the worker keeps only supplied ids, shows the supplied title and dedupes (analytics-insights-handler.test.ts:380, :399); the panel always renders the section with an empty state (ai-insights-panel.test.tsx). Mutation-checked (grounding, dedupe and title mutations turned tests red). Unit-tested only, not seen in a browser"
   - text: "Lists actionable items for improvement"
     met: true
-    evidence: "shown once the wrapper is unwrapped (`packages/features/content-analytics/src/components/ai-insights.tsx:193`; test `packages/features/content-analytics/__tests__/insights-result.test.ts:18`); unit-tested only, not reproduced in a browser"
+    evidence: "shown once the wrapper is unwrapped (`packages/features/content-analytics/src/components/ai-insights.tsx:213`; test `packages/features/content-analytics/__tests__/insights-result.test.ts:18`); unit-tested only, not reproduced in a browser"
   - text: "Caches insights to avoid repeated LLM calls"
     met: true
     evidence: "server cache: the worker serves a stored answer for 24 hours and stores a miss (apps/web/lambda/llm-worker/handlers/analytics-insights.ts:119 read, :129 TTL check, :145 write; table analytics_insights_cache), tests apps/web/lambda/llm-worker/__tests__/analytics-insights-handler.test.ts:262, :252, :262; the trend, audience and top-content inputs are in the hash and INSIGHTS_PROMPT_VERSION = 2 is in the key, so an answer from the earlier prompt is a miss (:420, :452); client: the queued null is no longer held for an hour (packages/features/content-analytics/src/components/ai-insights.tsx:89, packages/features/content-analytics/__tests__/insights-result.test.ts:30)"
   - text: "Shows loading state during generation"
     met: true
-    evidence: "the skeleton shows while a queued job has not delivered (`awaitingJob`, `packages/features/content-analytics/src/components/ai-insights.tsx:95`, `:103`); verified by reading, no component test. If the WebSocket message is lost the skeleton stays until a reload"
+    evidence: "the skeleton shows while a queued job has not delivered (`awaitingJob`, `packages/features/content-analytics/src/components/ai-insights.tsx:112`, `:103`); verified by reading, no component test. If the WebSocket message is lost the skeleton stays until a reload"
   - text: "Allows manual refresh of insights"
     met: true
     evidence: "the Refresh button sets `refresh: true` (`packages/features/content-analytics/src/components/ai-insights.tsx:76`, `:128`), the payload accepts it (`packages/features/prompt-engine/src/lib/llm-job-payloads.ts:178`) and the worker skips the cache read and overwrites (`apps/web/lambda/llm-worker/handlers/analytics-insights.ts:225`); test `apps/web/lambda/llm-worker/__tests__/analytics-insights-handler.test.ts:303`"
