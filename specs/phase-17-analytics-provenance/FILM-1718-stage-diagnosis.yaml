@@ -203,8 +203,9 @@ notes: |
   database, and it should be tested exhaustively rather than by example:
   every combination of five three-valued bands (3^5 = 243, plus the
   unjudged cases) resolves to exactly one outcome — a pattern,
-  `no_clear_pattern`, or the too-few-judged state. If FILM-1726 adds a
-  Monetisation stage this becomes 3^6 = 729; the resolution must therefore
+  `no_clear_pattern`, or the too-few-judged state. FILM-1726 adds a
+  Monetisation stage (owner, 2026-10-01; #TBD), so this becomes 3^6 = 729
+  (see "With a sixth stage" below); the resolution must therefore
   be a function over the stage list, not an enumeration written against
   five — a constraint on the implementation, not a reason to wait for that
   decision. An all-`typical` video yields `no_clear_pattern`, not the
@@ -214,6 +215,30 @@ notes: |
   the diagnosis strings, so causal language cannot be introduced without a
   reviewer seeing the diff.
 
+
+  ## With a sixth stage (FILM-1726, lead-approved 2026-10-01)
+
+  Monetisation is appended to `FUNNEL_STAGES`. Every `STAGE_PATTERNS` row
+  spells out every stage, so each fails to compile (TS2741) until it states
+  what it asks of the new one. Whichever of this spec and FILM-1726 merges
+  second fills in these, and nothing else changes:
+
+  | Row | `monetisation:` | Why |
+  |---|---|---|
+  | `reach_below_content_above` | `'any'` | Content against distribution; earnings are neither |
+  | `reach_above_content_below` | `'any'` | Same |
+  | `hook_above_attention_below` | `'any'` | Names two stages only |
+  | `attention_above_transmission_below` | `'any'` | Names two stages only |
+  | `consumption_above_audience_below` | `'any'` | Names three stages only |
+  | `above_at_every_judged_stage` | `'above_where_judged'` | "Strong across every judged stage" is false if Monetisation is judged below |
+
+  No seventh row. "Earnings below while the funnel is above" names no stage
+  to look at: its levers (ad suitability, ad breaks, advertiser demand) are
+  measured by no stage. The band still shows on FILM-1719's strip.
+  `MIN_JUDGED_STAGES`, the exclusions and the coverage sentence iterate
+  `FUNNEL_STAGES` and need no change. A YouTube Monetisation stage with no
+  measured day is excluded as `not_judgable` or `insufficient_cohort` by
+  FILM-1715, never judged `below`.
   ## Risk
 
   The copy is the risk, not the logic. The mapping is a small pure

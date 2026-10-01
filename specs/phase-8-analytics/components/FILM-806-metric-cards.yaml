@@ -141,7 +141,7 @@ test_plan:
       reason: "not met — no test found"
     - text: "Loading state skeleton"
       met: false
-      reason: "not met — no visual test found; DOM-only coverage at `packages/features/content-analytics/src/components/__tests__/metric-cards.test.tsx:89`"
+      reason: "not met — no visual test found; DOM-only coverage at `packages/features/content-analytics/src/components/__tests__/metric-cards.test.tsx:102`"
     - text: "Trend colors correct"
       met: false
       reason: "not met — no visual test found; class assertions for `CompactMetric` only (`metric-cards.test.tsx:246`)"

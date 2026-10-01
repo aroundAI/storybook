@@ -55,10 +55,10 @@ acceptance_criteria:
     evidence: null
   - text: "Monthly/yearly projections are calculated with confidence levels"
     met: true
-    evidence: "`packages/features/content-analytics/src/server/revenue-actions.ts:489` — the window ends on the caller's date (KB-24, #345); `apps/e2e/tests/revenue/revenue-currency.spec.ts:281`"
+    evidence: "`packages/features/content-analytics/src/server/revenue-actions.ts:490` — the window ends on the caller's date (KB-24, #345); `apps/e2e/tests/revenue/revenue-currency.spec.ts:281`"
   - text: "Revenue reports can be generated and exported"
     met: false
-    reason: "no longer true — `generateRevenueReportAction` stores a `revenue_reports` row, writes no file, and nothing calls it (since e84ba285) — `packages/features/content-analytics/src/server/revenue-actions.ts:644`"
+    reason: "no longer true — `generateRevenueReportAction` stores a `revenue_reports` row, writes no file, and nothing calls it (since e84ba285) — `packages/features/content-analytics/src/server/revenue-actions.ts:647`"
   - text: "Revenue alerts are created for significant changes (Future enhancement)"
     met: true
     evidence: "`packages/features/content-analytics/src/server/revenue-alerts.ts:116` (FILM-1508, run by the sync; rises above 3× the prior average and milestones — no alert for a drop), test `packages/features/content-analytics/__tests__/revenue-alerts.test.ts:113`"
@@ -97,7 +97,7 @@ test_plan:
   integration:
     - text: "Test YouTube Analytics API revenue fetch"
       met: true
-      evidence: "`packages/features/content-analytics/__tests__/youtube-analytics.test.ts:223` (mocked API)"
+      evidence: "`packages/features/content-analytics/__tests__/youtube-analytics.test.ts:225` (mocked API)"
     - text: "Test manual revenue entry flow"
       met: true
       evidence: "`apps/e2e/tests/revenue/revenue.spec.ts:17`"
