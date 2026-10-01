@@ -16,9 +16,12 @@
 import {
   ANALYTICS_PLATFORMS,
   AUDIENCE_FAMILY_DIMENSIONS,
+  CAPABILITY_MATRIX,
   METRIC_FAMILIES,
   allowedMetricSources,
   capabilityFor,
+  coverageAsOf,
+  foldObservedCoverage,
   unclaimedPlatforms,
 } from '../src/lib/data-provenance';
 import type { MetricFamily } from '../src/lib/data-provenance';
@@ -62,6 +65,7 @@ import {
   queryLatestSubscriberLevels,
   queryMedianViewsPerVideo,
   queryNetSubscribersForVideos,
+  queryObservedCoverage,
   queryPerVideoTotals,
   queryPlatformBreakdown,
   queryPostAccountsReached,
@@ -2253,6 +2257,17 @@ async function scanScopeSteps() {
       readRowsOf('toString(metric_date)', () =>
         queryDailyTimeSeries({ videoIds, projectId: PROJECT }),
       ),
+    // Every table it unions, over a window wide enough to include the noise
+    // era: bounded to a recent window, the date filter alone would exclude
+    // the noise and this would report +0 whatever its project predicate did.
+    coverage: () =>
+      readRowsOf('groupUniqArray(metric_source)', () =>
+        queryObservedCoverage(
+          { projectId: PROJECT },
+          '1989-01-01',
+          '2030-12-31',
+        ),
+      ),
     'data-days': () =>
       readRowsOf('DISTINCT toString(metric_date)', () =>
         queryDataDaysForVideos({
@@ -4254,6 +4269,314 @@ async function selfBenchmarkSteps() {
   );
 }
 
+const COVER_PROJECT = '17041704-1704-4704-8704-170417041704';
+const COVER_ACCOUNT = '17041704-1704-4704-8704-170417041705';
+const COVER_OTHER_PROJECT = '17041704-1704-4704-8704-170417041706';
+const COVER_YT = '17041704-1704-4704-8704-170417041707';
+const COVER_TT = '17041704-1704-4704-8704-170417041708';
+/** channel_daily rows for a connection no video in scope was published to. */
+const COVER_ORPHAN = '17041704-1704-4704-8704-170417041709';
+
+/** Removes the coverage fixture from every table it writes. */
+async function clearCoverageFixture(): Promise<void> {
+  const client = getClickHouseClient();
+
+  for (const table of [
+    'video_dim',
+    'video_metrics',
+    'video_traffic_sources',
+    'video_reach_daily',
+    'video_retention_curves',
+  ]) {
+    for (const project of [COVER_PROJECT, COVER_OTHER_PROJECT]) {
+      await client.command({
+        query: `ALTER TABLE ${table} DELETE WHERE project_id = {project:UUID}`,
+        query_params: { project },
+        clickhouse_settings: { mutations_sync: '2' },
+      });
+    }
+  }
+
+  for (const connection of [COVER_YT, COVER_TT, COVER_ORPHAN]) {
+    await client.command({
+      query:
+        'ALTER TABLE channel_daily DELETE WHERE connection_id = {connection:UUID}',
+      query_params: { connection },
+      clickhouse_settings: { mutations_sync: '2' },
+    });
+  }
+}
+
+/**
+ * Observed coverage (FILM-1704 §7) against a fixture whose answer is worked
+ * out by hand, for the window 2026-03-01..2026-03-31:
+ *
+ * | table                  | rows in scope and window                       | expected        |
+ * |------------------------|------------------------------------------------|-----------------|
+ * | video_metrics          | cov-yt-1 03-02 + 03-10 (reporting_api),        | youtube 3,      |
+ * |                        | cov-yt-2 03-05 (analytics_api); 01-15 outside; | latest 03-10    |
+ * |                        | cov-tt-1 01-20 only (outside)                  | no tiktok row   |
+ * | video_traffic_sources  | cov-yt-1 03-29 × 2 sources; cov-yt-2 02-28 out | youtube 2, 03-29|
+ * | video_reach_daily      | cov-yt-2 03-31 (inclusive edge)                | youtube 1, 03-31|
+ * | video_retention_curves | cov-yt-1 3 points, not windowed                | youtube 3, today|
+ * | channel_daily          | COVER_YT 03-03 + 03-04, 02-01 outside;         | youtube 2, 03-04|
+ * |                        | COVER_ORPHAN 03-03 (no video in scope)         | not read        |
+ *
+ * And under another project, a `video_metrics` row for the same video id in
+ * the window, which must not count. Only there: `video_dim` is keyed on
+ * `video_id` alone, so a second dim row for it would replace the first. Folded with YouTube and TikTok connected, the one set of
+ * rows must produce every state at once.
+ */
+async function observedCoverageSteps() {
+  const window = { from: '2026-03-01', to: '2026-03-31' };
+
+  await step('seed: observed coverage fixture', async () => {
+    await clearCoverageFixture();
+
+    await insertVideoDims([
+      ...['cov-yt-1', 'cov-yt-2'].map((id) =>
+        dimFor({
+          id,
+          project: COVER_PROJECT,
+          account: COVER_ACCOUNT,
+          connection: COVER_YT,
+          published: '2026-01-01',
+        }),
+      ),
+      {
+        ...dimFor({
+          id: 'cov-tt-1',
+          project: COVER_PROJECT,
+          account: COVER_ACCOUNT,
+          connection: COVER_TT,
+          published: '2026-01-01',
+        }),
+        platform: 'tiktok',
+      },
+    ]);
+
+    const metric = (
+      project: string,
+      id: string,
+      date: string,
+      source: 'reporting_api' | 'analytics_api',
+    ) => ({
+      ...metricFor({ project, id, date, views: 1 }),
+      metric_source: source,
+    });
+
+    await insertVideoMetrics([
+      metric(COVER_PROJECT, 'cov-yt-1', '2026-03-02', 'reporting_api'),
+      metric(COVER_PROJECT, 'cov-yt-1', '2026-03-10', 'reporting_api'),
+      metric(COVER_PROJECT, 'cov-yt-2', '2026-03-05', 'analytics_api'),
+      metric(COVER_PROJECT, 'cov-yt-1', '2026-01-15', 'reporting_api'),
+      {
+        ...metricFor({
+          project: COVER_PROJECT,
+          id: 'cov-tt-1',
+          date: '2026-01-20',
+          views: 1,
+        }),
+        platform: 'tiktok' as const,
+        metric_source: 'snapshot_delta' as const,
+      },
+      metric(COVER_OTHER_PROJECT, 'cov-yt-1', '2026-03-03', 'reporting_api'),
+    ]);
+
+    const traffic = (id: string, date: string, source: string) => ({
+      project_id: COVER_PROJECT,
+      video_id: id,
+      platform: 'youtube' as const,
+      metric_date: date,
+      source,
+      views: 1,
+      watch_time_minutes: 0,
+    });
+
+    await insertVideoTrafficSources([
+      traffic('cov-yt-1', '2026-03-29', 'YT_SEARCH'),
+      traffic('cov-yt-1', '2026-03-29', 'SUBSCRIBER'),
+      traffic('cov-yt-2', '2026-02-28', 'YT_SEARCH'),
+    ]);
+
+    await insertVideoReachDaily([
+      {
+        project_id: COVER_PROJECT,
+        video_id: 'cov-yt-2',
+        platform: 'youtube' as const,
+        metric_date: '2026-03-31',
+        impressions: 10,
+        impressions_ctr: 0.1,
+      },
+    ]);
+
+    await insertRetentionCurves(
+      [0, 0.5, 1].map((elapsed_ratio) => ({
+        project_id: COVER_PROJECT,
+        video_id: 'cov-yt-1',
+        platform: 'youtube' as const,
+        elapsed_ratio,
+        audience_watch_ratio: 1 - elapsed_ratio / 2,
+      })),
+    );
+
+    const day = (connection_id: string, metric_date: string) => ({
+      connection_id,
+      metric_date,
+      views: 1,
+      watch_time_seconds: 0,
+      engaged_views: 0,
+      subscribers_gained: 0,
+      subscribers_lost: 0,
+    });
+
+    await insertChannelDaily([
+      day(COVER_YT, '2026-03-03'),
+      day(COVER_YT, '2026-03-04'),
+      day(COVER_YT, '2026-02-01'),
+      day(COVER_ORPHAN, '2026-03-03'),
+    ]);
+  });
+
+  await step(
+    'assert: observed coverage counts each table in scope and window (FILM-1704)',
+    async () => {
+      const client = getClickHouseClient();
+      const todayResult = await client.query({
+        query: 'SELECT toString(today()) AS today',
+        format: 'JSONEachRow',
+      });
+      const serverToday = (await todayResult.json<{ today: string }>())[0]!
+        .today;
+
+      const rows = await queryObservedCoverage(
+        { projectId: COVER_PROJECT },
+        window.from,
+        window.to,
+      );
+
+      if (rows === null) throw new Error('ClickHouse is on; expected rows');
+
+      const actual = rows
+        .map((row) => ({
+          ...row,
+          metricSources: [...row.metricSources].sort(),
+        }))
+        .sort((a, b) =>
+          `${a.table}:${a.platform}`.localeCompare(`${b.table}:${b.platform}`),
+        );
+
+      expectEqual('observed rows', actual, [
+        {
+          table: 'channel_daily',
+          platform: 'youtube',
+          rows: 2,
+          latestDate: '2026-03-04',
+          metricSources: [],
+        },
+        {
+          table: 'video_metrics',
+          platform: 'youtube',
+          rows: 3,
+          latestDate: '2026-03-10',
+          metricSources: ['analytics_api', 'reporting_api'],
+        },
+        {
+          table: 'video_reach_daily',
+          platform: 'youtube',
+          rows: 1,
+          latestDate: '2026-03-31',
+          metricSources: [],
+        },
+        {
+          table: 'video_retention_curves',
+          platform: 'youtube',
+          rows: 3,
+          latestDate: serverToday,
+          metricSources: [],
+        },
+        {
+          table: 'video_traffic_sources',
+          platform: 'youtube',
+          rows: 2,
+          latestDate: '2026-03-29',
+          metricSources: [],
+        },
+      ]);
+
+      return `${rows.length} (table, platform) rows, as hand-computed`;
+    },
+  );
+
+  await step(
+    'assert: one fixture folds to every coverage state at once (FILM-1704 §7)',
+    async () => {
+      const rows = await queryObservedCoverage(
+        { projectId: COVER_PROJECT },
+        window.from,
+        window.to,
+      );
+      const matrix = foldObservedCoverage(rows, CAPABILITY_MATRIX, {
+        connectedPlatforms: ['youtube', 'tiktok'],
+        asOf: coverageAsOf(window.to, new Date().toISOString().slice(0, 10)),
+      });
+
+      expectEqual('YouTube traffic sources', matrix.traffic_sources.youtube, {
+        kind: 'covered',
+        rows: 2,
+        latestDate: '2026-03-29',
+        stale: false,
+      });
+      expectEqual(
+        'TikTok traffic sources',
+        matrix.traffic_sources.tiktok?.kind,
+        'not_ingested',
+      );
+      expectEqual(
+        'Instagram traffic sources',
+        matrix.traffic_sources.instagram?.kind,
+        'unsupported',
+      );
+      expectEqual('TikTok engagement', matrix.engagement.tiktok, {
+        kind: 'no_data_in_window',
+      });
+      expectEqual('Instagram engagement', matrix.engagement.instagram, {
+        kind: 'not_connected',
+      });
+      // 03-10 is 21 days before the window's end: past the threshold.
+      expectEqual('YouTube engagement', matrix.engagement.youtube, {
+        kind: 'covered',
+        rows: 3,
+        latestDate: '2026-03-10',
+        stale: true,
+      });
+
+      return 'covered · not_ingested · unsupported · no_data_in_window · not_connected';
+    },
+  );
+
+  await step(
+    'assert: a platform filter narrows observed coverage to that platform',
+    async () => {
+      const rows = await queryObservedCoverage(
+        { projectId: COVER_PROJECT, platform: 'tiktok' },
+        '2026-01-01',
+        window.to,
+      );
+
+      expectEqual(
+        'tiktok-only rows',
+        (rows ?? []).map((row) => `${row.table}:${row.platform}:${row.rows}`),
+        ['video_metrics:tiktok:1'],
+      );
+
+      return rows;
+    },
+  );
+
+  await step('clear: observed coverage fixture', clearCoverageFixture);
+}
+
 async function main() {
   if (!isClickHouseEnabled()) {
     console.error(
@@ -4271,6 +4594,7 @@ async function main() {
   await formatFamilySteps();
   await selfBenchmarkSteps();
   await handComputedSteps();
+  await observedCoverageSteps();
   // Last: it fills a project with noise, and nothing above should see it.
   await scanScopeSteps();
 

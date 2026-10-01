@@ -11,6 +11,7 @@ import { concatByChunk } from './chunked';
 import { getClickHouseClient, isClickHouseEnabled } from './client';
 import { normalizeAssetDurationSeconds } from './lib/asset-duration';
 import { MIN_MATURE_VIDEOS } from './lib/cohort-growth';
+import type { ObservedCoverageRow, SourceTable } from './lib/data-provenance';
 import type { FormatFamily } from './lib/format-families';
 import {
   formatFamilyOfDim,
@@ -1301,6 +1302,126 @@ export async function queryChannelWatchWindow(input: {
   return {
     watchTimeSeconds: rows.length > 0 ? Number(rows[0]!.watch_time_seconds) : 0,
   };
+}
+
+/**
+ * Which fact tables hold rows for a scope in a window, per platform
+ * (FILM-1704) — one statement for the whole analytics page, so a card added
+ * adds no query.
+ *
+ * `UNION ALL` over the five tables in `OBSERVED_COVERAGE_TABLES`, each
+ * returning `count()`, its newest date and, where the column exists,
+ * `groupUniqArray(metric_source)`. At most fifteen rows back.
+ *
+ * No `FINAL`: coverage asks whether anything exists, not the deduplicated
+ * total, and a merge-on-read of five tables on every window change is not
+ * worth paying for an answer that does not need it. `rows` is therefore the
+ * number of stored rows, which can exceed the distinct-day count until a
+ * merge — fine for "how much", not a figure to show as a measurement.
+ *
+ * Two branches differ from the rest:
+ *
+ * - `video_retention_curves` has no `metric_date` — a curve is a video's
+ *   lifetime, read whole by its card — so it is not windowed, and its date
+ *   is the day the newest curve was fetched.
+ * - `channel_daily` has no platform column and no project. It is read for
+ *   the connections the scope's videos were published to, and each is
+ *   resolved to its platform through `video_dim` rather than assumed to be
+ *   YouTube because that is true today. One that cannot be resolved comes
+ *   back with `platform: null`.
+ *
+ * `null` when ClickHouse is off: that is "cannot measure", which an empty
+ * list would turn into "no data" on every card.
+ */
+export async function queryObservedCoverage(
+  scope: DimScope,
+  from: string,
+  to: string,
+): Promise<ObservedCoverageRow[] | null> {
+  if (!isClickHouseEnabled()) return null;
+  assertDimScope(scope);
+
+  const client = getClickHouseClient();
+  const { conditions, latest, params } = buildDimConditions(scope);
+  const videos = `(SELECT video_id FROM (${dimSubquery(conditions, latest)}))`;
+  const scoped = `project_id IN (SELECT project_id FROM video_dim WHERE ${conditions})
+        AND video_id IN ${videos}`;
+  const inWindow = (column: string) =>
+    `${column} >= {coverageFrom: Date} AND ${column} <= {coverageTo: Date}`;
+  const noSources = `CAST([], 'Array(String)')`;
+
+  const datedBranch = (table: string, sources: string) => `
+      SELECT
+        '${table}' AS source_table,
+        toString(platform) AS platform,
+        count() AS row_count,
+        toString(max(metric_date)) AS latest_date,
+        ${sources} AS metric_sources
+      FROM ${table}
+      WHERE ${scoped}
+        AND ${inWindow('metric_date')}
+      GROUP BY platform`;
+
+  const query = `
+    ${datedBranch(
+      'video_metrics',
+      'arrayMap(source -> toString(source), groupUniqArray(metric_source))',
+    )}
+    UNION ALL
+    ${datedBranch('video_traffic_sources', noSources)}
+    UNION ALL
+    ${datedBranch('video_reach_daily', noSources)}
+    UNION ALL
+      SELECT
+        'video_retention_curves' AS source_table,
+        toString(platform) AS platform,
+        count() AS row_count,
+        toString(toDate(max(fetched_at))) AS latest_date,
+        ${noSources} AS metric_sources
+      FROM video_retention_curves
+      WHERE ${scoped}
+      GROUP BY platform
+    UNION ALL
+      SELECT
+        'channel_daily' AS source_table,
+        toString(channels.platform) AS platform,
+        count() AS row_count,
+        toString(max(daily.metric_date)) AS latest_date,
+        ${noSources} AS metric_sources
+      FROM channel_daily AS daily
+      INNER JOIN (
+        SELECT connection_id, any(platform) AS platform
+        FROM (${dimSubquery(conditions, latest)})
+        GROUP BY connection_id
+      ) AS channels ON daily.connection_id = channels.connection_id
+      WHERE daily.connection_id IN (
+          SELECT connection_id FROM (${dimSubquery(conditions, latest)})
+        )
+        AND ${inWindow('daily.metric_date')}
+      GROUP BY channels.platform
+  `;
+
+  const result = await client.query({
+    query,
+    query_params: { ...params, coverageFrom: from, coverageTo: to },
+    format: 'JSONEachRow',
+  });
+
+  const rows = await result.json<{
+    source_table: SourceTable;
+    platform: string;
+    row_count: string | number;
+    latest_date: string;
+    metric_sources: string[];
+  }>();
+
+  return rows.map((row) => ({
+    table: row.source_table,
+    platform: row.platform === '' ? null : row.platform,
+    rows: Number(row.row_count),
+    latestDate: row.latest_date || null,
+    metricSources: row.metric_sources,
+  }));
 }
 
 /**
