@@ -100,10 +100,14 @@ test.describe('Video Log', () => {
     // Next button guessing.
     expect(request?.limit).toBe(101);
 
-    // The header filters do not reach this table, and it has no totals.
-    // Saying so is the only thing that stops a reader assuming both.
+    // The date range does not reach this table, and it has no totals.
+    // Saying so is the only thing that stops a reader assuming both. The
+    // platform filter does reach it (FILM-1709).
     await expect(byTest(page, 'video-log-scope-note')).toContainText(
-      'The date range and platform filters above do not apply here, and there is no total',
+      'Every video on the selected platforms',
+    );
+    await expect(byTest(page, 'video-log-scope-note')).toContainText(
+      'The date range above does not apply here, and there is no total',
     );
   });
 

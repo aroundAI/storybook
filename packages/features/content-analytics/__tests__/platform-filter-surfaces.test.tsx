@@ -4,7 +4,7 @@
 import { cleanup } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { ObservedCoverageRow } from '@kit/clickhouse';
+import type { MetricFamily, ObservedCoverageRow } from '@kit/clickhouse';
 
 import { PlatformSwitcher } from '../src/components/deep-dive/platform-switcher';
 import { MetricCards } from '../src/components/metric-cards';
@@ -232,7 +232,7 @@ describe('platform coverage, unchanged by the selection', () => {
   it('is a fact about the window, not about what is selected', () => {
     const view = {
       windowLabel: 'w',
-      cellsFor: (family: 'engagement') => seeded.matrix[family],
+      cellsFor: (family: MetricFamily) => seeded.matrix[family],
       channels: seeded.channels,
       observed: true,
     };

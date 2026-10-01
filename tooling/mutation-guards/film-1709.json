@@ -1,0 +1,105 @@
+{
+  "feature": "FILM-1709",
+  "mutations": [
+    {
+      "name": "FILM-1709 an empty platform list reads as every platform again",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "  if (filters.platforms !== undefined) {\n    assertPlatformSelection(filters.platforms);",
+      "replace": "  if (filters.platforms && filters.platforms.length > 0) {",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/platform-filter.test.ts",
+      "pattern": "refuses an empty selection instead of reading it as every platform"
+    },
+    {
+      "name": "FILM-1709 a platform outside AnalyticsPlatform reaches video_dim",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "    assertPlatformSelection(scope.platforms);",
+      "replace": "",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/platform-filter.test.ts",
+      "pattern": "refuses an unknown platform on the String column too"
+    },
+    {
+      "name": "FILM-1709 the headline totals ignore the platform filter",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "      // be taken apart by platform again (FILM-1709 §3).\n      if (options?.platforms) {\n        query = query.in('platform', options.platforms);\n      }",
+      "replace": "      // be taken apart by platform again (FILM-1709 §3).",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-filter-queries.test.ts",
+      "pattern": "takes a deselected platform out of the headline Views"
+    },
+    {
+      "name": "FILM-1709 the platform split is filtered after aggregation, not in the query",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "  const platformData = await queryPlatformBreakdown({\n    projectId,\n    ...dateFilters,\n    ...(options?.platforms ? { platforms: options.platforms } : {}),",
+      "replace": "  const platformData = await queryPlatformBreakdown({\n    projectId,\n    ...dateFilters,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-filter-queries.test.ts",
+      "pattern": "narrows the publishes in the query, and the platform split in ClickHouse"
+    },
+    {
+      "name": "FILM-1709 the audience splits pool a deselected platform",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "      .eq('episodes.project_id', projectId);\n\n    if (options?.platforms) {\n      query = query.in('platform', options.platforms);\n    }\n\n    return query.order('id').range(from, to);\n  }, 'project audience publishes');",
+      "replace": "      .eq('episodes.project_id', projectId);\n\n    return query.order('id').range(from, to);\n  }, 'project audience publishes');",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-filter-queries.test.ts",
+      "pattern": "builds the audience splits from the selected platforms"
+    },
+    {
+      "name": "FILM-1709 the action boundary accepts an empty selection",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/schemas/platforms.schema.ts",
+      "find": "  .min(1, 'Select at least one platform');",
+      "replace": ";",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-filter-surfaces.test.tsx",
+      "pattern": "takes analytics platforms, at least one"
+    },
+    {
+      "name": "FILM-1709 a card's chip speaks for platforms the filter left out",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/provenance-chip.tsx",
+      "find": "        dimming.dimmed || inFigure.length === 0 ? plotted : inFigure,",
+      "replace": "        plotted,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-filter-surfaces.test.tsx",
+      "pattern": "names the selected platforms on its chip, and only those"
+    },
+    {
+      "name": "FILM-1709 a MetricCard the selection cannot cover stays undimmed",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "      dimming={provenance.dimming}",
+      "replace": "      dimming={{ dimmed: false }}",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-filter-surfaces.test.tsx",
+      "pattern": "dim a card the selection cannot cover, with the reason"
+    },
+    {
+      "name": "FILM-1709 a headline figure nobody asked for says nothing about why",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "  const unmeasured = noFigureReason ?? unmeasuredReason(metric);",
+      "replace": "  const unmeasured = unmeasuredReason(metric);",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-filter-surfaces.test.tsx",
+      "pattern": "draw no zero for figures nobody asked for"
+    },
+    {
+      "name": "FILM-1709 a card explains an absence in other words than the strip",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/provenance.ts",
+      "find": "      return [absenceSentence(view, platform, coverage.kind)];",
+      "replace": "      return [`${name} has no data for ${window}.`];",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-filter-surfaces.test.tsx",
+      "pattern": "says the strip’s own sentence when the one selected platform has no data"
+    }
+  ]
+}
