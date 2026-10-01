@@ -28,6 +28,7 @@ import {
   unmappedFormatPairs,
 } from '../src/lib/format-families';
 import type { FormatFamily } from '../src/lib/format-families';
+import { VIEWS_DATA_WINDOWS } from '../src/lib/self-benchmark';
 import {
   getClickHouseClient,
   insertChannelDaily,
@@ -78,6 +79,7 @@ import {
   queryTotalsByVideoIds,
   queryTrafficSourceBreakdown,
   queryTrafficSources,
+  queryVideoBenchmark,
   queryVideoLanguages,
   queryVideoViewsAtAge,
   queryViewsForVideos,
@@ -3660,6 +3662,598 @@ async function handComputedSteps() {
   );
 }
 
+const SB_PROJECT = '17150000-0000-4000-8000-000000000001';
+const SB_ACCOUNT = '17150000-0000-4000-8000-000000000002';
+const SB_CHANNEL = '17150000-0000-4000-8000-000000000003';
+const SB_OTHER_CHANNEL = '17150000-0000-4000-8000-000000000004';
+const SB_ENGAGED_CHANNEL = '17150000-0000-4000-8000-000000000005';
+const SB_NARROWED_CHANNEL = '17150000-0000-4000-8000-000000000006';
+const SB_INSTAGRAM_CHANNEL = '17150000-0000-4000-8000-000000000007';
+
+/**
+ * The self-benchmark fixture (FILM-1715). Channel C is YouTube, so every
+ * `full` upload is `long_horizontal`; the channel's first ingested day is
+ * 2026-01-06 (sb-p1's), which is what every ingest lag below is measured
+ * from. Figures are views on the day shown.
+ *
+ * | video          | published         | lang | type  | metric days                     | @30 | @90  |
+ * |----------------|-------------------|------|-------|---------------------------------|-----|------|
+ * | sb-p1          | 2026-01-05        | en   | full  | 01-06: 100 · 02-20: 5,000       | 100 | 5100 |
+ * | sb-p2          | 2026-01-10        | en   | full  | 01-11: 200                      | 200 |  200 |
+ * | sb-p3          | 2026-01-15        | en   | full  | 01-16: 300                      | 300 |  300 |
+ * | sb-p4          | 2026-01-20        | en   | full  | 01-21: 400                      | 400 |  400 |
+ * | sb-p5          | 2026-01-25        | en   | full  | 01-26: 1,000                    | 1000| 1000 |
+ * | sb-p6          | 2026-02-01        | es   | full  | 02-02: 600                      | 600 |  600 |
+ * | sb-short       | 2026-01-12        | en   | short | 01-13: 50,000 (another family)  |     |      |
+ * | sb-elsewhere   | 2026-01-07 (ch D) | en   | full  | 01-08: 99,999 (another channel) |     |      |
+ * | sb-late        | 2025-12-01        | en   | full  | none — lag 36, so @30 predates ingest           |
+ * | sb-old         | 2023-12-01        | en   | full  | none — predates ingest everywhere               |
+ * | sb-subject     | 2026-03-02        | en   | full  | 03-03: 300 · 03-31: 200 · 04-01: 999 | 500 | 1499 |
+ * | sb-es-subject  | 2026-03-05        | es   | full  | 03-06: 900                      | 900 |      |
+ * | sb-young       | 2026-05-10        | en   | full  | 05-11: 10                       |     |      |
+ * | sb-boundary    | 2026-04-30 23:00  | en   | full  | 05-01: 70                       |     |      |
+ *
+ * `asOf` is 2026-06-01 00:00 unless a step says otherwise.
+ */
+const SB_VIDEOS: ReadonlyArray<{
+  id: string;
+  published: string;
+  language?: string;
+  contentType?: string;
+  connection?: string;
+  days: Record<string, number>;
+}> = [
+  {
+    id: 'sb-p1',
+    published: '2026-01-05 00:00:00',
+    days: { '2026-01-06': 100, '2026-02-20': 5000 },
+  },
+  {
+    id: 'sb-p2',
+    published: '2026-01-10 00:00:00',
+    days: { '2026-01-11': 200 },
+  },
+  {
+    id: 'sb-p3',
+    published: '2026-01-15 00:00:00',
+    days: { '2026-01-16': 300 },
+  },
+  {
+    id: 'sb-p4',
+    published: '2026-01-20 00:00:00',
+    days: { '2026-01-21': 400 },
+  },
+  {
+    id: 'sb-p5',
+    published: '2026-01-25 00:00:00',
+    days: { '2026-01-26': 1000 },
+  },
+  {
+    id: 'sb-p6',
+    published: '2026-02-01 00:00:00',
+    language: 'es',
+    days: { '2026-02-02': 600 },
+  },
+  {
+    id: 'sb-short',
+    published: '2026-01-12 00:00:00',
+    contentType: 'short',
+    days: { '2026-01-13': 50000 },
+  },
+  {
+    id: 'sb-elsewhere',
+    published: '2026-01-07 00:00:00',
+    connection: SB_OTHER_CHANNEL,
+    days: { '2026-01-08': 99999 },
+  },
+  { id: 'sb-late', published: '2025-12-01 00:00:00', days: {} },
+  { id: 'sb-old', published: '2023-12-01 00:00:00', days: {} },
+  {
+    id: 'sb-subject',
+    published: '2026-03-02 00:00:00',
+    days: { '2026-03-03': 300, '2026-03-31': 200, '2026-04-01': 999 },
+  },
+  {
+    id: 'sb-es-subject',
+    published: '2026-03-05 00:00:00',
+    language: 'es',
+    days: { '2026-03-06': 900 },
+  },
+  {
+    id: 'sb-young',
+    published: '2026-05-10 00:00:00',
+    days: { '2026-05-11': 10 },
+  },
+  {
+    id: 'sb-boundary',
+    published: '2026-04-30 23:00:00',
+    days: { '2026-05-01': 70 },
+  },
+];
+
+/**
+ * Channel E: a range that crosses YouTube's 2026-08-27 views change, where
+ * engaged views cover the whole window. Views and engaged views differ on
+ * purpose, so reading the wrong series changes every figure.
+ *
+ * | video     | published  | views | engaged |
+ * |-----------|------------|-------|---------|
+ * | sb-e1..e5 | 2026-09-01..05 | 1,000 each | 100, 200, 300, 400, 500 |
+ * | sb-e-subj | 2027-05-01 | 5,000 | 450 |
+ */
+const SB_ENGAGED_VIDEOS = [
+  { id: 'sb-e1', published: '2026-09-01', views: 1000, engaged: 100 },
+  { id: 'sb-e2', published: '2026-09-02', views: 1000, engaged: 200 },
+  { id: 'sb-e3', published: '2026-09-03', views: 1000, engaged: 300 },
+  { id: 'sb-e4', published: '2026-09-04', views: 1000, engaged: 400 },
+  { id: 'sb-e5', published: '2026-09-05', views: 1000, engaged: 500 },
+  { id: 'sb-e-subj', published: '2027-05-01', views: 5000, engaged: 450 },
+] as const;
+
+/**
+ * Channel F: a video published inside 2026-07-29 → 2027-04-24, whose
+ * 24-month window (from 2024-09-15) crosses 2026-08-27 and starts before
+ * engaged views exist (2025-04-24). By the owner's decision (2026-10-01)
+ * the window starts at 2025-04-24 — 16 whole months before 2026-09-15 — so
+ * sb-f-old, inside 24 months but before the series, is not a peer.
+ *
+ * | video     | published  | views  | engaged |
+ * |-----------|------------|--------|---------|
+ * | sb-f-old  | 2025-01-10 | 99,999 | 99,999  |
+ * | sb-f1..f5 | 2025-06-01, 08-01, 10-01, 2026-01-05, 03-01 | 1,000 each | 10, 20, 30, 40, 50 |
+ * | sb-f-subj | 2026-09-15 | 5,000  | 45      |
+ */
+const SB_NARROWED_VIDEOS = [
+  { id: 'sb-f-old', published: '2025-01-10', views: 99999, engaged: 99999 },
+  { id: 'sb-f1', published: '2025-06-01', views: 1000, engaged: 10 },
+  { id: 'sb-f2', published: '2025-08-01', views: 1000, engaged: 20 },
+  { id: 'sb-f3', published: '2025-10-01', views: 1000, engaged: 30 },
+  { id: 'sb-f4', published: '2026-01-05', views: 1000, engaged: 40 },
+  { id: 'sb-f5', published: '2026-03-01', views: 1000, engaged: 50 },
+  { id: 'sb-f-subj', published: '2026-09-15', views: 5000, engaged: 45 },
+] as const;
+
+function nextDay(date: string): string {
+  return new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+function sbDim(input: {
+  id: string;
+  published: string;
+  connection: string;
+  language?: string;
+  contentType?: string;
+  platform?: AnalyticsPlatform;
+}) {
+  return {
+    video_id: input.id,
+    project_id: SB_PROJECT,
+    account_id: SB_ACCOUNT,
+    episode_id: EPISODE,
+    connection_id: input.connection,
+    platform: input.platform ?? 'youtube',
+    content_type: input.contentType ?? 'full',
+    language: input.language ?? 'en',
+    channel_language: 'en',
+    title: input.id,
+    published_at: input.published,
+    episode_duration_seconds: 600,
+    asset_duration_seconds: null,
+    tags: [],
+  };
+}
+
+function sbMetric(input: {
+  id: string;
+  date: string;
+  views: number;
+  engaged?: number;
+  platform?: AnalyticsPlatform;
+}): VideoMetric {
+  return {
+    project_id: SB_PROJECT,
+    video_id: input.id,
+    platform: input.platform ?? 'youtube',
+    metric_date: input.date,
+    views: input.views,
+    likes: 0,
+    comments: 0,
+    shares: 0,
+    saves: 0,
+    watch_time_seconds: 0,
+    revenue_cents: 0,
+    subscribers_gained: 0,
+    subscribers_lost: 0,
+    metric_source: 'analytics_api',
+    engaged_views: input.engaged ?? null,
+    extra_metrics: '{}',
+  };
+}
+
+/**
+ * Every figure below is worked out by hand from the tables above, never read
+ * back from the query. quantileExactInclusive interpolates at (n − 1)·p.
+ */
+async function selfBenchmarkSteps() {
+  const channels = [
+    SB_CHANNEL,
+    SB_OTHER_CHANNEL,
+    SB_ENGAGED_CHANNEL,
+    SB_NARROWED_CHANNEL,
+    SB_INSTAGRAM_CHANNEL,
+  ];
+  const scope = { projectId: SB_PROJECT };
+  const asOf = new Date('2026-06-01T00:00:00Z');
+
+  await step('self-benchmark: seed', async () => {
+    await clearFixtureRows([SB_PROJECT], channels);
+
+    await insertVideoDims([
+      ...SB_VIDEOS.map((video) =>
+        sbDim({
+          ...video,
+          connection: video.connection ?? SB_CHANNEL,
+        }),
+      ),
+      ...SB_ENGAGED_VIDEOS.map((video) =>
+        sbDim({
+          id: video.id,
+          published: `${video.published} 00:00:00`,
+          connection: SB_ENGAGED_CHANNEL,
+        }),
+      ),
+      ...SB_NARROWED_VIDEOS.map((video) =>
+        sbDim({
+          id: video.id,
+          published: `${video.published} 00:00:00`,
+          connection: SB_NARROWED_CHANNEL,
+        }),
+      ),
+      sbDim({
+        id: 'sb-ig-subj',
+        published: '2025-06-01 00:00:00',
+        connection: SB_INSTAGRAM_CHANNEL,
+        contentType: 'short',
+        platform: 'instagram',
+      }),
+    ]);
+
+    await insertVideoMetrics([
+      ...SB_VIDEOS.flatMap((video) =>
+        Object.entries(video.days).map(([date, views]) =>
+          sbMetric({ id: video.id, date, views }),
+        ),
+      ),
+      ...SB_ENGAGED_VIDEOS.map((video) =>
+        sbMetric({
+          id: video.id,
+          date: nextDay(video.published),
+          views: video.views,
+          engaged: video.engaged,
+        }),
+      ),
+      ...SB_NARROWED_VIDEOS.map((video) =>
+        sbMetric({
+          id: video.id,
+          date: nextDay(video.published),
+          views: video.views,
+          engaged: video.engaged,
+        }),
+      ),
+      sbMetric({
+        id: 'sb-ig-subj',
+        date: '2025-06-02',
+        views: 7,
+        platform: 'instagram',
+      }),
+    ]);
+
+    return `${
+      SB_VIDEOS.length +
+      SB_ENGAGED_VIDEOS.length +
+      SB_NARROWED_VIDEOS.length +
+      1
+    } videos`;
+  });
+
+  await step(
+    'self-benchmark: a video against its own channel at 30 and 90 days, by hand',
+    async () => {
+      const result = await queryVideoBenchmark({
+        scope,
+        videoId: 'sb-subject',
+        checkpoints: [30, 90, 180],
+        asOf,
+      });
+
+      if (!result?.ok) throw new Error(`not ok: ${JSON.stringify(result)}`);
+      const [at30, at90, at180] = result.checkpoints;
+
+      // Peers at 30: p1 100, p2 200, p3 300, p4 400, p5 1000 — same channel
+      // (not sb-elsewhere's 99,999), same family (not sb-short's 50,000),
+      // same language (not sb-p6), before 03-02. sb-late predates ingest
+      // (published 36 days before 2026-01-06). n = 5: median 300, p25 200,
+      // p75 400. The video's own @30 is 300 + 200 = 500 (04-01 is day 30).
+      // 500 > 400: above; lift 500/300; adjusted 1 + (2/3)·5/(5 + 15).
+      expectEqual('30 state', at30?.state, 'directional');
+      if (at30?.state !== 'directional') return;
+      expectEqual('30 n', at30.n, 5);
+      expectEqual('30 median', at30.cohortMedian, 300);
+      expectEqual('30 p25/p75', [at30.cohortP25, at30.cohortP75], [200, 400]);
+      expectEqual('30 value', at30.value, 500);
+      expectEqual('30 band', at30.band, 'above');
+      expectClose('30 lift', at30.observedLift, 500 / 300);
+      expectClose('30 adjusted', at30.adjustedLift, 1 + (2 / 3) * (5 / 20));
+      expectEqual('30 relaxed', at30.relaxedAxes, []);
+      expectEqual('30 series', at30.viewsColumn, 'views');
+
+      // At 90: p1 is 100 + 5,000 (02-20 is day 46). sb-late's 36-day lag no
+      // longer swallows the window, so it joins — as the zero its ingested
+      // days 36..89 hold. [0, 200, 300, 400, 1000, 5100]: n 6, median 350,
+      // p25 225, p75 850. The video's own @90 is 300 + 200 + 999 = 1,499.
+      expectEqual('90 state', at90?.state, 'directional');
+      if (at90?.state !== 'directional') return;
+      expectEqual('90 n', at90.n, 6);
+      expectEqual('90 median', at90.cohortMedian, 350);
+      expectEqual('90 p25/p75', [at90.cohortP25, at90.cohortP75], [225, 850]);
+      expectEqual('90 value', at90.value, 1499);
+      expectEqual('90 band', at90.band, 'above');
+
+      // 91 days old: @180 is reached on 2026-08-29.
+      expectEqual('180', at180, {
+        state: 'not_judgable',
+        checkpointDays: 180,
+        reason: { kind: 'too_young', ageDays: 91, judgableOn: '2026-08-29' },
+        viewsColumn: null,
+      });
+
+      return '@30 500 vs 300 (n=5) above · @90 1499 vs 350 (n=6) · @180 too young';
+    },
+  );
+
+  await step(
+    'self-benchmark: a thin peer set relaxes window then language, by hand',
+    async () => {
+      const result = await queryVideoBenchmark({
+        scope,
+        videoId: 'sb-es-subject',
+        checkpoints: [30],
+        asOf,
+      });
+
+      if (!result?.ok) throw new Error(`not ok: ${JSON.stringify(result)}`);
+      const [at30] = result.checkpoints;
+
+      // es peers: sb-p6 alone, in 24 months and in 48 — n = 1 twice. Across
+      // languages: p1..p5, p6 and sb-subject (en, 03-02, @30 500); sb-late
+      // and sb-old predate ingest. [100, 200, 300, 400, 500, 600, 1000]:
+      // median 400, p25 250, p75 550. 900 is above; lift 2.25.
+      expectEqual('state', at30?.state, 'directional');
+      if (at30?.state !== 'directional') return;
+      expectEqual('relaxed', at30.relaxedAxes, ['window', 'language']);
+      expectEqual('n', at30.n, 7);
+      expectEqual('median', at30.cohortMedian, 400);
+      expectEqual('p25/p75', [at30.cohortP25, at30.cohortP75], [250, 550]);
+      expectEqual('band', at30.band, 'above');
+      expectClose('lift', at30.observedLift, 2.25);
+      expectClose('adjusted', at30.adjustedLift, 1 + 1.25 * (7 / 22));
+
+      return 'n=7 across all languages, 900 vs 400';
+    },
+  );
+
+  await step(
+    'self-benchmark: a video the cohort excludes for ingest lag is suppressed as itself',
+    async () => {
+      // As a peer: sb-late is old enough for @30 and in sb-subject's window,
+      // and is counted as predating ingest rather than as a zero.
+      const [cohort] = await queryCohortMedians({
+        scope: {
+          accountId: SB_ACCOUNT,
+          connectionId: SB_CHANNEL,
+          formatFamily: 'long_horizontal',
+          language: 'en',
+        },
+        bucket: 'all',
+        checkpoints: [30],
+        asOf: '2026-06-01 00:00:00',
+        publishedFrom: '2024-03-02 00:00:00',
+        publishedBefore: '2026-03-02 00:00:00',
+      });
+      expectEqual('peer side', cohort?.checkpoints[30], {
+        medianViews: 300,
+        p25Views: 200,
+        p75Views: 400,
+        meanViews: 400,
+        matureVideoCount: 5,
+        predatesIngestCount: 1,
+      });
+
+      // As the subject: the same rule, from the same channel ingest start.
+      const result = await queryVideoBenchmark({
+        scope,
+        videoId: 'sb-late',
+        checkpoints: [30],
+        asOf,
+      });
+      if (!result?.ok) throw new Error(`not ok: ${JSON.stringify(result)}`);
+      expectEqual('subject side', result.checkpoints[0], {
+        state: 'not_judgable',
+        checkpointDays: 30,
+        reason: {
+          kind: 'predates_ingest',
+          ingestLagDays: 36,
+          window: VIEWS_DATA_WINDOWS.youtube,
+        },
+        viewsColumn: null,
+      });
+
+      return 'excluded as a peer (predates 1) and as itself (lag 36)';
+    },
+  );
+
+  await step(
+    'self-benchmark: the subject and its cohort judge maturity alike (KB-152)',
+    async () => {
+      // sb-boundary went up at 23:00 on 04-30. At 01:00 on 05-30 its @30
+      // window (05-01 .. 05-29 plus 04-30) is complete: dateDiff counts 30
+      // calendar days, though only 29 days and 2 hours have elapsed.
+      const [cohort] = await queryCohortMedians({
+        scope: { projectId: SB_PROJECT, connectionId: SB_CHANNEL },
+        bucket: 'all',
+        checkpoints: [30],
+        asOf: '2026-05-30 01:00:00',
+        publishedFrom: '2026-04-30 00:00:00',
+      });
+      // sb-boundary is mature; sb-young (05-10) is not.
+      expectEqual(
+        'peer side mature',
+        cohort?.checkpoints[30]?.matureVideoCount,
+        1,
+      );
+
+      const result = await queryVideoBenchmark({
+        scope,
+        videoId: 'sb-boundary',
+        checkpoints: [30],
+        asOf: new Date('2026-05-30T01:00:00Z'),
+      });
+      if (!result?.ok) throw new Error(`not ok: ${JSON.stringify(result)}`);
+      const at30 = result.checkpoints[0];
+
+      // Judgable as itself, against p1..p5 and sb-subject (sb-late
+      // predates): [100, 200, 300, 400, 500, 1000], median 350. 70 < p25.
+      expectEqual('subject side', at30?.state, 'directional');
+      if (at30?.state !== 'directional') return;
+      expectEqual('value', at30.value, 70);
+      expectEqual('median', at30.cohortMedian, 350);
+      expectEqual('band', at30.band, 'below');
+
+      return 'mature on both sides at 29d 2h elapsed';
+    },
+  );
+
+  await step(
+    'self-benchmark: a video one day short is not judged, and says when it will be',
+    async () => {
+      const result = await queryVideoBenchmark({
+        scope,
+        videoId: 'sb-young',
+        checkpoints: [30],
+        asOf,
+      });
+      if (!result?.ok) throw new Error(`not ok: ${JSON.stringify(result)}`);
+      expectEqual('young', result.checkpoints[0], {
+        state: 'not_judgable',
+        checkpointDays: 30,
+        reason: { kind: 'too_young', ageDays: 22, judgableOn: '2026-06-09' },
+        viewsColumn: null,
+      });
+
+      return '22 days old, judgable on 2026-06-09';
+    },
+  );
+
+  await step(
+    'self-benchmark: a change no continuous series covers is suppressed with the date',
+    async () => {
+      // An Instagram Reel at 30 days: 2023-06-01 .. 2025-06-30 crosses
+      // Instagram's 2025-04-21 views change, and Instagram has no continuous
+      // series to narrow to.
+      const result = await queryVideoBenchmark({
+        scope,
+        videoId: 'sb-ig-subj',
+        checkpoints: [30],
+        asOf,
+      });
+      if (!result?.ok) throw new Error(`not ok: ${JSON.stringify(result)}`);
+      expectEqual('family', result.formatFamily, 'short_vertical');
+      expectEqual('suppressed', result.checkpoints[0], {
+        state: 'not_judgable',
+        checkpointDays: 30,
+        reason: { kind: 'view_definition_changed', changedOn: '2025-04-21' },
+        viewsColumn: null,
+      });
+
+      return 'view_definition_changed 2025-04-21';
+    },
+  );
+
+  await step(
+    'self-benchmark: across 2026-08-27 the window narrows to engaged views, by hand',
+    async () => {
+      const result = await queryVideoBenchmark({
+        scope,
+        videoId: 'sb-f-subj',
+        checkpoints: [30],
+        asOf: new Date('2026-11-01T00:00:00Z'),
+      });
+      if (!result?.ok) throw new Error(`not ok: ${JSON.stringify(result)}`);
+      const at30 = result.checkpoints[0];
+
+      // Peers from 2025-04-24: f1..f5, engaged [10, 20, 30, 40, 50] —
+      // median 30, p25 20, p75 40. sb-f-old (2025-01-10, 99,999) is inside
+      // 24 months but before the series, so it is not a peer. The video's
+      // own engaged figure, 45, is above; lift 1.5. 2025-04-24 → 2026-09-15
+      // is 16 whole months.
+      expectEqual('state', at30?.state, 'directional');
+      if (at30?.state !== 'directional') return;
+      expectEqual('series', at30.viewsColumn, 'engaged_views');
+      expectEqual('n', at30.n, 5);
+      expectEqual('median', at30.cohortMedian, 30);
+      expectEqual('p25/p75', [at30.cohortP25, at30.cohortP75], [20, 40]);
+      expectEqual('value', at30.value, 45);
+      expectEqual('band', at30.band, 'above');
+      expectClose('lift', at30.observedLift, 1.5);
+      expectEqual('relaxed', at30.relaxedAxes, []);
+      expectEqual('window', at30.peerWindow, {
+        months: 16,
+        defaultMonths: 24,
+        narrowed: {
+          reason: 'view_definition_changed',
+          changedOn: '2026-08-27',
+          continuousFrom: '2025-04-24',
+        },
+      });
+
+      return '16 of 24 months: engaged 45 vs 30 (n=5)';
+    },
+  );
+
+  await step(
+    'self-benchmark: across 2026-08-27 it reads engaged views on both sides, by hand',
+    async () => {
+      const result = await queryVideoBenchmark({
+        scope,
+        videoId: 'sb-e-subj',
+        checkpoints: [30],
+        asOf: new Date('2027-06-15T00:00:00Z'),
+      });
+      if (!result?.ok) throw new Error(`not ok: ${JSON.stringify(result)}`);
+      const at30 = result.checkpoints[0];
+
+      // Engaged: [100, 200, 300, 400, 500], median 300, p25 200, p75 400;
+      // the video's 450 is above, lift 1.5. On `views` it would be 5,000
+      // against 1,000.
+      expectEqual('state', at30?.state, 'directional');
+      if (at30?.state !== 'directional') return;
+      expectEqual('series', at30.viewsColumn, 'engaged_views');
+      expectEqual('value', at30.value, 450);
+      expectEqual('median', at30.cohortMedian, 300);
+      expectEqual('band', at30.band, 'above');
+      expectClose('lift', at30.observedLift, 1.5);
+
+      return 'engaged 450 vs 300';
+    },
+  );
+
+  await step('self-benchmark: cleanup', () =>
+    clearFixtureRows([SB_PROJECT], channels),
+  );
+}
+
 async function main() {
   if (!isClickHouseEnabled()) {
     console.error(
@@ -3675,6 +4269,7 @@ async function main() {
   await watchedMetricSteps();
   await provenanceSteps();
   await formatFamilySteps();
+  await selfBenchmarkSteps();
   await handComputedSteps();
   // Last: it fills a project with noise, and nothing above should see it.
   await scanScopeSteps();

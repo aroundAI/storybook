@@ -10,12 +10,35 @@
 import { concatByChunk } from './chunked';
 import { getClickHouseClient, isClickHouseEnabled } from './client';
 import { normalizeAssetDurationSeconds } from './lib/asset-duration';
+import { MIN_MATURE_VIDEOS } from './lib/cohort-growth';
 import type { FormatFamily } from './lib/format-families';
-import { formatFamilyPredicate } from './lib/format-families';
+import {
+  formatFamilyOfDim,
+  formatFamilyPredicate,
+} from './lib/format-families';
 import type { LanguageDimension } from './lib/language-dimension';
 import { fromDimLanguage } from './lib/language-dimension';
 import type { SegmentConfidence } from './lib/segment-stats';
 import { computeSpread, resolveConfidence } from './lib/segment-stats';
+import type {
+  BenchmarkCohortScope,
+  BenchmarkRelaxationStep,
+  NotJudgableReason,
+  RelaxationAttempt,
+  VideoBenchmark,
+  VideoCheckpointBenchmark,
+} from './lib/self-benchmark';
+import {
+  BENCHMARK_CHECKPOINTS,
+  BENCHMARK_RELAXATION,
+  BENCHMARK_WINDOW_MONTHS,
+  benchmarkStepSeries,
+  benchmarkVideoAgainstCohort,
+  chooseRelaxation,
+  judgeSubjectCheckpoint,
+  platformIdOfDim,
+  viewsDenominatorReason,
+} from './lib/self-benchmark';
 import type {
   TrafficGroupBucket,
   TrafficSourceRow,
@@ -23,6 +46,7 @@ import type {
 import { groupTrafficRows } from './lib/traffic-groups';
 import type { TrafficBucket } from './lib/traffic-groups';
 import { computeIngestLagDays, computeMaturity } from './lib/video-age';
+import type { ViewsColumn } from './lib/view-definitions';
 import type { VideoDim } from './types';
 
 export interface DimScope {
@@ -271,13 +295,115 @@ function dimSubquery(conditions: string, latest: string): string {
  *
  * `dimWhere` is built by `buildDimConditions`, never caller text.
  */
-function scopedDailyStats(dimWhere: string, columns: string): string {
+function scopedDailyStats(
+  dimWhere: string,
+  columns: string,
+  source: 'video_daily_stats' | 'video_metrics FINAL' = 'video_daily_stats',
+): string {
   return `(
       SELECT ${columns}
-      FROM video_daily_stats
+      FROM ${source}
       WHERE project_id IN (SELECT project_id FROM video_dim WHERE ${dimWhere})
         AND video_id IN (SELECT video_id FROM video_dim WHERE ${dimWhere})
     )`;
+}
+
+/**
+ * The views series a figure may be summed from — a whitelist, because the
+ * name reaches SQL by interpolation. `engaged_views` is not in
+ * `video_daily_stats` (migration 012 left the view alone), so it is read
+ * from the table that view selects from.
+ */
+const VIEWS_COLUMN_SOURCES = {
+  views: 'video_daily_stats',
+  engaged_views: 'video_metrics FINAL',
+} as const satisfies Record<ViewsColumn, string>;
+
+function viewsColumnOf(column: ViewsColumn | undefined): ViewsColumn {
+  return column !== undefined && Object.hasOwn(VIEWS_COLUMN_SOURCES, column)
+    ? column
+    : 'views';
+}
+
+/**
+ * Each channel's first ingested metric day, one row per connection.
+ *
+ * Over `conditions` only — never the `latest` filters (language, format
+ * family, a publish window). Ingest start is a property of the channel; a
+ * language filter that happened to exclude the channel's first-ingested
+ * videos used to move it later, and with it which checkpoints counted as
+ * predating ingest. The cohort medians, the segment queries and the
+ * benchmarked video all read it from here (FILM-1715).
+ */
+function channelIngestSql(conditions: string): string {
+  return `
+      SELECT d.connection_id as connection_id, min(m.metric_date) as ingest_start
+      FROM (${dimSubquery(conditions, '')}) d
+      INNER JOIN ${scopedDailyStats(
+        conditions,
+        'project_id, video_id, metric_date',
+      )} m
+        ON m.video_id = d.video_id AND m.project_id = d.project_id
+      GROUP BY d.connection_id`;
+}
+
+/**
+ * One row per video in scope: its age at `{asOf}`, its channel's ingest lag,
+ * and its `column` summed over calendar days 0..N-1 per checkpoint (`v_N`).
+ *
+ * The single definition of checkpoint eligibility on the SQL side, shared by
+ * the cohort medians and the benchmarked video itself (FILM-1715) — so the
+ * two halves of a benchmark cannot apply different rules.
+ *
+ * Ingest start is a property of the CHANNEL, not the video: a video with no
+ * rows on a well-ingested channel is a real zero and must keep counting as
+ * one (`channelIngestSql`).
+ *
+ * `conditions` and `latest` are built by `buildDimConditions`, never caller
+ * text; checkpoints are floored integers.
+ */
+function perVideoCheckpointsSql(input: {
+  conditions: string;
+  latest: string;
+  checkpoints: readonly number[];
+  column: ViewsColumn;
+}): { with: string; select: string } {
+  const { conditions, latest, checkpoints, column } = input;
+  const source = VIEWS_COLUMN_SOURCES[column];
+
+  const perVideoSelects = checkpoints
+    .map(
+      (days) =>
+        `sumIf(m.${column}, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_${days}`,
+    )
+    .join(',\n        ');
+
+  return {
+    with: `
+    WITH dim AS (${dimSubquery(conditions, latest)}),
+    ingest AS (${channelIngestSql(conditions)})`,
+    select: `
+      SELECT
+        d.video_id as video_id,
+        d.published_at as published_at,
+        dateDiff('day', d.published_at, {asOf: DateTime}) as age_days,
+        if(
+          any(i.ingest_start) > toDate(0),
+          greatest(0, dateDiff('day', d.published_at, toDateTime(any(i.ingest_start)))),
+          toInt32(100000)
+        ) as ingest_lag_days,
+        if(any(i.ingest_start) > toDate(0), toString(any(i.ingest_start)), '') as ingest_start,
+        ${perVideoSelects}
+      FROM dim d
+      LEFT JOIN ${scopedDailyStats(
+        conditions,
+        `project_id, video_id, metric_date, ${column}`,
+        source,
+      )} m
+        ON m.video_id = d.video_id AND m.project_id = d.project_id
+      LEFT JOIN ingest i ON i.connection_id = d.connection_id
+      GROUP BY video_id, published_at`,
+  };
 }
 
 /**
@@ -684,9 +810,20 @@ export async function queryBackCatalogShare(input: {
 export async function queryCohortMedians(input: {
   scope: DimScope;
   checkpoints?: number[];
-  bucket?: 'month' | 'quarter';
+  /** `all`: one cohort, `'all'`, over every video the scope and window select. */
+  bucket?: 'month' | 'quarter' | 'all';
   /** Fixes "how old is this video"; bound so a call is reproducible. */
   asOf?: string;
+  /** Peers published at or after this instant ('YYYY-MM-DD HH:MM:SS', UTC). */
+  publishedFrom?: string;
+  /** Peers published strictly before this instant — a benchmark's own video is not its peer. */
+  publishedBefore?: string;
+  /**
+   * The series the figures are summed from, as `viewsDenominatorFor` chose
+   * it (FILM-1722). `engaged_views` is read from `video_metrics FINAL`,
+   * because `video_daily_stats` does not carry it.
+   */
+  viewsColumn?: ViewsColumn;
 }): Promise<CohortMedianRow[]> {
   if (!isClickHouseEnabled()) return [];
   assertDimScope(input.scope);
@@ -706,19 +843,33 @@ export async function queryCohortMedians(input: {
 
   const client = getClickHouseClient();
   const { conditions, latest, params } = buildDimConditions(input.scope);
+  const column = viewsColumnOf(input.viewsColumn);
 
-  const bucketFn =
-    input.bucket === 'month' ? 'toStartOfMonth' : 'toStartOfQuarter';
+  // Applied to the newest dim row (HAVING), like the other `latest` filters,
+  // so the channel's ingest start below is not narrowed by the window.
+  const latestFilters = latest ? [latest] : [];
+  if (input.publishedFrom) {
+    latestFilters.push('published_at >= {cohortPublishedFrom: DateTime}');
+    params.cohortPublishedFrom = input.publishedFrom;
+  }
+  if (input.publishedBefore) {
+    latestFilters.push('published_at < {cohortPublishedBefore: DateTime}');
+    params.cohortPublishedBefore = input.publishedBefore;
+  }
+
+  const cohortExpr =
+    input.bucket === 'all'
+      ? `'all'`
+      : `toString(${input.bucket === 'month' ? 'toStartOfMonth' : 'toStartOfQuarter'}(published_at))`;
 
   params.asOf = input.asOf ?? formatClickHouseDateTime(new Date());
 
-  // `days` is floored to an integer above, so it is safe to interpolate.
-  const perVideoSelects = checkpoints
-    .map(
-      (days) =>
-        `sumIf(m.views, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_${days}`,
-    )
-    .join(',\n        ');
+  const perVideo = perVideoCheckpointsSql({
+    conditions,
+    latest: latestFilters.join(' AND '),
+    checkpoints,
+    column,
+  });
 
   // A checkpoint whose whole window closed before its channel's ingest
   // began is missing, not zero. Counting it as zero drags the median down,
@@ -740,44 +891,12 @@ export async function queryCohortMedians(input: {
     })
     .join(',');
 
-  // Ingest start is a property of the CHANNEL, not the video: a video with
-  // no rows on a well-ingested channel is a real zero and must keep
-  // counting as one. One row per connection, so the join cannot multiply.
   const query = `
-    WITH dim AS (${dimSubquery(conditions, latest)}),
-    ingest AS (
-      SELECT d.connection_id as connection_id, min(m.metric_date) as ingest_start
-      FROM dim d
-      INNER JOIN ${scopedDailyStats(
-        conditions,
-        'project_id, video_id, metric_date',
-      )} m
-        ON m.video_id = d.video_id AND m.project_id = d.project_id
-      GROUP BY d.connection_id
-    )
+    ${perVideo.with}
     SELECT
-      toString(${bucketFn}(published_at)) as cohort,
+      ${cohortExpr} as cohort,
       count() as video_count,${cohortSelects}
-    FROM (
-      SELECT
-        d.video_id as video_id,
-        d.published_at as published_at,
-        dateDiff('day', d.published_at, {asOf: DateTime}) as age_days,
-        if(
-          any(i.ingest_start) > toDate(0),
-          greatest(0, dateDiff('day', d.published_at, toDateTime(any(i.ingest_start)))),
-          toInt32(100000)
-        ) as ingest_lag_days,
-        ${perVideoSelects}
-      FROM dim d
-      LEFT JOIN ${scopedDailyStats(
-        conditions,
-        'project_id, video_id, metric_date, views',
-      )} m
-        ON m.video_id = d.video_id AND m.project_id = d.project_id
-      LEFT JOIN ingest i ON i.connection_id = d.connection_id
-      GROUP BY video_id, published_at
-    ) per_video
+    FROM (${perVideo.select}) per_video
     GROUP BY cohort
     ORDER BY cohort ASC
   `;
@@ -810,6 +929,298 @@ export async function queryCohortMedians(input: {
       checkpoints: stats,
     };
   });
+}
+
+/**
+ * One video against its own channel's history at the same checkpoint age
+ * (FILM-1715): the join of `queryCohortMedians` and the video's own figure,
+ * judged by `lib/self-benchmark.ts`.
+ *
+ * Peers are the same channel (`connection_id`, across the account's
+ * projects — a channel's history does not stop at a project boundary), the
+ * same format family, the same language, published in the trailing window
+ * before this video. Relaxation follows `BENCHMARK_RELAXATION` and never
+ * touches channel or family. The views series is the one
+ * `viewsDenominatorFor` picks for the whole range, and the video's own
+ * figure is read from the same series.
+ *
+ * Both sides come from `perVideoCheckpointsSql`, so the video's figure and
+ * its channel's ingest start are computed exactly as each peer's are, and
+ * its eligibility is judged by the functions the cohort SQL mirrors.
+ *
+ * Null when ClickHouse is off: nothing is known, which is not a benchmark.
+ */
+export async function queryVideoBenchmark(input: {
+  scope: Pick<DimScope, 'projectId' | 'accountId'>;
+  videoId: string;
+  checkpoints?: readonly number[];
+  /** Fixes "how old is this video"; bound so a call is reproducible. */
+  asOf?: Date;
+}): Promise<VideoBenchmark | null> {
+  if (!isClickHouseEnabled()) return null;
+  assertDimScope(input.scope);
+
+  const asOf = input.asOf ?? new Date();
+  const asOfSql = formatClickHouseDateTime(asOf);
+  const checkpoints = Array.from(
+    new Set(
+      (input.checkpoints ?? BENCHMARK_CHECKPOINTS).map((c) =>
+        Math.max(1, Math.floor(c)),
+      ),
+    ),
+  ).sort((a, b) => a - b);
+
+  const client = getClickHouseClient();
+  const found = buildDimConditions({
+    projectId: input.scope.projectId,
+    accountId: input.scope.accountId,
+  });
+
+  const subjectResult = await client.query({
+    query: `
+      SELECT
+        toString(argMax(account_id, updated_at)) as account_id,
+        toString(argMax(connection_id, updated_at)) as connection_id,
+        argMax(platform, updated_at) as platform,
+        argMax(content_type, updated_at) as content_type,
+        argMax(asset_duration_seconds, updated_at) as asset_duration_seconds,
+        argMax(language, updated_at) as language,
+        toString(argMax(published_at, updated_at)) as published_at
+      FROM video_dim
+      WHERE ${found.conditions} AND video_id = {benchmarkVideoId: String}
+      GROUP BY video_id
+    `,
+    query_params: { ...found.params, benchmarkVideoId: input.videoId },
+    format: 'JSONEachRow',
+  });
+  const [dim] = await subjectResult.json<Record<string, unknown>>();
+
+  if (!dim) {
+    return { ok: false, videoId: input.videoId, reason: 'video_not_found' };
+  }
+
+  const platform = platformIdOfDim(String(dim.platform));
+  if (!platform) {
+    return {
+      ok: false,
+      videoId: input.videoId,
+      reason: 'unsupported_platform',
+    };
+  }
+
+  const family = formatFamilyOfDim({
+    platform: String(dim.platform),
+    content_type: String(dim.content_type),
+    asset_duration_seconds: normalizeAssetDurationSeconds(
+      dim.asset_duration_seconds === null
+        ? null
+        : Number(dim.asset_duration_seconds),
+    ),
+  });
+  if (!family.ok) {
+    return { ok: false, videoId: input.videoId, reason: 'unmapped_format' };
+  }
+
+  const publishedAt = String(dim.published_at);
+  const dimLanguage = String(dim.language ?? '');
+  const channel: BenchmarkCohortScope = {
+    accountId: String(dim.account_id),
+    connectionId: String(dim.connection_id),
+    formatFamily: family.family,
+    language: dimLanguage,
+  };
+
+  const subjectByColumn = new Map<
+    ViewsColumn,
+    Promise<{ values: Record<number, number>; ingestStart: string | null }>
+  >();
+  const subjectFigures = (column: ViewsColumn) => {
+    const cached = subjectByColumn.get(column);
+    if (cached) return cached;
+
+    const promise = (async () => {
+      const { conditions, params } = buildDimConditions({
+        accountId: channel.accountId,
+        connectionId: channel.connectionId,
+      });
+      const perVideo = perVideoCheckpointsSql({
+        conditions,
+        latest: 'video_id = {benchmarkVideoId: String}',
+        checkpoints,
+        column,
+      });
+      const result = await client.query({
+        query: `${perVideo.with} ${perVideo.select}`,
+        query_params: {
+          ...params,
+          benchmarkVideoId: input.videoId,
+          asOf: asOfSql,
+        },
+        format: 'JSONEachRow',
+      });
+      const [row] = await result.json<Record<string, unknown>>();
+      const values: Record<number, number> = {};
+      for (const days of checkpoints) {
+        values[days] = Number(row?.[`v_${days}`] ?? 0);
+      }
+      const ingestStart = String(row?.ingest_start ?? '');
+
+      return { values, ingestStart: ingestStart || null };
+    })();
+
+    subjectByColumn.set(column, promise);
+    return promise;
+  };
+
+  const cohorts = new Map<string, Promise<CohortMedianRow | undefined>>();
+  const cohortFor = (
+    step: BenchmarkRelaxationStep,
+    publishedFrom: string,
+    column: ViewsColumn,
+  ) => {
+    const key = `${publishedFrom}|${step.language}|${column}`;
+    const cached = cohorts.get(key);
+    if (cached) return cached;
+
+    const promise = queryCohortMedians({
+      scope: {
+        accountId: channel.accountId,
+        connectionId: channel.connectionId,
+        formatFamily: channel.formatFamily,
+        ...(step.language === 'same' ? { language: channel.language } : {}),
+      },
+      checkpoints,
+      bucket: 'all',
+      asOf: asOfSql,
+      publishedFrom,
+      publishedBefore: publishedAt,
+      viewsColumn: column,
+    }).then((rows) => rows[0]);
+
+    cohorts.set(key, promise);
+    return promise;
+  };
+
+  const { ingestStart } = await subjectFigures('views');
+  const results: VideoCheckpointBenchmark[] = [];
+
+  for (const days of checkpoints) {
+    const judged = judgeSubjectCheckpoint({
+      platform,
+      publishedAt,
+      checkpointDays: days,
+      asOf,
+      channelIngestStart: ingestStart,
+    });
+
+    if (!judged.judgable) {
+      results.push({
+        state: 'not_judgable',
+        checkpointDays: days,
+        reason: judged.reason,
+        viewsColumn: null,
+      });
+      continue;
+    }
+
+    const attempts: RelaxationAttempt[] = [];
+    let refusal: NotJudgableReason | null = null;
+    const tried = new Set<string>();
+
+    for (const [index, step] of BENCHMARK_RELAXATION.entries()) {
+      const { denominator, range, window } = benchmarkStepSeries({
+        platform,
+        family: family.family,
+        publishedAt,
+        step,
+        checkpointDays: days,
+      });
+
+      if (denominator.kind === 'suppressed') {
+        // The narrowest window already crosses the change, so nothing wider
+        // avoids it. A wider step that crosses one is skipped, not used.
+        if (index === 0) {
+          refusal = viewsDenominatorReason(denominator);
+          break;
+        }
+        attempts.push({ step, cohort: null, column: 'views' });
+        continue;
+      }
+
+      // A window narrowed to the continuous series cannot widen: the 48-month
+      // step lands on the same start as the 24-month one, and calling it a
+      // widened window would claim peers it does not have.
+      const effective = `${range.publishedFrom}|${step.language}`;
+      if (tried.has(effective)) {
+        attempts.push({ step, cohort: null, column: denominator.column });
+        continue;
+      }
+      tried.add(effective);
+
+      const row = await cohortFor(
+        step,
+        range.publishedFrom,
+        denominator.column,
+      );
+      const stats = row?.checkpoints[days];
+      attempts.push({
+        step,
+        column: denominator.column,
+        window,
+        cohort: {
+          p25: stats?.p25Views ?? 0,
+          median: stats?.medianViews ?? 0,
+          p75: stats?.p75Views ?? 0,
+          n: stats?.matureVideoCount ?? 0,
+        },
+      });
+
+      if ((stats?.matureVideoCount ?? 0) >= MIN_MATURE_VIDEOS) break;
+    }
+
+    if (refusal) {
+      results.push({
+        state: 'not_judgable',
+        checkpointDays: days,
+        reason: refusal,
+        viewsColumn: null,
+      });
+      continue;
+    }
+
+    const chosen = chooseRelaxation(attempts);
+    const column = chosen?.column ?? 'views';
+    const { values } = await subjectFigures(column);
+
+    results.push({
+      ...benchmarkVideoAgainstCohort({
+        checkpointDays: days,
+        subject: { judgable: true, value: values[days] ?? 0 },
+        cohort: chosen?.cohort ?? { p25: 0, median: 0, p75: 0, n: 0 },
+        relaxedAxes: (chosen?.step.relaxedAxes ?? []).filter(
+          // A window narrowed back inside the default was not widened.
+          (axis) =>
+            axis !== 'window' ||
+            (chosen?.window?.months ?? chosen?.step.windowMonths ?? 0) >
+              BENCHMARK_WINDOW_MONTHS,
+        ),
+        peerWindow: chosen?.window ?? null,
+      }),
+      viewsColumn: column,
+    });
+  }
+
+  return {
+    ok: true,
+    videoId: input.videoId,
+    connectionId: channel.connectionId,
+    platform,
+    formatFamily: family.family,
+    language: fromDimLanguage(dimLanguage),
+    publishedAt,
+    asOf: asOfSql,
+    checkpoints: results,
+  };
 }
 
 /**
@@ -967,16 +1378,7 @@ function segmentPerVideoSql(
 ): string {
   return `
     WITH dim AS (${dimSubquery(conditions, latest)}),
-    ingest AS (
-      SELECT d.connection_id as connection_id, min(s.metric_date) as ingest_start
-      FROM dim d
-      INNER JOIN ${scopedDailyStats(
-        conditions,
-        'project_id, video_id, metric_date',
-      )} s
-        ON s.video_id = d.video_id AND s.project_id = d.project_id
-      GROUP BY d.connection_id
-    ),
+    ingest AS (${channelIngestSql(conditions)}),
     metrics AS (
       SELECT
         video_id, project_id, metric_date,

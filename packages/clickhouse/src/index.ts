@@ -290,3 +290,43 @@ export type {
   ViewsColumn,
   ViewsDenominator,
 } from './lib/view-definitions';
+
+// A video against its own channel's history at the same age (FILM-1715).
+// Pure, so a card renders the four states from the type the server built.
+export {
+  BENCHMARK_CHECKPOINTS,
+  BENCHMARK_RELAXATION,
+  BENCHMARK_WINDOW_MONTHS,
+  SHRINKAGE_PRIOR_PEERS,
+  VIEWS_DATA_WINDOWS,
+  bandFor,
+  benchmarkCheckpointsFor,
+  benchmarkRange,
+  benchmarkStepSeries,
+  benchmarkVideoAgainstCohort,
+  checkpointCapability,
+  chooseRelaxation,
+  judgeSubjectCheckpoint,
+  platformIdOfDim,
+  rankingLift,
+  shrinkLift,
+  viewFormatOf,
+  viewsDenominatorReason,
+} from './lib/self-benchmark';
+export type {
+  BenchmarkBand,
+  BenchmarkCohortScope,
+  BenchmarkComparison,
+  BenchmarkRelaxationStep,
+  BenchmarkState,
+  CheckpointBenchmark,
+  CheckpointCapability,
+  CheckpointJudgement,
+  CohortQuantiles,
+  NotJudgableReason,
+  PeerWindow,
+  RelaxableAxis,
+  RelaxationAttempt,
+  VideoBenchmark,
+  VideoCheckpointBenchmark,
+} from './lib/self-benchmark';

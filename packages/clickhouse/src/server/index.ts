@@ -62,6 +62,7 @@ export {
   querySegmentMembership,
   querySegmentPerformance,
   queryTrafficSourceBreakdown,
+  queryVideoBenchmark,
   queryVideoViewsAtAge,
   queryWatchWindowTotals,
 } from '../queries-advanced';

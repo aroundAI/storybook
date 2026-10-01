@@ -25,7 +25,7 @@ acceptance_criteria:
     evidence: null
   - text: "Checkpoint sums use the `< N` boundary, and `queryCohortCurves` matches"
     met: true
-    evidence: "`queryCohortCurves` became `queryCohortMedians` (1b02afde), same `< N`: `packages/clickhouse/src/queries-advanced.ts:719`; test `packages/clickhouse/__tests__/queries-advanced.test.ts:420`"
+    evidence: "`queryCohortCurves` became `queryCohortMedians` (1b02afde), same `< N`, now in the per-video builder the cohort and the FILM-1715 benchmark share: `packages/clickhouse/src/queries-advanced.ts:377`; test `packages/clickhouse/__tests__/queries-advanced.test.ts:378`"
   - text: "`matureAt[N]` is false for a video younger than N days"
     met: true
     evidence: null

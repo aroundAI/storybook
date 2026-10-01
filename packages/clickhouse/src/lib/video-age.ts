@@ -46,14 +46,32 @@ export function daysBetween(from: Date, to: Date): number {
 }
 
 /**
+ * UTC calendar-day boundaries crossed between two instants — what
+ * ClickHouse's `dateDiff('day', a, b)` returns, and so what the cohort query
+ * judges maturity and ingest lag with (KB-152).
+ *
+ * Not `daysBetween`: an upload at 23:00 on 1 January has its "@30d" sum
+ * (metric days 1–30 January) complete at 01:00 on 31 January, two hours of
+ * elapsed time short of thirty days. Floored elapsed time called that video
+ * immature while the cohort query, counting calendar days, admitted it — so
+ * the same video could be a peer in the cohort and unjudgable as itself.
+ */
+export function calendarDaysBetween(from: Date, to: Date): number {
+  const day = (value: Date) => Math.floor(value.getTime() / MS_PER_DAY);
+
+  return day(to) - day(from);
+}
+
+/**
  * Whether each checkpoint has actually elapsed for a video.
  *
  * A video 12 days old has not got a "@30d" figure yet: its sum is not zero,
  * it is not yet knowable. Consumers must render the two differently, which
  * they can only do if the distinction survives the query.
  *
- * The boundary matches the sums — days 0..N-1 count toward "@Nd", so the
- * checkpoint is reached once the video is N days old.
+ * The boundary matches the sums — calendar days 0..N-1 count toward "@Nd",
+ * so the checkpoint is reached once N calendar days (UTC) have begun since
+ * publication, exactly as the cohort query's `dateDiff('day', …)` counts.
  */
 export function computeMaturity(
   publishedAt: string | Date,
@@ -68,7 +86,7 @@ export function computeMaturity(
     return mature;
   }
 
-  const ageDays = daysBetween(published, now);
+  const ageDays = calendarDaysBetween(published, now);
 
   for (const days of checkpoints) {
     mature[days] = ageDays >= days;
@@ -103,7 +121,7 @@ export function computeIngestLagDays(
 
   // Clamp at zero: a metric day before publication is a data oddity, not a
   // negative lag, and must not read as "ingested early".
-  return Math.max(0, daysBetween(published, first));
+  return Math.max(0, calendarDaysBetween(published, first));
 }
 
 /**
