@@ -12,10 +12,10 @@ import { useMemo } from 'react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 
+import { formatRevenueCents } from '../lib/estimated-revenue';
 import { compareViewsDesc, formatViews } from '../lib/views';
 import type { SeasonAnalytics as SeasonAnalyticsData } from '../server/aggregation-queries';
 import { MetricCards, NOT_COLLECTED_HERE_REASON } from './metric-cards';
-import { formatRevenueCents } from '../lib/estimated-revenue';
 
 interface SeasonOverviewProps {
   data: SeasonAnalyticsData;

@@ -24,6 +24,7 @@ import type { FormatFamily, LanguageDimension } from '@kit/clickhouse';
 import { Badge } from '@kit/ui/badge';
 import { Skeleton } from '@kit/ui/skeleton';
 
+import { REVENUE_NOT_MEASURED } from '../lib/estimated-revenue';
 import { formatNumber } from '../lib/format';
 import {
   LANGUAGE_COMPARISON_SERIES,
@@ -41,7 +42,6 @@ import type {
 import { LanguageDimensionLabel } from './language-dimension-label';
 import { AnalyticsCard } from './overview/analytics-card';
 import type { CardClaim } from './overview/card-claim';
-import { REVENUE_NOT_MEASURED } from '../lib/estimated-revenue';
 
 // =============================================================================
 // Language Comparison Chart (Side-by-Side)

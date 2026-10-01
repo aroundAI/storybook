@@ -2,7 +2,10 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { ANALYTICS_PLATFORMS, CAPABILITY_MATRIX } from '../src/lib/data-provenance';
+import {
+  ANALYTICS_PLATFORMS,
+  CAPABILITY_MATRIX,
+} from '../src/lib/data-provenance';
 import {
   CONNECTION_REVENUE_STATES,
   monetisationAccess,
@@ -53,14 +56,18 @@ describe('monetisationAccess', () => {
       revenue: 'account_type_gated',
     });
 
-    expect(gated.note).toBe(CAPABILITY_MATRIX.revenue.youtube.accountGate?.note);
+    expect(gated.note).toBe(
+      CAPABILITY_MATRIX.revenue.youtube.accountGate?.note,
+    );
     expect(gated.reconnect).toBe(false);
   });
 
   it('offers a reconnect only where reconnecting would grant something', () => {
     const offered = ANALYTICS_PLATFORMS.flatMap((platform) =>
       [null, ...CONNECTION_REVENUE_STATES]
-        .filter((revenue) => monetisationAccess(platform, { revenue }).reconnect)
+        .filter(
+          (revenue) => monetisationAccess(platform, { revenue }).reconnect,
+        )
         .map((revenue) => `${platform} · ${revenue}`),
     );
 
@@ -101,7 +108,9 @@ describe('monetisationAccess', () => {
       join(REPO, 'packages/features/publishing/src/oauth/analytics-scopes.ts'),
       'utf8',
     );
-    const union = /export type AnalyticsAccessState =([^;]+);/.exec(source)?.[1];
+    const union = /export type AnalyticsAccessState =([^;]+);/.exec(
+      source,
+    )?.[1];
     const members = [...union!.matchAll(/'([^']+)'/g)]
       .map(([, name]) => name)
       .filter((name) => name !== 'no_provider');

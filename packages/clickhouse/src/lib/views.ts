@@ -5,10 +5,7 @@
  * revenue (no measured day, FILM-1726), and so do X's shares (NULL,
  * FILM-1727, migration 021).
  */
-export function addMeasured(
-  a: number | null,
-  b: number | null,
-): number | null {
+export function addMeasured(a: number | null, b: number | null): number | null {
   return a === null && b === null ? null : (a ?? 0) + (b ?? 0);
 }
 

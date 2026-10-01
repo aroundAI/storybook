@@ -210,7 +210,9 @@ export class FacebookInsightsProvider {
       postId,
       totals,
       retention: retentionGraph(metric(video, 'total_video_retention_graph')),
-      adBreaks: await this.adBreaks(videoId, (items, name) => count(items, name)),
+      adBreaks: await this.adBreaks(videoId, (items, name) =>
+        count(items, name),
+      ),
     };
   }
 

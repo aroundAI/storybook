@@ -11,10 +11,10 @@
  */
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 
+import { formatRevenueCents } from '../lib/estimated-revenue';
 import { VIEWS_NOT_MEASURED, viewsShare } from '../lib/views';
 import type { EpisodeAnalytics as EpisodeAnalyticsData } from '../server/aggregation-queries';
 import { MetricCards } from './metric-cards';
-import { formatRevenueCents } from '../lib/estimated-revenue';
 
 interface EpisodeAnalyticsProps {
   data: EpisodeAnalyticsData;

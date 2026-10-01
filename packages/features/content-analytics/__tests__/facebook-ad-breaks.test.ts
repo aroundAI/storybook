@@ -38,7 +38,10 @@ function answer(adBreaks: () => Response) {
       return insights({ total_video_views: 800 });
     }
     if (path.includes('?fields=post_id')) {
-      return json({ post_id: 'post-1', comments: { summary: { total_count: 3 } } });
+      return json({
+        post_id: 'post-1',
+        comments: { summary: { total_count: 3 } },
+      });
     }
     if (path.includes('?fields=shares')) return json({ shares: { count: 2 } });
     return json({ data: [] });
@@ -101,7 +104,9 @@ describe('Facebook ad-break earnings (FILM-1726)', () => {
   });
 
   it('reads any other refusal as unavailable, never as an access state', async () => {
-    answer(() => json({ error: { code: 100, message: 'Invalid metric' } }, 400));
+    answer(() =>
+      json({ error: { code: 100, message: 'Invalid metric' } }, 400),
+    );
 
     const result = await new FacebookInsightsProvider('token').getVideoInsights(
       { videoId: 'v1' },

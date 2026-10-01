@@ -48,9 +48,10 @@ describe('generateCSV', () => {
   });
 
   it('leaves unmeasured earnings blank, never $0.00 (FILM-1726)', () => {
-    const [, line] = generateCSV([row({ revenueCents: null })], [
-      'revenue',
-    ]).split('\n');
+    const [, line] = generateCSV(
+      [row({ revenueCents: null })],
+      ['revenue'],
+    ).split('\n');
 
     expect(line).toBe('2026-09-01,youtube,Harbour,Harbour at dusk,');
   });

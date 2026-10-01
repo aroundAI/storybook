@@ -10,10 +10,10 @@
  */
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 
+import { formatRevenueCents } from '../lib/estimated-revenue';
 import { VIEWS_NOT_MEASURED, formatViews } from '../lib/views';
 import type { ProjectAnalytics as ProjectAnalyticsData } from '../server/aggregation-queries';
 import { MetricCards, NOT_COLLECTED_HERE_REASON } from './metric-cards';
-import { formatRevenueCents } from '../lib/estimated-revenue';
 
 interface ProjectDashboardProps {
   data: ProjectAnalyticsData;
