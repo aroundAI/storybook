@@ -100,6 +100,76 @@
       "spec": "tests/analytics/company-dashboard-evidence.spec.ts",
       "grep": "a Facebook-only team",
       "env": { "CLICKHOUSE_EVIDENCE": "1" }
+    },
+    {
+      "name": "KB-162 a season counts a TikTok publish's unmeasured saves as 0",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "      saves.push(measuredFigure(stats, 'saves'));",
+      "replace": "      saves.push(stats.saves);",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/saves-unmeasured.test.ts",
+      "pattern": "gives no saves for TikTok publishes alone"
+    },
+    {
+      "name": "KB-162 a project counts a season's unmeasured saves as 0",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "      seasonSaves.push(analytics.totalSaves);",
+      "replace": "      seasonSaves.push(analytics.totalSaves ?? 0);",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/saves-unmeasured.test.ts",
+      "pattern": "gives no saves for TikTok publishes alone"
+    },
+    {
+      "name": "KB-162 the content list shows a TikTok publish's unmeasured saves as 0",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "      saves: measuredFigure(latestAnalytics.get(publish.id), 'saves'),",
+      "replace": "      saves: stats.saves,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/saves-unmeasured.test.ts",
+      "pattern": "sums only the saves that were measured"
+    },
+    {
+      "name": "KB-162 an experiment snapshot counts TikTok's unmeasured watch time as 0",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "find": "        measuredFigure(stats, 'watch_time_seconds'),",
+      "replace": "        stats.watch_time_seconds,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-watch-time-unmeasured.test.ts",
+      "pattern": "is null for TikTok videos alone"
+    },
+    {
+      "name": "KB-162 the experiment change row draws an unmeasured watch time as a number",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/experiments/experiment-detail.tsx",
+      "find": "  if (before === null || after === null) {",
+      "replace": "  if (label === '') {",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/experiment-detail-unmeasured.test.tsx",
+      "pattern": "says the watch time was not measured"
+    },
+    {
+      "name": "KB-162 a format family counts unmeasured follower gain as 0",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
+      "find": "      measuredFigure(stats, 'subscribers_gained'),",
+      "replace": "      stats.subscribers_gained,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/format-family-unmeasured.test.ts",
+      "pattern": "is null for TikTok shorts alone"
+    },
+    {
+      "name": "KB-162 the format-family card shows an unmeasured follower gain as 0",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/language-analytics-cards.tsx",
+      "find": "                    {row.subscribersGained === null\n                      ? 'Not measured'\n                      : formatNumber(row.subscribersGained)}",
+      "replace": "                    {formatNumber(row.subscribersGained ?? 0)}",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/format-family-card-unmeasured.test.tsx",
+      "pattern": "says the follower gain was not measured"
     }
   ]
 }

@@ -26,6 +26,11 @@ const PER_VIDEO = new Map([
       watch_time_seconds: 60000,
       revenue_cents: 300,
       subscribers_gained: 7,
+      measured: {
+        saves: true,
+        watch_time_seconds: true,
+        subscribers_gained: true,
+      },
     },
   ],
   [
@@ -39,6 +44,11 @@ const PER_VIDEO = new Map([
       watch_time_seconds: 30000,
       revenue_cents: 130,
       subscribers_gained: 2,
+      measured: {
+        saves: true,
+        watch_time_seconds: true,
+        subscribers_gained: true,
+      },
     },
   ],
 ]);

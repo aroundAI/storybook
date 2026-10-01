@@ -18,6 +18,7 @@ import type { AggregatedTotals } from '@kit/clickhouse/server';
 import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { measuredFigure, sumMeasured } from '../lib/export-coverage';
 import { addViews, compareViewsDesc, viewsShare } from '../lib/views';
 import type { Views } from '../lib/views';
 import { assertProjectAccess } from './scope-access';
@@ -71,7 +72,8 @@ export interface SeasonAnalytics {
   totalLikes: number;
   totalComments: number;
   totalShares: number;
-  totalSaves: number;
+  /** Null where no publish measured it: TikTok reports no saves (KB-162). */
+  totalSaves: number | null;
   totalRevenueCents: number;
   avgEngagementRate: number;
   episodeCount: number;
@@ -105,7 +107,8 @@ export interface ProjectAnalytics {
   totalLikes: number;
   totalComments: number;
   totalShares: number;
-  totalSaves: number;
+  /** Null where no publish measured it (KB-162). */
+  totalSaves: number | null;
   totalRevenueCents: number;
   avgEngagementRate: number;
   contentCount: number;
@@ -373,7 +376,7 @@ export async function getSeasonAnalytics(
       totalLikes: 0,
       totalComments: 0,
       totalShares: 0,
-      totalSaves: 0,
+      totalSaves: null,
       totalRevenueCents: 0,
       avgEngagementRate: 0,
       episodeCount: 0,
@@ -413,7 +416,7 @@ export async function getSeasonAnalytics(
       totalLikes: 0,
       totalComments: 0,
       totalShares: 0,
-      totalSaves: 0,
+      totalSaves: null,
       totalRevenueCents: 0,
       avgEngagementRate: 0,
       episodeCount: episodes.length,
@@ -459,7 +462,8 @@ export async function getSeasonAnalytics(
   let totalLikes = 0;
   let totalComments = 0;
   let totalShares = 0;
-  let totalSaves = 0;
+  // Each publish's saves, null where unmeasured (KB-162).
+  const saves: Array<number | null> = [];
   let totalRevenue = 0;
   let totalEngagement = 0;
   let engagedEpisodes = 0;
@@ -470,7 +474,6 @@ export async function getSeasonAnalytics(
     let epLikes = 0;
     let epComments = 0;
     let epShares = 0;
-    let epSaves = 0;
     let epRevenue = 0;
 
     for (const pub of epPublishes) {
@@ -480,7 +483,7 @@ export async function getSeasonAnalytics(
       epLikes += stats.likes;
       epComments += stats.comments;
       epShares += stats.shares;
-      epSaves += stats.saves;
+      saves.push(measuredFigure(stats, 'saves'));
       epRevenue += stats.revenue_cents;
     }
 
@@ -507,7 +510,6 @@ export async function getSeasonAnalytics(
     totalLikes += epLikes;
     totalComments += epComments;
     totalShares += epShares;
-    totalSaves += epSaves;
     totalRevenue += epRevenue;
     if (epEngagement !== null) {
       totalEngagement += epEngagement;
@@ -543,7 +545,7 @@ export async function getSeasonAnalytics(
     totalLikes,
     totalComments,
     totalShares,
-    totalSaves,
+    totalSaves: sumMeasured(saves).value,
     totalRevenueCents: totalRevenue,
     avgEngagementRate:
       engagedEpisodes > 0 ? totalEngagement / engagedEpisodes : 0,
@@ -603,7 +605,8 @@ export async function getProjectAnalytics(
   let totalLikes = 0;
   let totalComments = 0;
   let totalShares = 0;
-  let totalSaves = 0;
+  // Each season's saves, null where none was measured (KB-162).
+  const seasonSaves: Array<number | null> = [];
   let totalRevenue = 0;
   let totalEngagement = 0;
   let contentCount = 0;
@@ -624,7 +627,7 @@ export async function getProjectAnalytics(
       totalLikes += analytics.totalLikes;
       totalComments += analytics.totalComments;
       totalShares += analytics.totalShares;
-      totalSaves += analytics.totalSaves;
+      seasonSaves.push(analytics.totalSaves);
       totalRevenue += analytics.totalRevenueCents;
       totalEngagement += analytics.avgEngagementRate;
       contentCount += analytics.episodeCount;
@@ -664,7 +667,7 @@ export async function getProjectAnalytics(
     totalLikes,
     totalComments,
     totalShares,
-    totalSaves,
+    totalSaves: sumMeasured(seasonSaves).value,
     totalRevenueCents: totalRevenue,
     avgEngagementRate:
       seasonAnalyticsList.length > 0
@@ -943,7 +946,8 @@ export interface ContentListItem {
   likes: number;
   comments: number;
   shares: number;
-  saves: number;
+  /** Null where the platform did not measure it: TikTok, YouTube (KB-162). */
+  saves: number | null;
   engagementRate: number | null;
 }
 
@@ -1051,7 +1055,7 @@ export async function getContentList(
       likes: stats.likes,
       comments: stats.comments,
       shares: stats.shares,
-      saves: stats.saves,
+      saves: measuredFigure(latestAnalytics.get(publish.id), 'saves'),
       engagementRate,
     };
   });
