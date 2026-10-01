@@ -6,7 +6,7 @@ import {
   normalDeltaE,
   parseColour,
 } from '../../../../packages/features/content-analytics/__tests__/support/colour-distance';
-import { byTest } from '../utils/visible';
+import { byTest, visible } from '../utils/visible';
 import { EXPECTED_GROUPS, type Group, setup } from './traffic-fixture';
 
 /**
@@ -64,30 +64,29 @@ async function openDeepDive(page: Page, url: string, theme: 'light' | 'dark') {
 
 /** The newest column's slice for a group — week B has all eight. */
 function slice(card: Locator, group: Group) {
-  return card
-    .locator(`[data-test="traffic-slice"][data-group="${group}"]`)
-    .last();
+  return visible(
+    card,
+    `[data-test="traffic-slice"][data-group="${group}"]`,
+  ).last();
 }
 
 async function readDrillDown(card: Locator) {
-  return card
-    .locator('[data-test="traffic-drilldown-group"]')
-    .evaluateAll((groups) =>
-      groups.map((group) => ({
-        group: group.getAttribute('data-group')!,
-        share: Number(group.getAttribute('data-share')),
-        text: group.querySelector('.tabular-nums')?.textContent ?? '',
-        codes: [
-          ...group.querySelectorAll('[data-test="traffic-drilldown-source"]'),
-        ].map((code) => ({
-          source: code.getAttribute('data-source')!,
-          share: Number(code.getAttribute('data-share')),
-          recognised: code.getAttribute('data-recognised') === 'true',
-          text: code.textContent ?? '',
-          shareText: code.querySelector('.tabular-nums')?.textContent ?? '',
-        })),
+  return byTest(card, 'traffic-drilldown-group').evaluateAll((groups) =>
+    groups.map((group) => ({
+      group: group.getAttribute('data-group')!,
+      share: Number(group.getAttribute('data-share')),
+      text: group.querySelector('.tabular-nums')?.textContent ?? '',
+      codes: [
+        ...group.querySelectorAll('[data-test="traffic-drilldown-source"]'),
+      ].map((code) => ({
+        source: code.getAttribute('data-source')!,
+        share: Number(code.getAttribute('data-share')),
+        recognised: code.getAttribute('data-recognised') === 'true',
+        text: code.textContent ?? '',
+        shareText: code.querySelector('.tabular-nums')?.textContent ?? '',
       })),
-    );
+    })),
+  );
 }
 
 /**
@@ -208,14 +207,13 @@ test.describe('FILM-1708 traffic drill-down and colour ramp', () => {
 
     // The legend says the same figures, to the same decimal — Playlists'
     // 0.2% used to read "0%" there.
-    const legend = await card
-      .locator('[data-test="traffic-legend-item"]')
-      .evaluateAll((items) =>
+    const legend = await byTest(card, 'traffic-legend-item').evaluateAll(
+      (items) =>
         items.map((item) => [
           item.getAttribute('data-group'),
           item.querySelector('.tabular-nums')?.textContent,
         ]),
-      );
+    );
 
     expect(Object.fromEntries(legend)).toEqual(
       Object.fromEntries(
