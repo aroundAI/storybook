@@ -1,6 +1,5 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -41,17 +40,20 @@ function latestDefinition(name: string): string {
 
 describe('public.publish_format_family', () => {
   const sql = latestDefinition('publish_format_family');
-  const declared = sql.slice(sql.indexOf('declared ('), sql.indexOf('refinement ('));
+  const declared = sql.slice(
+    sql.indexOf('declared ('),
+    sql.indexOf('refinement ('),
+  );
   const refinement = sql.slice(sql.indexOf('refinement ('));
 
   it('maps every (platform, content type) pair as FORMAT_BY_CONTENT_TYPE does', () => {
-    const pairs = [
-      ...declared.matchAll(/\('(\w+)', '(\w+)', '(\w+)'\)/g),
-    ].map(([, platform, contentType, family]) => ({
-      platform,
-      contentType,
-      family,
-    }));
+    const pairs = [...declared.matchAll(/\('(\w+)', '(\w+)', '(\w+)'\)/g)].map(
+      ([, platform, contentType, family]) => ({
+        platform,
+        contentType,
+        family,
+      }),
+    );
 
     const expected = CONTENT_TYPES.flatMap((contentType) =>
       PUBLISH_PLATFORMS.map((platform) => ({

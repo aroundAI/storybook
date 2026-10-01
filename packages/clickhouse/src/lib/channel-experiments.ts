@@ -210,7 +210,10 @@ export interface ChannelExperimentResults {
  * type 7, ClickHouse's `quantileExactInclusive`). `sorted` is ascending
  * and non-empty.
  */
-export function quantileInclusive(sorted: readonly number[], q: number): number {
+export function quantileInclusive(
+  sorted: readonly number[],
+  q: number,
+): number {
   const position = (sorted.length - 1) * q;
   const lower = Math.floor(position);
   const upper = Math.ceil(position);

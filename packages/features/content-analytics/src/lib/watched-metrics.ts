@@ -418,7 +418,7 @@ export const UNMEASURED_REASON_TEXT: Record<UnmeasuredReason, string> = {
   predates_ingest:
     "The linked videos' first 30 days ended before analytics collection began, so there is no data for them.",
   published_after_window:
-    'The linked videos were published after this window, so there is no "before" for them. This log compares videos with their own past; comparing new videos with earlier ones is what channel experiments (coming) are for.',
+    'The linked videos were published after this window, so there is no "before" for them. This log compares videos with their own past; comparing new videos with earlier ones is what Channel experiments are for.',
   unknown_metric:
     'This metric is no longer recognised, so it was not measured.',
 };

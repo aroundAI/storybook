@@ -17,7 +17,10 @@ const measured = (value: number): VideoMeasurement => ({
   state: 'measured',
   value,
 });
-const pending: VideoMeasurement = { state: 'pending', judgableOn: '2026-10-08' };
+const pending: VideoMeasurement = {
+  state: 'pending',
+  judgableOn: '2026-10-08',
+};
 
 const styleA = { id: 'a', name: 'Mouth open' };
 const styleB = { id: 'b', name: 'Mouth closed' };
@@ -55,7 +58,11 @@ describe('summariseStyle', () => {
       { state: 'not_measurable', reason: { kind: 'no_data' } },
     ]);
 
-    expect(summary).toMatchObject({ measured: 1, pending: 0, notMeasurable: 1 });
+    expect(summary).toMatchObject({
+      measured: 1,
+      pending: 0,
+      notMeasurable: 1,
+    });
     expect(summary.distribution?.median).toBe(10);
   });
 

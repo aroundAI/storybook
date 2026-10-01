@@ -48,9 +48,9 @@ import {
   isClickHouseEnabled,
   queryAudienceRows,
   queryBackCatalogShare,
+  queryChannelExperimentVideoDays,
   queryChannelNewAccounts,
   queryChannelReach,
-  queryChannelExperimentVideoDays,
   queryChannelWatchWindow,
   queryCohortMedians,
   queryCompleteChannelWindowDays,
@@ -4998,7 +4998,11 @@ async function channelExperimentSteps() {
         ['2026-03-07', 6, 50],
       ],
     );
-    expectEqual('ce-1 engaged views unreported', first.days[0]!.engagedViews, null);
+    expectEqual(
+      'ce-1 engaged views unreported',
+      first.days[0]!.engagedViews,
+      null,
+    );
     expectEqual('ce-1 avg % viewed', first.days[0]!.avgViewPercentage, 40);
     expectEqual('ce-1 subscribers lost', first.days[0]!.subscribersLost, 1);
     expectEqual(
