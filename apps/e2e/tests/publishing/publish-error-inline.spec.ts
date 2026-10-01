@@ -73,6 +73,11 @@ test.describe('A refused platform says why, inline (FILM-1729)', () => {
       `/home/${team.slug}/studio/${project.slug}/episodes/${slug}/publish`,
     );
 
+    // Rendered once connections load: a click before then finds no channels.
+    await expect(
+      page.getByRole('button', { name: 'Manage Channels' }),
+    ).toBeVisible();
+
     const publish = async () => {
       await byTest(page, 'publish-all').click();
       await byTest(page, 'confirm-publish').click();
@@ -91,20 +96,20 @@ test.describe('A refused platform says why, inline (FILM-1729)', () => {
     const first = await publish();
     const reason = byTest(first, 'publish-platform-error');
 
-    await expect(reason).toBeVisible();
-    await expect(reason).not.toHaveText(/^(Unknown error|Upload failed)?$/);
-    const firstText = await reason.innerText();
+    // The token check's own reason: the stored token cannot be refreshed.
+    await expect(reason).toHaveText('NO_REFRESH_TOKEN');
     await capture(page, '01-refused-inline');
 
-    // Second submission, from the state the first left behind: the row comes
-    // back with the same reason rather than the previous one going stale.
+    // Second submission, from the state the first left behind. That failure
+    // deactivated the connection, so the reason is now a different one: the
+    // row shows this attempt's reason, not the first one left on screen.
     await byTest(page, 'publish-dialog-close').click();
     await expect(first).toBeHidden();
 
     const second = await publish();
 
     await expect(byTest(second, 'publish-platform-error')).toHaveText(
-      firstText,
+      'CONNECTION_INACTIVE',
     );
     await capture(page, '02-refused-again');
   });

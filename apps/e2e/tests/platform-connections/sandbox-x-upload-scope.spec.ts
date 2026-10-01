@@ -95,6 +95,10 @@ async function connectX(page: Page, slug: string, withMediaWrite: boolean) {
 /** Publish All → confirm, and the X row once it has an outcome. */
 async function publishToX(page: Page, publishUrl: string) {
   await page.goto(publishUrl);
+  // Rendered once connections load: a click before then finds no channels.
+  await expect(
+    page.getByRole('button', { name: 'Manage Channels' }),
+  ).toBeVisible();
   await byTest(page, 'publish-all').click();
   await byTest(page, 'confirm-publish').click();
 
@@ -126,6 +130,9 @@ test.describe('Publishing to X without media.write, then with it (FILM-1729)', (
 
     await updateRows('episodes', `id=eq.${episodeId}`, {
       localized_videos: { en: await uploadEpisodeVideo(episodeId) },
+      // X refuses a post that repeats an earlier one word for word, and the
+      // sandbox keeps its X account between runs: the post text is the title.
+      title: `The lighthouse keeper's last night (${episodeId.slice(0, 8)})`,
     });
 
     await signInAs(page, team);
