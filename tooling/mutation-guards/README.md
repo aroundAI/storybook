@@ -50,9 +50,15 @@ parallel shards (`--shard 1/3` … `3/3`): the E2E guards together outgrew a
 | `STAYED GREEN` | The test passed with its fix removed. | The test no longer checks what it claims. Fix the test |
 | `MISSING` | The mutation's target text is not in the file. | The code moved. Update `find` to the new code — deliberately a failure, so a refactor cannot quietly orphan a guard |
 | `NOT GREEN` | The test fails even on the real code — or, for an E2E guard, every test it selects skipped, so it could never fail. | Fix the test first; a failure under mutation would prove nothing. For a skip, give the run what the skip asks for (K11 needed `ENCRYPTION_KEY`) |
+| `TIMED OUT` | The guard never finished, on the real code or the mutated one. Either Playwright ended it at its `--global-timeout` (10 minutes, or the entry's `timeout`), or its command ran past 15 minutes (`GUARD_TIMEOUT`) and was killed with every process it started. It proved nothing either way, and is never counted as `RED`. The run goes on to the next entry, so a shard still reports every guard (KB-165). | Read the output printed under it: it is the test's own report up to the hang. A Playwright test has a 2-minute timeout, and that runs inside the worker, so a run this long means the worker itself stopped answering |
 | `AMBIGUOUS` | A `find` matches more than once in its file (counted after the entry's earlier edits), or an edit names a `file` other than the entry's. Checked before any test runs, and for every entry by `--self-test`. | Extend `find` with surrounding lines until it names one place. The runner used to mutate the first match, which after a rebase can be another copy of the line (#350) |
 
-Any outcome but `RED` fails the run.
+Any outcome but `RED` fails the run, with one exception. An E2E entry may
+carry `"known_flake": "KB-<n>"`, naming the known bug that makes it hang at
+random. Its `TIMED OUT` is then printed but not counted. Its other outcomes
+still fail the run. Give such an entry a short `"timeout"` (seconds, for
+Playwright's `--global-timeout`) so the hang costs minutes, not the shard.
+`KB-95 E1` is the first (KB-165). Remove the mark when the KB is fixed.
 
 ## Adding an entry
 
