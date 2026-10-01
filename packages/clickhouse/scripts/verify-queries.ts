@@ -50,6 +50,7 @@ import {
   queryBackCatalogShare,
   queryChannelNewAccounts,
   queryChannelReach,
+  queryChannelExperimentVideoDays,
   queryChannelWatchWindow,
   queryCohortMedians,
   queryCompleteChannelWindowDays,
@@ -4888,6 +4889,134 @@ async function observedCoverageSteps() {
   await step('clear: observed coverage fixture', clearCoverageFixture);
 }
 
+const CE_PROJECT = '17240000-0000-4000-8000-000000000001';
+const CE_ACCOUNT = '17240000-0000-4000-8000-000000000002';
+const CE_CHANNEL = '17240000-0000-4000-8000-000000000003';
+const CE_OTHER_CHANNEL = '17240000-0000-4000-8000-000000000004';
+
+/**
+ * Channel experiments (FILM-1724): each video's own first days.
+ *
+ * | video    | channel | published        | metric days (date: views)              |
+ * |----------|---------|------------------|----------------------------------------|
+ * | ce-old   | CE      | 2026-01-01       | 02-01: 5 — the channel's first day     |
+ * | ce-1     | CE      | 2026-03-01 10:00 | 03-01: 100 · 03-07: 50 · 03-08: 999     |
+ * | ce-2     | CE      | 2026-03-02 23:30 | 03-03: 20                               |
+ * | ce-other | other   | 2026-03-01       | 03-01: 7                                |
+ *
+ * Read with maxAgeDays 7: ce-1 keeps ages 0 and 6, never 03-08 (age 7);
+ * ce-2's 03-03 is age 1 by the calendar though under 24 hours (KB-152);
+ * ce-other is on another channel and absent though its id is passed; the
+ * ingest start is the channel's (02-01), not the asked videos' (03-01).
+ */
+async function channelExperimentSteps() {
+  await step('channel experiments: first days per video', async () => {
+    await clearFixtureRows([CE_PROJECT], [CE_CHANNEL, CE_OTHER_CHANNEL]);
+    await getClickHouseClient().command({
+      query: 'ALTER TABLE video_reach_daily DELETE WHERE project_id = {p:UUID}',
+      query_params: { p: CE_PROJECT },
+      clickhouse_settings: { mutations_sync: '2' },
+    });
+
+    const dim = (id: string, published: string, connection = CE_CHANNEL) => ({
+      ...dimFor({
+        id,
+        project: CE_PROJECT,
+        account: CE_ACCOUNT,
+        connection,
+        published: '2026-01-01',
+      }),
+      published_at: published,
+    });
+
+    await insertVideoDims([
+      dim('ce-old', '2026-01-01 00:00:00'),
+      dim('ce-1', '2026-03-01 10:00:00'),
+      dim('ce-2', '2026-03-02 23:30:00'),
+      dim('ce-other', '2026-03-01 00:00:00', CE_OTHER_CHANNEL),
+    ]);
+
+    const metric = (id: string, date: string, views: number): VideoMetric => ({
+      ...metricFor({
+        project: CE_PROJECT,
+        id,
+        date,
+        views,
+        subscribersGained: 3,
+        subscribersLost: 1,
+      }),
+      avg_view_percentage: 40,
+      engaged_views: null,
+    });
+
+    await insertVideoMetrics([
+      metric('ce-old', '2026-02-01', 5),
+      metric('ce-1', '2026-03-01', 100),
+      metric('ce-1', '2026-03-07', 50),
+      metric('ce-1', '2026-03-08', 999),
+      metric('ce-2', '2026-03-03', 20),
+      metric('ce-other', '2026-03-01', 7),
+    ]);
+
+    await insertVideoReachDaily([
+      {
+        project_id: CE_PROJECT,
+        video_id: 'ce-1',
+        platform: 'youtube',
+        metric_date: '2026-03-02',
+        impressions: 1000,
+        impressions_ctr: 0.05,
+      },
+      {
+        project_id: CE_PROJECT,
+        video_id: 'ce-1',
+        platform: 'youtube',
+        metric_date: '2026-03-09',
+        impressions: 5000,
+        impressions_ctr: 0.5,
+      },
+    ]);
+
+    const read = await queryChannelExperimentVideoDays({
+      accountId: CE_ACCOUNT,
+      connectionId: CE_CHANNEL,
+      videoIds: ['ce-1', 'ce-2', 'ce-other'],
+      maxAgeDays: 7,
+    });
+
+    if (!read) throw new Error('ClickHouse is off');
+
+    expectEqual('ingest start', read.channelIngestStart, '2026-02-01');
+    expectEqual('videos', [...read.videos.keys()].sort(), ['ce-1', 'ce-2']);
+
+    const first = read.videos.get('ce-1')!;
+    expectEqual(
+      'ce-1 days',
+      first.days.map((day) => [day.date, day.ageDays, day.views]),
+      [
+        ['2026-03-01', 0, 100],
+        ['2026-03-07', 6, 50],
+      ],
+    );
+    expectEqual('ce-1 engaged views unreported', first.days[0]!.engagedViews, null);
+    expectEqual('ce-1 avg % viewed', first.days[0]!.avgViewPercentage, 40);
+    expectEqual('ce-1 subscribers lost', first.days[0]!.subscribersLost, 1);
+    expectEqual(
+      'ce-1 reach',
+      first.reach.map((day) => [day.date, day.ageDays, day.impressions]),
+      [['2026-03-02', 1, 1000]],
+    );
+    expectClose('ce-1 ctr', first.reach[0]!.impressionsCtr, 0.05);
+    expectEqual(
+      'ce-2 days',
+      read.videos.get('ce-2')!.days.map((day) => day.ageDays),
+      [1],
+    );
+
+    return `ingest ${read.channelIngestStart}, ce-1 ${first.days.length} days`;
+  });
+}
+
 async function main() {
   if (!isClickHouseEnabled()) {
     console.error(
@@ -4904,6 +5033,7 @@ async function main() {
   await provenanceSteps();
   await formatFamilySteps();
   await selfBenchmarkSteps();
+  await channelExperimentSteps();
   await handComputedSteps();
   await observedCoverageSteps();
   // Last: it fills a project with noise, and nothing above should see it.

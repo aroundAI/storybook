@@ -2643,3 +2643,231 @@ export async function insertSubscriberSnapshot(row: {
     format: 'JSONEachRow',
   });
 }
+
+/** One video's metric day within its first days, for a channel experiment. */
+export interface ExperimentVideoDay {
+  date: string;
+  /** Calendar days from publication, as the cohort SQL counts them (KB-152). */
+  ageDays: number;
+  views: number;
+  /** Null where the platform did not report it (migration 012). */
+  engagedViews: number | null;
+  /** Null where the platform does not measure it (KB-111). */
+  avgViewPercentage: number | null;
+  subscribersGained: number | null;
+  subscribersLost: number | null;
+}
+
+/** One video's reach day within its first days. */
+export interface ExperimentVideoReachDay {
+  date: string;
+  ageDays: number;
+  impressions: number;
+  impressionsCtr: number;
+}
+
+export interface ExperimentVideoFacts {
+  publishedAt: string;
+  platform: string;
+  contentType: string;
+  assetDurationSeconds: number | null;
+  days: ExperimentVideoDay[];
+  reach: ExperimentVideoReachDay[];
+}
+
+export interface ExperimentVideoDays {
+  /** The channel's first ingested metric day; null when nothing is ingested. */
+  channelIngestStart: string | null;
+  /** Videos absent here are not in `video_dim` yet. */
+  videos: Map<string, ExperimentVideoFacts>;
+}
+
+const realDate = (value: string | undefined | null) =>
+  value && value > '1970-01-01' ? value : null;
+
+const nullableNumber = (value: number | string | null) =>
+  value === null ? null : Number(value);
+
+/**
+ * Each assigned video's first `maxAgeDays` days of metrics and reach, with
+ * its channel's ingest start (FILM-1724).
+ *
+ * One window per video — its own first N days — which is what makes videos
+ * published in different months comparable, and what the one-window
+ * per-video queries (`queryNetSubscribersForVideos`,
+ * `queryQualityMetricsForVideos`) cannot express. The figures are folded by
+ * FILM-1610's folds in `@kit/content-analytics`; this only reads.
+ *
+ * Scoped by account and channel, so `assertDimScope` holds and a publish id
+ * from another tenant matches nothing. The channel's ingest start comes
+ * from `channelIngestSql`, the one definition FILM-1715 uses.
+ *
+ * Null when ClickHouse is off: nothing is known, which is not zero.
+ */
+export async function queryChannelExperimentVideoDays(input: {
+  accountId: string;
+  connectionId: string;
+  videoIds: string[];
+  maxAgeDays: number;
+}): Promise<ExperimentVideoDays | null> {
+  if (!isClickHouseEnabled()) return null;
+
+  const scope: DimScope = {
+    accountId: input.accountId,
+    connectionId: input.connectionId,
+  };
+  assertDimScope(scope);
+
+  const channel = buildDimConditions(scope);
+  const client = getClickHouseClient();
+  const maxAgeDays = Math.max(1, Math.floor(input.maxAgeDays));
+
+  const ingestResult = await client.query({
+    query: channelIngestSql(channel.conditions),
+    query_params: channel.params,
+    format: 'JSONEachRow',
+  });
+  const ingest = await ingestResult.json<{ ingest_start: string }>();
+  const channelIngestStart = realDate(ingest[0]?.ingest_start);
+
+  const videos = new Map<string, ExperimentVideoFacts>();
+
+  if (input.videoIds.length === 0) return { channelIngestStart, videos };
+
+  const read = async (videoIds: string[]) => {
+    const conditions = `${channel.conditions} AND video_id IN {videoIds: Array(String)}`;
+    const params = { ...channel.params, videoIds, maxAgeDays };
+    const dim = `(${dimSubquery(conditions, '')})`;
+    const projects = `project_id IN (SELECT project_id FROM video_dim WHERE ${conditions})`;
+    const firstDays = (alias: string) =>
+      `dateDiff('day', d.published_at, toDateTime(${alias}.metric_date)) < {maxAgeDays: UInt32}`;
+
+    const [dims, days, reach] = await Promise.all([
+      client
+        .query({
+          query: `
+            SELECT video_id, toString(published_at) as published_at, platform,
+                   content_type, asset_duration_seconds
+            FROM ${dim}`,
+          query_params: params,
+          format: 'JSONEachRow',
+        })
+        .then((result) =>
+          result.json<{
+            video_id: string;
+            published_at: string;
+            platform: string;
+            content_type: string;
+            asset_duration_seconds: number | null;
+          }>(),
+        ),
+      client
+        .query({
+          query: `
+            SELECT
+              d.video_id as video_id,
+              toString(m.metric_date) as date,
+              dateDiff('day', d.published_at, toDateTime(m.metric_date)) as age_days,
+              m.views as views,
+              m.engaged_views as engaged_views,
+              m.avg_view_percentage as avg_view_percentage,
+              m.subscribers_gained as subscribers_gained,
+              m.subscribers_lost as subscribers_lost
+            FROM ${dim} d
+            INNER JOIN (
+              SELECT project_id, video_id, metric_date, views, engaged_views,
+                     avg_view_percentage, subscribers_gained, subscribers_lost
+              FROM video_metrics FINAL
+              WHERE ${projects} AND video_id IN {videoIds: Array(String)}
+            ) m ON m.video_id = d.video_id AND m.project_id = d.project_id
+            WHERE ${firstDays('m')}
+            ORDER BY video_id, date`,
+          query_params: params,
+          format: 'JSONEachRow',
+        })
+        .then((result) =>
+          result.json<{
+            video_id: string;
+            date: string;
+            age_days: number;
+            views: number;
+            engaged_views: number | null;
+            avg_view_percentage: number | null;
+            subscribers_gained: number | null;
+            subscribers_lost: number | null;
+          }>(),
+        ),
+      client
+        .query({
+          query: `
+            SELECT
+              d.video_id as video_id,
+              toString(r.metric_date) as date,
+              dateDiff('day', d.published_at, toDateTime(r.metric_date)) as age_days,
+              r.impressions as impressions,
+              r.impressions_ctr as impressions_ctr
+            FROM ${dim} d
+            INNER JOIN (
+              SELECT project_id, video_id, metric_date, impressions, impressions_ctr
+              FROM video_reach_daily FINAL
+              WHERE ${projects} AND video_id IN {videoIds: Array(String)}
+            ) r ON r.video_id = d.video_id AND r.project_id = d.project_id
+            WHERE ${firstDays('r')}
+            ORDER BY video_id, date`,
+          query_params: params,
+          format: 'JSONEachRow',
+        })
+        .then((result) =>
+          result.json<{
+            video_id: string;
+            date: string;
+            age_days: number;
+            impressions: number;
+            impressions_ctr: number;
+          }>(),
+        ),
+    ]);
+
+    return [{ dims, days, reach }];
+  };
+
+  // A video sits in one chunk, so each chunk's rows are its own.
+  for (const { dims, days, reach } of await concatByChunk(
+    input.videoIds,
+    read,
+  )) {
+    for (const row of dims) {
+      videos.set(row.video_id, {
+        publishedAt: row.published_at,
+        platform: row.platform,
+        contentType: row.content_type,
+        assetDurationSeconds: nullableNumber(row.asset_duration_seconds),
+        days: [],
+        reach: [],
+      });
+    }
+
+    for (const row of days) {
+      videos.get(row.video_id)?.days.push({
+        date: row.date,
+        ageDays: Number(row.age_days),
+        views: Number(row.views),
+        engagedViews: nullableNumber(row.engaged_views),
+        avgViewPercentage: nullableNumber(row.avg_view_percentage),
+        subscribersGained: nullableNumber(row.subscribers_gained),
+        subscribersLost: nullableNumber(row.subscribers_lost),
+      });
+    }
+
+    for (const row of reach) {
+      videos.get(row.video_id)?.reach.push({
+        date: row.date,
+        ageDays: Number(row.age_days),
+        impressions: Number(row.impressions),
+        impressionsCtr: Number(row.impressions_ctr),
+      });
+    }
+  }
+
+  return { channelIngestStart, videos };
+}

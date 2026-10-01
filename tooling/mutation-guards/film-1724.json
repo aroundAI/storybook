@@ -54,6 +54,56 @@
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/channel-experiments.test.sql",
       "sql": "alter policy \"channel_experiment_styles_create\" on public.channel_experiment_styles with check (true);"
+    },
+    {
+      "name": "CE-U1 a pending video counts as a zero",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/channel-experiments.ts",
+      "find": "    else if (measurement.state === 'pending') pending += 1;",
+      "replace": "    else if (measurement.state === 'pending') values.push(0);",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/channel-experiments.test.ts",
+      "pattern": "never as a zero in the median"
+    },
+    {
+      "name": "CE-U2 touching ranges are called a difference",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/channel-experiments.ts",
+      "find": "  if (style.p25 > other.p75) return 'ahead';",
+      "replace": "  if (style.p25 >= other.p75) return 'ahead';",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/channel-experiments.test.ts",
+      "pattern": "treats touching ranges as overlapping"
+    },
+    {
+      "name": "CE-U3 a verdict is given below the threshold",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/channel-experiments.ts",
+      "find": "  if (needs.length > 0) return { kind: 'too_few', threshold, needs };",
+      "replace": "  if (needs.length === styles.length) return { kind: 'too_few', threshold, needs };",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/channel-experiments.test.ts",
+      "pattern": "gives no verdict while any style is under the threshold"
+    },
+    {
+      "name": "CE-U4 a running experiment is causal evidence",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/channel-experiments.ts",
+      "find": "    record.status !== 'concluded' ||\n",
+      "replace": "",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/channel-experiments.test.ts",
+      "pattern": "is null for an experiment that has not concluded"
+    },
+    {
+      "name": "CE-U5 the SQL format family table drifts from FILM-1716's",
+      "kind": "unit",
+      "file": "apps/web/supabase/migrations/20261001114902_channel-experiments.sql",
+      "find": "      ('twitter', 'short', 'clip'),",
+      "replace": "      ('twitter', 'short', 'short_vertical'),",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/channel-experiment-sql.test.ts",
+      "pattern": "maps every"
     }
   ]
 }

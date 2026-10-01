@@ -97,6 +97,15 @@ export {
 } from '../queries-advanced';
 export type { ChannelWindowRow } from '../queries-advanced';
 
+// Channel experiments (FILM-1724): each video's own first days.
+export { queryChannelExperimentVideoDays } from '../queries-advanced';
+export type {
+  ExperimentVideoDay,
+  ExperimentVideoDays,
+  ExperimentVideoFacts,
+  ExperimentVideoReachDay,
+} from '../queries-advanced';
+
 export {
   queryLatestSubscriberLevels,
   querySubscriberSeries,
