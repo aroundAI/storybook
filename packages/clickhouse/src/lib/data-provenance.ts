@@ -531,6 +531,16 @@ const X_ENTERPRISE = {
   window: { maxAgeDays: 'undocumented', anchoredOn: 'request_date' },
 } as const satisfies SurfaceAxes;
 
+/**
+ * "Only Page admins can query earnings insights by using the API"
+ * (capability reference, Facebook). A Page that runs no ad breaks has no
+ * ad-break earnings to report.
+ */
+const FACEBOOK_PAGE_EARNINGS: AccountTypeGate = {
+  requirement: 'admin rights on a Facebook Page that earns from ad breaks',
+  note: 'Facebook reports ad-break earnings only to the admin of a Page that earns from ad breaks, so there is nothing to show for this Page.',
+};
+
 const YOUTUBE_PARTNER_PROGRAM: AccountTypeGate = {
   requirement: 'YouTube Partner Program membership',
   note: 'YouTube only reports earnings for channels in the YouTube Partner Program, so there is nothing to show until your channel joins it.',
@@ -858,6 +868,7 @@ export const CAPABILITY_MATRIX: Record<
       table: null,
       blockedBy: 'FILM-1726',
       ...FACEBOOK_VIDEO,
+      accountGate: FACEBOOK_PAGE_EARNINGS,
       note: 'Facebook reports ad-break earnings to Page admins, but we do not collect them yet, so Facebook revenue here is only what you enter yourself.',
       reference: {
         section: 'Facebook',

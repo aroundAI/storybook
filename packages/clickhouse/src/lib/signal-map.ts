@@ -41,7 +41,7 @@ import type { FormatFamily } from './format-families';
 /**
  * The funnel, in order. The stages are the same on every platform.
  *
- * **Adding a stage** (FILM-1726 will add a sixth, `monetisation`, after
+ * **Adding a stage** (FILM-1726 added the sixth, `monetisation`, after
  * `audience`): append it here. Then:
  *
  * - `FUNNEL_STAGE_QUESTION` and every `SIGNAL_MAP` cell stop compiling
@@ -50,9 +50,16 @@ import type { FormatFamily } from './format-families';
  * - `signal-map.test.ts` fails on the same cells.
  *
  * A consumer should iterate `FUNNEL_STAGES`, or use `stageReadings`, rather
- * than spell out the five. Then a sixth stage needs no change outside this
+ * than spell out the six. Then a seventh stage needs no change outside this
  * file. A consumer that keeps a `Record<FunnelStage, …>` stops compiling
  * instead, which is the point.
+ *
+ * Monetisation is last because it is an outcome of the funnel, not a step
+ * a viewer takes inside it. It is a stage because the owner decided so
+ * (FILM-1726, 2026-10-01). The earlier reason for leaving it out was that
+ * revenue is unmeasurable, and that was wrong: YouTube revenue was gated by
+ * a scope we had not asked for. Like every other stage, it may be unbound
+ * where the platform reports nothing.
  */
 export const FUNNEL_STAGES = [
   'reach',
@@ -60,6 +67,7 @@ export const FUNNEL_STAGES = [
   'attention',
   'transmission',
   'audience',
+  'monetisation',
 ] as const;
 
 export type FunnelStage = (typeof FUNNEL_STAGES)[number];
@@ -71,6 +79,7 @@ export const FUNNEL_STAGE_QUESTION: Record<FunnelStage, string> = {
   attention: 'Did they keep watching?',
   transmission: 'Did they pass it on?',
   audience: 'Did they come back or follow?',
+  monetisation: 'Did it earn?',
 };
 
 export const FUNNEL_STAGE_LABEL: Record<FunnelStage, string> = {
@@ -79,6 +88,7 @@ export const FUNNEL_STAGE_LABEL: Record<FunnelStage, string> = {
   attention: 'Attention',
   transmission: 'Transmission',
   audience: 'Audience',
+  monetisation: 'Monetisation',
 };
 
 /** FILM-1716's format families: the inner key of the map. */
@@ -131,6 +141,11 @@ export const SIGNAL_IDS = [
   'watch_time_per_3s_view',
   'complete_view_rate',
   'follows_per_reach',
+  // Monetisation (FILM-1726): the platform's own estimate, never a figure
+  // a person typed in, which lives in Postgres with its currency.
+  'estimated_revenue',
+  'revenue_per_mille',
+  'ad_break_cpm',
 ] as const;
 
 export type SignalId = (typeof SIGNAL_IDS)[number];
@@ -434,6 +449,37 @@ export const SIGNALS: Record<SignalId, SignalDefinition> = {
     definition:
       'Follows Facebook credits to the reel, per person who viewed it.',
   },
+  // The platform's estimate, in US dollars: ClickHouse holds no other
+  // currency (KB-12). A creator's own entries are on the Revenue tab, beside
+  // their currency, and never fill this stage.
+  estimated_revenue: {
+    id: 'estimated_revenue',
+    stage: 'monetisation',
+    inputs: ['revenue'],
+    composition: 'measured',
+    definition:
+      'What the platform estimates the video earned, in US dollars, before any deal or sponsorship you enter yourself.',
+  },
+  // YouTube's RPM, divided here so the denominator is ours to name: views
+  // in this table's sense, not YouTube's monetised playbacks.
+  revenue_per_mille: {
+    id: 'revenue_per_mille',
+    stage: 'monetisation',
+    inputs: ['revenue', 'engagement'],
+    composition: 'ratio',
+    definition:
+      'Estimated earnings per thousand views: whether the video earned well for how many watched it.',
+  },
+  // What advertisers paid, not what the creator kept: a supporting signal
+  // that says whether a weak stage is low demand or few ad breaks.
+  ad_break_cpm: {
+    id: 'ad_break_cpm',
+    stage: 'monetisation',
+    inputs: ['revenue'],
+    composition: 'measured',
+    definition:
+      'What advertisers paid per thousand ad impressions in the video’s ad breaks, as Facebook reports it.',
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -600,6 +646,7 @@ export type UnboundReason =
   | 'platform_does_not_expose_an_impression_equivalent'
   | 'platform_does_not_expose_a_hook_measure'
   | 'platform_does_not_expose_per_video_follows'
+  | 'platform_does_not_expose_revenue'
   | 'format_not_published_on_platform';
 
 /** A figure that would help but which nobody can supply. Named, so the gap stays visible. */
@@ -632,7 +679,7 @@ function unbound(reason: UnboundReason, note: string): StageBinding {
   return { primary: null, reason, note };
 }
 
-/** All five stages unbound: no publish on the platform is in this format. */
+/** Every stage unbound: no publish on the platform is in this format. */
 function notPublished(platform: string, format: string): FormatStageMap {
   const binding = unbound(
     'format_not_published_on_platform',
@@ -645,6 +692,7 @@ function notPublished(platform: string, format: string): FormatStageMap {
     attention: binding,
     transmission: binding,
     audience: binding,
+    monetisation: binding,
   };
 }
 
@@ -652,6 +700,23 @@ const NO_SAVES_YOUTUBE: UnavailableSignal = {
   name: 'saves',
   note: 'YouTube does not report saves.',
 };
+
+/**
+ * Unbound on purpose, not dark: whatever we build, the platform reports
+ * nothing to read. What a creator types in on the Revenue tab is not a
+ * substitute. That figure is theirs and not the platform's, and binding it
+ * would make "unbound" stop meaning "unmeasurable" (FILM-1726).
+ */
+function noRevenue(platform: string): StageBinding {
+  return unbound(
+    'platform_does_not_expose_revenue',
+    `${platform} does not report what a video earned, so there is no figure for this stage. What you enter yourself is on the Revenue tab.`,
+  );
+}
+
+const YOUTUBE_PLAYER_MONETISATION = bound('revenue_per_mille', [
+  'estimated_revenue',
+]);
 
 /**
  * YouTube's player formats. A teaser and a trailer are their own families
@@ -668,6 +733,7 @@ const YOUTUBE_PLAYER: FormatStageMap = {
   ]),
   transmission: bound('share_rate', ['comment_rate'], [NO_SAVES_YOUTUBE]),
   audience: bound('subscriber_conversion', ['subscriber_view_share']),
+  monetisation: YOUTUBE_PLAYER_MONETISATION,
 };
 
 const YOUTUBE_SHORT: FormatStageMap = {
@@ -691,6 +757,16 @@ const YOUTUBE_SHORT: FormatStageMap = {
   ]),
   transmission: bound('share_rate', ['comment_rate'], [NO_SAVES_YOUTUBE]),
   audience: bound('subscriber_conversion', ['subscriber_view_share']),
+  monetisation: bound(
+    'estimated_revenue',
+    [],
+    [
+      {
+        name: 'earnings per thousand views',
+        note: 'YouTube pays Shorts from a pool shared out by views, so a Short’s earnings per thousand views mostly restate the pool’s rate rather than anything about the Short.',
+      },
+    ],
+  ),
 };
 
 /** TikTok's feed is the same full-screen surface whatever the length. */
@@ -724,6 +800,7 @@ const TIKTOK_FEED: FormatStageMap = {
     'platform_does_not_expose_per_video_follows',
     'TikTok does not report how many people followed you from a video.',
   ),
+  monetisation: noRevenue('TikTok'),
 };
 
 /** Every Instagram video is a Reel since the 2022 unification. */
@@ -756,6 +833,7 @@ const INSTAGRAM_REELS: FormatStageMap = {
     'platform_does_not_expose_per_video_follows',
     'Instagram reports follows from feed posts and Stories but not from Reels, so who followed you from a Reel cannot be known.',
   ),
+  monetisation: noRevenue('Instagram'),
 };
 
 const NO_IMPRESSIONS_FACEBOOK: UnavailableSignal = {
@@ -772,6 +850,21 @@ const NO_SAVES_FACEBOOK: UnavailableSignal = {
   name: 'saves',
   note: 'Facebook does not report saves for a video.',
 };
+
+/**
+ * Ad-break earnings, Facebook's own revenue surface. No per-view rate:
+ * Facebook has no single view to divide by (FILM-1722).
+ */
+const FACEBOOK_MONETISATION = bound(
+  'estimated_revenue',
+  ['ad_break_cpm'],
+  [
+    {
+      name: 'earnings per thousand views',
+      note: 'Facebook has no single count of views to divide earnings by, so only the earnings and what advertisers paid are shown.',
+    },
+  ],
+);
 
 /**
  * Facebook Reels: every short, teaser and trailer published there. Bound to
@@ -792,6 +885,7 @@ const FACEBOOK_REELS: FormatStageMap = {
     [NO_SAVES_FACEBOOK],
   ),
   audience: bound('follows_per_reach'),
+  monetisation: FACEBOOK_MONETISATION,
 };
 
 /** A Facebook video in the player: the Reels-only figures are absent. */
@@ -818,6 +912,7 @@ const FACEBOOK_PLAYER: FormatStageMap = {
     'platform_does_not_expose_per_video_follows',
     'Facebook credits follows to reels only, so who followed you from a video in the player cannot be known.',
   ),
+  monetisation: FACEBOOK_MONETISATION,
 };
 
 /**

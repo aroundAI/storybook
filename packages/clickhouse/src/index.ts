@@ -247,7 +247,7 @@ export type {
   PublishPlatform,
 } from './lib/format-families';
 
-// The signal model (FILM-1714): five platform-independent funnel stages, and
+// The signal model (FILM-1714): six platform-independent funnel stages, and
 // the per-platform x per-format map that binds signals to them. Support is
 // computed from the capability matrix, never authored. Pure.
 export {
@@ -280,6 +280,19 @@ export type {
   UnavailableSignal,
   UnboundReason,
 } from './lib/signal-map';
+
+// Why one creator's Monetisation stage has no figure (FILM-1726): the
+// platform's, the creator's or ours, each with its own sentence. Pure.
+export {
+  CONNECTION_REVENUE_STATES,
+  monetisationAccess,
+} from './lib/monetisation-access';
+export type {
+  ConnectionRevenueState,
+  MonetisationAccess,
+  MonetisationAccessState,
+  RevenueConnection,
+} from './lib/monetisation-access';
 
 // What "a view" means per platform, and when it changed (FILM-1722). Pure,
 // so a chart can ask where a boundary falls without reaching the server.
