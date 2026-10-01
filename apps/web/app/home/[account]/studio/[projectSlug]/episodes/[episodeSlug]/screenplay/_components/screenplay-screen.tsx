@@ -312,6 +312,7 @@ export function ScreenplayScreen({
           onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
           aria-label={isSidebarExpanded ? 'Hide characters' : 'Show characters'}
           aria-expanded={isSidebarExpanded}
+          data-test="screenplay-characters-toggle"
           className={cn(
             'fixed top-1/2 right-0 z-40 -translate-y-1/2 rounded-l-xl border border-r-0 border-white/30 bg-card/70 p-3 shadow-lg backdrop-blur-xl transition-all hover:bg-card/90 dark:hover:bg-gray-800/90',
             isSidebarExpanded && 'right-80',

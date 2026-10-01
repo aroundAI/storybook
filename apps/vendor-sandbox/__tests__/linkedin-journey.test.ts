@@ -211,11 +211,7 @@ describe('LinkedIn, end to end through the app’s own clients', () => {
     );
   });
 
-  // LinkedInProvider.createPost reads `data.id` from the body of POST /posts,
-  // which the Posts API answers with 201, the id in x-restli-id and no body
-  // (`createTextPost` reads the header). This fails until the provider does
-  // the same; delete `.fails` then.
-  it.fails('publishes a video through the provider end to end', async () => {
+  it('publishes a video through the provider end to end', async () => {
     const { LinkedInProvider } = await import(
       '@kit/publishing/providers/linkedin'
     );

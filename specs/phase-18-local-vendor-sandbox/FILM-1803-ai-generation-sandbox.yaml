@@ -3,8 +3,8 @@ title: "AI Generation Sandbox"
 phase: 18
 phase_name: "Local Vendor Sandbox"
 category: feature
-status: PARTIAL
-audited: "2026-09-30"
+status: DONE
+audited: "2026-10-01"
 effort: L
 dependencies:
   - spec_id: "FILM-1801"
@@ -26,8 +26,8 @@ summary: >
   with values from a shared corpus matched by field name.
 acceptance_criteria:
   - text: "(Narrowed 2026-09-25) With local.env loaded, no inline AI action a user can trigger reaches a real AI vendor"
-    met: false
-    reason: "in part; the Gemini browser flows are written, not yet run (apps/e2e/tests/sandbox/ai-sandbox-evidence.spec.ts:215: the Gemini key check, social-post variants, an asset description and canon extraction on Publish, each asserting a sandbox reply and no line in the egress-guard log). Live run 2026-09-25 (apps/e2e/tests/sandbox/ai-sandbox-evidence.spec.ts, app with local.env's sandbox block and an egress guard): the ElevenLabs key check (401 then 200), saving the key, an 8 s sound effect (the browser measured it within 0.3 s) and music all went to the sandbox, and the only refused connection was npx's own npm registry check, never a vendor. The Gemini inline flows (social-post variants, canon validation, asset description) are proven through the real executeLLM over HTTP to the sandbox (every-prompt.test.ts) but were not yet driven in the browser. Note validateContentInlineAction makes no LLM call; the canon inline flow is extractCanonChangesAction on the Publish page"
+    met: true
+    evidence: "apps/e2e/tests/sandbox/ai-sandbox-evidence.spec.ts:230 (the Gemini key check) and :276 (social-post variants, an asset description and canon extraction on Publish), each asserting a sandbox reply and that the egress-guard log did not grow; the ElevenLabs key check, saving, an 8 s sound effect and music at :80. Run 2026-10-01 on the sandbox lane (app with local.env, egress guard preloaded, retries off), twice in a row: 3 passed, 3 passed. The egress log after all runs held one line, written at app start-up (registry.npmjs.org, Next's version check), none during a test. Flows not driven: any inline AI action the spec does not list. The run found an app bug fixed in #489: CreateAssetDialog (packages/features/episodes/src/components/sidebar-asset-list.tsx) extracted the description from AlertDialog's onOpenChange, which Radix never calls when the parent sets open, so the dialog opened empty and no Gemini call was made; it now extracts in an effect on open. Note validateContentInlineAction makes no LLM call; the canon inline flow is extractCanonChangesAction on the Publish page. The Gemini inline flows are also proven through the real executeLLM (every-prompt.test.ts)"
   - text: "Each of the 16 Zod-declared prompts gets output that passes the app's own schemaFn.parse"
     met: true
     evidence: "apps/vendor-sandbox/__tests__/every-prompt.test.ts — through the real executeLLM (which validates) and executeLLMForLambda (parsed with the executor's own compile), over HTTP to the sandbox via the real Gemini client"
@@ -58,10 +58,6 @@ acceptance_criteria:
   - text: "No generated title, character, location or line of dialogue matches a placeholder pattern — the same test as FILM-1802's, over a large sample"
     met: true
     evidence: "apps/vendor-sandbox/__tests__/corpus.test.ts — every prompt × 200 seeds through findPlaceholders (src/corpus/placeholder.ts, shared with FILM-1802), and no string field left to a generic sentence"
-remaining:
-  - criterion: "With local.env loaded, no inline AI action a user can trigger reaches a real AI vendor"
-    reason: "the Gemini inline flows are written (apps/e2e/tests/sandbox/ai-sandbox-evidence.spec.ts:215) and not yet run in the browser with the egress guard"
-    closed_by: "unassigned"
 open_questions: []
 notes: |
   ## 1. Overview

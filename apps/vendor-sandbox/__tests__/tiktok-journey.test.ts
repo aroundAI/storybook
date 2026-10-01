@@ -107,12 +107,23 @@ describe('TikTok, end to end through the app’s own clients', () => {
     expect(wrong.body).toMatchObject({ error: 'invalid_grant' });
   });
 
-  it('the app connects without video.publish, so the worker’s direct post is refused with TikTok’s scope_not_authorized', async () => {
+  it('the app requests video.publish, so the worker’s direct post is not refused for scope', async () => {
+    const { TIKTOK_OAUTH_CONFIG } = await import(
+      '@kit/publishing/oauth/tiktok'
+    );
+    expect(tokens.scope.split(',')).toContain('video.publish');
+    expect(TIKTOK_OAUTH_CONFIG.scopes).toContain('video.publish');
+  });
+
+  it('a connection without video.publish has the worker’s direct post refused with TikTok’s scope_not_authorized', async () => {
     const { uploadToTikTok } = await import(
       '../../web/lambda/publish-worker/handlers/tiktok'
     );
+    const narrow = await connectedTikTok(sandbox, {
+      granted: ['user.info.basic', 'video.upload'],
+    });
     await expect(
-      uploadToTikTok(tokens.access_token, {
+      uploadToTikTok(narrow.access_token, {
         videoUrl,
         title: 'Harbour at dawn',
         description: '',
@@ -121,11 +132,7 @@ describe('TikTok, end to end through the app’s own clients', () => {
     ).rejects.toThrow(/scope_not_authorized/);
   });
 
-  // TikTokProvider.uploadVideo reads `upload_id` from the inbox init, which
-  // answers publish_id and upload_url, then sends a `video_upload_id` the
-  // direct-post init does not take (FILM-702 is unverified for this reason).
-  // This fails until the provider follows TikTok's sequence; delete `.fails` then.
-  it.fails('publishes through the provider end to end', async () => {
+  it('publishes through the provider end to end', async () => {
     const { TikTokProvider } = await import('@kit/publishing/providers/tiktok');
     const result = await new TikTokProvider(tokens.access_token).uploadVideo({
       videoPath: videoFile,
@@ -139,12 +146,7 @@ describe('TikTok, end to end through the app’s own clients', () => {
   });
 
   it('publishes through the worker once video.publish is granted: init, status polling, then the post', async () => {
-    const { TIKTOK_OAUTH_CONFIG } = await import(
-      '@kit/publishing/oauth/tiktok'
-    );
-    const withPublish = await connectedTikTok(sandbox, {
-      requested: [...TIKTOK_OAUTH_CONFIG.scopes, 'video.publish'],
-    });
+    const withPublish = await connectedTikTok(sandbox);
     expect(withPublish.scope).toContain('video.publish');
     tokens = withPublish;
 
@@ -159,8 +161,9 @@ describe('TikTok, end to end through the app’s own clients', () => {
     } as unknown as PublishJobMessage);
     publishId = published.contentId;
     expect(publishId).toMatch(/^v_pub_url~v2\.\d+$/);
-    // The worker reads `video_id`, which TikTok does not return, so it has no URL.
-    expect(published.url).toBe('');
+    expect(published.url).toMatch(
+      /^https:\/\/www\.tiktok\.com\/@[^/]+\/video\/\d+$/,
+    );
 
     const { TikTokProvider } = await import('@kit/publishing/providers/tiktok');
     const status = await new TikTokProvider(
@@ -231,17 +234,16 @@ describe('TikTok, end to end through the app’s own clients', () => {
     ).toContain('/v2/video/query/');
   });
 
-  it('a connection without video.list fails analytics with TikTok’s scope_not_authorized', async () => {
+  it('a connection without video.list is refused analytics: TikTok answers scope_not_authorized and the app reports a scope error', async () => {
     const narrow = await connectedTikTok(sandbox, {
       granted: ['user.info.basic', 'video.upload'],
     });
-    const { createTikTokAnalyticsProvider } = await import(
-      '@kit/content-analytics/providers/tiktok'
-    );
+    const { createTikTokAnalyticsProvider, TikTokAnalyticsScopeError } =
+      await import('@kit/content-analytics/providers/tiktok');
     const analytics = createTikTokAnalyticsProvider(narrow.access_token);
-    await expect(analytics.getVideoAnalytics({ videoId })).rejects.toThrow(
-      /scope_not_authorized/,
-    );
+    await expect(
+      analytics.getVideoAnalytics({ videoId }),
+    ).rejects.toBeInstanceOf(TikTokAnalyticsScopeError);
     // Without user.info.stats the follower count is unavailable, not zero.
     expect(await analytics.getFollowerCount()).toEqual({
       ok: false,
@@ -250,20 +252,15 @@ describe('TikTok, end to end through the app’s own clients', () => {
     tokens = narrow;
   });
 
-  // isAuthError matches access_token_invalid but not scope_not_authorized, so a
-  // missing scope surfaces as a raw error. This fails until it does; delete `.fails` then.
-  it.fails(
-    'TikTokAnalyticsProvider classifies scope_not_authorized as a scope error',
-    async () => {
-      const { createTikTokAnalyticsProvider, TikTokAnalyticsScopeError } =
-        await import('@kit/content-analytics/providers/tiktok');
-      await expect(
-        createTikTokAnalyticsProvider(tokens.access_token).getVideoAnalytics({
-          videoId,
-        }),
-      ).rejects.toBeInstanceOf(TikTokAnalyticsScopeError);
-    },
-  );
+  it('TikTokAnalyticsProvider classifies scope_not_authorized as a scope error', async () => {
+    const { createTikTokAnalyticsProvider, TikTokAnalyticsScopeError } =
+      await import('@kit/content-analytics/providers/tiktok');
+    await expect(
+      createTikTokAnalyticsProvider(tokens.access_token).getVideoAnalytics({
+        videoId,
+      }),
+    ).rejects.toBeInstanceOf(TikTokAnalyticsScopeError);
+  });
 
   it('revoke ends the grant: the access token and the refresh token are both refused', async () => {
     const fresh = await connectedTikTok(sandbox);

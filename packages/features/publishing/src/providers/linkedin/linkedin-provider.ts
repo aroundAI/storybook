@@ -18,6 +18,20 @@ import { LINKEDIN_CONSTRAINTS } from './types';
 
 const LINKEDIN_API_BASE = `${vendorUrl('linkedin-api')}/v2`;
 
+/** The Posts API answers 201 with the post URN in `x-restli-id` and no body. */
+async function readPostUrn(response: Response): Promise<string> {
+  const fromHeader = response.headers.get('x-restli-id');
+
+  if (fromHeader) return fromHeader;
+
+  try {
+    const data = await response.json();
+    return data.id || '';
+  } catch {
+    return '';
+  }
+}
+
 /**
  * LinkedIn Provider
  * Handles video uploads and post management using LinkedIn's Marketing API
@@ -118,17 +132,7 @@ export class LinkedInProvider {
       throw new Error(`LinkedIn text post creation failed: ${error}`);
     }
 
-    // LinkedIn returns the post URN in the x-restli-id header
-    let postUrn = response.headers.get('x-restli-id') || '';
-
-    if (!postUrn) {
-      try {
-        const data = await response.json();
-        postUrn = data.id || '';
-      } catch {
-        // Response may be empty for 201 Created
-      }
-    }
+    const postUrn = await readPostUrn(response);
 
     if (!postUrn) {
       throw new Error(
@@ -279,13 +283,13 @@ export class LinkedInProvider {
       throw new Error(`LinkedIn post creation failed: ${error}`);
     }
 
-    const data = await response.json();
+    const postUrn = await readPostUrn(response);
 
-    if (!data.id) {
+    if (!postUrn) {
       throw new Error('LinkedIn post creation failed: Missing post ID');
     }
 
-    return data.id;
+    return postUrn;
   }
 
   /**

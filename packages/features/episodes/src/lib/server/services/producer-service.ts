@@ -145,15 +145,32 @@ export async function planEpisodeRundown(
     });
 
     const rundown = result.data.rundown ?? [];
-    const totalRuntime = result.data.totalRuntime ?? totalDuration * 60;
+
+    if (rundown.length === 0) {
+      return buildFallbackRundown(totalDuration);
+    }
+
+    const { rundown: ordered, segmentNumbers } = normalizeRundown(
+      rundown,
+      totalDuration * 60,
+    );
+    const totalRuntime = ordered.reduce(
+      (sum, segment) => sum + segment.duration,
+      0,
+    );
 
     return {
-      rundown,
+      rundown: ordered,
       totalRuntime,
       breakPositions: resolveBreakPositions(
-        rundown,
+        ordered,
         totalRuntime,
-        result.data.breakPositions,
+        Array.isArray(result.data.breakPositions)
+          ? result.data.breakPositions.map(
+              (position: unknown) =>
+                segmentNumbers.get(position as number) ?? null,
+            )
+          : undefined,
       ),
     };
   } catch (err) {
@@ -309,6 +326,92 @@ function buildFallbackRundown(totalDurationMinutes: number): EpisodeRundown {
     totalRuntime: totalSeconds,
     breakPositions: [],
   };
+}
+
+const PRIORITY_RANK: Record<RundownSegment['priority'], number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+};
+
+/**
+ * Orders a rundown by priority and makes its durations add up to the target
+ * (FILM-1134). The LLM is asked for both and is not trusted to do either.
+ *
+ * Segments are ordered high, medium, low; within a priority the LLM's order
+ * stays. They are numbered 1..n again, and `segmentNumbers` maps each number
+ * the LLM used to the segment's new one, so breaks it proposed still follow
+ * the segments they were meant to follow.
+ *
+ * Durations are scaled in proportion so they total `targetSeconds` exactly,
+ * in whole seconds (largest remainder, earlier segment first on a tie). A
+ * segment without a positive duration makes the proportions meaningless, so
+ * then the target is split equally. With no usable target the durations are
+ * left as they are.
+ * @internal Exported for unit testing.
+ */
+export function normalizeRundown(
+  rundown: RundownSegment[],
+  targetSeconds: number,
+): { rundown: RundownSegment[]; segmentNumbers: Map<number, number> } {
+  const ordered = rundown
+    .map((segment, index) => ({ segment, index }))
+    .sort(
+      (a, b) =>
+        (PRIORITY_RANK[a.segment.priority] ?? PRIORITY_RANK.medium) -
+          (PRIORITY_RANK[b.segment.priority] ?? PRIORITY_RANK.medium) ||
+        a.index - b.index,
+    )
+    .map(({ segment }) => segment);
+
+  const segmentNumbers = new Map<number, number>();
+  ordered.forEach((segment, index) => {
+    if (!segmentNumbers.has(segment.segmentNumber)) {
+      segmentNumbers.set(segment.segmentNumber, index + 1);
+    }
+  });
+
+  const durations = fitDurations(
+    ordered.map((segment) => segment.duration),
+    targetSeconds,
+  );
+
+  return {
+    rundown: ordered.map((segment, index) => ({
+      ...segment,
+      segmentNumber: index + 1,
+      duration: durations[index]!,
+    })),
+    segmentNumbers,
+  };
+}
+
+function fitDurations(durations: number[], targetSeconds: number): number[] {
+  const target = Math.round(targetSeconds);
+
+  if (!Number.isFinite(target) || target <= 0 || durations.length === 0) {
+    return durations;
+  }
+
+  const usable = durations.every(
+    (duration) => Number.isFinite(duration) && duration > 0,
+  );
+  const weights = usable ? durations : durations.map(() => 1);
+  const weightSum = weights.reduce((sum, weight) => sum + weight, 0);
+
+  const exact = weights.map((weight) => (weight * target) / weightSum);
+  const whole = exact.map(Math.floor);
+  const missing = target - whole.reduce((sum, seconds) => sum + seconds, 0);
+
+  exact
+    .map((value, index) => ({ index, remainder: value - Math.floor(value) }))
+    .sort((a, b) => b.remainder - a.remainder || a.index - b.index)
+    .slice(0, missing)
+    .forEach(({ index }) => {
+      whole[index]! += 1;
+    });
+
+  return whole;
 }
 
 /**

@@ -25,6 +25,8 @@
     "./hooks": "./src/hooks/index.ts",
     "./skills": "./src/agent/skills/index.ts",
     "./lib/canon/memory-context-builder": "./src/lib/canon/memory-context-builder.ts",
+    "./lib/canon/memory-rows": "./src/lib/canon/memory-rows.ts",
+    "./lib/canon/store-episode-memory": "./src/lib/canon/store-episode-memory.ts",
     "./lib/canon/continuity-validator": "./src/lib/canon/continuity-validator.ts",
     "./agent/orchestrator": "./src/agent/orchestrator.ts",
     "./agent/story-orchestrator": "./src/agent/story-orchestrator.ts",

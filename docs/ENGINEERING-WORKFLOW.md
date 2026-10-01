@@ -351,6 +351,41 @@ belongs to the files you changed.
 | Does a known input produce the right figure *on the page*? | Yes — seed rows, drive the UI, assert the value (`experiments-evidence.spec.ts`, `subscriber-evidence.spec.ts`) |
 | Are production's figures right? | No — production has no instance yet |
 
+### Sandbox-backed E2E (FILM-1802, FILM-1803, FILM-1806)
+
+The browser-level connect, AI and publish-queue specs need the vendor sandbox,
+the local job queue and an app pointed at both. One sequence runs the lane:
+
+```bash
+pnpm install                                   # the sandbox runs from its own node_modules/.bin/tsx
+./scripts/local-env.sh up                      # Supabase, ClickHouse, sandbox, R2 bucket, ElasticMQ + workers
+./scripts/local-env.sh status                  # sandbox and job queue must both say "pid"
+
+# the app, under the egress guard; NEXT_PUBLIC_APP_URL is the origin the
+# vendor's consent screen redirects back to, and TikTok's connect route
+# refuses to start without it
+cd apps/web
+set -a; . ../../deployment/config/local.env; set +a
+export NEXT_PUBLIC_SITE_URL=http://localhost:3144 NEXT_PUBLIC_APP_URL=http://localhost:3144
+export EGRESS_GUARD_LOG=/tmp/egress.log
+NODE_OPTIONS="--import $PWD/../../apps/vendor-sandbox/scripts/egress-guard.mjs" \
+  npx next dev --turbo -p 3144 &
+
+# the specs (same shell, so local.env's ENCRYPTION_KEY is in the run's environment)
+cd ../e2e
+export PLAYWRIGHT_BASE_URL=http://localhost:3144 CAPTURE_EVIDENCE=1 EVIDENCE_DIR=/tmp/evidence
+SANDBOX_CONNECT=1 npx playwright test sandbox-connect --retries=0          # TikTok, Meta, LinkedIn: ~25 s
+AI_SANDBOX_EVIDENCE=1 npx playwright test ai-sandbox-evidence --retries=0   # Gemini, ElevenLabs flows: ~20 s
+PUBLISH_QUEUE_EVIDENCE=1 npx playwright test publish-queue-evidence --retries=0  # waits for the 5-minute cron: ~5 min
+```
+
+Take the lane lock first if other agents share the machine
+(`scripts/local-ci/dblock.sh acquire sandbox-e2e`), and stop the app when you
+are done. The egress guard logs one refusal at start-up (Next's npm version
+check); a spec that compares the log's length before and after is unaffected.
+A second `local-env.sh up` after a checkout moves recreates the ElasticMQ
+container, so its config mount follows the checkout.
+
 The pattern for a measured-value check: seed rows whose right answer you
 computed by hand, and pick them so the plausible *wrong* implementation gives a
 different number. FILM-1610 seeds 1,000 impressions at 10% and 9,000 at 2%:

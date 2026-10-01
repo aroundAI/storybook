@@ -1,7 +1,7 @@
 {
     "slug": "insights-generation",
     "name": "Analytics Insights Generation",
-    "version": 1,
+    "version": 2,
     "category": "analytics",
     "description": "Generate AI-powered insights and recommendations from analytics data.",
     "exported_at": "2025-01-01T00:00:00.000Z",
@@ -32,19 +32,19 @@
             "order": 2
         }
     ],
-    "user_prompt": "Analyze the following content performance data and provide actionable insights.\n\n## Analytics Data\n{{analytics_data}}\n\n## Analysis Requirements\nProvide insights in the following categories:\n1. **Performance Summary**: High-level overview of content performance\n2. **Content Recommendations**: Specific suggestions for content improvement\n3. **Posting Strategy**: Optimal posting times, frequency, etc.\n4. **Audience Insights**: Who is engaging and how to reach more people\n5. **Top Performers**: What makes the best content successful\n6. **Action Items**: Prioritized list of next steps\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"performanceSummary\": \"string (2-3 sentences summarizing overall performance)\",\n  \"contentRecommendations\": [\"string\", \"string\", \"...\"],\n  \"postingStrategy\": [\"string\", \"string\", \"...\"],\n  \"audienceInsights\": [\"string\", \"string\", \"...\"],\n  \"topPerformers\": [\"string\", \"string\", \"...\"],\n  \"actionItems\": [\"string\", \"string\", \"...\"]\n}\n```",
+    "user_prompt": "Analyze the following content performance data and provide actionable insights.\n\n## Analytics Data\n{{analytics_data}}\n\n## Ground rules\n- Use only the figures in the Analytics Data. Never invent, estimate or round a number that is not there, and never state a figure for something that is not in the data.\n- A section whose input is missing or empty must be an empty list. Do not fill it with general advice.\n- `trendFacts` lists period-over-period changes against the previous period of the same length. Each entry has `metric`, `platform` (\"all\" means the platforms currently selected), `current`, `previous` and `changePercent`. A metric with no entry has no baseline: say nothing about its direction.\n- `audience` holds percentages reported by the platforms for the viewers they have audience data on, which may not be every viewer. Describe only the splits that are present.\n- `topContent` lists the best content by views, each with an `id`. Explain why each performed using only the supplied figures (views, likes, engagement rate, platform, title). Do not claim anything about the video's footage, audio or publishing time.\n\n## Analysis Requirements\nProvide insights in the following categories:\n1. **Performance Summary**: High-level overview of content performance\n2. **Trends**: 3-4 statements about what rose or fell, each naming the metric, the platform scope and the `changePercent` from `trendFacts`\n3. **Content Recommendations**: Specific suggestions for content improvement\n4. **Posting Strategy**: Optimal posting times, frequency, etc.\n5. **Audience Insights**: Who is engaging and how to reach more people, from `audience` only\n6. **Top Performers**: For each `topContent` entry, why it performed, from its own figures\n7. **Action Items**: Prioritized list of next steps\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"performanceSummary\": \"string (2-3 sentences summarizing overall performance)\",\n  \"trends\": [\"string\", \"string\", \"...\"],\n  \"contentRecommendations\": [\"string\", \"string\", \"...\"],\n  \"postingStrategy\": [\"string\", \"string\", \"...\"],\n  \"audienceInsights\": [\"string\", \"string\", \"...\"],\n  \"topPerformers\": [{ \"contentId\": \"the id of a topContent entry\", \"analysis\": \"string (1-2 sentences)\" }],\n  \"actionItems\": [\"string\", \"string\", \"...\"]\n}\n```",
     "variables": {
         "analytics_data": {
             "type": "text",
             "required": true,
-            "description": "JSON string of analytics data including totals, platform breakdown, top content, etc."
+            "description": "JSON string of analytics data including totals, platform breakdown, trendFacts, audience, top content, etc."
         }
     },
     "output": {
         "type": "object",
         "schema": {
             "type": "zod",
-            "definition": "z.object({ performanceSummary: z.string(), contentRecommendations: z.array(z.string()), postingStrategy: z.array(z.string()), audienceInsights: z.array(z.string()), topPerformers: z.array(z.string()), actionItems: z.array(z.string()) })"
+            "definition": "z.object({ performanceSummary: z.string(), trends: z.array(z.string()), contentRecommendations: z.array(z.string()), postingStrategy: z.array(z.string()), audienceInsights: z.array(z.string()), topPerformers: z.array(z.object({ contentId: z.string(), analysis: z.string() })), actionItems: z.array(z.string()) })"
         }
     }
 }

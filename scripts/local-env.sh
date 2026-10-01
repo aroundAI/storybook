@@ -71,6 +71,8 @@ write_env_file() {
 DEPLOY_TARGET=local
 NODE_ENV=development
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+# The TikTok connect route reads this one, not the site URL.
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:55321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=${anon}

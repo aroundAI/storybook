@@ -27,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
 import { AddEventDialog } from './add-event-dialog';
 import { AddThreadDialog } from './add-thread-dialog';
+import { CharacterStateHistory } from './character-state-history';
 import { DeleteEventDialog } from './delete-event-dialog';
 import { EditThreadDialog } from './edit-thread-dialog';
 import { EpisodeFactsPanel } from './episode-facts-panel';
@@ -85,6 +86,13 @@ export function CanonDashboard({
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const latestStateIds = new Map<string, string>();
+  for (const state of characterStates) {
+    if (!latestStateIds.has(state.character_id)) {
+      latestStateIds.set(state.character_id, state.id);
+    }
+  }
 
   if (!canonEnabled) {
     return (
@@ -337,6 +345,14 @@ export function CanonDashboard({
                     <p className="mt-0.5 text-[10px] text-muted-foreground/60">
                       {formatTrigger(state.trigger_event)}
                     </p>
+                  )}
+                  {state.id === latestStateIds.get(state.character_id) && (
+                    <CharacterStateHistory
+                      characterId={state.character_id}
+                      characterName={state.characters?.name ?? 'Character'}
+                      episodeId={episodeId}
+                      onRolledBack={loadData}
+                    />
                   )}
                 </div>
                 <UpdateCharacterStateDialog

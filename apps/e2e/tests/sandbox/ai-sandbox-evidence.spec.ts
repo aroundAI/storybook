@@ -9,6 +9,7 @@ import {
   uniqueStamp,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * FILM-1803: the inline AI flows, driven in a real app against the AI
@@ -333,6 +334,8 @@ test.describe('AI sandbox — inline flows (FILM-1803)', () => {
       expect(
         (await geminiReplies(since, 'linkedin-post-generation')).length,
       ).toBeGreaterThan(0);
+      await page.waitForURL(/\/social-posts\/[0-9a-f-]{36}$/);
+      await expect(page.getByText('Post Preview')).toBeVisible();
       if (shoot)
         await page.screenshot({ path: `${OUT}/08-social-variants.png` });
 
@@ -340,7 +343,8 @@ test.describe('AI sandbox — inline flows (FILM-1803)', () => {
       since = await lastId();
       const episodePath = `/home/${team.slug}/studio/${project.slug}/episodes/${episodeSlug}`;
       await page.goto(`${episodePath}/story`);
-      await page.getByText('Tomas Quill').first().hover();
+      await byTest(page, 'story-sidebar-toggle').click();
+      await page.getByText('Tomas Quill', { exact: true }).last().hover();
       await page.getByTitle('Create in library').first().click();
       const createDialog = page.getByRole('alertdialog');
       const description = createDialog.getByPlaceholder(
@@ -364,9 +368,9 @@ test.describe('AI sandbox — inline flows (FILM-1803)', () => {
       // --- Publish: the canon extraction runs on mount and offers to save.
       since = await lastId();
       await page.goto(`${episodePath}/publish`);
-      await expect(
-        page.getByRole('button', { name: 'Save to Canon' }),
-      ).toBeVisible({ timeout: 60_000 });
+      const saveToCanon = page.getByRole('button', { name: 'Save to Canon' });
+      await expect(saveToCanon).toBeVisible({ timeout: 60_000 });
+      await saveToCanon.scrollIntoViewIfNeeded();
       expect(
         (await geminiReplies(since, 'canon-extraction')).length,
       ).toBeGreaterThan(0);

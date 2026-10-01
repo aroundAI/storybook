@@ -77,6 +77,7 @@ function isAuthError(error: unknown): boolean {
       message.includes('invalid_token') ||
       message.includes('unauthorized') ||
       message.includes('forbidden') ||
+      message.includes('scope_not_authorized') ||
       message.includes('access denied')
     );
   }

@@ -136,6 +136,19 @@ export interface GeographyBreakdown {
 }
 
 /**
+ * A measured period-over-period change. Only built where the previous
+ * period has a figure above zero: a change from nothing is not a percentage.
+ * `platform` is `all` for the platforms currently selected.
+ */
+export interface TrendFact {
+  metric: 'views' | 'likes' | 'comments' | 'shares';
+  platform: string;
+  current: number;
+  previous: number;
+  changePercent: number;
+}
+
+/**
  * Unified aggregate analytics for AI insights and dashboard
  */
 export interface AggregateAnalytics {
@@ -144,6 +157,7 @@ export interface AggregateAnalytics {
   platformMetrics?: PlatformBreakdown[];
   topContent?: TopContent[];
   audience?: AudienceData & ExtendedAudienceData;
+  trendFacts?: TrendFact[];
   contentCount: number;
   avgEngagementRate: number;
   /** Share breakdown by type */

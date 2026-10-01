@@ -51,7 +51,9 @@ test.describe('Asset library', () => {
     await createCharacter(page, 'First Hero');
 
     await expect(page.getByRole('dialog')).toBeHidden();
-    await expect(page.getByText('First Hero')).toBeVisible();
+    await expect(
+      page.getByText('First Hero').filter({ visible: true }),
+    ).toBeVisible();
 
     // The second create runs against a gallery that already holds state, which
     // is where a list seeded once from the server goes stale.
@@ -59,8 +61,12 @@ test.describe('Asset library', () => {
     await byTest(page, 'create-character-item').click();
     await createCharacter(page, 'Second Hero');
 
-    await expect(page.getByText('Second Hero')).toBeVisible();
-    await expect(page.getByText('First Hero')).toBeVisible();
+    await expect(
+      page.getByText('Second Hero').filter({ visible: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText('First Hero').filter({ visible: true }),
+    ).toBeVisible();
   });
 
   test('Ctrl+K opens the create menu', async ({ page }) => {
@@ -109,7 +115,9 @@ test.describe('Asset library', () => {
     await openAssets(page);
 
     const title = page.getByRole('heading', { name: 'Cast', level: 1 });
-    const description = page.getByText('Characters in your story world');
+    const description = page
+      .getByText('Characters in your story world')
+      .filter({ visible: true });
 
     await expect(description).toBeVisible();
 

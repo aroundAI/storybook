@@ -270,6 +270,19 @@ test.describe('Canon write scope (KB-76, KB-77, KB-63)', () => {
   test('a project viewer is refused when resetting the episode, and no canon is deleted', async ({
     page,
   }) => {
+    // The audit log grows with every canon write the earlier tests in this
+    // file make (an added thread is audited since FILM-1005), so what the
+    // refusal must leave alone is what stood before it, not a fixed count.
+    const before = await canonOfEpisode();
+
+    expect(before).toMatchObject({
+      characterStates: 1,
+      summaries: 1,
+      openedThread: 1,
+      touchedBy: [seeded.otherEpisodeId, seeded.episodeId],
+    });
+    expect(before.stateDeltas).toBeGreaterThanOrEqual(1);
+
     await resetToStory(page, viewer);
 
     await expect(page.getByText(RESET_REFUSAL).first()).toBeVisible();
@@ -278,13 +291,7 @@ test.describe('Canon write scope (KB-76, KB-77, KB-63)', () => {
       await page.screenshot({ path: `${OUT}/03-viewer-reset-refused.png` });
     }
 
-    expect(await canonOfEpisode()).toEqual({
-      characterStates: 1,
-      stateDeltas: 1,
-      summaries: 1,
-      openedThread: 1,
-      touchedBy: [seeded.otherEpisodeId, seeded.episodeId],
-    });
+    expect(await canonOfEpisode()).toEqual(before);
 
     const [episode] = await readRows<{ status: string }>(
       'episodes',

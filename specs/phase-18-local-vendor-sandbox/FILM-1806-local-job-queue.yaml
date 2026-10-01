@@ -3,8 +3,8 @@ title: "Local Job Queue"
 phase: 18
 phase_name: "Local Vendor Sandbox"
 category: feature
-status: PARTIAL
-audited: "2026-09-30"
+status: DONE
+audited: "2026-10-01"
 effort: M
 dependencies:
   - spec_id: "FILM-1801"
@@ -42,12 +42,8 @@ acceptance_criteria:
     met: true
     evidence: "apps/e2e/tests/sandbox/studio-flow-evidence.spec.ts passed live 2026-09-28 in 37 s (screenshots 01–08): the voice step reads 'All N voice(s) generated' off the page and fetches every line's stored audio_url (200, audio/*). Its old check looked for an <audio> element the Audio Studio never renders (it plays through new Audio(url))"
   - text: "The publish queue runs locally as the llm and voice queues do: a scheduled publish (packages/features/jobs cron → process-scheduled-publishes), an unpublish and an episode's publish delete reach apps/web/lambda/publish-worker's own handlers, which call FILM-1802's social sandbox"
-    met: false
-    reason: "scheduled publish: met, live (apps/e2e/tests/sandbox/publish-queue-evidence.spec.ts: the cron queues it, the publish worker uploads to the YouTube sandbox, publishes.status reaches published). Unpublish: reaches the worker's delete handler, and the YouTube sandbox answers its videos.delete with 204 as YouTube does (apps/vendor-sandbox/__tests__/youtube-delete.test.ts; the evidence spec now requires the 204). The episode-level publish delete is written, not yet run (apps/e2e/tests/sandbox/publish-queue-evidence.spec.ts: after the unpublish step it publishes a second video through the cron, clicks Delete All, and expects the toast, a DELETE /youtube/v3/videos 204 in the sandbox ledger and no publishes rows left; it adds about five minutes)"
-remaining:
-  - criterion: "Unpublish and episode publish delete round-trip"
-    reason: "the delete-all path (deleteEpisodePublishesAction) is written (apps/e2e/tests/sandbox/publish-queue-evidence.spec.ts) and has not been run"
-    closed_by: "unassigned"
+    met: true
+    evidence: "apps/e2e/tests/sandbox/publish-queue-evidence.spec.ts:65, green on three consecutive runs 2026-10-01 with retries off (5.2, 7.3 and 9.5 minutes; 5 to 10 minutes because the publish cron runs every 5 minutes): the cron queues the publish and the worker uploads to the YouTube sandbox (POST /upload/youtube/v3/videos 200); Unpublish through the dialog sends the worker's DELETE /youtube/v3/videos, answered 204, and the record is gone; a second publish then Delete All through the UI (toast 'Deleted 1 publish record(s)') sends another DELETE 204 and leaves 0 publishes rows for the episode. The YouTube sandbox answers videos.delete with 204 as YouTube does (apps/vendor-sandbox/__tests__/youtube-delete.test.ts)"
 open_questions: []
 notes: |
   ## 1. Why this exists

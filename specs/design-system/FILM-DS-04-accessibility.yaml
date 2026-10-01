@@ -37,7 +37,7 @@ acceptance_criteria:
     reason: "no longer true — `@kit/ui` dialogs (Radix) trap focus, but `audio-studio/_components/music-timeline.tsx:887` is hand-rolled with no trap (the Edit Suite export dialog was another; retired with FILM-607)"
   - text: "Skip links allow bypassing navigation (SkipLinks component)"
     met: true
-    evidence: "a skip link (`packages/ui/src/makerkit/skip-to-content.tsx:6`, used in `packages/features/auth/src/components/auth-layout.tsx:11` and `apps/web/app/home/[account]/studio/[projectSlug]/layout.tsx:122`, targeting a `main` with `id=main-content`); apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts:193 'the sign-in page skips to its main landmark' (first Tab focuses and shows the link, Enter moves focus to main#main-content, the next Tab lands inside the content) and :214 'the studio skips past the sidebar' (passed 2026-09-30, real browser, retries off, run twice (99/99), after a41b1fe6 fixed the violations). There is no \"Skip to navigation\" link"
+    evidence: "a skip link (`packages/ui/src/makerkit/skip-to-content.tsx:6`, used in `packages/features/auth/src/components/auth-layout.tsx:11` and `apps/web/app/home/[account]/studio/[projectSlug]/layout.tsx:122`, targeting a `main` with `id=main-content`); apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts:196 'the sign-in page skips to its main landmark' (first Tab focuses and shows the link, Enter moves focus to main#main-content, the next Tab lands inside the content) and :214 'the studio skips past the sidebar' (passed 2026-09-30, real browser, retries off, run twice (99/99), after a41b1fe6 fixed the violations). There is no \"Skip to navigation\" link"
   - text: "axe-core reports no critical violations (requires integration testing)"
     met: true
     evidence: "apps/e2e/tests/accessibility/axe.spec.ts:1"
@@ -70,7 +70,7 @@ test_plan:
       reason: "part: order is asserted for the sign-in form (email, password, submit; :103), the episode tabs (:248) and the create-episode dialog (title, description, Cancel, Create; :308) with `expectFocusOrder`, passed 2026-09-30, real browser, retries off, run twice (99/99), after a41b1fe6 fixed the violations; the publish hub is checked for a visible focus indicator and no trap (:270), not for order. Other pages are not checked"
     - text: "Check skip links work"
       met: true
-      evidence: "apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts:193 'the sign-in page skips to its main landmark' and :214 'the studio skips past the sidebar' (passed 2026-09-30, real browser, retries off, run twice (99/99), after a41b1fe6 fixed the violations)"
+      evidence: "apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts:196 'the sign-in page skips to its main landmark' and :214 'the studio skips past the sidebar' (passed 2026-09-30, real browser, retries off, run twice (99/99), after a41b1fe6 fixed the violations)"
     - text: "Test at 200% zoom"
       met: true
       evidence: "apps/e2e/tests/accessibility/reflow-and-keyboard.spec.ts:59"

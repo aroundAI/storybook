@@ -63,7 +63,7 @@ function query(result: Result) {
 
 type Chain = ReturnType<typeof query>;
 
-const MEMORY_TABLES = ['episode_summaries', 'world_states'];
+const MEMORY_TABLES = ['episode_summaries', 'world_states', 'state_deltas'];
 
 /**
  * Each `from()` call returns the next result; the chains are kept to inspect.
@@ -165,6 +165,38 @@ describe('conflict detection: addImmutableEventAction', () => {
       }),
     );
   });
+
+  it('records the new event in state_deltas (FILM-1005)', async () => {
+    const { memory } = clientReturning([
+      { data: null, error: null },
+      {
+        data: {
+          id: 'e2',
+          event_type: 'death',
+          event_key: EVENT.eventKey,
+          description: EVENT.description,
+          established_in: EPISODE,
+        },
+        error: null,
+      },
+    ]);
+
+    await addImmutableEventAction(EVENT);
+
+    const delta = memory.find((m) => m.table === 'state_deltas');
+    expect(delta?.chain.insert).toHaveBeenCalledWith({
+      episode_id: EPISODE,
+      entity_type: 'immutable',
+      entity_id: 'e2',
+      before_state: null,
+      after_state: {
+        eventType: 'death',
+        eventKey: EVENT.eventKey,
+        description: EVENT.description,
+      },
+      change_reason: 'Immutable event "character:mara:dead" added',
+    });
+  });
 });
 
 describe('batch operations: commitCanonChangesAction', () => {
@@ -190,10 +222,22 @@ describe('batch operations: commitCanonChangesAction', () => {
     });
 
   it('sends only the high-confidence events, in one atomic RPC', async () => {
-    const { rpc, from } = clientReturning([], {
-      data: { eventsCreated: 1, summaryStored: true },
-      error: null,
-    });
+    const { rpc, from, memory } = clientReturning(
+      [
+        {
+          data: [
+            {
+              id: 'ev1',
+              event_type: 'death',
+              event_key: 'character:mara:dead',
+              description: 'Mara dies',
+            },
+          ],
+          error: null,
+        },
+      ],
+      { data: { eventsCreated: 1, summaryStored: true }, error: null },
+    );
 
     const result = await commit({
       immutableEvents: [
@@ -240,7 +284,16 @@ describe('batch operations: commitCanonChangesAction', () => {
       summaryStored: true,
       memoryStored: { episodeSummary: true, worldState: false },
     });
-    expect(from).not.toHaveBeenCalled();
+    expect(from).toHaveBeenCalledTimes(1);
+    const delta = memory.find((m) => m.table === 'state_deltas');
+    expect(delta?.chain.insert).toHaveBeenCalledWith([
+      expect.objectContaining({
+        episode_id: EPISODE,
+        entity_type: 'immutable',
+        entity_id: 'ev1',
+        before_state: null,
+      }),
+    ]);
   });
 
   it('fails as a whole when the atomic RPC fails, and touches no thread', async () => {
@@ -261,7 +314,7 @@ describe('batch operations: commitCanonChangesAction', () => {
   });
 
   it('opens every new thread in one insert, not one per thread', async () => {
-    const { from, chains } = clientReturning(
+    const { from, chains, memory } = clientReturning(
       [{ data: [{ id: 't1' }, { id: 't2' }, { id: 't3' }], error: null }],
       { data: { eventsCreated: 0, summaryStored: true }, error: null },
     );
@@ -276,6 +329,16 @@ describe('batch operations: commitCanonChangesAction', () => {
     });
 
     expect(from).toHaveBeenCalledTimes(1);
+    const delta = memory.find((m) => m.table === 'state_deltas');
+    expect(delta?.chain.insert).toHaveBeenCalledWith(
+      [1, 2, 3].map((n) =>
+        expect.objectContaining({
+          entity_type: 'thread',
+          entity_id: `t${n}`,
+          before_state: null,
+        }),
+      ),
+    );
     const rows = chains[0]!.insert!.mock.calls[0]![0] as Record<
       string,
       unknown
@@ -499,6 +562,36 @@ describe('memory rows: commitCanonChangesAction (FILM-1004)', () => {
       expect.objectContaining({ location: 'The north gate' }),
     );
     expect(world[1]!.chain.insert).not.toHaveBeenCalled();
+  });
+
+  it('records a replaced world state in state_deltas (FILM-1005)', async () => {
+    const { memory } = clientReturning([], rpcOk, {
+      world_states: {
+        data: Object.assign(
+          {
+            id: 'w1',
+            location: 'Old hall',
+            time_period: null,
+            atmosphere: null,
+            active_conflicts: [],
+          },
+          { length: 1 },
+        ),
+        error: null,
+      },
+    });
+
+    await commit({ worldState: { location: 'The north gate' } });
+
+    const delta = memory.find((m) => m.table === 'state_deltas');
+    expect(delta?.chain.insert).toHaveBeenCalledWith({
+      episode_id: EPISODE,
+      entity_type: 'world',
+      entity_id: 'w1',
+      before_state: expect.objectContaining({ location: 'Old hall' }),
+      after_state: expect.objectContaining({ location: 'The north gate' }),
+      change_reason: 'World state replaced',
+    });
   });
 
   it('does not fail the commit when the summary row is refused', async () => {

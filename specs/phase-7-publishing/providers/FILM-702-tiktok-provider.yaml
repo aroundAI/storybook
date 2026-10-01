@@ -41,25 +41,25 @@ provider:
 acceptance_criteria:
   - text: "Videos upload with chunked upload protocol"
     met: false
-    reason: "unverified — chunked flow built (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:53`), but its inbox-init + `video_upload_id` sequence (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:171`, `packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:275`) differs from the lambda's; no test"
+    reason: "unverified — chunked flow built (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:59`), but its inbox-init + `video_upload_id` sequence (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:171`, `packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:275`) differs from the lambda's; no test"
   - text: "Caption and privacy settings are applied"
     met: false
-    reason: "unverified — sent (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:244`) with privacy as `'PUBLIC'`, while the lambda sends `'PUBLIC_TO_EVERYONE'` (`apps/web/lambda/publish-worker/handlers/tiktok.ts:25`); no test"
+    reason: "unverified — sent (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:180`) with privacy as `'PUBLIC'`, while the lambda sends `'PUBLIC_TO_EVERYONE'` (`apps/web/lambda/publish-worker/handlers/tiktok.ts:25`); no test"
   - text: "Duet/stitch toggles work"
     met: false
-    reason: "unverified — sent as `disable_duet`/`disable_stitch` (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:246`); no live UI sets them; no test"
+    reason: "unverified — sent as `disable_duet`/`disable_stitch` (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:182`); no live UI sets them; no test"
   - text: "Commercial content disclosure works"
     met: false
-    reason: "unverified — brand toggles sent when given (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:255`); no caller passes them; no test"
+    reason: "unverified — brand toggles sent when given (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:191`); no caller passes them; no test"
   - text: "Upload progress is reported"
     met: true
-    evidence: "`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:132`, `packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:156`"
+    evidence: "`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:138`, `packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:162`"
   - text: "Post status can be polled"
     met: true
-    evidence: "`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:299`"
+    evidence: "`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:269`"
   - text: "User info can be retrieved"
     met: true
-    evidence: "`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:337`"
+    evidence: "`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:307`"
 test_plan:
   unit:
     - text: "Test chunk size calculation"

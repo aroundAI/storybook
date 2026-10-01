@@ -78,7 +78,9 @@ export async function uploadToTikTok(
     status = statusData.data?.status;
 
     if (status === 'PUBLISH_COMPLETE') {
-      const videoId = statusData.data?.video_id;
+      const postIds: unknown[] =
+        statusData.data?.publicaly_available_post_id ?? [];
+      const videoId = postIds.length > 0 ? String(postIds[0]) : undefined;
       // TikTok doesn't provide direct URL, construct from video ID
       const videoUrl = videoId
         ? `https://www.tiktok.com/@user/video/${videoId}`

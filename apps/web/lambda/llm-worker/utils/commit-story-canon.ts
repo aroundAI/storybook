@@ -9,6 +9,8 @@
  *  1. immutable_events  — key events extracted from the story
  *  2. character_states  — character arcs for characters found in project assets
  *  3. episode metadata  — themes stored for analytics/categorization
+ *  4. narrative threads — extracted by the LLM from the story
+ *  5. episode memory    — the summary and world state the memory builder reads
  *
  * Narrative threads are created via LLM extraction (Phase 5) or manually,
  * NOT by this function.
@@ -17,6 +19,11 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import {
+  type ExtractedWorldState,
+  describeStateChange,
+} from '@kit/episodes/lib/canon/memory-rows';
+import { storeEpisodeMemory } from '@kit/episodes/lib/canon/store-episode-memory';
 import type { Database } from '@kit/supabase/database';
 
 export interface CommitStoryCanonInput {
@@ -90,13 +97,33 @@ export async function commitStoryCanon(
   }
 
   // Step 4: Extract and commit narrative threads via LLM (non-fatal)
-  await commitNarrativeThreadsViaLLM({
+  const extraction = await commitNarrativeThreadsViaLLM({
     accountId,
     projectId,
     episodeId,
     storyContent,
     supabase,
   });
+
+  // Step 5: Episode summary and world state, the same rows the publish commit
+  // writes. Without an extraction there is no sentiment score to store.
+  if (extraction && Number.isFinite(extraction.sentimentScore)) {
+    await storeEpisodeMemory(supabase, {
+      projectId,
+      episodeId,
+      changes: {
+        episodeSummary:
+          input.episodeSummary?.trim() || extraction.episodeSummary || '',
+        sentimentScore: extraction.sentimentScore,
+        keyEvents: input.keyEvents.length
+          ? input.keyEvents
+          : extraction.keyEvents,
+        characterChanges:
+          extraction.characterStateChanges?.map(describeStateChange),
+        worldState: extraction.worldState,
+      },
+    });
+  }
 }
 
 // ─── Step 0: Cleanup ─────────────────────────────────────────────────────────
@@ -317,6 +344,19 @@ interface LLMThreadUpdate {
   promises?: string[];
 }
 
+interface LLMCanonExtraction {
+  threadUpdates: LLMThreadUpdate[];
+  episodeSummary: string;
+  sentimentScore: number;
+  keyEvents?: string[];
+  characterStateChanges?: Array<{
+    characterName: string;
+    fromState: string;
+    toState: string;
+  }>;
+  worldState?: ExtractedWorldState;
+}
+
 /**
  * Runs LLM canon extraction to identify real narrative threads from the story,
  * then writes them directly to the database.
@@ -337,8 +377,8 @@ async function commitNarrativeThreadsViaLLM({
   episodeId: string;
   storyContent?: string;
   supabase: SupabaseClient<Database>;
-}) {
-  if (!storyContent || storyContent.length < 100) return;
+}): Promise<LLMCanonExtraction | null> {
+  if (!storyContent || storyContent.length < 100) return null;
 
   try {
     const { executeLLM } = await import('@kit/prompt-engine/server');
@@ -381,13 +421,7 @@ async function commitNarrativeThreadsViaLLM({
       .substring(0, 50_000)
       .trim();
 
-    const result = await executeLLM<{
-      extraction: {
-        threadUpdates: LLMThreadUpdate[];
-        episodeSummary: string;
-        sentimentScore: number;
-      };
-    }>({
+    const result = await executeLLM<{ extraction: LLMCanonExtraction }>({
       templateSlug: 'canon-extraction',
       variables: {
         story_content: sanitizedContent,
@@ -400,12 +434,13 @@ async function commitNarrativeThreadsViaLLM({
       },
     });
 
-    const threadUpdates = result.data.extraction?.threadUpdates ?? [];
+    const extraction = result.data.extraction ?? null;
+    const threadUpdates = extraction?.threadUpdates ?? [];
     if (threadUpdates.length === 0) {
       console.log(
         '[commitStoryCanon] LLM found no narrative threads to commit',
       );
-      return;
+      return extraction;
     }
 
     let threadsCreated = 0;
@@ -498,10 +533,12 @@ async function commitNarrativeThreadsViaLLM({
     console.log(
       `[commitStoryCanon] LLM thread extraction: ${threadsCreated}/${threadUpdates.length} threads committed`,
     );
+    return extraction;
   } catch (err) {
     console.warn(
       '[commitStoryCanon] LLM thread extraction failed (non-fatal):',
       err,
     );
+    return null;
   }
 }

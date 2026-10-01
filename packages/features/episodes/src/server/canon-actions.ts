@@ -34,9 +34,8 @@ import {
 import {
   type ExtractedWorldState,
   describeStateChange,
-  toEpisodeSummaryRow,
-  toWorldStateRow,
 } from '../lib/canon/memory-rows';
+import { storeEpisodeMemory } from '../lib/canon/store-episode-memory';
 import {
   isThreadStale,
   threadEpisodeIds,
@@ -229,25 +228,33 @@ type ServerClient = ReturnType<typeof getSupabaseServerClient<Database>>;
  * Appends one row to the canon audit log (FILM-1005). A change the log
  * cannot record fails the action, as for character states (KB-77).
  */
-async function recordStateDelta(
-  client: ServerClient,
-  delta: {
-    episodeId: string;
-    entityType: 'character' | 'world' | 'thread' | 'immutable';
-    entityId: string;
-    before: unknown;
-    after: unknown;
-    reason: string;
-  },
-): Promise<void> {
-  const { error } = await client.from('state_deltas').insert({
+interface StateDeltaInput {
+  episodeId: string;
+  entityType: 'character' | 'world' | 'thread' | 'immutable';
+  entityId: string;
+  before: unknown;
+  after: unknown;
+  reason: string;
+}
+
+function toStateDeltaRow(delta: StateDeltaInput) {
+  return {
     episode_id: delta.episodeId,
     entity_type: delta.entityType,
     entity_id: delta.entityId,
     before_state: (delta.before ?? null) as Json,
     after_state: (delta.after ?? null) as Json,
     change_reason: delta.reason,
-  });
+  };
+}
+
+async function insertStateDeltas(
+  client: ServerClient,
+  deltas: StateDeltaInput[],
+): Promise<void> {
+  const { error } = await client
+    .from('state_deltas')
+    .insert(deltas.map(toStateDeltaRow));
 
   if (error) {
     console.error('Error recording state delta:', error);
@@ -255,8 +262,34 @@ async function recordStateDelta(
   }
 }
 
+async function recordStateDelta(
+  client: ServerClient,
+  delta: StateDeltaInput,
+): Promise<void> {
+  const { error } = await client
+    .from('state_deltas')
+    .insert(toStateDeltaRow(delta));
+
+  if (error) {
+    console.error('Error recording state delta:', error);
+    throw new Error(`Failed to record state delta: ${error.message}`);
+  }
+}
+
+function immutableEventSnapshot(event: {
+  event_type: string;
+  event_key: string;
+  description: string;
+}) {
+  return {
+    eventType: event.event_type,
+    eventKey: event.event_key,
+    description: event.description,
+  };
+}
+
 /**
- * Adds an immutable event to the canon.
+ * Adds an immutable event to the canon. Recorded in `state_deltas` (FILM-1005).
  */
 const addImmutableEvent = enhanceAction(
   async (data: AddImmutableEventInput, user) => {
@@ -300,6 +333,15 @@ const addImmutableEvent = enhanceAction(
       console.error('Error adding immutable event:', error);
       throw new Error(`Failed to add immutable event: ${error.message}`);
     }
+
+    await recordStateDelta(client, {
+      episodeId: event.established_in,
+      entityType: 'immutable',
+      entityId: event.id,
+      before: null,
+      after: immutableEventSnapshot(event),
+      reason: `Immutable event "${event.event_key}" added`,
+    });
 
     revalidatePath(
       `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
@@ -381,11 +423,7 @@ const deleteImmutableEvent = enhanceAction(
       episodeId: event.established_in,
       entityType: 'immutable',
       entityId: event.id,
-      before: {
-        eventType: event.event_type,
-        eventKey: event.event_key,
-        description: event.description,
-      },
+      before: immutableEventSnapshot(event),
       after: null,
       reason: `Immutable event "${event.event_key}" deleted`,
     });
@@ -476,6 +514,16 @@ const updateCharacterState = enhanceAction(
 
 export const updateCharacterStateAction = returnRefusals(updateCharacterState);
 
+/** What a person calls a state: its first text value, quoted. */
+function describeState(state: unknown) {
+  const text =
+    state && typeof state === 'object'
+      ? Object.values(state).find((value) => typeof value === 'string')
+      : undefined;
+
+  return typeof text === 'string' ? `"${text}"` : 'an earlier state';
+}
+
 /**
  * Reverts a character-state change recorded in `state_deltas` (FILM-1005).
  *
@@ -562,7 +610,7 @@ const rollbackCharacterState = enhanceAction(
       episode_id: delta.episode_id,
       state_type: applied.state_type,
       state_value: delta.before_state,
-      trigger_event: reason,
+      trigger_event: `Rolled back the change to ${describeState(delta.after_state)}`,
       previous_state_id: applied.id,
       created_by: user.id,
     });
@@ -764,6 +812,19 @@ const createNarrativeThread = enhanceAction(
       console.error('Error creating narrative thread:', error);
       throw new Error(`Failed to create narrative thread: ${error.message}`);
     }
+
+    await recordStateDelta(client, {
+      episodeId: data.openedAt,
+      entityType: 'thread',
+      entityId: thread.id,
+      before: null,
+      after: {
+        status: thread.status,
+        threadName: thread.thread_name,
+        threadType: thread.thread_type,
+      },
+      reason: `Thread "${thread.thread_name}" opened`,
+    });
 
     revalidatePath(
       `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
@@ -1511,90 +1572,17 @@ export const extractCanonChangesAction = enhanceAction(
 );
 
 /**
- * Writes the episode's `episode_summaries` row and, when the extraction named
- * a location, its `world_states` row (FILM-1004). Both are one row per
- * episode, so committing again replaces them. Neither is required for the
- * commit to have worked, so a failure is reported, not thrown.
+ * The commit has already succeeded when these run, so a log write that fails
+ * is reported, not thrown: failing here would show a saved commit as failed.
  */
-async function storeEpisodeMemory(
+async function auditCommittedRows(
   client: ServerClient,
-  data: {
-    projectId: string;
-    episodeId: string;
-    changes: Parameters<typeof toEpisodeSummaryRow>[1];
-  },
-): Promise<{ episodeSummary: boolean; worldState: boolean }> {
-  const stored = { episodeSummary: false, worldState: false };
-
-  try {
-    await writeEpisodeMemory(client, data, stored);
-  } catch (error) {
-    console.warn('[commitCanonChanges] Episode memory not stored:', error);
-  }
-
-  return stored;
-}
-
-async function writeEpisodeMemory(
-  client: ServerClient,
-  data: {
-    projectId: string;
-    episodeId: string;
-    changes: Parameters<typeof toEpisodeSummaryRow>[1];
-  },
-  stored: { episodeSummary: boolean; worldState: boolean },
+  deltas: StateDeltaInput[],
 ): Promise<void> {
-  const summaryRow = toEpisodeSummaryRow(data.episodeId, data.changes);
-
-  if (summaryRow) {
-    const { error } = await client
-      .from('episode_summaries')
-      .upsert(summaryRow, { onConflict: 'episode_id' });
-
-    if (error) {
-      console.warn('[commitCanonChanges] Episode summary not stored:', error);
-    } else {
-      stored.episodeSummary = true;
-    }
-  }
-
-  const worldRow = toWorldStateRow(
-    data.projectId,
-    data.episodeId,
-    data.changes,
-  );
-
-  if (worldRow) {
-    const { data: existing, error: readError } = await client
-      .from('world_states')
-      .select('id')
-      .eq('project_id', data.projectId)
-      .eq('episode_id', data.episodeId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    let failure: unknown = readError;
-
-    if (!readError && existing) {
-      const { data: updated, error } = await client
-        .from('world_states')
-        .update(worldRow)
-        .eq('id', existing.id)
-        .select('id');
-
-      // RLS filters a refused update to no rows, without an error (KB-105).
-      failure = error ?? (updated?.length ? null : 'update matched no row');
-    } else if (!readError) {
-      const { error } = await client.from('world_states').insert(worldRow);
-      failure = error;
-    }
-
-    if (failure) {
-      console.warn('[commitCanonChanges] World state not stored:', failure);
-    } else {
-      stored.worldState = true;
-    }
+  try {
+    if (deltas.length) await insertStateDeltas(client, deltas);
+  } catch (error) {
+    console.warn('[commitCanonChanges] Audit log not written:', error);
   }
 }
 
@@ -1645,6 +1633,30 @@ export const commitCanonChangesAction = enhanceAction(
       throw new Error(`Failed to commit canon changes: ${error.message}`);
     }
 
+    if (highConfidenceEvents.length) {
+      const { data: created } = await client
+        .from('immutable_events')
+        .select('id, event_type, event_key, description')
+        .eq('project_id', data.projectId)
+        .eq('established_in', data.episodeId)
+        .in(
+          'event_key',
+          highConfidenceEvents.map((event) => event.eventKey),
+        );
+
+      await auditCommittedRows(
+        client,
+        (created ?? []).map((event) => ({
+          episodeId: data.episodeId,
+          entityType: 'immutable' as const,
+          entityId: event.id,
+          before: null,
+          after: immutableEventSnapshot(event),
+          reason: `Immutable event "${event.event_key}" added`,
+        })),
+      );
+    }
+
     // Commit thread updates (batched + parallelized to avoid N+1 queries)
     let threadsUpdated = 0;
 
@@ -1675,7 +1687,7 @@ export const commitCanonChangesAction = enhanceAction(
         const { data: inserted, error: insertError } = await client
           .from('narrative_threads')
           .insert(rows)
-          .select('id');
+          .select('id, thread_name, thread_type, status');
         if (insertError) {
           console.warn(
             '[commitCanonChanges] Batch thread insert failed:',
@@ -1683,6 +1695,20 @@ export const commitCanonChangesAction = enhanceAction(
           );
         } else {
           threadsUpdated += inserted?.length ?? 0;
+          await auditCommittedRows(client, [
+            ...(inserted ?? []).map((thread) => ({
+              episodeId: data.episodeId,
+              entityType: 'thread' as const,
+              entityId: thread.id,
+              before: null,
+              after: {
+                status: thread.status,
+                threadName: thread.thread_name,
+                threadType: thread.thread_type,
+              },
+              reason: `Thread "${thread.thread_name}" opened`,
+            })),
+          ]);
         }
       }
 

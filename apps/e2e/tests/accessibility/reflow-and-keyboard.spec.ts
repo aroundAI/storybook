@@ -108,6 +108,9 @@ test.describe('Keyboard only', () => {
 
     await page.goto('/auth/sign-in');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    // The form is server-rendered, so it is there before React has hydrated;
+    // a submit that early is a plain form post, not the sign-in.
+    await page.waitForLoadState('networkidle');
 
     const email = page.locator('input[name="email"]');
     const password = page.locator('input[name="password"]');
@@ -256,6 +259,9 @@ test.describe('Keyboard only: an episode (FILM-DS-04)', () => {
     const tabs = ids.map((id) => byTest(page, `episode-tab-${id}`));
 
     await expect(tabs[0]!).toBeVisible();
+    // The tabs are server-rendered, so they are there before React has
+    // hydrated, and an Enter pressed that early can be lost: settle first.
+    await page.waitForLoadState('networkidle');
     await tabs[0]!.focus();
     await expectFocusOrder(page, tabs.slice(1));
 

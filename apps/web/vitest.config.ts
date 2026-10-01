@@ -212,9 +212,21 @@ export default defineConfig({
         __dirname,
         '../../packages/features/episodes/src/lib/canon/memory-context-builder.ts',
       ),
+      '@kit/episodes/lib/canon/memory-rows': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/lib/canon/memory-rows.ts',
+      ),
+      '@kit/episodes/lib/canon/store-episode-memory': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/lib/canon/store-episode-memory.ts',
+      ),
       '@kit/episodes/lib/canon/continuity-validator': path.resolve(
         __dirname,
         '../../packages/features/episodes/src/lib/canon/continuity-validator.ts',
+      ),
+      '@kit/episodes/server': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/server/index.ts',
       ),
       '@kit/episodes/lib': path.resolve(
         __dirname,
@@ -303,6 +315,14 @@ export default defineConfig({
         __dirname,
         '../../packages/ui/src/shadcn/alert.tsx',
       ),
+      '@kit/ui/alert-dialog': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/alert-dialog.tsx',
+      ),
+      '@kit/ui/sonner': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/sonner.tsx',
+      ),
       '@kit/ui/button': path.resolve(
         __dirname,
         '../../packages/ui/src/shadcn/button.tsx',
@@ -326,6 +346,14 @@ export default defineConfig({
       '@kit/ui/tabs': path.resolve(
         __dirname,
         '../../packages/ui/src/shadcn/tabs.tsx',
+      ),
+      '@kit/ui/page': path.resolve(
+        __dirname,
+        '../../packages/ui/src/makerkit/page.tsx',
+      ),
+      '@kit/ui/textarea': path.resolve(
+        __dirname,
+        '../../packages/ui/src/shadcn/textarea.tsx',
       ),
       '@kit/ui/tooltip': path.resolve(
         __dirname,

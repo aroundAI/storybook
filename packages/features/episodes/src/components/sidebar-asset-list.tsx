@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 
 import { MapPin, Plus, Sparkles, User, Users } from 'lucide-react';
 
@@ -368,11 +368,15 @@ function CreateAssetDialog({
   const [isCreating, startCreating] = useTransition();
   const [hasExtracted, setHasExtracted] = useState(false);
 
-  // Auto-extract on open
+  // Radix calls onOpenChange only for the dialog's own interactions, never
+  // when the parent sets `open`, so the extraction on open has to follow the
+  // prop.
+  useEffect(() => {
+    if (open) void extractDescription();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   const handleOpenChange = (nextOpen: boolean) => {
-    if (nextOpen && !hasExtracted) {
-      void extractDescription();
-    }
     if (!nextOpen) {
       setDescription('');
       setHasExtracted(false);

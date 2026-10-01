@@ -49,8 +49,8 @@ export interface TikTokUser {
 }
 
 export interface TikTokUploadInit {
-  /** Upload ID for the session */
-  uploadId: string;
+  /** Publish ID to track the upload with */
+  publishId: string;
   /** URL to upload chunks to */
   uploadUrl: string;
 }

@@ -20,6 +20,12 @@ import { Skeleton } from '@kit/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
 import { formatNumber } from '../lib/format';
+import {
+  audienceForInsights,
+  buildTrendFacts,
+  previousPeriod,
+  topContentForInsights,
+} from '../lib/insights-inputs';
 import { ABSENT, measured } from '../lib/measured';
 import {
   getContentListAction,
@@ -102,6 +108,25 @@ export function AnalyticsDashboard({
     refetchInterval: 5 * 60 * 1000, // 5 min auto-refresh
   });
 
+  const previousRange = previousPeriod(dateRange);
+
+  // The window before the selected one, for the AI Insights trends only
+  const { data: previousProjectData, isLoading: isPreviousLoading } = useQuery({
+    queryKey: [
+      'project-analytics',
+      projectId,
+      previousRange?.from.toISOString(),
+      previousRange?.to.toISOString(),
+    ],
+    queryFn: () =>
+      getProjectAnalyticsAction({
+        projectId,
+        from: previousRange?.from,
+        to: previousRange?.to,
+      }),
+    enabled: activeTab === 'insights' && !!previousRange,
+  });
+
   // Fetch content list for Content tab
   const { data: contentList, isLoading: isContentLoading } = useQuery({
     queryKey: [
@@ -118,7 +143,10 @@ export function AnalyticsDashboard({
         from: dateRange.from,
         to: dateRange.to,
       }),
-    enabled: activeTab === 'content' || activeTab === 'overview',
+    enabled:
+      activeTab === 'content' ||
+      activeTab === 'overview' ||
+      activeTab === 'insights',
   });
 
   // Fetch daily metrics for Performance Over Time chart
@@ -173,7 +201,10 @@ export function AnalyticsDashboard({
         from: dateRange.from,
         to: dateRange.to,
       }),
-    enabled: activeTab === 'audience' || activeTab === 'overview',
+    enabled:
+      activeTab === 'audience' ||
+      activeTab === 'overview' ||
+      activeTab === 'insights',
   });
 
   // Filter data by selected platforms
@@ -211,10 +242,13 @@ export function AnalyticsDashboard({
   const aggregateAnalytics: AggregateAnalytics | null = projectData
     ? {
         totals: totals!,
-        previousPeriodTotals: undefined, // Not currently fetched
         platformMetrics,
-        topContent: undefined, // Not currently fetched
-        audience: undefined, // Not currently fetched
+        topContent: topContentForInsights(contentList),
+        audience: audienceForInsights(audienceData),
+        trendFacts: buildTrendFacts(
+          platformMetrics,
+          previousProjectData?.platformTotals,
+        ),
         contentCount: projectData.contentCount ?? 0,
         avgEngagementRate: projectData.avgEngagementRate ?? 0,
       }
@@ -415,7 +449,11 @@ export function AnalyticsDashboard({
         </TabsContent>
 
         <TabsContent value="insights" className="mt-6">
-          <AIInsights projectId={projectId} analytics={aggregateAnalytics} />
+          {isPreviousLoading || isContentLoading || isAudienceLoading ? (
+            <Skeleton className="h-64 w-full" />
+          ) : (
+            <AIInsights projectId={projectId} analytics={aggregateAnalytics} />
+          )}
         </TabsContent>
 
         <TabsContent value="language" className="mt-6">

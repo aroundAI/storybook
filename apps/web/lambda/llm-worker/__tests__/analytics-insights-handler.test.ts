@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   INSIGHTS_CACHE_TTL_MS,
+  INSIGHTS_PROMPT_VERSION,
+  insightsInputHash,
   processAnalyticsInsights,
 } from '../handlers/analytics-insights';
 
@@ -118,7 +120,10 @@ describe('processAnalyticsInsights', () => {
     });
 
     await expect(
-      processAnalyticsInsights(payload(), supabase),
+      processAnalyticsInsights(
+        payload({ audience: { demographics: { ageGroups: { '25-34': 40 } } } }),
+        supabase,
+      ),
     ).resolves.toEqual({
       success: true,
       data: {
@@ -307,5 +312,161 @@ describe('the insights cache (FILM-808)', () => {
     await processAnalyticsInsights(payload(), supabase);
 
     expect(cache.writes).toHaveLength(0);
+  });
+});
+
+describe('trends, audience and top performers (FILM-808)', () => {
+  const trendFacts = [
+    {
+      metric: 'views',
+      platform: 'all',
+      current: 200,
+      previous: 100,
+      changePercent: 100,
+    },
+  ];
+  const audience = {
+    demographics: { ageGroups: { '25-34': 40 } },
+    geography: { US: 60 },
+  };
+  const topContent = [
+    {
+      id: 'p1',
+      title: 'Pilot',
+      views: 150,
+      likes: 9,
+      engagementRate: 0.06,
+      platform: 'youtube',
+    },
+    {
+      id: 'p2',
+      title: 'Episode 2',
+      views: 50,
+      likes: 1,
+      engagementRate: 0.02,
+      platform: 'tiktok',
+    },
+  ];
+  const modelAnswer = {
+    performanceSummary: 'Views doubled.',
+    trends: ['Views rose 100% across the selected platforms.'],
+    audienceInsights: ['40% of measured viewers are 25-34.'],
+    topPerformers: [
+      { contentId: 'p1', analysis: 'Most views, 6% engagement.' },
+      { contentId: 'p1', analysis: 'A duplicate.' },
+      { contentId: 'made-up', analysis: 'Not a supplied video.' },
+      { contentId: 'p2', analysis: '  ' },
+    ],
+  };
+
+  it('sends the trend facts, audience and top content to the model', async () => {
+    llm.respond = async () => ({ data: modelAnswer });
+
+    await processAnalyticsInsights(
+      payload({ trendFacts, audience, topContent }),
+      supabase,
+    );
+
+    const sent = JSON.parse(llm.calls[0]!.variables.analytics_data) as Record<
+      string,
+      unknown
+    >;
+
+    expect(sent.trendFacts).toEqual(trendFacts);
+    expect(sent.audience).toEqual(audience);
+    expect(sent.topContent).toEqual(topContent);
+  });
+
+  it('returns the model’s trends, audience reading and grounded performers', async () => {
+    llm.respond = async () => ({ data: modelAnswer });
+
+    const result = await processAnalyticsInsights(
+      payload({ trendFacts, audience, topContent }),
+      supabase,
+    );
+
+    expect(result.data.trends).toEqual([
+      'Views rose 100% across the selected platforms.',
+    ]);
+    expect(result.data.audienceInsights).toEqual([
+      '40% of measured viewers are 25-34.',
+    ]);
+    expect(result.data.topPerformers).toEqual([
+      { title: 'Pilot', analysis: 'Most views, 6% engagement.' },
+    ]);
+  });
+
+  it('drops what the model said about inputs it was not given', async () => {
+    llm.respond = async () => ({ data: modelAnswer });
+
+    const result = await processAnalyticsInsights(payload(), supabase);
+
+    expect(result.data.trends).toEqual([]);
+    expect(result.data.audienceInsights).toEqual([]);
+    expect(result.data.topPerformers).toEqual([]);
+  });
+
+  it('counts an audience with no split in it as no audience', async () => {
+    llm.respond = async () => ({ data: modelAnswer });
+
+    const result = await processAnalyticsInsights(
+      payload({ audience: { demographics: {}, geography: {} } }),
+      supabase,
+    );
+
+    expect(result.data.audienceInsights).toEqual([]);
+  });
+
+  it('keys the new inputs into the cache, so a changed one is a miss', async () => {
+    llm.respond = async () => ({ data: modelAnswer });
+
+    await processAnalyticsInsights(payload(), supabase);
+    await processAnalyticsInsights(payload({ trendFacts }), supabase);
+    await processAnalyticsInsights(payload({ audience }), supabase);
+    await processAnalyticsInsights(payload({ topContent }), supabase);
+
+    const hashes = new Set(cache.writes.map((w) => w.input_hash));
+
+    expect(hashes.size).toBe(4);
+  });
+
+  it('serves a stored answer that carries the new fields on a hit', async () => {
+    llm.respond = async () => ({ data: modelAnswer });
+    const input = payload({ trendFacts, audience, topContent });
+
+    const first = await processAnalyticsInsights(input, supabase);
+
+    cache.row = {
+      insights: first.data,
+      created_at: new Date().toISOString(),
+    };
+    llm.calls.length = 0;
+
+    const second = await processAnalyticsInsights(input, supabase);
+
+    expect(llm.calls).toHaveLength(0);
+    expect(second.data.topPerformers).toEqual(first.data.topPerformers);
+    expect(second.data.trends).toEqual(first.data.trends);
+  });
+
+  it('keys the prompt version in, so an answer from an earlier prompt is a miss', async () => {
+    llm.respond = async () => ({ data: modelAnswer });
+
+    await processAnalyticsInsights(payload(), supabase);
+
+    const summary = {
+      totals: totals(),
+      previousPeriodChange: {},
+      contentCount: 4,
+      avgEngagementRate: 0.05,
+    };
+
+    expect(cache.writes[0]!.input_hash).toBe(
+      insightsInputHash({
+        ...summary,
+        promptVersion: INSIGHTS_PROMPT_VERSION,
+      }),
+    );
+    expect(cache.writes[0]!.input_hash).not.toBe(insightsInputHash(summary));
   });
 });

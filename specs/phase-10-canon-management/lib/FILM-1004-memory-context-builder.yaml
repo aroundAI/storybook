@@ -4,7 +4,7 @@ phase: 10
 phase_name: "Canon Management"
 category: library
 status: PARTIAL
-audited: "2026-09-30"
+audited: "2026-10-01"
 effort: M
 dependencies:
   - spec_id: "FILM-1001"
@@ -35,7 +35,7 @@ library:
 acceptance_criteria:
   - text: "Builds complete context from database"
     met: true
-    evidence: "packages/features/episodes/src/server/canon-actions.ts:1515 (storeEpisodeMemory, called from commitCanonChangesAction at :1751) upserts `episode_summaries` from the commit's SCORE summary and writes one `world_states` row per episode when the extraction names a location, through the pure mappers in packages/features/episodes/src/lib/canon/memory-rows.ts; writes go through the existing can_write_project policies (apps/web/supabase/migrations/20260924181028_kb76-77-63-canon-write-scope.sql); tests packages/features/episodes/__tests__/canon-conflicts-and-batches.test.ts:410. Scope: only the human-reviewed publish commit writes them — the worker's commit-story-canon.ts still writes no summaries or world state (see remaining); world state depends on the LLM naming a location; `new_constraints` stays empty because nothing extracts it"
+    evidence: "one shared writer, storeEpisodeMemory (packages/features/episodes/src/lib/canon/store-episode-memory.ts), upserts `episode_summaries` from the SCORE summary, sentiment and key events and writes one `world_states` row per episode when the extraction names a location, through the pure mappers in packages/features/episodes/src/lib/canon/memory-rows.ts. Both commit paths call it: the human-reviewed publish commit (packages/features/episodes/src/server/canon-actions.ts:1795) and the llm-worker's auto-populate after story generation (apps/web/lambda/llm-worker/utils/commit-story-canon.ts:111, step 5, after the extraction; the orchestrator's summary wins). Writes go through the can_write_project policies (apps/web/supabase/migrations/20260924181028_kb76-77-63-canon-write-scope.sql). Tests: apps/web/lambda/llm-worker/__tests__/commit-story-canon-memory.test.ts (5; disabling the step-5 call turned 4 red) and packages/features/episodes/__tests__/canon-conflicts-and-batches.test.ts ('memory rows', through the shared code). Limits: world state depends on the LLM naming a location; if the worker's extraction fails or the story is under 100 characters no summary is written; `new_constraints` stays empty on both paths because nothing extracts it (see remaining)"
   - text: "Tracks token usage accurately (±10% of actual)"
     met: false
     reason: "unverified — estimate is JSON length ÷ 4 (`packages/features/episodes/src/lib/canon/memory-context-builder.ts:92`); no test compares it with a tokenizer"
@@ -74,7 +74,7 @@ acceptance_criteria:
     evidence: "packages/features/episodes/scripts/verify-memory-context.ts (FILM-1110; CI: Supabase DB job). It found `assets.asset_type` and `episodes.episode_number`, two reads that returned HTTP 400 and emptied the character and summary sections"
 remaining:
   - criterion: "Builds complete context from database (worker path)"
-    reason: "apps/web/lambda/llm-worker/utils/commit-story-canon.ts, the auto-populate after story generation, still writes no summaries or world state; only the human-reviewed publish commit does"
+    reason: "`new_constraints` is never written: nothing extracts it (the extraction carries no per-change constraints) and the commit action does not write it either; only the manual Record-state dialog does, through updateCharacterState. Needs a prompt and schema change to extract constraints per state change. The worker path now writes summaries and world state"
     closed_by: "unassigned"
   - criterion: "Token accuracy, configurable budget threshold, overflow handling"
     reason: "Unverified: no test compares the estimate with a tokenizer, exercises the threshold, or drops lowest-ranked items"

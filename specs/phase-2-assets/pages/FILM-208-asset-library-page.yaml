@@ -29,13 +29,13 @@ acceptance_criteria:
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx (the segment is now the project slug); E2E apps/e2e/tests/refusals/refusals.po.ts:181"
   - text: "Breadcrumb displays: Home > Studio > [Project Name] > Assets"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/assets-breadcrumb.tsx:23-66 (data-test=assets-breadcrumb, rendered by page.tsx:131; it replaces the Back to Project link; written out, not composed from @kit/ui/breadcrumb, because with that module on the page a tab switch intermittently took five seconds to commit and the FILM-204 performance budget caught it); e2e apps/e2e/tests/assets/asset-library.spec.ts:83 'the breadcrumb runs Home, Studio, the project, Assets' (four links in order, current page has aria-current) (passed 2026-09-30, real browser, retries off)"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/assets-breadcrumb.tsx:23-66 (data-test=assets-breadcrumb, rendered by page.tsx:131; it replaces the Back to Project link; written out, not composed from @kit/ui/breadcrumb, because with that module on the page a tab switch intermittently took five seconds to commit and the FILM-204 performance budget caught it); e2e apps/e2e/tests/assets/asset-library.spec.ts:89 'the breadcrumb runs Home, Studio, the project, Assets' (four links in order, current page has aria-current) (passed 2026-09-30, real browser, retries off)"
   - text: "Page title: \"Asset Library\""
     met: false
     reason: "retired — renamed \"Cast\" / \"Story World\" by tab in 307d879b (apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:100-106)"
   - text: "Description displayed below title"
     met: true
-    evidence: "packages/ui/src/makerkit/page.tsx:170-210 (PageHeader renders the description after the title row); e2e apps/e2e/tests/assets/asset-library.spec.ts:108 'the description sits below the title' (description box starts at or below the h1 box) (passed 2026-09-30, real browser, retries off)"
+    evidence: "packages/ui/src/makerkit/page.tsx:170-210 (PageHeader renders the description after the title row); e2e apps/e2e/tests/assets/asset-library.spec.ts:114 'the description sits below the title' (description box starts at or below the h1 box) (passed 2026-09-30, real browser, retries off)"
   - text: "\"Create Asset\" button in page header"
     met: true
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:137-139"
@@ -80,7 +80,7 @@ acceptance_criteria:
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/page.tsx:30-51"
   - text: "Keyboard shortcut Cmd/Ctrl+K opens create menu (future)"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:20-42 (keydown listener with cleanup, aria-keyshortcuts); e2e apps/e2e/tests/assets/asset-library.spec.ts:66 'Ctrl+K opens the create menu' (passed 2026-09-30, real browser, retries off)"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/assets/_components/create-asset-button.tsx:20-42 (keydown listener with cleanup, aria-keyshortcuts); e2e apps/e2e/tests/assets/asset-library.spec.ts:72 'Ctrl+K opens the create menu' (passed 2026-09-30, real browser, retries off)"
   - text: "TypeScript compiles without errors"
     met: true
     evidence: "main CI run 35779959194 (6dfa35a4; code unchanged since): web:typecheck ran uncached, no errors"

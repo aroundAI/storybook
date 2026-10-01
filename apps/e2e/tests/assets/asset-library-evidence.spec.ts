@@ -40,8 +40,7 @@ test.describe('PageHeader description order — evidence', () => {
     await page.screenshot({ path: `${OUT}/page-header-audio-library.png` });
 
     await page.goto(`/home/${team.slug}`);
-    // TeamAccountLayoutPageHeader renders only the description (the
-    // breadcrumbs); the dashboard title is not passed through to PageHeader.
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(
       page.getByRole('navigation', { name: /breadcrumb/i }),
     ).toBeVisible();
