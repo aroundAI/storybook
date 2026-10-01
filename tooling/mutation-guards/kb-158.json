@@ -1,0 +1,34 @@
+{
+  "feature": "KB-158",
+  "mutations": [
+    {
+      "name": "KB158-U1 the comparison tooltip picks its format by display name again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/language-comparison-tooltip.ts",
+      "find": "  if (!isSeries(item.dataKey)) return [value.toLocaleString(), name];",
+      "replace": "  if (!isSeries(name)) return [value.toLocaleString(), name];",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/lib/__tests__/language-comparison-tooltip.test.ts",
+      "pattern": "formatted as the axis is"
+    },
+    {
+      "name": "KB158-U2 an unknown comparison series falls back to dollars again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/language-comparison-tooltip.ts",
+      "find": "  if (!isSeries(item.dataKey)) return [value.toLocaleString(), name];",
+      "replace": "  if (!isSeries(item.dataKey)) return [`$${value.toFixed(2)}`, name];",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/lib/__tests__/language-comparison-tooltip.test.ts",
+      "pattern": "never states a currency"
+    },
+    {
+      "name": "KB158-E1 the hovered comparison tooltip picks its format by display name again",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/lib/language-comparison-tooltip.ts",
+      "find": "  if (!isSeries(item.dataKey)) return [value.toLocaleString(), name];",
+      "replace": "  if (!isSeries(name)) return [`$${value.toFixed(2)}`, name];",
+      "spec": "tests/analytics/chart-tooltip-evidence.spec.ts",
+      "grep": "the trend and comparison tooltips"
+    }
+  ]
+}
