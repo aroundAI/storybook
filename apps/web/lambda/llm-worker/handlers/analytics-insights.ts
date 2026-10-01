@@ -161,12 +161,14 @@ async function writeCachedInsights(
 }
 
 function calculateChanges(
-  current: Record<string, number>,
-  previous?: Record<string, number>,
+  current: Record<string, number | null>,
+  previous?: Record<string, number | null>,
 ): Record<string, number> {
   if (!previous) return {};
   const changes: Record<string, number> = {};
   for (const key of Object.keys(current)) {
+    // Null is not measured (Facebook views, KB-153): no change, never -100%.
+    if (current[key] === null || previous[key] === null) continue;
     const curr = current[key] ?? 0;
     const prev = previous[key] ?? 0;
     // No key when there is no baseline (KB-16): a change from nothing is
@@ -204,7 +206,7 @@ export async function processAnalyticsInsights(
   const analyticsSummary = {
     totals: data.analytics.totals,
     previousPeriodChange: calculateChanges(
-      data.analytics.totals as unknown as Record<string, number>,
+      data.analytics.totals as unknown as Record<string, number | null>,
       data.analytics.previousPeriodTotals,
     ),
     platformBreakdown: data.analytics.platformMetrics,

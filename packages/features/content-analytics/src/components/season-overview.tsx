@@ -12,6 +12,7 @@ import { useMemo } from 'react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 
+import { compareViewsDesc, formatViews } from '../lib/views';
 import type { SeasonAnalytics as SeasonAnalyticsData } from '../server/aggregation-queries';
 import { MetricCards } from './metric-cards';
 
@@ -33,7 +34,7 @@ export function SeasonOverview({ data }: SeasonOverviewProps) {
 
   // Sort episodes by views for the bar chart
   const sortedEpisodes = useMemo(
-    () => [...data.episodes].sort((a, b) => b.views - a.views),
+    () => [...data.episodes].sort(compareViewsDesc),
     [data.episodes],
   );
   const maxViews = sortedEpisodes[0]?.views || 1;
@@ -49,9 +50,7 @@ export function SeasonOverview({ data }: SeasonOverviewProps) {
           </p>
         </div>
         <div className="text-right">
-          <p className="text-2xl font-bold">
-            {data.totalViews.toLocaleString()}
-          </p>
+          <p className="text-2xl font-bold">{formatViews(data.totalViews)}</p>
           <p className="text-sm text-muted-foreground">Total Views</p>
         </div>
       </div>
@@ -68,7 +67,7 @@ export function SeasonOverview({ data }: SeasonOverviewProps) {
           <div className="space-y-3">
             {data.episodes.length > 0 ? (
               data.episodes.map((episode) => {
-                const percentage = (episode.views / maxViews) * 100;
+                const percentage = ((episode.views ?? 0) / maxViews) * 100;
                 const isTop = episode.episodeId === data.topEpisode?.episodeId;
                 const isLowest =
                   episode.episodeId === data.lowestEpisode?.episodeId;
@@ -82,7 +81,7 @@ export function SeasonOverview({ data }: SeasonOverviewProps) {
                         {isLowest && ' 📉 Lowest'}
                       </span>
                       <span className="text-muted-foreground">
-                        {episode.views.toLocaleString()} views
+                        {formatViews(episode.views)} views
                       </span>
                     </div>
                     <div className="h-4 overflow-hidden rounded bg-muted">
@@ -147,7 +146,7 @@ export function SeasonOverview({ data }: SeasonOverviewProps) {
               <CardContent>
                 <p className="font-medium">{data.topEpisode.title}</p>
                 <p className="text-muted-foreground">
-                  {data.topEpisode.views.toLocaleString()} views
+                  {formatViews(data.topEpisode.views)} views
                 </p>
               </CardContent>
             </Card>
@@ -163,7 +162,7 @@ export function SeasonOverview({ data }: SeasonOverviewProps) {
               <CardContent>
                 <p className="font-medium">{data.lowestEpisode.title}</p>
                 <p className="text-muted-foreground">
-                  {data.lowestEpisode.views.toLocaleString()} views
+                  {formatViews(data.lowestEpisode.views)} views
                 </p>
               </CardContent>
             </Card>

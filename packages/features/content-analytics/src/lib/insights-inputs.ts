@@ -1,4 +1,6 @@
 import type { AudienceData, TopContent, TrendFact } from '../types';
+import { compareViewsDesc } from './views';
+import type { Views } from './views';
 
 const TOP_CONTENT_LIMIT = 5;
 const GEOGRAPHY_LIMIT = 10;
@@ -10,7 +12,7 @@ const TREND_METRICS: TrendMetric[] = ['views', 'likes', 'comments', 'shares'];
 
 interface PlatformRow {
   platform: string;
-  views: number;
+  views: Views;
   likes: number;
   comments: number;
   shares: number;
@@ -21,9 +23,9 @@ interface ContentRow {
   episodeTitle: string;
   publishTitle: string;
   platform: string;
-  views: number;
+  views: Views;
   likes: number;
-  engagementRate: number;
+  engagementRate: number | null;
 }
 
 /** The window of the same length that ends the day before `range` starts. */
@@ -66,7 +68,7 @@ function fact(
 }
 
 function sum(rows: PlatformRow[], metric: TrendMetric): number {
-  return rows.reduce((total, row) => total + row[metric], 0);
+  return rows.reduce((total, row) => total + (row[metric] ?? 0), 0);
 }
 
 /**
@@ -100,7 +102,11 @@ export function buildTrendFacts(
     if (!before) continue;
 
     for (const metric of TREND_METRICS) {
-      facts.push(...fact(metric, row.platform, row[metric], before[metric]));
+      const now = row[metric];
+      const then = before[metric];
+      // Facebook has no views to compare (KB-153): no fact, never a 0.
+      if (now === null || then === null) continue;
+      facts.push(...fact(metric, row.platform, now, then));
     }
   }
 
@@ -112,8 +118,8 @@ export function topContentForInsights(
   list: ContentRow[] | undefined,
 ): TopContent[] | undefined {
   const top = (list ?? [])
-    .filter((item) => item.views > 0)
-    .sort((a, b) => b.views - a.views)
+    .filter((item) => item.views !== null && item.views > 0)
+    .sort(compareViewsDesc)
     .slice(0, TOP_CONTENT_LIMIT)
     .map((item) => ({
       id: item.publishId,

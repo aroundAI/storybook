@@ -428,6 +428,83 @@ describe('@kit/clickhouse', () => {
       });
     });
 
+    describe('a Facebook NULL view stays null (KB-153)', () => {
+      const facebookRow = {
+        views: null,
+        likes: '14',
+        comments: '4',
+        shares: '2',
+        saves: null,
+        watch_time_seconds: '300',
+        revenue_cents: '0',
+        subscribers_gained: '2',
+      };
+
+      it('per-video totals', async () => {
+        mockQueryResult.json.mockResolvedValue([
+          { ...facebookRow, video_id: 'fb-1' },
+        ]);
+        const { queryPerVideoTotals } = await import('../src/queries');
+        const totals = await queryPerVideoTotals({
+          projectId: '550e8400-e29b-41d4-a716-446655440000',
+          videoIds: ['fb-1'],
+        });
+
+        expect(totals.get('fb-1')).toMatchObject({ views: null, likes: 14 });
+      });
+
+      it('the platform split', async () => {
+        mockQueryResult.json.mockResolvedValue([
+          { ...facebookRow, platform: 'facebook' },
+        ]);
+        const { queryPlatformBreakdown } = await import('../src/queries');
+        const split = await queryPlatformBreakdown({
+          projectId: '550e8400-e29b-41d4-a716-446655440000',
+        });
+
+        expect(split[0]).toMatchObject({ platform: 'facebook', views: null });
+      });
+
+      it('totals over Facebook rows alone, but 0 over no rows', async () => {
+        const { queryTotals } = await import('../src/queries');
+        const scope = { projectId: '550e8400-e29b-41d4-a716-446655440000' };
+
+        mockQueryResult.json.mockResolvedValue([
+          { ...facebookRow, row_count: '2' },
+        ]);
+        expect((await queryTotals(scope)).views).toBeNull();
+
+        mockQueryResult.json.mockResolvedValue([
+          { ...facebookRow, row_count: '0' },
+        ]);
+        expect((await queryTotals(scope)).views).toBe(0);
+      });
+
+      it('the daily series, pooled and by platform', async () => {
+        const { queryDailyTimeSeries, queryDailyTimeSeriesByPlatform } =
+          await import('../src/queries');
+        const scope = { projectId: '550e8400-e29b-41d4-a716-446655440000' };
+
+        mockQueryResult.json.mockResolvedValue([
+          { ...facebookRow, date: '2026-09-01' },
+        ]);
+        expect((await queryDailyTimeSeries(scope))[0]?.views).toBeNull();
+
+        mockQueryResult.json.mockResolvedValue([
+          { ...facebookRow, date: '2026-09-01', platform: 'facebook' },
+          {
+            ...facebookRow,
+            date: '2026-09-01',
+            platform: 'youtube',
+            views: '30',
+          },
+        ]);
+        const [day] = await queryDailyTimeSeriesByPlatform(scope);
+        expect(day?.views).toBe(30);
+        expect(day?.byPlatform.facebook?.views).toBeNull();
+      });
+    });
+
     describe('queryPerVideoTotals', () => {
       it('should return a Map of video_id to totals', async () => {
         mockQueryResult.json.mockResolvedValue([

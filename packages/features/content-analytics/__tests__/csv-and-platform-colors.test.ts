@@ -40,11 +40,20 @@ describe('generateCSV', () => {
     ).split('\n');
 
     expect(header).toBe(
-      'Date,Platform,Project,Content,Views,Likes,Revenue (USD)',
+      'Date,Platform,Project,Content,Views (blank = not measured by the platform),Likes,Revenue (USD)',
     );
     expect(line).toBe(
       '2026-09-01,youtube,Harbour,Harbour at dusk,1200,48,123.45',
     );
+  });
+
+  it('leaves a Facebook row’s views blank, never 0 (KB-153)', () => {
+    const [, line] = generateCSV(
+      [row({ platform: 'facebook', views: null })],
+      ['views', 'likes'],
+    ).split('\n');
+
+    expect(line).toBe('2026-09-01,facebook,Harbour,Harbour at dusk,,48');
   });
 
   it('writes one line per row and no trailing newline', () => {
@@ -56,7 +65,7 @@ describe('generateCSV', () => {
 
   it('is just the header when there is no data', () => {
     expect(generateCSV([], ['views'])).toBe(
-      'Date,Platform,Project,Content,Views',
+      'Date,Platform,Project,Content,Views (blank = not measured by the platform)',
     );
   });
 

@@ -8,6 +8,8 @@ import { Trophy } from 'lucide-react';
 import type { AnalyticsPlatform } from '@kit/clickhouse';
 
 import { formatNumber, formatPercent } from '../../lib/format';
+import { VIEWS_NOT_MEASURED, formatViews } from '../../lib/views';
+import type { Views } from '../../lib/views';
 import { AnalyticsCard } from './analytics-card';
 import { topContentClaim } from './card-claim';
 
@@ -17,8 +19,8 @@ interface TopContentItem {
   thumbnailUrl?: string;
   publishedAt: string;
   platform: string;
-  views: number;
-  engagementRate: number;
+  views: Views;
+  engagementRate: number | null;
 }
 
 interface TopContentCardProps {
@@ -101,9 +103,12 @@ export function TopContentCard({
                 >
                   {item.platform}
                 </span>
-                <span>{formatNumber(item.views)} Views</span>
+                <span>{formatViews(item.views, formatNumber)} Views</span>
                 <span className="font-semibold text-green-600 dark:text-green-400">
-                  {formatPercent(item.engagementRate)} ER
+                  {item.engagementRate === null
+                    ? VIEWS_NOT_MEASURED
+                    : formatPercent(item.engagementRate)}{' '}
+                  ER
                 </span>
               </div>
             </div>

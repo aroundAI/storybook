@@ -43,7 +43,9 @@ export function PerformanceInsightsSection({
                 Total Views
               </p>
               <p className="mt-1 text-3xl font-bold text-foreground">
-                {formatNumber(analytics?.totalViews ?? 0)}
+                {analytics?.totalViews === null
+                  ? 'Not measured'
+                  : formatNumber(analytics?.totalViews ?? 0)}
               </p>
             </div>
             <span className="rounded-md bg-green-100 px-2 py-1 text-xs font-bold text-green-700 dark:bg-green-900/30 dark:text-green-400">

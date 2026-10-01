@@ -414,7 +414,8 @@ export interface DailyStats {
   video_id: string;
   platform: AnalyticsPlatform;
   metric_date: string;
-  views: number;
+  /** Null when every row summed is Facebook's: no single view (KB-153). */
+  views: number | null;
   likes: number;
   comments: number;
   shares: number;
@@ -446,7 +447,8 @@ export interface PerVideoTotals extends AggregatedTotals {
  * Aggregated totals (summed across multiple rows)
  */
 export interface AggregatedTotals {
-  views: number;
+  /** Null when every row summed is Facebook's: no single view (KB-153). */
+  views: number | null;
   likes: number;
   comments: number;
   shares: number;
@@ -461,7 +463,8 @@ export interface AggregatedTotals {
  */
 export interface DailyDataPoint {
   date: string;
-  views: number;
+  /** Null when every row summed is Facebook's: no single view (KB-153). */
+  views: number | null;
   likes: number;
   comments: number;
   shares: number;
@@ -475,7 +478,8 @@ export interface DailyDataPoint {
  */
 export interface PlatformBreakdown {
   platform: AnalyticsPlatform;
-  views: number;
+  /** Null when every row summed is Facebook's: no single view (KB-153). */
+  views: number | null;
   likes: number;
   comments: number;
   shares: number;
@@ -507,7 +511,8 @@ export interface QueryFilters {
 export interface DailyPlatformMetricsRow {
   date: string;
   platform: string;
-  views: number;
+  /** Null when every row summed is Facebook's: no single view (KB-153). */
+  views: number | null;
   likes: number;
   comments: number;
   shares: number;
@@ -517,7 +522,8 @@ export interface DailyPlatformMetricsRow {
  * Platform engagement metrics (views, likes, comments, shares)
  */
 export interface PlatformEngagement {
-  views: number;
+  /** Null when every row summed is Facebook's: no single view (KB-153). */
+  views: number | null;
   likes: number;
   comments: number;
   shares: number;
@@ -528,7 +534,8 @@ export interface PlatformEngagement {
  */
 export interface DailyPlatformBreakdown {
   date: string;
-  views: number;
+  /** Null when every row summed is Facebook's: no single view (KB-153). */
+  views: number | null;
   likes: number;
   comments: number;
   shares: number;

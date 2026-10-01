@@ -13,6 +13,7 @@ import {
 } from './chunked';
 import { getClickHouseClient, isClickHouseEnabled } from './client';
 import { PLATFORM_ENUM_TYPE } from './lib/platform-enum';
+import { addViews } from './lib/views';
 import { FACEBOOK_DENOMINATOR_COLUMNS } from './types';
 import type {
   AggregatedTotals,
@@ -435,7 +436,8 @@ async function queryTotalsSingle(
       sum(saves) as saves,
       sum(watch_time_seconds) as watch_time_seconds,
       sum(revenue_cents) as revenue_cents,
-      sum(subscribers_gained) as subscribers_gained
+      sum(subscribers_gained) as subscribers_gained,
+      count() as row_count
     FROM video_daily_stats
     ${clause}
   `;
@@ -446,7 +448,7 @@ async function queryTotalsSingle(
     format: 'JSONEachRow',
   });
 
-  const rows = await result.json<AggregatedTotals>();
+  const rows = await result.json<AggregatedTotals & { row_count: number }>();
 
   if (rows.length === 0) {
     return {
@@ -465,7 +467,8 @@ async function queryTotalsSingle(
   const row = rows[0]!;
 
   return {
-    views: Number(row.views),
+    // No rows is 0 views; rows that are all Facebook's are not measured.
+    views: Number(row.row_count) === 0 ? 0 : nullableNumber(row.views),
     likes: Number(row.likes),
     comments: Number(row.comments),
     shares: Number(row.shares),
@@ -514,7 +517,7 @@ async function queryDailyTimeSeriesSingle(
 
   return rows.map((row) => ({
     date: row.date,
-    views: Number(row.views),
+    views: nullableNumber(row.views),
     likes: Number(row.likes),
     comments: Number(row.comments),
     shares: Number(row.shares),
@@ -561,7 +564,7 @@ async function queryPlatformBreakdownSingle(
 
   return rows.map((row) => ({
     platform: row.platform,
-    views: Number(row.views),
+    views: nullableNumber(row.views),
     likes: Number(row.likes),
     comments: Number(row.comments),
     shares: Number(row.shares),
@@ -617,7 +620,7 @@ async function queryPerVideoTotalsSingle(
 
   for (const row of rows) {
     map.set(row.video_id, {
-      views: Number(row.views),
+      views: nullableNumber(row.views),
       likes: Number(row.likes),
       comments: Number(row.comments),
       shares: Number(row.shares),
@@ -697,7 +700,7 @@ export async function queryDailyTimeSeriesByPlatform(
       continue;
     }
 
-    existing.views += row.views;
+    existing.views = addViews(existing.views, row.views);
     existing.likes += row.likes;
     existing.comments += row.comments;
     existing.shares += row.shares;
@@ -707,7 +710,7 @@ export async function queryDailyTimeSeriesByPlatform(
 
       existing.byPlatform[platform] = current
         ? {
-            views: current.views + engagement.views,
+            views: addViews(current.views, engagement.views),
             likes: current.likes + engagement.likes,
             comments: current.comments + engagement.comments,
             shares: current.shares + engagement.shares,
@@ -767,7 +770,7 @@ async function queryDailyStatsSingle(
     video_id: row.video_id,
     platform: row.platform,
     metric_date: row.metric_date,
-    views: Number(row.views),
+    views: nullableNumber(row.views),
     likes: Number(row.likes),
     comments: Number(row.comments),
     shares: Number(row.shares),
@@ -865,19 +868,19 @@ async function queryDailyTimeSeriesByPlatformSingle(
 
   for (const row of rows) {
     const existing = dateMap.get(row.date) || {
-      views: 0,
+      views: null,
       likes: 0,
       comments: 0,
       shares: 0,
       byPlatform: {},
     };
 
-    const v = Number(row.views);
+    const v = nullableNumber(row.views);
     const l = Number(row.likes);
     const c = Number(row.comments);
     const s = Number(row.shares);
 
-    existing.views += v;
+    existing.views = addViews(existing.views, v);
     existing.likes += l;
     existing.comments += c;
     existing.shares += s;

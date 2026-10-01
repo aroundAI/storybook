@@ -1,5 +1,6 @@
 import { sumMeasured, weightedMeasured } from './export-coverage';
 import type { AnalyticsDataRow, ReportSummary } from './report-types';
+import { viewsToAdd } from './views';
 
 /**
  * The summary a report's PDF header and CSV summary print. One copy, for the
@@ -24,9 +25,13 @@ export function calculateReportSummary(
   let clicks = 0;
 
   for (const row of data) {
-    platformBreakdown[row.platform] =
-      (platformBreakdown[row.platform] ?? 0) + row.views;
-    totalViews += row.views;
+    // A Facebook row has no single view (KB-153): it adds nothing to the
+    // views total, and its platform gets no views line rather than a 0.
+    if (row.views !== null) {
+      platformBreakdown[row.platform] =
+        (platformBreakdown[row.platform] ?? 0) + row.views;
+    }
+    totalViews += viewsToAdd(row.views);
     totalLikes += row.likes;
     totalComments += row.comments;
     totalShares += row.shares;
@@ -40,7 +45,7 @@ export function calculateReportSummary(
   const avgViewDuration = weightedMeasured(
     data.map((row) => ({
       value: row.avgViewDurationSeconds,
-      weight: row.views,
+      weight: viewsToAdd(row.views),
     })),
   );
 

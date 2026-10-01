@@ -94,7 +94,10 @@ function addNumericFields<T extends object>(target: T, row: T): void {
   const into = target as Record<string, unknown>;
 
   for (const [field, value] of Object.entries(row)) {
-    if (typeof value === 'number' && typeof into[field] === 'number') {
+    if (typeof value !== 'number') continue;
+    // A null is not measured (KB-153): it takes the other side's figure.
+    if (into[field] === null) into[field] = value;
+    else if (typeof into[field] === 'number') {
       into[field] = (into[field] as number) + value;
     }
   }

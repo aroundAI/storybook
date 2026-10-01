@@ -3,6 +3,8 @@
 import { PieChart } from 'lucide-react';
 
 import { formatNumber } from '../../lib/format';
+import { viewsToAdd } from '../../lib/views';
+import type { Views } from '../../lib/views';
 import { HorizontalProgress } from '../charts/horizontal-progress';
 import { AnalyticsCard } from './analytics-card';
 import {
@@ -13,7 +15,8 @@ import {
 
 interface PlatformViews {
   platform: string;
-  views: number;
+  /** Null for Facebook: no single view, so no share of the views (KB-153). */
+  views: Views;
 }
 
 interface PlatformSplitCardProps {
@@ -33,7 +36,9 @@ const PLATFORM_CONFIG: Record<string, { label: string; color: string }> = {
  * whatever the rows said (KB-16).
  */
 export function PlatformSplitCard({ platforms }: PlatformSplitCardProps) {
-  const totalViews = platforms.reduce((sum, p) => sum + p.views, 0);
+  // Only platforms with a views figure have a share of the views.
+  const measured = platforms.filter((p) => p.views !== null);
+  const totalViews = measured.reduce((sum, p) => sum + viewsToAdd(p.views), 0);
 
   return (
     <AnalyticsCard
@@ -54,7 +59,7 @@ export function PlatformSplitCard({ platforms }: PlatformSplitCardProps) {
     >
       {totalViews > 0 && (
         <div className="flex flex-1 flex-col justify-center space-y-4">
-          {platforms.map((platform) => {
+          {measured.map((platform) => {
             const config = PLATFORM_CONFIG[platform.platform.toLowerCase()] || {
               label: platformLabel(platform.platform),
               color: 'bg-gray-500',
@@ -64,7 +69,7 @@ export function PlatformSplitCard({ platforms }: PlatformSplitCardProps) {
               <HorizontalProgress
                 key={platform.platform}
                 label={config.label}
-                value={(platform.views / totalViews) * 100}
+                value={(viewsToAdd(platform.views) / totalViews) * 100}
                 color={config.color}
                 height="sm"
               />

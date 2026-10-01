@@ -88,7 +88,8 @@ export interface AnalyticsDataRow {
   platform: string;
   contentTitle: string;
   projectName: string;
-  views: number;
+  /** Null for a Facebook publish: no single view (KB-153). */
+  views: number | null;
   likes: number;
   comments: number;
   shares: number;

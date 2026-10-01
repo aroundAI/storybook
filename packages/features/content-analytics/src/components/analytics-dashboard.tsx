@@ -28,6 +28,9 @@ import {
 } from '../lib/insights-inputs';
 import { localDateOf } from '../lib/local-date';
 import { ABSENT, measured } from '../lib/measured';
+import { viewsToAdd } from '../lib/views';
+import { VIEWS_NOT_MEASURED, viewsShare } from '../lib/views';
+import type { Views } from '../lib/views';
 import {
   getContentListAction,
   getProjectAnalyticsAction,
@@ -266,14 +269,14 @@ export function AnalyticsDashboard({
       let shares = 0;
       const filteredByPlatform: Record<
         string,
-        { views: number; likes: number; comments: number; shares: number }
+        { views: Views; likes: number; comments: number; shares: number }
       > = {};
 
       if (day.byPlatform) {
         for (const platform of selectedPlatforms) {
           const platformData = day.byPlatform[platform];
           if (platformData) {
-            views += platformData.views;
+            views += viewsToAdd(platformData.views);
             likes += platformData.likes;
             comments += platformData.comments;
             shares += platformData.shares;
@@ -495,7 +498,7 @@ export function AnalyticsDashboard({
 interface PlatformBreakdownCardProps {
   data: {
     platform: string;
-    views: number;
+    views: Views;
     likes: number;
     comments: number;
     shares: number;
@@ -503,7 +506,7 @@ interface PlatformBreakdownCardProps {
 }
 
 function PlatformBreakdownCard({ data }: PlatformBreakdownCardProps) {
-  const totalViews = data.reduce((sum, p) => sum + p.views, 0);
+  const totalViews = data.reduce((sum, p) => sum + viewsToAdd(p.views), 0);
 
   const PLATFORM_COLORS: Record<string, string> = {
     youtube: 'bg-red-500',
@@ -520,8 +523,7 @@ function PlatformBreakdownCard({ data }: PlatformBreakdownCardProps) {
   return (
     <div className="space-y-4">
       {data.map((platform) => {
-        const percentage =
-          totalViews > 0 ? (platform.views / totalViews) * 100 : 0;
+        const percentage = viewsShare(platform.views, totalViews);
         return (
           <div key={platform.platform} className="space-y-2">
             <div className="flex items-center justify-between text-sm">
@@ -534,10 +536,12 @@ function PlatformBreakdownCard({ data }: PlatformBreakdownCardProps) {
                 </span>
               </div>
               <div className="text-muted-foreground">
-                {formatNumber(platform.views)} views ({percentage.toFixed(1)}%)
+                {platform.views === null || percentage === null
+                  ? `Views ${VIEWS_NOT_MEASURED.toLowerCase()}`
+                  : `${formatNumber(platform.views)} views (${percentage.toFixed(1)}%)`}
               </div>
             </div>
-            <Progress value={percentage} className="h-2" />
+            <Progress value={percentage ?? 0} className="h-2" />
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>{formatNumber(platform.likes)} likes</span>
               <span>{formatNumber(platform.comments)} comments</span>

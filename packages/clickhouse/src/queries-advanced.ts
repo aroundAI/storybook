@@ -169,6 +169,9 @@ function buildDimConditions(
      * Keep to platforms whose `views` holds a figure (FILM-1720). Required
      * of every reader that counts videos or takes a quantile of their
      * views: a Facebook video's views are NULL, and counted it is a zero.
+     * Such a reader reads a LEFT JOIN miss as `ifNull(views, 0)`: since
+     * migration 020 the miss is NULL, and a row-less video on an ingested
+     * channel is a real zero (KB-153).
      */
     viewsOnly?: boolean;
   } = {},
@@ -390,7 +393,7 @@ function perVideoCheckpointsSql(input: {
   const perVideoSelects = checkpoints
     .map(
       (days) =>
-        `sumIf(m.${column}, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_${days}`,
+        `sumIf(ifNull(m.${column}, 0), dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_${days}`,
     )
     .join(',\n        ');
 
@@ -487,10 +490,10 @@ export async function queryMedianViewsPerVideo(input: {
         SELECT
           toString(${bucketFn}(d.published_at)) as bucket,
           count() as video_count,
-          ifNotFinite(quantileExactInclusive(0.5)(v.total_views), 0) as median_views,
-          ifNotFinite(quantileExactInclusive(0.25)(v.total_views), 0) as p25_views,
-          ifNotFinite(quantileExactInclusive(0.75)(v.total_views), 0) as p75_views,
-          avg(v.total_views) as mean_views
+          ifNotFinite(quantileExactInclusive(0.5)(ifNull(v.total_views, 0)), 0) as median_views,
+          ifNotFinite(quantileExactInclusive(0.25)(ifNull(v.total_views, 0)), 0) as p25_views,
+          ifNotFinite(quantileExactInclusive(0.75)(ifNull(v.total_views, 0)), 0) as p75_views,
+          avg(ifNull(v.total_views, 0)) as mean_views
         FROM (${dimSubquery(conditions, latest)}) d
         LEFT JOIN (
           SELECT video_id, sum(views) as total_views
@@ -565,7 +568,9 @@ export async function queryRollingViews(input: {
   assertDimScope(input.scope);
 
   const client = getClickHouseClient();
-  const { conditions, latest, params } = buildDimConditions(input.scope);
+  const { conditions, latest, params } = buildDimConditions(input.scope, {
+    viewsOnly: true,
+  });
   params.startDate = input.startDate;
   params.endDate = input.endDate;
   // Interpolated, not bound. A window frame bound is part of the query's
@@ -753,7 +758,9 @@ export async function queryBackCatalogShare(input: {
   assertDimScope(input.scope);
 
   const client = getClickHouseClient();
-  const { conditions, latest, params } = buildDimConditions(input.scope);
+  const { conditions, latest, params } = buildDimConditions(input.scope, {
+    viewsOnly: true,
+  });
   params.startDate = input.startDate;
   params.endDate = input.endDate;
   params.ageDays = Math.floor(input.ageDays);
@@ -1547,7 +1554,7 @@ function segmentPerVideoSql(
           greatest(0, dateDiff('day', d.published_at, toDateTime(any(i.ingest_start)))),
           toInt32(100000)
         ) as ingest_lag_days,
-        sumIf(m.views, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_views,
+        sumIf(ifNull(m.views, 0), dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_views,
         sumIf(m.watch_time_seconds, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_watch,
         sumIf(m.impressions, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_impressions,
         sumIf(m.ctr_weighted, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_ctr_weighted
@@ -2063,11 +2070,14 @@ export interface VideoAgeRow {
   contentType: string;
   /** The published asset's language; null when nobody set one. */
   language: string | null;
-  /** Views accumulated in days 0..N-1, per requested checkpoint. */
-  viewsAtAge: Record<number, number>;
+  /**
+   * Views accumulated in days 0..N-1, per requested checkpoint. Null on a
+   * platform with no single view (Facebook, KB-153), never 0.
+   */
+  viewsAtAge: Record<number, number | null>;
   /** Whether each checkpoint has actually elapsed for this video. */
   matureAt: Record<number, boolean>;
-  lifetimeViews: number;
+  lifetimeViews: number | null;
   /** Earliest ingested metric day, or null when nothing was ingested. */
   firstMetricDate: string | null;
   /** Days between publication and the first ingested metric day. */
@@ -2166,6 +2176,13 @@ function sortVideoAgeRows(
 
   const compare = (a: VideoAgeRow, b: VideoAgeRow): number => {
     if (orderBy === 'lifetime_views') {
+      // Not measured sorts last whichever way, as ClickHouse puts NULL.
+      if (a.lifetimeViews === null || b.lifetimeViews === null) {
+        return (
+          (a.lifetimeViews === null ? 1 : 0) -
+          (b.lifetimeViews === null ? 1 : 0)
+        );
+      }
       return (a.lifetimeViews - b.lifetimeViews) * direction;
     }
 
@@ -2245,6 +2262,7 @@ async function queryVideoViewsAtAgeSingle(input: {
   }
 
   const dimWhere = dimConditions.join(' AND ');
+  params.viewsPlatforms = [...VIEWS_COLUMN_PLATFORMS];
 
   // `days` is floored to an integer above, so it is safe to interpolate.
   const checkpointSelects = checkpoints
@@ -2264,7 +2282,13 @@ async function queryVideoViewsAtAgeSingle(input: {
       d.content_type as content_type,
       d.language as language,
       ${checkpointSelects},
-      sum(m.views) as lifetime_views,
+      -- NULL for a platform with no single view, so it sorts after every
+      -- measured video; a LEFT JOIN miss elsewhere is 0 (KB-153).
+      if(
+        has({viewsPlatforms: Array(String)}, toString(d.platform)),
+        sum(ifNull(m.views, 0)),
+        NULL
+      ) as lifetime_views,
       toString(min(m.metric_date)) as first_metric_date,
       countIf(m.metric_date > toDate(0)) as metric_days
     FROM (${dimSubquery(dimWhere, latest)}) d
@@ -2292,9 +2316,17 @@ async function queryVideoViewsAtAgeSingle(input: {
   return rows.map((row) => {
     const publishedAt = String(row.published_at);
 
-    const viewsAtAge: Record<number, number> = {};
+    // A Facebook video's views are NULL on every row (KB-153); anyone
+    // else's NULL is a LEFT JOIN miss, a real zero.
+    const platform = String(row.platform ?? '');
+    const hasViews = (VIEWS_COLUMN_PLATFORMS as readonly string[]).includes(
+      platform,
+    );
+    const viewsOf = (value: unknown) => (hasViews ? Number(value ?? 0) : null);
+
+    const viewsAtAge: Record<number, number | null> = {};
     for (const days of checkpoints) {
-      viewsAtAge[days] = Number(row[`views_at_${days}`] ?? 0);
+      viewsAtAge[days] = viewsOf(row[`views_at_${days}`]);
     }
 
     // A LEFT JOIN with no match still produces one row, whose aggregates
@@ -2308,12 +2340,12 @@ async function queryVideoViewsAtAgeSingle(input: {
       title: String(row.title ?? ''),
       publishedAt,
       connectionId: String(row.connection_id ?? ''),
-      platform: String(row.platform ?? ''),
+      platform,
       contentType: String(row.content_type ?? ''),
       language: fromDimLanguage(String(row.language ?? '')),
       viewsAtAge,
       matureAt: computeMaturity(publishedAt, checkpoints, now),
-      lifetimeViews: Number(row.lifetime_views ?? 0),
+      lifetimeViews: viewsOf(row.lifetime_views),
       firstMetricDate,
       ingestLagDays: computeIngestLagDays(publishedAt, firstMetricDate),
     };

@@ -129,6 +129,60 @@ test.describe('FILM-1615 — the Video Log with data', () => {
     await page.screenshot({ path: `${OUT}/02-narrow-viewport.png` });
   });
 
+  test('says a Facebook video’s views are not measured, and sorts it last (KB-153)', async ({
+    page,
+  }) => {
+    const videoLog = new VideoLogPageObject(page);
+    const fixture = await videoLog.setup();
+
+    const measured = await seedVideo(fixture, {
+      videoId: fixture.publishIds[0]!,
+      title: 'YouTube long cut',
+      publishedAt: daysAgo(400),
+    });
+    await seedVideoMetrics(measured, [{ ageDays: 0, views: 1_000 }]);
+
+    // Facebook writes NULL views (migration 020): its kinds of view are
+    // its own columns, so the log has no views figure for it, not 0.
+    const reel: SeededVideo = {
+      videoId: fixture.publishIds[1]!,
+      title: 'Facebook reel',
+      publishedAt: daysAgo(400),
+      projectId: fixture.project.id,
+      accountId: fixture.team.accountId,
+      connectionId: fixture.connectionId,
+      platform: 'facebook',
+    };
+    await seedVideoDim(reel);
+    await seedVideoMetrics(reel, [
+      { ageDays: 0, views: null },
+      { ageDays: 200, views: null },
+    ]);
+
+    await videoLog.goToAnalytics(fixture.team.slug, fixture.project.slug);
+    await videoLog.openVideoLog();
+    await expect(videoLog.rows()).toHaveCount(2);
+
+    const reelRow = videoLog.rows().filter({ hasText: 'Facebook reel' });
+    await expect(byTest(reelRow, 'checkpoint-not-measured').first()).toHaveText(
+      'Not measured',
+    );
+    await expect(byTest(reelRow, 'lifetime-views-none')).toHaveText(
+      'Not measured',
+    );
+    await expect(byTest(reelRow, 'checkpoint-figure')).toHaveCount(0);
+
+    // Most views first: the measured video leads, the reel trails.
+    await videoLog.sortBy('lifetime_views');
+    await expect(videoLog.rows().first()).toContainText('YouTube long cut');
+    await expect(videoLog.rows().last()).toContainText('Facebook reel');
+
+    await page.screenshot({
+      path: `${OUT}/kb153-facebook-not-measured.png`,
+      fullPage: true,
+    });
+  });
+
   test('sorts and pages the whole log on the server, not the page on screen', async ({
     page,
   }) => {

@@ -35,6 +35,7 @@ import type {
   RevenueSummary,
   TopRevenueContentByCurrency,
 } from '../lib/types/revenue';
+import { viewsToAdd } from '../lib/views';
 import { forEachAccountRevenueRow } from './revenue-queries';
 
 /**
@@ -107,7 +108,7 @@ export const getRevenueSummaryAction = enhanceAction(
       );
 
       for (const [, stats] of perVideoTotals) {
-        totalViews += stats.views;
+        totalViews += viewsToAdd(stats.views);
       }
     }
 
@@ -623,8 +624,9 @@ export const getTopContentByRevenueAction = enhanceAction(
         endDate,
       });
 
+      // A Facebook video has no views to divide by: no RPM (KB-153).
       for (const [videoId, stats] of perVideoTotals) {
-        viewsMap.set(videoId, stats.views);
+        if (stats.views !== null) viewsMap.set(videoId, stats.views);
       }
     }
 

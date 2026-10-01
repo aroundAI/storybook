@@ -18,6 +18,8 @@ import type { AggregatedTotals } from '@kit/clickhouse/server';
 import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { addViews, compareViewsDesc, viewsShare } from '../lib/views';
+import type { Views } from '../lib/views';
 import { assertProjectAccess } from './scope-access';
 
 /**
@@ -27,17 +29,17 @@ export interface EpisodeAnalytics {
   episodeId: string;
   title: string;
   episodeNumber: number;
-  totalViews: number;
+  totalViews: Views;
   totalLikes: number;
   totalComments: number;
   totalShares: number;
   totalSaves: number;
   totalRevenueCents: number;
   avgWatchTimeSeconds: number;
-  engagementRate: number;
+  engagementRate: number | null;
   platformBreakdown: {
     platform: string;
-    views: number;
+    views: Views;
     likes: number;
     comments: number;
     shares: number;
@@ -45,7 +47,7 @@ export interface EpisodeAnalytics {
   }[];
   dailyTrend: {
     date: string;
-    views: number;
+    views: Views;
     likes: number;
     comments: number;
   }[];
@@ -58,7 +60,7 @@ export interface SeasonAnalytics {
   seasonId: string;
   seasonNumber: number;
   title: string;
-  totalViews: number;
+  totalViews: Views;
   totalLikes: number;
   totalComments: number;
   totalShares: number;
@@ -69,19 +71,19 @@ export interface SeasonAnalytics {
   topEpisode: {
     episodeId: string;
     title: string;
-    views: number;
+    views: Views;
   } | null;
   lowestEpisode: {
     episodeId: string;
     title: string;
-    views: number;
+    views: Views;
   } | null;
   episodes: {
     episodeId: string;
     title: string;
     episodeNumber: number;
-    views: number;
-    engagement: number;
+    views: Views;
+    engagement: number | null;
     revenue: number;
   }[];
 }
@@ -92,7 +94,7 @@ export interface SeasonAnalytics {
 export interface ProjectAnalytics {
   projectId: string;
   projectName: string;
-  totalViews: number;
+  totalViews: Views;
   totalLikes: number;
   totalComments: number;
   totalShares: number;
@@ -104,18 +106,18 @@ export interface ProjectAnalytics {
     seasonId: string;
     seasonNumber: number;
     title: string;
-    views: number;
+    views: Views;
     episodes: number;
     revenue: number;
   }[];
   platformTotals: {
     platform: string;
-    views: number;
+    views: Views;
     likes: number;
     comments: number;
     shares: number;
     saves: number;
-    percentage: number;
+    percentage: number | null;
   }[];
 }
 
@@ -191,8 +193,9 @@ export async function getEpisodeAnalytics(
     projectIds: [episode.project_id],
   });
 
-  // Calculate totals
-  let totalViews = 0;
+  // Calculate totals. A Facebook publish's views are not measured: it adds
+  // nothing, and a total of nothing but Facebook is null (KB-153).
+  let totalViews: Views = null;
   let totalLikes = 0;
   let totalComments = 0;
   let totalShares = 0;
@@ -203,7 +206,7 @@ export async function getEpisodeAnalytics(
   const platformMap = new Map<
     string,
     {
-      views: number;
+      views: Views;
       likes: number;
       comments: number;
       shares: number;
@@ -215,7 +218,7 @@ export async function getEpisodeAnalytics(
     const stats = perVideoTotals.get(publish.id);
     if (!stats) continue;
 
-    totalViews += stats.views;
+    totalViews = addViews(totalViews, stats.views);
     totalLikes += stats.likes;
     totalComments += stats.comments;
     totalShares += stats.shares;
@@ -224,14 +227,14 @@ export async function getEpisodeAnalytics(
     totalWatchTime += stats.watch_time_seconds;
 
     const current = platformMap.get(publish.platform) ?? {
-      views: 0,
+      views: null,
       likes: 0,
       comments: 0,
       shares: 0,
       saves: 0,
     };
     platformMap.set(publish.platform, {
-      views: current.views + stats.views,
+      views: addViews(current.views, stats.views),
       likes: current.likes + stats.likes,
       comments: current.comments + stats.comments,
       shares: current.shares + stats.shares,
@@ -255,12 +258,15 @@ export async function getEpisodeAnalytics(
     comments: d.comments,
   }));
 
-  const engagementRate = displayedEngagementRatePercent({
-    views: totalViews,
-    likes: totalLikes,
-    comments: totalComments,
-    shares: totalShares,
-  });
+  const engagementRate =
+    totalViews === null
+      ? null
+      : displayedEngagementRatePercent({
+          views: totalViews,
+          likes: totalLikes,
+          comments: totalComments,
+          shares: totalShares,
+        });
 
   return {
     episodeId,
@@ -412,17 +418,18 @@ export async function getSeasonAnalytics(
 
   // Aggregate per episode
   const episodeAnalytics: SeasonAnalytics['episodes'] = [];
-  let totalViews = 0;
+  let totalViews: Views = null;
   let totalLikes = 0;
   let totalComments = 0;
   let totalShares = 0;
   let totalSaves = 0;
   let totalRevenue = 0;
   let totalEngagement = 0;
+  let engagedEpisodes = 0;
 
   for (const ep of episodes) {
     const epPublishes = publishesByEpisode.get(ep.id) ?? [];
-    let epViews = 0;
+    let epViews: Views = null;
     let epLikes = 0;
     let epComments = 0;
     let epShares = 0;
@@ -432,7 +439,7 @@ export async function getSeasonAnalytics(
     for (const pub of epPublishes) {
       const stats = perVideoTotals.get(pub.id);
       if (!stats) continue;
-      epViews += stats.views;
+      epViews = addViews(epViews, stats.views);
       epLikes += stats.likes;
       epComments += stats.comments;
       epShares += stats.shares;
@@ -440,12 +447,15 @@ export async function getSeasonAnalytics(
       epRevenue += stats.revenue_cents;
     }
 
-    const epEngagement = displayedEngagementRatePercent({
-      views: epViews,
-      likes: epLikes,
-      comments: epComments,
-      shares: epShares,
-    });
+    const epEngagement =
+      epViews === null
+        ? null
+        : displayedEngagementRatePercent({
+            views: epViews,
+            likes: epLikes,
+            comments: epComments,
+            shares: epShares,
+          });
 
     episodeAnalytics.push({
       episodeId: ep.id,
@@ -456,16 +466,22 @@ export async function getSeasonAnalytics(
       revenue: epRevenue,
     });
 
-    totalViews += epViews;
+    totalViews = addViews(totalViews, epViews);
     totalLikes += epLikes;
     totalComments += epComments;
     totalShares += epShares;
     totalSaves += epSaves;
     totalRevenue += epRevenue;
-    totalEngagement += epEngagement;
+    if (epEngagement !== null) {
+      totalEngagement += epEngagement;
+      engagedEpisodes++;
+    }
   }
 
-  const sortedByViews = [...episodeAnalytics].sort((a, b) => b.views - a.views);
+  // Top and lowest are among episodes whose views are measured.
+  const sortedByViews = episodeAnalytics
+    .filter((episode) => episode.views !== null)
+    .sort(compareViewsDesc);
   const topEpisode = sortedByViews[0]
     ? {
         episodeId: sortedByViews[0].episodeId,
@@ -493,9 +509,7 @@ export async function getSeasonAnalytics(
     totalSaves,
     totalRevenueCents: totalRevenue,
     avgEngagementRate:
-      episodeAnalytics.length > 0
-        ? totalEngagement / episodeAnalytics.length
-        : 0,
+      engagedEpisodes > 0 ? totalEngagement / engagedEpisodes : 0,
     episodeCount: episodeAnalytics.length,
     topEpisode,
     lowestEpisode,
@@ -548,7 +562,7 @@ export async function getProjectAnalytics(
   );
 
   const seasonAnalyticsList: ProjectAnalytics['seasons'] = [];
-  let totalViews = 0;
+  let totalViews: Views = null;
   let totalLikes = 0;
   let totalComments = 0;
   let totalShares = 0;
@@ -569,7 +583,7 @@ export async function getProjectAnalytics(
         revenue: analytics.totalRevenueCents,
       });
 
-      totalViews += analytics.totalViews;
+      totalViews = addViews(totalViews, analytics.totalViews);
       totalLikes += analytics.totalLikes;
       totalComments += analytics.totalComments;
       totalShares += analytics.totalShares;
@@ -602,9 +616,9 @@ export async function getProjectAnalytics(
       comments: p.comments,
       shares: p.shares,
       saves: p.saves,
-      percentage: totalViews > 0 ? (p.views / totalViews) * 100 : 0,
+      percentage: viewsShare(p.views, totalViews),
     }))
-    .sort((a, b) => b.views - a.views);
+    .sort(compareViewsDesc);
 
   return {
     projectId,
@@ -630,13 +644,13 @@ export async function getProjectAnalytics(
  */
 export interface ProjectDailyMetric {
   date: string;
-  views: number;
+  views: Views;
   likes: number;
   comments: number;
   shares: number;
   byPlatform?: Record<
     string,
-    { views: number; likes: number; comments: number; shares: number }
+    { views: Views; likes: number; comments: number; shares: number }
   >;
 }
 
@@ -884,15 +898,16 @@ export interface ContentListItem {
   episodeId: string;
   episodeTitle: string;
   publishTitle: string;
-  platform: 'youtube' | 'tiktok' | 'instagram';
+  platform: 'youtube' | 'tiktok' | 'instagram' | 'facebook';
   thumbnailUrl: string | null;
   publishedAt: string;
-  views: number;
+  /** Null for a Facebook publish: no single view (KB-153). */
+  views: Views;
   likes: number;
   comments: number;
   shares: number;
   saves: number;
-  engagementRate: number;
+  engagementRate: number | null;
 }
 
 /**
@@ -982,14 +997,17 @@ export async function getContentList(
       revenue_cents: 0,
       subscribers_gained: 0,
     };
-    const engagementRate = displayedEngagementRatePercent(stats);
+    const engagementRate =
+      stats.views === null
+        ? null
+        : displayedEngagementRatePercent({ ...stats, views: stats.views });
 
     return {
       publishId: publish.id,
       episodeId: episode.id,
       episodeTitle: episode.title,
       publishTitle: publish.title || episode.title,
-      platform: publish.platform as 'youtube' | 'tiktok' | 'instagram',
+      platform: publish.platform as ContentListItem['platform'],
       thumbnailUrl: episode.thumbnail_url,
       publishedAt: publish.published_at!,
       views: stats.views,

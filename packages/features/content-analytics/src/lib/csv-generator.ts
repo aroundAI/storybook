@@ -13,7 +13,10 @@ const METRIC_COLUMNS: Record<
   ReportMetric,
   { header: string; getValue: (row: AnalyticsDataRow) => string }
 > = {
-  views: { header: 'Views', getValue: (r) => String(r.views) },
+  views: {
+    header: measuredHeader('Views'),
+    getValue: (r) => measuredCell(r.views),
+  },
   watchTime: {
     header: measuredHeader('Watch Time (seconds)'),
     getValue: (r) => measuredCell(r.watchTimeSeconds),

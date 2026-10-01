@@ -34,6 +34,7 @@ import {
   StartExperimentSchema,
   UpdateExperimentSchema,
 } from '../lib/schemas/experiment.schema';
+import { viewsToAdd } from '../lib/views';
 import {
   type DateWindow,
   WATCHED_METRICS,
@@ -139,7 +140,7 @@ async function captureSnapshot(
     const perVideo = await queryTotalsByVideoIds(publishIds);
 
     for (const stats of perVideo.values() as Iterable<AggregatedTotals>) {
-      totals.views += stats.views;
+      totals.views += viewsToAdd(stats.views);
       totals.likes += stats.likes;
       totals.comments += stats.comments;
       totals.shares += stats.shares;
