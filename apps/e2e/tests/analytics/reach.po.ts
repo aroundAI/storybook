@@ -19,6 +19,8 @@ export interface ReachFixture {
   projectId: string;
   instagram: { connectionId: string; postId: string };
   youtube: { connectionId: string; videoId: string };
+  /** Present when `setup({ facebook: true })` asked for it (FILM-1720). */
+  facebook?: { connectionId: string; postId: string };
 }
 
 /** The reach page (cross-platform reach design), and one team to show it. */
@@ -26,7 +28,7 @@ export class ReachPageObject {
   constructor(private readonly page: Page) {}
 
   /** A team with one Instagram and one YouTube channel, a post on each. */
-  async setup(): Promise<ReachFixture> {
+  async setup(options: { facebook?: boolean } = {}): Promise<ReachFixture> {
     const team = await seedTeamAccount({ emailPrefix: 'reach' });
     const project = await seedProject(team);
 
@@ -67,9 +69,26 @@ export class ReachPageObject {
       return row.id;
     };
 
+    const facebook = options.facebook
+      ? await seedYouTubeConnection(team.accountId, 'Harbour Facebook Page', {
+          platform: 'facebook',
+        })
+      : null;
+
     await signInAs(this.page, team);
 
     return {
+      ...(facebook && {
+        facebook: {
+          connectionId: facebook,
+          postId: await publish(
+            facebook,
+            'facebook',
+            'Harbour Facebook reel',
+            3,
+          ),
+        },
+      }),
       team,
       projectId: project.id,
       instagram: {

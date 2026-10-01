@@ -623,3 +623,77 @@ describe('a YouTube Short has no reach figure, and says so', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Facebook, as FILM-1720 names it
+// ---------------------------------------------------------------------------
+
+describe('Facebook bindings (FILM-1720)', () => {
+  const published = [
+    'short_vertical',
+    'long_horizontal',
+    'teaser',
+    'trailer',
+  ] as const;
+
+  const bindings = published.flatMap((format) =>
+    FUNNEL_STAGES.flatMap((stage) =>
+      boundSignals(SIGNAL_MAP.facebook[format][stage]),
+    ),
+  );
+
+  it('binds no signal that divides by views or reads as YouTube’s', () => {
+    // Facebook has no single view (FILM-1722): a per-view rate has no
+    // denominator, and Meta's own average is not an average view duration.
+    for (const signal of [
+      'share_rate',
+      'comment_rate',
+      'subscriber_conversion',
+      'average_view_duration',
+      'average_percentage_viewed',
+      'impressions',
+      'impressions_ctr',
+    ] as const) {
+      expect(bindings, signal).not.toContain(signal);
+    }
+  });
+
+  it('reads Hook from the click-to-play split, and Reach from people', () => {
+    for (const format of published) {
+      expect(SIGNAL_MAP.facebook[format].hook.primary, format).toBe(
+        'click_to_play_share',
+      );
+      expect(SIGNAL_MAP.facebook[format].reach.primary, format).toBe(
+        'accounts_reached',
+      );
+    }
+    expect(stageReading('facebook', 'short_vertical', 'reach').status).toBe(
+      'measurable',
+    );
+  });
+
+  it('names Meta’s own average as unavailable, and divides the totals itself', () => {
+    const attention = SIGNAL_MAP.facebook.short_vertical.attention;
+
+    expect(attention.primary).toBe('watch_time_per_play');
+    if (attention.primary === null) return;
+    expect(attention.unavailable.map((u) => u.name)).toContain(
+      'average time watched, as Facebook reports it',
+    );
+    expect(SIGNALS.watch_time_per_play.definition).toMatch(
+      /longer than the reel/,
+    );
+  });
+
+  it('leaves follows unbound for a video in the player, which Meta credits to reels only', () => {
+    expect(
+      stageReading('facebook', 'long_horizontal', 'audience'),
+    ).toMatchObject({
+      status: 'unbound',
+      reason: 'platform_does_not_expose_per_video_follows',
+    });
+    expect(SIGNAL_MAP.facebook.short_vertical.audience.primary).toBe(
+      'follows_per_reach',
+    );
+  });
+});

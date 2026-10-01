@@ -19,6 +19,7 @@ import {
   channelReachAvailability,
   isAnalyticsPlatform,
   isoDay,
+  measuredViews,
   postReachAvailability,
   totalCounts,
   windowBounds,
@@ -208,7 +209,7 @@ async function loadCounts(
 
   const byPlatform = rows.map((row) => ({
     platform: row.platform,
-    views: Number(row.views),
+    views: measuredViews(row.platform, row.views),
     comments: Number(row.comments),
     shares: Number(row.shares),
   }));
@@ -270,7 +271,7 @@ async function loadPosts(
         publishedAt: publish.published_at,
         counts: total
           ? {
-              views: Number(total.views),
+              views: measuredViews(publish.platform, total.views),
               comments: Number(total.comments),
               shares: Number(total.shares),
             }
