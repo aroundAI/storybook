@@ -276,6 +276,48 @@ describe('queries-advanced', () => {
       );
     });
 
+    it('carries each group’s native codes from the same single query (FILM-1708)', async () => {
+      mockQueryResult.json.mockResolvedValue([
+        {
+          bucket: '2026-06-01',
+          source: 'RELATED_VIDEO',
+          views: '600',
+          watch_time_minutes: '60',
+        },
+        {
+          bucket: '2026-06-01',
+          source: 'TS_91',
+          views: '100',
+          watch_time_minutes: '10',
+        },
+      ]);
+
+      const { queryTrafficSourceBreakdown } = await import(
+        '../src/queries-advanced'
+      );
+      const before = mockClickHouseClient.query.mock.calls.length;
+
+      const buckets = await queryTrafficSourceBreakdown({
+        scope: { projectId: PROJECT },
+        startDate: '2026-01-01',
+        endDate: '2026-06-30',
+        bucket: 'week',
+      });
+
+      // The drill-down rides in the breakdown response: one SELECT against
+      // video_traffic_sources, plus none for the detail.
+      const traffic = mockClickHouseClient.query.mock.calls
+        .slice(before)
+        .filter(([call]) => call.query.includes('video_traffic_sources'));
+
+      expect(traffic).toHaveLength(1);
+      expect(
+        buckets[0]!.groups.find((g) => g.group === 'other')!.sources,
+      ).toEqual([
+        { source: 'TS_91', views: 100, watchTimeMinutes: 10, share: 100 / 700 },
+      ]);
+    });
+
     it('bucket cannot inject SQL', async () => {
       mockQueryResult.json.mockResolvedValue([]);
 

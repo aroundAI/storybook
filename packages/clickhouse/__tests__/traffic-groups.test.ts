@@ -6,6 +6,7 @@ import {
   groupForSource,
   groupTrafficRows,
   sourcesInGroup,
+  windowTrafficMix,
 } from '../src/lib/traffic-groups';
 
 function row(
@@ -109,6 +110,7 @@ describe('groupTrafficRows', () => {
       views: 0,
       watchTimeMinutes: 0,
       share: 0,
+      sources: [],
     });
   });
 
@@ -205,5 +207,98 @@ describe('groupTrafficRows', () => {
     expect(bucket!.totalViews).toBe(1000);
     expect(browse).toBe(650);
     expect(browse / bucket!.totalViews).toBeCloseTo(0.65, 10);
+  });
+});
+
+describe('native sources inside each group (FILM-1708)', () => {
+  const rows = [
+    row('2026-01-05', 'RELATED_VIDEO', 400),
+    row('2026-01-05', 'SUBSCRIBER', 100),
+    row('2026-01-05', 'YT_SEARCH', 300),
+    row('2026-01-05', 'TS_44', 50),
+    row('2026-01-05', 'END_SCREEN', 150),
+    row('2026-01-12', 'RELATED_VIDEO', 200),
+    row('2026-01-12', 'TS_44', 30),
+    row('2026-01-12', 'YT_SEARCH', 70),
+  ];
+
+  it('carries the observed codes in each bucket, summing to the group', () => {
+    const [first] = groupTrafficRows(rows);
+    const browse = first!.groups.find((g) => g.group === 'browse_suggested')!;
+
+    expect(browse.sources.map((s) => s.source)).toEqual([
+      'RELATED_VIDEO',
+      'SUBSCRIBER',
+    ]);
+    expect(browse.sources.reduce((sum, s) => sum + s.views, 0)).toBe(
+      browse.views,
+    );
+    expect(browse.sources.reduce((sum, s) => sum + s.share, 0)).toBeCloseTo(
+      browse.share,
+      12,
+    );
+    // Groups with nothing observed carry nothing, not the taxonomy.
+    expect(
+      first!.groups.find((g) => g.group === 'shorts_feed')!.sources,
+    ).toEqual([]);
+  });
+
+  it('folds a window into groups whose codes sum to the group share', () => {
+    const { windowViews, groups } = windowTrafficMix(groupTrafficRows(rows));
+
+    // 400+100+300+50+150 + 200+30+70 = 1300.
+    expect(windowViews).toBe(1300);
+
+    for (const group of groups) {
+      expect(group.sources.reduce((sum, s) => sum + s.views, 0)).toBe(
+        group.views,
+      );
+      expect(group.sources.reduce((sum, s) => sum + s.share, 0)).toBeCloseTo(
+        group.share,
+        12,
+      );
+    }
+
+    const browse = groups.find((g) => g.group === 'browse_suggested')!;
+
+    expect(browse.share).toBeCloseTo(700 / 1300, 12);
+    expect(browse.sources).toEqual([
+      {
+        source: 'RELATED_VIDEO',
+        views: 600,
+        share: 600 / 1300,
+        recognised: true,
+      },
+      { source: 'SUBSCRIBER', views: 100, share: 100 / 1300, recognised: true },
+    ]);
+  });
+
+  it('shows an unrecognised code in other rather than hiding it', () => {
+    const { groups } = windowTrafficMix(groupTrafficRows(rows));
+    const other = groups.find((g) => g.group === 'other')!;
+
+    expect(other.views).toBe(230);
+    expect(other.sources).toEqual([
+      { source: 'END_SCREEN', views: 150, share: 150 / 1300, recognised: true },
+      { source: 'TS_44', views: 80, share: 80 / 1300, recognised: false },
+    ]);
+  });
+
+  it('lists only codes observed in the window, not the whole taxonomy', () => {
+    const { groups } = windowTrafficMix(groupTrafficRows(rows));
+    const browse = groups.find((g) => g.group === 'browse_suggested')!;
+
+    expect(sourcesInGroup('browse_suggested')).toContain('NOTIFICATION');
+    expect(browse.sources.map((s) => s.source)).not.toContain('NOTIFICATION');
+  });
+
+  it('reports zero shares, not NaN, for a window with no views', () => {
+    const { windowViews, groups } = windowTrafficMix([]);
+
+    expect(windowViews).toBe(0);
+    expect(groups).toHaveLength(TRAFFIC_SOURCE_GROUPS.length);
+    expect(groups.every((g) => g.share === 0 && g.sources.length === 0)).toBe(
+      true,
+    );
   });
 });

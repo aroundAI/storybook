@@ -67,6 +67,7 @@ export {
   groupForSource,
   groupTrafficRows,
   sourcesInGroup,
+  windowTrafficMix,
 } from './lib/traffic-groups';
 export type {
   TrafficBucket,
@@ -74,6 +75,9 @@ export type {
   TrafficGroupShare,
   TrafficSourceGroup,
   TrafficSourceRow,
+  TrafficSourceShare,
+  WindowGroupShare,
+  WindowSourceShare,
 } from './lib/traffic-groups';
 
 // The capability matrix (FILM-1703). Pure for the same reason as the traffic

@@ -3,6 +3,7 @@
 import { Skeleton } from '@kit/ui/skeleton';
 
 import type { CardClaim } from '../overview/card-claim';
+import { ChartMark, ChartMarks, formatTrueShare } from './chart-marks';
 
 /** One bucket from getBackCatalogAction. */
 export interface BackCatalogEntry {
@@ -74,21 +75,28 @@ export function BackCatalogCard({
 
   return (
     <div className={'flex flex-col gap-4'}>
-      <div className={'flex items-end gap-1'} style={{ height: 72 }}>
-        {buckets.map((bucket) => (
-          <div
+      <ChartMarks
+        label={'Back catalog share of views by month'}
+        className={'flex items-end gap-1'}
+        style={{ height: 72 }}
+      >
+        {buckets.map((bucket, index) => (
+          <ChartMark
             key={bucket.bucket}
+            col={index}
             className={'flex flex-1 flex-col justify-end rounded-sm bg-muted'}
             style={{ height: '100%' }}
-            title={`${bucket.bucket}: ${Math.round(bucket.share * 100)}% of ${bucket.totalViews.toLocaleString()} views`}
+            detail={`${bucket.bucket}: ${formatTrueShare(bucket.share)} of ${bucket.totalViews.toLocaleString()} views`}
+            data-test={'back-catalog-bar'}
+            data-share={bucket.share}
           >
             <div
               className={'w-full rounded-sm bg-primary/70'}
               style={{ height: `${Math.max(2, bucket.share * 100)}%` }}
             />
-          </div>
+          </ChartMark>
         ))}
-      </div>
+      </ChartMarks>
     </div>
   );
 }

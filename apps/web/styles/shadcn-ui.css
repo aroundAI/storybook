@@ -57,13 +57,6 @@
         --status-pending: oklch(75% 0.12 85);
         --status-pending-foreground: oklch(35% 0.1 85);
 
-        --chart-1: var(--color-orange-400);
-        --chart-2: var(--color-teal-600);
-        --chart-3: var(--color-green-800);
-        --chart-4: var(--color-yellow-200);
-        --chart-5: var(--color-orange-200);
-        --chart-6: var(--color-violet-300);
-
         /* Analytics chart colors - Light mode */
         --analytics-green: rgb(34, 197, 94);
         --analytics-blue: rgb(59, 130, 246);
@@ -135,13 +128,6 @@
         --status-pending: oklch(70% 0.12 85);
         --status-pending-foreground: oklch(20% 0.08 85);
 
-        --chart-1: oklch(65% 0.2 250);
-        --chart-2: oklch(70% 0.18 165);
-        --chart-3: oklch(70% 0.18 35);
-        --chart-4: oklch(65% 0.2 300);
-        --chart-5: oklch(70% 0.2 340);
-        --chart-6: oklch(72% 0.17 100);
-
         /* Analytics chart colors - Dark mode (brighter for visibility) */
         --analytics-green: rgb(74, 222, 128);
         --analytics-blue: rgb(96, 165, 250);
@@ -206,13 +192,6 @@
         --status-pending: oklch(70% 0.12 85);
         --status-pending-foreground: oklch(20% 0.08 85);
 
-        --chart-1: oklch(65% 0.2 250);
-        --chart-2: oklch(70% 0.18 165);
-        --chart-3: oklch(70% 0.18 35);
-        --chart-4: oklch(65% 0.2 300);
-        --chart-5: oklch(70% 0.2 340);
-        --chart-6: oklch(72% 0.17 100);
-
         /* Analytics chart colors - Dark mode (brighter for visibility) */
         --analytics-green: rgb(74, 222, 128);
         --analytics-blue: rgb(96, 165, 250);
@@ -232,5 +211,37 @@
 
         --generate-gradient-from: oklch(60% 0.25 265);
         --generate-gradient-to: oklch(55% 0.25 300);
+    }
+
+    /*
+     * The chart ramp (FILM-1708) — defined once, for every theme.
+     *
+     * It used to be declared three times with two different palettes: the
+     * light block's won in light mode (two oranges, and a yellow-200 close to
+     * invisible on white), the oklch set in dark. One definition, sitting in
+     * L 53-65% so the same steps clear 3:1 on both #fff and the #121212 card.
+     *
+     * Not hand-picked: hues ~45° apart, then each step chosen with the
+     * dataviz validator (OKLab ΔE×100, Machado 2009 protan/deutan). The
+     * eight pass adjacent order in both modes — worst CVD ΔE 11.7, normal
+     * 21.9. Chart-1..6 plus the two neutrals are separable as *any* pair
+     * (worst CVD ΔE 9.6, normal 15.9), which a fixed-lightness ramp cannot
+     * be: the previous set put blue and violet at ΔE 2.6 under deuteranopia.
+     * Re-run before changing a step; `__tests__/chart-ramp.test.ts` holds it.
+     *
+     * The neutrals differ in lightness, not alpha, so they stay apart at a
+     * 2px slice.
+     */
+    :root {
+        --chart-1: oklch(53% 0.15 250);
+        --chart-2: oklch(53% 0.115 70);
+        --chart-3: oklch(53% 0.19 340);
+        --chart-4: oklch(65% 0.145 115);
+        --chart-5: oklch(65% 0.19 295);
+        --chart-6: oklch(65% 0.11 205);
+        --chart-7: oklch(53% 0.19 25);
+        --chart-8: oklch(65% 0.145 160);
+        --chart-neutral-strong: oklch(42% 0.01 250);
+        --chart-neutral-soft: oklch(82% 0.005 250);
     }
 }

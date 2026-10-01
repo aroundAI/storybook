@@ -30,7 +30,7 @@ acceptance_criteria:
     evidence: "packages/clickhouse/scripts/verify-queries.ts:3185 (upload month: January median 210 ≤ mean 3136.67) and :2988 (calendar month: 200 ≤ 3100); each step throws if the median exceeds the mean; the median-to-avg mutant failed the upload-month step"
   - text: "Cohort curves are age-aligned (Q3 cohort at 90d comparable to Q1 cohort at 90d)"
     met: true
-    evidence: "each video judged at its own age (FILM-1604): `packages/clickhouse/__tests__/queries-advanced.test.ts:858`"
+    evidence: "each video judged at its own age (FILM-1604): `packages/clickhouse/__tests__/queries-advanced.test.ts:900`"
   - text: "`analytics_settings` defaults apply when no row exists"
     met: true
     evidence: "`packages/features/content-analytics/__tests__/ypp-targets.test.ts:60`, `:533` (defaults moved to `ypp-targets.ts` by FILM-1608)"

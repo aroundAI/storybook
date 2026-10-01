@@ -53,6 +53,10 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
   --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+  --color-chart-neutral-strong: var(--chart-neutral-strong);
+  --color-chart-neutral-soft: var(--chart-neutral-soft);
 
   --radius-radius: var(--radius);
   --radius-sm: calc(var(--radius) - 4px);

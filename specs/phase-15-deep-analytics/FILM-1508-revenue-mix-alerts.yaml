@@ -14,7 +14,7 @@ summary: >
 acceptance_criteria:
   - text: "YouTube sync produces separate ads/premium rows per day without clobbering (conflict-semantics unit test)"
     met: true
-    evidence: "`packages/features/content-analytics/__tests__/revenue-mix.test.ts:508`; the upsert became a planned write (FILM-1609), `analytics-sync-cron.ts:1275`"
+    evidence: "`packages/features/content-analytics/__tests__/revenue-mix.test.ts:509`; the upsert became a planned write (FILM-1609), `analytics-sync-cron.ts:1275`"
   - text: "`byType` is populated in the revenue summary; RevenueMixCard renders the mix"
     met: true
     evidence: "per currency since KB-12: `packages/features/content-analytics/__tests__/revenue-by-currency.test.ts:60`, `apps/e2e/tests/revenue/revenue-currency-evidence.spec.ts:105`"

@@ -3,6 +3,7 @@
 import { Skeleton } from '@kit/ui/skeleton';
 
 import type { CardClaim } from '../overview/card-claim';
+import { ChartMark, ChartMarks } from './chart-marks';
 
 /** One bucket from getMedianPerformanceAction. */
 export interface MedianBucketEntry {
@@ -147,12 +148,19 @@ export function MedianViewsCard({
 
   return (
     <div className={'flex flex-col gap-4'}>
-      <div className={'flex items-end gap-1'} style={{ height: 96 }}>
-        {buckets.map((bucket) => (
-          <div
+      <ChartMarks
+        label={'Median views per video by month'}
+        className={'flex items-end gap-1'}
+        style={{ height: 96 }}
+      >
+        {buckets.map((bucket, index) => (
+          <ChartMark
             key={bucket.bucket}
+            col={index}
             className={'group relative flex flex-1 flex-col justify-end'}
-            title={`${formatBucket(bucket.bucket)}: median ${formatViews(bucket.medianViews)}, mean ${formatViews(bucket.meanViews)} (${bucket.videoCount} videos)`}
+            style={{ height: '100%' }}
+            detail={`${formatBucket(bucket.bucket)}: median ${formatViews(bucket.medianViews)}, mean ${formatViews(bucket.meanViews)} (${bucket.videoCount} videos)`}
+            data-test={'median-bar'}
           >
             {/* p25–p75 band shows the spread the median summarizes */}
             <div
@@ -175,9 +183,9 @@ export function MedianViewsCard({
                 }}
               />
             </div>
-          </div>
+          </ChartMark>
         ))}
-      </div>
+      </ChartMarks>
 
       <div className={'flex justify-between text-xs text-muted-foreground'}>
         <span>{formatBucket(buckets[0]!.bucket)}</span>

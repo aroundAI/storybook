@@ -1,9 +1,17 @@
 'use client';
 
-import type { TrafficGroupBucket, TrafficSourceGroup } from '@kit/clickhouse';
+import {
+  type TrafficGroupBucket,
+  type TrafficSourceGroup,
+  windowTrafficMix,
+} from '@kit/clickhouse';
+import { Badge } from '@kit/ui/badge';
 import { Skeleton } from '@kit/ui/skeleton';
+import { cn } from '@kit/ui/utils';
 
+import type { CardDetails } from '../overview/analytics-card';
 import type { CardClaim } from '../overview/card-claim';
+import { ChartMark, ChartMarks, formatTrueShare } from './chart-marks';
 
 /** One bucket of the Browse+Suggested trend, derived from the breakdown. */
 export interface TrafficShareEntry {
@@ -154,17 +162,22 @@ export function TrafficShareCard({
             scrollbar's height and so sits a few pixels off the bars. Sized
             to content but at least full width, this box is both the bars'
             containing block and the full scroll width. */}
-        <div
+        <ChartMarks
+          label={'Browse + Suggested share by week'}
           className={'relative flex w-max min-w-full items-end gap-1'}
           style={{ height: STACK_HEIGHT_PX }}
+          data-test={'traffic-share-bars'}
         >
-          {buckets.map((bucket) => (
-            <div
+          {buckets.map((bucket, index) => (
+            <ChartMark
               key={bucket.bucket}
+              col={index}
+              // The same colour as Browse + Suggested in the breakdown
+              // beside it: one series, one colour, wherever it is drawn.
               className={`min-w-2 flex-1 rounded-sm ${
                 bucket.totalViews === 0
                   ? 'bg-muted-foreground/30'
-                  : 'bg-primary/70'
+                  : TRAFFIC_GROUP_COLORS.browse_suggested
               }`}
               style={{
                 // The same MIN_SLICE_PX floor the stacked card uses, expressed
@@ -175,21 +188,25 @@ export function TrafficShareCard({
                 // true share; there is no neighbouring slice to borrow from.
                 height: `${Math.max(MIN_SLICE_FLOOR_PERCENT, bucket.share * 100)}%`,
               }}
-              title={
+              detail={
                 bucket.totalViews === 0
                   ? `${bucket.bucket}: no views`
-                  : `${bucket.bucket}: ${Math.round(bucket.share * 100)}% of ${bucket.totalViews.toLocaleString()} views`
+                  : `${bucket.bucket}: ${formatTrueShare(bucket.share)} of ${bucket.totalViews.toLocaleString()} views`
               }
+              data-test={'traffic-share-bar'}
+              data-bucket={bucket.bucket}
+              data-share={bucket.share}
             />
           ))}
 
           <div
+            aria-hidden
             className={
               'pointer-events-none absolute right-0 left-0 border-t border-dashed border-foreground/40'
             }
             style={{ bottom: `${RECOMMENDED_CHANNEL_THRESHOLD * 100}%` }}
           />
-        </div>
+        </ChartMarks>
       </div>
     </div>
   );
@@ -213,15 +230,31 @@ const GROUP_LABELS: Record<TrafficSourceGroup, string> = {
   other: 'Other',
 };
 
-const GROUP_COLORS: Record<TrafficSourceGroup, string> = {
+/**
+ * Group colours, assigned by meaning rather than by index (FILM-1708).
+ *
+ * The four groups a reader compares — Browse + Suggested, Search, Shorts
+ * and External — take the four chart hues that stay furthest apart under
+ * protanopia and deuteranopia (worst pair ΔE 12.0); Playlists and Channel
+ * page take the other two. Direct and Other are neutrals apart in
+ * *lightness*, not alpha: two alphas of one grey cannot be told apart at
+ * the 2px floor. Every one of the 28 pairs clears CVD ΔE 9.6 and normal ΔE
+ * 15.9 — `__tests__/chart-ramp.test.ts` computes it from the stylesheet.
+ *
+ * Other also carries a hatch, so it reads as the residual it is rather than
+ * as an eighth finding. Its background colour stays the solid neutral, which
+ * is what the hatch lets through and what the browser test samples.
+ */
+export const TRAFFIC_GROUP_COLORS: Record<TrafficSourceGroup, string> = {
   browse_suggested: 'bg-chart-1',
   search: 'bg-chart-2',
-  shorts_feed: 'bg-chart-3',
+  shorts_feed: 'bg-chart-6',
   external: 'bg-chart-4',
   playlists: 'bg-chart-5',
-  channel_page: 'bg-primary/40',
-  direct: 'bg-muted-foreground/40',
-  other: 'bg-muted-foreground',
+  channel_page: 'bg-chart-3',
+  direct: 'bg-chart-neutral-strong',
+  other:
+    'bg-chart-neutral-soft bg-[image:repeating-linear-gradient(135deg,transparent_0_3px,var(--color-card)_3px_4px)]',
 };
 
 /**
@@ -279,32 +312,12 @@ function stackHeights(
   );
 }
 
-/** Each group's views and share over the whole window, in legend order. */
-function windowShares(buckets: readonly TrafficGroupBucket[]) {
-  const windowViews = buckets.reduce((sum, b) => sum + b.totalViews, 0);
-  const byGroup = new Map<TrafficSourceGroup, number>();
-
-  for (const bucket of buckets) {
-    for (const group of bucket.groups) {
-      byGroup.set(group.group, (byGroup.get(group.group) ?? 0) + group.views);
-    }
-  }
-
-  return {
-    windowViews,
-    groups: (buckets[0]?.groups ?? []).map(({ group }) => ({
-      group,
-      share: windowViews > 0 ? (byGroup.get(group) ?? 0) / windowViews : 0,
-    })),
-  };
-}
-
 /** The breakdown card's claim: the largest source over the window. */
 export function trafficBreakdownClaim(
   buckets: readonly TrafficGroupBucket[],
   windowLabel: string,
 ): CardClaim {
-  const { windowViews, groups } = windowShares(buckets);
+  const { windowViews, groups } = windowTrafficMix(buckets);
 
   if (buckets.length === 0) {
     return {
@@ -342,6 +355,101 @@ export const TRAFFIC_BREAKDOWN_DETAILS = {
   ],
 } as const;
 
+/**
+ * The breakdown card's details, with the drill-down under "Where this comes
+ * from" (FILM-1708): each group that occurred, and the native YouTube codes
+ * that made it up, from the response the chart already drew. Opening it
+ * issues no query.
+ *
+ * `source` replaces the shell's matrix-derived note, so the note is passed
+ * in and kept above the codes rather than lost.
+ */
+export function trafficBreakdownDetails(
+  buckets: readonly TrafficGroupBucket[],
+  sourceNotes: readonly string[],
+): CardDetails {
+  return {
+    ...TRAFFIC_BREAKDOWN_DETAILS,
+    source: <TrafficSourceDrillDown buckets={buckets} notes={sourceNotes} />,
+  };
+}
+
+function TrafficSourceDrillDown({
+  buckets,
+  notes,
+}: {
+  buckets: readonly TrafficGroupBucket[];
+  notes: readonly string[];
+}) {
+  const { windowViews, groups } = windowTrafficMix(buckets);
+  const occurred = groups.filter((group) => group.views > 0);
+
+  return (
+    <div className={'flex flex-col gap-2'} data-test={'traffic-drilldown'}>
+      {notes.map((note) => (
+        <p key={note}>{note}</p>
+      ))}
+
+      {occurred.length === 0 ? (
+        <p>No traffic-source rows in this window.</p>
+      ) : (
+        <>
+          <p>
+            YouTube’s own traffic-source codes behind each group, as a share of
+            all {windowViews.toLocaleString()} views. Only codes that occurred
+            are listed.
+          </p>
+          <ul className={'flex flex-col gap-2'}>
+            {occurred.map((group) => (
+              <li
+                key={group.group}
+                className={'flex flex-col gap-1'}
+                data-test={'traffic-drilldown-group'}
+                data-group={group.group}
+                data-share={group.share}
+              >
+                <div className={'flex items-center justify-between gap-2'}>
+                  <span className={'flex items-center gap-1.5 text-foreground'}>
+                    <span
+                      aria-hidden
+                      className={`size-2 shrink-0 rounded-full ${TRAFFIC_GROUP_COLORS[group.group]}`}
+                    />
+                    {GROUP_LABELS[group.group]}
+                  </span>
+                  <span className={'text-foreground tabular-nums'}>
+                    {formatTrueShare(group.share)}
+                  </span>
+                </div>
+                <div className={'flex flex-wrap gap-1 pl-3.5'}>
+                  {group.sources.map((source) => (
+                    <Badge
+                      key={source.source}
+                      variant={source.recognised ? 'secondary' : 'outline'}
+                      className={'gap-1 font-mono text-[11px] font-normal'}
+                      data-test={'traffic-drilldown-source'}
+                      data-source={source.source}
+                      data-share={source.share}
+                      data-recognised={source.recognised}
+                    >
+                      {source.source}
+                      <span className={'tabular-nums'}>
+                        {formatTrueShare(source.share)}
+                      </span>
+                      {!source.recognised && (
+                        <span className={'font-sans'}>· unrecognised code</span>
+                      )}
+                    </Badge>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
+
 interface TrafficBreakdownCardProps {
   /** Buckets in chronological order, from getTrafficBreakdownAction. */
   buckets: TrafficGroupBucket[];
@@ -371,7 +479,7 @@ export function TrafficBreakdownCard({
   // Over the whole window, not the latest bucket. The legend sits above a
   // chart spanning every bucket, so a per-bucket figure reads as the period
   // share and would be wrong by exactly the amount the last bucket differs.
-  const { windowViews, groups: legend } = windowShares(buckets);
+  const { windowViews, groups: legend } = windowTrafficMix(buckets);
 
   // The claim above says what failed or what is missing. `isError` is set
   // only when no response arrived: React Query keeps `data` through a
@@ -388,15 +496,20 @@ export function TrafficBreakdownCard({
           <span
             key={group.group}
             className={'flex items-center gap-1.5 text-xs'}
+            data-test={'traffic-legend-item'}
+            data-group={group.group}
           >
             <span
-              className={`size-2 rounded-full ${GROUP_COLORS[group.group]}`}
+              className={`size-2 rounded-full ${TRAFFIC_GROUP_COLORS[group.group]}`}
+              data-test={'traffic-legend-swatch'}
             />
             <span className={'text-muted-foreground'}>
               {GROUP_LABELS[group.group]}
             </span>
-            <span className={'font-medium'}>
-              {Math.round(group.share * 100)}%
+            {/* The drill-down's format, so the legend and the codes under it
+                agree — and so 0.2% does not read as "0%". */}
+            <span className={'font-medium tabular-nums'}>
+              {formatTrueShare(group.share)}
             </span>
           </span>
         ))}
@@ -408,57 +521,67 @@ export function TrafficBreakdownCard({
           collapse to nothing and the row would render as blank gaps —
           degrading silently as history accumulates rather than failing at
           once. */}
-      <div
+      <ChartMarks
+        label={'Share of views by traffic source, by week'}
         className={'flex items-end gap-1 overflow-x-auto'}
         style={{ height: STACK_HEIGHT_PX }}
+        data-test={'traffic-breakdown-bars'}
       >
-        {buckets.map((bucket) => {
+        {buckets.map((bucket, col) => {
           const heights = stackHeights(bucket);
+          // Only slices with views are drawn and focusable; a zero-height
+          // slice has nothing to hover and would be a dead arrow-key stop.
+          const slices = bucket.groups.filter((group) => group.views > 0);
 
           return (
             <div
               key={bucket.bucket}
               className={
-                'flex h-full min-w-2 flex-1 flex-col-reverse overflow-hidden rounded-sm'
-              }
-              title={
-                bucket.totalViews === 0
-                  ? `${bucket.bucket}: no views`
-                  : undefined
+                'flex h-full min-w-2 flex-1 flex-col-reverse rounded-sm'
               }
             >
               {bucket.totalViews === 0 ? (
-                // Distinct from genuine Other traffic, which paints
-                // bg-muted-foreground at full opacity. Matching the
-                // sibling card's treatment of the same case.
-                <div
-                  className={'bg-muted-foreground/30'}
+                // Distinct from genuine Other traffic, which is a hatched
+                // neutral. Matching the sibling card's treatment of the
+                // same case, and carrying the column's "no views" detail
+                // itself so the baseline is not read as Other traffic.
+                <ChartMark
+                  col={col}
+                  className={'rounded-sm bg-muted-foreground/30'}
                   style={{ height: `${MIN_SLICE_FLOOR_PERCENT}%` }}
+                  detail={`${bucket.bucket}: no views`}
+                  data-test={'traffic-empty-bucket'}
+                  data-bucket={bucket.bucket}
                 />
               ) : (
-                bucket.groups.map((group) => (
-                  <div
+                slices.map((group, row) => (
+                  <ChartMark
                     key={group.group}
-                    className={GROUP_COLORS[group.group]}
+                    col={col}
+                    row={row}
+                    className={cn(
+                      TRAFFIC_GROUP_COLORS[group.group],
+                      row === 0 && 'rounded-b-sm',
+                      row === slices.length - 1 && 'rounded-t-sm',
+                    )}
                     style={{ height: heights.get(group.group) ?? 0 }}
-                    // Suppressed on a zero-view bucket so the column's own
-                    // "no views" tooltip is reachable: otherwise the 2px
-                    // baseline slice wins the hover over the only visible
-                    // pixels and the bucket reads as Other-sourced traffic.
-                    title={
-                      bucket.totalViews === 0
-                        ? undefined
-                        : `${bucket.bucket} — ${GROUP_LABELS[group.group]}: ${Math.round(
-                            group.share * 100,
-                          )}% of ${bucket.totalViews.toLocaleString()} views`
-                    }
+                    // The true share, not the drawn one: a slice floored to
+                    // MIN_SLICE_PX draws larger than it is, and this is the
+                    // one place its real size shows (FILM-1605).
+                    detail={`${bucket.bucket} — ${GROUP_LABELS[group.group]}: ${formatTrueShare(
+                      group.share,
+                    )} of ${bucket.totalViews.toLocaleString()} views`}
+                    data-test={'traffic-slice'}
+                    data-bucket={bucket.bucket}
+                    data-group={group.group}
+                    data-share={group.share}
                   />
                 ))
               )}
             </div>
           );
         })}
-      </div>
+      </ChartMarks>
     </div>
   );
 }

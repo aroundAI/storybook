@@ -36,7 +36,9 @@ const WHOLE_UNITS = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
 const chartConfig = {
   revenue: {
     label: 'Revenue',
-    color: 'hsl(var(--chart-1))',
+    // Bare, not hsl(): the token is an oklch() colour, and hsl(oklch(…)) is
+    // invalid CSS, so the line drew in the fallback colour (FILM-1708).
+    color: 'var(--chart-1)',
   },
 };
 
