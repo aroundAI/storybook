@@ -20,7 +20,7 @@ acceptance_criteria:
     reason: "unverified — engine is right (`002_metrics_v2.ts:41`); CI's re-insert assertion covers `channel_subscribers`, not `video_metrics`"
   - text: "All 8 existing query functions return correct results against the compatibility view"
     met: false
-    reason: "unverified — CI runs all 8 against the view (`packages/clickhouse/scripts/verify-queries.ts:407`) but checks only that they execute"
+    reason: "unverified — CI runs all 8 against the view (`packages/clickhouse/scripts/verify-queries.ts:409`) but checks only that they execute"
   - text: "`queryLatestSnapshots` returns the latest snapshot strictly before the given date per video"
     met: true
     evidence: "`packages/clickhouse/src/queries.ts:183`, `packages/clickhouse/__tests__/clickhouse.test.ts:217`"
