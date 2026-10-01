@@ -269,6 +269,7 @@ export function PublishProgressDialog({
                     {s.status === 'error' && s.error && (
                       <p
                         data-test="publish-platform-error"
+                        data-error-code={s.errorCode}
                         className="w-full text-xs text-red-600 dark:text-red-400"
                       >
                         {s.error}

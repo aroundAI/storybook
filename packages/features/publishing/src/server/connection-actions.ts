@@ -16,6 +16,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import type { PlatformConnection as DBPlatformConnection } from '../lib/database-types';
 import { GetConnectedPlatformsSchema } from '../lib/schemas/publish.schema';
 import { UpdateYouTubeChannelSettingsSchema } from '../lib/schemas/youtube-declaration.schema';
+import { TokenRefusal, readableTokenError } from '../lib/token-errors';
 import { ensureValidToken } from '../lib/token-refresh';
 import type { Platform } from '../lib/types';
 import { resolveAnalyticsAccess } from '../oauth/analytics-scopes';
@@ -84,12 +85,7 @@ export const getConnectionsAction = enhanceAction(
           accountName: conn.platform_account_name ?? 'Unknown Account',
           profileImageUrl,
           status,
-          errorMessage:
-            conn.metadata && typeof conn.metadata === 'object'
-              ? ((conn.metadata as Record<string, unknown>).last_error as
-                  | string
-                  | undefined)
-              : undefined,
+          errorMessage: lastErrorOf(conn.metadata, conn.platform),
           scopes: conn.scopes ?? [],
           analyticsAccess: resolveAnalyticsAccess({
             platform: conn.platform,
@@ -293,7 +289,7 @@ export const refreshConnectionAction = returnRefusals(
       const { data: connection, error: readError } =
         await getSupabaseServerClient()
           .from('platform_connections')
-          .select('id')
+          .select('id, platform')
           .eq('id', connectionId)
           .maybeSingle();
 
@@ -309,7 +305,10 @@ export const refreshConnectionAction = returnRefusals(
       const result = await ensureValidToken(connection.id, true);
 
       if (!result.valid) {
-        throw new Error(result.error ?? 'Failed to refresh token');
+        throw new TokenRefusal(
+          result.error ?? 'NO_ACCESS_TOKEN',
+          connection.platform,
+        );
       }
 
       revalidatePath(`/home/[account]/settings`, 'page');
@@ -422,6 +421,18 @@ const updateYouTubeChannelSettings = enhanceAction(
 export const updateYouTubeChannelSettingsAction = returnRefusals(
   updateYouTubeChannelSettings,
 );
+
+/** A connection's stored error, worded for the page (KB-157). */
+function lastErrorOf(metadata: unknown, platform: string): string | undefined {
+  const lastError =
+    metadata && typeof metadata === 'object'
+      ? (metadata as Record<string, unknown>).last_error
+      : undefined;
+
+  return typeof lastError === 'string'
+    ? readableTokenError(lastError, platform)
+    : undefined;
+}
 
 /**
  * Determines the status of a connection based on its state
@@ -607,7 +618,7 @@ export const getConnectedPlatformsAction = enhanceAction(
         youtubeCategoryId: conn.youtube_category_id,
         // Unified fields for Settings Page compatibility
         status,
-        errorMessage: metadata?.last_error as string | undefined,
+        errorMessage: lastErrorOf(metadata, conn.platform),
         profileImageUrl: (metadata?.avatar_url as string) ?? undefined, // Alias for avatarUrl
         accountName: conn.platform_account_name ?? '', // Alias for platformAccountName
       };

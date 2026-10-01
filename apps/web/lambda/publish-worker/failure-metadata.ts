@@ -6,7 +6,12 @@ import type { Json } from '@kit/supabase/database';
  */
 export function mergeFailureMetadata(
   existing: Json | undefined,
-  failure: { error: unknown; errorStack: unknown; failedAt: unknown },
+  failure: {
+    error: unknown;
+    errorCode?: unknown;
+    errorStack: unknown;
+    failedAt: unknown;
+  },
 ): Record<string, unknown> {
   const base =
     existing && typeof existing === 'object' && !Array.isArray(existing)
@@ -16,6 +21,7 @@ export function mergeFailureMetadata(
   return {
     ...base,
     error: failure.error,
+    ...(failure.errorCode !== undefined && { errorCode: failure.errorCode }),
     errorStack: failure.errorStack,
     failedAt: failure.failedAt,
   };

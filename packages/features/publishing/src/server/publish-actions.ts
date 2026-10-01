@@ -47,6 +47,12 @@ import {
   RetryPublishSchema,
 } from '../lib/schemas/publish.schema';
 import { TAKEDOWN_REFUSAL, canTakeDown, projectRoleOf } from '../lib/takedown';
+import {
+  TokenRefusal,
+  isTokenErrorCode,
+  readableTokenError,
+  tokenErrorCodeOf,
+} from '../lib/token-errors';
 import { tweetLength } from '../lib/tweet-length';
 import type { Platform, PublishResult } from '../lib/types';
 import {
@@ -374,8 +380,8 @@ const publishToAllHandler = enhanceAction(
         try {
           // Validate token
           const tokenResult = await getAccessToken(platform.connectionId);
-          if (tokenResult.error || !tokenResult.accessToken) {
-            throw new Error(tokenResult.error ?? 'Failed to get access token');
+          if (tokenResult.error !== undefined) {
+            throw new TokenRefusal(tokenResult.error, platform.platform);
           }
           const accessToken = tokenResult.accessToken;
 
@@ -571,9 +577,10 @@ const publishToAllHandler = enhanceAction(
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : 'Unknown error';
+          const errorCode = tokenErrorCodeOf(error);
 
           logger.error(
-            { ...platformCtx, error: errorMessage },
+            { ...platformCtx, error: errorMessage, errorCode },
             'Publish failed',
           );
 
@@ -587,6 +594,7 @@ const publishToAllHandler = enhanceAction(
                   JSON.stringify({
                     ...platformSpecific,
                     error: errorMessage,
+                    errorCode,
                   }),
                 ),
               })
@@ -614,6 +622,7 @@ const publishToAllHandler = enhanceAction(
           result.reason instanceof Error
             ? result.reason.message
             : 'Unknown error',
+        errorCode: tokenErrorCodeOf(result.reason),
       };
     });
 
@@ -642,6 +651,27 @@ const publishToAllHandler = enhanceAction(
 );
 
 export const publishToAllAction = returnRefusals(publishToAllHandler);
+
+/**
+ * A failed publish's stored reason, as the page shows it: a sentence, with
+ * the token code beside it for support (KB-157). A row written before then
+ * holds the bare code as its `error`.
+ */
+function storedFailure(metadata: unknown, platform: string) {
+  const { error, errorCode } = (metadata ?? {}) as {
+    error?: unknown;
+    errorCode?: unknown;
+  };
+
+  if (typeof error !== 'string') return {};
+
+  const code = isTokenErrorCode(errorCode) ? errorCode : error;
+
+  return {
+    error: readableTokenError(error, platform),
+    ...(isTokenErrorCode(code) && { errorCode: code }),
+  };
+}
 
 /**
  * Get publish status for an episode
@@ -674,7 +704,7 @@ export const getPublishStatusAction = enhanceAction(
           status: mapDbStatus(publish.status),
           platformContentId: publish.platform_content_id ?? undefined,
           platformUrl: publish.platform_url ?? undefined,
-          error: metadata?.error as string | undefined,
+          ...storedFailure(metadata, publish.platform),
           publishId: publish.id,
         };
       }
@@ -751,8 +781,8 @@ const retryPublish = enhanceAction(
     );
 
     const tokenResult = await getAccessToken(publish.platform_connection_id);
-    if (tokenResult.error || !tokenResult.accessToken) {
-      throw new Error(tokenResult.error ?? 'Failed to get access token');
+    if (tokenResult.error !== undefined) {
+      throw new TokenRefusal(tokenResult.error, publish.platform);
     }
     const accessToken = tokenResult.accessToken;
 
@@ -864,6 +894,7 @@ const retryPublish = enhanceAction(
           metadata: {
             ...(publish.metadata as object),
             error: errorMessage,
+            errorCode: tokenErrorCodeOf(error),
             retryCount:
               ((publish.metadata as Record<string, number>)?.retryCount ?? 0) +
               1,
@@ -1149,7 +1180,7 @@ export const getEpisodePublishesAction = enhanceAction(
               watchTimeSeconds: chTotals.watch_time_seconds,
             }
           : null,
-        error: (p.metadata as { error?: string } | null)?.error,
+        ...storedFailure(p.metadata, p.platform),
       };
     });
   },

@@ -32,6 +32,7 @@ interface PublishRecord {
   publishedAt?: string | null;
   createdAt: string;
   error?: string | null;
+  errorCode?: string;
   analytics?: {
     views: number;
     likes: number;
@@ -180,6 +181,7 @@ export function PublishedContentSection({
                     <p
                       className="mt-1 text-xs text-red-500"
                       data-test="published-content-error"
+                      data-error-code={pub.errorCode}
                     >
                       {pub.error}
                     </p>

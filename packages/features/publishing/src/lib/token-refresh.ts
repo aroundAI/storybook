@@ -21,6 +21,7 @@ import {
 } from '../server/oauth-app-credentials';
 import type { PlatformConnection } from './database-types';
 import { PLATFORM_NAMES, type Platform, isPlatform } from './platforms';
+import type { TokenErrorCode } from './token-errors';
 import { EXPIRY_BUFFER_MS, isWithinRefreshWindow } from './token-expiry';
 
 export type { Platform };
@@ -40,14 +41,8 @@ export interface TokenRefreshResult {
 export interface TokenValidationResult {
   valid: boolean;
   accessToken?: string;
-  error?:
-    | 'EXPIRED'
-    | 'REFRESH_FAILED'
-    | 'CONNECTION_INACTIVE'
-    | 'NOT_FOUND'
-    | 'NO_REFRESH_TOKEN'
-    /** An operator fault: the connection is left active (KB-29). */
-    | 'APP_NOT_CONFIGURED';
+  /** A code for logs; the page reads `tokenErrorMessage` (KB-157). */
+  error?: TokenErrorCode;
   requiresReauth?: boolean;
 }
 
@@ -174,8 +169,19 @@ async function doEnsureValidToken(
 
   if (!needsRefresh && connection.access_token_encrypted) {
     // Token still valid
-    const accessToken = await decrypt(connection.access_token_encrypted);
-    return { valid: true, accessToken };
+    try {
+      return {
+        valid: true,
+        accessToken: await decrypt(connection.access_token_encrypted),
+      };
+    } catch (decryptError) {
+      const logger = await getLogger();
+      logger.error(
+        { name: 'token-refresh', connectionId, error: decryptError },
+        'Stored access token could not be decrypted',
+      );
+      return { valid: false, error: 'TOKEN_UNREADABLE', requiresReauth: true };
+    }
   }
 
   // 3. Check if we have a refresh token
