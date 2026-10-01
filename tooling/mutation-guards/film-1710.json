@@ -140,6 +140,96 @@
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/publish-asset-duration.test.sql",
       "sql": "alter table public.publishes drop constraint publishes_duration_seconds_positive_check;"
+    },
+    {
+      "name": "Instagram U1 an unreadable file is written as zero seconds",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/uploaded-file-duration.ts",
+      "find": "  const seconds = normalizeAssetDurationSeconds(facts.durationSeconds);",
+      "replace": "  const seconds = Math.round(facts.durationSeconds ?? 0);",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/uploaded-file-duration.test.ts",
+      "pattern": "never writes 0"
+    },
+    {
+      "name": "Instagram U2 a recorded duration is overwritten",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/uploaded-file-duration.ts",
+      "find": "      .eq('id', publish.id)\n      .is('duration_seconds', null);",
+      "replace": "      .eq('id', publish.id)\n      .is('id', publish.id);",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/uploaded-file-duration.test.ts",
+      "pattern": "filling only a null"
+    },
+    {
+      "name": "Instagram U3 Instagram is not measured at publish time",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/uploaded-file-duration.ts",
+      "find": "export const UPLOADED_FILE_DURATION_PLATFORMS = ['instagram'] as const;",
+      "replace": "export const UPLOADED_FILE_DURATION_PLATFORMS = [] as const;",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/uploaded-file-duration.test.ts",
+      "pattern": "45-second clip"
+    },
+    {
+      "name": "Instagram U4 YouTube's file is measured over its provider's report",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/uploaded-file-duration.ts",
+      "find": "export const UPLOADED_FILE_DURATION_PLATFORMS = ['instagram'] as const;",
+      "replace": "export const UPLOADED_FILE_DURATION_PLATFORMS = ['instagram', 'youtube'] as const;",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/uploaded-file-duration.test.ts",
+      "pattern": "own writer"
+    },
+    {
+      "name": "Instagram U5 publish-now does not record the file's duration",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "          await recordUploadedFileDuration(\n            getSupabaseServerAdminClient,\n            { id: publish.id, platform: platform.platform },\n            videoUrl,\n          );",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-actions.test.ts",
+      "pattern": "records the duration of the file it sent"
+    },
+    {
+      "name": "Instagram U6 publish-now writes as the session the trigger ignores",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "            getSupabaseServerAdminClient,\n            { id: publish.id, platform: platform.platform },",
+      "replace": "            getSupabaseServerClient,\n            { id: publish.id, platform: platform.platform },",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-actions.test.ts",
+      "pattern": "as the service role"
+    },
+    {
+      "name": "Instagram U7 a retried publish does not record the file's duration",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "      await recordUploadedFileDuration(\n        getSupabaseServerAdminClient,\n        { id: publishId, platform: publish.platform },\n        videoUrl,\n      );",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/uploaded-file-duration-sites.test.ts",
+      "pattern": "publish-actions.ts records it once per upload"
+    },
+    {
+      "name": "Instagram U8 the publish worker does not record the file's duration",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/index.ts",
+      "find": "  await recordUploadedFileDuration(\n    () => supabase,\n    { id: job.publishId, platform: job.platform },\n    job.videoUrl,\n  );",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/uploaded-file-duration-sites.test.ts",
+      "pattern": "publish-worker/index.ts records it once per upload"
+    },
+    {
+      "name": "Instagram U9 the scheduled job does not record the file's duration",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/jobs/process-scheduled-publishes.ts",
+      "find": "      await recordUploadedFileDuration(\n        () => client,\n        { id: publish.id, platform: publish.platform },\n        videoUrl,\n      );",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/uploaded-file-duration-sites.test.ts",
+      "pattern": "process-scheduled-publishes.ts records it once per upload"
     }
   ]
 }

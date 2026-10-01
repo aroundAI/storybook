@@ -40,6 +40,7 @@ import {
   TokenRefusal,
   tokenErrorCodeOf,
 } from '@kit/publishing/lib/token-errors';
+import { recordUploadedFileDuration } from '@kit/publishing/lib/uploaded-file-duration';
 import type { YouTubeChannelDeclaration } from '@kit/publishing/lib/youtube-declaration';
 import {
   LINKEDIN_REST_VERSION,
@@ -394,6 +395,14 @@ async function processPublish(job: PublishJobMessage): Promise<void> {
     platform_url: result.url,
     published_at: new Date().toISOString(),
   });
+
+  // FILM-1710: the length of the file just sent, for a platform that never
+  // reports one back. Never throws.
+  await recordUploadedFileDuration(
+    () => supabase,
+    { id: job.publishId, platform: job.platform },
+    job.videoUrl,
+  );
 
   // 4. Notify user via WebSocket
   await sendToUser(job.userId, {

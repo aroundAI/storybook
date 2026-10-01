@@ -40,6 +40,7 @@ const CONNECTIONS = {
   twitter: '00000000-0000-4000-8000-0000000000c1',
   tiktok: '00000000-0000-4000-8000-0000000000c2',
   linkedin: '00000000-0000-4000-8000-0000000000c3',
+  instagram: '00000000-0000-4000-8000-0000000000c4',
 } as const;
 const VIDEO = `${SUPABASE}/storage/v1/object/public/project-assets/episodes/${EPISODE}/videos/en-1.mp4`;
 
@@ -55,6 +56,18 @@ const providers = vi.hoisted(() => ({
   twitterUpload: vi.fn(),
   tiktokUpload: vi.fn(),
   linkedinUpload: vi.fn(),
+  recordUploadedFileDuration: vi.fn(),
+}));
+
+// FILM-1710: the uploaded file's duration, written with the service role
+const adminClient = vi.hoisted(() => ({ service: 'role' }));
+
+vi.mock('@kit/supabase/server-admin-client', () => ({
+  getSupabaseServerAdminClient: () => adminClient,
+}));
+
+vi.mock('../src/lib/uploaded-file-duration', () => ({
+  recordUploadedFileDuration: providers.recordUploadedFileDuration,
 }));
 
 function table(name: string) {
@@ -323,6 +336,67 @@ describe('Publish Actions', () => {
       providers.linkedinUpload.mockReset().mockResolvedValue({
         postUrn: 'urn:li:share:1',
         postUrl: 'https://linkedin.com/feed/update/1',
+      });
+      providers.recordUploadedFileDuration
+        .mockReset()
+        .mockResolvedValue({ recorded: true, seconds: 45 });
+    });
+
+    it('records the duration of the file it sent to Instagram, as the service role (FILM-1710)', async () => {
+      const { publishToAllAction } = await import(
+        '../src/server/publish-actions'
+      );
+
+      const result = await publishToAllAction({
+        episodeId: EPISODE,
+        platforms: [input('instagram')],
+      });
+
+      expect(result).toMatchObject({
+        ok: true,
+        data: [{ platform: 'instagram', status: 'completed' }],
+      });
+      expect(providers.recordUploadedFileDuration).toHaveBeenCalledTimes(1);
+
+      const [serviceClient, publish, videoUrl] =
+        providers.recordUploadedFileDuration.mock.calls[0]!;
+
+      expect(publish).toEqual({ id: 'publish-1', platform: 'instagram' });
+      expect(videoUrl).toBe(VIDEO);
+      expect(serviceClient()).toBe(adminClient);
+    });
+
+    it('measures nothing for a scheduled publish: the worker does, when it uploads', async () => {
+      const { publishToAllAction } = await import(
+        '../src/server/publish-actions'
+      );
+
+      await publishToAllAction({
+        episodeId: EPISODE,
+        platforms: [input('instagram', '2030-01-01T10:00:00.000Z')],
+      });
+
+      expect(providers.recordUploadedFileDuration).not.toHaveBeenCalled();
+    });
+
+    it('a failed measurement does not fail the publish', async () => {
+      const { publishToAllAction } = await import(
+        '../src/server/publish-actions'
+      );
+
+      providers.recordUploadedFileDuration.mockResolvedValue({
+        recorded: false,
+        reason: 'duration_unknown',
+      });
+
+      expect(
+        await publishToAllAction({
+          episodeId: EPISODE,
+          platforms: [input('instagram')],
+        }),
+      ).toMatchObject({
+        ok: true,
+        data: [{ platform: 'instagram', status: 'completed' }],
       });
     });
 
