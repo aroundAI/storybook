@@ -1,0 +1,85 @@
+{
+  "feature": "FILM-1707",
+  "mutations": [
+    {
+      "name": "FILM-1707 a date-axis query reads fetch-dated rows again",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "        AND metric_source != '${FETCH_DATED_METRIC_SOURCE}'",
+      "replace": "        AND 1 = 1",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/queries-advanced.test.ts",
+      "pattern": "reads no snapshot_delta row"
+    },
+    {
+      "name": "FILM-1707 a fetch-dated video joins a date-axis median as a zero",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "  if (onDateAxis && FETCH_DATED_PLATFORMS.length > 0) {",
+      "replace": "  if (false && onDateAxis) {",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/queries-advanced.test.ts",
+      "pattern": "leaves out videos on fetch-dated platforms"
+    },
+    {
+      "name": "FILM-1707 a date-axis chip names the platforms it no longer plots",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/provenance-chip.tsx",
+      "find": "    const plotted = dateAxis?.platforms ?? platforms;",
+      "replace": "    const plotted = platforms;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/six-tab-adoption.test.tsx",
+      "pattern": "names only what it plots"
+    },
+    {
+      "name": "FILM-1707 an Instagram audience reads as per-video measurement",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/overview/analytics-card.tsx",
+      "find": "    ...chip.scopeLines,",
+      "replace": "    ...[],",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/six-tab-adoption.test.tsx",
+      "pattern": "states the matrix’s account-wide note in the card"
+    },
+    {
+      "name": "FILM-1707 a chart crossing a view-definition change is not marked",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/overview/analytics-card.tsx",
+      "find": "        {marks.length > 0 && (",
+      "replace": "        {false && (",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/six-tab-adoption.test.tsx",
+      "pattern": "is drawn beside the chart by the shell"
+    },
+    {
+      "name": "FILM-1707 the Overview's rule-built sentence is chipped as measured",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/overview/ai-insight-card.tsx",
+      "find": "    title: 'Performance summary',\n    metricFamily: 'summary',",
+      "replace": "    title: 'Performance summary',\n    metricFamily: 'engagement',",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/ai-insight-card-text.test.tsx",
+      "pattern": "chips a page-built summary as a page summary"
+    },
+    {
+      "name": "FILM-1707 a content card's chip stops being its platform indication",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/content/content-card.tsx",
+      "find": "      platforms={[platform]}",
+      "replace": "      platforms={undefined}",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/audience-content-cards.test.tsx",
+      "pattern": "says its platform once, in the chip"
+    },
+    {
+      "name": "FILM-1707 a Language card's family is missing from TAB_FAMILIES",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/provenance.ts",
+      "find": "  language: ['engagement', 'geography', 'revenue'],",
+      "replace": "  language: ['engagement'],",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/provenance.test.ts",
+      "pattern": "lists every family the language cards declare"
+    }
+  ]
+}
