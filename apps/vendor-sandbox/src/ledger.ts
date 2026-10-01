@@ -18,6 +18,8 @@ export interface LedgerEntry {
     step?: number;
   };
   status: number;
+  /** The query string, credentials redacted: which metrics, which breakdown. */
+  query?: string;
   requestSummary?: string;
   responseSummary?: string;
   bytes?: number;

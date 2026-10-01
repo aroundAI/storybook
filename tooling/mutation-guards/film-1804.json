@@ -1,0 +1,35 @@
+{
+  "feature": "FILM-1804",
+  "mutations": [
+    {
+      "name": "F1 the ledger drops the query string",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/server.ts",
+      "find": "        query: url.search\n          ? summarise(redactSecrets(url.search.slice(1)))\n          : undefined,",
+      "replace": "        query: undefined,",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/social-server.test.ts",
+      "pattern": "records the query string"
+    },
+    {
+      "name": "F2 the ledger records a query's access token",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/server.ts",
+      "find": "          ? summarise(redactSecrets(url.search.slice(1)))",
+      "replace": "          ? summarise(url.search.slice(1))",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/social-server.test.ts",
+      "pattern": "records the query string"
+    },
+    {
+      "name": "F3 a media-insights breakdown is ignored instead of refused",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/vendors/meta/insights.ts",
+      "find": "  if (breakdown !== null) {",
+      "replace": "  if (breakdown === 'never') {",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/meta-fidelity.test.ts",
+      "pattern": "(dialog → code|a breakdown on media insights is refused)"
+    }
+  ]
+}

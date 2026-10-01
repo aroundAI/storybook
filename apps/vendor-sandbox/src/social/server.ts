@@ -154,6 +154,9 @@ export function socialHandler(
         path: url.pathname,
         keyPresent: hasCredential(req, url),
         status: res.statusCode,
+        query: url.search
+          ? summarise(redactSecrets(url.search.slice(1)))
+          : undefined,
         requestSummary: body.length
           ? summarise(redactSecrets(body.toString('utf8')))
           : undefined,

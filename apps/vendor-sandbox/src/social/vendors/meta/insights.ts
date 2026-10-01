@@ -278,6 +278,24 @@ const mediaInsights: SocialRoute = ({
     );
     return true;
   }
+  // Media insights document two breakdowns, `action_type` for
+  // profile_activity and `story_navigation_action_type` for navigation, and
+  // this endpoint serves neither metric: so any breakdown here is one Meta
+  // does not document for it (follow_type is account-level only), and is
+  // refused rather than ignored (§3; capability reference,
+  // instagram/media-insights-breakdowns).
+  const breakdown = url.searchParams.get('breakdown');
+  if (breakdown !== null) {
+    sendJson(
+      res,
+      400,
+      graphError(
+        100,
+        `(#100) The breakdown ${breakdown} is not supported for metric ${metrics.join(',')} on media insights`,
+      ),
+    );
+    return true;
+  }
 
   const object = social.object('instagram', id);
   const views = social.cumulative(object, 'views');

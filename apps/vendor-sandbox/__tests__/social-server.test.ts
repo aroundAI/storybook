@@ -125,6 +125,19 @@ describe('ledger', () => {
     expect(entries.every((e) => e.object === 'dQw4w9WgXcQ')).toBe(true);
   });
 
+  it('records the query string, so a test can see which metrics and breakdown were asked for, without the token', async () => {
+    await fetch(
+      `${sandbox.urls.meta}/v19.0/17900000000000001/insights?metric=reach&breakdown=follow_type&access_token=kept-out-of-the-ledger`,
+    );
+    const { entries } = (await (
+      await control('/__sandbox/ledger?vendor=meta')
+    ).json()) as { entries: Array<{ path: string; query?: string }> };
+    const entry = entries.find((e) => e.path.endsWith('/insights'));
+    expect(entry?.query).toContain('breakdown=follow_type');
+    expect(entry?.query).toContain('metric=reach');
+    expect(entry?.query).not.toContain('kept-out-of-the-ledger');
+  });
+
   it('a token request sent to an origin is in the ledger without its secrets', async () => {
     await fetch(`${sandbox.urls.tiktok}/v2/oauth/token/`, {
       method: 'POST',
