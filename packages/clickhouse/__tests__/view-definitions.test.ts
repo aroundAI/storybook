@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { PlatformId, ViewDefinition } from '../src/lib/view-definitions';
 import {
+  INSTAGRAM_AGGREGATES,
+  INSTAGRAM_AGGREGATE_FIELDS,
   PLATFORM_IDS,
   VIEW_DEFINITIONS,
   comparableAcross,
@@ -658,6 +660,63 @@ describe('viewsDenominatorFor (FILM-1722)', () => {
           );
         }
       }
+    }
+  });
+});
+
+// FILM-1722: Instagram's all-surface aggregates are requested only from this
+// table, and stored under their own columns — never as views, likes or
+// comments, and never as a views denominator.
+describe('INSTAGRAM_AGGREGATES (FILM-1722)', () => {
+  it('defines the three aggregates Meta added on 2026-04-22', () => {
+    expect(INSTAGRAM_AGGREGATES.map((a) => a.field)).toEqual([
+      'total_views_count',
+      'total_like_count',
+      'total_comments_count',
+    ]);
+    for (const aggregate of INSTAGRAM_AGGREGATES) {
+      expect(aggregate.effectiveFrom).toBe('2026-04-22');
+      expect(aggregate.includesBoosted).toBe(true);
+    }
+  });
+
+  it('stores each under an all_surface_ column, never one the ordinary metric uses', () => {
+    for (const aggregate of INSTAGRAM_AGGREGATES) {
+      expect(aggregate.column).toMatch(/^all_surface_/);
+      expect(['views', 'likes', 'comments', 'engaged_views']).not.toContain(
+        aggregate.column,
+      );
+    }
+  });
+
+  it('ties total_views_count to its view definition, which is concurrent, not the views column', () => {
+    const views = INSTAGRAM_AGGREGATES.find(
+      (a) => a.field === 'total_views_count',
+    )!;
+    const defined = viewDefinitionAt('instagram', '2026-05-01', {
+      field: views.field,
+    });
+
+    expect(views.viewDefinition).toBe('instagram.total_views');
+    expect(defined).toMatchObject({
+      kind: 'single',
+      definition: { id: views.viewDefinition, role: 'concurrent' },
+    });
+    expect(views.includesReplays).toBe(true);
+  });
+
+  it('the request field list is the table, in order', () => {
+    expect(INSTAGRAM_AGGREGATE_FIELDS).toBe(
+      'total_views_count,total_like_count,total_comments_count',
+    );
+  });
+
+  it('no views denominator ever reads an aggregate column', () => {
+    for (const platform of PLATFORM_IDS) {
+      const result = viewsDenominatorFor(platform, '2025-01-01', '2026-09-30');
+      const column = result.kind === 'column' ? result.column : null;
+
+      expect(String(column)).not.toMatch(/^all_surface_/);
     }
   });
 });

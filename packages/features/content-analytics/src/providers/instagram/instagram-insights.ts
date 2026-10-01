@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { INSTAGRAM_AGGREGATE_FIELDS } from '@kit/clickhouse';
 import type { SubscriberCountResult } from '@kit/shared/subscribers';
 import { metaFetch } from '@kit/shared/vendors';
 
@@ -105,9 +106,11 @@ export class InstagramInsightsProvider {
       // `media_type` is only ever CAROUSEL_ALBUM / IMAGE / VIDEO — a Reel is
       // VIDEO. The surface (FEED / REELS / STORY / AD) is `media_product_type`,
       // and it is what decides which metrics exist. `reposts_count` rides
-      // along: a Media node field, FEED and REELS (FILM-1712).
+      // along: a Media node field, FEED and REELS (FILM-1712). So do the
+      // all-surface aggregates, requested only as INSTAGRAM_AGGREGATES
+      // defines them (FILM-1722).
       const mediaInfoResponse = await metaFetch(
-        `/${mediaId}?fields=media_type,media_product_type,reposts_count`,
+        `/${mediaId}?fields=media_type,media_product_type,reposts_count,${INSTAGRAM_AGGREGATE_FIELDS}`,
         { token: this.accessToken },
       );
 
@@ -121,6 +124,9 @@ export class InstagramInsightsProvider {
         media_type?: InstagramMediaType;
         media_product_type?: InstagramMediaProductType;
         reposts_count?: number;
+        total_views_count?: number;
+        total_like_count?: number;
+        total_comments_count?: number;
       } & GraphAPIError;
 
       if (mediaInfo.error) {
@@ -181,6 +187,9 @@ export class InstagramInsightsProvider {
           watchTimeMs: metrics.ig_reels_video_view_total_time ?? null,
           avgWatchTimeMs: metrics.ig_reels_avg_watch_time ?? null,
           reposts: mediaInfo.reposts_count ?? null,
+          allSurfaceViews: mediaInfo.total_views_count ?? null,
+          allSurfaceLikes: mediaInfo.total_like_count ?? null,
+          allSurfaceComments: mediaInfo.total_comments_count ?? null,
         },
         audience,
       };

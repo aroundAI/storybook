@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type {
+  AllSurfaceAggregates,
   AnalyticsPlatform,
   RetentionCurvePoint,
   SnapshotTotals,
@@ -21,7 +22,7 @@ import type {
  * Lifetime cumulative counters as reported by platforms that expose no
  * per-day breakdown (TikTok, Instagram).
  */
-export interface CumulativeTotals {
+export interface CumulativeTotals extends AllSurfaceAggregates {
   views: number;
   likes: number;
   comments: number;
@@ -103,6 +104,18 @@ export function computeSnapshotDelta(
     ),
     accounts_reached: accountsReachedDelta(current.accounts_reached, baseline),
     reposts: measuredDelta(current.reposts, baseline.reposts),
+    all_surface_views: measuredDelta(
+      current.all_surface_views,
+      baseline.all_surface_views,
+    ),
+    all_surface_likes: measuredDelta(
+      current.all_surface_likes,
+      baseline.all_surface_likes,
+    ),
+    all_surface_comments: measuredDelta(
+      current.all_surface_comments,
+      baseline.all_surface_comments,
+    ),
   };
 }
 
@@ -242,6 +255,10 @@ export type SnapshotDeltaMetric = VideoMetric &
         /** Reach is Business API only (FILM-1730), which we do not call. */
         accounts_reached: null;
         reposts: null;
+        /** Instagram-only aggregates (FILM-1722). */
+        all_surface_views: null;
+        all_surface_likes: null;
+        all_surface_comments: null;
       }
     | {
         platform: 'instagram';
@@ -253,6 +270,10 @@ export type SnapshotDeltaMetric = VideoMetric &
         accounts_reached: number | null;
         /** FEED and REELS (FILM-1712); null for a Story or when omitted. */
         reposts: number | null;
+        /** Boosted placements included (FILM-1722); never views, likes or comments. */
+        all_surface_views: number | null;
+        all_surface_likes: number | null;
+        all_surface_comments: number | null;
       }
   );
 
@@ -289,6 +310,9 @@ export function buildSnapshotDeltaRow(input: {
       subscribers_gained: null,
       accounts_reached: null,
       reposts: null,
+      all_surface_views: null,
+      all_surface_likes: null,
+      all_surface_comments: null,
     };
   }
 
@@ -300,6 +324,9 @@ export function buildSnapshotDeltaRow(input: {
     subscribers_gained: null,
     accounts_reached: input.delta.accounts_reached,
     reposts: input.delta.reposts,
+    all_surface_views: input.delta.all_surface_views,
+    all_surface_likes: input.delta.all_surface_likes,
+    all_surface_comments: input.delta.all_surface_comments,
   };
 }
 

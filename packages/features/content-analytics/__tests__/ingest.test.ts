@@ -15,6 +15,13 @@ import {
 } from '../src/server/ingest';
 import { getSyncSchedule } from '../src/server/schedule';
 
+/** FILM-1722's aggregates, not measured: every row that predates them. */
+const ALL_SURFACE_UNMEASURED = {
+  all_surface_views: null,
+  all_surface_likes: null,
+  all_surface_comments: null,
+};
+
 const baseline = {
   snapshot_date: '2026-01-14',
   views: 1000,
@@ -26,6 +33,7 @@ const baseline = {
   subscribers_gained: 5,
   accounts_reached: 4000,
   reposts: 3,
+  ...ALL_SURFACE_UNMEASURED,
 };
 
 describe('computeSnapshotDelta', () => {
@@ -41,6 +49,7 @@ describe('computeSnapshotDelta', () => {
         subscribers_gained: 8,
         accounts_reached: 5200,
         reposts: 7,
+        ...ALL_SURFACE_UNMEASURED,
       },
       baseline,
     );
@@ -55,6 +64,7 @@ describe('computeSnapshotDelta', () => {
       subscribers_gained: 3,
       accounts_reached: 1200,
       reposts: 4,
+      ...ALL_SURFACE_UNMEASURED,
     });
   });
 
@@ -70,6 +80,7 @@ describe('computeSnapshotDelta', () => {
         subscribers_gained: 8,
         accounts_reached: 5200,
         reposts: 7,
+        ...ALL_SURFACE_UNMEASURED,
       },
       baseline,
     );
@@ -90,6 +101,7 @@ describe('computeSnapshotDelta', () => {
       subscribers_gained: 1,
       accounts_reached: 40,
       reposts: 1,
+      ...ALL_SURFACE_UNMEASURED,
     };
 
     expect(computeSnapshotDelta(current, null)).toEqual(current);
@@ -108,6 +120,7 @@ describe('computeSnapshotDelta', () => {
       subscribers_gained: null,
       accounts_reached: 5200,
       reposts: 7,
+      ...ALL_SURFACE_UNMEASURED,
     };
 
     const delta = computeSnapshotDelta(current, baseline);
@@ -135,6 +148,7 @@ describe('computeSnapshotDelta', () => {
       subscribers_gained: 8,
       accounts_reached: 5200,
       reposts: 7,
+      ...ALL_SURFACE_UNMEASURED,
     };
 
     expect(computeSnapshotDelta(current, baseline).reposts).toBe(4);
@@ -392,6 +406,7 @@ describe('buildSnapshotDeltaRow', () => {
         subscribers_gained: 7,
         accounts_reached: 90,
         reposts: 6,
+        ...ALL_SURFACE_UNMEASURED,
       },
     });
 
@@ -417,6 +432,7 @@ describe('buildSnapshotDeltaRow', () => {
     subscribers_gained: 7,
     accounts_reached: 90,
     reposts: 6,
+    ...ALL_SURFACE_UNMEASURED,
   };
   const build = (platform: 'tiktok' | 'instagram') =>
     buildSnapshotDeltaRow({
@@ -596,5 +612,76 @@ describe('Instagram audience rows (FILM-1712)', () => {
       ['gender', 'male', 40],
       ['gender', 'other', 5],
     ]);
+  });
+});
+
+// FILM-1722: the all-surface aggregates are counters in columns of their own.
+// They never feed views, likes or comments, and are null when not measured.
+describe('Instagram all-surface aggregates (FILM-1722)', () => {
+  const lifetime = {
+    views: 1500,
+    likes: 130,
+    comments: 55,
+    shares: 25,
+    saves: 12,
+    watch_time_seconds: 6200,
+    subscribers_gained: 8,
+    accounts_reached: 5200,
+    reposts: 7,
+    ...ALL_SURFACE_UNMEASURED,
+    all_surface_views: 2400,
+    all_surface_likes: 170,
+    all_surface_comments: 61,
+  };
+  const before = {
+    ...baseline,
+    all_surface_views: 1600,
+    all_surface_likes: 120,
+    all_surface_comments: 52,
+  };
+
+  it('adds each as a counter, leaving views, likes and comments alone', () => {
+    expect(computeSnapshotDelta(lifetime, before)).toMatchObject({
+      views: 500,
+      likes: 30,
+      comments: 5,
+      all_surface_views: 800,
+      all_surface_likes: 50,
+      all_surface_comments: 9,
+    });
+  });
+
+  it('keeps one null when today or the baseline did not measure it', () => {
+    expect(
+      computeSnapshotDelta({ ...lifetime, all_surface_views: null }, before)
+        .all_surface_views,
+    ).toBeNull();
+    expect(
+      computeSnapshotDelta(lifetime, { ...before, all_surface_likes: null })
+        .all_surface_likes,
+    ).toBeNull();
+  });
+
+  it("writes Instagram's to the row and TikTok's as null", () => {
+    const build = (platform: 'tiktok' | 'instagram') =>
+      buildSnapshotDeltaRow({
+        projectId: 'p',
+        videoId: 'v',
+        platform,
+        metricDate: '2026-10-01',
+        delta: computeSnapshotDelta(lifetime, before),
+      });
+
+    expect(build('instagram')).toMatchObject({
+      views: 500,
+      all_surface_views: 800,
+      all_surface_likes: 50,
+      all_surface_comments: 9,
+    });
+    expect(build('tiktok')).toMatchObject({
+      all_surface_views: null,
+      all_surface_likes: null,
+      all_surface_comments: null,
+    });
   });
 });

@@ -50,6 +50,46 @@
       "cwd": "packages/clickhouse",
       "test": "__tests__/view-definitions.test.ts",
       "pattern": "one definition"
+    },
+    {
+      "name": "VD6 Instagram's all-surface views total is read from organic views",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "allSurfaceViews: mediaInfo.total_views_count ?? null,",
+      "replace": "allSurfaceViews: metrics.views ?? null,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/provider-result-fields.test.ts",
+      "pattern": "Instagram aggregates"
+    },
+    {
+      "name": "VD7 The aggregates are requested by name, not from the registry",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
+      "find": "reposts_count,${INSTAGRAM_AGGREGATE_FIELDS}&",
+      "replace": "reposts_count,total_views_count,total_like_count,total_comments_count&",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/provider-result-fields.test.ts",
+      "pattern": "Instagram aggregates"
+    },
+    {
+      "name": "VD8 The registry defines a comments aggregate Meta does not name",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/view-definitions.ts",
+      "find": "    field: 'total_comments_count',\n",
+      "replace": "    field: 'total_comment_count',\n",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/view-definitions.test.ts",
+      "pattern": "INSTAGRAM_AGGREGATES"
+    },
+    {
+      "name": "VD9 The day's all-surface views are written from organic views",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/ingest.ts",
+      "find": "    all_surface_views: input.delta.all_surface_views,\n",
+      "replace": "    all_surface_views: input.delta.views,\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/ingest.test.ts",
+      "pattern": "all-surface aggregates"
     }
   ]
 }

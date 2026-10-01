@@ -838,3 +838,83 @@ export function viewsDenominatorFor(
     continuousAlternative,
   };
 }
+
+/**
+ * A `video_metrics` column holding an all-surface aggregate. Disjoint from
+ * `ViewsColumn` by construction, so no views denominator can be read from one.
+ */
+export type AllSurfaceColumn = Extract<
+  keyof VideoMetric,
+  `all_surface_${string}`
+>;
+
+/**
+ * Instagram's all-surface aggregates: Media node fields, Facebook Login
+ * only, added 2026-04-22 (docs/platform-capability-reference.md, "Added
+ * 2026-04-22"). Each folds in boosted placements, and `total_views_count`
+ * replays too, so none is the number the `views`, `likes` or `comments`
+ * insight beside it reports, and none is stored or shown as one.
+ *
+ * The provider's request is built from this table
+ * (`INSTAGRAM_AGGREGATE_FIELDS`), so an aggregate is requested only once it
+ * is defined here. Shape approved 2026-10-01 (FILM-1722).
+ */
+export interface InstagramAggregate {
+  /** The Media node field requested. */
+  field: string;
+  /** The insights-metric spelling of the same number. */
+  insightsMetric: string;
+  /** Lifetime in `video_snapshots`, the day's increase in `video_metrics`. */
+  column: AllSurfaceColumn;
+  label: string;
+  includesBoosted: true;
+  includesReplays: VendorFact;
+  /** `total_views_count` is reported for video only. */
+  videoOnly: boolean;
+  effectiveFrom: '2026-04-22';
+  /** The views aggregate's entry in VIEW_DEFINITIONS (role `concurrent`). */
+  viewDefinition?: string;
+  reference: '#added-2026-04-22';
+}
+
+export const INSTAGRAM_AGGREGATES: readonly InstagramAggregate[] = [
+  {
+    field: 'total_views_count',
+    insightsMetric: 'total_views',
+    column: 'all_surface_views',
+    label: 'Views on all surfaces, including boosted placements and replays',
+    includesBoosted: true,
+    includesReplays: true,
+    videoOnly: true,
+    effectiveFrom: '2026-04-22',
+    viewDefinition: 'instagram.total_views',
+    reference: '#added-2026-04-22',
+  },
+  {
+    field: 'total_like_count',
+    insightsMetric: 'total_likes',
+    column: 'all_surface_likes',
+    label: 'Likes on all surfaces, including boosted placements',
+    includesBoosted: true,
+    includesReplays: 'undocumented',
+    videoOnly: false,
+    effectiveFrom: '2026-04-22',
+    reference: '#added-2026-04-22',
+  },
+  {
+    field: 'total_comments_count',
+    insightsMetric: 'total_comments',
+    column: 'all_surface_comments',
+    label: 'Comments on all surfaces, including boosted placements',
+    includesBoosted: true,
+    includesReplays: 'undocumented',
+    videoOnly: false,
+    effectiveFrom: '2026-04-22',
+    reference: '#added-2026-04-22',
+  },
+];
+
+/** The aggregates' Media node `fields=` list, in table order. */
+export const INSTAGRAM_AGGREGATE_FIELDS = INSTAGRAM_AGGREGATES.map(
+  (aggregate) => aggregate.field,
+).join(',');
