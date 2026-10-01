@@ -22,14 +22,14 @@
       "pattern": "keeps not authorised apart"
     },
     {
-      "name": "FILM-1705 a connected Facebook channel is dropped from the strip",
+      "name": "FILM-1705 a connection outside the analytics platforms is dropped from the strip",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/lib/provenance.ts",
       "find": "    items.push({\n      platform,\n      kind: 'unsupported_platform',",
       "replace": "    void items.concat({\n      platform,\n      kind: 'unsupported_platform',",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/provenance.test.ts",
-      "pattern": "names a connected Facebook channel"
+      "pattern": "names a connection outside the analytics platforms"
     },
     {
       "name": "FILM-1705 a card none of whose platforms is selected stays undimmed",
