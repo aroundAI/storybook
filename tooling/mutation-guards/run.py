@@ -24,8 +24,12 @@ Outcomes per entry:
   AMBIGUOUS     a `find` matches more than once (or an edit names another
                 file), so the mutation might not break what the guard tests;
                 checked before any test runs
+  TIMED OUT     the guard never finished: Playwright's --global-timeout ended
+                it, or its command ran past GUARD_TIMEOUT and was killed with
+                everything it started; the run goes on to the next entry
 
-Any outcome other than RED fails the run. See README.md.
+Any outcome other than RED fails the run, except a TIMED OUT from an entry
+marked `known_flake`. See README.md.
 """
 import argparse
 import glob
@@ -33,6 +37,7 @@ import json
 import os
 import shutil
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -59,10 +64,61 @@ def supabase_cli():
     return ['supabase'] if shutil.which('supabase') else ['npx', 'supabase']
 
 
-def run(cmd, cwd, env=None, timeout=900):
-    result = subprocess.run(cmd, cwd=cwd, env=env, capture_output=True,
-                            text=True, timeout=timeout)
-    return result.returncode, result.stdout + result.stderr
+# Seconds one guard command may run. Read at call time, so --self-test can
+# shorten it.
+GUARD_TIMEOUT = 900
+
+
+class GuardTimedOut(Exception):
+    """A guard command ran past its limit; `output` is what it printed."""
+
+    def __init__(self, cmd, output, limit=None):
+        super().__init__(f'{" ".join(cmd)} ran past {limit or GUARD_TIMEOUT}s')
+        self.output = output
+
+
+# Seconds Playwright may spend on one E2E guard command (its --global-timeout),
+# unless the entry sets `timeout`. Three attempts at the 2-minute test timeout
+# fit inside it. It is enforced by Playwright's runner, outside the worker, so
+# it also ends a run whose worker stopped answering — which no test timeout
+# can, because those run inside the worker (KB-165: a frozen worker ran
+# silent until GUARD_TIMEOUT, then until the job was cancelled).
+E2E_GLOBAL_TIMEOUT = 600
+
+# Playwright's line when --global-timeout ends a run. It exits 1, so without
+# this check a hang under a mutation would be counted as RED.
+PLAYWRIGHT_GLOBAL_TIMEOUT = re.compile(
+    r'Timed out waiting (\d+)s for the test suite to run')
+
+
+def run(cmd, cwd, env=None):
+    """Runs a guard command; raises GuardTimedOut if it outlives GUARD_TIMEOUT.
+
+    It runs in its own process group, and a timeout kills the whole group:
+    killing `npx` alone left Playwright and its browser running, and they
+    would go on driving the shared dev server under the next guard.
+    """
+    process = subprocess.Popen(cmd, cwd=cwd, env=env, stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE, text=True,
+                               start_new_session=True)
+    try:
+        stdout, stderr = process.communicate(timeout=GUARD_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        os.killpg(process.pid, signal.SIGKILL)
+        try:
+            # What was printed before the kill, once the pipes close
+            stdout, stderr = process.communicate(timeout=30)
+        except subprocess.TimeoutExpired as held:
+            # Something outside the group still holds a pipe (Playwright
+            # starts its browser in a session of its own); keep what was read
+            stdout, stderr = (part.decode(errors='replace') if part else ''
+                              for part in (held.stdout, held.stderr))
+        raise GuardTimedOut(cmd, stdout + stderr)
+    output = stdout + stderr
+    ended = PLAYWRIGHT_GLOBAL_TIMEOUT.search(output)
+    if ended:
+        raise GuardTimedOut(cmd, output, limit=ended.group(1))
+    return process.returncode, output
 
 
 def edits_of(entry):
@@ -150,7 +206,8 @@ def guard_command(entry, base_env):
                # attempt does, and a mutation counts as caught only if every
                # attempt fails — a single flaky failure proves nothing
                # either way.
-               '--reporter=line', '--retries=2', '-g', entry['grep']]
+               '--reporter=line', '--retries=2', '-g', entry['grep'],
+               f'--global-timeout={entry.get("timeout", E2E_GLOBAL_TIMEOUT) * 1000}']
         return cmd, os.path.join(ROOT, 'apps/e2e'), env
 
     raise ValueError(f'no guard command for kind {kind}')
@@ -301,10 +358,25 @@ def run_pgtap_mutation(entry):
         os.remove(temp)
 
 
+def counts_as_failure(entry, status):
+    """Every outcome but RED fails the run, except a TIMED OUT from an entry
+    marked `known_flake` (a KB id): a hang proves nothing either way, and one
+    known to hang at random should not abort a merge. Its other outcomes —
+    NOT GREEN, STAYED GREEN — still fail."""
+    if status == 'RED':
+        return False
+    return not (status == 'TIMED OUT' and entry.get('known_flake'))
+
+
 def run_entry(entry, base_env):
-    if entry['kind'] == 'pgtap':
-        return run_pgtap_mutation(entry)
-    return run_code_mutation(entry, base_env)
+    # A hung guard is an outcome, not a crash: the mutation is restored by
+    # the `finally` it passes through, and the run goes on to the next entry.
+    try:
+        if entry['kind'] == 'pgtap':
+            return run_pgtap_mutation(entry)
+        return run_code_mutation(entry, base_env)
+    except GuardTimedOut as timed_out:
+        return 'TIMED OUT', f'{timed_out}\n{timed_out.output}'
 
 
 def load_entries():
@@ -418,6 +490,64 @@ def self_test(base_env):
         'cwd': 'packages/features/content-analytics',
         'test': '__tests__/watched-metrics.test.ts',
     }
+    # A command that outlives its timeout is killed with everything it
+    # started, and what it printed is kept: a Playwright run leaves a browser
+    # behind, which would go on driving the shared dev server.
+    global GUARD_TIMEOUT, guard_command
+    saved, GUARD_TIMEOUT = GUARD_TIMEOUT, 1
+    real_command = guard_command
+    try:
+        started = time.monotonic()
+        try:
+            run(['sh', '-c', 'echo started; sleep 60; echo finished'], ROOT)
+            print('SELF-TEST FAILED: a hung command returned instead of timing out')
+            return 1
+        except GuardTimedOut as timed_out:
+            if 'started' not in timed_out.output or time.monotonic() - started > 10:
+                print('SELF-TEST FAILED: a timed-out command lost its output or '
+                      'left a child holding its pipes')
+                return 1
+        # A guard that hangs is reported and the run goes on (#506's queue run
+        # crashed on one, and the shard's later guards never ran). The
+        # guard's command is one that cannot finish in time, whatever the
+        # machine's speed.
+        guard_command = lambda entry, env: (['sleep', '60'], ROOT, env)
+        status, _ = run_entry(dict(toothless, name='self-test: a hung guard'), base_env)
+    finally:
+        GUARD_TIMEOUT = saved
+        guard_command = real_command
+    if status != 'TIMED OUT':
+        print(f'SELF-TEST FAILED: a guard past its timeout came back {status}')
+        return 1
+
+    # Playwright ending a run at --global-timeout exits 1; read as a failure
+    # under the mutation, that would be RED for a guard that never finished.
+    try:
+        run(['sh', '-c', 'echo "  Timed out waiting 150s for the test suite to run"; '
+             'echo "  1 did not run"; exit 1'], ROOT)
+        print('SELF-TEST FAILED: Playwright\'s global timeout was read as an exit code')
+        return 1
+    except GuardTimedOut as timed_out:
+        if '150s' not in str(timed_out) or 'did not run' not in timed_out.output:
+            print(f'SELF-TEST FAILED: global timeout reported as {timed_out}')
+            return 1
+    for label, entry, status, want in [
+        ('RED', {}, 'RED', False),
+        ('TIMED OUT', {}, 'TIMED OUT', True),
+        ('TIMED OUT, known flake', {'known_flake': 'KB-165'}, 'TIMED OUT', False),
+        ('NOT GREEN, known flake', {'known_flake': 'KB-165'}, 'NOT GREEN', True),
+        ('STAYED GREEN, known flake', {'known_flake': 'KB-165'}, 'STAYED GREEN', True),
+    ]:
+        if counts_as_failure(entry, status) != want:
+            print(f'SELF-TEST FAILED: counts_as_failure {label}: expected {want}')
+            return 1
+    e2e_entry = {'kind': 'e2e', 'spec': 's', 'grep': 'g'}
+    for entry, want in [(e2e_entry, f'--global-timeout={E2E_GLOBAL_TIMEOUT * 1000}'),
+                        (dict(e2e_entry, timeout=150), '--global-timeout=150000')]:
+        if want not in guard_command(entry, {})[0]:
+            print(f'SELF-TEST FAILED: an e2e guard command lacks {want}')
+            return 1
+
     status, output = run_entry(toothless, base_env)
     if status != 'STAYED GREEN':
         print(f'SELF-TEST FAILED: a no-op mutation came back {status}')
@@ -496,14 +626,23 @@ def main():
         print('No mutation guards selected.')
         return 1
 
-    failures = []
+    failures, excused = [], []
     for entry in entries:
         status, output = run_entry(entry, base_env)
         print(f'{status:13} [{entry["kind"]}] {entry["feature"]}: {entry["name"]}', flush=True)
-        if status != 'RED':
+        if counts_as_failure(entry, status):
             failures.append((entry, status, output))
+        elif status != 'RED':
+            excused.append((entry, status, output))
 
-    print(f'\n{len(entries) - len(failures)} of {len(entries)} guards went red under their mutation')
+    for entry, status, output in excused:
+        print(f'\n--- {status}, not counted: {entry["name"]} is a known flake '
+              f'({entry["known_flake"]}). Tail of its output:')
+        print(output[-3000:])
+
+    print(f'\n{len(entries) - len(failures) - len(excused)} of {len(entries)} guards '
+          'went red under their mutation'
+          + (f'; {len(excused)} known flake(s) timed out, not counted' if excused else ''))
     for entry, status, output in failures:
         print(f'\n--- {status}: {entry["name"]}')
         if status == 'STAYED GREEN':
@@ -512,6 +651,12 @@ def main():
         elif status == 'NOT GREEN':
             print('The guard fails on the real code. Tail of its output:')
             print(output[-1500:])
+        elif status == 'TIMED OUT':
+            print('The guard never finished, so it proved nothing either way. '
+                  'Tail of what it printed before it was killed:')
+            command, _, printed = output.partition('\n')
+            print(command)
+            print(printed[-3000:])
         elif status == 'AMBIGUOUS':
             print(output)
         else:
