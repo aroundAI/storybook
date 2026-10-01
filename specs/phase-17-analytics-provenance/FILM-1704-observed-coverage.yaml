@@ -20,7 +20,7 @@ summary: >
 acceptance_criteria:
   - text: "One query answers coverage for the whole page; adding a card adds no query"
     met: true
-    evidence: "packages/clickhouse/src/queries-advanced.ts:917 (one UNION ALL statement, 'asks once for the whole page' in observed-coverage-query.test.ts:56); packages/features/content-analytics/src/components/coverage-context.tsx:115 (fetched once per provider; 'a card for every family, and a repeat, share one request', coverage-context.test.tsx:126); in the browser, apps/e2e/tests/analytics/coverage-requests.spec.ts — 18 cards on six tabs, two requests: the header's window and Deep Dive's; red with the provider's cache cut to zero (#499)"
+    evidence: "packages/clickhouse/src/queries-advanced.ts:917 (one UNION ALL statement, 'asks once for the whole page' in observed-coverage-query.test.ts:56); packages/features/content-analytics/src/components/coverage-context.tsx:126 (fetched once per provider; 'a card for every family, and a repeat, share one request', coverage-context.test.tsx:126); in the browser, apps/e2e/tests/analytics/coverage-requests.spec.ts — 18 cards on six tabs, two requests: the header's window and Deep Dive's; red with the provider's cache cut to zero (#499)"
   - text: "*Not connected*, *connected but empty in this window*, and *not supported* are three distinguishable states, never collapsed"
     met: true
     evidence: "packages/clickhouse/src/lib/data-provenance.ts:1270 (CoverageState) and :1155 (foldObservedCoverage); observed-coverage.test.ts:49-80; against ClickHouse 24.8, verify-queries.ts:3699 folds one fixture to covered, not_ingested, unsupported, no_data_in_window and not_connected at once (#499)"
@@ -32,16 +32,16 @@ acceptance_criteria:
     evidence: "packages/clickhouse/src/lib/data-provenance.ts:1351 — the module still imports nothing but types (data-provenance.test.ts 'imports nothing but types'); packages/clickhouse/__tests__/observed-coverage.test.ts, 22 tests"
   - text: "Deep Dive's coverage describes Deep Dive's 52-week window, not the header's date range"
     met: true
-    evidence: "packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:791 mounts its own CoverageProvider with trafficWindow and TRAFFIC_WINDOW_LABEL, nested on purpose with the reason at the provider; coverage-context.test.tsx:260; in the browser the Deep Dive request spans 52×7−1 days ending on a Saturday (coverage-requests.spec.ts) (#499)"
+    evidence: "packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:787 mounts its own CoverageProvider with trafficWindow and TRAFFIC_WINDOW_LABEL, nested on purpose with the reason at the provider; coverage-context.test.tsx:260; in the browser the Deep Dive request spans 52×7−1 days ending on a Saturday (coverage-requests.spec.ts) (#499)"
   - text: "Capability renders before the coverage query resolves"
     met: true
-    evidence: "packages/features/content-analytics/src/components/coverage-context.tsx:163 (useCoverage fills capabilityCoverage cells on first render); 'paints capability before the observed half resolves', coverage-context.test.tsx:150, with the action never resolving"
+    evidence: "packages/features/content-analytics/src/components/coverage-context.tsx:217 (useCoverage fills capabilityCoverage cells on first render); 'paints capability before the observed half resolves', coverage-context.test.tsx:150, with the action never resolving"
   - text: "Staleness is defined once and tolerates the YouTube reporting lag without reporting healthy ingest as stale"
     met: true
     evidence: "packages/clickhouse/src/lib/data-provenance.ts:1297 (COVERAGE_STALE_AFTER_DAYS = 14, measured to the window's end via coverageAsOf); observed-coverage.test.ts:244-278 — three days behind is healthy, six weeks is stale"
   - text: "Changing the date range does not re-query five tables on every keystroke"
     met: true
-    evidence: "packages/features/content-analytics/src/components/coverage-context.tsx:76 (the window settles for 400 ms before it is asked about) and :41 (30-minute staleTime, keyed on calendar days); coverage-context.test.tsx:200 and :234; in the browser, three range changes ending on one already seen made two requests (coverage-requests.spec.ts) (#499)"
+    evidence: "packages/features/content-analytics/src/components/coverage-context.tsx:85 (the window settles for 400 ms before it is asked about) and :41 (30-minute staleTime, keyed on calendar days); coverage-context.test.tsx:200 and :234; in the browser, three range changes ending on one already seen made two requests (coverage-requests.spec.ts) (#499)"
   - text: "A project with no connections at all renders an intelligible page, not fifteen error states"
     met: true
     evidence: "packages/features/content-analytics/src/server/coverage-actions.ts:49 — no connection in scope is answered without ClickHouse, every capable cell not_connected (coverage-actions.test.ts:151); in the browser, a project with no channel gets that answer and all six tabs render (coverage-requests.spec.ts) (#499). The wording a creator reads is FILM-1705's"
