@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs';
 
 import { headerOnlyMp4 } from '../utils/mp4';
 import {
+  connectionById,
   lastLedgerId,
   ledger,
   openPlatforms,
@@ -25,8 +26,10 @@ import { byTest } from '../utils/visible';
  * build. The episode publish screen sends X its video (owner, 2026-10-01).
  * A connection that did not grant media.write is refused before anything is
  * written, and the reason is on screen, returned as a value (thrown action
- * text is redacted in production, KB-6). Reconnecting with the scope lets the
- * second publish through, and the sandbox receives the upload and the post.
+ * text is redacted in production, KB-6). Doing what the refusal says —
+ * disconnect X, then reconnect it granting the scope — reactivates the same
+ * row with the scope, lets the second publish through, and the sandbox
+ * receives the upload and the post.
  *
  * Needs the sandbox and an app started with local.env's vendor block, as the
  * other sandbox-connect specs do; skipped unless SANDBOX_E2E=1.
@@ -71,12 +74,13 @@ async function uploadEpisodeVideo(episodeId: string) {
   return `${SUPABASE_URL}/storage/v1/object/public/project-assets/${key}`;
 }
 
-async function connectX(page: Page, slug: string, withMediaWrite: boolean) {
-  await openPlatforms(page, slug);
-  await byTest(
-    platformCard(page, 'twitter'),
-    'connect-platform-twitter',
-  ).click();
+/** The sandbox's X consent screen, media.write ticked or not, then Allow. */
+async function consentToX(
+  page: Page,
+  slug: string,
+  withMediaWrite: boolean,
+  shot: string,
+) {
   await expect(byTest(page, 'sandbox-consent-allow')).toBeVisible();
 
   const mediaWrite = page.getByRole('checkbox', { name: 'media.write' });
@@ -84,12 +88,10 @@ async function connectX(page: Page, slug: string, withMediaWrite: boolean) {
   if (withMediaWrite) await mediaWrite.check();
   else await mediaWrite.uncheck();
 
-  await capture(
-    page,
-    withMediaWrite ? '3-consent-granting' : '1-consent-without',
-  );
+  await capture(page, shot);
   await byTest(page, 'sandbox-consent-allow').click();
   await page.waitForURL(new RegExp(`/home/${slug}/settings/platforms`));
+  await expect(byTest(page, 'connect-failure')).toHaveCount(0);
 }
 
 /** Publish All → confirm, and the X row once it has an outcome. */
@@ -136,7 +138,12 @@ test.describe('Publishing to X without media.write, then with it (FILM-1729)', (
     const publishUrl = `/home/${team.slug}/studio/${project.slug}/episodes/${slug}/publish`;
 
     // --- Connected without media.write: the grant is recorded as given.
-    await connectX(page, team.slug, false);
+    await openPlatforms(page, team.slug);
+    await byTest(
+      platformCard(page, 'twitter'),
+      'connect-platform-twitter',
+    ).click();
+    await consentToX(page, team.slug, false, '1-consent-without');
     const [narrow] = await storedConnections(team.accountId, 'twitter');
     expect(narrow!.scopes).not.toContain('media.write');
 
@@ -153,14 +160,41 @@ test.describe('Publishing to X without media.write, then with it (FILM-1729)', (
       (await ledger('x', before)).filter((e) => e.path.startsWith('/2/media')),
     ).toEqual([]);
 
-    // --- Reconnect, granting it: the same row now holds the scope.
-    await connectX(page, team.slug, true);
+    // --- Re-authorise as the refusal says: "disconnect X and connect it
+    // again". Disconnect keeps the row, marked disconnected.
+    await openPlatforms(page, team.slug);
+    const row = connectionById(page, narrow!.id);
+
+    await byTest(row, 'disconnect-connection').click();
+    await byTest(page, 'confirm-disconnect').click();
+    await expect(row).toHaveAttribute('data-status', 'disconnected');
+    await expect(byTest(page, 'disconnect-revoke-unconfirmed')).toHaveCount(0);
+    await capture(page, '3-disconnected');
+
+    const [disconnected] = await storedConnections(team.accountId, 'twitter');
+    expect(disconnected!.is_active).toBe(false);
+
+    // Reconnect from that row, this time granting media.write.
+    await byTest(row, 'reconnect-connection').click();
+    await consentToX(page, team.slug, true, '4-consent-granting');
+    const reconnected = connectionById(page, narrow!.id);
+
+    await expect(reconnected).toHaveAttribute('data-status', 'active');
+    // The card names what Connect asks X for, video upload included.
+    await expect(
+      byTest(platformCard(page, 'twitter'), 'permissions-requested-twitter'),
+    ).toContainText('Upload videos');
+    await reconnected.scrollIntoViewIfNeeded();
+    await capture(page, '5-reconnected');
+
+    // The same row, active again, now holding the scope.
     const [granted, ...others] = await storedConnections(
       team.accountId,
       'twitter',
     );
     expect(others).toEqual([]);
     expect(granted!.id).toBe(narrow!.id);
+    expect(granted!.is_active).toBe(true);
     expect(granted!.scopes).toContain('media.write');
 
     // --- Second publish, from the state the first left: accepted.
@@ -169,7 +203,7 @@ test.describe('Publishing to X without media.write, then with it (FILM-1729)', (
 
     await expect(published).toHaveAttribute('data-status', 'success');
     await expect(byTest(published, 'publish-platform-error')).toHaveCount(0);
-    await capture(page, '4-published');
+    await capture(page, '6-published');
 
     const calls = (await ledger('x', since)).map(
       (e) => `${e.method} ${e.path} ${e.status}`,

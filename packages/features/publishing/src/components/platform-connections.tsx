@@ -136,7 +136,12 @@ const PLATFORM_CARDS: Record<PlatformType, Omit<PlatformConfig, 'id'>> = {
     name: 'X',
     color: 'text-black dark:text-white',
     description: 'Connect an X account',
-    scopes: ['Read and write posts', 'Read your profile', 'Stay connected'],
+    scopes: [
+      'Read and write posts',
+      'Upload videos',
+      'Read your profile',
+      'Stay connected',
+    ],
     multiAccount: true,
     limitationKey: 'platforms:limitation.twitter',
   },
@@ -301,7 +306,10 @@ function PlatformCard({
         )}
 
         <div className="mt-4 border-t pt-4">
-          <p className="text-xs text-muted-foreground">
+          <p
+            className="text-xs text-muted-foreground"
+            data-test={`permissions-requested-${platform.id}`}
+          >
             <strong>
               <Trans
                 i18nKey="platforms:permissionsRequested"
