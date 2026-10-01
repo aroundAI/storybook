@@ -3,7 +3,7 @@ title: "Traffic Source Drill-Down and the Colour Ramp"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: DRAFT
+status: DONE
 effort: M
 dependencies:
   - spec_id: "FILM-1605"
@@ -24,38 +24,38 @@ summary: >
   rule that a floored 2px slice must still report its true, unrounded share on hover.
 acceptance_criteria:
   - text: "A traffic group expands to the native source codes observed in the window"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "#TBD. packages/clickhouse/src/lib/traffic-groups.ts:221 keeps each group's observed codes per bucket; windowTrafficMix (:304) folds the window; the card lists them under Details > Where this comes from (packages/features/content-analytics/src/components/deep-dive/traffic-share-card.tsx:367, deep-dive-tab.tsx:594). traffic-groups.test.ts:225,287 (only codes that occurred: NOTIFICATION absent), traffic-drilldown.test.tsx:76; apps/e2e/tests/deep-dive/traffic-drill-down.spec.ts:281 reads every group and chip off the page against seeded ClickHouse rows. Mutation guard 'Groups stop carrying their native codes'"
   - text: "Those codes' shares sum to the group's share"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "#TBD. One denominator: every code's share is over the same bucket or window total as its group, and views are integers summed once (traffic-groups.ts:304). traffic-groups.test.ts:246 sums views exactly and shares to 12 places for every group; traffic-drilldown.test.tsx:76 and traffic-drill-down.spec.ts:281 sum the rendered data-share of every chip to its group's"
   - text: "An unrecognised `TS_*` code is shown rather than hidden"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "#TBD. recognised = sourcesInGroup(group).has(code) (traffic-groups.ts:327,338); the chip renders with an outline badge and '· unrecognised code' (traffic-share-card.tsx:439). traffic-groups.test.ts:276, traffic-drilldown.test.tsx:110, traffic-drill-down.spec.ts:281 (TS_44 on the page). Mutation guards 'An unrecognised code passes as a member of the taxonomy', 'The drill-down hides the unrecognised code'"
   - text: "The drill-down issues no additional query"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "#TBD. The codes ride in the breakdown response. queries-advanced.test.ts:279 asserts one video_traffic_sources SELECT for the breakdown with codes; traffic-drill-down.spec.ts:281 counts server-action POSTs before and after opening Details: unchanged"
   - text: "`sourcesInGroup` has a production consumer"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "#TBD. windowTrafficMix (traffic-groups.ts:327) uses it to mark unrecognised codes; its docblock records that this settles the review argument"
   - text: "`--chart-1..5` has exactly one definition"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "#TBD. Which won before, established first: `:root.light` (specificity 0,2,0) beat `:root` in light mode, so light charts drew orange-400/teal-600/green-800/yellow-200/orange-200; `.dark` repeated the oklch set. Now one `:root` block for --chart-1..8 and two neutrals (apps/web/styles/shadcn-ui.css:217-246), mapped in theme.css. chart-ramp.test.ts:45, red on main (chart-1 declared 3 times). Mutation guard 'The chart ramp is declared per theme again'. Other consumers checked: reach-history-chart (1-4), revenue-mix (1-6), dashboard-demo-charts (1-2) take the new values; revenue-chart wrapped it in hsl(), invalid on an oklch token, fixed here; three other hsl(var(--…)) uses filed as KB-146"
   - text: "All eight groups are distinguishable from each other, including at the 2px minimum slice height"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "#TBD. Group colours by meaning (traffic-share-card.tsx:248): the four compared groups take the four hues furthest apart under CVD (worst pair dE 12.0). All 28 pairs, not only stack neighbours, clear CVD dE 9.6 and normal dE 15.9 (OKLab x100) from the stylesheet: chart-ramp.test.ts:133, red on the old oklch set (blue/violet deutan 2.6). In the browser traffic-drill-down.spec.ts:352 samples the computed colour of every group's slice in both themes, asserts eight distinct colours, no alpha, and the same floors, and that the floored Playlists slice draws at about 2px; seen red with Direct back to an alpha of Other's grey (computed `oklab(0.82 … / 0.4)`). Measured on the page, light and dark alike: worst pair Browse + Suggested/Playlists CVD dE 9.6, normal floor 15.8"
   - text: "`direct` and `other` differ by more than alpha"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "#TBD. --chart-neutral-strong oklch(42%) and --chart-neutral-soft oklch(82%): 40 points of lightness, CVD dE 39.7; Other also hatched as the residual. chart-ramp.test.ts:114,155, red on main (`bg-muted-foreground/40`). Mutation guard 'Direct and Other go back to two alphas of one grey'"
   - text: "The ramp is checked for colour-blind separability, not only for looking different to the author"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "#TBD. Stepped with the dataviz skill's validator (Machado 2009 protan/deutan at severity 1.0, OKLab dE x100): the eight in order pass adjacent CVD >= 8 (worst 11.7) and normal >= 15 (worst 21.9) and >= 3:1 on #fff and #121212 in both modes. Held by chart-ramp.test.ts:69,133 (helper __tests__/support/colour-distance.ts), red on the previous palette. Mutation guard 'Blue and violet share a lightness again'"
   - text: "Chart hover detail is keyboard-reachable and styled consistently with the rest of the product"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "#TBD. title= removed from the traffic, median and back-catalog charts; each mark is a @kit/ui/tooltip trigger (components/deep-dive/chart-marks.tsx:60,151), one tab stop per chart, arrow keys inside (roving tabindex, :176). traffic-drilldown.test.tsx:134 (no [title] left), :179 (one stop, arrows move); traffic-drill-down.spec.ts:382 drives it from the keyboard. Mutation guard 'Chart marks drop out of the tab order'. The cohort table's title= cells are not charts and were left"
   - text: "A floored minimum-height slice still reports its true share on hover"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "#TBD. The slice's detail uses formatTrueShare (chart-marks.tsx:41): one decimal, never '0%' for a non-zero share; data-share carries the unrounded value. traffic-drilldown.test.tsx:200 (drawn at 2.5% of the stack, labelled 0.5%); traffic-drill-down.spec.ts:382 focuses the 0.4% slice by keyboard and reads 'Playlists: 0.4% of 1,000 views' from the tooltip, seen red in the browser with the old rounding ('Playlists: 0% of 1,000 views'). The legend used the same rounding (0.2% read '0%') and now shares the format. Mutation guard 'A floored slice reports a rounded share again'"
 open_questions: []
 notes: |
   ## 1. Overview
@@ -208,6 +208,32 @@ notes: |
   by any chart in the product. Establishing which definition currently wins, and
   checking the other consumers, is the first task of this spec and not an
   afterthought.
+
+  ## 9. As built (#TBD)
+
+  **Which definition won.** `:root.light, [data-theme="light"]` has specificity
+  (0,2,0) and beat `:root` whenever next-themes set `class="light"`, so light
+  mode drew the Tailwind set; dark drew the oklch set from `:root`/`.dark`.
+  Now one `:root` block holds `--chart-1..8` and two neutrals, for every theme.
+
+  **Lightness is not fixed at 68%.** §3's formula (fixed L, hues 45° apart)
+  was run through the validator before use and cannot meet the criterion it
+  serves: at equal lightness, deuteranopia collapses hues that differ only on
+  the red-green axis — the shipped oklch set put blue (250°) and violet (300°)
+  at ΔE 2.6. The hues keep the ~45° spread; lightness alternates between 53%
+  and 65%, the band where one step clears 3:1 on both #fff and the #121212
+  card, which is what lets one definition serve both themes. The eight in
+  order pass adjacent CVD ΔE ≥ 8 and normal ΔE ≥ 15; the six the traffic card
+  uses, plus the two neutrals, pass as any pair. The other consumers
+  (reach-history, revenue-mix, the dashboard demo) change colour with it.
+
+  **Tooltips** use `@kit/ui/tooltip`, not `ChartTooltip`: these charts are
+  divs, and `ChartTooltip` is a Recharts primitive. One tab stop per chart,
+  arrow keys inside, so 52 weeks × 8 slices are not 400 tab stops.
+
+  **Shares are shown to one decimal** in the drill-down and tooltips, so a
+  group's chips can differ from its total by 0.1 in display; the unrounded
+  value is on each element as `data-share`, and those sum exactly.
 feature:
   database:
     tables: ["video_traffic_sources"]
