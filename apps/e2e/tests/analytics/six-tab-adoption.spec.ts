@@ -365,11 +365,14 @@ test.describe('Six-tab adoption, measured (FILM-1707)', () => {
     'Set CLICKHOUSE_EVIDENCE=1 with a server reading the local ClickHouse.',
   );
 
-  /** The `title` of each bar a card draws, which carries its bucket's figures. */
+  /**
+   * Each bar's accessible name, which carries its bucket's figures: since
+   * FILM-1708 it is also the bar's hover detail, and there is no `title`.
+   */
   async function barTitles(card: Locator) {
-    return card
-      .locator('[title]')
-      .evaluateAll((bars) => bars.map((bar) => bar.getAttribute('title')));
+    return byTest(card, 'median-bar')
+      .or(byTest(card, 'back-catalog-bar'))
+      .evaluateAll((bars) => bars.map((bar) => bar.getAttribute('aria-label')));
   }
 
   test('Deep Dive’s date-axis figures are YouTube’s alone, read off the page', async ({
