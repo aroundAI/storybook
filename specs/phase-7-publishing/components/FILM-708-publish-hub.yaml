@@ -95,7 +95,7 @@ acceptance_criteria:
     evidence: null
   - text: "Can retry failed publishes"
     met: false
-    reason: "no longer true — `retryPublishAction` (`packages/features/publishing/src/server/publish-actions.ts:908`) is called only by `PublishHub`, which no page renders since baa752eb"
+    reason: "no longer true — `retryPublishAction` (`packages/features/publishing/src/server/publish-actions.ts:925`) is called only by `PublishHub`, which no page renders since baa752eb"
 test_plan:
   unit:
     - text: "Test platform config initialization"
@@ -106,14 +106,14 @@ test_plan:
       evidence: "packages/features/publishing/__tests__/publish-hub-config.test.ts:73"
     - text: "Test scheduling logic"
       met: true
-      evidence: "the schedule is read and validated (packages/features/publishing/__tests__/publish-hub-config.test.ts:182); the scheduled-versus-immediate branch: packages/features/publishing/__tests__/publish-actions.test.ts:364 (scheduled request stored, nothing uploaded) and :307 (immediate request published now)"
+      evidence: "the schedule is read and validated (packages/features/publishing/__tests__/publish-hub-config.test.ts:182); the scheduled-versus-immediate branch: packages/features/publishing/__tests__/publish-actions.test.ts:438 (scheduled request stored, nothing uploaded) and :307 (immediate request published now)"
   integration:
     - text: "Test multi-platform publish flow"
       met: true
-      evidence: "packages/features/publishing/__tests__/publish-actions.test.ts:388 — one platform scheduled, one live, one failing through `publishToAllAction`, with exact results, inserted statuses and provider call counts"
+      evidence: "packages/features/publishing/__tests__/publish-actions.test.ts:462 — one platform scheduled, one live, one failing through `publishToAllAction`, with exact results, inserted statuses and provider call counts"
     - text: "Test status polling"
       met: true
-      evidence: "packages/features/publishing/__tests__/publish-actions.test.ts:209 — three calls as a row moves from queued to published, exact values; :234 carries a failed publish's error; :249 keeps the newest row per platform. `queued` maps to `pending` in `mapDbStatus`, asserted as is"
+      evidence: "packages/features/publishing/__tests__/publish-actions.test.ts:222 — three calls as a row moves from queued to published, exact values; :234 carries a failed publish's error; :249 keeps the newest row per platform. `queued` maps to `pending` in `mapDbStatus`, asserted as is"
   e2e:
     - text: "Full publish flow with mocked providers"
       met: false
@@ -123,7 +123,7 @@ remaining:
     reason: "no browser test drives the publish screen against the vendor sandbox; the unit and integration halves are now covered (`packages/features/publishing/__tests__/publish-actions.test.ts`)"
     closed_by: "unassigned"
   - criterion: "Can retry failed publishes"
-    reason: "`retryPublishAction` exists, but its only caller is `PublishHub`, which no page has rendered since baa752eb (2026-01-06) moved `/publish` to `PublishScreen`. The publish screen lists a failed publish with its error (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/published-content-section.tsx:153`) and offers no retry"
+    reason: "`retryPublishAction` exists, but its only caller is `PublishHub`, which no page has rendered since baa752eb (2026-01-06) moved `/publish` to `PublishScreen`. The publish screen lists a failed publish with its error (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/published-content-section.tsx:154`) and offers no retry"
     closed_by: "unassigned"
 open_questions:
   - "Should we support partial publish (some succeed, some fail)? (yes - implemented)"
