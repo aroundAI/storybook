@@ -31,11 +31,21 @@ export const PLATFORM_CONFIG: Record<
     textColor: 'text-white',
     shortName: 'TT',
   },
+  twitter: {
+    name: 'X',
+    bgColor: 'bg-black dark:bg-neutral-800',
+    textColor: 'text-white',
+    shortName: 'X',
+  },
 };
 
 export type VideoType = 'full' | 'shorts';
-export type Platform = 'youtube' | 'facebook' | 'instagram' | 'tiktok';
-
+export type Platform =
+  | 'youtube'
+  | 'facebook'
+  | 'instagram'
+  | 'tiktok'
+  | 'twitter';
 // Publishing progress types
 export type PublishStage =
   | 'idle'

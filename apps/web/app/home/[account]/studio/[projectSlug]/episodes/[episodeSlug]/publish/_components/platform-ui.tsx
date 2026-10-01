@@ -45,6 +45,8 @@ export const PlatformIcon = ({
       case 'tiktok':
         // Lucide doesn't have TikTok icon, use text fallback
         return <span className="text-[9px] font-bold">TT</span>;
+      case 'twitter':
+        return <span className="text-[10px] font-bold">X</span>;
       default:
         return (
           <span className="text-[9px] font-bold">

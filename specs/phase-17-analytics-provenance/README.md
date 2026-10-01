@@ -61,7 +61,7 @@ FILM-1709 (filter completion) ← FILM-1704, FILM-1707
 FILM-1720 (Facebook) ← FILM-1711, FILM-1714, FILM-1721, FILM-1723
 FILM-1727 (X) ← the same; FILM-1725 Check A for the Enterprise tier only
 FILM-1703 + FILM-1711 ─→ FILM-1730 (TikTok Business API) ← also a Business developer app we do not hold
-FILM-1723 (API versions) ─→ FILM-1728 (Graph v26.0) ; ─→ FILM-1729 (X media.write) ⏸ needs X credentials
+FILM-1723 (API versions) ─→ FILM-1728 (Graph v26.0) ; ─→ FILM-1729 (X media.write) — the live upload needs X credentials
 ```
 
 **FILM-1721 has shipped.** The reference is at
@@ -161,7 +161,7 @@ FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook) ─→
 | [FILM-1727](./FILM-1727-x-analytics.yaml) | DRAFT | L | X on the pay-per-use path, Enterprise fields declared and dark; the `x`/`twitter` vocabulary; metered cost |
 | [FILM-1726](./FILM-1726-monetisation-stage.yaml) | DRAFT | M | The Monetisation stage re-argued, after its premise turned out to be a fact about our writers rather than the platforms |
 | [FILM-1728](./FILM-1728-meta-graph-v26-upgrade.yaml) | DRAFT | M | Move the single Meta pin to v26.0 (changelogs researched: nothing we call changes) **and make the next bump boring**: a served-version assertion in one `metaFetch()`, an expiry test that goes red 120 days early, one implementation per flow, the reference reconciled with the changelog. Found: v25.0 deprecated 41 Facebook insight metrics our reference still lists |
-| [FILM-1729](./FILM-1729-x-media-write-scope.yaml) | ⏸️ DEFERRED | S | `/2/media/upload` needs `media.write`, which we never request, so X video publishing 403s (it never worked). Deferred until X credentials exist — the same purchase unblocks FILM-1725 Check A |
+| [FILM-1729](./FILM-1729-x-media-write-scope.yaml) | PARTIAL | S | `/2/media/upload` needs `media.write`: requested since #488, and a connection made before is refused at publish and told to reconnect; the publish screen sends X full videos and Shorts, refusing first what X's limits would; publishing scopes audited for every platform. A real upload still needs X credentials — the same purchase unblocks FILM-1725 Check A |
 | [FILM-1730](./FILM-1730-tiktok-business-api.yaml) | DRAFT | XL | TikTok's real analytics — watch time, reach, traffic sources, geography — live on the Business API: a second app, a second connection, and a creator on a Business account. Split from FILM-1712 §4. Owns the four TikTok Business matrix entries (blockedBy FILM-1730 since 2026-09-25) |
 
 **Two independent paths, deliberately.** `metrics → diagnosis` (FILM-1718)

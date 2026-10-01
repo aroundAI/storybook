@@ -620,7 +620,7 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1726 | [monetisation-stage](./phase-17-analytics-provenance/FILM-1726-monetisation-stage.yaml) | DRAFT | M | FILM-1703, FILM-1711, FILM-1720 |
 | FILM-1727 | [x-analytics](./phase-17-analytics-provenance/FILM-1727-x-analytics.yaml) | DRAFT | L | FILM-1711, FILM-1714, FILM-1721, FILM-1723; FILM-1725 Check A for the Enterprise tier only |
 | FILM-1728 | [meta-graph-v26-upgrade](./phase-17-analytics-provenance/FILM-1728-meta-graph-v26-upgrade.yaml) | DONE | M | FILM-1723 merged + deployed; FILM-1712 if it lands first |
-| FILM-1729 | [x-media-write-scope](./phase-17-analytics-provenance/FILM-1729-x-media-write-scope.yaml) | ⏸️ DEFERRED | S | FILM-1723; X pay-per-use credentials (not held) |
+| FILM-1729 | [x-media-write-scope](./phase-17-analytics-provenance/FILM-1729-x-media-write-scope.yaml) | PARTIAL | S | FILM-1723; X pay-per-use credentials (not held) |
 | FILM-1730 | [tiktok-business-api](./phase-17-analytics-provenance/FILM-1730-tiktok-business-api.yaml) | DRAFT | XL | FILM-1703, FILM-1711, FILM-1721; a TikTok Business developer app (not held) |
 | FILM-1731 | [instagram-ai-label](./phase-17-analytics-provenance/FILM-1731-instagram-ai-label.yaml) | DRAFT | S | FILM-1728; an owner policy decision |
 
@@ -723,11 +723,11 @@ reason when not.
 | 14. Edit Suite v2 | 1 | 0 | 0 | 0 | 1 | 0 |
 | 15. Deep Analytics | 11 | 0 | 3 | 0 | 2 | 6 |
 | 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 17 |
-| 17. Analytics Provenance | 31 | 17 | 5 | 2 | 0 | 7 |
+| 17. Analytics Provenance | 31 | 17 | 6 | 1 | 0 | 7 |
 | 18. Vendor Sandbox | 6 | 1 | 0 | 0 | 0 | 5 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **234** | **18** | **61** | **2** | **54** | **99** |
+| **TOTAL** | **234** | **18** | **62** | **1** | **54** | **99** |
 
 No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose PR is open keeps the status it has on `main`.
 
@@ -742,7 +742,7 @@ No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose 
 | Edit Suite v2 (Ph 14) | 1 | 0 | 0 | 1 | 0 |
 | Deep Analytics (Ph 15) | 11 | 6 | 3 | 2 | 0 |
 | Workbook Parity (Ph 16) | 17 | 17 | 0 | 0 | 0 |
-| Provenance & Signal (Ph 17) | 31 | 7 | 5 | 0 | 19 |
+| Provenance & Signal (Ph 17) | 31 | 7 | 6 | 0 | 18 |
 | Vendor Sandbox (Ph 18) | 6 | 5 | 0 | 0 | 1 |
 | Public Sharing | 2 | 1 | 1 | 0 | 0 |
 

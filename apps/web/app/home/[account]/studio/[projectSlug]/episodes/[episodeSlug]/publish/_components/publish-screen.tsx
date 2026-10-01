@@ -30,12 +30,11 @@ import {
 } from '@kit/publishing/components';
 // Import shared constants from @kit/publishing
 import {
-  FULL_VIDEO_PLATFORMS,
   LANG_INFO,
-  SHORTS_PLATFORMS,
   type SupportedLanguage,
   parseTags,
 } from '@kit/publishing/lib/constants';
+import { takesVideo } from '@kit/publishing/lib/constants';
 import {
   getConnectedPlatformsAction,
   getEpisodePublishesAction,
@@ -683,12 +682,8 @@ export function PublishScreen({
   const { fullVideoChannels, shortsChannels: _shortsChannels } = useMemo(() => {
     const conns = (connections ?? []) as PlatformConnection[];
     return {
-      fullVideoChannels: conns.filter((c) =>
-        ['youtube', 'facebook'].includes(c.platform),
-      ),
-      shortsChannels: conns.filter((c) =>
-        ['youtube', 'instagram', 'facebook', 'tiktok'].includes(c.platform),
-      ),
+      fullVideoChannels: conns.filter((c) => takesVideo('full', c.platform)),
+      shortsChannels: conns.filter((c) => takesVideo('short', c.platform)),
     };
   }, [connections]);
 
@@ -877,9 +872,7 @@ export function PublishScreen({
       if (item.type === 'full') {
         // Full video channels (using constant)
         const fullChannels = channelsForLang.filter((c) =>
-          FULL_VIDEO_PLATFORMS.includes(
-            c.platform as (typeof FULL_VIDEO_PLATFORMS)[number],
-          ),
+          takesVideo('full', c.platform),
         );
         for (const channel of fullChannels) {
           platformConfigs.push({
@@ -899,9 +892,7 @@ export function PublishScreen({
         // Shorts channels (using constant)
         const group = shortsGroups.find((g) => g.id === item.groupId);
         const shortsChannels = channelsForLang.filter((c) =>
-          SHORTS_PLATFORMS.includes(
-            c.platform as (typeof SHORTS_PLATFORMS)[number],
-          ),
+          takesVideo('short', c.platform),
         );
         for (const channel of shortsChannels) {
           platformConfigs.push({
@@ -1104,9 +1095,7 @@ export function PublishScreen({
     // Process Full Videos -> YouTube, Facebook
     for (const lang of uploadedFullLanguages) {
       const channelsForLang = conns.filter(
-        (c) =>
-          (c.language || 'en') === lang &&
-          ['youtube', 'facebook'].includes(c.platform),
+        (c) => (c.language || 'en') === lang && takesVideo('full', c.platform),
       );
 
       const fullVideoId = `full-video-${lang}`;
@@ -1144,8 +1133,7 @@ export function PublishScreen({
       for (const lang of groupLangs) {
         const channelsForLang = conns.filter(
           (c) =>
-            (c.language || 'en') === lang &&
-            ['youtube', 'instagram', 'facebook', 'tiktok'].includes(c.platform),
+            (c.language || 'en') === lang && takesVideo('short', c.platform),
         );
 
         const groupId = `group-${group.id}-${lang}`;

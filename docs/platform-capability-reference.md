@@ -670,6 +670,31 @@ _Verified: 2026-09-23_
 
 ---
 
+## Publishing scopes
+
+FILM-1729. Every publishing endpoint our providers call, the scope the vendor
+says it needs, and whether the connect route asks for it. The analytics scopes
+are FILM-1711's, in `packages/features/publishing/src/oauth/analytics-scopes.ts`.
+"Requested" is read from each platform's `oauth/*/config.ts`.
+
+| Platform | Endpoint we call | Vendor's required scope | Requested? | Source |
+|---|---|---|---|---|
+| YouTube | `videos.insert`, `thumbnails.set` | any one of `youtube.upload`, `youtube`, `youtubepartner`, `youtube.force-ssl` | yes: `youtube.upload` and `youtube.force-ssl` | [videos.insert](https://developers.google.com/youtube/v3/docs/videos/insert), [thumbnails.set](https://developers.google.com/youtube/v3/docs/thumbnails/set) |
+| TikTok | `POST /v2/post/publish/video/init/`, `/v2/post/publish/status/fetch/` | `video.publish` (direct post) | yes: `video.publish` and `video.upload` | Content Posting pages not reachable (2026-09-30 and 2026-10-01); *inferred*, see the [ledger](#documented-vs-inferred-ledger) |
+| Instagram | `POST /{ig-user-id}/media`, `/media_publish` | `instagram_basic`, `instagram_content_publish`, `pages_read_engagement`; **also `ads_management` and `ads_read` when the Page role comes through Business Manager** | yes, except `ads_management` and `ads_read` (lead filed: `specs/known-bugs/leads/2026-10-01-publishing-scopes.md`) | [content publishing](https://developers.facebook.com/docs/instagram-platform/content-publishing) |
+| Facebook | `POST /{page-id}/video_reels`, `/{page-id}/videos` | `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`, on a Page token with `CREATE_CONTENT` | yes | [Reels publishing](https://developers.facebook.com/docs/video-api/guides/reels-publishing/) |
+| X | `/2/media/upload` (`initialize`, `append`, `finalize`, `STATUS`) | `media.write` | yes, since FILM-1729 (`X_MEDIA_UPLOAD_SCOPE`); older connections are refused at publish and told to reconnect | [initialize media upload](https://docs.x.com/x-api/media/initialize-media-upload) |
+| X | `POST /2/tweets` | `tweet.read`, `tweet.write`, `users.read` | yes | [create post](https://docs.x.com/x-api/posts/create-post) |
+| LinkedIn | `/rest/videos?action=initializeUpload` / `finalizeUpload`, `POST /rest/posts` | `w_member_social` (a member), `w_organization_social` (an organization) | yes: personal asks `w_member_social`, company adds `w_organization_social` | [Videos API](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/videos-api) |
+
+A connection made before a scope was added keeps its old grant: refresh does
+not add scopes. Only X has had one added (`media.write`), and the publish
+action checks the stored grant before uploading (FILM-1729).
+
+_Verified: 2026-10-01_
+
+---
+
 ## Field index
 
 The machine-readable half of this document. **Each block is one endpoint, and its

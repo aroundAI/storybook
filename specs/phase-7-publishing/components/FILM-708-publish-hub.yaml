@@ -68,19 +68,19 @@ component:
 acceptance_criteria:
   - text: "Shows all connected platforms with toggle"
     met: false
-    reason: "retired — replaced by language routing: each video goes to every connected channel of its language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1106`)"
+    reason: "retired — replaced by language routing: each video goes to every connected channel of its language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1097`)"
   - text: "Unconnected platforms show \"Connect\" action"
     met: false
     reason: "retired — connecting moved to Settings › Platforms, linked from the screen (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-settings-sidebar.tsx:130`, `:160`)"
   - text: "Metadata can be customized per platform"
     met: false
-    reason: "retired — one title/description/tags set for every channel (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-settings-sidebar.tsx:52`), translated per language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:959`)"
+    reason: "retired — one title/description/tags set for every channel (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-settings-sidebar.tsx:52`), translated per language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:950`)"
   - text: "Thumbnail preview works"
     met: true
     evidence: null
   - text: "Scheduling works for supported platforms"
     met: false
-    reason: "unverified — panel → `scheduled` rows → cron → publish-worker (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:842`, `sst.config.ts:1387`); no test drives a due publish"
+    reason: "unverified — panel → `scheduled` rows → cron → publish-worker (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:837`, `sst.config.ts:1387`); no test drives a due publish"
   - text: "Publish triggers all selected platforms"
     met: true
     evidence: null
@@ -95,7 +95,7 @@ acceptance_criteria:
     evidence: null
   - text: "Can retry failed publishes"
     met: false
-    reason: "no longer true — `retryPublishAction` (`packages/features/publishing/src/server/publish-actions.ts:773`) is called only by `PublishHub`, which no page renders since baa752eb"
+    reason: "no longer true — `retryPublishAction` (`packages/features/publishing/src/server/publish-actions.ts:877`) is called only by `PublishHub`, which no page renders since baa752eb"
 test_plan:
   unit:
     - text: "Test platform config initialization"
@@ -106,14 +106,14 @@ test_plan:
       evidence: "packages/features/publishing/__tests__/publish-hub-config.test.ts:73"
     - text: "Test scheduling logic"
       met: true
-      evidence: "the schedule is read and validated (packages/features/publishing/__tests__/publish-hub-config.test.ts:182); the scheduled-versus-immediate branch: packages/features/publishing/__tests__/publish-actions.test.ts:342 (scheduled request stored, nothing uploaded) and :307 (immediate request published now)"
+      evidence: "the schedule is read and validated (packages/features/publishing/__tests__/publish-hub-config.test.ts:182); the scheduled-versus-immediate branch: packages/features/publishing/__tests__/publish-actions.test.ts:364 (scheduled request stored, nothing uploaded) and :307 (immediate request published now)"
   integration:
     - text: "Test multi-platform publish flow"
       met: true
-      evidence: "packages/features/publishing/__tests__/publish-actions.test.ts:366 — one platform scheduled, one live, one failing through `publishToAllAction`, with exact results, inserted statuses and provider call counts"
+      evidence: "packages/features/publishing/__tests__/publish-actions.test.ts:388 — one platform scheduled, one live, one failing through `publishToAllAction`, with exact results, inserted statuses and provider call counts"
     - text: "Test status polling"
       met: true
-      evidence: "packages/features/publishing/__tests__/publish-actions.test.ts:187 — three calls as a row moves from queued to published, exact values; :234 carries a failed publish's error; :249 keeps the newest row per platform. `queued` maps to `pending` in `mapDbStatus`, asserted as is"
+      evidence: "packages/features/publishing/__tests__/publish-actions.test.ts:209 — three calls as a row moves from queued to published, exact values; :234 carries a failed publish's error; :249 keeps the newest row per platform. `queued` maps to `pending` in `mapDbStatus`, asserted as is"
   e2e:
     - text: "Full publish flow with mocked providers"
       met: false

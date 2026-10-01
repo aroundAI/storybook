@@ -19,7 +19,13 @@ import {
   returnRefusals,
 } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
-import { awsClientOptions, queueUrlFromEnv } from '@kit/shared/vendors';
+import {
+  awsClientOptions,
+  holdsXUploadScope,
+  queueUrlFromEnv,
+  xUploadScopeRefusal,
+  xVideoRefusal,
+} from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -28,6 +34,7 @@ import {
   resolveEpisodeVideo,
 } from '../lib/episode-video';
 import type { DeleteJobMessage } from '../lib/job-types';
+import { readMp4Facts } from '../lib/mp4-facts';
 import {
   EPISODE_VIDEO_PUBLISH_REFUSAL,
   type ProjectOfEpisode,
@@ -40,6 +47,7 @@ import {
   RetryPublishSchema,
 } from '../lib/schemas/publish.schema';
 import { TAKEDOWN_REFUSAL, canTakeDown, projectRoleOf } from '../lib/takedown';
+import { tweetLength } from '../lib/tweet-length';
 import type { Platform, PublishResult } from '../lib/types';
 import {
   type YouTubeChannelDeclaration,
@@ -52,6 +60,7 @@ import { InstagramProvider } from '../providers/instagram';
 import { LinkedInProvider } from '../providers/linkedin';
 import { TikTokProvider } from '../providers/tiktok';
 import { TwitterProvider } from '../providers/twitter';
+import { TWITTER_CONSTRAINTS } from '../providers/twitter/types';
 import { assertConnectionOfAccount } from './connection-account';
 import { getAccessToken } from './connection-tokens';
 import { uploadToYouTube } from './youtube-upload';
@@ -177,6 +186,92 @@ async function declareYouTubeUploads(platforms: PublishPlatformInput[]) {
 }
 
 /**
+ * FILM-1729. Refuses the whole request, before anything is written, when X
+ * would refuse it: an X account that cannot upload video, or a video outside
+ * X's limits (owner, 2026-10-01: refused on the screen, not found in the
+ * worker). Each X video is the one the upload below would send, read from
+ * its own MP4 header.
+ */
+async function assertXWillAccept(
+  platforms: PublishPlatformInput[],
+  episode: Parameters<typeof resolveEpisodeVideo>[0] & { project_id: string },
+  episodeId: string,
+) {
+  const toX = platforms.filter((platform) => platform.platform === 'twitter');
+
+  if (toX.length === 0) return;
+
+  const connections = await assertXUploadScope(toX);
+
+  for (const platform of toX) {
+    // The title is the post's text, measured as X measures it (FILM-714)
+    const postLength = tweetLength(platform.title);
+
+    if (postLength > TWITTER_CONSTRAINTS.maxTweetLength) {
+      throw new ActionRefusal(
+        `X can't take this post: its title is ${postLength} characters, and an X post takes at most ${TWITTER_CONSTRAINTS.maxTweetLength}. Shorten the title for X.`,
+      );
+    }
+
+    const language =
+      platform.language ??
+      connections.find((row) => row.id === platform.connectionId)?.language;
+    const short = platform.contentType === 'short';
+    const resolved = resolveEpisodeVideo(episode, {
+      language: language ?? 'en',
+      short,
+      shortsGroupId: short ? platform.shortsGroupId : null,
+      ...PUBLISH_NOW_PRECEDENCE,
+    });
+    const videoUrl =
+      resolved &&
+      (await ownedEpisodeVideo(
+        resolved.url,
+        { episodeId, projectId: episode.project_id },
+        projectOfEpisodeVia(getSupabaseServerClient()),
+      ));
+
+    // The upload refuses these itself, with its own words.
+    if (!videoUrl) continue;
+
+    const refusal = xVideoRefusal(await readMp4Facts(videoUrl));
+
+    if (refusal) throw new ActionRefusal(refusal);
+  }
+}
+
+/** Refuses every X account that cannot upload video; returns the accounts. */
+async function assertXUploadScope(platforms: PublishPlatformInput[]) {
+  const connectionIds = [
+    ...new Set(
+      platforms
+        .filter((platform) => platform.platform === 'twitter')
+        .map((platform) => platform.connectionId),
+    ),
+  ];
+
+  const { data: connections, error } = await getSupabaseServerClient()
+    .from('platform_connections')
+    .select('id, platform_account_name, scopes, language')
+    .in('id', connectionIds);
+
+  if (error) {
+    throw new Error('Could not read the X accounts being published to');
+  }
+
+  const lacking = connectionIds
+    .map((id) => connections?.find((row) => row.id === id))
+    .filter((row) => !row || !holdsXUploadScope(row.scopes))
+    .map((row) => row?.platform_account_name ?? 'this X account');
+
+  if (lacking.length > 0) {
+    throw new ActionRefusal(xUploadScopeRefusal(lacking));
+  }
+
+  return connections ?? [];
+}
+
+/**
  * Publish video to all selected platforms
  */
 const publishToAllHandler = enhanceAction(
@@ -263,6 +358,9 @@ const publishToAllHandler = enhanceAction(
     // creator chose. Resolve them all before anything is written, so a
     // publish nobody declared leaves no row behind.
     const declared = await declareYouTubeUploads(platforms);
+
+    // FILM-1729: nothing goes to X that X would refuse
+    await assertXWillAccept(platforms, episode, episodeId);
 
     // Publish to all platforms in parallel
     const results = await Promise.allSettled(
@@ -662,13 +760,25 @@ const retryPublish = enhanceAction(
     const { data: connection } = await client
       .from('platform_connections')
       .select(
-        'platform_account_id, platform_account_name, youtube_made_for_kids, youtube_category_id',
+        'platform_account_id, platform_account_name, youtube_made_for_kids, youtube_category_id, scopes',
       )
       .eq('id', publish.platform_connection_id)
       .single();
 
     if (!connection) {
       throw new ActionRefusal('Platform connection not found');
+    }
+
+    // FILM-1729: a retry cannot succeed until the account is reconnected
+    if (
+      publish.platform === 'twitter' &&
+      !holdsXUploadScope(connection.scopes)
+    ) {
+      throw new ActionRefusal(
+        xUploadScopeRefusal([
+          connection.platform_account_name ?? 'this X account',
+        ]),
+      );
     }
 
     // KB-30: a row scheduled before the audience was asked for carries no

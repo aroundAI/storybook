@@ -6,13 +6,31 @@ import {
   X_API_BASE,
   X_MEDIA_UPLOAD,
   X_MEDIA_UPLOAD_SCOPE,
+  holdsXUploadScope,
   xPostUrl,
+  xUploadScopeRefusal,
 } from '@kit/shared/vendors';
+
+/** What the connection recorded at connect time (FILM-1729). */
+export interface XConnectionGrant {
+  accountName: string | null;
+  scopes: readonly string[] | null;
+}
 
 export async function uploadToTwitter(
   accessToken: string,
   job: PublishJobMessage,
+  grant: XConnectionGrant,
 ): Promise<{ contentId: string; url: string }> {
+  // FILM-1729: a connection made before media.write can never upload video,
+  // and refresh cannot add it, so the job fails with the reconnect text the
+  // publish screen uses rather than X's 403.
+  if (!holdsXUploadScope(grant.scopes)) {
+    throw new Error(
+      xUploadScopeRefusal([grant.accountName ?? 'this X account']),
+    );
+  }
+
   console.log(`[Twitter] Starting video upload...`);
 
   // 1. Fetch the video file

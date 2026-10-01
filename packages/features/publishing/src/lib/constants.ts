@@ -41,14 +41,27 @@ export const getLangDisplay = (lang: string): { name: string; flag: string } =>
     flag: '🌐',
   };
 
-// Platform type constants
-export const FULL_VIDEO_PLATFORMS = ['youtube', 'facebook'] as const;
+/**
+ * Which channels each kind of video goes to: the one list the publish
+ * screen, its video cards, the upload dialog and scheduling all read. X
+ * takes both (owner, 2026-10-01, FILM-1729); the server refuses a video
+ * outside X's limits before anything is written.
+ */
+export const FULL_VIDEO_PLATFORMS = ['youtube', 'facebook', 'twitter'] as const;
 export const SHORTS_PLATFORMS = [
   'youtube',
   'instagram',
   'facebook',
   'tiktok',
+  'twitter',
 ] as const;
+
+export function takesVideo(kind: 'full' | 'short', platform: string) {
+  const platforms: readonly string[] =
+    kind === 'full' ? FULL_VIDEO_PLATFORMS : SHORTS_PLATFORMS;
+
+  return platforms.includes(platform);
+}
 
 // Helper to parse comma-separated tags
 export const parseTags = (tagsString?: string): string[] =>

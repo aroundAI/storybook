@@ -62,6 +62,18 @@ function table(name: string) {
   const query = {
     select: () => query,
     eq: () => query,
+    // FILM-1729: the X account holds media.write, as one connected now does
+    in: () =>
+      Promise.resolve({
+        data: [
+          {
+            id: CONNECTIONS.twitter,
+            platform_account_name: 'Acme',
+            scopes: ['tweet.read', 'tweet.write', 'media.write', 'users.read'],
+          },
+        ],
+        error: null,
+      }),
     order: () => Promise.resolve({ data: db.publishRows, error: null as null }),
     insert: (row: Record<string, unknown>) => {
       db.inserted.push(row);
@@ -160,6 +172,16 @@ vi.mock('../src/providers/facebook', () => ({
 vi.mock('../src/providers/twitter', () => ({
   TwitterProvider: vi.fn().mockImplementation(() => ({
     uploadVideo: providers.twitterUpload,
+  })),
+}));
+
+// FILM-1729: the X video's header, within every limit X sets
+vi.mock('../src/lib/mp4-facts', () => ({
+  readMp4Facts: vi.fn(async () => ({
+    bytes: 5_000_000,
+    durationSeconds: 60,
+    width: 1920,
+    height: 1080,
   })),
 }));
 
