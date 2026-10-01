@@ -18,12 +18,18 @@ const state: {
   clickhouse: boolean;
   measureCalls: Array<{ measure: string; checkpointDays?: number }>;
   rows: Array<Record<string, unknown>>;
+  /** analytics_experiments rows the paged read returns. */
+  tests: Array<Record<string, unknown>>;
+  /** Filters the experiments read received, as [method, column, value]. */
+  filters: Array<[string, string, unknown]>;
 } = {
   calls: [],
   platform: 'youtube',
   clickhouse: true,
   measureCalls: [],
   rows: [],
+  tests: [],
+  filters: [],
 };
 
 vi.mock('@kit/next/actions', () => ({
@@ -45,16 +51,31 @@ vi.mock('../src/server/scope-access', () => ({
 
 vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: () => ({
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          single: async () => {
-            state.calls.push('connection');
-            return { data: { platform: state.platform }, error: null };
-          },
-        }),
-      }),
-    }),
+    from: (table: string) => {
+      const builder = {
+        select: () => builder,
+        eq: (column: string, value: unknown) => {
+          if (table === 'analytics_experiments') {
+            state.filters.push(['eq', column, value]);
+          }
+          return builder;
+        },
+        not: (column: string, operator: string, value: unknown) => {
+          state.filters.push(['not', column, `${operator} ${value}`]);
+          return builder;
+        },
+        order: () => builder,
+        range: async (from: number, to: number) => {
+          state.calls.push('experiments');
+          return { data: state.tests.slice(from, to + 1), error: null };
+        },
+        single: async () => {
+          state.calls.push('connection');
+          return { data: { platform: state.platform }, error: null };
+        },
+      };
+      return builder;
+    },
   }),
 }));
 
@@ -97,6 +118,8 @@ beforeEach(() => {
   state.platform = 'youtube';
   state.clickhouse = true;
   state.measureCalls = [];
+  state.tests = [];
+  state.filters = [];
   state.rows = Array.from({ length: 10 }, (_, index) => {
     const value = (index + 1) / 100;
     return row(`v${index + 1}`, value, [
@@ -110,7 +133,12 @@ describe('getGenomeFindingsAction', () => {
   it('proves the scope before reading anything, and reads the stage’s own measure', async () => {
     const result = await getGenomeFindingsAction(input);
 
-    expect(state.calls).toEqual(['scope', 'connection', 'clickhouse']);
+    expect(state.calls).toEqual([
+      'scope',
+      'connection',
+      'clickhouse',
+      'experiments',
+    ]);
     expect(state.measureCalls[0]).toMatchObject({
       measure: 'share_rate',
       checkpointDays: 30,
@@ -175,5 +203,50 @@ describe('getGenomeFindingsAction', () => {
     if (result.status !== 'analysed') throw new Error(result.status);
 
     expect(result.analysis.measuredCount).toBe(10);
+  });
+
+  it('reads only this channel’s concluded tests of a genome hypothesis', async () => {
+    await getGenomeFindingsAction(input);
+
+    expect(state.filters).toEqual([
+      ['eq', 'account_id', ACCOUNT],
+      ['eq', 'connection_id', CHANNEL],
+      ['eq', 'status', 'concluded'],
+      ['not', 'genome_hypothesis', 'is null'],
+    ]);
+  });
+
+  it('makes a finding causal when a concluded test on this channel confirmed it (v2)', async () => {
+    state.tests = [
+      {
+        id: 'e1',
+        status: 'concluded',
+        ended_at: '2026-09-01',
+        outcome_status: 'confirmed',
+        genome_hypothesis: 'result_first:yes@transmission',
+      },
+      // Malformed keys and unconcluded rows are ignored, never trusted.
+      {
+        id: 'e2',
+        status: 'concluded',
+        ended_at: '2026-09-01',
+        outcome_status: 'confirmed',
+        genome_hypothesis: 'Result First',
+      },
+    ];
+    const result = await getGenomeFindingsAction(input);
+    if (result.status !== 'analysed') throw new Error(result.status);
+
+    const finding = result.analysis.findings.find(
+      (entry) => entry.attribute.tag === 'result_first:yes',
+    );
+    expect(finding?.evidence.claim).toMatchObject({
+      strength: 'causal',
+      backing: { kind: 'change_log', id: 'e1' },
+    });
+    expect(result.hypotheses.map((h) => h.key)).not.toContain(
+      'result_first:yes@transmission',
+    );
+    expect(result.templates.length).toBeGreaterThan(0);
   });
 });

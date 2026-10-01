@@ -437,6 +437,7 @@ export {
   DURATION_DIMENSION,
   GENOME_DIMENSION_STAGE,
   GENOME_OBSERVABLE_DIMENSIONS,
+  GENOME_SEMANTIC_DIMENSIONS,
   TAG_DIMENSIONS,
   TAXONOMY_DIMENSIONS,
   closedValuesFor,
@@ -450,6 +451,7 @@ export type {
   GenomeAttribute,
   GenomeDimension,
   GenomeObservableDimension,
+  GenomeSemanticDimension,
   PerformanceOutcome,
   TagDimension,
   TaxonomyDimension,
@@ -511,3 +513,25 @@ export type {
   GenomeStratum,
   GenomeVideo,
 } from './lib/genome';
+
+// The genome's closed loop (FILM-1717 v2): hypotheses, the confidence
+// update from concluded tests, and creative templates.
+export {
+  GENOME_HYPOTHESIS_PATTERN,
+  applyLinkedTests,
+  deriveTemplates,
+  genomeHypothesisKey,
+  hypothesesFrom,
+  instantiateTemplate,
+  parseGenomeHypothesisKey,
+  templateRole,
+} from './lib/genome-loop';
+export type {
+  ConceptBrief,
+  CreativeTemplate,
+  GenomeHypothesis,
+  GenomeHypothesisKey,
+  LinkedTest,
+  TemplateMechanism,
+  TemplateRole,
+} from './lib/genome-loop';

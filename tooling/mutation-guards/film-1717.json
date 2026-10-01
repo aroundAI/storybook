@@ -112,10 +112,72 @@
       "pattern": "drops a closed dimension"
     },
     {
+      "name": "GN14 a confirmation cancels a rejection",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome-loop.ts",
+      "find": "        confirmed && !rejected",
+      "replace": "        confirmed",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome-loop.test.ts",
+      "pattern": "does not let a confirmation cancel a rejection"
+    },
+    {
+      "name": "GN15 any concluded test makes a claim causal",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome-loop.ts",
+      "find": "    const confirmed = testedBy.find(\n      (backing) => backing.outcome === 'confirmed',\n    );",
+      "replace": "    const confirmed = testedBy[0];",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome-loop.test.ts",
+      "pattern": "leaves an inconclusive test"
+    },
+    {
+      "name": "GN16 a template takes mechanisms that won on other videos",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome-loop.ts",
+      "find": "      if (shared.size === 0) continue;\n",
+      "replace": "",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome-loop.test.ts",
+      "pattern": "group the mechanisms that won together"
+    },
+    {
+      "name": "GN17 the hypothesis key drifts from the table's CHECK",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome-loop.ts",
+      "find": "  `^[a-z0-9_]+:[a-z0-9]+(-[a-z0-9]+)*@(${FUNNEL_STAGES.join('|')})$`,",
+      "replace": "  `^[a-z0-9_]+:[a-z0-9-]+@(${FUNNEL_STAGES.join('|')})$`,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome-loop.test.ts",
+      "pattern": "keyed dimension:slug@stage"
+    },
+    {
+      "name": "GN18 another channel's test backs this channel's claim",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/genome-actions.ts",
+      "find": "          .eq('connection_id', input.connectionId)\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/genome-actions.test.ts",
+      "pattern": "reads only this channel"
+    },
+    {
       "name": "GN-DB1 a closed genome dimension takes any value",
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/genome-tag-dimensions.test.sql",
       "sql": "alter table public.content_tags drop constraint content_tags_genome_closed_values_check;"
+    },
+    {
+      "name": "GN-DB2 a started change's genome hypothesis can be rewritten",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/genome-hypothesis-link.test.sql",
+      "sql": "drop trigger analytics_experiments_freeze_genome_hypothesis on public.analytics_experiments;"
+    },
+    {
+      "name": "GN-DB3 a genome hypothesis is free text",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/genome-hypothesis-link.test.sql",
+      "sql": "alter table public.analytics_experiments drop constraint analytics_experiments_genome_hypothesis_check;"
     },
     {
       "name": "GN-E1 a closed dimension's refusal lands on a field nobody sees",

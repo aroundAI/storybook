@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form';
 
 import {
   GENOME_OBSERVABLE_DIMENSIONS,
+  GENOME_SEMANTIC_DIMENSIONS,
   TAXONOMY_DIMENSIONS,
   closedValuesFor,
 } from '@kit/clickhouse';
@@ -74,11 +75,22 @@ const DIMENSION_LABELS: Record<TagDimension, string> = {
   scene_changes: 'Scene changes',
   question_first_3s: 'Question in first 3s',
   result_first: 'Result first',
+  curiosity: 'Curiosity',
+  novelty: 'Novelty',
+  utility: 'Utility',
+  relatability: 'Relatability',
+  identity: 'Identity',
+  surprise: 'Surprise',
+  aspiration: 'Aspiration',
+  controversy: 'Controversy',
+  humour: 'Humour',
+  authority: 'Authority',
 };
 
 /**
- * Two kinds of tag, kept apart on screen as they are in the data
- * (FILM-1717): what a video is, and the creative mechanisms it contains.
+ * The kinds of tag, kept apart on screen as they are in the data
+ * (FILM-1717): what a video is, the creative mechanisms it contains, and
+ * what the creative does to the viewer.
  */
 const DIMENSION_GROUPS: ReadonlyArray<{
   id: string;
@@ -94,6 +106,11 @@ const DIMENSION_GROUPS: ReadonlyArray<{
     id: 'genome',
     label: 'Creative mechanisms',
     dimensions: GENOME_OBSERVABLE_DIMENSIONS,
+  },
+  {
+    id: 'semantic',
+    label: 'What the creative does',
+    dimensions: GENOME_SEMANTIC_DIMENSIONS,
   },
 ];
 

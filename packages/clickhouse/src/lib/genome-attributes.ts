@@ -58,22 +58,46 @@ export const GENOME_OBSERVABLE_DIMENSIONS = [
 export type GenomeObservableDimension =
   (typeof GENOME_OBSERVABLE_DIMENSIONS)[number];
 
+/**
+ * Layer B — semantic: what the creative is doing to the viewer (genome v2).
+ * Harder to capture and more useful. Recorded by hand as a level; there is
+ * no automated extraction.
+ */
+export const GENOME_SEMANTIC_DIMENSIONS = [
+  'curiosity',
+  'novelty',
+  'utility',
+  'relatability',
+  'identity',
+  'surprise',
+  'aspiration',
+  'controversy',
+  'humour',
+  'authority',
+] as const;
+
+export type GenomeSemanticDimension =
+  (typeof GENOME_SEMANTIC_DIMENSIONS)[number];
+
 /** Derived from `video_dim`, never tagged. */
 export const DURATION_DIMENSION = 'duration';
 
 export type GenomeDimension =
   | GenomeObservableDimension
+  | GenomeSemanticDimension
   | typeof DURATION_DIMENSION;
 
 /** Every dimension a `content_tags` row may have — the table's CHECK. */
 export const TAG_DIMENSIONS = [
   ...TAXONOMY_DIMENSIONS,
   ...GENOME_OBSERVABLE_DIMENSIONS,
+  ...GENOME_SEMANTIC_DIMENSIONS,
 ] as const;
 
 export type TagDimension = (typeof TAG_DIMENSIONS)[number];
 
 const YES_NO = ['yes', 'no'] as const;
+const LEVELS = ['low', 'medium', 'high'] as const;
 
 /**
  * Dimensions whose values are fixed rather than per-account. A yes/no
@@ -93,6 +117,16 @@ export const CLOSED_TAG_VALUES: Partial<
   result_first: YES_NO,
   cuts_per_minute: ['under-5', '5-to-15', '15-to-30', 'over-30'],
   scene_changes: ['none', '1-to-3', '4-to-10', 'over-10'],
+  curiosity: LEVELS,
+  novelty: LEVELS,
+  utility: LEVELS,
+  relatability: LEVELS,
+  identity: LEVELS,
+  surprise: LEVELS,
+  aspiration: LEVELS,
+  controversy: LEVELS,
+  humour: LEVELS,
+  authority: LEVELS,
 };
 
 /** Null when the dimension is an open, per-account vocabulary. */
@@ -119,6 +153,16 @@ export const GENOME_DIMENSION_STAGE: Record<GenomeDimension, FunnelStage> = {
   scene_changes: 'attention',
   result_first: 'attention',
   duration: 'attention',
+  curiosity: 'hook',
+  novelty: 'reach',
+  utility: 'transmission',
+  relatability: 'transmission',
+  identity: 'transmission',
+  surprise: 'transmission',
+  aspiration: 'audience',
+  controversy: 'transmission',
+  humour: 'transmission',
+  authority: 'audience',
 };
 
 export interface TaxonomyTag {
@@ -182,6 +226,17 @@ export function parseVideoTag(tag: string): VideoTag | null {
     return {
       kind: 'genome',
       layer: 'observable',
+      dimension,
+      value,
+      tag,
+      source: 'tag',
+    };
+  }
+
+  if (isOneOf(GENOME_SEMANTIC_DIMENSIONS, dimension)) {
+    return {
+      kind: 'genome',
+      layer: 'semantic',
       dimension,
       value,
       tag,

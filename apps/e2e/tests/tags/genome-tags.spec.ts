@@ -88,9 +88,25 @@ test.describe('Genome tags', () => {
       'Cold open',
     );
 
+    // 4. A semantic dimension (v2) takes a level.
+    await expect(byTest(page, 'tag-group-semantic')).toContainText(
+      'What the creative does',
+    );
+    await chooseDimension(page, 'identity');
+    await expect(byTest(page, 'tag-closed-values')).toHaveText(
+      'Takes only: low, medium, high',
+    );
+    await label.fill('High');
+    await submit.click();
+    await expect(page.getByText('Added "High"')).toBeVisible();
+    await expect(byTest(page, 'tag-section-identity')).toContainText('High');
+
     if (capture) {
       await byTest(page, 'tag-group-genome').screenshot({
         path: `${OUT}/02-genome-tags-saved.png`,
+      });
+      await byTest(page, 'tag-group-semantic').screenshot({
+        path: `${OUT}/04-semantic-tag-saved.png`,
       });
       await page.screenshot({
         path: `${OUT}/03-tags-page.png`,

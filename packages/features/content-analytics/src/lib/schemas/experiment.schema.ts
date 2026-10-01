@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { GENOME_HYPOTHESIS_PATTERN } from '@kit/clickhouse';
+
 import { WATCHED_METRIC_KEYS } from '../watched-metrics';
 
 export const ExperimentStatusSchema = z.enum([
@@ -98,6 +100,16 @@ export const CreateExperimentSchema = z.object({
   connectionId: z.string().uuid().optional(),
   publishIds: z.array(z.string().uuid()).max(200).default([]),
   tagIds: z.array(z.string().uuid()).max(50).default([]),
+  /**
+   * The content genome hypothesis this change tests (FILM-1717), as
+   * `dimension:slug@stage`. The table checks the same pattern and freezes
+   * it once the change starts.
+   */
+  genomeHypothesis: z
+    .string()
+    .max(120)
+    .regex(GENOME_HYPOTHESIS_PATTERN, 'Not a genome hypothesis')
+    .optional(),
 });
 
 export const UpdateExperimentSchema = z.object({

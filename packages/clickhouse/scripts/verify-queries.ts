@@ -32,6 +32,13 @@ import {
 } from '../src/lib/format-families';
 import type { FormatFamily } from '../src/lib/format-families';
 import { analyseGenome, quantileExactInclusive } from '../src/lib/genome';
+import { concludedChangeLogEntry } from '../src/lib/genome-evidence';
+import {
+  applyLinkedTests,
+  deriveTemplates,
+  genomeHypothesisKey,
+  hypothesesFrom,
+} from '../src/lib/genome-loop';
 import { metricProvenanceFor } from '../src/lib/genome-measures';
 import type { SegmentMeasure } from '../src/lib/genome-measures';
 import { VIEWS_DATA_WINDOWS } from '../src/lib/self-benchmark';
@@ -5942,13 +5949,13 @@ const GN_OTHER_CHANNEL = '17170000-0000-4000-8000-000000000004';
  * one metric day the day after publish: 1,000 views and the shares below,
  * so the share rate (the Transmission measure) is shares / 1,000.
  *
- * | video     | published  | shares | share rate | result_first | face_present      |
- * |-----------|------------|--------|------------|--------------|-------------------|
- * | gn-01     | 2026-01-01 |     10 | 0.01       | yes          | yes               |
- * | gn-02..05 | 01-02..05  | 20..50 | 0.02..0.05 | no           | yes, yes, yes, no |
- * | gn-06..07 | 01-06..07  | 60, 70 | 0.06, 0.07 | no           | yes               |
- * | gn-08     | 2026-01-08 |     80 | 0.08       | yes          | no                |
- * | gn-09..10 | 01-09..10  | 90,100 | 0.09, 0.10 | yes          | yes               |
+ * | video     | published  | shares | share rate | result_first | face_present      | identity |
+ * |-----------|------------|--------|------------|--------------|-------------------|----------|
+ * | gn-01     | 2026-01-01 |     10 | 0.01       | yes          | yes               | low      |
+ * | gn-02..05 | 01-02..05  | 20..50 | 0.02..0.05 | no           | yes, yes, yes, no | low      |
+ * | gn-06..07 | 01-06..07  | 60, 70 | 0.06, 0.07 | no           | yes               | high     |
+ * | gn-08     | 2026-01-08 |     80 | 0.08       | yes          | no                | low      |
+ * | gn-09..10 | 01-09..10  | 90,100 | 0.09, 0.10 | yes          | yes               | high     |
  * | gn-11     | 2026-01-11 | 0 views: no share rate (NULL, not 0) | yes |        |
  * | gn-young  | 2026-05-20 | 12 days old at asOf: not yet at 30   | yes |        |
  * | gn-other  | 2026-01-03 | another channel, share rate 0.9      | yes |        |
@@ -5977,6 +5984,7 @@ const GN_VIDEOS: ReadonlyArray<{
       'topic:ai',
       n === 1 || n >= 8 ? 'result_first:yes' : 'result_first:no',
       n === 5 || n === 8 ? 'face_present:no' : 'face_present:yes',
+      [6, 7, 9, 10].includes(n) ? 'identity:high' : 'identity:low',
     ],
   })),
   {
@@ -6116,6 +6124,7 @@ async function genomeSteps() {
         'topic:ai',
         'result_first:yes',
         'face_present:yes',
+        'identity:low',
       ]);
 
       return '11 eligible, gn-11 unmeasured';
@@ -6278,6 +6287,86 @@ async function genomeSteps() {
       expectEqual('claim', evidence?.claim.strength, 'controlled_association');
 
       return `1.55x observed, ${evidence?.adjustedLift.toFixed(3)}x adjusted on n=4`;
+    },
+  );
+
+  await step(
+    'genome v2: a semantic attribute, a template and a causal update, by hand',
+    async () => {
+      const rows = await measures('share_rate');
+      const analysis = analyseGenome({
+        videos: rows.map((row) => ({
+          videoId: row.videoId,
+          connectionId: row.connectionId,
+          platform: 'youtube',
+          formatFamily: row.formatFamily ?? 'long_horizontal',
+          assetDurationSeconds: row.assetDurationSeconds,
+          tags: row.tags,
+          value: row.value,
+        })),
+        stage: 'transmission',
+        signal: 'share_rate',
+        checkpointDays: 30,
+        control: 'controlled',
+        provenance: metricProvenanceFor('share_rate', 'youtube'),
+      });
+
+      // identity:high — winners gn-06, 07, 09, 10 (4/5), losers 0/5. Its
+      // median over 0.06, 0.07, 0.09, 0.10 is 0.08: 0.08 / 0.055 observed.
+      const identity = analysis.findings.find(
+        (row) => row.attribute.tag === 'identity:high',
+      );
+      expectEqual('layer', identity?.attribute.layer, 'semantic');
+      expectEqual(
+        'prevalence',
+        [identity?.prevalence.winners, identity?.prevalence.losers],
+        [0.8, 0],
+      );
+      expectClose(
+        'median',
+        identity?.evidence.attributeMedian ?? Number.NaN,
+        0.08,
+      );
+      expectClose(
+        'adjusted',
+        identity?.evidence.adjustedLift ?? Number.NaN,
+        1 + (0.08 / 0.055 - 1) * (4 / 19),
+      );
+
+      // result_first:yes (adjusted 1.115) seeds; identity:high (1.096) won
+      // beside it on gn-09 and gn-10.
+      const [template] = deriveTemplates([analysis]);
+      expectEqual('template', template?.id, 'identity:high+result_first:yes');
+      expectEqual('exemplars', template?.exemplars, ['gn-09', 'gn-10']);
+
+      const key = genomeHypothesisKey({ tag: 'identity:high' }, 'transmission');
+      expectEqual(
+        'hypothesis',
+        hypothesesFrom(analysis).some((h) => h.key === key),
+        true,
+      );
+
+      const backing = concludedChangeLogEntry({
+        id: 'gn-change',
+        status: 'concluded',
+        ended_at: '2026-05-01',
+        outcome_status: 'confirmed',
+      });
+      if (!backing) throw new Error('a concluded entry was refused');
+      const updated = applyLinkedTests(analysis, [
+        { hypothesis: key, backing },
+      ]);
+      const claim = updated.findings.find(
+        (row) => row.attribute.tag === 'identity:high',
+      )?.evidence.claim;
+      expectEqual('causal', claim?.strength, 'causal');
+      expectEqual(
+        'backing',
+        claim?.strength === 'causal' ? claim.backing.kind : null,
+        'change_log',
+      );
+
+      return 'identity:high 1.45x observed; template identity+result_first on gn-09, gn-10; causal via change_log';
     },
   );
 

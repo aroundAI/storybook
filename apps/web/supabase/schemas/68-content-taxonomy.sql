@@ -15,13 +15,16 @@ create table if not exists public.content_tags (
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   unique (account_id, dimension, slug),
-  -- FILM-1717 (20261001113701): taxonomy, then the genome's observable
-  -- attributes. The list is TAG_DIMENSIONS in genome-attributes.ts.
+  -- FILM-1717 (20261001113701, 20261001121658): taxonomy, then the genome's
+  -- observable and semantic attributes. The list is TAG_DIMENSIONS in
+  -- genome-attributes.ts.
   constraint content_tags_dimension_check check (dimension in (
     'topic', 'format', 'thumbnail_style',
     'hook_type', 'opening_visual', 'first_sentence', 'face_present',
     'text_present', 'cuts_per_minute', 'scene_changes', 'question_first_3s',
-    'result_first'
+    'result_first',
+    'curiosity', 'novelty', 'utility', 'relatability', 'identity',
+    'surprise', 'aspiration', 'controversy', 'humour', 'authority'
   )),
   -- Closed values for the yes/no and banded dimensions (CLOSED_TAG_VALUES).
   constraint content_tags_genome_closed_values_check check (
@@ -32,6 +35,16 @@ create table if not exists public.content_tags (
       when 'result_first' then slug in ('yes', 'no')
       when 'cuts_per_minute' then slug in ('under-5', '5-to-15', '15-to-30', 'over-30')
       when 'scene_changes' then slug in ('none', '1-to-3', '4-to-10', 'over-10')
+      when 'curiosity' then slug in ('low', 'medium', 'high')
+      when 'novelty' then slug in ('low', 'medium', 'high')
+      when 'utility' then slug in ('low', 'medium', 'high')
+      when 'relatability' then slug in ('low', 'medium', 'high')
+      when 'identity' then slug in ('low', 'medium', 'high')
+      when 'surprise' then slug in ('low', 'medium', 'high')
+      when 'aspiration' then slug in ('low', 'medium', 'high')
+      when 'controversy' then slug in ('low', 'medium', 'high')
+      when 'humour' then slug in ('low', 'medium', 'high')
+      when 'authority' then slug in ('low', 'medium', 'high')
       else true
     end
   )

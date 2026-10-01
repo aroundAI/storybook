@@ -4,7 +4,10 @@ import { z } from 'zod';
 
 import type {
   AnalyticsPlatform,
+  CreativeTemplate,
   GenomeAnalysis,
+  GenomeHypothesis,
+  LinkedTest,
   Recommendation,
   StageMeasureRefusal,
 } from '@kit/clickhouse';
@@ -13,7 +16,12 @@ import {
   FORMAT_FAMILIES,
   FUNNEL_STAGES,
   analyseGenome,
+  applyLinkedTests,
+  concludedChangeLogEntry,
+  deriveTemplates,
+  hypothesesFrom,
   metricProvenanceFor,
+  parseGenomeHypothesisKey,
   recommendFrom,
   stageMeasureFor,
 } from '@kit/clickhouse';
@@ -22,6 +30,7 @@ import {
   querySegmentVideoMeasures,
 } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
+import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { assertScopeAccess } from './scope-access';
@@ -46,9 +55,13 @@ export type GenomeFindingsResult =
   | { status: 'refused'; refusal: GenomeRefusal }
   | {
       status: 'analysed';
+      /** With every concluded test of its hypotheses applied (v2). */
       analysis: GenomeAnalysis;
       /** One per finding, each carrying the finding's evidence. */
       recommendations: Recommendation[];
+      /** What to test next: one per finding not yet causal. */
+      hypotheses: GenomeHypothesis[];
+      templates: CreativeTemplate[];
     };
 
 function isAnalyticsPlatform(platform: string): platform is AnalyticsPlatform {
@@ -143,10 +156,46 @@ export const getGenomeFindingsAction = enhanceAction(
       provenance: metricProvenanceFor(measure.signal, platform),
     });
 
+    // Concluded Change log entries on this channel that tested a genome
+    // hypothesis. Paged: the update is wrong if a test is missed. A test on
+    // another channel says nothing about this one, as the genome never
+    // compares across creators. Channel experiments (FILM-1724) join here
+    // once their table exists.
+    const tested = await fetchAllRows<{
+      id: string;
+      status: string;
+      ended_at: string | null;
+      outcome_status: string;
+      genome_hypothesis: string | null;
+    }>(
+      (from, to) =>
+        client
+          .from('analytics_experiments')
+          .select('id, status, ended_at, outcome_status, genome_hypothesis')
+          .eq('account_id', input.accountId)
+          .eq('connection_id', input.connectionId)
+          .eq('status', 'concluded')
+          .not('genome_hypothesis', 'is', null)
+          .order('id')
+          .range(from, to),
+      'genome hypothesis tests',
+    );
+
+    const tests = tested.flatMap((row): LinkedTest[] => {
+      const hypothesis = parseGenomeHypothesisKey(row.genome_hypothesis);
+      const backing = concludedChangeLogEntry(row);
+
+      return hypothesis && backing ? [{ hypothesis, backing }] : [];
+    });
+
+    const updated = applyLinkedTests(analysis, tests);
+
     return {
       status: 'analysed',
-      analysis,
-      recommendations: analysis.findings.map(recommendFrom),
+      analysis: updated,
+      recommendations: updated.findings.map(recommendFrom),
+      hypotheses: hypothesesFrom(updated),
+      templates: deriveTemplates([updated]),
     };
   },
   { schema: GenomeFindingsSchema, auth: true },

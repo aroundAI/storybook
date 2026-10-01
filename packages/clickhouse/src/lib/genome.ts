@@ -382,6 +382,7 @@ function compareStratum(input: {
         losersTagged,
       },
       evidence,
+      testedBy: [],
     });
   }
 

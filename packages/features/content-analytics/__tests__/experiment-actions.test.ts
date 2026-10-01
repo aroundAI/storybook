@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ActionRefusal, unwrap } from '../src/lib/action-result';
+import { CreateExperimentSchema } from '../src/lib/schemas/experiment.schema';
 import {
   abandonExperimentAction as abandonAction,
   concludeExperimentAction as concludeAction,
@@ -499,6 +500,42 @@ describe('linking videos', () => {
     expect(state.inserts[0]).toMatchObject({
       payload: { hypothesis: null, expected_outcome: null, notes: null },
     });
+  });
+
+  it('records the genome hypothesis the change tests (FILM-1717), and refuses a malformed one', async () => {
+    const base = {
+      accountId: 'a1',
+      title: 'Result first',
+      changeDescription: 'Lead with the result',
+      reviewWindowDays: 60,
+      publishIds: [],
+      tagIds: [],
+    };
+
+    await createExperimentAction({
+      ...base,
+      genomeHypothesis: 'result_first:yes@attention',
+    });
+    expect(state.inserts[0]).toMatchObject({
+      payload: { genome_hypothesis: 'result_first:yes@attention' },
+    });
+
+    await createExperimentAction(base);
+    expect(state.inserts[1]).toMatchObject({
+      payload: { genome_hypothesis: null },
+    });
+
+    // enhanceAction is mocked without its schema here, so the refusal is
+    // the schema's own, checked directly.
+    const parse = (genomeHypothesis: string) =>
+      CreateExperimentSchema.safeParse({
+        ...base,
+        accountId: '550e8400-e29b-41d4-a716-446655440000',
+        genomeHypothesis,
+      }).success;
+    expect(parse('result_first:yes@attention')).toBe(true);
+    expect(parse('Result First')).toBe(false);
+    expect(parse('result_first:yes@views')).toBe(false);
   });
 });
 

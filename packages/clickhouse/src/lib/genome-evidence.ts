@@ -314,6 +314,12 @@ export interface GenomeFinding {
     losersTagged: number;
   };
   evidence: Evidence;
+  /**
+   * Concluded tests of this finding's hypothesis, newest first (v2). A
+   * rejected or inconclusive test keeps the finding visible and says so;
+   * only a confirmed, uncontested one makes the claim causal.
+   */
+  testedBy: readonly CausalBacking[];
 }
 
 declare const recommendation: unique symbol;
