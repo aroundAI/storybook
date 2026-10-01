@@ -46,6 +46,9 @@ acceptance_criteria:
   - text: "FILM-1718's six patterns state their monetisation requirement in code"
     met: true
     evidence: "Restacked onto FILM-1718 (#502), this branch merged second and filled the rows as §11 says: 'any' on five (packages/clickhouse/src/lib/stage-diagnosis.ts:167) and 'above_where_judged' on above_at_every_judged_stage (:232). The overlap test (packages/clickhouse/__tests__/stage-diagnosis.test.ts:342) then found the minimum needed a change, recorded at the end of §11: only PATTERN_STAGES count toward it (packages/clickhouse/src/lib/stage-diagnosis.ts:256), tested at packages/clickhouse/__tests__/stage-diagnosis.test.ts:442, guard MS19 RED. #TBD-1726"
+  - text: "Observed coverage reads revenue where it now lives"
+    met: true
+    evidence: "FILM-1704's coverage query scanned five tables and video_revenue_daily was not one, so YouTube revenue coverage read 'unknown' (null) once revenue became native here; r1719 found it. The query has a sixth branch (packages/clickhouse/src/queries-advanced.ts:1401) and OBSERVED_COVERAGE_TABLES a sixth entry (packages/clickhouse/src/lib/data-provenance.ts:1534). packages/clickhouse/__tests__/observed-coverage.test.ts:193 went red first (null, not no_data_in_window), guard MS20 RED; verify-queries' coverage steps pass on real ClickHouse. #TBD-1726"
   - text: "YouTube's estimated earnings reach the stage, by day, only for an authorised read"
     met: true
     evidence: "fetchRevenue asks dimensions=day (packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:236); buildYouTubeRevenueRows (packages/features/content-analytics/src/server/ingest.ts:256) writes nothing unless revenueAccess is authorised; the sync inserts them (analytics-sync-cron.ts:771) into video_revenue_daily (packages/clickhouse/src/migrations/022_video_revenue_daily.ts:92). Tests: youtube-analytics.test.ts, ingest.test.ts; guards MS10, MS11. #TBD-1726"
