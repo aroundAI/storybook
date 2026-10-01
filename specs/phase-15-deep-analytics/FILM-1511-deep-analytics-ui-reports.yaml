@@ -36,7 +36,7 @@ acceptance_criteria:
     evidence: "`apps/e2e/tests/analytics/raw-export-evidence.spec.ts:100`, `packages/features/content-analytics/__tests__/raw-export-generator.test.ts:41`"
   - text: "`pnpm --filter web typecheck` passes"
     met: true
-    evidence: ".github/workflows/workflow.yml:120"
+    evidence: ".github/workflows/workflow.yml:148"
 remaining:
   - criterion: "Rolling-90 and returning-viewer cards show a loading skeleton"
     reason: "Rendered by the QueryState in deep-dive-tab.tsx; the browser spec asserts data and the no-data month rows, and no test holds the query pending to see the skeleton"
