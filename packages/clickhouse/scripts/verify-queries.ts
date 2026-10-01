@@ -31,6 +31,9 @@ import {
   unmappedFormatPairs,
 } from '../src/lib/format-families';
 import type { FormatFamily } from '../src/lib/format-families';
+import { analyseGenome, quantileExactInclusive } from '../src/lib/genome';
+import { metricProvenanceFor } from '../src/lib/genome-measures';
+import type { SegmentMeasure } from '../src/lib/genome-measures';
 import { VIEWS_DATA_WINDOWS } from '../src/lib/self-benchmark';
 import { addViews } from '../src/lib/views';
 import {
@@ -79,6 +82,7 @@ import {
   queryRollingViews,
   querySegmentMembership,
   querySegmentPerformance,
+  querySegmentVideoMeasures,
   querySubscriberAnchors,
   querySubscriberDeltas,
   querySubscriberSeries,
@@ -5927,6 +5931,359 @@ async function noRowsViewsSteps() {
   );
 }
 
+const GN_PROJECT = '17170000-0000-4000-8000-000000000001';
+const GN_ACCOUNT = '17170000-0000-4000-8000-000000000002';
+const GN_CHANNEL = '17170000-0000-4000-8000-000000000003';
+const GN_OTHER_CHANNEL = '17170000-0000-4000-8000-000000000004';
+
+/**
+ * The content genome fixture (FILM-1717). One YouTube channel, every video a
+ * five-minute `full` upload (long_horizontal, band 3-to-10m), topic `ai`,
+ * one metric day the day after publish: 1,000 views and the shares below,
+ * so the share rate (the Transmission measure) is shares / 1,000.
+ *
+ * | video     | published  | shares | share rate | result_first | face_present      |
+ * |-----------|------------|--------|------------|--------------|-------------------|
+ * | gn-01     | 2026-01-01 |     10 | 0.01       | yes          | yes               |
+ * | gn-02..05 | 01-02..05  | 20..50 | 0.02..0.05 | no           | yes, yes, yes, no |
+ * | gn-06..07 | 01-06..07  | 60, 70 | 0.06, 0.07 | no           | yes               |
+ * | gn-08     | 2026-01-08 |     80 | 0.08       | yes          | no                |
+ * | gn-09..10 | 01-09..10  | 90,100 | 0.09, 0.10 | yes          | yes               |
+ * | gn-11     | 2026-01-11 | 0 views: no share rate (NULL, not 0) | yes |        |
+ * | gn-young  | 2026-05-20 | 12 days old at asOf: not yet at 30   | yes |        |
+ * | gn-other  | 2026-01-03 | another channel, share rate 0.9      | yes |        |
+ *
+ * gn-01 also has a reach row (1,000 impressions at 5% CTR), 5,000 seconds of
+ * watch time, 3 comments and 10 subscribers gained, so each per-video
+ * measure has one hand-computed value; gn-02 has none of those, so its CTR,
+ * duration and conversion are NULL — not measured, never zero.
+ *
+ * `asOf` 2026-06-01; checkpoint 30 days.
+ */
+const GN_VIDEOS: ReadonlyArray<{
+  id: string;
+  published: string;
+  views: number;
+  shares: number;
+  tags: string[];
+  connection?: string;
+}> = [
+  ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => ({
+    id: `gn-${String(n).padStart(2, '0')}`,
+    published: `2026-01-${String(n).padStart(2, '0')}`,
+    views: 1000,
+    shares: n * 10,
+    tags: [
+      'topic:ai',
+      n === 1 || n >= 8 ? 'result_first:yes' : 'result_first:no',
+      n === 5 || n === 8 ? 'face_present:no' : 'face_present:yes',
+    ],
+  })),
+  {
+    id: 'gn-11',
+    published: '2026-01-11',
+    views: 0,
+    shares: 0,
+    tags: ['topic:ai', 'result_first:yes'],
+  },
+  {
+    id: 'gn-young',
+    published: '2026-05-20',
+    views: 1000,
+    shares: 900,
+    tags: ['topic:ai', 'result_first:yes'],
+  },
+  {
+    id: 'gn-other',
+    published: '2026-01-03',
+    views: 1000,
+    shares: 900,
+    tags: ['topic:ai', 'result_first:yes'],
+    connection: GN_OTHER_CHANNEL,
+  },
+];
+
+async function clearGenomeFixture(channels: string[]): Promise<void> {
+  await clearFixtureRows([GN_PROJECT], channels);
+  await getClickHouseClient().command({
+    query: 'ALTER TABLE video_reach_daily DELETE WHERE project_id = {p:UUID}',
+    query_params: { p: GN_PROJECT },
+    clickhouse_settings: { mutations_sync: '2' },
+  });
+}
+
+/**
+ * Every figure below is worked out by hand from the table above, never read
+ * back from the query. quantileExactInclusive interpolates at (n − 1)·p.
+ */
+async function genomeSteps() {
+  const channels = [GN_CHANNEL, GN_OTHER_CHANNEL];
+  const scope = {
+    accountId: GN_ACCOUNT,
+    connectionId: GN_CHANNEL,
+    formatFamily: 'long_horizontal' as const,
+  };
+  const asOf = '2026-06-01 00:00:00';
+  const measures = (measure: SegmentMeasure) =>
+    querySegmentVideoMeasures({ scope, measure, checkpointDays: 30, asOf });
+
+  await step('genome: seed', async () => {
+    await clearGenomeFixture(channels);
+
+    await insertVideoDims(
+      GN_VIDEOS.map((video) => ({
+        video_id: video.id,
+        project_id: GN_PROJECT,
+        account_id: GN_ACCOUNT,
+        episode_id: EPISODE,
+        connection_id: video.connection ?? GN_CHANNEL,
+        platform: 'youtube' as const,
+        content_type: 'full',
+        language: 'en',
+        channel_language: 'en',
+        title: video.id,
+        published_at: `${video.published} 00:00:00`,
+        episode_duration_seconds: 600,
+        asset_duration_seconds: 300,
+        tags: video.tags,
+      })),
+    );
+
+    await insertVideoMetrics(
+      GN_VIDEOS.map(
+        (video): VideoMetric => ({
+          project_id: GN_PROJECT,
+          video_id: video.id,
+          platform: 'youtube',
+          metric_date: nextDay(video.published),
+          views: video.views,
+          likes: 0,
+          comments: video.id === 'gn-01' ? 3 : 0,
+          shares: video.shares,
+          saves: null,
+          watch_time_seconds: video.id === 'gn-01' ? 5000 : null,
+          subscribers_gained: video.id === 'gn-01' ? 10 : null,
+          subscribers_lost: 0,
+          metric_source: 'analytics_api',
+          engaged_views: null,
+          extra_metrics: '{}',
+        }),
+      ),
+    );
+
+    await insertVideoReachDaily([
+      {
+        project_id: GN_PROJECT,
+        video_id: 'gn-01',
+        platform: 'youtube',
+        metric_date: '2026-01-02',
+        impressions: 1000,
+        impressions_ctr: 0.05,
+      },
+    ]);
+
+    return `${GN_VIDEOS.length} videos`;
+  });
+
+  await step(
+    'genome: per-video share rate is the segment query’s, NULL at zero views',
+    async () => {
+      const rows = await measures('share_rate');
+
+      // gn-young is 12 days old; gn-other is another channel.
+      expectEqual(
+        'videos',
+        rows.map((row) => row.videoId),
+        [
+          'gn-01',
+          'gn-02',
+          'gn-03',
+          'gn-04',
+          'gn-05',
+          'gn-06',
+          'gn-07',
+          'gn-08',
+          'gn-09',
+          'gn-10',
+          'gn-11',
+        ],
+      );
+      expectClose('gn-03', rows[2]!.value ?? Number.NaN, 0.03);
+      expectEqual('gn-11', rows[10]!.value, null);
+      expectEqual('family', rows[0]!.formatFamily, 'long_horizontal');
+      expectEqual('duration', rows[0]!.assetDurationSeconds, 300);
+      expectEqual('tags', rows[0]!.tags, [
+        'topic:ai',
+        'result_first:yes',
+        'face_present:yes',
+      ]);
+
+      return '11 eligible, gn-11 unmeasured';
+    },
+  );
+
+  await step('genome: each stage measure, by hand, for one video', async () => {
+    const firstTwo = async (measure: SegmentMeasure) => {
+      const rows = await measures(measure);
+      return [rows[0]!.value, rows[1]!.value];
+    };
+
+    // gn-01: 1,000 impressions at 5%; 5,000 s over 1,000 views; 3 comments;
+    // 10 subscribers. gn-02 has no reach row, watch time or subscriber
+    // figure: NULL. Its 0 comments on 1,000 views is a real 0.
+    expectEqual('impressions', await firstTwo('impressions'), [1000, null]);
+    // impressions_ctr is Float32: 0.05 reads back as 0.0500000007.
+    const [ctr, noCtr] = await firstTwo('impressions_ctr');
+    expectClose('ctr', ctr ?? Number.NaN, 0.05);
+    expectEqual('no ctr', noCtr, null);
+    expectEqual('duration', await firstTwo('average_view_duration'), [5, null]);
+    expectEqual('comments', await firstTwo('comment_rate'), [0.003, 0]);
+    expectEqual('conversion', await firstTwo('subscriber_conversion'), [
+      0.01,
+      null,
+    ]);
+
+    return 'impressions, ctr, duration, comments, conversion';
+  });
+
+  await step(
+    'genome: the segment query’s measure median agrees with the genome’s',
+    async () => {
+      const segmentArgs = {
+        scope,
+        minVideos: 1,
+        checkpointDays: 30,
+        asOf,
+        measure: 'share_rate' as const,
+      };
+      const segments = await querySegmentPerformance({
+        ...segmentArgs,
+        segment: { kind: 'tag', dimension: 'result_first' },
+      });
+      const all = await querySegmentPerformance({
+        ...segmentArgs,
+        segment: { kind: 'all' },
+      });
+      const yes = segments.find((row) => row.segment === 'result_first:yes');
+      const no = segments.find((row) => row.segment === 'result_first:no');
+
+      // yes: 0.01, 0.08, 0.09, 0.10 measured (gn-11 is NULL) → median
+      // 0.085, n 4 of 5 mature. no: 0.02..0.07 → 0.045, n 6. all:
+      // 0.01..0.10 → 0.055, p25 at position 2.25 → 0.0325, n 10 of 11.
+      expectEqual(
+        'yes n',
+        [yes?.matureVideoCount, yes?.measure?.measuredVideoCount],
+        [5, 4],
+      );
+      expectClose('yes median', yes?.measure?.median ?? Number.NaN, 0.085);
+      expectEqual('no n', no?.measure?.measuredVideoCount, 6);
+      expectClose('no median', no?.measure?.median ?? Number.NaN, 0.045);
+      expectEqual(
+        'all',
+        [all[0]?.segment, all[0]?.measure?.measuredVideoCount],
+        ['all', 10],
+      );
+      expectClose('all median', all[0]?.measure?.median ?? Number.NaN, 0.055);
+      expectClose('all p25', all[0]?.measure?.p25 ?? Number.NaN, 0.0325);
+      expectEqual('confidence', yes?.measure?.confidence, 'insufficient');
+
+      // The same figure computed in TypeScript from the per-video rows.
+      const yesValues = (await measures('share_rate'))
+        .filter((row) => row.tags.includes('result_first:yes'))
+        .flatMap((row) => (row.value === null ? [] : [row.value]));
+      expectClose(
+        'agreement',
+        quantileExactInclusive(yesValues, 0.5),
+        yes?.measure?.median ?? Number.NaN,
+      );
+
+      // Without a measure the row is what it always was.
+      const plain = await querySegmentPerformance({
+        scope,
+        segment: { kind: 'all' },
+        minVideos: 1,
+        checkpointDays: 30,
+        asOf,
+      });
+      expectEqual('no measure', plain[0]?.measure, null);
+
+      return 'yes 0.085 (n=4), no 0.045 (n=6), all 0.055 (n=10)';
+    },
+  );
+
+  await step(
+    'genome: result_first discriminates, face_present does not, by hand',
+    async () => {
+      const rows = await measures('share_rate');
+      const analysis = analyseGenome({
+        videos: rows.map((row) => ({
+          videoId: row.videoId,
+          connectionId: row.connectionId,
+          platform: 'youtube',
+          formatFamily: row.formatFamily ?? 'long_horizontal',
+          assetDurationSeconds: row.assetDurationSeconds,
+          tags: row.tags,
+          value: row.value,
+        })),
+        stage: 'transmission',
+        signal: 'share_rate',
+        checkpointDays: 30,
+        control: 'controlled',
+        provenance: metricProvenanceFor('share_rate', 'youtube'),
+      });
+
+      // Winners gn-06..10 (above 0.055), losers gn-01..05.
+      // result_first:yes — winners 3/5, losers 1/5: a 40-point gap.
+      // face_present:yes — winners 4/5, losers 4/5: no finding.
+      const finding = analysis.findings.find(
+        (row) => row.attribute.tag === 'result_first:yes',
+      );
+      const face = analysis.strata[0]?.nonFindings.find(
+        (row) => row.attribute.tag === 'face_present:yes',
+      );
+      const evidence = finding?.evidence;
+
+      expectEqual('unmeasured', analysis.unmeasuredCount, 1);
+      expectEqual('face', face?.reason, 'common_to_winners_and_losers');
+      expectEqual(
+        'prevalence',
+        [finding?.prevalence.winners, finding?.prevalence.losers],
+        [0.6, 0.2],
+      );
+      expectEqual('n', [evidence?.n, evidence?.cohortN], [4, 10]);
+      expectClose('typical', evidence?.typical ?? Number.NaN, 0.055);
+      expectClose('median', evidence?.attributeMedian ?? Number.NaN, 0.085);
+      expectClose(
+        'observed',
+        evidence?.observedLift ?? Number.NaN,
+        0.085 / 0.055,
+      );
+      // n = 4: 4/19 of the distance from 1x survives.
+      expectClose(
+        'adjusted',
+        evidence?.adjustedLift ?? Number.NaN,
+        1 + (0.085 / 0.055 - 1) * (4 / 19),
+      );
+      expectEqual('level', evidence?.level, 'observation');
+      expectEqual(
+        'successful',
+        evidence?.successful.map((row) => row.videoId),
+        ['gn-10', 'gn-09', 'gn-08'],
+      );
+      expectEqual(
+        'unsuccessful',
+        evidence?.unsuccessful.map((row) => row.videoId),
+        ['gn-01'],
+      );
+      expectEqual('claim', evidence?.claim.strength, 'controlled_association');
+
+      return `1.55x observed, ${evidence?.adjustedLift.toFixed(3)}x adjusted on n=4`;
+    },
+  );
+
+  await step('genome: cleanup', () => clearGenomeFixture(channels));
+}
+
 async function main() {
   if (!isClickHouseEnabled()) {
     console.error(
@@ -5946,6 +6303,7 @@ async function main() {
   await channelExperimentSteps();
   await xSteps();
   await revenueSteps();
+  await genomeSteps();
   await handComputedSteps();
   await fetchDatedSteps();
   await observedCoverageSteps();

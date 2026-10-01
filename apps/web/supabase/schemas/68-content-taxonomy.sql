@@ -15,10 +15,29 @@ create table if not exists public.content_tags (
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   unique (account_id, dimension, slug),
-  check (dimension in ('topic', 'format', 'thumbnail_style', 'hook_type'))
+  -- FILM-1717 (20261001113701): taxonomy, then the genome's observable
+  -- attributes. The list is TAG_DIMENSIONS in genome-attributes.ts.
+  constraint content_tags_dimension_check check (dimension in (
+    'topic', 'format', 'thumbnail_style',
+    'hook_type', 'opening_visual', 'first_sentence', 'face_present',
+    'text_present', 'cuts_per_minute', 'scene_changes', 'question_first_3s',
+    'result_first'
+  )),
+  -- Closed values for the yes/no and banded dimensions (CLOSED_TAG_VALUES).
+  constraint content_tags_genome_closed_values_check check (
+    case dimension
+      when 'face_present' then slug in ('yes', 'no')
+      when 'text_present' then slug in ('yes', 'no')
+      when 'question_first_3s' then slug in ('yes', 'no')
+      when 'result_first' then slug in ('yes', 'no')
+      when 'cuts_per_minute' then slug in ('under-5', '5-to-15', '15-to-30', 'over-30')
+      when 'scene_changes' then slug in ('none', '1-to-3', '4-to-10', 'over-10')
+      else true
+    end
+  )
 );
 
-comment on table public.content_tags is 'Controlled per-account taxonomy for content analysis (topic/format/thumbnail_style/hook_type)';
+comment on table public.content_tags is 'Controlled per-account vocabulary for content analysis: taxonomy (topic/format/thumbnail_style) and genome attributes (FILM-1717)';
 comment on column public.content_tags.slug is 'Stable machine key; joined into ClickHouse video_dim.tags as dimension:slug';
 
 create index if not exists idx_content_tags_account_dimension

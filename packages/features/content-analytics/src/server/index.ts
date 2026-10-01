@@ -210,6 +210,9 @@ export type {
   SegmentPerformanceResult,
 } from './segment-actions';
 
+export { getGenomeFindingsAction } from './genome-actions';
+export type { GenomeFindingsResult, GenomeRefusal } from './genome-actions';
+
 export { captureSubscriberSnapshots } from './subscriber-snapshot';
 export { captureChannelReachWindows } from './channel-reach-windows';
 export type { ChannelReachCaptureResult } from './channel-reach-windows';

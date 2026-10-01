@@ -427,3 +427,87 @@ export type {
   StagePatternId,
   StageRequirement,
 } from './lib/stage-diagnosis';
+
+// The content genome (FILM-1717): creative mechanisms against outcomes,
+// discriminated against comparable losers, every claim carrying its
+// Evidence. Pure; the rows come from querySegmentVideoMeasures.
+export {
+  CLOSED_TAG_VALUES,
+  DURATION_BANDS,
+  DURATION_DIMENSION,
+  GENOME_DIMENSION_STAGE,
+  GENOME_OBSERVABLE_DIMENSIONS,
+  TAG_DIMENSIONS,
+  TAXONOMY_DIMENSIONS,
+  closedValuesFor,
+  durationAttribute,
+  durationBandOf,
+  parseVideoTag,
+  splitVideoTags,
+} from './lib/genome-attributes';
+export type {
+  DurationBand,
+  GenomeAttribute,
+  GenomeDimension,
+  GenomeObservableDimension,
+  PerformanceOutcome,
+  TagDimension,
+  TaxonomyDimension,
+  TaxonomyTag,
+  VideoTag,
+} from './lib/genome-attributes';
+export {
+  SEGMENT_MEASURES,
+  isSegmentMeasure,
+  metricProvenanceFor,
+  stageMeasureFor,
+} from './lib/genome-measures';
+export type {
+  MetricProvenance,
+  MetricProvenanceInput,
+  SegmentMeasure,
+  StageMeasure,
+  StageMeasureRefusal,
+} from './lib/genome-measures';
+export {
+  CLAIM_WORDING,
+  EVIDENCE_LEVEL_BY_CONFIDENCE,
+  EVIDENCE_LEVEL_LABEL,
+  concludedChangeLogEntry,
+  concludedChannelExperiment,
+  evidenceLabel,
+  liftPair,
+  rankingDistance,
+  recommendFrom,
+  shrinkageFactor,
+} from './lib/genome-evidence';
+export type {
+  CausalBacking,
+  ChangeLogRow,
+  ChannelExperimentRow,
+  ClaimStrength,
+  ComparableDefinition,
+  ComparableVideo,
+  ConcludedChangeLogEntry,
+  ConcludedChannelExperiment,
+  ControlledComparable,
+  Evidence,
+  EvidenceLevel,
+  EvidenceSourceRow,
+  ExperimentOutcome,
+  GenomeFinding,
+  Recommendation,
+} from './lib/genome-evidence';
+export {
+  MIN_PREVALENCE_GAP,
+  analyseGenome,
+  quantileExactInclusive,
+} from './lib/genome';
+export type {
+  GenomeAnalysis,
+  GenomeControl,
+  GenomeNonFinding,
+  GenomeNonFindingReason,
+  GenomeStratum,
+  GenomeVideo,
+} from './lib/genome';
