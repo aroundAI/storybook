@@ -173,7 +173,10 @@ async function queryLatestSnapshotsSingle(input: {
       -- NULLs and would hand back an older reach, making the next delta
       -- cover several days while dated to one.
       argMax(tuple(accounts_reached), fetched_at).1 as accounts_reached,
-      argMax(tuple(reposts), fetched_at).1 as reposts
+      argMax(tuple(reposts), fetched_at).1 as reposts,
+      argMax(tuple(all_surface_views), fetched_at).1 as all_surface_views,
+      argMax(tuple(all_surface_likes), fetched_at).1 as all_surface_likes,
+      argMax(tuple(all_surface_comments), fetched_at).1 as all_surface_comments
     FROM (
       SELECT * FROM video_snapshots
       WHERE video_id IN {videoIds: Array(String)}
@@ -206,6 +209,14 @@ async function queryLatestSnapshotsSingle(input: {
       accounts_reached:
         row.accounts_reached == null ? null : Number(row.accounts_reached),
       reposts: row.reposts == null ? null : Number(row.reposts),
+      all_surface_views:
+        row.all_surface_views == null ? null : Number(row.all_surface_views),
+      all_surface_likes:
+        row.all_surface_likes == null ? null : Number(row.all_surface_likes),
+      all_surface_comments:
+        row.all_surface_comments == null
+          ? null
+          : Number(row.all_surface_comments),
     });
   }
 

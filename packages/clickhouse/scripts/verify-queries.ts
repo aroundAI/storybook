@@ -282,6 +282,9 @@ async function seed() {
         subscribers_gained: 3,
         accounts_reached: null,
         reposts: null,
+        all_surface_views: null,
+        all_surface_likes: null,
+        all_surface_comments: null,
       },
     ]),
   );
@@ -1477,6 +1480,11 @@ async function assertions() {
         accounts_reached: accountsReached,
         // Migration 018: reposts follow the same rule as reach.
         reposts: accountsReached === null ? null : accountsReached / 100,
+        // Migration 019: so do the all-surface aggregates.
+        all_surface_views:
+          accountsReached === null ? null : accountsReached * 2,
+        all_surface_likes: accountsReached === null ? null : 0,
+        all_surface_comments: accountsReached === null ? null : 0,
       });
 
       await getClickHouseClient().insert({
@@ -1510,7 +1518,14 @@ async function assertions() {
           `reposts: expected 52 and null, got ${keptReposts} and ${lostReposts}`,
         );
       }
-      return `kept=${kept} lost=${lost} lostWatch=${lostWatch} reposts=${keptReposts}/${lostReposts}`;
+      const keptAll = snaps.get('reach-kept')?.all_surface_views;
+      const lostAll = snaps.get('reach-lost')?.all_surface_views;
+      if (keptAll !== 10400 || lostAll !== null) {
+        throw new Error(
+          `all_surface_views: expected 10400 and null, got ${keptAll} and ${lostAll}`,
+        );
+      }
+      return `kept=${kept} lost=${lost} lostWatch=${lostWatch} reposts=${keptReposts}/${lostReposts} allSurfaceViews=${keptAll}/${lostAll}`;
     },
   );
 
@@ -1635,6 +1650,9 @@ async function assertions() {
           subscribers_gained: 0,
           accounts_reached: 5900,
           reposts: 0,
+          all_surface_views: null,
+          all_surface_likes: null,
+          all_surface_comments: null,
         },
       ]);
 
@@ -2555,6 +2573,8 @@ const PRESENCE_PROBES: Record<MetricFamily, string | null> = {
   // Told apart from engagement by the column, as watch_time is.
   reposts: `SELECT DISTINCT platform FROM video_metrics
             WHERE ${NOT_NOISE} AND reposts IS NOT NULL`,
+  all_surface_engagement: `SELECT DISTINCT platform FROM video_metrics
+            WHERE ${NOT_NOISE} AND all_surface_views IS NOT NULL`,
   // Families that share video_metrics are told apart by their column: a row
   // existing says nothing about whether watch time was measured.
   watch_time: `SELECT DISTINCT platform FROM video_metrics

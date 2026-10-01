@@ -2,6 +2,11 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import {
+  INSTAGRAM_AGGREGATES,
+  INSTAGRAM_AGGREGATE_FIELDS,
+} from '@kit/clickhouse';
+
 /**
  * FILM-1712, the other half of FILM-1721's rule. `platform-field-names.test.ts`
  * stops a request asking for a field the reference does not document. This
@@ -86,11 +91,20 @@ const CASES = [
 
       if (!nodeFields) throw new Error('no media-info field list');
 
+      // FILM-1722: the aggregates are requested from the registry's list,
+      // never spelled out, so only a defined aggregate can be asked for.
+      const aggregates = source.includes(',${INSTAGRAM_AGGREGATE_FIELDS}`')
+        ? INSTAGRAM_AGGREGATES.map((aggregate) => aggregate.field)
+        : [];
+
       return {
         metrics: new Set(
           [...declaration.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]!),
         ),
-        mediaInfo: new Set(nodeFields.split(',')),
+        mediaInfo: new Set([
+          ...nodeFields.split(',').filter(Boolean),
+          ...aggregates,
+        ]),
       };
     },
   },
@@ -127,6 +141,33 @@ describe('a provider result claims only what its request asked for', () => {
           .map(([name, fields]) => `${name}: ${[...fields].join(', ')}`)
           .join('; ')})`,
       ).toEqual([]);
+    },
+  );
+});
+
+// FILM-1722: Instagram's all-surface aggregates are requested only once
+// defined in INSTAGRAM_AGGREGATES, and never land in views, likes or comments.
+describe('Instagram aggregates (FILM-1722)', () => {
+  const source = read('instagram/instagram-insights.ts');
+  const block = totalsBlock(source);
+
+  it('requests them from the registry list, never by name', () => {
+    const literal =
+      /\/\$\{mediaId\}\?fields=([a-z_,]+)/.exec(source)?.[1] ?? '';
+
+    expect(source).toContain(',${INSTAGRAM_AGGREGATE_FIELDS}`');
+    expect(literal.split(',').filter((f) => /^total_/.test(f))).toEqual([]);
+  });
+
+  it.each(INSTAGRAM_AGGREGATES)(
+    'stores $field in its own total, not in views, likes or comments',
+    ({ field }) => {
+      const reads = [...block.matchAll(/(\w+):\s*mediaInfo\.(\w+)/g)]
+        .filter((m) => m[2] === field)
+        .map((m) => m[1]);
+
+      expect(reads).toHaveLength(1);
+      expect(reads[0]).toMatch(/^allSurface/);
     },
   );
 });

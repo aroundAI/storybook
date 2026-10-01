@@ -800,6 +800,21 @@ async function ingestCumulativeSnapshot(
       platform === 'instagram'
         ? (analytics as InstagramInsightsResult).totals.reposts
         : null,
+    // Instagram's all-surface aggregates (FILM-1722), in their own columns.
+    ...(platform === 'instagram'
+      ? {
+          all_surface_views: (analytics as InstagramInsightsResult).totals
+            .allSurfaceViews,
+          all_surface_likes: (analytics as InstagramInsightsResult).totals
+            .allSurfaceLikes,
+          all_surface_comments: (analytics as InstagramInsightsResult).totals
+            .allSurfaceComments,
+        }
+      : {
+          all_surface_views: null,
+          all_surface_likes: null,
+          all_surface_comments: null,
+        }),
   };
 
   const writeContext = {

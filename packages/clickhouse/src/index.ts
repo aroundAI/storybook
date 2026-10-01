@@ -34,6 +34,7 @@ export type {
 
 export type {
   AggregatedTotals,
+  AllSurfaceAggregates,
   AnalyticsPlatform,
   AudienceDimension,
   ChannelDaily,
@@ -190,6 +191,8 @@ export type {
 // What "a view" means per platform, and when it changed (FILM-1722). Pure,
 // so a chart can ask where a boundary falls without reaching the server.
 export {
+  INSTAGRAM_AGGREGATES,
+  INSTAGRAM_AGGREGATE_FIELDS,
   PLATFORM_IDS,
   VIEW_DEFINITIONS,
   comparableAcross,
@@ -198,7 +201,9 @@ export {
   viewsDenominatorFor,
 } from './lib/view-definitions';
 export type {
+  AllSurfaceColumn,
   ContinuousAlternative,
+  InstagramAggregate,
   PlatformId,
   VendorFact,
   ViewComparability,

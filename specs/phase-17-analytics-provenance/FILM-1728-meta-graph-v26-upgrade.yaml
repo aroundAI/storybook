@@ -64,7 +64,7 @@ acceptance_criteria:
     evidence: "FILM-1731, a DRAFT spec on its own branch docs/film-1731-instagram-ai-label (lead's decision, 2026-10-01): is the AI info label required, expected or optional for us, answered before onboarding other creators"
   - text: "(Follow-up) FILM-1720 and FILM-1712 pointed at §4.3 and §4.4"
     met: true
-    evidence: "specs/phase-17-analytics-provenance/FILM-1720-facebook-analytics.yaml:80; specs/phase-17-analytics-provenance/FILM-1712-metric-recovery.yaml:131 (#493)"
+    evidence: "specs/phase-17-analytics-provenance/FILM-1720-facebook-analytics.yaml:80; specs/phase-17-analytics-provenance/FILM-1712-metric-recovery.yaml:128 (#493)"
 open_questions: []
 notes: |
   ## Implementation (2026-10-01, #493)

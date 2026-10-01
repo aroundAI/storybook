@@ -28,6 +28,13 @@ const mockClickHouseClient = {
   command: vi.fn(),
 };
 
+/** FILM-1722's aggregates, not measured: every row that predates them. */
+const ALL_SURFACE_UNMEASURED = {
+  all_surface_views: null,
+  all_surface_likes: null,
+  all_surface_comments: null,
+};
+
 describe('@kit/clickhouse', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -150,6 +157,7 @@ describe('@kit/clickhouse', () => {
             subscribers_gained: 30,
             accounts_reached: null,
             reposts: null,
+            ...ALL_SURFACE_UNMEASURED,
           },
         ];
 
@@ -203,6 +211,7 @@ describe('@kit/clickhouse', () => {
           // A row from before migration 015 carries no reach: not measured.
           accounts_reached: null,
           reposts: null,
+          ...ALL_SURFACE_UNMEASURED,
         });
 
         const call = mockClickHouseClient.query.mock.calls[0]![0];

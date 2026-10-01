@@ -46,6 +46,7 @@ export const ANALYTICS_PLATFORMS = [
 export const METRIC_FAMILIES = [
   'engagement', // views/likes/comments/shares     → video_metrics
   'reposts', // a post's reposts                 → video_metrics
+  'all_surface_engagement', // incl. boosted     → video_metrics
   'watch_time', //                                 → video_metrics
   'revenue', //                                    → video_metrics
   'traffic_sources', //                            → video_traffic_sources
@@ -463,6 +464,44 @@ export const CAPABILITY_MATRIX: Record<
         section: 'Instagram',
         surface: 'instagram/media-fields',
         fields: ['reposts_count'],
+      },
+    },
+  },
+
+  // Not engagement: these fold in boosted placements (and replays, for
+  // views), so they are a different number from the engagement family's
+  // views, likes and comments. Defined in INSTAGRAM_AGGREGATES (FILM-1722).
+  all_surface_engagement: {
+    youtube: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...YOUTUBE_ANALYTICS,
+      note: 'YouTube reports no totals that fold in paid placements.',
+      reference: { section: 'YouTube', surface: null, fields: [] },
+    },
+    tiktok: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...TIKTOK_DISPLAY,
+      note: 'TikTok reports no totals that fold in paid placements.',
+      reference: { section: 'TikTok', surface: null, fields: [] },
+    },
+    instagram: {
+      level: 'derived',
+      table: 'video_metrics',
+      method: 'snapshot_delta_fetch_day',
+      ...INSTAGRAM_MEDIA,
+      note: 'Instagram also reports views, likes and comments across every surface, boosted placements included (and replays, for views), so they run higher than the ordinary figures and are kept apart from them; each day shows the increase since we last checked, dated to the day we checked; Stories show none.',
+      reference: {
+        section: 'Instagram',
+        surface: 'instagram/media-fields',
+        fields: [
+          'total_views_count',
+          'total_like_count',
+          'total_comments_count',
+        ],
       },
     },
   },

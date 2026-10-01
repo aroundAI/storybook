@@ -74,6 +74,16 @@ export interface InstagramTotals {
    * REELS (FILM-1712). Null for a Story, or when Meta omits it.
    */
   reposts: number | null;
+  /**
+   * Lifetime all-surface aggregates (FILM-1722, INSTAGRAM_AGGREGATES):
+   * `total_views_count`, `total_like_count`, `total_comments_count`. They
+   * include boosted placements (and replays, for views), so they are never
+   * `views`, `likes` or `comments`. Null when Meta omits one (a Story, or
+   * views on an image).
+   */
+  allSurfaceViews: number | null;
+  allSurfaceLikes: number | null;
+  allSurfaceComments: number | null;
 }
 
 /**

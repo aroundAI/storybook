@@ -86,7 +86,24 @@ export interface VideoMetric {
    * REELS only; **null means not measured**.
    */
   reposts?: number | null;
+  /** The day's increase in Instagram's all-surface aggregates (migration 019). */
+  all_surface_views?: number | null;
+  all_surface_likes?: number | null;
+  all_surface_comments?: number | null;
   extra_metrics: string;
+}
+
+/**
+ * Instagram's all-surface aggregates (FILM-1722, migration 019):
+ * `total_views_count`, `total_like_count`, `total_comments_count`. They fold
+ * in boosted placements (and replays, for views), so they are never `views`,
+ * `likes` or `comments`. Lifetime in a snapshot; **null means not measured**
+ * — every YouTube and TikTok row, a Story, or a field Meta omitted.
+ */
+export interface AllSurfaceAggregates {
+  all_surface_views: number | null;
+  all_surface_likes: number | null;
+  all_surface_comments: number | null;
 }
 
 /**
@@ -110,12 +127,17 @@ export type YouTubeVideoMetric = Omit<
   | 'dislikes'
   | 'accounts_reached'
   | 'reposts'
+  | keyof AllSurfaceAggregates
 > & {
   platform: 'youtube';
   /** YouTube reports no per-video unique reach. */
   accounts_reached?: null;
   /** YouTube reports no reposts. */
   reposts?: null;
+  /** Instagram-only aggregates. */
+  all_surface_views?: null;
+  all_surface_likes?: null;
+  all_surface_comments?: null;
   metric_source: MetricSource;
   /** YouTube has no saves metric (KB-114): not measured, never 0. */
   saves: null;
@@ -173,7 +195,7 @@ export interface VideoAudienceRow {
  * Baseline store for TikTok/Instagram delta derivation, whose APIs only
  * expose lifetime counters.
  */
-export interface VideoSnapshot {
+export interface VideoSnapshot extends AllSurfaceAggregates {
   project_id: string;
   video_id: string;
   platform: AnalyticsPlatform;
@@ -312,7 +334,7 @@ export interface VideoDim {
 /**
  * Latest-snapshot totals returned by queryLatestSnapshots, keyed by video_id.
  */
-export interface SnapshotTotals {
+export interface SnapshotTotals extends AllSurfaceAggregates {
   snapshot_date: string;
   views: number;
   likes: number;

@@ -206,12 +206,14 @@ describe('Meta sandbox: Instagram reads, through the app provider', () => {
     now = T0 + 5 * DAY;
     const info = await graph(`/${SEEDED_REEL}`, {
       access_token: pageToken,
-      fields: 'media_type,media_product_type,reposts_count',
+      fields:
+        'media_type,media_product_type,reposts_count,total_views_count,total_like_count,total_comments_count',
     });
     expect(
       undeclaredKeys(entry('GET', '/{version}/{ig-media-id}'), info.body),
     ).toEqual([]);
-    const reposts = (info.body as { reposts_count: number }).reposts_count;
+    const node = info.body as Record<string, number>;
+    const reposts = node.reposts_count!;
 
     const raw = await graph(`/${SEEDED_REEL}/insights`, {
       access_token: pageToken,
@@ -252,6 +254,20 @@ describe('Meta sandbox: Instagram reads, through the app provider', () => {
     // the shares that carry them.
     expect(insights.totals.reposts).toBe(reposts);
     expect(reposts).toBeLessThanOrEqual(value.shares!);
+    // FILM-1722: the all-surface aggregates ride on the same call, land in
+    // their own totals, and fold in boosted placements — never less than the
+    // organic figure, and never in place of it.
+    expect(insights.totals).toMatchObject({
+      allSurfaceViews: node.total_views_count,
+      allSurfaceLikes: node.total_like_count,
+      allSurfaceComments: node.total_comments_count,
+      views: value.views,
+      likes: value.likes,
+      comments: value.comments,
+    });
+    expect(node.total_views_count).toBeGreaterThanOrEqual(value.views!);
+    expect(node.total_like_count).toBeGreaterThanOrEqual(value.likes!);
+    expect(node.total_comments_count).toBeGreaterThanOrEqual(value.comments!);
   });
 
   it('account reach: unique, not additive, split, and never over 30 days', async () => {
