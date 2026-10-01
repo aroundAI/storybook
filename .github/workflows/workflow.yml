@@ -633,7 +633,10 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2, 3, 4, 5]
-    timeout-minutes: 45
+    # 60, not 45: with #518's per-guard limits a healthy shard 1 now runs
+    # 43-47 minutes, and two queue runs (#519, #504) were cancelled at 45 with
+    # every guard so far RED. Billing is per minute used, so headroom is free.
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     # CI minutes are rationed: the E2E mutation guards run with the other
     # heavy jobs, in the merge queue (or on a dispatch), not on PR pushes.
