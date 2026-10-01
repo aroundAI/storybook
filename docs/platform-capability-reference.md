@@ -59,7 +59,7 @@ _Verified: 2026-10-01_
 | TikTok (deep) | **Business API** `/business/video/list/` | not implemented; separate app | included | stops updating 365d after publish |
 | Instagram | Graph `/{ig-media-id}/insights` | `instagram_manage_insights` **requested since FILM-1711; App Review + Business Verification outstanding** | included | media ~2y; account ~90d (*inferred*) |
 | Facebook | Graph `/{video-id}/video_insights` + the video's Page post insights | `read_insights` + `pages_manage_engagement` **in the Meta config since FILM-1720, withheld until `ANALYTICS_SCOPES_ENABLED` names `facebook`; App Review outstanding**. **No reach or impressions since Graph v26.0** (FILM-1728); `post_media_view` and `post_total_media_view_unique` in their place | included | 2 years |
-| X (degraded) | `media.non_public_metrics` via posts lookup | **held** — `tweet.read` + `users.read` are requested for publishing; no provider | metered | **30d from post creation** |
+| X (degraded) | `media.non_public_metrics` via posts lookup | **held** — `tweet.read` + `users.read` are requested for publishing; provider built and dark (FILM-1727) | metered — $0.005 per post read | **30d from post creation** |
 | X (full) | `/2/media/analytics` | **held** (same scopes) | **tier gated — Enterprise** (*inferred*) | **undocumented** |
 
 What each surface needs is declared in code, in
@@ -708,6 +708,32 @@ Via the ordinary posts lookup: `media.non_public_metrics` carries `playback_0_co
 separately in the field index for exactly this reason.
 
 No watch time, no CTA clicks, no time series.
+
+The post itself carries `public_metrics` (`retweet_count`, `reply_count`,
+`like_count`, `quote_count`, `bookmark_count`, `impression_count`) and, with user
+context, `non_public_metrics` (`impression_count`, `url_link_clicks`,
+`user_profile_clicks`, `engagements`) — the
+[data dictionary](https://docs.x.com/x-api/fundamentals/data-dictionary) and the
+[metrics page](https://docs.x.com/x-api/fundamentals/metrics), both read
+2026-10-01. The metrics page lists `non_public_metrics` without `impression_count`;
+the data dictionary includes it. We read neither copy of it (FILM-1727).
+
+`GET /2/tweets` takes 1 to 100 ids a request
+([posts lookup](https://docs.x.com/x-api/posts/get-posts-by-ids), read 2026-10-01).
+
+**What a read costs** ([pricing](https://docs.x.com/x-api/getting-started/pricing),
+read 2026-10-01): *"Posts: Read"* is **$0.005 per resource**, *"Charged per resource
+returned in the response"* — per post returned, not per request, so batching saves
+nothing. A post read twice in one UTC day is charged once (*"24-hour UTC day
+window"*). Pay-per-use is *"capped at 3 million Post reads per monthly billing
+cycle"*. *"Owned Reads"* — an app reading its own owner's data — are $0.001 per
+resource, but only on the twelve endpoints that page lists (`GET
+/2/users/{id}/tweets` among them); `GET /2/tweets` is not one. The page is silent on
+whether a media object expanded into `includes` is billed as a resource of its own.
+
+**What the docs do not say:** whether asking for `non_public_metrics` on a post older
+than 30 days fails the request, or returns the post without the field. FILM-1727
+never asks: the sync stops a day before the wall, so neither behaviour is relied on.
 
 ### The 30-day wall
 
@@ -1478,6 +1504,21 @@ follows
 unfollows
 ```
 
+<!-- fields: x/post-metrics source: https://docs.x.com/x-api/fundamentals/data-dictionary -->
+```text
+# A post's metric groups, read 2026-10-01 (data dictionary and metrics page).
+# public_metrics: no age limit. non_public_metrics: user context, 30 days.
+retweet_count              # public_metrics; X's "Reposts"
+reply_count                # public_metrics
+like_count                 # public_metrics
+quote_count                # public_metrics
+bookmark_count             # public_metrics
+impression_count           # public_metrics and non_public_metrics
+url_link_clicks            # non_public_metrics
+user_profile_clicks        # non_public_metrics
+engagements                # non_public_metrics
+```
+
 <!-- fields: x/media-object source: https://docs.x.com/x-api/fundamentals/data-dictionary -->
 ```text
 playback_0_count           # non_public_metrics and organic_metrics
@@ -1512,6 +1553,8 @@ id
 name
 username
 profile_image_url          # only when user.fields asks for it
+public_metrics             # only when user.fields asks for it; read 2026-10-01
+followers_count            # public_metrics; FILM-1727 does not read it yet
 ```
 
 <!-- fields: x/media-upload source: https://docs.x.com/x-api/media/media-upload-initialize -->
@@ -1560,6 +1603,7 @@ created_at
 author_id
 attachments
 media_keys
+attachments.media_keys     # the expansion that puts the video in includes.media (get-posts-by-ids, read 2026-10-01)
 public_metrics
 non_public_metrics
 organic_metrics

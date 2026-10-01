@@ -1,0 +1,35 @@
+{
+  "feature": "FILM-1727",
+  "mutations": [
+    {
+      "name": "X1 X reads run up to the 30-day wall itself",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/x-read-budget.ts",
+      "find": "export const X_LAST_READ_AGE_DAYS = X_NON_PUBLIC_WINDOW_DAYS - 2;",
+      "replace": "export const X_LAST_READ_AGE_DAYS = X_NON_PUBLIC_WINDOW_DAYS;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/x-read-budget.test.ts",
+      "pattern": "refuses from day 29"
+    },
+    {
+      "name": "X2 the daily X ceiling forgets the reads granted earlier in the run",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/x-read-budget.ts",
+      "find": "      readsToday: input.readsToday + read.length,",
+      "replace": "      readsToday: input.readsToday,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/x-read-budget.test.ts",
+      "pattern": "counts the reads granted earlier in the same run"
+    },
+    {
+      "name": "X14 the X provider reads a missing public metric as 0",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/twitter/x-analytics.ts",
+      "find": "  if (missing.length > 0) {\n    throw new Error(",
+      "replace": "  if (missing.length > 99) {\n    throw new Error(",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/x-analytics.test.ts",
+      "pattern": "refuses a response missing a required public metric"
+    }
+  ]
+}
