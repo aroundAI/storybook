@@ -35,7 +35,7 @@ acceptance_criteria:
     evidence: null
   - text: "`viewsPerVideo` counts videos with no metric rows"
     met: true
-    evidence: "field replaced by cohort medians (1b02afde), still a LEFT JOIN from the dimension side: `packages/clickhouse/src/queries-advanced.ts:773`; test `packages/clickhouse/__tests__/queries-advanced.test.ts:963`"
+    evidence: "field replaced by cohort medians (1b02afde), still a LEFT JOIN from the dimension side: `packages/clickhouse/src/queries-advanced.ts:773`; test `packages/clickhouse/__tests__/queries-advanced.test.ts:1005`"
   - text: "The taxonomy gate counts distinct tagged videos, not assignments"
     met: true
     evidence: null

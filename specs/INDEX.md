@@ -723,11 +723,11 @@ reason when not.
 | 14. Edit Suite v2 | 1 | 0 | 0 | 0 | 1 | 0 |
 | 15. Deep Analytics | 11 | 0 | 3 | 0 | 2 | 6 |
 | 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 17 |
-| 17. Analytics Provenance | 31 | 15 | 6 | 1 | 0 | 9 |
+| 17. Analytics Provenance | 31 | 14 | 6 | 1 | 0 | 10 |
 | 18. Vendor Sandbox | 6 | 0 | 0 | 0 | 0 | 6 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **234** | **15** | **62** | **1** | **54** | **102** |
+| **TOTAL** | **234** | **14** | **62** | **1** | **54** | **103** |
 
 No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose PR is open keeps the status it has on `main`.
 
@@ -742,7 +742,7 @@ No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose 
 | Edit Suite v2 (Ph 14) | 1 | 0 | 0 | 1 | 0 |
 | Deep Analytics (Ph 15) | 11 | 6 | 3 | 2 | 0 |
 | Workbook Parity (Ph 16) | 17 | 17 | 0 | 0 | 0 |
-| Provenance & Signal (Ph 17) | 31 | 9 | 6 | 0 | 16 |
+| Provenance & Signal (Ph 17) | 31 | 10 | 6 | 0 | 15 |
 | Vendor Sandbox (Ph 18) | 6 | 6 | 0 | 0 | 0 |
 | Public Sharing | 2 | 1 | 1 | 0 | 0 |
 
