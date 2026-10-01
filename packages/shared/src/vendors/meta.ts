@@ -1,47 +1,53 @@
 import { vendorUrl } from './resolver';
 
 /**
- * The one Meta Graph API version this repository calls (FILM-1723).
+ * The one Meta Graph API version this repository calls (FILM-1723, moved by
+ * FILM-1728).
  *
  * | | |
  * |---|---|
- * | Pinned | **v23.0** |
- * | Released | 2025-05-29 |
- * | Expires | **2027-10-08** - upgrade before then |
- * | Chosen | 2026-09-22 |
+ * | Pinned | **v26.0** |
+ * | Released | 2026-07-29 |
+ * | Expires | **2028-07-29 or later** - the guaranteed floor; Meta has not published the date |
+ * | Chosen | 2026-10-01 |
  *
  * **An expired Graph version does not fail, it is silently replaced** by the
- * oldest version still usable. Before this constant existed the OAuth dialog,
- * the token exchange and the token refresh asked for v18.0 (expired
- * 2026-01-26) and the publish lambdas for v19.0 (expired 2026-05-21); Meta
- * answered both as v20.0, itself expiring 2026-09-24, so the version in force
- * was about to change again without a commit. Measured 2026-09-21 by reading
- * the `facebook-api-version` response header, which is also how to check that
- * this pin is honoured:
+ * oldest version still usable. Before FILM-1723 the OAuth dialog, the token
+ * exchange and the token refresh asked for v18.0 and the publish lambdas for
+ * v19.0, and Meta answered both as v20.0 for eight months. On 2026-10-01 a
+ * request for the unreleased v27.0 came back as v21.0, so a typo would not
+ * fail either. The `facebook-api-version` response header says what was
+ * served: `metaFetch` reads it on every call and logs the first mismatch, and
+ * a person can check by hand:
  *
- *     curl -sI "https://graph.facebook.com/v23.0/me" | grep -i facebook-api-version
+ *     curl -sI "https://graph.facebook.com/v26.0/me" | grep -i facebook-api-version
  *
- * Why v23.0 and not the latest (v26.0): it is the only version this repository
- * had already chosen and run in production (Instagram insights), so analytics
- * requests are unchanged by the consolidation, and the token-refresh path
- * moves the shortest distance from what Meta was actually serving. v21-v23
- * change nothing on the OAuth, Page, publishing or container endpoints called
- * here. They do remove insights metrics - `video_views` in v21, and `plays`,
- * `impressions`, `clips_replays_count` and
- * `ig_reels_aggregated_all_plays_count` on 2025-04-21 for every version - none
- * of which this repository requests; `platform-field-names.test.ts` keeps it
- * that way.
+ * Why v26.0: the latest version, with the longest life. FILM-1723 took v23.0
+ * first as the minimal-diff pin; FILM-1728 read the v24.0, v25.0 and v26.0
+ * changelogs against every call made here and found nothing we call changed.
+ * v25.0 retired 41 Facebook insight metrics for every version, and v26.0 the
+ * `pretty`, `debug`, `If-None-Match`, `date_format` and root `?ids=`
+ * parameters; none is used, and the reference's forbidden block keeps it so.
+ * The findings are in `docs/platform-capability-reference.md`, one dated row
+ * per version.
  *
- * Meta retires a version roughly two years after release, so a bump is a
- * scheduled task: change the three constants below together, update the row in
- * `docs/platform-capability-reference.md`, read the changelog for every version
- * crossed, and verify a token refresh against a live connection.
- * `vendor-api-versions.test.ts` binds the dates to that table and fails on a
- * version literal written anywhere else.
+ * A bump is a scheduled task, and the tests make it one: change the four
+ * constants below together, the Pinned line and row in the reference with
+ * them, append a findings row for every version crossed, then force one token
+ * refresh against a live connection after deploy (FILM-1725 Check D).
+ * `vendor-api-versions.test.ts` fails on any of those left undone, on a version
+ * literal written anywhere else, and from 120 days before the date below.
  */
-export const META_GRAPH_VERSION = 'v23.0';
-export const META_GRAPH_VERSION_RELEASED = '2025-05-29';
-export const META_GRAPH_VERSION_EXPIRES = '2027-10-08';
+export const META_GRAPH_VERSION = 'v26.0';
+export const META_GRAPH_VERSION_RELEASED = '2026-07-29';
+export const META_GRAPH_VERSION_EXPIRES = '2028-07-29';
+/**
+ * True when `META_GRAPH_VERSION_EXPIRES` is the guaranteed floor (two years
+ * from release) because Meta has not yet published the end date; false when
+ * it is the date the changelog states (FILM-1728 §3). Meta lists v26.0's end
+ * as "TBD" until v27.0 ships (read 2026-10-01).
+ */
+export const META_GRAPH_VERSION_EXPIRY_IS_FLOOR = true;
 
 const META_GRAPH_HOST = vendorUrl('meta-graph');
 const META_GRAPH_VIDEO_HOST = vendorUrl('meta-graph-video');

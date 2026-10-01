@@ -1,0 +1,115 @@
+{
+  "feature": "FILM-1728",
+  "mutations": [
+    {
+      "name": "metaFetch stops reading the served version",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/meta-fetch.ts",
+      "find": "  reportServedVersion(response.headers, `${init.method ?? 'GET'} ${path}`);\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/meta-fetch.test.ts",
+      "pattern": "reports a served version that is not the pin"
+    },
+    {
+      "name": "metaFetch puts the token back in the URL",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/meta-fetch.ts",
+      "find": "  if (token) sent.set('Authorization', `Bearer ${token}`);",
+      "replace": "  if (token) path = `${path}${path.includes('?') ? '&' : '?'}access_token=${token}`;",
+      "cwd": "packages/shared",
+      "test": "__tests__/meta-fetch.test.ts",
+      "pattern": "sends the token as Authorization"
+    },
+    {
+      "name": "A lambda calls Graph with a bare fetch, past metaFetch",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/handlers/facebook.ts",
+      "find": "  await new FacebookProvider(accessToken, '').deleteVideo(videoId);",
+      "replace": "  const { META_GRAPH_BASE } = await import('@kit/shared/vendors');\n  await fetch(`${META_GRAPH_BASE}/${videoId}`, { method: 'DELETE' });",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "no vendor host or version literal"
+    },
+    {
+      "name": "A provider puts a Meta token in a URL again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/providers/instagram/instagram-provider.ts",
+      "find": "      `/${this.instagramAccountId}?fields=username,name,profile_picture_url,followers_count`,",
+      "replace": "      `/${this.instagramAccountId}?fields=username,name,profile_picture_url,followers_count&access_token=${this.accessToken}`,",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "no vendor host or version literal"
+    },
+    {
+      "name": "The Instagram lambda publishes past a failed container",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/handlers/instagram.ts",
+      "find": "  if (result.status !== 'FINISHED') {",
+      "replace": "  if (result.status === 'IN_PROGRESS') {",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/meta-handlers.test.ts",
+      "pattern": "fails the job when Meta reports the container failed"
+    },
+    {
+      "name": "The publish lambda bundle carries a second Graph version",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/handlers/instagram.ts",
+      "find": "  if (result.status !== 'FINISHED') {",
+      "replace": "  console.log('[Instagram] legacy graph', 'v19.0');\n  if (result.status !== 'FINISHED') {",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/meta-bundle.test.ts",
+      "pattern": "carries exactly one Graph version literal"
+    },
+    {
+      "name": "The Meta sandbox stops naming the version it served",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/vendors/index.ts",
+      "find": "      metaVersionRoute,\n",
+      "replace": "",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/meta-version.test.ts",
+      "pattern": "sends the header on a versioned Graph path"
+    },
+    {
+      "name": "A Facebook request asks for a metric Graph v25.0 deprecated",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/providers/facebook/facebook-provider.ts",
+      "find": "      `/${videoId}?fields=status,permalink_url`,",
+      "replace": "      `/${videoId}?fields=status,permalink_url,total_video_impressions`,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "total_video_impressions"
+    },
+    {
+      "name": "The expiry check waits for the expiry itself",
+      "kind": "unit",
+      "file": "packages/shared/__tests__/vendor-api-versions.test.ts",
+      "find": "  if (daysLeft > WARN_DAYS) return null;",
+      "replace": "  if (daysLeft > 0) return null;",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "goes red at T-120 days"
+    },
+    {
+      "name": "The pin crosses a version whose changelog has no findings row",
+      "kind": "unit",
+      "file": "docs/platform-capability-reference.md",
+      "find": "| v25.0 | 2026-10-01 | Nothing we call. Deprecates 41 Page, Post, Video and Story insight metrics for every version once v26.0 shipped, four of which this reference wrongly listed for Facebook (corrected above, FILM-1725 Check J); `metadata=1` returns no metadata from 2026-05-19. Both in the forbidden block | [v25.0](https://developers.facebook.com/docs/graph-api/changelog/version25.0) |\n",
+      "replace": "",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "has a row for every version from the baseline to the pin"
+    },
+    {
+      "name": "The pin's floor is dressed as a published end date",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/meta.ts",
+      "find": "export const META_GRAPH_VERSION_EXPIRY_IS_FLOOR = true;",
+      "replace": "export const META_GRAPH_VERSION_EXPIRY_IS_FLOOR = false;",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "the Graph pin carries the dates"
+    }
+  ]
+}

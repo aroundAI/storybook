@@ -161,7 +161,9 @@ describe('revokeAtVendor', () => {
       expect.stringMatching(/^DELETE \/v[\d.]+\/me\/permissions$/),
       expect.stringMatching(/^DELETE \/v[\d.]+\/me\/permissions$/),
     ]);
-    expect(seen[0]?.query).toBe('?access_token=page-token');
+    // FILM-1728: the token rides in the header, never in the URL.
+    expect(seen[0]?.query).toBe('');
+    expect(seen[0]?.authorization).toBe('Bearer page-token');
   });
 
   it('sends TikTok the app credentials with the token', async () => {

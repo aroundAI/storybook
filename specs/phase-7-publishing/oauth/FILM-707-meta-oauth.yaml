@@ -37,22 +37,22 @@ acceptance_criteria:
     reason: "owner check OC-3 (docs/OWNER-CHECKS.md) — Meta renders it; needs a consent run on the owner's app (App Review pending, KB-20)"
   - text: "User can select which Pages to connect"
     met: false
-    reason: "retired — owner decision 2026-09-30: every Page Meta returns is connected and an in-app Page choice is not wanted (apps/web/app/api/platforms/callback/meta/route.ts:223); the person's only choice is on Meta's own dialog, which the sandbox spec drives (apps/e2e/tests/platform-connections/sandbox-connect-meta.spec.ts:190)"
+    reason: "retired — owner decision 2026-09-30: every Page Meta returns is connected and an in-app Page choice is not wanted (apps/web/app/api/platforms/callback/meta/route.ts:213); the person's only choice is on Meta's own dialog, which the sandbox spec drives (apps/e2e/tests/platform-connections/sandbox-connect-meta.spec.ts:190)"
   - text: "Long-lived tokens are obtained (60-day)"
     met: true
-    evidence: "`apps/web/app/api/platforms/callback/meta/route.ts:141`"
+    evidence: "`apps/web/app/api/platforms/callback/meta/route.ts:140`"
   - text: "Page access tokens are stored per-page"
     met: true
-    evidence: "`apps/web/app/api/platforms/callback/meta/route.ts:223`"
+    evidence: "`apps/web/app/api/platforms/callback/meta/route.ts:213`"
   - text: "Instagram Business accounts are detected"
     met: true
-    evidence: "`apps/web/app/api/platforms/callback/meta/route.ts:264`"
+    evidence: "`apps/web/app/api/platforms/callback/meta/route.ts:254`"
   - text: "Instagram connections link to parent Page"
     met: true
-    evidence: "`apps/web/app/api/platforms/callback/meta/route.ts:295`"
+    evidence: "`apps/web/app/api/platforms/callback/meta/route.ts:281`"
   - text: "Token refresh works for both platforms"
     met: true
-    evidence: "KB-29: `refreshMetaToken` gets the global Meta app from the lookup connect and the callback use (`packages/features/publishing/src/lib/token-refresh.ts:392`, `packages/features/publishing/src/lib/token-refresh.ts:405`, `apps/web/app/api/platforms/connect/meta/route.ts:66`, `apps/web/app/api/platforms/callback/meta/route.ts:108`); Instagram and Facebook both map to it. Driven against a local Graph listener (`packages/features/publishing/__tests__/token-refresh.test.ts:456`)"
+    evidence: "KB-29: `refreshMetaToken` gets the global Meta app from the lookup connect and the callback use (`packages/features/publishing/src/lib/token-refresh.ts:392`, `packages/features/publishing/src/lib/token-refresh.ts:405`, `apps/web/app/api/platforms/connect/meta/route.ts:66`, `apps/web/app/api/platforms/callback/meta/route.ts:109`); Instagram and Facebook both map to it. Driven against a local Graph listener (`packages/features/publishing/__tests__/token-refresh.test.ts:456`)"
   - text: "Disconnect removes related connections"
     met: true
     evidence: "The linked Instagram account / Facebook Page is disconnected with it — `disconnect_platform_connection` (`apps/web/supabase/migrations/20260923140320_kb22-disconnect-keeps-records.sql`); since KB-22 the rows are kept, not deleted"

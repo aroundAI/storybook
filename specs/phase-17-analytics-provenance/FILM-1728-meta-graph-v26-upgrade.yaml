@@ -3,7 +3,7 @@ title: "Meta Graph API — Move to v26.0, and Make the Next Move Boring"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: DRAFT
+status: DONE
 effort: M
 dependencies:
   - spec_id: "FILM-1723"
@@ -24,49 +24,140 @@ summary: >
   implementation per flow, and a reference-vs-changelog reconciliation test.
 acceptance_criteria:
   - text: "(Bump) v24.0, v25.0, v26.0 and Instagram Platform changelogs read on the implementation day; §4 re-confirmed or corrected with the date"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "docs/platform-capability-reference.md:577 — findings table, one row per version, each read 2026-10-01 and linked to its changelog page; corrections to §4 (the Video list is 16 names, 42 entries / 41 distinct; v26.0 also retires six Page legacy fields; the debug envelope §7.2 relied on is gone) are in this spec's \"Implementation\" notes (#493)"
   - text: "(Bump) Forbidden block extended: §4.2's five parameters and §4.3's 41 metrics; platform-field-names.test.ts green"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "docs/platform-capability-reference.md:1538 (41 metrics, then pretty, debug, If-None-Match, date_format, /?ids and v25.0's metadata=1); platform-field-names.test.ts 70/70 green, its retired-names scan widened to every Meta request site (#493)"
   - text: "(Bump) Facebook section of the capability reference corrected per §4.3, with the contradiction between Meta's changelog and reference page recorded, and a FILM-1725 check filed for the owner's first connected Page"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "docs/platform-capability-reference.md:368 (correction and the two-documents contradiction, read 2026-10-01); FILM-1725 Check J, specs/phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.yaml:222 (#493)"
   - text: "(Bump) META_GRAPH_VERSION, _RELEASED, _EXPIRES updated together; expiry is the published date or the floor labelled as a floor"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/shared/src/vendors/meta.ts:41 (v26.0, 2026-07-29, 2028-07-29) and :50 META_GRAPH_VERSION_EXPIRY_IS_FLOOR = true; the reference row docs/platform-capability-reference.md:497 and Pinned line :468 say (floor); Meta's table lists v26.0's end as TBD and no v27.0 (read 2026-10-01) (#493)"
   - text: "(Bump) vendor-api-versions.test.ts seen red on each half-bump, then green; mutation-guard entries added"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "constant only: 5 failed, naming the missing v26.0 row, the Pinned line and findings rows v24.0-v26.0; reference only: 2 failed, naming META_GRAPH_VERSION in meta.ts; both: 13/13 green. tooling/mutation-guards/film-1728.json (11 entries) and film-1723.json retargeted; all 25 RED (#493)"
   - text: "(Bump) facebook-api-version: v26.0 confirmed by the header probe on the day; bundled publish lambda carries exactly one Graph version literal"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "curl -sI https://graph.facebook.com/v26.0/me at 2026-10-01T08:21Z returned facebook-api-version: v26.0 (and v27.0 returned v21.0), recorded at docs/platform-capability-reference.md:522; apps/web/lambda/publish-worker/__tests__/meta-bundle.test.ts:49 bundles index.ts as SST does and finds exactly one, the pin (#493)"
   - text: "(Bump) FILM-1725 Check C re-worded for v26.0; Check D amended to require a re-run on this deploy — stays open until the owner runs it"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "specs/phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.yaml:165 (Check C on v26.0, Bearer header) and :215 (Check D amended; its criterion at :39 stays met: false until the owner's forced refresh) (#493)"
   - text: "(Durability §7.3.A) metaFetch() exists, all eleven sites use it, the guard fails on a bare Meta fetch(; a test feeds a response with a mismatching facebook-api-version and asserts the error line (with vendor, expected, served, endpoint) — seen red first"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/shared/src/vendors/meta-fetch.ts:49; every server-side Graph call (callback route, token refresh, revoke, both publishing providers, Instagram insights, and the lambdas through the providers) uses it; packages/shared/__tests__/vendor-api-versions.test.ts:113 fails on a Graph base constant named outside the vendors directory, the only way left to build a Graph URL; packages/shared/__tests__/meta-fetch.test.ts:58 seen red (2 failed: expected [] to have a length of 1) before the header read existed (#493)"
   - text: "(Durability §7.3.A) tokens sent as Authorization: Bearer; no access_token= in any Meta URL; a test asserts it"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/shared/src/vendors/meta-fetch.ts:60; packages/shared/__tests__/meta-fetch.test.ts:100; packages/shared/__tests__/vendor-api-versions.test.ts:121 fails on access_token= or a token assigned into a Meta URL or body; token-refresh, revokers, callback-success and meta-handlers tests assert the header and no query token (#493)"
   - text: "(Durability §7.3.B) the expiry test fails at T-120 days (proven by a fixture date), naming this spec; message differs for a floor"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/shared/__tests__/vendor-api-versions.test.ts:370 (T-121 null, T-120 fails naming FILM-1728 and meta.ts) and :381 (floor message says to re-read the changelog first); with the floor 2028-07-29 it goes red on 2028-03-30 (#493)"
   - text: "(Durability §7.3.C) one Instagram container flow and one Facebook upload flow, in the providers, called by the lambdas; the bundle check still passes; lambda handlers shrink to glue"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "apps/web/lambda/publish-worker/handlers/instagram.ts:21 and facebook.ts:22 call InstagramProvider and FacebookProvider (the non-resumable graph-video path kept as the provider option fetchFromUrl, facebook-provider.ts:39); apps/web/lambda/publish-worker/__tests__/meta-bundle.test.ts:67 loads the bundled handlers in plain Node; meta-handlers.test.ts:81 (#493)"
   - text: "(Durability §7.3.D) per-version findings table exists with rows for v24–v26; the test asserts a row per version crossed"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "docs/platform-capability-reference.md:577; packages/shared/__tests__/vendor-api-versions.test.ts:416 (#493)"
   - text: "(Follow-up) is_ai_generated labelling (§4.4) filed as its own item with the policy question stated"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "FILM-1731, a DRAFT spec on its own branch docs/film-1731-instagram-ai-label (lead's decision, 2026-10-01): is the AI info label required, expected or optional for us, answered before onboarding other creators"
   - text: "(Follow-up) FILM-1720 and FILM-1712 pointed at §4.3 and §4.4"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "specs/phase-17-analytics-provenance/FILM-1720-facebook-analytics.yaml:80; specs/phase-17-analytics-provenance/FILM-1712-metric-recovery.yaml:131 (#493)"
 open_questions: []
 notes: |
+  ## Implementation (2026-10-01, #493)
+
+  Done in the order §9 asks: metaFetch first with no behaviour change but
+  the header read and the Bearer token, then the lambdas onto the
+  providers, the sandbox, the reference corrections and the guards, and the
+  pin last, so the bump is checked by the new assertion from its first
+  deploy.
+
+  ### Sources read on the day (2026-10-01)
+
+  | Page | What it settled |
+  |---|---|
+  | https://developers.facebook.com/docs/graph-api/changelog/ | Version table: v26.0 released 2026-07-29, end "TBD"; v25.0 to 2028-07-29; v24.0 to 2028-02-18; v20.0 ended 2026-09-24; no v27.0 |
+  | https://developers.facebook.com/docs/graph-api/changelog/version24.0 | Nothing on our surfaces (Marketing API, certificate transparency, Live Video overlay_url) |
+  | https://developers.facebook.com/docs/graph-api/changelog/version25.0 | The insights deprecation, verbatim, and its four lists; metadata=1 from 2026-05-19 |
+  | https://developers.facebook.com/docs/graph-api/changelog/version26.0 | Legacy protocol features (pretty, debug, If-None-Match, date_format, root /?ids=), all versions from 2026-10-27; Page legacy fields; nothing on OAuth, Pages, video, Instagram |
+  | https://developers.facebook.com/docs/instagram-platform/changelog/ | Entries to 2026-06-22: is_ai_generated, link_clicks, media *_count fields, enable_fb_login; no removal since 2025-01-21 |
+  | https://developers.facebook.com/docs/graph-api/reference/video/video_insights/ | Still lists total_video_views_unique, total_video_impressions(_unique) and post_impressions_unique, no deprecation notice — the contradiction §4.3 found, unchanged |
+  | https://developers.facebook.com/docs/graph-api/guides/versioning | "defaulted to the next oldest, usable version"; says nothing of the facebook-api-version header or of warnings |
+
+  Header probe, unauthenticated, 2026-10-01T08:21Z: /v26.0/me → v26.0,
+  /v23.0/me → v23.0, /v27.0/me → **v21.0** (unreleased, so served as the
+  oldest usable version). A typo in the pin would not fail either.
+
+  ### Corrections to the draft
+
+  - §3: the floor holds. v27.0 has not shipped, so META_GRAPH_VERSION_EXPIRES
+    is 2028-07-29 with META_GRAPH_VERSION_EXPIRY_IS_FLOOR = true.
+  - §4.3: v25.0's Video Insights list has **16** names, not 15: it includes
+    post_impressions_unique, which is also in the Post list. The lists hold
+    42 entries, 41 distinct names, so "41" stands.
+  - §4.2: v26.0 also retires six Page legacy fields (current_location, genre,
+    network, parking, start_info, auto_publish_page_info_updates). None is
+    requested; recorded in the findings row.
+  - §7.2.4 and §7.3.A: the body warning we were to capture no longer exists.
+    v26.0's retirement of the `debug` parameter removes the `__debug__`
+    envelope for every version from 2026-10-27, and the versioning guide
+    documents no warning header. metaFetch carries the usage headers
+    (x-app-usage, x-business-use-case-usage, x-page-usage) on its mismatch
+    line instead; the facebook-api-version header is the signal left.
+  - §7.1's "eleven sites": two Meta requests are not metaFetch calls by
+    design. The OAuth dialog URL is followed by the browser, not fetched
+    (META_OAUTH_DIALOG_URL stays exported for it), and the Reels file upload
+    posts to the upload_url Meta returns (rupload.facebook.com, unversioned,
+    Authorization: OAuth), which is not Graph.
+  - §7.4: the code and fb_exchange_token exchanges still send client_secret
+    in the query string, as Meta documents those GETs. Not an access token,
+    so outside this spec's criterion; noted, not filed.
+
+  ### What changed in behaviour
+
+  - Every Graph call reads facebook-api-version and logs the first mismatch
+    per process: `[meta-graph] served version is not the pin (FILM-1728):
+    vendor=meta expected=… served=… endpoint=GET /path …usage`.
+  - Tokens go in Authorization: Bearer; none is in a Meta URL or body.
+  - The publish lambda's Instagram path now uses the provider's flow: the
+    container parameters travel in the query (the lambda sent JSON), the
+    container is polled before the first sleep, an unfinished container
+    fails the job instead of being published anyway, and the permalink is
+    polled with the shortcode fallback the lambda had.
+  - The server-action path's non-resumable Facebook upload now goes to
+    graph-video, as the lambda's always did, and attaches the thumbnail as a
+    file rather than a URL string.
+  - The vendor sandbox (apps/vendor-sandbox/src/social/vendors/meta/version.ts)
+    sends facebook-api-version, following Meta's "oldest usable" rule.
+
+  ### Run
+
+  - Unit suites, final: packages/shared 306, publishing 373,
+    content-analytics 1426, vendor-sandbox 417, apps/web 1233, clickhouse
+    view-definitions 48 — all green. (Two sandbox tests unrelated to Meta,
+    local-env and social-growth, failed once under machine load and passed
+    alone and on a full rerun.) Typecheck 32/32, lint clean.
+  - Mutation guards: film-1728.json 11/11 RED, film-1723.json 14/14 RED,
+    film-1712 R1 retargeted and RED.
+  - apps/e2e sandbox-connect-meta.spec.ts on lane B under the db lock,
+    against the app on :3140: 3 passed. The sandbox ledger shows the app's
+    calls on /v26.0/. The shared sandbox on :4101 was another teammate's
+    process, so that run did not carry this branch's version header; the
+    header is covered by apps/vendor-sandbox/__tests__/meta-version.test.ts.
+  - Handed off (lead, 2026-10-01): FILM-1722's view-definition registry
+    defines facebook.total_video_impressions and
+    facebook.post_impressions_unique, both retired by v25.0. They are left
+    as they are here; FILM-1720 adds a retired availability and settles both,
+    with FILM-1725 Check J as the live confirmation. The capability
+    reference keeps the four names in the facebook/video-insights block,
+    marked deprecated, because the vendor page still documents them.
+  - Not run, and not attempted: anything against real Meta beyond the
+    unauthenticated header probe. A live token refresh on v26.0 is FILM-1725
+    Check D; the 41-metric claim is FILM-1725 Check J; both are the owner's.
+
   ## 1. Why this exists
 
   FILM-1723 replaced three Graph versions — two of them expired, all of them

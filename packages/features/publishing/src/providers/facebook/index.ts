@@ -7,8 +7,4 @@ export type {
   FacebookUploadProgress,
   FacebookUploadResult,
 } from './types';
-export {
-  FACEBOOK_API_VERSION,
-  FACEBOOK_CONSTRAINTS,
-  FACEBOOK_GRAPH_API_BASE,
-} from './types';
+export { FACEBOOK_CONSTRAINTS } from './types';

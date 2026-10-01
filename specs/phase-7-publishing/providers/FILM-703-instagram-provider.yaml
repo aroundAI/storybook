@@ -41,28 +41,28 @@ provider:
 acceptance_criteria:
   - text: "Reels upload and publish successfully"
     met: false
-    reason: "unverified — create → poll → publish built (`packages/features/publishing/src/providers/instagram/instagram-provider.ts:28`); no test or sandbox run"
+    reason: "unverified — create → poll → publish built (`packages/features/publishing/src/providers/instagram/instagram-provider.ts:26`); no test or sandbox run"
   - text: "Caption with hashtags works"
     met: true
-    evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:97`"
+    evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:95`"
   - text: "Custom cover image can be set"
     met: true
-    evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:102`"
+    evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:99`"
   - text: "Share to feed option works"
     met: true
-    evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:98`"
+    evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:96`"
   - text: "Location tagging works"
     met: true
-    evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:106`"
+    evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:103`"
   - text: "Container status polling works"
     met: true
-    evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:42`, `packages/features/publishing/src/providers/instagram/instagram-provider.ts:133`"
+    evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:40`, `packages/features/publishing/src/providers/instagram/instagram-provider.ts:130`"
   - text: "Account info can be retrieved"
     met: true
-    evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:200`"
+    evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:217`"
   - text: "Permalink is returned after publish"
     met: true
-    evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:77`"
+    evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:75`"
 test_plan:
   unit:
     - text: "Test caption length validation"

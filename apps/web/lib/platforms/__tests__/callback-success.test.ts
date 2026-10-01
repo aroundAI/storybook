@@ -320,11 +320,17 @@ describe('Meta callback success (FILM-707)', () => {
 
     await GET(callbackRequest('meta', { platforms: ['instagram'] }));
 
-    const igCall = fetchMock.mock.calls
-      .map(([input]) => new URL(input.toString()))
-      .find((url) => url.pathname.endsWith('/ig-1'));
+    const igCall = fetchMock.mock.calls.find(([input]) =>
+      new URL(input.toString()).pathname.endsWith('/ig-1'),
+    );
 
-    expect(igCall?.searchParams.get('access_token')).toBe(PAGE_TOKEN);
+    // FILM-1728: the token rides in the header, never in the URL.
+    expect(
+      new URL(igCall![0].toString()).searchParams.has('access_token'),
+    ).toBe(false);
+    expect(new Headers(igCall![1]?.headers).get('authorization')).toBe(
+      `Bearer ${PAGE_TOKEN}`,
+    );
     expect(state.stored.map((row) => row.platform)).toEqual(['instagram']);
   });
 

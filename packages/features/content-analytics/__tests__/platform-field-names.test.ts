@@ -76,8 +76,9 @@ const FORBIDDEN = forbiddenNames();
  */
 const PROVIDERS = 'packages/features/content-analytics/src/providers';
 
-// Up to the next `fetch(`, so a pattern cannot borrow another call's literal.
-const WITHIN_CALL = String.raw`(?:(?!fetch\()[\s\S])*?`;
+// Up to the next `fetch(` or `metaFetch(`, so a pattern cannot borrow
+// another call's literal.
+const WITHIN_CALL = String.raw`(?:(?![fF]etch\()[\s\S])*?`;
 const LITERAL = String.raw`('[^']*'|"[^"]*")`;
 
 const REQUEST_SITES: Array<{
@@ -396,6 +397,11 @@ describe('retired names stay gone', () => {
     PROVIDERS,
     'packages/features/publishing/src/providers',
     'apps/web/lambda/publish-worker/handlers',
+    // Every other Meta request site (FILM-1728): the retired protocol
+    // parameters are about how a request is built, wherever it is built.
+    'packages/shared/src/vendors',
+    'packages/features/publishing/src/oauth/meta',
+    'apps/web/app/api/platforms/callback/meta',
   ];
 
   const files = ROOTS.flatMap((root) => sourceFiles(join(REPO, root)));

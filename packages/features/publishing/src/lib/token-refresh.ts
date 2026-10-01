@@ -2,7 +2,7 @@ import 'server-only';
 
 import { decrypt, encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
-import { META_GRAPH_BASE, META_OAUTH_TOKEN_URL } from '@kit/shared/vendors';
+import { metaFetch } from '@kit/shared/vendors';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import type { OAuthApp } from '../oauth/apps';
@@ -496,13 +496,16 @@ async function refreshMetaToken(
   context: RefreshContext,
 ): Promise<TokenRefreshResult> {
   // Step 1: Refresh the User Access Token
-  const refreshUrl = new URL(META_OAUTH_TOKEN_URL);
-  refreshUrl.searchParams.set('grant_type', 'fb_exchange_token');
-  refreshUrl.searchParams.set('client_id', oauthApp.clientId);
-  refreshUrl.searchParams.set('client_secret', oauthApp.clientSecret);
-  refreshUrl.searchParams.set('fb_exchange_token', userAccessToken);
+  const refreshQuery = new URLSearchParams({
+    grant_type: 'fb_exchange_token',
+    client_id: oauthApp.clientId,
+    client_secret: oauthApp.clientSecret,
+    fb_exchange_token: userAccessToken,
+  });
 
-  const refreshResponse = await fetch(refreshUrl.toString());
+  const refreshResponse = await metaFetch(
+    `/oauth/access_token?${refreshQuery}`,
+  );
   const refreshData = await refreshResponse.json();
 
   if (refreshData.error || !refreshData.access_token) {
@@ -538,11 +541,9 @@ async function refreshMetaToken(
   }
 
   // Fetch pages to get fresh Page Access Token
-  const pagesUrl = new URL(`${META_GRAPH_BASE}/me/accounts`);
-  pagesUrl.searchParams.set('access_token', newUserToken);
-  pagesUrl.searchParams.set('fields', 'id,access_token');
-
-  const pagesResponse = await fetch(pagesUrl.toString());
+  const pagesResponse = await metaFetch('/me/accounts?fields=id,access_token', {
+    token: newUserToken,
+  });
   const pagesData = await pagesResponse.json();
 
   if (pagesData.error) {

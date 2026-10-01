@@ -1,7 +1,7 @@
 import 'server-only';
 
 import type { SubscriberCountResult } from '@kit/shared/subscribers';
-import { META_GRAPH_BASE } from '@kit/shared/vendors';
+import { metaFetch } from '@kit/shared/vendors';
 
 import {
   MetaRateLimitError,
@@ -18,8 +18,6 @@ import type {
   InstagramMediaProductType,
   InstagramMediaType,
 } from './types';
-
-const GRAPH_API_BASE = META_GRAPH_BASE;
 
 /** Meta's `follower_demographics` breakdowns, one per request (FILM-1712) */
 const AUDIENCE_BREAKDOWNS = ['country', 'city', 'age', 'gender'] as const;
@@ -108,8 +106,9 @@ export class InstagramInsightsProvider {
       // VIDEO. The surface (FEED / REELS / STORY / AD) is `media_product_type`,
       // and it is what decides which metrics exist. `reposts_count` rides
       // along: a Media node field, FEED and REELS (FILM-1712).
-      const mediaInfoResponse = await fetch(
-        `${GRAPH_API_BASE}/${mediaId}?fields=media_type,media_product_type,reposts_count&access_token=${this.accessToken}`,
+      const mediaInfoResponse = await metaFetch(
+        `/${mediaId}?fields=media_type,media_product_type,reposts_count`,
+        { token: this.accessToken },
       );
 
       if (!mediaInfoResponse.ok) {
@@ -200,12 +199,12 @@ export class InstagramInsightsProvider {
     mediaId: string,
     metrics: string[],
   ): Promise<InsightsDataItem[]> {
-    const response = await fetch(
-      `${GRAPH_API_BASE}/${mediaId}/insights?` +
+    const response = await metaFetch(
+      `/${mediaId}/insights?` +
         new URLSearchParams({
           metric: metrics.join(','),
-          access_token: this.accessToken,
         }),
+      { token: this.accessToken },
     );
 
     if (!response.ok) {
@@ -273,16 +272,16 @@ export class InstagramInsightsProvider {
     breakdown: (typeof AUDIENCE_BREAKDOWNS)[number],
   ): Promise<DemographicResult[] | undefined> {
     try {
-      const response = await fetch(
-        `${GRAPH_API_BASE}/${this.instagramAccountId}/insights?` +
+      const response = await metaFetch(
+        `/${this.instagramAccountId}/insights?` +
           new URLSearchParams({
             metric: 'follower_demographics',
             period: 'lifetime',
             metric_type: 'total_value',
             timeframe: AUDIENCE_TIMEFRAME,
             breakdown,
-            access_token: this.accessToken,
           }),
+        { token: this.accessToken },
       );
 
       if (!response.ok) {
@@ -322,8 +321,9 @@ export class InstagramInsightsProvider {
    */
   async getFollowerCount(): Promise<SubscriberCountResult> {
     try {
-      const response = await fetch(
-        `${GRAPH_API_BASE}/${this.instagramAccountId}?fields=followers_count&access_token=${this.accessToken}`,
+      const response = await metaFetch(
+        `/${this.instagramAccountId}?fields=followers_count`,
+        { token: this.accessToken },
       );
 
       if (!response.ok) {
@@ -355,17 +355,17 @@ export class InstagramInsightsProvider {
     until: Date;
   }): Promise<InstagramAccountReach> {
     const request = (extra: Record<string, string>) =>
-      fetch(
-        `${GRAPH_API_BASE}/${this.instagramAccountId}/insights?` +
+      metaFetch(
+        `/${this.instagramAccountId}/insights?` +
           new URLSearchParams({
             metric: 'reach',
             metric_type: 'total_value',
             period: 'day',
             since: Math.floor(window.since.getTime() / 1000).toString(),
             until: Math.floor(window.until.getTime() / 1000).toString(),
-            access_token: this.accessToken,
             ...extra,
           }),
+        { token: this.accessToken },
       );
 
     try {
@@ -447,8 +447,8 @@ export class InstagramInsightsProvider {
 
     try {
       const [metricsResponse, accountResponse] = await Promise.all([
-        fetch(
-          `${GRAPH_API_BASE}/${this.instagramAccountId}/insights?` +
+        metaFetch(
+          `/${this.instagramAccountId}/insights?` +
             new URLSearchParams({
               // Account-level `views` is `total_value` only, and
               // `profile_views` / `website_clicks` left the metrics table
@@ -458,12 +458,12 @@ export class InstagramInsightsProvider {
               period: 'day',
               since: since.toString(),
               until: now.toString(),
-              access_token: this.accessToken,
             }),
+          { token: this.accessToken },
         ),
-        fetch(
-          `${GRAPH_API_BASE}/${this.instagramAccountId}?fields=followers_count&access_token=${this.accessToken}`,
-        ),
+        metaFetch(`/${this.instagramAccountId}?fields=followers_count`, {
+          token: this.accessToken,
+        }),
       ]);
 
       if (!metricsResponse.ok) {

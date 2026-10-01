@@ -472,7 +472,9 @@ describe('refresh uses the credentials connect uses (KB-29)', () => {
       fb_exchange_token: 'old-refresh-token',
     });
     expect(pages!.path).toBe(`/${META_GRAPH_VERSION}/me/accounts`);
-    expect(pages!.query.get('access_token')).toBe('new-access-token');
+    // FILM-1728: the token rides in the header, never in the URL.
+    expect(pages!.query.get('access_token')).toBeNull();
+    expect(pages!.authorization).toBe('Bearer new-access-token');
 
     // The refreshed user token is kept for the next cycle.
     expect(await decrypted('access_token_encrypted')).toBe('new-page-token');

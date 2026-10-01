@@ -12,6 +12,7 @@ import { metaFailure } from './meta/errors';
 import { metaInsightsRoutes } from './meta/insights';
 import { metaOAuthRoutes } from './meta/oauth';
 import { metaPublishingRoutes } from './meta/publishing';
+import { metaVersionRoute } from './meta/version';
 import { tiktokDataRoutes } from './tiktok/data';
 import { tiktokFailure } from './tiktok/errors';
 import { tiktokOAuthRoutes } from './tiktok/oauth';
@@ -39,6 +40,7 @@ export const SOCIAL_ROUTES: Record<
   },
   meta: {
     routes: [
+      metaVersionRoute,
       mediaRoute,
       ...metaOAuthRoutes,
       ...metaPublishingRoutes,

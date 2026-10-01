@@ -185,7 +185,7 @@ notes: |
   ```
   apps/web/app/api/platforms/youtube/save-channel/route.ts:108   subscriber_count
   apps/web/app/api/platforms/callback/youtube/route.ts:232       subscriber_count
-  apps/web/app/api/platforms/callback/meta/route.ts:255          followers_count
+  apps/web/app/api/platforms/callback/meta/route.ts:245          followers_count
   ```
 
   `subscriber_count` is read nowhere at all — a grep across `packages/` and

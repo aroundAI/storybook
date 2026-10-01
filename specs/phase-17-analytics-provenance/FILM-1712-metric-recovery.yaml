@@ -128,6 +128,14 @@ notes: |
 
   ## What is genuinely cheap
 
+  > **Re-check against FILM-1728 §4.4 (2026-10-01).** The Instagram Platform
+  > changelog to 2026-06-22 adds, for every version: reposts_count,
+  > saved_count, shares_count, total_like_count, total_comments_count and
+  > total_views_count on GET /{media} (2026-04-22, no /insights call needed);
+  > link_clicks on Story insights (2026-06-22); and reels_skip_rate, reposts,
+  > crossposted_views and facebook_views (2025-12-03). The pin is now v26.0,
+  > released after all of them. None removes anything this spec requests.
+
   YouTube — three metrics onto the daily query. The daily query
   (`youtube-analytics.ts:225`) currently asks for
   `views,likes,comments,shares,estimatedMinutesWatched,averageViewDuration,subscribersGained`.

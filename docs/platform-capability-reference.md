@@ -30,7 +30,7 @@ the [ledger](#documented-vs-inferred-ledger). Anything nobody can answer is in
 | TikTok (basic) | Display API `/v2/video/query/` | `video.list` + `user.info.stats` **requested since FILM-1711; TikTok app review outstanding** | included | unbounded backwards |
 | TikTok (deep) | **Business API** `/business/video/list/` | not implemented; separate app | included | stops updating 365d after publish |
 | Instagram | Graph `/{ig-media-id}/insights` | `instagram_manage_insights` **requested since FILM-1711; App Review + Business Verification outstanding** | included | media ~2y; account ~90d (*inferred*) |
-| Facebook | Graph `/{video-id}/video_insights` | **permission missing** (`read_insights`) — not requested until a provider uses it, FILM-1720 | included | 2 years |
+| Facebook | Graph `/{video-id}/video_insights` | **permission missing** (`read_insights`) — not requested until a provider uses it, FILM-1720. **No reach or impressions since Graph v26.0** (FILM-1728) | included | 2 years |
 | X (degraded) | `media.non_public_metrics` via posts lookup | **held** — `tweet.read` + `users.read` are requested for publishing; no provider | metered | **30d from post creation** |
 | X (full) | `/2/media/analytics` | **held** (same scopes) | **tier gated — Enterprise** (*inferred*) | **undocumented** |
 
@@ -354,16 +354,41 @@ the current `video_insights` reference names `pages_manage_engagement` +
 `read_insights`. An older Meta page names `pages_read_engagement`; request all three
 until one authorised call settles it (FILM-1720 §8).
 
-Video metrics: `total_video_views` (≥3s), `total_video_views_unique`,
+Video metrics: `total_video_views` (≥3s),
 `total_video_15s_views`, `total_video_avg_time_watched` (**ms**),
 `total_video_view_total_time` (**ms**), `total_video_retention_graph` (**40 equal
-intervals**), `total_video_impressions_unique`, `total_video_complete_views` (≥97%).
+intervals**), `total_video_complete_views` (≥97%).
 
 Reels metrics: `blue_reels_play_count` (≥1ms, **excludes replays**),
 `fb_reels_replay_count`, `fb_reels_total_plays` (includes replays),
-`post_impressions_unique` (reach, **estimated**), `post_video_avg_time_watched`,
-`post_video_view_time`, `post_video_retention_graph`, `post_video_followers`
-(follows attributed to the reel).
+`post_video_avg_time_watched`, `post_video_view_time`,
+`post_video_retention_graph`, `post_video_followers` (follows attributed to the
+reel).
+
+⚠️ **Corrected 2026-10-01 (FILM-1728 §4.3): reach and impressions are gone.**
+This section, "verified 2026-09-21", listed `total_video_views_unique`,
+`total_video_impressions_unique` and `post_impressions_unique` (as Reels reach),
+and the field block below carried `total_video_impressions` too, unmarked.
+Graph v25.0 deprecated all four, among 41 Page, Post, Video and Story metrics, with effect on
+every version since v26.0 shipped (2026-07-29); requesting one returns an error.
+They are in the [forbidden block](#names-that-must-not-appear-in-our-code) now.
+
+**Meta's two documents contradict each other.** The
+[video_insights reference](https://developers.facebook.com/docs/graph-api/reference/video/video_insights/)
+still lists every one of them, with no deprecation notice (read 2026-10-01); the
+[v25.0 changelog](https://developers.facebook.com/docs/graph-api/changelog/version25.0)
+says they are gone. This document followed the reference page, and was wrong to.
+We treat the changelog as authoritative — but that is a reading, not a
+measurement, so it is **FILM-1725 Check J**: one call for
+`total_video_views_unique` on the owner's first connected Page, where a 400
+confirms the changelog.
+
+What it means for FILM-1720: **Facebook Reels may now have no organic reach
+figure at all**, so FILM-1703's matrix should expect `null` (cannot measure) for
+Facebook reach, not a number. Write FILM-1720 against `total_video_views`,
+`blue_reels_play_count` and the watch-time and retention fields, not against
+impressions or `_unique` reach — Meta's Threads and Instagram documentation has
+already moved to "views" as the one metric across surfaces.
 
 ### The inventory above is a floor, not the surface
 
@@ -408,6 +433,8 @@ pages disagree" hedge is narrower than it was.
 These must never be conflated, and none maps onto a YouTube view:
 
 1. **Impression** — entered the screen, no playback required, **estimated**.
+   *No longer requestable for video since Graph v26.0 (see above): a denominator
+   that existed, not one we can read.*
 2. **Play** — ≥1 millisecond, replays excluded.
 3. **3-second view** — ≥3s **or** nearly full length if shorter than 3s.
 4. **ThruPlay** — **an Ads metric.** Not on `video_insights` at all.
@@ -432,30 +459,42 @@ page-level `page_media_view` carries `is_from_followers`.
 Rate limits: Page tokens use BUC `4800 × engaged users` per 24h; app/user tokens use
 `200 × users` per hour. The Page throttle error code is **80001**.
 
-_Verified: 2026-09-21_
+_Verified: 2026-10-01_
 
 ---
 
 ## Graph API versions
 
-**Pinned: `v23.0`, upgrade before 2027-10-08.** One constant,
-`META_GRAPH_VERSION` in `packages/shared/src/vendors/meta.ts`, read by every Meta
-call in the repository (FILM-1723). `vendor-api-versions.test.ts` fails if this
-line, the table row below and the constant disagree, or if a version literal is
-written anywhere else. Meta's cadence makes the next bump a scheduled task: by
-**2027-10-08**, move to a version with at least a year left, reading the
-changelog of every version crossed.
+**Pinned: `v26.0`, upgrade before 2028-07-29 (a floor: Meta has not published this version's end date).**
+One constant, `META_GRAPH_VERSION` in `packages/shared/src/vendors/meta.ts`, read
+by every Meta call in the repository through `metaFetch` (FILM-1723, FILM-1728).
+`vendor-api-versions.test.ts` fails if this line, the table row below and the
+constant disagree, if a version literal is written anywhere else, if a version
+crossed has no [findings row](#per-version-findings), and from **120 days before
+the date above**.
 
-Measured 2026-09-21 against
-[Meta's changelog](https://developers.facebook.com/docs/graph-api/changelog/):
+**That date is a floor, not a fact.** Meta publishes a version's end date only
+when the next version ships, and guarantees "at least two years from release":
+v26.0 lives until no earlier than 2028-07-29. Its predecessors lasted about two
+years and three months, so early 2029 is likely, but that is a pattern, not a
+promise. `META_GRAPH_VERSION_EXPIRY_IS_FLOOR` says so in code, and the 120-day
+failure tells whoever meets it to re-read the changelog before bumping: once
+v27.0 ships, v26.0's real date appears and the floor is replaced.
 
-| Version | Released | Expires | Status today (2026-09-21) |
+Measured 2026-10-01 against
+[Meta's changelog](https://developers.facebook.com/docs/graph-api/changelog/)
+(first measured 2026-09-21 for FILM-1723):
+
+| Version | Released | Expires | Status today (2026-10-01) |
 |---|---|---|---|
-| v18.0 | 2023-09-12 | **2026-01-26** | **expired ~8 months ago** |
-| v19.0 | 2024-01-23 | **2026-05-21** | **expired ~4 months ago** |
-| v20.0 | 2024-05-21 | 2026-09-24 | **expires in 3 days** |
-| v23.0 | 2025-05-29 | 2027-10-08 | current |
-| v26.0 | 2026-07-29 | TBD | latest |
+| v18.0 | 2023-09-12 | **2026-01-26** | **expired** |
+| v19.0 | 2024-01-23 | **2026-05-21** | **expired** |
+| v20.0 | 2024-05-21 | **2026-09-24** | **expired** |
+| v21.0 | 2024-10-02 | 2027-01-21 | oldest usable: what an unusable version is served as |
+| v23.0 | 2025-05-29 | 2027-10-08 | FILM-1723's pin |
+| v24.0 | 2025-10-08 | 2028-02-18 | |
+| v25.0 | 2026-02-18 | 2028-07-29 | |
+| v26.0 | 2026-07-29 | 2028-07-29 (floor) | **pinned** (FILM-1728); Meta: "TBD"; v27.0 not released |
 
 **An expired version does not fail. It is silently upgraded.** Meta's
 [versioning guide](https://developers.facebook.com/docs/graph-api/guides/versioning)
@@ -480,6 +519,12 @@ and settles it. Run 2026-09-21T20:00Z for FILM-1723, unauthenticated, against
 | `v23.0` | `v23.0` |
 | `v26.0` | `v26.0` |
 
+Re-run 2026-10-01T08:21Z for FILM-1728, the same way: `v26.0` → **`v26.0`**,
+`v23.0` → `v23.0`, and `v27.0` — not yet released — → **`v21.0`**, the oldest
+version still usable since v20.0 expired on 2026-09-24. A typo in the pin would
+not fail either. Every call now reads this header through `metaFetch`, which
+logs the first mismatch a process sees; the vendor sandbox sends it too.
+
 So token refresh was not failing: it was running on v20.0, three days from its own
 expiry, after which the same requests would have been served as v21.0.
 
@@ -497,13 +542,47 @@ FILM-1723 was written for. That spec listed "Graph v18.0 is past end-of-life" as
 *inferred*; it is now documented with a date, and the case is stronger than the spec
 assumed, because the failure mode is substitution rather than rejection.
 
-All of those now read the single pin. v23.0 was chosen over v26.0 because it is the
-only version this repository had already run deliberately, so Instagram insights
-requests did not change, and v21-v23 alter nothing on the OAuth, Page, publishing or
-container endpoints called here. **Not yet verified against a live Meta connection** -
-no fixture has one; see FILM-1723's acceptance criteria.
+All of those now read the single pin. FILM-1723 chose v23.0 because it was the only
+version this repository had already run deliberately; FILM-1728 moved it to v26.0
+on 2026-10-01 after reading the v24.0, v25.0 and v26.0 changelogs (the findings
+table below). **Not yet verified against a live Meta connection** - no fixture
+has one. FILM-1725 Check D (one forced token refresh) is owed at the first
+production deploy carrying FILM-1728, and one run against v26.0 closes it for
+FILM-1723 too.
 
-_Verified: 2026-09-21_
+### The next bump
+
+1. Read Meta's [Instagram Platform overview](https://developers.facebook.com/docs/instagram-platform/)
+   first. We use "Instagram API with Facebook Login" (graph.facebook.com, a
+   Page's `instagram_business_account`). The newer "Instagram API with Instagram
+   Login" (graph.instagram.com) gains features first. If Meta retires the
+   Facebook Login path, no version pin helps: it is a new host, token and app
+   review. Nothing indicates that on 2026-10-01, and the Facebook Login path is
+   the one that publishes to Pages.
+2. Read the changelog of every version crossed and append a findings row for
+   each.
+3. Change `META_GRAPH_VERSION`, `_RELEASED`, `_EXPIRES` and `_EXPIRY_IS_FLOOR`
+   together, and this section's Pinned line and row with them.
+4. After the deploy, force one Meta token refresh (FILM-1725 Check D) and watch
+   for `[meta-graph] served version is not the pin` in the logs.
+
+### Per-version findings
+
+One row per Graph version this repository has crossed: what its changelog
+changes on the surfaces we call (the inventory is FILM-1728 §7.1), and the day
+it was read. `vendor-api-versions.test.ts` fails a pin with no row for any
+version between the first row and the pin, so reading every changelog crossed
+is a step a bump cannot skip. A future bump appends rows; it never edits one.
+
+<!-- graph-version-findings -->
+| Version | Changelog read | What it changes on our surfaces | Source |
+|---|---|---|---|
+| v23.0 | 2026-09-21 | Baseline (FILM-1723's pin). v21-v23 change nothing on the OAuth, Page, publishing or container endpoints; insights metrics removed in that window (`video_views` in v21; `plays`, `impressions`, `clips_replays_count`, `ig_reels_aggregated_all_plays_count` everywhere from 2025-04-21) are in the forbidden block | [changelog](https://developers.facebook.com/docs/graph-api/changelog/) |
+| v24.0 | 2026-10-01 | Nothing on our surfaces. Its changes are the Marketing API, certificate-transparency endpoints (removed) and Live Video's `overlay_url` (removed); none is called here | [v24.0](https://developers.facebook.com/docs/graph-api/changelog/version24.0) |
+| v25.0 | 2026-10-01 | Nothing we call. Deprecates 41 Page, Post, Video and Story insight metrics for every version once v26.0 shipped, four of which this reference wrongly listed for Facebook (corrected above, FILM-1725 Check J); `metadata=1` returns no metadata from 2026-05-19. Both in the forbidden block | [v25.0](https://developers.facebook.com/docs/graph-api/changelog/version25.0) |
+| v26.0 | 2026-10-01 | Nothing we call. Retires `pretty`, `debug` (and its `__debug__` envelope), `If-None-Match`, `date_format` and root `GET /?ids=` for every version from 2026-10-27; Page legacy fields `current_location`, `genre`, `network`, `parking`, `start_info`, `auto_publish_page_info_updates` (not requested). The forbidden block holds the parameters. Instagram Platform changelog to 2026-06-22 adds `is_ai_generated`, `link_clicks` and media `*_count` fields (FILM-1712, FILM-1720 inputs; nothing removed) | [v26.0](https://developers.facebook.com/docs/graph-api/changelog/version26.0), [Instagram](https://developers.facebook.com/docs/instagram-platform/changelog/) |
+
+_Verified: 2026-10-01_
 
 ---
 
@@ -1147,14 +1226,19 @@ success                    # DELETE /{video-id}; observed, not documented (see l
 
 <!-- fields: facebook/video-insights source: https://developers.facebook.com/docs/graph-api/reference/video/video_insights/ -->
 ```text
+# This page still documents the four names marked "deprecated" below; Graph
+# v25.0's changelog retired them for every version (FILM-1728 §4.3). They stay
+# here because the block records what the page says. The forbidden block is
+# what stops a request for them; FILM-1725 Check J settles which page is right.
 total_video_views
-total_video_views_unique
+total_video_views_unique   # deprecated: Graph v25.0, all versions since 2026-07-29
+total_video_impressions    # deprecated: Graph v25.0, all versions since 2026-07-29
+total_video_impressions_unique # deprecated: Graph v25.0, all versions since 2026-07-29
+post_impressions_unique    # deprecated: Graph v25.0, all versions since 2026-07-29
 total_video_15s_views
 total_video_avg_time_watched
 total_video_view_total_time
 total_video_retention_graph
-total_video_impressions
-total_video_impressions_unique
 total_video_complete_views
 total_video_views_autoplayed
 total_video_views_clicked_to_play
@@ -1167,7 +1251,6 @@ total_video_reactions_by_type_total
 blue_reels_play_count
 fb_reels_replay_count
 fb_reels_total_plays
-post_impressions_unique
 post_video_avg_time_watched
 post_video_view_time
 post_video_retention_graph
@@ -1457,12 +1540,75 @@ instagram|meta|facebook ig_reels_aggregated_all_plays_count -> views            
 instagram               video_views                         -> views                 removed from IG media insights in Graph v21.0; FILM-1723 pinned every Meta call past it
 instagram|meta|facebook video_duration                      -> (none)                IG Media has no duration field (checked 2026-09-21); record the uploaded file's duration instead
 youtube                 annotationClickThroughRate          -> (none)                annotations retired; documented but dead
+meta|facebook           page_impressions_unique             -> (none)               Page Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           page_impressions_paid_unique        -> (none)               Page Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           page_impressions_viral_unique       -> (none)               Page Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           page_impressions_nonviral_unique    -> (none)               Page Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           page_posts_impressions              -> (none)               Page Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           page_posts_impressions_unique       -> (none)               Page Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           page_posts_impressions_paid         -> (none)               Page Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           page_posts_impressions_paid_unique  -> (none)               Page Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           page_posts_impressions_organic_unique -> (none)               Page Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           page_posts_served_impressions_organic_unique -> (none)               Page Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           page_posts_impressions_viral        -> (none)               Page Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           page_posts_impressions_viral_unique -> (none)               Page Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           page_posts_impressions_nonviral     -> (none)               Page Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           page_posts_impressions_nonviral_unique -> (none)               Page Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           page_video_views_unique             -> (none)               Page Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           post_impressions_unique             -> (none)               Post Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           post_impressions_paid_unique        -> (none)               Post Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           post_impressions_fan_unique         -> (none)               Post Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           post_impressions_organic_unique     -> (none)               Post Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           post_impressions_viral_unique       -> (none)               Post Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           post_impressions_nonviral_unique    -> (none)               Post Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           post_video_views_organic_unique     -> (none)               Post Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           post_video_views_paid_unique        -> (none)               Post Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           post_video_views_unique             -> (none)               Post Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           total_video_impressions             -> (none)               Video Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           total_video_impressions_unique      -> (none)               Video Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           total_video_impressions_paid_unique -> (none)               Video Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           total_video_impressions_paid        -> (none)               Video Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           total_video_impressions_organic_unique -> (none)               Video Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           total_video_impressions_organic     -> (none)               Video Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           total_video_impressions_viral_unique -> (none)               Video Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           total_video_impressions_viral       -> (none)               Video Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           total_video_impressions_fan_unique  -> (none)               Video Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           total_video_impressions_fan         -> (none)               Video Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           total_video_impressions_fan_paid_unique -> (none)               Video Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           total_video_impressions_fan_paid    -> (none)               Video Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           total_video_views_organic_unique    -> total_video_views    Video Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           total_video_views_paid_unique       -> total_video_views    Video Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           total_video_views_unique            -> total_video_views    Video Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           PAGE_STORY_IMPRESSIONS_BY_STORY_ID  -> (none)               Stories Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+meta|facebook           PAGE_STORY_IMPRESSIONS_BY_STORY_ID_UNIQUE -> (none)               Stories Insights, v25.0 deprecation, all versions since v26.0 (2026-07-29)
+instagram|meta|facebook pretty                              -> (none)               ignored; Graph v26.0 legacy protocol retirement, all versions from 2026-10-27
+instagram|meta|facebook debug                               -> (none)               ignored, no __debug__ envelope; Graph v26.0 legacy protocol retirement, all versions from 2026-10-27
+instagram|meta|facebook If-None-Match                       -> (none)               ignored, no ETag/304; Graph v26.0 legacy protocol retirement, all versions from 2026-10-27
+instagram|meta|facebook date_format                         -> (none)               returns an error; Graph v26.0 legacy protocol retirement, all versions from 2026-10-27
+instagram|meta|facebook /?ids                               -> (none)               root GET /?ids= returns an error; Graph v26.0 legacy protocol retirement, all versions from 2026-10-27
+instagram|meta|facebook metadata=1                          -> (none)               returns no node metadata; Graph v25.0, all versions from 2026-05-19
 ```
 
 The guard matches whole tokens, so `video_thumbnail_impressions`, `adImpressions`
 and `fb_reels_total_plays` are unaffected by the `impressions` and `plays` entries.
 
-_Verified: 2026-09-21_
+**The 41 Facebook metrics (FILM-1728, read 2026-10-01).** Graph
+[v25.0's changelog](https://developers.facebook.com/docs/graph-api/changelog/version25.0):
+*"page reach, page post reach, video impressions, and story impressions metrics
+listed below will be deprecated. Once deprecated, these metrics will return an
+error if requested using any API version"* — *"Will apply to all versions when
+v26.0 is released"*, which it was on 2026-07-29. Its lists hold 42 entries:
+Page 15, Post 9, Video 16, Stories 2. `post_impressions_unique` is in both the
+Post and the Video list, so the names are 41. (FILM-1728 §4.3 counted the Video
+list as 15; it is 16 with that name.) We request none of them; nothing broke.
+
+The v26.0 rows are parameters, not metrics: Graph
+[v26.0's changelog](https://developers.facebook.com/docs/graph-api/changelog/version26.0),
+"Legacy Graph API Protocol Features Deprecated". `/?ids` and `metadata=1` are
+written with their punctuation so the ordinary words `ids` and `metadata` stay
+usable.
+
+_Verified: 2026-10-01_
 
 ---
 
@@ -1526,6 +1672,7 @@ this document cannot make.
 | The denominator of Facebook's `total_video_avg_time_watched` | Ask Meta developer support whether replays count in the denominator | FILM-1720 |
 | Facebook's `post_video_retention_graph` segment count | One authorised call against a real Reel, counting the returned segments | FILM-1720 |
 | Whether our pinned Graph version returns the 2026-04-22 Instagram fields in practice | The changelog says "applies to all versions"; one call once insights permission is held confirms it | **FILM-1725** Check C |
+| Whether the 41 Facebook metrics v25.0 deprecated really error, as the changelog says, while the video_insights reference still lists them | One `/{video-id}/video_insights?metric=total_video_views_unique` call on the owner's first connected Page; a 400 confirms the changelog | **FILM-1725** Check J |
 | The TikTok Display API field list, confirmed live | A sandbox app with `video.list` granted to a test user — see below | **FILM-1725** (deferred; fold into FILM-1711) |
 
 ### Reproducible checks

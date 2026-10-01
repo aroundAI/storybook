@@ -1,14 +1,15 @@
 /**
- * Facebook Upload Handler
+ * Facebook Upload Handler: glue over `FacebookProvider` (FILM-1728 §7.3.C).
+ * The upload itself, and every Graph call, live in the provider, so a field
+ * that changes in a future Graph version is fixed once.
  */
 import type { PublishJobMessage } from '@kit/publishing/lib/job-types';
-import { META_GRAPH_BASE, META_GRAPH_VIDEO_BASE } from '@kit/shared/vendors';
+import { FacebookProvider } from '@kit/publishing/providers/facebook';
 
 export async function uploadToFacebook(
   accessToken: string,
   job: PublishJobMessage,
 ): Promise<{ contentId: string; url: string }> {
-  // Get page ID from metadata
   const pageId = job.metadata.pageId as string;
   if (!pageId) {
     throw new Error('Facebook page ID not provided in metadata');
@@ -16,47 +17,20 @@ export async function uploadToFacebook(
 
   console.log(`[Facebook] Starting video upload to page ${pageId}...`);
 
-  // Prepare FormData for upload
-  const formData = new FormData();
-  formData.append('access_token', accessToken);
-  formData.append('file_url', job.videoUrl);
-  formData.append('title', job.title);
-  formData.append('description', job.description);
-  formData.append('published', 'true');
-
-  // Handle thumbnail - download and append as file
-  if (job.thumbnailUrl) {
-    try {
-      console.log(
-        `[Facebook] Downloading thumbnail from ${job.thumbnailUrl}...`,
-      );
-      const thumbResponse = await fetch(job.thumbnailUrl);
-      if (thumbResponse.ok) {
-        const thumbBlob = await thumbResponse.blob();
-        formData.append('thumb', thumbBlob, 'thumbnail.jpg');
-      } else {
-        console.warn(
-          `[Facebook] Failed to download thumbnail: ${thumbResponse.status} ${thumbResponse.statusText}`,
-        );
-      }
-    } catch (error) {
-      console.warn(`[Facebook] Error downloading thumbnail:`, error);
-    }
-  }
-
-  // Upload video via resumable upload API (using FormData for mixed content)
-  const response = await fetch(`${META_GRAPH_VIDEO_BASE}/${pageId}/videos`, {
-    method: 'POST',
-    body: formData,
+  // Meta fetches the video from its URL in one call; nothing passes
+  // through the lambda.
+  const { videoId } = await new FacebookProvider(
+    accessToken,
+    pageId,
+  ).uploadVideo({
+    videoPath: job.videoUrl,
+    title: job.title,
+    description: job.description,
+    thumbnailPath: job.thumbnailUrl,
+    isReel: false,
+    fetchFromUrl: true,
+    published: true,
   });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Facebook upload failed: ${error}`);
-  }
-
-  const data = await response.json();
-  const videoId = data.id;
 
   if (!videoId) {
     throw new Error('Failed to get video ID from Facebook');
@@ -76,17 +50,8 @@ export async function deleteFromFacebook(
 ): Promise<void> {
   console.log(`[Facebook] Deleting video: ${videoId}`);
 
-  const response = await fetch(
-    `${META_GRAPH_BASE}/${videoId}?access_token=${accessToken}`,
-    {
-      method: 'DELETE',
-    },
-  );
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Facebook delete failed: ${error}`);
-  }
+  // Deleting a video by its id needs no Page.
+  await new FacebookProvider(accessToken, '').deleteVideo(videoId);
 
   console.log(`[Facebook] Video deleted: ${videoId}`);
 }

@@ -1,8 +1,4 @@
-import {
-  META_GRAPH_BASE,
-  META_OAUTH_DIALOG_URL,
-  META_OAUTH_TOKEN_URL,
-} from '@kit/shared/vendors';
+import { META_OAUTH_DIALOG_URL } from '@kit/shared/vendors';
 
 /**
  * Meta OAuth 2.0 Configuration
@@ -10,9 +6,8 @@ import {
  */
 
 export const META_OAUTH_CONFIG = {
+  /** Followed by the browser. Every server call goes through `metaFetch`. */
   authUrl: META_OAUTH_DIALOG_URL,
-  tokenUrl: META_OAUTH_TOKEN_URL,
-  graphUrl: META_GRAPH_BASE,
   scopes: [
     // Facebook Page publishing
     'pages_show_list',
