@@ -285,6 +285,15 @@ with any file Prettier would change, so an unformatted push is a red build.
   **✅ CI result**. Actions → Workflow → Run workflow runs the full suite on
   a branch on demand. `scripts/ci/minutes.sh <pr|run-id>` reports what a PR
   or run cost in runner-minutes.
+- **Scoped heavy jobs are report-only for now.** In each queue run 🔎 Changes
+  works out which heavy jobs the change needs (`scripts/ci/scope-heavy.sh`:
+  Playwright when turbo's affected set reaches `web`/`web-e2e`, 🐘 Supabase
+  DB for SQL, only the guards whose file or test changed via `run.py
+  --changed`, everything on a root-config change). It writes what it *would*
+  skip to the run summary, and ✅ CI result flags a would-skip job that
+  failed; everything still runs. After a clean shadow week the owner sets
+  the repo variable `CI_SCOPE_HEAVY=true` to skip them. A nightly full run
+  on main (02:30 UTC) catches anything scoping misses.
 - **Don't push while a run is in progress.** The push cancels it, and a
   cancelled run is still billed. Batch fixes into one push; queue a PR only
   when its fast lane is green.

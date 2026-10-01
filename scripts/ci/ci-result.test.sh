@@ -11,8 +11,11 @@ needs() {
   local code=$1 heavy=$2
   shift 2
   local json
-  json=$(jq -n --arg code "$code" --arg heavy "$heavy" \
-    '{changes: {result: "success", outputs: {code: $code, heavy: $heavy}}}')
+  # SCOPE: extra 🔎 Changes outputs as JSON, for the enforced scope (Phase 2).
+  local scope=${SCOPE:-}
+  [ -n "$scope" ] || scope='{}'
+  json=$(jq -n --arg code "$code" --arg heavy "$heavy" --argjson scope "$scope" \
+    '{changes: {result: "success", outputs: ({code: $code, heavy: $heavy} + $scope)}}')
   for pair in "$@"; do
     json=$(printf '%s' "$json" | jq --arg j "${pair%%=*}" --arg r "${pair#*=}" \
       'if $j == "changes" then .changes.result = $r else .[$j] = {result: $r, outputs: {}} end')
@@ -64,6 +67,21 @@ check fail 'Changes cancelled' true true "${FAST[@]}" "${FULL[@]}" changes=cance
 check fail 'Changes succeeded with no classification, all skipped' '' '' \
   typescript=skipped format=skipped clickhouse-sql=skipped unit-test=skipped \
   docs-checks=skipped supabase-db=skipped unit-guards=skipped
+
+# Phase 2: an enforced scope may skip 🐘 Supabase DB and 🧪 Unit guards.
+SCOPED='{"skip_supabase": "true", "skip_unit_guards": "true"}'
+SCOPE=$SCOPED check pass 'scoped queue run, DB and unit guards scoped out' true true \
+  "${FAST[@]}" "${FULL[@]}" supabase-db=skipped unit-guards=skipped e2e-guards=skipped
+SCOPE=$SCOPED check fail 'scoped queue run, a scoped-in job failed' true true \
+  "${FAST[@]}" "${FULL[@]}" supabase-db=skipped unit-guards=skipped test=failure
+SCOPE=$SCOPED check fail 'scoped out, but it ran and failed' true true \
+  "${FAST[@]}" "${FULL[@]}" supabase-db=failure unit-guards=skipped
+SCOPE=$SCOPED check fail 'scoped out, unit guards result failed' true true \
+  "${FAST[@]}" "${FULL[@]}" supabase-db=skipped unit-guards=skipped unit-guards-result=failure
+SCOPE='{"skip_supabase": "true", "skip_unit_guards": "false"}' check fail \
+  'unit guards scoped in, but skipped' true true "${FAST[@]}" "${FULL[@]}" supabase-db=skipped unit-guards=skipped
+SCOPE='{"skip_supabase": "", "skip_unit_guards": ""}' check fail \
+  'blank scope (report-only or failed), DB skipped' true true "${FAST[@]}" "${FULL[@]}" supabase-db=skipped
 
 if [ "$failures" -ne 0 ]; then
   echo "$failures case(s) failed"

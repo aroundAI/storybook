@@ -7,10 +7,20 @@ name: Workflow
 # merges it. `workflow_dispatch` runs the same full suite on any branch, for
 # a PR whose author wants it before queueing. Nothing runs on a push to
 # main: the queue already tested that commit.
+#
+# Phase 2 (path-scoped heavy jobs): 🔎 Changes works out which heavy jobs a
+# queued change needs (scripts/ci/scope-heavy.sh) and writes it to the run's
+# summary. It is report-only until the owner sets the repository variable
+# CI_SCOPE_HEAVY to `true`; then the jobs it rules out are skipped. A nightly
+# full run on main catches anything scoping missed.
 on:
   merge_group:
     types: [ checks_requested ]
   workflow_dispatch:
+  # The nightly full suite on main, scoped or not: whatever a scoped queue
+  # run skipped is tested within a day, with GitHub's failure email.
+  schedule:
+    - cron: '30 2 * * *'
   # Only pull requests into main (owner, 2026-10-01). A PR stacked on another
   # feature branch runs nothing until it is retargeted to main: its code is
   # tested once, on top of main, instead of once per base it passes through.
@@ -20,9 +30,10 @@ on:
     branches: [ main ]
 # CI minutes are rationed: a newer push to the same PR cancels the older run.
 # Queue and dispatch runs are never cancelled: each merge group has its own
-# ref, so its run completes and decides the merge.
+# ref, so its run completes and decides the merge. The nightly run has its
+# own group, so a dispatch on main neither waits for it nor displaces it.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'schedule' && 'nightly' || github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   changes:
@@ -46,7 +57,12 @@ jobs:
     #
     # `heavy` decides the heavy jobs (🧪 Unit guards, 🐘 Supabase DB,
     # 🧬 E2E evidence, ⚫️ Test, 🧬 E2E guards): false on a pull request (the
-    # fast lane), true in the merge queue and on a manual dispatch.
+    # fast lane), true in the merge queue, on a manual dispatch and nightly.
+    #
+    # The scope_* and skip_* outputs are Phase 2's: set in the merge queue
+    # only, by the "Scope the heavy jobs" step. Jobs skip only on an explicit
+    # skip_*=true, which needs vars.CI_SCOPE_HEAVY == 'true'; blank (a PR, a
+    # dispatch, the nightly run, report-only, a failed step) runs everything.
     timeout-minutes: 5
     runs-on: ubuntu-latest
     permissions:
@@ -55,6 +71,18 @@ jobs:
     outputs:
       code: ${{ steps.reuse.outputs.code || steps.classify.outputs.code }}
       heavy: ${{ github.event_name != 'pull_request' }}
+      scope_full: ${{ steps.scope.outputs.full }}
+      scope_enforced: ${{ steps.scope.outputs.enforced }}
+      scope_test: ${{ steps.scope.outputs.test }}
+      scope_supabase: ${{ steps.scope.outputs.supabase }}
+      scope_unit_guards: ${{ steps.scope.outputs.unit_guards }}
+      scope_e2e_guards: ${{ steps.scope.outputs.e2e_guards }}
+      skip_test: ${{ steps.scope.outputs.skip_test }}
+      skip_supabase: ${{ steps.scope.outputs.skip_supabase }}
+      skip_unit_guards: ${{ steps.scope.outputs.skip_unit_guards }}
+      skip_e2e_guards: ${{ steps.scope.outputs.skip_e2e_guards }}
+      unit_shards: ${{ steps.scope.outputs.unit_shards }}
+      e2e_shards: ${{ steps.scope.outputs.e2e_shards }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -138,6 +166,25 @@ jobs:
             echo "The PR's code patch is identical to $PREV, whose run passed: $url"
             echo "Heavy jobs are skipped; 📚 Docs checks runs in their place."
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # Phase 2: which heavy jobs this queued change needs — Playwright when
+      # turbo's affected set reaches web or web-e2e, 🐘 Supabase DB for SQL,
+      # only the mutation guards whose file or test changed, and everything
+      # on a root-config change (rule and table test: scripts/ci/scope-heavy.sh).
+      # Report-only unless vars.CI_SCOPE_HEAVY is `true`. continue-on-error:
+      # a failure here leaves every scope output blank, which runs everything.
+      - name: Scope the heavy jobs
+        id: scope
+        if: ${{ github.event_name == 'merge_group' && steps.classify.outputs.code == 'true' }}
+        continue-on-error: true
+        env:
+          BASE: ${{ github.event.merge_group.base_sha }}
+          SCOPE_ENFORCE: ${{ vars.CI_SCOPE_HEAVY }}
+        run: |
+          out=$(bash scripts/ci/scope-heavy.sh "$BASE" HEAD)
+          printf '%s\n' "$out"
+          printf '%s\n' "$out" | bash scripts/ci/scope-heavy.sh --summary >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' "$out" >> "$GITHUB_OUTPUT"
 
   typescript:
     name: ʦ TypeScript
@@ -288,7 +335,7 @@ jobs:
     timeout-minutes: 20
     runs-on: ubuntu-latest
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.heavy == 'true' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.heavy == 'true' && needs.changes.outputs.skip_supabase != 'true' }}
     env:
       DO_NOT_TRACK: 1
 
@@ -455,6 +502,9 @@ jobs:
       - name: Runner-minutes report - table test
         run: bash scripts/ci/minutes.test.sh
 
+      - name: Heavy-job scope classifier - table test
+        run: bash scripts/ci/scope-heavy.test.sh
+
       # One list, shared with both deploy workflows: scripts/test-units.sh.
       - name: Run Unit Tests
         run: bash scripts/test-units.sh
@@ -489,21 +539,26 @@ jobs:
     # cancelled mid-run, so the guards after the cutoff never ran. Each shard
     # runs every 4th entry, ~1/4 of them, in parallel. When they grow, add a
     # shard, not minutes.
+    #
+    # Under an enforced scope (Phase 2) only the guards whose file or test
+    # changed run (`run.py --changed`), on as many shards as they fill, up
+    # to four; with none, the job is skipped. Otherwise all four run all.
     timeout-minutes: 15
     runs-on: ubuntu-latest
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.heavy == 'true' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.heavy == 'true' && needs.changes.outputs.skip_unit_guards != 'true' }}
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: ${{ fromJSON(needs.changes.outputs.unit_shards || '[1, 2, 3, 4]') }}
     env:
       DO_NOT_TRACK: 1
 
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          # Whole history: `run.py --changed` diffs from the merge base.
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
 
@@ -522,8 +577,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-turbo-
 
-      - name: Mutation guards - unit (shard ${{ matrix.shard }}/4)
-        run: python3 tooling/mutation-guards/run.py --kind unit --shard ${{ matrix.shard }}/4
+      - name: Mutation guards - unit (shard ${{ matrix.shard }}/${{ strategy.job-total }})
+        env:
+          SCOPED: ${{ needs.changes.outputs.scope_enforced }}
+          BASE: ${{ github.event.merge_group.base_sha }}
+          SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
+        run: |
+          if [ "$SCOPED" = true ]; then
+            set -- --changed "$BASE...HEAD"
+          fi
+          python3 tooling/mutation-guards/run.py --kind unit --shard "$SHARD" "$@"
 
   unit-guards-result:
     name: 🧪 Unit guards
@@ -534,7 +597,8 @@ jobs:
     # It passes only when the shards passed; when the change was classified
     # docs-only, the shards were skipped and 📚 Docs checks passed in their
     # place; or on a pull request (heavy=false), where the shards are left to
-    # the merge queue. Anything else fails, including a failed 🔎 Changes.
+    # the merge queue; or when an enforced scope found no guard whose file
+    # or test changed. Anything else fails, including a failed 🔎 Changes.
     needs: [changes, unit-guards, docs-checks]
     if: always()
     runs-on: ubuntu-latest
@@ -544,6 +608,7 @@ jobs:
           CHANGES: ${{ needs.changes.result }}
           CODE: ${{ needs.changes.outputs.code }}
           HEAVY: ${{ needs.changes.outputs.heavy }}
+          SCOPED_OUT: ${{ needs.changes.outputs.skip_unit_guards }}
           SHARDS: ${{ needs.unit-guards.result }}
           DOCS: ${{ needs.docs-checks.result }}
         run: |
@@ -559,6 +624,11 @@ jobs:
           if [ "$CHANGES" = success ] && [ "$CODE" != false ] \
             && [ "$HEAVY" = false ] && [ "$SHARDS" = skipped ]; then
             echo "Pull request fast lane: the shards run in the merge queue."
+            exit 0
+          fi
+          if [ "$CHANGES" = success ] && [ "$CODE" != false ] \
+            && [ "$SCOPED_OUT" = true ] && [ "$SHARDS" = skipped ]; then
+            echo "Scoped merge-queue run: no unit guard's file or test changed."
             exit 0
           fi
           exit 1
@@ -629,10 +699,14 @@ jobs:
     # cumulative — the median request time is flat across a job's life — so
     # what decides whether a shard survives is how many assertions it runs
     # on that runner. Shorter shards, fewer chances to land on one.
+    #
+    # Under an enforced scope (Phase 2) only the guards whose file or spec
+    # changed run (`run.py --changed`), on up to five shards; with none, the
+    # job is skipped. A changed guard JSON selects all of its entries.
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5]
+        shard: ${{ fromJSON(needs.changes.outputs.e2e_shards || '[1, 2, 3, 4, 5]') }}
     # 60, not 45: with #518's per-guard limits a healthy shard 1 now runs
     # 43-47 minutes, and two queue runs (#519, #504) were cancelled at 45 with
     # every guard so far RED. Billing is per minute used, so headroom is free.
@@ -641,7 +715,7 @@ jobs:
     # CI minutes are rationed: the E2E mutation guards run with the other
     # heavy jobs, in the merge queue (or on a dispatch), not on PR pushes.
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' && needs.changes.outputs.heavy == 'true' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' && needs.changes.outputs.heavy == 'true' && needs.changes.outputs.skip_e2e_guards != 'true' }}
     env:
       DO_NOT_TRACK: 1
       # The server reads ClickHouse, unlike ⚫️ Test: the evidence specs seed
@@ -682,6 +756,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Whole history: `run.py --changed` diffs from the merge base.
+          fetch-depth: 0
 
       # Same reason as ⚫️ Test: Supabase images, browsers and the monorepo
       # install do not fit a runner's spare disk.
@@ -752,11 +829,18 @@ jobs:
       # requires its spec to fail; the unit and database guards run in their
       # own jobs.
       - name: Mutation guards - e2e
-        run: python3 tooling/mutation-guards/run.py --kind e2e --shard ${{ matrix.shard }}/5
         env:
+          SCOPED: ${{ needs.changes.outputs.scope_enforced }}
+          BASE: ${{ github.event.merge_group.base_sha }}
+          SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
           # Read before each guard; over the limit, the server is restarted
           # there, never inside a guard (KB-165). The default and why: run.py.
           E2E_DEV_SERVER_CTL: scripts/ci/next-dev-server.sh
+        run: |
+          if [ "$SCOPED" = true ]; then
+            set -- --changed "$BASE...HEAD"
+          fi
+          python3 tooling/mutation-guards/run.py --kind e2e --shard "$SHARD" "$@"
 
       - name: Upload server log
         uses: actions/upload-artifact@v4
@@ -795,7 +879,7 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-latest
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' && needs.changes.outputs.heavy == 'true' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' && needs.changes.outputs.heavy == 'true' && needs.changes.outputs.skip_test != 'true' }}
     env:
       DO_NOT_TRACK: 1
       # The server reads ClickHouse, unlike ⚫️ Test: the evidence specs seed
@@ -945,7 +1029,7 @@ jobs:
     timeout-minutes: 45
     runs-on: ubuntu-latest
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' && needs.changes.outputs.heavy == 'true' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' && needs.changes.outputs.heavy == 'true' && needs.changes.outputs.skip_test != 'true' }}
     env:
       # No Stripe. The billing specs are skipped (see ENABLE_BILLING_TESTS
       # below), so the repo needs no payment credentials to run this job.
@@ -1129,6 +1213,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # Phase 2's shadow week: in a report-only queue run, a job the scope
+      # would have skipped that failed anyway is the case that must not occur
+      # before CI_SCOPE_HEAVY is set to `true`. Reported, never a verdict.
+      - name: Scope shadow check
+        continue-on-error: true
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          out=$(printf '%s' "$NEEDS" | bash scripts/ci/scope-heavy.sh --shadow)
+          printf '%s\n' "$out" | tee -a "$GITHUB_STEP_SUMMARY"
+          if printf '%s\n' "$out" | grep -q 'WOULD HAVE MISSED'; then
+            echo "::warning title=Scope shadow check::$(printf '%s\n' "$out" | grep 'WOULD HAVE MISSED')"
+          fi
 
       - name: Every job this run required passed, and none failed or was cancelled
         env:
