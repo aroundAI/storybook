@@ -1,0 +1,14 @@
+{
+  "feature": "KB-159",
+  "mutations": [
+    {
+      "name": "KB159 M1 a redirected lifecycle action reads the change back",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/analytics/experiments/_components/experiments-client.tsx",
+      "find": "      if (isRedirectError(error)) return false;",
+      "replace": "      if (isRedirectError(error) && false) return false;",
+      "spec": "tests/experiments/change-log-details.spec.ts",
+      "grep": "sends no other action before sign-in"
+    }
+  ]
+}

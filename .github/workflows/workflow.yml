@@ -649,6 +649,14 @@ jobs:
       CLICKHOUSE_PASSWORD: verify
       CLICKHOUSE_DB: default
       PLAYWRIGHT_BASE_URL: http://localhost:3100
+      # The server's own address: redirects built from it (a failed platform
+      # connect, KB-19) otherwise go to apps/web/.env's localhost:3000, where
+      # nothing listens in this job (E2 and E3 of KB-99).
+      NEXT_PUBLIC_SITE_URL: http://localhost:3100
+      # A throwaway key, the same for the server and the specs: without one
+      # the specs that save an encrypted key skip, and a skipped guard can
+      # never go red (K11 of KB-84). Base64 of a 32-byte ASCII string.
+      ENCRYPTION_KEY: Y2ktZTJlLWd1YXJkcy10aHJvd2F3YXkta2V5LTAwMDE=
       # A dev server compiles each route on its first visit; 15s was not
       # enough for three of them.
       PLAYWRIGHT_NAVIGATION_TIMEOUT: '60000'

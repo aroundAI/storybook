@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 
+import { isRedirectError } from 'next/dist/client/components/redirect-error';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -233,6 +234,11 @@ export function ExperimentsClient({ accountId }: ExperimentsClientProps) {
       }
       return true;
     } catch (error) {
+      // A redirect (the session ended, KB-159) is a navigation, not a
+      // refusal: reading back here queues more actions in front of it, and
+      // each redirects again, so the sign-in page never arrives.
+      if (isRedirectError(error)) return false;
+
       const message =
         error instanceof Error ? error.message : 'The action did not complete';
       toast.error(message);

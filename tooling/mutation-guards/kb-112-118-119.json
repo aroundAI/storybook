@@ -68,7 +68,7 @@
       "find": "            This deletes this episode&apos;s videos on {REMOTELY_DELETED}, and",
       "replace": "            This deletes this episode&apos;s records on {REMOTELY_DELETED}, and",
       "spec": "tests/publishing/delete-all-copy.spec.ts",
-      "grep": "deleted on YouTube and Facebook"
+      "grep": "deleted on YouTube, Facebook and X"
     }
   ]
 }
