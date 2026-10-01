@@ -109,7 +109,7 @@ describe('the chip', () => {
     );
 
     expect(provenanceChip(both, ['engagement'])).toMatchObject({
-      label: '2 of 3 platforms · partly derived',
+      label: '2 of 4 platforms · partly derived',
       tone: 'derived',
       state: 'covered',
       muted: false,
@@ -207,7 +207,7 @@ describe('the chip', () => {
 
     expect(provenanceChip(off, ['engagement'])).toMatchObject({
       // Instagram is not connected, so it is not in "up to".
-      label: 'Up to 2 of 3 platforms · partly derived',
+      label: 'Up to 3 of 4 platforms · partly derived',
       state: 'unknown',
     });
     // The audience families' table is not read by the coverage query.
@@ -225,7 +225,7 @@ describe('the chip', () => {
       provenanceChip(viewOf(undefined), ['traffic_sources']),
     ).toMatchObject({ label: 'YouTube only', state: 'pending' });
     expect(provenanceChip(viewOf(undefined), ['engagement'])).toMatchObject({
-      label: 'Up to 3 platforms · partly derived',
+      label: 'Up to 4 platforms · partly derived',
       state: 'pending',
     });
   });
@@ -271,7 +271,8 @@ describe('the strip', () => {
       ['youtube', 'covered'],
       ['tiktok', 'no_data_in_window'],
       ['instagram', 'not_connected'],
-      ['facebook', 'unsupported_platform'],
+      // Supported since FILM-1720: connected, and empty in the window.
+      ['facebook', 'no_data_in_window'],
     ]);
     expect(item('youtube').sentence).toBe('YouTube: data through 2026-09-29.');
     expect(item('tiktok').sentence).toBe(
@@ -280,10 +281,28 @@ describe('the strip', () => {
     expect(item('instagram').sentence).toBe('Instagram: not connected.');
   });
 
-  it('names a connected Facebook channel as unsupported rather than dropping it', () => {
+  it('names a connected Facebook channel rather than dropping it', () => {
     expect(item('facebook').sentence).toBe(
-      'Facebook (Seed Studio Page): connected, but analytics doesn’t support Facebook.',
+      `Facebook: connected (Seed Studio Page), but no data for ${WINDOW}.`,
     );
+  });
+
+  it('names a connection outside the analytics platforms as unsupported rather than dropping it', () => {
+    const linkedIn = coverageStrip(
+      viewOf(
+        coverageResult({
+          rows: [],
+          channels: [channelRef('linkedin', { name: 'Seed Studio Co' })],
+        }),
+      ),
+      TAB_FAMILIES['deep-dive'],
+    ).items.find(({ platform }) => platform === 'linkedin');
+
+    expect(linkedIn).toMatchObject({
+      kind: 'unsupported_platform',
+      sentence:
+        'LinkedIn (Seed Studio Co): connected, but analytics doesn’t support LinkedIn.',
+    });
   });
 
   it('tells not connected, connected but empty, not yet collected and not reported apart', () => {
@@ -343,7 +362,7 @@ describe('the filter’s third state', () => {
 
     // Connected-but-empty depends on the window, which the header filter
     // does not share with Deep Dive, so it does not dim.
-    expect(available).toEqual(['youtube', 'tiktok']);
+    expect(available).toEqual(['youtube', 'tiktok', 'facebook']);
     expect(reasons).toEqual({ instagram: 'Instagram: not connected.' });
   });
 });

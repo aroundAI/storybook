@@ -179,7 +179,8 @@ describe('the strip', () => {
       ['coverage-strip-youtube', 'covered'],
       ['coverage-strip-tiktok', 'no_data_in_window'],
       ['coverage-strip-instagram', 'not_connected'],
-      ['coverage-strip-facebook', 'unsupported_platform'],
+      // Supported since FILM-1720: connected, and empty in the window.
+      ['coverage-strip-facebook', 'no_data_in_window'],
     ]);
   });
 

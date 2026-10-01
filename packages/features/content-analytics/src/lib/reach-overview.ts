@@ -5,6 +5,8 @@ import {
   capabilityFor,
 } from '@kit/clickhouse';
 
+import { platformLabel } from './platform-labels';
+
 /**
  * The cross-platform reach page's rules (design approved 2026-09-28), kept
  * apart from the reads so they can be tested without a database.
@@ -100,8 +102,7 @@ export interface Counts {
   shares: number;
 }
 
-export const NO_SINGLE_VIEW_REASON =
-  'Not measured: Facebook counts four different kinds of view, and none of them is a view in this sense, so its plays are not added to views.';
+export const NO_SINGLE_VIEW_REASON = `Not measured: ${platformLabel('facebook')} counts four different kinds of view, and none of them is a view in this sense, so its plays are not added to views.`;
 
 /** A platform's views as a reader hands them over: null where there is no single view. */
 export function measuredViews(

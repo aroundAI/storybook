@@ -28,10 +28,10 @@ import {
 } from '../lib/insights-inputs';
 import { localDateOf } from '../lib/local-date';
 import { ABSENT, measured } from '../lib/measured';
-import { viewsToAdd } from '../lib/views';
-import { VIEWS_NOT_MEASURED, viewsShare } from '../lib/views';
-import type { Views } from '../lib/views';
+import { platformLabel } from '../lib/platform-labels';
 import { TAB_FAMILIES, isAnalyticsTab } from '../lib/provenance';
+import { VIEWS_NOT_MEASURED, viewsShare, viewsToAdd } from '../lib/views';
+import type { Views } from '../lib/views';
 import {
   getContentListAction,
   getProjectAnalyticsAction,
@@ -535,12 +535,6 @@ function PlatformBreakdownCard({ data }: PlatformBreakdownCardProps) {
     instagram: 'bg-gradient-to-r from-purple-500 to-pink-500',
   };
 
-  const PLATFORM_LABELS: Record<string, string> = {
-    youtube: 'YouTube',
-    tiktok: 'TikTok',
-    instagram: 'Instagram',
-  };
-
   return (
     <div className="space-y-4">
       {data.map((platform) => {
@@ -553,7 +547,7 @@ function PlatformBreakdownCard({ data }: PlatformBreakdownCardProps) {
                   className={`h-3 w-3 rounded-full ${PLATFORM_COLORS[platform.platform] || 'bg-gray-500'}`}
                 />
                 <span className="font-medium">
-                  {PLATFORM_LABELS[platform.platform] || platform.platform}
+                  {platformLabel(platform.platform)}
                 </span>
               </div>
               <div className="text-muted-foreground">

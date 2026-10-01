@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 
 import { Filter } from 'lucide-react';
 
+import type { AnalyticsPlatform } from '@kit/clickhouse';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { Checkbox } from '@kit/ui/checkbox';
@@ -31,9 +32,9 @@ export interface PlatformFilterProps {
    * platform missing from the list reads as one the product does not
    * support, and leaves nothing to explain why.
    */
-  available?: readonly Platform[];
+  available?: readonly AnalyticsPlatform[];
   /** Why each unavailable platform is unavailable, in a sentence. */
-  reasons?: Partial<Record<Platform, string>>;
+  reasons?: Partial<Record<AnalyticsPlatform, string>>;
 }
 
 const ALL_PLATFORMS: Platform[] = PLATFORMS.map((platform) => platform.id);

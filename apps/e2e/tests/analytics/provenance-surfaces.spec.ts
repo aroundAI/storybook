@@ -23,8 +23,9 @@ import { byTest } from '../utils/visible';
  * FILM-1705 — the provenance surfaces, in a browser.
  *
  * The page the spec's §8 asks for: YouTube connected with rows, TikTok
- * connected with none, Instagram not connected, and a Facebook page
- * connected that analytics does not support.
+ * connected with none, Instagram not connected, and a page connected on a
+ * platform analytics does not support — LinkedIn, since Facebook became an
+ * analytics platform (FILM-1720).
  *
  * The guard test holds whether or not the server reads ClickHouse (⚫️ Test
  * runs with it off), so it asserts only what does not depend on an
@@ -68,8 +69,8 @@ async function seedPage(
     await seedYouTubeConnection(team.accountId, '@seedstudio', {
       platform: 'tiktok',
     });
-    await seedYouTubeConnection(team.accountId, 'Seed Studio Page', {
-      platform: 'facebook',
+    await seedYouTubeConnection(team.accountId, 'Seed Studio Co', {
+      platform: 'linkedin',
     });
 
     const { publishId } = await seedPublishedEpisode(project.id, youtube, {
@@ -146,7 +147,7 @@ test.describe('Provenance surfaces (FILM-1705)', () => {
   }) => {
     await seedPage(page, { connections: true, rows: OBSERVED });
 
-    // The strip: one sentence per platform, a Facebook page named.
+    // The strip: one sentence per platform, a LinkedIn page named.
     const strip = byTest(page, 'coverage-strip');
 
     await expect(byTest(strip, 'coverage-strip-instagram')).toHaveText(
@@ -157,8 +158,8 @@ test.describe('Provenance surfaces (FILM-1705)', () => {
       'data-kind',
       'not_connected',
     );
-    await expect(byTest(strip, 'coverage-strip-facebook')).toHaveText(
-      'Facebook (Seed Studio Page): connected, but analytics doesn’t support Facebook.',
+    await expect(byTest(strip, 'coverage-strip-linkedin')).toHaveText(
+      'LinkedIn (Seed Studio Co): connected, but analytics doesn’t support LinkedIn.',
     );
 
     if (OBSERVED) {
