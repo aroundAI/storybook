@@ -506,8 +506,10 @@ export function TrafficBreakdownCard({
             <span className={'text-muted-foreground'}>
               {GROUP_LABELS[group.group]}
             </span>
-            <span className={'font-medium'}>
-              {Math.round(group.share * 100)}%
+            {/* The drill-down's format, so the legend and the codes under it
+                agree — and so 0.2% does not read as "0%". */}
+            <span className={'font-medium tabular-nums'}>
+              {formatTrueShare(group.share)}
             </span>
           </span>
         ))}
