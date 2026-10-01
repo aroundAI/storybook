@@ -1,0 +1,155 @@
+{
+  "feature": "FILM-1714",
+  "mutations": [
+    {
+      "name": "SM1 A platform is added to AnalyticsPlatform (signal map)",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/types.ts",
+      "find": "export type AnalyticsPlatform = 'youtube' | 'tiktok' | 'instagram';",
+      "replace": "export type AnalyticsPlatform = 'youtube' | 'tiktok' | 'instagram' | 'facebook';",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "lists exactly the members of AnalyticsPlatform"
+    },
+    {
+      "name": "SM2 A platform is added to AnalyticsPlatform (capability matrix)",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/types.ts",
+      "find": "export type AnalyticsPlatform = 'youtube' | 'tiktok' | 'instagram';",
+      "replace": "export type AnalyticsPlatform = 'youtube' | 'tiktok' | 'instagram' | 'facebook';",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/data-provenance.test.ts",
+      "pattern": "lists exactly the members of AnalyticsPlatform"
+    },
+    {
+      "name": "SM3 Instagram Attention binds a retention curve Instagram does not report",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/signal-map.ts",
+      "find": "    'ig_reels_avg_watch_time',\n    ['reels_skip_rate'],",
+      "replace": "    'ig_reels_avg_watch_time',\n    ['reels_skip_rate', 'audience_retention'],",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "never binds an unsupported input"
+    },
+    {
+      "name": "SM4 An unbound stage loses its note",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/signal-map.ts",
+      "find": "    'TikTok does not report how many people followed you from a video.',",
+      "replace": "    '',",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "gives every unbound stage a reason and a non-empty note"
+    },
+    {
+      "name": "SM5 A family a signal reads is removed from METRIC_FAMILIES",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "  'reposts', // a post's reposts                 → video_metrics\n",
+      "replace": "",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "has non-empty inputs, each in METRIC_FAMILIES"
+    },
+    {
+      "name": "SM6 A native family feeds no signal",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/signal-map.ts",
+      "find": "    stage: 'audience',\n    inputs: ['follower_status'],",
+      "replace": "    stage: 'audience',\n    inputs: ['engagement'],",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "feeds every family that is native somewhere"
+    },
+    {
+      "name": "SM7 not_ingested is ranked below unsupported",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "export const SUPPORT_ORDER = [\n  'native',\n  'derived',\n  'not_ingested',\n  'unsupported',\n]",
+      "replace": "export const SUPPORT_ORDER = [\n  'native',\n  'derived',\n  'unsupported',\n  'not_ingested',\n]",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "puts unsupported below not_ingested"
+    },
+    {
+      "name": "SM8 Support keeps only the weakest level, not the inputs",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/signal-map.ts",
+      "find": "    composition: definition.composition,\n    inputs,\n    gap,",
+      "replace": "    composition: definition.composition,\n    inputs: inputs.filter((input) => input.level === level),\n    gap,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "keeps the full input list"
+    },
+    {
+      "name": "SM9 The Instagram average watch time gap is dropped, so a discarded field reads as measurable",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/signal-map.ts",
+      "find": "  const gap =\n    gaps.find(",
+      "replace": "  const gap =\n    gaps.filter((candidate) => candidate.signal !== 'ig_reels_avg_watch_time').find(",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "both Attention signals render dark with KB-151 named"
+    },
+    {
+      "name": "SM10 A pending unit check is ignored",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/signal-map.ts",
+      "find": "  const unitPending = definition.unitCheck?.pending ?? null;",
+      "replace": "  const unitPending = null as { owner: string; question: string } | null;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "reads as dark with the confirmer as blocker while pending"
+    },
+    {
+      "name": "SM11 A gap outlives the code that collects its field",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/signal-map.ts",
+      "find": "    within: `${CONTENT_ANALYTICS}/providers/instagram`,\n    marker: 'reels_skip_rate',",
+      "replace": "    within: `${CONTENT_ANALYTICS}/providers/instagram`,\n    marker: 'ig_reels_avg_watch_time',",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "is stale once its marker appears"
+    },
+    {
+      "name": "SM12 A gap is written where the families are already absent",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/signal-map.ts",
+      "find": "    signal: 'reels_skip_rate',\n    platform: 'instagram',",
+      "replace": "    signal: 'reels_skip_rate',\n    platform: 'tiktok',",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "is redundant where the families are already that weak"
+    },
+    {
+      "name": "SM13 A signal is bound in a stage it does not answer",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/signal-map.ts",
+      "find": "  hook: bound('impressions_ctr', ['first_30s_retention']),",
+      "replace": "  hook: bound('impressions_ctr', ['first_30s_retention', 'audience_retention']),",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "binds each signal only in the stage it answers"
+    },
+    {
+      "name": "SM14 A format nothing publishes is given bindings",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/signal-map.ts",
+      "find": "    clip: notPublished('YouTube', 'timeline clip'),",
+      "replace": "    clip: YOUTUBE_PLAYER,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "binds a format exactly where something published can be in it"
+    },
+    {
+      "name": "SM15 The signal map writes a capability matrix entry",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/signal-map.ts",
+      "find": "export function signalSupport(\n",
+      "replace": "CAPABILITY_MATRIX.reach.instagram = CAPABILITY_MATRIX.reach.youtube;\n\nexport function signalSupport(\n",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "adds no entry to CAPABILITY_MATRIX"
+    }
+  ]
+}
