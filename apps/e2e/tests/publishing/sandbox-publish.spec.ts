@@ -89,7 +89,11 @@ async function readyToPublish(page: Page, prefix: string): Promise<Fixture> {
   };
 }
 
-/** Publish All → Confirm, and the dialog once the upload has finished. */
+/**
+ * Publish All → Confirm, and the dialog once every upload has answered: its
+ * button reads Done (some went out) or Close (all failed), the only two ways
+ * it ends.
+ */
 async function publishAll(page: Page) {
   // A click before the page has hydrated and loaded its channels does
   // nothing, and there is no hook that says it has: retry the click until
@@ -101,16 +105,10 @@ async function publishAll(page: Page) {
     });
   }).toPass({ timeout: 60_000 });
   await byTest(page, 'confirm-publish').click();
-  const status = byTest(page, 'publish-platform-status').filter({
-    has: page.locator('svg'),
-  });
-  await expect(status.first()).toHaveAttribute(
-    'data-status',
-    /^(success|error)$/,
-    { timeout: 120_000 },
-  );
+  const close = byTest(page, 'publish-dialog-close');
+  await expect(close).toBeVisible({ timeout: 120_000 });
 
-  return byTest(page, 'publish-platform-status').first();
+  return close;
 }
 
 async function publishesOf(episodeId: string) {
@@ -136,8 +134,11 @@ test.describe('Publishing to a sandbox channel (FILM-1804)', () => {
     await page.goto(fixture.publishUrl);
 
     const since = await lastLedgerId();
-    const status = await publishAll(page);
-    await expect(status).toHaveAttribute('data-status', 'success');
+    await expect(await publishAll(page)).toHaveText('Done');
+    await expect(byTest(page, 'publish-platform-status')).toHaveAttribute(
+      'data-status',
+      'success',
+    );
     await expect(byTest(page, 'publish-error')).toHaveCount(0);
     if (shoot)
       await page.screenshot({ path: `${OUT}/publish-1-youtube-done.png` });
@@ -159,9 +160,11 @@ test.describe('Publishing to a sandbox channel (FILM-1804)', () => {
     );
   });
 
-  for (const { status, kind } of [
-    { status: 429, kind: 'rate-limit' },
-    { status: 503, kind: '5xx' },
+  // YouTube answers a rate limit with 403 quotaExceeded, not 429, and the
+  // sandbox serves it the way YouTube does.
+  for (const { status, served, kind } of [
+    { status: 429, served: 403, kind: 'rate-limit' },
+    { status: 503, served: 503, kind: '5xx' },
   ] as const) {
     test(`a ${kind} (${status}) from YouTube's upload is shown as a failed publish with the vendor's reason, and the retry publishes`, async ({
       page,
@@ -169,37 +172,54 @@ test.describe('Publishing to a sandbox channel (FILM-1804)', () => {
       const fixture = await readyToPublish(page, `sbx-publish-${kind}`);
       await page.goto(fixture.publishUrl);
 
+      const since = await lastLedgerId();
       await failNext({
         vendor: 'google',
         status,
         pathIncludes: '/upload/youtube/v3/videos',
       });
-      const failed = await publishAll(page);
-      await expect(failed).toHaveAttribute('data-status', 'error');
+      await expect(await publishAll(page)).toHaveText('Close');
       await expect(byTest(page, 'publish-error')).toContainText(
         'All 1 platform(s) failed to publish.',
       );
-      await byTest(failed, 'publish-platform-error-trigger').hover();
-      const reason = byTest(page, 'publish-platform-error');
-      await expect(reason).toBeVisible();
-      await expect(reason).not.toHaveText(/^\s*$/);
-      await expect(reason).not.toHaveText('Unknown error');
       if (shoot)
-        await page.screenshot({ path: `${OUT}/publish-2-${kind}.png` });
+        await page.screenshot({ path: `${OUT}/publish-2-${kind}-dialog.png` });
+
+      // What the vendor said, from the ledger: its own error body.
+      const [refused] = (await ledger('google', since)).filter(
+        (entry) => entry.injectedFailure,
+      );
+      expect(refused!.status).toBe(served);
+      const vendorMessage = (
+        JSON.parse(refused!.responseSummary!) as {
+          error: { message: string };
+        }
+      ).error.message;
 
       const [row] = await publishesOf(fixture.episodeId);
       expect(row!.status).toBe('failed');
       expect(row!.platform_content_id).toBeNull();
-      expect(await reason.innerText()).toBe(row!.metadata?.error);
+      expect(row!.metadata?.error).toBe(vendorMessage);
+
+      // The screen's record of the attempt says it failed, and why, in the
+      // vendor's words: not a blank, and not "Unknown error".
+      await byTest(page, 'publish-dialog-close').click();
+      const item = page.locator(
+        `[data-test="published-content-item"][data-publish-id="${row!.id}"]`,
+      );
+      await expect(item).toHaveAttribute('data-status', 'failed');
+      await expect(byTest(item, 'published-content-error')).toHaveText(
+        vendorMessage,
+      );
+      if (shoot)
+        await page.screenshot({ path: `${OUT}/publish-3-${kind}-record.png` });
 
       // --- The second submission, from the screen the failure left.
-      await byTest(page, 'publish-dialog-close').click();
-      const retried = await publishAll(page);
-      await expect(retried).toHaveAttribute('data-status', 'success');
+      await expect(await publishAll(page)).toHaveText('Done');
       const rows = await publishesOf(fixture.episodeId);
-      expect(rows.map((r) => r.status)).toContain('published');
+      expect(rows.map((r) => r.status).sort()).toEqual(['failed', 'published']);
       if (shoot)
-        await page.screenshot({ path: `${OUT}/publish-3-${kind}-retried.png` });
+        await page.screenshot({ path: `${OUT}/publish-4-${kind}-retried.png` });
     });
   }
 });

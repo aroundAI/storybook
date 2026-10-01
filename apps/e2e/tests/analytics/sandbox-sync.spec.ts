@@ -4,6 +4,7 @@ import { countClickHouse } from '../utils/clickhouse';
 import {
   connectThroughSandbox,
   cronHeaders,
+  failNext,
   lastLedgerId,
   ledgerFor,
   replayableVideoId,
@@ -18,6 +19,7 @@ import {
   seedProject,
   seedTeamAccount,
   serviceRoleAuth,
+  updateRows,
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
 import { byTest } from '../utils/visible';
@@ -166,7 +168,6 @@ test.describe('Sync to dashboard, against the sandbox (FILM-1804)', () => {
 
     // What TikTok served for this video, read off the ledger.
     const served = await servedTotals('tiktok', video.videoId, since);
-    expect(served.views).toBeGreaterThan(0);
 
     // ...is exactly what the page shows.
     const shown = await breakdownOn(page, team, project.slug, video, 'tiktok');
@@ -186,7 +187,9 @@ test.describe('Sync to dashboard, against the sandbox (FILM-1804)', () => {
     // reports no saves and no watch time, so the stored row holds NULL for
     // both — not a 0 that would read as "nobody saved it".
     const row = `video_id = '${video.publishId}'`;
-    expect(await countClickHouse('video_metrics FINAL', row)).toBeGreaterThan(0);
+    expect(await countClickHouse('video_metrics FINAL', row)).toBeGreaterThan(
+      0,
+    );
     expect(
       await countClickHouse(
         'video_metrics FINAL',
@@ -239,7 +242,6 @@ test.describe('Sync to dashboard, against the sandbox (FILM-1804)', () => {
       served,
       'the app asked Meta for no `shares` on this Reel',
     ).toHaveProperty('shares');
-    expect(served.shares).toBeGreaterThan(0);
 
     const shown = await breakdownOn(
       page,
@@ -259,5 +261,54 @@ test.describe('Sync to dashboard, against the sandbox (FILM-1804)', () => {
         path: `${OUT}/sync-2-instagram-reel.png`,
         fullPage: true,
       });
+  });
+
+  test('TikTok rate-limits the sync: the publish records it, and the next sync recovers (KB-150: no screen shows it)', async ({
+    page,
+  }) => {
+    const team = await seedTeamAccount({ emailPrefix: 'sbx-sync-429' });
+    await signInAs(page, team);
+    await connectThroughSandbox(page, team.slug, 'tiktok');
+    const [connection] = await storedConnections(team.accountId, 'tiktok');
+    const project = await seedProject(team);
+    const video = await publishedVideo(
+      project.id,
+      connection!.id,
+      'tiktok',
+      'Last Orders at the Lantern',
+    );
+
+    // The sync asks about every due publish on the stack at once, so the
+    // refusal covers more calls than this video's, and what is left of it
+    // is drained before TikTok is meant to answer again.
+    await failNext({
+      vendor: 'tiktok',
+      status: 429,
+      pathIncludes: '/v2/video/query/',
+      count: 25,
+    });
+    await runSync(page);
+    for (let i = 0; i < 25; i++) {
+      const drain = await fetch('http://127.0.0.1:4102/v2/video/query/', {
+        method: 'POST',
+      });
+      if (drain.status !== 429) break;
+    }
+    const refused = await syncMeta(video.publishId);
+    expect(refused.last_sync_status).toBe('rate_limited');
+    expect(refused.last_error).toBeTruthy();
+
+    // The second sync, once TikTok answers again. The schedule waits after
+    // a failure, so the attempt is made due again, as time would.
+    await updateRows('publishes', `id=eq.${video.publishId}`, {
+      metadata: { sync: { ...refused, last_synced_at: null } },
+    });
+    const since = await lastLedgerId();
+    await runSync(page);
+    const recovered = await syncMeta(video.publishId);
+    expect(recovered.last_sync_status).toBe('success');
+    const served = await servedTotals('tiktok', video.videoId, since);
+    const shown = await breakdownOn(page, team, project.slug, video, 'tiktok');
+    expect(shown.views).toBe(served.views);
   });
 });

@@ -256,16 +256,11 @@ export function PublishProgressDialog({
                       {s.status === 'error' && (
                         <TooltipProvider>
                           <Tooltip>
-                            <TooltipTrigger data-test="publish-platform-error-trigger">
+                            <TooltipTrigger>
                               <X className="h-4 w-4 text-red-500" />
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p
-                                className="max-w-xs"
-                                data-test="publish-platform-error"
-                              >
-                                {s.error}
-                              </p>
+                              <p className="max-w-xs">{s.error}</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>

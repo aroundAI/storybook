@@ -120,6 +120,9 @@ export function PublishedContentSection({
             <div
               key={pub.id}
               className="flex items-center justify-between rounded-lg border bg-card p-3"
+              data-test="published-content-item"
+              data-publish-id={pub.id}
+              data-status={pub.status}
             >
               <div className="flex items-center gap-3">
                 <PlatformIcon platform={pub.platform} size="lg" />
@@ -174,7 +177,12 @@ export function PublishedContentSection({
                     </div>
                   )}
                   {pub.error && (
-                    <p className="mt-1 text-xs text-red-500">{pub.error}</p>
+                    <p
+                      className="mt-1 text-xs text-red-500"
+                      data-test="published-content-error"
+                    >
+                      {pub.error}
+                    </p>
                   )}
                   {/* Show scheduled time for scheduled posts */}
                   {pub.status === 'scheduled' && pub.scheduledAt && (
