@@ -123,10 +123,10 @@ describe('CoverageProvider', () => {
     vi.useRealTimers();
   });
 
-  it('fifteen cards share one request', async () => {
+  it('a card for every family, and a repeat, share one request', async () => {
     const families = [...METRIC_FAMILIES, 'engagement'] as MetricFamily[];
 
-    expect(families).toHaveLength(15);
+    expect(families).toHaveLength(METRIC_FAMILIES.length + 1);
 
     renderWith(
       page(
@@ -138,7 +138,10 @@ describe('CoverageProvider', () => {
       ),
     );
 
-    await waitFor(() => expect(cellText('card-4', 'youtube')).toBe('covered'));
+    // The fixture covers traffic sources on YouTube; find that card by name.
+    const traffic = `card-${families.indexOf('traffic_sources')}`;
+
+    await waitFor(() => expect(cellText(traffic, 'youtube')).toBe('covered'));
     expect(action).toHaveBeenCalledOnce();
     expect(action).toHaveBeenCalledWith({
       scope: { projectId },

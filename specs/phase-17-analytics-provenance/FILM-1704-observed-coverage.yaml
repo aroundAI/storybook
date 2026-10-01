@@ -20,7 +20,7 @@ summary: >
 acceptance_criteria:
   - text: "One query answers coverage for the whole page; adding a card adds no query"
     met: true
-    evidence: "packages/clickhouse/src/queries-advanced.ts:891 (one UNION ALL statement, 'asks once for the whole page' in observed-coverage-query.test.ts:56); packages/features/content-analytics/src/components/coverage-context.tsx:115 (fetched once per provider; 'fifteen cards share one request', coverage-context.test.tsx:126); in the browser, apps/e2e/tests/analytics/coverage-requests.spec.ts — 18 cards on six tabs, two requests: the header's window and Deep Dive's; red with the provider's cache cut to zero (#499)"
+    evidence: "packages/clickhouse/src/queries-advanced.ts:891 (one UNION ALL statement, 'asks once for the whole page' in observed-coverage-query.test.ts:56); packages/features/content-analytics/src/components/coverage-context.tsx:115 (fetched once per provider; 'a card for every family, and a repeat, share one request', coverage-context.test.tsx:126); in the browser, apps/e2e/tests/analytics/coverage-requests.spec.ts — 18 cards on six tabs, two requests: the header's window and Deep Dive's; red with the provider's cache cut to zero (#499)"
   - text: "*Not connected*, *connected but empty in this window*, and *not supported* are three distinguishable states, never collapsed"
     met: true
     evidence: "packages/clickhouse/src/lib/data-provenance.ts:1074 (CoverageState) and :1155 (foldObservedCoverage); observed-coverage.test.ts:49-80; against ClickHouse 24.8, verify-queries.ts:3699 folds one fixture to covered, not_ingested, unsupported, no_data_in_window and not_connected at once (#499)"
