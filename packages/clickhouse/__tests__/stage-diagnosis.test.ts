@@ -444,9 +444,7 @@ describe('partial data', () => {
     // signals with no content stage judged (FILM-1726 §11).
     for (const reach of [below, typical, above]) {
       for (const monetisation of [below, typical, above]) {
-        const diagnosis = diagnoseStages(
-          stages(dark, { reach, monetisation }),
-        );
+        const diagnosis = diagnoseStages(stages(dark, { reach, monetisation }));
 
         expect(diagnosis.kind).toBe('too_few_judged');
         expect(diagnosis.coverage.judgedCount).toBe(2);
