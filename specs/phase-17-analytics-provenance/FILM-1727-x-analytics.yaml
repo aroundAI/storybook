@@ -30,34 +30,34 @@ summary: >
 acceptance_criteria:
   - text: "The platform vocabulary (x vs twitter) is settled and consistent before the migration runs"
     met: true
-    evidence: "packages/clickhouse/src/types.ts:18 (`twitter`, lead-approved 2026-10-01: the value every Postgres CHECK stores); packages/clickhouse/src/lib/platform-enum.ts:20; the view registry's `x` renamed, packages/clickhouse/src/lib/view-definitions.ts:485 (#TBD)"
+    evidence: "packages/clickhouse/src/types.ts:18 (`twitter`, lead-approved 2026-10-01: the value every Postgres CHECK stores); packages/clickhouse/src/lib/platform-enum.ts:20; the view registry's `x` renamed, packages/clickhouse/src/lib/view-definitions.ts:485 (#TBD-1727)"
   - text: "X's value is appended to the enum, never renumbering"
     met: true
-    evidence: "packages/clickhouse/src/migrations/021_twitter.ts:40 (`'twitter' = 5`, keeping `'facebook' = 4`); packages/clickhouse/__tests__/twitter-migration.test.ts:31; run against populated tables on a throwaway ClickHouse 24.8 on 2026-10-01: twitter refused before 021, accepted after, every youtube/tiktok/instagram/facebook row unchanged (#TBD)"
+    evidence: "packages/clickhouse/src/migrations/021_twitter.ts:40 (`'twitter' = 5`, keeping `'facebook' = 4`); packages/clickhouse/__tests__/twitter-migration.test.ts:31; run against populated tables on a throwaway ClickHouse 24.8 on 2026-10-01: twitter refused before 021, accepted after, every youtube/tiktok/instagram/facebook row unchanged (#TBD-1727)"
   - text: "All seven enum-bearing tables, AnalyticsPlatform, SyncPlatform and QueryFilters accept it, and the three without the enum are handled explicitly rather than assumed"
     met: true
-    evidence: "packages/clickhouse/src/migrations/021_twitter.ts:42 (seven tables, channel_windows included; the three without the enum named at :12); packages/clickhouse/__tests__/twitter-migration.test.ts:42; packages/features/content-analytics/src/server/types.ts:8; packages/clickhouse/src/queries.ts:295 (`PLATFORM_ENUM_TYPE`) (#TBD)"
+    evidence: "packages/clickhouse/src/migrations/021_twitter.ts:42 (seven tables, channel_windows included; the three without the enum named at :12); packages/clickhouse/__tests__/twitter-migration.test.ts:42; packages/features/content-analytics/src/server/types.ts:8; packages/clickhouse/src/queries.ts:295 (`PLATFORM_ENUM_TYPE`) (#TBD-1727)"
   - text: "X ships on the pay-per-use path, with Enterprise-only fields declared and dark"
     met: true
-    evidence: "packages/clickhouse/src/lib/data-provenance.ts:454 (posts lookup, metered) and :472 (Enterprise, declared, nothing calls it); packages/features/content-analytics/src/providers/twitter/x-analytics.ts; dark in production: packages/features/content-analytics/src/lib/x-read-budget.ts (`X_ANALYTICS_ENABLED`) (#TBD)"
+    evidence: "packages/clickhouse/src/lib/data-provenance.ts:454 (posts lookup, metered) and :472 (Enterprise, declared, nothing calls it); packages/features/content-analytics/src/providers/twitter/x-analytics.ts; dark in production: packages/features/content-analytics/src/lib/x-read-budget.ts (`X_ANALYTICS_ENABLED`) (#TBD-1727)"
   - text: "The two X quartile vocabularies are never mixed"
     met: true
-    evidence: "packages/features/content-analytics/__tests__/platform-field-names.test.ts:180 binds the provider's requests to the x/post-lookup and x/post-metrics blocks; `playback25` lives only in x/media-analytics, and adding it to the provider's request turned the test red (2026-10-01) (#TBD)"
+    evidence: "packages/features/content-analytics/__tests__/platform-field-names.test.ts:180 binds the provider's requests to the x/post-lookup and x/post-metrics blocks; `playback25` lives only in x/media-analytics, and adding it to the provider's request turned the test red (2026-10-01) (#TBD-1727)"
   - text: "X's 30-day wall is expressed as a DataWindow anchored on publish date"
     met: true
-    evidence: "packages/clickhouse/src/lib/data-provenance.ts:462; the sync stops a day inside it, packages/features/content-analytics/src/lib/x-read-budget.ts:37, guarded by X1 in tooling/mutation-guards/film-1727.json (#TBD)"
+    evidence: "packages/clickhouse/src/lib/data-provenance.ts:462; the sync stops a day inside it, packages/features/content-analytics/src/lib/x-read-budget.ts:37, guarded by X1 in tooling/mutation-guards/film-1727.json (#TBD-1727)"
   - text: "The /2/media/analytics window is recorded as unknown with a named owner until X answers in writing"
     met: true
-    evidence: "packages/clickhouse/src/lib/data-provenance.ts:480 (availability `unknown`, owner `owner`, the question to X sales) and :483 (window `undocumented`); packages/clickhouse/__tests__/data-provenance.test.ts:231 (#TBD)"
+    evidence: "packages/clickhouse/src/lib/data-provenance.ts:480 (availability `unknown`, owner `owner`, the question to X sales) and :483 (window `undocumented`); packages/clickhouse/__tests__/data-provenance.test.ts:231 (#TBD-1727)"
   - text: "The per-call cost of the pay-per-use path is recorded, so the sync cadence can be chosen against it"
     met: true
-    evidence: "packages/features/content-analytics/src/lib/x-read-budget.ts:31 ($0.005 per post read) and :44 (100 reads a UTC day, $0.50); docs/platform-capability-reference.md:654; cadence chosen: one read per post per UTC day, at most $0.145 a post over its life (#TBD)"
+    evidence: "packages/features/content-analytics/src/lib/x-read-budget.ts:31 ($0.005 per post read) and :44 (100 reads a UTC day, $0.50); docs/platform-capability-reference.md:654; cadence chosen: one read per post per UTC day, at most $0.145 a post over its life (#TBD-1727)"
   - text: "Adding X required no change to any signal-map consumer"
     met: true
-    evidence: "the only importers of lib/signal-map.ts are packages/clickhouse/src/index.ts (unchanged) and its own test; X's bindings are packages/clickhouse/src/lib/signal-map.ts:835 and :902 (#TBD)"
+    evidence: "the only importers of lib/signal-map.ts are packages/clickhouse/src/index.ts (unchanged) and its own test; X's bindings are packages/clickhouse/src/lib/signal-map.ts:835 and :902 (#TBD-1727)"
   - text: "X fails the structural tests until its capability entries and stage bindings are written"
     met: true
-    evidence: "packages/clickhouse/__tests__/signal-map.test.ts:104 and packages/clickhouse/__tests__/data-provenance.test.ts:398 went red with X's map and matrix entries removed (2026-10-01); guards SM1, SM2 and FILM-1703's platform guard retargeted to the five-value union and red (#TBD)"
+    evidence: "packages/clickhouse/__tests__/signal-map.test.ts:104 and packages/clickhouse/__tests__/data-provenance.test.ts:398 went red with X's map and matrix entries removed (2026-10-01); guards SM1, SM2 and FILM-1703's platform guard retargeted to the five-value union and red (#TBD-1727)"
 remaining:
   - criterion: "A real X account on a funded pay-per-use plan returns a video's non_public_metrics through GET /2/tweets"
     reason: "built and tested against the local vendor sandbox only (owner decision 2026-10-01); no live X call has been made, and X_ANALYTICS_ENABLED stays unset until the owner holds the paid tier"
