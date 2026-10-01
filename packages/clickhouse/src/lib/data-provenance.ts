@@ -1579,6 +1579,9 @@ export const OBSERVED_COVERAGE_TABLES = [
   'video_reach_daily',
   'video_retention_curves',
   'channel_daily',
+  // Revenue's own table since FILM-1726: unread, YouTube revenue was null
+  // ("cannot measure") beside the earnings it had.
+  'video_revenue_daily',
 ] as const satisfies readonly SourceTable[];
 
 /** One (table, platform) answer from `queryObservedCoverage`. */
@@ -1696,7 +1699,7 @@ function isObservedTable(table: SourceTable): boolean {
  * 3. no connection on the platform → `not_connected`;
  * 4. connected, observed, no rows → `no_data_in_window`; and `null` where
  *    nothing was observed (`rows` is `null`, or the table is not one of the
- *    five).
+ *    six).
  *
  * The table → family mapping is the matrix's `table`, so this module stays
  * the one place it is stated.

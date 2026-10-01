@@ -172,6 +172,16 @@
       "pattern": "never counts Monetisation toward the minimum"
     },
     {
+      "name": "MS20 coverage stops reading video_revenue_daily",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "  'video_revenue_daily',\n] as const satisfies readonly SourceTable[];",
+      "replace": "] as const satisfies readonly SourceTable[];",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/observed-coverage.test.ts",
+      "pattern": "YouTube revenue is observed in video_revenue_daily"
+    },
+    {
       "name": "DB MS15 A person's entry may have no amount",
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/revenue-records-unmeasured.test.sql",

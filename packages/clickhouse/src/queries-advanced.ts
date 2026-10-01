@@ -1415,12 +1415,12 @@ export async function queryChannelWatchWindow(input: {
  * (FILM-1704) — one statement for the whole analytics page, so a card added
  * adds no query.
  *
- * `UNION ALL` over the five tables in `OBSERVED_COVERAGE_TABLES`, each
+ * `UNION ALL` over the six tables in `OBSERVED_COVERAGE_TABLES`, each
  * returning `count()`, its newest date and, where the column exists,
- * `groupUniqArray(metric_source)`. At most fifteen rows back.
+ * `groupUniqArray(metric_source)`. At most a row per table and platform.
  *
  * No `FINAL`: coverage asks whether anything exists, not the deduplicated
- * total, and a merge-on-read of five tables on every window change is not
+ * total, and a merge-on-read of six tables on every window change is not
  * worth paying for an answer that does not need it. `rows` is therefore the
  * number of stored rows, which can exceed the distinct-day count until a
  * merge — fine for "how much", not a figure to show as a measurement.
@@ -1477,6 +1477,8 @@ export async function queryObservedCoverage(
     ${datedBranch('video_traffic_sources', noSources)}
     UNION ALL
     ${datedBranch('video_reach_daily', noSources)}
+    UNION ALL
+    ${datedBranch('video_revenue_daily', noSources)}
     UNION ALL
       SELECT
         'video_retention_curves' AS source_table,

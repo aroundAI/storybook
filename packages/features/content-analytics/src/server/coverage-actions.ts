@@ -23,7 +23,7 @@ import { assertScopeAccess } from './scope-access';
  * - **connected** — the scope's account's channels from Postgres, narrowed
  *   by the scope's channel and platform filters. Only an active connection
  *   counts as connected.
- * - **observed** — one `queryObservedCoverage` statement over the five fact
+ * - **observed** — one `queryObservedCoverage` statement over the six fact
  *   tables for the scope and window.
  *
  * With no connection in scope there is nothing to observe, so ClickHouse is
