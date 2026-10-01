@@ -861,15 +861,18 @@ export const CAPABILITY_MATRIX: Record<
       note: 'Instagram does not report what a post earned, so Instagram revenue is only what you enter yourself.',
       reference: { section: 'Instagram', surface: null, fields: [] },
     },
-    // FILM-1720 decided only this: ad-break earnings are not ingested.
-    // Whether a Monetisation stage exists is FILM-1726's.
+    // FILM-1726 asks for the ad-break figures (behind FILM-1720's dark
+    // `facebook` switch) and stores none of them. Meta does not document
+    // the unit or currency of `total_video_ad_break_earnings`, and ClickHouse
+    // revenue is USD by construction (KB-12). FILM-1725 Check K reads one
+    // live response, and only then is it written.
     facebook: {
       level: 'not_ingested',
       table: null,
-      blockedBy: 'FILM-1726',
+      blockedBy: 'FILM-1725',
       ...FACEBOOK_VIDEO,
       accountGate: FACEBOOK_PAGE_EARNINGS,
-      note: 'Facebook reports ad-break earnings to Page admins, but we do not collect them yet, so Facebook revenue here is only what you enter yourself.',
+      note: 'Facebook reports ad-break earnings to Page admins, but we do not store them until we have seen which currency they come in, so Facebook revenue here is only what you enter yourself.',
       reference: {
         section: 'Facebook',
         surface: 'facebook/video-insights',

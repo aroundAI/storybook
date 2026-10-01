@@ -187,7 +187,9 @@ The YouTube connection must include these scopes:
   They travel in their own query, made only when `includeRevenue` is passed, so a
   channel without the scope or outside the Partner Program keeps its totals.
   `result.revenueAccess` says which of those it was; in every state but
-  `authorised` the revenue totals are 0 and mean "not measured"
+  `authorised` the revenue totals are 0 and mean "not measured", and
+  `result.dailyRevenue` is empty. The query is by day (FILM-1726), so each
+  authorised day lands in ClickHouse `video_revenue_daily`
 
 ## Error Handling
 

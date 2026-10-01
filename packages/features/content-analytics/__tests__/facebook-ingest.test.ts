@@ -40,6 +40,13 @@ function reel(
       ...overrides,
     },
     retention: null,
+    adBreaks: {
+      access: 'account_type_gated',
+      earnings: null,
+      cpm: null,
+      adImpressions: null,
+      qualifiedViews: null,
+    },
   };
 }
 

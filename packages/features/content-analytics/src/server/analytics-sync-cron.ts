@@ -1109,8 +1109,9 @@ function normalizeAnalytics(
         revenue_cents: 0,
         ad_revenue_cents: 0,
         red_revenue_cents: 0,
-        // Ad-break earnings exist and are not collected (FILM-1726): a
-        // zero here is "not asked", so it must not touch revenue rows.
+        // Ad-break earnings are read and not stored until their currency
+        // is seen (FILM-1726, FILM-1725 Check K): a zero here is "not
+        // measured", so it must not touch revenue rows.
         revenue_measured: false,
         subscribed_views: 0,
         unsubscribed_views: 0,
