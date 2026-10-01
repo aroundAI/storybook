@@ -45,7 +45,7 @@ acceptance_criteria:
     evidence: "Every outcome carries coverage.judgedCount and stageCount (packages/clickhouse/src/lib/stage-diagnosis.ts:312) and a coverage sentence; a pattern over two judged stages differs from the same pattern over five (packages/clickhouse/__tests__/stage-diagnosis.test.ts:399, guard SD3). #502"
   - text: "Too few judged stages yields a named absent state, not the nearest pattern"
     met: true
-    evidence: "Below MIN_JUDGED_STAGES (2, packages/clickhouse/src/lib/stage-diagnosis.ts:245, counted over PATTERN_STAGES since FILM-1726 #TBD-1726) the outcome is too_few_judged with minJudged (packages/clickhouse/src/lib/stage-diagnosis.ts:374), never a row (packages/clickhouse/__tests__/stage-diagnosis.test.ts:433, guard SD2). Below two the rows do overlap (Reach above alone fits rows 2 and 6), which packages/clickhouse/__tests__/stage-diagnosis.test.ts:342 shows. #502"
+    evidence: "Below MIN_JUDGED_STAGES (2, packages/clickhouse/src/lib/stage-diagnosis.ts:245, counted over PATTERN_STAGES since FILM-1726 #523) the outcome is too_few_judged with minJudged (packages/clickhouse/src/lib/stage-diagnosis.ts:374), never a row (packages/clickhouse/__tests__/stage-diagnosis.test.ts:433, guard SD2). Below two the rows do overlap (Reach above alone fits rows 2 and 6), which packages/clickhouse/__tests__/stage-diagnosis.test.ts:342 shows. #502"
   - text: "Unbound, dark, not_judgable and insufficient_cohort stages are excluded from the pattern and counted separately"
     met: true
     evidence: "judgeStage (packages/clickhouse/src/lib/stage-diagnosis.ts:75) maps unbound and dark readings (FILM-1714) and not_judgable and insufficient_cohort benchmarks (FILM-1715) to exclusions, without asking for a benchmark where there is no figure; coverage.excluded lists each under its reason (packages/clickhouse/__tests__/stage-diagnosis.test.ts:412, :518, :529; guards SD4, SD5, SD11). A dark stage and a below stage give different patterns (packages/clickhouse/__tests__/stage-diagnosis.test.ts:480). #502"
@@ -204,7 +204,7 @@ notes: |
   every combination of five three-valued bands (3^5 = 243, plus the
   unjudged cases) resolves to exactly one outcome — a pattern,
   `no_clear_pattern`, or the too-few-judged state. FILM-1726 adds a
-  Monetisation stage (owner, 2026-10-01; #TBD-1726), so this becomes 3^6 = 729
+  Monetisation stage (owner, 2026-10-01; #523), so this becomes 3^6 = 729
   (see "With a sixth stage" below); the resolution must therefore
   be a function over the stage list, not an enumeration written against
   five — a constraint on the implementation, not a reason to wait for that
@@ -252,7 +252,7 @@ notes: |
   (packages/clickhouse/src/lib/stage-diagnosis.ts:256); Monetisation is
   still judged, shown and counted in "Judged on N of 6". The exhaustive
   counts over the 729 fully judged combinations are 3, 3, 81, 81, 27, 1
-  and 533 with no clear pattern. Guard MS19 (FILM-1726) holds it. #TBD-1726
+  and 533 with no clear pattern. Guard MS19 (FILM-1726) holds it. #523
   ## Risk
 
   The copy is the risk, not the logic. The mapping is a small pure

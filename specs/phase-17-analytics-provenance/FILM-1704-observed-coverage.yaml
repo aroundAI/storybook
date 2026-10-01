@@ -79,6 +79,14 @@ notes: |
   `count()`, `max(metric_date)` and `groupUniqArray(metric_source)` where those
   columns exist. At most fifteen rows back.
 
+  **A sixth table since FILM-1726.** Revenue gained its own fact table,
+  `video_revenue_daily`, after this was written, and YouTube revenue became
+  `native` there. Left out, its cell was `null`, so the card read "unknown"
+  beside earnings it had. It is a sixth dated branch
+  (packages/clickhouse/src/queries-advanced.ts:1401) and a sixth entry in
+  `OBSERVED_COVERAGE_TABLES` (packages/clickhouse/src/lib/data-provenance.ts:1534);
+  "five" below means these six. #523
+
   **Four of the five group by `platform`; `channel_daily` cannot** — it has no
   platform column (`migrations/003_reach_and_traffic.ts:45-56`) and is keyed by
   `connection_id`. That branch either joins to the connection to resolve a
