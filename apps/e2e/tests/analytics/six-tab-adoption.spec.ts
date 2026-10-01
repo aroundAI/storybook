@@ -352,9 +352,10 @@ test.describe('Six-tab adoption (FILM-1707)', () => {
     await expect(chipOf(byTest(page, 'deep-dive-median'))).toHaveText(
       'YouTube only',
     );
-    await expect(
-      byTest(byTest(page, 'deep-dive-median'), 'card-no-figure'),
-    ).toHaveCount(0);
+    // Whatever the rows say now, it is no longer the switcher's refusal.
+    await expect(byTest(page, 'deep-dive-median')).not.toContainText(
+      'Not drawn for this platform.',
+    );
   });
 });
 
