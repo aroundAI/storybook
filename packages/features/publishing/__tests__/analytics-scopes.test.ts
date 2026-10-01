@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -232,33 +232,50 @@ describe('videoSyncAuthorisation', () => {
 });
 
 describe('the OAuth callbacks record the grant, not the request', () => {
-  // The five analytics platforms' callbacks. LinkedIn is absent: nothing reads
-  // its grant, and it still stores the list it asked for.
+  // Every callback, read from disk so a new platform's cannot be left out
+  // (KB-145: LinkedIn's was, and stored the list it asked for), plus the
+  // YouTube channel picker that finishes YouTube's connect.
+  const PLATFORMS = resolve(
+    __dirname,
+    '../../../../apps/web/app/api/platforms',
+  );
   const ROUTES = [
-    'callback/youtube/route.ts',
+    ...readdirSync(resolve(PLATFORMS, 'callback')).map(
+      (platform) => `callback/${platform}/route.ts`,
+    ),
     'youtube/save-channel/route.ts',
-    'callback/meta/route.ts',
-    'callback/tiktok/route.ts',
-    'callback/twitter/route.ts',
   ];
 
-  it.each(ROUTES)('%s', (route) => {
-    const source = readFileSync(
-      resolve(__dirname, '../../../../apps/web/app/api/platforms', route),
-      'utf8',
+  it('covers every platform callback', () => {
+    expect(ROUTES).toEqual(
+      expect.arrayContaining([
+        'callback/linkedin/route.ts',
+        'callback/meta/route.ts',
+        'callback/tiktok/route.ts',
+        'callback/twitter/route.ts',
+        'callback/youtube/route.ts',
+      ]),
     );
+  });
 
-    const stored = [...source.matchAll(/^\s*scopes:\s*(.*)$/gm)].map(
-      ([, value]) => value!,
-    );
+  it.each(ROUTES)('%s', (route) => {
+    const source = readFileSync(resolve(PLATFORMS, route), 'utf8');
+
+    // Stored values only: a `scopes: string[];` line is a type.
+    const stored = [...source.matchAll(/^\s*scopes:\s*(.*)$/gm)]
+      .map(([, value]) => value!)
+      .filter((value) => !/^string\[\];?$/.test(value));
 
     expect(stored.length).toBeGreaterThan(0);
     // A requested list stored as `scopes` claims a grant nobody confirmed.
     // Once FILM-1711 added the analytics scopes to the configs, that claim
-    // would have marked every connection authorised.
-    expect(stored.filter((value) => /OAUTH_CONFIG|\['/.test(value))).toEqual(
-      [],
-    );
+    // would have marked every connection authorised. Every stored value must
+    // come from what the vendor said it granted.
+    expect(
+      stored.filter(
+        (value) => !/parseGrantedScopes\(|grantedScopes\b/.test(value),
+      ),
+    ).toEqual([]);
     expect(source).toContain('scopes_granted_at');
   });
 });

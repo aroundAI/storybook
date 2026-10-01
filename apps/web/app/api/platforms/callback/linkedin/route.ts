@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { parseGrantedScopes } from '@kit/publishing/oauth/analytics-scopes';
 import {
   LINKEDIN_OAUTH_CONFIG,
   LinkedInOAuthState,
@@ -161,11 +162,6 @@ async function handleCallback(request: NextRequest) {
     ? await encrypt(tokens.refresh_token)
     : null;
 
-  // Determine scopes based on what was requested
-  const scopes = state.isCompanyPage
-    ? LINKEDIN_OAUTH_CONFIG.scopes.company
-    : LINKEDIN_OAUTH_CONFIG.scopes.personal;
-
   // Store connection
   const { error: insertError } = await storePlatformConnections(client, [
     {
@@ -178,11 +174,14 @@ async function handleCallback(request: NextRequest) {
       token_expires_at: new Date(
         Date.now() + tokens.expires_in * 1000,
       ).toISOString(),
-      scopes: [...scopes],
+      // KB-145: the grant, from the token response's `scope`, never the
+      // list we asked for. None sent records none, as for the others.
+      scopes: parseGrantedScopes(tokens.scope),
       metadata: {
         picture: profile.picture,
         email: profile.email,
         isCompanyPage: state.isCompanyPage || false,
+        scopes_granted_at: new Date().toISOString(),
       },
       is_active: true,
       updated_at: new Date().toISOString(),
