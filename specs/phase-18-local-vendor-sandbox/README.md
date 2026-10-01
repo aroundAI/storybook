@@ -14,7 +14,7 @@ Measured 2026-09-21, from the code:
 | | Today | Consequence |
 |---|---|---|
 | Vendor hosts | ~30 vendors, reached through hardcoded `https://` strings copied across `publishing/src/oauth/*`, `publishing/src/providers/*`, `lib/token-refresh.ts`, `content-analytics/src/providers/*`, `apps/web/lambda/publish-worker/handlers/*` and the connect/callback routes | Nothing can be pointed at a mock without editing code |
-| Overridable today | Only the LLM SDKs (`OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`, `GOOGLE_GEMINI_BASE_URL`), AWS, SMTP, ClickHouse, Redis | The AI half is partly reachable; the social half is not |
+| Overridable today | Only the LLM SDKs (`OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`, `GOOGLE_GEMINI_BASE_URL`), AWS, SMTP, ClickHouse, Redis | The AI half is partly reachable; the social half is not. (Since FILM-1805 the SDK variables are never read; every vendor, LLMs included, is overridden through FILM-1801's `VENDOR_URL_*` in a sandbox only) |
 | OAuth connect | No dev path. E2E inserts `platform_connections` rows directly (`apps/e2e/tests/utils/seed.ts:188` calls the flow "an entire external round trip") | Connect, token refresh and disconnect are never exercised before production |
 | E2E coverage | Auth, teams, billing, admin, and the analytics suite | No spec for project creation, any studio stage, assets, canon, publishing, platform connect or social posts |
 | Local analytics | Seeded ClickHouse. Until FILM-1701, `seed-local-analytics.ts` wrote every metric row as `platform: 'youtube'`, TikTok and Instagram publishes included; it now writes each row under its publish's platform, as hand-shaped snapshot deltas | TikTok and Instagram analytics are still never seen locally as a provider response would deliver them — the rows are invented, not ingested |
@@ -41,11 +41,11 @@ FILM-1803 ─→ FILM-1806 (local job queue) ── runs the enqueued studio sta
 | Spec | Status | Effort | Covers |
 |------|--------|--------|--------|
 | [FILM-1801](./FILM-1801-vendor-base-url-resolver.yaml) | ✅ DONE | L | One resolver for every vendor host; env overrides in local dev only; fails closed in production; a guard against new hardcoded hosts |
-| [FILM-1802](./FILM-1802-social-platform-sandbox.yaml) | DRAFT | XL | YouTube, TikTok, Meta (Facebook + Instagram), X, LinkedIn: OAuth, refresh, publishing, analytics — stateful, randomized, growing over time |
-| [FILM-1803](./FILM-1803-ai-generation-sandbox.yaml) | PARTIAL | L | The AI vendors the app still calls: Gemini (every prompt and agent), ElevenLabs (voice, sound effects, music), and the settings key checks. Every prompt answered in its own shape; the studio stages are enqueued and wait for a local queue |
+| [FILM-1802](./FILM-1802-social-platform-sandbox.yaml) | ✅ DONE | XL | YouTube, TikTok, Meta (Facebook + Instagram), X, LinkedIn: OAuth, refresh, publishing, analytics — stateful, randomized, growing over time |
+| [FILM-1803](./FILM-1803-ai-generation-sandbox.yaml) | ✅ DONE | L | The AI vendors the app still calls: Gemini (every prompt and agent), ElevenLabs (voice, sound effects, music), and the settings key checks. Every prompt answered in its own shape; the studio stages are enqueued and wait for a local queue |
 | [FILM-1804](./FILM-1804-sandbox-backed-e2e-flows.yaml) | DRAFT | L | Connect, publish, sync-to-dashboard, token refresh, and one pass through the studio pipeline — asserted against the sandbox's ledger |
-| [FILM-1805](./FILM-1805-local-models-and-sdk-base-urls.yaml) | PARTIAL (Half A done) | M | The SDKs' own base-URL env vars (`OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`, `GOOGLE_GEMINI_BASE_URL`) closed by passing the resolver's URL explicitly; the `local` provider retargeted to Ollama, gated to dev/test, and a `LLM_FORCE_PROVIDER=local` switch that runs all 29 prompts on it. Closes FILM-CC-04 KB-21 with FILM-513 |
-| [FILM-1806](./FILM-1806-local-job-queue.yaml) | DRAFT | M | A local SQS-compatible queue and worker runner, started by local-env.sh, so the enqueued studio stages run end to end against the AI sandbox; the owner's route to generating the user guides from full local runs |
+| [FILM-1805](./FILM-1805-local-models-and-sdk-base-urls.yaml) | ✅ DONE | M | The SDKs' own base-URL env vars (`OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`, `GOOGLE_GEMINI_BASE_URL`) closed by passing the resolver's URL explicitly; the `local` provider retargeted to Ollama, gated to dev/test, and a `LLM_FORCE_PROVIDER=local` switch that runs all 29 prompts on it. Closes FILM-CC-04 KB-21 with FILM-513 |
+| [FILM-1806](./FILM-1806-local-job-queue.yaml) | ✅ DONE | M | A local SQS-compatible queue and worker runner, started by local-env.sh, so the enqueued studio stages run end to end against the AI sandbox; the owner's route to generating the user guides from full local runs |
 
 **Scheduling.** This phase touches the same provider files as phase 17's FILM-1711,
 FILM-1712, FILM-1720 and FILM-1723. FILM-1801 in particular rewrites the host
