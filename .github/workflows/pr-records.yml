@@ -5,6 +5,10 @@ name: PR records
 #
 # Its own workflow, not a job in workflow.yml: it must re-run when the title
 # or labels change, and those events must not re-run the paid suite.
+#
+# Not part of the merge queue: a `merge_group` event carries no PR number,
+# so there is nothing to check there. The records are checked on the PR, and
+# ✅ CI result (workflow.yml) is the queue's only required check.
 on:
   # Only pull requests into main, as workflow.yml. `edited` covers a stacked
   # PR being retargeted to main, so its records are checked then.

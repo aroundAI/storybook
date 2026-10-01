@@ -1,7 +1,16 @@
 name: Workflow
+# The merge queue is the gate (owner, 2026-10-01). A pull request runs the
+# fast lane only: 🔎 Changes, ʦ TypeScript, 💅 Format, 🧪 Unit Tests and
+# 🗄️ ClickHouse SQL (or 📚 Docs checks on the docs-only path). The heavy
+# jobs run once, at merge time, on the exact commit that lands: GitHub's
+# `merge_group` event builds main + the PR, and only a green ✅ CI result
+# merges it. `workflow_dispatch` runs the same full suite on any branch, for
+# a PR whose author wants it before queueing. Nothing runs on a push to
+# main: the queue already tested that commit.
 on:
-  push:
-    branches: [ main ]
+  merge_group:
+    types: [ checks_requested ]
+  workflow_dispatch:
   # Only pull requests into main (owner, 2026-10-01). A PR stacked on another
   # feature branch runs nothing until it is retargeted to main: its code is
   # tested once, on top of main, instead of once per base it passes through.
@@ -10,7 +19,8 @@ on:
   pull_request:
     branches: [ main ]
 # CI minutes are rationed: a newer push to the same PR cancels the older run.
-# Runs on main are never cancelled, so every merge gets a complete run.
+# Queue and dispatch runs are never cancelled: each merge group has its own
+# ref, so its run completes and decides the merge.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -33,6 +43,10 @@ jobs:
     # Second fast path: a push to a PR that leaves the PR's code exactly as
     # it was, after a run that passed. The usual case is a rebase that
     # resolves a conflict in a shared spec file. See the "Reuse" step below.
+    #
+    # `heavy` decides the heavy jobs (🧪 Unit guards, 🐘 Supabase DB,
+    # 🧬 E2E evidence, ⚫️ Test, 🧬 E2E guards): false on a pull request (the
+    # fast lane), true in the merge queue and on a manual dispatch.
     timeout-minutes: 5
     runs-on: ubuntu-latest
     permissions:
@@ -40,6 +54,7 @@ jobs:
       actions: read
     outputs:
       code: ${{ steps.reuse.outputs.code || steps.classify.outputs.code }}
+      heavy: ${{ github.event_name != 'pull_request' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,8 +62,10 @@ jobs:
 
       - name: Classify the change
         id: classify
+        # The PR's base, or the queue's main; a dispatch has no base, so it
+        # runs the full suite.
         env:
-          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         run: |
           if [ -z "$BASE" ] || [ -z "${BASE//0/}" ] \
             || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
@@ -80,9 +97,9 @@ jobs:
       #   3. this workflow's run on the previous head concluded `success`, so
       #      a failed or cancelled run is never inherited.
       # Then code=false and 📚 Docs checks runs in place of the heavy jobs,
-      # exactly as on the docs-only path. Accepted risk: after an update from
-      # main, the PR's code on top of the new main is first fully tested by
-      # the push-to-main run, which this step never touches.
+      # exactly as on the docs-only path. Pull requests only: the PR's code
+      # on top of the current main is fully tested by its merge-queue run,
+      # which this step never touches.
       - name: Reuse the previous run when only docs changed since it
         id: reuse
         if: ${{ steps.classify.outputs.code == 'true' && github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
@@ -135,7 +152,7 @@ jobs:
       STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
       DO_NOT_TRACK: 1
       NODE_OPTIONS: '--max-old-space-size=4096'
-      TURBO_SCM_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+      TURBO_SCM_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
 
     steps:
       - uses: actions/checkout@v4
@@ -271,7 +288,7 @@ jobs:
     timeout-minutes: 20
     runs-on: ubuntu-latest
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.heavy == 'true' }}
     env:
       DO_NOT_TRACK: 1
 
@@ -432,6 +449,12 @@ jobs:
       - name: Local CI stop.sh - process tree test
         run: bash scripts/ci/local-ci-stop.test.sh
 
+      - name: CI result verdict - table test
+        run: bash scripts/ci/ci-result.test.sh
+
+      - name: Runner-minutes report - table test
+        run: bash scripts/ci/minutes.test.sh
+
       # One list, shared with both deploy workflows: scripts/test-units.sh.
       - name: Run Unit Tests
         run: bash scripts/test-units.sh
@@ -469,7 +492,7 @@ jobs:
     timeout-minutes: 15
     runs-on: ubuntu-latest
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.heavy == 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -504,32 +527,38 @@ jobs:
 
   unit-guards-result:
     name: 🧪 Unit guards
-    # One stable name for branch protection to require, whatever the shard
-    # count. always(): a failed or cancelled shard must fail this, not skip it.
+    # One name for the shards, whatever their count. always(): a failed or
+    # cancelled shard must fail this, not skip it. ✅ CI result, the required
+    # check, needs it.
     #
-    # It is also the docs-only path's backstop, and the check that makes
-    # 📚 Docs checks gate the merge (that job is not itself required). It
-    # passes only when the shards passed, or when the change was classified
+    # It passes only when the shards passed; when the change was classified
     # docs-only, the shards were skipped and 📚 Docs checks passed in their
-    # place. Anything else fails, including a failed 🔎 Changes.
+    # place; or on a pull request (heavy=false), where the shards are left to
+    # the merge queue. Anything else fails, including a failed 🔎 Changes.
     needs: [changes, unit-guards, docs-checks]
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Every unit guard shard passed, or a docs-only change passed its checks
+      - name: Every unit guard shard passed, or the shards were skipped by design
         env:
           CHANGES: ${{ needs.changes.result }}
           CODE: ${{ needs.changes.outputs.code }}
+          HEAVY: ${{ needs.changes.outputs.heavy }}
           SHARDS: ${{ needs.unit-guards.result }}
           DOCS: ${{ needs.docs-checks.result }}
         run: |
-          echo "Changes: $CHANGES (code=$CODE); unit guard shards: $SHARDS; docs checks: $DOCS"
+          echo "Changes: $CHANGES (code=$CODE, heavy=$HEAVY); unit guard shards: $SHARDS; docs checks: $DOCS"
           if [ "$SHARDS" = success ]; then
             exit 0
           fi
           if [ "$CHANGES" = success ] && [ "$CODE" = false ] \
             && [ "$SHARDS" = skipped ] && [ "$DOCS" = success ]; then
             echo "Docs-only change: the shards were skipped by design."
+            exit 0
+          fi
+          if [ "$CHANGES" = success ] && [ "$CODE" != false ] \
+            && [ "$HEAVY" = false ] && [ "$SHARDS" = skipped ]; then
+            echo "Pull request fast lane: the shards run in the merge queue."
             exit 0
           fi
           exit 1
@@ -543,7 +572,7 @@ jobs:
     # provenance, FILM-1701's spec), and a hand-kept list would miss the
     # next one. Then every unit mutation guard whose target is under specs/
     # or docs/. 🧪 Unit guards requires this job on that path, so a failure
-    # here blocks the merge.
+    # here blocks the merge (✅ CI result requires it too).
     needs: changes
     if: ${{ needs.changes.outputs.code == 'false' }}
     timeout-minutes: 15
@@ -606,10 +635,10 @@ jobs:
         shard: [1, 2, 3, 4, 5]
     timeout-minutes: 45
     runs-on: ubuntu-latest
-    # CI minutes are rationed: the E2E mutation guards run only on pushes to
-    # main (after a merge), not on every PR push. PRs still run ⚫️ Test.
+    # CI minutes are rationed: the E2E mutation guards run with the other
+    # heavy jobs, in the merge queue (or on a dispatch), not on PR pushes.
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' && github.event_name == 'push' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' && needs.changes.outputs.heavy == 'true' }}
     env:
       DO_NOT_TRACK: 1
       # The server reads ClickHouse, unlike ⚫️ Test: the evidence specs seed
@@ -764,7 +793,7 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-latest
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' && needs.changes.outputs.heavy == 'true' }}
     env:
       DO_NOT_TRACK: 1
       # The server reads ClickHouse, unlike ⚫️ Test: the evidence specs seed
@@ -914,7 +943,7 @@ jobs:
     timeout-minutes: 45
     runs-on: ubuntu-latest
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' }}
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' && needs.changes.outputs.heavy == 'true' }}
     env:
       # No Stripe. The billing specs are skipped (see ENABLE_BILLING_TESTS
       # below), so the repo needs no payment credentials to run this job.
@@ -924,7 +953,7 @@ jobs:
       ENABLE_BILLING_TESTS: 'false'
       ENABLE_TEAM_ACCOUNT_TESTS: 'true'
       DO_NOT_TRACK: 1
-      TURBO_SCM_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+      TURBO_SCM_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
 
     steps:
       - uses: actions/checkout@v4
@@ -959,7 +988,7 @@ jobs:
         run: |
           PLAYWRIGHT_VERSION=$(pnpm ls @playwright/test --filter web-e2e | grep @playwright | sed 's/.*@//')
           echo "Playwright's Version: $PLAYWRIGHT_VERSION"
-          echo "PLAYWRIGHT_VERSION=$PLAYWRIGHT_VERSION" >> $GITHUB_ENV
+          echo "PLAYWRIGHT_VERSION=$PLAYWRIGHT_VERSION" >> "$GITHUB_ENV"
 
       - name: Cache Playwright Browsers for Playwright's Version
         id: cache-playwright-browsers
@@ -1070,3 +1099,36 @@ jobs:
           name: playwright-results-json
           path: apps/e2e/test-results/results.json
           retention-days: 7
+
+  ci-result:
+    name: ✅ CI result
+    # The one required check, for pull requests and the merge queue alike.
+    # always(): it must report whatever happened above, so a failed or
+    # cancelled job fails it rather than skipping it, and a merge-queue run
+    # that was cancelled never merges. A job skipped by design (the fast
+    # lane's heavy jobs, the E2E switch, the docs-only path) does not block;
+    # a job the run required that did not run does. The rule, with a table
+    # test, is scripts/ci/ci-result.sh.
+    needs:
+      - changes
+      - typescript
+      - format
+      - clickhouse-sql
+      - supabase-db
+      - unit-test
+      - unit-guards
+      - unit-guards-result
+      - docs-checks
+      - e2e-guards
+      - e2e-evidence
+      - test
+    if: always()
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Every job this run required passed, and none failed or was cancelled
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: printf '%s' "$NEEDS" | bash scripts/ci/ci-result.sh
