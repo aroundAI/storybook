@@ -64,7 +64,7 @@ acceptance_criteria:
     evidence: null
   - text: "Manual sync trigger works - `manualSyncAction` and `syncSinglePublishById` functions"
     met: false
-    reason: "unverified — both exist (`packages/features/content-analytics/src/server/sync-actions.ts:36`, `analytics-sync-cron.ts:1021`); no test drives them and no UI calls `manualSyncAction`"
+    reason: "unverified — both exist (`packages/features/content-analytics/src/server/sync-actions.ts:41`, `analytics-sync-cron.ts:1021`); no test drives them and no UI calls `manualSyncAction`"
   - text: "Respects API rate limits - `PlatformRateLimiter` with sliding window (YouTube 10/min, TikTok 20/min, Instagram 30/min)"
     met: true
     evidence: null
