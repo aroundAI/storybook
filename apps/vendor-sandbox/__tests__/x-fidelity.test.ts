@@ -442,4 +442,38 @@ describe('§3: X behaviour the sandbox must reproduce', () => {
     });
     expect(finalize.status).toBe(400);
   });
+
+  it('initialize takes a total_bytes from 0 to 17179869184, X’s documented range, and refuses past it', async () => {
+    // https://docs.x.com/x-api/media/media-upload-initialize, read
+    // 2026-10-01: "type: integer, minimum: 0, maximum: 17179869184".
+    // The sandbox capped it at 512 MB, so a 600 MB video was refused.
+    const init = (total_bytes: number) =>
+      call(
+        '/2/media/upload/initialize',
+        json({ media_type: 'video/mp4', total_bytes }),
+      );
+
+    expect((await init(600 * 1024 * 1024)).status).toBe(200);
+    expect((await init(17_179_869_184)).status).toBe(200);
+    expect((await init(0)).status).toBe(200);
+    expect((await init(17_179_869_185)).status).toBe(400);
+    expect((await init(-1)).status).toBe(400);
+  });
+
+  it('a post’s non-public metrics carry engagements, as the data dictionary lists them (FILM-1727)', async () => {
+    const { id } = await post('Engagements are a non-public member.');
+    const result = await call(
+      `/2/tweets?ids=${id}&tweet.fields=non_public_metrics`,
+    );
+    const data = (
+      result.body as { data: Array<{ non_public_metrics: object }> }
+    ).data[0]!;
+
+    expect(Object.keys(data.non_public_metrics).sort()).toEqual([
+      'engagements',
+      'impression_count',
+      'url_link_clicks',
+      'user_profile_clicks',
+    ]);
+  });
 });

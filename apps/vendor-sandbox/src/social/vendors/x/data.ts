@@ -31,7 +31,12 @@ export const NON_PUBLIC_WINDOW_MS = 30 * DAY_MS;
 /** Real time X takes to process an uploaded video, as the social clock reads it. */
 export const MEDIA_PROCESSING_MS = 3_000;
 const MEDIA_SESSION_SECONDS = 86_400;
-const MAX_VIDEO_BYTES = 512 * 1024 * 1024;
+/**
+ * `total_bytes`: "type: integer, minimum: 0, maximum: 17179869184"
+ * (https://docs.x.com/x-api/media/media-upload-initialize, read 2026-10-01).
+ * It was 512 MB here, a figure the reference does not give.
+ */
+export const MAX_TOTAL_BYTES = 17_179_869_184;
 
 interface MediaUpload {
   id: string;
@@ -140,14 +145,16 @@ const mediaInitialize: SocialRoute = ({
   if (
     !mediaType ||
     !Number.isInteger(totalBytes) ||
-    totalBytes <= 0 ||
-    totalBytes > MAX_VIDEO_BYTES
+    totalBytes < 0 ||
+    totalBytes > MAX_TOTAL_BYTES
   ) {
+    // The page names no field-level message for this; the problem type is
+    // its InvalidRequestProblem, and the wording is ours.
     sendJson(
       res,
       400,
       invalidRequest(
-        'media_type and a total_bytes between 1 and 536870912 are required',
+        `media_type and a total_bytes between 0 and ${MAX_TOTAL_BYTES} are required`,
       ),
     );
     return true;
@@ -414,10 +421,19 @@ function postMetrics(social: SocialState, object: SocialObject) {
       bookmark_count: social.cumulative(object, 'saves'),
       impression_count: impressions,
     },
+    // The data dictionary lists `engagements` in non_public_metrics and does
+    // not define it; the sum of the post's other interactions stands in.
     nonPublic: {
       impression_count: impressions,
       url_link_clicks: Math.floor(views * 0.004),
       user_profile_clicks: Math.floor(views * 0.006),
+      engagements:
+        likes +
+        comments +
+        shares +
+        Math.floor(shares * 0.2) +
+        Math.floor(views * 0.004) +
+        Math.floor(views * 0.006),
     },
     organic: {
       impression_count: impressions,

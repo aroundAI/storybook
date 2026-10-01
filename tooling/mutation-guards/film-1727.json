@@ -139,6 +139,16 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/x-analytics.test.ts",
       "pattern": "refuses a response missing a required public metric"
+    },
+    {
+      "name": "X15 the X sandbox caps total_bytes at 512 MB again",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/vendors/x/data.ts",
+      "find": "export const MAX_TOTAL_BYTES = 17_179_869_184;",
+      "replace": "export const MAX_TOTAL_BYTES = 512 * 1024 * 1024;",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/x-fidelity.test.ts",
+      "pattern": "initialize takes a total_bytes"
     }
   ]
 }
