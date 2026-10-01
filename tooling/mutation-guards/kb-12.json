@@ -185,8 +185,8 @@
       "name": "K15 a ClickHouse writer starts writing a revenue figure",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/server/ingest.ts",
-      "find": "    revenue_cents: 0,\n    subscribers_gained: day.subscribersGained,",
-      "replace": "    revenue_cents: day.estimatedRevenue ?? 0,\n    subscribers_gained: day.subscribersGained,",
+      "find": "    watch_time_seconds: Math.round(day.estimatedMinutesWatched * 60),\n    subscribers_gained: day.subscribersGained,",
+      "replace": "    watch_time_seconds: Math.round(day.estimatedMinutesWatched * 60),\n    revenue_cents: day.estimatedRevenue ?? 0,\n    subscribers_gained: day.subscribersGained,",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/revenue-writers.test.ts",
       "pattern": "exactly the ones whose currency is accounted for"
@@ -195,8 +195,8 @@
       "name": "K16 the YouTube revenue query asks for another currency",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
-      "find": "          'estimatedRedPartnerRevenue',\n        ].join(','),\n        filters: `video==${videoId}`,",
-      "replace": "          'estimatedRedPartnerRevenue',\n        ].join(','),\n        currency: 'EUR',\n        filters: `video==${videoId}`,",
+      "find": "        ].join(','),\n        dimensions: 'day',\n        filters: `video==${videoId}`,",
+      "replace": "        ].join(','),\n        dimensions: 'day',\n        currency: 'EUR',\n        filters: `video==${videoId}`,",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/revenue-writers.test.ts",
       "pattern": "without a currency"

@@ -175,8 +175,8 @@
       "name": "YouTube revenue is blocked by FILM-1711, which only writes Postgres",
       "kind": "unit",
       "file": "packages/clickhouse/src/lib/data-provenance.ts",
-      "find": "      blockedBy: 'FILM-1726',\n      access: 'authorised',",
-      "replace": "      blockedBy: 'FILM-1711',\n      access: 'authorised',",
+      "find": "      level: 'native',\n      table: 'video_revenue_daily',\n      access: 'authorised',",
+      "replace": "      level: 'not_ingested',\n      table: null,\n      blockedBy: 'FILM-1711',\n      access: 'authorised',",
       "cwd": "packages/clickhouse",
       "test": "__tests__/data-provenance.test.ts",
       "pattern": "YouTube revenue is requested"
