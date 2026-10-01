@@ -34,9 +34,9 @@ acceptance_criteria:
   - text: "Check C run on the pinned version, and the result recorded against the 2026-04-22 rows in the reference"
     met: false
     reason: "not run — needs instagram_manage_insights, which has never been requested"
-  - text: "Check D run against one production Meta connection, and the result recorded against FILM-1723's open acceptance criterion"
+  - text: "Check D run against one production Meta connection at the first deploy carrying FILM-1728 (Graph v26.0), and the result recorded against FILM-1723's open acceptance criterion and in FILM-1728's notes"
     met: false
-    reason: "not run — no Meta app credentials or connected Page outside production"
+    reason: "not run — no Meta app credentials or connected Page outside production. Amended 2026-10-01 by FILM-1728 (#TBD): the pin moved to v26.0, so the run is owed at that deploy; if it never ran for v23.0, one run against v26.0 closes both"
   - text: "Check E run once media.write is held, and the result recorded there too"
     met: false
     reason: "not run — no X token; X has no sandbox (see Check A)"
@@ -49,6 +49,9 @@ acceptance_criteria:
   - text: "Check H run for TikTok and Instagram, with the date recorded"
     met: false
     reason: "not run — needs the two vendor reviews in docs/vendor-review-status.md, or a sandbox app (TikTok) and a role account (Meta)"
+  - text: "Check J run on the owner's first connected Facebook Page: the result of one total_video_views_unique video_insights call recorded in the reference's Facebook section, and the forbidden block corrected if the metric still answers"
+    met: false
+    reason: "not run — needs a connected Facebook Page with read_insights, which no fixture or local stack holds (filed 2026-10-01 by FILM-1728, #TBD)"
   - text: "Check I run: one live connect and disconnect on X and on LinkedIn, with X's revoke answers and the refresh afterwards recorded"
     met: false
     reason: "not run — no X or LinkedIn app credentials or test accounts (FILM-1729); KB-25/KB-86 proved the requests against a local stand-in only"
@@ -157,22 +160,23 @@ notes: |
 
   | | |
   |---|---|
-  | Question | Does the pinned Graph version return reposts_count, saved_count, shares_count and the total_* aggregates for our media? |
+  | Question | Does the pinned Graph version (v26.0 since FILM-1728) return reposts_count, saved_count, shares_count and the total_* aggregates for our media? |
   | Status today | Names documented and indexed; version behaviour inferred from the changelog's "applies to all versions" |
-  | Why a call is still worth making | We pin v23.0, released 2025-05-29, before these fields existed. The changelog says they apply to all versions; one response confirms it, and costs nothing once we hold the permission |
+  | Why a call is still worth making | Re-worded 2026-10-01 for FILM-1728. We pin v26.0, released 2026-07-29, after these fields were added (2026-04-22), so "all versions" is no longer the question it was on v23.0; what is left is whether they come back for our media at all. One response settles it, and costs nothing once we hold the permission |
   | Why it did not run | Needs instagram_manage_insights, which we have never requested |
   | Cost to settle | One call, once FILM-1711 lands. Effectively free at that point |
   | Blocks | Nothing outright. FILM-1712 can request the fields now; this confirms they arrive |
 
   ```bash
-  # Once insights permission is held. Both should return on v23.0 if "all versions" holds.
-  curl -s "https://graph.facebook.com/v23.0/<IG_MEDIA_ID>?fields=total_views_count,total_like_count,total_comments_count,reposts_count,saved_count,shares_count&access_token=$TOKEN"
-  curl -s "https://graph.facebook.com/v23.0/<IG_MEDIA_ID>/insights?metric=total_views,total_likes,total_comments&access_token=$TOKEN"
+  # Once insights permission is held, on the pinned v26.0. The token goes in
+  # the header, as the app sends it since FILM-1728.
+  curl -s -H "Authorization: Bearer $TOKEN" "https://graph.facebook.com/v26.0/<IG_MEDIA_ID>?fields=total_views_count,total_like_count,total_comments_count,reposts_count,saved_count,shares_count"
+  curl -s -H "Authorization: Bearer $TOKEN" "https://graph.facebook.com/v26.0/<IG_MEDIA_ID>/insights?metric=total_views,total_likes,total_comments"
   ```
 
-  If they do not come back on v23.0, repeat on a current version before
-  concluding anything — which would make FILM-1712's Instagram work depend on
-  FILM-1723 as well as FILM-1711.
+  If they do not come back on v26.0, the fields are not ours to read on
+  this surface, whatever the changelog says: record it in the reference and
+  FILM-1712 before planning on them.
 
   The lesson. This check was over-corrected twice in one day: first a blog post
   was taken as fact, then two disagreeing pages were taken as proof nothing was
@@ -188,7 +192,7 @@ notes: |
 
   | | Check D — Meta token refresh | Check E — X media upload |
   |---|---|---|
-  | Question | Does fb_exchange_token followed by /me/accounts succeed on v23.0 for a real connection? | Does the v2 chunked upload (/initialize, /{id}/append, /{id}/finalize, STATUS) accept our requests and return a postable media id? |
+  | Question | Does fb_exchange_token followed by /me/accounts succeed on the pinned version (v23.0, then v26.0 since FILM-1728) for a real connection? | Does the v2 chunked upload (/initialize, /{id}/append, /{id}/finalize, STATUS) accept our requests and return a postable media id? |
   | Status today | Inferred to work: v21-v23 change nothing on either endpoint, and the same requests were being served as v20.0 before the pin | Inferred from X's reference pages. Known to be refused today: the endpoint needs the media.write scope, which TWITTER_OAUTH_CONFIG.scopes does not request |
   | Why it did not run | No Meta app credentials or connected Page outside production | No X token; X has no sandbox (see Check A) |
   | Cost to settle | One forced refresh of one production connection | Add media.write, re-authorise one X connection, publish one video |
@@ -196,7 +200,8 @@ notes: |
 
   ```bash
   # D. Read-only half, safe against production: confirms the pin is honoured.
-  curl -sI "https://graph.facebook.com/v23.0/me" | grep -i facebook-api-version
+  #    Run 2026-10-01 for FILM-1728: v26.0 is served as v26.0.
+  curl -sI "https://graph.facebook.com/v26.0/me" | grep -i facebook-api-version
   # D. The decisive half: force one refresh and read the result.
   #    ensureValidToken(<meta connection id>, true)  ->  { valid: true, ... }
 
@@ -205,6 +210,38 @@ notes: |
     -H "Authorization: Bearer $X_USER_TOKEN" -H 'Content-Type: application/json' \
     -d '{"media_type":"video/mp4","total_bytes":1024,"media_category":"tweet_video"}'
   # Expected: 200 with data.id. A 403 means the scope is still missing.
+  ```
+
+  **Amended 2026-10-01 by FILM-1728.** The pin moved from v23.0 to v26.0, so
+  Check D must be re-run at the first production deploy carrying FILM-1728. If
+  it has not yet run for v23.0, one run against v26.0 closes it for both
+  specs. After that deploy, also read the logs for
+  `[meta-graph] served version is not the pin`: every Meta call now reports
+  the first mismatch between the pin and Meta's facebook-api-version header.
+
+  ## 3e. Check J — are the 41 Facebook metrics v25.0 deprecated really gone
+
+  Added 2026-10-01 by FILM-1728 (§4.3). Graph v25.0's changelog deprecates 41
+  Page, Post, Video and Story insight metrics, "will return an error if
+  requested using any API version", from v26.0's release (2026-07-29). Meta's
+  own video_insights reference page still lists them, with no notice. The
+  capability reference now follows the changelog, and the forbidden block
+  holds the 41 names.
+
+  | | |
+  |---|---|
+  | Question | Does /{video-id}/video_insights?metric=total_video_views_unique return an error on a real Page? |
+  | Status today | The changelog says yes; the reference page implies no. We treat the changelog as authoritative, which is a reading, not a measurement |
+  | Why it did not run | Needs a connected Facebook Page with read_insights; no fixture or local stack holds one, and no production credential may be used by anyone but the owner |
+  | Cost to settle | One call, by the owner, on their own first connected Page (after FILM-1711's scopes reach it) |
+  | Blocks | Nothing today: no code requests these metrics. FILM-1720 plans against the result: if the metric still answers, Facebook reach is measurable after all |
+
+  ```bash
+  # J. On the owner's own connected Page, with a Page token holding read_insights.
+  curl -s -H "Authorization: Bearer $PAGE_TOKEN" \
+    "https://graph.facebook.com/v26.0/<VIDEO_ID>/video_insights?metric=total_video_views_unique"
+  # Expected (changelog): HTTP 400 with an error. A data array means the reference
+  # page was right and the forbidden block's video entries need revisiting.
   ```
 
   ## 3d. Checks F, G and H — what FILM-1711 could not run
@@ -316,8 +353,10 @@ notes: |
   Un-defer Check C the moment FILM-1711 holds an Instagram token — it costs one
   call.
 
-  Un-defer Check D at the first production deploy carrying FILM-1723 - it is
-  one forced refresh. Un-defer Check E when media.write is added to the X
+  Un-defer Check D at the first production deploy carrying FILM-1728 (or
+  FILM-1723, whichever ships first; one run on v26.0 closes both) - it is one
+  forced refresh. Un-defer Check J when the owner's first Facebook Page is
+  connected with read_insights - it is one call. Un-defer Check E when media.write is added to the X
   scopes, whichever spec does that.
 
   Un-defer Check B on any of:

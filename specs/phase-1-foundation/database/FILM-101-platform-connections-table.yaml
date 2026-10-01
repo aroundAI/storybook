@@ -137,7 +137,7 @@ test_plan:
       evidence: "packages/features/content-analytics/__tests__/subscriber-series-actions.test.ts:152 (the inactive channel is excluded)"
     - text: "Update tokens after refresh"
       met: true
-      evidence: "packages/features/publishing/__tests__/token-refresh.test.ts:477 (Meta); packages/features/publishing/__tests__/token-refresh.test.ts:715 (X, refreshed since KB-15)"
+      evidence: "packages/features/publishing/__tests__/token-refresh.test.ts:479 (Meta); packages/features/publishing/__tests__/token-refresh.test.ts:717 (X, refreshed since KB-15)"
     - text: "Deactivate connection (set is_active = FALSE)"
       met: false
       reason: "not met — no test found"

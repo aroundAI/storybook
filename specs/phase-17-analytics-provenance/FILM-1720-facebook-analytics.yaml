@@ -77,6 +77,31 @@ feature:
         path: "/{video-id}/video_insights"
         purpose: "Pages-only video/Reels analytics — 57 video metrics, 11 Reels metrics, 4 ad-break metrics, 2 years retention, requires a Page token with the ANALYZE task"
 notes: |
+  ## Read first: Graph v25.0 retired Facebook reach (FILM-1728 §4.3, 2026-10-01)
+
+  Graph v25.0's changelog deprecated 41 Page, Post, Video and Story insight
+  metrics for every version from v26.0's release (2026-07-29): requesting one
+  returns an error. Among them are the reach bindings this spec was planned
+  against: post_impressions_unique (Reels reach), total_video_views_unique
+  and total_video_impressions(_unique). Meta's video_insights reference page
+  still lists them; the changelog wins, and the capability reference's
+  Facebook section and forbidden block now say so. FILM-1725 Check J is the
+  one call on the owner's first Page that confirms it.
+
+  What changes here: write the provider against total_video_views,
+  blue_reels_play_count, fb_reels_total_plays and the watch-time and
+  retention fields, not against impressions or a _unique reach. Facebook
+  reach on Reels may have no organic field at all, so FILM-1703's matrix
+  should expect null (cannot measure) for Facebook reach. The Graph pin is
+  v26.0 (FILM-1728), and every call goes through metaFetch in
+  @kit/shared/vendors.
+
+  Assigned here by the lead (2026-10-01): FILM-1722's view-definition
+  registry still defines facebook.total_video_impressions and
+  facebook.post_impressions_unique (packages/clickhouse/src/lib/view-definitions.ts),
+  both retired by v25.0. Add a `retired` availability to ViewDefinition and
+  settle both entries, with FILM-1725 Check J as the live confirmation.
+
   ## Where Facebook actually stands
 
   | Layer | Facebook |

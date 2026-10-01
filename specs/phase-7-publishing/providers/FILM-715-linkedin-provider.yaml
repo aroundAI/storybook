@@ -92,7 +92,7 @@ test_plan:
   integration:
     - text: "Test OAuth flow with mock API"
       met: true
-      evidence: "the callback's success path with mocked fetch (apps/web/lib/platforms/__tests__/callback-success.test.ts:407: urn:li:person id and personal scopes; :443 company scopes and no refresh token; :456 no member id stores nothing); and in a browser against the LinkedIn sandbox: apps/e2e/tests/platform-connections/sandbox-connect-linkedin.spec.ts:54 (connect, tokens, scopes, second connect) and :140 (cancel gives the failure page and no row; an injected 500 at /oauth/v2/accessToken gives token_exchange_failed and no row; the retry connects), green on two consecutive runs 2026-10-01, retries off. Failure branches also: apps/e2e/tests/platform-connections/connect-failure.spec.ts"
+      evidence: "the callback's success path with mocked fetch (apps/web/lib/platforms/__tests__/callback-success.test.ts:413: urn:li:person id and personal scopes; :443 company scopes and no refresh token; :456 no member id stores nothing); and in a browser against the LinkedIn sandbox: apps/e2e/tests/platform-connections/sandbox-connect-linkedin.spec.ts:54 (connect, tokens, scopes, second connect) and :140 (cancel gives the failure page and no row; an injected 500 at /oauth/v2/accessToken gives token_exchange_failed and no row; the retry connects), green on two consecutive runs 2026-10-01, retries off. Failure branches also: apps/e2e/tests/platform-connections/connect-failure.spec.ts"
     - text: "Test video upload initialization"
       met: true
       evidence: "packages/features/publishing/__tests__/linkedin-provider.test.ts:133"

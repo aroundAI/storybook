@@ -368,8 +368,8 @@ reel).
 ⚠️ **Corrected 2026-10-01 (FILM-1728 §4.3): reach and impressions are gone.**
 This section, "verified 2026-09-21", listed `total_video_views_unique`,
 `total_video_impressions_unique` and `post_impressions_unique` (as Reels reach),
-and the field block below carried `total_video_impressions` too. Graph v25.0
-deprecated all four, among 41 Page, Post, Video and Story metrics, with effect on
+and the field block below carried `total_video_impressions` too, unmarked.
+Graph v25.0 deprecated all four, among 41 Page, Post, Video and Story metrics, with effect on
 every version since v26.0 shipped (2026-07-29); requesting one returns an error.
 They are in the [forbidden block](#names-that-must-not-appear-in-our-code) now.
 
@@ -1226,10 +1226,15 @@ success                    # DELETE /{video-id}; observed, not documented (see l
 
 <!-- fields: facebook/video-insights source: https://developers.facebook.com/docs/graph-api/reference/video/video_insights/ -->
 ```text
-# total_video_views_unique, total_video_impressions(_unique) and
-# post_impressions_unique are listed on this page but deprecated by Graph v25.0
-# for every version (FILM-1728 §4.3); see the forbidden block.
+# This page still documents the four names marked "deprecated" below; Graph
+# v25.0's changelog retired them for every version (FILM-1728 §4.3). They stay
+# here because the block records what the page says. The forbidden block is
+# what stops a request for them; FILM-1725 Check J settles which page is right.
 total_video_views
+total_video_views_unique   # deprecated: Graph v25.0, all versions since 2026-07-29
+total_video_impressions    # deprecated: Graph v25.0, all versions since 2026-07-29
+total_video_impressions_unique # deprecated: Graph v25.0, all versions since 2026-07-29
+post_impressions_unique    # deprecated: Graph v25.0, all versions since 2026-07-29
 total_video_15s_views
 total_video_avg_time_watched
 total_video_view_total_time
