@@ -27,6 +27,7 @@ import {
   xVideoRefusal,
 } from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
@@ -55,6 +56,7 @@ import {
 } from '../lib/token-errors';
 import { tweetLength } from '../lib/tweet-length';
 import type { Platform, PublishResult } from '../lib/types';
+import { recordUploadedFileDuration } from '../lib/uploaded-file-duration';
 import {
   type YouTubeChannelDeclaration,
   type YouTubeDeclaration,
@@ -541,6 +543,14 @@ const publishToAllHandler = enhanceAction(
             })
             .eq('id', publish.id);
 
+          // FILM-1710: the length of the file just sent, for a platform that
+          // never reports one back
+          await recordUploadedFileDuration(
+            getSupabaseServerAdminClient,
+            { id: publish.id, platform: platform.platform },
+            videoUrl,
+          );
+
           // Auto-generate and set public_slug on episode if not already set
           // This enables the episode to appear on public share pages
           if (!episode.public_slug) {
@@ -875,6 +885,13 @@ const retryPublish = enhanceAction(
           published_at: new Date().toISOString(),
         })
         .eq('id', publishId);
+
+      // FILM-1710
+      await recordUploadedFileDuration(
+        getSupabaseServerAdminClient,
+        { id: publishId, platform: publish.platform },
+        videoUrl,
+      );
 
       return {
         platform: publish.platform as Platform,

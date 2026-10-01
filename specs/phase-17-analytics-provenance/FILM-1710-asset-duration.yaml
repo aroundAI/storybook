@@ -20,13 +20,14 @@ summary: >
   it must be fixed before FILM-1616 becomes the column's first reader. The
   fix adds a nullable publishes.duration_seconds and a nullable
   video_dim.asset_duration_seconds, written from the provider (YouTube and
-  TikTok; Instagram has no such field and stays duration_unknown
-  permanently), and renames the existing column to episode_duration_seconds
-  so every stale reader fails to compile.
+  TikTok; Instagram has no such field, so its publish records the length
+  of the file it uploaded, or stays duration_unknown), and renames the
+  existing column to episode_duration_seconds so every stale reader fails
+  to compile.
 acceptance_criteria:
   - text: "publishes carries the published asset's duration, written from the provider"
     met: true
-    evidence: "publishes.duration_seconds integer, nullable, check (> 0); one writer (syncAssetDurations), held by a trigger that keeps browser sessions from writing it"
+    evidence: "publishes.duration_seconds integer, nullable, check (> 0); one writer per platform (syncAssetDurations for YouTube and TikTok, recordUploadedFileDuration for Instagram), held by a trigger that keeps browser sessions from writing it"
   - text: "video_dim carries it nullably, distinguishable from zero"
     met: true
     evidence: "asset_duration_seconds Nullable(UInt32), migration 009_video_dim_asset_duration"
@@ -53,7 +54,7 @@ acceptance_criteria:
     reason: "operational, after deploy. YouTube rows fill on the first run; TikTok rows stay null until FILM-1711 adds video.list — the request is built and tested, and reports scope_missing rather than a number until then"
   - text: "Instagram's duration comes from the uploaded file at publish time, or is duration_unknown"
     met: true
-    evidence: "never requested from Meta, which has no such field. It is duration_unknown: the publish path holds a URL, not a measured length — see the implementation notes below"
+    evidence: "packages/features/publishing/src/lib/uploaded-file-duration.ts:50 measures the uploaded file's MP4 header (mvhd, range requests) and fills a null publishes.duration_seconds as the service role; an unreadable header, a zero or a refused read leaves it null (:61). Called after every Instagram upload: publish-actions.ts:548 (publish now), :890 (retry), process-scheduled-publishes.ts:390, publish-worker/index.ts:401; uploaded-file-duration-sites.test.ts:58 fails a path that skips it. Against the vendor sandbox, apps/e2e/tests/publishing/sandbox-instagram-duration.spec.ts:116 publishes a 45-second file from a 1,320-second episode and reads 45 (red, null, with the scheduled call removed); :133 publishes an unreadable file and reads null. Never requested from Meta. #517"
   - text: "Existing short-form retention caches are cleared, and recomputed where a duration is now known; where it is not, they read duration_unknown rather than a stale figure"
     met: true
     evidence: "moot — hook_variants and hook_tests were dropped (guarded on being empty) by migration 20260919193447_remove-hook-lab before this spec was built, so no cache survives to clear"
@@ -307,6 +308,16 @@ notes: |
   takes the criterion's other branch: `duration_unknown`, permanently,
   never requested. It wants its own ticket if Instagram completion figures
   are ever needed.
+
+  Superseded 2026-10-02 (#517): Instagram now takes the
+  criterion's first branch. The publish flow does hold a measurable length
+  — the MP4 header of the file it sends, which `readMp4Facts` (FILM-1729)
+  already reads with range requests for X's limits, without downloading
+  the video. `recordUploadedFileDuration` (`@kit/publishing`) reads it after
+  a successful Instagram upload and fills a null `duration_seconds` as the
+  service role; a header it cannot read leaves the row `duration_unknown`.
+  Instagram rows published before this stay null: the episode's file may
+  have been replaced since, so measuring it now would be a guess.
 
   The Hook Lab criteria are moot. The contaminated-data section and two
   acceptance criteria concern `hook_variants`. The Hook Lab was reviewed

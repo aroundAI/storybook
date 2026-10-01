@@ -16,6 +16,7 @@ import { ownedEpisodeThumbnail } from '../lib/owned-thumbnail';
 import { TokenRefusal, tokenErrorCodeOf } from '../lib/token-errors';
 import { ensureValidToken } from '../lib/token-refresh';
 import type { Platform } from '../lib/types';
+import { recordUploadedFileDuration } from '../lib/uploaded-file-duration';
 import type { YouTubeChannelDeclaration } from '../lib/youtube-declaration';
 import { FacebookProvider } from '../providers/facebook';
 import { InstagramProvider } from '../providers/instagram';
@@ -384,6 +385,13 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
           published_at: new Date().toISOString(),
         })
         .eq('id', publish.id);
+
+      // FILM-1710: never throws
+      await recordUploadedFileDuration(
+        () => client,
+        { id: publish.id, platform: publish.platform },
+        videoUrl,
+      );
 
       results.published++;
       console.log(

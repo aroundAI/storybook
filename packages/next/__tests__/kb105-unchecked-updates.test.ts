@@ -118,6 +118,8 @@ const KNOWN: Record<string, [number, string]> = {
     [2, SET_BEFORE],
   'packages/features/publishing/src/jobs/process-scheduled-publishes.ts | publishes | update':
     [3, ADMIN],
+  'packages/features/publishing/src/lib/uploaded-file-duration.ts | publishes | update':
+    [1, ADMIN],
   'packages/features/publishing/src/server/publish-actions.ts | episodes | update':
     [1, BOOKKEEPING],
   'packages/features/publishing/src/server/publish-actions.ts | publishes | update':
