@@ -193,13 +193,13 @@ describe('resolveAnalyticsAccess', () => {
     expect(
       resolveAnalyticsAccess({
         scopesEnabled: ALL_ANALYTICS_SCOPES_ENABLED,
-        platform: 'facebook',
-        grantedScopes: ['pages_show_list'],
+        platform: 'twitter',
+        grantedScopes: ['tweet.read'],
       }),
     ).toMatchObject({
       summary: 'no_provider',
       canReconnect: false,
-      entries: [{ state: 'no_provider', plannedIn: 'FILM-1720' }],
+      entries: [{ state: 'no_provider', plannedIn: 'FILM-1727' }],
     });
   });
 
@@ -226,8 +226,33 @@ describe('videoSyncAuthorisation', () => {
 
   it('refuses a platform it has no requirement for', () => {
     expect(
-      videoSyncAuthorisation({ platform: 'facebook', grantedScopes: ['x'] }),
+      videoSyncAuthorisation({ platform: 'twitter', grantedScopes: ['x'] }),
     ).toBe('not_authorised');
+  });
+
+  it('syncs a Facebook video only once read_insights is held (FILM-1720)', () => {
+    const publishing = [
+      'pages_show_list',
+      'pages_read_engagement',
+      'pages_manage_posts',
+    ];
+
+    expect(
+      videoSyncAuthorisation({
+        platform: 'facebook',
+        grantedScopes: publishing,
+      }),
+    ).toBe('not_authorised');
+    expect(
+      videoSyncAuthorisation({
+        platform: 'facebook',
+        grantedScopes: [
+          ...publishing,
+          'read_insights',
+          'pages_manage_engagement',
+        ],
+      }),
+    ).toBe('authorised');
   });
 });
 

@@ -176,13 +176,43 @@ export const ANALYTICS_SCOPE_REQUIREMENTS: readonly AnalyticsScopeRequirement[] 
       review: 'approved',
       source: `${REFERENCE}#instagram`,
     },
+    // Meta's video_insights reference names pages_manage_engagement +
+    // read_insights with the ANALYZE task; an older page names
+    // pages_read_engagement. All three, until one live call settles it
+    // (FILM-1720; FILM-1725 Check J's call does).
     {
       id: 'facebook.video-insights',
       platform: 'facebook',
+      scopes: [
+        'read_insights',
+        'pages_manage_engagement',
+        'pages_read_engagement',
+      ],
+      endpoints: [/\/video_insights\?/],
+      gains:
+        'Plays, 3-second views, watch time and retention for each Facebook video',
+      provider: 'implemented',
+      review: 'required',
+      source: `${REFERENCE}#facebook`,
+    },
+    {
+      id: 'facebook.post-insights',
+      platform: 'facebook',
       scopes: ['read_insights', 'pages_read_engagement'],
-      endpoints: [/\/video_insights\b/],
-      gains: 'Views, watch time and retention for each Facebook video',
-      provider: 'FILM-1720',
+      endpoints: [/\$\{postId\}\/insights\?/],
+      gains: 'How many people viewed each Facebook video’s post',
+      provider: 'implemented',
+      review: 'required',
+      source:
+        'https://developers.facebook.com/docs/graph-api/reference/insights/',
+    },
+    {
+      id: 'facebook.video-and-post-fields',
+      platform: 'facebook',
+      scopes: ['pages_read_engagement'],
+      endpoints: [/\$\{(?:videoId|postId)\}\?fields=/],
+      gains: 'Comments and shares for each Facebook video',
+      provider: 'implemented',
       review: 'required',
       source: `${REFERENCE}#facebook`,
     },
@@ -445,6 +475,7 @@ const VIDEO_SYNC_REQUIREMENT: Record<string, string | undefined> = {
   youtube: 'youtube.analytics',
   tiktok: 'tiktok.video-metrics',
   instagram: 'instagram.insights',
+  facebook: 'facebook.video-insights',
 };
 
 export function holdsRequirement(

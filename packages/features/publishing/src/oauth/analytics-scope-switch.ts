@@ -15,14 +15,31 @@
  * Pure and client-safe; only the reader of the environment is server-only.
  */
 
-/** The OAuth apps whose requests the switch controls. Meta covers Instagram and Facebook: one Facebook Login dialog. */
-export type ScopeSwitchPlatform = 'youtube' | 'tiktok' | 'meta';
+/** The OAuth apps whose connect requests the switch edits. Meta covers Instagram and Facebook: one Facebook Login dialog. */
+export type ConnectRequest = 'youtube' | 'tiktok' | 'meta';
+
+/**
+ * What the switch names. Each OAuth app, plus `facebook`: Facebook Page
+ * insights (FILM-1720) ride the Meta dialog but need their own App Review,
+ * so they are turned on separately from Instagram's. Shipped dark: off until
+ * the owner names it (owner, 2026-10-01).
+ */
+export type ScopeSwitchPlatform = ConnectRequest | 'facebook';
 
 export const SCOPE_SWITCH_PLATFORMS: readonly ScopeSwitchPlatform[] = [
   'youtube',
   'tiktok',
   'meta',
+  'facebook',
 ];
+
+/** The connect request each switch's scopes travel in. */
+const REQUEST_OF: Record<ScopeSwitchPlatform, ConnectRequest> = {
+  youtube: 'youtube',
+  tiktok: 'tiktok',
+  meta: 'meta',
+  facebook: 'meta',
+};
 
 /**
  * The scopes #289 added to each connect request, and nothing else. Without
@@ -36,6 +53,7 @@ export const ANALYTICS_ADDED_SCOPES: Record<
   youtube: ['https://www.googleapis.com/auth/yt-analytics-monetary.readonly'],
   tiktok: ['video.list', 'user.info.stats'],
   meta: ['instagram_manage_insights'],
+  facebook: ['read_insights', 'pages_manage_engagement'],
 };
 
 export type AnalyticsScopeSwitch = ReadonlySet<ScopeSwitchPlatform>;
@@ -70,15 +88,21 @@ export function parseAnalyticsScopesEnabled(raw: string | undefined): {
   };
 }
 
-/** The scopes a connect request names: the config, less the platform's added scopes while it is off. */
+/**
+ * The scopes a connect request names: the config, less the added scopes of
+ * every switch riding this request that is off. The Meta request carries
+ * Instagram's and Facebook's, each withheld until its own switch is on.
+ */
 export function connectScopes(
-  platform: ScopeSwitchPlatform,
+  request: ConnectRequest,
   configScopes: readonly string[],
   enabled: AnalyticsScopeSwitch,
 ): string[] {
-  if (enabled.has(platform)) return [...configScopes];
-
-  const withheld = new Set(ANALYTICS_ADDED_SCOPES[platform]);
+  const withheld = new Set(
+    SCOPE_SWITCH_PLATFORMS.filter(
+      (platform) => REQUEST_OF[platform] === request && !enabled.has(platform),
+    ).flatMap((platform) => ANALYTICS_ADDED_SCOPES[platform]),
+  );
 
   return configScopes.filter((scope) => !withheld.has(scope));
 }
@@ -93,8 +117,9 @@ export function scopeSwitchFor(
     case 'tiktok':
       return 'tiktok';
     case 'instagram':
-    case 'facebook':
       return 'meta';
+    case 'facebook':
+      return 'facebook';
     default:
       return null;
   }

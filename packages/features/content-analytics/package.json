@@ -18,6 +18,8 @@
     "./providers/tiktok/types": "./src/providers/tiktok/types.ts",
     "./providers/instagram": "./src/providers/instagram/index.ts",
     "./providers/instagram/types": "./src/providers/instagram/types.ts",
+    "./providers/facebook": "./src/providers/facebook/index.ts",
+    "./providers/facebook/types": "./src/providers/facebook/types.ts",
     "./server": "./src/server/index.ts",
     "./server/types": "./src/server/types.ts",
     "./server/report-storage": "./src/server/report-storage.ts",

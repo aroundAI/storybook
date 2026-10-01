@@ -36,7 +36,7 @@ because nothing has been started.
 
 | Vendor | What is needed | Scopes it unlocks | Status | Date | Owner | `review` in code |
 |---|---|---|---|---|---|---|
-| Meta | **App Review** (Advanced Access) | `instagram_manage_insights`; later `read_insights` for FILM-1720 | not submitted | 2026-09-22 | unassigned | `required` |
+| Meta | **App Review** (Advanced Access) | `instagram_manage_insights`; `read_insights` and `pages_manage_engagement` for FILM-1720 (requested only while `ANALYTICS_SCOPES_ENABLED` names `facebook`) | not submitted | 2026-09-22 | unassigned | `required` |
 | Meta | **Business Verification** | required alongside App Review — both, not either | not submitted | 2026-09-22 | unassigned | `required` |
 | Meta | Data Use Checkup | keeps the above; annual | not due until access is granted | — | unassigned | — |
 | TikTok | App review (mandatory for production on every scope) | `video.list`, `user.info.stats` | not submitted | 2026-09-22 | unassigned | `required` |

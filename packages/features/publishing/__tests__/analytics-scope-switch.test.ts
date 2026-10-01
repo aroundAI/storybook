@@ -113,6 +113,32 @@ describe('connectScopes', () => {
         expect(CONFIG[platform]).toContain(scope);
       }
     }
+    for (const scope of ANALYTICS_ADDED_SCOPES.facebook) {
+      expect(CONFIG.meta).toContain(scope);
+    }
+  });
+
+  it('keeps Facebook insights out of the Meta request until its own switch is on (FILM-1720)', () => {
+    const metaOnly = parseAnalyticsScopesEnabled('meta').enabled;
+    const both = parseAnalyticsScopesEnabled('meta,facebook').enabled;
+
+    expect(connectScopes('meta', CONFIG.meta, metaOnly)).toContain(
+      'instagram_manage_insights',
+    );
+    expect(connectScopes('meta', CONFIG.meta, metaOnly)).not.toContain(
+      'read_insights',
+    );
+    expect(connectScopes('meta', CONFIG.meta, both)).toEqual(
+      expect.arrayContaining(['read_insights', 'pages_manage_engagement']),
+    );
+    const facebookOnly = connectScopes(
+      'meta',
+      CONFIG.meta,
+      parseAnalyticsScopesEnabled('facebook').enabled,
+    );
+    expect([...facebookOnly].sort()).toEqual(
+      [...BEFORE_1711.meta, 'read_insights', 'pages_manage_engagement'].sort(),
+    );
   });
 });
 
