@@ -639,7 +639,7 @@ Local stand-ins for every social platform and AI vendor, on local ports: statefu
 | FILM-1801 | [vendor-base-url-resolver](./phase-18-local-vendor-sandbox/FILM-1801-vendor-base-url-resolver.yaml) | ✅ DONE | L | - (with or after FILM-1723) |
 | FILM-1802 | [social-platform-sandbox](./phase-18-local-vendor-sandbox/FILM-1802-social-platform-sandbox.yaml) | ✅ DONE | XL | FILM-1801, FILM-1721 |
 | FILM-1803 | [ai-generation-sandbox](./phase-18-local-vendor-sandbox/FILM-1803-ai-generation-sandbox.yaml) | DONE | L | FILM-1801, FILM-1805 |
-| FILM-1804 | [sandbox-backed-e2e-flows](./phase-18-local-vendor-sandbox/FILM-1804-sandbox-backed-e2e-flows.yaml) | DRAFT | L | FILM-1802, FILM-1803 |
+| FILM-1804 | [sandbox-backed-e2e-flows](./phase-18-local-vendor-sandbox/FILM-1804-sandbox-backed-e2e-flows.yaml) | ✅ DONE | L | FILM-1802, FILM-1803 |
 | FILM-1805 | [local-models-and-sdk-base-urls](./phase-18-local-vendor-sandbox/FILM-1805-local-models-and-sdk-base-urls.yaml) | ✅ DONE | M | FILM-1801; FILM-513 for KB-21's lip-sync half |
 | FILM-1806 | [local-job-queue](./phase-18-local-vendor-sandbox/FILM-1806-local-job-queue.yaml) | ✅ DONE | M | FILM-1801, FILM-1803 |
 
