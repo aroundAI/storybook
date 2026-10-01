@@ -4,9 +4,15 @@
  * Pure, so the rule that decides whether a growth figure is reportable can
  * be tested directly — that rule is the whole value of the calculation.
  */
+import { CONFIDENCE_DIRECTIONAL_MIN } from './segment-stats';
 
-/** Mature videos each side needs before a comparison is reportable. */
-export const MIN_MATURE_VIDEOS = 5;
+/**
+ * Mature videos each side needs before a comparison is reportable. The
+ * floor of FILM-1606's `directional` tier, imported rather than restated:
+ * the suppression gate and the lowest rendering tier are one number, and
+ * two copies of it would drift (FILM-1715).
+ */
+export const MIN_MATURE_VIDEOS = CONFIDENCE_DIRECTIONAL_MIN;
 
 /** Why a growth figure is absent, when it is. */
 export type GrowthSuppressionReason =

@@ -1,0 +1,135 @@
+{
+  "feature": "FILM-1715",
+  "mutations": [
+    {
+      "name": "SB1 the lift is not shrunk by the peer count",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/self-benchmark.ts",
+      "find": "  return 1 + (observedLift - 1) * (n / (n + SHRINKAGE_PRIOR_PEERS));",
+      "replace": "  return observedLift;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/self-benchmark.test.ts",
+      "pattern": "adjusted lift ranks the hundred-video cohort first"
+    },
+    {
+      "name": "SB2 a thin peer set gets a band",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/self-benchmark.ts",
+      "find": "  if (confidence === 'insufficient' || cohort.median <= 0) {",
+      "replace": "  if (cohort.median <= 0) {",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/self-benchmark.test.ts",
+      "pattern": "calls a cohort of four insufficient"
+    },
+    {
+      "name": "SB3 a video short of its checkpoint is judged",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/self-benchmark.ts",
+      "find": "  if (!computeMaturity(published, [checkpointDays], asOf)[checkpointDays]) {",
+      "replace": "  if (false) {",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/self-benchmark.test.ts",
+      "pattern": "is not judgable one day short"
+    },
+    {
+      "name": "SB4 checkpoints are one global constant",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/self-benchmark.ts",
+      "find": "    window.anchoredOn === 'publish_date' &&\n    window.maxAgeDays !== null &&",
+      "replace": "    false &&\n    window.maxAgeDays !== null &&",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/self-benchmark.test.ts",
+      "pattern": "lets X on its 30-day path"
+    },
+    {
+      "name": "SB5 a job-creation window cuts checkpoints like a publish-anchored one",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/self-benchmark.ts",
+      "find": "    window.anchoredOn === 'publish_date' &&\n    window.maxAgeDays !== null &&",
+      "replace": "    window.anchoredOn !== 'request_date' &&\n    window.maxAgeDays !== null &&",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/self-benchmark.test.ts",
+      "pattern": "never cuts a checkpoint for a job-creation window"
+    },
+    {
+      "name": "SB6 the subject ignores the ingest lag its peers are excluded for",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/self-benchmark.ts",
+      "find": "  if (checkpointPredatesIngest(ingestLagDays, checkpointDays)) {",
+      "replace": "  if (false) {",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/self-benchmark-query.test.ts",
+      "pattern": "suppresses the video when its own window predates"
+    },
+    {
+      "name": "SB7 relaxation takes the first step whatever its size",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/self-benchmark.ts",
+      "find": "    if (attempt.cohort.n >= MIN_MATURE_VIDEOS) return usable;",
+      "replace": "    if (attempt.cohort.n >= 0) return usable;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/self-benchmark.test.ts",
+      "pattern": "takes the first step that clears the gate"
+    },
+    {
+      "name": "SB8 the suppression gate is restated instead of imported",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/cohort-growth.ts",
+      "find": "export const MIN_MATURE_VIDEOS = CONFIDENCE_DIRECTIONAL_MIN;",
+      "replace": "export const MIN_MATURE_VIDEOS = 4;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/self-benchmark.test.ts",
+      "pattern": "gates on the same number"
+    },
+    {
+      "name": "SB9 a channel's ingest start is narrowed by the latest filters",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "      FROM (${dimSubquery(conditions, '')}) d\n      INNER JOIN",
+      "replace": "      FROM dim d\n      INNER JOIN",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/self-benchmark-query.test.ts",
+      "pattern": "not narrowed by language, family or window"
+    },
+    {
+      "name": "SB10 the peer set is not held to the channel",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "        connectionId: channel.connectionId,\n        formatFamily: channel.formatFamily,\n        ...(step.language",
+      "replace": "        formatFamily: channel.formatFamily,\n        ...(step.language",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/self-benchmark-query.test.ts",
+      "pattern": "never the channel or family"
+    },
+    {
+      "name": "SB11 the peer set is not held to the format family",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "        formatFamily: channel.formatFamily,\n        ...(step.language",
+      "replace": "        ...(step.language",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/self-benchmark-query.test.ts",
+      "pattern": "never the channel or family"
+    },
+    {
+      "name": "SB12 a view-definition change is benchmarked across",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/self-benchmark.ts",
+      "find": "  if (denominator.kind === 'column') return null;\n\n  switch (denominator.reason) {",
+      "replace": "  return null;\n\n  switch (denominator.reason) {",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/self-benchmark.test.ts",
+      "pattern": "suppresses a range the continuous series does not cover"
+    },
+    {
+      "name": "SB13 engaged views are read from a view that lacks them",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "  engaged_views: 'video_metrics FINAL',",
+      "replace": "  engaged_views: 'video_daily_stats',",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/self-benchmark-query.test.ts",
+      "pattern": "reads engaged views from the table the view selects from"
+    }
+  ]
+}
