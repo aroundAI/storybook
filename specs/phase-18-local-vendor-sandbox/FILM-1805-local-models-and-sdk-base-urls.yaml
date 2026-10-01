@@ -3,8 +3,8 @@ title: "Local Models (Ollama) and the SDKs' Own Base-URL Overrides"
 phase: 18
 phase_name: "Local Vendor Sandbox"
 category: feature
-status: PARTIAL
-audited: "2026-09-30"
+status: DONE
+audited: "2026-10-01"
 effort: M
 dependencies:
   - spec_id: "FILM-1801"
@@ -56,17 +56,11 @@ acceptance_criteria:
     evidence: "`assertPromptLlm` (packages/features/prompt-engine/src/lib/render-template.ts:32) called by the loader (packages/features/prompt-engine/src/lib/server/prompt-loader.ts:46) and the Lambda's renderPrompt (apps/web/lambda/llm-worker/llm-utils.ts:47); the silent fallbacks (local/claude-sonnet-4-5, deepseek/deepseek-chat) are gone and all 31 bundled prompts set gemini / gemini-3.5-flash; tests packages/features/prompt-engine/__tests__/prompt-llm-config.test.ts:26 and :43, apps/web/lambda/llm-worker/__tests__/render-prompt.test.ts, red with the Lambda call removed"
   - text: "(Half B) One real prompt validated end to end against Ollama — or, honestly, against a stub with the live run recorded as the owner's"
     met: true
-    evidence: "against a stub: packages/features/prompt-engine/__tests__/local-provider-stub.test.ts:110 runs the real story-ideation prompt through the real `executeLLM` and `LocalClient` against an in-process HTTP server, asserting the /v1/chat/completions path, the stub host, model llama3.1, the prompt text in the user message, and output that passes the prompt's own schema. No `response_format` is sent by any provider, so it cannot be captured. The live Ollama run is recorded as the owner's (see remaining)"
+    evidence: "against a stub: packages/features/prompt-engine/__tests__/local-provider-stub.test.ts:110 runs the real story-ideation prompt through the real `executeLLM` and `LocalClient` against an in-process HTTP server, asserting the /v1/chat/completions path, the stub host, model llama3.1, the prompt text in the user message, and output that passes the prompt's own schema. No `response_format` is sent by any provider, so it cannot be captured. And live, 2026-10-01 (#TBD): packages/features/prompt-engine/__tests__/local-provider-ollama.live.test.ts runs the same real prompt with §4.4's environment (VENDOR_SANDBOX=1, LLM_FORCE_PROVIDER=local, LLM_MODEL=llama3.1, LOCAL_API_URL unset so the provider's default is what is proved) against Ollama 0.23.0 serving llama3.1:latest (id 46e0c10c039e; weights sha256:667b0c1932bc6ffc593ed1d03f895bf2dc8dc6df21db3042284a6f4416b06a29; llama 8.0B Q4_K_M). Command: `OLLAMA_LIVE=1 pnpm --filter @kit/prompt-engine exec vitest run local-provider-ollama`. Result: 1 passed in 126.5 s; request captured at http.request: host localhost:11434, path /v1/chat/completions, model llama3.1, no response_format, 1 attempt; metadata provider local, 1,754 tokens, cost 0; output parsed by the executor and re-validated against story-ideation's own Zod schema (3 ideas, e.g. \"Whispers from the Deep\"). Red first: before the model was pulled, Ollama answered `404 model 'llama3.1' not found`. Skipped unless OLLAMA_LIVE=1, so CI needs no model"
   - text: "(Half B) §4.4's command in README.md and packages/llm/CLAUDE.md; §6 documents updated"
-    met: false
-    reason: "part — the command is in README.md:132-147, packages/llm/CLAUDE.md:34-70 and AGENTS.md (also the prompt-engine CLAUDE/AGENTS/PRD default URL); the §6 spec rows (FILM-1803 port table, FILM-1801 §9, phase-18 README, KB-21, INDEX) are not yet updated"
-remaining:
-  - criterion: "(Half B) One real prompt validated end to end against Ollama — the live run"
-    reason: "proven against a stub only (packages/features/prompt-engine/__tests__/local-provider-stub.test.ts:110); the live run needs Ollama on the owner's machine"
-    closed_by: "owner"
-  - criterion: "(Half B) §6 documents updated"
-    reason: "the README and CLAUDE.md docs are done; the §6 spec rows (FILM-1803 port table, FILM-1801 §9, phase-18 README, KB-21, INDEX) still name the old default"
-    closed_by: "unassigned"
+    met: true
+    evidence: "the command is in README.md:132-147, packages/llm/CLAUDE.md:34-70 and AGENTS.md (also the prompt-engine CLAUDE/AGENTS/PRD default URL). §6 rows (#TBD): FILM-1801 §9 no longer lists the four variables as left alone; the phase-18 README's \"Overridable today\" row says the SDK variables are never read; KB-21's variable table says closed by FILM-1805 (it was already fixed); FILM-1803's port table already used VENDOR_URL_*; INDEX regenerated"
+remaining: []
 open_questions: []
 notes: |
   ## 1. Why this exists
@@ -298,7 +292,7 @@ notes: |
   |---|---|
   | FILM-1803-ai-generation-sandbox.md port table rows 4110–4112 | "How the app reaches it": OPENAI_BASE_URL / ANTHROPIC_BASE_URL / GOOGLE_GEMINI_BASE_URL → VENDOR_URL_OPENAI / VENDOR_URL_ANTHROPIC / VENDOR_URL_GEMINI (FILM-1801's scheme). Its DeepSeek note becomes moot — all four LLM vendors go through vendorUrl() |
   | FILM-1801-vendor-base-url-resolver.md §9 | strike the three SDK variables and LOCAL_API_URL from "Left alone, deliberately" |
-  | specs/phase-18-local-vendor-sandbox/README.md:17 | "Overridable today" no longer lists the LLM SDKs (lip-sync already removed by FILM-513) |
+  | specs/phase-18-local-vendor-sandbox/README.md:17 | "Overridable today" no longer lists the LLM SDKs (lip-sync already removed by FILM-513) — done 2026-10-01: the row now says the SDK variables are never read |
   | specs/known-bugs/KB-21.md | the four variables → "closed by FILM-1805"; `status: fixed` when this and FILM-513 land |
   | README.md, packages/llm/CLAUDE.md, AGENTS.md | Ollama instead of "Claude Code API"; §4.4's command |
   | specs/INDEX.md, phase-18 README table | rows |

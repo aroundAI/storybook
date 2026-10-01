@@ -639,7 +639,7 @@ Local stand-ins for every social platform and AI vendor, on local ports: statefu
 | FILM-1802 | [social-platform-sandbox](./phase-18-local-vendor-sandbox/FILM-1802-social-platform-sandbox.yaml) | ✅ DONE | XL | FILM-1801, FILM-1721 |
 | FILM-1803 | [ai-generation-sandbox](./phase-18-local-vendor-sandbox/FILM-1803-ai-generation-sandbox.yaml) | DONE | L | FILM-1801, FILM-1805 |
 | FILM-1804 | [sandbox-backed-e2e-flows](./phase-18-local-vendor-sandbox/FILM-1804-sandbox-backed-e2e-flows.yaml) | DRAFT | L | FILM-1802, FILM-1803 |
-| FILM-1805 | [local-models-and-sdk-base-urls](./phase-18-local-vendor-sandbox/FILM-1805-local-models-and-sdk-base-urls.yaml) | PARTIAL | M | FILM-1801; FILM-513 for KB-21's lip-sync half |
+| FILM-1805 | [local-models-and-sdk-base-urls](./phase-18-local-vendor-sandbox/FILM-1805-local-models-and-sdk-base-urls.yaml) | ✅ DONE | M | FILM-1801; FILM-513 for KB-21's lip-sync half |
 | FILM-1806 | [local-job-queue](./phase-18-local-vendor-sandbox/FILM-1806-local-job-queue.yaml) | ✅ DONE | M | FILM-1801, FILM-1803 |
 
 ### Spikes (5 specs)
@@ -723,10 +723,10 @@ reason when not.
 | 15. Deep Analytics | 11 | 0 | 3 | 0 | 2 | 6 |
 | 16. Workbook Parity | 17 | 0 | 0 | 0 | 0 | 17 |
 | 17. Analytics Provenance | 30 | 17 | 5 | 2 | 0 | 6 |
-| 18. Vendor Sandbox | 6 | 1 | 1 | 0 | 0 | 4 |
+| 18. Vendor Sandbox | 6 | 1 | 0 | 0 | 0 | 5 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | Public Sharing | 2 | 0 | 1 | 0 | 0 | 1 |
-| **TOTAL** | **233** | **18** | **62** | **2** | **54** | **97** |
+| **TOTAL** | **233** | **18** | **61** | **2** | **54** | **98** |
 
 No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose PR is open keeps the status it has on `main`.
 
@@ -742,7 +742,7 @@ No column for In Progress: it is not a file status (SCHEMA.md), so a spec whose 
 | Deep Analytics (Ph 15) | 11 | 6 | 3 | 2 | 0 |
 | Workbook Parity (Ph 16) | 17 | 17 | 0 | 0 | 0 |
 | Provenance & Signal (Ph 17) | 30 | 6 | 5 | 0 | 19 |
-| Vendor Sandbox (Ph 18) | 6 | 4 | 1 | 0 | 1 |
+| Vendor Sandbox (Ph 18) | 6 | 5 | 0 | 0 | 1 |
 | Public Sharing | 2 | 1 | 1 | 0 | 0 |
 
 ### Deferred at ship time, still open
