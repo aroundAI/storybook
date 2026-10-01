@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   NINETY_DAY_REASON,
   channelReachAvailability,
+  measuredViews,
   parseReachWindow,
   postReachAvailability,
   totalCounts,
@@ -66,5 +67,20 @@ describe('reach page rules (cross-platform reach design)', () => {
       'comments',
       'shares',
     ]);
+  });
+
+  it('adds nothing to views for Facebook, which has no single view (FILM-1720)', () => {
+    // ClickHouse sums a Facebook row's NULL views to NULL, and the reader
+    // used to read that as 0: a Facebook tab showing "0 views".
+    expect(measuredViews('facebook', null)).toBeNull();
+    expect(measuredViews('facebook', 0)).toBeNull();
+    expect(measuredViews('instagram', '150')).toBe(150);
+
+    expect(
+      totalCounts([
+        { views: 150, comments: 4, shares: 2 },
+        { views: null, comments: 3, shares: 1 },
+      ]),
+    ).toEqual({ views: 150, comments: 7, shares: 3 });
   });
 });

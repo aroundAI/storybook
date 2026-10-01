@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { FACEBOOK_DENOMINATOR_COLUMNS } from '../src/types';
+
 // Mock the @clickhouse/client module before importing our code
 vi.mock('@clickhouse/client', () => ({
   createClient: vi.fn(() => mockClickHouseClient),
@@ -178,6 +180,44 @@ describe('@kit/clickhouse', () => {
     });
 
     describe('queryLatestSnapshots', () => {
+      it('keeps a Facebook snapshot’s NULL views null, never 0 (migration 020)', async () => {
+        mockQueryResult.json.mockResolvedValue([
+          {
+            video_id: 'fb-1',
+            snapshot_date: '2026-09-30',
+            views: null,
+            likes: '5',
+            comments: '1',
+            shares: '1',
+            saves: null,
+            watch_time_seconds: '90',
+            subscribers_gained: '2',
+            plays: '40',
+            views_3s_organic: '20',
+            views_3s_paid: '5',
+          },
+        ]);
+
+        const { queryLatestSnapshots } = await import('../src/queries');
+        const result = await queryLatestSnapshots({
+          videoIds: ['fb-1'],
+          beforeDate: '2026-10-01',
+        });
+
+        expect(result.get('fb-1')).toMatchObject({
+          views: null,
+          plays: 40,
+          views_3s_organic: 20,
+          views_3s_paid: 5,
+          replays: null,
+        });
+
+        // A bare argMax skips NULLs and would hand back an older figure.
+        const call = mockClickHouseClient.query.mock.calls[0]![0];
+        expect(call.query).toContain('argMax(tuple(views), fetched_at).1');
+        expect(call.query).toContain('argMax(tuple(plays), fetched_at).1');
+      });
+
       it('should return a Map of video_id to latest snapshot totals', async () => {
         mockQueryResult.json.mockResolvedValue([
           {
@@ -212,6 +252,10 @@ describe('@kit/clickhouse', () => {
           accounts_reached: null,
           reposts: null,
           ...ALL_SURFACE_UNMEASURED,
+          // Facebook's own denominators: not measured on any other platform.
+          ...Object.fromEntries(
+            FACEBOOK_DENOMINATOR_COLUMNS.map((column) => [column, null]),
+          ),
         });
 
         const call = mockClickHouseClient.query.mock.calls[0]![0];
@@ -381,6 +425,83 @@ describe('@kit/clickhouse', () => {
         expect(result[0]!.platform).toBe('youtube');
         expect(result[0]!.views).toBe(3000);
         expect(result[1]!.platform).toBe('tiktok');
+      });
+    });
+
+    describe('a Facebook NULL view stays null (KB-153)', () => {
+      const facebookRow = {
+        views: null,
+        likes: '14',
+        comments: '4',
+        shares: '2',
+        saves: null,
+        watch_time_seconds: '300',
+        revenue_cents: '0',
+        subscribers_gained: '2',
+      };
+
+      it('per-video totals', async () => {
+        mockQueryResult.json.mockResolvedValue([
+          { ...facebookRow, video_id: 'fb-1' },
+        ]);
+        const { queryPerVideoTotals } = await import('../src/queries');
+        const totals = await queryPerVideoTotals({
+          projectId: '550e8400-e29b-41d4-a716-446655440000',
+          videoIds: ['fb-1'],
+        });
+
+        expect(totals.get('fb-1')).toMatchObject({ views: null, likes: 14 });
+      });
+
+      it('the platform split', async () => {
+        mockQueryResult.json.mockResolvedValue([
+          { ...facebookRow, platform: 'facebook' },
+        ]);
+        const { queryPlatformBreakdown } = await import('../src/queries');
+        const split = await queryPlatformBreakdown({
+          projectId: '550e8400-e29b-41d4-a716-446655440000',
+        });
+
+        expect(split[0]).toMatchObject({ platform: 'facebook', views: null });
+      });
+
+      it('totals over Facebook rows alone, but 0 over no rows', async () => {
+        const { queryTotals } = await import('../src/queries');
+        const scope = { projectId: '550e8400-e29b-41d4-a716-446655440000' };
+
+        mockQueryResult.json.mockResolvedValue([
+          { ...facebookRow, row_count: '2' },
+        ]);
+        expect((await queryTotals(scope)).views).toBeNull();
+
+        mockQueryResult.json.mockResolvedValue([
+          { ...facebookRow, row_count: '0' },
+        ]);
+        expect((await queryTotals(scope)).views).toBe(0);
+      });
+
+      it('the daily series, pooled and by platform', async () => {
+        const { queryDailyTimeSeries, queryDailyTimeSeriesByPlatform } =
+          await import('../src/queries');
+        const scope = { projectId: '550e8400-e29b-41d4-a716-446655440000' };
+
+        mockQueryResult.json.mockResolvedValue([
+          { ...facebookRow, date: '2026-09-01' },
+        ]);
+        expect((await queryDailyTimeSeries(scope))[0]?.views).toBeNull();
+
+        mockQueryResult.json.mockResolvedValue([
+          { ...facebookRow, date: '2026-09-01', platform: 'facebook' },
+          {
+            ...facebookRow,
+            date: '2026-09-01',
+            platform: 'youtube',
+            views: '30',
+          },
+        ]);
+        const [day] = await queryDailyTimeSeriesByPlatform(scope);
+        expect(day?.views).toBe(30);
+        expect(day?.byPlatform.facebook?.views).toBeNull();
       });
     });
 

@@ -152,7 +152,12 @@ describe('the detector sees the providers', () => {
     const platforms = new Set(CALLS.map((call) => call.platform));
 
     expect(CALLS.length).toBeGreaterThanOrEqual(12);
-    expect([...platforms].sort()).toEqual(['instagram', 'tiktok', 'youtube']);
+    expect([...platforms].sort()).toEqual([
+      'facebook',
+      'instagram',
+      'tiktok',
+      'youtube',
+    ]);
   });
 
   it('maps every provider directory to a platform', () => {

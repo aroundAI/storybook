@@ -30,6 +30,8 @@ import {
   languageKey,
   resolveLanguageDimension,
 } from '../lib/language-labels';
+import { compareViewsDesc, viewsToAdd } from '../lib/views';
+import type { Views } from '../lib/views';
 import { assertScopeAccess } from './scope-access';
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -276,7 +278,7 @@ export async function getLanguagePerformance(
 
     if (!current) continue;
 
-    current.views += stats.views;
+    current.views += viewsToAdd(stats.views);
     current.likes += stats.likes;
     current.comments += stats.comments;
     current.shares += stats.shares;
@@ -290,7 +292,7 @@ export async function getLanguagePerformance(
     const language = languageByVideo.get(publishId) ?? null;
     previousViewsByLanguage.set(
       language,
-      (previousViewsByLanguage.get(language) || 0) + stats.views,
+      (previousViewsByLanguage.get(language) || 0) + viewsToAdd(stats.views),
     );
   }
 
@@ -401,7 +403,7 @@ export async function getPlatformLanguageMatrix(
       publishCount: 0,
     };
 
-    current.views += stats.views;
+    current.views += viewsToAdd(stats.views);
     current.likes += stats.likes;
     current.comments += stats.comments;
     current.shares += stats.shares;
@@ -499,7 +501,7 @@ export async function getContentTypeComparison(
       contentCount: 0,
     };
 
-    target.views += stats.views;
+    target.views += viewsToAdd(stats.views);
     target.likes += stats.likes;
     target.comments += stats.comments;
     target.shares += stats.shares;
@@ -541,10 +543,11 @@ export interface ShortsSourcePerformance {
   /** Null when no language was set. */
   language: string | null;
   platform: string;
-  views: number;
+  /** Null for a Facebook Short: no single view (KB-153). */
+  views: Views;
   likes: number;
   comments: number;
-  engagement: number;
+  engagement: number | null;
 }
 
 /**
@@ -586,10 +589,13 @@ export async function getShortsSourcePerformance(
     const stats = perVideoTotals.get(video.videoId);
     if (!stats) continue;
 
+    // A Facebook Short has no views to divide by: not measured (KB-153).
     const engagement =
-      stats.views > 0
-        ? ((stats.likes + stats.comments) / stats.views) * 100
-        : 0;
+      stats.views === null
+        ? null
+        : stats.views > 0
+          ? ((stats.likes + stats.comments) / stats.views) * 100
+          : 0;
 
     results.push({
       publishId: video.videoId,
@@ -606,7 +612,7 @@ export async function getShortsSourcePerformance(
     });
   }
 
-  const top = results.sort((a, b) => b.views - a.views).slice(0, limit);
+  const top = results.sort(compareViewsDesc).slice(0, limit);
 
   // Episode titles are not a dimension, so they stay in Postgres — looked
   // up for the rows that survived the cut, not for the whole library.
@@ -725,7 +731,7 @@ export async function getGeographyByLanguage(
   // Videos with no audience rows still contribute to their language bucket
   for (const [publishId, stats] of perVideoTotals) {
     const language = languageByVideo.get(publishId) ?? null;
-    if (!byLanguage.has(language) && stats.views > 0) {
+    if (!byLanguage.has(language) && stats.views !== null && stats.views > 0) {
       byLanguage.set(language, new Map([['Unknown', stats.views]]));
     }
   }
@@ -811,7 +817,10 @@ export async function getLanguageTrend(
     }
 
     const dateData = trendByDate.get(date)!;
-    dateData.set(language, (dateData.get(language) || 0) + stat.views);
+    dateData.set(
+      language,
+      (dateData.get(language) || 0) + viewsToAdd(stat.views),
+    );
   }
 
   // Convert to array

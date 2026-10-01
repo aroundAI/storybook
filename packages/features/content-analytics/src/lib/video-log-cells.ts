@@ -11,11 +11,12 @@
 /** The row fields the cells read; a subset of `VideoLogRow`. */
 export interface VideoLogCellRow {
   publishedAt: string;
-  viewsAtAge: Record<number, number>;
+  /** Null on a platform with no single view (Facebook, KB-153). */
+  viewsAtAge: Record<number, number | null>;
   matureAt: Record<number, boolean>;
   predatesIngestAt: Record<number, boolean>;
   ingestLagDays: number | null;
-  lifetimeViews: number;
+  lifetimeViews: number | null;
   impressions: number;
   ctr: number;
   /** Null when the platform does not measure it (KB-111). */
@@ -33,6 +34,8 @@ export type CheckpointState =
   | { kind: 'immature'; ageDays: number | null; daysToGo: number }
   | { kind: 'no-data' }
   | { kind: 'predates'; lagDays: number }
+  /** The platform has no single view (Facebook, KB-153): never a 0. */
+  | { kind: 'not-measured' }
   | { kind: 'figure'; value: number };
 
 /** What deciding a checkpoint needs; the quality columns are not part of it. */
@@ -74,7 +77,10 @@ export function checkpointState(
     return { kind: 'predates', lagDays: row.ingestLagDays };
   }
 
-  return { kind: 'figure', value: row.viewsAtAge[days] ?? 0 };
+  const views = row.viewsAtAge[days];
+  if (views === null) return { kind: 'not-measured' };
+
+  return { kind: 'figure', value: views ?? 0 };
 }
 
 /** A lifetime quality cell: a value, or why there is none. */
@@ -82,7 +88,12 @@ export type QualityState =
   | { kind: 'value'; value: number }
   | {
       kind: 'none';
-      reason: 'no-data' | 'no-impressions' | 'no-views' | 'not-reported';
+      reason:
+        | 'no-data'
+        | 'no-impressions'
+        | 'no-views'
+        | 'not-reported'
+        | 'no-single-view';
     };
 
 /**
@@ -130,14 +141,20 @@ export function qualityStates(row: VideoLogCellRow): {
   };
   const notReported: QualityState = { kind: 'none', reason: 'not-reported' };
 
+  const noSingleView: QualityState = { kind: 'none', reason: 'no-single-view' };
+
   const overViews = (value: number | null): QualityState => {
+    if (row.lifetimeViews === null) return noSingleView;
     if (row.lifetimeViews === 0) return noViews;
 
     return value !== null && value > 0 ? { kind: 'value', value } : notReported;
   };
 
   return {
-    lifetimeViews: { kind: 'value', value: row.lifetimeViews },
+    lifetimeViews:
+      row.lifetimeViews === null
+        ? noSingleView
+        : { kind: 'value', value: row.lifetimeViews },
     impressions:
       row.impressions > 0
         ? { kind: 'value', value: row.impressions }

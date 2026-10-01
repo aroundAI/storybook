@@ -18,6 +18,11 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 
 import { planRevenueRowWrites } from '../lib/revenue-mix';
 import {
+  FacebookInsightsScopeError,
+  createFacebookInsightsProvider,
+} from '../providers/facebook';
+import type { FacebookInsightsResult } from '../providers/facebook';
+import {
   InstagramInsightsScopeError,
   createInstagramInsightsProvider,
 } from '../providers/instagram';
@@ -37,15 +42,18 @@ import { syncAssetDurations } from './asset-duration-sync';
 import type { AssetDurationCandidate } from './asset-duration-sync';
 import {
   buildAudienceRows,
+  buildFacebookRetentionPoints,
   buildRetentionPoints,
   buildSnapshotDeltaRow,
   buildYouTubeDailyRows,
   computeSnapshotDelta,
   computeYouTubeWindow,
+  facebookCumulativeTotals,
   latestDataDate,
   shouldWriteMetricRow,
   snapshotDeltaMetricDate,
 } from './ingest';
+import type { CumulativeTotals } from './ingest';
 import { getRateLimiter } from './rate-limiter';
 import { getSyncPriority, shouldSyncNow } from './schedule';
 import {
@@ -54,6 +62,7 @@ import {
   toConnectionGrant,
 } from './sync-authorisation';
 import type { ConnectionGrant } from './sync-authorisation';
+import { SYNC_PLATFORMS } from './types';
 import type {
   NormalizedAnalytics,
   PublishForSync,
@@ -115,6 +124,7 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
       youtube: { processed: 0, successful: 0, failed: 0 },
       tiktok: { processed: 0, successful: 0, failed: 0 },
       instagram: { processed: 0, successful: 0, failed: 0 },
+      facebook: { processed: 0, successful: 0, failed: 0 },
     },
     durationMs: 0,
   };
@@ -299,7 +309,7 @@ export async function fetchPublishesForSync(
   // Query publishes that:
   // 1. Have status = 'published'
   // 2. Have a platform_content_id (means they were actually published)
-  // 3. Platform is youtube, tiktok, or instagram
+  // 3. Platform is one the sync reads (SYNC_PLATFORMS)
   // 4. Sorted by published_at descending (newer content first)
   const { data, error } = await client
     .from('publishes')
@@ -317,7 +327,7 @@ export async function fetchPublishesForSync(
     )
     .eq('status', 'published')
     .not('platform_content_id', 'is', null)
-    .in('platform', ['youtube', 'tiktok', 'instagram'])
+    .in('platform', [...SYNC_PLATFORMS])
     .order('published_at', { ascending: false })
     .limit(limit * 2); // Fetch extra to account for filtering
 
@@ -431,6 +441,7 @@ function groupByPlatform(
     youtube: [],
     tiktok: [],
     instagram: [],
+    facebook: [],
   };
 
   for (const publish of publishes) {
@@ -519,7 +530,10 @@ async function syncSinglePublish(
         projectId,
         publish,
         platform,
-        analytics as TikTokAnalyticsResult | InstagramInsightsResult,
+        analytics as
+          | TikTokAnalyticsResult
+          | InstagramInsightsResult
+          | FacebookInsightsResult,
         normalizedData,
         snapshotBaselines?.get(publish.id) ?? null,
         snapshotBaselines !== undefined,
@@ -572,7 +586,8 @@ async function syncSinglePublish(
     if (
       error instanceof YouTubeAnalyticsScopeError ||
       error instanceof TikTokAnalyticsScopeError ||
-      error instanceof InstagramInsightsScopeError
+      error instanceof InstagramInsightsScopeError ||
+      error instanceof FacebookInsightsScopeError
     ) {
       errorType = 'scope';
       syncStatus = 'scope_error';
@@ -621,7 +636,10 @@ async function fetchPlatformAnalytics(
   accessToken: string,
   client: Client,
 ): Promise<
-  YouTubeAnalyticsResult | TikTokAnalyticsResult | InstagramInsightsResult
+  | YouTubeAnalyticsResult
+  | TikTokAnalyticsResult
+  | InstagramInsightsResult
+  | FacebookInsightsResult
 > {
   switch (platform) {
     case 'youtube': {
@@ -658,6 +676,14 @@ async function fetchPlatformAnalytics(
       );
       return provider.getMediaInsights({
         mediaId: publish.platform_content_id,
+      });
+    }
+    case 'facebook': {
+      // A Page token: the Meta callback stores the Page's own token on a
+      // Facebook connection, which is what video_insights needs.
+      const provider = createFacebookInsightsProvider(accessToken);
+      return provider.getVideoInsights({
+        videoId: publish.platform_content_id,
       });
     }
     default:
@@ -767,8 +793,11 @@ async function ingestYouTubeDaily(
 async function ingestCumulativeSnapshot(
   projectId: string,
   publish: PublishForSync,
-  platform: 'tiktok' | 'instagram',
-  analytics: TikTokAnalyticsResult | InstagramInsightsResult,
+  platform: 'tiktok' | 'instagram' | 'facebook',
+  analytics:
+    | TikTokAnalyticsResult
+    | InstagramInsightsResult
+    | FacebookInsightsResult,
   normalizedData: NormalizedAnalytics,
   prefetchedBaseline: SnapshotTotals | null,
   baselineWasPrefetched: boolean,
@@ -782,40 +811,43 @@ async function ingestCumulativeSnapshot(
         })
       ).get(publish.id) ?? null);
 
-  const currentTotals = {
-    views: normalizedData.views,
-    likes: normalizedData.likes,
-    comments: normalizedData.comments,
-    shares: normalizedData.shares,
-    saves: normalizedData.saves,
-    watch_time_seconds: normalizedData.watch_time_seconds,
-    subscribers_gained: normalizedData.subscribers_gained,
-    // Instagram's media reach, lifetime; TikTok reports none we can read.
-    accounts_reached:
-      platform === 'instagram'
-        ? (analytics as InstagramInsightsResult).totals.reach
-        : null,
-    // Instagram FEED and REELS; TikTok reports no reposts we can read.
-    reposts:
-      platform === 'instagram'
-        ? (analytics as InstagramInsightsResult).totals.reposts
-        : null,
-    // Instagram's all-surface aggregates (FILM-1722), in their own columns.
-    ...(platform === 'instagram'
-      ? {
-          all_surface_views: (analytics as InstagramInsightsResult).totals
-            .allSurfaceViews,
-          all_surface_likes: (analytics as InstagramInsightsResult).totals
-            .allSurfaceLikes,
-          all_surface_comments: (analytics as InstagramInsightsResult).totals
-            .allSurfaceComments,
-        }
+  const currentTotals: CumulativeTotals =
+    platform === 'facebook'
+      ? facebookCumulativeTotals(analytics as FacebookInsightsResult)
       : {
-          all_surface_views: null,
-          all_surface_likes: null,
-          all_surface_comments: null,
-        }),
-  };
+          views: normalizedData.views,
+          likes: normalizedData.likes,
+          comments: normalizedData.comments,
+          shares: normalizedData.shares,
+          saves: normalizedData.saves,
+          watch_time_seconds: normalizedData.watch_time_seconds,
+          subscribers_gained: normalizedData.subscribers_gained,
+          // Instagram's media reach, lifetime; TikTok reports none we can read.
+          accounts_reached:
+            platform === 'instagram'
+              ? (analytics as InstagramInsightsResult).totals.reach
+              : null,
+          // Instagram FEED and REELS; TikTok reports no reposts we can read.
+          reposts:
+            platform === 'instagram'
+              ? (analytics as InstagramInsightsResult).totals.reposts
+              : null,
+          // Instagram's all-surface aggregates (FILM-1722), in their own columns.
+          ...(platform === 'instagram'
+            ? {
+                all_surface_views: (analytics as InstagramInsightsResult).totals
+                  .allSurfaceViews,
+                all_surface_likes: (analytics as InstagramInsightsResult).totals
+                  .allSurfaceLikes,
+                all_surface_comments: (analytics as InstagramInsightsResult)
+                  .totals.allSurfaceComments,
+              }
+            : {
+                all_surface_views: null,
+                all_surface_likes: null,
+                all_surface_comments: null,
+              }),
+        };
 
   const writeContext = {
     hasBaseline: baseline !== null,
@@ -834,18 +866,38 @@ async function ingestCumulativeSnapshot(
     ]);
   }
 
+  const { denominators, ...counters } = currentTotals;
   const snapshot: VideoSnapshot = {
     project_id: projectId,
     video_id: publish.id,
     platform,
     snapshot_date: formatDateStr(new Date()),
-    ...currentTotals,
+    ...counters,
+    ...denominators,
   };
 
   await insertVideoSnapshots([snapshot]);
 
+  if (platform === 'facebook') {
+    // Facebook's audience breakdowns are not collected yet (FILM-1720
+    // remaining); its retention graph is.
+    await insertRetentionCurves(
+      buildFacebookRetentionPoints({
+        projectId,
+        videoId: publish.id,
+        retention: (analytics as FacebookInsightsResult).retention,
+      }),
+    );
+    return;
+  }
+
   await insertVideoAudience(
-    buildAudienceRows({ projectId, videoId: publish.id, platform, analytics }),
+    buildAudienceRows({
+      projectId,
+      videoId: publish.id,
+      platform,
+      analytics: analytics as TikTokAnalyticsResult | InstagramInsightsResult,
+    }),
   );
 }
 
@@ -943,6 +995,36 @@ function normalizeAnalytics(
         subscribed_views: 0,
         unsubscribed_views: 0,
         device_breakdown: null, // Instagram API doesn't expose device breakdown
+        os_breakdown: null,
+        city_breakdown: null,
+        retention_data: null,
+        raw_data: data as unknown as Record<string, unknown>,
+      };
+    }
+    case 'facebook': {
+      const data = rawData as FacebookInsightsResult;
+      const totals = facebookCumulativeTotals(data);
+      return {
+        publish_id: publishId,
+        snapshot_date: snapshotDate,
+        // No single view on Facebook (FILM-1722): its kinds of view are
+        // stored as its own denominators, never here.
+        views: null,
+        likes: totals.likes,
+        comments: totals.comments,
+        shares: totals.shares,
+        saves: null,
+        watch_time_seconds: totals.watch_time_seconds,
+        subscribers_gained: totals.subscribers_gained,
+        revenue_cents: 0,
+        ad_revenue_cents: 0,
+        red_revenue_cents: 0,
+        // Ad-break earnings exist and are not collected (FILM-1726): a
+        // zero here is "not asked", so it must not touch revenue rows.
+        revenue_measured: false,
+        subscribed_views: 0,
+        unsubscribed_views: 0,
+        device_breakdown: null,
         os_breakdown: null,
         city_breakdown: null,
         retention_data: null,
@@ -1095,7 +1177,7 @@ export async function syncSinglePublishById(
   }
 
   const platform = publish.platform as SyncPlatform;
-  if (!['youtube', 'tiktok', 'instagram'].includes(platform)) {
+  if (!(SYNC_PLATFORMS as readonly string[]).includes(platform)) {
     return {
       publishId,
       success: false,

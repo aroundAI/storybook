@@ -4,8 +4,8 @@
     {
       "name": "NM1 The episode total re-inlines the engagement formula",
       "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
-      "find": "const engagementRate = displayedEngagementRatePercent({",
-      "replace": "const engagementRate = ((totalLikes + totalComments + totalShares) / totalViews) * 100 + 0 * ({",
+      "find": "      : displayedEngagementRatePercent({\n          views: totalViews,",
+      "replace": "      : ((totalLikes + totalComments + totalShares) / totalViews) * 100 + 0 * Number({\n          views: totalViews,",
       "kind": "unit",
       "cwd": "packages/clickhouse",
       "test": "__tests__/engagement-rate-one-definition.test.ts",
@@ -14,8 +14,8 @@
     {
       "name": "NM2 The publish row re-inlines the engagement formula",
       "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
-      "find": "displayedEngagementRatePercent(stats)",
-      "replace": "((stats.likes + stats.comments + stats.shares) / stats.views) * 100",
+      "find": "        : displayedEngagementRatePercent({ ...stats, views: stats.views });",
+      "replace": "        : ((stats.likes + stats.comments + stats.shares) / stats.views) * 100;",
       "kind": "unit",
       "cwd": "packages/clickhouse",
       "test": "__tests__/engagement-rate-one-definition.test.ts",
@@ -24,8 +24,8 @@
     {
       "name": "NM3 The account dashboard re-inlines the engagement formula",
       "file": "packages/features/content-analytics/src/server/account-dashboard-actions.ts",
-      "find": "displayedEngagementRatePercent(stats)",
-      "replace": "((stats.likes + stats.comments + stats.shares) / stats.views) * 100",
+      "find": "        : displayedEngagementRatePercent({ ...stats, views: stats.views });",
+      "replace": "        : ((stats.likes + stats.comments + stats.shares) / stats.views) * 100;",
       "kind": "unit",
       "cwd": "packages/clickhouse",
       "test": "__tests__/engagement-rate-one-definition.test.ts",
@@ -64,7 +64,7 @@
     {
       "name": "NM8 The company dashboard re-inlines the engagement formula",
       "file": "packages/features/content-analytics/src/components/company-dashboard.tsx",
-      "find": "displayedEngagementRatePercent(data.totals)",
+      "find": "displayedEngagementRatePercent({ ...data.totals, views: data.totals.views })",
       "replace": "(((data.totals.likes + data.totals.comments + data.totals.shares) / data.totals.views) * 100)",
       "kind": "unit",
       "cwd": "packages/clickhouse",
@@ -75,8 +75,8 @@
       "name": "NM20 The per-episode rollup re-inlines the engagement formula",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
-      "find": "const epEngagement = displayedEngagementRatePercent({",
-      "replace": "const epEngagement = ((epLikes + epComments + epShares) / epViews) * 100 + 0 * Number({",
+      "find": "        : displayedEngagementRatePercent({\n            views: epViews,",
+      "replace": "        : ((epLikes + epComments + epShares) / epViews) * 100 + 0 * Number({\n            views: epViews,",
       "cwd": "packages/clickhouse",
       "test": "__tests__/engagement-rate-one-definition.test.ts",
       "pattern": "computed inline nowhere else"

@@ -1,6 +1,7 @@
 import {
   ANALYTICS_PLATFORMS,
   type AnalyticsPlatform,
+  VIEWS_COLUMN_PLATFORMS,
   capabilityFor,
 } from '@kit/clickhouse';
 
@@ -93,19 +94,34 @@ export function isAnalyticsPlatform(
 }
 
 export interface Counts {
-  views: number;
+  /** Null on a platform with no single view (Facebook, FILM-1720): not measured. */
+  views: number | null;
   comments: number;
   shares: number;
 }
 
+export const NO_SINGLE_VIEW_REASON =
+  'Not measured: Facebook counts four different kinds of view, and none of them is a view in this sense, so its plays are not added to views.';
+
+/** A platform's views as a reader hands them over: null where there is no single view. */
+export function measuredViews(
+  platform: AnalyticsPlatform,
+  views: number | string | null,
+): number | null {
+  return VIEWS_COLUMN_PLATFORMS.includes(platform) && views !== null
+    ? Number(views)
+    : null;
+}
+
 /**
  * Views, comments and shares add up — one view is one view — so these are
- * the only figures the All tab totals.
+ * the only figures the All tab totals. A platform with no single view adds
+ * nothing to views; its comments and shares still count.
  */
 export function totalCounts(rows: readonly Counts[]): Counts {
-  return rows.reduce(
+  return rows.reduce<Counts>(
     (total, row) => ({
-      views: total.views + row.views,
+      views: (total.views ?? 0) + (row.views ?? 0),
       comments: total.comments + row.comments,
       shares: total.shares + row.shares,
     }),

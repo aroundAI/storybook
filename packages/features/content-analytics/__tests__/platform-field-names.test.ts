@@ -176,6 +176,28 @@ const REQUEST_SITES: Array<{
       },
     ],
   },
+  {
+    file: `${PROVIDERS}/facebook/facebook-insights.ts`,
+    patterns: [
+      {
+        pattern: /\$\{videoId\}\?fields=([a-z_,]+)/g,
+        surfaces: ['facebook/video-fields'],
+      },
+      {
+        pattern: /\$\{postId\}\?fields=([a-z_,]+)/g,
+        surfaces: ['facebook/post-fields'],
+      },
+      {
+        pattern:
+          /(?:videoInsightMetrics|reelsInsightMetrics)\s*=\s*(\[[^\]]*\])/g,
+        surfaces: ['facebook/video-insights'],
+      },
+      {
+        pattern: /postInsightMetrics\s*=\s*(\[[^\]]*\])/g,
+        surfaces: ['facebook/post-insights'],
+      },
+    ],
+  },
 ];
 
 /**

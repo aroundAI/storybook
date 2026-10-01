@@ -45,8 +45,8 @@
       "name": "A platform joins AnalyticsPlatform and not the matrix",
       "kind": "unit",
       "file": "packages/clickhouse/src/types.ts",
-      "find": "export type AnalyticsPlatform = 'youtube' | 'tiktok' | 'instagram';",
-      "replace": "export type AnalyticsPlatform =\n  | 'youtube'\n  | 'tiktok'\n  | 'instagram'\n  | 'facebook';",
+      "find": "export type AnalyticsPlatform = 'youtube' | 'tiktok' | 'instagram' | 'facebook';",
+      "replace": "export type AnalyticsPlatform =\n  | 'youtube'\n  | 'tiktok'\n  | 'instagram'\n  | 'facebook'\n  | 'linkedin';",
       "cwd": "packages/clickhouse",
       "test": "__tests__/data-provenance.test.ts",
       "pattern": "lists exactly the members of AnalyticsPlatform"
@@ -175,8 +175,8 @@
       "name": "YouTube revenue is blocked by FILM-1711, which only writes Postgres",
       "kind": "unit",
       "file": "packages/clickhouse/src/lib/data-provenance.ts",
-      "find": "      blockedBy: 'FILM-1726',",
-      "replace": "      blockedBy: 'FILM-1711',",
+      "find": "      blockedBy: 'FILM-1726',\n      access: 'authorised',",
+      "replace": "      blockedBy: 'FILM-1711',\n      access: 'authorised',",
       "cwd": "packages/clickhouse",
       "test": "__tests__/data-provenance.test.ts",
       "pattern": "YouTube revenue is requested"

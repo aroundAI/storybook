@@ -22,6 +22,7 @@ import {
 
 import { formatNumber } from '../lib/format';
 import { BULK_TAG_MAX_TAGS } from '../lib/schemas/taxonomy.schema';
+import { VIEWS_NOT_MEASURED, formatViews } from '../lib/views';
 import type { ContentListItem } from '../server/aggregation-queries';
 import type { ContentTag } from './taxonomy/tag-manager';
 import { TagPicker } from './taxonomy/tag-picker';
@@ -124,8 +125,9 @@ export function ContentTable({
 
       switch (sortField) {
         case 'views':
-          aVal = a.views;
-          bVal = b.views;
+          // Not measured sorts after every figure, either way (KB-153).
+          aVal = a.views ?? Number.NEGATIVE_INFINITY;
+          bVal = b.views ?? Number.NEGATIVE_INFINITY;
           break;
         case 'likes':
           aVal = a.likes;
@@ -136,16 +138,16 @@ export function ContentTable({
           bVal = b.comments;
           break;
         case 'engagementRate':
-          aVal = a.engagementRate;
-          bVal = b.engagementRate;
+          aVal = a.engagementRate ?? Number.NEGATIVE_INFINITY;
+          bVal = b.engagementRate ?? Number.NEGATIVE_INFINITY;
           break;
         case 'publishedAt':
           aVal = a.publishedAt;
           bVal = b.publishedAt;
           break;
         default:
-          aVal = a.views;
-          bVal = b.views;
+          aVal = a.views ?? Number.NEGATIVE_INFINITY;
+          bVal = b.views ?? Number.NEGATIVE_INFINITY;
       }
 
       if (typeof aVal === 'string' && typeof bVal === 'string') {
@@ -389,11 +391,19 @@ export function ContentTable({
                     />
                   </TableCell>
                 ) : null}
-                <TableCell>{formatNumber(item.views)}</TableCell>
+                <TableCell data-test="content-views">
+                  {formatViews(item.views, formatNumber)}
+                </TableCell>
                 <TableCell>{formatNumber(item.likes)}</TableCell>
                 <TableCell>{formatNumber(item.comments)}</TableCell>
                 <TableCell>
-                  <EngagementBadge rate={item.engagementRate} />
+                  {item.engagementRate === null ? (
+                    <span className="text-muted-foreground">
+                      {VIEWS_NOT_MEASURED}
+                    </span>
+                  ) : (
+                    <EngagementBadge rate={item.engagementRate} />
+                  )}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
                   {format(new Date(item.publishedAt), 'MMM d, yyyy')}

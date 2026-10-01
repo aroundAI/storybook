@@ -123,7 +123,7 @@ remaining:
     reason: "no browser test drives the publish screen against the vendor sandbox; the unit and integration halves are now covered (`packages/features/publishing/__tests__/publish-actions.test.ts`)"
     closed_by: "unassigned"
   - criterion: "Can retry failed publishes"
-    reason: "`retryPublishAction` exists, but its only caller is `PublishHub`, which no page has rendered since baa752eb (2026-01-06) moved `/publish` to `PublishScreen`. The publish screen lists a failed publish with its error (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/published-content-section.tsx:152`) and offers no retry"
+    reason: "`retryPublishAction` exists, but its only caller is `PublishHub`, which no page has rendered since baa752eb (2026-01-06) moved `/publish` to `PublishScreen`. The publish screen lists a failed publish with its error (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/published-content-section.tsx:153`) and offers no retry"
     closed_by: "unassigned"
 open_questions:
   - "Should we support partial publish (some succeed, some fail)? (yes - implemented)"

@@ -10,6 +10,7 @@
  */
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 
+import { VIEWS_NOT_MEASURED, formatViews } from '../lib/views';
 import type { ProjectAnalytics as ProjectAnalyticsData } from '../server/aggregation-queries';
 import { MetricCards } from './metric-cards';
 
@@ -65,8 +66,9 @@ export function ProjectDashboard({ data }: ProjectDashboardProps) {
                       {platform.platform}
                     </span>
                     <span className="text-muted-foreground">
-                      {platform.views.toLocaleString()} (
-                      {platform.percentage.toFixed(1)}%)
+                      {platform.views === null || platform.percentage === null
+                        ? `Views ${VIEWS_NOT_MEASURED.toLowerCase()}`
+                        : `${platform.views.toLocaleString()} (${platform.percentage.toFixed(1)}%)`}
                     </span>
                   </div>
                   <div className="h-3 overflow-hidden rounded-full bg-muted">
@@ -120,7 +122,7 @@ export function ProjectDashboard({ data }: ProjectDashboardProps) {
                         {season.episodes}
                       </td>
                       <td className="py-3 text-right">
-                        {season.views.toLocaleString()}
+                        {formatViews(season.views)}
                       </td>
                       <td className="py-3 text-right text-green-600">
                         ${(season.revenue / 100).toFixed(2)}
@@ -144,7 +146,7 @@ export function ProjectDashboard({ data }: ProjectDashboardProps) {
                     <td className="pt-3">Total</td>
                     <td className="pt-3 text-right">{data.contentCount}</td>
                     <td className="pt-3 text-right">
-                      {data.totalViews.toLocaleString()}
+                      {formatViews(data.totalViews)}
                     </td>
                     <td className="pt-3 text-right text-green-600">
                       ${(data.totalRevenueCents / 100).toFixed(2)}

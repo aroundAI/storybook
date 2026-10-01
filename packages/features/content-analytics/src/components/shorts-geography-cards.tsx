@@ -12,6 +12,7 @@ import {
   languageKey,
   languageName,
 } from '../lib/language-labels';
+import { VIEWS_NOT_MEASURED, formatViews } from '../lib/views';
 import type {
   GeographyByLanguage,
   ShortsSourcePerformance,
@@ -108,7 +109,7 @@ export function TopShortsCard({
             <div className="text-right">
               <div className="flex items-center gap-1.5">
                 <span className="text-sm font-medium tabular-nums">
-                  {formatNumber(short.views)}
+                  {formatViews(short.views, formatNumber)}
                 </span>
                 {/* The name, not a bare flag: a short with no language
                     set has no flag, and used to show an American one. */}
@@ -120,7 +121,9 @@ export function TopShortsCard({
                 </span>
               </div>
               <div className="text-xs text-muted-foreground">
-                {short.engagement.toFixed(1)}% eng
+                {short.engagement === null
+                  ? VIEWS_NOT_MEASURED
+                  : `${short.engagement.toFixed(1)}% eng`}
               </div>
             </div>
           </div>

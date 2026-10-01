@@ -20,6 +20,11 @@ export const META_OAUTH_CONFIG = {
     // Media and account insights on the Facebook Login path
     'instagram_manage_insights',
 
+    // Facebook Page video insights (FILM-1720). Meta's video_insights
+    // reference names both; withheld until the `facebook` switch is on.
+    'read_insights',
+    'pages_manage_engagement',
+
     // Business features
     'business_management',
   ],

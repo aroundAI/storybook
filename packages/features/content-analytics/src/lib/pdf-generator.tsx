@@ -23,6 +23,7 @@ import type {
   ReportMetric,
   ReportSummary,
 } from './report-types';
+import { formatViews } from './views';
 import { formatWatchedValue } from './watched-metrics';
 
 const styles = StyleSheet.create({
@@ -336,7 +337,9 @@ function AnalyticsReportDocument({
                   {row.contentTitle.length > 30 ? '...' : ''}
                 </Text>
                 <Text style={styles.tableCell}>{row.platform}</Text>
-                <Text style={styles.tableCell}>{formatNumber(row.views)}</Text>
+                <Text style={styles.tableCell}>
+                  {formatViews(row.views, formatNumber)}
+                </Text>
                 <Text style={styles.tableCell}>
                   {formatNumber(row.likes + row.comments + row.shares)}
                 </Text>

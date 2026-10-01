@@ -19,13 +19,13 @@ acceptance_criteria:
     evidence: "apps/web/supabase/tests/database/create-policies-refuse-outsiders.test.sql:110"
   - text: "Tagging/bulk-tagging updates `video_dim.tags` within the same action"
     met: true
-    evidence: "`packages/features/content-analytics/src/server/taxonomy-actions.ts:218`, `:275`; tags built at `packages/features/content-analytics/src/server/dim-sync.ts:230`"
+    evidence: "`packages/features/content-analytics/src/server/taxonomy-actions.ts:218`, `:275`; tags built at `packages/features/content-analytics/src/server/dim-sync.ts:237`"
   - text: "Median-by-tag groups correctly and respects `insufficientSample` gates"
     met: true
-    evidence: "gate `apps/e2e/tests/tags/tag-medians.spec.ts:30`; per-tag grouping `packages/clickhouse/__tests__/queries-advanced.test.ts:1061`"
+    evidence: "gate `apps/e2e/tests/tags/tag-medians.spec.ts:30`; per-tag grouping `packages/clickhouse/__tests__/queries-advanced.test.ts:1095`"
   - text: "Content table shows tags and supports bulk tagging of selected rows"
     met: true
-    evidence: "packages/features/content-analytics/src/components/content-table.tsx:98 (tags column, row checkboxes, select-all and BulkTagBar at :440); content-table-panel.tsx tags in chunks through bulkTagPublishesAction and returns refusals as values; mounted on the Content tab behind a Cards/Table toggle in analytics-dashboard.tsx. Unit: packages/features/content-analytics/__tests__/content-table.test.tsx (7), bulk-tag.test.ts (4). Browser: apps/e2e/tests/analytics/content-table-tagging.spec.ts:88 'tags the selected rows, then a different subset, and the chips follow' (rows start Untagged, select-all shows '3 selected', bulk tag 'Tagged 3 videos.' and all three chips read Volcanoes, then the second submission tags one row Oceans without touching the others, and publish_tags in the database holds 4 rows: 3 Volcanoes and 1 Oceans) and apps/e2e/tests/analytics/content-table-evidence.spec.ts:38 'captures the table, a selection, and the tagged rows' (passed 2026-09-30, real browser, retries off, run twice; needs CLICKHOUSE_EVIDENCE=1)"
+    evidence: "packages/features/content-analytics/src/components/content-table.tsx:99 (tags column, row checkboxes, select-all and BulkTagBar at :440); content-table-panel.tsx tags in chunks through bulkTagPublishesAction and returns refusals as values; mounted on the Content tab behind a Cards/Table toggle in analytics-dashboard.tsx. Unit: packages/features/content-analytics/__tests__/content-table.test.tsx (7), bulk-tag.test.ts (4). Browser: apps/e2e/tests/analytics/content-table-tagging.spec.ts:88 'tags the selected rows, then a different subset, and the chips follow' (rows start Untagged, select-all shows '3 selected', bulk tag 'Tagged 3 videos.' and all three chips read Volcanoes, then the second submission tags one row Oceans without touching the others, and publish_tags in the database holds 4 rows: 3 Volcanoes and 1 Oceans) and apps/e2e/tests/analytics/content-table-evidence.spec.ts:38 'captures the table, a selection, and the tagged rows' (passed 2026-09-30, real browser, retries off, run twice; needs CLICKHOUSE_EVIDENCE=1)"
 open_questions: []
 feature:
   database:

@@ -3,7 +3,7 @@ title: "Facebook Analytics"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: L
 dependencies:
   - spec_id: "FILM-1711"
@@ -30,38 +30,51 @@ summary: >
   Monetisation-stage question (FILM-1726).
 acceptance_criteria:
   - text: "The platform value is facebook, appended to the enum, never renumbering"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "packages/clickhouse/src/migrations/020_facebook.ts:55 appends 'facebook' = 4; packages/clickhouse/src/lib/platform-enum.ts:19 states the ordinals once and packages/clickhouse/__tests__/platform-enum.test.ts fails a drift between them. Run against a throwaway ClickHouse 24.8 over rows written under the old enum: the six columns read Enum8(... 'facebook' = 4), old YouTube and Instagram rows read back unchanged, a Facebook row with NULL views was accepted, and 020 re-ran cleanly. Red: without the video_daily_stats recreate the stale view failed with \"Unexpected value 4 in enum\". #504"
   - text: "All seven enum-bearing tables, AnalyticsPlatform, SyncPlatform and QueryFilters accept facebook, and the three without the enum are handled explicitly rather than assumed"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "Six live tables carry the enum (packages/clickhouse/src/migrations/020_facebook.ts:57): 001's video_metrics is the seventh in the count and 002 drops it; channel_windows has had 'facebook' = 4 since 016. AnalyticsPlatform packages/clickhouse/src/types.ts:11, SYNC_PLATFORMS packages/features/content-analytics/src/server/types.ts:9, QueryFilters' parameter enum packages/clickhouse/src/queries.ts:290 (built from PLATFORM_ENUM_TYPE, no longer a literal). The three without it: video_dim.platform is a String, so dim-sync now decides (next criterion); channel_daily and channel_subscribers have no platform column and Facebook writes neither: channel_totals is not_ingested (packages/clickhouse/src/lib/data-provenance.ts:999). #504"
   - text: "dim-sync no longer creates dimension rows for platforms that cannot have metrics"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "packages/features/content-analytics/src/server/dim-sync.ts:98 reads only AnalyticsPlatform publishes and :168 skips any other row. packages/features/content-analytics/__tests__/dim-sync.test.ts:102 went red first (four rows for yt, fb, li, x where two belong), guard FB1. #504"
   - text: "Facebook's organic/paid split is preserved, not summed away"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "views_3s_organic and views_3s_paid are their own columns (packages/clickhouse/src/migrations/020_facebook.ts:71, FacebookDenominators packages/clickhouse/src/types.ts:104), beside Meta's own total. packages/features/content-analytics/__tests__/facebook-ingest.test.ts (the day row keeps 150 organic and 50 paid), apps/vendor-sandbox/__tests__/facebook-insights-fidelity.test.ts (the provider's split adds up to the 3-second total on the sandbox), and verify-queries.ts 'a Facebook reel adds nothing to views, by hand' (800 organic + 200 paid read back from real ClickHouse). Guards FB5, FB8. #504"
   - text: "total_video_views_autoplayed and total_video_views_clicked_to_play are distinguishable, and neither is labelled simply \"views\""
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "Columns views_3s_autoplayed and views_3s_clicked_to_play (packages/clickhouse/src/migrations/020_facebook.ts:71); the Hook signal click_to_play_share reads them as \"the plays that lasted 3 seconds\" (packages/clickhouse/src/lib/signal-map.ts:350). #504"
   - text: "Facebook's ad-break revenue metrics are either ingested or recorded as deliberately out of scope with a reason"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "Out of scope, recorded: revenue.facebook is not_ingested, blocked by FILM-1726, citing total_video_ad_break_earnings (packages/clickhouse/src/lib/data-provenance.ts:663); the provider does not request them (packages/features/content-analytics/src/providers/facebook/facebook-insights.ts:35), and a Facebook sync marks revenue unmeasured so it never touches revenue rows (packages/features/content-analytics/src/server/analytics-sync-cron.ts:1009). The reason: whether a Monetisation stage exists is FILM-1726's decision, and Meta answers earnings only to Page admins. #504"
   - text: "Facebook's four denominators are distinguishable, and total_video_15s_views is never labelled ThruPlay"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "Registry: facebook.total_video_impressions (retired), facebook.blue_reels_play_count, facebook.total_video_views and facebook.thruplay (ads_only), plus the two replacements (packages/clickhouse/src/lib/view-definitions.ts:381, :398, :432, :449); viewDefinitionAt('facebook') is no_single_view_definition. Storage: one column each, and views_15s documented \"Not ThruPlay\" (packages/clickhouse/src/types.ts:104). packages/clickhouse/__tests__/view-definitions.test.ts 'marks ThruPlay ads-only'. #504"
   - text: "post_video_avg_time_watched is not presented as comparable to YouTube's average view duration"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "Neither of Meta's averages is requested (packages/features/content-analytics/src/providers/facebook/facebook-insights.ts:35, :49); a Facebook row's avg_view_duration_seconds is NULL. Attention is our own quotient with its denominator named, watch_time_per_play (replays in the time, not in the plays) or watch_time_per_3s_view (packages/clickhouse/src/lib/signal-map.ts:361, :369), and Meta's average is listed as unavailable with the reason (packages/clickhouse/src/lib/signal-map.ts:730). packages/clickhouse/__tests__/signal-map.test.ts 'Facebook bindings (FILM-1720)'. #504"
   - text: "Facebook's absence of follower/non-follower reach is recorded, not worked around"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "follower_status.facebook is not_ingested with the creator note (packages/clickhouse/src/lib/data-provenance.ts:1134), and docs/platform-capability-reference.md's Facebook section records it. The absence is narrower than first recorded: the Insights reference (read 2026-10-01) gives post_media_view an is_from_followers breakdown, which splits plays and displays, not people. Nothing works around it. #504"
   - text: "Adding Facebook required no change to any signal-map consumer"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "By the diff: nothing outside packages/clickhouse/src/lib/signal-map.ts and its export in packages/clickhouse/src/index.ts reads the signal map (git grep for SIGNAL_MAP, stageReading or SignalId), and the Facebook work there is six SignalDefinitions and two FormatStageMaps (packages/clickhouse/src/lib/signal-map.ts:745, :762, :827). The type unions, the capability matrix and the map were the only places to change. #504"
   - text: "Facebook fails the structural tests until its capability entries and stage bindings are written"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "Widening AnalyticsPlatform turned FILM-1714's guards SM1 and SM2 red and typecheck failed on CAPABILITY_MATRIX, SIGNAL_MAP and MEASURE_INPUT_SUPPORT until each had a facebook entry. SM1, SM2 and film-1703's platform guard now target the four-value union and widen it again; all three went red. #504"
+remaining:
+  - criterion: "Live verification on a real Page"
+    reason: "Built against the vendor sandbox and shipped dark (owner, 2026-10-01). Not yet seen against Meta: which of read_insights, pages_manage_engagement and pages_read_engagement an authorised video_insights call needs; that the two retired metrics answer an error (FILM-1725 Check J); the retention graph's key range and scale; that an unshared post omits shares."
+    closed_by: "FILM-1725"
+  - criterion: "Facebook switched on"
+    reason: "read_insights and pages_manage_engagement are requested only once ANALYTICS_SCOPES_ENABLED names facebook, which waits on Meta App Review (docs/vendor-review-status.md)."
+    closed_by: "owner"
+  - criterion: "Facebook's other reported figures are ingested"
+    reason: "Documented and not collected: the Page's followers (channel_totals), its 1/7/28-day unique viewers (channel_accounts_reached), each video's views by age and gender and by country, and post_media_view's follower split. Each is not_ingested in the matrix, blocked by FILM-1720."
+    closed_by: "unassigned"
+  - criterion: "A decision on watch-time-weighted demographics"
+    reason: "total_video_view_time_by_age_bucket_and_gender weights by time, not views, and FILM-1703's demographics family models counts. Not requested until that is decided."
+    closed_by: "unassigned"
 open_questions: []
 feature:
   database:
@@ -77,6 +90,58 @@ feature:
         path: "/{video-id}/video_insights"
         purpose: "Pages-only video/Reels analytics — 57 video metrics, 11 Reels metrics, 4 ad-break metrics, 2 years retention, requires a Page token with the ANALYZE task"
 notes: |
+  ## Built 2026-10-01 (#504), shipped dark
+
+  **Owner decision, 2026-10-01:** build Facebook against the local vendor
+  sandbox (apps/vendor-sandbox, the Meta origin) and ship it dark until the
+  owner holds App Review / read_insights. Live checks stay with the owner:
+  this spec is PARTIAL, closed by the owner or FILM-1725.
+
+  **Owner decision, 2026-10-01 (option A):** Facebook rows go in
+  video_metrics like Instagram's snapshot deltas, with `views` NULL.
+  Migration 020 makes `views` Nullable (013/014's pattern: MODIFY, then
+  recreate video_daily_stats) and gives Facebook's denominators their own
+  nullable columns on video_metrics and video_snapshots. A pooled views
+  figure never adds a Facebook denominator to a YouTube view; FILM-1713's
+  rates are absent as no_single_view_definition. Rejected: a separate table
+  (no card would show Facebook) and storing 3-second views as `views`
+  (reverses FILM-1722).
+
+  What was built, and where:
+
+  | Layer | Facebook |
+  |---|---|
+  | ClickHouse | migration 020: 'facebook' = 4 on six tables, `views` Nullable, ten denominator columns |
+  | AnalyticsPlatform / SyncPlatform | both include facebook |
+  | Capability matrix | an entry per family; reach and accounts reached from the Page post's insights |
+  | Signal map | Reels and player maps bound to Facebook's own denominators |
+  | Provider | `providers/facebook`, four reads through metaFetch |
+  | Sync | snapshot deltas, retention graph; revenue untouched |
+  | OAuth | read_insights + pages_manage_engagement behind the `facebook` scope switch |
+  | Sandbox | the four reads, and the retired metrics refused |
+
+  **Readers.** With a NULL-views Facebook reel in verify-queries' hand
+  fixture, the upload-month median and the cohort medians counted it as a
+  fourth January video with 0 views. Readers that count videos or take a
+  quantile of their views now keep to VIEWS_COLUMN_PLATFORMS; every
+  hand-computed figure held. The reach page read Facebook's NULL as 0 on
+  its Facebook line; it now says not measured (evidence spec
+  reach-evidence.spec.ts, screenshots reach-06 to reach-08). Every other
+  reader that hands back views does the same since KB-153 (fixed in this
+  PR): per-video totals, views at age, the platform split, the daily
+  series, the dashboards, the reports and the insights payload all say
+  not measured, and the LEFT JOIN readers read a miss as 0 again.
+
+  **Registry (handed over by FILM-1728).** facebook.total_video_impressions
+  and facebook.post_impressions_unique are `availability: 'retired'`,
+  retiredOn 2026-07-29, citing
+  https://developers.facebook.com/docs/graph-api/changelog/version25.0
+  (read 2026-10-01). Replacements, from the changelog's own guidance and the
+  Insights reference
+  (https://developers.facebook.com/docs/graph-api/reference/insights/, read
+  2026-10-01): post_media_view ("played or displayed") for the impression
+  and post_total_media_view_unique ("total unique media viewers") for reach.
+
   ## Read first: Graph v25.0 retired Facebook reach (FILM-1728 §4.3, 2026-10-01)
 
   Graph v25.0's changelog deprecated 41 Page, Post, Video and Story insight

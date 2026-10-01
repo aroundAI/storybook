@@ -91,7 +91,7 @@ notes: |
   three are ordinary good practice:
 
   1. **`ChannelDaily.subscribers_gained` and `subscribers_lost` are optional**
-     in the TypeScript interface (`packages/clickhouse/src/types.ts:245-246`).
+     in the TypeScript interface (`packages/clickhouse/src/types.ts:297-298`).
      Omitting them is legal, so the compiler has nothing to say.
   2. **`insertChannelDaily` sends `JSONEachRow`** (`queries.ts:109-120`), so
      an absent key is simply an absent key in the payload — not a null, not

@@ -8,6 +8,7 @@ import { formatDate, formatNumber, formatPercent } from '../../lib/format';
 import type { Measured } from '../../lib/measured';
 import { mostDiscussed } from '../../lib/most-discussed';
 import type { ProjectRevenue } from '../../lib/project-revenue';
+import { viewsShare, viewsToAdd } from '../../lib/views';
 import type { ContentListItem } from '../../server/aggregation-queries';
 import type {
   AggregateAnalytics,
@@ -67,10 +68,18 @@ export function OverviewGrid({
   // Note: Hooks must be called before any early returns
   const viewsSparklineData = useMemo(() => {
     if (!dailyData || dailyData.length === 0) return undefined;
-    return dailyData.map((day) => ({
-      value: day.views,
-      label: formatDate(new Date(day.date), 'MMM d'),
-    }));
+    // A day whose rows are all Facebook's has no views figure (KB-153): no
+    // point, as before Facebook a day with no rows had none.
+    return dailyData.flatMap((day) =>
+      day.views === null
+        ? []
+        : [
+            {
+              value: day.views,
+              label: formatDate(new Date(day.date), 'MMM d'),
+            },
+          ],
+    );
   }, [dailyData]);
 
   const likesSparklineData = useMemo(() => {
@@ -83,12 +92,12 @@ export function OverviewGrid({
 
   const platforms = useMemo(() => {
     const totalViews =
-      platformMetrics?.reduce((sum, p) => sum + p.views, 0) || 0;
+      platformMetrics?.reduce((sum, p) => sum + viewsToAdd(p.views), 0) || 0;
     return (
       platformMetrics?.map((p) => ({
         platform: p.platform,
         views: p.views,
-        percentage: totalViews > 0 ? (p.views / totalViews) * 100 : 0,
+        percentage: viewsShare(p.views, totalViews) ?? 0,
       })) || []
     );
   }, [platformMetrics]);

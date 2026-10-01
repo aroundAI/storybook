@@ -119,7 +119,7 @@ export interface SeededVideo {
    * The platform the rows are written under. YouTube when omitted, which is
    * what every spec before FILM-1701 meant.
    */
-  platform?: 'youtube' | 'tiktok' | 'instagram';
+  platform?: 'youtube' | 'tiktok' | 'instagram' | 'facebook';
 }
 
 function videoDimRow(video: SeededVideo) {
@@ -168,7 +168,8 @@ export async function seedVideoDim(video: SeededVideo) {
 export interface DailyMetric {
   /** Days after publication, so a spec states the age it means. */
   ageDays: number;
-  views: number;
+  /** Null for a Facebook row: no single view (migration 020, KB-153). */
+  views: number | null;
   revenueCents?: number;
   avgViewDurationSeconds?: number;
   avgViewPercentage?: number;
@@ -187,11 +188,14 @@ function videoMetricRow(video: SeededVideo, day: DailyMetric) {
     comments: 0,
     shares: 0,
     saves: 0,
-    watch_time_seconds: day.views * 60,
+    watch_time_seconds: (day.views ?? 0) * 60,
     revenue_cents: day.revenueCents ?? 0,
     subscribers_gained: 0,
-    avg_view_duration_seconds: day.avgViewDurationSeconds ?? 120,
-    avg_view_percentage: day.avgViewPercentage ?? 40,
+    // Facebook reports no average (FILM-1720): null, as ingest writes it.
+    avg_view_duration_seconds:
+      day.views === null ? null : (day.avgViewDurationSeconds ?? 120),
+    avg_view_percentage:
+      day.views === null ? null : (day.avgViewPercentage ?? 40),
     dislikes: 0,
   };
 }

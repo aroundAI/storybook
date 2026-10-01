@@ -3,14 +3,23 @@ import 'server-only';
 import type {
   AllSurfaceAggregates,
   AnalyticsPlatform,
+  FacebookDenominators,
   RetentionCurvePoint,
   SnapshotTotals,
   VideoAudienceRow,
   VideoMetric,
   YouTubeVideoMetric,
 } from '@kit/clickhouse';
-import { VIEW_DEFINITIONS, formatDateStr } from '@kit/clickhouse';
+import {
+  FACEBOOK_DENOMINATOR_COLUMNS,
+  VIEW_DEFINITIONS,
+  formatDateStr,
+} from '@kit/clickhouse';
 
+import type {
+  FacebookInsightsResult,
+  FacebookRetentionGraph,
+} from '../providers/facebook/types';
 import type { InstagramInsightsResult } from '../providers/instagram/types';
 import type { TikTokAnalyticsResult } from '../providers/tiktok/types';
 import type {
@@ -23,7 +32,8 @@ import type {
  * per-day breakdown (TikTok, Instagram).
  */
 export interface CumulativeTotals extends AllSurfaceAggregates {
-  views: number;
+  /** Null for Facebook, which has no single view (migration 020). */
+  views: number | null;
   likes: number;
   comments: number;
   shares: number;
@@ -38,6 +48,8 @@ export interface CumulativeTotals extends AllSurfaceAggregates {
   accounts_reached: number | null;
   /** Lifetime reposts. Instagram FEED and REELS only; null when not measured. */
   reposts: number | null;
+  /** Facebook's own denominators (migration 020); absent on every other platform. */
+  denominators?: FacebookDenominators;
 }
 
 /**
@@ -89,7 +101,7 @@ export function computeSnapshotDelta(
   const clamp = (a: number, b: number) => Math.max(0, a - b);
 
   return {
-    views: clamp(current.views, baseline.views),
+    views: measuredDelta(current.views, baseline.views),
     likes: clamp(current.likes, baseline.likes),
     comments: clamp(current.comments, baseline.comments),
     shares: clamp(current.shares, baseline.shares),
@@ -116,7 +128,26 @@ export function computeSnapshotDelta(
       current.all_surface_comments,
       baseline.all_surface_comments,
     ),
+    ...(current.denominators && {
+      denominators: denominatorDelta(current.denominators, baseline),
+    }),
   };
+}
+
+/**
+ * Each of Facebook's denominators as a counter delta: null when today's
+ * figure or the baseline's is unmeasured, as for every nullable counter.
+ */
+function denominatorDelta(
+  current: FacebookDenominators,
+  baseline: SnapshotTotals,
+): FacebookDenominators {
+  return Object.fromEntries(
+    FACEBOOK_DENOMINATOR_COLUMNS.map((column) => [
+      column,
+      measuredDelta(current[column], baseline[column] ?? null),
+    ]),
+  ) as Record<keyof FacebookDenominators, number | null>;
 }
 
 /**
@@ -275,12 +306,30 @@ export type SnapshotDeltaMetric = VideoMetric &
         all_surface_likes: number | null;
         all_surface_comments: number | null;
       }
-  );
+    | (FacebookDenominators & {
+        platform: 'facebook';
+        /** Four kinds of view and none of them this column's (FILM-1722). */
+        views: null;
+        saves: null;
+        /** Replays included on a reel. */
+        watch_time_seconds: number | null;
+        /** Follows Meta credits to a reel; null for a video in the player. */
+        subscribers_gained: number | null;
+        /** `post_total_media_view_unique`: people, not plays. */
+        accounts_reached: number | null;
+        reposts: null;
+        /** Instagram-only aggregates (FILM-1722). */
+        all_surface_views: null;
+        all_surface_likes: null;
+        all_surface_comments: null;
+      })
+  ) &
+  ({ platform: 'facebook' } | { views: number });
 
 export function buildSnapshotDeltaRow(input: {
   projectId: string;
   videoId: string;
-  platform: 'tiktok' | 'instagram';
+  platform: 'tiktok' | 'instagram' | 'facebook';
   metricDate: string;
   delta: CumulativeTotals;
 }): SnapshotDeltaMetric {
@@ -288,7 +337,6 @@ export function buildSnapshotDeltaRow(input: {
     project_id: input.projectId,
     video_id: input.videoId,
     metric_date: input.metricDate,
-    views: input.delta.views,
     likes: input.delta.likes,
     comments: input.delta.comments,
     shares: input.delta.shares,
@@ -301,9 +349,38 @@ export function buildSnapshotDeltaRow(input: {
     extra_metrics: NO_EXTRA_METRICS,
   };
 
+  if (input.platform === 'facebook') {
+    if (!input.delta.denominators) {
+      throw new Error('A Facebook row needs its denominators (FILM-1720)');
+    }
+
+    return {
+      ...base,
+      ...input.delta.denominators,
+      platform: 'facebook',
+      views: null,
+      saves: null,
+      watch_time_seconds: input.delta.watch_time_seconds,
+      subscribers_gained: input.delta.subscribers_gained,
+      accounts_reached: input.delta.accounts_reached,
+      reposts: null,
+      all_surface_views: null,
+      all_surface_likes: null,
+      all_surface_comments: null,
+    };
+  }
+
+  // TikTok and Instagram measure views on every row; only a Facebook
+  // snapshot holds a NULL one, so a NULL here is a wrong baseline, not a 0.
+  const views = input.delta.views;
+  if (views === null) {
+    throw new Error(`A ${input.platform} row has no views (migration 020)`);
+  }
+
   if (input.platform === 'tiktok') {
     return {
       ...base,
+      views,
       platform: 'tiktok',
       saves: null,
       watch_time_seconds: null,
@@ -318,6 +395,7 @@ export function buildSnapshotDeltaRow(input: {
 
   return {
     ...base,
+    views,
     platform: 'instagram',
     saves: input.delta.saves,
     watch_time_seconds: input.delta.watch_time_seconds,
@@ -348,6 +426,66 @@ export function buildRetentionPoints(input: {
     elapsed_ratio: point.elapsedVideoTimeRatio,
     audience_watch_ratio: point.audienceWatchRatio,
   }));
+}
+
+/**
+ * Facebook's `total_video_retention_graph` as curve points (FILM-1720):
+ * the share of 3-second views still playing at each of 40 equal intervals.
+ * Latest fetch replaces earlier points, as for YouTube's lifetime curve.
+ */
+export function buildFacebookRetentionPoints(input: {
+  projectId: string;
+  videoId: string;
+  retention: FacebookRetentionGraph | null;
+}): RetentionCurvePoint[] {
+  return (input.retention ?? []).map((point) => ({
+    project_id: input.projectId,
+    video_id: input.videoId,
+    platform: 'facebook' as const,
+    elapsed_ratio: point.elapsedRatio,
+    audience_watch_ratio: point.watchRatio,
+  }));
+}
+
+/**
+ * A Facebook sync's lifetime totals. No `views`: Facebook's kinds of view
+ * are its denominators. Reactions, comments and shares are counted as Meta
+ * answers them; a figure it leaves out of an answer that otherwise came
+ * back is 0 (Meta omits a metric with nothing to count — inferred, see the
+ * capability reference's ledger).
+ */
+export function facebookCumulativeTotals(
+  result: FacebookInsightsResult,
+): CumulativeTotals {
+  const totals = result.totals;
+
+  return {
+    views: null,
+    likes: totals.reactions ?? 0,
+    comments: totals.comments ?? 0,
+    shares: totals.shares ?? 0,
+    saves: null,
+    watch_time_seconds:
+      totals.viewTimeMs === null ? null : Math.round(totals.viewTimeMs / 1000),
+    subscribers_gained: totals.follows,
+    accounts_reached: totals.uniqueViewers,
+    reposts: null,
+    all_surface_views: null,
+    all_surface_likes: null,
+    all_surface_comments: null,
+    denominators: {
+      media_views: totals.mediaViews,
+      plays: totals.firstPlays,
+      replays: totals.replayCount,
+      views_3s: totals.threeSecondViews,
+      views_3s_organic: totals.threeSecondViewsOrganic,
+      views_3s_paid: totals.threeSecondViewsPaid,
+      views_3s_autoplayed: totals.threeSecondViewsAutoplayed,
+      views_3s_clicked_to_play: totals.threeSecondViewsClickedToPlay,
+      views_15s: totals.fifteenSecondViews,
+      complete_views: totals.completeViews,
+    },
+  };
 }
 
 /**

@@ -1,0 +1,235 @@
+{
+  "feature": "FILM-1720",
+  "mutations": [
+    {
+      "name": "FB1 dim-sync writes a row for a platform with no metrics",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/dim-sync.ts",
+      "find": "    if (!isAnalyticsPlatform(row.platform)) continue;\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/dim-sync.test.ts",
+      "pattern": "writes no dimension row for a platform outside AnalyticsPlatform"
+    },
+    {
+      "name": "FB2 a Facebook snapshot reads its NULL views as 0",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "      snapshot_date: row.snapshot_date,\n      views: nullableNumber(row.views),",
+      "replace": "      snapshot_date: row.snapshot_date,\n      views: Number(row.views),",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/clickhouse.test.ts",
+      "pattern": "keeps a Facebook snapshot"
+    },
+    {
+      "name": "FB3 a retired Facebook metric is resolvable again",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/view-definitions.ts",
+      "find": "    field: 'total_video_impressions',\n    surface: 'facebook/video-insights',\n    availability: 'retired',",
+      "replace": "    field: 'total_video_impressions',\n    surface: 'facebook/video-insights',\n    availability: 'organic',",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/view-definitions.test.ts",
+      "pattern": "marks the two Facebook fields Meta retired"
+    },
+    {
+      "name": "FB4 Facebook insights ride the Instagram switch",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/analytics-scope-switch.ts",
+      "find": "  facebook: 'meta',\n};",
+      "replace": "  facebook: 'youtube',\n};",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/analytics-scope-switch.test.ts",
+      "pattern": "keeps Facebook insights out of the Meta request"
+    },
+    {
+      "name": "FB5 a Facebook day row carries the lifetime denominators",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/ingest.ts",
+      "find": "      measuredDelta(current[column], baseline[column] ?? null),",
+      "replace": "      current[column],",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/facebook-ingest.test.ts",
+      "pattern": "increase in each denominator"
+    },
+    {
+      "name": "FB6 the reach page reads Facebook views as a number",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/reach-overview.ts",
+      "find": "  return VIEWS_COLUMN_PLATFORMS.includes(platform) && views !== null\n    ? Number(views)\n    : null;",
+      "replace": "  return VIEWS_COLUMN_PLATFORMS.length > 0 ? Number(views) : null;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/reach-overview.test.ts",
+      "pattern": "adds nothing to views for Facebook"
+    },
+    {
+      "name": "FB7 the Facebook provider requests a metric Graph v25.0 retired",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/facebook/facebook-insights.ts",
+      "find": "const videoInsightMetrics = [\n  'total_video_views',",
+      "replace": "const videoInsightMetrics = [\n  'total_video_impressions',\n  'total_video_views',",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/platform-field-names.test.ts",
+      "pattern": "total_video_impressions"
+    },
+    {
+      "name": "FB8 the provider reads the paid split as the 3-second total",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/facebook/facebook-insights.ts",
+      "find": "      threeSecondViewsPaid: count(video, 'total_video_views_paid'),",
+      "replace": "      threeSecondViewsPaid: count(video, 'total_video_views'),",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/facebook-insights-fidelity.test.ts",
+      "pattern": "keeps every denominator apart"
+    },
+    {
+      "name": "FB9 Facebook Reels Hook binds a per-view rate",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/signal-map.ts",
+      "find": "const FACEBOOK_REELS: FormatStageMap = {\n  reach: bound('accounts_reached', ['media_views'], [NO_IMPRESSIONS_FACEBOOK]),\n  hook: bound('click_to_play_share'),",
+      "replace": "const FACEBOOK_REELS: FormatStageMap = {\n  reach: bound('accounts_reached', ['media_views'], [NO_IMPRESSIONS_FACEBOOK]),\n  hook: bound('click_to_play_share', ['share_rate']),",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "binds no signal that divides by views"
+    },
+    {
+      "name": "FB10 migration 020 renumbers the platform enum",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/migrations/020_facebook.ts",
+      "find": "  \"Enum('youtube' = 1, 'tiktok' = 2, 'instagram' = 3, 'facebook' = 4)\";",
+      "replace": "  \"Enum('youtube' = 1, 'tiktok' = 2, 'instagram' = 3, 'facebook' = 5)\";",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/platform-enum.test.ts",
+      "pattern": "latest widening migration"
+    },
+    {
+      "name": "KB153-1 per-video totals read a Facebook NULL view as 0",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "    map.set(row.video_id, {\n      views: nullableNumber(row.views),",
+      "replace": "    map.set(row.video_id, {\n      views: Number(row.views),",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/clickhouse.test.ts",
+      "pattern": "per-video totals"
+    },
+    {
+      "name": "KB153-2 the platform split reads a Facebook NULL view as 0",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "    platform: row.platform,\n    views: nullableNumber(row.views),",
+      "replace": "    platform: row.platform,\n    views: Number(row.views),",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/clickhouse.test.ts",
+      "pattern": "the platform split"
+    },
+    {
+      "name": "KB153-3 totals over Facebook rows alone read 0",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "    views: Number(row.row_count) === 0 ? 0 : nullableNumber(row.views),",
+      "replace": "    views: Number(row.row_count) === 0 ? 0 : Number(row.views),",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/clickhouse.test.ts",
+      "pattern": "totals over Facebook rows alone"
+    },
+    {
+      "name": "KB153-4 the daily series reads a Facebook-only day as 0 views",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "    date: row.date,\n    views: nullableNumber(row.views),",
+      "replace": "    date: row.date,\n    views: Number(row.views),",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/clickhouse.test.ts",
+      "pattern": "the daily series"
+    },
+    {
+      "name": "KB153-5 the by-platform series reads Facebook as 0 views",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "    const v = nullableNumber(row.views);",
+      "replace": "    const v = Number(row.views);",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/clickhouse.test.ts",
+      "pattern": "the daily series"
+    },
+    {
+      "name": "KB153-6 views at age read a Facebook video as 0",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "(hasViews ? Number(value ?? 0) : null)",
+      "replace": "(Number(value ?? 0))",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/queries-advanced.test.ts",
+      "pattern": "reads a Facebook video as not measured"
+    },
+    {
+      "name": "KB153-7 a row-less YouTube video drops out of the upload-month median",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "ifNotFinite(quantileExactInclusive(0.5)(ifNull(v.total_views, 0)), 0)",
+      "replace": "ifNotFinite(quantileExactInclusive(0.5)(v.total_views), 0)",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/queries-advanced.test.ts",
+      "pattern": "buckets by upload period"
+    },
+    {
+      "name": "KB153-8 a row-less YouTube video reads NULL lifetime views",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "        sum(ifNull(m.views, 0)),",
+      "replace": "        sum(m.views),",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/queries-advanced.test.ts",
+      "pattern": "reads a Facebook video as not measured"
+    },
+    {
+      "name": "KB153-9 not measured sorts among the zeros",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/views.ts",
+      "find": "  if (a.views === null || b.views === null) {\n    return (a.views === null ? 1 : 0) - (b.views === null ? 1 : 0);\n  }\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/views-not-measured.test.ts",
+      "pattern": "sorts not measured after every figure"
+    },
+    {
+      "name": "KB153-10 a Facebook checkpoint reads as 0",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/video-log-cells.ts",
+      "find": "  if (views === null) return { kind: 'not-measured' };\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/views-not-measured.test.ts",
+      "pattern": "Facebook checkpoint"
+    },
+    {
+      "name": "KB153-11 a Facebook lifetime reads as 0",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/video-log-cells.ts",
+      "find": "    lifetimeViews:\n      row.lifetimeViews === null\n        ? noSingleView\n        : { kind: 'value', value: row.lifetimeViews },",
+      "replace": "    lifetimeViews: { kind: 'value', value: row.lifetimeViews ?? 0 },",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/views-not-measured.test.ts",
+      "pattern": "Facebook lifetime"
+    },
+    {
+      "name": "KB153-12 the report summary gives Facebook a views line of 0",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/report-summary.ts",
+      "find": "    if (row.views !== null) {\n      platformBreakdown[row.platform] =\n        (platformBreakdown[row.platform] ?? 0) + row.views;\n    }",
+      "replace": "    platformBreakdown[row.platform] =\n      (platformBreakdown[row.platform] ?? 0) + (row.views ?? 0);",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/views-not-measured.test.ts",
+      "pattern": "the report summary"
+    },
+    {
+      "name": "KB153-13 the CSV writes a Facebook row as views null",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/csv-generator.ts",
+      "find": "    getValue: (r) => measuredCell(r.views),",
+      "replace": "    getValue: (r) => String(r.views),",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/csv-and-platform-colors.test.ts",
+      "pattern": "leaves a Facebook row"
+    }
+  ]
+}

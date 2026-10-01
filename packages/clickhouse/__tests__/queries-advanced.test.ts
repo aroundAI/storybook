@@ -164,7 +164,7 @@ describe('queries-advanced', () => {
       // KB-124: the interpolating quantile, so an even count averages its two
       // middle values; 0, not nan, when there are no rows
       expect(query).toContain(
-        'ifNotFinite(quantileExactInclusive(0.5)(v.total_views), 0)',
+        'ifNotFinite(quantileExactInclusive(0.5)(ifNull(v.total_views, 0)), 0)',
       );
       // cohort mode buckets by the video's publish date, not the metric date
       expect(query).toContain('toStartOfMonth(d.published_at)');
@@ -416,6 +416,40 @@ describe('queries-advanced', () => {
   describe('queryVideoViewsAtAge (FILM-1603)', () => {
     const load = async () =>
       (await import('../src/queries-advanced')).queryVideoViewsAtAge;
+
+    it('reads a Facebook video as not measured and a row-less one as 0 (KB-153)', async () => {
+      const queryVideoViewsAtAge = await load();
+      const row = (platform: string) => ({
+        video_id: platform,
+        title: platform,
+        published_at: '2026-01-01 00:00:00',
+        connection_id: 'c',
+        platform,
+        content_type: 'short',
+        language: '',
+        views_at_30: null,
+        lifetime_views: null,
+        first_metric_date: '1970-01-01',
+        metric_days: '0',
+      });
+      mockQueryResult.json.mockResolvedValue([row('facebook'), row('youtube')]);
+
+      const [facebook, youtube] = await queryVideoViewsAtAge({
+        scope: { projectId: PROJECT },
+        checkpoints: [30],
+      });
+
+      expect(facebook).toMatchObject({
+        lifetimeViews: null,
+        viewsAtAge: { 30: null },
+      });
+      // A LEFT JOIN miss reads NULL since migration 020: still a zero.
+      expect(youtube).toMatchObject({
+        lifetimeViews: 0,
+        viewsAtAge: { 30: 0 },
+      });
+      expect(lastQuery().query).toContain('sum(ifNull(m.views, 0))');
+    });
 
     it('bounds each checkpoint with < N, not <= N', async () => {
       const queryVideoViewsAtAge = await load();

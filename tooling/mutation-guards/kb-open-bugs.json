@@ -15,8 +15,8 @@
       "name": "KB-124 the median takes the upper middle of an even count",
       "kind": "unit",
       "file": "packages/clickhouse/src/queries-advanced.ts",
-      "find": "ifNotFinite(quantileExactInclusive(0.5)(v.total_views), 0)",
-      "replace": "quantileExact(0.5)(v.total_views)",
+      "find": "ifNotFinite(quantileExactInclusive(0.5)(ifNull(v.total_views, 0)), 0)",
+      "replace": "quantileExact(0.5)(ifNull(v.total_views, 0))",
       "cwd": "packages/clickhouse",
       "test": "__tests__/queries-advanced.test.ts",
       "pattern": "cohort"

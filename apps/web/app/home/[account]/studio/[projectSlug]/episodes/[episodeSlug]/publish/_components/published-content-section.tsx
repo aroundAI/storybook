@@ -33,7 +33,8 @@ interface PublishRecord {
   createdAt: string;
   error?: string | null;
   analytics?: {
-    views: number;
+    /** Null for a Facebook publish: no single view (KB-153). */
+    views: number | null;
     likes: number;
     comments: number;
   } | null;
@@ -164,7 +165,9 @@ export function PublishedContentSection({
                     <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
                       <span className="flex items-center gap-1">
                         <Eye className="h-3 w-3" />
-                        {pub.analytics.views.toLocaleString()}
+                        {pub.analytics.views === null
+                          ? 'Not measured'
+                          : pub.analytics.views.toLocaleString()}
                       </span>
                       <span className="flex items-center gap-1">
                         <Heart className="h-3 w-3" />

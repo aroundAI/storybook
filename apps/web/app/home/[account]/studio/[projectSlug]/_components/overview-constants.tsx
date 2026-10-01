@@ -23,7 +23,8 @@ export interface ProjectMetadata {
 }
 
 export interface OverviewAnalytics {
-  totalViews: number;
+  /** Null where every published video is Facebook's: no single view (KB-153). */
+  totalViews: number | null;
   totalLikes: number;
   totalComments: number;
   avgEngagementRate: number;

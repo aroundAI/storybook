@@ -116,20 +116,29 @@ const PLATFORM_LABELS: Record<string, string> = {
   youtube: 'YouTube',
   tiktok: 'TikTok',
   instagram: 'Instagram',
+  facebook: 'Facebook',
 };
 
 /**
  * The platforms among `rows` that have any views, as matrix platforms — so
  * a card says where its figure comes from only for platforms it covers.
  */
+/** The rows with a views figure: not measured is not a rank or a share (KB-153). */
+function withViews<T extends { views: number | null }>(
+  rows: readonly T[],
+): (T & { views: number })[] {
+  return rows.filter((row): row is T & { views: number } => row.views !== null);
+}
+
 export function platformsWithViews(
-  rows: readonly { platform: string; views: number }[] | undefined,
+  rows: readonly { platform: string; views: number | null }[] | undefined,
 ): AnalyticsPlatform[] {
   const known: readonly string[] = ANALYTICS_PLATFORMS;
 
   return ANALYTICS_PLATFORMS.filter((platform) =>
     (rows ?? []).some(
       (row) =>
+        row.views !== null &&
         row.views > 0 &&
         row.platform.toLowerCase() === platform &&
         known.includes(platform),
@@ -151,8 +160,10 @@ function leaders<T>(items: readonly T[], value: (item: T) => number): T[] {
 }
 
 export function platformSplitClaim(
-  platforms: readonly { platform: string; views: number }[],
+  rows: readonly { platform: string; views: number | null }[],
 ): CardClaim {
+  // A platform with no single view (Facebook) has no share of the views.
+  const platforms = withViews(rows);
   const total = platforms.reduce((sum, { views }) => sum + views, 0);
 
   if (total === 0) {
@@ -227,8 +238,11 @@ export function topRegionClaim(
 }
 
 export function topContentClaim(
-  items: readonly { title: string; views: number }[],
+  rows: readonly { title: string; views: number | null }[],
 ): CardClaim {
+  // An item whose views are not measured (Facebook) is not ranked by them.
+  const items = withViews(rows);
+
   if (items.length === 0) {
     return {
       figure: null,

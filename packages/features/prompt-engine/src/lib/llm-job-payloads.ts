@@ -178,7 +178,8 @@ const AnalyticsInsights = z.object({
   refresh: z.boolean().optional(),
   analytics: z.object({
     totals: z.object({
-      views: z.number(),
+      // Null where every row is Facebook's: no single view (KB-153).
+      views: z.number().nullable(),
       likes: z.number(),
       comments: z.number(),
       shares: z.number(),
@@ -187,12 +188,12 @@ const AnalyticsInsights = z.object({
       revenueCents: z.number(),
       contentCount: z.number(),
     }),
-    previousPeriodTotals: z.record(z.number()).optional(),
+    previousPeriodTotals: z.record(z.number().nullable()).optional(),
     platformMetrics: z
       .array(
         z.object({
           platform: z.string(),
-          views: z.number(),
+          views: z.number().nullable(),
           likes: z.number(),
           comments: z.number(),
           shares: z.number(),
@@ -204,9 +205,9 @@ const AnalyticsInsights = z.object({
         z.object({
           id: z.string(),
           title: z.string(),
-          views: z.number(),
+          views: z.number().nullable(),
           likes: z.number(),
-          engagementRate: z.number(),
+          engagementRate: z.number().nullable(),
           platform: z.string(),
         }),
       )

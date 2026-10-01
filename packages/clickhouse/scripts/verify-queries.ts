@@ -3000,6 +3000,8 @@ const ZERO_CONNECTION = '00000000-0000-0000-0000-000000000000';
  * | hand-d | 2026-02-03 | 02-04: 400 · 03-01: 100                      |   500 |
  * | hand-e | 2025-11-01 | none: uploaded before the channel's ingest   |     - |
  */
+const HAND_FACEBOOK = 'hand-fb';
+
 const HAND_VIDEOS = [
   {
     id: 'hand-a',
@@ -3104,6 +3106,47 @@ async function handComputedSteps() {
           metricFor({ project: HAND_PROJECT, id: video.id, date, views }),
         ),
       ),
+    );
+
+    // A Facebook reel beside them (FILM-1720): `views` is NULL, its own
+    // denominators are not. Every views figure below is worked out without
+    // it, because a Facebook play is not a YouTube view: a reader that
+    // counts it as a video with 0 views, or adds a denominator to views,
+    // moves an expected figure.
+    await insertVideoDims([
+      {
+        ...dimFor({
+          id: HAND_FACEBOOK,
+          project: HAND_PROJECT,
+          account: HAND_ACCOUNT,
+          connection: HAND_CHANNEL,
+          published: '2026-01-15',
+        }),
+        platform: 'facebook',
+        content_type: 'short',
+      },
+    ]);
+    await insertVideoMetrics(
+      ['2026-01-16', '2026-02-12'].map((date) => ({
+        ...metricFor({
+          project: HAND_PROJECT,
+          id: HAND_FACEBOOK,
+          date,
+          views: 0,
+        }),
+        platform: 'facebook' as const,
+        views: null,
+        likes: 7,
+        comments: 2,
+        shares: 1,
+        saves: null,
+        subscribers_lost: null,
+        metric_source: 'snapshot_delta' as const,
+        plays: 900,
+        views_3s: 500,
+        views_3s_organic: 400,
+        views_3s_paid: 100,
+      })),
     );
 
     const traffic = (
@@ -3406,6 +3449,200 @@ async function handComputedSteps() {
 
     return 'jan 0/9300 · feb 50/450 · mar 60/160';
   });
+
+  await step(
+    'assert: a Facebook reel adds nothing to views, by hand',
+    async () => {
+      const totals = await queryTotals({ projectId: HAND_PROJECT });
+      const facebook = await queryTotals({
+        projectId: HAND_PROJECT,
+        platforms: ['facebook'],
+      });
+
+      // Views: 210 + 200 + 9000 + 500 from the YouTube videos; the reel's
+      // two rows are NULL, so 9910. Likes: 0 on YouTube, 7 + 7 on the reel.
+      expectEqual('pooled views', totals.views, 9910);
+      expectEqual('pooled likes', totals.likes, 14);
+      // A Facebook-only selection has no views at all: the sum is NULL,
+      // which this reader reads as 0 (a sum over nothing).
+      expectEqual('facebook likes', facebook.likes, 14);
+
+      const client = getClickHouseClient();
+      const [kept] = await (
+        await client.query({
+          query: `
+            SELECT
+              countIf(views IS NULL) AS null_views,
+              sum(plays) AS plays,
+              sum(views_3s) AS views_3s,
+              sum(views_3s_organic) AS organic,
+              sum(views_3s_paid) AS paid
+            FROM video_metrics FINAL
+            WHERE project_id = {project: UUID} AND platform = 'facebook'
+          `,
+          query_params: { project: HAND_PROJECT },
+          format: 'JSONEachRow',
+        })
+      ).json<Record<string, string>>();
+
+      // Two rows of 900 plays, 500 three-second views (400 organic, 100 paid).
+      expectEqual('facebook denominators', kept, {
+        null_views: '2',
+        plays: '1800',
+        views_3s: '1000',
+        organic: '800',
+        paid: '200',
+      });
+
+      return 'views 9910 without the reel; its plays 1800, 3s 800 organic + 200 paid';
+    },
+  );
+
+  await step(
+    'assert: a YouTube video with no rows is still a zero (migration 020)',
+    async () => {
+      // `views` is Nullable since 020, so a LEFT JOIN that finds no metric
+      // row reads NULL where it read 0. A video with nothing on a channel
+      // that is ingested is a real zero (the cohort medians' rule) and must
+      // stay in the sample. Two January uploads on one channel: zero-a has
+      // 100 views on 01-06, zero-b has no row at all. Median of [0, 100]: 50.
+      const project = '77777777-7777-7777-7777-777777777771';
+      const zeroScope = { projectId: project };
+      await clearFixtureRows([project], []);
+      await insertVideoDims(
+        ['zero-a', 'zero-b'].map((id) =>
+          dimFor({
+            id,
+            project,
+            account: HAND_ACCOUNT,
+            connection: HAND_CHANNEL,
+            published: '2026-01-05',
+          }),
+        ),
+      );
+      await insertVideoMetrics([
+        metricFor({ project, id: 'zero-a', date: '2026-01-06', views: 100 }),
+      ]);
+
+      const upload = await queryMedianViewsPerVideo({
+        scope: zeroScope,
+        bucket: 'month',
+        mode: 'cohort_views_to_date',
+      });
+      expectEqual(
+        'upload-month median',
+        upload.map((b) => [b.videoCount, b.medianViews]),
+        [[2, 50]],
+      );
+
+      const cohorts = await queryCohortMedians({
+        scope: zeroScope,
+        bucket: 'month',
+        checkpoints: [30],
+        asOf: '2026-06-01 00:00:00',
+      });
+      expectEqual(
+        'cohort median at 30 days',
+        cohorts.map((c) => [
+          c.checkpoints[30]?.matureVideoCount,
+          c.checkpoints[30]?.medianViews,
+        ]),
+        [[2, 50]],
+      );
+
+      const atAge = await queryVideoViewsAtAge({
+        scope: zeroScope,
+        videoIds: ['zero-b'],
+        now: new Date('2026-06-01T00:00:00Z'),
+      });
+      expectEqual('views-at-age zero-b lifetime', atAge[0]?.lifetimeViews, 0);
+
+      await clearFixtureRows([project], []);
+
+      return 'a row-less YouTube video counts as 0: median of [0, 100] is 50';
+    },
+  );
+
+  await step(
+    'assert: no reader turns a Facebook NULL view into 0 (KB-153)',
+    async () => {
+      // The reel has views on no row. Every reader that hands back a views
+      // figure for it, or for a selection holding only it, says null: not
+      // measured. Its likes are measured: 7 + 7.
+      const facebookOnly = {
+        projectId: HAND_PROJECT,
+        platforms: ['facebook' as const],
+      };
+      const perVideo = await queryPerVideoTotals({
+        projectId: HAND_PROJECT,
+        videoIds: [HAND_FACEBOOK, 'hand-a'],
+      });
+      expectEqual(
+        'per-video reel views',
+        perVideo.get(HAND_FACEBOOK)?.views,
+        null,
+      );
+      expectEqual(
+        'per-video reel likes',
+        perVideo.get(HAND_FACEBOOK)?.likes,
+        14,
+      );
+      // hand-a: 100 + 50 + 60.
+      expectEqual('per-video hand-a views', perVideo.get('hand-a')?.views, 210);
+
+      const atAge = await queryVideoViewsAtAge({
+        scope: { projectId: HAND_PROJECT },
+        videoIds: [HAND_FACEBOOK],
+        now: new Date('2026-06-01T00:00:00Z'),
+      });
+      expectEqual('views-at-age reel lifetime', atAge[0]?.lifetimeViews, null);
+      expectEqual('views-at-age reel day 30', atAge[0]?.viewsAtAge[30], null);
+
+      const split = await queryPlatformBreakdown({ projectId: HAND_PROJECT });
+      expectEqual(
+        'platform split',
+        split.map(({ platform, views }) => [platform, views]).sort(),
+        [
+          ['facebook', null],
+          ['youtube', 9910],
+        ],
+      );
+
+      const totals = await queryTotals(facebookOnly);
+      expectEqual('facebook-only total views', totals.views, null);
+      expectEqual('facebook-only total likes', totals.likes, 14);
+
+      const daily = await queryDailyTimeSeries(facebookOnly);
+      expectEqual(
+        'facebook-only daily views',
+        daily.map((day) => day.views),
+        [null, null],
+      );
+
+      const byPlatform = await queryDailyTimeSeriesByPlatform({
+        projectId: HAND_PROJECT,
+        startDate: '2026-01-16',
+        endDate: '2026-01-16',
+      });
+      expectEqual(
+        'reel day by platform',
+        byPlatform.map((day) => [day.views, day.byPlatform.facebook?.views]),
+        [[null, null]],
+      );
+
+      const stats = await queryDailyStats({
+        projectId: HAND_PROJECT,
+        videoIds: [HAND_FACEBOOK],
+      });
+      expectEqual(
+        'reel daily stats',
+        stats.map((row) => row.views),
+        [null, null],
+      );
+
+      return 'per-video, at-age, split, totals, daily, by-platform and daily stats all null for the reel';
+    },
+  );
 
   await step('assert: cohort medians at 30 days are by hand', async () => {
     const cohorts = await queryCohortMedians({

@@ -244,6 +244,7 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
         totalLikes: analyticsSnapshot.totalLikes,
         totalComments: analyticsSnapshot.totalComments,
         avgEngagementRate:
+          analyticsSnapshot.totalViews !== null &&
           analyticsSnapshot.totalViews > 0
             ? ((analyticsSnapshot.totalLikes +
                 analyticsSnapshot.totalComments) /

@@ -21,7 +21,8 @@ export interface RawExportRow {
   publishedAt: string;
   /** Days between publication and this metric date. */
   videoAgeDays: number;
-  views: number;
+  /** Null for a Facebook row: no single view (KB-153). */
+  views: number | null;
   likes: number;
   comments: number;
   shares: number;
@@ -111,7 +112,10 @@ const COLUMNS: Array<{
   { header: 'Channel', getValue: (r) => r.channelName },
   { header: 'Published At', getValue: (r) => r.publishedAt },
   { header: 'Video Age (days)', getValue: (r) => String(r.videoAgeDays) },
-  { header: 'Views', getValue: (r) => String(r.views) },
+  {
+    header: measuredHeader('Views'),
+    getValue: (r) => measuredCell(r.views),
+  },
   { header: 'Likes', getValue: (r) => String(r.likes) },
   { header: 'Comments', getValue: (r) => String(r.comments) },
   { header: 'Shares', getValue: (r) => String(r.shares) },

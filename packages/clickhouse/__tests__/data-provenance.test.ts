@@ -685,6 +685,7 @@ describe('platformsWithData', () => {
       'youtube',
       'tiktok',
       'instagram',
+      'facebook',
     ]);
     expect(platformsWithData('traffic_sources')).toEqual(['youtube']);
     expect(platformsWithData('revenue')).toEqual([]);
@@ -705,7 +706,7 @@ describe('coverageSummary', () => {
   it('sorts the selected platforms by what their figures are', () => {
     expect(coverageSummary('watch_time')).toEqual({
       measured: ['youtube'],
-      derived: ['instagram'],
+      derived: ['instagram', 'facebook'],
       absent: ['tiktok'],
       caveats: [
         {
@@ -717,6 +718,11 @@ describe('coverageSummary', () => {
           platform: 'instagram',
           level: 'derived',
           note: capabilityFor('watch_time', 'instagram').note,
+        },
+        {
+          platform: 'facebook',
+          level: 'derived',
+          note: capabilityFor('watch_time', 'facebook').note,
         },
       ],
     });
@@ -730,6 +736,7 @@ describe('coverageSummary', () => {
     expect(levels).toEqual([
       ['tiktok', 'not_ingested'],
       ['instagram', 'unsupported'],
+      ['facebook', 'unsupported'],
     ]);
   });
 
@@ -803,9 +810,9 @@ describe('unclaimedPlatforms', () => {
   });
 
   it('reports a platform it has never heard of', () => {
-    expect(unclaimedPlatforms('engagement', ['facebook'])).toEqual([
-      'facebook',
-    ]);
+    // X is outside AnalyticsPlatform until FILM-1727; Facebook joined it.
+    expect(unclaimedPlatforms('engagement', ['twitter'])).toEqual(['twitter']);
+    expect(unclaimedPlatforms('engagement', ['facebook'])).toEqual([]);
   });
 });
 

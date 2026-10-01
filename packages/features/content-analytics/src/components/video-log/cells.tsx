@@ -13,6 +13,7 @@ import {
   type CheckpointState,
   type QualityState,
 } from '../../lib/video-log-cells';
+import { VIEWS_NOT_MEASURED, VIEWS_NOT_MEASURED_REASON } from '../../lib/views';
 
 /**
  * A value that is not a number, with the reason one reachable by mouse,
@@ -100,6 +101,16 @@ export function CheckpointCell({
 
     case 'no-data':
       return <NoData testId={'checkpoint-no-data'} />;
+
+    case 'not-measured':
+      return (
+        <ExplainedValue
+          text={VIEWS_NOT_MEASURED}
+          explanation={VIEWS_NOT_MEASURED_REASON}
+          className={'text-muted-foreground'}
+          testId={'checkpoint-not-measured'}
+        />
+      );
   }
 }
 
@@ -121,6 +132,7 @@ const NONE_EXPLANATIONS: Record<
   'no-impressions': 'No impressions recorded.',
   'no-views': 'No views recorded.',
   'not-reported': 'This platform did not report it for this video.',
+  'no-single-view': VIEWS_NOT_MEASURED_REASON,
 };
 
 /** A lifetime cell: a formatted value, or why there is none. */
@@ -147,7 +159,7 @@ export function QualityCell({
 
   return (
     <ExplainedValue
-      text={'—'}
+      text={state.reason === 'no-single-view' ? VIEWS_NOT_MEASURED : '—'}
       explanation={NONE_EXPLANATIONS[state.reason]}
       className={'text-muted-foreground'}
       testId={`${testId}-none`}

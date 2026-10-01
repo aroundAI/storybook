@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Progress } from '@kit/ui/progress';
 import { Skeleton } from '@kit/ui/skeleton';
 
+import { VIEWS_NOT_MEASURED } from '../lib/views';
 import type { AccountDashboardData } from '../server/account-dashboard-actions';
 import { MetricCards } from './metric-cards';
 import { PerformanceChart } from './performance-chart';
@@ -102,9 +103,11 @@ export function CompanyDashboard({
           icon={<TrendingUp className="h-5 w-5" />}
           title="Avg Engagement"
           value={
-            data.totals.views > 0
-              ? `${displayedEngagementRatePercent(data.totals).toFixed(1)}%`
-              : '0%'
+            data.totals.views === null
+              ? VIEWS_NOT_MEASURED
+              : data.totals.views > 0
+                ? `${displayedEngagementRatePercent({ ...data.totals, views: data.totals.views }).toFixed(1)}%`
+                : '0%'
           }
         />
         <SummaryCard
@@ -232,7 +235,9 @@ const PlatformBreakdownCard = React.memo(function PlatformBreakdownCard({
                   {platformLabels[platform.platform] || platform.platform}
                 </span>
                 <span className="text-muted-foreground">
-                  {platform.percentage.toFixed(1)}%
+                  {platform.percentage === null
+                    ? VIEWS_NOT_MEASURED
+                    : `${platform.percentage.toFixed(1)}%`}
                 </span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-muted">
@@ -294,8 +299,9 @@ const TopContentCard = React.memo(function TopContentCard({
                     {item.title}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {formatNumber(item.views)} views •{' '}
-                    {item.engagementRate.toFixed(1)}% engagement
+                    {item.views === null
+                      ? `Views ${VIEWS_NOT_MEASURED.toLowerCase()}`
+                      : `${formatNumber(item.views)} views • ${item.engagementRate?.toFixed(1)}% engagement`}
                   </div>
                 </div>
                 <span className="text-xs text-muted-foreground capitalize">

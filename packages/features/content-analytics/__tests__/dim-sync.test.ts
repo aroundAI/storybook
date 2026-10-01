@@ -97,3 +97,19 @@ describe('buildVideoDims — the two durations', () => {
     expect(dim).not.toHaveProperty('duration_seconds');
   });
 });
+
+describe('buildVideoDims — only platforms that can have metrics (FILM-1720)', () => {
+  it('writes no dimension row for a platform outside AnalyticsPlatform', async () => {
+    // A LinkedIn or X publish has no metrics provider, so a dimension row
+    // for it can only ever read as a zero-view video in every dim-driven
+    // denominator.
+    const dims = await buildVideoDims(client, [
+      short({ id: 'yt', platform: 'youtube' }),
+      short({ id: 'fb', platform: 'facebook' }),
+      short({ id: 'li', platform: 'linkedin' }),
+      short({ id: 'x', platform: 'twitter' }),
+    ]);
+
+    expect(dims.map((dim) => dim.video_id)).toEqual(['yt', 'fb']);
+  });
+});

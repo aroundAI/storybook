@@ -18,7 +18,8 @@ import type { InsightsResult } from '../types';
  * Zod schemas for analytics validation
  */
 const AnalyticsTotalsSchema = z.object({
-  views: z.number(),
+  // Null where every row is Facebook's: no single view (KB-153).
+  views: z.number().nullable(),
   likes: z.number(),
   comments: z.number(),
   shares: z.number(),
@@ -29,8 +30,8 @@ const AnalyticsTotalsSchema = z.object({
 });
 
 const PlatformBreakdownSchema = z.object({
-  platform: z.enum(['youtube', 'tiktok', 'instagram']),
-  views: z.number(),
+  platform: z.enum(['youtube', 'tiktok', 'instagram', 'facebook']),
+  views: z.number().nullable(),
   likes: z.number(),
   comments: z.number(),
   shares: z.number(),
@@ -40,9 +41,9 @@ const TopContentSchema = z.object({
   id: z.string(),
   title: z.string(),
   thumbnailUrl: z.string().optional(),
-  views: z.number(),
+  views: z.number().nullable(),
   likes: z.number(),
-  engagementRate: z.number(),
+  engagementRate: z.number().nullable(),
   platform: z.string(),
 });
 

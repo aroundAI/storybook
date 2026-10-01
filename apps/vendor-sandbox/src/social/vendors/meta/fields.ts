@@ -23,6 +23,16 @@ const MEDIA_INSIGHTS_PAGE =
   'https://developers.facebook.com/docs/instagram-platform/reference/instagram-media/insights/';
 const MEDIA_PAGE =
   'https://developers.facebook.com/docs/instagram-platform/reference/instagram-media/';
+const VIDEO_PAGE =
+  'https://developers.facebook.com/docs/graph-api/reference/video/';
+const COMMENTS_PAGE =
+  'https://developers.facebook.com/docs/graph-api/reference/object/comments/';
+const VIDEO_INSIGHTS_PAGE =
+  'https://developers.facebook.com/docs/graph-api/reference/video/video_insights/';
+const POST_PAGE =
+  'https://developers.facebook.com/docs/graph-api/reference/post/';
+const PAGE_INSIGHTS_PAGE =
+  'https://developers.facebook.com/docs/graph-api/reference/insights/';
 
 /** The insights envelope: a list of metric items, each with its values. */
 const INSIGHTS_ENVELOPE = [
@@ -208,6 +218,82 @@ export const META_SERVED: readonly ServedEndpoint[] = [
     block: 'facebook/reels-publishing',
     reads: ['success'],
     envelope: [],
+  },
+  {
+    origin: 'meta',
+    method: 'GET',
+    path: '/{version}/{video-id}?fields=post_id',
+    block: 'facebook/video-fields',
+    reads: ['post_id', 'comments'],
+    envelope: [
+      ...cite(VIDEO_PAGE, 'id'),
+      ...cite(COMMENTS_PAGE, 'data', 'summary', 'total_count'),
+    ],
+  },
+  {
+    origin: 'meta',
+    method: 'GET',
+    path: '/{version}/{video-id}/video_insights',
+    block: 'facebook/video-insights',
+    reads: [
+      'total_video_views',
+      'total_video_views_organic',
+      'total_video_views_paid',
+      'total_video_views_autoplayed',
+      'total_video_views_clicked_to_play',
+      'total_video_15s_views',
+      'total_video_complete_views',
+      'total_video_view_total_time',
+      'total_video_retention_graph',
+      'total_video_reactions_by_type_total',
+      'blue_reels_play_count',
+      'fb_reels_replay_count',
+      'post_video_view_time',
+      'post_video_followers',
+      'post_video_likes_by_reaction_type',
+    ],
+    envelope: [
+      ...cite(
+        VIDEO_INSIGHTS_PAGE,
+        'data',
+        'name',
+        'period',
+        'values',
+        'value',
+        'id',
+      ),
+      // Inside a value: the reaction types of the `…_by_reaction_type`
+      // metrics, and the retention graph's "40 equal intervals" (0–40).
+      ...cite(VIDEO_INSIGHTS_PAGE, 'like', 'love'),
+      ...cite(
+        VIDEO_INSIGHTS_PAGE,
+        ...Array.from({ length: 41 }, (_, interval) => String(interval)),
+      ),
+    ],
+  },
+  {
+    origin: 'meta',
+    method: 'GET',
+    path: '/{version}/{post-id}',
+    block: 'facebook/post-fields',
+    reads: ['shares'],
+    envelope: cite(POST_PAGE, 'id', 'count'),
+  },
+  {
+    origin: 'meta',
+    method: 'GET',
+    path: '/{version}/{post-id}/insights',
+    block: 'facebook/post-insights',
+    reads: ['post_media_view', 'post_total_media_view_unique'],
+    envelope: cite(
+      PAGE_INSIGHTS_PAGE,
+      'data',
+      'name',
+      'period',
+      'values',
+      'value',
+      'id',
+    ),
   },
   {
     origin: 'meta',

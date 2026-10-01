@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { SYNC_PLATFORMS } from './types';
 import type { RateLimitConfig, SyncPlatform } from './types';
 
 /**
@@ -22,6 +23,13 @@ const RATE_LIMITS: Record<SyncPlatform, RateLimitConfig> = {
     requestsPerMinute: 30,
     requestsPerDay: 4800, // 200/hour * 24
   },
+  // One sync is up to five Graph calls (video node, two video_insights,
+  // post, post insights) against a Page's BUC allowance of 4800 × engaged
+  // users a day, so a fifth of Instagram's per-sync budget.
+  facebook: {
+    requestsPerMinute: 6,
+    requestsPerDay: 960,
+  },
 };
 
 /**
@@ -34,11 +42,7 @@ class PlatformRateLimiter {
 
   constructor() {
     // Initialize maps for all platforms
-    for (const platform of [
-      'youtube',
-      'tiktok',
-      'instagram',
-    ] as SyncPlatform[]) {
+    for (const platform of SYNC_PLATFORMS) {
       this.requests.set(platform, []);
       this.dailyCounts.set(platform, {
         count: 0,

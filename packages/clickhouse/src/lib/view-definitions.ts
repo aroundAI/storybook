@@ -16,13 +16,13 @@
 import type { AnalyticsPlatform, VideoMetric } from '../types';
 
 /**
- * Deliberately wider than `AnalyticsPlatform`. Facebook's four concurrent
- * denominators are the clearest case in the registry and would be lost if
- * the type forbade them. An entry for a platform outside
+ * Deliberately wider than `AnalyticsPlatform`, so a platform's definitions
+ * can be recorded before it is ingested. An entry for a platform outside
  * `AnalyticsPlatform` is inert: recorded, tested, and unreachable by any
- * query until FILM-1720 (Facebook) or FILM-1727 (X) widens that union.
+ * query until FILM-1727 (X) widens that union. Facebook joined it in
+ * FILM-1720.
  */
-export type PlatformId = AnalyticsPlatform | 'facebook' | 'x';
+export type PlatformId = AnalyticsPlatform | 'x';
 
 // A Record rather than an array so that widening either union is a type
 // error here, which is what forces the new platform into PLATFORM_IDS —
@@ -109,6 +109,24 @@ export type ViewDefinition = ViewDefinitionFacts &
         availability: 'ads_only';
         field: null;
         surface: null;
+      }
+    | {
+        /**
+         * The vendor retired the field: requesting it errors on every API
+         * version from `retiredOn`. Kept so a stored figure and the history
+         * stay explained; no lookup resolves it and nothing may request it
+         * (the capability reference's forbidden block says so).
+         */
+        availability: 'retired';
+        /** The field as it was spelled, for the record. */
+        field: string;
+        surface: string;
+        /** ISO date requesting it began to fail. */
+        retiredOn: string;
+        /** The vendor's page that says so. */
+        retiredBy: string;
+        /** Ids of the organic definitions the vendor names in its place; empty when it names none. */
+        replacedBy: readonly string[];
       }
   ) &
   (
@@ -307,12 +325,22 @@ export const VIEW_DEFINITIONS: readonly ViewDefinition[] = [
     effectiveFrom: null,
     reference: '#instagram',
   },
+  // Both retired by Graph v25.0's changelog for every version once v26.0
+  // shipped (2026-07-29): "will return an error if requested using any API
+  // version". Meta's video_insights page still lists them (read 2026-10-01);
+  // FILM-1725 Check J is the live call that settles which page is right.
+  // The replacements are Post Insights metrics, read on the video's Page
+  // post, which the changelog names for post_impressions_unique.
   {
     id: 'facebook.total_video_impressions',
     platform: 'facebook',
     field: 'total_video_impressions',
     surface: 'facebook/video-insights',
-    availability: 'organic',
+    availability: 'retired',
+    retiredOn: '2026-07-29',
+    retiredBy:
+      'https://developers.facebook.com/docs/graph-api/changelog/version25.0',
+    replacedBy: ['facebook.post_media_view'],
     label: 'Impression (entered the screen; no playback required)',
     role: 'concurrent',
     countsFrom: 'impression',
@@ -329,7 +357,11 @@ export const VIEW_DEFINITIONS: readonly ViewDefinition[] = [
     platform: 'facebook',
     field: 'post_impressions_unique',
     surface: 'facebook/video-insights',
-    availability: 'organic',
+    availability: 'retired',
+    retiredOn: '2026-07-29',
+    retiredBy:
+      'https://developers.facebook.com/docs/graph-api/changelog/version25.0',
+    replacedBy: ['facebook.post_total_media_view_unique'],
     label: 'Reach (unique impressions of a reel)',
     role: 'concurrent',
     countsFrom: 'unique_account',
@@ -340,6 +372,44 @@ export const VIEW_DEFINITIONS: readonly ViewDefinition[] = [
     appliesTo: 'all_formats',
     effectiveFrom: null,
     reference: '#facebook',
+  },
+  // The replacements, from the Insights reference
+  // (https://developers.facebook.com/docs/graph-api/reference/insights/,
+  // read 2026-10-01). A view here is "played or displayed": an impression
+  // under another name, not a play.
+  {
+    id: 'facebook.post_media_view',
+    platform: 'facebook',
+    field: 'post_media_view',
+    surface: 'facebook/post-insights',
+    availability: 'organic',
+    label: 'Media view (played or displayed)',
+    role: 'concurrent',
+    countsFrom: 'impression',
+    minimumWatch: null,
+    includesReplays: 'undocumented',
+    includesPaid: true,
+    isEstimated: 'undocumented',
+    appliesTo: 'all_formats',
+    effectiveFrom: null,
+    reference: '#the-four-denominators',
+  },
+  {
+    id: 'facebook.post_total_media_view_unique',
+    platform: 'facebook',
+    field: 'post_total_media_view_unique',
+    surface: 'facebook/post-insights',
+    availability: 'organic',
+    label: 'Unique media viewers of the post',
+    role: 'concurrent',
+    countsFrom: 'unique_account',
+    minimumWatch: null,
+    includesReplays: false,
+    includesPaid: 'undocumented',
+    isEstimated: 'undocumented',
+    appliesTo: 'all_formats',
+    effectiveFrom: null,
+    reference: '#the-four-denominators',
   },
   {
     id: 'facebook.blue_reels_play_count',
@@ -729,6 +799,20 @@ export function comparableAcross(
 
   return { comparable: true, definition };
 }
+
+/**
+ * The platforms whose `video_metrics.views` holds a figure: those with a
+ * definition behind the column. Facebook has none and writes NULL there
+ * (FILM-1720), so a reader that counts videos or takes a median of their
+ * views keeps to these, or a Facebook video joins the sample as a zero.
+ */
+export const VIEWS_COLUMN_PLATFORMS: readonly AnalyticsPlatform[] = [
+  ...new Set(
+    VIEW_DEFINITIONS.filter((entry) => entry.role === 'views_column').map(
+      (entry) => entry.platform,
+    ),
+  ),
+].filter((platform): platform is AnalyticsPlatform => platform !== 'x');
 
 /** The `video_metrics` columns a views denominator can be read from. */
 export type ViewsColumn = Extract<keyof VideoMetric, 'views' | 'engaged_views'>;

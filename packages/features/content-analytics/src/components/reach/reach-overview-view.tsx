@@ -15,6 +15,7 @@ import { cn } from '@kit/ui/utils';
 import {
   type Counts,
   type Measured,
+  NO_SINGLE_VIEW_REASON,
   REACH_WINDOWS,
   type ReachWindow,
 } from '../../lib/reach-overview';
@@ -32,6 +33,7 @@ const PLATFORM_LABEL: Record<AnalyticsPlatform, string> = {
   youtube: 'YouTube',
   tiktok: 'TikTok',
   instagram: 'Instagram',
+  facebook: 'Facebook',
 };
 
 interface ReachOverviewViewProps {
@@ -180,18 +182,25 @@ function ChannelView({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div
-                className="text-2xl font-semibold"
-                data-test="reach-count-value"
-              >
-                {shown[metric].toLocaleString('en-US')}
-              </div>
+              {shown[metric] === null ? (
+                <NotMeasured
+                  reason={NO_SINGLE_VIEW_REASON}
+                  test="reach-count-reason"
+                />
+              ) : (
+                <div
+                  className="text-2xl font-semibold"
+                  data-test="reach-count-value"
+                >
+                  {shown[metric].toLocaleString('en-US')}
+                </div>
+              )}
               {tab === 'all' && platformCounts.length > 0 ? (
                 <ul className="mt-2 text-xs text-muted-foreground">
                   {platformCounts.map((row) => (
                     <li key={row.platform}>
                       {PLATFORM_LABEL[row.platform]}:{' '}
-                      {row[metric].toLocaleString('en-US')}
+                      <CountCell value={row[metric]} />
                     </li>
                   ))}
                 </ul>
@@ -336,9 +345,7 @@ function PostsView({ posts }: { posts: PostRow[] }) {
             <TableCell>{PLATFORM_LABEL[post.platform]}</TableCell>
             {(['views', 'comments', 'shares'] as const).map((metric) => (
               <TableCell key={metric} className="text-right">
-                {post.counts
-                  ? post.counts[metric].toLocaleString('en-US')
-                  : '—'}
+                {post.counts ? <CountCell value={post.counts[metric]} /> : '—'}
               </TableCell>
             ))}
             <TableCell className="text-right" data-test="reach-post-new">
@@ -361,6 +368,21 @@ function MeasuredCell({ value }: { value: Measured<number | null> }) {
     <span className="text-muted-foreground" title={value.reason}>
       Not measured
     </span>
+  );
+}
+
+/** A count, or "Not measured" where the platform has no single view. */
+function CountCell({ value }: { value: number | null }) {
+  return value === null ? (
+    <span
+      className="text-muted-foreground"
+      title={NO_SINGLE_VIEW_REASON}
+      data-test="reach-views-not-measured"
+    >
+      Not measured
+    </span>
+  ) : (
+    <>{value.toLocaleString('en-US')}</>
   );
 }
 

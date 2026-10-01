@@ -137,6 +137,19 @@ export const MEASURE_INPUT_SUPPORT: Readonly<
       closedBy: 'FILM-1712',
     },
   },
+  facebook: {
+    saves: {
+      support: 'not_reported',
+      candidates: NO_SAVES,
+      absentFrom: ['facebook/video-insights'],
+    },
+    // Follows attributed to a reel. Every Facebook publish here is a reel.
+    subscribers_gained: {
+      support: 'reported',
+      field: 'post_video_followers',
+      block: 'facebook/video-insights',
+    },
+  },
 };
 
 /**
@@ -151,6 +164,9 @@ export const PREFERRED_DENOMINATOR: Readonly<
   youtube: 'views',
   tiktok: 'views',
   instagram: 'reach',
+  // Asked for, and refused: Facebook has no single view (FILM-1722), so every
+  // Facebook rate is absent as `no_single_view_definition` (FILM-1720).
+  facebook: 'views',
 };
 
 /** What a rate divided by, stamped on every value. */

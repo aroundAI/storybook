@@ -33,6 +33,7 @@ export const ANALYTICS_PLATFORMS = [
   'youtube',
   'tiktok',
   'instagram',
+  'facebook',
 ] as const satisfies readonly AnalyticsPlatform[];
 
 // `satisfies` stops a name that is not a platform getting in. It cannot stop
@@ -424,6 +425,19 @@ const INSTAGRAM_USER = {
   window: { maxAgeDays: null, anchoredOn: 'request_date' },
 } as const satisfies SurfaceAxes;
 
+/**
+ * Video insights, the video's Page post and its insights (FILM-1720), read
+ * with a Page token. `read_insights` and `pages_manage_engagement` are asked
+ * for only while `ANALYTICS_SCOPES_ENABLED` names `facebook`, and App Review
+ * stands between us and any Page we do not own: shipped dark (owner,
+ * 2026-10-01). Meta keeps two years of video insights.
+ */
+const FACEBOOK_VIDEO = {
+  access: 'review_required',
+  availability: 'included',
+  window: { maxAgeDays: 730, anchoredOn: 'publish_date' },
+} as const satisfies SurfaceAxes;
+
 const YOUTUBE_PARTNER_PROGRAM: AccountTypeGate = {
   requirement: 'YouTube Partner Program membership',
   note: 'YouTube only reports earnings for channels in the YouTube Partner Program, so there is nothing to show until your channel joins it.',
@@ -469,6 +483,23 @@ export const CAPABILITY_MATRIX: Record<
         fields: ['views', 'likes', 'comments', 'saved', 'shares'],
       },
     },
+    // `views` is NULL on every Facebook row (migration 020): its four kinds
+    // of view are their own columns, and FILM-1722 names none of them views.
+    facebook: {
+      level: 'derived',
+      table: 'video_metrics',
+      method: 'snapshot_delta_fetch_day',
+      ...FACEBOOK_VIDEO,
+      note: 'Facebook only reports lifetime totals, so each day shows the reactions, comments and shares since we last checked, dated to the day we checked; it counts four different kinds of view and none is a view in YouTube’s sense, so Facebook adds nothing to a views total.',
+      reference: {
+        section: 'Facebook',
+        surface: 'facebook/video-insights',
+        fields: [
+          'total_video_reactions_by_type_total',
+          'post_video_likes_by_reaction_type',
+        ],
+      },
+    },
   },
 
   // Its own family, not engagement: `reposts_count` is a Media node field,
@@ -501,6 +532,14 @@ export const CAPABILITY_MATRIX: Record<
         surface: 'instagram/media-fields',
         fields: ['reposts_count'],
       },
+    },
+    facebook: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...FACEBOOK_VIDEO,
+      note: 'Facebook does not report how often a video was reposted; its shares are counted under engagement.',
+      reference: { section: 'Facebook', surface: null, fields: [] },
     },
   },
 
@@ -539,6 +578,16 @@ export const CAPABILITY_MATRIX: Record<
           'total_comments_count',
         ],
       },
+    },
+    // Facebook's 3-second views already include promoted plays, split
+    // organic and paid in their own columns (FILM-1720): no separate total.
+    facebook: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...FACEBOOK_VIDEO,
+      note: 'Facebook reports no separate total across paid placements; its 3-second views already count promoted plays, split into organic and paid.',
+      reference: { section: 'Facebook', surface: null, fields: [] },
     },
   },
 
@@ -588,6 +637,21 @@ export const CAPABILITY_MATRIX: Record<
         section: 'Instagram',
         surface: 'instagram/media-insights',
         fields: ['ig_reels_video_view_total_time'],
+      },
+    },
+    // Total time only. Meta's own averages (`total_video_avg_time_watched`,
+    // `post_video_avg_time_watched`) are not requested: the Reels one counts
+    // replay time over initial plays and can exceed the video's length.
+    facebook: {
+      level: 'derived',
+      table: 'video_metrics',
+      method: 'snapshot_delta_fetch_day',
+      ...FACEBOOK_VIDEO,
+      note: 'Facebook reports total time watched so far, replays included, so each day shows the minutes added since we last checked, dated to the day we checked.',
+      reference: {
+        section: 'Facebook',
+        surface: 'facebook/video-insights',
+        fields: ['total_video_view_total_time', 'post_video_view_time'],
       },
     },
   },
@@ -643,6 +707,20 @@ export const CAPABILITY_MATRIX: Record<
       note: 'Instagram does not report what a post earned, so Instagram revenue is only what you enter yourself.',
       reference: { section: 'Instagram', surface: null, fields: [] },
     },
+    // FILM-1720 decided only this: ad-break earnings are not ingested.
+    // Whether a Monetisation stage exists is FILM-1726's.
+    facebook: {
+      level: 'not_ingested',
+      table: null,
+      blockedBy: 'FILM-1726',
+      ...FACEBOOK_VIDEO,
+      note: 'Facebook reports ad-break earnings to Page admins, but we do not collect them yet, so Facebook revenue here is only what you enter yourself.',
+      reference: {
+        section: 'Facebook',
+        surface: 'facebook/video-insights',
+        fields: ['total_video_ad_break_earnings'],
+      },
+    },
   },
 
   traffic_sources: {
@@ -680,6 +758,14 @@ export const CAPABILITY_MATRIX: Record<
       note: 'Instagram does not report where a post’s views came from.',
       reference: { section: 'Instagram', surface: null, fields: [] },
     },
+    facebook: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...FACEBOOK_VIDEO,
+      note: 'Facebook does not report where a video’s views came from, only whether they were organic or paid.',
+      reference: { section: 'Facebook', surface: null, fields: [] },
+    },
   },
 
   retention_curve: {
@@ -709,6 +795,19 @@ export const CAPABILITY_MATRIX: Record<
       ...INSTAGRAM_MEDIA,
       note: 'Instagram does not report a retention curve or a completion rate.',
       reference: { section: 'Instagram', surface: null, fields: [] },
+    },
+    // `total_video_retention_graph`: 40 equal intervals. The Reels graph
+    // names no segment count, so it is not requested.
+    facebook: {
+      level: 'native',
+      table: 'video_retention_curves',
+      ...FACEBOOK_VIDEO,
+      note: 'Facebook reports how many plays were still going at 40 points through each video, as a share of all its 3-second views.',
+      reference: {
+        section: 'Facebook',
+        surface: 'facebook/video-insights',
+        fields: ['total_video_retention_graph'],
+      },
     },
   },
 
@@ -749,6 +848,20 @@ export const CAPABILITY_MATRIX: Record<
       note: 'Instagram stopped reporting impressions in 2025 and never reported click-through; how many accounts saw a post is under accounts reached.',
       reference: { section: 'Instagram', surface: null, fields: [] },
     },
+    // Not impressions: those went with Graph v26.0. `post_media_view` is
+    // Meta's named replacement, counted on the video's Page post.
+    facebook: {
+      level: 'derived',
+      table: 'video_metrics',
+      method: 'snapshot_delta_fetch_day',
+      ...FACEBOOK_VIDEO,
+      note: 'Facebook reports how many times a video was played or shown so far, so each day shows the change since we last checked; it stopped reporting impressions in 2026 and never reported click-through.',
+      reference: {
+        section: 'Facebook',
+        surface: 'facebook/post-insights',
+        fields: ['post_media_view'],
+      },
+    },
   },
 
   // Unique accounts, not views: one person counted once. Never summed across
@@ -786,6 +899,18 @@ export const CAPABILITY_MATRIX: Record<
         fields: ['reach'],
       },
     },
+    facebook: {
+      level: 'derived',
+      table: 'video_metrics',
+      method: 'snapshot_delta_fetch_day',
+      ...FACEBOOK_VIDEO,
+      note: 'Facebook reports how many different people have viewed a video’s post so far, so each day shows the new ones since we last checked, dated to the day we checked.',
+      reference: {
+        section: 'Facebook',
+        surface: 'facebook/post-insights',
+        fields: ['post_total_media_view_unique'],
+      },
+    },
   },
 
   // A channel's unique accounts over a whole window (7, 30 and the 23 days
@@ -821,6 +946,18 @@ export const CAPABILITY_MATRIX: Record<
         section: 'Instagram',
         surface: 'instagram/user-insights',
         fields: ['reach'],
+      },
+    },
+    facebook: {
+      level: 'not_ingested',
+      table: null,
+      blockedBy: 'FILM-1720',
+      ...FACEBOOK_VIDEO,
+      note: 'Facebook reports how many different people saw your Page’s content over a day, a week or 28 days, but we do not collect it yet.',
+      reference: {
+        section: 'Facebook',
+        surface: 'facebook/page-insights',
+        fields: ['page_total_media_view_unique'],
       },
     },
   },
@@ -862,6 +999,18 @@ export const CAPABILITY_MATRIX: Record<
         fields: ['followers_count'],
       },
     },
+    facebook: {
+      level: 'not_ingested',
+      table: null,
+      blockedBy: 'FILM-1720',
+      ...FACEBOOK_VIDEO,
+      note: 'Facebook reports your Page’s follower count, but we do not record it yet, so no Facebook follower figure is shown.',
+      reference: {
+        section: 'Facebook',
+        surface: 'facebook/page-fields',
+        fields: ['followers_count'],
+      },
+    },
   },
 
   demographics: {
@@ -894,6 +1043,18 @@ export const CAPABILITY_MATRIX: Record<
         section: 'Instagram',
         surface: 'instagram/user-insights',
         fields: ['follower_demographics'],
+      },
+    },
+    facebook: {
+      level: 'not_ingested',
+      table: null,
+      blockedBy: 'FILM-1720',
+      ...FACEBOOK_VIDEO,
+      note: 'Facebook reports each video’s 3-second views by age and gender, but we do not collect them yet.',
+      reference: {
+        section: 'Facebook',
+        surface: 'facebook/video-insights',
+        fields: ['total_video_views_by_age_bucket_and_gender'],
       },
     },
   },
@@ -934,6 +1095,18 @@ export const CAPABILITY_MATRIX: Record<
         fields: ['follower_demographics'],
       },
     },
+    facebook: {
+      level: 'not_ingested',
+      table: null,
+      blockedBy: 'FILM-1720',
+      ...FACEBOOK_VIDEO,
+      note: 'Facebook reports each video’s views by country, but we do not collect them yet.',
+      reference: {
+        section: 'Facebook',
+        surface: 'facebook/video-insights',
+        fields: ['total_video_views_by_country_id'],
+      },
+    },
   },
 
   device: {
@@ -963,6 +1136,14 @@ export const CAPABILITY_MATRIX: Record<
       ...INSTAGRAM_MEDIA,
       note: 'Instagram does not report which devices a post was watched on.',
       reference: { section: 'Instagram', surface: null, fields: [] },
+    },
+    facebook: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...FACEBOOK_VIDEO,
+      note: 'Facebook does not report which devices a video was watched on.',
+      reference: { section: 'Facebook', surface: null, fields: [] },
     },
   },
 
@@ -995,6 +1176,21 @@ export const CAPABILITY_MATRIX: Record<
       ...INSTAGRAM_MEDIA,
       note: 'Instagram does not report whether a post’s viewers were already following you.',
       reference: { section: 'Instagram', surface: null, fields: [] },
+    },
+    // Narrower than FILM-1720 first recorded: reach has no follower split,
+    // but the Page post's `post_media_view` takes an `is_from_followers`
+    // breakdown (Insights reference, read 2026-10-01). Not requested.
+    facebook: {
+      level: 'not_ingested',
+      table: null,
+      blockedBy: 'FILM-1720',
+      ...FACEBOOK_VIDEO,
+      note: 'Facebook reports how many of a video’s plays and displays came from your followers, though not how many people, and we do not collect that split yet.',
+      reference: {
+        section: 'Facebook',
+        surface: 'facebook/post-insights',
+        fields: ['post_media_view'],
+      },
     },
   },
 };

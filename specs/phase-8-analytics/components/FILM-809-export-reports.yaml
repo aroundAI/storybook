@@ -31,7 +31,7 @@ component:
 acceptance_criteria:
   - text: "Generate PDF reports with charts and branding"
     met: false
-    reason: "no longer true — branding (name, logo) yes; no charts, only tables, since b03fd102 — `packages/features/content-analytics/src/lib/pdf-generator.tsx:303`"
+    reason: "no longer true — branding (name, logo) yes; no charts, only tables, since b03fd102 — `packages/features/content-analytics/src/lib/pdf-generator.tsx:304`"
   - text: "Generate CSV exports with raw data"
     met: true
     evidence: null

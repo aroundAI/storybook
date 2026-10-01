@@ -13,7 +13,9 @@ import { getLogger } from '@kit/shared/logger';
 import { chunkIds, fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import type { AnalyticsTotals, DailyMetric } from '../types';
+import { compareViewsDesc, viewsShare } from '../lib/views';
+import type { Views } from '../lib/views';
+import type { AnalyticsTotals, DailyMetric, TopContent } from '../types';
 
 /**
  * Account-level dashboard data combining all projects
@@ -24,18 +26,10 @@ export interface AccountDashboardData {
   dailyMetrics: DailyMetric[];
   platformBreakdown: {
     platform: string;
-    views: number;
-    percentage: number;
+    views: Views;
+    percentage: number | null;
   }[];
-  topContent: {
-    id: string;
-    title: string;
-    thumbnailUrl?: string;
-    views: number;
-    likes: number;
-    engagementRate: number;
-    platform: string;
-  }[];
+  topContent: TopContent[];
   productionStatus: {
     inProgress: number;
     finalized: number;
@@ -194,9 +188,9 @@ export async function getAccountDashboardData(
     .map((p) => ({
       platform: p.platform,
       views: p.views,
-      percentage: totalViews > 0 ? (p.views / totalViews) * 100 : 0,
+      percentage: viewsShare(p.views, totalViews),
     }))
-    .sort((a, b) => b.views - a.views);
+    .sort(compareViewsDesc);
 
   // Daily metrics
   const dailyMetrics: DailyMetric[] = dailyData.map((d) => ({
@@ -301,7 +295,11 @@ function buildTopContent(
     if (!stats) continue;
 
     const episode = publish.episodes as PublishRow['episodes'];
-    const engagementRate = displayedEngagementRatePercent(stats);
+    // No views, nothing to divide by: not measured, never 0% (KB-153).
+    const engagementRate =
+      stats.views === null
+        ? null
+        : displayedEngagementRatePercent({ ...stats, views: stats.views });
 
     contentList.push({
       id: publish.id,
@@ -314,7 +312,7 @@ function buildTopContent(
     });
   }
 
-  return contentList.sort((a, b) => b.views - a.views).slice(0, 5);
+  return contentList.sort(compareViewsDesc).slice(0, 5);
 }
 
 async function getProductionStatus(

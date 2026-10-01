@@ -189,4 +189,82 @@ test.describe('Reach page — figures and evidence', () => {
       JSON.stringify(readings, null, 2),
     );
   });
+
+  test('a Facebook reel adds nothing to views, and says why (FILM-1720)', async ({
+    page,
+  }) => {
+    const reach = new ReachPageObject(page);
+    const fixture = await reach.setup({ facebook: true });
+    await seed(fixture);
+
+    const facebook = fixture.facebook!;
+    const yesterday = daysAgo(1);
+
+    // Facebook writes NULL views (migration 020): 900 first plays and 500
+    // three-second views are its own columns, and are not views.
+    await insertClickHouse('video_metrics', [
+      {
+        project_id: fixture.projectId,
+        video_id: facebook.postId,
+        platform: 'facebook',
+        metric_date: clickHouseDate(yesterday),
+        views: null,
+        likes: 7,
+        comments: 4,
+        shares: 1,
+        saves: null,
+        watch_time_seconds: 300,
+        revenue_cents: 0,
+        subscribers_gained: 2,
+        metric_source: 'snapshot_delta',
+        accounts_reached: 600,
+        plays: 900,
+        views_3s: 500,
+        views_3s_organic: 400,
+        views_3s_paid: 100,
+        extra_metrics: '{}',
+      },
+    ]);
+
+    const readings: Record<string, string | null> = {};
+
+    // All platforms: views stay 100 + 50 + 1000; comments and shares add
+    // the reel's 4 and 1 (14 + 4, 7 + 1).
+    await reach.open(fixture.team, { window: 7 });
+    await expect(reach.count('views')).toHaveText('1,150');
+    await expect(reach.count('comments')).toHaveText('18');
+    await expect(reach.count('shares')).toHaveText('8');
+    await expect(
+      byTest(byTest(page, 'reach-count-views'), 'reach-views-not-measured'),
+    ).toHaveText('Not measured');
+    readings.all7 = await byTest(page, 'reach-overview').innerText();
+    await shoot(page, '06-facebook-all-7-days');
+
+    // The Facebook tab: no views figure, the reason in its place.
+    await reach.open(fixture.team, { tab: 'facebook', window: 7 });
+    await expect(
+      byTest(byTest(page, 'reach-count-views'), 'reach-count-reason'),
+    ).toHaveText(/four different kinds of view/);
+    await expect(reach.count('comments')).toHaveText('4');
+    await expect(reach.channel(facebook.connectionId)).toContainText(
+      'Not measured',
+    );
+    readings.facebook7 = await byTest(page, 'reach-overview').innerText();
+    await shoot(page, '07-facebook-tab-7-days');
+
+    // Posts: the reel's views are not measured; its 600 people are.
+    await reach.open(fixture.team, { view: 'posts', window: 7 });
+    const reel = reach.postRow('Harbour Facebook reel');
+    await expect(byTest(reel, 'reach-views-not-measured')).toHaveText(
+      'Not measured',
+    );
+    await expect(byTest(reel, 'reach-post-new')).toHaveText('600');
+    readings.posts7 = await byTest(page, 'reach-posts').innerText();
+    await shoot(page, '08-facebook-posts-7-days');
+
+    writeFileSync(
+      `${OUT}/reach-facebook-measured.json`,
+      JSON.stringify(readings, null, 2),
+    );
+  });
 });

@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 
 import { formatNumber, formatPercent } from '../../lib/format';
+import { VIEWS_NOT_MEASURED, formatViews } from '../../lib/views';
+import type { Views } from '../../lib/views';
 
 interface ContentCardProps {
   /** Content title */
@@ -18,13 +20,14 @@ interface ContentCardProps {
   /** Published date */
   publishedAt: string;
   /** View count */
-  views: number;
+  /** Null for a Facebook publish: no single view (KB-153). */
+  views: Views;
   /** Like count */
   likes: number;
   /** Comment count */
   comments: number;
   /** Engagement rate percentage */
-  engagementRate: number;
+  engagementRate: number | null;
   /** Click handler */
   onClick?: () => void;
 }
@@ -64,9 +67,9 @@ export function ContentCard({
 
   // Determine engagement color
   const engagementColor =
-    engagementRate > 5
+    engagementRate !== null && engagementRate > 5
       ? 'text-green-600 dark:text-green-400'
-      : engagementRate > 2
+      : engagementRate !== null && engagementRate > 2
         ? 'text-yellow-600 dark:text-yellow-400'
         : 'text-gray-500 dark:text-gray-400';
 
@@ -126,7 +129,7 @@ export function ContentCard({
           <div className="flex flex-col">
             <span className="mb-0.5 text-xs text-gray-400">Views</span>
             <span className="font-medium text-gray-900 dark:text-white">
-              {formatNumber(views)}
+              {formatViews(views, formatNumber)}
             </span>
           </div>
           <div className="flex flex-col">
@@ -144,7 +147,9 @@ export function ContentCard({
           <div className="flex flex-col">
             <span className="mb-0.5 text-xs text-gray-400">Engagement</span>
             <span className={`font-medium ${engagementColor}`}>
-              {formatPercent(engagementRate)}
+              {engagementRate === null
+                ? VIEWS_NOT_MEASURED
+                : formatPercent(engagementRate)}
             </span>
           </div>
         </div>

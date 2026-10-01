@@ -68,7 +68,8 @@ export interface VideoLogRow {
   contentType: string;
   /** Null when nobody set one — never a defaulted code (FILM-1702). */
   language: string | null;
-  viewsAtAge: Record<number, number>;
+  /** Null on a platform with no single view (Facebook, KB-153). */
+  viewsAtAge: Record<number, number | null>;
   /** Whether each checkpoint has elapsed. False means "not yet knowable". */
   matureAt: Record<number, boolean>;
   /**
@@ -77,7 +78,7 @@ export interface VideoLogRow {
    * as though they did.
    */
   predatesIngestAt: Record<number, boolean>;
-  lifetimeViews: number;
+  lifetimeViews: number | null;
   ingestLagDays: number | null;
   impressions: number;
   ctr: number;

@@ -11,6 +11,7 @@
  */
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 
+import { VIEWS_NOT_MEASURED, viewsShare } from '../lib/views';
 import type { EpisodeAnalytics as EpisodeAnalyticsData } from '../server/aggregation-queries';
 import { MetricCards } from './metric-cards';
 
@@ -59,10 +60,7 @@ export function EpisodeAnalytics({ data }: EpisodeAnalyticsProps) {
           <div className="space-y-4">
             {data.platformBreakdown.length > 0 ? (
               data.platformBreakdown.map((platform) => {
-                const percentage =
-                  data.totalViews > 0
-                    ? (platform.views / data.totalViews) * 100
-                    : 0;
+                const percentage = viewsShare(platform.views, data.totalViews);
                 return (
                   <div
                     key={platform.platform}
@@ -75,16 +73,22 @@ export function EpisodeAnalytics({ data }: EpisodeAnalyticsProps) {
                         {platform.platform}
                       </span>
                       <span className="text-muted-foreground">
-                        <span data-test="platform-views">
-                          {platform.views.toLocaleString()}
-                        </span>{' '}
-                        views ({percentage.toFixed(1)}%)
+                        {platform.views === null || percentage === null ? (
+                          `Views ${VIEWS_NOT_MEASURED.toLowerCase()}`
+                        ) : (
+                          <>
+                            <span data-test="platform-views">
+                              {platform.views.toLocaleString()}
+                            </span>{' '}
+                            views ({percentage.toFixed(1)}%)
+                          </>
+                        )}
                       </span>
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-muted">
                       <div
                         className="h-full bg-primary transition-all"
-                        style={{ width: `${percentage}%` }}
+                        style={{ width: `${percentage ?? 0}%` }}
                       />
                     </div>
                     <div className="flex gap-4 text-sm text-muted-foreground">
@@ -131,7 +135,9 @@ export function EpisodeAnalytics({ data }: EpisodeAnalyticsProps) {
         <CardContent>
           <div className="flex items-center gap-4">
             <div className="text-4xl font-bold">
-              {data.engagementRate.toFixed(2)}%
+              {data.engagementRate === null
+                ? VIEWS_NOT_MEASURED
+                : `${data.engagementRate.toFixed(2)}%`}
             </div>
             <div className="text-muted-foreground">
               <p>Engagement Rate</p>

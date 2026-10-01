@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  ANALYTICS_PLATFORMS,
   CAPABILITY_MATRIX,
   COVERAGE_STALE_AFTER_DAYS,
   METRIC_FAMILIES,
@@ -82,7 +83,7 @@ describe('foldObservedCoverage', () => {
 
     for (const family of METRIC_FAMILIES) {
       expect(Object.keys(matrix[family]).sort()).toEqual(
-        ['instagram', 'tiktok', 'youtube'].sort(),
+        [...ANALYTICS_PLATFORMS].sort(),
       );
     }
   });

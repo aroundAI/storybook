@@ -1,8 +1,11 @@
+import type { Views } from './lib/views';
+
 /**
  * Aggregated analytics totals for metric cards display
  */
 export interface AnalyticsTotals {
-  views: number;
+  /** Null where every row is a platform with no single view (KB-153). */
+  views: Views;
   likes: number;
   comments: number;
   shares: number;
@@ -22,7 +25,8 @@ export interface AnalyticsTotals {
  * Platform-specific metrics breakdown
  */
 export interface PlatformMetrics {
-  views: number;
+  /** Null where every row is a platform with no single view (KB-153). */
+  views: Views;
   likes: number;
   comments: number;
   shares: number;
@@ -33,7 +37,8 @@ export interface PlatformMetrics {
  */
 export interface DailyMetric {
   date: string;
-  views: number;
+  /** Null where every row is a platform with no single view (KB-153). */
+  views: Views;
   likes: number;
   comments: number;
   shares: number;
@@ -44,8 +49,9 @@ export interface DailyMetric {
  * Platform-specific metrics with platform identifier
  */
 export interface PlatformBreakdown {
-  platform: 'youtube' | 'tiktok' | 'instagram';
-  views: number;
+  platform: 'youtube' | 'tiktok' | 'instagram' | 'facebook';
+  /** Null where every row is a platform with no single view (KB-153). */
+  views: Views;
   likes: number;
   comments: number;
   shares: number;
@@ -58,9 +64,11 @@ export interface TopContent {
   id: string;
   title: string;
   thumbnailUrl?: string;
-  views: number;
+  /** Null where every row is a platform with no single view (KB-153). */
+  views: Views;
   likes: number;
-  engagementRate: number;
+  /** Null where views are not measured: there is nothing to divide by. */
+  engagementRate: number | null;
   platform: string;
 }
 
