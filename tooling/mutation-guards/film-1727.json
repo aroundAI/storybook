@@ -25,8 +25,8 @@
       "name": "X3 X publishes are fetched while X analytics is switched off",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/server/analytics-sync-cron.ts",
-      "find": "  const platforms: SyncPlatform[] = xEnabled",
-      "replace": "  const platforms: SyncPlatform[] = true",
+      "find": "    (platform) => xEnabled || platform !== 'twitter',",
+      "replace": "    (platform) => true || platform !== 'twitter',",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/x-sync-budget.test.ts",
       "pattern": "does not even ask for X publishes"
@@ -45,8 +45,8 @@
       "name": "X5 the sync authorisation map has no X entry",
       "kind": "unit",
       "file": "packages/features/publishing/src/oauth/analytics-scopes.ts",
-      "find": "  instagram: 'instagram.insights',\n  twitter: 'x.post-analytics',\n};",
-      "replace": "  instagram: 'instagram.insights',\n};",
+      "find": "  facebook: 'facebook.video-insights',\n  twitter: 'x.post-analytics',\n};",
+      "replace": "  facebook: 'facebook.video-insights',\n};",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/x-sync-budget.test.ts",
       "pattern": "asks for them once it is"
@@ -85,8 +85,8 @@
       "name": "X9 a chunk fold drops a measured figure into a null",
       "kind": "unit",
       "file": "packages/clickhouse/src/chunked.ts",
-      "find": "    } else if (into[field] === null) {",
-      "replace": "    } else if (into[field] === 'never') {",
+      "find": "    if (into[field] === null) into[field] = value;\n    else if (typeof into[field] === 'number') {",
+      "replace": "    if (into[field] === 'never') into[field] = value;\n    else if (typeof into[field] === 'number') {",
       "cwd": "packages/clickhouse",
       "test": "__tests__/chunked.test.ts",
       "pattern": "keeps a null"

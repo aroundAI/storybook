@@ -99,7 +99,7 @@
       "replace": "  \"Enum('youtube' = 1, 'tiktok' = 2, 'instagram' = 3, 'facebook' = 5)\";",
       "cwd": "packages/clickhouse",
       "test": "__tests__/platform-enum.test.ts",
-      "pattern": "latest widening migration"
+      "pattern": "agrees with every earlier widening"
     },
     {
       "name": "KB153-1 per-video totals read a Facebook NULL view as 0",

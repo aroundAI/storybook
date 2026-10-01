@@ -5,6 +5,7 @@ import {
   PLATFORM_ENUM_TYPE,
   PLATFORM_ENUM_VALUES,
 } from '../src/lib/platform-enum';
+import { PLATFORM_ENUM_AFTER_020 } from '../src/migrations/020_facebook';
 import { PLATFORM_ENUM_AFTER_021 } from '../src/migrations/021_twitter';
 
 /**
@@ -15,6 +16,18 @@ import { PLATFORM_ENUM_AFTER_021 } from '../src/migrations/021_twitter';
 describe('the platform enum', () => {
   it('is the enum the latest widening migration leaves on every table', () => {
     expect(PLATFORM_ENUM_TYPE).toBe(PLATFORM_ENUM_AFTER_021);
+  });
+
+  it('agrees with every earlier widening on the ordinals it had', () => {
+    // 020 left facebook = 4 on rows that exist; a later widening that
+    // disagrees with it would rewrite them.
+    const upTo = (last: number) =>
+      `Enum(${Object.entries(PLATFORM_ENUM_VALUES)
+        .filter(([, value]) => value <= last)
+        .map(([name, value]) => `'${name}' = ${value}`)
+        .join(', ')})`;
+
+    expect(PLATFORM_ENUM_AFTER_020).toBe(upTo(4));
   });
 
   it('has an ordinal for every analytics platform, appended and never renumbered', () => {
