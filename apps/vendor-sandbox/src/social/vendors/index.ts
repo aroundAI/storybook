@@ -9,6 +9,7 @@ import { linkedInDataRoutes } from './linkedin/data';
 import { linkedInFailure } from './linkedin/errors';
 import { linkedInOAuthRoutes } from './linkedin/oauth';
 import { metaFailure } from './meta/errors';
+import { facebookInsightsRoutes } from './meta/facebook-insights';
 import { metaInsightsRoutes } from './meta/insights';
 import { metaOAuthRoutes } from './meta/oauth';
 import { metaPublishingRoutes } from './meta/publishing';
@@ -43,6 +44,7 @@ export const SOCIAL_ROUTES: Record<
       metaVersionRoute,
       mediaRoute,
       ...metaOAuthRoutes,
+      ...facebookInsightsRoutes,
       ...metaPublishingRoutes,
       ...metaInsightsRoutes,
     ],

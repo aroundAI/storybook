@@ -2,6 +2,7 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { ANALYTICS_PLATFORMS } from '@kit/clickhouse';
 import { insertVideoDims, toDimLanguage } from '@kit/clickhouse/server';
 import type { VideoDim } from '@kit/clickhouse/server';
 import { getLogger } from '@kit/shared/logger';
@@ -9,6 +10,7 @@ import { chunkIds, fetchAllByIds, forEachPage } from '@kit/shared/pagination';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import { normalizeAssetDurationSeconds } from '../lib/asset-duration';
+import { isAnalyticsPlatform } from '../lib/reach-overview';
 
 // Use generic SupabaseClient type to avoid strict type checking issues
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -93,6 +95,7 @@ export async function upsertVideoDims(publishIds?: string[]): Promise<number> {
       .select(PUBLISH_DIM_COLUMNS)
       .eq('status', 'published')
       .not('published_at', 'is', null)
+      .in('platform', [...ANALYTICS_PLATFORMS])
       .order('id');
 
   let synced = 0;
@@ -159,6 +162,10 @@ export async function buildVideoDims(
     const accountId = row.episodes?.projects?.account_id;
 
     if (!projectId || !accountId || !row.published_at) continue;
+
+    // Only platforms that can have metrics (FILM-1720). Any other publish's
+    // row reads as a zero-view video in every dim-driven denominator.
+    if (!isAnalyticsPlatform(row.platform)) continue;
 
     rows.push({
       video_id: row.id,

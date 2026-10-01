@@ -5,7 +5,15 @@ import type { ConnectionGrant } from './sync-authorisation';
 /**
  * Supported platforms for analytics sync
  */
-export type SyncPlatform = 'youtube' | 'tiktok' | 'instagram';
+/** The platforms the analytics sync reads: every one with a metrics provider. */
+export const SYNC_PLATFORMS = [
+  'youtube',
+  'tiktok',
+  'instagram',
+  'facebook',
+] as const;
+
+export type SyncPlatform = (typeof SYNC_PLATFORMS)[number];
 
 /**
  * Publish record with sync-relevant fields
@@ -125,7 +133,8 @@ export interface CityBreakdown {
 export interface NormalizedAnalytics {
   publish_id: string;
   snapshot_date: string;
-  views: number;
+  /** Null for Facebook, which has no single view (FILM-1722). */
+  views: number | null;
   likes: number;
   comments: number;
   shares: number;
