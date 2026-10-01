@@ -3,7 +3,7 @@ title: "Stage Diagnosis"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: DRAFT
+status: DONE
 effort: M
 dependencies:
   - spec_id: "FILM-1714"
@@ -23,47 +23,47 @@ summary: >
   FILM-1616's separate breakage-check diagnostics table.
 acceptance_criteria:
   - text: "A pattern is computed from the set of judged stage bands"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "diagnoseStages (packages/clickhouse/src/lib/stage-diagnosis.ts:371) matches only judged bands: a StageJudgement is a band or an exclusion (packages/clickhouse/src/lib/stage-diagnosis.ts:59), and coverage lists the judged stages each with its band (packages/clickhouse/src/lib/stage-diagnosis.ts:287). Asserted for every combination at packages/clickhouse/__tests__/stage-diagnosis.test.ts:240. #502"
   - text: "The pattern set is closed, named, and exhaustively tested"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "STAGE_PATTERNS (packages/clickhouse/src/lib/stage-diagnosis.ts:158) is a const list of six named rows, StagePatternId its closed union (packages/clickhouse/src/lib/stage-diagnosis.ts:232). Exhaustive: all 7^5 = 16,807 combinations of three bands and four exclusions over the five stages, checked against an oracle written separately from the table (packages/clickhouse/__tests__/stage-diagnosis.test.ts:240), and the 3^5 = 243 fully judged ones split 1/1/27/27/9/1 with 177 no_clear_pattern (packages/clickhouse/__tests__/stage-diagnosis.test.ts:248). Guard SD6. #502"
   - text: "Patterns are evaluated in a documented precedence order, first match wins"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "matchPattern takes the first row that matches, in table order (packages/clickhouse/src/lib/stage-diagnosis.ts:242); reversing it fails packages/clickhouse/__tests__/stage-diagnosis.test.ts:312 (guard SD9). The rows are pairwise exclusive today once two stages are judged, so order decides nothing yet; packages/clickhouse/__tests__/stage-diagnosis.test.ts:329 counts overlaps so the day it starts to is visible. #502"
   - text: "A fully-judged combination matching no pattern yields no_clear_pattern"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "packages/clickhouse/src/lib/stage-diagnosis.ts:385 returns no_clear_pattern when no row matches; an all-typical video is no_clear_pattern (packages/clickhouse/__tests__/stage-diagnosis.test.ts:374). #502"
   - text: "no_clear_pattern is distinguishable from \"too few judged stages\" — different causes, different sentences"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "Distinct kinds with distinct sentences: NO_CLEAR_PATTERN_SENTENCE (packages/clickhouse/src/lib/stage-diagnosis.ts:319) and tooFewSentence (packages/clickhouse/src/lib/stage-diagnosis.ts:322); asserted at packages/clickhouse/__tests__/stage-diagnosis.test.ts:424 (guard SD8). #502"
   - text: "typical bands are handled explicitly, not treated as either above or below"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "meets (packages/clickhouse/src/lib/stage-diagnosis.ts:255): a named above or below needs that exact band, and the 'others' clauses need it where judged, so typical satisfies neither side (packages/clickhouse/src/lib/stage-diagnosis.ts:124). Swapping typical into any constrained cell of any row breaks that row (packages/clickhouse/__tests__/stage-diagnosis.test.ts:360, guard SD1). #502"
   - text: "The number of judged stages is reported alongside the diagnosis"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "Every outcome carries coverage.judgedCount and stageCount (packages/clickhouse/src/lib/stage-diagnosis.ts:287) and a coverage sentence; a pattern over two judged stages differs from the same pattern over five (packages/clickhouse/__tests__/stage-diagnosis.test.ts:384, guard SD3). #502"
   - text: "Too few judged stages yields a named absent state, not the nearest pattern"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "Below MIN_JUDGED_STAGES (2, packages/clickhouse/src/lib/stage-diagnosis.ts:239) the outcome is too_few_judged with minJudged (packages/clickhouse/src/lib/stage-diagnosis.ts:374), never a row (packages/clickhouse/__tests__/stage-diagnosis.test.ts:415, guard SD2). Below two the rows do overlap (Reach above alone fits rows 2 and 6), which packages/clickhouse/__tests__/stage-diagnosis.test.ts:329 shows. #502"
   - text: "Unbound, dark, not_judgable and insufficient_cohort stages are excluded from the pattern and counted separately"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "judgeStage (packages/clickhouse/src/lib/stage-diagnosis.ts:75) maps unbound and dark readings (FILM-1714) and not_judgable and insufficient_cohort benchmarks (FILM-1715) to exclusions, without asking for a benchmark where there is no figure; coverage.excluded lists each under its reason (packages/clickhouse/__tests__/stage-diagnosis.test.ts:395, :518, :529; guards SD4, SD5, SD11). A dark stage and a below stage give different patterns (packages/clickhouse/__tests__/stage-diagnosis.test.ts:447). #502"
   - text: "No diagnosis string asserts a cause or a viewer's mental state"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "Every sentence the diagnosis can produce, over all 16,807 combinations, is checked against a causal and state-of-mind vocabulary (packages/clickhouse/__tests__/stage-diagnosis.test.ts:460, guard SD7), and the pattern sentences are an inline snapshot (packages/clickhouse/__tests__/stage-diagnosis.test.ts:198), so any edit to the wording is a visible diff. #502"
   - text: "No diagnosis depends on the content genome"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "The module imports only ../types, ./signal-map and ./self-benchmark, asserted from its source (packages/clickhouse/__tests__/stage-diagnosis.test.ts:597, guard SD10). #502"
   - text: "No absolute threshold appears in this layer"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "A StageJudgement holds a band and no figure (packages/clickhouse/src/lib/stage-diagnosis.ts:59), so no threshold can be applied here; two benchmarks a thousandfold apart in the same band give the same judgement, and reading .value is a type error (packages/clickhouse/__tests__/stage-diagnosis.test.ts:543). MIN_JUDGED_STAGES counts stages, not a measurement. #502"
   - text: "The diagnosis never contradicts the bands it was computed from"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "For every pattern outcome over all combinations, each stage the row names or constrains reports the band the row requires, read back from the diagnosis's own coverage (packages/clickhouse/__tests__/stage-diagnosis.test.ts:266). #502"
   - text: "A video with all stages dark produces a coverage statement, not a diagnosis"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "No judged stage yields too_few_judged, whose sentences say no stage could be judged and list every stage with its reason (packages/clickhouse/__tests__/stage-diagnosis.test.ts:432). #502"
 open_questions: []
 feature:
   database: null
@@ -225,3 +225,66 @@ notes: |
   on two judged stages reads identically to one built on five unless the
   output carries the count — and the count is the kind of detail that gets
   dropped during UI work. FILM-1719 must render it.
+
+  ## As built (2026-10-01, #502)
+
+  `packages/clickhouse/src/lib/stage-diagnosis.ts`, exported from
+  `@kit/clickhouse` beside the two modules it reads: FILM-1714's
+  `signal-map.ts` and FILM-1715's `self-benchmark.ts`. It lives in
+  `@kit/clickhouse` rather than `@kit/content-analytics` because both of
+  its inputs do, so the suite to run is
+  `pnpm --filter @kit/clickhouse test`, not the content-analytics one
+  this spec's Verification names. FILM-1719 builds on these names:
+
+  - `judgeStage(reading, benchmarkFor)` → `StageJudgement`: a band
+    (with FILM-1715's `directional` or `established`) or an exclusion,
+    one of `STAGE_EXCLUSIONS` (`unbound`, `dark`, `not_judgable`,
+    `insufficient_cohort`). `benchmarkFor` is called only for a
+    measurable stage. `judgeStages(platform, format, benchmarkFor)` does
+    every stage of one platform × format through `stageReadings`.
+  - `diagnoseStages(judgements)` → `StageDiagnosis`, on `kind`:
+    `pattern` (with `pattern: StagePatternId`), `no_clear_pattern` or
+    `too_few_judged` (with `minJudged`). Each carries `sentence` and
+    `coverage`: `judgedCount`, `stageCount`, the judged stages with their
+    bands, the excluded stages under each reason, and a creator-facing
+    coverage sentence ("Judged on 2 of 5 stages. Not judged: Hook (the
+    platform does not report it), …"). FILM-1719 must render the
+    coverage with the diagnosis, as Risk says.
+  - `STAGE_PATTERNS`, `StagePattern`, `StageRequirement`,
+    `matchPattern`, `MIN_JUDGED_STAGES`, `NO_CLEAR_PATTERN_SENTENCE`.
+
+  Decisions taken while building, each held by a test:
+
+  - **How the table's rows read over partial data.** A stage a row names
+    ("Hook above") must be judged in that band. "Others" and "rest"
+    ("Reach below, others above") constrain only the judged others: an
+    unjudged stage is excluded, not weak, so it does not stop the row.
+    "Weak" in row 2 is `below`, since `typical` satisfies neither side.
+  - **Two judged stages is the minimum.** A pattern is a relation between
+    stages, and every row compares at least two; one judged stage is a
+    band. Below two the rows also overlap (Reach above, nothing else
+    judged, fits rows 2 and 6), and from two up they are pairwise
+    exclusive, so precedence decides nothing today. A test counts the
+    overlaps so that changing is visible.
+  - **Row 6 says "every judged stage"**, not the table's "every
+    measurable stage": a measurable stage can still be `not_judgable`
+    or thinly peered, and the sentence is read over judged ones. The
+    other five sentences keep the table's wording, with the third
+    row's comma made a semicolon.
+  - **A sixth stage is a compile error, by design.** Each row spells out
+    a `Record<FunnelStage, StageRequirement>`, with no helper filling in
+    "the others". Appending `monetisation` to `FUNNEL_STAGES` (FILM-1726)
+    was tried: all six rows failed with TS2741 ("Property 'monetisation'
+    is missing"), and so did `diagnoseStages`'s input type, until each
+    row decides what it asks of the new stage. The evaluation, the
+    coverage and the exhaustive test all iterate `FUNNEL_STAGES`, so
+    they need no change: the test then covers 7^6 combinations, and its
+    count of fully judged combinations becomes 3^6 = 729.
+
+  What the signal map allows today, for a short vertical: YouTube judges
+  at most four stages (a Short has no Reach), Instagram two (Reach and
+  Transmission; Attention is dark on KB-151), and TikTok one
+  (Transmission; Reach and Attention are dark), so a TikTok video gets
+  `too_few_judged` whatever its bands until its dark stages are
+  ingested. That is FILM-1714's coverage, reported honestly, not a gap
+  in this layer.

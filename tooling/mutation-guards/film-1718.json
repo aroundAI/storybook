@@ -1,0 +1,115 @@
+{
+  "feature": "FILM-1718",
+  "mutations": [
+    {
+      "name": "SD1 a typical band satisfies a named above or below",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/stage-diagnosis.ts",
+      "find": "      return judgement.judged && judgement.band === requirement;",
+      "replace": "      return (\n        judgement.judged &&\n        (judgement.band === requirement || judgement.band === 'typical')\n      );",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/stage-diagnosis.test.ts",
+      "pattern": "satisfies neither above nor below"
+    },
+    {
+      "name": "SD2 one judged stage is read as a pattern",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/stage-diagnosis.ts",
+      "find": "export const MIN_JUDGED_STAGES = 2;",
+      "replace": "export const MIN_JUDGED_STAGES = 1;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/stage-diagnosis.test.ts",
+      "pattern": "gives too few judged stages a named absent state"
+    },
+    {
+      "name": "SD3 an unjudged stage objects to the others clause",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/stage-diagnosis.ts",
+      "find": "    case 'above_where_judged':\n      return !judgement.judged || judgement.band === 'above';",
+      "replace": "    case 'above_where_judged':\n      return judgement.judged && judgement.band === 'above';",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/stage-diagnosis.test.ts",
+      "pattern": "reports how many stages a pattern was computed over"
+    },
+    {
+      "name": "SD4 a dark stage is read as below",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/stage-diagnosis.ts",
+      "find": "  if (reading.status !== 'measurable') {\n    return { judged: false, exclusion: reading.status };",
+      "replace": "  if (reading.status !== 'measurable') {\n    return { judged: true, band: 'below', state: 'directional' };",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/stage-diagnosis.test.ts",
+      "pattern": "excludes an unbound or dark stage without asking for a benchmark"
+    },
+    {
+      "name": "SD5 a thin peer set is read as below",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/stage-diagnosis.ts",
+      "find": "    case 'not_judgable':\n    case 'insufficient_cohort':\n      return { judged: false, exclusion: benchmark.state };",
+      "replace": "    case 'not_judgable':\n      return { judged: false, exclusion: benchmark.state };\n    case 'insufficient_cohort':\n      return { judged: true, band: 'below', state: 'directional' };",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/stage-diagnosis.test.ts",
+      "pattern": "excludes a stage FILM-1715 could not judge, by its state"
+    },
+    {
+      "name": "SD6 a row leaves a stage unstated",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/stage-diagnosis.ts",
+      "find": "      audience: 'any',\n    },\n    sentence:\n      'Openings hold",
+      "replace": "    },\n    sentence:\n      'Openings hold",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/stage-diagnosis.test.ts",
+      "pattern": "states a requirement for every stage in every row"
+    },
+    {
+      "name": "SD7 a sentence claims a viewer's state of mind",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/stage-diagnosis.ts",
+      "find": "      'Attention is strong; transmission is weaker relative to comparable videos.',",
+      "replace": "      'Enjoyed, but not worth passing on.',",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/stage-diagnosis.test.ts",
+      "pattern": "asserts no cause and no viewer"
+    },
+    {
+      "name": "SD8 too few judged shares no_clear_pattern's sentence",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/stage-diagnosis.ts",
+      "find": "      sentence: tooFewSentence(coverage.judgedCount, coverage.stageCount),",
+      "replace": "      sentence: NO_CLEAR_PATTERN_SENTENCE,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/stage-diagnosis.test.ts",
+      "pattern": "words too few judged and no clear pattern differently"
+    },
+    {
+      "name": "SD9 the last matching row wins",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/stage-diagnosis.ts",
+      "find": "    patterns.find((pattern) =>",
+      "replace": "    [...patterns].reverse().find((pattern) =>",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/stage-diagnosis.test.ts",
+      "pattern": "takes the first matching row when two rows match"
+    },
+    {
+      "name": "SD10 the diagnosis reads the content genome",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/stage-diagnosis.ts",
+      "find": "import type { AnalyticsPlatform } from '../types';",
+      "replace": "import type { AnalyticsPlatform } from '../types';\nimport type {} from './content-genome';",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/stage-diagnosis.test.ts",
+      "pattern": "reads only the signal model and self-benchmarking"
+    },
+    {
+      "name": "SD11 the exclusions are not counted",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/stage-diagnosis.ts",
+      "find": "      excluded[judgement.exclusion].push(stage);",
+      "replace": "",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/stage-diagnosis.test.ts",
+      "pattern": "counts every stage once"
+    }
+  ]
+}
