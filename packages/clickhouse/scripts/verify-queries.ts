@@ -3667,6 +3667,8 @@ const SB_ACCOUNT = '17150000-0000-4000-8000-000000000002';
 const SB_CHANNEL = '17150000-0000-4000-8000-000000000003';
 const SB_OTHER_CHANNEL = '17150000-0000-4000-8000-000000000004';
 const SB_ENGAGED_CHANNEL = '17150000-0000-4000-8000-000000000005';
+const SB_NARROWED_CHANNEL = '17150000-0000-4000-8000-000000000006';
+const SB_INSTAGRAM_CHANNEL = '17150000-0000-4000-8000-000000000007';
 
 /**
  * The self-benchmark fixture (FILM-1715). Channel C is YouTube, so every
@@ -3690,7 +3692,6 @@ const SB_ENGAGED_CHANNEL = '17150000-0000-4000-8000-000000000005';
  * | sb-es-subject  | 2026-03-05        | es   | full  | 03-06: 900                      | 900 |      |
  * | sb-young       | 2026-05-10        | en   | full  | 05-11: 10                       |     |      |
  * | sb-boundary    | 2026-04-30 23:00  | en   | full  | 05-01: 70                       |     |      |
- * | sb-short-old   | 2025-06-01        | en   | short | 2026-01-10: 5                   |     |      |
  *
  * `asOf` is 2026-06-01 00:00 unless a step says otherwise.
  */
@@ -3768,12 +3769,6 @@ const SB_VIDEOS: ReadonlyArray<{
     published: '2026-04-30 23:00:00',
     days: { '2026-05-01': 70 },
   },
-  {
-    id: 'sb-short-old',
-    published: '2025-06-01 00:00:00',
-    contentType: 'short',
-    days: { '2026-01-10': 5 },
-  },
 ];
 
 /**
@@ -3795,6 +3790,29 @@ const SB_ENGAGED_VIDEOS = [
   { id: 'sb-e-subj', published: '2027-05-01', views: 5000, engaged: 450 },
 ] as const;
 
+/**
+ * Channel F: a video published inside 2026-07-29 → 2027-04-24, whose
+ * 24-month window (from 2024-09-15) crosses 2026-08-27 and starts before
+ * engaged views exist (2025-04-24). By the owner's decision (2026-10-01)
+ * the window starts at 2025-04-24 — 16 whole months before 2026-09-15 — so
+ * sb-f-old, inside 24 months but before the series, is not a peer.
+ *
+ * | video     | published  | views  | engaged |
+ * |-----------|------------|--------|---------|
+ * | sb-f-old  | 2025-01-10 | 99,999 | 99,999  |
+ * | sb-f1..f5 | 2025-06-01, 08-01, 10-01, 2026-01-05, 03-01 | 1,000 each | 10, 20, 30, 40, 50 |
+ * | sb-f-subj | 2026-09-15 | 5,000  | 45      |
+ */
+const SB_NARROWED_VIDEOS = [
+  { id: 'sb-f-old', published: '2025-01-10', views: 99999, engaged: 99999 },
+  { id: 'sb-f1', published: '2025-06-01', views: 1000, engaged: 10 },
+  { id: 'sb-f2', published: '2025-08-01', views: 1000, engaged: 20 },
+  { id: 'sb-f3', published: '2025-10-01', views: 1000, engaged: 30 },
+  { id: 'sb-f4', published: '2026-01-05', views: 1000, engaged: 40 },
+  { id: 'sb-f5', published: '2026-03-01', views: 1000, engaged: 50 },
+  { id: 'sb-f-subj', published: '2026-09-15', views: 5000, engaged: 45 },
+] as const;
+
 function nextDay(date: string): string {
   return new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000)
     .toISOString()
@@ -3807,6 +3825,7 @@ function sbDim(input: {
   connection: string;
   language?: string;
   contentType?: string;
+  platform?: AnalyticsPlatform;
 }) {
   return {
     video_id: input.id,
@@ -3814,7 +3833,7 @@ function sbDim(input: {
     account_id: SB_ACCOUNT,
     episode_id: EPISODE,
     connection_id: input.connection,
-    platform: 'youtube',
+    platform: input.platform ?? 'youtube',
     content_type: input.contentType ?? 'full',
     language: input.language ?? 'en',
     channel_language: 'en',
@@ -3831,11 +3850,12 @@ function sbMetric(input: {
   date: string;
   views: number;
   engaged?: number;
+  platform?: AnalyticsPlatform;
 }): VideoMetric {
   return {
     project_id: SB_PROJECT,
     video_id: input.id,
-    platform: 'youtube',
+    platform: input.platform ?? 'youtube',
     metric_date: input.date,
     views: input.views,
     likes: 0,
@@ -3857,7 +3877,13 @@ function sbMetric(input: {
  * back from the query. quantileExactInclusive interpolates at (n − 1)·p.
  */
 async function selfBenchmarkSteps() {
-  const channels = [SB_CHANNEL, SB_OTHER_CHANNEL, SB_ENGAGED_CHANNEL];
+  const channels = [
+    SB_CHANNEL,
+    SB_OTHER_CHANNEL,
+    SB_ENGAGED_CHANNEL,
+    SB_NARROWED_CHANNEL,
+    SB_INSTAGRAM_CHANNEL,
+  ];
   const scope = { projectId: SB_PROJECT };
   const asOf = new Date('2026-06-01T00:00:00Z');
 
@@ -3878,6 +3904,20 @@ async function selfBenchmarkSteps() {
           connection: SB_ENGAGED_CHANNEL,
         }),
       ),
+      ...SB_NARROWED_VIDEOS.map((video) =>
+        sbDim({
+          id: video.id,
+          published: `${video.published} 00:00:00`,
+          connection: SB_NARROWED_CHANNEL,
+        }),
+      ),
+      sbDim({
+        id: 'sb-ig-subj',
+        published: '2025-06-01 00:00:00',
+        connection: SB_INSTAGRAM_CHANNEL,
+        contentType: 'short',
+        platform: 'instagram',
+      }),
     ]);
 
     await insertVideoMetrics([
@@ -3894,9 +3934,28 @@ async function selfBenchmarkSteps() {
           engaged: video.engaged,
         }),
       ),
+      ...SB_NARROWED_VIDEOS.map((video) =>
+        sbMetric({
+          id: video.id,
+          date: nextDay(video.published),
+          views: video.views,
+          engaged: video.engaged,
+        }),
+      ),
+      sbMetric({
+        id: 'sb-ig-subj',
+        date: '2025-06-02',
+        views: 7,
+        platform: 'instagram',
+      }),
     ]);
 
-    return `${SB_VIDEOS.length + SB_ENGAGED_VIDEOS.length} videos`;
+    return `${
+      SB_VIDEOS.length +
+      SB_ENGAGED_VIDEOS.length +
+      SB_NARROWED_VIDEOS.length +
+      1
+    } videos`;
   });
 
   await step(
@@ -4098,26 +4157,68 @@ async function selfBenchmarkSteps() {
   );
 
   await step(
-    'self-benchmark: a range across a view-definition change is suppressed with the date',
+    'self-benchmark: a change no continuous series covers is suppressed with the date',
     async () => {
-      // A Short at 365 days: 2023-06-01 .. 2026-05-31 crosses YouTube's
-      // 2025-03-31 Shorts change, and engaged views begin 2025-04-24.
+      // An Instagram Reel at 30 days: 2023-06-01 .. 2025-06-30 crosses
+      // Instagram's 2025-04-21 views change, and Instagram has no continuous
+      // series to narrow to.
       const result = await queryVideoBenchmark({
         scope,
-        videoId: 'sb-short-old',
-        checkpoints: [365],
+        videoId: 'sb-ig-subj',
+        checkpoints: [30],
         asOf,
       });
       if (!result?.ok) throw new Error(`not ok: ${JSON.stringify(result)}`);
       expectEqual('family', result.formatFamily, 'short_vertical');
       expectEqual('suppressed', result.checkpoints[0], {
         state: 'not_judgable',
-        checkpointDays: 365,
-        reason: { kind: 'view_definition_changed', changedOn: '2025-03-31' },
+        checkpointDays: 30,
+        reason: { kind: 'view_definition_changed', changedOn: '2025-04-21' },
         viewsColumn: null,
       });
 
-      return 'view_definition_changed 2025-03-31';
+      return 'view_definition_changed 2025-04-21';
+    },
+  );
+
+  await step(
+    'self-benchmark: across 2026-08-27 the window narrows to engaged views, by hand',
+    async () => {
+      const result = await queryVideoBenchmark({
+        scope,
+        videoId: 'sb-f-subj',
+        checkpoints: [30],
+        asOf: new Date('2026-11-01T00:00:00Z'),
+      });
+      if (!result?.ok) throw new Error(`not ok: ${JSON.stringify(result)}`);
+      const at30 = result.checkpoints[0];
+
+      // Peers from 2025-04-24: f1..f5, engaged [10, 20, 30, 40, 50] —
+      // median 30, p25 20, p75 40. sb-f-old (2025-01-10, 99,999) is inside
+      // 24 months but before the series, so it is not a peer. The video's
+      // own engaged figure, 45, is above; lift 1.5. 2025-04-24 → 2026-09-15
+      // is 16 whole months.
+      expectEqual('state', at30?.state, 'directional');
+      if (at30?.state !== 'directional') return;
+      expectEqual('series', at30.viewsColumn, 'engaged_views');
+      expectEqual('n', at30.n, 5);
+      expectEqual('median', at30.cohortMedian, 30);
+      expectEqual('p25/p75', [at30.cohortP25, at30.cohortP75], [20, 40]);
+      expectEqual('value', at30.value, 45);
+      expectEqual('band', at30.band, 'above');
+      expectClose('lift', at30.observedLift, 1.5);
+      expectEqual('relaxed', at30.relaxedAxes, []);
+      expectEqual('window', at30.peerWindow, {
+        months: 16,
+        defaultMonths: 24,
+        narrowed: {
+          reason: 'view_definition_changed',
+          changedOn: '2026-08-27',
+          continuousFrom: '2025-04-24',
+        },
+      });
+
+      return '16 of 24 months: engaged 45 vs 30 (n=5)';
     },
   );
 

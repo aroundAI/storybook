@@ -22,6 +22,7 @@ import type { SegmentConfidence } from './lib/segment-stats';
 import { computeSpread, resolveConfidence } from './lib/segment-stats';
 import type {
   BenchmarkCohortScope,
+  BenchmarkRelaxationStep,
   NotJudgableReason,
   RelaxationAttempt,
   VideoBenchmark,
@@ -30,7 +31,7 @@ import type {
 import {
   BENCHMARK_CHECKPOINTS,
   BENCHMARK_RELAXATION,
-  benchmarkRange,
+  BENCHMARK_WINDOW_MONTHS,
   benchmarkStepSeries,
   benchmarkVideoAgainstCohort,
   chooseRelaxation,
@@ -1072,12 +1073,15 @@ export async function queryVideoBenchmark(input: {
   };
 
   const cohorts = new Map<string, Promise<CohortMedianRow | undefined>>();
-  const cohortFor = (stepIndex: number, column: ViewsColumn) => {
-    const key = `${stepIndex}:${column}`;
+  const cohortFor = (
+    step: BenchmarkRelaxationStep,
+    publishedFrom: string,
+    column: ViewsColumn,
+  ) => {
+    const key = `${publishedFrom}|${step.language}|${column}`;
     const cached = cohorts.get(key);
     if (cached) return cached;
 
-    const step = BENCHMARK_RELAXATION[stepIndex]!;
     const promise = queryCohortMedians({
       scope: {
         accountId: channel.accountId,
@@ -1088,8 +1092,7 @@ export async function queryVideoBenchmark(input: {
       checkpoints,
       bucket: 'all',
       asOf: asOfSql,
-      publishedFrom: benchmarkRange(publishedAt, step.windowMonths, 1)
-        .publishedFrom,
+      publishedFrom,
       publishedBefore: publishedAt,
       viewsColumn: column,
     }).then((rows) => rows[0]);
@@ -1122,9 +1125,10 @@ export async function queryVideoBenchmark(input: {
 
     const attempts: RelaxationAttempt[] = [];
     let refusal: NotJudgableReason | null = null;
+    const tried = new Set<string>();
 
     for (const [index, step] of BENCHMARK_RELAXATION.entries()) {
-      const { denominator } = benchmarkStepSeries({
+      const { denominator, range, window } = benchmarkStepSeries({
         platform,
         family: family.family,
         publishedAt,
@@ -1143,11 +1147,26 @@ export async function queryVideoBenchmark(input: {
         continue;
       }
 
-      const row = await cohortFor(index, denominator.column);
+      // A window narrowed to the continuous series cannot widen: the 48-month
+      // step lands on the same start as the 24-month one, and calling it a
+      // widened window would claim peers it does not have.
+      const effective = `${range.publishedFrom}|${step.language}`;
+      if (tried.has(effective)) {
+        attempts.push({ step, cohort: null, column: denominator.column });
+        continue;
+      }
+      tried.add(effective);
+
+      const row = await cohortFor(
+        step,
+        range.publishedFrom,
+        denominator.column,
+      );
       const stats = row?.checkpoints[days];
       attempts.push({
         step,
         column: denominator.column,
+        window,
         cohort: {
           p25: stats?.p25Views ?? 0,
           median: stats?.medianViews ?? 0,
@@ -1178,7 +1197,14 @@ export async function queryVideoBenchmark(input: {
         checkpointDays: days,
         subject: { judgable: true, value: values[days] ?? 0 },
         cohort: chosen?.cohort ?? { p25: 0, median: 0, p75: 0, n: 0 },
-        relaxedAxes: chosen?.step.relaxedAxes ?? [],
+        relaxedAxes: (chosen?.step.relaxedAxes ?? []).filter(
+          // A window narrowed back inside the default was not widened.
+          (axis) =>
+            axis !== 'window' ||
+            (chosen?.window?.months ?? chosen?.step.windowMonths ?? 0) >
+              BENCHMARK_WINDOW_MONTHS,
+        ),
+        peerWindow: chosen?.window ?? null,
       }),
       viewsColumn: column,
     });

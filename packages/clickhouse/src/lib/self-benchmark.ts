@@ -329,11 +329,41 @@ export function benchmarkRange(
 }
 
 /**
- * One relaxation step's dates and the views series they may be read from.
+ * How far back the peers were actually drawn from. `months` is below
+ * `defaultMonths` only when `narrowed` says why, so a card can say
+ * "compared with 15 months, not 24" rather than lying by omission.
+ */
+export interface PeerWindow {
+  months: number;
+  /** The step's own length: 24, or 48 once the window has been widened. */
+  defaultMonths: number;
+  narrowed: {
+    reason: 'view_definition_changed';
+    /** The change the full window would have crossed. */
+    changedOn: string;
+    /** Where the continuous series — and so the window — begins. */
+    continuousFrom: string;
+  } | null;
+}
+
+/** Whole calendar months from `from` to `to`, counting a month once its day is reached. */
+function wholeMonthsBetween(from: Date, to: Date): number {
+  const months =
+    (to.getUTCFullYear() - from.getUTCFullYear()) * 12 +
+    (to.getUTCMonth() - from.getUTCMonth());
+
+  return to.getUTCDate() < from.getUTCDate() ? months - 1 : months;
+}
+
+/**
+ * One relaxation step's dates and the views series they may be read from —
+ * the one place a step's window meets the view-definition registry.
  *
- * The one place a step's window meets the view-definition registry. A rule
- * that narrowed the window to where a continuous series begins (reported
- * as a relaxed `window`) would be a change to this function alone.
+ * When the full window crosses a view-definition change and the platform's
+ * continuous series (YouTube's engaged views) begins inside it, the window
+ * starts where that series begins instead of the benchmark being withheld
+ * (owner decision, 2026-10-01), and `window.narrowed` says so. A range no
+ * continuous series covers at all is still suppressed.
  */
 export function benchmarkStepSeries(input: {
   platform: PlatformId;
@@ -344,18 +374,81 @@ export function benchmarkStepSeries(input: {
 }): {
   range: ReturnType<typeof benchmarkRange>;
   denominator: ViewsDenominator;
+  window: PeerWindow;
 } {
+  const format = viewFormatOf(input.family);
   const range = benchmarkRange(
     input.publishedAt,
     input.step.windowMonths,
     input.checkpointDays,
   );
+  const denominator = viewsDenominatorFor(
+    input.platform,
+    range.from,
+    range.to,
+    {
+      format,
+    },
+  );
+  const full: PeerWindow = {
+    months: input.step.windowMonths,
+    defaultMonths: input.step.windowMonths,
+    narrowed: null,
+  };
+
+  if (
+    denominator.kind !== 'suppressed' ||
+    denominator.reason !== 'view_definition_changed'
+  ) {
+    return { range, denominator, window: full };
+  }
+
+  const continuousFrom =
+    denominator.continuousAlternative?.definition.effectiveFrom ?? null;
+  const published = parseUtc(input.publishedAt);
+
+  // Only a series that begins inside the window and before the video: one
+  // starting earlier would already have covered it, and one starting after
+  // the video leaves no peer to compare with.
+  if (
+    continuousFrom === null ||
+    continuousFrom <= range.from ||
+    continuousFrom >= utcDate(published)
+  ) {
+    return { range, denominator, window: full };
+  }
+
+  const narrowedRange = {
+    from: continuousFrom,
+    to: range.to,
+    publishedFrom: `${continuousFrom} 00:00:00`,
+  };
+  const narrowedDenominator = viewsDenominatorFor(
+    input.platform,
+    narrowedRange.from,
+    narrowedRange.to,
+    { format },
+  );
+
+  if (narrowedDenominator.kind !== 'column') {
+    return { range, denominator, window: full };
+  }
 
   return {
-    range,
-    denominator: viewsDenominatorFor(input.platform, range.from, range.to, {
-      format: viewFormatOf(input.family),
-    }),
+    range: narrowedRange,
+    denominator: narrowedDenominator,
+    window: {
+      months: wholeMonthsBetween(
+        new Date(`${continuousFrom}T00:00:00Z`),
+        published,
+      ),
+      defaultMonths: input.step.windowMonths,
+      narrowed: {
+        reason: 'view_definition_changed',
+        changedOn: denominator.changedOn,
+        continuousFrom,
+      },
+    },
   };
 }
 
@@ -443,6 +536,8 @@ export interface BenchmarkComparison extends BenchmarkBase {
   n: number;
   confidence: Exclude<SegmentConfidence, 'insufficient'>;
   relaxedAxes: readonly RelaxableAxis[];
+  /** The publish window peers came from; null when the caller has none. */
+  peerWindow: PeerWindow | null;
 }
 
 /**
@@ -465,6 +560,7 @@ export type CheckpointBenchmark =
       n: number;
       minPeers: number;
       relaxedAxes: readonly RelaxableAxis[];
+      peerWindow: PeerWindow | null;
     })
   | (BenchmarkComparison & { state: 'directional' })
   | (BenchmarkComparison & { state: 'established' });
@@ -487,9 +583,11 @@ export function benchmarkVideoAgainstCohort(input: {
   subject: CheckpointJudgement;
   cohort: CohortQuantiles;
   relaxedAxes?: readonly RelaxableAxis[];
+  peerWindow?: PeerWindow | null;
 }): CheckpointBenchmark {
   const { checkpointDays, subject, cohort } = input;
   const relaxedAxes = input.relaxedAxes ?? [];
+  const peerWindow = input.peerWindow ?? null;
 
   if (!subject.judgable) {
     return { state: 'not_judgable', checkpointDays, reason: subject.reason };
@@ -506,6 +604,7 @@ export function benchmarkVideoAgainstCohort(input: {
       n: cohort.n,
       minPeers: MIN_MATURE_VIDEOS,
       relaxedAxes,
+      peerWindow,
     };
   }
 
@@ -522,6 +621,7 @@ export function benchmarkVideoAgainstCohort(input: {
     n: cohort.n,
     confidence,
     relaxedAxes,
+    peerWindow,
   };
 
   return confidence === 'reportable'
@@ -534,6 +634,8 @@ export interface RelaxationAttempt {
   step: BenchmarkRelaxationStep;
   cohort: CohortQuantiles | null;
   column: ViewsColumn;
+  /** The window this step actually used; absent means the step's default. */
+  window?: PeerWindow;
 }
 
 /**

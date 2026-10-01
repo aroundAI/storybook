@@ -130,6 +130,16 @@
       "cwd": "packages/clickhouse",
       "test": "__tests__/self-benchmark-query.test.ts",
       "pattern": "reads engaged views from the table the view selects from"
+    },
+    {
+      "name": "SB14 the window is not narrowed to the continuous series",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/self-benchmark.ts",
+      "find": "    continuousFrom === null ||",
+      "replace": "    true ||",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/self-benchmark.test.ts",
+      "pattern": "benchmarks YouTube long-form across 2026-08-27"
     }
   ]
 }

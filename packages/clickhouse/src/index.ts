@@ -324,6 +324,7 @@ export type {
   CheckpointJudgement,
   CohortQuantiles,
   NotJudgableReason,
+  PeerWindow,
   RelaxableAxis,
   RelaxationAttempt,
   VideoBenchmark,

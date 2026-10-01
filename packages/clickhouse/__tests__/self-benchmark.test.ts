@@ -12,6 +12,7 @@ import {
   bandFor,
   benchmarkCheckpointsFor,
   benchmarkRange,
+  benchmarkStepSeries,
   benchmarkVideoAgainstCohort,
   checkpointCapability,
   chooseRelaxation,
@@ -522,5 +523,83 @@ describe('view-definition changes (FILM-1722)', () => {
       column: 'engaged_views',
     });
     expect(viewsDenominatorReason(denominator)).toBeNull();
+  });
+});
+
+// Owner decision 2026-10-01: where a range crosses a view-definition change
+// and the continuous series begins inside the default window, the window
+// starts where that series does — and says so, never silently.
+describe('the peer window narrows to the continuous series (owner, 2026-10-01)', () => {
+  const longForm = (publishedAt: string) =>
+    benchmarkStepSeries({
+      platform: 'youtube',
+      family: 'long_horizontal',
+      publishedAt,
+      step: BENCHMARK_RELAXATION[0]!,
+      checkpointDays: 30,
+    });
+
+  it('benchmarks YouTube long-form across 2026-08-27 on 15 months of engaged views', () => {
+    const series = longForm('2026-08-01 00:00:00');
+
+    expect(series.denominator).toMatchObject({
+      kind: 'column',
+      column: 'engaged_views',
+    });
+    expect(series.range.publishedFrom).toBe('2025-04-24 00:00:00');
+    expect(series.window).toEqual({
+      months: 15,
+      defaultMonths: 24,
+      narrowed: {
+        reason: 'view_definition_changed',
+        changedOn: '2026-08-27',
+        continuousFrom: '2025-04-24',
+      },
+    });
+  });
+
+  it('narrows across the whole affected range, and not after it', () => {
+    expect(longForm('2026-07-29 00:00:00').window.months).toBe(15);
+    expect(longForm('2027-04-23 00:00:00').window.months).toBe(23);
+    expect(longForm('2027-04-24 00:00:00').window).toEqual({
+      months: 24,
+      defaultMonths: 24,
+      narrowed: null,
+    });
+  });
+
+  it('leaves a range with one definition at its default length', () => {
+    expect(longForm('2026-03-01 00:00:00').window.narrowed).toBeNull();
+  });
+
+  it('still suppresses where no continuous series exists', () => {
+    const series = benchmarkStepSeries({
+      platform: 'instagram',
+      family: 'short_vertical',
+      publishedAt: '2026-03-01 00:00:00',
+      step: BENCHMARK_RELAXATION[0]!,
+      checkpointDays: 30,
+    });
+
+    expect(viewsDenominatorReason(series.denominator)).toEqual({
+      kind: 'view_definition_changed',
+      changedOn: '2025-04-21',
+    });
+    expect(series.window.narrowed).toBeNull();
+  });
+
+  it('carries the window into the comparison, so it says "15 months, not 24"', () => {
+    const { window } = longForm('2026-08-01 00:00:00');
+    const result = benchmarkVideoAgainstCohort({
+      checkpointDays: 30,
+      subject: judged(500),
+      cohort: COHORT,
+      peerWindow: window,
+    });
+
+    expect(result).toMatchObject({
+      state: 'established',
+      peerWindow: { months: 15, defaultMonths: 24 },
+    });
   });
 });
