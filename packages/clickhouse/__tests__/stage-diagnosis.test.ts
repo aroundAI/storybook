@@ -112,12 +112,17 @@ function bandOf(judgement: StageJudgement) {
   return judgement.judged ? judgement.band : null;
 }
 
+// Content against distribution: Monetisation is neither, so the first two
+// rows ask nothing of it (FILM-1726 §11).
 function othersAre(
   input: StageJudgements,
   except: FunnelStage,
   band: 'above' | 'below',
 ): boolean {
-  return FUNNEL_STAGES.filter((stage) => stage !== except).every((stage) => {
+  const others = FUNNEL_STAGES.filter(
+    (stage) => stage !== except && stage !== 'monetisation',
+  );
+  return others.every((stage) => {
     const b = bandOf(input[stage]);
     return b === null || b === band;
   });
@@ -162,8 +167,16 @@ function judgedCountOf(input: StageJudgements): number {
   return FUNNEL_STAGES.filter((stage) => input[stage].judged).length;
 }
 
+// The minimum counts distribution and content only: a judged Monetisation
+// never lifts a video out of too_few_judged (FILM-1726 §11).
+function countedTowardMinimum(input: StageJudgements): number {
+  return FUNNEL_STAGES.filter(
+    (stage) => stage !== 'monetisation' && input[stage].judged,
+  ).length;
+}
+
 function expectedKind(input: StageJudgements): string {
-  if (judgedCountOf(input) < MIN_JUDGED_STAGES) return 'too_few_judged';
+  if (countedTowardMinimum(input) < MIN_JUDGED_STAGES) return 'too_few_judged';
 
   return ORACLE.find((row) => row.holds(input))?.id ?? 'no_clear_pattern';
 }
@@ -253,13 +266,13 @@ describe('diagnoseStages, exhaustively', () => {
     }
 
     expect(counts).toEqual({
-      reach_below_content_above: 1,
-      reach_above_content_below: 1,
-      hook_above_attention_below: 27,
-      attention_above_transmission_below: 27,
-      consumption_above_audience_below: 9,
+      reach_below_content_above: 3,
+      reach_above_content_below: 3,
+      hook_above_attention_below: 81,
+      attention_above_transmission_below: 81,
+      consumption_above_audience_below: 27,
       above_at_every_judged_stage: 1,
-      no_clear_pattern: 177,
+      no_clear_pattern: 533,
     });
   });
 
@@ -339,12 +352,14 @@ describe('precedence', () => {
 
     expect(
       all.filter(
-        (input) => judgedCountOf(input) >= MIN_JUDGED_STAGES && overlaps(input),
+        (input) =>
+          countedTowardMinimum(input) >= MIN_JUDGED_STAGES && overlaps(input),
       ),
     ).toHaveLength(0);
     expect(
       all.filter(
-        (input) => judgedCountOf(input) < MIN_JUDGED_STAGES && overlaps(input),
+        (input) =>
+          countedTowardMinimum(input) < MIN_JUDGED_STAGES && overlaps(input),
       ).length,
     ).toBeGreaterThan(0);
   });
@@ -383,7 +398,9 @@ describe('typical', () => {
 describe('partial data', () => {
   it('reports how many stages a pattern was computed over', () => {
     const overTwo = diagnoseStages(stages(dark, { reach: below, hook: above }));
-    const overFive = diagnoseStages(stages(above, { reach: below }));
+    const overFive = diagnoseStages(
+      stages(above, { reach: below, monetisation: dark }),
+    );
 
     expect(outcomeOf(overTwo)).toBe('reach_below_content_above');
     expect(outcomeOf(overFive)).toBe('reach_below_content_above');
@@ -399,16 +416,17 @@ describe('partial data', () => {
       attention: dark,
       transmission: tooYoung,
       audience: thinCohort,
+      monetisation: unbound,
     });
 
     expect(diagnosis.coverage.excluded).toEqual({
-      unbound: ['hook'],
+      unbound: ['hook', 'monetisation'],
       dark: ['attention'],
       not_judgable: ['transmission'],
       insufficient_cohort: ['audience'],
     });
     expect(diagnosis.coverage.sentence).toMatchInlineSnapshot(
-      `"Judged on 1 of 5 stages. Not judged: Hook (the platform does not report it), Attention (not collected yet), Transmission (not comparable at this checkpoint), Audience (too few comparable videos)."`,
+      `"Judged on 1 of 6 stages. Not judged: Hook (the platform does not report it), Attention (not collected yet), Transmission (not comparable at this checkpoint), Audience (too few comparable videos), Monetisation (the platform does not report it)."`,
     );
   });
 
@@ -419,6 +437,21 @@ describe('partial data', () => {
     expect(one.kind === 'too_few_judged' && one.minJudged).toBe(
       MIN_JUDGED_STAGES,
     );
+  });
+
+  it('never counts Monetisation toward the minimum: Reach and earnings alone are too few', () => {
+    // Counted, these two reached rows 1 and 2, which then spoke of content
+    // signals with no content stage judged (FILM-1726 §11).
+    for (const reach of [below, typical, above]) {
+      for (const monetisation of [below, typical, above]) {
+        const diagnosis = diagnoseStages(
+          stages(dark, { reach, monetisation }),
+        );
+
+        expect(diagnosis.kind).toBe('too_few_judged');
+        expect(diagnosis.coverage.judgedCount).toBe(2);
+      }
+    }
   });
 
   it('words too few judged and no clear pattern differently', () => {
@@ -437,11 +470,11 @@ describe('partial data', () => {
     expect(diagnosis.coverage.excluded.dark).toEqual([...FUNNEL_STAGES]);
     expect([diagnosis.sentence, diagnosis.coverage.sentence])
       .toMatchInlineSnapshot(`
-      [
-        "No stage could be judged against comparable videos, so there is no pattern to read.",
-        "Judged on 0 of 5 stages. Not judged: Reach (not collected yet), Hook (not collected yet), Attention (not collected yet), Transmission (not collected yet), Audience (not collected yet).",
-      ]
-    `);
+        [
+          "No stage could be judged against comparable videos, so there is no pattern to read.",
+          "Judged on 0 of 6 stages. Not judged: Reach (not collected yet), Hook (not collected yet), Attention (not collected yet), Transmission (not collected yet), Audience (not collected yet), Monetisation (not collected yet).",
+        ]
+      `);
   });
 
   it('reads a dark stage differently from a below one', () => {
@@ -569,7 +602,11 @@ describe('judgeStages', () => {
     const diagnosis = diagnoseStages(judgements);
 
     expect(Object.keys(judgements)).toEqual([...FUNNEL_STAGES]);
-    expect(diagnosis.coverage.excluded.unbound).toEqual(['hook', 'audience']);
+    expect(diagnosis.coverage.excluded.unbound).toEqual([
+      'hook',
+      'audience',
+      'monetisation',
+    ]);
     expect(diagnosis.coverage.excluded.dark).toEqual(
       statuses('instagram', 'dark'),
     );

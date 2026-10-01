@@ -55,7 +55,7 @@
       "name": "SD6 a row leaves a stage unstated",
       "kind": "unit",
       "file": "packages/clickhouse/src/lib/stage-diagnosis.ts",
-      "find": "      audience: 'any',\n    },\n    sentence:\n      'Openings hold",
+      "find": "      monetisation: 'any',\n    },\n    sentence:\n      'Openings hold",
       "replace": "    },\n    sentence:\n      'Openings hold",
       "cwd": "packages/clickhouse",
       "test": "__tests__/stage-diagnosis.test.ts",

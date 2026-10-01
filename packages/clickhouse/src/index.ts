@@ -407,6 +407,7 @@ export type {
 // (FILM-1718). Pure; FILM-1719 renders the diagnosis and its coverage.
 export {
   MIN_JUDGED_STAGES,
+  PATTERN_STAGES,
   NO_CLEAR_PATTERN_SENTENCE,
   STAGE_EXCLUSIONS,
   STAGE_PATTERNS,

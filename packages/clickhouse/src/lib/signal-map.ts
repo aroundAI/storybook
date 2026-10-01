@@ -937,6 +937,7 @@ const X_TIMELINE: FormatStageMap = {
   ),
   transmission: bound('repost_rate', ['comment_rate', 'share_rate']),
   audience: bound('subscriber_conversion'),
+  monetisation: noRevenue('X'),
 };
 
 /**
