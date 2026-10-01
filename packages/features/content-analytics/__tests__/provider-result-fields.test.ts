@@ -93,7 +93,7 @@ const CASES = [
 
       // FILM-1722: the aggregates are requested from the registry's list,
       // never spelled out, so only a defined aggregate can be asked for.
-      const aggregates = source.includes(',${INSTAGRAM_AGGREGATE_FIELDS}&')
+      const aggregates = source.includes(',${INSTAGRAM_AGGREGATE_FIELDS}`')
         ? INSTAGRAM_AGGREGATES.map((aggregate) => aggregate.field)
         : [];
 
@@ -155,7 +155,7 @@ describe('Instagram aggregates (FILM-1722)', () => {
     const literal =
       /\/\$\{mediaId\}\?fields=([a-z_,]+)/.exec(source)?.[1] ?? '';
 
-    expect(source).toContain(',${INSTAGRAM_AGGREGATE_FIELDS}&');
+    expect(source).toContain(',${INSTAGRAM_AGGREGATE_FIELDS}`');
     expect(literal.split(',').filter((f) => /^total_/.test(f))).toEqual([]);
   });
 

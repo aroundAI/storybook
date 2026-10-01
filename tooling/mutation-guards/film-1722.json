@@ -65,8 +65,8 @@
       "name": "VD7 The aggregates are requested by name, not from the registry",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
-      "find": "reposts_count,${INSTAGRAM_AGGREGATE_FIELDS}&",
-      "replace": "reposts_count,total_views_count,total_like_count,total_comments_count&",
+      "find": "reposts_count,${INSTAGRAM_AGGREGATE_FIELDS}`",
+      "replace": "reposts_count,total_views_count,total_like_count,total_comments_count`",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/provider-result-fields.test.ts",
       "pattern": "Instagram aggregates"
