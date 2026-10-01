@@ -41,7 +41,7 @@ create table if not exists public.analytics_experiments (
   constraint analytics_experiments_notes_length_check
     check (char_length(notes) <= 5000),
   constraint analytics_experiments_genome_hypothesis_check check (
-    genome_hypothesis ~ '^[a-z0-9_]+:[a-z0-9]+(-[a-z0-9]+)*@(reach|hook|attention|transmission|audience)$'
+    genome_hypothesis ~ '^[a-z0-9_]+:[a-z0-9]+(-[a-z0-9]+)*@(reach|hook|attention|transmission|audience|monetisation)$'
   ),
   -- The channel must belong to the experiment's own account; see the
   -- migration for why this is composite and why it nulls only connection_id.

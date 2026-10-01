@@ -57,13 +57,16 @@ alter table public.content_tags
 -- what the experiment was about, without a second stage vocabulary.
 --
 -- Both kinds of experiment carry it: a Change log entry (FILM-1610) and a
--- channel experiment (FILM-1724, 20261001114902).
+-- channel experiment (FILM-1724, 20261001114902). The stages are FILM-1714's
+-- five plus `monetisation`, which FILM-1726 appends (owner-approved); the
+-- TypeScript pattern derives from FUNNEL_STAGES, so it accepts monetisation
+-- once FILM-1726 adds the stage there.
 alter table public.analytics_experiments
   add column genome_hypothesis varchar(120);
 
 alter table public.analytics_experiments
   add constraint analytics_experiments_genome_hypothesis_check check (
-    genome_hypothesis ~ '^[a-z0-9_]+:[a-z0-9]+(-[a-z0-9]+)*@(reach|hook|attention|transmission|audience)$'
+    genome_hypothesis ~ '^[a-z0-9_]+:[a-z0-9]+(-[a-z0-9]+)*@(reach|hook|attention|transmission|audience|monetisation)$'
   );
 
 alter table public.channel_experiments
@@ -71,7 +74,7 @@ alter table public.channel_experiments
 
 alter table public.channel_experiments
   add constraint channel_experiments_genome_hypothesis_check check (
-    genome_hypothesis ~ '^[a-z0-9_]+:[a-z0-9]+(-[a-z0-9]+)*@(reach|hook|attention|transmission|audience)$'
+    genome_hypothesis ~ '^[a-z0-9_]+:[a-z0-9]+(-[a-z0-9]+)*@(reach|hook|attention|transmission|audience|monetisation)$'
   );
 
 comment on column public.channel_experiments.genome_hypothesis is 'The content genome hypothesis this experiment tests, as dimension:slug@stage (FILM-1717); null when it did not come from one';

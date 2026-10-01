@@ -1,14 +1,14 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(14);
+select plan(15);
 
 -- FILM-1717 v2. A Change log entry records the genome hypothesis it tests,
 -- as dimension:slug@stage. The table refuses any other form, and the link
 -- is fixed once the change has started: tying a running or concluded change
 -- to a hypothesis afterwards would let the result choose what it confirms.
 -- A channel experiment (FILM-1724) carries the same link under the same
--- rules. And the
+-- rules. The stages include `monetisation`, which FILM-1726 appends. And the
 -- semantic dimensions (layer B) take only their levels.
 
 select makerkit.set_identifier('member', 'member@storybook.dev');
@@ -98,6 +98,12 @@ select is(
     where id = '17171717-0000-4000-8000-000000000001'),
   'hook_type:cold-open@hook',
   'and still reads as it did when the change started'
+);
+
+select lives_ok(
+  $$ insert into public.analytics_experiments (account_id, title, change_description, genome_hypothesis)
+     values (current_setting('gh.story')::uuid, 'Monetisation', 'x', 'utility:high@monetisation') $$,
+  'monetisation is a stage a hypothesis can name (FILM-1726)'
 );
 
 -- ==================================
