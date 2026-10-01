@@ -16,6 +16,8 @@ dependencies:
     note: null
   - spec_id: "FILM-1714"
     note: "the stage-aware measure is each stage's primary signal in FILM-1714's signal map"
+  - spec_id: "FILM-1724"
+    note: "a concluded channel experiment is one of the two backings of a causal claim"
 summary: >
   Everything else in the phase answers what happened to this video; this
   spec answers what should I make next, turning a stage verdict like
@@ -36,34 +38,34 @@ acceptance_criteria:
     evidence: "TaxonomyTag, GenomeAttribute and PerformanceOutcome (packages/clickhouse/src/lib/genome-attributes.ts:168, :190); parseVideoTag (packages/clickhouse/src/lib/genome-attributes.ts:210) splits stored dimension:slug tags into the first two by dimension and can never return a performance outcome, and no dimension may carry a funnel stage's name (packages/clickhouse/__tests__/genome-vocabulary.test.ts:72; pgTAP apps/web/supabase/tests/database/genome-tag-dimensions.test.sql:61). #TBD"
   - text: "Attributes flow through the existing tag infrastructure with no ClickHouse migration"
     met: true
-    evidence: "Genome attributes are content_tags dimensions (migrations 20261001113701 and 20261001121658, Postgres CHECKs only), synced to video_dim.tags as before; the CHECK is compared with TAG_DIMENSIONS (packages/clickhouse/__tests__/genome-vocabulary.test.ts:129) and no ClickHouse migration is added (packages/clickhouse/__tests__/genome-vocabulary.test.ts:148). On ClickHouse 24.8 the fixture's tags are read back from video_dim.tags (packages/clickhouse/scripts/verify-queries.ts:4334). #TBD"
+    evidence: "Genome attributes are content_tags dimensions (migrations 20261001113701 and 20261001121658, Postgres CHECKs only), synced to video_dim.tags as before; the CHECK is compared with TAG_DIMENSIONS (packages/clickhouse/__tests__/genome-vocabulary.test.ts:129) and no ClickHouse migration is added (packages/clickhouse/__tests__/genome-vocabulary.test.ts:148). On ClickHouse 24.8 the fixture's tags are read back from video_dim.tags (packages/clickhouse/scripts/verify-queries.ts:4335). #TBD"
   - text: "Correlation uses FILM-1606's segment query with a stage-aware measure, not a second engine"
     met: true
-    evidence: "SEGMENT_MEASURE_SQL (packages/clickhouse/src/queries-advanced.ts:1374) adds per-video stage measures to segmentPerVideoSql; querySegmentPerformance takes a measure (packages/clickhouse/src/queries-advanced.ts:1571) and querySegmentVideoMeasures (packages/clickhouse/src/queries-advanced.ts:1742) projects the same CTE per video. The measure is the stage's FILM-1714 primary signal (stageMeasureFor, packages/clickhouse/src/lib/genome-measures.ts:77), refused by name where a platform cannot fill the stage (packages/clickhouse/__tests__/genome-vocabulary.test.ts:207). On ClickHouse the genome's median equals the segment query's for the same tag (packages/clickhouse/scripts/verify-queries.ts:4467). #TBD"
+    evidence: "SEGMENT_MEASURE_SQL (packages/clickhouse/src/queries-advanced.ts:1374) adds per-video stage measures to segmentPerVideoSql; querySegmentPerformance takes a measure (packages/clickhouse/src/queries-advanced.ts:1571) and querySegmentVideoMeasures (packages/clickhouse/src/queries-advanced.ts:1742) projects the same CTE per video. The measure is the stage's FILM-1714 primary signal (stageMeasureFor, packages/clickhouse/src/lib/genome-measures.ts:77), refused by name where a platform cannot fill the stage (packages/clickhouse/__tests__/genome-vocabulary.test.ts:207). On ClickHouse the genome's median equals the segment query's for the same tag (packages/clickhouse/scripts/verify-queries.ts:4468). #TBD"
   - text: "Every claim carries both successful and unsuccessful comparables"
     met: true
-    evidence: "Evidence.successful and Evidence.unsuccessful are required (packages/clickhouse/src/lib/genome-evidence.ts:248); asserted at packages/clickhouse/__tests__/genome.test.ts:155 and on ClickHouse (packages/clickhouse/scripts/verify-queries.ts:4532: gn-10, gn-09, gn-08 against gn-01). A set may be empty, and is then shown empty, never omitted. #TBD"
+    evidence: "Evidence.successful and Evidence.unsuccessful are required (packages/clickhouse/src/lib/genome-evidence.ts:238); asserted at packages/clickhouse/__tests__/genome.test.ts:155 and on ClickHouse (packages/clickhouse/scripts/verify-queries.ts:4533: gn-10, gn-09, gn-08 against gn-01). A set may be empty, and is then shown empty, never omitted. #TBD"
   - text: "An attribute common to winners and comparable losers is not reported as a finding"
     met: true
-    evidence: "MIN_PREVALENCE_GAP (packages/clickhouse/src/lib/genome.ts:54): 71% of winners against 68% of comparable losers is a non-finding, common_to_winners_and_losers (packages/clickhouse/__tests__/genome.test.ts:105, guard GN1); on ClickHouse face_present at 4/5 against 4/5 (packages/clickhouse/scripts/verify-queries.ts:4532). Untagged videos are unknown, not absent (packages/clickhouse/__tests__/genome.test.ts:183, GN2); attributes on identical videos are one finding (packages/clickhouse/__tests__/genome.test.ts:234, GN5). #TBD"
+    evidence: "MIN_PREVALENCE_GAP (packages/clickhouse/src/lib/genome.ts:55): 71% of winners against 68% of comparable losers is a non-finding, common_to_winners_and_losers (packages/clickhouse/__tests__/genome.test.ts:105, guard GN1); on ClickHouse face_present at 4/5 against 4/5 (packages/clickhouse/scripts/verify-queries.ts:4533). Untagged videos are unknown, not absent (packages/clickhouse/__tests__/genome.test.ts:183, GN2); attributes on identical videos are one finding (packages/clickhouse/__tests__/genome.test.ts:234, GN5). #TBD"
   - text: "Claim strength is explicit, and causal requires a reference to a concluded Change log entry (FILM-1610) or a concluded channel experiment (FILM-1724), and names which kind backs it"
     met: true
-    evidence: "ClaimStrength (packages/clickhouse/src/lib/genome-evidence.ts:198): observed, controlled_association with its controls, or causal with a CausalBacking (packages/clickhouse/src/lib/genome-evidence.ts:91) whose kind is change_log or channel_experiment, branded so only concludedChangeLogEntry / concludedChannelExperiment build one, and only for a concluded row. A causal claim without one does not compile (packages/clickhouse/__tests__/genome.test.ts:369; seen red by removing the brand or making backing optional). FILM-1724's table does not exist yet: ConcludedChannelExperiment (packages/clickhouse/src/lib/genome-evidence.ts:82) is its typed seam. #TBD"
+    evidence: "ClaimStrength (packages/clickhouse/src/lib/genome-evidence.ts:198): observed, controlled_association with its controls, or causal with a CausalBacking (packages/clickhouse/src/lib/genome-evidence.ts:91) (packages/clickhouse/src/lib/genome-evidence.ts:83): a concluded Change log entry (kind change_log, branded so only concludedChangeLogEntry builds one, and only for a concluded row) or FILM-1724's ConcludedChannelExperiment (kind concluded_channel_experiment, built only by toConcludedChannelExperiment, packages/clickhouse/src/lib/channel-experiments.ts:421). A causal claim without one does not compile (packages/clickhouse/__tests__/genome.test.ts:379; seen red by removing the brand or making backing optional). #TBD"
   - text: "Observed and adjusted lift both survive to the raw layer"
     met: true
-    evidence: "Evidence.observedLift, adjustedLift and shrinkageFactor (packages/clickhouse/src/lib/genome-evidence.ts:242), adjusted by FILM-1715's shrinkLift; on ClickHouse 1.55x observed, 1.115x adjusted on n=4 (packages/clickhouse/scripts/verify-queries.ts:4532). #TBD"
+    evidence: "Evidence.observedLift, adjustedLift and shrinkageFactor (packages/clickhouse/src/lib/genome-evidence.ts:232), adjusted by FILM-1715's shrinkLift; on ClickHouse 1.55x observed, 1.115x adjusted on n=4 (packages/clickhouse/scripts/verify-queries.ts:4533). #TBD"
   - text: "A two-video cohort cannot outrank a hundred-video one"
     met: true
-    evidence: "Findings rank by rankingDistance on the adjusted lift (packages/clickhouse/src/lib/genome-evidence.ts:279): the naive control ranks 2.8x on n=2 first, adjusted it ranks below 1.35x on n=100 (packages/clickhouse/__tests__/genome.test.ts:254), and analyseGenome orders its findings the same way (packages/clickhouse/__tests__/genome.test.ts:266). Guards GN3, GN4. #TBD"
+    evidence: "Findings rank by rankingDistance on the adjusted lift (packages/clickhouse/src/lib/genome-evidence.ts:269): the naive control ranks 2.8x on n=2 first, adjusted it ranks below 1.35x on n=100 (packages/clickhouse/__tests__/genome.test.ts:254), and analyseGenome orders its findings the same way (packages/clickhouse/__tests__/genome.test.ts:266). Guards GN3, GN4. #TBD"
   - text: "Evidence level is visible, and sparse evidence is labelled rather than hidden"
     met: false
-    reason: "Data half met: every finding carries its level, FILM-1606's tiers renamed Early signal / Directional / Established pattern (packages/clickhouse/src/lib/genome-evidence.ts:45), and evidenceLabel (packages/clickhouse/src/lib/genome-evidence.ts:286) says \"Early signal — 2 videos · 1.42x adjusted\"; a two-video finding is returned, not filtered (packages/clickhouse/__tests__/genome.test.ts:405). Rendering half: no surface shows findings yet — rendering is FILM-1719's (this spec's Out of scope)"
+    reason: "Data half met: every finding carries its level, FILM-1606's tiers renamed Early signal / Directional / Established pattern (packages/clickhouse/src/lib/genome-evidence.ts:49), and evidenceLabel (packages/clickhouse/src/lib/genome-evidence.ts:276) says \"Early signal — 2 videos · 1.42x adjusted\"; a two-video finding is returned, not filtered (packages/clickhouse/__tests__/genome.test.ts:415). Rendering half: no surface shows findings yet — rendering is FILM-1719's (this spec's Out of scope)"
   - text: "A recommendation cannot be constructed without an Evidence"
     met: true
-    evidence: "Recommendation (packages/clickhouse/src/lib/genome-evidence.ts:332) has a required evidence and a brand only recommendFrom(finding) adds; a recommendation without evidence does not compile (packages/clickhouse/__tests__/genome.test.ts:444; seen red by making evidence optional and dropping the brand). #TBD"
+    evidence: "Recommendation (packages/clickhouse/src/lib/genome-evidence.ts:322) has a required evidence and a brand only recommendFrom(finding) adds; a recommendation without evidence does not compile (packages/clickhouse/__tests__/genome.test.ts:454; seen red by making evidence optional and dropping the brand). #TBD"
   - text: "Every Evidence carries a MetricProvenance"
     met: true
-    evidence: "Evidence.provenance is required (packages/clickhouse/src/lib/genome-evidence.ts:252), built by metricProvenanceFor (packages/clickhouse/src/lib/genome-measures.ts:151) from FILM-1703's matrix and FILM-1714's signal: each input's provider fields, table and derivation method, and the ingestion path. Without it an Evidence does not compile (packages/clickhouse/__tests__/genome.test.ts:423). #TBD"
+    evidence: "Evidence.provenance is required (packages/clickhouse/src/lib/genome-evidence.ts:242), built by metricProvenanceFor (packages/clickhouse/src/lib/genome-measures.ts:151) from FILM-1703's matrix and FILM-1714's signal: each input's provider fields, table and derivation method, and the ingestion path. Without it an Evidence does not compile (packages/clickhouse/__tests__/genome.test.ts:433). #TBD"
   - text: "The Hook Lab's hook_type vocabulary is reconciled with the taxonomy's"
     met: true
     evidence: "The Hook Lab's free-text hook_variants.hook_type was dropped with its table (20260919193447); hook_type is now one content_tags vocabulary, read as a genome attribute with its slugs unchanged. A test fails if the dropped column comes back or any later migration declares another hook_type column (packages/clickhouse/__tests__/genome-vocabulary.test.ts:159, :172), and the tag form's dimensions are the CHECK's own list (packages/features/content-analytics/src/lib/schemas/taxonomy.schema.ts:18). FILM-1724's hook tests should name hook_type tags rather than start a vocabulary. #TBD"
@@ -72,21 +74,27 @@ acceptance_criteria:
     reason: "retired — owner decision 2026-10-01: v1 and v2 built together"
   - text: "Semantic attributes (layer B) are recorded as tag dimensions with fixed levels (v2)"
     met: true
-    evidence: "GENOME_SEMANTIC_DIMENSIONS (packages/clickhouse/src/lib/genome-attributes.ts:66), low/medium/high only, in the table's CHECK (pgTAP apps/web/supabase/tests/database/genome-hypothesis-link.test.sql:25) and the tag manager's third group (packages/features/content-analytics/src/components/taxonomy/tag-manager.tsx:95; apps/e2e/tests/tags/genome-tags.spec.ts:29, screenshot 04-semantic-tag-saved.png). #TBD"
+    evidence: "GENOME_SEMANTIC_DIMENSIONS (packages/clickhouse/src/lib/genome-attributes.ts:66), low/medium/high only, in the table's CHECK (pgTAP apps/web/supabase/tests/database/genome-hypothesis-link.test.sql:31) and the tag manager's third group (packages/features/content-analytics/src/components/taxonomy/tag-manager.tsx:95; apps/e2e/tests/tags/genome-tags.spec.ts:29, screenshot 04-semantic-tag-saved.png). #TBD"
   - text: "An experiment references the genome hypothesis that generated it, fixed once the experiment starts (v2)"
     met: true
-    evidence: "analytics_experiments.genome_hypothesis (apps/web/supabase/migrations/20261001121658_genome-semantic-and-hypothesis-link.sql:59), dimension:slug@stage, checked by the table and the create schema with one pattern (packages/clickhouse/__tests__/genome-loop.test.ts:146 compares them), written on create (packages/features/content-analytics/src/server/experiment-actions.ts:367), frozen once started (apps/web/supabase/migrations/20261001121658_genome-semantic-and-hypothesis-link.sql:89; pgTAP apps/web/supabase/tests/database/genome-hypothesis-link.test.sql:87, guard GN-DB2). #TBD"
+    evidence: "analytics_experiments.genome_hypothesis (apps/web/supabase/migrations/20261001121658_genome-semantic-and-hypothesis-link.sql:65), dimension:slug@stage, checked by the table and the create schema with one pattern (packages/clickhouse/__tests__/genome-loop.test.ts:219 compares them), written on create (packages/features/content-analytics/src/server/experiment-actions.ts:367), frozen once started (apps/web/supabase/migrations/20261001121658_genome-semantic-and-hypothesis-link.sql:105; pgTAP apps/web/supabase/tests/database/genome-hypothesis-link.test.sql:93, guard GN-DB2). #TBD"
   - text: "A causal claim is reached only from a concluded, confirmed and uncontested test; a rejected one stays visible (v2)"
     met: true
-    evidence: "applyLinkedTests (packages/clickhouse/src/lib/genome-loop.ts:114); a confirmation does not cancel a rejection (packages/clickhouse/__tests__/genome-loop.test.ts:190, GN14); getGenomeFindingsAction reads this channel's concluded linked entries, paged (packages/features/content-analytics/__tests__/genome-actions.test.ts:208, :219, GN18); on ClickHouse rows (packages/clickhouse/scripts/verify-queries.ts:4602). #TBD"
+    evidence: "applyLinkedTests (packages/clickhouse/src/lib/genome-loop.ts:118); a confirmation does not cancel a rejection (packages/clickhouse/__tests__/genome-loop.test.ts:288, GN14); getGenomeFindingsAction reads this channel's concluded linked entries, paged (packages/features/content-analytics/__tests__/genome-actions.test.ts:220, :219, GN18); on ClickHouse rows (packages/clickhouse/scripts/verify-queries.ts:4603). #TBD"
   - text: "Creative templates group mechanisms that won on the same videos, instantiate into a new subject, and cannot be built without evidence (v2)"
     met: true
-    evidence: "deriveTemplates and instantiateTemplate (packages/clickhouse/src/lib/genome-loop.ts:217, :309); CreativeTemplate's mechanisms are a non-empty tuple, each with its Evidence (packages/clickhouse/src/lib/genome-loop.ts:191; packages/clickhouse/__tests__/genome-loop.test.ts:272). Tested at packages/clickhouse/__tests__/genome-loop.test.ts:220 and :251 (GN16), and on ClickHouse: identity:high + result_first:yes on gn-09, gn-10 (packages/clickhouse/scripts/verify-queries.ts:4602). #TBD"
+    evidence: "deriveTemplates and instantiateTemplate (packages/clickhouse/src/lib/genome-loop.ts:219, :309); CreativeTemplate's mechanisms are a non-empty tuple, each with its Evidence (packages/clickhouse/src/lib/genome-loop.ts:193; packages/clickhouse/__tests__/genome-loop.test.ts:370). Tested at packages/clickhouse/__tests__/genome-loop.test.ts:318 and :251 (GN16), and on ClickHouse: identity:high + result_first:yes on gn-09, gn-10 (packages/clickhouse/scripts/verify-queries.ts:4603). #TBD"
+  - text: "A concluded channel experiment (FILM-1724) backs a causal claim only where its styles separated"
+    met: true
+    evidence: "channel_experiments.genome_hypothesis with the same CHECK and freeze as the Change log's (apps/web/supabase/migrations/20261001121658_genome-semantic-and-hypothesis-link.sql:72; pgTAP apps/web/supabase/tests/database/genome-hypothesis-link.test.sql:145, guard GN-DB4). getGenomeFindingsAction reads this channel's concluded linked experiments (packages/features/content-analytics/src/server/genome-actions.ts:184; packages/features/content-analytics/__tests__/genome-actions.test.ts:220, :237; GN20, GN21). causalTestOf (packages/clickhouse/src/lib/genome-evidence.ts:102) counts a confirmed experiment as confirming only when FILM-1724's experimentFindings holds a non-overlapping pair (packages/clickhouse/__tests__/genome-loop.test.ts:233, :257; GN19). #TBD"
+  - text: "A hypothesis key may name monetisation, the sixth stage FILM-1726 appends"
+    met: true
+    evidence: "Both genome_hypothesis CHECKs accept monetisation (pgTAP apps/web/supabase/tests/database/genome-hypothesis-link.test.sql:106, red without it); the TypeScript pattern derives from FUNNEL_STAGES and follows once FILM-1726 adds the stage, and the test pins the difference (packages/clickhouse/__tests__/genome-loop.test.ts:164). #TBD"
 open_questions: []
 feature:
   database:
-    tables: ["publish_tags", "video_dim", "content_tags", "analytics_experiments"]
-    columns_added: ["analytics_experiments.genome_hypothesis"]
+    tables: ["publish_tags", "video_dim", "content_tags", "analytics_experiments", "channel_experiments"]
+    columns_added: ["analytics_experiments.genome_hypothesis", "channel_experiments.genome_hypothesis"]
   queries:
     - name: "querySegmentPerformance"
       purpose: "FILM-1606's correlation engine, kind: 'tag', with one addition: an optional stage-aware measure reported beside views, so an attribute scores against its funnel stage; a new 'all' segment is the cohort baseline"
@@ -96,7 +104,7 @@ feature:
       file: "packages/clickhouse/src/queries-advanced.ts:1742"
   actions:
     - name: "getGenomeFindingsAction"
-      file: "packages/features/content-analytics/src/server/genome-actions.ts:79"
+      file: "packages/features/content-analytics/src/server/genome-actions.ts:80"
   ui:
     - component: "TagManager"
       file: "packages/features/content-analytics/src/components/taxonomy/tag-manager.tsx:95"
@@ -115,9 +123,6 @@ remaining:
   - criterion: "v1 ships and is useful before v2 begins"
     reason: "Retired by the owner on 2026-10-01: v1 and v2 were built together. Nothing is left to build"
     closed_by: null
-  - criterion: "Concluded channel experiments back causal claims"
-    reason: "ConcludedChannelExperiment is a typed seam: channel_experiments does not exist yet, so getGenomeFindingsAction reads Change log entries only. FILM-1724 adds the table, a genome_hypothesis column on it with the same CHECK, and its rows to the action's read"
-    closed_by: "FILM-1724"
   - criterion: "Rate measures across a view-definition change"
     reason: "share_rate, comment_rate, subscriber_conversion and average_view_duration divide by views. A cohort spanning YouTube's 2026-08-27 views change mixes two denominators, so later videos read lower. FILM-1715 reads engaged views across a change (viewsDenominatorFor); the segment query's per-video measures do not yet"
     closed_by: "unassigned"
@@ -390,6 +395,13 @@ notes: |
   - **Every genome attribute is part of the video**, so a hypothesis says a
     channel experiment tests it; a Change log entry can still be linked by
     hand, and backs a causal claim when it concludes confirmed.
+  - **A channel experiment (FILM-1724) confirms only where its styles
+    separated.** Its concluded record carries frozen results; a confirmed
+    experiment whose styles' ranges all overlapped showed no clear
+    difference, and counts as inconclusive whatever the owner recorded.
+  - **A hypothesis key may name `monetisation`.** FILM-1726 (owner-approved)
+    appends it as a sixth stage; both tables accept it now, and the
+    TypeScript pattern follows FUNNEL_STAGES when the stage lands.
   - **Some stages have no checkpoint measure yet**: a YouTube Short's Hook
     (first-3s retention) and every signal built on accounts reached
     (TikTok and Instagram Reach, Instagram Transmission). They are refused
