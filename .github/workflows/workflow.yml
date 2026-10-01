@@ -2,9 +2,13 @@ name: Workflow
 on:
   push:
     branches: [ main ]
-  # Every pull request, not only those into main: a PR stacked on another
-  # feature branch showed "no checks reported" until it was retargeted.
+  # Only pull requests into main (owner, 2026-10-01). A PR stacked on another
+  # feature branch runs nothing until it is retargeted to main: its code is
+  # tested once, on top of main, instead of once per base it passes through.
+  # Retargeting alone starts no run (`edited` is not a trigger here); the
+  # rebase onto main that follows it does.
   pull_request:
+    branches: [ main ]
 # CI minutes are rationed: a newer push to the same PR cancels the older run.
 # Runs on main are never cancelled, so every merge gets a complete run.
 concurrency:
