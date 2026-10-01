@@ -3,7 +3,7 @@ title: "Observed Coverage Query"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: DRAFT
+status: DONE
 effort: M
 dependencies:
   - spec_id: "FILM-1703"
@@ -19,32 +19,32 @@ summary: >
   the visible payload.
 acceptance_criteria:
   - text: "One query answers coverage for the whole page; adding a card adds no query"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/clickhouse/src/queries-advanced.ts:891 (one UNION ALL statement, 'asks once for the whole page' in observed-coverage-query.test.ts:56); packages/features/content-analytics/src/components/coverage-context.tsx:115 (fetched once per provider; 'fifteen cards share one request', coverage-context.test.tsx:126); in the browser, apps/e2e/tests/analytics/coverage-requests.spec.ts — 18 cards on six tabs, two requests: the header's window and Deep Dive's; red with the provider's cache cut to zero (#TBD)"
   - text: "*Not connected*, *connected but empty in this window*, and *not supported* are three distinguishable states, never collapsed"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/clickhouse/src/lib/data-provenance.ts:1074 (CoverageState) and :1155 (foldObservedCoverage); observed-coverage.test.ts:49-80; against ClickHouse 24.8, verify-queries.ts:3699 folds one fixture to covered, not_ingested, unsupported, no_data_in_window and not_connected at once (#TBD)"
   - text: "`channel_daily` coverage resolves a real platform rather than assuming one"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/clickhouse/src/queries-advanced.ts:942 (platform from video_dim through the connection; observed-coverage-query.test.ts:97); an unresolved row is never credited (observed-coverage.test.ts:155); against ClickHouse, a connection with no video in scope is not counted (verify-queries.ts:3629) — red when the branch was labelled 'youtube' (3 rows for 2)"
   - text: "The fold from rows to `CoverageState` is pure and unit-tested without a database"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/clickhouse/src/lib/data-provenance.ts:1155 — the module still imports nothing but types (data-provenance.test.ts 'imports nothing but types'); packages/clickhouse/__tests__/observed-coverage.test.ts, 22 tests"
   - text: "Deep Dive's coverage describes Deep Dive's 52-week window, not the header's date range"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:791 mounts its own CoverageProvider with trafficWindow and TRAFFIC_WINDOW_LABEL, nested on purpose with the reason at the provider; coverage-context.test.tsx:260; in the browser the Deep Dive request spans 52×7−1 days ending on a Saturday (coverage-requests.spec.ts) (#TBD)"
   - text: "Capability renders before the coverage query resolves"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/features/content-analytics/src/components/coverage-context.tsx:163 (useCoverage fills capabilityCoverage cells on first render); 'paints capability before the observed half resolves', coverage-context.test.tsx:150, with the action never resolving"
   - text: "Staleness is defined once and tolerates the YouTube reporting lag without reporting healthy ingest as stale"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/clickhouse/src/lib/data-provenance.ts:1101 (COVERAGE_STALE_AFTER_DAYS = 14, measured to the window's end via coverageAsOf); observed-coverage.test.ts:244-278 — three days behind is healthy, six weeks is stale"
   - text: "Changing the date range does not re-query five tables on every keystroke"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/features/content-analytics/src/components/coverage-context.tsx:76 (the window settles for 400 ms before it is asked about) and :41 (30-minute staleTime, keyed on calendar days); coverage-context.test.tsx:200 and :234; in the browser, three range changes ending on one already seen made two requests (coverage-requests.spec.ts) (#TBD)"
   - text: "A project with no connections at all renders an intelligible page, not fifteen error states"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/features/content-analytics/src/server/coverage-actions.ts:49 — no connection in scope is answered without ClickHouse, every capable cell not_connected (coverage-actions.test.ts:151); in the browser, a project with no channel gets that answer and all six tabs render (coverage-requests.spec.ts) (#TBD). The wording a creator reads is FILM-1705's"
 open_questions: []
 notes: |
   ## 1. Overview
@@ -194,6 +194,68 @@ notes: |
   The subtler risk is the two-window design being mistaken for a bug by a future
   reader and "fixed" into one. §4 states the reason; it should also be a comment
   at the provider.
+
+  ## 9. As built (2026-10-01, #TBD)
+
+  The API FILM-1705 and FILM-1709 build on:
+
+  | Name | Where | What |
+  |---|---|---|
+  | `queryObservedCoverage(scope, from, to)` | `@kit/clickhouse/server` | `Promise<ObservedCoverageRow[] \| null>` — `null` when ClickHouse is off |
+  | `ObservedCoverageRow`, `CoverageState`, `CoverageMatrix` | `@kit/clickhouse` (types) | as §2/§3; `CoverageMatrix` is family × platform → `CoverageState \| null` |
+  | `foldObservedCoverage(rows, CAPABILITY_MATRIX, { connectedPlatforms, asOf })` | `@kit/clickhouse` | pure |
+  | `capabilityCoverage`, `COVERAGE_STALE_AFTER_DAYS`, `isCoverageStale`, `coverageAsOf`, `OBSERVED_COVERAGE_TABLES` | `@kit/clickhouse` | the matrix-only half; staleness, once |
+  | `getCoverageMatrixAction({ scope, from, to })` | `server/coverage-actions.ts` | `CoverageMatrixResult` (`lib/coverage.ts`): `window`, `matrix`, `channels` (with `language`), `observed` |
+  | `CoverageProvider`, `CoverageContext`, `useCoverage(family)` | `components/coverage-context.tsx` | `FamilyCoverage`: per platform a `CoverageCell` = `CoverageState \| 'pending' \| null` |
+
+  Decisions the spec left open, made here:
+
+  - **`null` is "cannot measure", never empty.** A cell is `null` when
+    ClickHouse was not read (production while `CLICKHOUSE_ENABLED` is off),
+    when the request failed, or when the family's table is not one of the
+    five — the audience families (`video_audience`), TikTok and Instagram
+    `channel_totals` (`channel_subscribers`) and Instagram
+    `channel_accounts_reached` (`channel_windows`). `not_connected` is still
+    answered for those, from Postgres.
+  - **Rows win over the connection list.** A platform with rows in the window
+    is `covered` even with no active connection — a disconnected channel
+    keeps its history, and a card showing it must not say "not connected".
+    Otherwise only an *active* connection counts as connected, and the
+    scope's channel and platform filters narrow it.
+  - **`video_retention_curves` is not windowed.** It has no `metric_date`; a
+    curve is a video's lifetime and its card reads it whole. Its
+    `latestDate` is the day the newest curve was fetched.
+  - **`channel_daily` is read for the connections the scope's videos were
+    published to**, resolved to a platform through `video_dim`. A channel
+    with daily rows but no published video in scope is not counted.
+  - **Staleness is 14 days, measured to the window's end** (or today, if
+    earlier) — past twice the 1–3 day reporting lag, and a quiet channel's
+    gap between reporting rows.
+  - **The window settles for 400 ms** before it is asked about, and answers
+    are reused for 30 minutes, keyed on calendar days.
+
+  Known limits, for FILM-1705 to word rather than for this query to fix:
+
+  - The grain is (table, platform), as §2 designs it. Families that share
+    `video_metrics` — `engagement`, `watch_time`, `reposts`,
+    `accounts_reached` — read `covered` when rows exist, whether or not the
+    family's own column is measured on them (a null `watch_time_seconds`
+    since KB-111/KB-114). Column-level coverage is a larger query.
+  - `rows` counts stored rows without `FINAL`, so it can exceed distinct
+    days until a merge. It answers "does anything exist", not a figure to
+    show.
+
+  **§8's cost, measured** (2026-10-01, lane A ClickHouse 24.8, the largest
+  local project: 730,000 `video_metrics` rows over 2,000 videos, a 52-week
+  window, five runs): 28–32 ms warm and 90 ms cold by `system.query_log`,
+  1,127,595 rows and 55 MiB read, under 15 MiB of memory. Against another
+  project's 50,000 noise rows per table it grows by under the guard's
+  tolerance (scan-scope step, `verify-queries.ts`).
+
+  Found on the way: **KB-147** — the scan-scope guard in
+  `verify-queries.ts` took its baseline over the previous run's noise, so it
+  could not fail on a persistent ClickHouse. Fixed in the same PR; with the
+  fix, deleting this query's project predicate fails it (+199,998 rows).
 feature:
   database:
     tables: ["video_metrics", "video_traffic_sources", "video_reach_daily", "video_retention_curves", "channel_daily"]
