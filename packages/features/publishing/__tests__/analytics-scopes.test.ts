@@ -257,34 +257,50 @@ describe('videoSyncAuthorisation', () => {
 });
 
 describe('the OAuth callbacks record the grant, not the request', () => {
-  // Every callback, read from disk so a new platform's cannot be left out
-  // (KB-145: LinkedIn's was, and stored the list it asked for), plus the
-  // YouTube channel picker that finishes YouTube's connect.
-  const PLATFORMS = resolve(
-    __dirname,
-    '../../../../apps/web/app/api/platforms',
-  );
-  const ROUTES = [
-    ...readdirSync(resolve(PLATFORMS, 'callback')).map(
-      (platform) => `callback/${platform}/route.ts`,
-    ),
-    'youtube/save-channel/route.ts',
-  ];
+  // Every file that stores a connection, read from disk so a new writer
+  // cannot be left out (KB-145: LinkedIn's callback was, and stored the list
+  // it asked for). storePlatformConnections is the one way a connection is
+  // written (KB-43), so its callers are every place `scopes` is set — the
+  // callbacks and the YouTube channel picker that finishes YouTube's connect.
+  const WEB = resolve(__dirname, '../../../../apps/web');
+  const PLATFORMS = resolve(WEB, 'app/api/platforms');
+
+  const ROUTES = ['app', 'lib']
+    .flatMap((dir) =>
+      readdirSync(resolve(WEB, dir), { recursive: true, encoding: 'utf8' })
+        .filter((file) => /\.tsx?$/.test(file) && !/__tests__/.test(file))
+        .map((file) => `${dir}/${file}`),
+    )
+    .filter((file) =>
+      readFileSync(resolve(WEB, file), 'utf8').includes(
+        'storePlatformConnections(',
+      ),
+    )
+    .filter((file) => !file.endsWith('platforms/store-connection.ts'))
+    .sort();
 
   it('covers every platform callback', () => {
-    expect(ROUTES).toEqual(
+    const callbacks = readdirSync(resolve(PLATFORMS, 'callback')).map(
+      (platform) => `app/api/platforms/callback/${platform}/route.ts`,
+    );
+
+    expect(callbacks).toEqual(
       expect.arrayContaining([
-        'callback/linkedin/route.ts',
-        'callback/meta/route.ts',
-        'callback/tiktok/route.ts',
-        'callback/twitter/route.ts',
-        'callback/youtube/route.ts',
+        'app/api/platforms/callback/linkedin/route.ts',
+        'app/api/platforms/callback/meta/route.ts',
+        'app/api/platforms/callback/tiktok/route.ts',
+        'app/api/platforms/callback/twitter/route.ts',
+        'app/api/platforms/callback/youtube/route.ts',
       ]),
     );
+    // A callback that stores its connection some other way escapes the
+    // check below, so every callback must be one of the writers it reads.
+    expect(ROUTES).toEqual(expect.arrayContaining(callbacks));
+    expect(ROUTES).toContain('app/api/platforms/youtube/save-channel/route.ts');
   });
 
   it.each(ROUTES)('%s', (route) => {
-    const source = readFileSync(resolve(PLATFORMS, route), 'utf8');
+    const source = readFileSync(resolve(WEB, route), 'utf8');
 
     // Stored values only: a `scopes: string[];` line is a type.
     const stored = [...source.matchAll(/^\s*scopes:\s*(.*)$/gm)]
@@ -323,6 +339,17 @@ describe('the declaration', () => {
       expect(requirement.gains.length).toBeGreaterThan(10);
       expect(requirement.source).toMatch(/^(https:\/\/|docs\/)/);
     }
+  });
+
+  it('names what each requirement adds, not a sentence another one shares', () => {
+    // The reconnect prompt lists `gains`. One copied from another platform,
+    // or a generic "analytics", tells a creator nothing about this one.
+    const gains = ANALYTICS_SCOPE_REQUIREMENTS.map(({ gains }) => gains);
+
+    expect(new Set(gains).size).toBe(gains.length);
+    expect(
+      gains.filter((gain) => /^(your )?analytics\.?$/i.test(gain)),
+    ).toEqual([]);
   });
 
   // `review` decides whether creators are prompted to reconnect, and the

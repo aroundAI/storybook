@@ -101,6 +101,28 @@ test.describe('Analytics authorisation on Platform Connections', () => {
     ).toHaveCount(1);
   });
 
+  test('each platform’s prompt names what that platform’s analytics add', async ({
+    page,
+  }) => {
+    const { ids } = await openPlatforms(page);
+
+    await expect(entry(page, ids.tiktok, 'tiktok.video-metrics')).toContainText(
+      'Views, likes, comments and shares for each TikTok video',
+    );
+    await expect(
+      entry(page, ids.tiktok, 'tiktok.follower-count'),
+    ).toContainText('Your TikTok follower count over time');
+    await expect(
+      entry(page, ids.unrecorded, 'instagram.insights'),
+    ).toContainText(
+      'Views, reach, saves and shares for each Reel, and your audience',
+    );
+
+    // Another platform's gain never appears under this one.
+    await expect(notice(page, ids.legacy)).not.toContainText('TikTok');
+    await expect(notice(page, ids.tiktok)).not.toContainText('revenue');
+  });
+
   test('a fully authorised connection says nothing', async ({ page }) => {
     const { ids } = await openPlatforms(page);
 

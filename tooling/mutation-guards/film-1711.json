@@ -249,6 +249,35 @@
       "cwd": "packages/features/publishing",
       "test": "__tests__/analytics-scope-switch.test.ts",
       "pattern": "deployed environment"
+    },
+    {
+      "name": "D7 One platform's reconnect gain is copied from another's",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/analytics-scopes.ts",
+      "find": "      gains: 'Views, likes, comments and shares for each TikTok video',",
+      "replace": "      gains: 'Views, watch time, retention, audience and traffic sources',",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/analytics-scopes.test.ts",
+      "pattern": "names what each requirement adds"
+    },
+    {
+      "name": "D8 A connection writer outside callback/ stores the scopes it asked for",
+      "kind": "unit",
+      "file": "apps/web/app/api/platforms/youtube/save-channel/route.ts",
+      "find": "      scopes: pendingConnection.grantedScopes ?? [],",
+      "replace": "      scopes: ['https://www.googleapis.com/auth/youtube.upload'],",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/analytics-scopes.test.ts",
+      "pattern": "youtube/save-channel"
+    },
+    {
+      "name": "E2 The reconnect prompt stops naming what the platform adds",
+      "kind": "e2e",
+      "file": "packages/features/publishing/src/components/platform-connections.tsx",
+      "find": "<span className=\"font-medium\">{entry.gains}.</span>{' '}",
+      "replace": "{' '}",
+      "spec": "tests/platform-connections/analytics-access.spec.ts",
+      "grep": "names what that platform"
     }
   ]
 }
