@@ -1,30 +1,24 @@
 import {
   ANALYTICS_PLATFORMS,
   type AnalyticsPlatform,
-  capabilityFor,
+  isFetchDated,
 } from '@kit/clickhouse';
 
 import { platformLabel } from './platform-labels';
 
 /**
- * How a platform's daily rows are dated (FILM-1707 §2).
+ * How a platform's daily rows are dated, as a card reads it (FILM-1707 §2).
  *
  * The rule: a fetch-dated figure never goes on a date axis. A platform
  * whose views reach us only as lifetime totals is stored as the change
- * since the last check, dated to the day we checked
- * (`snapshot_delta_fetch_day` in the matrix, `metric_source =
- * 'snapshot_delta'` on the row). Summed over a video's life that is
- * honest; bucketed by day, week or month it moves views into whichever
- * period the fetch happened to land in.
+ * since the last check, dated to the day we checked. Summed over a video's
+ * life that is honest; bucketed by day, week or month it moves views into
+ * whichever period the fetch happened to land in.
  *
- * Read from the matrix, never from a platform name: when a platform starts
- * supplying a true daily series its entry changes and it rejoins every
- * date axis with no change here. The query side applies the same rule by
- * `metric_source`, and `allowedMetricSources` binds the two.
+ * `isFetchDated` (in @kit/clickhouse, beside the matrix) is the one place
+ * that decides it; the Deep Dive queries apply the same function.
  */
-export function isFetchDated(platform: AnalyticsPlatform): boolean {
-  return capabilityFor('engagement', platform).method === 'snapshot_delta_fetch_day';
-}
+export { isFetchDated };
 
 /** Platforms whose rows are dated to the day they describe. */
 export const TRUE_DAILY_PLATFORMS: readonly AnalyticsPlatform[] =

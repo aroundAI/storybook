@@ -1549,6 +1549,26 @@ export function allowedMetricSources(
 }
 
 /**
+ * The `metric_source` of a row dated to the day we fetched it rather than
+ * the day it describes: a lifetime counter's change since the last check.
+ */
+export const FETCH_DATED_METRIC_SOURCE = 'snapshot_delta' satisfies MetricSource;
+
+/**
+ * Whether a platform's daily views are fetch-dated (FILM-1707 §2).
+ *
+ * The rule the Deep Dive tab is built on: a fetch-dated figure never goes
+ * on a date axis. Decided by how the matrix says the rows are dated, never
+ * by a platform name, so a platform that starts supplying a true daily
+ * series rejoins every date axis by changing its matrix entry alone.
+ */
+export function isFetchDated(platform: AnalyticsPlatform): boolean {
+  return allowedMetricSources(capabilityFor('engagement', platform)).includes(
+    FETCH_DATED_METRIC_SOURCE,
+  );
+}
+
+/**
  * Platforms seen in a family's table that the matrix does not claim.
  *
  * A subset check, deliberately — a fresh fixture holds YouTube or nothing,

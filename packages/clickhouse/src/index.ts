@@ -103,6 +103,8 @@ export {
   WRITER_CALL_SITES,
   accessFor,
   allowedMetricSources,
+  FETCH_DATED_METRIC_SOURCE,
+  isFetchDated,
   capabilityCoverage,
   capabilityFor,
   coverageAsOf,

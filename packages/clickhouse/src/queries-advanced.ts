@@ -11,6 +11,11 @@ import { concatByChunk } from './chunked';
 import { getClickHouseClient, isClickHouseEnabled } from './client';
 import { normalizeAssetDurationSeconds } from './lib/asset-duration';
 import { MIN_MATURE_VIDEOS } from './lib/cohort-growth';
+import {
+  ANALYTICS_PLATFORMS,
+  FETCH_DATED_METRIC_SOURCE,
+  isFetchDated,
+} from './lib/data-provenance';
 import type { ObservedCoverageRow, SourceTable } from './lib/data-provenance';
 import type { FormatFamily } from './lib/format-families';
 import {
@@ -164,7 +169,11 @@ function assertDimScope(scope: DimScope): void {
  */
 function buildDimConditions(
   scope: DimScope,
-  options: {
+  {
+    onDateAxis = false,
+    viewsOnly = false,
+  }: {
+    onDateAxis?: boolean;
     /**
      * Keep to platforms whose `views` holds a figure (FILM-1720). Required
      * of every reader that counts videos or takes a quantile of their
@@ -204,7 +213,7 @@ function buildDimConditions(
     conditions.push('platform = {scopePlatform: String}');
     params.scopePlatform = scope.platform;
   }
-  if (options.viewsOnly) {
+  if (viewsOnly) {
     conditions.push('platform IN {viewsPlatforms: Array(String)}');
     params.viewsPlatforms = [...VIEWS_COLUMN_PLATFORMS];
   }
@@ -234,6 +243,13 @@ function buildDimConditions(
   if (scope.channelLanguage !== undefined) {
     latest.push('channel_language = {scopeChannelLanguage: String}');
     params.scopeChannelLanguage = scope.channelLanguage;
+  }
+  // A video whose rows are all fetch-dated has nothing to put on a date
+  // axis. Left in, a LEFT JOIN reads it as a video with no views and a
+  // median counts it as a zero (FILM-1707 §2).
+  if (onDateAxis && FETCH_DATED_PLATFORMS.length > 0) {
+    conditions.push('platform NOT IN {fetchDatedPlatforms: Array(String)}');
+    params.fetchDatedPlatforms = FETCH_DATED_PLATFORMS;
   }
 
   return {
@@ -328,6 +344,39 @@ function scopedDailyStats(
 }
 
 /**
+ * Platforms whose rows are dated to the fetch, not the day (FILM-1707 §2),
+ * read from the matrix by `isFetchDated` — never a platform written here.
+ */
+const FETCH_DATED_PLATFORMS: string[] = ANALYTICS_PLATFORMS.filter(isFetchDated);
+
+/**
+ * `scopedDailyStats` for a figure on a date axis: the same scoping, from
+ * `video_metrics FINAL` — the view's own source, since the view does not
+ * carry `metric_source` — without fetch-dated rows.
+ *
+ * The rule (FILM-1707 §2, owner 2026-09-22): a fetch-dated figure never
+ * goes on a date axis. A `snapshot_delta` row is a lifetime counter's
+ * change since the last check, dated to the day we checked; summed over a
+ * video's life it is honest, bucketed by day, week or month it lands in
+ * whichever period the fetch did. It is a rule about how a row was dated,
+ * not about a platform, so it is applied to `metric_source`. Lifetime
+ * figures keep reading `video_daily_stats`, every row included.
+ *
+ * No `PREWHERE` is involved: ClickHouse does not move a `WHERE` on a
+ * non-key column ahead of `FINAL` (`optimize_move_to_prewhere_if_final`
+ * is off), so the filter sees the deduplicated row.
+ */
+function trueDailyRows(dimWhere: string, columns: string): string {
+  return `(
+      SELECT ${columns}
+      FROM video_metrics FINAL
+      WHERE project_id IN (SELECT project_id FROM video_dim WHERE ${dimWhere})
+        AND video_id IN (SELECT video_id FROM video_dim WHERE ${dimWhere})
+        AND metric_source != '${FETCH_DATED_METRIC_SOURCE}'
+    )`;
+}
+
+/**
  * The views series a figure may be summed from — a whitelist, because the
  * name reaches SQL by interpolation. `engaged_views` is not in
  * `video_daily_stats` (migration 012 left the view alone), so it is read
@@ -354,14 +403,17 @@ function viewsColumnOf(column: ViewsColumn | undefined): ViewsColumn {
  * predating ingest. The cohort medians, the segment queries and the
  * benchmarked video all read it from here (FILM-1715).
  */
-function channelIngestSql(conditions: string): string {
+function channelIngestSql(conditions: string, onDateAxis = false): string {
+  const columns = 'project_id, video_id, metric_date';
+
   return `
       SELECT d.connection_id as connection_id, min(m.metric_date) as ingest_start
       FROM (${dimSubquery(conditions, '')}) d
-      INNER JOIN ${scopedDailyStats(
-        conditions,
-        'project_id, video_id, metric_date',
-      )} m
+      INNER JOIN ${
+        onDateAxis
+          ? trueDailyRows(conditions, columns)
+          : scopedDailyStats(conditions, columns)
+      } m
         ON m.video_id = d.video_id AND m.project_id = d.project_id
       GROUP BY d.connection_id`;
 }
@@ -386,9 +438,15 @@ function perVideoCheckpointsSql(input: {
   latest: string;
   checkpoints: readonly number[];
   column: ViewsColumn;
+  /**
+   * Read only true-daily rows (`trueDailyRows`), for a figure on a date
+   * axis (FILM-1707 §2). Both halves of one comparison must pass the same.
+   */
+  onDateAxis?: boolean;
 }): { with: string; select: string } {
-  const { conditions, latest, checkpoints, column } = input;
+  const { conditions, latest, checkpoints, column, onDateAxis = false } = input;
   const source = VIEWS_COLUMN_SOURCES[column];
+  const metricColumns = `project_id, video_id, metric_date, ${column}`;
 
   const perVideoSelects = checkpoints
     .map(
@@ -400,7 +458,7 @@ function perVideoCheckpointsSql(input: {
   return {
     with: `
     WITH dim AS (${dimSubquery(conditions, latest)}),
-    ingest AS (${channelIngestSql(conditions)})`,
+    ingest AS (${channelIngestSql(conditions, onDateAxis)})`,
     select: `
       SELECT
         d.video_id as video_id,
@@ -414,11 +472,11 @@ function perVideoCheckpointsSql(input: {
         if(any(i.ingest_start) > toDate(0), toString(any(i.ingest_start)), '') as ingest_start,
         ${perVideoSelects}
       FROM dim d
-      LEFT JOIN ${scopedDailyStats(
-        conditions,
-        `project_id, video_id, metric_date, ${column}`,
-        source,
-      )} m
+      LEFT JOIN ${
+        onDateAxis
+          ? trueDailyRows(conditions, metricColumns)
+          : scopedDailyStats(conditions, metricColumns, source)
+      } m
         ON m.video_id = d.video_id AND m.project_id = d.project_id
       LEFT JOIN ingest i ON i.connection_id = d.connection_id
       GROUP BY video_id, published_at`,
@@ -461,6 +519,7 @@ export async function queryMedianViewsPerVideo(input: {
 
   const client = getClickHouseClient();
   const { conditions, latest, params } = buildDimConditions(input.scope, {
+    onDateAxis: true,
     viewsOnly: true,
   });
   const bucketFn =
@@ -497,7 +556,7 @@ export async function queryMedianViewsPerVideo(input: {
         FROM (${dimSubquery(conditions, latest)}) d
         LEFT JOIN (
           SELECT video_id, sum(views) as total_views
-          FROM video_daily_stats
+          FROM ${trueDailyRows(conditions, 'project_id, video_id, metric_date, views')}
           WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions, latest)}))
           GROUP BY video_id
         ) v ON v.video_id = d.video_id
@@ -518,7 +577,7 @@ export async function queryMedianViewsPerVideo(input: {
             toString(${bucketFn}(metric_date)) as bucket,
             video_id,
             sum(views) as video_views
-          FROM video_daily_stats
+          FROM ${trueDailyRows(conditions, 'project_id, video_id, metric_date, views')}
           WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions, latest)}))
             AND ${metricDateConditions.join(' AND ')}
           GROUP BY bucket, video_id
@@ -569,6 +628,7 @@ export async function queryRollingViews(input: {
 
   const client = getClickHouseClient();
   const { conditions, latest, params } = buildDimConditions(input.scope, {
+    onDateAxis: true,
     viewsOnly: true,
   });
   params.startDate = input.startDate;
@@ -590,7 +650,7 @@ export async function queryRollingViews(input: {
       ) as rolling_views
     FROM (
       SELECT metric_date as date, sum(views) as views
-      FROM video_daily_stats
+      FROM ${trueDailyRows(conditions, 'project_id, video_id, metric_date, views')}
       WHERE video_id IN (SELECT video_id FROM (${dimSubquery(conditions, latest)}))
         AND metric_date >= {startDate: Date}
         AND metric_date <= {endDate: Date}
@@ -759,6 +819,7 @@ export async function queryBackCatalogShare(input: {
 
   const client = getClickHouseClient();
   const { conditions, latest, params } = buildDimConditions(input.scope, {
+    onDateAxis: true,
     viewsOnly: true,
   });
   params.startDate = input.startDate;
@@ -773,7 +834,7 @@ export async function queryBackCatalogShare(input: {
         m.views,
         dateDiff('day', d.published_at, toDateTime(m.metric_date)) > {ageDays: Int32}
       ) as back_views
-    FROM video_daily_stats m
+    FROM ${trueDailyRows(conditions, 'project_id, video_id, metric_date, views')} m
     INNER JOIN (${dimSubquery(conditions, latest)}) d ON m.video_id = d.video_id
     WHERE m.metric_date >= {startDate: Date}
       AND m.metric_date <= {endDate: Date}
@@ -849,6 +910,12 @@ export async function queryCohortMedians(input: {
    * because `video_daily_stats` does not carry it.
    */
   viewsColumn?: ViewsColumn;
+  /**
+   * True-daily rows only, and no fetch-dated platform (FILM-1707 §2) — the
+   * default, for the Deep Dive cohort curves. The self-benchmark passes
+   * false so its peers are read exactly as its own video is (FILM-1715).
+   */
+  onDateAxis?: boolean;
 }): Promise<CohortMedianRow[]> {
   if (!isClickHouseEnabled()) return [];
   assertDimScope(input.scope);
@@ -867,7 +934,9 @@ export async function queryCohortMedians(input: {
   ).sort((a, b) => a - b);
 
   const client = getClickHouseClient();
+  const onDateAxis = input.onDateAxis ?? true;
   const { conditions, latest, params } = buildDimConditions(input.scope, {
+    onDateAxis,
     viewsOnly: true,
   });
   const column = viewsColumnOf(input.viewsColumn);
@@ -896,6 +965,7 @@ export async function queryCohortMedians(input: {
     latest: latestFilters.join(' AND '),
     checkpoints,
     column,
+    onDateAxis,
   });
 
   // A checkpoint whose whole window closed before its channel's ingest
@@ -1122,6 +1192,7 @@ export async function queryVideoBenchmark(input: {
       publishedFrom,
       publishedBefore: publishedAt,
       viewsColumn: column,
+      onDateAxis: false,
     }).then((rows) => rows[0]);
 
     cohorts.set(key, promise);

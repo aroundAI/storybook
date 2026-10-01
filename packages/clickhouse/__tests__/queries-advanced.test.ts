@@ -52,7 +52,11 @@ function lastQuery(): QueryCall {
  * tenants' rows *after* every one of them has been read.
  */
 function expectScopedLeftJoin(query: string) {
-  expect(query).toMatch(/LEFT JOIN \(\s*SELECT[\s\S]*?FROM video_daily_stats/);
+  // `video_metrics FINAL` is the view's own source, read directly where a
+  // figure sits on a date axis and needs `metric_source` (FILM-1707 §2).
+  expect(query).toMatch(
+    /LEFT JOIN \(\s*SELECT[\s\S]*?FROM (?:video_daily_stats|video_metrics FINAL)/,
+  );
   expect(query).toContain(
     'WHERE project_id IN (SELECT project_id FROM video_dim',
   );
@@ -1585,6 +1589,118 @@ describe('queries-advanced', () => {
 
       expect(rows).toEqual([]);
       expect(mockClickHouseClient.query).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * FILM-1707 §2 (owner, 2026-09-22): a fetch-dated figure never goes on a
+   * date axis. Every Deep Dive query that groups by a date reads only rows
+   * dated to the day they describe, and leaves out the videos that have no
+   * other kind — otherwise a LEFT JOIN counts them as zero-view videos.
+   */
+  describe('date-axis figures leave fetch-dated rows out (FILM-1707)', () => {
+    type Queries = typeof import('../src/queries-advanced');
+
+    const scope = { projectId: PROJECT };
+
+    async function issued(run: (queries: Queries) => Promise<unknown>) {
+      await run(await import('../src/queries-advanced'));
+
+      return lastQuery();
+    }
+
+    const dateAxisQueries: [string, (queries: Queries) => Promise<unknown>][] =
+      [
+        [
+          'median by upload month',
+          (q) =>
+            q.queryMedianViewsPerVideo({
+              scope,
+              bucket: 'month',
+              mode: 'cohort_views_to_date',
+            }),
+        ],
+        [
+          'median of views in period',
+          (q) =>
+            q.queryMedianViewsPerVideo({
+              scope,
+              bucket: 'month',
+              mode: 'views_in_period',
+            }),
+        ],
+        [
+          'rolling views',
+          (q) =>
+            q.queryRollingViews({
+              scope,
+              windowDays: 90,
+              startDate: '2026-01-01',
+              endDate: '2026-06-30',
+            }),
+        ],
+        [
+          'back catalog share',
+          (q) =>
+            q.queryBackCatalogShare({
+              scope,
+              ageDays: 90,
+              startDate: '2026-01-01',
+              endDate: '2026-06-30',
+            }),
+        ],
+        ['cohort medians', (q) => q.queryCohortMedians({ scope })],
+      ];
+
+    it.each(dateAxisQueries)('%s reads no snapshot_delta row', async (_, run) => {
+      const { query } = await issued(run);
+
+      expect(query).toContain("metric_source != 'snapshot_delta'");
+      expect(query).not.toContain('video_daily_stats');
+    });
+
+    it.each(dateAxisQueries)(
+      '%s leaves out videos on fetch-dated platforms, read from the matrix',
+      async (_, run) => {
+        const { query, query_params } = await issued(run);
+
+        expect(query).toContain(
+          'platform NOT IN {fetchDatedPlatforms: Array(String)}',
+        );
+        // The platforms whose engagement rows the matrix dates to the
+        // fetch — not a list written in the query.
+        expect(query_params.fetchDatedPlatforms).toEqual([
+          'tiktok',
+          'instagram',
+        ]);
+      },
+    );
+
+    it('keeps the switcher’s platform predicate', async () => {
+      const { query_params } = await issued((q) =>
+        q.queryRollingViews({
+          scope: { projectId: PROJECT, platform: 'youtube' },
+          windowDays: 90,
+          startDate: '2026-01-01',
+          endDate: '2026-06-30',
+        }),
+      );
+
+      expect(query_params.scopePlatform).toBe('youtube');
+    });
+
+    it('leaves the traffic breakdown alone: it does not read video_metrics', async () => {
+      const { query, query_params } = await issued((q) =>
+        q.queryTrafficSourceBreakdown({
+          scope,
+          bucket: 'week',
+          startDate: '2026-01-01',
+          endDate: '2026-06-30',
+        }),
+      );
+
+      expect(query).not.toContain('metric_source');
+      expect(query_params.fetchDatedPlatforms).toBeUndefined();
     });
   });
 });
