@@ -45,7 +45,7 @@ acceptance_criteria:
     evidence: "Widening AnalyticsPlatform fails typecheck at PLATFORM_COVERAGE, and listing the platform there fails view-definitions.test.ts until a definition exists. Both seen red"
   - text: "A chart crossing a boundary marks it rather than drawing a step change"
     met: true
-    evidence: "FILM-1707 (#TBD-1707): packages/features/content-analytics/src/lib/view-definition-marks.ts calls viewDefinitionChangesBetween for the platforms each chart plots; every mounted views-over-time chart draws the mark and says what changed — Overview's Performance Over Time, the Language trend, Deep Dive's median, back-catalog, rolling and both traffic cards (FILM-1707 §9). Suppressing the comparisons that span it stays FILM-1715/FILM-1719's"
+    evidence: "FILM-1707 (#528): packages/features/content-analytics/src/lib/view-definition-marks.ts calls viewDefinitionChangesBetween for the platforms each chart plots; every mounted views-over-time chart draws the mark and says what changed — Overview's Performance Over Time, the Language trend, Deep Dive's median, back-catalog, rolling and both traffic cards (FILM-1707 §9). Suppressing the comparisons that span it stays FILM-1715/FILM-1719's"
   - text: "No rate is computed without recording which denominator definition it used"
     met: false
     reason: "Registry half only: the definition is available to stamp; the existing rate sites (engagement rate, RPM) do not stamp it. Owned by FILM-1732 since 2026-10-02 (owner accepted the recommendation that it gets its own spec); it was FILM-1719's before that. FILM-1713's measures already record it (\"every measure records … which view definition and its effective date\")"
