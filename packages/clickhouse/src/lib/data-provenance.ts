@@ -104,6 +104,42 @@ export type SupportLevel =
   | 'not_ingested'
   | 'unsupported';
 
+/**
+ * The four levels ranked strongest first (FILM-1714). The four levels alone
+ * have no order, so "the weakest input" means nothing until this list
+ * exists. A figure computed from several families is only as good as its
+ * weakest one.
+ *
+ * - `native` above `derived`: a snapshot delta is dated to the day we
+ *   checked, not the day it happened, so it is softer than a figure the
+ *   platform reports per day.
+ * - `derived` above both absent levels: it is a number, and they are not.
+ * - `not_ingested` above `unsupported`: both give no number, but this is a
+ *   product call. A signal with one input we have not built yet and another
+ *   input the platform reports can be built. One with an `unsupported`
+ *   input can never exist, whatever we ship. So when the inputs disagree,
+ *   `unsupported` wins. Ranking the other way would keep a signal that can
+ *   never be built in the backlog as "dark", and send someone off to build
+ *   the half that can be built for nothing.
+ */
+export const SUPPORT_ORDER = [
+  'native',
+  'derived',
+  'not_ingested',
+  'unsupported',
+] as const satisfies readonly SupportLevel[];
+
+/** The weakest of `levels` under `SUPPORT_ORDER`. Needs at least one level. */
+export function weakestSupport(
+  levels: readonly [SupportLevel, ...SupportLevel[]],
+): SupportLevel {
+  return levels.reduce((weakest, level) =>
+    SUPPORT_ORDER.indexOf(level) > SUPPORT_ORDER.indexOf(weakest)
+      ? level
+      : weakest,
+  );
+}
+
 export type DerivationMethod =
   | 'snapshot_delta_fetch_day' // delta attributed to the fetch day
   | 'percentage_only' // provider reports share, not counts

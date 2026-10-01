@@ -85,6 +85,7 @@ export {
   CAPABILITY_MATRIX,
   INGESTION_MARKERS,
   METRIC_FAMILIES,
+  SUPPORT_ORDER,
   TABLE_WRITERS,
   WRITER_CALL_SITES,
   accessFor,
@@ -93,6 +94,7 @@ export {
   coverageSummary,
   platformsWithData,
   unclaimedPlatforms,
+  weakestSupport,
 } from './lib/data-provenance';
 export type {
   AccessPendingVerification,
@@ -220,6 +222,40 @@ export type {
   FormatFamilyResolution,
   PublishPlatform,
 } from './lib/format-families';
+
+// The signal model (FILM-1714): five platform-independent funnel stages, and
+// the per-platform x per-format map that binds signals to them. Support is
+// computed from the capability matrix, never authored. Pure.
+export {
+  FAMILIES_OUTSIDE_THE_FUNNEL,
+  FUNNEL_STAGES,
+  FUNNEL_STAGE_LABEL,
+  FUNNEL_STAGE_QUESTION,
+  SIGNALS,
+  SIGNAL_IDS,
+  SIGNAL_INPUT_GAPS,
+  SIGNAL_MAP,
+  computeSignalSupport,
+  signalSupport,
+  stageReading,
+  stageReadings,
+} from './lib/signal-map';
+export type {
+  FormatStageMap,
+  FunnelStage,
+  PublishFormat,
+  SignalComposition,
+  SignalDefinition,
+  SignalId,
+  SignalInputGap,
+  SignalInputSupport,
+  SignalSupport,
+  SignalUnitCheck,
+  StageBinding,
+  StageReading,
+  UnavailableSignal,
+  UnboundReason,
+} from './lib/signal-map';
 
 // What "a view" means per platform, and when it changed (FILM-1722). Pure,
 // so a chart can ask where a boundary falls without reaching the server.
