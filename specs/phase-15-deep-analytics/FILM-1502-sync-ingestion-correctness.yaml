@@ -20,10 +20,10 @@ acceptance_criteria:
     evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:250`"
   - text: "TikTok/IG day rows equal lifetime delta vs. previous snapshot, clamped ≥ 0"
     met: true
-    evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:71`, `packages/features/content-analytics/src/server/analytics-sync-cron.ts:829`"
+    evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:71`, `packages/features/content-analytics/src/server/analytics-sync-cron.ts:861`"
   - text: "First sync of an adopted (old) TikTok/IG video writes only a baseline snapshot"
     met: true
-    evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:509`, `packages/features/content-analytics/src/server/analytics-sync-cron.ts:845`"
+    evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:509`, `packages/features/content-analytics/src/server/analytics-sync-cron.ts:879`"
   - text: "30–90-day-old videos sync daily"
     met: true
     evidence: "`packages/features/content-analytics/src/server/schedule.ts:45`, `packages/features/content-analytics/__tests__/ingest.test.ts:574`"

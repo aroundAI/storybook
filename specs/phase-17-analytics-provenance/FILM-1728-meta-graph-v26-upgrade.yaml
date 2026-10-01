@@ -28,7 +28,7 @@ acceptance_criteria:
     evidence: "docs/platform-capability-reference.md:615 — findings table, one row per version, each read 2026-10-01 and linked to its changelog page; corrections to §4 (the Video list is 16 names, 42 entries / 41 distinct; v26.0 also retires six Page legacy fields; the debug envelope §7.2 relied on is gone) are in this spec's \"Implementation\" notes (#493)"
   - text: "(Bump) Forbidden block extended: §4.2's five parameters and §4.3's 41 metrics; platform-field-names.test.ts green"
     met: true
-    evidence: "docs/platform-capability-reference.md:1575 (41 metrics, then pretty, debug, If-None-Match, date_format, /?ids and v25.0's metadata=1); platform-field-names.test.ts 70/70 green, its retired-names scan widened to every Meta request site (#493)"
+    evidence: "docs/platform-capability-reference.md:1632 (41 metrics, then pretty, debug, If-None-Match, date_format, /?ids and v25.0's metadata=1); platform-field-names.test.ts 70/70 green, its retired-names scan widened to every Meta request site (#493)"
   - text: "(Bump) Facebook section of the capability reference corrected per §4.3, with the contradiction between Meta's changelog and reference page recorded, and a FILM-1725 check filed for the owner's first connected Page"
     met: true
     evidence: "docs/platform-capability-reference.md:380 (correction and the two-documents contradiction, read 2026-10-01); FILM-1725 Check J, specs/phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.yaml:222 (#493)"
@@ -64,7 +64,7 @@ acceptance_criteria:
     evidence: "FILM-1731, a DRAFT spec on its own branch docs/film-1731-instagram-ai-label (lead's decision, 2026-10-01): is the AI info label required, expected or optional for us, answered before onboarding other creators"
   - text: "(Follow-up) FILM-1720 and FILM-1712 pointed at §4.3 and §4.4"
     met: true
-    evidence: "specs/phase-17-analytics-provenance/FILM-1720-facebook-analytics.yaml:80; specs/phase-17-analytics-provenance/FILM-1712-metric-recovery.yaml:128 (#493)"
+    evidence: "specs/phase-17-analytics-provenance/FILM-1720-facebook-analytics.yaml:145; specs/phase-17-analytics-provenance/FILM-1712-metric-recovery.yaml:128 (#493)"
 open_questions: []
 notes: |
   ## Implementation (2026-10-01, #493)

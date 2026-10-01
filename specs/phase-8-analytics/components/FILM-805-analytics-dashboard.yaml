@@ -81,14 +81,14 @@ test_plan:
       reason: "retired — owner decision 2026-09-30: the daily series comes from ClickHouse and is not date-filled; date filling is not wanted"
     - text: "Test `aggregateByPlatform` grouping"
       met: true
-      evidence: "`packages/clickhouse/__tests__/clickhouse.test.ts:350` (`queryPlatformBreakdown`, its replacement)"
+      evidence: "`packages/clickhouse/__tests__/clickhouse.test.ts:394` (`queryPlatformBreakdown`, its replacement)"
   integration:
     - text: "Test full analytics query with mock data"
       met: true
       evidence: "`packages/features/content-analytics/__tests__/dashboard-project-access.test.ts:105`"
     - text: "Test date range filtering"
       met: true
-      evidence: "`packages/clickhouse/__tests__/clickhouse.test.ts:281` (the shared `buildWhereClause`)"
+      evidence: "`packages/clickhouse/__tests__/clickhouse.test.ts:325` (the shared `buildWhereClause`)"
   e2e: []
 remaining:
   - criterion: "Filters by selected platforms"

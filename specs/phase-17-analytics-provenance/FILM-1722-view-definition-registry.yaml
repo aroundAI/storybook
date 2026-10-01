@@ -51,7 +51,7 @@ acceptance_criteria:
     reason: "held until FILM-1719 — owner ruling 2026-09-22 (FILM-1722 section 12). Registry half only: the definition is available to stamp; the existing rate sites do not stamp it. This is FILM-1713's own criterion (\"every measure records … which view definition and its effective date\")"
   - text: "Instagram's aggregates (total_views_count, total_like_count, total_comments_count) are requested and stored only once defined here, never as views"
     met: true
-    evidence: "#492. Defined in INSTAGRAM_AGGREGATES (packages/clickhouse/src/lib/view-definitions.ts:880), and the provider's request takes its field list from that table, never by name (packages/features/content-analytics/src/providers/instagram/instagram-insights.ts:115, `${INSTAGRAM_AGGREGATE_FIELDS}`). Stored in all_surface_views / _likes / _comments (ClickHouse migration 019): lifetime in video_snapshots, the day's increase in video_metrics, null when not measured; AllSurfaceColumn is disjoint from ViewsColumn, so no views denominator can read one. Tests, each seen red first: packages/clickhouse/__tests__/view-definitions.test.ts:670, packages/features/content-analytics/__tests__/provider-result-fields.test.ts:150, __tests__/ingest.test.ts:620, apps/vendor-sandbox/__tests__/meta-fidelity.test.ts:257 (the sandbox serves the three); `pnpm --filter @kit/clickhouse verify` against ClickHouse 24.8, 118 passed, and red (117/1, `got 10400 and 8000`) with a bare argMax; guards VD6–VD9 in tooling/mutation-guards/film-1722.json, all RED"
+    evidence: "#492. Defined in INSTAGRAM_AGGREGATES (packages/clickhouse/src/lib/view-definitions.ts:964), and the provider's request takes its field list from that table, never by name (packages/features/content-analytics/src/providers/instagram/instagram-insights.ts:115, `${INSTAGRAM_AGGREGATE_FIELDS}`). Stored in all_surface_views / _likes / _comments (ClickHouse migration 019): lifetime in video_snapshots, the day's increase in video_metrics, null when not measured; AllSurfaceColumn is disjoint from ViewsColumn, so no views denominator can read one. Tests, each seen red first: packages/clickhouse/__tests__/view-definitions.test.ts:720, packages/features/content-analytics/__tests__/provider-result-fields.test.ts:150, __tests__/ingest.test.ts:620, apps/vendor-sandbox/__tests__/meta-fidelity.test.ts:257 (the sandbox serves the three); `pnpm --filter @kit/clickhouse verify` against ClickHouse 24.8, 118 passed, and red (117/1, `got 10400 and 8000`) with a bare argMax; guards VD6–VD9 in tooling/mutation-guards/film-1722.json, all RED"
 remaining:
   - criterion: "A chart crossing a boundary marks it rather than drawing a step change"
     reason: "Registry half only — viewDefinitionChangesBetween returns the boundaries; no chart calls it. Owner ruling 2026-09-22 (FILM-1722 section 12): displayed figures are held until FILM-1719; FILM-1719 now carries the criterion"
@@ -165,11 +165,22 @@ notes: |
   const VIEW_DEFINITIONS: readonly ViewDefinition[];
   ```
 
-  `platform` is deliberately not `AnalyticsPlatform`. That union is
-  'youtube' | 'tiktok' | 'instagram' (packages/clickhouse/src/types.ts:11)
-  until FILM-1720 and FILM-1727 widen it, but §1 and §3 require Facebook and X rows
-  now — Facebook's four denominators are the clearest example in the whole registry
-  and would be lost if the type forbade them.
+  `platform` is deliberately not `AnalyticsPlatform`. That union was
+  'youtube' | 'tiktok' | 'instagram' until FILM-1720 added 'facebook'
+  (packages/clickhouse/src/types.ts:11, 2026-10-01); FILM-1727 widens it for
+  X. §1 and §3 required Facebook and X rows before either landed — Facebook's
+  four denominators are the clearest example in the whole registry and would
+  be lost if the type forbade them.
+
+  **FILM-1720 (2026-10-01, #504).** Facebook is ingested now and still has no
+  definition behind `video_metrics.views`: the owner chose (option A) to write
+  NULL `views` on every Facebook row and keep each of its denominators in its
+  own column (migration 020), so `viewDefinitionAt('facebook')` stays
+  `no_single_view_definition`. The registry gained a fourth availability,
+  `retired`: total_video_impressions and post_impressions_unique are retired
+  from 2026-07-29 per Graph v25.0's changelog, resolve in no lookup, and name
+  their replacements, facebook.post_media_view and
+  facebook.post_total_media_view_unique.
 
   So the registry is keyed on a wider PlatformId, and an entry for a platform
   not yet in AnalyticsPlatform is inert: recorded, testable, and unreachable
@@ -305,17 +316,17 @@ notes: |
   2026-09-25 (29 days after 2026-08-27, so every YouTube window of 28 days or
   more spans it); none of them yet reads the registry. The one production
   reader is ingest, which dates `engaged_views` from it
-  (packages/features/content-analytics/src/server/ingest.ts:170).
+  (packages/features/content-analytics/src/server/ingest.ts:201).
 
   | Site | What it compares |
   |---|---|
-  | computeCohortGrowth (packages/clickhouse/src/lib/cohort-growth.ts:78) → getCohortCurvesAction (packages/features/content-analytics/src/server/deep-dive-actions.ts:188) → deep-dive/cohort-curves-chart.tsx | cohort median views against the previous cohort — the literal "cohort median, growth figure" of §5 |
-  | previousPeriodTotals (packages/features/content-analytics/src/server/account-dashboard-actions.ts:218, :257) → company-dashboard.tsx:42 | period-over-period totals |
-  | viewsChange (packages/features/content-analytics/src/server/language-analytics.ts:311) → language-analytics-cards.tsx:137 | views vs the previous period, per language |
-  | queryMedianViewsPerVideo (packages/clickhouse/src/queries-advanced.ts:434), queryRollingViews (:378), queryBackCatalogShare (:566) | view series and medians over long windows |
+  | computeCohortGrowth (packages/clickhouse/src/lib/cohort-growth.ts:72) → getCohortCurvesAction (packages/features/content-analytics/src/server/deep-dive-actions.ts:188) → deep-dive/cohort-curves-chart.tsx | cohort median views against the previous cohort — the literal "cohort median, growth figure" of §5 |
+  | previousPeriodTotals (packages/features/content-analytics/src/server/account-dashboard-actions.ts:212, :257) → company-dashboard.tsx:42 | period-over-period totals |
+  | viewsChange (packages/features/content-analytics/src/server/language-analytics.ts:313) → language-analytics-cards.tsx:137 | views vs the previous period, per language |
+  | queryMedianViewsPerVideo (packages/clickhouse/src/queries-advanced.ts:325), queryRollingViews (:378), queryBackCatalogShare (:566) | view series and medians over long windows |
   | performance-chart.tsx, language-trend-chart.tsx, comparison-chart.tsx (packages/features/content-analytics/src/components/) | views over time, drawn straight across the boundary |
-  | engagement rate: packages/features/content-analytics/src/server/aggregation-queries.ts:37, account-dashboard-actions.ts:197, language-analytics.ts:63 | (likes + comments + shares) / views — among the duplicate sites FILM-1713 §2 collapses |
-  | RPM: packages/features/content-analytics/src/server/revenue-actions.ts:41, packages/clickhouse/src/lib/segment-stats.ts:61 | revenue per thousand views |
+  | engagement rate: packages/features/content-analytics/src/server/aggregation-queries.ts:39, account-dashboard-actions.ts:197, language-analytics.ts:63 | (likes + comments + shares) / views — among the duplicate sites FILM-1713 §2 collapses |
+  | RPM: packages/features/content-analytics/src/server/revenue-actions.ts:42, packages/clickhouse/src/lib/segment-stats.ts:61 | revenue per thousand views |
 
   Who adopts it:
 
