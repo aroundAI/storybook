@@ -113,7 +113,7 @@ acceptance_criteria:
     evidence: "the key now comes from `external_api_keys` (`apps/web/lambda/voice-worker/voice-generation.ts:219`) and is used only in the request header (`:222`)"
   - text: "TypeScript compiles without errors"
     met: true
-    evidence: "`pnpm typecheck` runs `web`'s `typecheck`, whose second half is `tsc --noEmit -p lambda/tsconfig.json` (`apps/web/package.json:23`); that config includes every worker file (`apps/web/lambda/tsconfig.json:23`) and CI's TypeScript job runs it (`.github/workflows/workflow.yml:94`) — KB-14, #309. Passes on `main` at `b21bd33e` (KB-80), with `@kit/audio-generation`'s own `tsc --noEmit`; `voice-worker/index.ts` and `voice-worker/voice-generation.ts` are in the lambda program. The `'dialogue_voice_generation'` job-tracking calls that were not a `GenerationJobType` were removed there"
+    evidence: "`pnpm typecheck` runs `web`'s `typecheck`, whose second half is `tsc --noEmit -p lambda/tsconfig.json` (`apps/web/package.json:23`); that config includes every worker file (`apps/web/lambda/tsconfig.json:23`) and CI's TypeScript job runs it (`.github/workflows/workflow.yml:98`) — KB-14, #309. Passes on `main` at `b21bd33e` (KB-80), with `@kit/audio-generation`'s own `tsc --noEmit`; `voice-worker/index.ts` and `voice-worker/voice-generation.ts` are in the lambda program. The `'dialogue_voice_generation'` job-tracking calls that were not a `GenerationJobType` were removed there"
   - text: "No ESLint warnings (uses eslint-disable with explanation)"
     met: true
     evidence: "CI run 35779959194 (`main` at `6dfa35a4`): `@kit/audio-generation:lint` and `web:lint` (its `**/*.ts?(x)` glob covers `lambda/`) executed with no output"

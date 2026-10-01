@@ -108,7 +108,7 @@ acceptance_criteria:
     evidence: null
   - text: "TypeScript compiles without errors"
     met: true
-    evidence: "`pnpm typecheck` runs `web`'s `typecheck`, whose second half is `tsc --noEmit -p lambda/tsconfig.json` (`apps/web/package.json:23`); that config includes every worker file (`apps/web/lambda/tsconfig.json:23`) and CI's TypeScript job runs it (`.github/workflows/workflow.yml:94`) — KB-14, #309. Passes on `main` at `b21bd33e` (KB-80), with `@kit/audio-generation`'s own `tsc --noEmit`; voice-worker, where the lines run since `b7f7cb53`, is in the lambda program"
+    evidence: "`pnpm typecheck` runs `web`'s `typecheck`, whose second half is `tsc --noEmit -p lambda/tsconfig.json` (`apps/web/package.json:23`); that config includes every worker file (`apps/web/lambda/tsconfig.json:23`) and CI's TypeScript job runs it (`.github/workflows/workflow.yml:98`) — KB-14, #309. Passes on `main` at `b21bd33e` (KB-80), with `@kit/audio-generation`'s own `tsc --noEmit`; voice-worker, where the lines run since `b7f7cb53`, is in the lambda program"
   - text: "No ESLint warnings"
     met: true
     evidence: "CI run 35779959194 (`main` at `6dfa35a4`): `@kit/audio-generation:lint` and `web:lint` (covers `lambda/`) executed with no output"

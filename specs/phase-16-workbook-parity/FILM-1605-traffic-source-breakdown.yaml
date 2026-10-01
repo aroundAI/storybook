@@ -401,7 +401,7 @@ notes: |
   `pnpm --filter @kit/clickhouse verify` runs the real SQL against a live
   instance and is the only thing that proves ClickHouse accepts the query.
   **It is in CI** — the `clickhouse-sql` job
-  (`.github/workflows/workflow.yml:102`) runs the migrations and then every
+  (`.github/workflows/workflow.yml:106`) runs the migrations and then every
   query against a 24.8-alpine service container on each PR, because the unit
   suite mocks the client and an alias shadowing a filter column once reached
   main behind 120 green tests. Locally, `./scripts/local-env.sh up` then
