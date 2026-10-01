@@ -63,6 +63,9 @@ describe('X at ingest', () => {
         subscribers_gained: null,
         accounts_reached: null,
         reposts: 12,
+        all_surface_views: null,
+        all_surface_likes: null,
+        all_surface_comments: null,
       },
       {
         snapshot_date: '2026-09-30',
@@ -75,6 +78,9 @@ describe('X at ingest', () => {
         subscribers_gained: null,
         accounts_reached: null,
         reposts: 10,
+        all_surface_views: null,
+        all_surface_likes: null,
+        all_surface_comments: null,
       },
     );
 
@@ -115,6 +121,9 @@ describe('X at ingest', () => {
         subscribers_gained: null,
         accounts_reached: null,
         reposts: null,
+        all_surface_views: null,
+        all_surface_likes: null,
+        all_surface_comments: null,
       },
       {
         snapshot_date: '2026-09-30',
@@ -127,6 +136,9 @@ describe('X at ingest', () => {
         subscribers_gained: null,
         accounts_reached: null,
         reposts: null,
+        all_surface_views: null,
+        all_surface_likes: null,
+        all_surface_comments: null,
       },
     );
 

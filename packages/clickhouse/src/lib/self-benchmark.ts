@@ -93,23 +93,23 @@ export interface BenchmarkCohortScope {
 
 /**
  * How far back each platform serves a post's views, from the capability
- * matrix (FILM-1703) where the platform is in it. Facebook and X are not
- * ingested yet, so their windows are the capability reference's
- * (`docs/platform-capability-reference.md`): Facebook's two years at request
- * time (summary table), X's 30 days from post creation ("The 30-day wall" —
- * the pay-per-use path; the Enterprise window is undocumented, FILM-1725).
+ * matrix (FILM-1703) where the platform is in it. X is (FILM-1727): its
+ * posts lookup serves 30 days from post creation ("The 30-day wall" — the
+ * pay-per-use path; the Enterprise window is undocumented, FILM-1725).
+ * Facebook's is the capability reference's
+ * (`docs/platform-capability-reference.md`): two years at request time
+ * (summary table).
  */
 export const VIEWS_DATA_WINDOWS: Readonly<Record<PlatformId, DataWindow>> = {
   youtube: capabilityFor('engagement', 'youtube').window,
   tiktok: capabilityFor('engagement', 'tiktok').window,
   instagram: capabilityFor('engagement', 'instagram').window,
   facebook: { maxAgeDays: 730, anchoredOn: 'request_date' },
-  x: { maxAgeDays: 30, anchoredOn: 'publish_date' },
+  twitter: capabilityFor('engagement', 'twitter').window,
 };
 
-/** `video_dim.platform` as a registry platform. X is stored as `twitter`. */
+/** `video_dim.platform` as a registry platform; X is `twitter` in both. */
 export function platformIdOfDim(platform: string): PlatformId | null {
-  if (platform === 'twitter') return 'x';
   if (Object.hasOwn(VIEWS_DATA_WINDOWS, platform))
     return platform as PlatformId;
 
@@ -159,6 +159,7 @@ export function checkpointCapability(
   if (
     window.anchoredOn === 'publish_date' &&
     window.maxAgeDays !== null &&
+    window.maxAgeDays !== 'undocumented' &&
     days > window.maxAgeDays
   ) {
     return { days, judgable: false, reason: 'outside_platform_window', window };

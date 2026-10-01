@@ -707,6 +707,16 @@ export const CAPABILITY_MATRIX: Record<
       note: 'Facebook reports no separate total across paid placements; its 3-second views already count promoted plays, split into organic and paid.',
       reference: { section: 'Facebook', surface: null, fields: [] },
     },
+    // X documents promoted metrics apart, for promoted posts only (FILM-1727):
+    // no total across placements, and the sync reads none of them.
+    twitter: {
+      level: 'unsupported',
+      table: null,
+      blockedBy: null,
+      ...X_POSTS_LOOKUP,
+      note: 'X reports no total across paid placements; a promoted post’s paid figures come separately, and we read only its public and non-public ones.',
+      reference: { section: 'X', surface: null, fields: [] },
+    },
   },
 
   watch_time: {

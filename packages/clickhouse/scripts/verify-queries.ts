@@ -5615,6 +5615,9 @@ async function xSteps() {
         subscribers_gained: null,
         accounts_reached: null,
         reposts: 6,
+        all_surface_views: null,
+        all_surface_likes: null,
+        all_surface_comments: null,
       },
     ]);
 
