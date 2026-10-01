@@ -1,0 +1,25 @@
+{
+  "feature": "KB-152",
+  "mutations": [
+    {
+      "name": "KB152 M1 maturity floors elapsed time again",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/video-age.ts",
+      "find": "  const ageDays = calendarDaysBetween(published, now);",
+      "replace": "  const ageDays = daysBetween(published, now);",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/video-age.test.ts",
+      "pattern": "matures a late-evening upload"
+    },
+    {
+      "name": "KB152 M2 ingest lag floors elapsed time again",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/video-age.ts",
+      "find": "  return Math.max(0, calendarDaysBetween(published, first));",
+      "replace": "  return Math.max(0, daysBetween(published, first));",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/video-age.test.ts",
+      "pattern": "counts an ingest that began the next calendar day"
+    }
+  ]
+}

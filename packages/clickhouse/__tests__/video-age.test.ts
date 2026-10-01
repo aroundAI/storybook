@@ -170,3 +170,35 @@ describe('timezone independence', () => {
     expect(computeIngestLagDays('2026-05-15T00:00:00Z', '2026-05-16')).toBe(1);
   });
 });
+
+// KB-152. The cohort query judges maturity and ingest lag with ClickHouse's
+// dateDiff('day', …), which counts calendar-day boundaries (UTC), and sums
+// "@Nd" over metric dates publish-day .. publish-day + N - 1. These must give
+// the answers ClickHouse gives for the same instants, measured on 24.8:
+//   dateDiff('day', '2026-01-01 23:00:00', '2026-01-31 01:00:00') = 30
+//   dateDiff('day', '2026-01-01 23:00:00', toDate('2026-01-02'))  = 1
+describe('calendar days, as the cohort query counts them', () => {
+  it('matures a late-evening upload once its 30th calendar day is over', () => {
+    expect(
+      computeMaturity(
+        '2026-01-01 23:00:00',
+        [30],
+        new Date('2026-01-31T01:00:00Z'),
+      )[30],
+    ).toBe(true);
+  });
+
+  it('still holds back the calendar day before the boundary', () => {
+    expect(
+      computeMaturity(
+        '2026-01-01 23:00:00',
+        [30],
+        new Date('2026-01-30T23:59:59Z'),
+      )[30],
+    ).toBe(false);
+  });
+
+  it('counts an ingest that began the next calendar day as one day late', () => {
+    expect(computeIngestLagDays('2026-01-01 23:00:00', '2026-01-02')).toBe(1);
+  });
+});
