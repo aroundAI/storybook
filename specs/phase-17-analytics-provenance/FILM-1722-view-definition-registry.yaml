@@ -50,8 +50,8 @@ acceptance_criteria:
     met: false
     reason: "held until FILM-1719 — owner ruling 2026-09-22 (FILM-1722 section 12). Registry half only: the definition is available to stamp; the existing rate sites do not stamp it. This is FILM-1713's own criterion (\"every measure records … which view definition and its effective date\")"
   - text: "Instagram's aggregates (total_views_count, total_like_count, total_comments_count) are requested and stored only once defined here, never as views"
-    met: false
-    reason: "moved here from FILM-1712 by owner decision (2026-09-29); not requested yet"
+    met: true
+    evidence: "#TBD. Defined in INSTAGRAM_AGGREGATES (packages/clickhouse/src/lib/view-definitions.ts:880), and the provider's request takes its field list from that table, never by name (packages/features/content-analytics/src/providers/instagram/instagram-insights.ts:115, `${INSTAGRAM_AGGREGATE_FIELDS}`). Stored in all_surface_views / _likes / _comments (ClickHouse migration 019): lifetime in video_snapshots, the day's increase in video_metrics, null when not measured; AllSurfaceColumn is disjoint from ViewsColumn, so no views denominator can read one. Tests, each seen red first: packages/clickhouse/__tests__/view-definitions.test.ts:670, packages/features/content-analytics/__tests__/provider-result-fields.test.ts:150, __tests__/ingest.test.ts:620, apps/vendor-sandbox/__tests__/meta-fidelity.test.ts:257 (the sandbox serves the three); `pnpm --filter @kit/clickhouse verify` against ClickHouse 24.8, 118 passed, and red (117/1, `got 10400 and 8000`) with a bare argMax; guards VD6–VD9 in tooling/mutation-guards/film-1722.json, all RED"
 remaining:
   - criterion: "A chart crossing a boundary marks it rather than drawing a step change"
     reason: "Registry half only — viewDefinitionChangesBetween returns the boundaries; no chart calls it. Owner ruling 2026-09-22 (FILM-1722 section 12): displayed figures are held until FILM-1719; FILM-1719 now carries the criterion"
@@ -59,9 +59,6 @@ remaining:
   - criterion: "No rate is computed without recording which denominator definition it used"
     reason: "Registry half only — the definition is available to stamp; existing rate sites do not stamp it. Owner ruling 2026-09-22: held until FILM-1719, which now carries the criterion; cohort growth and cohort medians specifically stay FILM-1715's own criterion"
     closed_by: "FILM-1719"
-  - criterion: "Instagram's aggregates are requested and stored only once defined here, never as views"
-    reason: "Moved here from FILM-1712 by owner decision (2026-09-29); not requested yet"
-    closed_by: "unassigned"
 open_questions: []
 notes: |
   Partly shipped — the registry is done, its adoption is not. The registry is
@@ -308,7 +305,7 @@ notes: |
   2026-09-25 (29 days after 2026-08-27, so every YouTube window of 28 days or
   more spans it); none of them yet reads the registry. The one production
   reader is ingest, which dates `engaged_views` from it
-  (packages/features/content-analytics/src/server/ingest.ts:157).
+  (packages/features/content-analytics/src/server/ingest.ts:170).
 
   | Site | What it compares |
   |---|---|
@@ -360,6 +357,35 @@ notes: |
   FILM-1715 adopt `viewsDenominatorFor`; FILM-1707/1719 adopt
   `viewDefinitionChangesBetween` for charts. This spec stays PARTIAL until
   they do (§12).
+
+  ## 14. Instagram's all-surface aggregates (2026-10-01, #TBD)
+
+  Moved here from FILM-1712 (owner, 2026-09-29): `total_views_count`,
+  `total_like_count` and `total_comments_count` are requested and stored
+  only once defined here. Three decisions the criterion did not record,
+  proposed by the implementer and approved by the lead on 2026-10-01:
+
+  1. **Columns named for what they are**: `all_surface_views`,
+     `all_surface_likes`, `all_surface_comments` (ClickHouse migration 019,
+     Nullable(UInt64)), lifetime in `video_snapshots` and the day's increase
+     in `video_metrics`, on the reposts pattern (FILM-1712, migration 018).
+     No column is called views, likes or comments, and `AllSurfaceColumn` is
+     disjoint from `ViewsColumn`, so `viewsDenominatorFor` cannot return one.
+  2. **Defined in a table, requested from it**: `INSTAGRAM_AGGREGATES` beside
+     the registry records each field, its insights spelling, its column,
+     what it folds in (boosted placements; replays for views), the
+     2026-04-22 start and its reference section. The views aggregate points
+     at `instagram.total_views` (role `concurrent`). The provider's
+     `fields=` list interpolates `INSTAGRAM_AGGREGATE_FIELDS`; a test fails
+     if the request spells an aggregate by name or reads one into anything
+     but its own total.
+  3. **A capability family of its own**, `all_surface_engagement`
+     (Instagram derived, YouTube and TikTok unsupported), rather than folding
+     into `engagement`, whose views/likes/comments are the organic figures.
+
+  Nothing displays them yet; a surface that wants them reads the column and
+  labels it from the table. The Meta sandbox serves the three as the organic
+  cumulative plus a fixed boosted share, so they are never below it.
 
 feature:
   database: null

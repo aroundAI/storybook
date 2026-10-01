@@ -43,8 +43,8 @@ acceptance_criteria:
     met: true
     evidence: "reposts_count rides on the media-info call the provider already makes (instagram-insights.ts), and is stored as `reposts` — lifetime in video_snapshots, the day's increase in video_metrics (migration 018), null for a Story, for YouTube and TikTok, and on the first day after the migration. Capability family `reposts`, Instagram derived. saved_count and shares_count are deliberately not requested: they are the `saved` and `shares` insights already stored, and asking twice buys nothing (owner decision, 2026-09-29). Guards R1–R4 in film-1712.json"
   - text: "The aggregates are requested as Media node fields, and none is stored in views or labelled as views — they include boosted and crossposted placements, and total_views_count includes replays"
-    met: false
-    reason: "moved to FILM-1722 by owner decision (2026-09-29): the aggregates are requested only once FILM-1722 defines what they mean"
+    met: true
+    evidence: "built in FILM-1722 (#TBD), where the owner moved it (2026-09-29): requested on the media-info call from INSTAGRAM_AGGREGATES, stored as all_surface_views / _likes / _comments (ClickHouse migration 019), capability family all_surface_engagement. See FILM-1722 §14"
   - text: "The five TikTok field names that do not exist are recorded as such, so they are not re-added"
     met: true
     evidence: "docs/platform-capability-reference.md and FILM-1721 'Names that do not exist'; TikTokTotals no longer declares any of them (provider-result-fields.test.ts)"
@@ -69,10 +69,7 @@ acceptance_criteria:
   - text: "The capability matrix is updated in the same PR as each newly-ingested field, per FILM-1703's writer-binding test"
     met: true
     evidence: "each field moved with its entry: reach as accounts_reached and channel_accounts_reached — #457 per post, #460 channel_windows and the nightly sync, #461 the one reader, #463 the reach page and both families, #469 the sync paced under Meta's rate limit; Reels watch time as watch_time × instagram: derived (#470); reposts as the new `reposts` family, Instagram derived (#472), with a verify-queries presence probe. saved_count/shares_count are not requested (they duplicate stored insights), and the aggregates moved to FILM-1722"
-remaining:
-  - criterion: "The aggregates are requested as Media node fields, and none is stored in views or labelled as views — they include boosted and crossposted placements, and total_views_count includes replays"
-    reason: "moved by owner decision (2026-09-29): requested only once FILM-1722 defines what they mean"
-    closed_by: "FILM-1722"
+remaining: []
 open_questions: []
 feature:
   database: null

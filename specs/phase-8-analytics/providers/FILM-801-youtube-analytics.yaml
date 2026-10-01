@@ -72,7 +72,7 @@ acceptance_criteria:
     evidence: "`packages/features/content-analytics/src/server/analytics-sync-cron.ts:175` (per-platform limiter), test `packages/features/content-analytics/__tests__/youtube-analytics.test.ts:262`"
   - text: "Normalizes data to common format"
     met: true
-    evidence: "`packages/features/content-analytics/src/server/analytics-sync-cron.ts:840`"
+    evidence: "`packages/features/content-analytics/src/server/analytics-sync-cron.ts:855`"
 test_plan:
   unit:
     - text: "Test date formatting"
@@ -83,7 +83,7 @@ test_plan:
       evidence: "`packages/features/content-analytics/__tests__/utils.test.ts:27`"
     - text: "Test data normalization"
       met: true
-      evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:235` (`buildYouTubeDailyRows`)"
+      evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:249` (`buildYouTubeDailyRows`)"
   integration:
     - text: "Test with mocked YouTube API"
       met: true
