@@ -5,8 +5,6 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import { Trophy } from 'lucide-react';
 
-import type { AnalyticsPlatform } from '@kit/clickhouse';
-
 import { formatNumber, formatPercent } from '../../lib/format';
 import { VIEWS_NOT_MEASURED, formatViews } from '../../lib/views';
 import type { Views } from '../../lib/views';
@@ -24,8 +22,6 @@ interface TopContentItem {
 }
 
 interface TopContentCardProps {
-  /** The platforms the figure covers, for "where this comes from". */
-  platforms?: readonly AnalyticsPlatform[];
   /** Top performing content items */
   content: TopContentItem[];
   /** Callback when "View All" is clicked */
@@ -39,11 +35,7 @@ const PLATFORM_BADGE_STYLES: Record<string, string> = {
     'bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 text-white',
 };
 
-export function TopContentCard({
-  content,
-  onViewAll,
-  platforms,
-}: TopContentCardProps) {
+export function TopContentCard({ content, onViewAll }: TopContentCardProps) {
   const items = content.slice(0, 2); // Show max 2 items
 
   return (
@@ -52,7 +44,6 @@ export function TopContentCard({
       icon={Trophy}
       description="Best performing videos by views"
       metricFamily="engagement"
-      platforms={platforms}
       claim={topContentClaim(content)}
       colSpan={2}
       footer={

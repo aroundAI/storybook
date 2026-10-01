@@ -23,6 +23,7 @@ import {
 } from '@kit/ui/tooltip';
 import { cn } from '@kit/ui/utils';
 
+import { ProvenanceChip, useCardProvenance } from '../provenance-chip';
 import {
   type CardClaim,
   type CardMetricFamily,
@@ -50,15 +51,21 @@ interface AnalyticsCardProps {
   icon?: ComponentType<{ className?: string }>;
   /** A one-line tooltip. Anything longer belongs in `details`. */
   description?: string;
-  /** What the card shows. Required, so no card can be added without saying. */
+  /**
+   * What the card shows. Required, so no card can be added without saying —
+   * and the shell renders the provenance chip from it (FILM-1705), so no
+   * card writes its own.
+   */
   metricFamily: CardMetricFamily;
-  /** The platforms the card covers, when narrower than its family. */
+  /**
+   * The platforms the figure can span, when narrower than its family for a
+   * reason that is not coverage — the Partner Programme is one platform's.
+   * Never a runtime list of who has rows: the coverage provider says that.
+   */
   platforms?: readonly AnalyticsPlatform[];
   claim: CardClaim | 'loading';
   /** `null` for a card that has nothing to say beyond its claim. */
   details?: CardDetails | null;
-  /** FILM-1705's provenance chip. This shell provides the slot only. */
-  chip?: ReactNode;
   colSpan?: 1 | 2;
   /** The evidence: a chart or list. Optional — some cards are their claim. */
   children?: ReactNode;
@@ -83,16 +90,22 @@ export function AnalyticsCard({
   platforms,
   claim,
   details,
-  chip,
   colSpan = 1,
   children,
   footer,
   'data-test': dataTest,
 }: AnalyticsCardProps) {
   const titleId = useId();
+  const provenance = useCardProvenance(metricFamily, platforms);
+  const { chip, dimming } = provenance;
+  // "Where this comes from" names the platforms the figure covers in this
+  // window, once coverage says which; until then, those it can cover.
+  const covered = chip.lines
+    .filter(({ kind }) => kind === 'covered')
+    .map(({ platform }) => platform);
   const sources = details?.source
     ? null
-    : sourceNotesFor(metricFamily, platforms);
+    : sourceNotesFor(metricFamily, covered.length > 0 ? covered : platforms);
   const hasDetails =
     details !== null &&
     Boolean(
@@ -107,6 +120,7 @@ export function AnalyticsCard({
     <section
       aria-labelledby={titleId}
       data-test={dataTest}
+      data-dimmed={dimming.dimmed ? 'true' : undefined}
       className={cn(
         'flex flex-col gap-4 rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-sm',
         colSpan === 2 && 'md:col-span-2',
@@ -141,12 +155,42 @@ export function AnalyticsCard({
             </TooltipProvider>
           )}
         </div>
-        {chip}
+        <ProvenanceChip provenance={provenance} title={title} />
       </header>
 
-      <Claim claim={claim} />
+      {dimming.dimmed && (
+        <ul
+          className="flex flex-col gap-1 text-xs text-muted-foreground"
+          data-test="card-dimmed-reason"
+        >
+          {dimming.reasons.map((reason) => (
+            <li key={reason}>{reason}</li>
+          ))}
+        </ul>
+      )}
 
-      {children && <div className="flex flex-1 flex-col">{children}</div>}
+      {/* Dimmed, never blanked: the figure is still what it covers. */}
+      <div
+        className={cn(
+          'flex flex-1 flex-col gap-4',
+          dimming.dimmed && 'opacity-50',
+        )}
+      >
+        <Claim claim={claim} />
+
+        {chip.bodyLines.length > 0 && (
+          <ul
+            className="flex flex-col gap-1 text-xs text-muted-foreground"
+            data-test="card-coverage-note"
+          >
+            {chip.bodyLines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        )}
+
+        {children && <div className="flex flex-1 flex-col">{children}</div>}
+      </div>
 
       {footer && (
         // A div, not a p: `footer` is ReactNode, and the Deep Dive median

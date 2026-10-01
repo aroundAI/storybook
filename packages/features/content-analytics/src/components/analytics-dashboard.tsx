@@ -31,6 +31,7 @@ import { ABSENT, measured } from '../lib/measured';
 import { viewsToAdd } from '../lib/views';
 import { VIEWS_NOT_MEASURED, viewsShare } from '../lib/views';
 import type { Views } from '../lib/views';
+import { TAB_FAMILIES, isAnalyticsTab } from '../lib/provenance';
 import {
   getContentListAction,
   getProjectAnalyticsAction,
@@ -48,16 +49,16 @@ import { AudienceGrid } from './audience';
 import { ContentGrid } from './content';
 import { ContentTablePanel } from './content-table-panel';
 import { CoverageProvider } from './coverage-context';
+import { CoveragePlatformFilter, CoverageStrip } from './coverage-strip';
 import type { DateRangeValue } from './date-range-picker';
 import { DateRangePicker } from './date-range-picker';
 import { DeepDiveTab } from './deep-dive/deep-dive-tab';
 import { ExportReports } from './export-reports';
 import { LanguageTab } from './language-tab';
-import { MetricCards } from './metric-cards';
+import { MetricCards, type MetricTotals } from './metric-cards';
 import { OverviewGrid } from './overview';
 import { PerformanceChart } from './performance-chart';
 import type { Platform } from './platform-filter';
-import { PlatformFilter } from './platform-filter';
 import { VideoLogTab } from './video-log';
 
 export interface AnalyticsDashboardProps {
@@ -234,6 +235,18 @@ export function AnalyticsDashboard({
       }
     : null;
 
+  // Watch time and subscribers are not totalled for a project, so the cards
+  // say that instead of drawing the zeros above (FILM-1705 §5).
+  const metricTotals: MetricTotals | null = totals
+    ? { ...totals, watchTimeSeconds: null, subscribersGained: null }
+    : null;
+
+  // What the strip and the filter speak for: the families the active tab's
+  // cards read. Deep Dive mounts its own strip, for its own window.
+  const tabFamilies = isAnalyticsTab(activeTab)
+    ? TAB_FAMILIES[activeTab]
+    : TAB_FAMILIES.overview;
+
   // Build aggregate analytics object for AIInsights
   // Map platformTotals to PlatformBreakdown format (platform needs to be union type)
   const platformMetrics = filteredPlatformTotals?.map((p) => ({
@@ -311,7 +324,8 @@ export function AnalyticsDashboard({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <PlatformFilter
+          <CoveragePlatformFilter
+            families={tabFamilies}
             selected={selectedPlatforms}
             onChange={setSelectedPlatforms}
           />
@@ -327,8 +341,14 @@ export function AnalyticsDashboard({
         </div>
       </div>
 
+      {activeTab !== 'deep-dive' && <CoverageStrip families={tabFamilies} />}
+
       {/* Metric Cards */}
-      <MetricCards data={totals} previousData={null} isLoading={isLoading} />
+      <MetricCards
+        data={metricTotals}
+        previousData={null}
+        isLoading={isLoading}
+      />
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -489,6 +509,7 @@ export function AnalyticsDashboard({
       from={coverageFrom}
       to={coverageTo}
       windowLabel={`${coverageFrom} to ${coverageTo}`}
+      selectedPlatforms={selectedPlatforms}
     >
       {page}
     </CoverageProvider>

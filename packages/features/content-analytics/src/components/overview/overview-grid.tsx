@@ -16,7 +16,7 @@ import type {
   InsightsResult,
 } from '../../types';
 import { AIInsightCard } from './ai-insight-card';
-import { platformLabel, platformsWithViews } from './card-claim';
+import { platformLabel } from './card-claim';
 import { CommentsCard } from './comments-card';
 import { GenderCard } from './gender-card';
 import { LikesCard } from './likes-card';
@@ -102,13 +102,6 @@ export function OverviewGrid({
     );
   }, [platformMetrics]);
 
-  // Where a figure comes from is said only for platforms it covers: a
-  // YouTube-only project reads nothing about TikTok's lifetime totals.
-  const present = useMemo(
-    () => platformsWithViews(platformMetrics),
-    [platformMetrics],
-  );
-
   const topContent = useMemo(
     () =>
       contentList?.slice(0, 2).map((item) => ({
@@ -191,18 +184,15 @@ export function OverviewGrid({
       <ViewsCard
         views={totals ? totals.views : null}
         sparklineDataPoints={viewsSparklineData}
-        platforms={present}
       />
       <LikesCard
         likes={totals ? totals.likes : null}
         barDataPoints={likesSparklineData}
-        platforms={present}
       />
       <PlatformSplitCard platforms={platforms} />
       <CommentsCard
         comments={totals ? totals.comments : null}
         mostDiscussed={topCommented}
-        platforms={present}
       />
 
       {/* Row 2: AI Insight (2 cols), Shares */}
@@ -212,14 +202,10 @@ export function OverviewGrid({
         insights={aiInsights}
         onViewReport={onViewAIReport}
       />
-      <SharesCard shares={totals ? totals.shares : null} platforms={present} />
+      <SharesCard shares={totals ? totals.shares : null} />
 
       {/* Row 3: Top Content (2 cols), Revenue, Regions */}
-      <TopContentCard
-        content={topContent}
-        onViewAll={onViewAllContent}
-        platforms={present}
-      />
+      <TopContentCard content={topContent} onViewAll={onViewAllContent} />
       <RevenueCard revenue={revenue} />
       <TopRegionsCard regions={regions} />
 

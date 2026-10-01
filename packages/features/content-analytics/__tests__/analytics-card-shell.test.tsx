@@ -1,12 +1,13 @@
 /**
  * @vitest-environment happy-dom
  */
-import { cleanup, fireEvent, render } from '@testing-library/react';
+import { cleanup, fireEvent } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { capabilityFor } from '@kit/clickhouse';
 
 import { AnalyticsCard } from '../src/components/overview/analytics-card';
+import { renderWithCoverage } from './helpers/coverage';
 
 /**
  * FILM-1706. The shell every Overview and Deep Dive card renders in: one
@@ -15,12 +16,23 @@ import { AnalyticsCard } from '../src/components/overview/analytics-card';
  */
 afterEach(cleanup);
 
+/** The card's text without its provenance chip, whose "3 platforms" is not a figure. */
+function textOutsideChip(container: HTMLElement) {
+  const copy = container.cloneNode(true) as HTMLElement;
+
+  copy
+    .querySelectorAll('[data-test="provenance-chip"]')
+    .forEach((chip) => chip.remove());
+
+  return copy.textContent;
+}
+
 const figureOf = (container: HTMLElement) =>
   container.querySelector('[data-test="card-figure"]');
 
 describe('the claim', () => {
   it('shows one figure in tabular digits and one sentence', () => {
-    const { container, getByText } = render(
+    const { container, getByText } = renderWithCoverage(
       <AnalyticsCard
         title={'Total Views'}
         metricFamily={'engagement'}
@@ -36,7 +48,7 @@ describe('the claim', () => {
   });
 
   it('shows the stated reason, and no digits, where there is no figure', () => {
-    const { container, getByText } = render(
+    const { container, getByText } = renderWithCoverage(
       <AnalyticsCard
         title={'Total Views'}
         metricFamily={'engagement'}
@@ -50,11 +62,11 @@ describe('the claim', () => {
 
     expect(figureOf(container)).toBeNull();
     expect(getByText('Could not be read.')).toBeTruthy();
-    expect(container.textContent).not.toMatch(/\d/);
+    expect(textOutsideChip(container)).not.toMatch(/\d/);
   });
 
   it('shows placeholders, not a zero, while loading', () => {
-    const { container } = render(
+    const { container } = renderWithCoverage(
       <AnalyticsCard
         title={'Total Views'}
         metricFamily={'engagement'}
@@ -63,7 +75,7 @@ describe('the claim', () => {
     );
 
     expect(figureOf(container)).toBeNull();
-    expect(container.textContent).not.toMatch(/\d/);
+    expect(textOutsideChip(container)).not.toMatch(/\d/);
   });
 });
 
@@ -78,7 +90,7 @@ describe('the disclosure', () => {
   } as const;
 
   function renderWithDetails() {
-    return render(
+    return renderWithCoverage(
       <AnalyticsCard
         title={'Platform Split'}
         metricFamily={'engagement'}
@@ -162,7 +174,7 @@ describe('the disclosure', () => {
     expect(root?.className).toContain('hover:bg-accent/30');
     cleanup();
 
-    const { container, queryByRole } = render(
+    const { container, queryByRole } = renderWithCoverage(
       <AnalyticsCard
         title={'AI'}
         metricFamily={'recorded'}
@@ -185,7 +197,7 @@ describe('the disclosure', () => {
 
 describe('the shell is on the design system', () => {
   it('paints with tokens, and has no fixed height', () => {
-    const { container } = render(
+    const { container } = renderWithCoverage(
       <AnalyticsCard
         title={'Shares'}
         metricFamily={'engagement'}

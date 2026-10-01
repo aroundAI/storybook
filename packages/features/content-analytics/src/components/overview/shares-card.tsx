@@ -2,14 +2,10 @@
 
 import { Share2 } from 'lucide-react';
 
-import type { AnalyticsPlatform } from '@kit/clickhouse';
-
 import { AnalyticsCard } from './analytics-card';
 import { countClaim } from './card-claim';
 
 interface SharesCardProps {
-  /** The platforms the figure covers, for "where this comes from". */
-  platforms?: readonly AnalyticsPlatform[];
   /** Total shares, or `null` when they could not be read. */
   shares: number | null;
 }
@@ -21,13 +17,12 @@ interface SharesCardProps {
  * platform read we ingest says how a share happened, so the card says so
  * instead of drawing one (KB-16).
  */
-export function SharesCard({ shares, platforms }: SharesCardProps) {
+export function SharesCard({ shares }: SharesCardProps) {
   return (
     <AnalyticsCard
       title="Shares"
       icon={Share2}
       metricFamily="engagement"
-      platforms={platforms}
       claim={countClaim(
         shares,
         'Times content was shared or reposted in the selected period.',

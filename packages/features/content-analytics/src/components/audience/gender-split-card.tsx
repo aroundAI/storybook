@@ -24,6 +24,7 @@ export function GenderSplitCard({ genders }: GenderSplitCardProps) {
       <AudienceCard
         title="Gender Split"
         icon={Users2}
+        metricFamily="demographics"
         data-test="audience-card-gender"
       >
         <AudienceCardEmpty>
@@ -43,6 +44,7 @@ export function GenderSplitCard({ genders }: GenderSplitCardProps) {
     <AudienceCard
       title="Gender Split"
       icon={Users2}
+      metricFamily="demographics"
       data-test="audience-card-gender"
     >
       <div className="flex flex-1 flex-col items-center justify-center py-4">

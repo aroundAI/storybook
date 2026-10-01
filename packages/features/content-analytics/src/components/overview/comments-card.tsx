@@ -2,15 +2,11 @@
 
 import { MessageCircle } from 'lucide-react';
 
-import type { AnalyticsPlatform } from '@kit/clickhouse';
-
 import { formatNumber } from '../../lib/format';
 import { AnalyticsCard } from './analytics-card';
 import { countClaim } from './card-claim';
 
 interface CommentsCardProps {
-  /** The platforms the figure covers, for "where this comes from". */
-  platforms?: readonly AnalyticsPlatform[];
   /** Total comments, or `null` when they could not be read. */
   comments: number | null;
   /**
@@ -20,11 +16,7 @@ interface CommentsCardProps {
   mostDiscussed: { title: string; comments: number } | null;
 }
 
-export function CommentsCard({
-  comments,
-  mostDiscussed,
-  platforms,
-}: CommentsCardProps) {
+export function CommentsCard({ comments, mostDiscussed }: CommentsCardProps) {
   const sentence = mostDiscussed
     ? `“${mostDiscussed.title}” drew ${formatNumber(mostDiscussed.comments)} of these.`
     : 'Comments and replies in the selected period.';
@@ -34,7 +26,6 @@ export function CommentsCard({
       title="Comments"
       icon={MessageCircle}
       metricFamily="engagement"
-      platforms={platforms}
       claim={countClaim(comments, sentence)}
       data-test="overview-comments"
     />

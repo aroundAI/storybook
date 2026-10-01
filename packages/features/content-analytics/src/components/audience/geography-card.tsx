@@ -67,6 +67,7 @@ export function GeographyCard({ geography }: GeographyCardProps) {
       <AudienceCard
         title="Top Geographies"
         icon={Globe}
+        metricFamily="geography"
         rowSpan={true}
         data-test="audience-card-geography"
       >
@@ -81,6 +82,7 @@ export function GeographyCard({ geography }: GeographyCardProps) {
     <AudienceCard
       title="Top Geographies"
       icon={Globe}
+      metricFamily="geography"
       rowSpan={true}
       data-test="audience-card-geography"
     >

@@ -1,5 +1,7 @@
 'use client';
 
+import { type ReactNode, useContext } from 'react';
+
 import {
   Clock,
   DollarSign,
@@ -14,6 +16,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 
+import { type MetricFamily, platformsWithData } from '@kit/clickhouse';
 import { Card, CardContent } from '@kit/ui/card';
 import { Skeleton } from '@kit/ui/skeleton';
 import {
@@ -32,9 +35,25 @@ import {
   formatPercent,
 } from '../lib/format';
 import type { AnalyticsTotals } from '../types';
+import { CoverageContext } from './coverage-context';
+import { ProvenanceChipFor } from './provenance-chip';
+
+/**
+ * The totals the cards read. Watch time and subscribers may be `null`:
+ * "not measured for this scope", which the card says in words. They were a
+ * literal 0 on the analytics page, a coverage statement drawn as a
+ * measurement (FILM-1705 §5).
+ */
+export type MetricTotals = Omit<
+  AnalyticsTotals,
+  'watchTimeSeconds' | 'subscribersGained'
+> & {
+  watchTimeSeconds: number | null;
+  subscribersGained: number | null;
+};
 
 interface MetricCardsProps {
-  data: AnalyticsTotals | null;
+  data: MetricTotals | null;
   /**
    * The period before, or null when none was measured. Null is "no
    * comparison" and draws nothing — it was read as zero, which made every
@@ -49,6 +68,11 @@ export function MetricCards({
   previousData,
   isLoading,
 }: MetricCardsProps) {
+  // The chip needs the page's coverage. Outside the analytics page — the
+  // project, season and episode dashboards mount no provider — the cards
+  // render as before, without one.
+  const withProvenance = useContext(CoverageContext) !== null;
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
@@ -66,8 +90,9 @@ export function MetricCards({
       value: data?.views || 0,
       previousValue: previousData ? previousData.views : null,
       formatter: formatNumber,
-      description: 'Total video views across all platforms',
+      description: 'Total video views',
       icon: Eye,
+      metricFamily: 'engagement',
     },
     {
       key: 'likes',
@@ -77,6 +102,7 @@ export function MetricCards({
       formatter: formatNumber,
       description: 'Total likes, hearts, and reactions',
       icon: Heart,
+      metricFamily: 'engagement',
     },
     {
       key: 'comments',
@@ -86,6 +112,7 @@ export function MetricCards({
       formatter: formatNumber,
       description: 'Total comments and replies',
       icon: MessageCircle,
+      metricFamily: 'engagement',
     },
     {
       key: 'shares',
@@ -95,24 +122,27 @@ export function MetricCards({
       formatter: formatNumber,
       description: 'Times content was shared or reposted',
       icon: Share2,
+      metricFamily: 'engagement',
     },
     {
       key: 'watchTime',
       label: 'Watch Time',
-      value: data?.watchTimeSeconds || 0,
+      value: data ? data.watchTimeSeconds : 0,
       previousValue: previousData ? previousData.watchTimeSeconds : null,
       formatter: formatDuration,
       description: 'Total time viewers spent watching',
       icon: Clock,
+      metricFamily: 'watch_time',
     },
     {
       key: 'subscribers',
       label: 'Subscribers',
-      value: data?.subscribersGained || 0,
+      value: data ? data.subscribersGained : 0,
       previousValue: previousData ? previousData.subscribersGained : null,
       formatter: formatNumber,
       description: 'New followers and subscribers gained',
       icon: UserPlus,
+      metricFamily: 'channel_totals',
     },
     {
       key: 'revenue',
@@ -120,15 +150,27 @@ export function MetricCards({
       value: data?.revenueCents || 0,
       previousValue: previousData ? previousData.revenueCents : null,
       formatter: (v) => formatCurrency(v / 100),
-      description: 'Estimated ad revenue (YouTube only)',
+      description: 'Estimated ad revenue',
       icon: DollarSign,
+      metricFamily: 'revenue',
     },
   ];
 
   return (
     <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
       {metrics.map((metric) => (
-        <MetricCard key={metric.key} metric={metric} />
+        <MetricCard
+          key={metric.key}
+          metric={metric}
+          chip={
+            withProvenance ? (
+              <ProvenanceChipFor
+                metricFamily={metric.metricFamily}
+                title={metric.label}
+              />
+            ) : undefined
+          }
+        />
       ))}
     </div>
   );
@@ -137,15 +179,38 @@ export function MetricCards({
 export interface MetricConfig {
   key: string;
   label: string;
-  value: number;
+  /** `null` when this scope does not measure it: the card says so, no digits. */
+  value: number | null;
   /** Null when no previous period was measured. */
   previousValue: number | null;
   formatter: (value: number) => string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
+  /** What the figure is, for its chip and for whether any platform supplies it. */
+  metricFamily: MetricFamily;
 }
 
-export function MetricCard({ metric }: { metric: MetricConfig }) {
+/**
+ * Why a card shows no figure, or `null` when it shows one. A family no
+ * platform supplies — revenue, today — is never drawn as a number, whatever
+ * the total says: that total is a column nothing writes but a 0.
+ */
+export function unmeasuredReason(metric: MetricConfig): string | null {
+  if (platformsWithData(metric.metricFamily).length === 0) {
+    return 'Not collected yet';
+  }
+
+  return metric.value === null ? 'Not totalled here' : null;
+}
+
+export function MetricCard({
+  metric,
+  chip,
+}: {
+  metric: MetricConfig;
+  /** FILM-1705's provenance chip, when the page has coverage to give one. */
+  chip?: ReactNode;
+}) {
   const {
     label,
     value,
@@ -155,12 +220,16 @@ export function MetricCard({ metric }: { metric: MetricConfig }) {
     icon: Icon,
   } = metric;
 
-  const change = calculateChange(value, previousValue);
+  const unmeasured = unmeasuredReason(metric);
+  const change =
+    unmeasured === null && value !== null
+      ? calculateChange(value, previousValue)
+      : null;
 
   return (
     <Card data-test={`metric-card-${metric.key}`}>
       <CardContent className="px-4 pt-4 pb-3">
-        <div className="mb-2 flex items-start justify-between">
+        <div className="mb-2 flex items-start justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <Icon className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium text-muted-foreground">
@@ -184,14 +253,25 @@ export function MetricCard({ metric }: { metric: MetricConfig }) {
           </TooltipProvider>
         </div>
 
+        {chip && <div className="mb-2 flex">{chip}</div>}
+
         <div className="flex items-baseline justify-between">
-          <span
-            className="text-2xl font-bold tabular-nums"
-            data-test="metric-value"
-          >
-            {formatter(value)}
-          </span>
-          {change.kind === 'change' ? (
+          {unmeasured !== null || value === null ? (
+            <span
+              className="text-sm font-medium text-muted-foreground"
+              data-test="metric-unmeasured"
+            >
+              {unmeasured}
+            </span>
+          ) : (
+            <span
+              className="text-2xl font-bold tabular-nums"
+              data-test="metric-value"
+            >
+              {formatter(value)}
+            </span>
+          )}
+          {change?.kind === 'change' ? (
             <MetricChange change={change} />
           ) : (
             <span className="sr-only">No previous period to compare</span>
