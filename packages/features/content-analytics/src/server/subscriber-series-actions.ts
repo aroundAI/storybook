@@ -20,6 +20,9 @@ const ScopeSchema = z
     projectId: z.string().uuid().optional(),
     accountId: z.string().uuid().optional(),
     connectionId: z.string().uuid().optional(),
+    // The Deep Dive's platform switcher (FILM-1707). Listed, not passed
+    // through: zod strips a key the schema does not name.
+    platform: z.enum(['youtube', 'tiktok', 'instagram']).optional(),
   })
   .refine((scope) => scope.projectId || scope.accountId, {
     message: 'projectId or accountId is required',
@@ -52,7 +55,9 @@ async function resolveConnectionIds(
       getSupabaseServerClient(),
     );
 
-    ids = channels.map((c) => c.connectionId);
+    ids = channels
+      .filter((c) => !scope.platform || c.platform === scope.platform)
+      .map((c) => c.connectionId);
   } else {
     if (!accountId) return [];
 
@@ -60,13 +65,18 @@ async function resolveConnectionIds(
 
     const rows = await fetchAllRows<{ id: string }>(
       (rangeFrom, rangeTo) =>
-        client
-          .from('platform_connections')
-          .select('id')
-          .eq('is_active', true)
-          .eq('account_id', accountId)
-          .order('id')
-          .range(rangeFrom, rangeTo),
+        {
+          let query = client
+            .from('platform_connections')
+            .select('id')
+            .eq('is_active', true)
+            .eq('account_id', accountId);
+
+          // The Deep Dive's platform switcher (FILM-1707), like the channel.
+          if (scope.platform) query = query.eq('platform', scope.platform);
+
+          return query.order('id').range(rangeFrom, rangeTo);
+        },
       'subscriber series connections',
     );
 

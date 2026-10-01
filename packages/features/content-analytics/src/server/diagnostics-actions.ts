@@ -96,6 +96,11 @@ export const getWeeklyDiagnosticsAction = withRefusals(
           query = query.eq('platform_connection_id', scope.connectionId);
         }
 
+        // The Deep Dive's platform switcher (FILM-1707), honoured the same way.
+        if (scope.platform) {
+          query = query.eq('platform', scope.platform);
+        }
+
         return query
           .order('published_at', { ascending: false })
           .range(from, to);

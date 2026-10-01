@@ -70,3 +70,49 @@ export function bucketOfMark(
 
   return sorted.filter((start) => start <= mark.date).at(-1) ?? null;
 }
+
+/** The buckets (by their own keys) that hold a mark, for a bar chart to draw it on. */
+export function markedBuckets(
+  bucketKeys: readonly string[],
+  marks: readonly ViewDefinitionMark[],
+): Set<string> {
+  const byDay = new Map(bucketKeys.map((key) => [isoDay(key), key]));
+
+  return new Set(
+    marks.flatMap((mark) => {
+      const day = bucketOfMark(bucketKeys, mark);
+      const key = day === null ? undefined : byDay.get(day);
+
+      return key === undefined ? [] : [key];
+    }),
+  );
+}
+
+/** How a bar chart draws a boundary: a dashed rule on the bar's leading edge. */
+export const VIEW_DEFINITION_BUCKET =
+  'border-l-2 border-dashed border-muted-foreground';
+
+/**
+ * The marks for a chart of buckets: from the first bucket's start to the
+ * last bucket's end. `span` is the bucket's length, so a monthly chart
+ * whose last bucket is "2026-08-01" still covers the change on the 27th.
+ */
+export function marksForBuckets(
+  platforms: readonly AnalyticsPlatform[],
+  bucketKeys: readonly string[],
+  span: 'day' | 'week' | 'month' | 'quarter',
+): ViewDefinitionMark[] {
+  const days = bucketKeys.map(isoDay).sort();
+  const first = days[0];
+  const last = days.at(-1);
+
+  if (!first || !last) return [];
+
+  const end = new Date(`${last}T00:00:00.000Z`);
+
+  if (span === 'week') end.setUTCDate(end.getUTCDate() + 6);
+  if (span === 'month') end.setUTCMonth(end.getUTCMonth() + 1, 0);
+  if (span === 'quarter') end.setUTCMonth(end.getUTCMonth() + 3, 0);
+
+  return viewDefinitionMarks(platforms, first, end.toISOString().slice(0, 10));
+}

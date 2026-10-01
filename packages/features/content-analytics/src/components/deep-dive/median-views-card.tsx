@@ -1,6 +1,13 @@
 'use client';
 
 import { Skeleton } from '@kit/ui/skeleton';
+import { cn } from '@kit/ui/utils';
+
+import {
+  VIEW_DEFINITION_BUCKET,
+  type ViewDefinitionMark,
+  markedBuckets,
+} from '../../lib/view-definition-marks';
 
 import type { CardClaim } from '../overview/card-claim';
 import { ChartMark, ChartMarks } from './chart-marks';
@@ -20,6 +27,8 @@ interface MedianViewsCardProps {
   buckets: MedianBucketEntry[];
   /** Loading state */
   isLoading?: boolean;
+  /** View-definition changes inside the range, drawn on their bucket (FILM-1722). */
+  marks?: readonly ViewDefinitionMark[];
 }
 
 function formatViews(value: number): string {
@@ -130,6 +139,7 @@ export function medianViewsDetails(
 export function MedianViewsCard({
   buckets,
   isLoading = false,
+  marks = [],
 }: MedianViewsCardProps) {
   if (isLoading) {
     return <MedianViewsCardSkeleton />;
@@ -145,6 +155,10 @@ export function MedianViewsCard({
     1,
   );
   const latest = buckets[buckets.length - 1]!;
+  const marked = markedBuckets(
+    buckets.map(({ bucket }) => bucket),
+    marks,
+  );
 
   return (
     <div className={'flex flex-col gap-4'}>
@@ -157,7 +171,13 @@ export function MedianViewsCard({
           <ChartMark
             key={bucket.bucket}
             col={index}
-            className={'group relative flex flex-1 flex-col justify-end'}
+            data-view-definition={
+              marked.has(bucket.bucket) ? 'true' : undefined
+            }
+            className={cn(
+              'group relative flex flex-1 flex-col justify-end',
+              marked.has(bucket.bucket) && VIEW_DEFINITION_BUCKET,
+            )}
             style={{ height: '100%' }}
             detail={`${formatBucket(bucket.bucket)}: median ${formatViews(bucket.medianViews)}, mean ${formatViews(bucket.meanViews)} (${bucket.videoCount} videos)`}
             data-test={'median-bar'}

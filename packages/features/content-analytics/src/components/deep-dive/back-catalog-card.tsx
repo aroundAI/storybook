@@ -1,7 +1,13 @@
 'use client';
 
 import { Skeleton } from '@kit/ui/skeleton';
+import { cn } from '@kit/ui/utils';
 
+import {
+  VIEW_DEFINITION_BUCKET,
+  type ViewDefinitionMark,
+  markedBuckets,
+} from '../../lib/view-definition-marks';
 import type { CardClaim } from '../overview/card-claim';
 import { ChartMark, ChartMarks, formatTrueShare } from './chart-marks';
 
@@ -18,6 +24,8 @@ interface BackCatalogCardProps {
   buckets: BackCatalogEntry[];
   /** Loading state */
   isLoading?: boolean;
+  /** View-definition changes inside the range, drawn on their bucket (FILM-1722). */
+  marks?: readonly ViewDefinitionMark[];
 }
 
 /**
@@ -63,6 +71,7 @@ export function backCatalogClaim(
 export function BackCatalogCard({
   buckets,
   isLoading = false,
+  marks = [],
 }: BackCatalogCardProps) {
   if (isLoading) {
     return <BackCatalogCardSkeleton />;
@@ -72,6 +81,11 @@ export function BackCatalogCard({
   if (buckets.length === 0) {
     return null;
   }
+
+  const marked = markedBuckets(
+    buckets.map(({ bucket }) => bucket),
+    marks,
+  );
 
   return (
     <div className={'flex flex-col gap-4'}>
@@ -84,7 +98,13 @@ export function BackCatalogCard({
           <ChartMark
             key={bucket.bucket}
             col={index}
-            className={'flex flex-1 flex-col justify-end rounded-sm bg-muted'}
+            data-view-definition={
+              marked.has(bucket.bucket) ? 'true' : undefined
+            }
+            className={cn(
+              'flex flex-1 flex-col justify-end rounded-sm bg-muted',
+              marked.has(bucket.bucket) && VIEW_DEFINITION_BUCKET,
+            )}
             style={{ height: '100%' }}
             detail={`${bucket.bucket}: ${formatTrueShare(bucket.share)} of ${bucket.totalViews.toLocaleString()} views`}
             data-test={'back-catalog-bar'}
