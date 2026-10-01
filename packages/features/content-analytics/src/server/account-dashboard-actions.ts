@@ -8,7 +8,7 @@ import {
   queryTotals,
   queryTotalsByVideoIds,
 } from '@kit/clickhouse/server';
-import type { AggregatedTotals } from '@kit/clickhouse/server';
+import type { AggregatedTotals, ScopeTotals } from '@kit/clickhouse/server';
 import { getLogger } from '@kit/shared/logger';
 import { chunkIds, fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -127,8 +127,8 @@ export async function getAccountDashboardData(
   const prevEndStr = formatDateStr(previousEndDate);
 
   // Query ClickHouse for current and previous period
-  let currentTotals: AggregatedTotals;
-  let previousTotals: AggregatedTotals;
+  let currentTotals: ScopeTotals;
+  let previousTotals: ScopeTotals;
   let platformData: Awaited<ReturnType<typeof queryPlatformBreakdown>>;
   let dailyData: Awaited<ReturnType<typeof queryDailyTimeSeries>>;
   let perVideoTotals: Map<string, AggregatedTotals>;
@@ -219,7 +219,7 @@ export async function getAccountDashboardData(
 }
 
 function mapToAnalyticsTotals(
-  ch: AggregatedTotals,
+  ch: ScopeTotals,
   contentCount: number,
 ): AnalyticsTotals {
   return {
@@ -227,7 +227,9 @@ function mapToAnalyticsTotals(
     likes: ch.likes,
     comments: ch.comments,
     shares: ch.shares,
-    saves: ch.saves,
+    // Absent where no row measured it: TikTok reports no saves (KB-162).
+    ...(ch.saves !== null && { saves: ch.saves }),
+    // Null where no row measured it, never 0 (KB-162).
     watchTimeSeconds: ch.watch_time_seconds,
     subscribersGained: ch.subscribers_gained,
     revenueCents: ch.revenue_cents,
@@ -242,9 +244,9 @@ function getEmptyDashboardData(): AccountDashboardData {
       likes: 0,
       comments: 0,
       shares: 0,
-      saves: 0,
-      watchTimeSeconds: 0,
-      subscribersGained: 0,
+      // Nothing measured (KB-162).
+      watchTimeSeconds: null,
+      subscribersGained: null,
       revenueCents: 0,
       contentCount: 0,
     },
@@ -253,9 +255,9 @@ function getEmptyDashboardData(): AccountDashboardData {
       likes: 0,
       comments: 0,
       shares: 0,
-      saves: 0,
-      watchTimeSeconds: 0,
-      subscribersGained: 0,
+      // Nothing measured (KB-162).
+      watchTimeSeconds: null,
+      subscribersGained: null,
       revenueCents: 0,
       contentCount: 0,
     },

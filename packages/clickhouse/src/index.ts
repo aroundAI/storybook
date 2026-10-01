@@ -34,6 +34,7 @@ export type {
 
 export type {
   AggregatedTotals,
+  ScopeTotals,
   AllSurfaceAggregates,
   AnalyticsPlatform,
   AudienceDimension,

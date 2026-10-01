@@ -123,7 +123,8 @@ export interface ProjectAnalytics {
     likes: number;
     comments: number;
     shares: number;
-    saves: number;
+    /** Null where none of the platform's rows measured it (KB-162). */
+    saves: number | null;
     percentage: number | null;
   }[];
 }

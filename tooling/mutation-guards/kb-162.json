@@ -1,0 +1,75 @@
+{
+  "feature": "KB-162",
+  "mutations": [
+    {
+      "name": "KB-162 a total no row measured reads its NULL sum as 0",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "  return Number(measured) ? Number(value) : null;",
+      "replace": "  return Number(value);",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/totals-unmeasured.test.ts",
+      "pattern": "gives null watch time, follower gain and saves over TikTok rows"
+    },
+    {
+      "name": "KB-162 the totals sum every row, with no measured flag",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "  return `sumIf(${column}, ${column} IS NOT NULL) as ${column},\n      count(${column}) > 0 as ${column}_measured`;",
+      "replace": "  return `sum(${column}) as ${column},\n      1 as ${column}_measured`;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/totals-unmeasured.test.ts",
+      "pattern": "sums only measured rows"
+    },
+    {
+      "name": "KB-162 totals over no rows, or with ClickHouse off, say watch time 0",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "  saves: null,\n  watch_time_seconds: null,\n  revenue_cents: 0,\n  subscribers_gained: null,\n};",
+      "replace": "  saves: 0,\n  watch_time_seconds: 0,\n  revenue_cents: 0,\n  subscribers_gained: 0,\n};",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/totals-unmeasured.test.ts",
+      "pattern": "gives null with ClickHouse off"
+    },
+    {
+      "name": "KB-162 the chunked fold starts views from 0, turning Facebook-only null into 0",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "const CHUNK_SUM_IDENTITY: ScopeTotals = { ...NO_ROWS_TOTALS, views: null };",
+      "replace": "const CHUNK_SUM_IDENTITY: ScopeTotals = { ...NO_ROWS_TOTALS };",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/totals-unmeasured.test.ts",
+      "pattern": "keeps Facebook-only views null across chunks"
+    },
+    {
+      "name": "KB-162 the daily series reads an unmeasured watch time as 0",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "    saves: measuredSum(row.saves, row.saves_measured),\n    watch_time_seconds: measuredSum(\n      row.watch_time_seconds,\n      row.watch_time_seconds_measured,\n    ),\n    revenue_cents: Number(row.revenue_cents),\n  }));",
+      "replace": "    saves: Number(row.saves),\n    watch_time_seconds: Number(row.watch_time_seconds),\n    revenue_cents: Number(row.revenue_cents),\n  }));",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/totals-unmeasured.test.ts",
+      "pattern": "daily watch time and saves are null"
+    },
+    {
+      "name": "KB-162 an account with nothing published shows watch time 0m",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/account-dashboard-actions.ts",
+      "find": "    totals: {\n      views: 0,\n      likes: 0,\n      comments: 0,\n      shares: 0,\n      // Nothing measured (KB-162).\n      watchTimeSeconds: null,",
+      "replace": "    totals: {\n      views: 0,\n      likes: 0,\n      comments: 0,\n      shares: 0,\n      // Nothing measured (KB-162).\n      watchTimeSeconds: 0,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/account-dashboard-unmeasured.test.ts",
+      "pattern": "measures nothing for an account with no publishes"
+    },
+    {
+      "name": "KB-162 the company dashboard's Watch Time card shows an unmeasured figure as 0m",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "      value: data ? data.watchTimeSeconds : null,",
+      "replace": "      value: data?.watchTimeSeconds || 0,",
+      "spec": "tests/analytics/company-dashboard-evidence.spec.ts",
+      "grep": "an all-TikTok team",
+      "env": { "CLICKHOUSE_EVIDENCE": "1" }
+    }
+  ]
+}

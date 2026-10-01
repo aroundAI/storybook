@@ -149,6 +149,7 @@ export type {
 
 export type {
   AggregatedTotals,
+  ScopeTotals,
   AnalyticsPlatform,
   AudienceDimension,
   ChannelDaily,
