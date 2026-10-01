@@ -60,6 +60,16 @@
       "cwd": "apps/web",
       "test": "lambda/publish-worker/__tests__/meta-bundle.test.ts",
       "pattern": "carries exactly one Graph version literal"
+    },
+    {
+      "name": "The Meta sandbox stops naming the version it served",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/vendors/index.ts",
+      "find": "      metaVersionRoute,\n",
+      "replace": "",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/meta-version.test.ts",
+      "pattern": "sends the header on a versioned Graph path"
     }
   ]
 }
