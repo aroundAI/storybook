@@ -5,6 +5,7 @@
  */
 export * from './linkedin';
 export * from './meta';
+export * from './pins';
 export * from './resolver';
 export * from './x';
 export * from './meta-fetch';

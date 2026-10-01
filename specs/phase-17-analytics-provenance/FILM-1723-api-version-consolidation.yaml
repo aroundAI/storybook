@@ -44,7 +44,7 @@ acceptance_criteria:
     reason: "Not met. No Meta credentials or connection exist outside production. Tracked as FILM-1725 Check D, to run at the first deploy carrying this change"
   - text: "The next expected deprecation date is recorded somewhere a person will see it"
     met: true
-    evidence: "2027-10-08: at the top of \"Graph API versions\" in docs/platform-capability-reference.md, on the constant, and bound together by a test"
+    evidence: "docs/platform-capability-reference.md:25, the reference's first section: \"Pinned vendor API versions\", headed by the next end (:27, LinkedIn 202401, sunset 2025-01-22, KB-164; then Meta Graph v26.0, 2028-07-29 floor), one row per pin with the vendor page it was read from and the day (2026-10-01). The list is VENDOR_API_PINS, packages/shared/src/vendors/pins.ts:35. packages/shared/__tests__/vendor-api-versions.test.ts:435 fails when the table and the list disagree or the headline is not the next end (:472), and :373 fails from 120 days before any end unless an open KB owns it (pins.ts:55). Seen red on each (no trackedBy: 'LinkedIn 202401 ended on 2025-01-22, 618 days ago…'; KB-164 closed; a wrong date in the table) before green; 3 mutation guards in tooling/mutation-guards/film-1723.json, all RED (#TBD-FILM-1723)"
 remaining:
   - criterion: "Token refresh verified against a live Meta connection after the change, not only typechecked"
     reason: "No Meta credentials or connection exist outside production; blocked on nothing but the deploy. FILM-1725 Check D: one forced refresh, ensureValidToken(<meta connection id>, true), at the first deploy carrying this change"
@@ -223,6 +223,8 @@ notes: |
   - LinkedIn's LinkedIn-Version: 202401 was declared twice and is now
     declared once, unchanged. It is probably past sunset, and probably inert
     because every call goes to /v2/. Neither could be checked without a token.
+    (2026-10-01: the first is now settled. LinkedIn's migrations table gives
+    202401 a sunset of 2025-01-22. The second still needs a token: KB-164.)
   - Nothing under apps/web/lambda/ is typechecked — no tsconfig includes it.
     The touched handlers were checked by hand; four others fail on a type that
     ../index does not export.
@@ -242,6 +244,30 @@ notes: |
 
   Set the status to DONE when Check D has run and its result is recorded here.
   Check E follows FILM-1729 and does not hold this spec open on its own.
+
+  ## 12. Every pin's end date, where it is seen (2026-10-01, #TBD-FILM-1723)
+
+  The deprecation criterion's evidence named v23.0's 2027-10-08, which went
+  stale when FILM-1728 moved the pin to v26.0, and it covered Meta alone.
+  Now every pin in packages/shared/src/vendors/ is in VENDOR_API_PINS
+  (pins.ts), and the capability reference opens with that list as a table,
+  headed by the next end. Each date was read from the vendor on 2026-10-01:
+
+  | Pin | Ends | Source |
+  |---|---|---|
+  | LinkedIn 202401 | 2025-01-22, past | learn.microsoft.com/en-us/linkedin/marketing/integrations/migrations |
+  | Meta Graph v26.0 | 2028-07-29 (floor; Meta says "TBD", no v27.0) | developers.facebook.com/docs/graph-api/changelog/ |
+  | X v2 | none published | docs.x.com/x-api/fundamentals/versioning |
+
+  Stripe's 2025-08-27.basil has no retirement date on
+  docs.stripe.com/api/versioning, so it is named under the table, not in it.
+
+  The 120-day expiry test now covers every dated pin. One already past its
+  end stays green only while an open known bug owns it, which is how
+  LinkedIn's is held: KB-164, filed here. Whether LinkedIn refuses our /v2/
+  calls for it needs a token. Its docs name 202401 as the example of a
+  header refused with 426, and an unauthenticated probe is answered 401
+  before the version is read.
 feature:
   database: null
   queries: []
