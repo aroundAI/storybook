@@ -30,7 +30,7 @@ acceptance_criteria:
     evidence: "content-analytics/__tests__/analytics-scope-binding.test.ts. Seen red on the unchanged configs for all four gaps, and it found a fifth this spec had not: follower_count needs user.info.stats"
   - text: "TikTok requests video.list; no spec or config references a video.query scope, which does not exist"
     met: true
-    evidence: null
+    evidence: "packages/features/publishing/src/oauth/tiktok/config.ts:18; guard A1 (tooling/mutation-guards/film-1711.json)"
   - text: "Instagram requests the correct permission pair for the login path in use"
     met: true
     evidence: "Facebook Login, so the triple: instagram_basic + instagram_manage_insights + pages_read_engagement"
@@ -39,10 +39,10 @@ acceptance_criteria:
     reason: "tracked in docs/vendor-review-status.md, bound to the review field in code by a test; not submitted — submitting needs a person with access to the Meta developer console"
   - text: "platform_connections.scopes is written at OAuth callback, so a gap is detectable before a sync fails"
     met: true
-    evidence: "it was already written, with the wrong thing — every callback wrote the scopes it had requested rather than the scopes actually granted (TikTok and X fell back to the requested list when the vendor sent none); the callbacks now record the granted scopes (Google's and TikTok's scope field, Meta's /me/permissions) and nothing when the vendor says nothing — see the correction under 'Degrading honestly while unauthorised' in notes"
+    evidence: "it was already written, with the wrong thing — every callback wrote the scopes it had requested rather than the scopes actually granted (TikTok and X fell back to the requested list when the vendor sent none); the callbacks now record the granted scopes (Google's and TikTok's scope field, Meta's /me/permissions) and nothing when the vendor says nothing — see the correction under 'Degrading honestly while unauthorised' in notes. LinkedIn's was missed and fixed in #508 (KB-145). Every writer now stores the grant — YouTube (callback and save-channel), Meta (Facebook and Instagram), TikTok, X, LinkedIn — and packages/features/publishing/__tests__/analytics-scopes.test.ts:234 finds the writers itself, as every caller of storePlatformConnections (the one way a connection is stored, KB-43), and checks every callback is one of them (:257). A new writer is checked without being listed (#TBD-FILM-1711; guards D4, D8, KB-145 U2)"
   - text: "account_type_gated is distinguishable from scope_missing, because the creator resolves one and we resolve the other"
     met: true
-    evidence: null
+    evidence: "packages/features/publishing/src/oauth/analytics-scopes.ts:379 (scope_missing) and :387 (account_type_gated, with the creator's resolution); analytics-scopes.test.ts:113; guard D2"
   - text: "Graph v18.0's liveness is checked before this spec concludes scopes were the cause"
     met: true
     evidence: "probed 2026-09-21T20:28Z: /v18.0/oauth/access_token and /v23.0/oauth/access_token return the same OAuthException code 101, /v99.0/ returns code 1. v18.0 is still routed, so token refresh is not being rejected for its version. That rules out a hard failure, not a semantic difference; FILM-1723 still owns the pin. Superseded 2026-09-25: FILM-1723 pins the version on main, and production (pre-#284) is served v21.0 for its v18/v19 requests until the deploy"
@@ -51,22 +51,22 @@ acceptance_criteria:
     evidence: "resolveAnalyticsAccess, read by the Platform Connections page and by the sync job"
   - text: "not_authorised is distinguishable from no_data_in_window everywhere both can appear"
     met: false
-    reason: "moved to FILM-1705 (decision 2026-09-25). FILM-1711's half is built — AnalyticsAccess.summary carries not_authorised and the Platform Connections page renders it — but no_data_in_window does not exist in code; it arrives with FILM-1704 and first shares a surface with not_authorised in FILM-1705, which now owns the criterion"
+    reason: "moved to FILM-1705 (decision 2026-09-25). FILM-1711's half is built — AnalyticsAccess.summary carries not_authorised and the Platform Connections page renders it — but no_data_in_window does not exist in code; it arrives with FILM-1704 and first shares a surface with not_authorised in FILM-1705, which now owns the criterion. As of 2026-10-02 FILM-1705's surfaces are being rebased on feat/film-1705-provenance-surfaces; it closes there, not here"
   - text: "The reconnect prompt names what that specific platform's analytics will add"
     met: true
-    evidence: null
+    evidence: "each requirement's gains (packages/features/publishing/src/oauth/analytics-scopes.ts:89-194) is listed per entry by AnalyticsAccessNotice (packages/features/publishing/src/components/platform-connections.tsx:880). analytics-scopes.test.ts:319 requires every gain to be distinct, so none is generic or copied from another platform (guard D7). apps/e2e/tests/platform-connections/analytics-access.spec.ts:81 and :104 read YouTube's, TikTok's and Instagram's gains off the page, and check that no notice shows another platform's (guard E2). Screenshots: the spec's CAPTURE_EVIDENCE test (#TBD-FILM-1711)"
   - text: "An unauthorised connection is not retried indefinitely by the sync cron"
     met: true
     evidence: "it is not tried at all, and takes no slot in the batch. The inverse is fixed too: a publish flagged requires_reauth used to stay skipped forever after the creator reconnected"
   - text: "The audit covers all five platforms, including the two with no provider yet"
     met: true
-    evidence: null
+    evidence: "packages/features/publishing/src/oauth/analytics-scopes.ts:180 (facebook, provider FILM-1720) and :190 (X, provider FILM-1727), beside the YouTube, TikTok and Instagram rows"
   - text: "yt-analytics-monetary.readonly is requested, and existing YouTube connections are prompted to re-consent. The only permitted non-collection is a creator outside the Partner Program, recorded as account_type_gated"
     met: true
     evidence: "the recording is built and tested; what YouTube actually returns to a non-partner channel is a hypothesis (a non-quota 403) — FILM-1725 Check G"
   - text: "Monetary metrics are fetched in a call separate from fetchTotals' non-monetary ones, so a monetary 403 degrades revenue only and never the totals"
     met: true
-    evidence: null
+    evidence: "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:208 (fetchRevenue); guards A6, B1, B2"
   - text: "After the scope is granted, a real Partner Program channel's revenue_records holds non-zero source = 'api' rows — the end-to-end proof that the pipeline FILM-1726 describes actually delivers"
     met: false
     reason: "deferred — FILM-1725 Check G. Needs a monetised channel's token"
@@ -75,7 +75,7 @@ acceptance_criteria:
     reason: "deferred — FILM-1725 Check G. The query is split either way, so the answer no longer changes what we ship; it changes what we believe about the last nine months of totals"
   - text: "YPP membership is modelled as account_type_gated, distinguishable from a missing scope"
     met: true
-    evidence: null
+    evidence: "in both models. Authorisation: youtube.revenue's accountGate (packages/features/publishing/src/oauth/analytics-scopes.ts:110) resolves to account_type_gated, not scope_missing (:387; analytics-scopes.test.ts:113, guard D2). The sync records a refused revenue query as that gate (content-analytics/src/server/analytics-sync-cron.ts:538, guard B3). Capability: revenue/youtube carries YOUTUBE_PARTNER_PROGRAM (packages/clickhouse/src/lib/data-provenance.ts:616), and accessFor returns account_type_gated for a creator outside it (packages/clickhouse/__tests__/data-provenance.test.ts:622). The page tells that channel why and offers no reconnect (analytics-access.spec.ts:132, guard E1)"
 remaining:
   - criterion: "Check F per platform, then the platform turned on: each vendor's consent screen accepts the newly requested scopes (TikTok with production credentials especially), and only then is the platform added to ANALYTICS_SCOPES_ENABLED"
     reason: "The new scopes ship switched off: ANALYTICS_SCOPES_ENABLED (server-only; youtube, tiktok, meta) is unset in production, so the deploy carries the pre-#289 request and cannot break connecting or publishing. Each platform is turned on after its Check F passes (docs/vendor-review-runbook.md Part 1); a no-go leaves that platform off until its review passes and holds nothing else. Until a platform is on, its analytics show as not_requested, never zero. The switch landed on main in #422 (re-land of #416)"
