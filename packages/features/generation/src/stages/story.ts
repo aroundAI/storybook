@@ -17,6 +17,10 @@ import { ProjectTypeSchema } from '@kit/film-studio-schemas/project';
 import storyGeneration from '@kit/prompt-engine/prompts/story-generation/story-generation.json';
 import { StorySchema } from '@kit/prompt-engine/schemas';
 import {
+  type ContentStyle,
+  calculateContentScaling,
+} from '@kit/shared/duration-scaling';
+import {
   sanitizeForPrompt,
   sanitizeStrings,
 } from '@kit/shared/prompt-sanitiser';
@@ -24,10 +28,6 @@ import type { Json } from '@kit/supabase/database';
 
 import { type PromptFile, buildBrief, singlePart } from '../brief';
 import { CanonExtractionSchema, commitStoryCanon } from '../canon';
-import {
-  type ContentStyle,
-  calculateContentScaling,
-} from '../duration-scaling';
 import { markJobCompleted } from '../jobs';
 import { registerStage } from '../registry';
 import type {

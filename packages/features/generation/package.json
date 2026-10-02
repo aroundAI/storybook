@@ -18,7 +18,6 @@
     ".": "./src/index.ts",
     "./testing": "./src/testing/index.ts",
     "./canon": "./src/canon/index.ts",
-    "./duration-scaling": "./src/duration-scaling.ts",
     "./episode-rows": "./src/episode-rows.ts",
     "./formatters": "./src/formatters.ts",
     "./project-type": "./src/project-type.ts",

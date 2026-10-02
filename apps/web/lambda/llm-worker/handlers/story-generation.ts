@@ -11,13 +11,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { EpisodeViralQuality } from '@kit/episodes/lib';
-import {
-  calculateContentScaling,
-  runStage,
-  storyOrchestratorInput,
-  storyStage,
-} from '@kit/generation';
+import { runStage, storyOrchestratorInput, storyStage } from '@kit/generation';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
+import { calculateContentScaling } from '@kit/shared/duration-scaling';
 import type { Database } from '@kit/supabase/database';
 
 import { extractCanonFacts } from '../utils/commit-story-canon';

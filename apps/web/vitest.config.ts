@@ -88,10 +88,6 @@ export default defineConfig({
         __dirname,
         '../../packages/features/generation/src/canon/index.ts',
       ),
-      '@kit/generation/duration-scaling': path.resolve(
-        __dirname,
-        '../../packages/features/generation/src/duration-scaling.ts',
-      ),
       '@kit/generation/episode-rows': path.resolve(
         __dirname,
         '../../packages/features/generation/src/episode-rows.ts',

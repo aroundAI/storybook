@@ -56,7 +56,6 @@ export {
 } from './jobs';
 export { runStage, type RunStageResult } from './run-stage';
 export { serverRun } from './run';
-export * from './duration-scaling';
 export * from './slug';
 export * from './project-type';
 export * from './formatters';
