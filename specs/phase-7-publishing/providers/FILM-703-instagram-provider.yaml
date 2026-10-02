@@ -56,10 +56,10 @@ acceptance_criteria:
     evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:103`"
   - text: "Container status polling works"
     met: true
-    evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:40`, `packages/features/publishing/src/providers/instagram/instagram-provider.ts:130`"
+    evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:40`, `packages/features/publishing/src/providers/instagram/instagram-provider.ts:135`"
   - text: "Account info can be retrieved"
     met: true
-    evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:217`"
+    evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:222`"
   - text: "Permalink is returned after publish"
     met: true
     evidence: "`packages/features/publishing/src/providers/instagram/instagram-provider.ts:75`"

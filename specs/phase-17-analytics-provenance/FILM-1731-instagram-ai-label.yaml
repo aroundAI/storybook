@@ -3,7 +3,7 @@ title: "Instagram AI Info Label — Do Our Reels Need is_ai_generated?"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: DRAFT
+status: DONE
 effort: S
 dependencies:
   - spec_id: "FILM-1728"
@@ -21,22 +21,24 @@ summary: >
   than the owner.
 acceptance_criteria:
   - text: "The policy question is answered and the answer recorded here with its source: is the AI info label required, expected or optional for the Reels this product publishes"
-    met: false
-    reason: "not answered — a policy decision for the owner. Meta's own pages were read 2026-10-02 and are quoted in the notes ('Instagram: what Meta's pages say'), with a recommended answer under 'Owner decision needed' (#515)"
+    met: true
+    evidence: "Owner, 2026-10-02: \"add an option to mark it as AI Labeled\". The label applies to the publishes the creator declares AI-generated: the product asks once per publish and sends the declaration on every platform field that exists. The policy it answers is Meta's, quoted in the notes ('Instagram: what Meta's pages say', read 2026-10-02): disclosure is required for photorealistic AI video and realistic AI audio, whatever the upload path, and the same for every account. Recorded under 'Owner decision (2026-10-02)' in the notes (#TBD-FILM-1731)"
   - text: "If the label applies to some publishes, the product knows which: the creator declares it per publish (or per project), and the declaration is stored with the publish"
-    met: false
-    reason: "blocked on the answer above"
+    met: true
+    evidence: "Per publish: the 'AI-generated (label it)' option, apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/ai-label-declaration.tsx:62 (react-hook-form, AiLabelDeclarationSchema), off by default (publish-screen.tsx:242; no project-level setting exists to default it from). Stored: publishes.ai_generated, apps/web/supabase/migrations/20261002070720_publishes-ai-generated.sql:24, written at packages/features/publishing/src/server/publish-actions.ts:438. Driven in a browser: apps/e2e/tests/publishing/sandbox-ai-label.spec.ts (#TBD-FILM-1731)"
   - text: "If it applies, is_ai_generated is sent on the container request from the one Instagram flow (InstagramProvider; the lambda calls it since FILM-1728), and the capability reference documents the parameter with its source"
-    met: false
-    reason: "blocked on the answer above"
+    met: true
+    evidence: "packages/features/publishing/src/providers/instagram/instagram-provider.ts:113, only when declared; the worker passes the job's declaration, apps/web/lambda/publish-worker/handlers/instagram.ts:26, which the scheduled-publish lambda puts on the job from the row (apps/web/lambda/scheduled-publish/index.ts:278); the in-app cron and a retry read the row (process-scheduled-publishes.ts:377, publish-actions.ts:877). Documented with its source in docs/platform-capability-reference.md:784 ('AI-label fields') (#TBD-FILM-1731)"
   - text: "If it applies, a test asserts the parameter is sent exactly when the declaration says so, seen red first; the sandbox accepts it"
-    met: false
-    reason: "blocked on the answer above"
+    met: true
+    evidence: "packages/features/publishing/__tests__/ai-label-providers.test.ts:80 (declared, declared-not-AI and undeclared; red before the provider change: 'expected null to be true'); apps/web/lambda/publish-worker/__tests__/ai-label.test.ts:133 (the worker, incl. a job queued before the field); mutation guards AIL1 and AIL7 (tooling/mutation-guards/film-1731.json), both seen red. The sandbox accepts it, keeps it and refuses a non-boolean: apps/vendor-sandbox/src/social/vendors/meta/publishing.ts:125, tested at apps/vendor-sandbox/__tests__/meta-publishing.test.ts:216 (red before the sandbox change). In a browser, the sandbox ledger shows is_ai_generated=true on the container of a declared publish and none on the next, undeclared one: apps/e2e/tests/publishing/sandbox-ai-label.spec.ts (#TBD-FILM-1731)"
   - text: "Whether the same question exists on the other platforms we publish to is checked and recorded, each with its own source"
     met: true
     evidence: "notes, 'Other platforms we publish to': YouTube, TikTok, X, LinkedIn and Facebook each checked against their own first-party policy page and API reference, quoted with URL and read date 2026-10-02; the two pages this network could not read (X's policy page, TikTok's support page) are named, not guessed (#515)"
-open_questions:
-  - "Is Instagram's AI info label required, expected, or merely available for the Reels this product publishes — and does the answer differ between the owner's own account and other creators'?"
+  - text: "The same declaration is sent on every other platform's own field — YouTube status.containsSyntheticMedia, TikTok post_info.is_aigc, X made_with_ai — exactly when declared, on every publish path; Facebook Pages, which have no field, get nothing, and the publish screen says so beside the option from the platform label map"
+    met: true
+    evidence: "Providers: youtube-provider.ts:64 (via server/youtube-upload.ts:60), tiktok-provider.ts:201, twitter-provider.ts:264; the worker's own handlers: apps/web/lambda/publish-worker/handlers/youtube.ts:55, tiktok.ts:30, twitter.ts:166. Tests, each seen red first: ai-label-providers.test.ts:118, :162, :207; apps/web/lambda/publish-worker/__tests__/ai-label.test.ts:82, :158; ai-label-publish-action.test.ts:142 (the row stores it and the upload sends it); guards AIL2-AIL5, AIL8-AIL10. The map: packages/features/publishing/src/lib/ai-label.ts (Facebook and LinkedIn null; guard AIL6), the note named from PLATFORM_NAMES at ai-label-declaration.tsx:74. Sandbox accepts and records each: google/data.ts:342, tiktok/data.ts:329, x/data.ts:318, tested in youtube-journey.test.ts:268, tiktok-journey.test.ts:148, x-journey.test.ts:123. YouTube's field on the ledger in a browser: sandbox-ai-label.spec.ts (#TBD-FILM-1731)"
+open_questions: []
 notes: |
   ## Where this came from
 
@@ -307,10 +309,27 @@ notes: |
     it. A photorealistic AI video published to a Facebook Page through this
     product cannot be disclosed the way Meta's rule asks.
 
-  ## Owner decision needed
+  ## Owner decision (2026-10-02)
 
-  The first criterion is the owner's to answer. Recommended answer, with
-  its reasoning:
+  "add an option to mark it as AI Labeled." Built as: one declaration per
+  publish, an "AI-generated (label it)" option on the publish screen, off by
+  default (no project-level setting exists to default it from), stored as
+  `publishes.ai_generated`, and sent on every field that exists —
+  Instagram, YouTube, TikTok and X — only when declared (an undeclared
+  publish sends no field, never false). The lead's brief for the build took
+  all four platforms into this spec rather than a sibling. Facebook Pages
+  have no field: nothing is sent and the screen names Facebook beside the
+  option. LinkedIn is being retired by another spec and was left untouched;
+  it has no field either, and the screen names it too while one is
+  connected.
+
+  Not built: a caption disclosure for Facebook or LinkedIn, and holding
+  Facebook back for declared video (the two options below). Neither was
+  asked for.
+
+  ## Recommendation made before the decision (#515)
+
+  Kept as it was written. Recommended answer, with its reasoning:
 
   **Required, for photorealistic or realistic-looking AI video (and
   realistic AI audio); not required for animation or a clearly stylised
@@ -359,11 +378,16 @@ notes: |
     that gap; it does not change the recommendation, since the X and TikTok
     API fields exist either way.
 feature:
-  database: null
+  database: {tables: ["publishes"], columns_added: ["publishes.ai_generated"]}
   queries: []
-  actions: []
-  ui: []
+  actions:
+    - {name: "publishToAllAction", file: "packages/features/publishing/src/server/publish-actions.ts"}
+  ui:
+    - {component: "AiLabelDeclaration", file: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/ai-label-declaration.tsx"}
   provider_integration:
-    vendor: "Meta Graph API (Instagram API with Facebook Login)"
+    vendor: "Meta Graph API, YouTube Data API, TikTok Content Posting API, X API v2"
     endpoints:
       - "POST /{ig-user-id}/media — is_ai_generated (Instagram Platform changelog, 2026-06-22)"
+      - "videos.insert — status.containsSyntheticMedia"
+      - "POST /v2/post/publish/video/init/ — post_info.is_aigc"
+      - "POST /2/tweets — made_with_ai"

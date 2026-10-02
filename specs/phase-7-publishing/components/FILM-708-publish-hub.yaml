@@ -68,19 +68,19 @@ component:
 acceptance_criteria:
   - text: "Shows all connected platforms with toggle"
     met: false
-    reason: "retired — replaced by language routing: each video goes to every connected channel of its language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1098`)"
+    reason: "retired — replaced by language routing: each video goes to every connected channel of its language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1101`)"
   - text: "Unconnected platforms show \"Connect\" action"
     met: false
-    reason: "retired — connecting moved to Settings › Platforms, linked from the screen (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-settings-sidebar.tsx:130`, `:160`)"
+    reason: "retired — connecting moved to Settings › Platforms, linked from the screen (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-settings-sidebar.tsx:143`, `:160`)"
   - text: "Metadata can be customized per platform"
     met: false
-    reason: "retired — one title/description/tags set for every channel (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-settings-sidebar.tsx:52`), translated per language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:951`)"
+    reason: "retired — one title/description/tags set for every channel (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-settings-sidebar.tsx:58`), translated per language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:954`)"
   - text: "Thumbnail preview works"
     met: true
     evidence: null
   - text: "Scheduling works for supported platforms"
     met: false
-    reason: "unverified — panel → `scheduled` rows → cron → publish-worker (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:838`, `sst.config.ts:1387`); no test drives a due publish"
+    reason: "unverified — panel → `scheduled` rows → cron → publish-worker (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:840`, `sst.config.ts:1387`); no test drives a due publish"
   - text: "Publish triggers all selected platforms"
     met: true
     evidence: null
@@ -95,7 +95,7 @@ acceptance_criteria:
     evidence: null
   - text: "Can retry failed publishes"
     met: false
-    reason: "no longer true — `retryPublishAction` (`packages/features/publishing/src/server/publish-actions.ts:925`) is called only by `PublishHub`, which no page renders since baa752eb"
+    reason: "no longer true — `retryPublishAction` (`packages/features/publishing/src/server/publish-actions.ts:929`) is called only by `PublishHub`, which no page renders since baa752eb"
 test_plan:
   unit:
     - text: "Test platform config initialization"
