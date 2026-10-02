@@ -1597,27 +1597,43 @@ function segmentEligible(days: number): string {
  * not report them (KB-114), and a video with no reach rows has no
  * impressions figure, not zero impressions.
  *
+ * The rates divide by the views series `viewsDenominatorFor` chose
+ * (FILM-1722): `views`, or YouTube's engaged views across a change in what
+ * a view is, so a cohort spanning 2026-08-27 is not read on two
+ * denominators (FILM-1717). A video with no engaged-view day in its window
+ * has no rate on that series, not a zero one.
+ *
  * Closed and keyed by `SEGMENT_MEASURES`, because the expression is
  * interpolated into SQL.
  */
-const SEGMENT_MEASURE_SQL = {
-  impressions: 'if(v_reach_days > 0, toFloat64(v_impressions), NULL)',
-  impressions_ctr:
-    'if(v_impressions > 0, v_ctr_weighted / v_impressions, NULL)',
-  average_view_duration:
-    'if(v_watch_days > 0 AND v_views > 0, v_watch / v_views, NULL)',
-  share_rate: 'if(v_views > 0, v_shares / v_views, NULL)',
-  comment_rate: 'if(v_views > 0, v_comments / v_views, NULL)',
-  subscriber_conversion:
-    'if(v_subscriber_days > 0 AND v_views > 0, v_subscribers / v_views, NULL)',
-} as const satisfies Record<SegmentMeasure, string>;
+const SEGMENT_DENOMINATORS = {
+  views: { sum: 'v_views', measured: 'v_views > 0' },
+  engaged_views: {
+    sum: 'v_engaged',
+    measured: 'v_engaged_days > 0 AND v_engaged > 0',
+  },
+} as const satisfies Record<ViewsColumn, { sum: string; measured: string }>;
 
-function segmentMeasureSql(measure: SegmentMeasure): string {
-  if (!Object.hasOwn(SEGMENT_MEASURE_SQL, measure)) {
+function segmentMeasureSql(
+  measure: SegmentMeasure,
+  viewsColumn: ViewsColumn = 'views',
+): string {
+  const { sum, measured } = SEGMENT_DENOMINATORS[viewsColumnOf(viewsColumn)];
+  const sql: Record<SegmentMeasure, string> = {
+    impressions: 'if(v_reach_days > 0, toFloat64(v_impressions), NULL)',
+    impressions_ctr:
+      'if(v_impressions > 0, v_ctr_weighted / v_impressions, NULL)',
+    average_view_duration: `if(v_watch_days > 0 AND ${measured}, v_watch / ${sum}, NULL)`,
+    share_rate: `if(${measured}, v_shares / ${sum}, NULL)`,
+    comment_rate: `if(${measured}, v_comments / ${sum}, NULL)`,
+    subscriber_conversion: `if(v_subscriber_days > 0 AND ${measured}, v_subscribers / ${sum}, NULL)`,
+  };
+
+  if (!Object.hasOwn(sql, measure)) {
     throw new Error(`Unknown segment measure: ${String(measure)}`);
   }
 
-  return SEGMENT_MEASURE_SQL[measure];
+  return sql[measure];
 }
 
 /**
@@ -1645,7 +1661,29 @@ function segmentPerVideoSql(
   latest: string,
   grouping: string,
   days: number,
+  viewsColumn: ViewsColumn = 'views',
 ): string {
+  // `video_daily_stats` does not carry engaged views (migration 012), so
+  // they are a leg of their own from the table it selects from, read only
+  // when a rate is divided by them.
+  const engagedLeg =
+    viewsColumnOf(viewsColumn) === 'engaged_views'
+      ? `
+
+      UNION ALL
+
+      SELECT
+        video_id, project_id, metric_date,
+        toUInt64(0) as views, toUInt64(0) as watch_time_seconds,
+        toUInt32(0) as shares, toUInt32(0) as comments,
+        CAST(NULL, 'Nullable(Int32)') as subscribers_gained,
+        toUInt64(0) as impressions, toFloat64(0) as ctr_weighted,
+        engaged_views,
+        toUInt8(2) as is_reach
+      FROM video_metrics FINAL
+      WHERE video_id IN (SELECT video_id FROM dim)`
+      : '';
+
   return `
     WITH dim AS (${dimSubquery(conditions, latest)}),
     ingest AS (${channelIngestSql(conditions)}),
@@ -1655,6 +1693,7 @@ function segmentPerVideoSql(
         views, watch_time_seconds,
         shares, comments, subscribers_gained,
         toUInt64(0) as impressions, toFloat64(0) as ctr_weighted,
+        CAST(NULL, 'Nullable(UInt64)') as engaged_views,
         toUInt8(0) as is_reach
       FROM video_daily_stats
       WHERE video_id IN (SELECT video_id FROM dim)
@@ -1667,9 +1706,10 @@ function segmentPerVideoSql(
         toUInt32(0) as shares, toUInt32(0) as comments,
         CAST(NULL, 'Nullable(Int32)') as subscribers_gained,
         impressions, impressions_ctr * impressions as ctr_weighted,
+        CAST(NULL, 'Nullable(UInt64)') as engaged_views,
         toUInt8(1) as is_reach
       FROM video_reach_daily FINAL
-      WHERE video_id IN (SELECT video_id FROM dim)
+      WHERE video_id IN (SELECT video_id FROM dim)${engagedLeg}
     ),
     per_video AS (
       SELECT
@@ -1689,6 +1729,8 @@ function segmentPerVideoSql(
         sumIf(m.shares, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_shares,
         sumIf(m.comments, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_comments,
         sumIf(m.subscribers_gained, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_subscribers,
+        sumIf(ifNull(m.engaged_views, 0), dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_engaged,
+        countIf(m.is_reach = 2 AND m.engaged_views IS NOT NULL AND dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_engaged_days,
         countIf(m.is_reach = 1 AND dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_reach_days,
         countIf(m.is_reach = 0 AND m.watch_time_seconds IS NOT NULL AND dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_watch_days,
         countIf(m.is_reach = 0 AND m.subscribers_gained IS NOT NULL AND dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_subscriber_days
@@ -1810,6 +1852,8 @@ export async function querySegmentPerformance(input: {
    * are; the measure's own distribution is added under `measure`.
    */
   measure?: SegmentMeasure;
+  /** The series a rate measure divides by, as `viewsDenominatorFor` chose it. */
+  viewsColumn?: ViewsColumn;
 }): Promise<SegmentPerformanceRow[]> {
   const kind = input.segment.kind;
   const grouping = resolveSegmentGrouping(kind);
@@ -1844,11 +1888,11 @@ export async function querySegmentPerformance(input: {
       ifNotFinite(quantileExactInclusiveIf(0.75)(assumeNotNull(measure), ${measured}), 0) as p75_measure`
     : '';
   const source = input.measure
-    ? `(SELECT *, ${segmentMeasureSql(input.measure)} as measure FROM per_video)`
+    ? `(SELECT *, ${segmentMeasureSql(input.measure, input.viewsColumn)} as measure FROM per_video)`
     : 'per_video';
 
   const query = `
-    ${segmentPerVideoSql(conditions, latest, grouping, days)}
+    ${segmentPerVideoSql(conditions, latest, grouping, days, input.viewsColumn)}
     SELECT
       segment,
       count() as video_count,
@@ -1975,6 +2019,8 @@ export async function querySegmentVideoMeasures(input: {
   measure: SegmentMeasure;
   checkpointDays?: number;
   asOf?: string;
+  /** The series a rate measure divides by, as `viewsDenominatorFor` chose it. */
+  viewsColumn?: ViewsColumn;
 }): Promise<SegmentVideoMeasureRow[]> {
   if (!isClickHouseEnabled()) return [];
   assertDimScope(input.scope);
@@ -1986,11 +2032,11 @@ export async function querySegmentVideoMeasures(input: {
   params.asOf = input.asOf ?? formatClickHouseDateTime(new Date());
 
   const query = `
-    ${segmentPerVideoSql(conditions, latest, resolveSegmentGrouping('all'), days)}
+    ${segmentPerVideoSql(conditions, latest, resolveSegmentGrouping('all'), days, input.viewsColumn)}
     SELECT
       p.video_id as video_id,
       toString(p.published_at) as published_at,
-      ${segmentMeasureSql(input.measure)} as measure,
+      ${segmentMeasureSql(input.measure, input.viewsColumn)} as measure,
       toString(d.connection_id) as connection_id,
       d.platform as platform,
       d.content_type as content_type,

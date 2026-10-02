@@ -6,6 +6,7 @@ import type {
   CreativeTemplate,
   GenomeAnalysis,
   GenomeHypothesis,
+  GenomeViewsDenominator,
   LinkedTest,
   Recommendation,
   StageMeasureRefusal,
@@ -17,6 +18,7 @@ import {
   applyLinkedTests,
   concludedChangeLogEntry,
   deriveTemplates,
+  genomeViewsDenominator,
   hypothesesFrom,
   isAnalyticsPlatform,
   metricProvenanceFor,
@@ -55,6 +57,11 @@ export type GenomeFindingsResult =
   | { status: 'refused'; refusal: GenomeRefusal }
   | {
       status: 'analysed';
+      /**
+       * The views series the rates divide by, and from when the cohort
+       * starts when a change in what a view is narrowed it (FILM-1717).
+       */
+      viewsDenominator: GenomeViewsDenominator & { ok: true };
       /** With every concluded test of its hypotheses applied (v2). */
       analysis: GenomeAnalysis;
       /** One per finding, each carrying the finding's evidence. */
@@ -122,29 +129,61 @@ export const getGenomeFindingsAction = enhanceAction(
       return { status: 'refused', refusal: { kind: 'analytics_off' } };
     }
 
-    const rows = await querySegmentVideoMeasures({
-      scope,
+    const asOf = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const read = (viewsColumn: GenomeViewsDenominator & { ok: true }) =>
+      querySegmentVideoMeasures({
+        scope,
+        measure: measure.signal,
+        checkpointDays: input.checkpointDays,
+        asOf,
+        viewsColumn: viewsColumn.column,
+      }).then((rows) =>
+        rows.filter(
+          (row) =>
+            row.formatFamily === input.formatFamily &&
+            (viewsColumn.publishedFrom === null ||
+              row.publishedAt.slice(0, 10) >= viewsColumn.publishedFrom),
+        ),
+      );
+
+    // Read on views first: the cohort's dates decide whether a change in
+    // what a view is falls inside it, and so which series the rates divide
+    // by. A cohort on one definition is read once.
+    const onViews = await read({
+      ok: true,
+      column: 'views',
+      publishedFrom: null,
+      instead: null,
+    });
+    const viewsDenominator = genomeViewsDenominator({
+      platform,
+      formatFamily: input.formatFamily,
       measure: measure.signal,
+      publishedAt: onViews.map((row) => row.publishedAt),
       checkpointDays: input.checkpointDays,
-      asOf: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      asOf,
     });
 
+    if (!viewsDenominator.ok) {
+      return { status: 'refused', refusal: viewsDenominator.refusal };
+    }
+
+    const rows =
+      viewsDenominator.column === 'views' &&
+      viewsDenominator.publishedFrom === null
+        ? onViews
+        : await read(viewsDenominator);
+
     const analysis = analyseGenome({
-      videos: rows.flatMap((row) =>
-        row.formatFamily === input.formatFamily
-          ? [
-              {
-                videoId: row.videoId,
-                connectionId: row.connectionId,
-                platform,
-                formatFamily: row.formatFamily,
-                assetDurationSeconds: row.assetDurationSeconds,
-                tags: row.tags,
-                value: row.value,
-              },
-            ]
-          : [],
-      ),
+      videos: rows.map((row) => ({
+        videoId: row.videoId,
+        connectionId: row.connectionId,
+        platform,
+        formatFamily: input.formatFamily,
+        assetDurationSeconds: row.assetDurationSeconds,
+        tags: row.tags,
+        value: row.value,
+      })),
       stage: input.stage,
       signal: measure.signal,
       checkpointDays: input.checkpointDays,
@@ -236,6 +275,7 @@ export const getGenomeFindingsAction = enhanceAction(
 
     return {
       status: 'analysed',
+      viewsDenominator,
       analysis: updated,
       recommendations: updated.findings.map(recommendFrom),
       hypotheses: hypothesesFrom(updated),

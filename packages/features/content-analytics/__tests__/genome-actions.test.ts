@@ -16,8 +16,14 @@ const state: {
   calls: string[];
   platform: string;
   clickhouse: boolean;
-  measureCalls: Array<{ measure: string; checkpointDays?: number }>;
+  measureCalls: Array<{
+    measure: string;
+    checkpointDays?: number;
+    viewsColumn?: string;
+  }>;
   rows: Array<Record<string, unknown>>;
+  /** What the same videos read on engaged views (FILM-1717). */
+  engagedRows: Array<Record<string, unknown>> | null;
   /** analytics_experiments rows the paged read returns. */
   tests: Array<Record<string, unknown>>;
   /** channel_experiments rows (FILM-1724) the paged read returns. */
@@ -31,6 +37,7 @@ const state: {
   clickhouse: true,
   measureCalls: [],
   rows: [],
+  engagedRows: null,
   tests: [],
   channelTests: [],
   filters: [],
@@ -93,10 +100,13 @@ vi.mock('@kit/clickhouse/server', () => ({
   querySegmentVideoMeasures: async (input: {
     measure: string;
     checkpointDays?: number;
+    viewsColumn?: string;
   }) => {
     state.calls.push('clickhouse');
     state.measureCalls.push(input);
-    return state.rows;
+    return input.viewsColumn === 'engaged_views' && state.engagedRows
+      ? state.engagedRows
+      : state.rows;
   },
 }));
 
@@ -127,6 +137,7 @@ beforeEach(() => {
   state.platform = 'youtube';
   state.clickhouse = true;
   state.measureCalls = [];
+  state.engagedRows = null;
   state.tests = [];
   state.channelTests = [];
   state.filters = [];
@@ -333,5 +344,67 @@ describe('getGenomeFindingsAction', () => {
       'result_first:yes@transmission',
     );
     expect(result.templates.length).toBeGreaterThan(0);
+  });
+
+  // FILM-1717: share_rate divides by views, and YouTube's views changed
+  // meaning on 2026-08-27. A cohort on both sides is read on engaged views.
+  it('reads a cohort spanning a change in what a view is on engaged views', async () => {
+    const published = (index: number) =>
+      index < 5 ? '2026-06-01 00:00:00' : '2026-09-01 00:00:00';
+    state.rows = state.rows.map((entry, index) => ({
+      ...entry,
+      publishedAt: published(index),
+    }));
+    // Engaged views are fewer than views after the change: each rate higher.
+    state.engagedRows = state.rows.map((entry) => ({
+      ...entry,
+      value: (entry.value as number) * 2,
+    }));
+
+    const result = await getGenomeFindingsAction(input);
+    if (result.status !== 'analysed') throw new Error(result.status);
+
+    expect(state.measureCalls.map((call) => call.viewsColumn)).toEqual([
+      'views',
+      'engaged_views',
+    ]);
+    expect(result.viewsDenominator).toMatchObject({
+      column: 'engaged_views',
+      publishedFrom: null,
+      instead: { reason: 'view_definition_changed', changedOn: '2026-08-27' },
+    });
+    expect(result.analysis.measuredCount).toBe(10);
+  });
+
+  it('reads a cohort on one definition once, on views', async () => {
+    const result = await getGenomeFindingsAction(input);
+    if (result.status !== 'analysed') throw new Error(result.status);
+
+    expect(state.measureCalls.map((call) => call.viewsColumn)).toEqual([
+      'views',
+    ]);
+    expect(result.viewsDenominator).toEqual({
+      ok: true,
+      column: 'views',
+      publishedFrom: null,
+      instead: null,
+    });
+  });
+
+  it('starts the cohort where engaged views begin when they cannot cover it', async () => {
+    state.rows = state.rows.map((entry, index) => ({
+      ...entry,
+      publishedAt: index === 0 ? '2025-01-10 00:00:00' : '2026-09-01 00:00:00',
+    }));
+
+    const result = await getGenomeFindingsAction(input);
+    if (result.status !== 'analysed') throw new Error(result.status);
+
+    expect(result.viewsDenominator).toMatchObject({
+      column: 'engaged_views',
+      publishedFrom: '2025-04-24',
+    });
+    // The January 2025 video is left out, not read on the other series.
+    expect(result.analysis.measuredCount).toBe(9);
   });
 });
