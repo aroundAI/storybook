@@ -55,10 +55,10 @@ acceptance_criteria:
     evidence: null
   - text: "Monthly/yearly projections are calculated with confidence levels"
     met: true
-    evidence: "`packages/features/content-analytics/src/server/revenue-actions.ts:489` — the window ends on the caller's date (KB-24, #345); `apps/e2e/tests/revenue/revenue-currency.spec.ts:281`"
+    evidence: "`packages/features/content-analytics/src/server/revenue-service.ts:156` — the window ends on the caller's date (KB-24, #345); `apps/e2e/tests/revenue/revenue-currency.spec.ts:281`"
   - text: "Revenue reports can be generated and exported"
     met: false
-    reason: "no longer true — `generateRevenueReportAction` stores a `revenue_reports` row, writes no file, and nothing calls it (since e84ba285) — `packages/features/content-analytics/src/server/revenue-actions.ts:646`"
+    reason: "no longer true — `generateRevenueReportAction` stores a `revenue_reports` row, writes no file, and nothing calls it (since e84ba285) — `packages/features/content-analytics/src/server/revenue-actions.ts:416`"
   - text: "Revenue alerts are created for significant changes (Future enhancement)"
     met: true
     evidence: "`packages/features/content-analytics/src/server/revenue-alerts.ts:116` (FILM-1508, run by the sync; rises above 3× the prior average and milestones — no alert for a drop), test `packages/features/content-analytics/__tests__/revenue-alerts.test.ts:113`"
@@ -81,13 +81,13 @@ test_plan:
   unit:
     - text: "Test revenue summary calculation"
       met: true
-      evidence: "`packages/features/content-analytics/__tests__/revenue-by-currency.test.ts:46`"
+      evidence: "`packages/features/content-analytics/__tests__/revenue-by-currency.test.ts:48`"
     - text: "Test RPM calculation"
       met: true
-      evidence: "`packages/features/content-analytics/__tests__/revenue-by-currency.test.ts:75`"
+      evidence: "`packages/features/content-analytics/__tests__/revenue-by-currency.test.ts:77`"
     - text: "Test trend detection logic"
       met: true
-      evidence: "`packages/features/content-analytics/__tests__/revenue-by-currency.test.ts:88`"
+      evidence: "`packages/features/content-analytics/__tests__/revenue-by-currency.test.ts:90`"
     - text: "Test projection confidence levels"
       met: true
       evidence: "`packages/features/content-analytics/__tests__/revenue-projection-confidence.test.ts:27` — the 13/14 and 24/25-day boundaries, days not rows, and each currency by its own days; guard `tooling/mutation-guards/film-706-810.json`"

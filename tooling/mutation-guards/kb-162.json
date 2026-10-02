@@ -69,7 +69,9 @@
       "replace": "      value: data?.watchTimeSeconds || 0,",
       "spec": "tests/analytics/company-dashboard-evidence.spec.ts",
       "grep": "an all-TikTok team",
-      "env": { "CLICKHOUSE_EVIDENCE": "1" }
+      "env": {
+        "CLICKHOUSE_EVIDENCE": "1"
+      }
     },
     {
       "name": "KB-162 the Views card shows a Facebook-only team's views as 0",
@@ -99,7 +101,9 @@
       "replace": "      value: data?.views || 0,",
       "spec": "tests/analytics/company-dashboard-evidence.spec.ts",
       "grep": "a Facebook-only team",
-      "env": { "CLICKHOUSE_EVIDENCE": "1" }
+      "env": {
+        "CLICKHOUSE_EVIDENCE": "1"
+      }
     },
     {
       "name": "KB-162 a season counts a TikTok publish's unmeasured saves as 0",
@@ -134,7 +138,7 @@
     {
       "name": "KB-162 an experiment snapshot counts TikTok's unmeasured watch time as 0",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
       "find": "        measuredFigure(stats, 'watch_time_seconds'),",
       "replace": "        stats.watch_time_seconds,",
       "cwd": "packages/features/content-analytics",

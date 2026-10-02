@@ -74,9 +74,9 @@
     {
       "name": "FILM-1704 a project with no connections still scans ClickHouse",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/coverage-actions.ts",
-      "find": "      channels.length === 0 ? [] : await queryObservedCoverage(scope, from, to);",
-      "replace": "      await queryObservedCoverage(scope, from, to);",
+      "file": "packages/features/content-analytics/src/server/coverage-service.ts",
+      "find": "    channels.length === 0 ? [] : await queryObservedCoverage(scope, from, to);",
+      "replace": "    await queryObservedCoverage(scope, from, to);",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/coverage-actions.test.ts",
       "pattern": "a project with no connections"
@@ -84,8 +84,8 @@
     {
       "name": "FILM-1704 an inactive connection counts as connected",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/coverage-actions.ts",
-      "find": "      .filter((channel) => channel.isActive)\n",
+      "file": "packages/features/content-analytics/src/server/coverage-service.ts",
+      "find": "    .filter((channel) => channel.isActive)\n",
       "replace": "",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/coverage-actions.test.ts",
@@ -94,9 +94,9 @@
     {
       "name": "FILM-1704 the channel filter is ignored by the connected half",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/coverage-actions.ts",
-      "find": "        (!scope.connectionId || channel.connectionId === scope.connectionId) &&",
-      "replace": "        true &&",
+      "file": "packages/features/content-analytics/src/server/coverage-service.ts",
+      "find": "      (!scope.connectionId || channel.connectionId === scope.connectionId) &&",
+      "replace": "      true &&",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/coverage-actions.test.ts",
       "pattern": "a channel filter narrows"

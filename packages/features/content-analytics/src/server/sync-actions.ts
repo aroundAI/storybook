@@ -7,13 +7,11 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
-import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { readFailed, whyNoRow } from '@kit/shared/rows';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import { SYNCED_PLATFORMS, type SyncStatusResponse } from '../lib/sync-status';
 import { syncSinglePublishById } from './analytics-sync-cron';
-import { type SyncStatusRow, toSyncStatus } from './sync-status';
+import { GetSyncStatusSchema, getSyncStatusService } from './sync-service';
 import type { SyncResult } from './types';
 import { withRefusals } from './with-refusals';
 
@@ -23,14 +21,6 @@ import { withRefusals } from './with-refusals';
 const ManualSyncSchema = z.object({
   publishId: z.string().uuid(),
 });
-
-/**
- * Schema for get sync status action
- */
-const GetSyncStatusSchema = z.union([
-  z.object({ episodeId: z.string().uuid() }),
-  z.object({ publishIds: z.array(z.string().uuid()).min(1).max(500) }),
-]);
 
 /**
  * Triggers an immediate analytics sync for a specific publish.
@@ -93,45 +83,15 @@ export const manualSyncAction = enhanceAction(
  * schedule will try again. For one episode's publishes (the episode
  * analytics page) or a list of them (the Video Log's page of rows).
  *
- * Read on the user-scoped client, so RLS decides which publishes the caller
- * sees. A failed read is returned as a refusal, never as an empty list: "no
- * sync record" and "could not read the sync record" are different answers.
+ * The cookie-session wrapper over `getSyncStatusService` (FILM-1906), which
+ * reads on the caller's client so RLS decides which publishes they see. A
+ * failed read is returned as a refusal, never as an empty list: "no sync
+ * record" and "could not read the sync record" are different answers.
  */
 export const getSyncStatusAction = withRefusals(
   'load the analytics sync status',
   enhanceAction(
-    async function (data): Promise<SyncStatusResponse[]> {
-      const client = getSupabaseServerClient();
-
-      const select = () =>
-        client
-          .from('publishes')
-          .select(
-            'id, platform, metadata, platform_connections!publishes_platform_connection_id_fkey(scopes, metadata, disconnected_at)',
-          )
-          .eq('status', 'published')
-          .not('platform_content_id', 'is', null)
-          .in('platform', [...SYNCED_PLATFORMS]);
-
-      const rows =
-        'episodeId' in data
-          ? await fetchAllRows<SyncStatusRow>(
-              (from, to) =>
-                select()
-                  .eq('episode_id', data.episodeId)
-                  .order('id')
-                  .range(from, to),
-              'episode sync status',
-            )
-          : await fetchAllByIds<SyncStatusRow>(
-              data.publishIds,
-              (chunk, from, to) =>
-                select().in('id', chunk).order('id').range(from, to),
-              'publish sync status',
-            );
-
-      return rows.map(toSyncStatus);
-    },
+    async (data) => getSyncStatusService(getSupabaseServerClient(), data),
     {
       auth: true,
       schema: GetSyncStatusSchema,

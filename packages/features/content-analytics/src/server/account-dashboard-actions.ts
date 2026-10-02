@@ -70,16 +70,39 @@ type Client = ReturnType<typeof getSupabaseServerClient<Database>>;
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
+export interface AccountDashboardInput {
+  accountId: string;
+  startDate?: Date;
+  endDate?: Date;
+}
+
 /**
  * Get dashboard data aggregated across all projects for an account.
- * Metadata from Supabase, metrics from ClickHouse.
+ * Metadata from Supabase, metrics from ClickHouse. The cookie-session
+ * wrapper over `getAccountDashboardDataService` (FILM-1906).
  */
 export async function getAccountDashboardData(
   accountId: string,
   options?: { startDate?: Date; endDate?: Date },
 ): Promise<AccountDashboardData> {
-  const client = getSupabaseServerClient();
+  return getAccountDashboardDataService(getSupabaseServerClient(), {
+    accountId,
+    ...options,
+  });
+}
 
+/**
+ * The account dashboard as a service over the caller's client (FILM-1906).
+ *
+ * Access is RLS's: projects, publishes, seasons and episodes are read
+ * through the client, so an account the caller is not in has no projects
+ * here and the dashboard is the empty one. With ClickHouse off, or no
+ * answer from it, the figures are null — not measured — never zeros.
+ */
+export async function getAccountDashboardDataService(
+  client: Client,
+  { accountId, ...options }: AccountDashboardInput,
+): Promise<AccountDashboardData> {
   // A fact about the account's connections, not the window or its
   // projects, so it is read beside the figures rather than from them.
   const [data, revenueAccess] = await Promise.all([
@@ -177,7 +200,7 @@ async function getAccountFigures(
     return {
       ...getEmptyDashboardData(),
       projectCount: projects.length,
-      productionStatus: await getProductionStatus(projectIds),
+      productionStatus: await getProductionStatus(client, projectIds),
     };
   }
 
@@ -233,7 +256,7 @@ async function getAccountFigures(
     return {
       ...getEmptyDashboardData(),
       projectCount: projects.length,
-      productionStatus: await getProductionStatus(projectIds),
+      productionStatus: await getProductionStatus(client, projectIds),
     };
   }
 
@@ -286,7 +309,7 @@ async function getAccountFigures(
   const topContent = buildTopContent(allPublishes, perVideoTotals, window);
 
   // Production status (stays Supabase)
-  const productionStatus = await getProductionStatus(projectIds);
+  const productionStatus = await getProductionStatus(client, projectIds);
 
   return {
     totals: currentAnalyticsTotals,
@@ -418,10 +441,9 @@ function buildTopContent(
 }
 
 async function getProductionStatus(
+  client: Client,
   projectIds: string[],
 ): Promise<AccountDashboardData['productionStatus']> {
-  const client = getSupabaseServerClient();
-
   // Paged: the counters below are computed in JS over these rows, so a
   // truncated read reports a smaller production pipeline than exists.
   const seasons = await fetchAllByIds<{ id: string }>(

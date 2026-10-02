@@ -61,11 +61,11 @@ const KNOWN: Record<string, [number, string]> = {
     [1, CLEANUP],
 
   // Rollbacks of a row the same action just inserted
-  'packages/features/content-analytics/src/server/experiment-actions.ts | analytics_experiments | delete':
-    [1, 'rollback of the row this action just inserted'],
+  'packages/features/content-analytics/src/server/experiment-service.ts | analytics_experiments | delete':
+    [1, 'rollback of the row this service just inserted'],
 
   // Replace-sets
-  'packages/features/content-analytics/src/server/taxonomy-actions.ts | publish_tags | delete':
+  'packages/features/content-analytics/src/server/taxonomy-service.ts | publish_tags | delete':
     [2, REPLACE],
   'packages/features/publishing/src/server/project-publishing-actions.ts | project_publishing_configs | delete':
     [1, REPLACE],

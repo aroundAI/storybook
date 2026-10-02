@@ -106,8 +106,8 @@ notes: |
   two readers and **zero writers**.
 
   ```
-  packages/features/content-analytics/src/server/deep-dive-actions.ts:256   ypp_target_watch_hours, ypp_target_subscribers
-  packages/features/content-analytics/src/server/taxonomy-actions.ts:325    tag_min_sample
+  packages/features/content-analytics/src/server/deep-dive-service.ts:271   ypp_target_watch_hours, ypp_target_subscribers
+  packages/features/content-analytics/src/server/taxonomy-service.ts:246    tag_min_sample
   ```
 
   Both fall back with `??` — `4000`, `1000`, `5` (`deep-dive-actions.ts:262-263`,

@@ -11,13 +11,12 @@ import {
   UpdateChannelAnalyticsSettingsSchema,
   isFutureJoinDate,
 } from '../lib/schemas/settings.schema';
-import type { ChannelSettingsRow } from '../lib/ypp-targets';
-import { listAccountChannels } from './channels';
-import { assertScopeAccess } from './scope-access';
-import {
-  fetchAccountAnalyticsSettings,
-  fetchChannelAnalyticsOverrides,
-} from './settings-queries';
+import { getAnalyticsSettingsService } from './settings-service';
+
+export type {
+  AnalyticsSettingsView,
+  ChannelSettingsEntry,
+} from './settings-service';
 
 /**
  * The first writer `analytics_settings` has ever had (FILM-1608).
@@ -29,55 +28,13 @@ import {
  * targets in the same row.
  */
 
-export interface ChannelSettingsEntry extends ChannelSettingsRow {
-  connectionId: string;
-  channelName: string;
-}
-
-export interface AnalyticsSettingsView {
-  accountSettings: {
-    ypp_target_watch_hours: number | null;
-    ypp_target_subscribers: number | null;
-    tag_min_sample: number | null;
-  } | null;
-  channels: ChannelSettingsEntry[];
-}
-
+/**
+ * The settings page's read: the cookie-session wrapper over
+ * `getAnalyticsSettingsService` (FILM-1906).
+ */
 export const getAnalyticsSettingsAction = enhanceAction(
-  async ({ accountId }): Promise<AnalyticsSettingsView> => {
-    await assertScopeAccess({ accountId });
-
-    const client = getSupabaseServerClient();
-
-    const [accountSettings, channels, byConnection] = await Promise.all([
-      fetchAccountAnalyticsSettings(accountId, client),
-      // The same filter `getYppProgressAction` applies. If the settings
-      // page listed channels the progress card does not, an operator
-      // could configure a target for a channel that never appears
-      // anywhere, and never find out why.
-      listAccountChannels(accountId, client, {
-        platform: 'youtube',
-        activeOnly: true,
-      }),
-      fetchChannelAnalyticsOverrides(accountId, client),
-    ]);
-
-    return {
-      accountSettings,
-      channels: channels.map((channel) => {
-        const override = byConnection.get(channel.connectionId);
-
-        return {
-          connectionId: channel.connectionId,
-          channelName: channel.name,
-          ypp_target_watch_hours: override?.ypp_target_watch_hours ?? null,
-          ypp_target_subscribers: override?.ypp_target_subscribers ?? null,
-          ypp_applicant_status: override?.ypp_applicant_status ?? 'unknown',
-          joined_ypp_at: override?.joined_ypp_at ?? null,
-        };
-      }),
-    };
-  },
+  async (input) =>
+    getAnalyticsSettingsService(getSupabaseServerClient(), input),
   {
     schema: GetAnalyticsSettingsSchema,
     auth: true,

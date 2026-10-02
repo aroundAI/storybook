@@ -118,7 +118,7 @@
     {
       "name": "F-2 revenue summed across currencies",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/video-log-actions.ts",
+      "file": "packages/features/content-analytics/src/server/video-log-service.ts",
       "find": "    fold.add({ currency: row.currency, cents: row.cents ?? 0 });",
       "replace": "    fold.add({ currency: 'USD', cents: row.cents ?? 0 });",
       "cwd": "packages/features/content-analytics",
@@ -128,9 +128,9 @@
     {
       "name": "D-U4 a note saved without checking who wrote it last",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/publish-notes-actions.ts",
-      "find": "        expectedUpdatedAt === null\n          ? update.is('analytics_note_updated_at', null)\n          : update.eq('analytics_note_updated_at', expectedUpdatedAt)",
-      "replace": "        expectedUpdatedAt === null ? update : update",
+      "file": "packages/features/content-analytics/src/server/publish-notes-service.ts",
+      "find": "    expectedUpdatedAt === null\n      ? update.is('analytics_note_updated_at', null)\n      : update.eq('analytics_note_updated_at', expectedUpdatedAt)",
+      "replace": "    expectedUpdatedAt === null ? update : update",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/publish-notes-actions.test.ts",
       "pattern": "still has the time the editor read"
@@ -138,9 +138,9 @@
     {
       "name": "D-U4 a losing save reported as a refusal rather than a conflict",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/publish-notes-actions.ts",
-      "find": "      if (current.data && canEdit) {",
-      "replace": "      if (false) {",
+      "file": "packages/features/content-analytics/src/server/publish-notes-service.ts",
+      "find": "  if (current.data && canEdit) {",
+      "replace": "  if (false) {",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/publish-notes-actions.test.ts",
       "pattern": "reports a conflict"
@@ -244,7 +244,7 @@
     {
       "name": "F-2 revenue read row by row rather than summed in the database",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/video-log-actions.ts",
+      "file": "packages/features/content-analytics/src/server/video-log-service.ts",
       "find": "        .rpc('revenue_cents_by_publish', { p_publish_ids: chunk })",
       "replace": "        .from('revenue_records')",
       "cwd": "packages/features/content-analytics",

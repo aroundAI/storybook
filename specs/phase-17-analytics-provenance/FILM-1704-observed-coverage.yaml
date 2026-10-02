@@ -44,7 +44,7 @@ acceptance_criteria:
     evidence: "packages/features/content-analytics/src/components/coverage-context.tsx:86 (the window settles for 400 ms before it is asked about) and :41 (30-minute staleTime, keyed on calendar days); coverage-context.test.tsx:200 and :234; in the browser, three range changes ending on one already seen made two requests (coverage-requests.spec.ts) (#499)"
   - text: "A project with no connections at all renders an intelligible page, not fifteen error states"
     met: true
-    evidence: "packages/features/content-analytics/src/server/coverage-actions.ts:50 — no connection in scope is answered without ClickHouse, every capable cell not_connected (coverage-actions.test.ts:151); in the browser, a project with no channel gets that answer and all six tabs render (coverage-requests.spec.ts) (#499). The wording a creator reads is FILM-1705's"
+    evidence: "packages/features/content-analytics/src/server/coverage-service.ts:56 — no connection in scope is answered without ClickHouse, every capable cell not_connected (coverage-actions.test.ts:151); in the browser, a project with no channel gets that answer and all six tabs render (coverage-requests.spec.ts) (#499). The wording a creator reads is FILM-1705's"
 open_questions: []
 notes: |
   ## 1. Overview

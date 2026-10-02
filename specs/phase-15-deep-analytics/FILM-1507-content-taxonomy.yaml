@@ -19,7 +19,7 @@ acceptance_criteria:
     evidence: "apps/web/supabase/tests/database/create-policies-refuse-outsiders.test.sql:110"
   - text: "Tagging/bulk-tagging updates `video_dim.tags` within the same action"
     met: true
-    evidence: "`packages/features/content-analytics/src/server/taxonomy-actions.ts:218`, `:275`; tags built at `packages/features/content-analytics/src/server/dim-sync.ts:237`"
+    evidence: "`packages/features/content-analytics/src/server/taxonomy-service.ts:137`, `:195`; tags built at `packages/features/content-analytics/src/server/dim-sync.ts:237`"
   - text: "Median-by-tag groups correctly and respects `insufficientSample` gates"
     met: true
     evidence: "gate `apps/e2e/tests/tags/tag-medians.spec.ts:30`; per-tag grouping `packages/clickhouse/__tests__/queries-advanced.test.ts:1099`"
