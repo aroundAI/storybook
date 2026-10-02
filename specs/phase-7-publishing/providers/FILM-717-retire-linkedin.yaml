@@ -1,0 +1,152 @@
+spec_id: "FILM-717"
+title: "Retire LinkedIn"
+phase: 7
+phase_name: "Publishing"
+category: feature
+status: DONE
+audited: "2026-10-02"
+effort: M
+dependencies:
+  - spec_id: "FILM-715"
+    note: "the integration this retires"
+  - spec_id: "FILM-514"
+    note: "the precedent for deleting a retired vendor's code"
+summary: >
+  The owner decided on 2026-10-02 to "retire LinkedIn for now" instead of
+  moving its pinned API version: LinkedIn-Version 202401, which every LinkedIn
+  call sent, was sunset by LinkedIn on 2025-01-22 (KB-164). "For now" means the
+  product stops offering LinkedIn, and the work can come back later. Nothing
+  offers LinkedIn any more: Platform Connections has no LinkedIn card unless the
+  team still has a LinkedIn row, the publish screen lists no LinkedIn channel,
+  the new-project form offers no LinkedIn target, and the LinkedIn-only Social
+  Posts page is gone. The connect and callback routes stay and answer with a
+  refusal the page reads ("LinkedIn is retired"), the publish worker answers a
+  queued LinkedIn job the same way, and the integration itself (provider, OAuth
+  config, app credentials, version pin, vendor hosts, sandbox origin, prompt) is
+  deleted, as FILM-514 deleted Suno's. No row is deleted: existing LinkedIn
+  connections are shown as retired and read-only, with Disconnect still
+  available, and past LinkedIn publishes, revenue and social posts are kept.
+acceptance_criteria:
+  - text: "The owner's decision is recorded with its words and date; FILM-715 is RETIRED with a retirement block; KB-164 is closed as resolved by the retirement"
+    met: true
+    evidence: "this file; specs/phase-7-publishing/providers/FILM-715-linkedin-provider.yaml (retirement:); specs/known-bugs/KB-164.md; specs/INDEX.md"
+  - text: "Platform Connections offers no LinkedIn card or Connect to a team without a LinkedIn row"
+    met: true
+    evidence: "packages/features/publishing/src/components/platform-connections.tsx:233 renders a retired platform only when the team has rows for it; apps/e2e/tests/platform-connections/linkedin-retired.spec.ts:47 (failed on main's component: a LinkedIn card was found; passes on the branch)"
+  - text: "A kept LinkedIn connection is shown retired and read-only (no connect, reconnect, refresh or language), Disconnect still works, and its dialog promises no reconnect"
+    met: true
+    evidence: "packages/features/publishing/src/components/platform-connections.tsx:359 (RetiredPlatformCard), :411 (RetiredConnectionRow); packages/features/publishing/src/components/disconnect-copy.ts:53; apps/e2e/tests/platform-connections/linkedin-retired.spec.ts:63 (red on main's component, green on the branch; the row is kept with disconnected_at set and the token cleared); packages/features/publishing/__tests__/disconnect-copy.test.ts:62 (7 red on main); guards E1, E2, R10 in tooling/mutation-guards/film-717.json RED"
+  - text: "The publish screen lists no LinkedIn channel, and a publish naming LinkedIn is refused for that platform alone, with nothing written"
+    met: true
+    evidence: "packages/features/publishing/src/server/connection-actions.ts:593; packages/features/publishing/src/server/publish-actions.ts:384; packages/features/publishing/__tests__/connection-actions.test.ts:203 and publish-actions.test.ts:501 (both red on main); apps/e2e/tests/platform-connections/linkedin-retired.spec.ts:162 (red on main's connection actions: the sidebar listed the LinkedIn channel); guards R4, R5 RED"
+  - text: "The LinkedIn connect and callback routes refuse with a returned refusal, platform_retired, read by the platforms page; no vendor call, no row, no thrown message"
+    met: true
+    evidence: "apps/web/app/api/platforms/connect/linkedin/route.ts:10, apps/web/app/api/platforms/callback/linkedin/route.ts:27 (failConnect redirect); apps/web/lib/platforms/connect-failure.ts (platform_retired); apps/web/lib/platforms/__tests__/callback-success.test.ts:398 (red on main: the callback exchanged the code, the connect route wrote oauth_states); apps/e2e/tests/platform-connections/linkedin-retired.spec.ts:134; guards R7, R8 RED"
+  - text: "The publish worker answers a queued LinkedIn publish or social post as a refusal value: the row is marked failed with the retired sentence and PLATFORM_RETIRED, the message is acknowledged, LinkedIn is not called"
+    met: true
+    evidence: "apps/web/lambda/publish-worker/index.ts:583; apps/web/lambda/publish-worker/__tests__/retired-platform.test.ts:84, :120 (red on main: the publish failed on its connection check and the social post was retried as CONNECTION_INACTIVE); guard R6 RED"
+  - text: "A LinkedIn token is never refreshed, deactivated or reported for reconnection, and the refresh cron leaves LinkedIn rows out"
+    met: true
+    evidence: "packages/features/publishing/src/lib/token-refresh.ts:159; packages/features/publishing/src/jobs/refresh-expiring-tokens.ts:95; packages/features/publishing/__tests__/token-refresh.test.ts:536, :878 (both red on main); guards R2, R3 RED"
+  - text: "Analytics and coverage lists say LinkedIn is retired, not 'not connected' or 'unsupported'"
+    met: true
+    evidence: "LinkedIn was never an analytics platform (ANALYTICS_PLATFORMS, packages/clickhouse/src/lib/data-provenance.ts). The coverage strip names a kept LinkedIn page as retired_platform: packages/features/content-analytics/src/lib/provenance.ts:565; packages/features/content-analytics/__tests__/provenance.test.ts:308 (red on main); apps/e2e/tests/analytics/provenance-surfaces.spec.ts:166; guard R9 RED. docs/platform-capability-reference.md's pin table says LinkedIn is retired"
+  - text: "The integration is deleted and a repo-scan test fails if any piece returns; LinkedIn is out of VENDOR_API_PINS"
+    met: true
+    evidence: "apps/web/test/film-717-linkedin-retired.test.ts:108 named 12 lines on the first run (revokers.test env stubs, four guard files) and every deleted file before that; green after; its control case keeps the platform name and the share link out. packages/shared/src/vendors/pins.ts has no LinkedIn pin; guard R1 RED"
+  - text: "No data is deleted: no migration; the platform_connections, publishes, revenue and social_posts constraints still admit linkedin"
+    met: true
+    evidence: "no file under apps/web/supabase/migrations changed; PLATFORMS still includes linkedin (packages/features/publishing/src/lib/platforms.ts, held to the CHECK by platforms.test.ts); packages/features/publishing/__tests__/retired-platforms.test.ts:24"
+  - text: "Screenshots of Platform Connections and the publish screen without LinkedIn"
+    met: true
+    evidence: "apps/e2e/tests/platform-connections/linkedin-retired.spec.ts with CAPTURE_EVIDENCE=1: film-717-01 … 06 (Platform Connections without LinkedIn, the retired card, its dialog, after disconnect, the old connect link, the publish screen)"
+open_questions: []
+feature:
+  database:
+    tables: []
+    columns_added: []
+    kept:
+      - "platform_connections, publishes, revenue_records and oauth_states keep 'linkedin' in their platform CHECKs, and social_posts keeps its rows: the data stays (owner, 2026-10-02: retire, delete nothing)"
+  queries:
+    - {name: "getConnectedPlatformsAction leaves retired platforms out (the publish screen's list)", file: "packages/features/publishing/src/server/connection-actions.ts"}
+  actions:
+    - {name: "publishToAllAction refuses a retired platform per platform (PLATFORM_RETIRED)", file: "packages/features/publishing/src/server/publish-actions.ts"}
+    - {name: "Social Posts actions (create, generate, approve, publish, regenerate) deleted with the page", file: "packages/features/publishing/src/server/social-post-actions.ts"}
+  ui:
+    - {component: "PlatformConnections: offered platforms get cards; a retired one only while rows exist, read-only", file: "packages/features/publishing/src/components/platform-connections.tsx"}
+    - {component: "Social Posts page and its nav entry deleted", file: "apps/web/config/team-account-navigation.config.tsx"}
+    - {component: "New project form: LinkedIn is no longer a target platform", file: "apps/web/app/home/[account]/studio/projects/new/_lib/schema.ts"}
+  provider_integration: null
+notes: |
+  ## The owner's decision
+
+  2026-10-02, on KB-164 (LinkedIn-Version 202401, sunset 2025-01-22): "retire
+  LinkedIn for now", instead of moving the pinned version. "For now" means the
+  product stops offering LinkedIn, and the work can come back later.
+
+  ## Why the code is deleted, not kept
+
+  Neither precedent kept code. FILM-514 deleted Suno and Udio ("If we need it
+  then we would do it from scratch later"); FILM-513 deleted lip-sync, saying a
+  return "is a new spec against a provider that exists, not a restoration of
+  this one — the retained FILM-511 file and git history hold the design". No
+  other retirement in specs/ kept a dormant integration. Kept code here would
+  also keep the defect that caused the retirement: every LinkedIn call sent a
+  sunset version header, and nothing could run it without a LinkedIn app. So
+  the integration is deleted, and FILM-715 and the repository history hold the
+  design for a return. What stays is what reads stored rows: the platform value,
+  its label and icon, the disconnect path (LinkedIn offers apps no revoke,
+  KB-25, so disconnect only clears our tokens) and the platform-access link.
+
+  ## Existing rows
+
+  Shown as retired and read-only, not hidden: a team that connected LinkedIn
+  sees the row on a "Retired" card and can disconnect it, which clears the
+  token we hold (the data-deletion page's promise). Past LinkedIn publishes
+  stay in the episode's publish history; unpublishing one removes our record
+  only, as before. Social posts were LinkedIn-only, so their page went with
+  LinkedIn; their rows are kept in social_posts and are not shown.
+
+  ## What stays, on purpose
+
+  - The public page's Share menu keeps "LinkedIn": it opens
+    linkedin.com/sharing with the page's URL in the viewer's browser. It calls
+    no API, needs no app or version, and the scan's control case allows it.
+  - auth.config.ts lists linkedin among Supabase's sign-in provider names; no
+    LinkedIn sign-in is enabled.
+  - The capability reference keeps its LinkedIn field blocks and rows as
+    reference for a return; the pin table says LinkedIn is retired.
+
+  ## Tests and guards
+
+  New, each seen red on main first: retired-platforms.test.ts,
+  token-refresh.test.ts (two), connection-actions.test.ts, publish-actions.test.ts,
+  disconnect-copy.test.ts, callback-success.test.ts (two), connect-failure.test.ts,
+  retired-platform.test.ts (worker, two), provenance.test.ts,
+  film-717-linkedin-retired.test.ts, linkedin-retired.spec.ts (three of four
+  red against main's component and connection actions; the fourth, the old
+  connect link, is red through the route unit test). Guards:
+  tooling/mutation-guards/film-717.json R1–R10 and E1–E2, all RED.
+
+  Retired: KB-145 U1 (the LinkedIn callback stores nothing now), FILM-1723
+  "LinkedIn's version is declared a second time in the lambda" (no version),
+  SPEC-TESTS U2 (the LinkedIn provider test is gone). Re-pointed: KB-145 U2 to
+  X's callback; FILM-1801's two host guards to the TikTok worker handler and
+  the Facebook provider; FILM-1723's headline guard to the Meta/X order. All
+  re-pointed guards RED.
+
+  E2E: sandbox-connect-linkedin.spec.ts deleted; disconnect-revoke.spec.ts's
+  LinkedIn case moved to linkedin-retired.spec.ts; connect-failure.spec.ts no
+  longer loops over LinkedIn (its callback refuses everything) and its two
+  KB-99 cases use X; sandbox-disconnect-refresh.spec.ts drops LinkedIn's
+  refresh; the refusals catalogue and the AI-sandbox evidence drop the Social
+  Posts cases; provenance-surfaces.spec.ts asserts the retired sentence.
+
+  ## Records touched
+
+  FILM-715 (RETIRED), KB-164 (fixed: resolved by retirement), KB-145 (guard
+  note), FILM-1802 and the phase-18 README (sandbox origin 4105 gone),
+  FILM-1723 (pin), FILM-1725 Check I and docs/OWNER-CHECKS.md OC-5 (X only),
+  FILM-906 (cards), FILM-1007 (citation), INDEX.
+
+  PR: #TBD-LI.
