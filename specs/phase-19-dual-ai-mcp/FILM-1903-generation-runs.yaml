@@ -23,19 +23,19 @@ summary: >
   if application code is wrong. Design: the EDD's "2. Generation runs and
   leases", "Database changes" and "6. One door to AI models"
   (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
-  Built in three parts: A, the database (#TBD-1903); B, openRun, run.dispatch,
+  Built in three parts: A, the database (#556); B, openRun, run.dispatch,
   the worker and the commits, on FILM-1901's package; C, the NOT NULL
   tightening once every LLM path writes a run.
 acceptance_criteria:
   - text: "A hand-written migration creates generation_runs, generation_run_parts and content_revisions as specified below, with RLS, and the generated types are regenerated (not hand-edited)"
     met: true
-    evidence: "apps/web/supabase/migrations/20261002201011_film-1903-generation-runs.sql:26 (generation_runs), :91 (generation_run_parts), :108 (content_revisions), :133 (account_ai_settings), :262-294 (policies); types regenerated from a database with the migration into packages/supabase/src/database.types.ts and apps/web/lib/database.types.ts; RLS proven in apps/web/supabase/tests/database/generation-runs.test.sql:283-353 (#TBD-1903, part A)"
+    evidence: "apps/web/supabase/migrations/20261002201011_film-1903-generation-runs.sql:26 (generation_runs), :91 (generation_run_parts), :108 (content_revisions), :133 (account_ai_settings), :262-294 (policies); types regenerated from a database with the migration into packages/supabase/src/database.types.ts and apps/web/lib/database.types.ts; RLS proven in apps/web/supabase/tests/database/generation-runs.test.sql:283-353 (#556, part A)"
   - text: "A partial unique index allows one open run per (target_type, target_id, stage); a second openRun fails with RUN_IN_PROGRESS naming the holder"
     met: false
-    reason: "part A: generation_runs_one_open exists (migrations/20261002201011_film-1903-generation-runs.sql:79) and refuses a second open run while allowing one after cancel or expiry (tests/database/generation-runs.test.sql:215-269, U1 and X1). The RUN_IN_PROGRESS refusal naming the holder is openRun's, part B (#TBD-1903)"
+    reason: "part A: generation_runs_one_open exists (migrations/20261002201011_film-1903-generation-runs.sql:79) and refuses a second open run while allowing one after cancel or expiry (tests/database/generation-runs.test.sql:215-269, U1 and X1). The RUN_IN_PROGRESS refusal naming the holder is openRun's, part B (#556)"
   - text: "openRun(stage, target, origin) is the only way to insert a run; the mode comes from the caller's context (web: account_ai_settings default; MCP request: 'external'), never from a parameter"
     met: false
-    reason: "part B. Part A leaves authenticated with no insert or update privilege on generation_runs (tests/database/generation-runs.test.sql:301-315), so until openRun exists only the service role writes a run; account_ai_settings, which openRun reads, exists with owners-write / members-read (#TBD-1903)"
+    reason: "part B. Part A leaves authenticated with no insert or update privilege on generation_runs (tests/database/generation-runs.test.sql:301-315), so until openRun exists only the service role writes a run; account_ai_settings, which openRun reads, exists with owners-write / members-read (#556)"
   - text: "queueLlmJob (packages/features/prompt-engine/src/lib/server/sqs-helper.ts) is private to the gateway, reachable only through run.dispatch(), which refuses a non-server run; the SQS message is { runId }"
     met: false
     reason: "part B, on FILM-1901's package and FILM-1902's run handle; nothing in part A touches the SQS message"
@@ -53,7 +53,7 @@ acceptance_criteria:
     reason: "part A: run_id is added (migrations/20261002201011_film-1903-generation-runs.sql:174-175) and llm_usage_analytics_server_run_only (:228) refuses a row whose run is not an open server run whenever run_id is present (tests/database/generation-runs.test.sql:161-182, L2); NOT NULL is part C, after the gateway (FILM-1902) writes the run id, since executeLLM is the only writer today"
   - text: "A CHECK makes a run opened from an MCP connection external (connection_id is null or mode = 'external')"
     met: true
-    evidence: "apps/web/supabase/migrations/20261002201011_film-1903-generation-runs.sql:58 (mcp_runs_are_external); apps/web/supabase/tests/database/generation-runs.test.sql:185-201 (L3: a server-mode run with a connection id is refused, an external one accepted) (#TBD-1903, part A)"
+    evidence: "apps/web/supabase/migrations/20261002201011_film-1903-generation-runs.sql:58 (mcp_runs_are_external); apps/web/supabase/tests/database/generation-runs.test.sql:185-201 (L3: a server-mode run with a connection id is refused, an external one accepted) (#556, part A)"
   - text: "finalize re-checks target_version and refuses with TARGET_CHANGED if the target was edited since the brief; commit bumps episodes.version"
     met: false
     reason: "part B. Audit (2026-10-03): episodes.version already moves on every update, by trigger episodes_increment_version (migrations/20251205125737_film-studio-tables.sql:103-115), so a commit bumps it without doing anything, and TARGET_CHANGED fires on any edit between brief and finalize, including a restore; that is acceptable. target_version exists (migrations/20261002201011_film-1903-generation-runs.sql:44)"
@@ -62,19 +62,19 @@ acceptance_criteria:
     reason: "part A does the cron half: apps/web/app/api/cron/expire-generation-runs/route.ts calls expire_generation_runs() (migrations/20261002201011_film-1903-generation-runs.sql:456), which marks every open run past lease_expires_at expired with error.code LEASE_EXPIRED and so frees the target (tests/database/generation-runs.test.sql:245-269, X1); scheduled hourly in sst.config.ts (StorybookExpireGenerationRunsCron) through apps/web/lambda/expire-generation-runs/index.ts; route unit test apps/web/app/api/cron/expire-generation-runs/__tests__/route.test.ts. Renewing the lease on every call is the run handle's, part B"
   - text: "generation_runs is in the supabase_realtime publication"
     met: true
-    evidence: "apps/web/supabase/migrations/20261002201011_film-1903-generation-runs.sql:484; apps/web/supabase/tests/database/generation-runs.test.sql:271-276 reads it back from pg_publication_tables (#TBD-1903, part A)"
+    evidence: "apps/web/supabase/migrations/20261002201011_film-1903-generation-runs.sql:484; apps/web/supabase/tests/database/generation-runs.test.sql:271-276 reads it back from pg_publication_tables (#556, part A)"
   - text: "Every commit stamps generation_origin ({kind, runId, model, promptSlug, promptVersion, clientName, at}) on shots, dialogue_lines, audio_cues and assets, and per stage on episodes.generation_origin"
     met: false
     reason: "part B stamps them. The columns exist (migrations/20261002201011_film-1903-generation-runs.sql:151-157): nullable on shots, dialogue_lines, audio_cues and assets (null = written before FILM-1903 or by hand), not null default '{}' on episodes"
   - text: "A content_revisions snapshot can be restored by a security-definer rollback function, gated on write permission"
     met: true
-    evidence: "apps/web/supabase/migrations/20261002201011_film-1903-generation-runs.sql:310 (restore_content_revision: can_write_project of the target's project, writes the replaced content as a new revision first, bumps episodes.version); apps/web/supabase/tests/database/generation-runs.test.sql:433-499 (V1 member refused, V2 owner restores story and shots, V3 undo revision, V4 unsupported target and unknown revision refused); listed in definer-functions-inventory.test.sql (#TBD-1903, part A)"
+    evidence: "apps/web/supabase/migrations/20261002201011_film-1903-generation-runs.sql:310 (restore_content_revision: can_write_project of the target's project, writes the replaced content as a new revision first, bumps episodes.version); apps/web/supabase/tests/database/generation-runs.test.sql:433-499 (V1 member refused, V2 owner restores story and shots, V3 undo revision, V4 unsupported target and unknown revision refused); listed in definer-functions-inventory.test.sql (#556, part A)"
 test_plan:
   unit:
-    - {text: "The expiry cron route refuses a caller without the bearer secret before touching the database, fails closed without CRON_SECRET, and reports a failed expiry as a 500", met: true, evidence: "apps/web/app/api/cron/expire-generation-runs/__tests__/route.test.ts; mutation guards '1903 cron …' in tooling/mutation-guards/film-1903.json proven red (#TBD-1903)"}
+    - {text: "The expiry cron route refuses a caller without the bearer secret before touching the database, fails closed without CRON_SECRET, and reports a failed expiry as a 500", met: true, evidence: "apps/web/app/api/cron/expire-generation-runs/__tests__/route.test.ts; mutation guards '1903 cron …' in tooling/mutation-guards/film-1903.json proven red (#556)"}
   integration:
     - {text: "pgTAP: each lock refuses its bad insert (LLM job on an external run, LLM job with no run, usage row on an external run, MCP connection run with mode server)", met: false, reason: "three of four in apps/web/supabase/tests/database/generation-runs.test.sql: L1 (LLM job on an external run, and on a closed run), L2 (usage row on an external run), L3 (MCP connection run with mode server). 'LLM job with no run' is accepted on purpose in part A (:144-149) and becomes a refusal in part C"}
-    - {text: "pgTAP: RLS lets a team member read the team's runs and parts, and no one else", met: true, evidence: "apps/web/supabase/tests/database/generation-runs.test.sql:283-353 (R1 member reads runs, parts and revisions; R2 cannot write any; R3 a stranger reads none) (#TBD-1903)"}
+    - {text: "pgTAP: RLS lets a team member read the team's runs and parts, and no one else", met: true, evidence: "apps/web/supabase/tests/database/generation-runs.test.sql:283-353 (R1 member reads runs, parts and revisions; R2 cannot write any; R3 a stranger reads none) (#556)"}
     - {text: "A second openRun on the same target and stage fails while the first is open, succeeds after cancel or expiry", met: false, reason: "the database half is proven: a second insert is refused while the first is open and accepted after cancel and after expire_generation_runs() (generation-runs.test.sql:215-269, U1 and X1); the openRun call is part B"}
   e2e: []
 remaining:
