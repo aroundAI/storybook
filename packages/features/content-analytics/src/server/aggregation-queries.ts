@@ -457,6 +457,7 @@ export async function getSeasonAnalytics(
       seasonNumber: season.number,
       title: season.name || `Season ${season.number}`,
       totalViews: 0,
+      viewsScope: EMPTY_VIEWS_SCOPE,
       totalLikes: 0,
       totalComments: 0,
       totalShares: 0,

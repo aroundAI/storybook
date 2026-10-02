@@ -155,7 +155,12 @@ describe('the MetricCards under the filter', () => {
 
   it('dim a card the selection cannot cover, with the reason', () => {
     const { container } = renderWithCoverage(
-      <MetricCards data={totals} previousData={null} isLoading={false} />,
+      <MetricCards
+        data={totals}
+        previousData={null}
+        isLoading={false}
+        viewsScope={null}
+      />,
       { result: seeded, selectedPlatforms: ['tiktok'] },
     );
 
@@ -174,6 +179,7 @@ describe('the MetricCards under the filter', () => {
         data={null}
         previousData={null}
         isLoading={false}
+        viewsScope={null}
         noFigureReason={'No platform selected'}
       />,
       { result: seeded, selectedPlatforms: [] },

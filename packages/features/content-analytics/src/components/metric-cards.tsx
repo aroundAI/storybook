@@ -73,6 +73,7 @@ interface MetricCardsProps {
    * a caller that cannot say passes null, and the card names no platform.
    */
   viewsScope: ViewsScope | null;
+  /**
    * Said in every card's figure slot when `data` is null because nothing
    * was asked for — no platform selected (FILM-1709). Absent, a null
    * `data` keeps its old meaning.

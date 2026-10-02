@@ -20,8 +20,7 @@ import {
  */
 const FACEBOOK_NOTE =
   'Facebook counts four different kinds of view, and none of them is a view in this sense, so its plays are not counted as views.';
-const YOUTUBE_NO_ROWS =
-  'YouTube is connected, but has no data for the last 30 days.';
+const YOUTUBE_NO_ROWS = 'YouTube: connected, but no data for the last 30 days.';
 
 const window = 'the last 30 days';
 

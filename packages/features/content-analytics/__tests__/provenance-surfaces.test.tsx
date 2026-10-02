@@ -253,6 +253,7 @@ describe('the MetricCards', () => {
         data={{ ...totals, views: null }}
         previousData={null}
         isLoading={false}
+        viewsScope={null}
       />,
     );
     const views = container.querySelector('[data-test="metric-card-views"]')!;

@@ -100,9 +100,7 @@ describe('MetricCards, for a team whose views no platform measured (KB-162)', ()
       .getByText('Not measured')
       .getAttribute('title');
 
-    expect(title).toBe(
-      'YouTube is connected, but has no data for the last 30 days.',
-    );
+    expect(title).toBe('YouTube: connected, but no data for the last 30 days.');
     expect(title).not.toContain('Facebook');
   });
 });
