@@ -2,6 +2,7 @@ import { type Handler, parseJson, sendJson } from './http';
 import { drawSeed } from './rng';
 import type { SocialState } from './social/state';
 import type { FailureRule, SandboxState } from './state';
+import type { SandboxVersion } from './version';
 
 /**
  * Port 4100: the control API and ledger (FILM-1802 §6), plus a status page.
@@ -52,6 +53,7 @@ export function controlHandler(
   state: SandboxState,
   ports: () => Record<string, number>,
   social?: SocialState,
+  version?: SandboxVersion,
 ): Handler {
   return (req, res, body) => {
     const url = new URL(req.url ?? '/', 'http://sandbox.localhost');
@@ -77,6 +79,13 @@ export function controlHandler(
           sinceId: since === null ? undefined : Number(since),
         }),
       });
+      return;
+    }
+
+    // The source this process was started from (`src/version.ts`), which
+    // apps/e2e's `sandboxRun()` compares with the tree under test.
+    if (method === 'GET' && url.pathname === '/__sandbox/version' && version) {
+      sendJson(res, 200, version);
       return;
     }
 
