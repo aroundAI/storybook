@@ -1,0 +1,248 @@
+{
+  "feature": "FILM-1717",
+  "mutations": [
+    {
+      "name": "GN1 an attribute common to winners and losers is a finding",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome.ts",
+      "find": "    if (Math.abs(gap) < MIN_PREVALENCE_GAP) {",
+      "replace": "    if (false) {",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome.test.ts",
+      "pattern": "reports nothing for an attribute in 71% of winners"
+    },
+    {
+      "name": "GN2 an untagged video counts as one without the attribute",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome.ts",
+      "find": "    const tagged = videos.filter((video) =>\n      video.attributes.some((a) => a.dimension === attribute.dimension),\n    );",
+      "replace": "    const tagged = videos;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome.test.ts",
+      "pattern": "treats an untagged video as unknown"
+    },
+    {
+      "name": "GN3 findings are ranked by observed lift",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome.ts",
+      "find": "        rankingDistance(b.evidence) - rankingDistance(a.evidence) ||",
+      "replace": "        Math.abs(Math.log(b.evidence.observedLift)) - Math.abs(Math.log(a.evidence.observedLift)) ||",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome.test.ts",
+      "pattern": "orders analyseGenome findings by adjusted lift"
+    },
+    {
+      "name": "GN4 the adjusted lift is not shrunk",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome-evidence.ts",
+      "find": "    adjustedLift: shrinkLift(observedLift, n),",
+      "replace": "    adjustedLift: observedLift,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome.test.ts",
+      "pattern": "two-video cohort cannot outrank"
+    },
+    {
+      "name": "GN5 two attributes on the same videos are two findings",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome.ts",
+      "find": "    findings: mergeInseparable(findings),",
+      "replace": "    findings,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome.test.ts",
+      "pattern": "always co-occur"
+    },
+    {
+      "name": "GN6 an unmeasured video is measured",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome.ts",
+      "find": "  if (video.value === null || !Number.isFinite(video.value)) return null;",
+      "replace": "  if (video.value !== null && !Number.isFinite(video.value)) return null;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome.test.ts",
+      "pattern": "reported no figure for"
+    },
+    {
+      "name": "GN7 a video with no topic or length joins a controlled comparison",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome.ts",
+      "find": "  if (!video.durationBand || video.topics.length === 0) return null;",
+      "replace": "  if (false) return null;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome.test.ts",
+      "pattern": "out of each other"
+    },
+    {
+      "name": "GN8 prevalence and lift pointing opposite ways is a finding",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome.ts",
+      "find": "      (direction === 'higher' && lifts.observedLift <= 1) ||\n      (direction === 'lower' && lifts.observedLift >= 1)",
+      "replace": "      false",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome.test.ts",
+      "pattern": "commoner among winners yet its median is below typical"
+    },
+    {
+      "name": "GN9 an abandoned Change log entry backs a causal claim",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome-evidence.ts",
+      "find": "  if (row.status !== 'concluded' || !row.ended_at) return null;",
+      "replace": "  if (!row.ended_at) return null;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome.test.ts",
+      "pattern": "names a concluded Change log entry"
+    },
+    {
+      "name": "GN10 a stage the platform cannot fill is scored anyway",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome-measures.ts",
+      "find": "  if (binding.primary === null) {\n    return {",
+      "replace": "  if (binding.primary === null) {\n    return { ok: true, stage, signal: 'share_rate' };\n    return {",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome-vocabulary.test.ts",
+      "pattern": "refuses a stage the platform cannot fill"
+    },
+    {
+      "name": "GN11 a closed dimension accepts any value",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome-attributes.ts",
+      "find": "  if (closed && !closed.includes(value)) return null;",
+      "replace": "",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome-vocabulary.test.ts",
+      "pattern": "drops a closed dimension"
+    },
+    {
+      "name": "GN14 a confirmation cancels a rejection",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome-loop.ts",
+      "find": "        confirmed && !rejected",
+      "replace": "        confirmed",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome-loop.test.ts",
+      "pattern": "does not let a confirmation cancel a rejection"
+    },
+    {
+      "name": "GN15 any concluded test makes a claim causal",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome-loop.ts",
+      "find": "    const confirmed = testedBy.find((test) => test.outcome === 'confirmed');",
+      "replace": "    const confirmed = testedBy[0];",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome-loop.test.ts",
+      "pattern": "leaves an inconclusive test"
+    },
+    {
+      "name": "GN16 a template takes mechanisms that won on other videos",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome-loop.ts",
+      "find": "      if (shared.size === 0) continue;\n",
+      "replace": "",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome-loop.test.ts",
+      "pattern": "group the mechanisms that won together"
+    },
+    {
+      "name": "GN17 the hypothesis key drifts from the table's CHECK",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome-loop.ts",
+      "find": "  `^[a-z0-9_]+:[a-z0-9]+(-[a-z0-9]+)*@(${FUNNEL_STAGES.join('|')})$`,",
+      "replace": "  `^[a-z0-9_]+:[a-z0-9-]+@(${FUNNEL_STAGES.join('|')})$`,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome-loop.test.ts",
+      "pattern": "keyed dimension:slug@stage"
+    },
+    {
+      "name": "GN18 another channel's Change log entry backs this channel's claim",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/genome-actions.ts",
+      "find": "          .select('id, status, ended_at, outcome_status, genome_hypothesis')\n          .eq('account_id', input.accountId)\n          .eq('connection_id', input.connectionId)\n",
+      "replace": "          .select('id, status, ended_at, outcome_status, genome_hypothesis')\n          .eq('account_id', input.accountId)\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/genome-actions.test.ts",
+      "pattern": "reads only this channel"
+    },
+    {
+      "name": "GN19 a confirmed channel experiment whose styles never separated is causal",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome-evidence.ts",
+      "find": "      backing.outcomeStatus === 'confirmed' && !separated",
+      "replace": "      false",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome-loop.test.ts",
+      "pattern": "styles never separated"
+    },
+    {
+      "name": "GN20 another channel's experiment backs this channel's claim",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/genome-actions.ts",
+      "find": "          )\n          .eq('account_id', input.accountId)\n          .eq('connection_id', input.connectionId)\n",
+      "replace": "          )\n          .eq('account_id', input.accountId)\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/genome-actions.test.ts",
+      "pattern": "reads only this channel"
+    },
+    {
+      "name": "GN21 the action never reads concluded channel experiments",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/genome-actions.ts",
+      "find": "        const backing = toConcludedChannelExperiment({",
+      "replace": "        const backing = null && toConcludedChannelExperiment({",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/genome-actions.test.ts",
+      "pattern": "concluded channel experiment"
+    },
+    {
+      "name": "GN-DB1 a closed genome dimension takes any value",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/genome-tag-dimensions.test.sql",
+      "sql": "alter table public.content_tags drop constraint content_tags_genome_closed_values_check;"
+    },
+    {
+      "name": "GN-DB2 a started change's genome hypothesis can be rewritten",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/genome-hypothesis-link.test.sql",
+      "sql": "drop trigger analytics_experiments_freeze_genome_hypothesis on public.analytics_experiments;"
+    },
+    {
+      "name": "GN-DB3 a genome hypothesis is free text",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/genome-hypothesis-link.test.sql",
+      "sql": "alter table public.analytics_experiments drop constraint analytics_experiments_genome_hypothesis_check;"
+    },
+    {
+      "name": "GN-DB4 a started channel experiment's genome hypothesis can be rewritten",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/genome-hypothesis-link.test.sql",
+      "sql": "drop trigger channel_experiments_freeze_genome_hypothesis on public.channel_experiments;"
+    },
+    {
+      "name": "GN-E1 a closed dimension's refusal lands on a field nobody sees",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/lib/schemas/taxonomy.schema.ts",
+      "find": "      path: ['label'],",
+      "replace": "      path: ['slug'],",
+      "spec": "tests/tags/genome-tags.spec.ts",
+      "grep": "a closed dimension refuses another value"
+    },
+    {
+      "name": "GN12 the analysis is read before the scope is proven",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/genome-actions.ts",
+      "find": "    await assertScopeAccess(scope);\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/genome-actions.test.ts",
+      "pattern": "proves the scope before reading anything"
+    },
+    {
+      "name": "GN13 analytics off reads as an empty analysis",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/genome-actions.ts",
+      "find": "    if (!isClickHouseEnabled()) {\n      return { status: 'refused', refusal: { kind: 'analytics_off' } };\n    }",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/genome-actions.test.ts",
+      "pattern": "says analytics are off"
+    }
+  ]
+}

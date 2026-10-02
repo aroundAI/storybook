@@ -266,6 +266,7 @@ export type Database = {
           created_by: string | null
           ended_at: string | null
           expected_outcome: string | null
+          genome_hypothesis: string | null
           hypothesis: string | null
           id: string
           metric_watched: string | null
@@ -291,6 +292,7 @@ export type Database = {
           created_by?: string | null
           ended_at?: string | null
           expected_outcome?: string | null
+          genome_hypothesis?: string | null
           hypothesis?: string | null
           id?: string
           metric_watched?: string | null
@@ -316,6 +318,7 @@ export type Database = {
           created_by?: string | null
           ended_at?: string | null
           expected_outcome?: string | null
+          genome_hypothesis?: string | null
           hypothesis?: string | null
           id?: string
           metric_watched?: string | null
@@ -1271,6 +1274,7 @@ export type Database = {
           ended_at: string | null
           expected_outcome: string | null
           format_family: string
+          genome_hypothesis: string | null
           hypothesis: string | null
           id: string
           measures: string[]
@@ -1291,6 +1295,7 @@ export type Database = {
           ended_at?: string | null
           expected_outcome?: string | null
           format_family: string
+          genome_hypothesis?: string | null
           hypothesis?: string | null
           id?: string
           measures?: string[]
@@ -1311,6 +1316,7 @@ export type Database = {
           ended_at?: string | null
           expected_outcome?: string | null
           format_family?: string
+          genome_hypothesis?: string | null
           hypothesis?: string | null
           id?: string
           measures?: string[]

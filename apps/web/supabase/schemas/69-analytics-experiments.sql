@@ -27,6 +27,8 @@ create table if not exists public.analytics_experiments (
   review_window_days integer not null default 60,
   notes text,
   connection_id uuid,
+  -- FILM-1717 (20261002122828): the genome hypothesis this change tests.
+  genome_hypothesis varchar(120),
   review_due_at date generated always as (started_at + review_window_days) stored,
   -- on delete set null: migration 20260919061806; the experiment outlives its author.
   created_by uuid references auth.users(id) on delete set null,
@@ -38,6 +40,9 @@ create table if not exists public.analytics_experiments (
     check (review_window_days between 1 and 365),
   constraint analytics_experiments_notes_length_check
     check (char_length(notes) <= 5000),
+  constraint analytics_experiments_genome_hypothesis_check check (
+    genome_hypothesis ~ '^[a-z0-9_]+:[a-z0-9]+(-[a-z0-9]+)*@(reach|hook|attention|transmission|audience|monetisation)$'
+  ),
   -- The channel must belong to the experiment's own account; see the
   -- migration for why this is composite and why it nulls only connection_id.
   constraint analytics_experiments_connection_account_fkey
@@ -51,6 +56,7 @@ comment on column public.analytics_experiments.baseline_metrics is 'Metric total
 comment on column public.analytics_experiments.result_metrics is 'Metric totals captured when the experiment concluded';
 comment on column public.analytics_experiments.metric_watched is 'The one metric this experiment is judged on; resolved into snapshots alongside the fixed totals';
 comment on column public.analytics_experiments.review_window_days is 'Planned run length in days; the baseline window before the start has the same length';
+comment on column public.analytics_experiments.genome_hypothesis is 'The content genome hypothesis this change tests, as dimension:slug@stage (FILM-1717); null when it did not come from one';
 comment on column public.analytics_experiments.review_due_at is 'started_at + review_window_days; null until the experiment starts';
 
 create index if not exists idx_analytics_experiments_account
@@ -395,3 +401,25 @@ $$;
 create trigger analytics_experiments_keep_creator
   before update of created_by on public.analytics_experiments
   for each row execute function public.keep_experiment_creator();
+
+-- FILM-1717 (20261002122828): the hypothesis link is fixed once started.
+create or replace function public.freeze_genome_hypothesis()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if auth.uid() is not null
+     and old.status <> 'planned'
+     and new.genome_hypothesis is distinct from old.genome_hypothesis then
+    raise exception
+      'The genome hypothesis cannot change once the experiment has started';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger analytics_experiments_freeze_genome_hypothesis
+  before update of genome_hypothesis on public.analytics_experiments
+  for each row execute function public.freeze_genome_hypothesis();

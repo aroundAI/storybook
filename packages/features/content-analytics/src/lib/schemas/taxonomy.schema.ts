@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { TAG_DIMENSIONS, closedValuesFor } from '@kit/clickhouse';
+
 /**
  * Videos an account must have tagged before tag-level medians are shown.
  * Below this, per-tag samples are too small to separate signal from the
@@ -8,15 +10,12 @@ import { z } from 'zod';
 export const TAGGED_LIBRARY_THRESHOLD = 30;
 
 /**
- * Taxonomy dimensions. `hook_type` is shared with the Hook Lab
- * (FILM-1510), which reads its aggregate performance from tag medians.
+ * Tag dimensions: taxonomy (what a video is) and genome attributes (what it
+ * contains, FILM-1717). One list, `TAG_DIMENSIONS`, which the
+ * `content_tags` CHECK is tested against — so the form cannot offer a
+ * dimension the table refuses, or miss one it accepts.
  */
-export const TagDimensionSchema = z.enum([
-  'topic',
-  'format',
-  'thumbnail_style',
-  'hook_type',
-]);
+export const TagDimensionSchema = z.enum(TAG_DIMENSIONS);
 
 export type TagDimension = z.infer<typeof TagDimensionSchema>;
 
@@ -30,12 +29,22 @@ const SlugSchema = z
     'Use lowercase letters, numbers and hyphens',
   );
 
-export const CreateTagSchema = z.object({
-  accountId: z.string().uuid(),
-  dimension: TagDimensionSchema,
-  slug: SlugSchema,
-  label: z.string().min(1).max(120),
-});
+export const CreateTagSchema = z
+  .object({
+    accountId: z.string().uuid(),
+    dimension: TagDimensionSchema,
+    slug: SlugSchema,
+    label: z.string().min(1).max(120),
+  })
+  .refine(
+    (input) => closedValuesFor(input.dimension)?.includes(input.slug) ?? true,
+    // On `label`: the slug is derived from it and has no field of its own,
+    // so a message on `slug` would never be seen.
+    (input) => ({
+      message: `This dimension takes only: ${closedValuesFor(input.dimension)?.join(', ')}`,
+      path: ['label'],
+    }),
+  );
 
 export const DeleteTagSchema = z.object({
   tagId: z.string().uuid(),

@@ -378,6 +378,7 @@ export const createExperimentAction = withRefusals(
           review_window_days: data.reviewWindowDays,
           notes: blankToNull(data.notes),
           connection_id: data.connectionId ?? null,
+          genome_hypothesis: data.genomeHypothesis ?? null,
           // created_by is set by the database (analytics_experiments_set_creator).
         })
         .select('id')

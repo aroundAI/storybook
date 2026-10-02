@@ -149,7 +149,7 @@ FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook) ─→
 | [FILM-1714](./FILM-1714-signal-model.yaml) | DRAFT | M | Five funnel stages, primary/supporting signals, unbound stages, the expandability test |
 | [FILM-1715](./FILM-1715-self-benchmarking.yaml) | DRAFT | M | Band, lift, cohort median and n against your own history; shrinkage |
 | [FILM-1716](./FILM-1716-format-families.yaml) | DRAFT | M | `short_vertical` … `live`, mapped from `content_type` rather than read from it |
-| [FILM-1717](./FILM-1717-content-genome.yaml) | DRAFT | XL | Creative mechanisms vs outcomes, discriminated against comparable losers. **v1 then v2** |
+| [FILM-1717](./FILM-1717-content-genome.yaml) | 🟡 PARTIAL | XL | Creative mechanisms vs outcomes, discriminated against comparable losers. v1 and v2 built together (owner, 2026-10-01); rendering is FILM-1719 |
 | [FILM-1718](./FILM-1718-stage-diagnosis.yaml) | DRAFT | M | Distribution-vs-content and the finite failure patterns. **Does not depend on the genome** |
 | [FILM-1719](./FILM-1719-signal-surfaces.yaml) | DRAFT | L | The five-stage strip, three depths, evidence, "model after" |
 | [FILM-1720](./FILM-1720-facebook-analytics.yaml) | DRAFT | L | Facebook's provider and enum value: 57 video, 11 Reels and 4 ad-break metrics, organic/paid splits, and the `dim-sync` fix. Split from X 2026-09-21 |

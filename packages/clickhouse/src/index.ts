@@ -427,3 +427,109 @@ export type {
   StagePatternId,
   StageRequirement,
 } from './lib/stage-diagnosis';
+
+// The content genome (FILM-1717): creative mechanisms against outcomes,
+// discriminated against comparable losers, every claim carrying its
+// Evidence. Pure; the rows come from querySegmentVideoMeasures.
+export {
+  CLOSED_TAG_VALUES,
+  DURATION_BANDS,
+  DURATION_DIMENSION,
+  GENOME_DIMENSION_STAGE,
+  GENOME_OBSERVABLE_DIMENSIONS,
+  GENOME_SEMANTIC_DIMENSIONS,
+  TAG_DIMENSIONS,
+  TAXONOMY_DIMENSIONS,
+  closedValuesFor,
+  durationAttribute,
+  durationBandOf,
+  parseVideoTag,
+  splitVideoTags,
+} from './lib/genome-attributes';
+export type {
+  DurationBand,
+  GenomeAttribute,
+  GenomeDimension,
+  GenomeObservableDimension,
+  GenomeSemanticDimension,
+  PerformanceOutcome,
+  TagDimension,
+  TaxonomyDimension,
+  TaxonomyTag,
+  VideoTag,
+} from './lib/genome-attributes';
+export {
+  SEGMENT_MEASURES,
+  isSegmentMeasure,
+  metricProvenanceFor,
+  stageMeasureFor,
+} from './lib/genome-measures';
+export type {
+  MetricProvenance,
+  MetricProvenanceInput,
+  SegmentMeasure,
+  StageMeasure,
+  StageMeasureRefusal,
+} from './lib/genome-measures';
+export {
+  CLAIM_WORDING,
+  EVIDENCE_LEVEL_BY_CONFIDENCE,
+  EVIDENCE_LEVEL_LABEL,
+  concludedChangeLogEntry,
+  causalTestOf,
+  evidenceLabel,
+  liftPair,
+  rankingDistance,
+  recommendFrom,
+  shrinkageFactor,
+} from './lib/genome-evidence';
+export type {
+  CausalBacking,
+  ChangeLogRow,
+  ClaimStrength,
+  ComparableDefinition,
+  ComparableVideo,
+  ConcludedChangeLogEntry,
+  ControlledComparable,
+  Evidence,
+  EvidenceLevel,
+  EvidenceSourceRow,
+  CausalTest,
+  GenomeFinding,
+  Recommendation,
+} from './lib/genome-evidence';
+export {
+  MIN_PREVALENCE_GAP,
+  analyseGenome,
+  quantileExactInclusive,
+} from './lib/genome';
+export type {
+  GenomeAnalysis,
+  GenomeControl,
+  GenomeNonFinding,
+  GenomeNonFindingReason,
+  GenomeStratum,
+  GenomeVideo,
+} from './lib/genome';
+
+// The genome's closed loop (FILM-1717 v2): hypotheses, the confidence
+// update from concluded tests, and creative templates.
+export {
+  GENOME_HYPOTHESIS_PATTERN,
+  applyLinkedTests,
+  deriveTemplates,
+  genomeHypothesisKey,
+  hypothesesFrom,
+  instantiateTemplate,
+  parseGenomeHypothesisKey,
+  templateRole,
+} from './lib/genome-loop';
+export type {
+  ConceptBrief,
+  CreativeTemplate,
+  GenomeHypothesis,
+  GenomeHypothesisKey,
+  LinkedTest,
+  TemplateMechanism,
+  TemplateRole,
+} from './lib/genome-loop';

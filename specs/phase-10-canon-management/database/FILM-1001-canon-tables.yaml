@@ -447,7 +447,7 @@ acceptance_criteria:
     evidence: "apps/web/supabase/tests/database/canon-write-scope.test.sql:191 — reads, inserts, updates, deletes and privileges for every role on the other canon tables (KB-76/77, policies in apps/web/supabase/migrations/20260924181028_kb76-77-63-canon-write-scope.sql); `immutable_events` in `apps/web/supabase/tests/database/immutable-events-immutable.test.sql` (KB-17)"
   - text: "TypeScript types generated: `pnpm supabase:web:typegen`"
     met: true
-    evidence: "packages/supabase/src/database.types.ts:1430"
+    evidence: "packages/supabase/src/database.types.ts:1436"
   - text: "Types include: `ImmutableEvent`, `CharacterState`, `WorldState`, `NarrativeThread`, `StateDelta`, `EpisodeSummary`"
     met: true
     evidence: "packages/features/episodes/src/lib/canon/types.ts:20"

@@ -23,6 +23,7 @@ import {
   formatFamilyOfDim,
   formatFamilyPredicate,
 } from './lib/format-families';
+import type { SegmentMeasure } from './lib/genome-measures';
 import type { LanguageDimension } from './lib/language-dimension';
 import { fromDimLanguage } from './lib/language-dimension';
 import type { SegmentConfidence } from './lib/segment-stats';
@@ -1550,6 +1551,13 @@ const SEGMENT_GROUPINGS = {
   channel_language: 'd.channel_language',
   content_type: 'd.content_type',
   connection: 'toString(d.connection_id)',
+  /**
+   * One segment holding every video in scope — the cohort a tag's figure is
+   * compared with (FILM-1717). A tag segment cannot be that baseline:
+   * `arrayJoin` over an empty array yields no row, so an untagged video would
+   * vanish from it.
+   */
+  all: "'all'",
 } as const;
 
 export type SegmentKind = keyof typeof SEGMENT_GROUPINGS;
@@ -1577,6 +1585,39 @@ export const LANGUAGE_DIMENSION_SEGMENTS = {
  */
 function segmentEligible(days: number): string {
   return `age_days >= ${days} AND ingest_lag_days < ${days}`;
+}
+
+/**
+ * A stage's figure per video over its first N days (FILM-1717), from the sums
+ * `segmentPerVideoSql` produces — the stage-aware measure, so an attribute
+ * scores against its funnel stage rather than against views.
+ *
+ * NULL where the platform did not report the inputs: "cannot measure",
+ * never 0. Watch time and follower gains are NULL on the platforms that do
+ * not report them (KB-114), and a video with no reach rows has no
+ * impressions figure, not zero impressions.
+ *
+ * Closed and keyed by `SEGMENT_MEASURES`, because the expression is
+ * interpolated into SQL.
+ */
+const SEGMENT_MEASURE_SQL = {
+  impressions: 'if(v_reach_days > 0, toFloat64(v_impressions), NULL)',
+  impressions_ctr:
+    'if(v_impressions > 0, v_ctr_weighted / v_impressions, NULL)',
+  average_view_duration:
+    'if(v_watch_days > 0 AND v_views > 0, v_watch / v_views, NULL)',
+  share_rate: 'if(v_views > 0, v_shares / v_views, NULL)',
+  comment_rate: 'if(v_views > 0, v_comments / v_views, NULL)',
+  subscriber_conversion:
+    'if(v_subscriber_days > 0 AND v_views > 0, v_subscribers / v_views, NULL)',
+} as const satisfies Record<SegmentMeasure, string>;
+
+function segmentMeasureSql(measure: SegmentMeasure): string {
+  if (!Object.hasOwn(SEGMENT_MEASURE_SQL, measure)) {
+    throw new Error(`Unknown segment measure: ${String(measure)}`);
+  }
+
+  return SEGMENT_MEASURE_SQL[measure];
 }
 
 /**
@@ -1612,7 +1653,9 @@ function segmentPerVideoSql(
       SELECT
         video_id, project_id, metric_date,
         views, watch_time_seconds,
-        toUInt64(0) as impressions, toFloat64(0) as ctr_weighted
+        shares, comments, subscribers_gained,
+        toUInt64(0) as impressions, toFloat64(0) as ctr_weighted,
+        toUInt8(0) as is_reach
       FROM video_daily_stats
       WHERE video_id IN (SELECT video_id FROM dim)
 
@@ -1621,7 +1664,10 @@ function segmentPerVideoSql(
       SELECT
         video_id, project_id, metric_date,
         toUInt64(0) as views, toUInt64(0) as watch_time_seconds,
-        impressions, impressions_ctr * impressions as ctr_weighted
+        toUInt32(0) as shares, toUInt32(0) as comments,
+        CAST(NULL, 'Nullable(Int32)') as subscribers_gained,
+        impressions, impressions_ctr * impressions as ctr_weighted,
+        toUInt8(1) as is_reach
       FROM video_reach_daily FINAL
       WHERE video_id IN (SELECT video_id FROM dim)
     ),
@@ -1639,7 +1685,13 @@ function segmentPerVideoSql(
         sumIf(ifNull(m.views, 0), dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_views,
         sumIf(m.watch_time_seconds, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_watch,
         sumIf(m.impressions, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_impressions,
-        sumIf(m.ctr_weighted, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_ctr_weighted
+        sumIf(m.ctr_weighted, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_ctr_weighted,
+        sumIf(m.shares, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_shares,
+        sumIf(m.comments, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_comments,
+        sumIf(m.subscribers_gained, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_subscribers,
+        countIf(m.is_reach = 1 AND dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_reach_days,
+        countIf(m.is_reach = 0 AND m.watch_time_seconds IS NOT NULL AND dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_watch_days,
+        countIf(m.is_reach = 0 AND m.subscribers_gained IS NOT NULL AND dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_subscriber_days
       FROM dim d
       LEFT JOIN metrics m
         ON m.video_id = d.video_id AND m.project_id = d.project_id
@@ -1701,6 +1753,25 @@ export interface SegmentPerformanceRow {
   meanCtr: number | null;
   totalViews: number;
   confidence: SegmentConfidence;
+  /**
+   * The stage measure's distribution, when one was asked for (FILM-1717);
+   * null otherwise, and null when no eligible video in the segment had it.
+   */
+  measure: SegmentMeasureFigures | null;
+}
+
+/**
+ * A segment's figures on a stage measure. `measuredVideoCount` drives the
+ * confidence here, not `matureVideoCount`: a mature video the platform
+ * reported no figure for is not part of this distribution.
+ */
+export interface SegmentMeasureFigures {
+  signal: SegmentMeasure;
+  measuredVideoCount: number;
+  median: number;
+  p25: number;
+  p75: number;
+  confidence: SegmentConfidence;
 }
 
 /**
@@ -1734,6 +1805,11 @@ export async function querySegmentPerformance(input: {
   checkpointDays?: number;
   /** Fixes "how old is this video"; bound so a call is reproducible. */
   asOf?: string;
+  /**
+   * A stage measure to report beside views (FILM-1717). Views stay as they
+   * are; the measure's own distribution is added under `measure`.
+   */
+  measure?: SegmentMeasure;
 }): Promise<SegmentPerformanceRow[]> {
   const kind = input.segment.kind;
   const grouping = resolveSegmentGrouping(kind);
@@ -1759,6 +1835,17 @@ export async function querySegmentPerformance(input: {
   const tagFilter = segmentTagFilter(kind, input.segment.dimension, params);
 
   const eligible = segmentEligible(days);
+  const measured = `${eligible} AND measure IS NOT NULL`;
+  const measureColumns = input.measure
+    ? `,
+      countIf(${measured}) as measured_video_count,
+      ifNotFinite(quantileExactInclusiveIf(0.5)(assumeNotNull(measure), ${measured}), 0) as median_measure,
+      ifNotFinite(quantileExactInclusiveIf(0.25)(assumeNotNull(measure), ${measured}), 0) as p25_measure,
+      ifNotFinite(quantileExactInclusiveIf(0.75)(assumeNotNull(measure), ${measured}), 0) as p75_measure`
+    : '';
+  const source = input.measure
+    ? `(SELECT *, ${segmentMeasureSql(input.measure)} as measure FROM per_video)`
+    : 'per_video';
 
   const query = `
     ${segmentPerVideoSql(conditions, latest, grouping, days)}
@@ -1776,8 +1863,8 @@ export async function querySegmentPerformance(input: {
       ifNotFinite(quantileExactInclusiveIf(0.5)(v_watch, ${eligible}), 0) as median_watch,
       sumIf(v_views, ${eligible}) as total_views,
       sumIf(v_impressions, ${eligible}) as impressions,
-      sumIf(v_ctr_weighted, ${eligible}) as ctr_weighted
-    FROM per_video
+      sumIf(v_ctr_weighted, ${eligible}) as ctr_weighted${measureColumns}
+    FROM ${source}
     ${tagFilter ? `WHERE ${tagFilter}` : ''}
     GROUP BY segment
     HAVING mature_video_count >= {minVideos: UInt32}
@@ -1805,10 +1892,17 @@ export async function querySegmentPerformance(input: {
     total_views: number;
     impressions: number;
     ctr_weighted: number;
+    measured_video_count?: number;
+    median_measure?: number;
+    p25_measure?: number;
+    p75_measure?: number;
   }>();
+
+  const measure = input.measure;
 
   return rows.map((row) => {
     const medianViews = Math.round(Number(row.median_views ?? 0));
+    const measuredVideoCount = Number(row.measured_video_count ?? 0);
     const maxViews = Math.round(Number(row.max_views ?? 0));
     const matureVideoCount = Number(row.mature_video_count ?? 0);
     const impressions = Number(row.impressions ?? 0);
@@ -1832,6 +1926,123 @@ export async function querySegmentPerformance(input: {
         impressions > 0 ? Number(row.ctr_weighted ?? 0) / impressions : null,
       totalViews: Number(row.total_views ?? 0),
       confidence: resolveConfidence(matureVideoCount),
+      measure:
+        measure && measuredVideoCount > 0
+          ? {
+              signal: measure,
+              measuredVideoCount,
+              median: Number(row.median_measure ?? 0),
+              p25: Number(row.p25_measure ?? 0),
+              p75: Number(row.p75_measure ?? 0),
+              confidence: resolveConfidence(measuredVideoCount),
+            }
+          : null,
+    };
+  });
+}
+
+/** One eligible video and its stage measure, from the segment query. */
+export interface SegmentVideoMeasureRow {
+  videoId: string;
+  publishedAt: string;
+  connectionId: string;
+  platform: string;
+  /** Null when `video_dim` holds a platform or content type no family maps. */
+  formatFamily: FormatFamily | null;
+  assetDurationSeconds: number | null;
+  tags: string[];
+  /** Null when the platform did not report the measure's inputs. */
+  value: number | null;
+}
+
+/**
+ * Every video `querySegmentPerformance` would count at this checkpoint, one
+ * row each, with its stage measure and its tags (FILM-1717).
+ *
+ * The same CTE as the segment aggregate, grouped as the `all` segment — so
+ * the same maturity, ingest and scope rules, and the same per-video figure.
+ * Only the projection differs: the genome needs each video's figure to split
+ * winners from losers, which a median cannot give it. An attribute's median
+ * computed from these rows must equal `querySegmentPerformance`'s
+ * `measure.median` for that tag; `verify-queries.ts` checks it on a real
+ * server.
+ *
+ * Unpaged: a scope here is one channel and one format family, and ClickHouse
+ * has no row cap (the PostgREST one does not apply).
+ */
+export async function querySegmentVideoMeasures(input: {
+  scope: DimScope;
+  measure: SegmentMeasure;
+  checkpointDays?: number;
+  asOf?: string;
+}): Promise<SegmentVideoMeasureRow[]> {
+  if (!isClickHouseEnabled()) return [];
+  assertDimScope(input.scope);
+
+  const client = getClickHouseClient();
+  const { conditions, latest, params } = buildDimConditions(input.scope);
+  const days = Math.max(1, Math.floor(input.checkpointDays ?? 30));
+
+  params.asOf = input.asOf ?? formatClickHouseDateTime(new Date());
+
+  const query = `
+    ${segmentPerVideoSql(conditions, latest, resolveSegmentGrouping('all'), days)}
+    SELECT
+      p.video_id as video_id,
+      toString(p.published_at) as published_at,
+      ${segmentMeasureSql(input.measure)} as measure,
+      toString(d.connection_id) as connection_id,
+      d.platform as platform,
+      d.content_type as content_type,
+      d.asset_duration_seconds as asset_duration_seconds,
+      d.tags as tags
+    FROM per_video p
+    INNER JOIN dim d ON d.video_id = p.video_id
+    WHERE ${segmentEligible(days)}
+    ORDER BY p.video_id
+  `;
+
+  const result = await client.query({
+    query,
+    query_params: params,
+    format: 'JSONEachRow',
+  });
+
+  const rows = await result.json<{
+    video_id: string;
+    published_at: string;
+    measure: number | null;
+    connection_id: string;
+    platform: string;
+    content_type: string;
+    asset_duration_seconds: number | null;
+    tags: string[];
+  }>();
+
+  return rows.map((row) => {
+    const assetDurationSeconds = normalizeAssetDurationSeconds(
+      row.asset_duration_seconds === null
+        ? null
+        : Number(row.asset_duration_seconds),
+    );
+    const family = formatFamilyOfDim({
+      platform: String(row.platform),
+      content_type: String(row.content_type),
+      asset_duration_seconds: assetDurationSeconds,
+    });
+
+    return {
+      videoId: String(row.video_id),
+      publishedAt: String(row.published_at),
+      connectionId: String(row.connection_id),
+      platform: String(row.platform),
+      formatFamily: family.ok ? family.family : null,
+      assetDurationSeconds,
+      tags: (row.tags ?? []).map(String),
+      value:
+        row.measure === null || row.measure === undefined
+          ? null
+          : Number(row.measure),
     };
   });
 }
