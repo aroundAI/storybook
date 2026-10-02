@@ -58,6 +58,12 @@ acceptance_criteria:
   - text: "Every surface whose revenue text changed shows the measured figure where authorised, and Not measured with the access-state sentence otherwise, in a browser"
     met: true
     evidence: "apps/e2e/tests/analytics/monetisation-evidence.spec.ts on a production build with ClickHouse on (lane B, migrations 021 and 022 applied, 20261001140344 by migration up), values read off the DOM into .local-ci/evidence/film-1726/film-1726-measured.json: project card $13, episode $12.34 / $12, Shorts ROI $0.0013 a view, experiment 1,000 → 1,300; the unmeasured team reads Not measured on all four, with the three reasons (scope missing, Partner Program, TikTok) listed under the cards (packages/features/content-analytics/src/components/metric-cards.tsx:153, from getProjectRevenueAccessAction, packages/features/content-analytics/src/server/dashboard-actions.ts:158). 16 screenshots, light and dark. Red with the card's fix reverted: 3 of 3 failed, $0 for Not measured. The guard apps/e2e/tests/analytics/monetisation.spec.ts and the touched specs (experiments, overview, language-tab, revenue-currency, card-shell) pass on a production build with CLICKHOUSE_ENABLED=false, 26/26. #523"
+  - text: "The account dashboard says why revenue is not measured"
+    met: true
+    evidence: "Revenue access is read per account, once, by readAccountRevenueAccess (packages/features/content-analytics/src/server/revenue-access-reader.ts:18), which the project dashboard now calls too; getAccountDashboardData returns it beside the figures (packages/features/content-analytics/src/server/account-dashboard-actions.ts:70), and the company dashboard passes it to the cards (packages/features/content-analytics/src/components/company-dashboard.tsx:47). An account with nothing synced reads Not measured, not $0. Unit: packages/features/content-analytics/__tests__/account-dashboard-unmeasured.test.ts:188, 3 of 3 red with the change reverted. Browser: apps/e2e/tests/analytics/monetisation.spec.ts:43 (expected 3 reasons, received 0 before the change); monetisation-evidence.spec.ts reads the company card as $13 for the measured team and Not measured with three reasons for the other, light and dark. ProjectDashboard and SeasonOverview are mounted on no route, so they have no screenshot. #548"
+  - text: "A genome hypothesis may name the monetisation stage"
+    met: true
+    evidence: "Both genome_hypothesis CHECKs accept monetisation and the TypeScript pattern derives from FUNNEL_STAGES; FILM-1717 records the pgTAP and pattern tests that pin them as one. #545"
 remaining:
   - criterion: "YouTube's daily revenue seen against a real Partner Program channel"
     reason: "Built against fixtures. That reports.query answers estimatedRevenue with dimensions=day and filters=video==ID for a Partner channel, and what a non-partner channel gets back, have not been seen live."
@@ -68,12 +74,6 @@ remaining:
   - criterion: "The stage strip renders six stages"
     reason: "FILM-1719 renders the strip and reads stageReadings, so it gains the stage with no change of its own; its copy says 'five-stage strip' in three places, recorded there."
     closed_by: "FILM-1719"
-  - criterion: "The account dashboard says why revenue is not measured"
-    reason: "The project and episode dashboards list the reasons; the company (account-level) dashboard shows Not measured without them, because its cards span every project and no per-account reading of the reasons exists yet. ProjectDashboard and SeasonOverview say Not measured but are mounted on no route, so they have no screenshot."
-    closed_by: "unassigned"
-  - criterion: "A genome hypothesis may name the monetisation stage"
-    reason: "FILM-1717's branch builds GENOME_HYPOTHESIS_PATTERN from FUNNEL_STAGES, but its migration's CHECK on analytics_experiments.genome_hypothesis lists the five stages by name. After both merge, TypeScript accepts '@monetisation' and Postgres refuses it. Needs a migration widening the check, or the pattern held to five on purpose."
-    closed_by: "FILM-1717"
 open_questions: []
 notes: |
   ## 1. Why a locked decision is being re-opened

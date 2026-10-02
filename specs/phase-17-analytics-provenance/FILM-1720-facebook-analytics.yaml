@@ -62,6 +62,9 @@ acceptance_criteria:
   - text: "Facebook fails the structural tests until its capability entries and stage bindings are written"
     met: true
     evidence: "Widening AnalyticsPlatform turned FILM-1714's guards SM1 and SM2 red and typecheck failed on CAPABILITY_MATRIX, SIGNAL_MAP and MEASURE_INPUT_SUPPORT until each had a facebook entry. SM1, SM2 and film-1703's platform guard now target the four-value union and widen it again; all three went red. #504"
+  - text: "Facebook's other reported figures are ingested: the Page's followers, its 1/7/28-day unique viewers, and each video's views by age, gender and country"
+    met: true
+    evidence: "Shipped dark like the rest: read only when the connection holds facebook.page-fields / facebook.page-insights (packages/features/publishing/src/oauth/analytics-scopes.ts:220, :230). Followers: getPageFollowerCount (packages/features/content-analytics/src/providers/facebook/facebook-insights.ts:297) into channel_subscribers nightly, gated by readsFollowers (packages/features/content-analytics/src/server/subscriber-snapshot.ts:119). Unique viewers: getPageUniqueViewers (facebook-insights.ts:324), page_total_media_view_unique for day, week and days_28, into channel_windows with source fb_page_insights (packages/features/content-analytics/src/server/channel-reach-windows.ts:240), gated by readsChannelReach (:122); the reach page shows the 7-day figure and says Facebook has no 30-day window, and a Page connected without insights says so (packages/features/content-analytics/src/server/reach-overview.ts:161). Audience: total_video_views_by_age_bucket_and_gender and _by_country_id (facebook-insights.ts:68) into video_audience by buildFacebookAudienceRows (packages/features/content-analytics/src/server/ingest.ts:585). Matrix: channel_accounts_reached, channel_totals, demographics and geography are native for facebook (packages/clickhouse/src/lib/data-provenance.ts:1169, :1216, :1284, :1329). Tests: packages/features/content-analytics/__tests__/facebook-page-figures.test.ts (gate red with it removed); sandbox apps/vendor-sandbox/__tests__/facebook-insights-fidelity.test.ts:289 (breakdowns sum to the 3-second views, 1 ≤ 7 ≤ 28 day viewers, declared fields only, refused without the switch); both row shapes written to and read back from ClickHouse 24.8; apps/e2e/tests/analytics/reach-evidence.spec.ts reads 250 for the Page's 7 days and the 30-day reason (red with the gate removed). #548"
 remaining:
   - criterion: "Live verification on a real Page"
     reason: "Built against the vendor sandbox and shipped dark (owner, 2026-10-01). Not yet seen against Meta: which of read_insights, pages_manage_engagement and pages_read_engagement an authorised video_insights call needs; that the two retired metrics answer an error (FILM-1725 Check J); the retention graph's key range and scale; that an unshared post omits shares."
@@ -69,8 +72,11 @@ remaining:
   - criterion: "Facebook switched on"
     reason: "read_insights and pages_manage_engagement are requested only once ANALYTICS_SCOPES_ENABLED names facebook, which waits on Meta App Review (docs/vendor-review-status.md)."
     closed_by: "owner"
-  - criterion: "Facebook's other reported figures are ingested"
-    reason: "Documented and not collected: the Page's followers (channel_totals), its 1/7/28-day unique viewers (channel_accounts_reached), each video's views by age and gender and by country, and post_media_view's follower split. Each is not_ingested in the matrix, blocked by FILM-1720."
+  - criterion: "post_media_view's follower split is ingested"
+    reason: "post_media_view's is_from_followers breakdown splits a video's plays and displays by follower; it is documented and not requested. follower_status.facebook stays not_ingested."
+    closed_by: "unassigned"
+  - criterion: "The subscriber surfaces count a Page's followers"
+    reason: "Followers are recorded nightly (#548), but SUBSCRIBER_TRACKED_PLATFORMS still leaves Facebook out, so the subscriber trend cards explain it as untracked rather than read channel_subscribers for it."
     closed_by: "unassigned"
   - criterion: "A decision on watch-time-weighted demographics"
     reason: "total_video_view_time_by_age_bucket_and_gender weights by time, not views, and FILM-1703's demographics family models counts. Not requested until that is decided."
