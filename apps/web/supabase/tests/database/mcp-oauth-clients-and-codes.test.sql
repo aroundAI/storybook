@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(28);
+select plan(29);
 
 -- FILM-1907. The OAuth server's two tables are reachable by the service role
 -- only; a consent connection names a registered client; a code carries a
@@ -150,6 +150,18 @@ select throws_ok(
              'http://localhost:3000/api/mcp', now() + interval '60 seconds') $$,
   '23514', null,
   'a code with a scope outside studio:read, studio:write, studio:render is refused'
+);
+
+-- A grant is to a team: a code for the user's personal account is refused (KB-99)
+select throws_ok(
+  $$ insert into public.mcp_authorization_codes
+       (code_hash, client_id, user_id, account_id, scopes, code_challenge, redirect_uri, resource, expires_at)
+     values (repeat('4', 64), 'client-registered', tests.get_supabase_uid('oauth_alice'),
+             tests.get_supabase_uid('oauth_alice'), array['studio:read'],
+             repeat('E', 43), 'https://claude.ai/api/mcp/auth_callback',
+             'http://localhost:3000/api/mcp', now() + interval '60 seconds') $$,
+  '23514', null,
+  'a code bound to a personal account is refused'
 );
 
 select throws_ok(

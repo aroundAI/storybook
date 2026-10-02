@@ -72,6 +72,11 @@ comment on table public.mcp_authorization_codes is
 create index mcp_authorization_codes_user_idx
   on public.mcp_authorization_codes (user_id);
 
+-- A grant is to a team, never to a personal account (KB-99)
+create trigger require_team_account
+  before insert or update of account_id on public.mcp_authorization_codes
+  for each row execute function kit.require_team_account();
+
 alter table public.mcp_authorization_codes enable row level security;
 
 revoke all on public.mcp_authorization_codes from anon, authenticated;
