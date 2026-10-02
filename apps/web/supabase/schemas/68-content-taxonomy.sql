@@ -15,7 +15,7 @@ create table if not exists public.content_tags (
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   unique (account_id, dimension, slug),
-  -- FILM-1717 (20261001113701, 20261001121658): taxonomy, then the genome's
+  -- FILM-1717 (20261002122827, 20261002122828): taxonomy, then the genome's
   -- observable and semantic attributes. The list is TAG_DIMENSIONS in
   -- genome-attributes.ts.
   constraint content_tags_dimension_check check (dimension in (

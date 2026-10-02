@@ -3,7 +3,7 @@
 -- (FILM-1717)
 -- ==================================
 -- Layer B: what a creative is doing to the viewer, recorded by hand as a
--- level. More tag dimensions, as in v1 (20261001113701) — still no ClickHouse
+-- level. More tag dimensions, as in v1 (20261002122827) — still no ClickHouse
 -- change. The list is TAG_DIMENSIONS in genome-attributes.ts;
 -- genome-vocabulary.test.ts compares the two.
 

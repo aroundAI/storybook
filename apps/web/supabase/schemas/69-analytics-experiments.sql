@@ -27,7 +27,7 @@ create table if not exists public.analytics_experiments (
   review_window_days integer not null default 60,
   notes text,
   connection_id uuid,
-  -- FILM-1717 (20261001121658): the genome hypothesis this change tests.
+  -- FILM-1717 (20261002122828): the genome hypothesis this change tests.
   genome_hypothesis varchar(120),
   review_due_at date generated always as (started_at + review_window_days) stored,
   -- on delete set null: migration 20260919061806; the experiment outlives its author.
@@ -402,7 +402,7 @@ create trigger analytics_experiments_keep_creator
   before update of created_by on public.analytics_experiments
   for each row execute function public.keep_experiment_creator();
 
--- FILM-1717 (20261001121658): the hypothesis link is fixed once started.
+-- FILM-1717 (20261002122828): the hypothesis link is fixed once started.
 create or replace function public.freeze_genome_hypothesis()
 returns trigger
 language plpgsql
