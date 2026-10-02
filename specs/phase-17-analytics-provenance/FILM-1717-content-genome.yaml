@@ -87,9 +87,9 @@ acceptance_criteria:
   - text: "A concluded channel experiment (FILM-1724) backs a causal claim only where its styles separated"
     met: true
     evidence: "channel_experiments.genome_hypothesis with the same CHECK and freeze as the Change log's (apps/web/supabase/migrations/20261002122828_genome-semantic-and-hypothesis-link.sql:72; pgTAP apps/web/supabase/tests/database/genome-hypothesis-link.test.sql:145, guard GN-DB4). getGenomeFindingsAction reads this channel's concluded linked experiments (packages/features/content-analytics/src/server/genome-actions.ts:179; packages/features/content-analytics/__tests__/genome-actions.test.ts:220, :237; GN20, GN21). causalTestOf (packages/clickhouse/src/lib/genome-evidence.ts:102) counts a confirmed experiment as confirming only when FILM-1724's experimentFindings holds a non-overlapping pair (packages/clickhouse/__tests__/genome-loop.test.ts:233, :257; GN19). #TBD-1717"
-  - text: "A hypothesis key may name monetisation, the sixth stage FILM-1726 appends"
+  - text: "A hypothesis key may name monetisation, the sixth stage FILM-1726 appended (#523)"
     met: true
-    evidence: "Both genome_hypothesis CHECKs accept monetisation (pgTAP apps/web/supabase/tests/database/genome-hypothesis-link.test.sql:106, red without it); the TypeScript pattern derives from FUNNEL_STAGES and follows once FILM-1726 adds the stage, and the test pins the difference (packages/clickhouse/__tests__/genome-loop.test.ts:164). #TBD-1717"
+    evidence: "Both genome_hypothesis CHECKs accept monetisation (pgTAP apps/web/supabase/tests/database/genome-hypothesis-link.test.sql:106, red without it); the TypeScript pattern derives from FUNNEL_STAGES, which includes it since #523, and the test pins the two as one pattern (packages/clickhouse/__tests__/genome-loop.test.ts:164; red with monetisation dropped from the CHECK). #TBD-1717"
 open_questions: []
 feature:
   database:
@@ -400,8 +400,8 @@ notes: |
     experiment whose styles' ranges all overlapped showed no clear
     difference, and counts as inconclusive whatever the owner recorded.
   - **A hypothesis key may name `monetisation`.** FILM-1726 (owner-approved)
-    appends it as a sixth stage; both tables accept it now, and the
-    TypeScript pattern follows FUNNEL_STAGES when the stage lands.
+    appended it as a sixth stage (#523); both tables accept it, and the
+    TypeScript pattern, derived from FUNNEL_STAGES, is the same pattern.
   - **Some stages have no checkpoint measure yet**: a YouTube Short's Hook
     (first-3s retention) and every signal built on accounts reached
     (TikTok and Instagram Reach, Instagram Transmission). They are refused

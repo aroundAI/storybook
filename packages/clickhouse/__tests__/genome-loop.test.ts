@@ -174,14 +174,11 @@ describe('hypotheses', () => {
       )!;
     const pattern = /genome_hypothesis ~ '([^']+)'/.exec(sql)![1]!;
 
-    // The table also accepts `monetisation`, which FILM-1726 appends to
-    // FUNNEL_STAGES; the TypeScript pattern derives from that list, so it
-    // follows when the stage lands. Otherwise the two are the same pattern.
-    expect(pattern).toBe(
-      GENOME_HYPOTHESIS_PATTERN.source.replace(')$', '|monetisation)$'),
-    );
+    // The same pattern, `monetisation` included: FILM-1726 appended it to
+    // FUNNEL_STAGES, and the TypeScript pattern derives from that list.
+    expect(pattern).toBe(GENOME_HYPOTHESIS_PATTERN.source);
     expect(GENOME_HYPOTHESIS_PATTERN.test('utility:high@monetisation')).toBe(
-      false,
+      true,
     );
 
     for (const hypothesis of hypothesesFrom(analyse())) {

@@ -58,9 +58,8 @@ alter table public.content_tags
 --
 -- Both kinds of experiment carry it: a Change log entry (FILM-1610) and a
 -- channel experiment (FILM-1724, 20261001114902). The stages are FILM-1714's
--- five plus `monetisation`, which FILM-1726 appends (owner-approved); the
--- TypeScript pattern derives from FUNNEL_STAGES, so it accepts monetisation
--- once FILM-1726 adds the stage there.
+-- five plus `monetisation`, which FILM-1726 appended (#523); the
+-- TypeScript pattern derives from FUNNEL_STAGES, so the two match.
 alter table public.analytics_experiments
   add column genome_hypothesis varchar(120);
 

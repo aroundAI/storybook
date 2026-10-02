@@ -8,7 +8,7 @@ select plan(15);
 -- is fixed once the change has started: tying a running or concluded change
 -- to a hypothesis afterwards would let the result choose what it confirms.
 -- A channel experiment (FILM-1724) carries the same link under the same
--- rules. The stages include `monetisation`, which FILM-1726 appends. And the
+-- rules. The stages include `monetisation`, which FILM-1726 appended. And the
 -- semantic dimensions (layer B) take only their levels.
 
 select makerkit.set_identifier('member', 'member@storybook.dev');
