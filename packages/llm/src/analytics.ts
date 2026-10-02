@@ -20,6 +20,12 @@ export interface LLMUsageEvent {
   // Context
   accountId: string;
   userId?: string;
+  /**
+   * The generation run this call belongs to (FILM-1903). The column lands
+   * with FILM-1903 part A; until a caller has a run, the key is absent from
+   * the insert, so a schema without the column still accepts the row.
+   */
+  runId?: string;
 
   // Execution metadata
   templateSlug: string;
@@ -114,6 +120,7 @@ export async function logLLMUsage(
       error_message: event.errorMessage,
       request_config: event.requestConfig,
       response_metadata: event.responseMetadata,
+      ...(event.runId !== undefined ? { run_id: event.runId } : {}),
     });
 
     if (error) {

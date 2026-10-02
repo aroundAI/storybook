@@ -48,6 +48,7 @@
     "@hookform/resolvers": "^4.1.3",
     "@kit/accounts": "workspace:*",
     "@kit/admin": "workspace:*",
+    "@kit/agent": "workspace:*",
     "@kit/analytics": "workspace:*",
     "@kit/assets": "workspace:*",
     "@kit/audio-generation": "workspace:*",

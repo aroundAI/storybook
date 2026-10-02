@@ -11,8 +11,8 @@
  *
  * This is vendor-independent — works with any LLM provider supported by @kit/llm.
  */
-import { createLLMClient, forcedLocalConfig } from '@kit/llm';
-import type { LLMProvider } from '@kit/llm';
+import { LLMError, createLLMClient, forcedLocalConfig } from '@kit/llm';
+import type { LLMProvider, LLMUsageEvent } from '@kit/llm';
 
 import { BudgetExceededError, createBudgetTracker } from './budget';
 import { applySkills } from './skills';
@@ -23,8 +23,41 @@ import type {
   AgentRunResult,
   AgentStep,
   AgentTool,
+  AgentUsageLogger,
   ParsedAgentResponse,
 } from './types';
+
+// =============================================================================
+// USAGE LOGGING (FILM-1902)
+// =============================================================================
+
+let defaultUsageLogger: AgentUsageLogger | undefined;
+
+/**
+ * Installs the process-wide usage logger every run without its own
+ * `runContext.logUsage` reports to. The LLM worker calls this once at
+ * start-up with `logLLMUsage` bound to its service-role client; tests and
+ * hosts that never call it get a runner that logs nothing.
+ */
+export function setAgentUsageLogger(logger: AgentUsageLogger | undefined) {
+  defaultUsageLogger = logger;
+}
+
+async function reportUsage(
+  logger: AgentUsageLogger | undefined,
+  agentName: string,
+  event: LLMUsageEvent,
+) {
+  if (!logger) return;
+
+  try {
+    await logger(event);
+  } catch (error) {
+    console.error(
+      `[Agent:${agentName}] Failed to log LLM usage: ${(error as Error).message}`,
+    );
+  }
+}
 
 // =============================================================================
 // PROMPT BUILDING
@@ -385,11 +418,32 @@ export async function runAgent<T = unknown>(
     },
   );
 
+  const logUsage = runContext.logUsage ?? defaultUsageLogger;
+  const temperature = resolved.temperature ?? 0.3;
+  const maxTokensPerStep = resolved.maxTokensPerStep ?? 4000;
+  const usageBase = {
+    accountId: runContext.accountId,
+    userId: runContext.userId,
+    runId: runContext.runId,
+    templateSlug: `agent/${config.name}`,
+    operationName: config.name,
+    llmProvider: provider,
+    llmModel: model,
+  } satisfies Partial<LLMUsageEvent>;
+
   // Start conversation
   conversationHistory.push({ role: 'user', content: input.userPrompt });
 
   for (let stepIdx = 0; stepIdx < resolved.maxSteps; stepIdx++) {
     const stepStartTime = Date.now();
+    const requestConfig = {
+      step: stepIdx + 1,
+      temperature,
+      maxTokens: maxTokensPerStep,
+    };
+    // One row per model call: the catch below logs a failure only when the
+    // call itself failed, not when a tool threw after a logged success
+    let usageReported = false;
 
     // OPT-4: Pre-step budget check — estimate if the next step would
     // exceed the token budget. Uses a rough estimate based on current
@@ -449,8 +503,8 @@ export async function runAgent<T = unknown>(
               { role: 'system', content: systemPrompt },
               ...conversationHistory,
             ],
-            temperature: resolved.temperature ?? 0.3,
-            maxTokens: resolved.maxTokensPerStep ?? 4000,
+            temperature,
+            maxTokens: maxTokensPerStep,
           }),
         config.name,
         stepIdx + 1,
@@ -464,6 +518,21 @@ export async function runAgent<T = unknown>(
         `[Agent:${config.name}] Step ${stepIdx + 1} — LLM responded in ${stepLatency}ms, ` +
           `tokens: ${tokens}, cost: $${cost.toFixed(4)}`,
       );
+
+      usageReported = true;
+      await reportUsage(logUsage, config.name, {
+        ...usageBase,
+        promptTokens: response.usage.promptTokens,
+        completionTokens: response.usage.completionTokens,
+        totalTokens: tokens,
+        promptCost: response.cost?.prompt,
+        completionCost: response.cost?.completion,
+        totalCost: response.cost?.total,
+        latencyMs: stepLatency,
+        status: 'success',
+        requestConfig,
+        responseMetadata: { finishReason: response.finishReason },
+      });
 
       // 2. Track budget
       budget.record(tokens, cost, stepLatency);
@@ -654,6 +723,26 @@ export async function runAgent<T = unknown>(
       console.error(
         `[Agent:${config.name}] Step ${stepIdx + 1} — LLM CALL FAILED: ${(error as Error).message}`,
       );
+
+      if (!usageReported) {
+        await reportUsage(logUsage, config.name, {
+          ...usageBase,
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: 0,
+          latencyMs: Date.now() - stepStartTime,
+          status: 'failure',
+          errorCode:
+            error instanceof LLMError
+              ? (error.code ?? 'UNKNOWN_ERROR')
+              : 'UNKNOWN_ERROR',
+          errorMessage: ((error as Error).message ?? String(error)).substring(
+            0,
+            1000,
+          ),
+          requestConfig,
+        });
+      }
 
       steps.push({
         type: 'tool_call',

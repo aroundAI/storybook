@@ -119,6 +119,9 @@ export async function processStoryRefinement(
       newLocations?: Array<{ name: string; description: string }>;
     }>({
       templateSlug: 'story-refinement',
+      accountId: data.accountId,
+      userId: data.userId,
+      operationName: 'story-refinement',
       variables: {
         // The stored story and the user's feedback, defused for the model;
         // storyData itself stays as stored (it is the undo copy) (KB-101)

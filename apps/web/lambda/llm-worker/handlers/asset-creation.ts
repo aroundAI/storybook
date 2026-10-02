@@ -192,6 +192,9 @@ export async function processAssetCreation(
         try {
           const result = await executeLLMForLambda<{ description: string }>({
             templateSlug: 'story-generation/extract-asset-description',
+            accountId: data.accountId,
+            userId: data.userId,
+            operationName: 'asset-creation',
             variables: {
               // The asset keeps its name as written; the model sees it defused
               name: sanitizeForPrompt(item.name),

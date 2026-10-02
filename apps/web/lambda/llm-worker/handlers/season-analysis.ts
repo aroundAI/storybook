@@ -91,10 +91,8 @@ export async function processSeasonAnalysis(
   payload: Record<string, unknown>,
   supabase: SupabaseClient<Database>,
 ): Promise<{ success: boolean; data: AnalysisResult }> {
-  const { projectId, roadmap, externalFacts } = parseLlmJobPayload(
-    'season-analysis',
-    payload,
-  );
+  const { accountId, userId, projectId, roadmap, externalFacts } =
+    parseLlmJobPayload('season-analysis', payload);
 
   console.log(
     `[Season Analysis] Processing for project ${projectId}, facts: ${externalFacts?.length ?? 0}`,
@@ -129,6 +127,9 @@ export async function processSeasonAnalysis(
   // Use Lambda-safe LLM executor
   const { data: result } = await executeLLMForLambda<AnalysisResult>({
     templateSlug: 'season-generation',
+    accountId,
+    userId,
+    operationName: 'season-analysis',
     variables: {
       // The user's roadmap and facts, defused for the model (KB-101)
       roadmap: sanitizeForPrompt(roadmap),

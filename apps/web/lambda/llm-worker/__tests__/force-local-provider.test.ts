@@ -18,6 +18,12 @@ vi.mock('@kit/llm', async (importOriginal) => ({
   })),
 }));
 
+// The executor logs every call (FILM-1902); this test is about the provider,
+// so there is no service-role client to write through
+vi.mock('@kit/supabase/lambda-admin-client', () => ({
+  createLambdaAdminClient: () => null,
+}));
+
 const slug = 'season-generation';
 const variables = Object.fromEntries(
   Object.keys(PROMPT_REGISTRY[slug]!.variables).map((name) => [name, 'x']),
@@ -34,6 +40,7 @@ describe('executeLLMForLambda with LLM_FORCE_PROVIDER=local', () => {
     vi.clearAllMocks();
     vi.spyOn(console, 'log').mockImplementation(() => undefined);
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
     vi.stubEnv('NODE_ENV', 'test');
     vi.stubEnv('LLM_FORCE_PROVIDER', 'local');
     vi.stubEnv('LLM_MODEL', 'llama3.1');

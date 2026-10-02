@@ -80,6 +80,11 @@ export default defineConfig({
         __dirname,
         '../../packages/supabase/src/clients/server-client.ts',
       ),
+      // The LLM worker's usage logging (FILM-1902) builds its client here
+      '@kit/supabase/lambda-admin-client': path.resolve(
+        __dirname,
+        '../../packages/supabase/src/clients/lambda-admin-client.ts',
+      ),
       '@kit/cache': path.resolve(
         __dirname,
         '../../packages/cache/src/index.ts',
