@@ -36,25 +36,25 @@ acceptance_criteria:
     evidence: "packages/clickhouse/src/migrations/021_twitter.ts:40 (`'twitter' = 5`, keeping `'facebook' = 4`); packages/clickhouse/__tests__/twitter-migration.test.ts:31; run against populated tables on a throwaway ClickHouse 24.8 on 2026-10-01: twitter refused before 021, accepted after, every youtube/tiktok/instagram/facebook row unchanged (#522)"
   - text: "All seven enum-bearing tables, AnalyticsPlatform, SyncPlatform and QueryFilters accept it, and the three without the enum are handled explicitly rather than assumed"
     met: true
-    evidence: "packages/clickhouse/src/migrations/021_twitter.ts:42 (seven tables, channel_windows included; the three without the enum named at :12); packages/clickhouse/__tests__/twitter-migration.test.ts:42; packages/features/content-analytics/src/server/types.ts:8; packages/clickhouse/src/queries.ts:295 (`PLATFORM_ENUM_TYPE`) (#522)"
+    evidence: "packages/clickhouse/src/migrations/021_twitter.ts:42 (seven tables, channel_windows included; the three without the enum named at :12); packages/clickhouse/__tests__/twitter-migration.test.ts:42; packages/features/content-analytics/src/server/types.ts:8; packages/clickhouse/src/queries.ts:316 (`PLATFORM_ENUM_TYPE`) (#522)"
   - text: "X ships on the pay-per-use path, with Enterprise-only fields declared and dark"
     met: true
-    evidence: "packages/clickhouse/src/lib/data-provenance.ts:454 (posts lookup, metered) and :472 (Enterprise, declared, nothing calls it); packages/features/content-analytics/src/providers/twitter/x-analytics.ts; dark in production: packages/features/content-analytics/src/lib/x-read-budget.ts (`X_ANALYTICS_ENABLED`) (#522)"
+    evidence: "packages/clickhouse/src/lib/data-provenance.ts:455 (posts lookup, metered) and :472 (Enterprise, declared, nothing calls it); packages/features/content-analytics/src/providers/twitter/x-analytics.ts; dark in production: packages/features/content-analytics/src/lib/x-read-budget.ts (`X_ANALYTICS_ENABLED`) (#522)"
   - text: "The two X quartile vocabularies are never mixed"
     met: true
     evidence: "packages/features/content-analytics/__tests__/platform-field-names.test.ts:181 binds the provider's requests to the x/post-lookup and x/post-metrics blocks; `playback25` lives only in x/media-analytics, and adding it to the provider's request turned the test red (2026-10-01) (#522)"
   - text: "X's 30-day wall is expressed as a DataWindow anchored on publish date"
     met: true
-    evidence: "packages/clickhouse/src/lib/data-provenance.ts:462; the sync stops a day inside it, packages/features/content-analytics/src/lib/x-read-budget.ts:37, guarded by X1 in tooling/mutation-guards/film-1727.json (#522)"
+    evidence: "packages/clickhouse/src/lib/data-provenance.ts:463; the sync stops a day inside it, packages/features/content-analytics/src/lib/x-read-budget.ts:37, guarded by X1 in tooling/mutation-guards/film-1727.json (#522)"
   - text: "The /2/media/analytics window is recorded as unknown with a named owner until X answers in writing"
     met: true
-    evidence: "packages/clickhouse/src/lib/data-provenance.ts:483 (availability `unknown`, owner `owner`, the question to X sales) and :483 (window `undocumented`); packages/clickhouse/__tests__/data-provenance.test.ts:231 (#522)"
+    evidence: "packages/clickhouse/src/lib/data-provenance.ts:484 (availability `unknown`, owner `owner`, the question to X sales) and :483 (window `undocumented`); packages/clickhouse/__tests__/data-provenance.test.ts:231 (#522)"
   - text: "The per-call cost of the pay-per-use path is recorded, so the sync cadence can be chosen against it"
     met: true
-    evidence: "packages/features/content-analytics/src/lib/x-read-budget.ts:31 ($0.005 per post read) and :44 (100 reads a UTC day, $0.50); docs/platform-capability-reference.md:657; cadence chosen: one read per post per UTC day, at most $0.145 a post over its life (#522)"
+    evidence: "packages/features/content-analytics/src/lib/x-read-budget.ts:31 ($0.005 per post read) and :44 (100 reads a UTC day, $0.50); docs/platform-capability-reference.md:659; cadence chosen: one read per post per UTC day, at most $0.145 a post over its life (#522)"
   - text: "Adding X required no change to any signal-map consumer"
     met: true
-    evidence: "the only importers of lib/signal-map.ts are packages/clickhouse/src/index.ts (unchanged) and its own test; X's bindings are packages/clickhouse/src/lib/signal-map.ts:837 and :902 (#522)"
+    evidence: "the only importers of lib/signal-map.ts are packages/clickhouse/src/index.ts (unchanged) and its own test; X's bindings are packages/clickhouse/src/lib/signal-map.ts:932 and :902 (#522)"
   - text: "X fails the structural tests until its capability entries and stage bindings are written"
     met: true
     evidence: "packages/clickhouse/__tests__/signal-map.test.ts:104 and packages/clickhouse/__tests__/data-provenance.test.ts:398 went red with X's map and matrix entries removed (2026-10-01); guards SM1, SM2 and FILM-1703's platform guard retargeted to the five-value union and red (#522)"
