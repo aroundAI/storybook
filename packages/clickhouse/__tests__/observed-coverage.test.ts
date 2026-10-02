@@ -190,7 +190,31 @@ describe('foldObservedCoverage', () => {
     });
   });
 
-  it('a family read from a table outside the five is null once connected — not measured here', () => {
+  it('YouTube revenue is observed in video_revenue_daily: covered with rows, no data without', () => {
+    // FILM-1726 made revenue native in its own table. Unread, the cell was
+    // null, and the card said "unknown" beside earnings it had.
+    expect(CAPABILITY_MATRIX.revenue.youtube.table).toBe('video_revenue_daily');
+
+    const withRows = foldObservedCoverage(
+      [row({ table: 'video_revenue_daily', rows: 30 })],
+      CAPABILITY_MATRIX,
+      { connectedPlatforms: ['youtube'], asOf: AS_OF },
+    );
+    const without = foldObservedCoverage([], CAPABILITY_MATRIX, {
+      connectedPlatforms: ['youtube'],
+      asOf: AS_OF,
+    });
+
+    expect(withRows.revenue.youtube).toEqual({
+      kind: 'covered',
+      rows: 30,
+      latestDate: '2026-09-28',
+      stale: false,
+    });
+    expect(without.revenue.youtube).toEqual({ kind: 'no_data_in_window' });
+  });
+
+  it('a family read from a table outside the six is null once connected — not measured here', () => {
     const folded = foldObservedCoverage(
       [row({ table: 'video_metrics', rows: 5 })],
       CAPABILITY_MATRIX,
@@ -203,7 +227,7 @@ describe('foldObservedCoverage', () => {
   });
 });
 
-describe('the five tables', () => {
+describe('the six tables', () => {
   it('are the ones the spec names', () => {
     expect([...OBSERVED_COVERAGE_TABLES].sort()).toEqual(
       [
@@ -212,6 +236,7 @@ describe('the five tables', () => {
         'video_reach_daily',
         'video_retention_curves',
         'video_traffic_sources',
+        'video_revenue_daily',
       ].sort(),
     );
   });

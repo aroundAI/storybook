@@ -247,7 +247,9 @@ notes: |
     project, season and episode dashboards mount none and render as before.
   - **Revenue draws no number on any MetricCard**: the matrix has no
     platform supplying it, and the ClickHouse total it showed is a column
-    nothing writes but 0.
+    nothing writes but 0. Since FILM-1726 (#523) stored YouTube's
+    earnings, revenue has a supplier: a measured total draws its number,
+    and a null one reads "Not measured" in the same unmeasured slot.
 
   Found on the way: **KB-154** — the dashboard's hardcoded zero watch time
   and subscribers still reach AI Insights' payload, which this spec's

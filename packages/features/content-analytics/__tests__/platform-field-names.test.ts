@@ -190,7 +190,7 @@ const REQUEST_SITES: Array<{
       },
       {
         pattern:
-          /(?:videoInsightMetrics|reelsInsightMetrics)\s*=\s*(\[[^\]]*\])/g,
+          /(?:videoInsightMetrics|reelsInsightMetrics|adBreakInsightMetrics)\s*=\s*(\[[^\]]*\])/g,
         surfaces: ['facebook/video-insights'],
       },
       {

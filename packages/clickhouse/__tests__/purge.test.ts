@@ -36,13 +36,14 @@ describe('purgeStatements', () => {
         'video_metrics',
         'video_reach_daily',
         'video_retention_curves',
+        'video_revenue_daily',
         'video_snapshots',
         'video_traffic_sources',
       ].sort(),
     );
     expect(statements.at(-1)?.table).toBe(PURGE_INDEX_TABLE);
     expect(PURGE_VIDEO_TABLES.length + PURGE_CHANNEL_TABLES.length + 1).toBe(
-      11,
+      12,
     );
   });
 

@@ -87,7 +87,7 @@ export const METRIC_FAMILIES = [
   'reposts', // a post's reposts                 → video_metrics
   'all_surface_engagement', // incl. boosted     → video_metrics
   'watch_time', //                                 → video_metrics
-  'revenue', //                                    → video_metrics
+  'revenue', // estimated earnings, USD            → video_revenue_daily
   'traffic_sources', //                            → video_traffic_sources
   'retention_curve', //                            → video_retention_curves
   'reach', // impressions, CTR                     → video_reach_daily
@@ -118,6 +118,7 @@ export type SourceTable =
   | 'video_traffic_sources'
   | 'video_retention_curves'
   | 'video_reach_daily'
+  | 'video_revenue_daily'
   | 'channel_daily'
   | 'channel_reach_daily'
   | 'channel_subscribers'
@@ -531,6 +532,16 @@ const X_ENTERPRISE = {
   window: { maxAgeDays: 'undocumented', anchoredOn: 'request_date' },
 } as const satisfies SurfaceAxes;
 
+/**
+ * "Only Page admins can query earnings insights by using the API"
+ * (capability reference, Facebook). A Page that runs no ad breaks has no
+ * ad-break earnings to report.
+ */
+const FACEBOOK_PAGE_EARNINGS: AccountTypeGate = {
+  requirement: 'admin rights on a Facebook Page that earns from ad breaks',
+  note: 'Facebook reports ad-break earnings only to the admin of a Page that earns from ad breaks, so there is nothing to show for this Page.',
+};
+
 const YOUTUBE_PARTNER_PROGRAM: AccountTypeGate = {
   requirement: 'YouTube Partner Program membership',
   note: 'YouTube only reports earnings for channels in the YouTube Partner Program, so there is nothing to show until your channel joins it.',
@@ -806,15 +817,14 @@ export const CAPABILITY_MATRIX: Record<
     // seen revenue come back (FILM-1725 Checks F and G), so it is pending.
     // A connection made before FILM-1711 does not hold it at all; that is
     // per connection, and `resolveAnalyticsAccess` (publishing) answers it.
+    // `monetisationAccess` turns the two into one creator's sentence.
     //
-    // `level` is ClickHouse ingestion, a separate axis:
-    // `video_metrics.revenue_cents` is still a literal 0 on every sync path,
-    // and FILM-1711's pipeline writes Postgres `revenue_records` instead.
-    // Whether revenue ever lands in ClickHouse is FILM-1726's decision.
+    // `level` is ClickHouse ingestion, a separate axis. Since FILM-1726 the
+    // sync writes each day YouTube reports to `video_revenue_daily`, and
+    // only for an authorised read. A day with no row was not measured.
     youtube: {
-      level: 'not_ingested',
-      table: null,
-      blockedBy: 'FILM-1726',
+      level: 'native',
+      table: 'video_revenue_daily',
       access: 'authorised',
       pendingVerification: {
         owner: 'FILM-1725',
@@ -824,7 +834,7 @@ export const CAPABILITY_MATRIX: Record<
       accountGate: YOUTUBE_PARTNER_PROGRAM,
       availability: 'included',
       window: YOUTUBE_ANALYTICS.window,
-      note: 'YouTube reports earnings, and we can now ask for permission to read them, but this figure is not that number yet, so YouTube revenue here is only what you enter yourself.',
+      note: 'YouTube reports estimated earnings for each day, in US dollars, once your channel has given permission to read them; a day without that permission shows as not measured, not as $0.',
       reference: {
         section: 'YouTube',
         surface: 'youtube/analytics-metrics',
@@ -851,14 +861,18 @@ export const CAPABILITY_MATRIX: Record<
       note: 'Instagram does not report what a post earned, so Instagram revenue is only what you enter yourself.',
       reference: { section: 'Instagram', surface: null, fields: [] },
     },
-    // FILM-1720 decided only this: ad-break earnings are not ingested.
-    // Whether a Monetisation stage exists is FILM-1726's.
+    // FILM-1726 asks for the ad-break figures (behind FILM-1720's dark
+    // `facebook` switch) and stores none of them. Meta does not document
+    // the unit or currency of `total_video_ad_break_earnings`, and ClickHouse
+    // revenue is USD by construction (KB-12). FILM-1725 Check K reads one
+    // live response, and only then is it written.
     facebook: {
       level: 'not_ingested',
       table: null,
-      blockedBy: 'FILM-1726',
+      blockedBy: 'FILM-1725',
       ...FACEBOOK_VIDEO,
-      note: 'Facebook reports ad-break earnings to Page admins, but we do not collect them yet, so Facebook revenue here is only what you enter yourself.',
+      accountGate: FACEBOOK_PAGE_EARNINGS,
+      note: 'Facebook reports ad-break earnings to Page admins, but we do not store them until we have seen which currency they come in, so Facebook revenue here is only what you enter yourself.',
       reference: {
         section: 'Facebook',
         surface: 'facebook/video-insights',
@@ -1565,6 +1579,9 @@ export const OBSERVED_COVERAGE_TABLES = [
   'video_reach_daily',
   'video_retention_curves',
   'channel_daily',
+  // Revenue's own table since FILM-1726: unread, YouTube revenue was null
+  // ("cannot measure") beside the earnings it had.
+  'video_revenue_daily',
 ] as const satisfies readonly SourceTable[];
 
 /** One (table, platform) answer from `queryObservedCoverage`. */
@@ -1682,7 +1699,7 @@ function isObservedTable(table: SourceTable): boolean {
  * 3. no connection on the platform → `not_connected`;
  * 4. connected, observed, no rows → `no_data_in_window`; and `null` where
  *    nothing was observed (`rows` is `null`, or the table is not one of the
- *    five).
+ *    six).
  *
  * The table → family mapping is the matrix's `table`, so this module stays
  * the one place it is stated.
@@ -1850,6 +1867,7 @@ export const TABLE_WRITERS: Record<SourceTable, string> = {
   video_traffic_sources: 'insertVideoTrafficSources',
   video_retention_curves: 'insertRetentionCurves',
   video_reach_daily: 'insertVideoReachDaily',
+  video_revenue_daily: 'insertVideoRevenueDaily',
   channel_daily: 'insertChannelDaily',
   channel_reach_daily: 'insertChannelReachDaily',
   channel_subscribers: 'insertSubscriberSnapshot',
@@ -1891,6 +1909,10 @@ export const WRITER_CALL_SITES: Record<SourceTable, readonly string[]> = {
   video_reach_daily: [
     VERIFY_SCRIPT,
     `${CONTENT_ANALYTICS}/server/reporting/report-ingest.ts`,
+  ],
+  video_revenue_daily: [
+    VERIFY_SCRIPT,
+    `${CONTENT_ANALYTICS}/server/analytics-sync-cron.ts`,
   ],
   channel_daily: [
     VERIFY_SCRIPT,

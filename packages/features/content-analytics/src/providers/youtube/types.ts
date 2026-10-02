@@ -75,6 +75,12 @@ export interface YouTubeAnalyticsResult {
   };
   totals: YouTubeTotals;
   revenueAccess: YouTubeRevenueAccess;
+  /**
+   * Each day's estimated earnings in US cents, as YouTube reported them
+   * (FILM-1726). Empty unless `revenueAccess` is `authorised`: a day absent
+   * from here was not measured, and is never written as 0.
+   */
+  dailyRevenue: YouTubeDailyRevenue[];
   dailyData: YouTubeDailyMetrics[];
   retention?: RetentionData;
   demographics?: DemographicData;
@@ -107,6 +113,12 @@ export interface YouTubeTotals {
   estimatedRevenue: number; // cents (total)
   estimatedAdRevenue: number; // cents (ad revenue portion)
   estimatedRedPartnerRevenue: number; // cents (YouTube Premium portion)
+}
+
+/** One day's estimated earnings, in US cents (no `currency` is requested). */
+export interface YouTubeDailyRevenue {
+  date: string;
+  estimatedRevenue: number;
 }
 
 /**

@@ -532,8 +532,10 @@ Built against the vendor sandbox and switched off until App Review grants
   Graph v25.0's changelog names for `post_impressions_unique`.
 
 Not requested: either of Meta's averages (we divide the totals ourselves and
-name the denominator), the ad-break metrics (FILM-1726), and every name in the
-forbidden block. `video_metrics.views` is NULL for every Facebook row; each
+name the denominator), and every name in the forbidden block. The four
+ad-break metrics are requested in a read of their own (FILM-1726): Meta
+answers earnings only to the admin of a Page that runs ad breaks, and their
+unit and currency are undocumented, so none is stored until FILM-1725 Check K. `video_metrics.views` is NULL for every Facebook row; each
 kind of view has its own column (migration 020).
 
 Rate limits: Page tokens use BUC `4800 × engaged users` per 24h; app/user tokens use

@@ -130,7 +130,8 @@ export function planRevenueRowWrites(
   existing: ReadonlyArray<{
     id: string;
     category: string;
-    revenueCents: number;
+    /** Null on a row marked not measured (FILM-1726): any report fills it. */
+    revenueCents: number | null;
   }>,
 ): RevenueRowPlan[] {
   const existingByCategory = new Map(

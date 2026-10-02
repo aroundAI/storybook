@@ -24,6 +24,7 @@ import type { FormatFamily, LanguageDimension } from '@kit/clickhouse';
 import { Badge } from '@kit/ui/badge';
 import { Skeleton } from '@kit/ui/skeleton';
 
+import { REVENUE_NOT_MEASURED } from '../lib/estimated-revenue';
 import { formatNumber } from '../lib/format';
 import {
   LANGUAGE_COMPARISON_SERIES,
@@ -162,7 +163,7 @@ function familyTotals(data: ContentTypeComparison, family: FormatFamily) {
       comments: 0,
       shares: 0,
       engagement: 0,
-      revenueCents: 0,
+      revenueCents: null,
       subscribersGained: 0,
       contentCount: 0,
     }
@@ -259,8 +260,13 @@ function ShortsROIBody({
   const shortsMultiplier =
     viewsPerSource > 0 ? viewsPerShort / viewsPerSource : 0;
   const engagementDiff = clips.engagement - sources.engagement;
+  // Null when no clip's earnings were measured (FILM-1726): not $0.
   const shortsRevenuePerView =
-    clips.views > 0 ? clips.revenueCents / clips.views : 0;
+    clips.revenueCents === null
+      ? null
+      : clips.views > 0
+        ? clips.revenueCents / clips.views
+        : 0;
 
   return (
     <div className="space-y-4">
@@ -305,8 +311,10 @@ function ShortsROIBody({
         </div>
         <div className="flex items-center justify-between rounded-lg bg-muted/30 p-2">
           <span className="text-sm">Revenue/view (shorts)</span>
-          <Badge variant="outline">
-            ${(shortsRevenuePerView / 100).toFixed(4)}
+          <Badge variant="outline" data-test="roi-revenue-per-view">
+            {shortsRevenuePerView === null
+              ? REVENUE_NOT_MEASURED
+              : `$${(shortsRevenuePerView / 100).toFixed(4)}`}
           </Badge>
         </div>
       </div>

@@ -187,7 +187,9 @@ The YouTube connection must include these scopes:
   They travel in their own query, made only when `includeRevenue` is passed, so a
   channel without the scope or outside the Partner Program keeps its totals.
   `result.revenueAccess` says which of those it was; in every state but
-  `authorised` the revenue totals are 0 and mean "not measured"
+  `authorised` the revenue totals are 0 and mean "not measured", and
+  `result.dailyRevenue` is empty. The query is by day (FILM-1726), so each
+  authorised day lands in ClickHouse `video_revenue_daily`
 
 ## Error Handling
 
@@ -322,11 +324,15 @@ sees exactly what it always did.
   (`src/lib/revenue-by-currency.ts`). Never divide a mixed sum; if a chart
   cannot show two currencies on one axis, draw one per currency.
 - **Alerts are per currency** (`revenue-alerts.ts`).
-- **ClickHouse `video_metrics.revenue_cents` is USD by construction** — no
-  currency column, only USD-sourced writers (today: a literal `0`).
-  `__tests__/revenue-writers.test.ts` binds that to the source; a new writer
-  of `revenue_cents` fails it until listed. `formatCurrency` in `lib/format`
-  is for those figures only.
+- **ClickHouse revenue is `video_revenue_daily`, USD by construction**
+  (migration 022, FILM-1726) — no currency column, one writer: YouTube's
+  estimate, requested without a `currency`, for a day it was measured.
+  No row means not measured, so every reader of `video_daily_stats` gets
+  `revenue_cents: number | null` — keep the null (`lib/estimated-revenue.ts`:
+  `addRevenue`, `formatRevenueCents`), never `?? 0`. `video_metrics.revenue_cents`
+  is NULL and unread. `__tests__/revenue-writers.test.ts` binds the writers;
+  a new one fails it until listed. `formatCurrency` in `lib/format` is for
+  those figures only.
 
 ## Dependencies
 

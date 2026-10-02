@@ -22,7 +22,7 @@ const mockClickHouseClient = {
 const PROJECT = '550e8400-e29b-41d4-a716-446655440000';
 
 /**
- * FILM-1704 §2: one statement, `UNION ALL` over the five fact tables, no
+ * FILM-1704 §2: one statement, `UNION ALL` over the six fact tables, no
  * `FINAL`, scoped like every other dim-joined read. What the SQL returns is
  * checked against a real server in `scripts/verify-queries.ts`; this pins
  * the shape a mocked client can see.
@@ -59,7 +59,7 @@ describe('queryObservedCoverage', () => {
     expect(calls).toHaveLength(1);
   });
 
-  it('unions all five fact tables in that one statement', async () => {
+  it('unions all six fact tables in that one statement', async () => {
     const { calls } = await run();
     const query = calls[0]![0].query;
 
@@ -69,10 +69,11 @@ describe('queryObservedCoverage', () => {
       'video_reach_daily',
       'video_retention_curves',
       'channel_daily',
+      'video_revenue_daily',
     ]) {
       expect(query).toMatch(new RegExp(`FROM ${table}\\b`));
     }
-    expect(query.match(/UNION ALL/g)).toHaveLength(4);
+    expect(query.match(/UNION ALL/g)).toHaveLength(5);
   });
 
   it('avoids FINAL: coverage asks whether rows exist, not the deduplicated total', async () => {

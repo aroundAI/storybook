@@ -68,7 +68,15 @@ function createClient(results: Array<{ data: unknown[]; error: unknown }>) {
             },
           };
 
-          for (const method of ['is', 'eq', 'gte', 'lte', 'lt', 'order']) {
+          for (const method of [
+            'is',
+            'not',
+            'eq',
+            'gte',
+            'lte',
+            'lt',
+            'order',
+          ]) {
             builder[method] = (...args: unknown[]) => {
               calls.push([method, ...args]);
               return builder;
@@ -124,6 +132,19 @@ describe('fetchAccountRevenueRows', () => {
     expect(filtersOf(publishScoped!.calls)).not.toContain(
       `eq account_id ${ACCOUNT}`,
     );
+  });
+
+  it('reads no row marked not measured, in either half (FILM-1726)', async () => {
+    const client = createClient([
+      { data: [], error: null },
+      { data: [], error: null },
+    ]);
+
+    await fetchAccountRevenueRows(client, ACCOUNT, '2026-01-01', '2026-01-31');
+
+    for (const query of client.queries) {
+      expect(filtersOf(query.calls)).toContain('not revenue_cents is null');
+    }
   });
 
   it('never issues an unscoped read', async () => {
@@ -349,6 +370,8 @@ describe('forEachProjectRevenueRow (KB-16)', () => {
     // Scoped by the project, not by an account: the Overview is a project
     // page and this read is what its revenue card draws.
     expect(applied).toContain(`eq publishes.episodes.project_id ${PROJECT}`);
+    // Not measured is not revenue (FILM-1726).
+    expect(applied).toContain('not revenue_cents is null');
     expect(applied).toContain('gte record_date 2026-01-01');
     expect(applied).toContain('lte record_date 2026-01-31');
     expect(applied).toContain('order id');

@@ -20,6 +20,7 @@ export const PURGE_VIDEO_TABLES = [
   'video_metrics',
   'video_snapshots',
   'video_reach_daily',
+  'video_revenue_daily',
   'video_traffic_sources',
   'video_audience',
   'video_retention_curves',

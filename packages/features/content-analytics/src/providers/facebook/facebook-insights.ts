@@ -22,10 +22,14 @@ import type {
  * post's insights (`facebook/post-insights`), the replacements Graph v25.0's
  * changelog names for the retired reach and impression metrics.
  *
+ * A fifth read asks for the ad-break earnings (FILM-1726), on its own:
+ * Meta answers them only to the admin of a Page that runs ad breaks, and a
+ * refusal there must cost those four figures and nothing else.
+ *
  * Not requested: Meta's own averages (`total_video_avg_time_watched`,
  * `post_video_avg_time_watched` — the Reels one counts replay time over first
- * plays and can exceed the video's length), the ad-break earnings (FILM-1726),
- * and anything Graph v25.0 retired (the reference's forbidden block).
+ * plays and can exceed the video's length), and anything Graph v25.0 retired
+ * (the reference's forbidden block).
  *
  * Shipped dark: no connection holds `read_insights` until the owner turns the
  * `facebook` analytics scope switch on, so the sync never calls this.
@@ -52,6 +56,14 @@ const reelsInsightMetrics = [
   'post_video_view_time',
   'post_video_followers',
   'post_video_likes_by_reaction_type',
+];
+
+/** Ad-break metrics (FILM-1726): Page admins only. */
+const adBreakInsightMetrics = [
+  'total_video_ad_break_earnings',
+  'total_video_ad_break_ad_cpm',
+  'total_video_ad_break_ad_impressions',
+  'creator_monetization_qualified_views',
 ];
 
 /** Post insights: the impression and reach replacements. */
@@ -198,6 +210,52 @@ export class FacebookInsightsProvider {
       postId,
       totals,
       retention: retentionGraph(metric(video, 'total_video_retention_graph')),
+      adBreaks: await this.adBreaks(videoId, (items, name) =>
+        count(items, name),
+      ),
+    };
+  }
+
+  /**
+   * The ad-break read. Never throws for a refusal: a Page whose earnings
+   * this token may not read still has its views, watch time and shares.
+   * A rate limit is not a refusal, and still stops the sync.
+   */
+  private async adBreaks(
+    videoId: string,
+    count: (items: InsightItem[] | null, name: string) => number | null,
+  ): Promise<FacebookInsightsResult['adBreaks']> {
+    const unread = (access: 'account_type_gated' | 'unavailable') => ({
+      access,
+      earnings: null,
+      cpm: null,
+      adImpressions: null,
+      qualifiedViews: null,
+    });
+
+    let items: InsightItem[];
+
+    try {
+      items = await this.parse<InsightsBody>(
+        await metaFetch(
+          `/${videoId}/video_insights?${lifetime(adBreakInsightMetrics)}`,
+          { token: this.accessToken },
+        ),
+      ).then((body) => body.data ?? []);
+    } catch (error) {
+      if (error instanceof FacebookInsightsScopeError) {
+        return unread('account_type_gated');
+      }
+      if (error instanceof FacebookReadRefused) return unread('unavailable');
+      throw error;
+    }
+
+    return {
+      access: 'authorised',
+      earnings: count(items, 'total_video_ad_break_earnings'),
+      cpm: count(items, 'total_video_ad_break_ad_cpm'),
+      adImpressions: count(items, 'total_video_ad_break_ad_impressions'),
+      qualifiedViews: count(items, 'creator_monetization_qualified_views'),
     };
   }
 

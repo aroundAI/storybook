@@ -443,6 +443,36 @@ describe('effectiveRevenueCategory', () => {
   });
 });
 
+describe('planRevenueRowWrites over a row marked not measured (FILM-1726)', () => {
+  const unmeasured = (category: string) => ({
+    id: `id-${category}`,
+    category,
+    revenueCents: null,
+  });
+
+  it('fills it once the platform reports a figure', () => {
+    expect(
+      planRevenueRowWrites(
+        [{ category: 'ads', revenueCents: 4000 }],
+        [unmeasured('ads')],
+      ),
+    ).toEqual([
+      { op: 'update', id: 'id-ads', category: 'ads', revenueCents: 4000 },
+    ]);
+  });
+
+  it('records a measured zero over it: now it was asked, and the answer is 0', () => {
+    expect(
+      planRevenueRowWrites(
+        [{ category: 'ads', revenueCents: 0 }],
+        [unmeasured('ads')],
+      ),
+    ).toEqual([
+      { op: 'update', id: 'id-ads', category: 'ads', revenueCents: 0 },
+    ]);
+  });
+});
+
 describe('planRevenueRowWrites', () => {
   const existing = (
     category: string,

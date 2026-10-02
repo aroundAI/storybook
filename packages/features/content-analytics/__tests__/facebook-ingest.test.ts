@@ -40,6 +40,13 @@ function reel(
       ...overrides,
     },
     retention: null,
+    adBreaks: {
+      access: 'account_type_gated',
+      earnings: null,
+      cpm: null,
+      adImpressions: null,
+      qualifiedViews: null,
+    },
   };
 }
 
@@ -139,7 +146,6 @@ describe('a Facebook day row', () => {
       views_3s_clicked_to_play: 100,
       views_15s: 50,
       complete_views: 50,
-      revenue_cents: 0,
       metric_source: 'snapshot_delta',
     });
     expect(row).not.toHaveProperty('denominators');

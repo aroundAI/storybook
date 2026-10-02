@@ -32,7 +32,8 @@ export interface ExperimentMetricSnapshot {
     shares: number;
     /** Null where no video measured it (KB-162). */
     watchTimeSeconds: number | null;
-    revenueCents: number;
+    /** Null where no earnings were measured (FILM-1726). */
+    revenueCents: number | null;
   };
   /** FILM-1610. Absent on snapshots written before it; null when unwatched. */
   watched?: WatchedValue | null;
@@ -195,15 +196,21 @@ function DeltaRow({
   label,
   before,
   after,
+  testId,
 }: {
   label: string;
+  testId: string;
+  /** Null when not measured: no delta is drawn from it. */
   before: number | null;
   after: number | null;
 }) {
   if (before === null || after === null) {
     // No change to compute from a figure nobody measured (KB-162).
     return (
-      <div className={'flex items-center justify-between gap-2 text-sm'}>
+      <div
+        className={'flex items-center justify-between gap-2 text-sm'}
+        data-test={testId}
+      >
         <span className={'text-muted-foreground'}>{label}</span>
         <span
           className={'text-muted-foreground'}
@@ -220,7 +227,10 @@ function DeltaRow({
   const Icon = delta > 0 ? ArrowUp : delta < 0 ? ArrowDown : ArrowRight;
 
   return (
-    <div className={'flex items-center justify-between gap-2 text-sm'}>
+    <div
+      className={'flex items-center justify-between gap-2 text-sm'}
+      data-test={testId}
+    >
       <span className={'text-muted-foreground'}>{label}</span>
       <span className={'flex items-center gap-2'}>
         <span className={'text-muted-foreground'}>
@@ -435,6 +445,7 @@ export function ExperimentDetail({
               <DeltaRow
                 key={metric.key}
                 label={metric.label}
+                testId={`experiment-delta-${metric.key}`}
                 before={before[metric.key]}
                 after={after[metric.key]}
               />

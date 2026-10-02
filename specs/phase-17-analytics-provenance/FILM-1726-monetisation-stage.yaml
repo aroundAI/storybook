@@ -3,44 +3,77 @@ title: "The Monetisation Stage, Re-argued"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: M
 dependencies:
   - spec_id: "FILM-1703"
     note: null
   - spec_id: "FILM-1711"
     note: "#289's code (merged 2026-09-22): scope declarations, the binding test and the access states. Live verification is FILM-1725 Checks F–H, not this dependency"
+  - spec_id: "FILM-1714"
+    note: "The stage is appended to its FUNNEL_STAGES; #500"
   - spec_id: "FILM-1720"
-    note: null
+    note: "Left the ad-break metrics to this spec"
 summary: >
-  The phase locked five funnel stages and explicitly excluded a sixth,
-  Monetisation, on the grounds that video_metrics.revenue_cents is literal
-  0 on all four write paths. FILM-1721's re-verification showed that
-  premise was a fact about our own writers (an unrequested OAuth scope),
-  not a fact about the platforms — YouTube revenue is plumbed end to end
-  and blocked only by yt-analytics-monetary.readonly, and Facebook has its
-  own ad-break revenue surface. This spec does not argue the stage should
-  exist; it argues the original decision has to be re-made on correct
-  grounds, possibly to the same conclusion.
+  Monetisation is the sixth funnel stage (owner, 2026-10-01). The phase had
+  locked it out because video_metrics.revenue_cents was literal 0, but that
+  zero was a fact about our writers, not the platforms. The decision is made
+  again on access and product value. YouTube reports earnings to Partner
+  Program channels behind a scope we now request. Facebook reports ad-break
+  earnings to Page admins. TikTok and Instagram report none. So the stage is
+  bound on YouTube and Facebook and unbound on TikTok and Instagram. YouTube's
+  daily estimate is stored in its own ClickHouse table, and "not measured"
+  never reads as $0, in ClickHouse or in Postgres.
 acceptance_criteria:
   - text: "README.md's locked decision is restated with a true premise, whichever way this concludes"
-    met: false
-    reason: "not yet decided — DRAFT"
+    met: true
+    evidence: "specs/phase-17-analytics-provenance/README.md:224 — the locked decision now reads 'Monetisation is the sixth stage', with each platform's access and whose it is to change, and the retired premise quoted as a fact about our writers. #523"
   - text: "The conclusion is argued from product value or from access states, never from \"revenue_cents is zero\""
-    met: false
-    reason: "not yet decided — DRAFT"
+    met: true
+    evidence: "notes §8. The owner's yes (2026-10-01) rests on product value: a paid creator judges a video by what it earned, and an outcome belongs at the end of the funnel. Coverage is argued from access states per platform (README.md:224's table), and revenue_cents is mentioned only as the premise being retired. #523"
   - text: "scope_missing, account_type_gated (YPP) and unsupported are distinguishable for revenue, per platform"
-    met: false
-    reason: "not yet decided — DRAFT"
+    met: true
+    evidence: "monetisationAccess (packages/clickhouse/src/lib/monetisation-access.ts:82) returns unsupported (owner: platform) for TikTok and Instagram, account_type_gated (owner: creator) for a channel outside the Partner Program or a Page the token may not read earnings for, and scope_missing / not_requested / review_* (owner: us) for ours, each with its own sentence. Facebook's gate is FACEBOOK_PAGE_EARNINGS (packages/clickhouse/src/lib/data-provenance.ts:446). Tested in packages/clickhouse/__tests__/monetisation-access.test.ts:23 (three owners, three sentences), :40 and :60; guards MS4, MS5. #523"
   - text: "The zero-valued source = 'api' rows are either fixed or assigned an owner"
-    met: false
-    reason: "not yet decided — DRAFT"
+    met: true
+    evidence: "Fixed. FILM-1711 stopped new ones; apps/web/supabase/migrations/20261001140344_revenue-records-unmeasured.sql:42 marks the existing ones NULL (not deleted, lead's instruction 2026-10-01: it runs against production). A check keeps a person's entry non-null (:35), revenue_cents_by_publish sums measured rows only (:67), and every revenue_records reader skips NULL (packages/features/content-analytics/src/server/revenue-queries.ts, revenue-actions.ts). TikTok and Instagram mark revenue unmeasured (analytics-sync-cron.ts:959, :993). pgTAP revenue-records-unmeasured.test.sql 7/7, red 4 of 7 without the migration; a data check on pre-existing rows showed the api 0 became NULL while an api 500 and a manual 0 were untouched. #523"
   - text: "If the answer is no, the reason is written where the next person will find it before re-deriving this"
-    met: false
-    reason: "not yet decided — DRAFT"
+    met: true
+    evidence: "Not applicable: the answer is yes (owner, 2026-10-01). Notes §8 keeps the argument a 'no' would have had to make (product value, not data availability), so a later reversal starts from it rather than from the retired premise. #523"
   - text: "If the answer is yes, §5's downstream cost is scheduled, not discovered"
-    met: false
-    reason: "not yet decided — DRAFT"
+    met: true
+    evidence: "Built here: FILM-1714's FUNNEL_STAGES gains monetisation (packages/clickhouse/src/lib/signal-map.ts:70) with every cell bound or unbound with a reason (signal-map.test.ts:708). Scheduled in the downstream records: FILM-1718's six rows each have their monetisation requirement written in FILM-1718's notes and in §11 here; FILM-1719's strip and FILM-1717's hypothesis vocabulary are recorded in their specs, including FILM-1717's SQL check that lists five stages. #523"
+  - text: "FILM-1718's six patterns state their monetisation requirement in code"
+    met: true
+    evidence: "Restacked onto FILM-1718 (#502), this branch merged second and filled the rows as §11 says: 'any' on five (packages/clickhouse/src/lib/stage-diagnosis.ts:167) and 'above_where_judged' on above_at_every_judged_stage (:232). The overlap test (packages/clickhouse/__tests__/stage-diagnosis.test.ts:344) then found the minimum needed a change, recorded at the end of §11: only PATTERN_STAGES count toward it (packages/clickhouse/src/lib/stage-diagnosis.ts:256), tested at packages/clickhouse/__tests__/stage-diagnosis.test.ts:444, guard MS19 RED. #523"
+  - text: "Observed coverage reads revenue where it now lives"
+    met: true
+    evidence: "FILM-1704's coverage query scanned five tables and video_revenue_daily was not one, so YouTube revenue coverage read 'unknown' (null) once revenue became native here; r1719 found it. The query has a sixth branch (packages/clickhouse/src/queries-advanced.ts:1401) and OBSERVED_COVERAGE_TABLES a sixth entry (packages/clickhouse/src/lib/data-provenance.ts:1534). packages/clickhouse/__tests__/observed-coverage.test.ts:193 went red first (null, not no_data_in_window), guard MS20 RED; verify-queries' coverage steps pass on real ClickHouse. #523"
+  - text: "YouTube's estimated earnings reach the stage, by day, only for an authorised read"
+    met: true
+    evidence: "fetchRevenue asks dimensions=day (packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:236); buildYouTubeRevenueRows (packages/features/content-analytics/src/server/ingest.ts:256) writes nothing unless revenueAccess is authorised; the sync inserts them (analytics-sync-cron.ts:771) into video_revenue_daily (packages/clickhouse/src/migrations/022_video_revenue_daily.ts:92). Tests: youtube-analytics.test.ts, ingest.test.ts; guards MS10, MS11. #523"
+  - text: "Not measured never reads as $0: a day with metrics and no revenue reads NULL, and a re-synced day counts once"
+    met: true
+    evidence: "video_daily_stats LEFT JOINs video_revenue_daily FINAL with a Nullable right side (022_video_revenue_daily.ts:77). verify-queries.ts:2937 on ClickHouse 24.8, hand-computed: project 1300 = 1234 + 66 with day one inserted twice; the scope-missing video reads null beside 80 views. Red with FINAL removed (2534) and with the right side non-Nullable (0 for null). Readers keep the null: metric-cards.tsx:123, report exports blank with coverage, experiment snapshots, insights. #523"
+  - text: "Every surface whose revenue text changed shows the measured figure where authorised, and Not measured with the access-state sentence otherwise, in a browser"
+    met: true
+    evidence: "apps/e2e/tests/analytics/monetisation-evidence.spec.ts on a production build with ClickHouse on (lane B, migrations 021 and 022 applied, 20261001140344 by migration up), values read off the DOM into .local-ci/evidence/film-1726/film-1726-measured.json: project card $13, episode $12.34 / $12, Shorts ROI $0.0013 a view, experiment 1,000 → 1,300; the unmeasured team reads Not measured on all four, with the three reasons (scope missing, Partner Program, TikTok) listed under the cards (packages/features/content-analytics/src/components/metric-cards.tsx:153, from getProjectRevenueAccessAction, packages/features/content-analytics/src/server/dashboard-actions.ts:158). 16 screenshots, light and dark. Red with the card's fix reverted: 3 of 3 failed, $0 for Not measured. The guard apps/e2e/tests/analytics/monetisation.spec.ts and the touched specs (experiments, overview, language-tab, revenue-currency, card-shell) pass on a production build with CLICKHOUSE_ENABLED=false, 26/26. #523"
+remaining:
+  - criterion: "YouTube's daily revenue seen against a real Partner Program channel"
+    reason: "Built against fixtures. That reports.query answers estimatedRevenue with dimensions=day and filters=video==ID for a Partner channel, and what a non-partner channel gets back, have not been seen live."
+    closed_by: "FILM-1725"
+  - criterion: "Facebook's ad-break earnings stored"
+    reason: "Requested and parsed (behind FILM-1720's dark switch), stored nowhere: Meta does not document total_video_ad_break_earnings' unit or currency, and ClickHouse revenue is USD by construction (KB-12). FILM-1725 Check K reads one live response; until then revenue × facebook is not_ingested, blocked by FILM-1725."
+    closed_by: "FILM-1725"
+  - criterion: "The stage strip renders six stages"
+    reason: "FILM-1719 renders the strip and reads stageReadings, so it gains the stage with no change of its own; its copy says 'five-stage strip' in three places, recorded there."
+    closed_by: "FILM-1719"
+  - criterion: "The account dashboard says why revenue is not measured"
+    reason: "The project and episode dashboards list the reasons; the company (account-level) dashboard shows Not measured without them, because its cards span every project and no per-account reading of the reasons exists yet. ProjectDashboard and SeasonOverview say Not measured but are mounted on no route, so they have no screenshot."
+    closed_by: "unassigned"
+  - criterion: "A genome hypothesis may name the monetisation stage"
+    reason: "FILM-1717's branch builds GENOME_HYPOTHESIS_PATTERN from FUNNEL_STAGES, but its migration's CHECK on analytics_experiments.genome_hypothesis lists the five stages by name. After both merge, TypeScript accepts '@monetisation' and Postgres refuses it. Needs a migration widening the check, or the pattern held to five on purpose."
+    closed_by: "FILM-1717"
 open_questions: []
 notes: |
   ## 1. Why a locked decision is being re-opened
@@ -106,7 +139,7 @@ notes: |
   **Resolved by FILM-1711 (#289, merged 2026-09-22; recorded 2026-09-25).**
   The sync writes revenue only when it was measured
   (`if (normalizedData.revenue_measured)`,
-  `packages/features/content-analytics/src/server/analytics-sync-cron.ts:625`),
+  `packages/features/content-analytics/src/server/analytics-sync-cron.ts:627`),
   and YouTube without the monetary scope is unmeasured; and
   `planRevenueRowWrites`
   (`packages/features/content-analytics/src/lib/revenue-mix.ts:128`) never
@@ -175,9 +208,151 @@ notes: |
   author believed; it became wrong when the belief did, and nothing connected the
   two. That is the general failure this phase exists to fix, and this spec is the
   phase applying its own rule to its own locked decisions.
+
+  ## 8. The decision (owner, 2026-10-01): yes
+
+  Monetisation is the sixth stage, after Audience, and §5's downstream work
+  is built or scheduled. The premise is the true one: revenue is held back
+  by access, and access differs by platform and by owner. It was never a
+  question of revenue being unmeasurable.
+
+  The product argument, recorded because a later "no" would have to answer
+  it: a creator who is paid judges a video by what it earned. A strip that
+  ends at Audience sends them to the Revenue tab to learn whether the rest
+  paid off, and leaves the diagnosis silent on the one outcome they act on.
+  Revenue is an outcome of the funnel, not a step a viewer takes, which is
+  why the stage is last and why FILM-1718 gives it no pattern of its own
+  (§11).
+
+  The answers to §3, each proposed here and approved by the lead on
+  2026-10-01:
+
+  1. **Where it reads from: ClickHouse, like every other stage.** FILM-1715's
+     self-benchmark is a ClickHouse query, and a stage that read Postgres
+     would need a second benchmark. Revenue gets its own table,
+     `video_revenue_daily` (migration 022), not a column on `video_metrics`.
+     Two writers share a YouTube `video_metrics` key, the Analytics-API sync
+     and the Reporting ingest, and the later row replaces the other whole
+     (ReplacingMergeTree, KB-94). Only the sync can see revenue, so on a
+     shared row a day's earnings would come and go with ingest order. FILM-1504
+     gave reach its own table for the same reason. The table is USD by
+     construction (KB-12): its one writer is YouTube's estimate, requested
+     with no currency.
+  2. **Bound on two platforms and unbound on two is acceptable.** That is
+     "a stage may be unbound" working as written. Coverage is a fact about
+     platforms, and an unbound stage tells the creator so in one sentence.
+     A strip that hid the stage on TikTok would hide that fact.
+  3. **The access states render apart.** `monetisationAccess` returns the
+     platform's (`unsupported`), the creator's (`account_type_gated`: the
+     Partner Program, or Page admin rights on a Page that runs ad breaks) or
+     ours (`scope_missing`, which offers a reconnect, or `not_requested` /
+     a review state, which do not). Each has its own owner and sentence.
+  4. **Manual revenue does not fill the stage.** A creator's entry is their
+     figure, not the platform's, and binding it would make "unbound" stop
+     meaning "the platform reports nothing". It stays on the Revenue tab,
+     and the unbound note points there.
+  5. **Desirable: yes**, on the product argument above (owner).
+
+  Signals: `estimated_revenue` (measured; the platform's estimate),
+  `revenue_per_mille` (ratio; earnings per thousand views, YouTube's player
+  formats only) and `ad_break_cpm` (measured; Facebook's advertiser rate,
+  supporting). A YouTube Short reads `estimated_revenue` alone: YouTube pays
+  Shorts from a pool shared out by views, so a Short's per-view rate mostly
+  restates the pool's. Facebook has no single view (FILM-1722), so it has no
+  per-view rate either.
+
+  ## 9. The zero-valued `api` rows
+
+  FILM-1711 stopped new ones (§2). The ones already written are marked, not
+  deleted: `revenue_records.revenue_cents` is NULL on a synced row that
+  measured nothing (migration 20261001140344). Deleting revenue records is
+  irreversible and the migration runs against production (lead,
+  2026-10-01). In production no connection has held the monetary scope,
+  so every zero-valued `api` row predates any measurement. Elsewhere, a zero can
+  only be a measured correction, and marking it NULL changes no sum. A
+  `manual` row keeps NOT NULL by check. `revenue_cents_by_publish` and
+  every `revenue_records` read skip NULL, so an unmeasured USD row cannot
+  give a EUR-only account a $0.00 card. `planRevenueRowWrites` fills a
+  NULL row once the platform reports, a measured zero included. TikTok and
+  Instagram now mark revenue unmeasured, because their zero was hardcoded,
+  not reported.
+
+  ## 10. As built (#523)
+
+  - Stage and signals: `packages/clickhouse/src/lib/signal-map.ts`
+    (`FUNNEL_STAGES`, three signals, `platform_does_not_expose_revenue`).
+  - Access: `packages/clickhouse/src/lib/monetisation-access.ts`.
+    `CONNECTION_REVENUE_STATES` is publishing's `AnalyticsAccessState`
+    without `no_provider`, read from its source by the test.
+  - ClickHouse: migration `022_video_revenue_daily` (assumes FILM-1727's
+    021 has run, and recreates `video_daily_stats` with 021's column list).
+    `insertVideoRevenueDaily`, a purge entry, and the matrix moves
+    `revenue × youtube` to native. Every `video_daily_stats` reader returns
+    `revenue_cents: number | null`. Content-analytics keeps the null
+    (`lib/estimated-revenue.ts`): dashboards and cards say "Not measured",
+    and exports leave the cell blank and give coverage.
+  - Postgres: migration `20261001140344_revenue-records-unmeasured`, with
+    pgTAP `revenue-records-unmeasured.test.sql`.
+  - Facebook: the four ad-break metrics in their own read, behind FILM-1720's
+    switch. A permission refusal is `account_type_gated`, anything else is
+    `unavailable`, and neither costs the video's other figures. None is
+    stored until FILM-1725 Check K.
+  - Guards: `tooling/mutation-guards/film-1726.json`, 16 entries, all RED.
+
+  ## 11. FILM-1718's rows with a sixth stage
+
+  `STAGE_PATTERNS` spells out every stage on every row, so a sixth stage
+  fails to compile (TS2741) until each row says what it asks of it. No row
+  is added for Monetisation. "Revenue below while the funnel is above" would
+  name no stage to look at: the levers (ad suitability, ad breaks, the
+  season's advertiser demand) are measured by no stage. A Monetisation band
+  still shows on the strip. The requirement per row:
+
+  | Row | `monetisation:` | Why |
+  |---|---|---|
+  | `reach_below_content_above` | `'any'` | The sentence is about content against distribution; earnings are neither |
+  | `reach_above_content_below` | `'any'` | Same |
+  | `hook_above_attention_below` | `'any'` | Names two stages only |
+  | `attention_above_transmission_below` | `'any'` | Names two stages only |
+  | `consumption_above_audience_below` | `'any'` | Names three stages only |
+  | `above_at_every_judged_stage` | `'above_where_judged'` | "Strong across every judged stage" is false if Monetisation is judged below |
+
+  `MIN_JUDGED_STAGES`, the exclusions and the coverage sentence need no
+  change: they iterate `FUNNEL_STAGES`. The exhaustive test becomes 3^6
+  combinations plus the unjudged cases, as FILM-1718's verification
+  section already anticipates.
+
+  **`MIN_JUDGED_STAGES` did need a change** (decided by the lead
+  2026-10-01 under the owner's overnight authorisation; owner to confirm).
+  "Need no change" held for the exclusions and the coverage sentence, not
+  for the minimum. Counted toward it, Reach and Monetisation alone made two
+  judged stages with every content stage unjudged, so rows 1 and 2 spoke
+  of content signals nobody had read: 768 combinations each, and a 256-way
+  overlap of rows 2 and 6 (Reach and Monetisation above, nothing else
+  judged), which the overlap test exists to catch. Only `PATTERN_STAGES`,
+  distribution and content, count toward the minimum now
+  (packages/clickhouse/src/lib/stage-diagnosis.ts:256); Monetisation is
+  still judged, shown and counted in "Judged on N of 6". The exhaustive
+  counts over the 729 fully judged combinations are 3, 3, 81, 81, 27, 1
+  and 533 with no clear pattern. Guard MS19 (FILM-1726) holds it. #523
 feature:
-  database: null
-  queries: []
+  database:
+    tables: ["video_revenue_daily"]
+    columns_added: ["ClickHouse video_metrics.revenue_cents made Nullable and NULL (migration 022)", "Postgres revenue_records.revenue_cents made nullable, with check revenue_records_manual_has_amount (20261001140344)"]
+  queries:
+    - {name: "video_daily_stats", purpose: "revenue_cents from video_revenue_daily FINAL through a Nullable LEFT JOIN", file: "packages/clickhouse/src/migrations/022_video_revenue_daily.ts"}
+    - {name: "insertVideoRevenueDaily", purpose: "one row per measured YouTube day, USD", file: "packages/clickhouse/src/queries.ts"}
+    - {name: "revenue_cents_by_publish", purpose: "sums measured rows only", file: "apps/web/supabase/migrations/20261001140344_revenue-records-unmeasured.sql"}
+    - {name: "monetisationAccess", purpose: "the platform's, the creator's or our reason a figure is missing", file: "packages/clickhouse/src/lib/monetisation-access.ts"}
   actions: []
-  ui: []
-  provider_integration: null
+  ui:
+    - {component: "MetricCards", file: "packages/features/content-analytics/src/components/metric-cards.tsx"}
+  provider_integration:
+    vendor: "YouTube Analytics; Facebook (Meta)"
+    endpoints:
+      - method: GET
+        path: "youtubeAnalytics.reports.query (estimatedRevenue, estimatedAdRevenue, estimatedRedPartnerRevenue; dimensions=day)"
+        purpose: "Each day's estimated earnings, USD, for a connection holding yt-analytics-monetary.readonly"
+      - method: GET
+        path: "/{video-id}/video_insights (total_video_ad_break_earnings, total_video_ad_break_ad_cpm, total_video_ad_break_ad_impressions, creator_monetization_qualified_views)"
+        purpose: "Facebook ad-break figures, Page admins only; read, not stored until FILM-1725 Check K"

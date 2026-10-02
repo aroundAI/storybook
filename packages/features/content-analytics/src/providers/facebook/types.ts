@@ -60,10 +60,36 @@ export type FacebookRetentionGraph = readonly {
   watchRatio: number;
 }[];
 
+/**
+ * The video's ad-break figures (FILM-1726), lifetime. Meta answers them
+ * only to the admin of a Page that runs ad breaks.
+ *
+ * - `authorised`: Meta answered. A figure it left out is still null.
+ * - `account_type_gated`: Meta refused for permission. The Page is not one
+ *   whose earnings this token may read, which is the creator's to change.
+ * - `unavailable`: refused for any other reason. Try again next sync.
+ *
+ * Not stored yet. `total_video_ad_break_earnings` is written nowhere until
+ * a live response shows its unit and currency (FILM-1725 Check K), because
+ * ClickHouse revenue is USD by construction (KB-12).
+ */
+export interface FacebookAdBreaks {
+  access: 'authorised' | 'account_type_gated' | 'unavailable';
+  /** `total_video_ad_break_earnings`: unit and currency unconfirmed. */
+  earnings: number | null;
+  /** `total_video_ad_break_ad_cpm`: what advertisers paid per 1,000 ad impressions. */
+  cpm: number | null;
+  /** `total_video_ad_break_ad_impressions`. */
+  adImpressions: number | null;
+  /** `creator_monetization_qualified_views`. */
+  qualifiedViews: number | null;
+}
+
 export interface FacebookInsightsResult {
   videoId: string;
   /** The Page post the video belongs to; null when Meta named none. */
   postId: string | null;
   totals: FacebookVideoTotals;
   retention: FacebookRetentionGraph | null;
+  adBreaks: FacebookAdBreaks;
 }

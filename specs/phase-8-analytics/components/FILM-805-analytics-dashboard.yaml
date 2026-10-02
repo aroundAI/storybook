@@ -43,7 +43,7 @@ acceptance_criteria:
     evidence: null
   - text: "Filters by selected platforms"
     met: false
-    reason: "no longer true — chart, content and breakdown filter; the metric row and Overview totals do not (`getProjectAnalyticsAction` takes no platforms, since f58f4433) — `packages/features/content-analytics/src/components/analytics-dashboard.tsx:123`"
+    reason: "no longer true — chart, content and breakdown filter; the metric row and Overview totals do not (`getProjectAnalyticsAction` takes no platforms, since f58f4433) — `packages/features/content-analytics/src/components/analytics-dashboard.tsx:124`"
   - text: "Shows performance over time chart"
     met: true
     evidence: null
@@ -67,7 +67,7 @@ acceptance_criteria:
     evidence: null
   - text: "Shows last sync time"
     met: false
-    reason: "no longer true — \"Last updated\" is the page's fetch time (`dataUpdatedAt`); `getSyncStatusAction` is rendered nowhere — `packages/features/content-analytics/src/components/analytics-dashboard.tsx:308`"
+    reason: "no longer true — \"Last updated\" is the page's fetch time (`dataUpdatedAt`); `getSyncStatusAction` is rendered nowhere — `packages/features/content-analytics/src/components/analytics-dashboard.tsx:316`"
   - text: "Auto-refreshes every 5 minutes"
     met: true
     evidence: null
@@ -81,14 +81,14 @@ test_plan:
       reason: "retired — owner decision 2026-09-30: the daily series comes from ClickHouse and is not date-filled; date filling is not wanted"
     - text: "Test `aggregateByPlatform` grouping"
       met: true
-      evidence: "`packages/clickhouse/__tests__/clickhouse.test.ts:429` (`queryPlatformBreakdown`, its replacement)"
+      evidence: "`packages/clickhouse/__tests__/clickhouse.test.ts:430` (`queryPlatformBreakdown`, its replacement)"
   integration:
     - text: "Test full analytics query with mock data"
       met: true
       evidence: "`packages/features/content-analytics/__tests__/dashboard-project-access.test.ts:105`"
     - text: "Test date range filtering"
       met: true
-      evidence: "`packages/clickhouse/__tests__/clickhouse.test.ts:360` (the shared `buildWhereClause`)"
+      evidence: "`packages/clickhouse/__tests__/clickhouse.test.ts:361` (the shared `buildWhereClause`)"
   e2e: []
 remaining:
   - criterion: "Filters by selected platforms"

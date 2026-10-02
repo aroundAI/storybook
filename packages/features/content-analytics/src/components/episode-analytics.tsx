@@ -9,17 +9,29 @@
  * - Trend chart
  * - Revenue tracking
  */
+import { useQuery } from '@tanstack/react-query';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 
+import { formatRevenueCents } from '../lib/estimated-revenue';
 import { VIEWS_NOT_MEASURED, viewsShare } from '../lib/views';
 import type { EpisodeAnalytics as EpisodeAnalyticsData } from '../server/aggregation-queries';
+import { getProjectRevenueAccessAction } from '../server/dashboard-actions';
 import { MetricCards } from './metric-cards';
 
 interface EpisodeAnalyticsProps {
   data: EpisodeAnalyticsData;
+  /** The episode's project: whose channels say why revenue is not measured. */
+  projectId?: string;
 }
 
-export function EpisodeAnalytics({ data }: EpisodeAnalyticsProps) {
+export function EpisodeAnalytics({ data, projectId }: EpisodeAnalyticsProps) {
+  const { data: revenueAccess } = useQuery({
+    queryKey: ['project-revenue-access', projectId],
+    queryFn: () => getProjectRevenueAccessAction({ projectId: projectId! }),
+    enabled: projectId !== undefined,
+  });
+
   // Calculate percentage changes (placeholder - would need historical data)
   const totals = {
     views: data.totalViews,
@@ -41,8 +53,11 @@ export function EpisodeAnalytics({ data }: EpisodeAnalyticsProps) {
           <p className="text-muted-foreground">Episode {data.episodeNumber}</p>
         </div>
         <div className="text-right">
-          <p className="text-2xl font-bold text-green-600">
-            ${(data.totalRevenueCents / 100).toFixed(2)}
+          <p
+            className="text-2xl font-bold text-green-600"
+            data-test="episode-revenue"
+          >
+            {formatRevenueCents(data.totalRevenueCents)}
           </p>
           <p className="text-sm text-muted-foreground">Revenue</p>
         </div>
@@ -54,6 +69,7 @@ export function EpisodeAnalytics({ data }: EpisodeAnalyticsProps) {
         previousData={null}
         isLoading={false}
         viewsScope={data.viewsScope}
+        revenueAccess={revenueAccess ?? []}
       />
 
       {/* Platform Breakdown */}

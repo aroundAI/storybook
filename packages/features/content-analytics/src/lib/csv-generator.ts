@@ -29,8 +29,8 @@ const METRIC_COLUMNS: Record<
     getValue: (r) => measuredCell(r.subscribersGained),
   },
   revenue: {
-    header: 'Revenue (USD)',
-    getValue: (r) => (r.revenueCents / 100).toFixed(2),
+    header: measuredHeader('Revenue (USD)'),
+    getValue: (r) => measuredCell(r.revenueCents, (v) => (v / 100).toFixed(2)),
   },
   retention: {
     header: 'Retention Data',
@@ -155,7 +155,12 @@ export function generateSummaryCSV(
   }
   if (metrics.includes('revenue')) {
     summary.push(
-      `Revenue (cents),${totals.totalRevenueCents},${formatCurrency(totals.totalRevenueCents / 100)},`,
+      measuredSummaryLine(
+        'Revenue (cents)',
+        totals.totalRevenueCents,
+        (v) => formatCurrency(v / 100),
+        totals.coverage.revenue,
+      ),
     );
   }
 

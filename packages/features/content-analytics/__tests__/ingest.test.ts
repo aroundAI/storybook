@@ -10,6 +10,7 @@ import {
   buildSnapshotDeltaRow,
   buildSnapshotRow,
   buildYouTubeDailyRows,
+  buildYouTubeRevenueRows,
   computeSnapshotDelta,
   computeYouTubeWindow,
   latestDataDate,
@@ -393,6 +394,57 @@ describe('buildYouTubeDailyRows', () => {
 
 // KB-111. TikTok and Instagram report none of these four; a 0 was pooled
 // with YouTube's figures as if measured.
+describe('buildYouTubeRevenueRows (FILM-1726)', () => {
+  const dailyRevenue = [
+    { date: '2026-03-01', estimatedRevenue: 1234 },
+    { date: '2026-03-02', estimatedRevenue: 0 },
+  ];
+
+  it('writes each measured day, a measured zero included, in USD cents', () => {
+    expect(
+      buildYouTubeRevenueRows({
+        projectId: 'proj',
+        videoId: 'pub',
+        revenueAccess: 'authorised',
+        dailyRevenue,
+      }),
+    ).toEqual([
+      {
+        project_id: 'proj',
+        video_id: 'pub',
+        platform: 'youtube',
+        metric_date: '2026-03-01',
+        revenue_cents: 1234,
+      },
+      {
+        project_id: 'proj',
+        video_id: 'pub',
+        platform: 'youtube',
+        metric_date: '2026-03-02',
+        revenue_cents: 0,
+      },
+    ]);
+  });
+
+  it('writes nothing unless the read was authorised: no row is not measured', () => {
+    for (const revenueAccess of [
+      'scope_missing',
+      'account_type_gated',
+      'unavailable',
+    ] as const) {
+      expect(
+        buildYouTubeRevenueRows({
+          projectId: 'proj',
+          videoId: 'pub',
+          revenueAccess,
+          dailyRevenue,
+        }),
+        revenueAccess,
+      ).toEqual([]);
+    }
+  });
+});
+
 describe('buildSnapshotDeltaRow', () => {
   it('writes the four columns neither platform measures as null, not 0', () => {
     const row = buildSnapshotDeltaRow({

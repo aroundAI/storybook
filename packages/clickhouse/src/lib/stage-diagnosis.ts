@@ -164,6 +164,7 @@ export const STAGE_PATTERNS = [
       attention: 'above_where_judged',
       transmission: 'above_where_judged',
       audience: 'above_where_judged',
+      monetisation: 'any',
     },
     sentence:
       'Content signals are strong relative to distribution — investigate packaging and distribution.',
@@ -176,6 +177,7 @@ export const STAGE_PATTERNS = [
       attention: 'below_where_judged',
       transmission: 'below_where_judged',
       audience: 'below_where_judged',
+      monetisation: 'any',
     },
     sentence:
       'Distribution is not the constraint; content signals are weak relative to comparable videos.',
@@ -188,6 +190,7 @@ export const STAGE_PATTERNS = [
       attention: 'below',
       transmission: 'any',
       audience: 'any',
+      monetisation: 'any',
     },
     sentence:
       'Openings hold; later retention is weaker than comparable videos.',
@@ -200,6 +203,7 @@ export const STAGE_PATTERNS = [
       attention: 'above',
       transmission: 'below',
       audience: 'any',
+      monetisation: 'any',
     },
     sentence:
       'Attention is strong; transmission is weaker relative to comparable videos.',
@@ -212,6 +216,7 @@ export const STAGE_PATTERNS = [
       attention: 'above',
       transmission: 'above',
       audience: 'below',
+      monetisation: 'any',
     },
     sentence:
       'Consumption is strong; follow conversion is weaker than comparable videos.',
@@ -224,6 +229,7 @@ export const STAGE_PATTERNS = [
       attention: 'above_where_judged',
       transmission: 'above_where_judged',
       audience: 'above_where_judged',
+      monetisation: 'above_where_judged',
     },
     sentence: 'Strong across every judged stage relative to comparable videos.',
   },
@@ -237,6 +243,25 @@ export type StagePatternId = (typeof STAGE_PATTERNS)[number]['id'];
  * is `too_few_judged` rather than the nearest row.
  */
 export const MIN_JUDGED_STAGES = 2;
+
+/**
+ * The stages a pattern reads, and the only ones that count toward
+ * `MIN_JUDGED_STAGES`: distribution and content. Monetisation is judged and
+ * shown, but it is neither, and no row names it except as "every judged
+ * stage". Counted, Reach and Monetisation alone reached the table with no
+ * content stage judged, and rows 1 and 2 then spoke of content signals
+ * nobody had read (FILM-1726 §11; decided by the lead 2026-10-01 under the
+ * owner's overnight authorisation, owner to confirm).
+ */
+export const PATTERN_STAGES: readonly PatternStage[] = FUNNEL_STAGES.filter(
+  (stage): stage is PatternStage => stage !== 'monetisation',
+);
+
+export type PatternStage = Exclude<FunnelStage, 'monetisation'>;
+
+function patternJudgedCount(judgements: StageJudgements): number {
+  return PATTERN_STAGES.filter((stage) => judgements[stage].judged).length;
+}
 
 /** The first row `judgements` satisfies, in order, or null. */
 export function matchPattern<P extends StagePattern>(
@@ -319,10 +344,10 @@ export type StageDiagnosis =
 export const NO_CLEAR_PATTERN_SENTENCE =
   'The judged stages show no clear pattern relative to comparable videos.';
 
-function tooFewSentence(judgedCount: number, stageCount: number): string {
+function tooFewSentence(judgedCount: number, patternJudged: number): string {
   return judgedCount === 0
     ? 'No stage could be judged against comparable videos, so there is no pattern to read.'
-    : `Only ${judgedCount} of ${stageCount} stages could be judged against comparable videos — too few to read a pattern across stages.`;
+    : `Only ${patternJudged} of the ${PATTERN_STAGES.length} reach and content stages could be judged against comparable videos — too few to read a pattern across stages.`;
 }
 
 function coverageOf(judgements: StageJudgements): StageCoverage {
@@ -371,10 +396,12 @@ function coverageOf(judgements: StageJudgements): StageCoverage {
 export function diagnoseStages(judgements: StageJudgements): StageDiagnosis {
   const coverage = coverageOf(judgements);
 
-  if (coverage.judgedCount < MIN_JUDGED_STAGES) {
+  const patternJudged = patternJudgedCount(judgements);
+
+  if (patternJudged < MIN_JUDGED_STAGES) {
     return {
       kind: 'too_few_judged',
-      sentence: tooFewSentence(coverage.judgedCount, coverage.stageCount),
+      sentence: tooFewSentence(coverage.judgedCount, patternJudged),
       coverage,
       minJudged: MIN_JUDGED_STAGES,
     };

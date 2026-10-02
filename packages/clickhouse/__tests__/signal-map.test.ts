@@ -340,13 +340,16 @@ describe('rule 5: every native family reaches a stage or says why not', () => {
 // ---------------------------------------------------------------------------
 
 describe('the stages are platform-independent and defined once', () => {
-  it('names five stages in funnel order, each with its question', () => {
+  it('names six stages in funnel order, each with its question', () => {
+    // Monetisation is the sixth (FILM-1726, owner 2026-10-01): an outcome
+    // of the funnel, so it comes last.
     expect([...FUNNEL_STAGES]).toEqual([
       'reach',
       'hook',
       'attention',
       'transmission',
       'audience',
+      'monetisation',
     ]);
     for (const stage of FUNNEL_STAGES) {
       expect(FUNNEL_STAGE_QUESTION[stage]).toMatch(/\?$/);
@@ -807,6 +810,98 @@ describe('X bindings (FILM-1727): the second test of the map', () => {
         status: 'unbound',
         reason: 'format_not_published_on_platform',
       });
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Monetisation, as FILM-1726 names it
+// ---------------------------------------------------------------------------
+
+describe('Monetisation (FILM-1726)', () => {
+  const youtubePlayer = [
+    'long_vertical',
+    'long_horizontal',
+    'teaser',
+    'trailer',
+  ] as const;
+  const published = (platform: AnalyticsPlatform) =>
+    FORMAT_FAMILIES.filter((format) => reachable(platform, format));
+
+  it('reads YouTube’s player formats as earnings per thousand views', () => {
+    for (const format of youtubePlayer) {
+      const binding = SIGNAL_MAP.youtube[format].monetisation;
+      expect(binding.primary, format).toBe('revenue_per_mille');
+      expect(boundSignals(binding), format).toContain('estimated_revenue');
+    }
+    expect(SIGNALS.revenue_per_mille.inputs).toEqual(['revenue', 'engagement']);
+    // Ingested by day since FILM-1726: whether one creator's figure exists
+    // is `monetisationAccess`'s question, not the map's.
+    expect(
+      stageReading('youtube', 'long_horizontal', 'monetisation').status,
+    ).toBe('measurable');
+  });
+
+  it('reads a Short’s earnings, and names per-view earnings as unavailable', () => {
+    const binding = SIGNAL_MAP.youtube.short_vertical.monetisation;
+
+    expect(binding.primary).toBe('estimated_revenue');
+    if (binding.primary === null) return;
+    expect(binding.supporting).not.toContain('revenue_per_mille');
+    expect(binding.unavailable.map((u) => u.name)).toContain(
+      'earnings per thousand views',
+    );
+  });
+
+  it('leaves TikTok and Instagram unbound: neither reports what a video earned', () => {
+    for (const platform of ['tiktok', 'instagram'] as const) {
+      for (const format of published(platform)) {
+        expect(
+          stageReading(platform, format, 'monetisation'),
+          `${platform} · ${format}`,
+        ).toMatchObject({
+          status: 'unbound',
+          reason: 'platform_does_not_expose_revenue',
+        });
+      }
+    }
+  });
+
+  it('binds Facebook to its ad-break earnings, never to a per-view rate', () => {
+    for (const format of published('facebook')) {
+      const binding = SIGNAL_MAP.facebook[format].monetisation;
+      expect(binding.primary, format).toBe('estimated_revenue');
+      expect(boundSignals(binding), format).toContain('ad_break_cpm');
+      expect(boundSignals(binding), format).not.toContain('revenue_per_mille');
+    }
+  });
+
+  it('binds only signals that read the platform’s own revenue family', () => {
+    // Manual revenue lives in Postgres and is the creator's figure, not the
+    // platform's: binding it would make "dark" stop meaning unmeasurable
+    // (FILM-1726 §3.4, lead-approved 2026-10-01).
+    const monetisationSignals = SIGNAL_IDS.filter(
+      (id) => SIGNALS[id].stage === 'monetisation',
+    );
+
+    expect(monetisationSignals.sort()).toEqual(
+      ['ad_break_cpm', 'estimated_revenue', 'revenue_per_mille'].sort(),
+    );
+    for (const id of monetisationSignals) {
+      expect(SIGNALS[id].inputs, id).toContain('revenue');
+    }
+  });
+
+  it('is never measurable where the revenue family has no figure', () => {
+    for (const platform of ANALYTICS_PLATFORMS) {
+      const level = CAPABILITY_MATRIX.revenue[platform].level;
+      if (level === 'native' || level === 'derived') continue;
+      for (const format of published(platform)) {
+        expect(
+          stageReading(platform, format, 'monetisation').status,
+          `${platform} · ${format}`,
+        ).not.toBe('measurable');
+      }
     }
   });
 });

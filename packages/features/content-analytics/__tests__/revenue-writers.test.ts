@@ -41,7 +41,10 @@ const SKIPPED = [
 ];
 
 /** Fixtures for `pnpm --filter @kit/clickhouse verify`, against a local server. */
-const FIXTURES = ['packages/clickhouse/scripts/verify-queries.ts'];
+const FIXTURES = [
+  'packages/clickhouse/scripts/verify-queries.ts',
+  'packages/clickhouse/scripts/verify-purge.ts',
+];
 
 type Store =
   /** `video_metrics` — no currency column, read as USD everywhere. */
@@ -51,24 +54,23 @@ type Store =
   /** A query result or an in-memory row being reshaped; writes nothing. */
   | 'none';
 
+/** What may be written to ClickHouse as `revenue_cents`. */
+const EXPECTED_CLICKHOUSE_WRITERS = ['day.estimatedRevenue'];
+
 const WRITERS: Record<string, Array<{ value: string; store: Store }>> = {
   'packages/clickhouse/src/queries.ts': [
-    // Empty-result defaults and `Number(...)` casts of a SELECT.
-    { value: '0', store: 'none' },
-    { value: 'Number(row.revenue_cents)', store: 'none' },
+    // Not-measured defaults, and the null-keeping casts of a SELECT
+    // (FILM-1726): a sum over no measured day is null, never $0.
+    { value: 'null', store: 'none' },
+    { value: 'nullableNumber(row.revenue_cents)', store: 'none' },
   ],
   'packages/features/content-analytics/src/server/aggregation-queries.ts': [
-    { value: '0', store: 'none' },
-  ],
-  'packages/features/content-analytics/src/server/ingest.ts': [
-    { value: '0', store: 'clickhouse' },
-  ],
-  'packages/features/content-analytics/src/server/reporting/report-ingest.ts': [
-    { value: '0', store: 'clickhouse' },
+    { value: 'null', store: 'none' },
   ],
   'packages/features/content-analytics/src/server/analytics-sync-cron.ts': [
-    // The snapshot-delta metric row, and the TikTok/Instagram normalizers.
-    { value: '0', store: 'clickhouse' },
+    // The TikTok, Instagram and Facebook normalizers: never written to
+    // ClickHouse, and to Postgres only when measured.
+    { value: '0', store: 'none' },
     // YouTube's estimate, normalized — on its way to `revenue_records`
     // below and to nothing in ClickHouse.
     { value: 'data.totals.estimatedRevenue ?? 0', store: 'none' },
@@ -78,12 +80,14 @@ const WRITERS: Record<string, Array<{ value: string; store: Store }>> = {
     // …written with `currency: 'USD'`, asserted below.
     { value: 'write.revenueCents', store: 'postgres' },
   ],
+  'packages/features/content-analytics/src/server/ingest.ts': [
+    // YouTube's estimate for one day, to `video_revenue_daily`: USD, since
+    // the query names no currency (next test), and only when authorised.
+    { value: 'day.estimatedRevenue', store: 'clickhouse' },
+  ],
   'packages/features/content-analytics/src/server/revenue-actions.ts': [
     // The manual form: any currency, stored beside the figure.
     { value: 'revenueCents', store: 'postgres' },
-  ],
-  'apps/web/scripts/local-analytics-fixture.ts': [
-    { value: '0', store: 'clickhouse' },
   ],
 };
 
@@ -138,15 +142,16 @@ describe('writers of revenue_cents', () => {
     );
   });
 
-  it('write nothing but a literal zero to ClickHouse', () => {
+  it('write only YouTube’s USD estimate to ClickHouse', () => {
     const toClickHouse = Object.values(WRITERS)
       .flat()
       .filter(({ store }) => store === 'clickhouse')
       .map(({ value }) => value);
 
-    // Widening this to YouTube's estimate is legitimate — it is USD, see
-    // the next test — but it is a decision, so it is made here on purpose.
-    expect([...new Set(toClickHouse)]).toEqual(['0']);
+    // `video_metrics.revenue_cents` has no writer since migration 022: it
+    // was only ever a literal 0. Revenue is `video_revenue_daily`, written
+    // from YouTube's estimate (USD, next test) for a measured day only.
+    expect([...new Set(toClickHouse)]).toEqual(EXPECTED_CLICKHOUSE_WRITERS);
   });
 
   it('ask YouTube for revenue without a currency, which it answers in USD', () => {

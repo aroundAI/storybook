@@ -194,7 +194,6 @@ test.describe('Analytics tenant isolation (FILM-1615 Step 0)', () => {
         shares: 0,
         saves: 0,
         watch_time_seconds: 0,
-        revenue_cents: 0,
         subscribers_gained: 0,
         subscribers_lost: 0,
         metric_source: 'analytics_api',

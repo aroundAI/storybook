@@ -169,11 +169,13 @@ describe('the chip', () => {
   });
 
   it('says not yet supported, or not reported, when the matrix rules every platform out', () => {
-    // Revenue: YouTube not_ingested, the others unsupported.
-    expect(provenanceChip(seeded, ['revenue'])).toMatchObject({
+    // Watch time, on TikTok alone: not_ingested. (Revenue was the example
+    // until FILM-1726 stored YouTube's earnings.)
+    expect(provenanceChip(seeded, ['watch_time'], ['tiktok'])).toMatchObject({
       label: 'Not yet supported',
       state: 'not_ingested',
     });
+    expect(provenanceChip(seeded, ['revenue']).label).toBe('YouTube only');
     expect(
       provenanceChip(seeded, ['device'], ['tiktok', 'instagram']),
     ).toMatchObject({

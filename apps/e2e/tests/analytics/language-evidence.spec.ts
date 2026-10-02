@@ -123,7 +123,6 @@ async function seedLanguages(fixture: LanguageTabFixture) {
         shares: 0,
         saves: 0,
         watch_time_seconds: group.views * 60,
-        revenue_cents: 0,
         subscribers_gained: 0,
         avg_view_duration_seconds: 120,
         avg_view_percentage: 40,

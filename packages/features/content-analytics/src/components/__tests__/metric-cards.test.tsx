@@ -86,6 +86,75 @@ describe('MetricCards', () => {
     contentCount: 8,
   };
 
+  it('says revenue was not measured instead of showing $0 (FILM-1726)', () => {
+    render(
+      <MetricCards
+        data={{ ...mockData, revenueCents: null }}
+        previousData={mockPreviousData}
+        isLoading={false}
+        viewsScope={null}
+      />,
+    );
+
+    expect(screen.getByText('Not measured')).toBeDefined();
+    expect(screen.queryByText('$0')).toBeNull();
+  });
+
+  it('says why revenue was not measured, once per reason', () => {
+    render(
+      <MetricCards
+        data={{ ...mockData, revenueCents: null }}
+        previousData={null}
+        isLoading={false}
+        viewsScope={null}
+        revenueAccess={[
+          {
+            platform: 'youtube',
+            state: 'scope_missing',
+            owner: 'us',
+            note: 'Reconnect it to grant that permission.',
+          },
+          {
+            platform: 'tiktok',
+            state: 'unsupported',
+            owner: 'platform',
+            note: 'TikTok does not report what a video earned.',
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByText('Reconnect it to grant that permission.'),
+    ).toBeDefined();
+    expect(
+      screen.getByText('TikTok does not report what a video earned.'),
+    ).toBeDefined();
+  });
+
+  it('keeps the reasons off a measured figure', () => {
+    render(
+      <MetricCards
+        data={mockData}
+        previousData={null}
+        isLoading={false}
+        viewsScope={null}
+        revenueAccess={[
+          {
+            platform: 'tiktok',
+            state: 'unsupported',
+            owner: 'platform',
+            note: 'TikTok does not report what a video earned.',
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.queryByText('TikTok does not report what a video earned.'),
+    ).toBeNull();
+  });
+
   it('should render 7 skeleton cards when loading', () => {
     render(
       <MetricCards
@@ -199,11 +268,11 @@ describe('MetricCards', () => {
         />,
       );
 
-      // Five metrics have a baseline; views does not, and revenue draws no
-      // figure at all — the matrix has no platform supplying it (FILM-1705).
+      // Six metrics have a baseline; views does not. Revenue is one of the
+      // six since FILM-1726 stored YouTube's earnings.
       expect(
         container.querySelectorAll('[data-test="metric-change"]'),
-      ).toHaveLength(5);
+      ).toHaveLength(6);
       expect(
         container.querySelector(
           '[data-test="metric-card-views"] [data-test="metric-change"]',
@@ -295,7 +364,9 @@ describe('MetricCards, for a figure the platforms did not measure (KB-149)', () 
     shares: 3,
     watchTimeSeconds: null,
     subscribersGained: null,
-    revenueCents: 0,
+    // TikTok reports no earnings: not measured, where 0 is a measured $0
+    // (FILM-1726).
+    revenueCents: null,
     contentCount: 1,
   };
 
@@ -309,15 +380,15 @@ describe('MetricCards, for a figure the platforms did not measure (KB-149)', () 
       />,
     );
 
-    // Watch time and subscribers, with the platforms' reason; revenue
-    // too, which no platform supplies (FILM-1705), with its own.
+    // Watch time, subscribers and revenue, each with the platforms'
+    // reason; revenue's own reasons are listed under the cards (FILM-1726).
     const titles = screen
       .getAllByText('Not measured')
       .map((el) => el.getAttribute('title') ?? '');
     expect(titles).toHaveLength(3);
     expect(
       titles.filter((t) => t.includes('platforms behind these figures')),
-    ).toHaveLength(2);
+    ).toHaveLength(3);
     expect(screen.queryByText('0m')).toBeNull();
     expect(screen.queryByText('0')).toBeNull();
     // A measured figure beside them is still a number.
@@ -334,7 +405,7 @@ describe('MetricCards, for a figure the platforms did not measure (KB-149)', () 
       />,
     );
 
-    // Revenue alone is unmeasured: no platform supplies it (FILM-1705).
+    // Revenue alone is unmeasured: TikTok reports no earnings (FILM-1726).
     expect(screen.getAllByText('Not measured')).toHaveLength(1);
     expect(screen.getByText('10m')).toBeDefined();
     expect(screen.getByText('4')).toBeDefined();

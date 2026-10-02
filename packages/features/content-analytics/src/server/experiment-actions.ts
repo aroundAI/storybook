@@ -13,6 +13,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { ActionRefusal } from '../lib/action-result';
 import { assertCallerToday } from '../lib/caller-date';
+import { addRevenue } from '../lib/estimated-revenue';
 import {
   assertCanAbandon,
   assertCanConclude,
@@ -62,7 +63,11 @@ export interface ExperimentSnapshot {
     shares: number;
     /** Null where no video measured it: TikTok reports none (KB-162). */
     watchTimeSeconds: number | null;
-    revenueCents: number;
+    /**
+     * USD; null where no linked video's earnings were measured (FILM-1726).
+     * Snapshots written before it hold 0 there, which measured nothing.
+     */
+    revenueCents: number | null;
   };
   /**
    * The experiment's own metric, over its window (FILM-1610). Null when no
@@ -134,7 +139,7 @@ async function captureSnapshot(
     comments: 0,
     shares: 0,
     watchTimeSeconds: null,
-    revenueCents: 0,
+    revenueCents: null,
   };
 
   if (publishIds.length > 0) {
@@ -150,7 +155,10 @@ async function captureSnapshot(
         totals.watchTimeSeconds,
         measuredFigure(stats, 'watch_time_seconds'),
       ]).value;
-      totals.revenueCents += stats.revenue_cents;
+      totals.revenueCents = addRevenue(
+        totals.revenueCents,
+        stats.revenue_cents,
+      );
     }
   }
 

@@ -193,8 +193,9 @@ test.describe('Provenance surfaces (FILM-1705)', () => {
       );
       await expect(byTest(card, 'metric-value')).toHaveCount(0);
     }
+    // YouTube supplies revenue since FILM-1726; it has none in this window.
     await expect(chipOf(byTest(page, 'metric-card-revenue'))).toHaveText(
-      'Not yet supported',
+      'YouTube only',
     );
 
     // Deep Dive: its own strip, for its own window; the traffic chip.

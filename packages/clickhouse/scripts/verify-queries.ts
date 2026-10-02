@@ -44,6 +44,7 @@ import {
   insertVideoDims,
   insertVideoMetrics,
   insertVideoReachDaily,
+  insertVideoRevenueDaily,
   insertVideoSnapshots,
   insertVideoTrafficSources,
   isClickHouseEnabled,
@@ -218,7 +219,6 @@ async function seed() {
         shares: 0,
         saves: 0,
         watch_time_seconds: 600,
-        revenue_cents: 10,
         subscribers_gained: 1,
         subscribers_lost: 0,
         metric_source: 'analytics_api',
@@ -235,7 +235,6 @@ async function seed() {
         shares: 1,
         saves: 0,
         watch_time_seconds: 2400,
-        revenue_cents: 40,
         subscribers_gained: 2,
         subscribers_lost: 1,
         metric_source: 'reporting_api',
@@ -252,7 +251,6 @@ async function seed() {
         shares: 0,
         saves: 0,
         watch_time_seconds: 42,
-        revenue_cents: 0,
         subscribers_gained: 0,
         subscribers_lost: 0,
         metric_source: 'backfill',
@@ -271,7 +269,6 @@ async function seed() {
         shares: 0,
         saves: 0,
         watch_time_seconds: 0,
-        revenue_cents: 0,
         subscribers_gained: 0,
         subscribers_lost: 0,
         metric_source: 'analytics_api',
@@ -777,7 +774,6 @@ async function assertions() {
         shares: 0,
         saves: 0,
         watch_time_seconds: 0,
-        revenue_cents: 0,
         subscribers_gained: 0,
         metric_source: source,
         engaged_views: engaged,
@@ -857,7 +853,6 @@ async function assertions() {
         shares: 1,
         saves: null,
         watch_time_seconds: 18000,
-        revenue_cents: 0,
         subscribers_gained: 5,
         subscribers_lost: lost,
         metric_source: source,
@@ -1003,7 +998,6 @@ async function assertions() {
         shares: 0,
         saves: 0,
         watch_time_seconds: 0,
-        revenue_cents: 0,
         extra_metrics: '{}',
       };
       await insertVideoMetrics([
@@ -1117,7 +1111,6 @@ async function assertions() {
         likes: 1,
         comments: 1,
         shares: 1,
-        revenue_cents: 0,
         extra_metrics: '{}',
       };
       await insertVideoMetrics([
@@ -1329,7 +1322,6 @@ async function assertions() {
         saves: null,
         watch_time_seconds: null,
         subscribers_gained: null,
-        revenue_cents: 0,
         extra_metrics: '{}',
         metric_source:
           platform === 'youtube' ? 'reporting_api' : 'snapshot_delta',
@@ -1854,7 +1846,6 @@ async function assertions() {
         shares: 0,
         saves: 0,
         watch_time_seconds: null,
-        revenue_cents: 0,
         subscribers_gained: null,
         // Instagram's daily rows are snapshot deltas; a provenance step checks it.
         metric_source: 'snapshot_delta' as const,
@@ -2140,7 +2131,6 @@ async function languageFixtureSteps() {
         shares: 0,
         saves: 0,
         watch_time_seconds: 0,
-        revenue_cents: 0,
         subscribers_gained: 0,
         subscribers_lost: 0,
         metric_source: 'analytics_api',
@@ -2593,7 +2583,6 @@ async function scanScopeSteps() {
           shares: 0,
           saves: 0,
           watch_time_seconds: 0,
-          revenue_cents: 0,
           subscribers_gained: 0,
           subscribers_lost: 0,
           extra_metrics: '{}',
@@ -2829,12 +2818,9 @@ const PRESENCE_PROBES: Record<MetricFamily, string | null> = {
   // existing says nothing about whether watch time was measured.
   watch_time: `SELECT DISTINCT platform FROM video_metrics
                WHERE ${NOT_NOISE} AND watch_time_seconds > 0`,
-  // Not checked, and said so rather than skipped silently. Fixtures — this
-  // one, and the E2E evidence seeds — carry `revenue_cents` on YouTube rows to
-  // exercise the sums, while every pipeline writer sets it to a literal 0. A
-  // probe here would be testing the fixtures. What binds `revenue` is the
-  // OAuth-scope marker in data-provenance.test.ts.
-  revenue: null,
+  // Its own table since migration 022 (FILM-1726): a row exists only for
+  // a measured day, so a row is the presence.
+  revenue: `SELECT DISTINCT platform FROM video_revenue_daily WHERE ${NOT_NOISE}`,
   traffic_sources: `SELECT DISTINCT platform FROM video_traffic_sources WHERE ${NOT_NOISE}`,
   retention_curve: `SELECT DISTINCT platform FROM video_retention_curves WHERE ${NOT_NOISE}`,
   reach: `SELECT DISTINCT platform FROM video_reach_daily WHERE ${NOT_NOISE}`,
@@ -3161,6 +3147,7 @@ async function clearFixtureRows(
   for (const table of [
     'video_dim',
     'video_metrics',
+    'video_revenue_daily',
     'video_traffic_sources',
     'video_audience',
   ]) {
@@ -3181,6 +3168,141 @@ async function clearFixtureRows(
       clickhouse_settings: { mutations_sync: '2' },
     });
   }
+}
+
+const REVENUE_PROJECT = '77777777-7777-7777-7777-777777777771';
+/** Holds the monetary scope: two measured days. */
+const REVENUE_MEASURED = 'vid-revenue-measured';
+/** Its connection lacks the scope: metrics, and no revenue row at all. */
+const REVENUE_SCOPE_MISSING = 'vid-revenue-scope-missing';
+
+/**
+ * Revenue lives in `video_revenue_daily` and reaches every reader of
+ * `video_daily_stats` through a LEFT JOIN (migration 022, FILM-1726). Two
+ * things can go wrong in that join, and each is checked against a figure
+ * worked out by hand:
+ *
+ * - A re-synced day is inserted twice. Without FINAL on the joined table
+ *   both copies would match, and the day would count double: 1234 + 1234.
+ * - A day with metrics but no revenue row must read NULL, not 0. The scope-
+ *   missing video's earnings were never measured.
+ *
+ *   | video          | day        | views | revenue rows   | expected      |
+ *   |----------------|------------|-------|----------------|---------------|
+ *   | measured       | 2026-03-01 | 100   | 1234, 1234     | 1234          |
+ *   | measured       | 2026-03-02 | 50    | 66             | 66            |
+ *   | scope missing  | 2026-03-01 | 80    | none           | null          |
+ *
+ *   Totals: 1234 + 66 = 1300 for the project and for the measured video;
+ *   null for the scope-missing video alone; 2026-03-01 sums to 1234 (the
+ *   null adds nothing and does not turn the day null).
+ */
+async function revenueSteps() {
+  const projects = [REVENUE_PROJECT];
+
+  await step('seed: revenue fixture', async () => {
+    await clearFixtureRows(projects, []);
+    await insertVideoMetrics([
+      metricFor({
+        project: REVENUE_PROJECT,
+        id: REVENUE_MEASURED,
+        date: '2026-03-01',
+        views: 100,
+      }),
+      metricFor({
+        project: REVENUE_PROJECT,
+        id: REVENUE_MEASURED,
+        date: '2026-03-02',
+        views: 50,
+      }),
+      metricFor({
+        project: REVENUE_PROJECT,
+        id: REVENUE_SCOPE_MISSING,
+        date: '2026-03-01',
+        views: 80,
+      }),
+    ]);
+
+    const day = {
+      project_id: REVENUE_PROJECT,
+      video_id: REVENUE_MEASURED,
+      platform: 'youtube' as const,
+    };
+
+    // Two separate inserts are two parts, as two syncs of one day would be.
+    await insertVideoRevenueDaily([
+      { ...day, metric_date: '2026-03-01', revenue_cents: 1234 },
+    ]);
+    await insertVideoRevenueDaily([
+      { ...day, metric_date: '2026-03-01', revenue_cents: 1234 },
+      { ...day, metric_date: '2026-03-02', revenue_cents: 66 },
+    ]);
+  });
+
+  await step('hand: a re-synced revenue day counts once', async () => {
+    const totals = await queryTotals({ projectId: REVENUE_PROJECT });
+    expectEqual('project revenue', totals.revenue_cents, 1300);
+    expectEqual('project views', totals.views, 230);
+
+    const daily = await queryDailyTimeSeries({ projectId: REVENUE_PROJECT });
+    expectEqual(
+      'revenue by day',
+      daily.map((row) => [row.date, row.revenue_cents]),
+      [
+        ['2026-03-01', 1234],
+        ['2026-03-02', 66],
+      ],
+    );
+
+    const platforms = await queryPlatformBreakdown({
+      projectId: REVENUE_PROJECT,
+    });
+    expectEqual(
+      'revenue by platform',
+      platforms.map((row) => [row.platform, row.revenue_cents]),
+      [['youtube', 1300]],
+    );
+
+    return 'project 1300 = 1234 + 66; 2026-03-01 = 1234, not 2468';
+  });
+
+  await step('hand: no revenue row reads null, not 0', async () => {
+    const perVideo = await queryPerVideoTotals({
+      projectId: REVENUE_PROJECT,
+      videoIds: [REVENUE_MEASURED, REVENUE_SCOPE_MISSING],
+    });
+    expectEqual(
+      'measured video',
+      perVideo.get(REVENUE_MEASURED)?.revenue_cents,
+      1300,
+    );
+    expectEqual(
+      'scope-missing video',
+      perVideo.get(REVENUE_SCOPE_MISSING)?.revenue_cents,
+      null,
+    );
+
+    const alone = await queryTotals({
+      projectId: REVENUE_PROJECT,
+      videoIds: [REVENUE_SCOPE_MISSING],
+    });
+    expectEqual('scope-missing total', alone.revenue_cents, null);
+    expectEqual('scope-missing views', alone.views, 80);
+
+    const days = await queryDailyStats({
+      projectId: REVENUE_PROJECT,
+      videoIds: [REVENUE_SCOPE_MISSING],
+    });
+    expectEqual(
+      'scope-missing day',
+      days.map((row) => row.revenue_cents),
+      [null],
+    );
+
+    return 'scope-missing: null revenue beside 80 views';
+  });
+
+  await step('clear: revenue fixture', () => clearFixtureRows(projects, []));
 }
 
 function expectEqual(label: string, actual: unknown, expected: unknown): void {
@@ -3281,7 +3403,6 @@ function metricFor(input: {
     shares: 0,
     saves: 0,
     watch_time_seconds: input.watchTimeSeconds ?? 0,
-    revenue_cents: 0,
     subscribers_gained: input.subscribersGained ?? 0,
     subscribers_lost: input.subscribersLost ?? 0,
     metric_source: 'analytics_api' as const,
@@ -4342,7 +4463,6 @@ function sbMetric(input: {
     shares: 0,
     saves: 0,
     watch_time_seconds: 0,
-    revenue_cents: 0,
     subscribers_gained: 0,
     subscribers_lost: 0,
     metric_source: 'analytics_api',
@@ -5212,7 +5332,6 @@ async function unmeasuredTotalsSteps() {
     shares: 0,
     saves: figures.saves ?? null,
     watch_time_seconds: figures.watch ?? null,
-    revenue_cents: 0,
     subscribers_gained: figures.subscribers ?? null,
     subscribers_lost: null,
     metric_source: platform === 'youtube' ? 'analytics_api' : 'snapshot_delta',
@@ -5768,7 +5887,6 @@ async function noRowsViewsSteps() {
         shares: 0,
         saves: null,
         watch_time_seconds: 0,
-        revenue_cents: 0,
         subscribers_gained: 0,
         subscribers_lost: null,
         metric_source: 'analytics_api',
@@ -5827,6 +5945,7 @@ async function main() {
   await selfBenchmarkSteps();
   await channelExperimentSteps();
   await xSteps();
+  await revenueSteps();
   await handComputedSteps();
   await fetchDatedSteps();
   await observedCoverageSteps();

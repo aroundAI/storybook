@@ -159,7 +159,7 @@ FILM-1711 + FILM-1714 + FILM-1721 + FILM-1723 ─→ FILM-1720 (Facebook) ─→
 | [FILM-1724](./FILM-1724-channel-experiments.yaml) | DRAFT | L | Which styles work: groups of new videos, one per style, compared at the same age; no verdict on thin samples |
 | [FILM-1725](./FILM-1725-deferred-vendor-verifications.yaml) | ⏸️ DEFERRED | S | The FILM-1721 checks that need a paid X token, a TikTok sandbox app, or an Instagram insights permission we do not hold |
 | [FILM-1727](./FILM-1727-x-analytics.yaml) | PARTIAL | L | X on the pay-per-use path, Enterprise fields declared and dark, built against the sandbox and shipped dark; X is `twitter`; $0.005 a post read, capped at 100 a day |
-| [FILM-1726](./FILM-1726-monetisation-stage.yaml) | DRAFT | M | The Monetisation stage re-argued, after its premise turned out to be a fact about our writers rather than the platforms |
+| [FILM-1726](./FILM-1726-monetisation-stage.yaml) | 🟡 PARTIAL | M | Monetisation is the sixth stage, decided on access and product value: YouTube's daily estimate in its own table, Facebook's ad-break figures read, TikTok and Instagram unbound, and not measured never reads as $0 |
 | [FILM-1728](./FILM-1728-meta-graph-v26-upgrade.yaml) | DRAFT | M | Move the single Meta pin to v26.0 (changelogs researched: nothing we call changes) **and make the next bump boring**: a served-version assertion in one `metaFetch()`, an expiry test that goes red 120 days early, one implementation per flow, the reference reconciled with the changelog. Found: v25.0 deprecated 41 Facebook insight metrics our reference still lists |
 | [FILM-1729](./FILM-1729-x-media-write-scope.yaml) | PARTIAL | S | `/2/media/upload` needs `media.write`: requested since #488, and a connection made before is refused at publish and told to reconnect; the publish screen sends X full videos and Shorts, refusing first what X's limits would; publishing scopes audited for every platform. A real upload still needs X credentials — the same purchase unblocks FILM-1725 Check A |
 | [FILM-1730](./FILM-1730-tiktok-business-api.yaml) | ⏸️ DEFERRED | XL | **Deferred by the owner 2026-10-02 as a future enhancement: TikTok is not a first go-to-market platform.** TikTok's real analytics — watch time, reach, traffic sources, geography — live on the Business API: a second app, a second connection, and a creator on a Business account. Split from FILM-1712 §4. Owns the four TikTok Business matrix entries (blockedBy FILM-1730 since 2026-09-25) |
@@ -217,29 +217,36 @@ capability can paint immediately.
 
 ### Locked for the signal half
 
-**Five funnel stages, and no composite score, ever.** Reach, Hook, Attention,
-Transmission, Audience. A total would average a dark stage as zero — exactly
-the failure the dark/weak distinction exists to prevent — and it collapses the
-diagnosis that makes the data useful.
+**Six funnel stages, and no composite score, ever.** Reach, Hook, Attention,
+Transmission, Audience, Monetisation. A total would average a dark stage as
+zero — exactly the failure the dark/weak distinction exists to prevent — and it
+collapses the diagnosis that makes the data useful.
 
-**No Monetisation stage — but not for the reason first written.** The original
-text read: *"`video_metrics.revenue_cents` is literal `0` on all four write
-paths. It would be dark or wrong on every platform forever."* The first sentence
-is true; the second does not follow, and was retired on 2026-09-21.
+**Monetisation is the sixth stage (owner, 2026-10-01; FILM-1726).** The phase
+first locked it out on the premise *"`video_metrics.revenue_cents` is literal
+`0` on all four write paths. It would be dark or wrong on every platform
+forever."* The first sentence described our writers; the second did not
+follow. The real constraint was access, and access differs by platform:
 
-YouTube revenue is plumbed end to end — `analytics-sync-cron.ts:733-735` maps
-`estimatedRevenue`, `estimatedAdRevenue` and `estimatedRedPartnerRevenue`, and
-`upsertRevenueRecords` writes them to `revenue_records` with `source = 'api'`.
-It arrives as zero because `yt-analytics-monetary.readonly` is not requested.
-Facebook has its own ad-break revenue surface. So the constraint is **that we
-have not authorised revenue**, not that revenue does not exist.
+| Platform | Revenue | Whose to change |
+|---|---|---|
+| YouTube | Reported for Partner Program channels, behind `yt-analytics-monetary.readonly`, requested since FILM-1711 | ours (a connection made before it lacks the scope), then the creator's (Partner Program) |
+| Facebook | Ad-break earnings, to the admin of a Page that runs ad breaks | ours (Meta App Review), then the creator's |
+| TikTok, Instagram | Not reported on any API | the platform's: the stage is unbound |
 
-The stage stays absent while **FILM-1726** re-argues it from the real
-constraint. Absence is still a decision — it is now a decision with a pending
-review rather than a closed one.
+So the stage is decided on product value and access, never on what a column
+happened to hold. Revenue is an outcome of the funnel, which is why the stage
+is last. It belongs in the funnel anyway, because a creator who is paid
+judges a video by it, and a strip without it sends them to another tab to
+learn whether the rest paid off. It reads ClickHouse like every other stage,
+from `video_revenue_daily` (USD by construction, KB-12). A creator's own
+entries stay on the Revenue tab and never fill it, so "unbound" keeps meaning
+"the platform reports nothing". `monetisationAccess` gives one creator the
+sentence for why their figure is missing: the platform's, theirs, or ours.
 
-**A stage may be unbound, and often should be.** Five stages is a vocabulary,
-not a quota. Four honest stages beat five with one invented.
+**A stage may be unbound, and often should be.** Six stages is a vocabulary,
+not a quota. Monetisation is bound on two platforms and unbound on two, and
+that is the rule working: four honest stages beat five with one invented.
 
 **The stage layer contains no absolute thresholds.** Every figure is relative
 to the channel's own cohort. This is what keeps it from colliding with

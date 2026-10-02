@@ -52,6 +52,9 @@ acceptance_criteria:
   - text: "Check J run on the owner's first connected Facebook Page: the result of one total_video_views_unique video_insights call recorded in the reference's Facebook section, and the forbidden block corrected if the metric still answers"
     met: false
     reason: "not run — needs a connected Facebook Page with read_insights, which no fixture or local stack holds (filed 2026-10-01 by FILM-1728, #493)"
+  - text: "Check K run on the owner's first Facebook Page that runs ad breaks: total_video_ad_break_earnings' unit and currency read off one live response and recorded in the reference's Facebook section"
+    met: false
+    reason: "not run — needs a connected Page with read_insights that earns from ad breaks (filed 2026-10-01 by FILM-1726). Until it runs, Facebook earnings are read and never stored"
   - text: "Check I run: one live connect and disconnect on X and on LinkedIn, with X's revoke answers and the refresh afterwards recorded"
     met: false
     reason: "not run — no X app credentials or test account (FILM-1729); KB-25/KB-86 proved the requests against a local stand-in only. LinkedIn's half no longer applies: LinkedIn was removed on 2026-10-02 (FILM-717, #541)"
@@ -244,6 +247,29 @@ notes: |
   # page was right and the forbidden block's video entries need revisiting.
   ```
 
+  ## 3f. Check K — what unit and currency are Facebook's ad-break earnings in
+
+  Added 2026-10-01 by FILM-1726, which asks for the four ad-break metrics
+  and stores none of them. ClickHouse revenue is USD by construction (KB-12),
+  and Meta's video_insights reference does not say whether
+  total_video_ad_break_earnings is in cents, in whole units, or in the
+  Page's payout currency.
+
+  | | |
+  |---|---|
+  | Question | What unit and currency does total_video_ad_break_earnings come back in, and does total_video_ad_break_ad_cpm share them? |
+  | Status today | Unknown. The provider parses the four figures (FacebookAdBreaks) and the sync writes none; revenue × facebook is not_ingested, blocked by FILM-1725 |
+  | Why it did not run | Needs a Page with read_insights that runs ad breaks; no fixture holds one, and no production credential may be used by anyone but the owner |
+  | Cost to settle | One call, by the owner, on a video with known earnings in Creator Studio, comparing the two figures |
+  | Blocks | Storing Facebook earnings (FILM-1726 remaining): a USD figure goes to video_revenue_daily; any other currency needs a decision first |
+
+  ```bash
+  # K. On the owner's own Page, with a Page token holding read_insights.
+  curl -s -H "Authorization: Bearer $PAGE_TOKEN" \
+    "https://graph.facebook.com/v26.0/<VIDEO_ID>/video_insights?metric=total_video_ad_break_earnings,total_video_ad_break_ad_cpm&period=lifetime"
+  # Compare the earnings figure with Creator Studio's for the same video.
+  ```
+
   ## 3d. Checks F, G and H — what FILM-1711 could not run
 
   Added 2026-09-22 by FILM-1711, which requested the analytics scopes and
@@ -275,7 +301,7 @@ notes: |
   | Status today | (1) and (2) are hypotheses. The provider reads a non-quota 403 on the revenue query as account_type_gated; if non-partner channels get zero rows instead, they will read as authorised with no revenue, which is wrong in the quiet direction |
   | Why it did not run | Needs a real YouTube token, and for (3) a monetised channel |
   | Cost to settle | Three calls |
-  | Blocks | FILM-1711's last three criteria; FILM-1726's premise that the pipeline delivers |
+  | Blocks | FILM-1711's last three criteria; FILM-1726's stage, which since #523 reads each day's estimate from video_revenue_daily: the query below now carries dimensions=day, and (3) should also see one row per day there |
 
   ```bash
   # (1) on a token WITHOUT the monetary scope — the old shape:
@@ -283,7 +309,7 @@ notes: |
     "https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==MINE&startDate=2026-08-01&endDate=2026-09-01&metrics=views,estimatedRevenue&filters=video==$VIDEO_ID"
   # (2) and (3) on a token WITH it — the new shape:
   curl -s -H "Authorization: Bearer $YT_MONETARY_TOKEN" \
-    "https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==MINE&startDate=2026-08-01&endDate=2026-09-01&metrics=estimatedRevenue,estimatedAdRevenue,estimatedRedPartnerRevenue&filters=video==$VIDEO_ID"
+    "https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==MINE&startDate=2026-08-01&endDate=2026-09-01&metrics=estimatedRevenue,estimatedAdRevenue,estimatedRedPartnerRevenue&dimensions=day&filters=video==$VIDEO_ID"
   ```
 
   If (2) is zero rows rather than a 403, fetchRevenue needs another signal for the

@@ -25,8 +25,8 @@
       "name": "KB-162 totals over no rows, or with ClickHouse off, say watch time 0",
       "kind": "unit",
       "file": "packages/clickhouse/src/queries.ts",
-      "find": "  saves: null,\n  watch_time_seconds: null,\n  revenue_cents: 0,\n  subscribers_gained: null,\n};",
-      "replace": "  saves: 0,\n  watch_time_seconds: 0,\n  revenue_cents: 0,\n  subscribers_gained: 0,\n};",
+      "find": "  saves: null,\n  watch_time_seconds: null,\n  // Not measured, not $0: the identity a measured chunk replaces (FILM-1726).\n  revenue_cents: null,\n  subscribers_gained: null,\n};",
+      "replace": "  saves: 0,\n  watch_time_seconds: 0,\n  // Not measured, not $0: the identity a measured chunk replaces (FILM-1726).\n  revenue_cents: null,\n  subscribers_gained: 0,\n};",
       "cwd": "packages/clickhouse",
       "test": "__tests__/totals-unmeasured.test.ts",
       "pattern": "gives null with ClickHouse off"
@@ -45,8 +45,8 @@
       "name": "KB-162 the daily series reads an unmeasured watch time as 0",
       "kind": "unit",
       "file": "packages/clickhouse/src/queries.ts",
-      "find": "    saves: measuredSum(row.saves, row.saves_measured),\n    watch_time_seconds: measuredSum(\n      row.watch_time_seconds,\n      row.watch_time_seconds_measured,\n    ),\n    revenue_cents: Number(row.revenue_cents),\n  }));",
-      "replace": "    saves: Number(row.saves),\n    watch_time_seconds: Number(row.watch_time_seconds),\n    revenue_cents: Number(row.revenue_cents),\n  }));",
+      "find": "    saves: measuredSum(row.saves, row.saves_measured),\n    watch_time_seconds: measuredSum(\n      row.watch_time_seconds,\n      row.watch_time_seconds_measured,\n    ),\n    revenue_cents: nullableNumber(row.revenue_cents),\n  }));",
+      "replace": "    saves: Number(row.saves),\n    watch_time_seconds: Number(row.watch_time_seconds),\n    revenue_cents: nullableNumber(row.revenue_cents),\n  }));",
       "cwd": "packages/clickhouse",
       "test": "__tests__/totals-unmeasured.test.ts",
       "pattern": "daily watch time and saves are null"

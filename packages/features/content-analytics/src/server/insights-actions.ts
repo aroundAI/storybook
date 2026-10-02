@@ -27,7 +27,8 @@ const AnalyticsTotalsSchema = z.object({
   // Null is "not measured" (KB-149), never sent to the model as 0.
   watchTimeSeconds: z.number().nullable(),
   subscribersGained: z.number().nullable(),
-  revenueCents: z.number(),
+  // Null where no day's earnings were measured (FILM-1726).
+  revenueCents: z.number().nullable(),
   contentCount: z.number(),
 });
 

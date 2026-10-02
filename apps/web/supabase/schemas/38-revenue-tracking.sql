@@ -15,7 +15,8 @@ create table if not exists public.revenue_records (
   account_id uuid references public.accounts(id) on delete cascade,
   platform varchar(50) not null,
   record_date date not null,
-  revenue_cents integer not null default 0,
+  -- NULL on a synced (api) row: not measured, never $0 (FILM-1726).
+  revenue_cents integer,
   currency varchar(3) default 'USD',
   source varchar(20) not null default 'api', -- 'api' or 'manual'
   category varchar(30) not null default 'ads',
@@ -32,7 +33,10 @@ create table if not exists public.revenue_records (
   constraint revenue_records_category_check
     check (category in ('ads', 'premium', 'sponsorship', 'product', 'affiliate', 'licensing', 'other')),
   constraint revenue_records_scope_check
-    check (publish_id is not null or account_id is not null)
+    check (publish_id is not null or account_id is not null),
+  -- A person's entry always carries a figure (FILM-1726).
+  constraint revenue_records_manual_has_amount
+    check (revenue_cents is not null or source = 'api')
 );
 
 -- Exactly one scope. `scope_check` above requires at least one, which allowed
@@ -56,6 +60,8 @@ alter table public.revenue_records
 comment on table public.revenue_records is 'Daily revenue records per publish (or per account for channel-level revenue), split by category';
 comment on column public.revenue_records.source is 'Source of revenue data: api (fetched from platform) or manual (user entered)';
 comment on column public.revenue_records.category is 'Revenue category: ads, premium, sponsorship, product, affiliate, licensing, other';
+comment on column public.revenue_records.revenue_cents is
+  'Amount in the row''s currency, in cents. NULL on a synced (api) row means not measured: the platform was not asked, or would not answer. It is never a payout of 0 (FILM-1726).';
 comment on column public.revenue_records.account_id is 'Set instead of publish_id for channel-level revenue (sponsorships, product sales)';
 comment on column public.revenue_records.breakdown is 'JSONB with detailed revenue breakdown (adRevenueCents, membershipRevenueCents, etc.)';
 
@@ -442,6 +448,7 @@ as $$
     sum(r.revenue_cents)::bigint
   from public.revenue_records r
   where r.publish_id = any(p_publish_ids)
+    and r.revenue_cents is not null
   group by r.publish_id, r.currency::text
 $$;
 

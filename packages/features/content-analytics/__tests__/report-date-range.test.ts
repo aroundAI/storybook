@@ -144,10 +144,26 @@ describe('calculateReportSummary totals', () => {
     expect(calculateReportSummary([row({ views: 5 })]).ctr).toBeNull();
   });
 
+  it('totals earnings over the rows that measured them, and says how many', () => {
+    // A connection without the monetary scope measured nothing (FILM-1726):
+    // its row adds nothing, and is counted as unmeasured, never as $0.
+    const summary = calculateReportSummary([
+      row({ revenueCents: 500 }),
+      row({ revenueCents: null }),
+    ]);
+
+    expect(summary.totalRevenueCents).toBe(500);
+    expect(summary.coverage.revenue).toEqual({ measured: 1, total: 2 });
+    expect(
+      calculateReportSummary([row({ revenueCents: null })]).totalRevenueCents,
+    ).toBeNull();
+  });
+
   it('totals nothing for no rows', () => {
     expect(calculateReportSummary([])).toMatchObject({
       totalViews: 0,
-      totalRevenueCents: 0,
+      // No row measured earnings: not measured, never $0 (FILM-1726).
+      totalRevenueCents: null,
       contentCount: 0,
       platformBreakdown: {},
       ctr: null,

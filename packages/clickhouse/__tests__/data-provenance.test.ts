@@ -482,18 +482,18 @@ describe('what the platform cannot do is kept apart from what we have not done',
     );
   });
 
-  it('YouTube revenue is requested (FILM-1711), unverified, and not ingested', () => {
+  it('YouTube revenue is requested (FILM-1711), unverified, and ingested by day (FILM-1726)', () => {
     // FILM-1711 added the scope to our config, so access is no longer
     // `scope_missing`. Nobody has seen it granted or seen revenue come back
-    // (FILM-1725 Checks F and G), so it is pending, not verified. Whether
-    // revenue ever lands in ClickHouse is FILM-1726's question — FILM-1711
-    // writes Postgres `revenue_records` only.
+    // (FILM-1725 Checks F and G), so it is pending, not verified. FILM-1726
+    // writes each authorised day to its own table; a day with no row was
+    // not measured.
     const revenue = capabilityFor('revenue', 'youtube');
 
     expect(revenue).toMatchObject({
-      level: 'not_ingested',
+      level: 'native',
+      table: 'video_revenue_daily',
       access: 'authorised',
-      blockedBy: 'FILM-1726',
       pendingVerification: { owner: 'FILM-1725' },
     });
     expect(revenue).not.toHaveProperty('verified');
@@ -714,7 +714,7 @@ describe('platformsWithData', () => {
       'twitter',
     ]);
     expect(platformsWithData('traffic_sources')).toEqual(['youtube']);
-    expect(platformsWithData('revenue')).toEqual([]);
+    expect(platformsWithData('revenue')).toEqual(['youtube']);
   });
 
   it('agrees with the matrix for every family', () => {

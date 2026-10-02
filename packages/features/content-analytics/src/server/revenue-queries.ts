@@ -40,6 +40,12 @@ interface StoredRevenueRow extends Omit<AccountRevenueRow, 'amount'> {
   currency: string | null;
 }
 
+/**
+ * Every read below skips a row marked not measured (`revenue_cents` NULL on
+ * a synced row, FILM-1726): it is not revenue, and an unmeasured USD row
+ * would otherwise give a EUR-only account a $0.00 card (KB-12). The `?? 0`
+ * is for the type; the filter means it is never reached.
+ */
 function toAccountRevenueRow(
   { revenue_cents, currency, ...row }: StoredRevenueRow,
   episodeId: string | null,
@@ -117,6 +123,7 @@ export async function forEachAccountRevenueRow(
             .from('revenue_records')
             .select(COLUMNS)
             .is('publish_id', null)
+            .not('revenue_cents', 'is', null)
             .eq('account_id', accountId),
         )
           .order('id')
@@ -145,6 +152,7 @@ export async function forEachAccountRevenueRow(
             )
           )`,
             )
+            .not('revenue_cents', 'is', null)
             .eq('publishes.episodes.projects.account_id', accountId),
         )
           .order('id')
@@ -200,6 +208,7 @@ export async function forEachProjectRevenueRow(
             episodes!inner ( id, project_id )
           )`,
         )
+        .not('revenue_cents', 'is', null)
         .eq('publishes.episodes.project_id', projectId)
         .gte('record_date', from)
         .lte('record_date', to);

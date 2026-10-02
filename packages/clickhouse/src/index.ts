@@ -55,6 +55,7 @@ export type {
   VideoDim,
   VideoMetric,
   VideoReachDaily,
+  VideoRevenueDaily,
   VideoSnapshot,
   VideoTrafficSource,
   YouTubeVideoMetric,
@@ -63,7 +64,7 @@ export type {
 } from './types';
 export { FACEBOOK_DENOMINATOR_COLUMNS } from './types';
 export { PLATFORM_ENUM_TYPE, PLATFORM_ENUM_VALUES } from './lib/platform-enum';
-export { addViews } from './lib/views';
+export { addMeasured, addViews } from './lib/views';
 
 export { formatDateStr } from './utils';
 
@@ -247,7 +248,7 @@ export type {
   PublishPlatform,
 } from './lib/format-families';
 
-// The signal model (FILM-1714): five platform-independent funnel stages, and
+// The signal model (FILM-1714): six platform-independent funnel stages, and
 // the per-platform x per-format map that binds signals to them. Support is
 // computed from the capability matrix, never authored. Pure.
 export {
@@ -280,6 +281,19 @@ export type {
   UnavailableSignal,
   UnboundReason,
 } from './lib/signal-map';
+
+// Why one creator's Monetisation stage has no figure (FILM-1726): the
+// platform's, the creator's or ours, each with its own sentence. Pure.
+export {
+  CONNECTION_REVENUE_STATES,
+  monetisationAccess,
+} from './lib/monetisation-access';
+export type {
+  ConnectionRevenueState,
+  MonetisationAccess,
+  MonetisationAccessState,
+  RevenueConnection,
+} from './lib/monetisation-access';
 
 // What "a view" means per platform, and when it changed (FILM-1722). Pure,
 // so a chart can ask where a boundary falls without reaching the server.
@@ -393,6 +407,7 @@ export type {
 // (FILM-1718). Pure; FILM-1719 renders the diagnosis and its coverage.
 export {
   MIN_JUDGED_STAGES,
+  PATTERN_STAGES,
   NO_CLEAR_PATTERN_SENTENCE,
   STAGE_EXCLUSIONS,
   STAGE_PATTERNS,

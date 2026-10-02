@@ -61,6 +61,7 @@ async function seed(f: Fixture) {
     video_metrics: perVideo({ metric_date: today, views: 100 }),
     video_snapshots: perVideo({ snapshot_date: today, views: 100 }),
     video_reach_daily: perVideo({ metric_date: today, impressions: 1000 }),
+    video_revenue_daily: perVideo({ metric_date: today, revenue_cents: 250 }),
     video_traffic_sources: perVideo({
       metric_date: today,
       source: 'SEARCH',

@@ -1,0 +1,197 @@
+{
+  "feature": "FILM-1726",
+  "mutations": [
+    {
+      "name": "MS1 Monetisation is dropped from the funnel",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/signal-map.ts",
+      "find": "  'audience',\n  'monetisation',\n] as const;",
+      "replace": "  'audience',\n] as const;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "names six stages in funnel order"
+    },
+    {
+      "name": "MS2 TikTok Monetisation binds earnings TikTok does not report",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/signal-map.ts",
+      "find": "  monetisation: noRevenue('TikTok'),",
+      "replace": "  monetisation: bound('estimated_revenue'),",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "leaves TikTok and Instagram unbound"
+    },
+    {
+      "name": "MS3 Facebook Monetisation divides by views Facebook does not have",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/signal-map.ts",
+      "find": "const FACEBOOK_MONETISATION = bound(\n  'estimated_revenue',",
+      "replace": "const FACEBOOK_MONETISATION = bound(\n  'revenue_per_mille',",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "binds Facebook to its ad-break earnings"
+    },
+    {
+      "name": "MS4 A reconnect is offered where a vendor review stands first",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/monetisation-access.ts",
+      "find": "    !reviewStandsFirst &&\n",
+      "replace": "",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/monetisation-access.test.ts",
+      "pattern": "offers a reconnect only where reconnecting would grant something"
+    },
+    {
+      "name": "MS5 A creator outside the Partner Program is told it is ours",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/monetisation-access.ts",
+      "find": "  if (connection.revenue === 'account_type_gated' && capability.accountGate) {",
+      "replace": "  if (\n    connection.revenue === 'account_type_gated' &&\n    capability.accountGate &&\n    capability.access !== 'authorised'\n  ) {",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/monetisation-access.test.ts",
+      "pattern": "says the platform’s, the creator’s and ours apart"
+    },
+    {
+      "name": "MS6 No measured revenue reads as $0 in the totals",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "  // Not measured, not $0: the identity a measured chunk replaces (FILM-1726).\n  revenue_cents: null,",
+      "replace": "  // Not measured, not $0: the identity a measured chunk replaces (FILM-1726).\n  revenue_cents: 0,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/clickhouse.test.ts",
+      "pattern": "should return null views when no data"
+    },
+    {
+      "name": "MS7 The revenue card shows $0 for not measured",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "      value: data ? data.revenueCents : null,",
+      "replace": "      value: data?.revenueCents || 0,",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/components/__tests__/metric-cards.test.tsx",
+      "pattern": "says revenue was not measured"
+    },
+    {
+      "name": "MS8 A report totals unmeasured revenue as $0",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/report-summary.ts",
+      "find": "    totalRevenueCents: revenue.value,",
+      "replace": "    totalRevenueCents: revenue.value ?? 0,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/report-date-range.test.ts",
+      "pattern": "totals earnings over the rows that measured them"
+    },
+    {
+      "name": "MS9 The report CSV writes 0.00 for unmeasured revenue",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/csv-generator.ts",
+      "find": "    getValue: (r) => measuredCell(r.revenueCents, (v) => (v / 100).toFixed(2)),",
+      "replace": "    getValue: (r) => ((r.revenueCents ?? 0) / 100).toFixed(2),",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/csv-and-platform-colors.test.ts",
+      "pattern": "leaves unmeasured earnings blank"
+    },
+    {
+      "name": "MS10 An unauthorised YouTube read writes revenue rows",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/ingest.ts",
+      "find": "  if (input.revenueAccess !== 'authorised') return [];\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/ingest.test.ts",
+      "pattern": "writes nothing unless the read was authorised"
+    },
+    {
+      "name": "MS11 YouTube revenue is asked for as one total, not by day",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts",
+      "find": "        ].join(','),\n        dimensions: 'day',\n        filters: `video==${videoId}`,\n        sort: 'day',",
+      "replace": "        ].join(','),\n        filters: `video==${videoId}`,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/youtube-analytics.test.ts",
+      "pattern": "fetches revenue in its own query"
+    },
+    {
+      "name": "MS12 A Page that may not read earnings reads as a retry",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/facebook/facebook-insights.ts",
+      "find": "        return unread('account_type_gated');",
+      "replace": "        return unread('unavailable');",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/facebook-ad-breaks.test.ts",
+      "pattern": "reads a permission refusal as the Page"
+    },
+    {
+      "name": "MS13 The project revenue read includes rows marked not measured",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/revenue-queries.ts",
+      "find": "        .not('revenue_cents', 'is', null)\n        .eq('publishes.episodes.project_id', projectId)",
+      "replace": "        .eq('publishes.episodes.project_id', projectId)",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-queries.test.ts",
+      "pattern": "reads publish-scoped rows through the project chain"
+    },
+    {
+      "name": "MS14 TikTok's hardcoded zero is read as measured revenue",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/analytics-sync-cron.ts",
+      "find": "        revenue_cents: 0, // TikTok doesn't expose revenue\n        ad_revenue_cents: 0,\n        red_revenue_cents: 0,\n        // TikTok and Instagram report no earnings on any API: their zero\n        // measures nothing, so it never touches revenue rows (FILM-1726).\n        revenue_measured: false,",
+      "replace": "        revenue_cents: 0, // TikTok doesn't expose revenue\n        ad_revenue_cents: 0,\n        red_revenue_cents: 0,\n        revenue_measured: true,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-measured.test.ts",
+      "pattern": "is false for TikTok and Instagram"
+    },
+    {
+      "name": "MS17 The not-measured reasons show beside a measured figure",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "    data !== null && data.revenueCents === null ? revenueAccess : [];",
+      "replace": "    revenueAccess;",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/components/__tests__/metric-cards.test.tsx",
+      "pattern": "keeps the reasons off a measured figure"
+    },
+    {
+      "name": "MS18 A channel nothing stands in the way of is given a reason",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/revenue-access.ts",
+      "find": "    if (access.owner === null) continue;\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-access.test.ts",
+      "pattern": "says nothing for a channel nothing stands in the way of"
+    },
+    {
+      "name": "MS19 Monetisation counts toward the pattern minimum again",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/stage-diagnosis.ts",
+      "find": "  (stage): stage is PatternStage => stage !== 'monetisation',",
+      "replace": "  (stage): stage is PatternStage => true,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/stage-diagnosis.test.ts",
+      "pattern": "never counts Monetisation toward the minimum"
+    },
+    {
+      "name": "MS20 coverage stops reading video_revenue_daily",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "  'video_revenue_daily',\n] as const satisfies readonly SourceTable[];",
+      "replace": "] as const satisfies readonly SourceTable[];",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/observed-coverage.test.ts",
+      "pattern": "YouTube revenue is observed in video_revenue_daily"
+    },
+    {
+      "name": "DB MS15 A person's entry may have no amount",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/revenue-records-unmeasured.test.sql",
+      "sql": "alter table public.revenue_records drop constraint revenue_records_manual_has_amount;"
+    },
+    {
+      "name": "DB MS16 The per-publish sum returns a currency nothing measured",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/revenue-records-unmeasured.test.sql",
+      "sql": "create or replace function public.revenue_cents_by_publish(p_publish_ids uuid[]) returns table (publish_id uuid, currency text, cents bigint) language sql stable security invoker set search_path = '' as $$ select r.publish_id, r.currency::text, sum(r.revenue_cents)::bigint from public.revenue_records r where r.publish_id = any(p_publish_ids) group by r.publish_id, r.currency::text $$;"
+    }
+  ]
+}
