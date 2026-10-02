@@ -84,7 +84,11 @@ create index idx_external_sources_project
   on public.external_sources (project_id)
   where project_id is not null;
 
-drop policy "Anyone can view active sources" on public.external_sources;
+-- Production has this policy as "Authenticated users can view active sources"
+-- (same definition): it applied a 20260211200002 that was later deleted and
+-- its version reused (KB-170). Either name goes.
+drop policy if exists "Anyone can view active sources" on public.external_sources;
+drop policy if exists "Authenticated users can view active sources" on public.external_sources;
 
 create policy external_sources_read on public.external_sources
   for select to authenticated
