@@ -23,7 +23,7 @@ import { byTest } from '../utils/visible';
  * near expiry is refreshed by the real cron route, the vendor accepting the
  * new one.
  *
- * LinkedIn is retired (FILM-717), so it is in neither set. X has a
+ * X has a
  * refresh path today (`refreshXToken`), so it is refreshed here rather than
  * recorded as a gap, as the spec's §2 expected when it was written.
  */

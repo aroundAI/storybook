@@ -24,8 +24,6 @@ const PLATFORMS = [
   { id: 'meta', label: 'Meta (Facebook and Instagram)' },
   { id: 'twitter', label: 'X (Twitter)' },
 ] as const;
-// LinkedIn is retired (FILM-717): its callback answers every request with the
-// retirement, which `linkedin-retired.spec.ts` drives.
 
 const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
 

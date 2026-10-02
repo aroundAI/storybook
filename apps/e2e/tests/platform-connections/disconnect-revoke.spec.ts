@@ -13,17 +13,12 @@ import { byTest } from '../utils/visible';
  * local listener standing in for Google and X (FILM-1801's `VENDOR_URL_*`),
  * through the production build.
  *
- * - KB-86: the Platforms page had no X or LinkedIn card, so neither could be
- *   connected or disconnected there.
+ * - KB-86: the Platforms page had no X card, so X could be neither connected
+ *   nor disconnected there.
  * - KB-87: a successful X (and TikTok) connect redirected to a relative URL,
  *   which Next refuses, so it landed on the failure page.
  * - KB-25: disconnecting X asked X for nothing.
  * - KB-45: whatever the platform answered, the creator saw the same toast.
- *
- * LinkedIn's card, its disconnect (LinkedIn offers apps no revoke) and its
- * connect were here until LinkedIn was retired (FILM-717); the retired card
- * and its disconnect are driven by `linkedin-retired.spec.ts`, which needs
- * no stand-in.
  *
  * The server needs, in its environment (`NODE_ENV=test next start`), with
  * `NEXT_PUBLIC_APP_URL` also set at build time to the server's own origin:

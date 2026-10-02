@@ -72,9 +72,7 @@ test('the Delete All dialog says the videos are deleted on YouTube, Facebook and
   await expect(copy).toContainText(
     "This deletes this episode's videos on YouTube, Facebook and X",
   );
-  await expect(copy).toContainText(
-    'Videos on TikTok, Instagram and LinkedIn stay up',
-  );
+  await expect(copy).toContainText('Videos on TikTok and Instagram stay up');
   await expect(copy).not.toContainText('deleted manually');
 
   await capture(page, 'delete-all-dialog');

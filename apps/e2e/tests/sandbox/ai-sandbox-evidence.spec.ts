@@ -275,8 +275,6 @@ test.describe('AI sandbox — inline flows (FILM-1803)', () => {
       expect(egressRefusals().length).toBe(refusedBefore);
     });
 
-    // The LinkedIn social-post variants were here until Social Posts was
-    // retired with LinkedIn (FILM-717).
     test('an asset description and canon extraction are answered by the sandbox, and nothing leaves the machine', async ({
       page,
     }) => {
