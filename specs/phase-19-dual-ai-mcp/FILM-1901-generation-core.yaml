@@ -29,7 +29,7 @@ acceptance_criteria:
     evidence: "packages/features/generation/src/brief.ts: buildBrief renders with renderTemplate from `@kit/prompt-engine/render-template` (the worker's renderer), generates the JSON Schema with zod-to-json-schema, takes `example` from output.example_output, renders the stage's quality-evaluation prompt (story_refinement → story-quality.json) as a self-check with placeholders for the output, and sets expiresAt 30 minutes out (BRIEF_TTL_MS, FILM-1903's lease). Every stage's prepare goes through it; `__tests__/brief.test.ts` covers each field and `stages.test.ts` renders every registered stage's prompt with the context prepare builds (#557)"
   - text: "commit() owns every side effect the handler performs today: episodes JSONB columns and status, shots replacement, dialogue_lines rebuild, audio_cues, canon tables, asset auto-create, chained stages, generation_jobs bookkeeping; it runs in one transaction and snapshots what it replaces into content_revisions (FILM-1903)"
     met: false
-    reason: "For the two stages moved, commit owns what the handler did: story_refinement writes story_data, metadata.previous_story_data, metadata.refinement_history, updated_at and closes the generation_jobs row (processing/failed are runStage's); asset_description upserts the assets row on (project_id, type, name) with metadata.autoCreated. The parity fixtures prove the rows are the ones the handlers wrote (#557). Not met: content_revisions does not exist on main (FILM-1903 part A builds it); commit calls `ctx.revisions.snapshot()` when the capability is present and the worker passes none. One transaction needs a database function (PostgREST runs each statement on its own); the remaining 12 stages are not moved"
+    reason: "For the two stages moved, commit owns what the handler did: story_refinement writes story_data, metadata.previous_story_data, metadata.refinement_history, updated_at and closes the generation_jobs row (processing/failed are runStage's); asset_description upserts the assets row on (project_id, type, name) with metadata.autoCreated, and the asset-creation job moves its 'asset_creation' generation_jobs row (KB-174, #553) through processing to completed or failed, which the old handler never did. The parity fixtures prove the content rows are the ones the handlers wrote (#557). Not met: content_revisions does not exist on main (FILM-1903 part A builds it); commit calls `ctx.revisions.snapshot()` when the capability is present and the worker passes none. One transaction needs a database function (PostgREST runs each statement on its own); the remaining 12 stages are not moved"
   - text: "check() runs the deterministic checks in both modes: schema validity, referential checks (characters and locations exist or are flagged for auto-create), count and duration bounds (SHOT_DURATION_LIMITS, calculateContentScaling), contiguous scene numbering, no empty dialogue, column length caps; errors are {path, code, message}"
     met: false
     reason: "The shape and the schema check are in: checkWithSchema turns Zod issues into {path, code, message}, runStage runs it and then the stage's check(). story_refinement's check refuses blank text, a scene count below 1 and blank key events; asset_description's schema refuses a blank description and its target caps the name at 255 (the assets.name column). The referential, count, duration and scene-numbering checks belong to the story, screenplay and shots stages, not yet moved (#557)"
@@ -146,6 +146,12 @@ notes: |
     today's callers describe before they create. Preparing without a
     project is allowed (the sidebar's extract-only action); committing is
     not.
+  - The asset-creation job's generation_jobs row ('asset_creation', the
+    value KB-174's migration allows) is marked processing, completed (with
+    created/linked counts) or failed by the handler, not by the per-asset
+    stage: the row is one per episode and job. The parity test holds the
+    content writes to the old fixture and asserts the job writes on their
+    own, since they are new on purpose.
   - `@kit/generation/testing` exports the recording Supabase stand-in the
     parity and stage tests use (recordingClient, tableResponder, writesOf,
     flattenRows).

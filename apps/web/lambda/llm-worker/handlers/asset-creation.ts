@@ -6,7 +6,9 @@
  * `@kit/generation` (FILM-1901): prepare → executor → schema → commit
  * (the `assets` upsert). What stays here is the job itself: reading the
  * names out of the screenplay, skipping assets the project already has,
- * and linking every asset to the episode's metadata.
+ * linking every asset to the episode's metadata, and the generation_jobs
+ * row the bulk action inserted as 'asset_creation' (KB-174), which this
+ * handler now moves through processing to completed or failed.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -15,9 +17,15 @@ import {
   type AssetDescriptionTarget,
   assetDescriptionStage,
   fallbackDescription,
+  markJobCompleted,
+  markJobFailed,
+  markJobProcessing,
   serverRun,
 } from '@kit/generation';
-import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
+import {
+  type LlmJobPayload,
+  parseLlmJobPayload,
+} from '@kit/prompt-engine/llm-job-payloads';
 import { whyNoRow } from '@kit/shared/rows';
 import type { Database } from '@kit/supabase/database';
 
@@ -86,6 +94,36 @@ export async function processAssetCreation(
     `[Asset Creation] Processing for episode ${data.episodeId}, project ${data.projectId}`,
   );
 
+  await markJobProcessing(supabase, data.episodeId, JOB_TYPE);
+
+  try {
+    const result = await createAssetsFromScreenplay(data, supabase);
+
+    await markJobCompleted(supabase, data.episodeId, JOB_TYPE, {
+      created: result.data.created,
+      linked: result.data.linked,
+      characters: result.data.characters.length,
+      locations: result.data.locations.length,
+    });
+
+    return result;
+  } catch (error) {
+    await markJobFailed(
+      supabase,
+      data.episodeId,
+      JOB_TYPE,
+      error instanceof Error ? error.message : 'Unknown error',
+    );
+    throw error;
+  }
+}
+
+const JOB_TYPE = 'asset_creation';
+
+async function createAssetsFromScreenplay(
+  data: LlmJobPayload<'asset-creation'>,
+  supabase: SupabaseClient<Database>,
+): Promise<AssetCreationResult> {
   // 1. Fetch episode screenplay_data
   const { data: episode, error: episodeError } = await supabase
     .from('episodes')

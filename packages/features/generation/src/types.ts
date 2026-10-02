@@ -189,9 +189,10 @@ export interface JobTracking<TTarget> {
 
 /**
  * The job types the worker tracks in generation_jobs. Each must be allowed
- * by generation_jobs_job_type_check (latest:
- * 20260923025438_generation_jobs_refinement_job_types.sql), or an update
- * matches no row.
+ * by generation_jobs_job_type_check, or an update matches no row.
+ * 'asset_creation' is allowed by KB-174's migration (#553); once that is on
+ * main this alias becomes `@kit/prompt-engine/generation-job-types`'s, the
+ * one copy held to the CHECK by a test.
  */
 export type GenerationJobType =
   | 'story'
@@ -200,7 +201,8 @@ export type GenerationJobType =
   | 'screenplay-refinement'
   | 'shot_list'
   | 'translate-dialogue'
-  | 'audio_cue_generation';
+  | 'audio_cue_generation'
+  | 'asset_creation';
 
 /**
  * One AI stage. The model call sits between `prepare` and `commit` and is

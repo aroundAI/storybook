@@ -302,10 +302,29 @@ describe('asset creation writes what it did before the core (FILM-1901)', () => 
       recording.client as SupabaseClient<Database>,
     );
 
+    // The generation_jobs writes are new on purpose (KB-174: the bulk action
+    // inserts an 'asset_creation' row that nothing updated); the content
+    // writes are held to what the old handler wrote.
+    const writes = flattenRows(recording.writes());
+    const content = writes.filter((w) => w.table !== 'generation_jobs');
+    const job = writes.filter((w) => w.table === 'generation_jobs');
+
     snapshot('asset-creation', {
-      writes: flattenRows(recording.writes()),
+      writes: content,
       executor: executorCalls,
       result,
+    });
+
+    expect(job.map((w) => (w.payload as { status: string }).status)).toEqual([
+      'processing',
+      'completed',
+    ]);
+    expect(job[1]?.filters).toContainEqual({
+      method: 'eq',
+      args: ['job_type', 'asset_creation'],
+    });
+    expect(job[1]?.payload).toMatchObject({
+      output_data: { created: 2, linked: 1, characters: 2, locations: 1 },
     });
 
     expect(result.data.created).toBe(2);
