@@ -72,6 +72,22 @@ export default defineConfig({
         __dirname,
         '../../packages/shared/src/rows/index.ts',
       ),
+      '@kit/shared/prompt-sanitiser': path.resolve(
+        __dirname,
+        '../../packages/shared/src/prompt-sanitiser/index.ts',
+      ),
+      '@kit/generation/testing': path.resolve(
+        __dirname,
+        '../../packages/features/generation/src/testing/index.ts',
+      ),
+      '@kit/generation': path.resolve(
+        __dirname,
+        '../../packages/features/generation/src/index.ts',
+      ),
+      '@kit/prompt-engine/prompts': path.resolve(
+        __dirname,
+        '../../packages/features/prompt-engine/src/prompts',
+      ),
       '@kit/ui/navigation-schema': path.resolve(
         __dirname,
         '../../packages/ui/src/makerkit/navigation-config.schema.ts',

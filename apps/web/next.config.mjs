@@ -50,6 +50,7 @@ const INTERNAL_PACKAGES = [
   '@kit/next',
   '@kit/notifications',
   '@kit/llm',
+  '@kit/generation',
   '@kit/content-analytics',
   '@kit/jobs',
   '@kit/storage',
