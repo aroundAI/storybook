@@ -20,14 +20,14 @@ summary: >
   and is never exposed. Design: the EDD's "4. Transport and endpoint" and
   "5. Authentication and tenancy"
   (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
-  Built in #TBD-1904 (2026-10-03).
+  Built in #558 (2026-10-03).
 acceptance_criteria:
   - text: "apps/web/app/api/mcp/route.ts serves POST with StreamableHTTPServerTransport from @modelcontextprotocol/sdk in stateless mode (no session id, JSON responses); GET and DELETE answer 405"
     met: true
-    evidence: "apps/web/app/api/mcp/route.ts:12; packages/features/studio-mcp/src/server/route-handler.ts:122 (sessionIdGenerator undefined, enableJsonResponse true), :158 (GET/DELETE 405); contract.test.ts 'GET and DELETE are 405' (#TBD-1904)"
+    evidence: "apps/web/app/api/mcp/route.ts:12; packages/features/studio-mcp/src/server/route-handler.ts:122 (sessionIdGenerator undefined, enableJsonResponse true), :158 (GET/DELETE 405); contract.test.ts 'GET and DELETE are 405' (#558)"
   - text: "A fresh McpServer is built per request from @kit/studio-mcp's registry; nothing is held in memory between calls; it runs on both Vercel and Lambda via OpenNext"
     met: true
-    evidence: "packages/features/studio-mcp/src/server/build-server.ts:52 (new McpServer per request), route-handler.ts:114-154 (built, connected, closed inside one POST). The SDK's Node transport is bridged to the Web Request/Response a Next route has (node-adapter.ts), which is what both hosts run; verified on Vercel/Lambda only by construction, no deploy in #TBD-1904"
+    evidence: "packages/features/studio-mcp/src/server/build-server.ts:52 (new McpServer per request), route-handler.ts:114-154 (built, connected, closed inside one POST). The SDK's Node transport is bridged to the Web Request/Response a Next route has (node-adapter.ts), which is what both hosts run; verified on Vercel/Lambda only by construction, no deploy in #558"
   - text: "withMcpAuth: a request without a valid bearer token gets 401 with WWW-Authenticate pointing at the protected-resource metadata (FILM-1907 serves it); a valid one yields McpPrincipal {userId, accountId, connectionId, scopes, clientName, supabase}"
     met: true
     evidence: "packages/features/studio-mcp/src/server/with-mcp-auth.ts:56-113; route-handler.ts:75 (WWW-Authenticate); principal.ts:14; __tests__/with-mcp-auth.test.ts (10 cases), apps/e2e/tests/mcp/connected-apps.spec.ts (401 header measured against the running app)"
@@ -65,14 +65,14 @@ test_plan:
     - {text: "MCP Inspector (or the SDK client) against http://localhost:3000/api/mcp lists tools and calls whoami with a PAT; a contract test runs in CI", met: true, evidence: "packages/features/studio-mcp/__tests__/contract.test.ts (SDK client, MCP_CONTRACT_URL/TOKEN); in CI the same calls run inside apps/e2e/tests/mcp/connected-apps.spec.ts against the app under test, with a token the spec creates"}
     - {text: "pgTAP: a user reads and revokes only their own mcp_connections", met: true, evidence: "apps/web/supabase/tests/database/mcp-connections-rls.test.sql (27 cases; red with the migration skipped); guards MCP DB1-DB5 each go red"}
   e2e:
-    - {text: "Settings page: create a PAT, see it once, revoke it; screenshots in the PR (CLAUDE.md)", met: true, evidence: "apps/e2e/tests/mcp/connected-apps.spec.ts (two tokens, revoke, reload; whoami over HTTP before and after); connected-apps-evidence.spec.ts behind CAPTURE_EVIDENCE=1; screenshots in #TBD-1904"}
+    - {text: "Settings page: create a PAT, see it once, revoke it; screenshots in the PR (CLAUDE.md)", met: true, evidence: "apps/e2e/tests/mcp/connected-apps.spec.ts (two tokens, revoke, reload; whoami over HTTP before and after); connected-apps-evidence.spec.ts behind CAPTURE_EVIDENCE=1; screenshots in #558"}
 remaining:
   - criterion: "mcp_tool_calls rows older than 90 days are trimmed by the cron (notes: 'Team owners read; 90-day retention by cron')"
     reason: "The table and its index exist; no scheduled job deletes old rows yet. The EDD's one cron (expired runs, used codes and tokens, old tool calls) belongs with FILM-1903's leases and FILM-1907's codes"
     closed_by: "unassigned"
 open_questions: []
 notes: |
-  ## Decisions made while building (#TBD-1904)
+  ## Decisions made while building (#558)
 
   - Endpoint inside the Next.js app (README open question 5): implemented
     as recommended. The SDK 1.18.0 transport speaks Node's http types, so

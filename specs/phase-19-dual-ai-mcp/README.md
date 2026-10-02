@@ -139,7 +139,7 @@ step stays a web action.
    (recommended), or keep external ideation conversational?
 4. FILM-1910: may a team turn server generation off entirely?
 5. ~~FILM-1904: endpoint inside the Next.js app (recommended) or its own
-   Lambda?~~ Built inside the app (#TBD-1904, 2026-10-03): `/api/mcp` is a
+   Lambda?~~ Built inside the app (#558, 2026-10-03): `/api/mcp` is a
    Next route over `@kit/studio-mcp`, reusing the Supabase clients and the
    feature services; its own Lambda stays an option if timeouts or scaling
    ever ask for it.
