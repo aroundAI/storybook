@@ -8,6 +8,7 @@ import {
   insertSubscriberSnapshot,
   isClickHouseEnabled,
 } from '@kit/clickhouse/server';
+import { holdsRequirement } from '@kit/publishing/oauth/analytics-scopes';
 import { getLogger } from '@kit/shared/logger';
 import { fetchAllRows } from '@kit/shared/pagination';
 import {
@@ -16,6 +17,7 @@ import {
 } from '@kit/shared/subscribers';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
+import { createFacebookInsightsProvider } from '../providers/facebook';
 import { createInstagramInsightsProvider } from '../providers/instagram';
 import { createTikTokAnalyticsProvider } from '../providers/tiktok';
 
@@ -27,18 +29,23 @@ import { createTikTokAnalyticsProvider } from '../providers/tiktok';
  */
 
 /**
- * Only these have a subscriber source (FILM-1607 §4). Shared with the
- * surfaces, which must explain an untracked platform as untracked, not as a
- * count that is missing.
+ * Only these have a subscriber source (FILM-1607 §4): the surfaces' tracked
+ * platforms, which they explain as tracked, and Facebook's Page followers
+ * (FILM-1720), recorded but not yet drawn: the surfaces still explain
+ * Facebook as untracked until its analytics are switched on.
  */
-const SUPPORTED_PLATFORMS = SUBSCRIBER_TRACKED_PLATFORMS;
+const SUPPORTED_PLATFORMS = [
+  ...SUBSCRIBER_TRACKED_PLATFORMS,
+  'facebook',
+] as const;
 
-type SupportedPlatform = SubscriberTrackedPlatform;
+type SupportedPlatform = SubscriberTrackedPlatform | 'facebook';
 
 interface ConnectionRow {
   id: string;
   platform: string;
   platform_account_id: string | null;
+  scopes: string[] | null;
 }
 
 export interface SubscriberCaptureResult {
@@ -94,7 +101,26 @@ async function readCount(
         accessToken,
         connection.platform_account_id ?? '',
       ).getFollowerCount();
+
+    case 'facebook':
+      // A Page token, and the Page's id (the Meta callback stores both).
+      return connection.platform_account_id
+        ? createFacebookInsightsProvider(accessToken).getPageFollowerCount(
+            connection.platform_account_id,
+          )
+        : { ok: false, reason: 'unavailable' };
   }
+}
+
+/**
+ * Facebook ships dark (FILM-1720): a Page is read only once its connection
+ * holds Facebook analytics, which the `facebook` scope switch grants.
+ */
+export function readsFollowers(connection: ConnectionRow): boolean {
+  return (
+    connection.platform !== 'facebook' ||
+    holdsRequirement('facebook.video-insights', connection.scopes)
+  );
 }
 
 /**
@@ -127,7 +153,7 @@ export async function captureSubscriberSnapshots(): Promise<SubscriberCaptureRes
     (from, to) =>
       client
         .from('platform_connections')
-        .select('id, platform, platform_account_id')
+        .select('id, platform, platform_account_id, scopes')
         .eq('is_active', true)
         .in('platform', [...SUPPORTED_PLATFORMS])
         .order('id')
@@ -140,6 +166,12 @@ export async function captureSubscriberSnapshots(): Promise<SubscriberCaptureRes
 
   for (const connection of connections) {
     const platform = connection.platform as SupportedPlatform;
+
+    if (!readsFollowers(connection)) {
+      // Recurs every night until the switch is on: by design, not a gap.
+      skippedByDesign += 1;
+      continue;
+    }
 
     try {
       const token = await ensureValidToken(connection.id);

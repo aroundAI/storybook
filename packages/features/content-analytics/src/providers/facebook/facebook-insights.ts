@@ -1,11 +1,14 @@
 import 'server-only';
 
+import type { SubscriberCountResult } from '@kit/shared/subscribers';
 import { metaFetch } from '@kit/shared/vendors';
 
 import { MetaRateLimitError, isMetaThrottle } from '../../lib/meta-usage';
 import type {
+  FacebookAudience,
   FacebookInsightsInput,
   FacebookInsightsResult,
+  FacebookPageViewers,
   FacebookRetentionGraph,
   FacebookVideoTotals,
 } from './types';
@@ -22,7 +25,10 @@ import type {
  * post's insights (`facebook/post-insights`), the replacements Graph v25.0's
  * changelog names for the retired reach and impression metrics.
  *
- * A fifth read asks for the ad-break earnings (FILM-1726), on its own:
+ * A fifth read asks for each video's 3-second views by age and gender and
+ * by country, on its own, so a refusal costs the audience and nothing else.
+ *
+ * A sixth read asks for the ad-break earnings (FILM-1726), on its own:
  * Meta answers them only to the admin of a Page that runs ad breaks, and a
  * refusal there must cost those four figures and nothing else.
  *
@@ -57,6 +63,19 @@ const reelsInsightMetrics = [
   'post_video_followers',
   'post_video_likes_by_reaction_type',
 ];
+
+/** The audience breakdowns: 3-second views by age and gender, by country. */
+const audienceInsightMetrics = [
+  'total_video_views_by_age_bucket_and_gender',
+  'total_video_views_by_country_id',
+];
+
+/** `page_total_media_view_unique`'s periods, as window lengths in days. */
+export const FACEBOOK_PAGE_PERIODS = [
+  { period: 'day', windowDays: 1 },
+  { period: 'week', windowDays: 7 },
+  { period: 'days_28', windowDays: 28 },
+] as const;
 
 /** Ad-break metrics (FILM-1726): Page admins only. */
 const adBreakInsightMetrics = [
@@ -126,7 +145,7 @@ export class FacebookInsightsProvider {
       ),
     );
 
-    const [video, reels] = await Promise.all([
+    const [video, reels, audience] = await Promise.all([
       this.parse<InsightsBody>(
         await metaFetch(
           `/${videoId}/video_insights?${lifetime(videoInsightMetrics)}`,
@@ -137,6 +156,14 @@ export class FacebookInsightsProvider {
         this.parse<InsightsBody>(
           await metaFetch(
             `/${videoId}/video_insights?${lifetime(reelsInsightMetrics)}`,
+            { token },
+          ),
+        ).then((body) => body.data ?? []),
+      ),
+      this.optional(async () =>
+        this.parse<InsightsBody>(
+          await metaFetch(
+            `/${videoId}/video_insights?${lifetime(audienceInsightMetrics)}`,
             { token },
           ),
         ).then((body) => body.data ?? []),
@@ -210,6 +237,10 @@ export class FacebookInsightsProvider {
       postId,
       totals,
       retention: retentionGraph(metric(video, 'total_video_retention_graph')),
+      audience: audienceOf(
+        metric(audience, 'total_video_views_by_age_bucket_and_gender'),
+        metric(audience, 'total_video_views_by_country_id'),
+      ),
       adBreaks: await this.adBreaks(videoId, (items, name) =>
         count(items, name),
       ),
@@ -257,6 +288,73 @@ export class FacebookInsightsProvider {
       adImpressions: count(items, 'total_video_ad_break_ad_impressions'),
       qualifiedViews: count(items, 'creator_monetization_qualified_views'),
     };
+  }
+
+  /**
+   * The Page's follower count (`facebook/page-fields`). Unavailable, never
+   * 0, when Meta answers without one or refuses. A rate limit still throws.
+   */
+  async getPageFollowerCount(pageId: string): Promise<SubscriberCountResult> {
+    try {
+      const body = await this.parse<{ followers_count?: unknown }>(
+        await metaFetch(`/${pageId}?fields=followers_count`, {
+          token: this.accessToken,
+        }),
+      );
+
+      return typeof body.followers_count === 'number'
+        ? { ok: true, count: body.followers_count }
+        : { ok: false, reason: 'unavailable' };
+    } catch (error) {
+      if (error instanceof MetaRateLimitError) throw error;
+      return { ok: false, reason: 'unavailable' };
+    }
+  }
+
+  /**
+   * How many different people viewed the Page's content over the day, the
+   * 7 days and the 28 days ending `asOf` (`page_total_media_view_unique`).
+   * Unique viewers do not add up across days, so each window is Meta's own
+   * answer. The day is Meta's, which ends at midnight Pacific (inferred:
+   * the Insights reference gives `end_time` without saying whose midnight).
+   *
+   * A refused or empty period is null, never 0. Permission and rate-limit
+   * errors throw: the caller stops for this Page.
+   */
+  async getPageUniqueViewers(
+    pageId: string,
+    asOf: string,
+  ): Promise<FacebookPageViewers[]> {
+    const since = Date.parse(`${asOf}T00:00:00Z`) / 1000;
+
+    return Promise.all(
+      FACEBOOK_PAGE_PERIODS.map(async ({ period, windowDays }) => {
+        const items = await this.optional(async () =>
+          this.parse<{
+            data?: { name?: string; values?: { value?: unknown }[] }[];
+          }>(
+            await metaFetch(
+              `/${pageId}/insights?` +
+                new URLSearchParams({
+                  metric: 'page_total_media_view_unique',
+                  period,
+                  since: String(since),
+                  until: String(since + 86_400),
+                }),
+              { token: this.accessToken },
+            ),
+          ).then((body) => body.data ?? []),
+        );
+        const value = items
+          ?.find((item) => item.name === 'page_total_media_view_unique')
+          ?.values?.at(-1)?.value;
+
+        return {
+          windowDays,
+          viewers: typeof value === 'number' ? value : null,
+        };
+      }),
+    );
   }
 
   /** A read whose refusal loses only its own figures. */
@@ -317,6 +415,43 @@ function retentionGraph(value: unknown): FacebookRetentionGraph | null {
     elapsedRatio: interval / last,
     watchRatio: share,
   }));
+}
+
+const AGE_GENDER_KEY = /^([FMU])\.(\d{2}-\d{2}|\d{2}\+)$/;
+const COUNTRY_KEY = /^[A-Z]{2}$/;
+
+function counts(value: unknown): [string, number][] {
+  return value && typeof value === 'object'
+    ? Object.entries(value as Record<string, unknown>).filter(
+        (entry): entry is [string, number] =>
+          typeof entry[1] === 'number' && entry[1] >= 0,
+      )
+    : [];
+}
+
+/**
+ * Meta's breakdowns, `{F|M|U}.{age}` → 3-second views and country → 3-second
+ * views. A key in neither shape is dropped rather than guessed at, and a
+ * read Meta refused or answered with neither breakdown is null, not an
+ * empty audience.
+ */
+function audienceOf(
+  ageGender: unknown,
+  countries: unknown,
+): FacebookAudience | null {
+  if (ageGender === undefined && countries === undefined) return null;
+
+  return {
+    ageGender: counts(ageGender).flatMap(([key, views]) => {
+      const match = AGE_GENDER_KEY.exec(key);
+      return match
+        ? [{ gender: match[1] as 'F' | 'M' | 'U', ageGroup: match[2]!, views }]
+        : [];
+    }),
+    countries: counts(countries).flatMap(([country, views]) =>
+      COUNTRY_KEY.test(country) ? [{ country, views }] : [],
+    ),
+  };
 }
 
 export function createFacebookInsightsProvider(

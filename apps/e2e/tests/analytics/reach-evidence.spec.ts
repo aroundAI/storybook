@@ -244,9 +244,10 @@ test.describe('Reach page — figures and evidence', () => {
       byTest(byTest(page, 'reach-count-views'), 'reach-count-reason'),
     ).toHaveText(/four different kinds of view/);
     await expect(reach.count('comments')).toHaveText('4');
-    await expect(reach.channel(facebook.connectionId)).toContainText(
-      'Not measured',
-    );
+    // Connected without Page insights: never read, and it says so.
+    await expect(
+      byTest(reach.channel(facebook.connectionId), 'channel-reach-reason'),
+    ).toHaveText(/connected without permission to read its insights/);
     readings.facebook7 = await byTest(page, 'reach-overview').innerText();
     await shoot(page, '07-facebook-tab-7-days');
 
@@ -262,6 +263,65 @@ test.describe('Reach page — figures and evidence', () => {
 
     writeFileSync(
       `${OUT}/reach-facebook-measured.json`,
+      JSON.stringify(readings, null, 2),
+    );
+  });
+
+  test("a Page's own reach, for the windows Facebook has (FILM-1720)", async ({
+    page,
+  }) => {
+    const reach = new ReachPageObject(page);
+    const fixture = await reach.setup({
+      facebook: { scopes: ['read_insights', 'pages_read_engagement'] },
+    });
+    await seed(fixture);
+
+    const facebook = fixture.facebook!;
+    const yesterday = daysAgo(1);
+
+    // page_total_media_view_unique for the day, week and 28 days.
+    await insertClickHouse(
+      'channel_windows',
+      [
+        [1, 60],
+        [7, 250],
+        [28, 900],
+      ].map(([windowDays, reached]) => ({
+        connection_id: facebook.connectionId,
+        platform: 'facebook',
+        as_of: clickHouseDate(yesterday),
+        window_days: windowDays,
+        accounts_reached: reached,
+        accounts_reached_followers: null,
+        accounts_reached_non_followers: null,
+        source: 'fb_page_insights',
+        inserted_at: clickHouseDateTime(new Date()),
+      })),
+    );
+
+    const readings: Record<string, string | null> = {};
+    const card = reach.channel(facebook.connectionId);
+
+    await reach.open(fixture.team, { tab: 'facebook', window: 7 });
+    await expect(byTest(card, 'channel-reach-value')).toHaveText('250');
+    // Meta splits plays by follower, not people: no split is shown.
+    await expect(byTest(card, 'channel-reach-split')).toHaveCount(0);
+    await expect(byTest(card, 'channel-reach-split-reason')).toHaveText(
+      /does not split these viewers/,
+    );
+    readings.facebook7 = await byTest(page, 'reach-overview').innerText();
+    await shoot(page, '09-facebook-page-7-days');
+
+    // No 30-day window exists, and 28 days is not 30.
+    await reach.open(fixture.team, { tab: 'facebook', window: 30 });
+    await expect(byTest(card, 'channel-reach-reason')).toHaveText(
+      /over a day, 7 days or 28 days, not 30/,
+    );
+    readings.facebook30 = await byTest(page, 'reach-overview').innerText();
+    await shoot(page, '10-facebook-page-30-days');
+
+    writeFileSync(
+      `${OUT}/reach-facebook-page.json`,
       JSON.stringify(readings, null, 2),
     );
   });

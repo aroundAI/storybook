@@ -28,7 +28,9 @@ export class ReachPageObject {
   constructor(private readonly page: Page) {}
 
   /** A team with one Instagram and one YouTube channel, a post on each. */
-  async setup(options: { facebook?: boolean } = {}): Promise<ReachFixture> {
+  async setup(
+    options: { facebook?: boolean | { scopes: string[] } } = {},
+  ): Promise<ReachFixture> {
     const team = await seedTeamAccount({ emailPrefix: 'reach' });
     const project = await seedProject(team);
 
@@ -72,6 +74,9 @@ export class ReachPageObject {
     const facebook = options.facebook
       ? await seedYouTubeConnection(team.accountId, 'Harbour Facebook Page', {
           platform: 'facebook',
+          ...(typeof options.facebook === 'object' && {
+            scopes: options.facebook.scopes,
+          }),
         })
       : null;
 

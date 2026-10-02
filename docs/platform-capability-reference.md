@@ -530,6 +530,15 @@ Built against the vendor sandbox and switched off until App Review grants
 - The video node's `post_id` and `comments` count, the post's `shares`, and the
   post's `post_media_view` and `post_total_media_view_unique` — the replacements
   Graph v25.0's changelog names for `post_impressions_unique`.
+- `total_video_views_by_age_bucket_and_gender` and
+  `total_video_views_by_country_id`, in a read of their own, written to
+  `video_audience` as age group, gender and country. They split 3-second
+  views, so they are shares of views, not of people.
+
+Per Page, nightly: `followers_count` into `channel_subscribers`, and
+`page_total_media_view_unique` for the day, week and 28 days ending on each
+day into `channel_windows` (source `fb_page_insights`). Facebook has no
+30-day window, so the reach page says so for 30 days rather than build one.
 
 Not requested: either of Meta's averages (we divide the totals ourselves and
 name the denominator), and every name in the forbidden block. The four
@@ -1430,8 +1439,8 @@ total_video_10s_views
 total_video_30s_views
 total_video_60s_excludes_shorter_views
 total_video_view_time_by_age_bucket_and_gender
-total_video_views_by_age_bucket_and_gender # read 2026-10-01, FILM-1720; not ingested
-total_video_views_by_country_id # read 2026-10-01, FILM-1720; not ingested
+total_video_views_by_age_bucket_and_gender # read 2026-10-01, FILM-1720; ingested as video_audience
+total_video_views_by_country_id # read 2026-10-01, FILM-1720; ingested as video_audience
 total_video_reactions_by_type_total
 blue_reels_play_count
 fb_reels_replay_count
@@ -1451,7 +1460,7 @@ creator_monetization_qualified_views
 <!-- fields: facebook/page-insights source: https://developers.facebook.com/docs/graph-api/reference/insights/ -->
 ```text
 page_media_view            # played or displayed; breakdowns is_from_ads, is_from_followers
-page_total_media_view_unique # unique media viewers; day, week, days_28 (read 2026-10-01)
+page_total_media_view_unique # unique media viewers; day, week, days_28 (read 2026-10-01); recorded nightly in channel_windows (FILM-1720)
 ```
 
 <!-- fields: facebook/post-insights source: https://developers.facebook.com/docs/graph-api/reference/insights/ -->
@@ -1477,7 +1486,7 @@ shares                     # {count}; absent on a post nobody has shared (inferr
 
 <!-- fields: facebook/page-fields source: https://developers.facebook.com/docs/graph-api/reference/page/ -->
 ```text
-followers_count            # the Page's followers; not recorded yet (FILM-1720 remaining)
+followers_count            # the Page's followers; recorded nightly in channel_subscribers (FILM-1720)
 ```
 
 <!-- fields: x/media-analytics source: https://docs.x.com/x-api/media/get-media-analytics -->

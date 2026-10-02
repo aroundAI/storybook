@@ -252,6 +252,8 @@ export const META_SERVED: readonly ServedEndpoint[] = [
       'post_video_view_time',
       'post_video_followers',
       'post_video_likes_by_reaction_type',
+      'total_video_views_by_age_bucket_and_gender',
+      'total_video_views_by_country_id',
     ],
     envelope: [
       ...cite(
@@ -270,7 +272,47 @@ export const META_SERVED: readonly ServedEndpoint[] = [
         VIDEO_INSIGHTS_PAGE,
         ...Array.from({ length: 41 }, (_, interval) => String(interval)),
       ),
+      // Inside a breakdown value: `{F|M|U}.{age bucket}`, and countries.
+      ...cite(
+        VIDEO_INSIGHTS_PAGE,
+        ...['18-24', '25-34', '35-44', '45-54', '55-64'].flatMap((age) =>
+          ['F', 'M', 'U'].map((gender) => `${gender}.${age}`),
+        ),
+        'US',
+        'GB',
+        'IN',
+        'CA',
+        'AU',
+      ),
     ],
+  },
+  {
+    origin: 'meta',
+    method: 'GET',
+    path: '/{version}/{page-id}?fields=followers_count',
+    block: 'facebook/page-fields',
+    reads: ['followers_count'],
+    envelope: cite(
+      'https://developers.facebook.com/docs/graph-api/reference/page/',
+      'id',
+    ),
+  },
+  {
+    origin: 'meta',
+    method: 'GET',
+    path: '/{version}/{page-id}/insights',
+    block: 'facebook/page-insights',
+    reads: ['page_total_media_view_unique'],
+    envelope: cite(
+      PAGE_INSIGHTS_PAGE,
+      'data',
+      'name',
+      'period',
+      'values',
+      'value',
+      'end_time',
+      'id',
+    ),
   },
   {
     origin: 'meta',

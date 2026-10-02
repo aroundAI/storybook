@@ -6,11 +6,16 @@ import {
   isClickHouseEnabled,
   queryCompleteChannelWindowDays,
 } from '@kit/clickhouse/server';
+import { holdsRequirement } from '@kit/publishing/oauth/analytics-scopes';
 import { getLogger } from '@kit/shared/logger';
 import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import { MetaRateLimitError, USAGE_CEILING } from '../lib/meta-usage';
+import {
+  FACEBOOK_PAGE_PERIODS,
+  createFacebookInsightsProvider,
+} from '../providers/facebook';
 import { createInstagramInsightsProvider } from '../providers/instagram';
 
 /**
@@ -19,9 +24,14 @@ import { createInstagramInsightsProvider } from '../providers/instagram';
  *
  * Unique reach cannot be added up from days, so each window is the
  * platform's own answer, recorded while the platform still keeps it: Meta
- * keeps about 90 days of account insights. Instagram only for now — YouTube
- * and TikTok offer no unique reach through the APIs we use, and Facebook is
- * not built.
+ * keeps about 90 days of account insights. Instagram and Facebook —
+ * YouTube and TikTok offer no unique reach through the APIs we use.
+ *
+ * Facebook's windows are the periods Meta reports a Page's unique viewers
+ * over: a day, 7 days and 28 days (`page_total_media_view_unique`,
+ * FILM-1720), not Instagram's 7, 30 and 23. A Page is read only once its
+ * connection holds Facebook analytics, which ships dark behind the
+ * `facebook` scope switch.
  *
  * Each night fills every `as_of` in the last {@link BACKFILL_DAYS} days that
  * is missing a window, so a new channel's first night backfills its history
@@ -97,7 +107,27 @@ export function missingAsOfDays(
 
 interface ConnectionRow {
   id: string;
+  platform: string;
   platform_account_id: string | null;
+  scopes: string[] | null;
+}
+
+/** The window lengths recorded per platform, for each `as_of`. */
+const WINDOW_DAYS = {
+  instagram: REACH_WINDOWS.map((w) => w.windowDays),
+  facebook: FACEBOOK_PAGE_PERIODS.map((p) => p.windowDays),
+} as const;
+
+/** Whether this connection's channel reach is read at all. */
+export function readsChannelReach(connection: {
+  platform: string;
+  scopes: string[] | null;
+}): boolean {
+  return (
+    connection.platform === 'instagram' ||
+    (connection.platform === 'facebook' &&
+      holdsRequirement('facebook.page-insights', connection.scopes))
+  );
 }
 
 export interface ChannelReachCaptureResult {
@@ -151,23 +181,27 @@ export async function captureChannelReachWindows(
     (from, to) =>
       client
         .from('platform_connections')
-        .select('id, platform_account_id')
+        .select('id, platform, platform_account_id, scopes')
         .eq('is_active', true)
-        .eq('platform', 'instagram')
+        .in('platform', ['instagram', 'facebook'])
         .order('id')
         .range(from, to),
     'channel reach connections',
   );
+
+  const read = connections.filter(readsChannelReach);
 
   let rowsWritten = 0;
   let failed = 0;
   let throttled = 0;
   let budgetExhausted = false;
 
-  for (const connection of connections) {
+  for (const connection of read) {
+    const platform = connection.platform as 'instagram' | 'facebook';
+
     try {
       if (!connection.platform_account_id) {
-        throw new Error('Instagram connection has no account id');
+        throw new Error(`${platform} connection has no account id`);
       }
 
       const token = await ensureValidToken(connection.id);
@@ -178,10 +212,40 @@ export async function captureChannelReachWindows(
 
       const complete = await queryCompleteChannelWindowDays({
         connectionId: connection.id,
-        platform: 'instagram',
-        windowDays: REACH_WINDOWS.map((w) => w.windowDays),
+        platform,
+        windowDays: WINDOW_DAYS[platform],
         since: addDays(today, -BACKFILL_DAYS),
       });
+
+      if (platform === 'facebook') {
+        const pageId = connection.platform_account_id;
+        const provider = createFacebookInsightsProvider(token.accessToken);
+
+        for (const asOf of missingAsOfDays(today, complete)) {
+          if (Date.now() >= deadline) {
+            budgetExhausted = true;
+            break;
+          }
+
+          const viewers = await provider.getPageUniqueViewers(pageId, asOf);
+          const rows: ChannelWindowRow[] = viewers.map((window) => ({
+            connectionId: connection.id,
+            platform: 'facebook',
+            asOf,
+            windowDays: window.windowDays,
+            accountsReached: window.viewers,
+            // Meta splits a Page's viewers by follower for plays, not people.
+            accountsReachedFollowers: null,
+            accountsReachedNonFollowers: null,
+            source: 'fb_page_insights',
+          }));
+
+          await insertChannelWindows(rows);
+          rowsWritten += rows.length;
+        }
+
+        continue;
+      }
 
       const provider = createInstagramInsightsProvider(
         token.accessToken,
@@ -254,7 +318,7 @@ export async function captureChannelReachWindows(
   logger.info(
     {
       ...ctx,
-      channels: connections.length,
+      channels: read.length,
       rowsWritten,
       failed,
       throttled,
@@ -264,7 +328,7 @@ export async function captureChannelReachWindows(
   );
 
   return {
-    channels: connections.length,
+    channels: read.length,
     rowsWritten,
     failed,
     throttled,

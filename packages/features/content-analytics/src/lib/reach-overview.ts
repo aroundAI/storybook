@@ -25,6 +25,11 @@ export const LONGEST_UNIQUE_WINDOW = 30;
 export const NINETY_DAY_REASON =
   "Not measured: Meta's longest unique-reach window is 30 days, and a 90-day figure cannot be built by adding shorter ones — the same person would be counted more than once.";
 
+export const FACEBOOK_THIRTY_DAY_REASON = `Not measured: ${platformLabel('facebook')} reports how many people saw a Page’s content over a day, 7 days or 28 days, not 30, and a 30-day figure cannot be built from those.`;
+
+/** A Page whose connection was made without its insights is never read. */
+export const FACEBOOK_NOT_GRANTED_REASON = `Not measured: this ${platformLabel('facebook')} Page was connected without permission to read its insights, so how many people saw its content is not recorded.`;
+
 export function parseReachWindow(value: string | undefined): ReachWindow {
   const days = Number(value);
   return (REACH_WINDOWS as readonly number[]).includes(days)
@@ -73,6 +78,11 @@ export function channelReachAvailability(
 
   if (window > LONGEST_UNIQUE_WINDOW) {
     return { measured: false, reason: NINETY_DAY_REASON };
+  }
+
+  // Meta's Page periods are a day, a week and 28 days (FILM-1720).
+  if (platform === 'facebook' && window === 30) {
+    return { measured: false, reason: FACEBOOK_THIRTY_DAY_REASON };
   }
 
   return { measured: true, value: true };

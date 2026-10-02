@@ -85,11 +85,31 @@ export interface FacebookAdBreaks {
   qualifiedViews: number | null;
 }
 
+/**
+ * A video's 3-second views by age and gender, and by country
+ * (`total_video_views_by_age_bucket_and_gender`,
+ * `total_video_views_by_country_id`). Counts of 3-second views, the same
+ * denominator as `threeSecondViews`; never people.
+ */
+export interface FacebookAudience {
+  ageGender: { gender: 'F' | 'M' | 'U'; ageGroup: string; views: number }[];
+  countries: { country: string; views: number }[];
+}
+
+/** One window of the Page's unique viewers, ending on the day asked for. */
+export interface FacebookPageViewers {
+  windowDays: 1 | 7 | 28;
+  /** `page_total_media_view_unique`; null when Meta gave no figure. */
+  viewers: number | null;
+}
+
 export interface FacebookInsightsResult {
   videoId: string;
   /** The Page post the video belongs to; null when Meta named none. */
   postId: string | null;
   totals: FacebookVideoTotals;
   retention: FacebookRetentionGraph | null;
+  /** Null when Meta refused the read or sent neither breakdown. */
+  audience: FacebookAudience | null;
   adBreaks: FacebookAdBreaks;
 }
