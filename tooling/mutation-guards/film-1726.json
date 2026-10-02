@@ -59,7 +59,7 @@
       "replace": "  // Not measured, not $0: the identity a measured chunk replaces (FILM-1726).\n  revenue_cents: 0,",
       "cwd": "packages/clickhouse",
       "test": "__tests__/clickhouse.test.ts",
-      "pattern": "should return zeros when no data"
+      "pattern": "should return null views when no data"
     },
     {
       "name": "MS7 The revenue card shows $0 for not measured",
