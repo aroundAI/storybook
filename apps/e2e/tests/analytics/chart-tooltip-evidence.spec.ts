@@ -194,6 +194,17 @@ test.describe('KB-146 — chart tooltips paint with the theme', () => {
 
           if (name === 'trend') backgrounds.push(style.background);
 
+          // KB-158: a language's views are a count, as on the axis, never
+          // dollars. English is 3 × 3 × 120 = 1,080 views, Spanish 720.
+          if (name === 'comparison') {
+            const item = tooltip.locator('.recharts-tooltip-item');
+
+            await expect.soft(item, theme).not.toContainText('$');
+            await expect
+              .soft(item, theme)
+              .toHaveText(/^Views\s*:\s*(1\.1K|720)$/);
+          }
+
           if (process.env.CAPTURE_EVIDENCE) {
             await chart.screenshot({ path: `${OUT}/${name}-${theme}.png` });
           }

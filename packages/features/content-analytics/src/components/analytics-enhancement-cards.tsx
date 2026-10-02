@@ -27,6 +27,10 @@ import { Skeleton } from '@kit/ui/skeleton';
 
 import { formatNumber } from '../lib/format';
 import {
+  LANGUAGE_COMPARISON_SERIES,
+  formatLanguageComparisonTooltip,
+} from '../lib/language-comparison-tooltip';
+import {
   languageColor,
   languageKey,
   languageName,
@@ -94,8 +98,6 @@ export function LanguageComparisonChart({
     code: languageKey(lang.language),
     color: languageColor(lang.language),
     views: lang.views,
-    engagement: lang.engagement,
-    revenue: lang.revenueCents / 100,
   }));
 
   return (
@@ -115,14 +117,7 @@ export function LanguageComparisonChart({
               <XAxis type="number" tickFormatter={(v) => formatNumber(v)} />
               <YAxis dataKey="name" type="category" width={60} />
               <Tooltip
-                formatter={(value: number, name: string) => [
-                  name === 'views'
-                    ? formatNumber(value)
-                    : name === 'engagement'
-                      ? `${value.toFixed(1)}%`
-                      : `$${value.toFixed(2)}`,
-                  name.charAt(0).toUpperCase() + name.slice(1),
-                ]}
+                formatter={formatLanguageComparisonTooltip}
                 contentStyle={{
                   backgroundColor: 'var(--card)',
                   border: '1px solid var(--border)',
@@ -133,7 +128,7 @@ export function LanguageComparisonChart({
               <Bar
                 dataKey="views"
                 fill="#3B82F6"
-                name="Views"
+                name={LANGUAGE_COMPARISON_SERIES.views.name}
                 radius={[0, 4, 4, 0]}
               >
                 {chartData.map((entry) => (
