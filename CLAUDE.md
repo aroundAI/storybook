@@ -280,20 +280,22 @@ with any file Prettier would change, so an unformatted push is a red build.
 - **The merge queue is the gate** (2026-10-01). A PR run is the fast lane
   (🔎 Changes, ʦ TypeScript, 💅 Format, 🧪 Unit Tests, 🗄️ ClickHouse SQL, or
   📚 Docs checks); the heavy jobs (🧪 Unit guards, 🐘 Supabase DB, ⚫️ Test,
-  🧬 E2E evidence and guards) run once, when the PR is queued, on main + the
-  PR, and nothing runs after the merge. The one required check is
+  🧬 E2E evidence) run once, when the PR is queued, on main + the PR, and
+  nothing runs after the merge. 🧬 E2E guards run only in the nightly full
+  run and on dispatch, not in the queue (owner, 2026-10-02: they were 41% of
+  a day's minutes). The queue builds one entry at a time. The one required check is
   **✅ CI result**. Actions → Workflow → Run workflow runs the full suite on
   a branch on demand. `scripts/ci/minutes.sh <pr|run-id>` reports what a PR
   or run cost in runner-minutes.
-- **Scoped heavy jobs are report-only for now.** In each queue run 🔎 Changes
+- **Scoped heavy jobs are enforced** (`CI_SCOPE_HEAVY=true`, owner,
+  2026-10-02, without the shadow week). In each queue run 🔎 Changes
   works out which heavy jobs the change needs (`scripts/ci/scope-heavy.sh`:
   Playwright when turbo's affected set reaches `web`/`web-e2e`, 🐘 Supabase
   DB for SQL, only the guards whose file or test changed via `run.py
   --changed`, everything on a root-config change). It writes what it *would*
-  skip to the run summary, and ✅ CI result flags a would-skip job that
-  failed; everything still runs. After a clean shadow week the owner sets
-  the repo variable `CI_SCOPE_HEAVY=true` to skip them. A nightly full run
-  on main (02:30 UTC) catches anything scoping misses.
+  skip to the run summary and skips them. Unset the repo variable to run
+  everything again. A nightly full run on main (02:30 UTC) catches anything
+  scoping misses, and runs every 🧬 E2E guard.
 - **Don't push while a run is in progress.** The push cancels it, and a
   cancelled run is still billed. Batch fixes into one push; queue a PR only
   when its fast lane is green.
