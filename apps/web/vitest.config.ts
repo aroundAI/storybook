@@ -84,6 +84,30 @@ export default defineConfig({
         __dirname,
         '../../packages/features/generation/src/testing/index.ts',
       ),
+      '@kit/generation/canon': path.resolve(
+        __dirname,
+        '../../packages/features/generation/src/canon/index.ts',
+      ),
+      '@kit/generation/duration-scaling': path.resolve(
+        __dirname,
+        '../../packages/features/generation/src/duration-scaling.ts',
+      ),
+      '@kit/generation/episode-rows': path.resolve(
+        __dirname,
+        '../../packages/features/generation/src/episode-rows.ts',
+      ),
+      '@kit/generation/formatters': path.resolve(
+        __dirname,
+        '../../packages/features/generation/src/formatters.ts',
+      ),
+      '@kit/generation/project-type': path.resolve(
+        __dirname,
+        '../../packages/features/generation/src/project-type.ts',
+      ),
+      '@kit/generation/slug': path.resolve(
+        __dirname,
+        '../../packages/features/generation/src/slug.ts',
+      ),
       '@kit/generation': path.resolve(
         __dirname,
         '../../packages/features/generation/src/index.ts',
@@ -140,6 +164,10 @@ export default defineConfig({
       '@kit/supabase/auth': path.resolve(
         __dirname,
         '../../packages/supabase/src/auth-callback.service.ts',
+      ),
+      '@kit/prompt-engine/schemas': path.resolve(
+        __dirname,
+        '../../packages/features/prompt-engine/src/schemas/index.ts',
       ),
       '@kit/prompt-engine/render-template': path.resolve(
         __dirname,

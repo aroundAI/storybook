@@ -5,10 +5,7 @@
  * Maps each ProjectType to canon management rules, memory strategies,
  * validation behaviors, and LLM role pipelines.
  */
-import {
-  type ProjectType,
-  ProjectTypeSchema,
-} from '@kit/film-studio-schemas/project';
+import type { ProjectType } from '@kit/film-studio-schemas/project';
 
 // =============================================================================
 // TYPES
@@ -154,29 +151,13 @@ export const PROJECT_TYPE_LABELS: Record<ProjectType, string> = {
   news: 'News',
 };
 
-/** The type a project is treated as when its metadata names none. */
-export const DEFAULT_PROJECT_TYPE: ProjectType = 'series';
-
-export type ProjectTypeSource = 'argument' | 'metadata' | 'default';
-
 /**
- * Reads the project type from `projects.metadata`, the authoritative field.
- *
- * The column is untyped JSONB, so the value is validated rather than cast:
- * anything outside `ProjectTypeSchema` falls back to `DEFAULT_PROJECT_TYPE`.
+ * The project type resolver lives in `@kit/generation` (FILM-1901), where the
+ * season stages read it without this package; re-exported so every reader
+ * of `@kit/episodes/lib` keeps its import.
  */
-export function resolveProjectType(metadata: unknown): {
-  projectType: ProjectType;
-  source: Exclude<ProjectTypeSource, 'argument'>;
-} {
-  const stored =
-    metadata && typeof metadata === 'object' && 'projectType' in metadata
-      ? metadata.projectType
-      : undefined;
-
-  const parsed = ProjectTypeSchema.safeParse(stored);
-
-  return parsed.success
-    ? { projectType: parsed.data, source: 'metadata' }
-    : { projectType: DEFAULT_PROJECT_TYPE, source: 'default' };
-}
+export {
+  DEFAULT_PROJECT_TYPE,
+  type ProjectTypeSource,
+  resolveProjectType,
+} from '@kit/generation/project-type';

@@ -3,12 +3,15 @@
 import { revalidatePath } from 'next/cache';
 
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
+import {
+  episodeRowFromOutline,
+  episodeRowUpdateFromOutline,
+} from '@kit/generation/episode-rows';
 import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
 import { requireRow, returnRefusals } from '@kit/next/refusals';
 import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
-import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -21,7 +24,6 @@ import {
   type RegenerateEpisodeOutlineResponse,
   RegenerateEpisodeOutlineSchema,
 } from '../lib/schemas/batch-episode.schema';
-import { generateEpisodeSlug } from '../lib/slug-utils';
 
 /**
  * Generate season episode outlines via LLM (FILM-314)
@@ -101,8 +103,11 @@ export const generateSeasonOutlineAction = returnRefusals(
 /**
  * Batch create episodes from generated outlines (FILM-314)
  *
- * Creates all episodes atomically in a single database transaction.
- * Auto-assigns episode numbers starting from the next available number.
+ * The season_outline stage's commit creates a row per outline when the
+ * outlines are generated (FILM-1901), and returns each outline with its
+ * row's id. An outline carrying an id updates that row with the preview's
+ * edits; one without (an older client, or an outline added by hand) is
+ * inserted with the next available number, as before.
  *
  * @throws {Error} If episode creation fails
  */
@@ -145,62 +150,88 @@ const batchCreateEpisodesHandler = enhanceAction(
 
     const accountId = project.account_id;
 
-    // Get next episode number for the project/season
-    let existingEpisodesQuery = client
-      .from('episodes')
-      .select('number')
-      .eq('project_id', data.projectId)
-      .is('deleted_at', null)
-      .order('number', { ascending: false })
-      .limit(1);
+    type CreatedEpisode = BatchCreateEpisodesResponse['episodes'][number];
+    const createdEpisodes: CreatedEpisode[] = [];
 
-    if (data.seasonId) {
-      existingEpisodesQuery = existingEpisodesQuery.eq(
-        'season_id',
-        data.seasonId,
-      );
-    }
-
-    const { data: existingEpisodes } = await existingEpisodesQuery;
-    const nextNumber = (existingEpisodes?.[0]?.number ?? 0) + 1;
-
-    // Prepare episode records for batch insert
-    const episodesToInsert = data.episodes.map(
-      (ep: EpisodeOutline, index: number) => {
-        const episodeNumber = nextNumber + index;
-        return {
-          project_id: data.projectId,
-          season_id: data.seasonId ?? null,
-          number: episodeNumber,
-          title: ep.title,
-          slug: generateEpisodeSlug(episodeNumber, ep.title),
-          description: ep.premise,
-          status: 'draft',
-          story_data: {
-            premise: ep.premise,
-            mainPlot: ep.mainPlot,
-            characterFocus: ep.characterFocus ?? [],
-            arcPosition: ep.arcPosition,
-            generatedFromBatch: true,
-          } as Json,
-          version: 1,
-        };
-      },
+    // Rows the season_outline commit made: apply the preview's edits
+    const committed = data.episodes.filter(
+      (ep): ep is EpisodeOutline & { id: string } => !!ep.id,
     );
 
-    // Insert all episodes atomically
-    const { data: createdEpisodes, error: insertError } = await client
-      .from('episodes')
-      .insert(episodesToInsert)
-      .select('id, number, title, status');
+    for (const ep of committed) {
+      const { data: updated, error: updateError } = await client
+        .from('episodes')
+        .update(episodeRowUpdateFromOutline(ep))
+        .eq('id', ep.id)
+        .eq('project_id', data.projectId)
+        .is('deleted_at', null)
+        .select('id, number, title, status')
+        .maybeSingle();
 
-    if (insertError) {
-      logger.error(
-        { ...ctx, error: insertError },
-        'Failed to batch create episodes',
-      );
-      throw new Error(`Failed to create episodes: ${insertError.message}`);
+      if (updateError) {
+        logger.error(
+          { ...ctx, error: updateError, episodeId: ep.id },
+          'Failed to update a generated episode',
+        );
+        throw new Error(`Failed to update episode: ${updateError.message}`);
+      }
+
+      // RLS filters a refused update to no row, without an error (KB-105)
+      if (!updated) {
+        throw new ActionRefusal('Episode not found or access denied');
+      }
+
+      createdEpisodes.push(updated);
     }
+
+    const toInsert = data.episodes.filter((ep) => !ep.id);
+
+    if (toInsert.length > 0) {
+      // Get next episode number for the project/season
+      let existingEpisodesQuery = client
+        .from('episodes')
+        .select('number')
+        .eq('project_id', data.projectId)
+        .is('deleted_at', null)
+        .order('number', { ascending: false })
+        .limit(1);
+
+      if (data.seasonId) {
+        existingEpisodesQuery = existingEpisodesQuery.eq(
+          'season_id',
+          data.seasonId,
+        );
+      }
+
+      const { data: existingEpisodes } = await existingEpisodesQuery;
+      const nextNumber = (existingEpisodes?.[0]?.number ?? 0) + 1;
+
+      const episodesToInsert = toInsert.map((ep: EpisodeOutline, index) =>
+        episodeRowFromOutline(ep, {
+          projectId: data.projectId,
+          seasonId: data.seasonId ?? null,
+          number: nextNumber + index,
+        }),
+      );
+
+      // Insert all episodes atomically
+      const { data: inserted, error: insertError } = await client
+        .from('episodes')
+        .insert(episodesToInsert)
+        .select('id, number, title, status');
+
+      if (insertError) {
+        logger.error(
+          { ...ctx, error: insertError },
+          'Failed to batch create episodes',
+        );
+        throw new Error(`Failed to create episodes: ${insertError.message}`);
+      }
+
+      createdEpisodes.push(...(inserted ?? []));
+    }
+
+    createdEpisodes.sort((a, b) => a.number - b.number);
 
     // Create audit log
     const networkContext = await extractNetworkContext();
@@ -301,6 +332,9 @@ const regenerateEpisodeOutline = enhanceAction(
       target,
       payload: {
         projectId: data.projectId,
+        // The regenerated outline replaces the row the first outline made
+        // for this number, in this season (FILM-1901)
+        seasonId: data.seasonId,
         seasonPremise: data.seasonPremise,
         episodeCount: 1,
         startingNumber: data.episodeNumber,

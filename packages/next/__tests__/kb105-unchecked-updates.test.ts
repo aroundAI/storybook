@@ -53,12 +53,6 @@ const KNOWN: Record<string, [number, string]> = {
     [1, LAST_USED],
   'apps/web/lambda/llm-worker/handlers/shot-generation.ts | episodes | update':
     [1, ADMIN],
-  'apps/web/lambda/llm-worker/handlers/story-generation.ts | episodes | update':
-    [1, ADMIN],
-  'apps/web/lambda/llm-worker/utils/commit-story-canon.ts | episodes | update':
-    [1, ADMIN],
-  'apps/web/lambda/llm-worker/utils/commit-story-canon.ts | narrative_threads | update':
-    [2, ADMIN],
   'apps/web/lambda/publish-worker/index.ts | publishes | update': [1, ADMIN],
   'apps/web/lambda/scheduled-publish/index.ts | publishes | update': [3, ADMIN],
   'apps/web/lambda/voice-worker/voice-generation.ts | dialogue_lines | update':

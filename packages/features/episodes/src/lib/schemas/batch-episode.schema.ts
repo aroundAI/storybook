@@ -34,6 +34,8 @@ export type ArcPosition = z.infer<typeof ArcPositionSchema>;
  * Used for both generation output and batch creation input
  */
 export const EpisodeOutlineSchema = z.object({
+  /** The row the season_outline commit created for it (FILM-1901) */
+  id: z.string().uuid().optional(),
   number: z.number().int().positive(),
   title: z.string().min(1).max(255),
   premise: z.string().min(10).max(500),

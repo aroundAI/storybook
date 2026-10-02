@@ -1744,6 +1744,9 @@ importers:
 
   packages/features/generation:
     dependencies:
+      '@kit/film-studio-schemas':
+        specifier: workspace:*
+        version: link:../film-studio-schemas
       '@kit/prompt-engine':
         specifier: workspace:*
         version: link:../prompt-engine
