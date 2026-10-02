@@ -92,6 +92,7 @@ describe('MetricCards', () => {
         data={{ ...mockData, revenueCents: null }}
         previousData={mockPreviousData}
         isLoading={false}
+        viewsScope={null}
       />,
     );
 
@@ -105,6 +106,7 @@ describe('MetricCards', () => {
         data={{ ...mockData, revenueCents: null }}
         previousData={null}
         isLoading={false}
+        viewsScope={null}
         revenueAccess={[
           {
             platform: 'youtube',
@@ -136,6 +138,7 @@ describe('MetricCards', () => {
         data={mockData}
         previousData={null}
         isLoading={false}
+        viewsScope={null}
         revenueAccess={[
           {
             platform: 'tiktok',
