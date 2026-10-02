@@ -335,7 +335,9 @@ test.describe('Six-tab adoption (FILM-1707)', () => {
     ).toBeInViewport();
 
     if (process.env.CAPTURE_EVIDENCE) {
-      await page.screenshot({ path: `${OUT}/six-tab-deep-dive-switcher-open.png` });
+      await page.screenshot({
+        path: `${OUT}/six-tab-deep-dive-switcher-open.png`,
+      });
     }
 
     await byTest(page, 'deep-dive-platform-option-tiktok').click();
