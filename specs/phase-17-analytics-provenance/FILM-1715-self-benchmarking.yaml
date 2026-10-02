@@ -80,13 +80,13 @@ feature:
   queries:
     - name: "queryVideoBenchmark"
       purpose: "one video against its own channel at each checkpoint: subject figure and cohort quantiles from the same per-video SQL, relaxation, views series from viewsDenominatorFor, judged by lib/self-benchmark.ts"
-      file: "packages/clickhouse/src/queries-advanced.ts:1059"
+      file: "packages/clickhouse/src/queries-advanced.ts:1060"
     - name: "queryVideoViewsAtAge"
       purpose: "a video's views at 30/90/180/365 days, gated by matureAt, with ingestLagDays"
       file: "packages/clickhouse/src/queries-advanced.ts:2214"
     - name: "queryCohortMedians"
       purpose: "the channel's own median/p25/p75 at the same checkpoint ages, quantileExact so deterministic, maturity judged per video per checkpoint, LEFT JOIN so a zero-view video counts as zero; now also one 'all' cohort over a publish window, on a chosen views series"
-      file: "packages/clickhouse/src/queries-advanced.ts:905"
+      file: "packages/clickhouse/src/queries-advanced.ts:906"
   actions: []
   ui: []
   provider_integration: null
