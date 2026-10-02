@@ -22,7 +22,8 @@ const AnalyticsTotalsSchema = z.object({
   views: z.number().nullable(),
   likes: z.number(),
   comments: z.number(),
-  shares: z.number(),
+  // Null where no row measured it: X reports no shares (FILM-1727).
+  shares: z.number().nullable(),
   // Null is "not measured" (KB-149), never sent to the model as 0.
   watchTimeSeconds: z.number().nullable(),
   subscribersGained: z.number().nullable(),
@@ -35,7 +36,7 @@ const PlatformBreakdownSchema = z.object({
   views: z.number().nullable(),
   likes: z.number(),
   comments: z.number(),
-  shares: z.number(),
+  shares: z.number().nullable(),
 });
 
 const TopContentSchema = z.object({

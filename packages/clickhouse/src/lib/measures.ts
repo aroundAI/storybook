@@ -33,8 +33,11 @@ export type MeasureId =
 /** A rate over views (or reach). Attention efficiency divides by duration instead. */
 export type RateMeasureId = Exclude<MeasureId, 'attention_efficiency'>;
 
-/** Inputs whose support differs by platform. Likes, comments and shares every platform reports. */
-export type MeasureInput = 'saves' | 'subscribers_gained' | 'reach';
+/**
+ * Inputs whose support differs by platform. Likes and comments every platform
+ * reports; shares every one but X, whose pay-per-use tier has none (FILM-1727).
+ */
+export type MeasureInput = 'shares' | 'saves' | 'subscribers_gained' | 'reach';
 
 /** Instagram's `media_product_type`: it decides which metrics exist. */
 export type InstagramMediaSurface = 'REELS' | 'FEED' | 'STORY';
@@ -91,6 +94,11 @@ export const MEASURE_INPUT_SUPPORT: Readonly<
   >
 > = {
   youtube: {
+    shares: {
+      support: 'reported',
+      field: 'shares',
+      block: 'youtube/analytics-metrics',
+    },
     saves: {
       support: 'not_reported',
       candidates: NO_SAVES,
@@ -107,6 +115,11 @@ export const MEASURE_INPUT_SUPPORT: Readonly<
     },
   },
   tiktok: {
+    shares: {
+      support: 'reported',
+      field: 'share_count',
+      block: 'tiktok/display-video',
+    },
     saves: {
       support: 'not_reported',
       candidates: NO_SAVES,
@@ -119,6 +132,11 @@ export const MEASURE_INPUT_SUPPORT: Readonly<
     },
   },
   instagram: {
+    shares: {
+      support: 'reported',
+      field: 'shares',
+      block: 'instagram/media-insights',
+    },
     saves: {
       support: 'reported',
       field: 'saved',
@@ -138,6 +156,11 @@ export const MEASURE_INPUT_SUPPORT: Readonly<
     },
   },
   facebook: {
+    shares: {
+      support: 'reported',
+      field: 'shares',
+      block: 'facebook/post-fields',
+    },
     saves: {
       support: 'not_reported',
       candidates: NO_SAVES,
@@ -148,6 +171,27 @@ export const MEASURE_INPUT_SUPPORT: Readonly<
       support: 'reported',
       field: 'post_video_followers',
       block: 'facebook/video-insights',
+    },
+  },
+  // FILM-1727: the pay-per-use posts lookup. Shares and per-post follows are
+  // Enterprise-only; a bookmark is X's save.
+  twitter: {
+    shares: {
+      support: 'not_ingested',
+      field: 'shares',
+      block: 'x/post-analytics',
+      closedBy: 'FILM-1727',
+    },
+    saves: {
+      support: 'reported',
+      field: 'bookmark_count',
+      block: 'x/post-metrics',
+    },
+    subscribers_gained: {
+      support: 'not_ingested',
+      field: 'follows',
+      block: 'x/post-analytics',
+      closedBy: 'FILM-1727',
     },
   },
 };
@@ -167,6 +211,7 @@ export const PREFERRED_DENOMINATOR: Readonly<
   // Asked for, and refused: Facebook has no single view (FILM-1722), so every
   // Facebook rate is absent as `no_single_view_definition` (FILM-1720).
   facebook: 'views',
+  twitter: 'views',
 };
 
 /** What a rate divided by, stamped on every value. */
@@ -239,7 +284,7 @@ export interface MeasureCounts {
 
 type EngagementCounts = Pick<MeasureCounts, 'likes' | 'comments' | 'shares'>;
 
-/** The numerator of each rate, and the one input each depends on beyond likes/comments/shares. */
+/** The numerator of each rate, and the one input each depends on beyond likes and comments. */
 const NUMERATOR: Record<
   RateMeasureId,
   {
@@ -247,8 +292,8 @@ const NUMERATOR: Record<
     needs?: Exclude<MeasureInput, 'reach'>;
   }
 > = {
-  engagement_rate: { of: (c) => engagementNumerator(c) },
-  share_rate: { of: (c) => c.shares },
+  engagement_rate: { of: (c) => engagementNumerator(c), needs: 'shares' },
+  share_rate: { of: (c) => c.shares, needs: 'shares' },
   save_rate: { of: (c) => c.saves, needs: 'saves' },
   subscriber_conversion: {
     of: (c) => c.subscribers_gained,

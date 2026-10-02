@@ -20,6 +20,8 @@
     "./providers/instagram/types": "./src/providers/instagram/types.ts",
     "./providers/facebook": "./src/providers/facebook/index.ts",
     "./providers/facebook/types": "./src/providers/facebook/types.ts",
+    "./providers/twitter": "./src/providers/twitter/index.ts",
+    "./lib/x-read-budget": "./src/lib/x-read-budget.ts",
     "./server": "./src/server/index.ts",
     "./server/types": "./src/server/types.ts",
     "./server/report-storage": "./src/server/report-storage.ts",

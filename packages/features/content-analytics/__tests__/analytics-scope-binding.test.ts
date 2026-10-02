@@ -156,6 +156,7 @@ describe('the detector sees the providers', () => {
       'facebook',
       'instagram',
       'tiktok',
+      'twitter',
       'youtube',
     ]);
   });

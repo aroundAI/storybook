@@ -98,6 +98,7 @@ function stats(saves: number | null): PerVideoTotals {
     revenue_cents: 0,
     subscribers_gained: 0,
     measured: {
+      shares: true,
       saves: saves !== null,
       watch_time_seconds: false,
       subscribers_gained: false,

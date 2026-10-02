@@ -104,10 +104,12 @@ export function CompanyDashboard({
           icon={<TrendingUp className="h-5 w-5" />}
           title="Avg Engagement"
           value={
+            // The held figure (FILM-1722 §12) adds the shares of the
+            // platforms that report them; X's unmeasured shares add none.
             data.totals.views === null
               ? VIEWS_NOT_MEASURED
               : data.totals.views > 0
-                ? `${displayedEngagementRatePercent({ ...data.totals, views: data.totals.views }).toFixed(1)}%`
+                ? `${displayedEngagementRatePercent({ ...data.totals, views: data.totals.views, shares: data.totals.shares ?? 0 }).toFixed(1)}%`
                 : '0%'
           }
         />

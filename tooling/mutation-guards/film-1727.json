@@ -1,0 +1,184 @@
+{
+  "feature": "FILM-1727",
+  "mutations": [
+    {
+      "name": "X1 X reads run up to the 30-day wall itself",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/x-read-budget.ts",
+      "find": "export const X_LAST_READ_AGE_DAYS = X_NON_PUBLIC_WINDOW_DAYS - 2;",
+      "replace": "export const X_LAST_READ_AGE_DAYS = X_NON_PUBLIC_WINDOW_DAYS;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/x-read-budget.test.ts",
+      "pattern": "refuses from day 29"
+    },
+    {
+      "name": "X2 the daily X ceiling forgets the reads granted earlier in the run",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/x-read-budget.ts",
+      "find": "      readsToday: input.readsToday + read.length,",
+      "replace": "      readsToday: input.readsToday,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/x-read-budget.test.ts",
+      "pattern": "counts the reads granted earlier in the same run"
+    },
+    {
+      "name": "X3 X publishes are fetched while X analytics is switched off",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/analytics-sync-cron.ts",
+      "find": "    (platform) => xEnabled || platform !== 'twitter',",
+      "replace": "    (platform) => true || platform !== 'twitter',",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/x-sync-budget.test.ts",
+      "pattern": "does not even ask for X publishes"
+    },
+    {
+      "name": "X4 the sync ignores the X read plan",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/analytics-sync-cron.ts",
+      "find": "      (p) => p.platform !== 'twitter' || allowed.has(p.id),",
+      "replace": "      (p) => p.platform !== 'twitter' || allowed.size >= 0,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/x-sync-budget.test.ts",
+      "pattern": "the budget holds across the run"
+    },
+    {
+      "name": "X5 the sync authorisation map has no X entry",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/analytics-scopes.ts",
+      "find": "  facebook: 'facebook.video-insights',\n  twitter: 'x.post-analytics',\n};",
+      "replace": "  facebook: 'facebook.video-insights',\n};",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/x-sync-budget.test.ts",
+      "pattern": "asks for them once it is"
+    },
+    {
+      "name": "X6 a platform breakdown reads X's NULL shares as 0",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "    // One platform's sum: null when none of its rows measured shares (X).\n    shares: measuredSum(row.shares, row.shares_measured),",
+      "replace": "    // One platform's sum: null when none of its rows measured shares (X).\n    shares: Number(row.shares),",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/clickhouse.test.ts",
+      "pattern": "gives X null shares"
+    },
+    {
+      "name": "X7 the latest snapshot skips X's NULL shares",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "      argMax(tuple(shares), fetched_at).1 as shares,",
+      "replace": "      argMax(shares, fetched_at) as shares,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/clickhouse.test.ts",
+      "pattern": "keeps an X snapshot"
+    },
+    {
+      "name": "X8 per-video totals do not say whether shares were measured",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "      count(shares) > 0 as shares_measured,\n      count(saves) > 0 as saves_measured,\n      count(watch_time_seconds) > 0 as watch_time_seconds_measured,\n      count(subscribers_gained) > 0 as subscribers_gained_measured\n    FROM video_daily_stats",
+      "replace": "      count(saves) > 0 as saves_measured,\n      count(watch_time_seconds) > 0 as watch_time_seconds_measured,\n      count(subscribers_gained) > 0 as subscribers_gained_measured\n    FROM video_daily_stats",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/clickhouse.test.ts",
+      "pattern": "says whether a video measured shares"
+    },
+    {
+      "name": "X9 a chunk fold drops a measured figure into a null",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/chunked.ts",
+      "find": "    if (into[field] === null) into[field] = value;\n    else if (typeof into[field] === 'number') {",
+      "replace": "    if (into[field] === 'never') into[field] = value;\n    else if (typeof into[field] === 'number') {",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/chunked.test.ts",
+      "pattern": "keeps a null"
+    },
+    {
+      "name": "X10 migration 021 drops facebook from the enum",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/migrations/021_twitter.ts",
+      "find": "'instagram' = 3, 'facebook' = 4, 'twitter' = 5)\";",
+      "replace": "'instagram' = 3, 'twitter' = 5)\";",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/twitter-migration.test.ts"
+    },
+    {
+      "name": "X11 migration 021 leaves channel_windows refusing twitter",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/migrations/021_twitter.ts",
+      "find": "  'video_audience',\n  'channel_windows',\n] as const;",
+      "replace": "  'video_audience',\n] as const;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/twitter-migration.test.ts",
+      "pattern": "widens all seven tables"
+    },
+    {
+      "name": "X12 X Attention reads YouTube's retention curve",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/signal-map.ts",
+      "find": "  attention: bound(\n    'quartile_retention',",
+      "replace": "  attention: bound(\n    'audience_retention',",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "never from YouTube"
+    },
+    {
+      "name": "X13 X's share rate shows a figure though X reports no shares",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/signal-map.ts",
+      "find": "    signal: 'share_rate',\n    platform: 'twitter',",
+      "replace": "    signal: 'share_rate',\n    platform: 'youtube',",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/signal-map.test.ts",
+      "pattern": "keeps X’s shares dark"
+    },
+    {
+      "name": "X14 the X provider reads a missing public metric as 0",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/twitter/x-analytics.ts",
+      "find": "  if (missing.length > 0) {\n    throw new Error(",
+      "replace": "  if (missing.length > 99) {\n    throw new Error(",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/x-analytics.test.ts",
+      "pattern": "refuses a response missing a required public metric"
+    },
+    {
+      "name": "X15 the X sandbox caps total_bytes at 512 MB again",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/vendors/x/data.ts",
+      "find": "export const MAX_TOTAL_BYTES = 17_179_869_184;",
+      "replace": "export const MAX_TOTAL_BYTES = 512 * 1024 * 1024;",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/x-fidelity.test.ts",
+      "pattern": "initialize takes a total_bytes"
+    },
+    {
+      "name": "X16 a refused X read is recorded as failed, not as a scope error",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/sync-status.ts",
+      "find": "    error instanceof FacebookInsightsScopeError ||\n    error instanceof XAnalyticsScopeError\n",
+      "replace": "    error instanceof FacebookInsightsScopeError\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/sync-status.test.ts",
+      "pattern": "records X’s refused read and rate limit"
+    },
+    {
+      "name": "X17 an X-only scope's totals read its unmeasured shares as 0",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "    comments: Number(row.comments),\n    shares: measuredSum(row.shares, row.shares_measured),\n    saves: measuredSum(row.saves, row.saves_measured),\n    watch_time_seconds",
+      "replace": "    comments: Number(row.comments),\n    shares: Number(row.shares),\n    saves: measuredSum(row.saves, row.saves_measured),\n    watch_time_seconds",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/totals-unmeasured.test.ts",
+      "pattern": "gives an X-only scope null shares"
+    },
+    {
+      "name": "X19 the Shares card shows 0 for an X-only team",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "      value: data ? data.shares : null,",
+      "replace": "      value: data?.shares || 0,",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/components/__tests__/metric-cards-views.test.tsx",
+      "pattern": "says Shares were not measured"
+    }
+  ]
+}

@@ -198,6 +198,28 @@ const REQUEST_SITES: Array<{
       },
     ],
   },
+  {
+    file: `${PROVIDERS}/twitter/x-analytics.ts`,
+    patterns: [
+      {
+        pattern: /tweet\.fields=([a-z_,]+)/g,
+        surfaces: ['x/post-lookup'],
+      },
+      {
+        pattern: /media\.fields=([a-z_,]+)/g,
+        surfaces: ['x/post-lookup'],
+      },
+      {
+        pattern: /expansions=([a-z_.,]+)/g,
+        surfaces: ['x/post-lookup'],
+      },
+      {
+        // The members read out of public_metrics and non_public_metrics.
+        pattern: /POST_PUBLIC_METRICS[^=]*=\s*(\[[^\]]*\])/g,
+        surfaces: ['x/post-metrics'],
+      },
+    ],
+  },
 ];
 
 /**

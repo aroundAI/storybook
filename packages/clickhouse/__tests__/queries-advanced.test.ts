@@ -1676,6 +1676,7 @@ describe('queries-advanced', () => {
           'tiktok',
           'instagram',
           'facebook',
+          'twitter',
         ]);
       },
     );

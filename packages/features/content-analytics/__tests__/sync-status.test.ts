@@ -11,6 +11,10 @@ import {
   TikTokAnalyticsScopeError,
   TikTokRateLimitError,
 } from '../src/providers/tiktok/tiktok-analytics';
+import {
+  XAnalyticsScopeError,
+  XRateLimitError,
+} from '../src/providers/twitter';
 import { getSyncStatusAction } from '../src/server/sync-actions';
 import {
   type SyncStatusRow,
@@ -258,6 +262,17 @@ describe('classifySyncFailure: what a failed attempt is recorded as', () => {
     expect(
       classifySyncFailure(new FacebookInsightsScopeError('(#10) denied')),
     ).toMatchObject({ status: 'scope_error', errorType: 'scope' });
+  });
+
+  it('records X’s refused read and rate limit as the other platforms’ are (FILM-1727)', () => {
+    expect(classifySyncFailure(new XAnalyticsScopeError())).toMatchObject({
+      status: 'scope_error',
+      errorType: 'scope',
+    });
+    expect(classifySyncFailure(new XRateLimitError())).toMatchObject({
+      status: 'rate_limited',
+      errorType: 'rate_limit',
+    });
   });
 
   it('records anything else as failed, with its message', () => {

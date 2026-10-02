@@ -127,7 +127,7 @@ describe('a card on a date axis', () => {
     });
 
     expect(chipOf(container).textContent).toBe(
-      '2 of 4 platforms · partly derived',
+      '2 of 5 platforms · partly derived',
     );
     expect(scopeNoteOf(container)).toBeNull();
   });

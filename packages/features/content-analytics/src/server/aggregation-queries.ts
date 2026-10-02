@@ -140,7 +140,8 @@ export interface ProjectAnalytics {
     views: Views;
     likes: number;
     comments: number;
-    shares: number;
+    /** Null where the platform reports no shares: X (FILM-1727). */
+    shares: number | null;
     /** Null where none of the platform's rows measured it (KB-162). */
     saves: number | null;
     percentage: number | null;
@@ -768,10 +769,11 @@ export interface ProjectDailyMetric {
   views: Views;
   likes: number;
   comments: number;
+  /** The shares of the platforms that report them; X does not (FILM-1727). */
   shares: number;
   byPlatform?: Record<
     string,
-    { views: Views; likes: number; comments: number; shares: number }
+    { views: Views; likes: number; comments: number; shares: number | null }
   >;
 }
 

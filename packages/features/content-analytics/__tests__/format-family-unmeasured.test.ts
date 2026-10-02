@@ -66,6 +66,7 @@ function video(subscribers: number | null): PerVideoTotals {
     // ClickHouse's shape: an unmeasured sum reads 0, and the flag says so.
     subscribers_gained: subscribers ?? 0,
     measured: {
+      shares: true,
       saves: false,
       watch_time_seconds: false,
       subscribers_gained: subscribers !== null,

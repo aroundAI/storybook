@@ -45,8 +45,8 @@
       "name": "A platform joins AnalyticsPlatform and not the matrix",
       "kind": "unit",
       "file": "packages/clickhouse/src/types.ts",
-      "find": "export type AnalyticsPlatform = 'youtube' | 'tiktok' | 'instagram' | 'facebook';",
-      "replace": "export type AnalyticsPlatform =\n  | 'youtube'\n  | 'tiktok'\n  | 'instagram'\n  | 'facebook'\n  | 'linkedin';",
+      "find": "export type AnalyticsPlatform =\n  | 'youtube'\n  | 'tiktok'\n  | 'instagram'\n  | 'facebook'\n  | 'twitter';",
+      "replace": "export type AnalyticsPlatform =\n  | 'youtube'\n  | 'tiktok'\n  | 'instagram'\n  | 'facebook'\n  | 'twitter'\n  | 'linkedin';",
       "cwd": "packages/clickhouse",
       "test": "__tests__/data-provenance.test.ts",
       "pattern": "lists exactly the members of AnalyticsPlatform"

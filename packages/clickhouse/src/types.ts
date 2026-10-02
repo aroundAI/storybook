@@ -6,9 +6,16 @@
  */
 
 /**
- * Platform types supported by the analytics system
+ * Platform types supported by the analytics system. X is `twitter`, the value
+ * every Postgres table already stores for it (FILM-1727 §4); "X" is display
+ * only, through `formatPlatformName`.
  */
-export type AnalyticsPlatform = 'youtube' | 'tiktok' | 'instagram' | 'facebook';
+export type AnalyticsPlatform =
+  | 'youtube'
+  | 'tiktok'
+  | 'instagram'
+  | 'facebook'
+  | 'twitter';
 
 /**
  * Origin of a metric row. Reporting-API rows are authoritative and replace
@@ -39,7 +46,11 @@ export interface VideoMetric extends Partial<FacebookDenominators> {
   views: number | null;
   likes: number;
   comments: number;
-  shares: number;
+  /**
+   * Null for X (migration 021): its pay-per-use tier reports no shares, and
+   * its reposts are `reposts`. Never 0 for "not measured".
+   */
+  shares: number | null;
   /**
    * Null where the platform does not measure it (migration 014, KB-114):
    * saves on YouTube and TikTok, watch time on TikTok and Instagram.
@@ -275,7 +286,8 @@ export interface VideoSnapshot
   views: number | null;
   likes: number;
   comments: number;
-  shares: number;
+  /** Null for X (migration 021), as on `VideoMetric`. */
+  shares: number | null;
   /** Null where the platform does not measure it (migration 017). */
   saves: number | null;
   watch_time_seconds: number | null;
@@ -414,7 +426,8 @@ export interface SnapshotTotals
   views: number | null;
   likes: number;
   comments: number;
-  shares: number;
+  /** The latest snapshot's own value: null for X (migration 021). */
+  shares: number | null;
   /** The latest snapshot's own values, NULL included (migration 017). */
   saves: number | null;
   watch_time_seconds: number | null;
@@ -453,6 +466,8 @@ export interface DailyStats {
  * is a measurement. `count(col) > 0` in SQL, since `count` skips NULL.
  */
 export interface MeasuredColumns {
+  /** False where every row is X's (migration 021): X reports no shares. */
+  shares: boolean;
   saves: boolean;
   watch_time_seconds: boolean;
   subscribers_gained: boolean;
@@ -464,7 +479,12 @@ export interface PerVideoTotals extends AggregatedTotals {
 }
 
 /**
- * Aggregated totals (summed across multiple rows)
+ * Aggregated totals (summed across multiple rows).
+ *
+ * Every sum skips the rows that did not measure its column. `shares` across
+ * platforms is the shares of the platforms that report them — never X's,
+ * which writes NULL (migration 021) — and `PerVideoTotals.measured.shares`
+ * says whether a video's 0 is a measurement.
  */
 export interface AggregatedTotals {
   /** Null when every row summed is Facebook's: no single view (KB-153). */
@@ -485,6 +505,8 @@ export interface AggregatedTotals {
  */
 export interface ScopeTotals
   extends Omit<AggregatedTotals, keyof MeasuredColumns> {
+  /** Null where no row measured it: an X-only scope (FILM-1727). */
+  shares: number | null;
   saves: number | null;
   watch_time_seconds: number | null;
   subscribers_gained: number | null;
@@ -516,7 +538,8 @@ export interface PlatformBreakdown {
   views: number | null;
   likes: number;
   comments: number;
-  shares: number;
+  /** Null when none of the platform's rows measured shares: X (migration 021). */
+  shares: number | null;
   /** Null where none of the platform's rows measured it (KB-162). */
   saves: number | null;
   revenue_cents: number;
@@ -550,7 +573,7 @@ export interface DailyPlatformMetricsRow {
   views: number | null;
   likes: number;
   comments: number;
-  shares: number;
+  shares: number | null;
 }
 
 /**
@@ -561,7 +584,8 @@ export interface PlatformEngagement {
   views: number | null;
   likes: number;
   comments: number;
-  shares: number;
+  /** Null when the platform measured no shares that day: X (migration 021). */
+  shares: number | null;
 }
 
 /**

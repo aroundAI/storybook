@@ -182,6 +182,35 @@ describe('@kit/clickhouse', () => {
     });
 
     describe('queryLatestSnapshots', () => {
+      it('keeps an X snapshot’s NULL shares null, never 0 (migration 021)', async () => {
+        mockQueryResult.json.mockResolvedValue([
+          {
+            video_id: 'x-1',
+            snapshot_date: '2026-09-30',
+            views: '900',
+            likes: '40',
+            comments: '6',
+            shares: null,
+            saves: '3',
+            watch_time_seconds: null,
+            subscribers_gained: null,
+            reposts: '12',
+          },
+        ]);
+
+        const { queryLatestSnapshots } = await import('../src/queries');
+        const result = await queryLatestSnapshots({
+          videoIds: ['x-1'],
+          beforeDate: '2026-10-01',
+        });
+
+        expect(result.get('x-1')).toMatchObject({ shares: null, reposts: 12 });
+
+        // A bare argMax skips NULLs and would hand back an older figure.
+        const call = mockClickHouseClient.query.mock.calls[0]![0];
+        expect(call.query).toContain('argMax(tuple(shares), fetched_at).1');
+      });
+
       it('keeps a Facebook snapshot’s NULL views null, never 0 (migration 020)', async () => {
         mockQueryResult.json.mockResolvedValue([
           {
@@ -292,6 +321,7 @@ describe('@kit/clickhouse', () => {
             watch_time_seconds: '18000',
             revenue_cents: '1500',
             subscribers_gained: '15',
+            shares_measured: 1,
             saves_measured: 1,
             watch_time_seconds_measured: 1,
             subscribers_gained_measured: 1,
@@ -431,6 +461,43 @@ describe('@kit/clickhouse', () => {
         expect(result[0]!.views).toBe(3000);
         expect(result[1]!.platform).toBe('tiktok');
       });
+
+      it('gives X null shares, not a measured 0, and leaves the others as they were (migration 021)', async () => {
+        // KB-162's shape: an unmeasured sum reads 0, and the flag says so.
+        mockQueryResult.json.mockResolvedValue([
+          {
+            platform: 'youtube',
+            views: '3000',
+            likes: '150',
+            comments: '30',
+            shares: '20',
+            shares_measured: 1,
+            saves: '0',
+            saves_measured: 0,
+            revenue_cents: '0',
+          },
+          {
+            platform: 'twitter',
+            views: '900',
+            likes: '40',
+            comments: '6',
+            shares: '0',
+            shares_measured: 0,
+            saves: '3',
+            saves_measured: 1,
+            revenue_cents: '0',
+          },
+        ]);
+
+        const { queryPlatformBreakdown } = await import('../src/queries');
+
+        const result = await queryPlatformBreakdown({
+          projectId: '550e8400-e29b-41d4-a716-446655440000',
+        });
+
+        expect(result.find((r) => r.platform === 'twitter')!.shares).toBeNull();
+        expect(result.find((r) => r.platform === 'youtube')!.shares).toBe(20);
+      });
     });
 
     describe('a Facebook NULL view stays null (KB-153)', () => {
@@ -547,6 +614,39 @@ describe('@kit/clickhouse', () => {
         expect(result.size).toBe(2);
         expect(result.get('vid-1')!.views).toBe(1000);
         expect(result.get('vid-2')!.views).toBe(2000);
+      });
+
+      it('says whether a video measured shares at all (migration 021)', async () => {
+        mockQueryResult.json.mockResolvedValue([
+          {
+            video_id: 'x-1',
+            views: '900',
+            likes: '40',
+            comments: '6',
+            shares: null,
+            saves: '3',
+            watch_time_seconds: null,
+            revenue_cents: '0',
+            subscribers_gained: null,
+            shares_measured: 0,
+            saves_measured: 1,
+            watch_time_seconds_measured: 0,
+            subscribers_gained_measured: 0,
+          },
+        ]);
+
+        const { queryPerVideoTotals } = await import('../src/queries');
+
+        const result = await queryPerVideoTotals({
+          projectId: '550e8400-e29b-41d4-a716-446655440000',
+          videoIds: ['x-1'],
+        });
+
+        expect(result.get('x-1')!.measured.shares).toBe(false);
+        expect(result.get('x-1')!.measured.saves).toBe(true);
+
+        const call = mockClickHouseClient.query.mock.calls[0]![0];
+        expect(call.query).toContain('count(shares) > 0 as shares_measured');
       });
     });
 

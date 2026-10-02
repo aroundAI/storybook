@@ -18,12 +18,21 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 
 import { planRevenueRowWrites } from '../lib/revenue-mix';
 import { MAX_CONSECUTIVE_FAILURES } from '../lib/sync-status';
+import {
+  type XReadRefusal,
+  decideXRead,
+  planXReads,
+  utcDayStart,
+  xAnalyticsEnabled,
+} from '../lib/x-read-budget';
 import type { FacebookInsightsResult } from '../providers/facebook';
 import { createFacebookInsightsProvider } from '../providers/facebook';
 import { createInstagramInsightsProvider } from '../providers/instagram';
 import type { InstagramInsightsResult } from '../providers/instagram';
 import { createTikTokAnalyticsProvider } from '../providers/tiktok';
 import type { TikTokAnalyticsResult } from '../providers/tiktok';
+import { createXAnalyticsProvider } from '../providers/twitter';
+import type { XAnalyticsResult } from '../providers/twitter';
 import { createYouTubeAnalyticsProvider } from '../providers/youtube';
 import type { YouTubeAnalyticsResult } from '../providers/youtube';
 import { syncAssetDurations } from './asset-duration-sync';
@@ -34,6 +43,7 @@ import {
   buildRetentionPoints,
   buildSnapshotDeltaRow,
   buildSnapshotRow,
+  buildXQuartilePoints,
   buildYouTubeDailyRows,
   computeSnapshotDelta,
   computeYouTubeWindow,
@@ -114,6 +124,7 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
       tiktok: { processed: 0, successful: 0, failed: 0 },
       instagram: { processed: 0, successful: 0, failed: 0 },
       facebook: { processed: 0, successful: 0, failed: 0 },
+      twitter: { processed: 0, successful: 0, failed: 0 },
     },
     durationMs: 0,
   };
@@ -298,8 +309,14 @@ export async function fetchPublishesForSync(
   // Query publishes that:
   // 1. Have status = 'published'
   // 2. Have a platform_content_id (means they were actually published)
-  // 3. Platform is one the sync reads (SYNC_PLATFORMS)
+  // 3. Platform is one the sync reads (SYNC_PLATFORMS) — X only while
+  //    X_ANALYTICS_ENABLED is on, because every X read is billed (FILM-1727)
   // 4. Sorted by published_at descending (newer content first)
+  const xEnabled = xAnalyticsEnabled(process.env);
+  const platforms = SYNC_PLATFORMS.filter(
+    (platform) => xEnabled || platform !== 'twitter',
+  );
+
   const { data, error } = await client
     .from('publishes')
     .select(
@@ -316,7 +333,7 @@ export async function fetchPublishesForSync(
     )
     .eq('status', 'published')
     .not('platform_content_id', 'is', null)
-    .in('platform', [...SYNC_PLATFORMS])
+    .in('platform', platforms)
     .order('published_at', { ascending: false })
     .limit(limit * 2); // Fetch extra to account for filtering
 
@@ -386,8 +403,67 @@ export async function fetchPublishesForSync(
     return priorityA - priorityB;
   });
 
-  return { publishes: eligiblePublishes, notAuthorised };
+  const xCandidates = eligiblePublishes.filter((p) => p.platform === 'twitter');
+
+  if (xCandidates.length === 0) {
+    return { publishes: eligiblePublishes, notAuthorised };
+  }
+
+  // Every X read costs money: the budget decides, in priority order, which
+  // of this run's X publishes are read at all (FILM-1727).
+  const now = new Date();
+  const { read } = planXReads(xCandidates, {
+    enabled: xEnabled,
+    now,
+    readsToday: await countXReadsToday(client, now),
+    publishedAt: (p) => new Date(p.published_at),
+    lastReadAt: (p) =>
+      p.metadata?.sync?.x_read_at ? new Date(p.metadata.sync.x_read_at) : null,
+  });
+  const allowed = new Set(read.map((p) => p.id));
+
+  return {
+    publishes: eligiblePublishes.filter(
+      (p) => p.platform !== 'twitter' || allowed.has(p.id),
+    ),
+    notAuthorised,
+  };
 }
+
+/**
+ * X post reads already made this UTC day, every account together. Counted
+ * from the publishes themselves, so a second run in the same day sees the
+ * first. An exact head count is not row-capped.
+ *
+ * @throws when the count cannot be read: an unknown spend is not zero spend.
+ */
+async function countXReadsToday(client: Client, now: Date): Promise<number> {
+  const { count, error } = await client
+    .from('publishes')
+    .select('id', { count: 'exact', head: true })
+    .eq('platform', 'twitter')
+    .gte('metadata->sync->>x_read_at', utcDayStart(now));
+
+  if (error || count === null) {
+    throw new Error(
+      `Could not count today's X reads, so none are made: ${error?.message ?? 'no count'}`,
+    );
+  }
+
+  return count;
+}
+
+/** What a person asking for an X sync is told when the budget says no. */
+const X_REFUSAL_MESSAGE: Record<XReadRefusal, string> = {
+  disabled:
+    'X analytics is switched off: every X read is billed, and it stays off until the owner turns it on.',
+  outside_window:
+    'X only reports a video’s playback for 30 days after it is posted, so this post is no longer read.',
+  read_today:
+    'This X post has already been read today. It is read again tomorrow.',
+  daily_budget_spent:
+    'Today’s X reads are all spent. This post is read again tomorrow.',
+};
 
 /**
  * What each connection's OAuth callback recorded, keyed by connection id.
@@ -431,6 +507,7 @@ function groupByPlatform(
     tiktok: [],
     instagram: [],
     facebook: [],
+    twitter: [],
   };
 
   for (const publish of publishes) {
@@ -478,8 +555,16 @@ async function syncSinglePublish(
       };
     }
 
-    // 2. Record rate limit usage
+    // 2. Record rate limit usage. An X read is billed whether or not the
+    // ingest after it succeeds, so it is recorded on the publish first, and
+    // not made at all if that record cannot be written.
     rateLimiter.recordRequest(platform);
+
+    if (platform === 'twitter') {
+      await updatePublishSyncMetadata(client, publish.id, {
+        x_read_at: new Date().toISOString(),
+      });
+    }
 
     // 3. Fetch analytics from platform
     const analytics = await fetchPlatformAnalytics(
@@ -522,7 +607,8 @@ async function syncSinglePublish(
         analytics as
           | TikTokAnalyticsResult
           | InstagramInsightsResult
-          | FacebookInsightsResult,
+          | FacebookInsightsResult
+          | XAnalyticsResult,
         normalizedData,
         snapshotBaselines?.get(publish.id) ?? null,
         snapshotBaselines !== undefined,
@@ -614,6 +700,7 @@ async function fetchPlatformAnalytics(
   | TikTokAnalyticsResult
   | InstagramInsightsResult
   | FacebookInsightsResult
+  | XAnalyticsResult
 > {
   switch (platform) {
     case 'youtube': {
@@ -659,6 +746,11 @@ async function fetchPlatformAnalytics(
       return provider.getVideoInsights({
         videoId: publish.platform_content_id,
       });
+    }
+    case 'twitter': {
+      // One billed read, already allowed by the budget (FILM-1727).
+      const provider = createXAnalyticsProvider(accessToken);
+      return provider.getPostAnalytics(publish.platform_content_id);
     }
     default:
       throw new Error(`Unsupported platform: ${platform}`);
@@ -767,11 +859,12 @@ async function ingestYouTubeDaily(
 async function ingestCumulativeSnapshot(
   projectId: string,
   publish: PublishForSync,
-  platform: 'tiktok' | 'instagram' | 'facebook',
+  platform: 'tiktok' | 'instagram' | 'facebook' | 'twitter',
   analytics:
     | TikTokAnalyticsResult
     | InstagramInsightsResult
-    | FacebookInsightsResult,
+    | FacebookInsightsResult
+    | XAnalyticsResult,
   normalizedData: NormalizedAnalytics,
   prefetchedBaseline: SnapshotTotals | null,
   baselineWasPrefetched: boolean,
@@ -801,11 +894,13 @@ async function ingestCumulativeSnapshot(
             platform === 'instagram'
               ? (analytics as InstagramInsightsResult).totals.reach
               : null,
-          // Instagram FEED and REELS; TikTok reports no reposts we can read.
+          // Instagram FEED and REELS, and X; TikTok reports none we can read.
           reposts:
             platform === 'instagram'
               ? (analytics as InstagramInsightsResult).totals.reposts
-              : null,
+              : platform === 'twitter'
+                ? (analytics as XAnalyticsResult).totals.reposts
+                : null,
           // Instagram's all-surface aggregates (FILM-1722), in their own columns.
           ...(platform === 'instagram'
             ? {
@@ -859,6 +954,18 @@ async function ingestCumulativeSnapshot(
         projectId,
         videoId: publish.id,
         retention: (analytics as FacebookInsightsResult).retention,
+      }),
+    );
+    return;
+  }
+
+  if (platform === 'twitter') {
+    // X reports no audience; its five playback points are the curve.
+    await insertRetentionCurves(
+      buildXQuartilePoints({
+        projectId,
+        videoId: publish.id,
+        quartiles: (analytics as XAnalyticsResult).quartiles,
       }),
     );
     return;
@@ -994,6 +1101,35 @@ function normalizeAnalytics(
         red_revenue_cents: 0,
         // Ad-break earnings exist and are not collected (FILM-1726): a
         // zero here is "not asked", so it must not touch revenue rows.
+        revenue_measured: false,
+        subscribed_views: 0,
+        unsubscribed_views: 0,
+        device_breakdown: null,
+        os_breakdown: null,
+        city_breakdown: null,
+        retention_data: null,
+        raw_data: data as unknown as Record<string, unknown>,
+      };
+    }
+    case 'twitter': {
+      const data = rawData as XAnalyticsResult;
+      return {
+        publish_id: publishId,
+        snapshot_date: snapshotDate,
+        views: data.totals.views,
+        likes: data.totals.likes,
+        comments: data.totals.replies,
+        // Enterprise-only on X (FILM-1727): not measured, never 0.
+        shares: null,
+        // X's bookmark is its save.
+        saves: data.totals.bookmarks,
+        watch_time_seconds: null,
+        subscribers_gained: null,
+        revenue_cents: 0,
+        ad_revenue_cents: 0,
+        red_revenue_cents: 0,
+        // False: X reports no revenue, and nothing here should reconcile
+        // revenue rows for a platform we have never had a figure from.
         revenue_measured: false,
         subscribed_views: 0,
         unsubscribed_views: 0,
@@ -1157,6 +1293,32 @@ export async function syncSinglePublishById(
       error: `Unsupported platform: ${platform}`,
       errorType: 'unknown',
     };
+  }
+
+  // A person asking does not lift the spend ceiling: an X read costs money
+  // whoever asks for it (FILM-1727). Refused as a value, not thrown.
+  if (platform === 'twitter') {
+    const now = new Date();
+    const lastRead = (publish.metadata as PublishMetadata | null)?.sync
+      ?.x_read_at;
+    const decision = decideXRead({
+      enabled: xAnalyticsEnabled(process.env),
+      now,
+      publishedAt: new Date(publish.published_at!),
+      lastReadAt: lastRead ? new Date(lastRead) : null,
+      readsToday: xAnalyticsEnabled(process.env)
+        ? await countXReadsToday(client, now)
+        : 0,
+    });
+
+    if (!decision.read) {
+      return {
+        publishId,
+        success: false,
+        error: X_REFUSAL_MESSAGE[decision.reason],
+        errorType: 'not_authorised',
+      };
+    }
   }
 
   // A manual sync is often the first visit a publish gets, and nothing else

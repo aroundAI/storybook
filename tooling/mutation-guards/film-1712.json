@@ -65,8 +65,8 @@
       "name": "R4 the Instagram row drops its reposts",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/server/ingest.ts",
-      "find": "    reposts: input.delta.reposts,\n",
-      "replace": "    reposts: null,\n",
+      "find": "    accounts_reached: input.delta.accounts_reached,\n    reposts: input.delta.reposts,\n",
+      "replace": "    accounts_reached: input.delta.accounts_reached,\n    reposts: null,\n",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/ingest.test.ts",
       "pattern": "keeps Instagram reposts"

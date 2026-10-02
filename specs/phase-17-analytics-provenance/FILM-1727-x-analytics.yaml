@@ -3,7 +3,7 @@ title: "X Analytics"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: L
 dependencies:
   - spec_id: "FILM-1711"
@@ -29,37 +29,115 @@ summary: >
   FILM-1725 Check A must settle before the Enterprise tier can be scoped.
 acceptance_criteria:
   - text: "The platform vocabulary (x vs twitter) is settled and consistent before the migration runs"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/clickhouse/src/types.ts:18 (`twitter`, lead-approved 2026-10-01: the value every Postgres CHECK stores); packages/clickhouse/src/lib/platform-enum.ts:20; the view registry's `x` renamed, packages/clickhouse/src/lib/view-definitions.ts:485 (#522)"
   - text: "X's value is appended to the enum, never renumbering"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/clickhouse/src/migrations/021_twitter.ts:40 (`'twitter' = 5`, keeping `'facebook' = 4`); packages/clickhouse/__tests__/twitter-migration.test.ts:31; run against populated tables on a throwaway ClickHouse 24.8 on 2026-10-01: twitter refused before 021, accepted after, every youtube/tiktok/instagram/facebook row unchanged (#522)"
   - text: "All seven enum-bearing tables, AnalyticsPlatform, SyncPlatform and QueryFilters accept it, and the three without the enum are handled explicitly rather than assumed"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/clickhouse/src/migrations/021_twitter.ts:42 (seven tables, channel_windows included; the three without the enum named at :12); packages/clickhouse/__tests__/twitter-migration.test.ts:42; packages/features/content-analytics/src/server/types.ts:8; packages/clickhouse/src/queries.ts:295 (`PLATFORM_ENUM_TYPE`) (#522)"
   - text: "X ships on the pay-per-use path, with Enterprise-only fields declared and dark"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/clickhouse/src/lib/data-provenance.ts:454 (posts lookup, metered) and :472 (Enterprise, declared, nothing calls it); packages/features/content-analytics/src/providers/twitter/x-analytics.ts; dark in production: packages/features/content-analytics/src/lib/x-read-budget.ts (`X_ANALYTICS_ENABLED`) (#522)"
   - text: "The two X quartile vocabularies are never mixed"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/features/content-analytics/__tests__/platform-field-names.test.ts:180 binds the provider's requests to the x/post-lookup and x/post-metrics blocks; `playback25` lives only in x/media-analytics, and adding it to the provider's request turned the test red (2026-10-01) (#522)"
   - text: "X's 30-day wall is expressed as a DataWindow anchored on publish date"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/clickhouse/src/lib/data-provenance.ts:462; the sync stops a day inside it, packages/features/content-analytics/src/lib/x-read-budget.ts:37, guarded by X1 in tooling/mutation-guards/film-1727.json (#522)"
   - text: "The /2/media/analytics window is recorded as unknown with a named owner until X answers in writing"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/clickhouse/src/lib/data-provenance.ts:480 (availability `unknown`, owner `owner`, the question to X sales) and :483 (window `undocumented`); packages/clickhouse/__tests__/data-provenance.test.ts:231 (#522)"
   - text: "The per-call cost of the pay-per-use path is recorded, so the sync cadence can be chosen against it"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/features/content-analytics/src/lib/x-read-budget.ts:31 ($0.005 per post read) and :44 (100 reads a UTC day, $0.50); docs/platform-capability-reference.md:654; cadence chosen: one read per post per UTC day, at most $0.145 a post over its life (#522)"
   - text: "Adding X required no change to any signal-map consumer"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "the only importers of lib/signal-map.ts are packages/clickhouse/src/index.ts (unchanged) and its own test; X's bindings are packages/clickhouse/src/lib/signal-map.ts:837 and :902 (#522)"
   - text: "X fails the structural tests until its capability entries and stage bindings are written"
-    met: false
-    reason: "not yet implemented — DRAFT"
+    met: true
+    evidence: "packages/clickhouse/__tests__/signal-map.test.ts:104 and packages/clickhouse/__tests__/data-provenance.test.ts:398 went red with X's map and matrix entries removed (2026-10-01); guards SM1, SM2 and FILM-1703's platform guard retargeted to the five-value union and red (#522)"
+remaining:
+  - criterion: "A real X account on a funded pay-per-use plan returns a video's non_public_metrics through GET /2/tweets"
+    reason: "built and tested against the local vendor sandbox only (owner decision 2026-10-01); no live X call has been made, and X_ANALYTICS_ENABLED stays unset until the owner holds the paid tier"
+    closed_by: "FILM-1725"
+  - criterion: "X sales answer, in writing, how far back GET /2/media/analytics serves and what Enterprise costs"
+    reason: "the docs are silent on both (read 2026-10-01); recorded as availability unknown"
+    closed_by: "owner"
+  - criterion: "Enterprise fields (watch time, shares, follows per post, CTA clicks) are ingested"
+    reason: "Enterprise-only; buying it is a commercial decision this spec surfaces, not makes"
+    closed_by: "owner"
+  - criterion: "X impressions and follower count are stored, so Reach, Hook and Audience read figures"
+    reason: "both are on surfaces the token can read (public_metrics.impression_count; users/me public_metrics.followers_count), but impressions need a lifetime baseline column and the follower count a users read ($0.010 each); the stages are bound and dark until then"
+    closed_by: "unassigned"
 open_questions: []
 notes: |
+  ## Decisions recorded on 2026-10-01
+
+  - **Built against the local vendor sandbox, shipped dark (owner).** X is
+    built and tested against apps/vendor-sandbox's X origin (FILM-1802) and
+    reads nothing in production until the owner holds a funded pay-per-use X
+    account and sets `X_ANALYTICS_ENABLED=true`. Live checks stay with the
+    owner and FILM-1725.
+  - **X is `twitter` everywhere analytics stores a value (lead-approved).**
+    Every Postgres CHECK (publishes, oauth_states, revenue_records) and the
+    OAuth config store `twitter`; FILM-1716's PUBLISH_PLATFORMS already used
+    it. A separate `x` would need a translation at every Postgres-ClickHouse
+    boundary, and a forgotten one fails silently. "X" is display only. The
+    view registry's `x` entries were renamed.
+  - **X's shares are NULL, not 0 (owner-approved option A).** The
+    pay-per-use lookup has no shares (X's `shares` is an Enterprise metric;
+    reposts have their own column, 018). Migration 021 makes `shares`
+    Nullable on video_metrics and video_snapshots, following 014/017; every
+    reader keeps NULL apart from 0, and a cross-platform shares sum is the
+    sum of the platforms that report shares. Since KB-162 (#531) shares is
+    one of the measured columns its totals read: an X-only scope's shares,
+    and X's own platform row, are null, and the Shares card says Not
+    measured (guards X17 to X19).
+  - **Spend is capped in code.** $0.005 per post read; one read per post per
+    UTC day; at most 100 post reads a UTC day ($0.50) counted from the
+    publishes so every run sees the others; never from day 29 after publish.
+    Raising the cap is a code change.
+  - **Migration number 021** (019 is #492's, 020 is FILM-1720's).
+
+  ## X's documentation, read 2026-10-01
+
+  - https://docs.x.com/x-api/fundamentals/metrics — metric groups; "Non-public,
+    organic, and promoted metrics are only available for posts created within
+    the last 30 days"; user context required.
+  - https://docs.x.com/x-api/fundamentals/data-dictionary — post
+    `public_metrics` (retweet, reply, like, quote, bookmark, impression
+    counts), `non_public_metrics` (impression_count, user_profile_clicks,
+    url_link_clicks, engagements), media `public_metrics.view_count` and
+    `non_public_metrics.playback_{0,25,50,75,100}_count`.
+  - https://docs.x.com/x-api/posts/get-posts-by-ids — `GET /2/tweets`, 1 to
+    100 ids, tweet.fields / expansions / media.fields.
+  - https://docs.x.com/x-api/getting-started/pricing — "Posts: Read" $0.005 per
+    resource, charged per resource returned, deduplicated per UTC day, 3,000,000
+    post reads a billing cycle; Owned Reads $0.001 on twelve endpoints, not
+    GET /2/tweets.
+  - https://docs.x.com/x-api/fundamentals/rate-limits — GET /2/tweets 3,500 per
+    15 minutes per app, 5,000 per user; "Rate limits and usage billing are
+    separate".
+  - https://docs.x.com/x-api/media/get-media-analytics — parameters and scopes;
+    no window, tier or rate limit stated.
+  - https://docs.x.com/x-api/users/get-my-user — `public_metrics.followers_count`.
+  - https://docs.x.com/x-api/media/media-upload-initialize — `total_bytes`
+    "minimum: 0, maximum: 17179869184"; the sandbox's 512 MB cap was fixed.
+
+  **Where the docs are silent** (so neither code nor sandbox invents it):
+  whether `non_public_metrics` on a post older than 30 days fails the request
+  or drops the field (the sync never asks); the window, tier and rate limit of
+  `/2/media/analytics`; whether a media object expanded into `includes` is
+  billed separately; how `engagements` is defined; the error body for an
+  out-of-range `total_bytes`.
+
+  **Correction to §2 below:** `view_count` is not one of
+  `media.non_public_metrics`; it is in the media object's `public_metrics`
+  (and `organic_metrics`), as the capability reference already said. That is
+  where X's `video_metrics.views` comes from.
+
   Split from FILM-1720 on 2026-09-21, which was "Facebook and X Analytics".
   Facebook is now FILM-1720 and ships first.
 
@@ -214,10 +292,19 @@ notes: |
   Metered syncs cost money indefinitely. A cadence chosen for YouTube, where
   calls are free, would be expensive here.
 feature:
-  database: null
-  queries: []
+  database:
+    tables: ["video_metrics", "video_snapshots", "video_reach_daily", "video_traffic_sources", "video_retention_curves", "video_audience", "channel_windows"]
+    columns_added: []
+    migration: "packages/clickhouse/src/migrations/021_twitter.ts"
+  queries:
+    - {name: "queryPlatformBreakdown", purpose: "X's shares are null, not 0", file: "packages/clickhouse/src/queries.ts"}
+    - {name: "queryLatestSnapshots", purpose: "a NULL share stays NULL in the baseline", file: "packages/clickhouse/src/queries.ts"}
   actions: []
   ui: []
+  budget: "packages/features/content-analytics/src/lib/x-read-budget.ts"
+  provider: "packages/features/content-analytics/src/providers/twitter/x-analytics.ts"
+  sync: "packages/features/content-analytics/src/server/analytics-sync-cron.ts"
+  sandbox: "apps/vendor-sandbox/src/social/vendors/x/data.ts"
   provider_integration:
     vendor: "X (Twitter)"
     endpoints:

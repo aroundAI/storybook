@@ -28,7 +28,7 @@ acceptance_criteria:
     evidence: "docs/platform-capability-reference.md:659 — findings table, one row per version, each read 2026-10-01 and linked to its changelog page; corrections to §4 (the Video list is 16 names, 42 entries / 41 distinct; v26.0 also retires six Page legacy fields; the debug envelope §7.2 relied on is gone) are in this spec's \"Implementation\" notes (#493)"
   - text: "(Bump) Forbidden block extended: §4.2's five parameters and §4.3's 41 metrics; platform-field-names.test.ts green"
     met: true
-    evidence: "docs/platform-capability-reference.md:1721 (41 metrics, then pretty, debug, If-None-Match, date_format, /?ids and v25.0's metadata=1); platform-field-names.test.ts 70/70 green, its retired-names scan widened to every Meta request site (#493)"
+    evidence: "docs/platform-capability-reference.md:1765 (41 metrics, then pretty, debug, If-None-Match, date_format, /?ids and v25.0's metadata=1); platform-field-names.test.ts 70/70 green, its retired-names scan widened to every Meta request site (#493)"
   - text: "(Bump) Facebook section of the capability reference corrected per §4.3, with the contradiction between Meta's changelog and reference page recorded, and a FILM-1725 check filed for the owner's first connected Page"
     met: true
     evidence: "docs/platform-capability-reference.md:419 (correction and the two-documents contradiction, read 2026-10-01); FILM-1725 Check J, specs/phase-17-analytics-provenance/FILM-1725-deferred-vendor-verifications.yaml:222 (#493)"

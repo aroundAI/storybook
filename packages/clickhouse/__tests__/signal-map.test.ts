@@ -751,3 +751,62 @@ describe('Facebook bindings (FILM-1720)', () => {
     );
   });
 });
+
+describe('X bindings (FILM-1727): the second test of the map', () => {
+  const timeline = ['long_horizontal', 'clip', 'teaser', 'trailer'] as const;
+
+  it('reads Attention from the five playback quartiles, never from YouTube’s curve', () => {
+    for (const format of timeline) {
+      expect(stageReading('twitter', format, 'attention')).toMatchObject({
+        status: 'measurable',
+        primary: { signal: 'quartile_retention', level: 'native' },
+      });
+    }
+
+    const bindings = Object.values(SIGNAL_MAP.twitter).flatMap((stages) =>
+      Object.values(stages).flatMap(boundSignals),
+    );
+    expect(bindings).not.toContain('audience_retention');
+    expect(bindings).not.toContain('average_view_duration');
+  });
+
+  it('reads Transmission from its conversation: reposts first, replies beside', () => {
+    const transmission = stageReading('twitter', 'clip', 'transmission');
+
+    expect(transmission).toMatchObject({
+      status: 'measurable',
+      primary: { signal: 'repost_rate', level: 'derived' },
+    });
+    if (transmission.status === 'unbound') return;
+    expect(transmission.supporting.map((s) => [s.signal, s.level])).toEqual([
+      ['comment_rate', 'derived'],
+      ['share_rate', 'not_ingested'],
+    ]);
+  });
+
+  it('keeps X’s shares dark: Enterprise-only, so no share rate is a figure', () => {
+    expect(signalSupport('share_rate', 'twitter')).toMatchObject({
+      level: 'not_ingested',
+      blockers: ['FILM-1727'],
+    });
+  });
+
+  it('binds Reach, Hook and Audience, and shows each as dark with this spec named', () => {
+    for (const stage of ['reach', 'hook', 'audience'] as const) {
+      const reading = stageReading('twitter', 'long_horizontal', stage);
+
+      expect(reading.status, stage).toBe('dark');
+      if (reading.status === 'unbound') continue;
+      expect(reading.blockers, stage).toEqual(['FILM-1727']);
+    }
+  });
+
+  it('has no X vertical short or live stream, because nothing X publishes is one', () => {
+    for (const format of ['short_vertical', 'long_vertical', 'live'] as const) {
+      expect(stageReading('twitter', format, 'reach')).toMatchObject({
+        status: 'unbound',
+        reason: 'format_not_published_on_platform',
+      });
+    }
+  });
+});

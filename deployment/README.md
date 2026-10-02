@@ -190,6 +190,12 @@ REALTIME_PROVIDER=websocket
 # that rejects an unapproved scope would otherwise break connecting, and
 # publishing, on that platform.
 ANALYTICS_SCOPES_ENABLED=youtube,meta
+
+# X analytics (FILM-1727). Every X read is billed: $0.005 per post, at most
+# 100 posts a UTC day ($0.50; the cap is in code, lib/x-read-budget.ts), and
+# never past day 28 of X's 30-day wall. Leave unset (off) until a funded
+# pay-per-use X account exists; set to exactly `true` to turn it on.
+# X_ANALYTICS_ENABLED=true
 ```
 
 ### Configuration Files

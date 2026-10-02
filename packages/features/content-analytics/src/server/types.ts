@@ -52,6 +52,13 @@ export interface SyncMetadata {
   last_data_date?: string;
   /** Set when the FILM-1503 historical backfill has completed for this publish. */
   backfill_completed_at?: string;
+  /**
+   * When X was last read for this publish (FILM-1727). Written *before* the
+   * call, because X bills a read whether or not our ingest then succeeds:
+   * it is what the daily ceiling counts and what stops a second read that
+   * UTC day.
+   */
+  x_read_at?: string;
 }
 
 /**
@@ -133,11 +140,15 @@ export interface CityBreakdown {
 export interface NormalizedAnalytics {
   publish_id: string;
   snapshot_date: string;
-  /** Null for Facebook, which has no single view (FILM-1722). */
+  /**
+   * Null for Facebook, which has no single view (FILM-1722), and for an X
+   * post with no video (FILM-1727).
+   */
   views: number | null;
   likes: number;
   comments: number;
-  shares: number;
+  /** Null for X, which reports no shares on the tier we use (FILM-1727). */
+  shares: number | null;
   /** Null where the platform does not measure it, never 0 (migration 017). */
   saves: number | null;
   watch_time_seconds: number | null;

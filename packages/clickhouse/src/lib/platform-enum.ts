@@ -17,6 +17,7 @@ export const PLATFORM_ENUM_VALUES = {
   tiktok: 2,
   instagram: 3,
   facebook: 4,
+  twitter: 5,
 } as const satisfies Record<AnalyticsPlatform, number>;
 
 /** `Enum('youtube' = 1, …)`, for a column or a query parameter. */

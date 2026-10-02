@@ -105,6 +105,7 @@ export const SIGNAL_IDS = [
   'accounts_reached',
   'views_per_follower',
   'impressions_ctr',
+  'play_rate',
   'first_30s_retention',
   'first_3s_retention',
   'average_view_duration',
@@ -113,12 +114,14 @@ export const SIGNAL_IDS = [
   'full_video_watched_rate',
   'ig_reels_avg_watch_time',
   'reels_skip_rate',
+  'quartile_retention',
   'share_rate',
   'comment_rate',
   'shares_per_reach',
   'saves_per_reach',
   'comments_per_reach',
   'reposts_per_reach',
+  'repost_rate',
   'subscriber_conversion',
   'subscriber_view_share',
   // Facebook (FILM-1720): its own denominators, each named for what it divides by.
@@ -204,6 +207,14 @@ export const SIGNALS: Record<SignalId, SignalDefinition> = {
     composition: 'measured',
     definition:
       'Of the times the thumbnail was shown, the share that someone clicked.',
+  },
+  play_rate: {
+    id: 'play_rate',
+    stage: 'hook',
+    inputs: ['reach', 'retention_curve'],
+    composition: 'ratio',
+    definition:
+      'Of the times the post was shown, the share in which its video started playing.',
   },
   first_30s_retention: {
     id: 'first_30s_retention',
@@ -293,6 +304,18 @@ export const SIGNALS: Record<SignalId, SignalDefinition> = {
       },
     },
   },
+  // Not `audience_retention` under another name. X counts how many plays
+  // reached each quarter of the video, so its five points are shares of
+  // plays started; YouTube's curve is a share of views at a hundred points.
+  // Folding the two together would put one quotient beside another.
+  quartile_retention: {
+    id: 'quartile_retention',
+    stage: 'attention',
+    inputs: ['retention_curve'],
+    composition: 'ratio',
+    definition:
+      'Of the plays that started, the share that reached a quarter, half, three quarters and the end of the video.',
+  },
   share_rate: {
     id: 'share_rate',
     stage: 'transmission',
@@ -334,6 +357,13 @@ export const SIGNALS: Record<SignalId, SignalDefinition> = {
     inputs: ['reposts', 'accounts_reached'],
     composition: 'ratio',
     definition: 'Reposts per account reached.',
+  },
+  repost_rate: {
+    id: 'repost_rate',
+    stage: 'transmission',
+    inputs: ['reposts', 'engagement'],
+    composition: 'ratio',
+    definition: 'Reposts per view.',
   },
   subscriber_conversion: {
     id: 'subscriber_conversion',
@@ -410,6 +440,8 @@ export const SIGNALS: Record<SignalId, SignalDefinition> = {
 // Input gaps: a vendor field the family level cannot see
 // ---------------------------------------------------------------------------
 
+const CONTENT_ANALYTICS = 'packages/features/content-analytics/src';
+
 /**
  * Where a family is ingested on a platform but the one field a signal reads
  * is not. Read at the family level, such a signal would claim a figure
@@ -441,9 +473,21 @@ export interface SignalInputGap {
   marker: string;
 }
 
-// Empty since KB-151 stored Instagram's average watch time and skip rate,
-// the two gaps it held. The rules stay for the next field-level gap.
-export const SIGNAL_INPUT_GAPS: readonly SignalInputGap[] = [];
+// KB-151 stored Instagram's average watch time and skip rate, closing the
+// two gaps it held; X's shares are the one field-level gap left.
+export const SIGNAL_INPUT_GAPS: readonly SignalInputGap[] = [
+  {
+    // `engagement` is ingested for X, but its `shares` column is NULL on
+    // every X row (migration 021): shares are on the Enterprise endpoint.
+    signal: 'share_rate',
+    platform: 'twitter',
+    field: 'shares',
+    blockedBy: 'FILM-1727',
+    note: 'X reports how often a post was shared only on its Enterprise plan, which we do not hold, so no X share rate is shown.',
+    within: `${CONTENT_ANALYTICS}/providers/twitter`,
+    marker: 'tweets/analytics',
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Support, computed
@@ -777,6 +821,30 @@ const FACEBOOK_PLAYER: FormatStageMap = {
 };
 
 /**
+ * X's timeline (FILM-1727), on the pay-per-use tier. X is not primarily a
+ * video recommender: it is a timeline someone scrolls past, so Transmission
+ * reads its conversation (reposts, replies) and Attention its five playback
+ * quartiles. Reach, Hook and Audience are bound and dark — X reports
+ * impressions and, on Enterprise, follows per post; we store neither yet.
+ */
+const X_TIMELINE: FormatStageMap = {
+  reach: bound('impressions'),
+  hook: bound('play_rate'),
+  attention: bound(
+    'quartile_retention',
+    [],
+    [
+      {
+        name: 'average view duration',
+        note: 'X reports watch time only on its Enterprise plan, so how long a play lasted cannot be shown.',
+      },
+    ],
+  ),
+  transmission: bound('repost_rate', ['comment_rate', 'share_rate']),
+  audience: bound('subscriber_conversion'),
+};
+
+/**
  * Every platform × format × stage, with no defaults. The type rejects a
  * missing cell. `signal-map.test.ts` rejects a cell that claims more than
  * the matrix grants.
@@ -824,6 +892,16 @@ export const SIGNAL_MAP: Record<
     trailer: FACEBOOK_REELS,
     clip: notPublished('Facebook', 'timeline clip'),
     live: notPublished('Facebook', 'live stream'),
+  },
+  // FILM-1716: X's `full` is horizontal and its `short` is a timeline clip.
+  twitter: {
+    short_vertical: notPublished('X', 'vertical short'),
+    long_vertical: notPublished('X', 'vertical long-form video'),
+    long_horizontal: X_TIMELINE,
+    teaser: X_TIMELINE,
+    trailer: X_TIMELINE,
+    clip: X_TIMELINE,
+    live: notPublished('X', 'live stream'),
   },
 };
 

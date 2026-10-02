@@ -86,6 +86,7 @@ function video(watch: number | null): PerVideoTotals {
     revenue_cents: 0,
     subscribers_gained: 0,
     measured: {
+      shares: true,
       saves: false,
       watch_time_seconds: watch !== null,
       subscribers_gained: false,

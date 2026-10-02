@@ -189,18 +189,26 @@ describe('resolveAnalyticsAccess', () => {
     }
   });
 
-  it('says a platform has no provider rather than that it is unauthorised', () => {
+  it('reads X through its own scopes now that it has a provider (FILM-1727)', () => {
+    // X was the last platform with `no_provider`; every requirement is now
+    // implemented, so that state has no live instance.
+    expect(
+      resolveAnalyticsAccess({
+        scopesEnabled: ALL_ANALYTICS_SCOPES_ENABLED,
+        platform: 'twitter',
+        grantedScopes: ['tweet.read', 'users.read'],
+      }),
+    ).toMatchObject({
+      summary: 'authorised',
+      entries: [{ requirementId: 'x.post-analytics', state: 'authorised' }],
+    });
     expect(
       resolveAnalyticsAccess({
         scopesEnabled: ALL_ANALYTICS_SCOPES_ENABLED,
         platform: 'twitter',
         grantedScopes: ['tweet.read'],
-      }),
-    ).toMatchObject({
-      summary: 'no_provider',
-      canReconnect: false,
-      entries: [{ state: 'no_provider', plannedIn: 'FILM-1727' }],
-    });
+      })?.summary,
+    ).toBe('not_authorised');
   });
 
   it('has nothing to say about a platform with no analytics requirement', () => {

@@ -981,6 +981,13 @@ export default $config({
           ANALYTICS_SCOPES_ENABLED: process.env.ANALYTICS_SCOPES_ENABLED,
         }),
 
+        // FILM-1727: X analytics reads are billed per post ($0.005), so the
+        // sync reads X only when this is exactly `true`. Unset is off — the
+        // state until the owner holds a funded pay-per-use X account.
+        ...(process.env.X_ANALYTICS_ENABLED && {
+          X_ANALYTICS_ENABLED: process.env.X_ANALYTICS_ENABLED,
+        }),
+
         // Infrastructure providers (use AWS for production)
         // Production and staging store on R2; `s3` has no adapter (KB-70).
         STORAGE_PROVIDER: process.env.STORAGE_PROVIDER || 'r2',

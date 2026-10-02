@@ -182,7 +182,8 @@ const AnalyticsInsights = z.object({
       views: z.number().nullable(),
       likes: z.number(),
       comments: z.number(),
-      shares: z.number(),
+      // Null where no row measured it: X reports no shares (FILM-1727).
+      shares: z.number().nullable(),
       // Null is "not measured" (KB-149).
       watchTimeSeconds: z.number().nullable(),
       subscribersGained: z.number().nullable(),
@@ -197,7 +198,8 @@ const AnalyticsInsights = z.object({
           views: z.number().nullable(),
           likes: z.number(),
           comments: z.number(),
-          shares: z.number(),
+          // Null where the platform reports no shares: X (FILM-1727).
+          shares: z.number().nullable(),
         }),
       )
       .optional(),

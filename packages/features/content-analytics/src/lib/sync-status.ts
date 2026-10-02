@@ -15,6 +15,7 @@ export const SYNCED_PLATFORMS = [
   'tiktok',
   'instagram',
   'facebook',
+  'twitter',
 ] as const;
 
 /**

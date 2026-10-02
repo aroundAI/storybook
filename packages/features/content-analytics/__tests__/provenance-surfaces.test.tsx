@@ -190,6 +190,8 @@ describe('the strip', () => {
       ['coverage-strip-instagram', 'not_connected'],
       // Supported since FILM-1720: connected, and empty in the window.
       ['coverage-strip-facebook', 'no_data_in_window'],
+      // Supported since FILM-1727, and not connected in this seed.
+      ['coverage-strip-twitter', 'not_connected'],
     ]);
   });
 

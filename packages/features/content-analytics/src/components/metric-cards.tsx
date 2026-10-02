@@ -140,7 +140,8 @@ export function MetricCards({
     {
       key: 'shares',
       label: 'Shares',
-      value: data?.shares || 0,
+      // X reports no shares: an X-only selection has none (FILM-1727).
+      value: data ? data.shares : null,
       previousValue: previousData ? previousData.shares : null,
       formatter: formatNumber,
       description: 'Times content was shared or reposted',

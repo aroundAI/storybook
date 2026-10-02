@@ -25,20 +25,25 @@ import type {
 import type { InstagramInsightsResult } from '../providers/instagram/types';
 import type { TikTokAnalyticsResult } from '../providers/tiktok/types';
 import type {
+  XAnalyticsResult,
+  XPlaybackQuartiles,
+} from '../providers/twitter/types';
+import type {
   YouTubeAnalyticsResult,
   YouTubeDailyMetrics,
 } from '../providers/youtube/types';
 
 /**
  * Lifetime cumulative counters as reported by platforms that expose no
- * per-day breakdown (TikTok, Instagram).
+ * per-day breakdown (TikTok, Instagram, X).
  */
 export interface CumulativeTotals extends AllSurfaceAggregates {
   /** Null for Facebook, which has no single view (migration 020). */
   views: number | null;
   likes: number;
   comments: number;
-  shares: number;
+  /** Null for X, which reports no shares on the tier we use (migration 021). */
+  shares: number | null;
   /** Null where the platform does not measure it (migration 017). */
   saves: number | null;
   watch_time_seconds: number | null;
@@ -106,7 +111,7 @@ export function computeSnapshotDelta(
     views: measuredDelta(current.views, baseline.views),
     likes: clamp(current.likes, baseline.likes),
     comments: clamp(current.comments, baseline.comments),
-    shares: clamp(current.shares, baseline.shares),
+    shares: measuredDelta(current.shares, baseline.shares),
     saves: measuredDelta(current.saves, baseline.saves),
     watch_time_seconds: measuredDelta(
       current.watch_time_seconds,
@@ -158,14 +163,15 @@ function denominatorDelta(
  * enter a delta and are never derived: the average is not total ÷ views
  * (FILM-1712), and the skip rate is not rescaled, because Meta does not say
  * whether it is 0–100 or 0–1. Null wherever Meta reported nothing, and on
- * TikTok and Facebook, which have neither.
+ * TikTok, Facebook and X, which have neither.
  */
 export function reelsAttention(
-  platform: 'tiktok' | 'instagram' | 'facebook',
+  platform: 'tiktok' | 'instagram' | 'facebook' | 'twitter',
   analytics:
     | TikTokAnalyticsResult
     | InstagramInsightsResult
-    | FacebookInsightsResult,
+    | FacebookInsightsResult
+    | XAnalyticsResult,
 ): InstagramReelsAttention {
   if (platform !== 'instagram') {
     return { ig_reels_avg_watch_time_ms: null, ig_reels_skip_rate: null };
@@ -180,7 +186,7 @@ export function reelsAttention(
 }
 
 /**
- * Today's lifetime snapshot of a TikTok, Instagram or Facebook post: the
+ * Today's lifetime snapshot of a TikTok, Instagram, Facebook or X post: the
  * counters that become tomorrow's baseline, Facebook's denominators as their
  * own columns (FILM-1720), and Instagram's Reels attention figures, which are
  * stored but never subtracted (KB-151).
@@ -188,13 +194,14 @@ export function reelsAttention(
 export function buildSnapshotRow(input: {
   projectId: string;
   videoId: string;
-  platform: 'tiktok' | 'instagram' | 'facebook';
+  platform: 'tiktok' | 'instagram' | 'facebook' | 'twitter';
   snapshotDate: string;
   totals: CumulativeTotals;
   analytics:
     | TikTokAnalyticsResult
     | InstagramInsightsResult
-    | FacebookInsightsResult;
+    | FacebookInsightsResult
+    | XAnalyticsResult;
 }): VideoSnapshot {
   const { denominators, ...counters } = input.totals;
 
@@ -365,6 +372,22 @@ export type SnapshotDeltaMetric = VideoMetric &
         all_surface_likes: number | null;
         all_surface_comments: number | null;
       }
+    | {
+        /**
+         * X on the pay-per-use tier (FILM-1727): shares, watch time and
+         * per-post follows are Enterprise-only, and X counts impressions,
+         * not unique accounts. A bookmark is X's save.
+         */
+        platform: 'twitter';
+        /** The video's view_count; null for a post without a video. */
+        views: number | null;
+        shares: null;
+        saves: number | null;
+        watch_time_seconds: null;
+        subscribers_gained: null;
+        accounts_reached: null;
+        reposts: number | null;
+      }
     | (FacebookDenominators & {
         platform: 'facebook';
         /** Four kinds of view and none of them this column's (FILM-1722). */
@@ -383,12 +406,12 @@ export type SnapshotDeltaMetric = VideoMetric &
         all_surface_comments: null;
       })
   ) &
-  ({ platform: 'facebook' } | { views: number });
+  ({ platform: 'facebook' | 'twitter' } | { views: number });
 
 export function buildSnapshotDeltaRow(input: {
   projectId: string;
   videoId: string;
-  platform: 'tiktok' | 'instagram' | 'facebook';
+  platform: 'tiktok' | 'instagram' | 'facebook' | 'twitter';
   metricDate: string;
   delta: CumulativeTotals;
 }): SnapshotDeltaMetric {
@@ -407,6 +430,22 @@ export function buildSnapshotDeltaRow(input: {
     metric_source: 'snapshot_delta' as const,
     extra_metrics: NO_EXTRA_METRICS,
   };
+
+  if (input.platform === 'twitter') {
+    return {
+      ...base,
+      platform: 'twitter',
+      // Measured: X counts the video's views (FILM-1727); a post with no
+      // video has none, and that is null, not 0.
+      views: input.delta.views,
+      shares: null,
+      saves: input.delta.saves,
+      watch_time_seconds: null,
+      subscribers_gained: null,
+      accounts_reached: null,
+      reposts: input.delta.reposts,
+    };
+  }
 
   if (input.platform === 'facebook') {
     if (!input.delta.denominators) {
@@ -503,6 +542,37 @@ export function buildFacebookRetentionPoints(input: {
     platform: 'facebook' as const,
     elapsed_ratio: point.elapsedRatio,
     audience_watch_ratio: point.watchRatio,
+  }));
+}
+
+/**
+ * X's five playback points (FILM-1727): the share of plays that started
+ * which reached each quarter of the video. Lifetime, latest fetch wins, as
+ * YouTube's. No plays started, no curve: a share of nothing is not 0.
+ */
+export function buildXQuartilePoints(input: {
+  projectId: string;
+  videoId: string;
+  quartiles: XPlaybackQuartiles | null;
+}): RetentionCurvePoint[] {
+  const q = input.quartiles;
+
+  if (!q || q.started <= 0) return [];
+
+  return (
+    [
+      [0, q.started],
+      [0.25, q.quarter],
+      [0.5, q.half],
+      [0.75, q.threeQuarters],
+      [1, q.complete],
+    ] as const
+  ).map(([elapsed, reached]) => ({
+    project_id: input.projectId,
+    video_id: input.videoId,
+    platform: 'twitter' as const,
+    elapsed_ratio: elapsed,
+    audience_watch_ratio: reached / q.started,
   }));
 }
 

@@ -103,4 +103,21 @@ describe('MetricCards, for a team whose views no platform measured (KB-162)', ()
     expect(title).toBe('YouTube: connected, but no data for the last 30 days.');
     expect(title).not.toContain('Facebook');
   });
+
+  it('says Shares were not measured for an X-only team, never 0 (FILM-1727)', () => {
+    const { container } = render(
+      <MetricCards
+        data={{ ...facebookTeam, views: 500, shares: null }}
+        previousData={null}
+        isLoading={false}
+        viewsScope={null}
+      />,
+    );
+    const card = container.querySelector<HTMLElement>(
+      '[data-test="metric-card-shares"]',
+    )!;
+
+    expect(within(card).getByText('Not measured')).toBeDefined();
+    expect(card.querySelector('[data-test="metric-value"]')).toBeNull();
+  });
 });

@@ -220,9 +220,14 @@ export const ANALYTICS_SCOPE_REQUIREMENTS: readonly AnalyticsScopeRequirement[] 
       id: 'x.post-analytics',
       platform: 'twitter',
       scopes: ['tweet.read', 'users.read'],
-      endpoints: [/\/2\/(?:tweets|media\/analytics)\b/],
+      // `${X_API_BASE}/tweets` is how the provider writes the posts lookup:
+      // the API version lives in X_API_BASE alone (FILM-1723).
+      endpoints: [
+        /\/2\/(?:tweets|media\/analytics)\b/,
+        /\$\{X_API_BASE\}\/(?:tweets|media\/analytics)\b/,
+      ],
       gains: 'Views and playback quartiles for each X video',
-      provider: 'FILM-1727',
+      provider: 'implemented',
       review: 'not_required',
       source: `${REFERENCE}#x`,
     },
@@ -476,6 +481,7 @@ const VIDEO_SYNC_REQUIREMENT: Record<string, string | undefined> = {
   tiktok: 'tiktok.video-metrics',
   instagram: 'instagram.insights',
   facebook: 'facebook.video-insights',
+  twitter: 'x.post-analytics',
 };
 
 export function holdsRequirement(

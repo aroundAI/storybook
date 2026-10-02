@@ -14,7 +14,7 @@ summary: >
 acceptance_criteria:
   - text: "`pnpm --filter @kit/clickhouse migrate` applies pending migrations in order and is a no-op on re-run"
     met: true
-    evidence: "`packages/clickhouse/src/migrations/run.ts:84` (skips recorded names), `.github/workflows/workflow.yml:268`"
+    evidence: "`packages/clickhouse/src/migrations/run.ts:86` (skips recorded names), `.github/workflows/workflow.yml:268`"
   - text: "Double-inserting the same (video, platform, day) row yields exactly one row under `SELECT … FINAL`, with the latest values"
     met: false
     reason: "unverified — engine is right (`002_metrics_v2.ts:41`); CI's re-insert assertion covers `channel_subscribers`, not `video_metrics`"
@@ -23,7 +23,7 @@ acceptance_criteria:
     reason: "unverified — CI runs all 8 against the view (`packages/clickhouse/scripts/verify-queries.ts:478`) but checks only that they execute"
   - text: "`queryLatestSnapshots` returns the latest snapshot strictly before the given date per video"
     met: true
-    evidence: "`packages/clickhouse/src/queries.ts:192`, `packages/clickhouse/__tests__/clickhouse.test.ts:263`"
+    evidence: "`packages/clickhouse/src/queries.ts:193`, `packages/clickhouse/__tests__/clickhouse.test.ts:292`"
   - text: "No package reads `video_metrics` expecting multiple rows per day (grep verified before merge)"
     met: true
     evidence: "readers use `video_daily_stats`, a view over `FINAL` (`packages/clickhouse/src/migrations/006_gross_subscribers.ts:29`); no raw non-`FINAL` read in `src`"

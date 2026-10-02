@@ -258,7 +258,7 @@ describe('shrinkage', () => {
 describe('per-platform checkpoints', () => {
   it('lets X on its 30-day path be judged at 30 days only', () => {
     expect(
-      benchmarkCheckpointsFor('x').map((c) => [c.days, c.judgable]),
+      benchmarkCheckpointsFor('twitter').map((c) => [c.days, c.judgable]),
     ).toEqual([
       [30, true],
       [90, false],
@@ -275,7 +275,7 @@ describe('per-platform checkpoints', () => {
 
   it('is not one global answer', () => {
     const answers = new Set(
-      (['youtube', 'x'] as const).map((p) =>
+      (['youtube', 'twitter'] as const).map((p) =>
         JSON.stringify(benchmarkCheckpointsFor(p).map((c) => c.judgable)),
       ),
     );
@@ -322,8 +322,8 @@ describe('per-platform checkpoints', () => {
     ).toBe(false);
   });
 
-  it('maps the stored twitter platform to x', () => {
-    expect(platformIdOfDim('twitter')).toBe('x');
+  it('reads the stored twitter platform as the registry’s twitter', () => {
+    expect(platformIdOfDim('twitter')).toBe('twitter');
     expect(platformIdOfDim('youtube')).toBe('youtube');
     expect(platformIdOfDim('linkedin')).toBeNull();
     expect(platformIdOfDim('toString')).toBeNull();
@@ -397,7 +397,7 @@ describe('judgeSubjectCheckpoint', () => {
     expect(
       judgeSubjectCheckpoint({
         ...base,
-        platform: 'x',
+        platform: 'twitter',
         checkpointDays: 90,
         asOf: new Date('2026-06-01T00:00:00Z'),
       }),
@@ -405,7 +405,7 @@ describe('judgeSubjectCheckpoint', () => {
       judgable: false,
       reason: {
         kind: 'outside_platform_window',
-        window: VIEWS_DATA_WINDOWS.x,
+        window: VIEWS_DATA_WINDOWS.twitter,
       },
     });
   });

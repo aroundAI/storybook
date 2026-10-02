@@ -34,6 +34,21 @@ const POST_METRIC_MEMBERS = [
   'impression_count',
   'url_link_clicks',
   'user_profile_clicks',
+  'engagements',
+];
+
+/** What FILM-1727's X analytics provider reads from the posts lookup. */
+const ANALYTICS_READS = [
+  'data',
+  'id',
+  'public_metrics',
+  'non_public_metrics',
+  'attachments',
+  'media_keys',
+  'includes',
+  'media',
+  'media_key',
+  'type',
 ];
 
 export const X_SERVED: readonly ServedEndpoint[] = [
@@ -184,7 +199,7 @@ export const X_SERVED: readonly ServedEndpoint[] = [
     method: 'GET',
     path: '/2/tweets',
     block: 'x/post-lookup',
-    reads: [],
+    reads: ANALYTICS_READS,
     envelope: [
       ...cite(
         LOOKUP_PAGE,
