@@ -66,7 +66,7 @@ acceptance_criteria:
     evidence: "the recording is built and tested; what YouTube actually returns to a non-partner channel is a hypothesis (a non-quota 403) — FILM-1725 Check G"
   - text: "Monetary metrics are fetched in a call separate from fetchTotals' non-monetary ones, so a monetary 403 degrades revenue only and never the totals"
     met: true
-    evidence: "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:208 (fetchRevenue); guards A6, B1, B2"
+    evidence: "packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:219 (fetchRevenue); guards A6, B1, B2"
   - text: "After the scope is granted, a real Partner Program channel's revenue_records holds non-zero source = 'api' rows — the end-to-end proof that the pipeline FILM-1726 describes actually delivers"
     met: false
     reason: "deferred — FILM-1725 Check G. Needs a monetised channel's token"

@@ -69,10 +69,10 @@ acceptance_criteria:
     evidence: "`packages/features/content-analytics/src/providers/youtube/youtube-analytics.ts:219` (own query, only with `yt-analytics-monetary.readonly`; FILM-1711)"
   - text: "Handles API rate limits gracefully"
     met: true
-    evidence: "`packages/features/content-analytics/src/server/analytics-sync-cron.ts:185` (per-platform limiter), test `packages/features/content-analytics/__tests__/youtube-analytics.test.ts:262`"
+    evidence: "`packages/features/content-analytics/src/server/analytics-sync-cron.ts:187` (per-platform limiter), test `packages/features/content-analytics/__tests__/youtube-analytics.test.ts:283`"
   - text: "Normalizes data to common format"
     met: true
-    evidence: "`packages/features/content-analytics/src/server/analytics-sync-cron.ts:987`"
+    evidence: "`packages/features/content-analytics/src/server/analytics-sync-cron.ts:1001`"
 test_plan:
   unit:
     - text: "Test date formatting"
