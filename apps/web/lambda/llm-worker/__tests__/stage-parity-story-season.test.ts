@@ -276,7 +276,17 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
         db.client,
       );
 
-      expect(json(seen.season_analysis)).toEqual(old.executorInput);
+      // The same prompt and variables; since #555 the executor is also told
+      // whose job it is (through generateWithLambda), which the old handler
+      // recorded here did not pass
+      expect(json(seen.season_analysis)).toMatchObject(
+        old.executorInput as object,
+      );
+      expect(seen.season_analysis).toMatchObject({
+        accountId: IDS.accountId,
+        userId: IDS.userId,
+        operationName: 'season-analysis',
+      });
       expect(json(result)).toEqual(old.result);
     });
 
