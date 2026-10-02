@@ -80,7 +80,6 @@ test_plan:
 remaining:
   - criterion: "generation_jobs.run_id NOT NULL for LLM job types and llm_usage_analytics.run_id NOT NULL; a generation_jobs row (or another guarded path) for the 7 model-calling job types that write none today (asset_creation has one since KB-174, #553)"
     reason: "part C. Measured on this branch (2026-10-03): every LLM job type now runs under a run (the worker loads one by id) and every usage row carries run_id (the gateway's recordUsage is the only writer), but a message in flight at deploy still arrives in the old shape and runs with no run for one release, and the 7 job types with no generation_jobs row still have none; NOT NULL waits for that release and for those rows"
->>>>>>> c24295d81 (docs(FILM-1902, FILM-1903): the specs record part B)
     closed_by: "FILM-1903"
   - criterion: "generation_origin on shots, dialogue_lines and audio_cues"
     reason: "stamped by the stages' commits as they move onto the core; story_refinement and asset_description stamp theirs"

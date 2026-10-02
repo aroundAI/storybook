@@ -34,6 +34,7 @@ interface Esbuild {
     target: string;
     outfile: string;
     logLevel: 'silent';
+    banner?: { js: string };
   }): Promise<unknown>;
 }
 

@@ -160,37 +160,37 @@ export const batchGenerateIdeasAction = enhanceAction(
 
       try {
         run = await openRunForJob(
-        {
-          jobType: 'story-ideation',
-          userId: user.id,
-          target,
-          payload: {
-            episodeId: ep.episodeId,
-            premise: ep.premise,
-            numberOfIdeas: ep.numberOfIdeas,
+          {
+            jobType: 'story-ideation',
             userId: user.id,
+            target,
+            payload: {
+              episodeId: ep.episodeId,
+              premise: ep.premise,
+              numberOfIdeas: ep.numberOfIdeas,
+              userId: user.id,
+            },
+            name: 'episodes.bulkGenerateIdeas',
           },
-          name: 'episodes.bulkGenerateIdeas',
-        },
-        { client: client, accountId: target.accountId, userId: user.id },
-      );
-      await run.dispatch();
-      queued++;
-    } catch (err) {
-      failed.push({
-        episodeId: ep.episodeId,
-        error: err instanceof Error ? err.message : 'Queue failed',
-      });
+          { client: client, accountId: target.accountId, userId: user.id },
+        );
+        await run.dispatch();
+        queued++;
+      } catch (err) {
+        failed.push({
+          episodeId: ep.episodeId,
+          error: err instanceof Error ? err.message : 'Queue failed',
+        });
+      }
     }
-  }
 
-  logger.info(
-    { ...ctx, queued, failed: failed.length },
-    'Batch ideation complete',
-  );
-  return { success: true, queued, failed };
-},
-{ schema: BatchGenerateIdeasSchema },
+    logger.info(
+      { ...ctx, queued, failed: failed.length },
+      'Batch ideation complete',
+    );
+    return { success: true, queued, failed };
+  },
+  { schema: BatchGenerateIdeasSchema },
 );
 
 // ─── Batch Story Generation ─────────────────────────────────────────────────
@@ -200,93 +200,97 @@ export const batchGenerateIdeasAction = enhanceAction(
  * Fetches all episodes in one query, validates each, batch-inserts generation_jobs.
  */
 export const batchGenerateStoriesAction = enhanceAction(
-async (data): Promise<BatchQueueResult> => {
-  const logger = await getLogger();
-  const ctx = {
-    name: 'episodes.batchGenerateStories',
-    count: data.episodes.length,
-  };
+  async (data): Promise<BatchQueueResult> => {
+    const logger = await getLogger();
+    const ctx = {
+      name: 'episodes.batchGenerateStories',
+      count: data.episodes.length,
+    };
 
-  const client = getSupabaseServerClient();
-  const { data: user, error: authError } = await requireUser(client);
-  if (authError || !user) throw new Error('Authentication required');
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+    if (authError || !user) throw new Error('Authentication required');
 
-  logger.info(
-    ctx,
-    `Batch queuing ${data.episodes.length} story generation jobs`,
-  );
+    logger.info(
+      ctx,
+      `Batch queuing ${data.episodes.length} story generation jobs`,
+    );
 
-  const episodeIds = data.episodes.map((ep) => ep.episodeId);
-  const { allowed } = await authorizeEpisodeTargets(client, episodeIds);
+    const episodeIds = data.episodes.map((ep) => ep.episodeId);
+    const { allowed } = await authorizeEpisodeTargets(client, episodeIds);
 
-  // Batch-fetch all episodes in one query
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: episodes } = await (client as any)
-    .from('episodes')
-    .select(
-      'id, project_id, status, version, project:projects(id, account_id)',
-    )
-    .in('id', episodeIds)
-    .is('deleted_at', null);
+    // Batch-fetch all episodes in one query
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: episodes } = await (client as any)
+      .from('episodes')
+      .select(
+        'id, project_id, status, version, project:projects(id, account_id)',
+      )
+      .in('id', episodeIds)
+      .is('deleted_at', null);
 
-  const episodeMap = new Map(
-    (episodes ?? []).map((ep: { id: string }) => [ep.id, ep]),
-  );
+    const episodeMap = new Map(
+      (episodes ?? []).map((ep: { id: string }) => [ep.id, ep]),
+    );
 
-  const { openRunForJob } = await import('@kit/ai-gateway');
-  const failed: BatchQueueResult['failed'] = [];
-  const jobEntries: Array<Record<string, unknown>> = [];
-  const pending: PendingJob[] = [];
+    const { openRunForJob } = await import('@kit/ai-gateway');
+    const failed: BatchQueueResult['failed'] = [];
+    const jobEntries: Array<Record<string, unknown>> = [];
+    const pending: PendingJob[] = [];
 
-  for (const ep of data.episodes) {
-    const target = allowed.get(ep.episodeId);
-    const episode = episodeMap.get(ep.episodeId) as
-      | Record<string, unknown>
-      | undefined;
+    for (const ep of data.episodes) {
+      const target = allowed.get(ep.episodeId);
+      const episode = episodeMap.get(ep.episodeId) as
+        | Record<string, unknown>
+        | undefined;
 
-    if (!target || !episode) {
-      failed.push({ episodeId: ep.episodeId, error: 'Episode not found' });
-      continue;
-    }
+      if (!target || !episode) {
+        failed.push({ episodeId: ep.episodeId, error: 'Episode not found' });
+        continue;
+      }
 
-    if (episode.status !== 'draft' && episode.status !== 'story') {
-      failed.push({
-        episodeId: ep.episodeId,
-        error: `Invalid status: ${episode.status}`,
-      });
-      continue;
-    }
+      if (episode.status !== 'draft' && episode.status !== 'story') {
+        failed.push({
+          episodeId: ep.episodeId,
+          error: `Invalid status: ${episode.status}`,
+        });
+        continue;
+      }
 
-    const project = episode.project as { account_id?: string } | undefined;
-    const accountId = project?.account_id;
-    if (!accountId) {
-      failed.push({ episodeId: ep.episodeId, error: 'No account found' });
-      continue;
-    }
+      const project = episode.project as { account_id?: string } | undefined;
+      const accountId = project?.account_id;
+      if (!accountId) {
+        failed.push({ episodeId: ep.episodeId, error: 'No account found' });
+        continue;
+      }
 
-    try {
-      const run = await openRunForJob(
-        {
-          jobType: 'story-generation',
-          userId: user.id,
-          target,
-          payload: {
-            episodeId: ep.episodeId,
-            title: ep.title,
-            logline: ep.logline,
-            targetDuration: ep.targetDuration,
-            contentStyle: ep.contentStyle,
-            version: ep.version,
-            accountId,
+      // The run first (FILM-1903): the job row carries its id, and the
+      // dispatch happens once every row is recorded (recordJobsThenQueue)
+      let run: Awaited<ReturnType<typeof openRunForJob>>;
+
+      try {
+        run = await openRunForJob(
+          {
+            jobType: 'story-generation',
             userId: user.id,
-            projectId: episode.project_id as string,
-            themes: ep.themes,
-            hook: ep.hook,
-            visualDirection: ep.visualDirection,
+            target,
+            payload: {
+              episodeId: ep.episodeId,
+              title: ep.title,
+              logline: ep.logline,
+              targetDuration: ep.targetDuration,
+              contentStyle: ep.contentStyle,
+              version: ep.version,
+              accountId,
+              userId: user.id,
+              projectId: episode.project_id as string,
+              themes: ep.themes,
+              hook: ep.hook,
+              visualDirection: ep.visualDirection,
+            },
+            name: 'episodes.bulkGenerateStories',
           },
-          name: 'episodes.bulkGenerateStories',
-        },
-        { client: client, accountId: target.accountId, userId: user.id },
+          { client: client, accountId: target.accountId, userId: user.id },
         );
       } catch (err) {
         failed.push({
@@ -405,22 +409,22 @@ export const batchConvertScreenplaysAction = enhanceAction(
 
       try {
         run = await openRunForJob(
-        {
-          jobType: 'screenplay-conversion',
-          userId: user.id,
-          target,
-          payload: {
-            episodeId: ep.episodeId,
-            dialogueStyle: ep.dialogueStyle,
-            contentStyle: ep.contentStyle,
-            version: episode.version as number,
-            accountId,
+          {
+            jobType: 'screenplay-conversion',
             userId: user.id,
-            projectId: episode.project_id as string,
+            target,
+            payload: {
+              episodeId: ep.episodeId,
+              dialogueStyle: ep.dialogueStyle,
+              contentStyle: ep.contentStyle,
+              version: episode.version as number,
+              accountId,
+              userId: user.id,
+              projectId: episode.project_id as string,
+            },
+            name: 'episodes.bulkConvertScreenplays',
           },
-          name: 'episodes.bulkConvertScreenplays',
-        },
-        { client: client, accountId: target.accountId, userId: user.id },
+          { client: client, accountId: target.accountId, userId: user.id },
         );
       } catch (err) {
         failed.push({
@@ -532,20 +536,20 @@ export const batchGenerateShotsAction = enhanceAction(
 
       try {
         run = await openRunForJob(
-        {
-          jobType: 'shot-generation',
-          userId: user.id,
-          target,
-          payload: {
-            episodeId: ep.episodeId,
-            version: episode.version as number,
-            accountId,
+          {
+            jobType: 'shot-generation',
             userId: user.id,
-            projectId: episode.project_id as string,
+            target,
+            payload: {
+              episodeId: ep.episodeId,
+              version: episode.version as number,
+              accountId,
+              userId: user.id,
+              projectId: episode.project_id as string,
+            },
+            name: 'episodes.bulkGenerateShotLists',
           },
-          name: 'episodes.bulkGenerateShotLists',
-        },
-        { client: client, accountId: target.accountId, userId: user.id },
+          { client: client, accountId: target.accountId, userId: user.id },
         );
       } catch (err) {
         failed.push({
@@ -679,19 +683,19 @@ export const batchCreateAssetsAction = enhanceAction(
 
       try {
         run = await openRunForJob(
-        {
-          jobType: 'asset-creation',
-          userId: user.id,
-          target,
-          payload: {
-            episodeId: ep.episodeId,
-            projectId: data.projectId,
-            accountId,
+          {
+            jobType: 'asset-creation',
             userId: user.id,
+            target,
+            payload: {
+              episodeId: ep.episodeId,
+              projectId: data.projectId,
+              accountId,
+              userId: user.id,
+            },
+            name: 'episodes.bulkCreateAssets',
           },
-          name: 'episodes.bulkCreateAssets',
-        },
-        { client: client, accountId: target.accountId, userId: user.id },
+          { client: client, accountId: target.accountId, userId: user.id },
         );
       } catch (err) {
         failed.push({
