@@ -1,6 +1,7 @@
 import { type Page, expect, test } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 
+import { OFFERED_PLATFORMS } from '../../../../packages/features/publishing/src/lib/platforms';
 import {
   episodeVideoUrl,
   seedEpisodeWithShot,
@@ -36,7 +37,8 @@ async function capture(page: Page, name: string) {
   });
 }
 
-const SUPPORTED = ['youtube', 'tiktok', 'instagram', 'facebook', 'twitter'];
+// The offered platforms: X is hidden while `X_ENABLED` is off.
+const SUPPORTED = OFFERED_PLATFORMS;
 
 test.describe('LinkedIn is removed (FILM-717)', () => {
   test('Platform Connections offers no LinkedIn and shows no kept LinkedIn row', async ({

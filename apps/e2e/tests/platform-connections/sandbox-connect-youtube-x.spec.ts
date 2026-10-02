@@ -15,6 +15,7 @@ import {
 import { seedTeamAccount } from '../utils/seed';
 import { signInAs } from '../utils/session';
 import { byTest } from '../utils/visible';
+import { X_ENABLED, X_HIDDEN } from '../utils/x-switch';
 
 /**
  * FILM-1804 §2 "Connect, one per platform", for the two platforms the
@@ -51,6 +52,7 @@ test.describe('Connecting YouTube and X through the sandbox (FILM-1804)', () => 
     test(`${card}: consent, the row with the scopes asked for, tokens the vendor accepts, and a second connect`, async ({
       page,
     }) => {
+      test.skip(card === 'twitter' && !X_ENABLED, X_HIDDEN);
       const team = await seedTeamAccount({ emailPrefix: `sbx-${card}` });
       await signInAs(page, team);
       await openPlatforms(page, team.slug);

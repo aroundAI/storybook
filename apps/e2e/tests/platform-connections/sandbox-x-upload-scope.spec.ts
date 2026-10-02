@@ -20,6 +20,7 @@ import {
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
 import { byTest } from '../utils/visible';
+import { X_ENABLED, X_HIDDEN } from '../utils/x-switch';
 
 /**
  * FILM-1729, the whole flow, against FILM-1802's X sandbox in a production
@@ -117,6 +118,7 @@ async function publishToX(page: Page, publishUrl: string) {
 
 test.describe('Publishing to X without media.write, then with it (FILM-1729)', () => {
   sandboxRun();
+  test.skip(!X_ENABLED, X_HIDDEN);
 
   test('refused with the reason on screen → reconnect → published', async ({
     page,

@@ -1,7 +1,8 @@
 import { type Locator, type Page, expect, test } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
-import { ANALYTICS_PLATFORMS } from '../../../../packages/clickhouse/src/lib/data-provenance';
+import { ANALYTICS_PLATFORMS as EVERY_ANALYTICS_PLATFORM } from '../../../../packages/clickhouse/src/lib/data-provenance';
+import { isOfferedPlatform } from '../../../../packages/features/publishing/src/lib/platforms';
 import {
   type SeededVideo,
   clickHouseDate,
@@ -19,6 +20,9 @@ import {
 } from '../utils/seed';
 import { signInAs } from '../utils/session';
 import { byTest } from '../utils/visible';
+
+/** The platforms the filter offers: X is hidden while `X_ENABLED` is off. */
+const ANALYTICS_PLATFORMS = EVERY_ANALYTICS_PLATFORM.filter(isOfferedPlatform);
 
 /**
  * FILM-1705 — the provenance surfaces, in a browser.
