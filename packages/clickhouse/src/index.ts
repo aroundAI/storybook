@@ -474,11 +474,14 @@ export type {
 } from './lib/genome-attributes';
 export {
   SEGMENT_MEASURES,
+  VIEWS_RATE_MEASURES,
+  genomeViewsDenominator,
   isSegmentMeasure,
   metricProvenanceFor,
   stageMeasureFor,
 } from './lib/genome-measures';
 export type {
+  GenomeViewsDenominator,
   MetricProvenance,
   MetricProvenanceInput,
   SegmentMeasure,

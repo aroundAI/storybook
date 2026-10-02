@@ -217,6 +217,32 @@ export const ANALYTICS_SCOPE_REQUIREMENTS: readonly AnalyticsScopeRequirement[] 
       source: `${REFERENCE}#facebook`,
     },
     {
+      id: 'facebook.page-fields',
+      platform: 'facebook',
+      // Meta needs only pages_read_engagement, which every publishing
+      // connection holds; read_insights is required too so the count ships
+      // dark with the rest of Facebook's analytics (FILM-1720), and this
+      // record says "not requested" while the switch is off.
+      scopes: ['read_insights', 'pages_read_engagement'],
+      endpoints: [/\$\{pageId\}\?fields=/],
+      gains: 'Your Facebook Page’s follower count',
+      provider: 'implemented',
+      review: 'required',
+      source: `${REFERENCE}#facebook`,
+    },
+    {
+      id: 'facebook.page-insights',
+      platform: 'facebook',
+      scopes: ['read_insights', 'pages_read_engagement'],
+      endpoints: [/\$\{pageId\}\/insights\?/],
+      gains:
+        'How many different people saw your Facebook Page’s content over a day, a week and 28 days',
+      provider: 'implemented',
+      review: 'required',
+      source:
+        'https://developers.facebook.com/docs/graph-api/reference/insights/',
+    },
+    {
       id: 'x.post-analytics',
       platform: 'twitter',
       scopes: ['tweet.read', 'users.read'],

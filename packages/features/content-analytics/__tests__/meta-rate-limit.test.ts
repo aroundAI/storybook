@@ -131,18 +131,30 @@ vi.mock('@kit/supabase/server-admin-client', () => ({
     from: () => ({
       select: () => ({
         eq: () => ({
-          eq: () => ({
+          in: () => ({
             order: () => ({
               range: async (from: number) => ({
                 data:
                   from === 0
                     ? [
-                        { id: 'conn-busy', platform_account_id: 'ig-busy' },
+                        {
+                          id: 'conn-busy',
+                          platform: 'instagram',
+                          platform_account_id: 'ig-busy',
+                          scopes: [],
+                        },
                         {
                           id: 'conn-throttled',
+                          platform: 'instagram',
                           platform_account_id: 'ig-throttled',
+                          scopes: [],
                         },
-                        { id: 'conn-quiet', platform_account_id: 'ig-quiet' },
+                        {
+                          id: 'conn-quiet',
+                          platform: 'instagram',
+                          platform_account_id: 'ig-quiet',
+                          scopes: [],
+                        },
                       ]
                     : [],
                 error: null,

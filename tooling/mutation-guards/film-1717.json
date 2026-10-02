@@ -243,6 +243,26 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/genome-actions.test.ts",
       "pattern": "says analytics are off"
+    },
+    {
+      "name": "GN22 an engaged-views rate divides a whole window by part of one",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries-advanced.ts",
+      "find": "'v_metric_days > 0 AND v_engaged_days >= v_metric_days AND v_engaged > 0'",
+      "replace": "'v_engaged_days > 0 AND v_engaged > 0'",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/queries-advanced.test.ts",
+      "pattern": "divides by engaged views only when every day the rate reads has them"
+    },
+    {
+      "name": "GN23 a cohort across a view change is scored on views",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/genome-actions.ts",
+      "find": "        : await read(viewsDenominator);",
+      "replace": "        : onViews;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/genome-actions.test.ts",
+      "pattern": "reads a cohort spanning a change in what a view is on engaged views"
     }
   ]
 }

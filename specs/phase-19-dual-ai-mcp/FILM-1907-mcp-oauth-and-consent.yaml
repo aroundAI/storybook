@@ -16,6 +16,12 @@ summary: >
   and a pre-registered client). The user signs in with the normal StoryBook
   login, whatever AUTH_PROVIDER is, picks a team and approves scopes on a
   consent page. Connections are listed and revoked from account settings.
+  Owner decision (2026-10-02): we build our own small authorization server,
+  and it must work with Supabase. With AUTH_PROVIDER=supabase the user signs
+  in through Supabase Auth, the grant is keyed on auth.users.id, and every
+  tool call runs as that user under RLS; token verification sits behind one
+  interface, so Supabase Auth's own OAuth server can be swapped in later
+  without changing a tool.
   Design: the EDD's "5. Authentication and tenancy"
   (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
 acceptance_criteria:
@@ -40,19 +46,43 @@ acceptance_criteria:
   - text: "Settings → Connected apps lists OAuth connections and personal access tokens with client name, team, scopes and last use, and revokes them"
     met: false
     reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Supabase sign-in: with AUTH_PROVIDER=supabase, /oauth/authorize reads the user from the existing Supabase session cookie (the same requireUser the web uses), and a signed-out user goes through /auth/sign-in, including MFA, and returns to the consent page with the request intact"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Supabase identity: grants, codes and connections store auth.users.id as user_id with a foreign key to auth.users (on delete cascade), so deleting a Supabase user revokes their connections"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Supabase sessions stay separate: the OAuth server never hands out a Supabase access or refresh token; MCP tokens are its own, and a Supabase sign-out or password change does not silently keep an MCP grant alive past its own revocation rules (password change revokes the user's connections)"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "RLS signing works with both Supabase key setups: FILM-1904's 5-minute JWT is signed with the legacy JWT secret or with a private key imported into the project's JWT signing keys (selected by env, with the kid set), and a pgTAP or integration test proves auth.uid() and RLS see the minted user in each"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Swappable verifier: withMcpAuth resolves tokens only through an McpTokenVerifier interface; 'own' (default, MCP_AUTH_SERVER=own) checks hashed opaque tokens in mcp_tokens, and the interface admits a 'supabase' verifier for Supabase OAuth server JWTs (issuer, audience, aud = MCP resource URL, client_id claim) mapped to the same McpPrincipal; the protected-resource metadata names whichever authorization server is configured"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
   - text: "Adding the connector by URL in Claude Desktop, signing in and calling whoami works end to end (recorded with screenshots)"
     met: false
     reason: "not met — drafted 2026-10-02, no code yet"
 test_plan:
   unit:
     - {text: "PKCE verification, redirect URI exact match, code reuse refused, refresh rotation and reuse detection", met: false, reason: "not met — no test yet"}
+    - {text: "McpTokenVerifier contract test run against the 'own' verifier and a stub 'supabase' verifier: both yield the same McpPrincipal for the same user, team and scopes, and both refuse expired, wrong-audience and revoked tokens", met: false, reason: "not met — no test yet"}
   integration:
-    - {text: "The SDK's OAuth client completes discovery, registration, authorize and token against the local app", met: false, reason: "not met — no test yet"}
+    - {text: "The SDK's OAuth client completes discovery, registration, authorize and token against the local app with local Supabase Auth as the login", met: false, reason: "not met — no test yet"}
+    - {text: "Minted JWT under both key setups: a tool call reads only the signed-in team's rows (RLS), against local Supabase", met: false, reason: "not met — no test yet"}
   e2e:
     - {text: "Playwright: the consent page for a seeded user with two teams, approve, then the Connected apps page shows and revokes the connection; screenshots in the PR", met: false, reason: "not met — no test yet"}
-open_questions:
-  - "Build our own minimal authorization server (recommended: works with any AUTH_PROVIDER, we control scopes and team binding) or use Supabase Auth's OAuth server feature to save effort but tie MCP to Supabase?"
+open_questions: []
 notes: |
+  Decided 2026-10-02 by the owner: our own small authorization server,
+  compatible with Supabase (was this spec's open question). Why our own:
+  team binding and studio:* scopes on the consent page, and it keeps working
+  under any AUTH_PROVIDER. Why Supabase stays first-class: Supabase Auth is
+  the login and the identity store today, and RLS is how MCP calls stay
+  inside a team. Supabase is the identity provider; StoryBook is the
+  authorization server; the MCP endpoint is the resource server.
+
   Tables: mcp_oauth_clients (client_id, client_name, redirect_uris text[],
   metadata_url, created_at) and mcp_authorization_codes (code_hash, client_id,
   user_id, account_id, scopes, code_challenge, redirect_uri, expires_at,

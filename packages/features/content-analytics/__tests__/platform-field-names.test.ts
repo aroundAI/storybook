@@ -189,9 +189,17 @@ const REQUEST_SITES: Array<{
         surfaces: ['facebook/post-fields'],
       },
       {
+        pattern: /\$\{pageId\}\?fields=([a-z_,]+)/g,
+        surfaces: ['facebook/page-fields'],
+      },
+      {
         pattern:
-          /(?:videoInsightMetrics|reelsInsightMetrics|adBreakInsightMetrics)\s*=\s*(\[[^\]]*\])/g,
+          /(?:videoInsightMetrics|reelsInsightMetrics|audienceInsightMetrics|adBreakInsightMetrics)\s*=\s*(\[[^\]]*\])/g,
         surfaces: ['facebook/video-insights'],
+      },
+      {
+        pattern: /metric: '(page_[a-z_]+)'/g,
+        surfaces: ['facebook/page-insights'],
       },
       {
         pattern: /postInsightMetrics\s*=\s*(\[[^\]]*\])/g,
