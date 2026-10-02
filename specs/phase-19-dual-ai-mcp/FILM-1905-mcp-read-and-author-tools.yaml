@@ -3,7 +3,7 @@ title: "MCP Read and Author Tools for Studio Content"
 phase: 19
 phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: M
 dependencies:
   - spec_id: "FILM-1904"
@@ -17,34 +17,39 @@ summary: >
   an existing feature service called with the principal's RLS-scoped client.
   Design: the EDD's "3. MCP tool catalogue"
   (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
+  Shipped in #TBD-1905 (stacked on #558).
 acceptance_criteria:
   - text: "Read tools (studio:read): list_projects, get_project, list_episodes, get_episode, get_screenplay, get_shots, get_dialogue, list_assets; each returns structuredContent plus a short text summary"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/tools/read/index.ts:14 (the eight tools, all studio:read and readOnlyHint); every handler returns text and structuredContent, asserted per tool in packages/features/studio-mcp/__tests__/tools/read-tools.test.ts:31 and over the wire with the SDK client in packages/features/studio-mcp/__tests__/tools/read-author.integration.test.ts:270 (#TBD-1905)"
   - text: "get_episode returns the stage status the studio pages derive (draft → story → storyboard → …, episodes.status), the story, a screenplay summary, counts, and the origin of each stage (FILM-1903)"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "in part — status, the six stages as locked/available/done (the workspace tabs' rule, packages/features/studio-mcp/src/server/tools/read/stage-status.ts:79), the story, a screenplay summary and counts of scenes, shots, dialogue lines and assets are returned (packages/features/studio-mcp/src/server/tools/read/episodes.ts:175; packages/features/studio-mcp/__tests__/tools/read-author.integration.test.ts:363). The origin per stage is read from episodes.generation_origin when the column exists (packages/features/studio-mcp/src/server/tools/read/episodes.ts:223); FILM-1903 adds it on a parallel branch, so today every stage reports origin null with a note saying so"
   - text: "Lists and long content page with cursor and limit (max 50, scenes as the unit for screenplay, shots and dialogue), and each tool description says so"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/tools/pagination.ts:10 (PAGE_LIMIT_MAX 50), :13 (the note every paged description carries), :77 (sceneWindow: whole scenes per page); packages/features/studio-mcp/__tests__/tools/read-tools.test.ts:59 (cursor and limit on every paged tool, 51 refused, descriptions name cursor, limit and 50); get_screenplay paged 2+2+1 over the wire in packages/features/studio-mcp/__tests__/tools/read-author.integration.test.ts:363 (#TBD-1905)"
   - text: "Author tools (studio:write): create_project, update_project, create_episode, update_episode, upsert_asset; each validated with the same Zod schema as its web form and recorded in mcp_tool_calls"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/tools/author/index.ts:13; the input shapes are the forms' own schemas (CreateProjectSchema/UpdateProjectSchema and UpdateStudioSettingsSchema from @kit/projects, CreateEpisodeSchema/UpdateEpisodeSchema and CreateEpisodeWithContextSchema from @kit/episodes, CharacterFormSchema/CreateCharacterSchema/UpdateCharacterSchema and LocationFormSchema from @kit/assets), one refusal per form rule in packages/features/studio-mcp/__tests__/tools/author-schemas.test.ts:24; each write goes through the service function the web action calls (packages/features/projects/src/lib/server/project.service.ts, packages/features/episodes/src/server/episode.service.ts, packages/features/assets/src/lib/server/asset.service.ts, packages/features/assets/src/lib/server/character.service.ts); the registry's audit row per call is asserted in packages/features/studio-mcp/__tests__/tools/read-author.integration.test.ts:586 (#TBD-1905)"
   - text: "No author tool writes story_data, screenplay_data, shots, dialogue_lines or audio_cues"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/__tests__/tools/no-generated-writes.test.ts:92 (no such key in any author input schema; a recording client sees no write to shots, dialogue_lines or audio_cues and no story_data/screenplay_data/shot_list key in any episode write); the episode row read back after create_episode and update_episode has all three null in packages/features/studio-mcp/__tests__/tools/read-author.integration.test.ts:424; mutation guard MCP-RW U1 in tooling/mutation-guards/film-1905.json goes red when create_episode seeds story_data (#TBD-1905)"
   - text: "get_workflow_guide returns the stage order, what each stage needs and how brief, submit and finalize work; the same text is offered as an MCP prompt"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/tools/workflow-guide.ts:11 (the text: stages in order with what each needs, the author tools, start_generation → submit_generation → finalize_generation, the error codes) and :52 (the tool); packages/features/studio-mcp/src/server/prompts.ts:21 (the workflow_guide prompt, same text) registered by packages/features/studio-mcp/src/server/build-server.ts:59; packages/features/studio-mcp/__tests__/tools/workflow-guide.test.ts:50 and, through the SDK client's listPrompts/getPrompt, packages/features/studio-mcp/__tests__/tools/read-author.integration.test.ts:270 (#TBD-1905)"
   - text: "A deleted episode (episodes.deleted_at) is invisible to every read tool, as it is on the web"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/tools/read/scope.ts:72 (every episode read goes through requireEpisodeInAccount, which filters deleted_at is null as the web pages do: RLS does not hide deleted rows) and list_episodes filters the same (packages/features/studio-mcp/src/server/tools/read/episodes.ts); packages/features/studio-mcp/__tests__/tools/read-tools.test.ts:181; a seeded deleted episode is NOT_FOUND to get_episode, get_screenplay, get_shots and get_dialogue and absent from list_episodes in packages/features/studio-mcp/__tests__/tools/read-author.integration.test.ts:340 (#TBD-1905)"
 test_plan:
   unit:
-    - {text: "Each tool's input schema rejects the cases its web form rejects", met: false, reason: "not met — no test yet"}
+    - {text: "Each tool's input schema rejects the cases its web form rejects", met: true, evidence: "packages/features/studio-mcp/__tests__/tools/author-schemas.test.ts:24 — one describe per author tool, one case per form rule (name 1-255, slug pattern, description 1000/2000, status/genre/style enums, duration 60-7200, episode number ≥ 1, version ≥ 1, character attribute ranges, location fields)"}
   integration:
-    - {text: "With a seeded team and a PAT: list_projects returns only that team's projects; a second team's episode id returns NOT_FOUND", met: false, reason: "not met — no test yet"}
+    - {text: "With a seeded team and a PAT: list_projects returns only that team's projects; a second team's episode id returns NOT_FOUND", met: true, evidence: "packages/features/studio-mcp/__tests__/tools/read-author.integration.test.ts:321 and :340 — two seeded teams, a personal access token minted with create_mcp_personal_access_token, the SDK client over Streamable HTTP; run 2026-10-03 on lane B both in-process (the route handlers behind the client's fetch) and against next dev on :3212 (7/7). NOT_FOUND, not FORBIDDEN: the tools scope every read to the bound team on top of RLS"}
   e2e: []
+remaining:
+  - criterion: "get_episode returns the origin of each stage"
+    reason: "episodes.generation_origin does not exist yet; the tool reads it when present and returns origin null with a note until then"
+    closed_by: "FILM-1903"
 open_questions: []
 notes: |
   Studio stage data lives as JSONB on episodes (story_data, screenplay_data,
@@ -52,6 +57,43 @@ notes: |
   (characters and locations are assets of type 'character' / 'location').
   Read tools return that data in the shapes the stage output schemas of
   FILM-1901 use, so what the agent reads is what it would submit.
+
+  ## What #TBD-1905 did (2026-10-03)
+
+  - Tools live in packages/features/studio-mcp/src/server/tools/{read,author}/
+    and are appended to `defaultTools` (src/server/tools/index.ts), one
+    spread per spec, so FILM-1906 and FILM-1908 add theirs the same way.
+    `buildMcpServer` gained an optional `prompts` list (default: the
+    workflow guide) and `createMcpRouteHandlers({ prompts })` passes it on.
+  - The web's create/update actions for projects, episodes, locations and
+    characters were split into wrapper + service (EDD 3a): the write and its
+    user-facing refusals moved to project.service.ts, episode.service.ts,
+    asset.service.ts and character.service.ts, each taking a Supabase client;
+    the actions call them with the cookie session's client, the tools with
+    the principal's. Two schemas moved to their owning package with a
+    re-export left behind: the studio settings schema from
+    apps/web/.../settings/_lib/schemas/ to @kit/projects/schemas/studio-settings,
+    and the location editor's form schema from the component to
+    @kit/assets/schemas/location.
+  - Every read is scoped to the bound team (`project.account_id`) on top of
+    RLS, so a row of another team the user also belongs to is NOT_FOUND.
+  - Two kinds of refusal reach a client: the SDK validates inputSchema before
+    the handler and answers JSON-RPC -32602 (the SDK client throws); a refusal
+    the handler or the database makes (slug taken, episode number taken,
+    version moved, row not in the team) is an isError result with the
+    contract's code (VALIDATION_FAILED, TARGET_CHANGED, NOT_FOUND).
+  - create_episode puts the logline in `description`, never in story_data;
+    target duration, content style, visual tone and tone notes land where the
+    wizard puts them (target_duration_seconds and metadata).
+  - upsert_asset without assetId updates the live asset of the same type and
+    name in the project (the database keeps that unique), else creates one.
+  - KB-175 filed: episode numbers are not unique per project; the create
+    code's "unique_episode_number_per_project" constraint does not exist, so a
+    chosen number is refused only when the title (slug) repeats too.
+  - Red runs: the four tool test files failed to load before the tools
+    existed ("Cannot find module '../author/episodes'" …); the six mutation
+    guards in tooling/mutation-guards/film-1905.json each went red under
+    their mutation (`run.py --kind unit --file-prefix packages/features/studio-mcp/src/server/tools`).
 feature:
   database: null
   queries: []
@@ -59,3 +101,4 @@ feature:
   ui: []
   provider_integration: null
   tools: ["whoami", "get_workflow_guide", "list_projects", "get_project", "list_episodes", "get_episode", "get_screenplay", "get_shots", "get_dialogue", "list_assets", "create_project", "update_project", "create_episode", "update_episode", "upsert_asset"]
+  package: {name: "@kit/studio-mcp", path: "packages/features/studio-mcp/"}

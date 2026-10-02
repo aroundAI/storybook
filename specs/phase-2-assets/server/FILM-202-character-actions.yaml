@@ -52,7 +52,7 @@ acceptance_criteria:
     evidence: null
   - text: "updateCharacterAction updates both asset and details atomically"
     met: true
-    evidence: "packages/features/assets/src/lib/server/character.mutations.ts:267 calls update_character_with_details (apps/web/supabase/migrations/20260930150000_film202-update-character-atomic.sql:11, one function call, so one transaction); packages/features/assets/__tests__/update-character-action.test.ts (one rpc call, no table writes) and apps/web/supabase/tests/database/character-update-atomic.test.sql (a failing details write rolls back the asset rename)"
+    evidence: "packages/features/assets/src/lib/server/character.service.ts:119 (updateCharacterWithDetails, which updateCharacterAction calls since FILM-1905) calls update_character_with_details (apps/web/supabase/migrations/20260930150000_film202-update-character-atomic.sql:11, one function call, so one transaction); packages/features/assets/__tests__/update-character-action.test.ts (one rpc call, no table writes) and apps/web/supabase/tests/database/character-update-atomic.test.sql (a failing details write rolls back the asset rename)"
   - text: "updateCharacterAction preserves unmodified fields"
     met: true
     evidence: null
