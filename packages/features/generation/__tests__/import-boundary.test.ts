@@ -96,6 +96,7 @@ describe('@kit/generation reaches no model (FILM-1901)', () => {
     for (const ok of [
       '@kit/prompt-engine/render-template',
       '@kit/prompt-engine/schemas',
+      '@kit/prompt-engine/generation-job-types',
       '@kit/prompt-engine/prompts/story-generation/story-refinement.json',
       '@kit/shared/prompt-sanitiser',
       '@kit/supabase/database',

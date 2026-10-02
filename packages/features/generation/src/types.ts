@@ -11,6 +11,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { z } from 'zod';
 
+import type { GenerationJobType } from '@kit/prompt-engine/generation-job-types';
 import type { Database } from '@kit/supabase/database';
 
 export const GenerationModeSchema = z.enum(['server', 'external']);
@@ -188,21 +189,10 @@ export interface JobTracking<TTarget> {
 }
 
 /**
- * The job types the worker tracks in generation_jobs. Each must be allowed
- * by generation_jobs_job_type_check, or an update matches no row.
- * 'asset_creation' is allowed by KB-174's migration (#553); once that is on
- * main this alias becomes `@kit/prompt-engine/generation-job-types`'s, the
- * one copy held to the CHECK by a test.
+ * The generation_jobs.job_type a tracked stage updates: the one copy held
+ * to generation_jobs_job_type_check by prompt-engine's test (KB-174).
  */
-export type GenerationJobType =
-  | 'story'
-  | 'story-refinement'
-  | 'screenplay'
-  | 'screenplay-refinement'
-  | 'shot_list'
-  | 'translate-dialogue'
-  | 'audio_cue_generation'
-  | 'asset_creation';
+export type { GenerationJobType } from '@kit/prompt-engine/generation-job-types';
 
 /**
  * One AI stage. The model call sits between `prepare` and `commit` and is
