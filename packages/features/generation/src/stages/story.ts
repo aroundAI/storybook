@@ -166,8 +166,6 @@ export interface StoryCommitData {
   episode: { id: string; status: string; version: number };
   storyData: Record<string, unknown>;
   generatedAt: string;
-  /** Child runs for FILM-1903 to open: a description per created asset */
-  followOn: Array<{ stage: 'asset_description'; target: { assetId: string } }>;
 }
 
 const SKIPPED_EPISODE = { id: '', status: 'draft', version: 0 };
@@ -514,11 +512,12 @@ export const storyStage: StageDefinition<
         },
         storyData,
         generatedAt,
-        followOn: createdAssetIds.map((assetId) => ({
-          stage: 'asset_description' as const,
-          target: { assetId },
-        })),
       },
+      // A description per created asset; FILM-1903 opens them as child runs
+      followOn: createdAssetIds.map((assetId) => ({
+        stage: 'asset_description' as const,
+        target: { assetId },
+      })),
     };
   },
 };
@@ -535,7 +534,6 @@ function skipped(
       episode: { ...SKIPPED_EPISODE, id: target.episodeId },
       storyData: {},
       generatedAt,
-      followOn: [],
     },
   };
 }

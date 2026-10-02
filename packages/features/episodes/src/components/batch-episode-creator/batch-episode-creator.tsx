@@ -49,6 +49,7 @@ import {
   generateSeasonOutlineAction,
 } from '../../server/batch-episode-actions';
 import { EpisodePreviewDialog } from './episode-preview-dialog';
+import { useGeneratedOutlines } from './use-generated-outlines';
 
 interface BatchEpisodeCreatorProps {
   projectId: string;
@@ -88,8 +89,15 @@ export function BatchEpisodeCreator({
   const [isPending, startTransition] = useTransition();
   const [isCreating, setIsCreating] = useState(false);
   const [seasonName, setSeasonName] = useState('');
-  const [episodes, setEpisodes] = useState<EpisodeOutline[]>([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  // The outlines' rows exist from generation (FILM-1901); removing one or
+  // cancelling the preview discards the rows the user did not keep
+  const outlines = useGeneratedOutlines({
+    projectId,
+    onDiscardFailed: (message) => toast.error(message),
+  });
+  const { episodes, show: setEpisodes } = outlines;
 
   // WebSocket for async LLM results (uses shared provider from layout)
   const {
@@ -114,7 +122,7 @@ export function BatchEpisodeCreator({
     } else if (llmStatus === 'error') {
       toast.error(llmError || 'Failed to generate episode outlines');
     }
-  }, [llmStatus, llmResult, llmError]);
+  }, [llmStatus, llmResult, llmError, setEpisodes]);
 
   const form = useForm({
     resolver: zodResolver(GenerateSeasonOutlineSchema),
@@ -157,6 +165,14 @@ export function BatchEpisodeCreator({
     });
   });
 
+  const handlePreviewOpenChange = (open: boolean) => {
+    setIsPreviewOpen(open);
+
+    if (!open) {
+      void outlines.cancel();
+    }
+  };
+
   const handleCreateEpisodes = async () => {
     if (episodes.length === 0) return;
 
@@ -189,7 +205,7 @@ export function BatchEpisodeCreator({
       if (result.success) {
         toast.success(`Created ${result.data.count} episodes`);
         setIsPreviewOpen(false);
-        setEpisodes([]);
+        outlines.keep();
         setSeasonName('');
         form.reset({
           projectId,
@@ -210,7 +226,7 @@ export function BatchEpisodeCreator({
   };
 
   const handleEpisodesChange = (updatedEpisodes: EpisodeOutline[]) => {
-    setEpisodes(updatedEpisodes);
+    void outlines.replace(updatedEpisodes);
   };
 
   return (
@@ -395,7 +411,7 @@ export function BatchEpisodeCreator({
 
       <EpisodePreviewDialog
         open={isPreviewOpen}
-        onOpenChange={setIsPreviewOpen}
+        onOpenChange={handlePreviewOpenChange}
         episodes={episodes}
         onEpisodesChange={handleEpisodesChange}
         onConfirm={handleCreateEpisodes}

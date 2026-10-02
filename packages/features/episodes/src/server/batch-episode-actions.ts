@@ -9,7 +9,11 @@ import {
 } from '@kit/generation/episode-rows';
 import { ActionRefusal } from '@kit/next/action-result';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
-import { requireRow, returnRefusals } from '@kit/next/refusals';
+import {
+  requireAffectedRows,
+  requireRow,
+  returnRefusals,
+} from '@kit/next/refusals';
 import { authorizeProjectTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -18,6 +22,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import {
   type BatchCreateEpisodesResponse,
   BatchCreateEpisodesSchema,
+  DiscardGeneratedEpisodesSchema,
   type EpisodeOutline,
   type GenerateSeasonOutlineResponse,
   GenerateSeasonOutlineSchema,
@@ -279,6 +284,108 @@ const batchCreateEpisodesHandler = enhanceAction(
 
 export const batchCreateEpisodesAction = returnRefusals(
   batchCreateEpisodesHandler,
+);
+
+/**
+ * Discard generated draft episodes the user did not keep (FILM-1901)
+ *
+ * The season_outline stage's commit creates a row per outline when the
+ * outlines are generated. When the user removes an outline in the preview,
+ * or cancels the preview, the rows they did not keep are soft-deleted the
+ * way the app deletes episodes, so the project shows the same episodes it
+ * would have before the rows were created at commit. Only generated drafts
+ * of this project are touched: a row a person made, or one already past
+ * draft, is left alone.
+ */
+const discardGeneratedEpisodesHandler = enhanceAction(
+  async (data): Promise<{ success: true; discarded: string[] }> => {
+    const logger = await getLogger();
+    const ctx = {
+      name: 'episodes.discardGenerated',
+      projectId: data.projectId,
+      episodeCount: data.episodeIds.length,
+    };
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      logger.warn(ctx, 'Unauthorized generated episode discard attempt');
+      throw new Error('Authentication required');
+    }
+
+    checkRateLimit(user.id, 'discardGeneratedEpisodes', {
+      maxRequests: 120,
+      windowMs: 60_000,
+    });
+
+    const project = requireRow(
+      await client
+        .from('projects')
+        .select('id, account_id')
+        .eq('id', data.projectId)
+        .single(),
+      'Project not found or access denied',
+    );
+
+    const now = new Date().toISOString();
+
+    const { data: deleted, error } = await client
+      .from('episodes')
+      .update({ deleted_at: now })
+      .eq('project_id', data.projectId)
+      .in('id', data.episodeIds)
+      .eq('status', 'draft')
+      .eq('story_data->>generatedFromBatch', 'true')
+      .is('deleted_at', null)
+      .select('id');
+
+    if (error) {
+      logger.error({ ...ctx, error }, 'Failed to discard generated episodes');
+      throw new Error(`Failed to discard episodes: ${error.message}`);
+    }
+
+    // RLS filters a refused update to no rows, without an error (KB-61)
+    const discarded = requireAffectedRows(
+      deleted,
+      "The generated episodes weren't removed: they're already gone, or you can't delete them. Reload the page.",
+    ).map((row) => row.id);
+
+    const networkContext = await extractNetworkContext();
+
+    await createAuditLog({
+      accountId: project.account_id,
+      userId: user.id,
+      action: 'delete',
+      objectType: 'episode',
+      objectId: discarded[0] ?? 'batch',
+      objectName: `${discarded.length} generated outlines discarded`,
+      scopes: [
+        { type: 'account', id: project.account_id },
+        { type: 'project', id: data.projectId },
+      ],
+      metadata: {
+        operation: 'discard_generated',
+        count: discarded.length,
+        episodeIds: discarded,
+      },
+      ...networkContext,
+    });
+
+    logger.info(
+      { ...ctx, discardedCount: discarded.length },
+      'Generated episodes discarded',
+    );
+
+    revalidatePath('/home/[account]/projects/[id]', 'page');
+
+    return { success: true, discarded };
+  },
+  { schema: DiscardGeneratedEpisodesSchema },
+);
+
+export const discardGeneratedEpisodesAction = returnRefusals(
+  discardGeneratedEpisodesHandler,
 );
 
 /**

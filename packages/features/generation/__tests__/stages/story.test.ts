@@ -386,8 +386,8 @@ describe('story stage (FILM-1901)', () => {
         onConflict: 'project_id,type,name',
         ignoreDuplicates: true,
       });
-      expect(result.data.followOn).toHaveLength(2);
-      expect(result.data.followOn[0]).toEqual({
+      expect(result.followOn).toHaveLength(2);
+      expect(result.followOn?.[0]).toEqual({
         stage: 'asset_description',
         target: { assetId: expect.any(String) },
       });

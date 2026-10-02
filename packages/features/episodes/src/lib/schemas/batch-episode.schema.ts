@@ -104,6 +104,20 @@ export type BatchCreateEpisodesInput = z.infer<
  * Schema for regenerating a single episode outline with context
  * Uses surrounding episodes for narrative continuity
  */
+/**
+ * Schema for discarding the generated draft rows the season_outline commit
+ * created and the user did not keep (FILM-1901): the preview's Cancel, or
+ * one outline removed in it.
+ */
+export const DiscardGeneratedEpisodesSchema = z.object({
+  projectId: z.string().uuid(),
+  episodeIds: z.array(z.string().uuid()).min(1).max(24),
+});
+
+export type DiscardGeneratedEpisodesInput = z.infer<
+  typeof DiscardGeneratedEpisodesSchema
+>;
+
 export const RegenerateEpisodeOutlineSchema = z.object({
   projectId: z.string().uuid(),
   seasonId: z.string().uuid().optional(),
