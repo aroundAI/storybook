@@ -5333,7 +5333,6 @@ async function unmeasuredTotalsSteps() {
     shares: 0,
     saves: figures.saves ?? null,
     watch_time_seconds: figures.watch ?? null,
-    revenue_cents: 0,
     subscribers_gained: figures.subscribers ?? null,
     subscribers_lost: null,
     metric_source: platform === 'youtube' ? 'analytics_api' : 'snapshot_delta',

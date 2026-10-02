@@ -361,7 +361,9 @@ describe('MetricCards, for a figure the platforms did not measure (KB-149)', () 
     shares: 3,
     watchTimeSeconds: null,
     subscribersGained: null,
-    revenueCents: 0,
+    // TikTok reports no earnings: not measured, where 0 is a measured $0
+    // (FILM-1726).
+    revenueCents: null,
     contentCount: 1,
   };
 
@@ -375,15 +377,15 @@ describe('MetricCards, for a figure the platforms did not measure (KB-149)', () 
       />,
     );
 
-    // Watch time and subscribers, with the platforms' reason; revenue
-    // too, which no platform supplies (FILM-1705), with its own.
+    // Watch time, subscribers and revenue, each with the platforms'
+    // reason; revenue's own reasons are listed under the cards (FILM-1726).
     const titles = screen
       .getAllByText('Not measured')
       .map((el) => el.getAttribute('title') ?? '');
     expect(titles).toHaveLength(3);
     expect(
       titles.filter((t) => t.includes('platforms behind these figures')),
-    ).toHaveLength(2);
+    ).toHaveLength(3);
     expect(screen.queryByText('0m')).toBeNull();
     expect(screen.queryByText('0')).toBeNull();
     // A measured figure beside them is still a number.
@@ -400,7 +402,7 @@ describe('MetricCards, for a figure the platforms did not measure (KB-149)', () 
       />,
     );
 
-    // Revenue alone is unmeasured: no platform supplies it (FILM-1705).
+    // Revenue alone is unmeasured: TikTok reports no earnings (FILM-1726).
     expect(screen.getAllByText('Not measured')).toHaveLength(1);
     expect(screen.getByText('10m')).toBeDefined();
     expect(screen.getByText('4')).toBeDefined();
