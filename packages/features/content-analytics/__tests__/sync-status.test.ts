@@ -11,7 +11,10 @@ import {
   TikTokAnalyticsScopeError,
   TikTokRateLimitError,
 } from '../src/providers/tiktok/tiktok-analytics';
-import { XAnalyticsScopeError, XRateLimitError } from '../src/providers/twitter';
+import {
+  XAnalyticsScopeError,
+  XRateLimitError,
+} from '../src/providers/twitter';
 import { getSyncStatusAction } from '../src/server/sync-actions';
 import {
   type SyncStatusRow,
