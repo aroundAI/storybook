@@ -1,0 +1,111 @@
+{
+  "writes": [
+    {
+      "table": "assets",
+      "op": "upsert",
+      "payload": {
+        "project_id": "22222222-2222-4222-8222-222222222222",
+        "type": "character",
+        "name": "Dr. Osei",
+        "description": "A tall engineer with cropped grey hair and tired eyes.",
+        "metadata": {
+          "autoCreated": true
+        },
+        "deleted_at": null
+      },
+      "options": {
+        "onConflict": "project_id,type,name",
+        "ignoreDuplicates": false
+      },
+      "filters": []
+    },
+    {
+      "table": "assets",
+      "op": "upsert",
+      "payload": {
+        "project_id": "22222222-2222-4222-8222-222222222222",
+        "type": "location",
+        "name": "Observation deck",
+        "description": "A tall engineer with cropped grey hair and tired eyes.",
+        "metadata": {
+          "autoCreated": true
+        },
+        "deleted_at": null
+      },
+      "options": {
+        "onConflict": "project_id,type,name",
+        "ignoreDuplicates": false
+      },
+      "filters": []
+    },
+    {
+      "table": "episodes",
+      "op": "update",
+      "payload": {
+        "metadata": {
+          "character_ids": [
+            "asset-maya",
+            "asset-new-Dr. Osei"
+          ],
+          "location_ids": [
+            "asset-new-Observation deck"
+          ],
+          "character_names": [
+            "Maya Chen",
+            "Dr. Osei"
+          ],
+          "location_names": [
+            "Observation deck"
+          ]
+        }
+      },
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "id",
+            "55555555-5555-4555-8555-555555555555"
+          ]
+        }
+      ]
+    }
+  ],
+  "executor": [
+    {
+      "templateSlug": "story-generation/extract-asset-description",
+      "variables": {
+        "name": "Dr. Osei",
+        "type": "character",
+        "extra_context": "",
+        "type_instructions": "Write a 4-6 sentence description including: Physical appearance (approximate age, ethnicity/skin tone, build, hair color/style, eye color, distinguishing features like scars or tattoos). Clothing and style (what they wear in this story). Demeanor and expression (how they carry themselves, typical body language). Their role and significance. Be specific — commit to physical details based on what the text states or implies from the setting/time period.",
+        "story_context": "SCENE 1: INT. OBSERVATION DECK - NIGHT\nMaya watches the monitor.\nMaya Chen: \"There it is again.\"\nDr. Osei (tired): \"Log it.\""
+      }
+    },
+    {
+      "templateSlug": "story-generation/extract-asset-description",
+      "variables": {
+        "name": "Observation deck",
+        "type": "location",
+        "extra_context": "",
+        "type_instructions": "Write a 3-5 sentence description including: Physical environment (size, architecture, materials, colors, lighting). Atmosphere and mood (sounds, smells, temperature). Notable features (landmarks, furniture, natural elements). How this place functions in the story. Be vivid and specific for environment concept art generation.",
+        "story_context": "SCENE 1: INT. OBSERVATION DECK - NIGHT\nMaya watches the monitor.\nMaya Chen: \"There it is again.\"\nDr. Osei (tired): \"Log it.\""
+      }
+    }
+  ],
+  "result": {
+    "success": true,
+    "data": {
+      "episodeId": "55555555-5555-4555-8555-555555555555",
+      "created": 2,
+      "linked": 1,
+      "skipped": 0,
+      "characters": [
+        "Maya Chen",
+        "Dr. Osei"
+      ],
+      "locations": [
+        "Observation deck"
+      ]
+    }
+  }
+}

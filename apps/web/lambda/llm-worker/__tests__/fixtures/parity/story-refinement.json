@@ -1,0 +1,255 @@
+{
+  "writes": [
+    {
+      "table": "generation_jobs",
+      "op": "update",
+      "payload": {
+        "status": "processing",
+        "started_at": "2026-10-03T12:00:00.000Z"
+      },
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "reference_type",
+            "episode"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "reference_id",
+            "55555555-5555-4555-8555-555555555555"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "job_type",
+            "story-refinement"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "status",
+            "queued"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "episodes",
+      "op": "update",
+      "payload": {
+        "story_data": {
+          "title": "The Last Signal (darker)",
+          "fullStory": "Maya floats in the silence. This time, nobody answers.",
+          "actBreakdown": {
+            "act1": "Setup",
+            "act2": "Confrontation",
+            "act3": "Silence"
+          },
+          "characters": [
+            {
+              "name": "Maya Chen",
+              "role": "protagonist",
+              "arc": "From hope to resolve"
+            }
+          ],
+          "themes": [
+            "isolation",
+            "sacrifice"
+          ],
+          "tone": "bleak",
+          "estimatedSceneCount": 7,
+          "episodeSummary": "Maya hears a signal and chooses silence.",
+          "sentimentScore": 0.3,
+          "keyEvents": [
+            "Maya hears the signal",
+            "Maya cuts the transmitter"
+          ],
+          "viralStructure": {
+            "openingHook": "An alarm"
+          },
+          "lastRefinedAt": "2026-10-03T12:00:00.000Z"
+        },
+        "metadata": {
+          "character_ids": [
+            "c1"
+          ],
+          "character_names": [
+            "Maya Chen"
+          ],
+          "refinement_history": [
+            {
+              "timestamp": "2026-10-01T00:00:00.000Z",
+              "feedback": "More tension",
+              "type": "story",
+              "userId": "77777777-7777-4777-8777-777777777777"
+            },
+            {
+              "timestamp": "2026-10-03T12:00:00.000Z",
+              "feedback": "Make the ending darker",
+              "type": "story",
+              "userId": "77777777-7777-4777-8777-777777777777"
+            }
+          ],
+          "previous_story_data": {
+            "title": "The Last Signal",
+            "fullStory": "Commander Maya Chen floats in the silence...",
+            "actBreakdown": {
+              "act1": "a",
+              "act2": "b",
+              "act3": "c"
+            },
+            "characters": [
+              {
+                "name": "Maya Chen",
+                "role": "protagonist",
+                "arc": "routine"
+              }
+            ],
+            "themes": [
+              "isolation"
+            ],
+            "tone": "contemplative",
+            "estimatedSceneCount": 8,
+            "episodeSummary": "Maya discovers a signal.",
+            "sentimentScore": 0.6,
+            "keyEvents": [
+              "Signal found"
+            ],
+            "viralStructure": {
+              "openingHook": "An alarm"
+            }
+          }
+        },
+        "updated_at": "2026-10-03T12:00:00.000Z"
+      },
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "id",
+            "55555555-5555-4555-8555-555555555555"
+          ]
+        },
+        {
+          "method": "is",
+          "args": [
+            "deleted_at",
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "table": "generation_jobs",
+      "op": "update",
+      "payload": {
+        "status": "completed",
+        "completed_at": "2026-10-03T12:00:00.000Z",
+        "output_data": {
+          "provider": "gemini",
+          "model": "gemini-3.5-flash",
+          "tokensUsed": 1234,
+          "feedback": "Make the ending darker"
+        }
+      },
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "reference_type",
+            "episode"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "reference_id",
+            "55555555-5555-4555-8555-555555555555"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "job_type",
+            "story-refinement"
+          ]
+        },
+        {
+          "method": "in",
+          "args": [
+            "status",
+            [
+              "queued",
+              "processing"
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "executor": [
+    {
+      "templateSlug": "story-refinement",
+      "variables": {
+        "current_story": "{\"title\":\"The Last Signal\",\"fullStory\":\"Commander Maya Chen floats in the silence...\",\"actBreakdown\":{\"act1\":\"a\",\"act2\":\"b\",\"act3\":\"c\"},\"characters\":[{\"name\":\"Maya Chen\",\"role\":\"protagonist\",\"arc\":\"routine\"}],\"themes\":[\"isolation\"],\"tone\":\"contemplative\",\"estimatedSceneCount\":8,\"episodeSummary\":\"Maya discovers a signal.\",\"sentimentScore\":0.6,\"keyEvents\":[\"Signal found\"],\"viralStructure\":{\"openingHook\":\"An alarm\"}}",
+        "characters": "⚠️ CHARACTER IDENTITIES ARE NON-NEGOTIABLE. Use EXACTLY the characters below with EXACTLY the gender, age, and personality described. Do NOT invent attributes, rename, or rewrite any character.\n\nCHARACTER 1 — LOCKED IDENTITY (do NOT change gender, age, or personality):\n  Name: Maya Chen\n  Role: protagonist\n  Description: Commander of the deep-space relay\n  Personality: steady",
+        "locations": "**Locations**:\n- **Observation deck** (interior): A glass dome over the void",
+        "feedback": "Make the ending darker",
+        "season_context": "This is Episode 3 of Season 1. Season Premise: Humanity listens for an answer\n\n## SEASON CREATIVE DIRECTION (apply to this episode):\nKeep the silence heavy",
+        "previous_episodes": "**Previous Episodes (for continuity)**:\n- Episode 2: \"First Contact\"\n  Plot: The relay picks up a pattern.\n  Key Events: Pattern detected\n\n**Continuity Guidelines**:\n- Reference events/characters from previous episodes where natural\n- Maintain character development arcs\n- Build on key events from prior episodes\n- Acknowledge established relationships and dynamics"
+      }
+    }
+  ],
+  "result": {
+    "success": true,
+    "data": {
+      "story": {
+        "title": "The Last Signal (darker)",
+        "fullStory": "Maya floats in the silence. This time, nobody answers.",
+        "actBreakdown": {
+          "act1": "Setup",
+          "act2": "Confrontation",
+          "act3": "Silence"
+        },
+        "characters": [
+          {
+            "name": "Maya Chen",
+            "role": "protagonist",
+            "arc": "From hope to resolve"
+          }
+        ],
+        "themes": [
+          "isolation",
+          "sacrifice"
+        ],
+        "tone": "bleak",
+        "estimatedSceneCount": 7,
+        "episodeSummary": "Maya hears a signal and chooses silence.",
+        "sentimentScore": 0.3,
+        "keyEvents": [
+          "Maya hears the signal",
+          "Maya cuts the transmitter"
+        ],
+        "viralStructure": {
+          "openingHook": "An alarm"
+        },
+        "lastRefinedAt": "2026-10-03T12:00:00.000Z"
+      },
+      "refinementApplied": true,
+      "episode": {
+        "id": "55555555-5555-4555-8555-555555555555",
+        "status": "story"
+      },
+      "metadata": {
+        "provider": "gemini",
+        "model": "gemini-3.5-flash",
+        "generatedAt": "2026-10-03T12:00:00.000Z"
+      }
+    }
+  }
+}
