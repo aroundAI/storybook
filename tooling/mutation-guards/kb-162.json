@@ -165,8 +165,8 @@
       "name": "KB-162 the format-family card shows an unmeasured follower gain as 0",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/components/language-analytics-cards.tsx",
-      "find": "                    {row.subscribersGained === null\n                      ? 'Not measured'\n                      : formatNumber(row.subscribersGained)}",
-      "replace": "                    {formatNumber(row.subscribersGained ?? 0)}",
+      "find": "                  {row.subscribersGained === null\n                    ? 'Not measured'\n                    : formatNumber(row.subscribersGained)}",
+      "replace": "                  {formatNumber(row.subscribersGained ?? 0)}",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/format-family-card-unmeasured.test.tsx",
       "pattern": "says the follower gain was not measured"
