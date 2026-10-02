@@ -3,7 +3,7 @@ title: "Rate Denominator Records"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: DONE
+status: PARTIAL
 effort: M
 dependencies:
   - spec_id: "FILM-1722"
@@ -36,7 +36,7 @@ acceptance_criteria:
     evidence: "Met (#549): every read test pins the figure hand-computed from its fixture with the pre-change formula — __tests__/rate-denominator-*.test.ts in @kit/content-analytics, revenue-by-currency.test.ts; the 1,813 existing content-analytics tests pass unchanged in value"
   - text: "The record names the column (views), each platform's definitions with their effectiveFrom, and every change the window crosses, taken from viewDefinitionChangesBetween"
     met: true
-    evidence: "Met (#549): DenominatorStamp.column, .platforms[].definitions (each ViewDefinition with effectiveFrom) and .crosses from viewDefinitionChangesBetween (recordViewsDenominator, packages/clickhouse/src/lib/measures.ts)"
+    evidence: "Met (#549): DenominatorStamp.column, .platforms[].definitions (each a ViewDefinitionRef: id, platform, label, effectiveFrom) and .crosses from viewDefinitionChangesBetween (recordViewsDenominator, packages/clickhouse/src/lib/measures.ts). A reference rather than the registry entry, so a record weighs about 1.3 KB for YouTube, not 4.3 KB, and a window it cannot read (malformed or backwards) records no definition instead of failing the read (rate-denominator-records.test.ts, guards RD23, RD24)"
   - text: "A YouTube window spanning 2026-08-27 records both definitions and the change date; a window wholly after it records one"
     met: true
     evidence: "Met (#549): rate-denominator-records.test.ts — 2026-08-01..2026-09-15 records legacy, Shorts and 2026-08-27 definitions and one crossing dated 2026-08-27; 2026-09-01..2026-10-01 records youtube.views.2026-08-27 alone"
@@ -48,16 +48,16 @@ acceptance_criteria:
     evidence: "Met (#549): lifetimeWindow (earliest publish to the read date) for the episode, season, project and content-list reads and the studio overview; a read with no publishes records the read date alone"
   - text: "Every card in the scope table renders the record, reachable from the figure, with a data-test hook"
     met: true
-    evidence: "Met (#549): RateDenominator (components/rate-denominator.tsx), a keyboard-reachable button beside each figure opening the record's sentence, data-test='rate-denominator-trigger' / 'rate-denominator', on every card in notes §4 plus the project dashboard and the studio overview, which the re-sweep found"
+    evidence: "Met (#549): RateDenominator (components/rate-denominator.tsx), a keyboard-reachable button beside each figure opening the record's sentence, data-test='rate-denominator-trigger' / 'rate-denominator', on every card in notes §4 plus the project dashboard, the studio overview and the Analytics Overview's own summary sentence, which the re-sweeps found. A 24px target (WCAG 2.5.8), and a card that repeats it per row names the row in its label (rate-denominator-button.test.tsx, rate-denominator-overview-sentence.test.tsx; guards RD20–RD22)"
   - text: "A repository scan fails a new rate over views computed outside the recording path, seen red with one planted"
     met: true
-    evidence: "Met (#549): packages/clickhouse/__tests__/rate-over-views-recorded.test.ts fails any division by views outside lib/measures.ts, with a per-file count and reason for each out-of-scope site; seen red with a planted bare RPM division (mutation guard RD5)"
+    evidence: "Met (#549): packages/clickhouse/__tests__/rate-over-views-recorded.test.ts fails any division by views outside lib/measures.ts, with a per-file count and reason for each site it allows. It reads code and strings alike, so a rate written as SQL counts, a divisor wrapped in calls counts (`/ nullIf(sum(views), 0)`), and so does a helper whose name says it divides handed views (`ratio(likes, views)`, ClickHouse `divide(...)`). Seen red with each form planted: RD5 (bare), RD18 (SQL in a string), RD19 (helper). The review's first version stripped strings and missed all four planted forms. The four genome stage rates it now finds are listed as #548's to record"
   - text: "Mutation guards in tooling/mutation-guards/film-1732.json, a unique find per rule, all RED"
     met: true
-    evidence: "Met (#549): tooling/mutation-guards/film-1732.json, 17 unit guards, a unique find each, all RED"
+    evidence: "Met (#549): tooling/mutation-guards/film-1732.json, 24 unit guards, a unique find each, all RED. The eight FILM-1713 and one KB-167 guard whose lines #549 rewrote were re-pointed and each seen RED again"
   - text: "FILM-1722's criterion \"No rate is computed without recording which denominator definition it used\" is ticked with this spec's evidence"
-    met: true
-    evidence: "Met (#549): ticked in FILM-1722 with this spec's evidence"
+    met: false
+    reason: "Every rate in this spec's scope is recorded (#549), but the genome stage rates from #545 are a rate over views too and have no record yet. #548 records them; whichever of #548 and #549 merges second ticks FILM-1722 and closes this spec"
 test_plan:
   unit:
     - {text: "The record builder: one definition, a crossed change (YouTube 2026-08-27), Shorts across 2025-03-31, an undated definition (TikTok), Facebook not in the denominator, a pooled set of platforms", met: true, evidence: "Met (#549): packages/clickhouse/__tests__/rate-denominator-records.test.ts"}
@@ -67,6 +67,10 @@ test_plan:
     - {text: "Against local ClickHouse 24.8: seed YouTube rows either side of 2026-08-27, read the engagement rate and RPM through the real queries, and check value and record", met: true, evidence: "Met (#549): rateDenominatorSteps in packages/clickhouse/scripts/verify-queries.ts, run with `pnpm --filter @kit/clickhouse verify` against ClickHouse 24.8 — 20 Aug to 5 Sep reads 125/1500 = 8.333% with a record naming the legacy, 2025 Shorts and 2026-08-27 YouTube views and the crossing; 28 Aug to 5 Sep reads 85/1100 = 7.727% crossing nothing; RPM 3000/1500 = 2000 cents; segment membership carries each video's platform. 183 passed, 0 failed"}
   e2e:
     - {text: "Playwright spec with seeded rows: each card shows its figure unchanged and its record; a window crossing 2026-08-27 shows both definitions; gated CAPTURE_EVIDENCE=1 screenshots of the before-and-after-the-change cases", met: true, evidence: "Met (#549): apps/e2e/tests/analytics/rate-denominator-evidence.spec.ts, gated CAPTURE_EVIDENCE=1 and CLICKHOUSE_EVIDENCE=1. A YouTube video with days on 25 and 29 Aug reads 10.00% on the episode page, 8% (75/1000, likes and comments) on the project overview and 10.0% in the content table, each with a record naming 27 Aug 2026 as a change inside its window; screenshots on #549. The not-crossing case is the integration read's second window"}
+remaining:
+  - criterion: "FILM-1722's criterion is ticked"
+    reason: "Waits on #548's record for the genome stage rates (#545), the one rate over views outside this spec's scope table"
+    closed_by: "#548"
 open_questions:
   - "When a figure's window crosses a definition change, does its card show a visible marker beside the figure, or only the record behind it? Stamping alone changes no figure; a visible marker changes what the card says, which the 2026-09-22 ruling may want the owner to see first"
 notes: |
