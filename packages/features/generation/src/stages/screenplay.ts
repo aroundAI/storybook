@@ -16,6 +16,11 @@ import { z } from 'zod';
 import screenplayConversion from '@kit/prompt-engine/prompts/story-generation/screenplay-conversion.json';
 import { DialogueLineSchema, SceneSchema } from '@kit/prompt-engine/schemas';
 import {
+  type ContentScalingResult,
+  type ContentStyle,
+  calculateContentScaling,
+} from '@kit/shared/duration-scaling';
+import {
   sanitizeForPrompt,
   sanitizeStrings,
 } from '@kit/shared/prompt-sanitiser';
@@ -24,11 +29,6 @@ import type { Json } from '@kit/supabase/database';
 
 import { type PromptFile, buildBrief } from '../brief';
 import { StageOutputRejected } from '../checks';
-import {
-  type ContentScalingResult,
-  type ContentStyle,
-  calculateContentScaling,
-} from '../duration-scaling';
 import { markJobCompleted } from '../jobs';
 import { registerStage } from '../registry';
 import type {

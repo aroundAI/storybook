@@ -76,13 +76,13 @@ export default defineConfig({
         __dirname,
         '../../packages/shared/src/prompt-sanitiser/index.ts',
       ),
+      '@kit/shared/duration-scaling': path.resolve(
+        __dirname,
+        '../../packages/shared/src/duration-scaling/index.ts',
+      ),
       '@kit/generation/testing': path.resolve(
         __dirname,
         '../../packages/features/generation/src/testing/index.ts',
-      ),
-      '@kit/generation/duration-scaling': path.resolve(
-        __dirname,
-        '../../packages/features/generation/src/duration-scaling.ts',
       ),
       '@kit/generation': path.resolve(
         __dirname,
