@@ -64,7 +64,7 @@ describe('AWS clients reach the local emulators only through awsClientOptions (F
     );
     expect(found).toEqual(
       expect.arrayContaining([
-        'packages/features/prompt-engine/src/lib/server/sqs-helper.ts SQSClient',
+        'packages/ai-gateway/src/dispatch.ts SQSClient',
         'apps/web/lambda/llm-worker/index.ts DynamoDBClient',
         'apps/web/websocket/connect.ts DynamoDBClient',
         'apps/web/lambda/llm-worker/index.ts ApiGatewayManagementApiClient',

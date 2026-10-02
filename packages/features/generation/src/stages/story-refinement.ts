@@ -273,7 +273,7 @@ async function commit(
   // Re-read at commit time: the brief may be old, and the episode may be gone
   const { data: current } = await ctx.client
     .from('episodes')
-    .select('story_data, metadata, status, deleted_at')
+    .select('story_data, metadata, status, deleted_at, generation_origin')
     .eq('id', target.episodeId)
     .single();
 
@@ -341,12 +341,24 @@ async function commit(
     runId: run.id,
   });
 
+  // Who wrote this story, per stage (FILM-1903); the column exists since
+  // part A, so `originColumnsAvailable` is the caller's say
+  const origin = ctx.originColumnsAvailable
+    ? {
+        generation_origin: {
+          ...((current.generation_origin as Record<string, unknown>) ?? {}),
+          story_refinement: run.origin,
+        } as unknown as Json,
+      }
+    : {};
+
   const { data: updatedEpisode, error: updateError } = await ctx.client
     .from('episodes')
     .update({
       story_data: updatedStoryData as unknown as Json,
       metadata: updatedMetadata as unknown as Json,
       updated_at: generatedAt,
+      ...origin,
     })
     .eq('id', target.episodeId)
     .is('deleted_at', null)

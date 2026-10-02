@@ -12,16 +12,14 @@ import { VENDORS, type Vendor } from '@kit/shared/vendors';
  * vendor by name. Either one outside the allowlist fails the fast lane,
  * naming the file and line.
  *
- * The allowlist is the gateway and what it will absorb: `packages/llm` is
- * today's door (part B narrows its exports), `packages/ai-gateway` is the
- * package part B adds, the vendors directory declares the hosts, and the
- * sandbox serves them. Two files are allowed by name, each with the reason:
+ * The allowlist is the gateway: `packages/ai-gateway` is the door (part B),
+ * `packages/llm` the client package only it imports, the vendors directory
+ * declares the hosts, and the sandbox serves them. One file is allowed by
+ * name, with the reason:
  *
  * - `api-keys-actions.ts` validates a user's own BYOK key against the
  *   vendor's model-list endpoint. It generates nothing and sends no prompt,
  *   so it is not a model call; it stays as it is.
- * - `voyage-embedder.ts` is the worker's embedding call. It moves behind the
- *   gateway in FILM-1902 part B, and its entry goes with it.
  *
  * `sdk-base-url-guard.test.ts` makes sure every SDK is given a host; this
  * makes sure only the gateway asks for one.
@@ -56,8 +54,6 @@ const GATEWAY_DIRS = [
 const ALLOWED_FILES: Record<string, string> = {
   'apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts':
     'BYOK key validation: lists the models a key can see, generates nothing',
-  'apps/web/lambda/llm-worker/utils/voyage-embedder.ts':
-    'the worker embedder; moves behind the gateway in FILM-1902 part B',
 };
 
 /** The vendors in the resolver that are models: text, embeddings or both. */
@@ -150,7 +146,7 @@ describe('a model host is reached only through the gateway (FILM-1902)', () => {
     expect(FILES.length).toBeGreaterThan(1000);
     expect(FILES).toContain('packages/llm/src/providers/openai.ts');
     expect(FILES).toContain(
-      'apps/web/lambda/llm-worker/utils/voyage-embedder.ts',
+      'packages/ai-gateway/src/embedding/voyage-embedder.ts',
     );
     expect(FILES).toContain(
       'packages/features/episodes/src/agent/story-orchestrator.ts',
@@ -172,6 +168,7 @@ describe('a model host is reached only through the gateway (FILM-1902)', () => {
         'packages/llm/src/providers/gemini.ts',
         'packages/llm/src/providers/deepseek.ts',
         'packages/shared/src/vendors/resolver.ts',
+        'packages/ai-gateway/src/embedding/voyage-embedder.ts',
         ...Object.keys(ALLOWED_FILES),
       ]),
     );
@@ -249,10 +246,13 @@ describe('a model host is reached only through the gateway (FILM-1902)', () => {
   });
 
   it('reports the line in a file allowed by name only through the stale check', () => {
-    const line = "const url = `${vendorUrl('voyage')}/v1/embeddings`;";
+    const line = "const url = `${vendorUrl('openai')}/v1/models`;";
 
     expect(
-      violationsIn('apps/web/lambda/llm-worker/utils/voyage-embedder.ts', line),
+      violationsIn(
+        'apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts',
+        line,
+      ),
     ).toEqual([]);
     expect(
       violationsIn('apps/web/lambda/llm-worker/utils/other-embedder.ts', line),

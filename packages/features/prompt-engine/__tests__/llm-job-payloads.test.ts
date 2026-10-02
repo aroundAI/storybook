@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import {
   LLM_JOB_TYPES,
@@ -11,16 +11,9 @@ import { chainedLlmJobTarget } from '../src/lib/server/llm-job-target';
 /**
  * KB-33. The LLM worker cast every SQS payload to its handler's type, so a
  * missing or renamed field reached a prompt or a query as `undefined`. Each
- * job type now has one schema, used by `queueLlmJob` before it sends and by
- * the handler when it receives.
+ * job type now has one schema, used by `openRunForJob` (@kit/ai-gateway)
+ * before the run is opened and by the handler when it receives.
  */
-
-const send = vi.hoisted(() => vi.fn());
-
-vi.mock('@aws-sdk/client-sqs', () => ({
-  SQSClient: vi.fn(() => ({ send })),
-  SendMessageCommand: vi.fn((input: unknown) => ({ input })),
-}));
 
 const ACCOUNT = '11111111-1111-4111-8111-111111111111';
 const PROJECT = '22222222-2222-4222-8222-222222222222';
@@ -32,12 +25,6 @@ const target = chainedLlmJobTarget({
   accountId: ACCOUNT,
   projectId: PROJECT,
   episodeId: EPISODE,
-});
-
-beforeEach(() => {
-  send.mockReset();
-  send.mockResolvedValue({});
-  process.env.LLM_JOBS_QUEUE_URL = 'https://sqs.test/llm';
 });
 
 describe('the schemas', () => {
@@ -156,44 +143,23 @@ describe('the SQS message', () => {
   });
 });
 
-describe('queueLlmJob', () => {
-  it('refuses a payload its handler would refuse, and sends nothing', async () => {
-    const { queueLlmJob } = await import('../src/lib/server/sqs-helper');
+describe('payloadForTarget', () => {
+  it('stamps the authorised target over the payload, and refuses other ids', async () => {
+    const { payloadForTarget } = await import('../src/lib/server/sqs-helper');
 
-    await expect(
-      queueLlmJob({
-        jobType: 'story-refinement',
-        userId: USER,
-        target,
-        // @ts-expect-error — the missing field is the test
-        payload: { episodeId: EPISODE },
-      }),
-    ).rejects.toThrow(/Invalid story-refinement payload: feedback: Required/);
-
-    expect(send).not.toHaveBeenCalled();
-  });
-
-  it('sends the parsed payload, with the job user stamped', async () => {
-    const { queueLlmJob } = await import('../src/lib/server/sqs-helper');
-
-    await queueLlmJob({
-      jobType: 'story-refinement',
-      userId: USER,
-      target,
-      payload: { feedback: 'Tighter', userId: OTHER_USER },
-    });
-
-    expect(send).toHaveBeenCalledTimes(1);
-
-    const body = JSON.parse(send.mock.calls[0]![0].input.MessageBody);
-
-    expect(body.payload).toEqual({
+    expect(
+      payloadForTarget(target, { feedback: 'Tighter', userId: OTHER_USER }),
+    ).toEqual({
       accountId: ACCOUNT,
       projectId: PROJECT,
       episodeId: EPISODE,
-      userId: USER,
+      userId: OTHER_USER,
       feedback: 'Tighter',
     });
+
+    expect(() => payloadForTarget(target, { episodeId: OTHER_USER })).toThrow(
+      /payload.episodeId is not the authorised target's episodeId/,
+    );
   });
 });
 

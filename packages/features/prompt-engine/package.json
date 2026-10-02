@@ -24,11 +24,10 @@
     "./types": "./src/lib/types.ts",
     "./validation": "./src/lib/validation/index.ts",
     "./schemas": "./src/schemas/index.ts",
-    "./prompts/*": "./src/prompts/*"
+    "./prompts/*": "./src/prompts/*",
+    "./normalize-llm-output": "./src/lib/normalize-llm-output.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-sqs": "^3.968.0",
-    "@kit/llm": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",
     "zod": "^3.25.74"

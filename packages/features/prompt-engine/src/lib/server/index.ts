@@ -7,9 +7,9 @@ export type {
   LLMExecutionResult,
 } from '../types';
 
-export { executeLLM, getApiKeyForProvider } from './llm-executor';
-
-export { queueLlmJob, isLambdaEnvironment } from './sqs-helper';
+// executeLLM and queueLlmJob moved behind @kit/ai-gateway (FILM-1902, FILM-1903):
+// a model is reached through a generation run, and the queue through run.dispatch()
+export { payloadForTarget } from './sqs-helper';
 export {
   authorizeEpisodeTarget,
   authorizeEpisodeTargets,
@@ -18,4 +18,4 @@ export {
   noTenantLlmJobTarget,
 } from './llm-job-target';
 export type { LlmJobAuthzClient, LlmJobTarget } from './llm-job-target';
-export type { LlmJobType } from './sqs-helper';
+export type { LlmJobType } from '../llm-job-payloads';

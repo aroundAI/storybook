@@ -49,7 +49,7 @@ const INTERNAL_PACKAGES = [
   '@kit/monitoring',
   '@kit/next',
   '@kit/notifications',
-  '@kit/llm',
+  '@kit/ai-gateway',
   '@kit/generation',
   '@kit/content-analytics',
   '@kit/jobs',

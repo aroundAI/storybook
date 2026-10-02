@@ -23,6 +23,7 @@ pnpm --filter @kit/billing-gateway --fail-if-no-match test
 pnpm --filter @kit/lemon-squeezy --fail-if-no-match test
 pnpm --filter @kit/prompt-engine --fail-if-no-match test
 pnpm --filter @kit/generation --fail-if-no-match test
+pnpm --filter @kit/ai-gateway --fail-if-no-match test
 pnpm --filter @kit/projects --fail-if-no-match test
 pnpm --filter @kit/team-accounts --fail-if-no-match test
 pnpm --filter @kit/admin --fail-if-no-match test

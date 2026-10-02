@@ -32,6 +32,12 @@ export const StageKeySchema = z.enum([
   'season_analysis',
   'fact_extraction',
   'episode_summary',
+  // Server-only keys (FILM-1903 part B): model calls with no content stage,
+  // and the worker's audio render job. They have a run, never a brief, and
+  // no StageDefinition serves them.
+  'analytics_insights',
+  'language_insights',
+  'audio_render',
 ]);
 export type StageKey = z.infer<typeof StageKeySchema>;
 
@@ -42,6 +48,7 @@ export const TargetTypeSchema = z.enum([
   'season',
   'project',
   'publish',
+  'audio_cue',
 ]);
 export type TargetType = z.infer<typeof TargetTypeSchema>;
 
@@ -123,12 +130,6 @@ export interface GenerationRun {
   mode: GenerationMode;
   origin: GenerationOrigin;
   usage?: GenerationUsage;
-  /**
-   * Server-side figures the writer reports about itself (an orchestrator's
-   * step count, an evaluator's coverage), recorded on the job's output_data
-   * by a tracked stage's commit. Nothing in here is content.
-   */
-  diagnostics?: Record<string, unknown>;
 }
 
 /** Prompt-ready text about an episode's world, as the worker builds it today. */
@@ -210,11 +211,22 @@ export interface CommitResult<TData = unknown> {
   reason?: string;
   data: TData;
   /**
-   * Stages to run next on the same content, in the run's mode (shots chains
-   * audio_cues). The caller opens them: the worker queues the job today,
-   * FILM-1903 opens child runs.
+   * Stages this commit chains (shots -> audio_cues). The run layer opens
+   * each as a child run in the parent's mode; a server child is queued, an
+   * external one waits for the agent (FILM-1903).
    */
-  followOn?: Array<{ stage: StageKey; target: Record<string, unknown> }>;
+  followOns?: CommitFollowOn[];
+}
+
+export interface CommitFollowOn {
+  stage: StageKey;
+  target: {
+    type: TargetType;
+    id: string;
+    projectId: string | null;
+    input: { kind: 'stage'; target: unknown };
+    targetVersion?: number | null;
+  };
 }
 
 /** The generation_jobs row a tracked stage updates as it runs. */
@@ -263,8 +275,6 @@ export type AnyStageDefinition = StageDefinition<any, any, any>;
 export interface GenerateResult {
   output: unknown;
   usage?: GenerationUsage;
-  /** Merged into the run's `diagnostics` for commit to record */
-  diagnostics?: Record<string, unknown>;
 }
 
 export type GenerateFn = (brief: Brief) => Promise<GenerateResult>;

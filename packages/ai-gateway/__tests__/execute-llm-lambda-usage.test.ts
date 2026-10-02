@@ -1,31 +1,34 @@
-import { readFileSync, readdirSync } from 'node:fs';
-import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { fakeRunHandle } from '@kit/generation/testing';
 import { LLMError } from '@kit/llm';
 
-import { executeLLMForLambda } from '../llm-utils';
-import { PROMPT_REGISTRY } from '../prompt-registry';
+import { GatewayError, executeLLMForLambda, withRun } from '../src';
+import { PROMPT_REGISTRY } from '../src/prompts/lambda-registry';
 
 /**
- * FILM-1902: every model call writes llm_usage_analytics. The worker's copy
- * of the executor made its calls and wrote nothing, so a studio stage run
- * through SQS cost tokens that no account was ever charged for. It now logs
- * as executeLLM does: through the service-role client, on success and on
- * failure, with the job's account and user when the handler passes them.
+ * FILM-1902: every model call writes llm_usage_analytics with its run id,
+ * and no call is made outside an open server run. The Lambda executor logs
+ * through the service-role client, on success and on failure, charged to the
+ * run's account and user; it refuses an external, expired or cancelled run,
+ * and a call with no run at all, before a client is even built.
  */
 
-const mocks = vi.hoisted(() => ({
-  createChatCompletion: vi.fn(),
-  logLLMUsage: vi.fn(),
-  createLambdaAdminClient: vi.fn(),
-}));
+const mocks = vi.hoisted(() => {
+  const createChatCompletion = vi.fn();
+
+  return {
+    createChatCompletion,
+    // The implementation lives on vi.fn itself, so restoreAllMocks keeps it
+    createLLMClient: vi.fn(() => ({ createChatCompletion })),
+    logLLMUsage: vi.fn(),
+    createLambdaAdminClient: vi.fn(),
+  };
+});
 
 vi.mock('@kit/llm', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@kit/llm')>()),
-  createLLMClient: vi.fn(() => ({
-    createChatCompletion: mocks.createChatCompletion,
-  })),
+  createLLMClient: mocks.createLLMClient,
   logLLMUsage: mocks.logLLMUsage,
 }));
 
@@ -34,16 +37,14 @@ vi.mock('@kit/supabase/lambda-admin-client', () => ({
 }));
 
 const adminClient = { role: 'service_role' };
-const ACCOUNT = '11111111-1111-4111-8111-111111111111';
 const USER = '22222222-2222-4222-8222-222222222222';
-const RUN = '33333333-3333-4333-8333-333333333333';
 
 const slug = 'season-generation';
 const variables = Object.fromEntries(
   Object.keys(PROMPT_REGISTRY[slug]!.variables).map((name) => [name, 'x']),
 );
 
-describe('executeLLMForLambda writes a usage row (FILM-1902)', () => {
+describe('executeLLMForLambda under a run (FILM-1902)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(console, 'log').mockImplementation(() => undefined);
@@ -66,23 +67,24 @@ describe('executeLLMForLambda writes a usage row (FILM-1902)', () => {
     vi.restoreAllMocks();
   });
 
-  it('logs a successful call through the service-role client with the job’s identity', async () => {
+  it('logs a successful call through the service-role client with the run’s identity', async () => {
+    const { run } = fakeRunHandle();
+
     const result = await executeLLMForLambda<{ ok: boolean }>({
+      run,
       templateSlug: slug,
       variables,
-      accountId: ACCOUNT,
       userId: USER,
       operationName: 'season-analysis',
-      runId: RUN,
     });
 
     expect(result.data).toEqual({ ok: true });
     expect(mocks.logLLMUsage).toHaveBeenCalledTimes(1);
     expect(mocks.logLLMUsage.mock.calls[0]?.[0]).toBe(adminClient);
     expect(mocks.logLLMUsage.mock.calls[0]?.[1]).toMatchObject({
-      accountId: ACCOUNT,
+      accountId: run.accountId,
       userId: USER,
-      runId: RUN,
+      runId: run.id,
       templateSlug: slug,
       operationName: 'season-analysis',
       llmProvider: PROMPT_REGISTRY[slug]!.llm.provider,
@@ -102,25 +104,47 @@ describe('executeLLMForLambda writes a usage row (FILM-1902)', () => {
     );
   });
 
+  it('charges the run’s user when the call site names none', async () => {
+    const { run } = fakeRunHandle();
+
+    await executeLLMForLambda({ run, templateSlug: slug, variables });
+
+    expect(mocks.logLLMUsage.mock.calls[0]?.[1]).toMatchObject({
+      accountId: run.accountId,
+      userId: run.createdBy,
+      runId: run.id,
+      operationName: slug,
+    });
+  });
+
+  it('finds the run in scope when none is passed', async () => {
+    const { run } = fakeRunHandle();
+
+    const result = await withRun(run, () =>
+      executeLLMForLambda<{ ok: boolean }>({ templateSlug: slug, variables }),
+    );
+
+    expect(result.data).toEqual({ ok: true });
+    expect(mocks.logLLMUsage.mock.calls[0]?.[1]).toMatchObject({
+      runId: run.id,
+    });
+  });
+
   it('logs a failed call with the provider’s error code, then rethrows', async () => {
+    const { run } = fakeRunHandle();
     mocks.createChatCompletion.mockRejectedValue(
       new LLMError('quota', 'gemini', 'QUOTA_EXCEEDED', 429),
     );
 
     await expect(
-      executeLLMForLambda({
-        templateSlug: slug,
-        variables,
-        accountId: ACCOUNT,
-        userId: USER,
-      }),
+      executeLLMForLambda({ run, templateSlug: slug, variables, userId: USER }),
     ).rejects.toThrow('quota');
 
     expect(mocks.logLLMUsage).toHaveBeenCalledTimes(1);
-    expect(mocks.logLLMUsage.mock.calls[0]?.[0]).toBe(adminClient);
     expect(mocks.logLLMUsage.mock.calls[0]?.[1]).toMatchObject({
-      accountId: ACCOUNT,
+      accountId: run.accountId,
       userId: USER,
+      runId: run.id,
       templateSlug: slug,
       status: 'failure',
       totalTokens: 0,
@@ -130,17 +154,14 @@ describe('executeLLMForLambda writes a usage row (FILM-1902)', () => {
   });
 
   it('logs a response the template cannot parse as a failure too', async () => {
+    const { run } = fakeRunHandle();
     mocks.createChatCompletion.mockResolvedValue({
       message: { role: 'assistant', content: 'not json at all' },
       usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
     });
 
     await expect(
-      executeLLMForLambda({
-        templateSlug: slug,
-        variables,
-        accountId: ACCOUNT,
-      }),
+      executeLLMForLambda({ run, templateSlug: slug, variables }),
     ).rejects.toThrow();
 
     expect(mocks.logLLMUsage).toHaveBeenCalledTimes(1);
@@ -151,12 +172,13 @@ describe('executeLLMForLambda writes a usage row (FILM-1902)', () => {
   });
 
   it('still returns the result when no service-role client can be built', async () => {
+    const { run } = fakeRunHandle();
     mocks.createLambdaAdminClient.mockReturnValue(null);
 
     const result = await executeLLMForLambda<{ ok: boolean }>({
+      run,
       templateSlug: slug,
       variables,
-      accountId: ACCOUNT,
     });
 
     expect(result.data).toEqual({ ok: true });
@@ -167,60 +189,52 @@ describe('executeLLMForLambda writes a usage row (FILM-1902)', () => {
     );
   });
 
-  it('a call site that passes no identity still writes a row, unattributed', async () => {
-    await executeLLMForLambda({ templateSlug: slug, variables });
+  describe('refuses before any model call', () => {
+    it.each([
+      ['an external run', fakeRunHandle({ mode: 'external' })],
+      ['a cancelled run', fakeRunHandle({ status: 'cancelled' })],
+      ['a committed run', fakeRunHandle({ status: 'committed' })],
+      [
+        'a run past its lease',
+        fakeRunHandle({
+          leaseExpiresAt: new Date(Date.now() - 1000).toISOString(),
+        }),
+      ],
+    ])(
+      '%s: LLM_FORBIDDEN_EXTERNAL_RUN, no client, no usage row',
+      async (_name, { run }) => {
+        await expect(
+          executeLLMForLambda({ run, templateSlug: slug, variables }),
+        ).rejects.toMatchObject({
+          name: 'GatewayError',
+          code: 'LLM_FORBIDDEN_EXTERNAL_RUN',
+        });
 
-    expect(mocks.logLLMUsage).toHaveBeenCalledTimes(1);
-    expect(mocks.logLLMUsage.mock.calls[0]?.[1]).toMatchObject({
-      status: 'success',
-      operationName: slug,
-    });
-    expect(mocks.logLLMUsage.mock.calls[0]?.[1]).toMatchObject({
-      accountId: '',
-      userId: undefined,
-      runId: undefined,
+        expect(mocks.createLLMClient).not.toHaveBeenCalled();
+        expect(mocks.createChatCompletion).not.toHaveBeenCalled();
+        expect(mocks.logLLMUsage).not.toHaveBeenCalled();
+      },
+    );
+
+    it('no run at all: LLM_NO_RUN', async () => {
+      await expect(
+        executeLLMForLambda({ templateSlug: slug, variables }),
+      ).rejects.toSatisfy(
+        (error: unknown) =>
+          error instanceof GatewayError && error.code === 'LLM_NO_RUN',
+      );
+
+      expect(mocks.createLLMClient).not.toHaveBeenCalled();
     });
   });
-});
 
-describe('every worker handler passes the job’s account to executeLLMForLambda', () => {
-  // Handlers that call the executor themselves, plus the stage runtime the
-  // `@kit/generation` stages call it through (FILM-1901): story-refinement,
-  // screenplay-refinement, asset-creation and season-analysis reach it only
-  // via generateWithLambda
-  const workerDir = path.resolve(__dirname, '..');
-  const callers = [
-    ...readdirSync(path.join(workerDir, 'handlers')).map(
-      (name) => `handlers/${name}`,
-    ),
-    'utils/stage-runtime.ts',
-  ]
-    .filter((name) => name.endsWith('.ts'))
-    .map((name) => ({
-      name,
-      source: readFileSync(path.join(workerDir, name), 'utf8'),
-    }))
-    .filter(({ source }) => /executeLLMForLambda(<|\()/.test(source));
+  it('renews the lease in the same round trip it checks the run', async () => {
+    const { run, state } = fakeRunHandle();
 
-  it('finds the call sites', () => {
-    expect(callers.map((c) => c.name).sort()).toEqual([
-      'utils/stage-runtime.ts',
+    await executeLLMForLambda({ run, templateSlug: slug, variables });
+
+    expect(state.rpcs.map((rpc) => rpc.fn)).toEqual([
+      'renew_generation_run_lease',
     ]);
   });
-
-  it.each(callers.map((c) => [c.name, c.source] as const))(
-    '%s passes accountId and userId on every call',
-    (_name, source) => {
-      const calls = source.split('executeLLMForLambda').slice(1);
-      // The import line is not a call
-      const callBodies = calls.filter((c) => !c.startsWith(' } from'));
-
-      for (const body of callBodies) {
-        // Up to the template variables: `accountId,` shorthand or `accountId:`
-        const argument = body.slice(0, body.indexOf('variables:'));
-        expect(argument).toMatch(/\baccountId[,:]/);
-        expect(argument).toMatch(/\buserId[,:]/);
-      }
-    },
-  );
 });

@@ -1,9 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
-import { createLLMClient } from '@kit/llm';
-
-import { runAgent } from '../src/runner';
+import { runAgent, setAgentStepWriter } from '../src/runner';
 import { createTool, toolError, toolSuccess } from '../src/tool';
 import type { AgentRunContext } from '../src/types';
 import type { AgentConfig } from '../src/types';
@@ -13,23 +11,15 @@ import type { AgentConfig } from '../src/types';
  * `tool.execute` as its second parameter. Omitting it left tools receiving
  * `undefined` where production passes a tenant context.
  */
+// The run's write function (FILM-1902): the runner reaches a model only
+// through it. The stub answers one step at a time.
+const mockCreateChatCompletion = vi.fn();
+
 const RUN_CONTEXT: AgentRunContext = {
   accountId: '11111111-1111-1111-1111-111111111111',
   userId: '22222222-2222-2222-2222-222222222222',
+  write: mockCreateChatCompletion,
 };
-
-// =============================================================================
-// MOCK @kit/llm
-// =============================================================================
-
-const mockCreateChatCompletion = vi.fn();
-
-vi.mock('@kit/llm', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@kit/llm')>()),
-  createLLMClient: vi.fn(() => ({
-    createChatCompletion: mockCreateChatCompletion,
-  })),
-}));
 
 // =============================================================================
 // HELPERS
@@ -52,9 +42,11 @@ function makeConfig(overrides?: Partial<AgentConfig>): AgentConfig {
 
 function mockLLMResponse(content: string) {
   return {
-    message: { role: 'assistant', content },
+    content,
+    provider: 'stub',
+    model: 'stub-1',
     usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
-    cost: { input: 0.001, output: 0.002, total: 0.003 },
+    cost: { prompt: 0.001, completion: 0.002, total: 0.003 },
     finishReason: 'stop',
   };
 }
@@ -68,41 +60,71 @@ describe('Agent Runner', () => {
     vi.clearAllMocks();
   });
 
-  describe('runAgent — LLM_FORCE_PROVIDER=local (FILM-1805)', () => {
+  describe('runAgent — the write function is the only way to a model (FILM-1902)', () => {
     const answer = mockLLMResponse(
       JSON.stringify({ action: 'final_answer', result: 'ok' }),
     );
 
-    const providerUsed = async () => {
+    it('passes the config’s provider and model, the step and the limits to the writer', async () => {
       mockCreateChatCompletion.mockResolvedValueOnce(answer);
-      await runAgent(makeConfig(), { userPrompt: 'hi' }, RUN_CONTEXT);
 
-      return vi.mocked(createLLMClient).mock.calls[0]![0];
-    };
+      await runAgent(
+        makeConfig({
+          provider: 'gemini',
+          model: 'gemini-3.1-flash-lite',
+          temperature: 0.2,
+        }),
+        { userPrompt: 'hi' },
+        RUN_CONTEXT,
+      );
 
-    afterEach(() => {
-      vi.unstubAllEnvs();
-    });
-
-    it('runs the agent on the local model under the sandbox gate', async () => {
-      vi.stubEnv('NODE_ENV', 'test');
-      vi.stubEnv('VENDOR_SANDBOX', '1');
-      vi.stubEnv('LLM_FORCE_PROVIDER', 'local');
-      vi.stubEnv('LLM_MODEL', 'llama3.1');
-
-      expect(await providerUsed()).toMatchObject({
-        provider: 'local',
-        model: 'llama3.1',
+      expect(mockCreateChatCompletion).toHaveBeenCalledTimes(1);
+      expect(mockCreateChatCompletion.mock.calls[0]![0]).toMatchObject({
+        agentName: 'test-agent',
+        step: 1,
+        provider: 'gemini',
+        model: 'gemini-3.1-flash-lite',
+        temperature: 0.2,
+        maxTokens: 4000,
+      });
+      expect(
+        mockCreateChatCompletion.mock.calls[0]![0].messages[0],
+      ).toMatchObject({
+        role: 'system',
       });
     });
 
-    it('keeps the agent on gemini outside the gate', async () => {
-      vi.stubEnv('NODE_ENV', 'test');
-      vi.stubEnv('VENDOR_SANDBOX', '');
-      vi.stubEnv('LLM_FORCE_PROVIDER', 'local');
-      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    it('fails before any model call when the context has no write function and none is installed', async () => {
+      setAgentStepWriter(undefined);
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-      expect(await providerUsed()).toMatchObject({ provider: 'gemini' });
+      const result = await runAgent(
+        makeConfig(),
+        { userPrompt: 'hi' },
+        { accountId: RUN_CONTEXT.accountId },
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/no write function/);
+      expect(mockCreateChatCompletion).not.toHaveBeenCalled();
+    });
+
+    it('uses the process-wide writer when the context has none', async () => {
+      setAgentStepWriter(mockCreateChatCompletion);
+      mockCreateChatCompletion.mockResolvedValueOnce(answer);
+
+      try {
+        const result = await runAgent(
+          makeConfig(),
+          { userPrompt: 'hi' },
+          { accountId: RUN_CONTEXT.accountId },
+        );
+
+        expect(result.success).toBe(true);
+        expect(result.data).toBe('ok');
+      } finally {
+        setAgentStepWriter(undefined);
+      }
     });
   });
 

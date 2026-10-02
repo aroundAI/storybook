@@ -8,6 +8,7 @@ export {
   type AnyStageDefinition,
   type Brief,
   type CheckError,
+  type CommitFollowOn,
   type CommitResult,
   type Ctx,
   type EpisodeContextLoader,
@@ -54,11 +55,12 @@ export {
   markJobProcessing,
   type GenerationJobStatus,
 } from './jobs';
-export { runStage, type RunStageResult } from './run-stage';
+export { runStage, type RunStageDeps, type RunStageResult } from './run-stage';
 export { serverRun } from './run';
 export * from './slug';
 export * from './project-type';
 export * from './formatters';
 export * from './episode-rows';
 export * from './canon';
+export * from './runs';
 export * from './stages';

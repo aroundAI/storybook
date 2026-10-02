@@ -11,10 +11,12 @@ import {
   vi,
 } from 'vitest';
 
-import { PROMPT_REGISTRY } from '../src/lib/server/prompt-registry';
+import { fakeRunHandle } from '@kit/generation/testing';
+import { PROMPT_REGISTRY } from '@kit/prompt-engine/prompt-registry';
 
 // FILM-1805 Half B. A real prompt (story ideation, with its own Zod schema)
-// runs through the real executeLLM and the real local provider against an
+// runs through the real executeLLM (now the gateway's, under a run) and the
+// real local provider against an
 // in-process OpenAI-compatible server standing in for Ollama. The live run
 // against Ollama itself is the owner's step; this proves the request shape
 // and that the prompt's own schema accepts what comes back.
@@ -32,7 +34,7 @@ vi.mock('@kit/supabase/lambda-admin-client', () => ({
   createLambdaAdminClient: () => null,
 }));
 
-const { executeLLM } = await import('../src/lib/server/llm-executor');
+const { executeLLM } = await import('../src/executors/execute-llm');
 
 interface CapturedRequest {
   url: string;
@@ -47,6 +49,7 @@ let stubUrl = '';
 const ideation = PROMPT_REGISTRY['story-ideation']!;
 
 const config = {
+  run: fakeRunHandle().run,
   templateSlug: 'story-ideation',
   variables: {
     ...Object.fromEntries(

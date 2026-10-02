@@ -3,8 +3,6 @@
  *
  * Core type definitions for the JSON file-based prompt engine.
  */
-import type { LLMProvider } from '@kit/llm';
-
 /**
  * Output schema configuration for prompt responses
  */
@@ -129,7 +127,7 @@ export interface LLMExecutionResult<T> {
     latency: number;
     tokens: number;
     cost: number | undefined;
-    provider: LLMProvider | string;
+    provider: string;
     model: string;
   };
 }

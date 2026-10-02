@@ -24,11 +24,23 @@ export interface RunStageResult<TData> {
   run: GenerationRun;
 }
 
+export interface RunStageDeps {
+  generate: GenerateFn;
+  runId?: string;
+  /**
+   * Runs after every part is checked and before commit: the run handle's
+   * TARGET_CHANGED check (FILM-1903). A throw here commits nothing.
+   */
+  beforeCommit?: () => Promise<void>;
+  /** The run commit stamps; defaults to a server run built from the brief */
+  run?: (usage: GenerationUsage | undefined, brief?: Brief) => GenerationRun;
+}
+
 export async function runStage<TTarget, TOut, TData>(
   stage: StageDefinition<TTarget, TOut, TData>,
   ctx: Ctx,
   target: TTarget,
-  deps: { generate: GenerateFn; runId?: string },
+  deps: RunStageDeps,
 ): Promise<RunStageResult<TData>> {
   const tracking = stage.jobTracking;
   const reference = tracking?.reference(target);
@@ -81,12 +93,11 @@ export async function runStage<TTarget, TOut, TData>(
       outputs.push(checked.value);
     }
 
-    const run = serverRun({
-      brief: lastBrief,
-      usage,
-      runId: deps.runId,
-      diagnostics,
-    });
+    await deps.beforeCommit?.();
+
+    const run = deps.run
+      ? { ...deps.run(usage, lastBrief), diagnostics }
+      : serverRun({ brief: lastBrief, usage, runId: deps.runId, diagnostics });
 
     const commit = await stage.commit(ctx, run, target, outputs);
 

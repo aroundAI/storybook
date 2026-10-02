@@ -6,6 +6,7 @@
   "files": [
     "./apps.js",
     "./base.js",
+    "./model-boundary.js",
     "./nextjs.js"
   ],
   "scripts": {

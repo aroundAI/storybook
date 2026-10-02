@@ -1,0 +1,48 @@
+{
+  "name": "@kit/ai-gateway",
+  "private": true,
+  "sideEffects": false,
+  "version": "0.1.0",
+  "description": "The one door to every AI model (FILM-1902): the server writer, the executors and the queue, reachable only through a generation run",
+  "type": "module",
+  "scripts": {
+    "clean": "git clean -xdf .turbo node_modules",
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest --coverage"
+  },
+  "prettier": "@kit/prettier-config",
+  "exports": {
+    ".": "./src/index.ts",
+    "./lambda-prompts": "./src/prompts/lambda-registry.ts",
+    "./testing": "./src/testing/index.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.968.0",
+    "@kit/agent": "workspace:*",
+    "@kit/generation": "workspace:*",
+    "@kit/llm": "workspace:*",
+    "@kit/prompt-engine": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "@kit/supabase": "workspace:*",
+    "@supabase/supabase-js": "2.57.4",
+    "zod": "^3.25.74"
+  },
+  "devDependencies": {
+    "@kit/eslint-config": "workspace:*",
+    "@kit/prettier-config": "workspace:*",
+    "@kit/tsconfig": "workspace:*",
+    "@types/node": "^24.5.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "src/*"
+      ]
+    }
+  }
+}
