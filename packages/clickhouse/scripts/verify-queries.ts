@@ -5700,7 +5700,12 @@ async function xSteps() {
         projectId: X_PROJECT,
         platforms: ['twitter'],
       });
-      expectEqual('X-only views, likes', [onlyX.views, onlyX.likes], [500, 8]);
+      // X alone measured no shares: null, not 0 (KB-162's totals).
+      expectEqual(
+        'X-only views, likes, shares',
+        [onlyX.views, onlyX.likes, onlyX.shares],
+        [500, 8, null],
+      );
 
       const snapshot = (
         await queryLatestSnapshots({
