@@ -69,6 +69,7 @@ function stats(
     subscribers_gained: youtube ? figures.subscribers : 0,
     saves: youtube ? 0 : figures.saves,
     measured: {
+      shares: true,
       saves: !youtube,
       watch_time_seconds: youtube,
       subscribers_gained: youtube,
@@ -87,6 +88,7 @@ describe('episode analytics, for figures a platform does not measure (KB-149)', 
     state.totals.set('tt', {
       ...stats('tiktok', { watch: 0, subscribers: 0, saves: 7 }),
       measured: {
+        shares: true,
         saves: false,
         watch_time_seconds: false,
         subscribers_gained: false,
