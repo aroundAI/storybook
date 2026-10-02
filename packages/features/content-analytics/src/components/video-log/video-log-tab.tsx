@@ -28,6 +28,7 @@ import {
 } from '../../server/video-log-actions';
 import { ChannelFilter } from '../deep-dive/channel-filter';
 import { AnalyticsCard } from '../overview/analytics-card';
+import { SignalSurface } from '../signal-surface';
 import { useSyncStatuses } from '../sync-status/sync-status';
 import { useProjectChannels } from '../use-project-channels';
 import { VideoLogTable } from './video-log-table';
@@ -67,6 +68,17 @@ export function VideoLogTab({
 }: VideoLogTabProps) {
   const queryClient = useQueryClient();
   const channelsQuery = useProjectChannels(projectId);
+  // The video whose signals are open (FILM-1719); a comparable's link
+  // replaces it, so the surface follows the reader from video to video.
+  const [signalVideoId, setSignalVideoId] = useState<string | null>(null);
+  const openSignals = (videoId: string) => {
+    setSignalVideoId(videoId);
+    requestAnimationFrame(() =>
+      document
+        .getElementById('signal-surface')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    );
+  };
 
   // The view, and the channel it was built for. Changing channel starts
   // again at the first page; keeping that here rather than in an effect
@@ -239,6 +251,7 @@ export function VideoLogTab({
               onNotePermissionLost={() =>
                 void queryClient.invalidateQueries({ queryKey })
               }
+              onOpenSignals={openSignals}
             />
 
             <div className={'flex items-center justify-between gap-3'}>
@@ -276,6 +289,15 @@ export function VideoLogTab({
           </>
         )}
       </AnalyticsCard>
+
+      {signalVideoId ? (
+        <SignalSurface
+          projectId={projectId}
+          videoId={signalVideoId}
+          onSelectVideo={openSignals}
+          onClose={() => setSignalVideoId(null)}
+        />
+      ) : null}
     </div>
   );
 }

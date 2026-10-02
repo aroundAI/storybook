@@ -945,7 +945,7 @@ they become one-line parses in a follow-up.
    unchanged; minutes-left in the log line. L1–L3 green.
 6. **Guards.** `tooling/mutation-guards/kb-15.json`; run them.
 7. **Evidence.** DB lock → E1; then heavy slot → §27 on port 3114.
-8. **Records.** KB-15 → **Fixed (#PR)**, AC 1–3 ticked with evidence, AC 4
+8. **Records.** KB-15 → **Fixed (#550)**, AC 1–3 ticked with evidence, AC 4
    left deferred; one row in the FILM-CC-04 *Fixed* table. FILM-CC-03's three
    `closed_by: KB-15` criteria and the near-expiry test item → met with
    evidence. FILM-1729 AC "X token refresh exists…" → reason updated to "code
