@@ -36,7 +36,7 @@ same commands:
 | 💅 Format | `pnpm turbo format --force --continue -- …` (check only) |
 | 📋 PR records (its own workflow, `pr-records.yml`) | `pnpm -s prs:records --pr <n>`: title, records, labels |
 | 🧪 Unit Tests | classifier table tests, `scripts/test-units.sh`, guard self-test, coverage |
-| 🧪 Unit guards (4 shards) | the 4 shards, 2 at a time, each on a copy-on-write clone (`cp -cR`) of the worktree |
+| 🧪 Unit guards (6 shards) | the 6 shards, 2 at a time, each on a copy-on-write clone (`cp -cR`) of the worktree |
 | 🐘 Supabase DB | schema drift, start-script test, `supabase db reset` from the PR's tree, types-current, the two PostgREST verifiers, pgTAP, database mutation guards |
 | 🗄️ ClickHouse SQL | migrate and verify against the local ClickHouse |
 | ⚫️ Test | `build:test`, `next start -p 3000`, `supabase:test`, Playwright (see Gotchas for `CI=1`) |

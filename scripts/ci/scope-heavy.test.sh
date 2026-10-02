@@ -29,7 +29,7 @@ check() {
 export SCOPE_ENFORCE=true SCOPE_AFFECTED='' SCOPE_UNIT_GUARDS=0 SCOPE_E2E_GUARDS=0 SCOPE_PGTAP_GUARDS=0
 
 SKIP_ALL='full=false test=false supabase=false skip_test=true skip_supabase=true skip_unit_guards=true skip_e2e_guards=true enforced=true'
-RUN_ALL='full=true skip_test=false skip_supabase=false skip_unit_guards=false skip_e2e_guards=false enforced=false unit_shards=[1,2,3,4] e2e_shards=[1,2,3,4,5]'
+RUN_ALL='full=true skip_test=false skip_supabase=false skip_unit_guards=false skip_e2e_guards=false enforced=false unit_shards=[1,2,3,4,5,6] e2e_shards=[1,2,3,4,5]'
 
 # --- what nothing reaches is skipped
 check 'specs and a script outside scripts/ci' "$SKIP_ALL" specs/INDEX.md scripts/local-ci/stop.sh
@@ -57,7 +57,7 @@ SCOPE_PGTAP_GUARDS=2 check 'a guard JSON with pgTAP entries' 'full=false supabas
 
 # --- guards follow run.py --changed
 SCOPE_UNIT_GUARDS=3 check 'three unit guards: three shards' 'full=false unit_guards=3 skip_unit_guards=false unit_shards=[1,2,3] skip_e2e_guards=true' tooling/mutation-guards/kb-13.json
-SCOPE_UNIT_GUARDS=40 SCOPE_E2E_GUARDS=2 check 'many unit guards cap at four shards' 'unit_shards=[1,2,3,4] e2e_guards=2 skip_e2e_guards=false e2e_shards=[1,2]' packages/x/a.ts
+SCOPE_UNIT_GUARDS=40 SCOPE_E2E_GUARDS=2 check 'many unit guards cap at six shards' 'unit_shards=[1,2,3,4,5,6] e2e_guards=2 skip_e2e_guards=false e2e_shards=[1,2]' packages/x/a.ts
 SCOPE_E2E_GUARDS=9 check 'E2E guards cap at five shards' 'e2e_shards=[1,2,3,4,5]' apps/e2e/tests/x.spec.ts
 check 'no guard: a placeholder shard, never an empty matrix' 'skip_unit_guards=true unit_shards=[1] e2e_shards=[1]' packages/x/a.ts
 
@@ -83,7 +83,7 @@ SCOPE_E2E_GUARDS='' check 'E2E guard count blank' "$RUN_ALL" packages/x/a.ts
 SCOPE_PGTAP_GUARDS='x' check 'pgTAP guard count not a number' "$RUN_ALL" packages/x/a.ts
 
 # --- report-only: the verdict is printed, nothing is skipped
-SCOPE_ENFORCE=false check 'report-only skips nothing' 'full=false test=false supabase=false unit_guards=0 enforced=false skip_test=false skip_supabase=false skip_unit_guards=false skip_e2e_guards=false unit_shards=[1,2,3,4] e2e_shards=[1,2,3,4,5]' specs/INDEX.md
+SCOPE_ENFORCE=false check 'report-only skips nothing' 'full=false test=false supabase=false unit_guards=0 enforced=false skip_test=false skip_supabase=false skip_unit_guards=false skip_e2e_guards=false unit_shards=[1,2,3,4,5,6] e2e_shards=[1,2,3,4,5]' specs/INDEX.md
 SCOPE_ENFORCE='' check 'switch unset is report-only' 'enforced=false skip_test=false' specs/INDEX.md
 SCOPE_ENFORCE=TRUE check 'only the exact value true enforces' 'enforced=false skip_test=false' specs/INDEX.md
 

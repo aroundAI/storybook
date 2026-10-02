@@ -33,7 +33,7 @@
 # are the full set: report-only. Table test: scripts/ci/scope-heavy.test.sh.
 set -euo pipefail
 
-UNIT_SHARDS=4 # 🧪 Unit guards' matrix in .github/workflows/workflow.yml
+UNIT_SHARDS=6 # 🧪 Unit guards' matrix in .github/workflows/workflow.yml
 E2E_SHARDS=5  # 🧬 E2E guards' matrix
 
 shards() { # shards <count> <cap>: "[1,2,...]", at least [1]
