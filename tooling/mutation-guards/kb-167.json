@@ -35,8 +35,8 @@
       "name": "KB-167 the empty company dashboard reads 0 views",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/server/account-dashboard-actions.ts",
-      "find": "function getEmptyDashboardData(): AccountDashboardData {\n  return {\n    totals: {\n      views: null,",
-      "replace": "function getEmptyDashboardData(): AccountDashboardData {\n  return {\n    totals: {\n      views: 0,",
+      "find": "function getEmptyDashboardData(): Omit<AccountDashboardData, 'revenueAccess'> {\n  return {\n    totals: {\n      views: null,",
+      "replace": "function getEmptyDashboardData(): Omit<AccountDashboardData, 'revenueAccess'> {\n  return {\n    totals: {\n      views: 0,",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/account-dashboard-unmeasured.test.ts",
       "pattern": "to an account with no projects"
