@@ -184,21 +184,28 @@ describe('executeLLMForLambda writes a usage row (FILM-1902)', () => {
 });
 
 describe('every worker handler passes the job’s account to executeLLMForLambda', () => {
-  const handlersDir = path.resolve(__dirname, '../handlers');
-  const callers = readdirSync(handlersDir)
+  // Handlers that call the executor themselves, plus the stage runtime the
+  // `@kit/generation` stages call it through (FILM-1901): story-refinement
+  // and asset-creation reach it only via generateWithLambda
+  const workerDir = path.resolve(__dirname, '..');
+  const callers = [
+    ...readdirSync(path.join(workerDir, 'handlers')).map(
+      (name) => `handlers/${name}`,
+    ),
+    'utils/stage-runtime.ts',
+  ]
     .filter((name) => name.endsWith('.ts'))
     .map((name) => ({
       name,
-      source: readFileSync(path.join(handlersDir, name), 'utf8'),
+      source: readFileSync(path.join(workerDir, name), 'utf8'),
     }))
     .filter(({ source }) => /executeLLMForLambda(<|\()/.test(source));
 
   it('finds the call sites', () => {
     expect(callers.map((c) => c.name).sort()).toEqual([
-      'asset-creation.ts',
-      'screenplay-refinement.ts',
-      'season-analysis.ts',
-      'story-refinement.ts',
+      'handlers/screenplay-refinement.ts',
+      'handlers/season-analysis.ts',
+      'utils/stage-runtime.ts',
     ]);
   });
 

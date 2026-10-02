@@ -233,6 +233,7 @@ async function createAssetsFromScreenplay(
   if (itemsToCreate.length > 0) {
     const ctx = workerCtx(supabase, data);
     const stage = assetDescriptionStage;
+    const generate = generateWithLambda(ctx, 'asset-creation');
 
     const targets: AssetDescriptionTarget[] = itemsToCreate.map((item) => ({
       projectId: data.projectId,
@@ -247,7 +248,7 @@ async function createAssetsFromScreenplay(
 
         try {
           const brief = await stage.prepare(ctx, target, part!);
-          const generated = await generateWithLambda(brief);
+          const generated = await generate(brief);
           const output: AssetDescriptionOutput = stage.outputSchema.parse(
             generated.output,
           );

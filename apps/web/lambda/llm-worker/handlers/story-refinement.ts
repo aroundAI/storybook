@@ -40,11 +40,13 @@ export async function processStoryRefinement(
 
   console.log(`[Story Refinement] Processing for episode ${data.episodeId}`);
 
+  const ctx = workerCtx(supabase, data);
+
   const { commit, usage } = await runStage(
     storyRefinementStage,
-    workerCtx(supabase, data),
+    ctx,
     { episodeId: data.episodeId, feedback: data.feedback },
-    { generate: generateWithLambda },
+    { generate: generateWithLambda(ctx, 'story-refinement') },
   );
 
   const generatedAt = new Date().toISOString();

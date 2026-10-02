@@ -12,6 +12,7 @@ import type {
   Brief,
   Ctx,
   EpisodeContextLoader,
+  GenerateFn,
   GenerateResult,
 } from '@kit/generation';
 import type { Database } from '@kit/supabase/database';
@@ -64,22 +65,34 @@ export function workerCtx(
   };
 }
 
-/** The server writer: the brief's prompt, rendered and sent by the executor. */
-export async function generateWithLambda(
-  brief: Brief,
-): Promise<GenerateResult> {
-  const result = await executeLLMForLambda<unknown>({
-    templateSlug: brief.prompt.slug,
-    variables: brief.prompt.variables,
-  });
+/**
+ * The server writer: the brief's prompt, rendered and sent by the executor,
+ * with the job's account and user so the llm_usage_analytics row it writes
+ * (FILM-1902, #555) is charged to the right account. `operationName` names
+ * the job in that row; it defaults to the stage key.
+ */
+export function generateWithLambda(
+  ctx: Pick<Ctx, 'accountId' | 'userId'>,
+  operationName?: string,
+): GenerateFn {
+  return async (brief: Brief): Promise<GenerateResult> => {
+    const result = await executeLLMForLambda<unknown>({
+      templateSlug: brief.prompt.slug,
+      accountId: ctx.accountId,
+      userId: ctx.userId,
+      operationName: operationName ?? brief.stage,
+      runId: brief.runId,
+      variables: brief.prompt.variables,
+    });
 
-  return {
-    output: result.data,
-    usage: {
-      provider: result.metadata.provider,
-      model: result.metadata.model,
-      tokens: result.metadata.tokens,
-      latencyMs: result.metadata.latency,
-    },
+    return {
+      output: result.data,
+      usage: {
+        provider: result.metadata.provider,
+        model: result.metadata.model,
+        tokens: result.metadata.tokens,
+        latencyMs: result.metadata.latency,
+      },
+    };
   };
 }
