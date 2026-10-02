@@ -103,7 +103,7 @@ test_plan:
       evidence: "packages/features/publishing/__tests__/publish-hub-config.test.ts:32"
     - text: "Test metadata validation"
       met: true
-      evidence: "packages/features/publishing/__tests__/publish-hub-config.test.ts:73"
+      evidence: "packages/features/publishing/__tests__/publish-hub-config.test.ts:72"
     - text: "Test scheduling logic"
       met: true
       evidence: "the schedule is read and validated (packages/features/publishing/__tests__/publish-hub-config.test.ts:182); the scheduled-versus-immediate branch: packages/features/publishing/__tests__/publish-actions.test.ts:427 (scheduled request stored, nothing uploaded) and :307 (immediate request published now)"

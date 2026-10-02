@@ -21,7 +21,7 @@ summary: >
 acceptance_criteria:
   - text: "Format family is a first-class type, distinct from content_type"
     met: true
-    evidence: "packages/clickhouse/src/lib/format-families.ts:32 — FormatFamily, from FORMAT_FAMILIES (packages/clickhouse/src/lib/format-families.ts:18); ContentType is its own union, read off publishes' CHECK (packages/clickhouse/__tests__/format-families.test.ts:42). #497"
+    evidence: "packages/clickhouse/src/lib/format-families.ts:32 — FormatFamily, from FORMAT_FAMILIES (packages/clickhouse/src/lib/format-families.ts:18); ContentType is its own union, read off publishes' CHECK (packages/clickhouse/__tests__/format-families.test.ts:49). #497"
   - text: "The mapping is explicit and exported, not inferred at call sites"
     met: true
     evidence: "packages/clickhouse/src/lib/format-families.ts:88 FORMAT_BY_CONTENT_TYPE, a Record on content type x platform with no default, exported from @kit/clickhouse with resolveFormatFamily (packages/clickhouse/src/lib/format-families.ts:198); the one analytics call site that split short/long now resolves through it (packages/features/content-analytics/src/server/language-analytics.ts:491). #497"
@@ -30,13 +30,13 @@ acceptance_criteria:
     evidence: "packages/clickhouse/scripts/verify-queries.ts:3058 runs SELECT DISTINCT platform, content_type FROM video_dim FINAL and fails on any pair unmappedFormatPairs returns; 128/128 green against ClickHouse 24.8, and seen red (youtube/podcast added to the fixture: 127 passed, 1 failed). #497"
   - text: "A new content_type fails CI rather than defaulting"
     met: true
-    evidence: "packages/clickhouse/__tests__/format-families.test.ts:42 reads publishes.content_type's CHECK out of the migration, seen red with 'podcast' added to it; resolveFormatFamily returns unmapped_content_type, never a family (packages/clickhouse/src/lib/format-families.ts:211, packages/clickhouse/__tests__/format-families.test.ts:115); and the live check above. Mutation guards FF3 (tooling/mutation-guards/film-1716.json). #497"
+    evidence: "packages/clickhouse/__tests__/format-families.test.ts:49 reads publishes.content_type's CHECK out of the migration, seen red with 'podcast' added to it; resolveFormatFamily returns unmapped_content_type, never a family (packages/clickhouse/src/lib/format-families.ts:206, packages/clickhouse/__tests__/format-families.test.ts:124); and the live check above. Mutation guards FF3 (tooling/mutation-guards/film-1716.json). #497"
   - text: "teaser and trailer resolve to a family and are not dropped"
     met: true
     evidence: "Their own families on every platform (packages/clickhouse/__tests__/format-families.test.ts:79, guard FF1); the Language tab's comparison keeps a trailer as a trailer (packages/features/content-analytics/__tests__/language-analytics.test.ts:356, guard FF8), where it used to fold it into long-form and teasers into shorts. #497"
   - text: "The same clip on two platforms can resolve to different families"
     met: true
-    evidence: "short is short_vertical on YouTube, TikTok, Instagram and Facebook and clip on X and LinkedIn (packages/clickhouse/__tests__/format-families.test.ts:86, guard FF2); full is long_horizontal on YouTube and long_vertical on TikTok (packages/clickhouse/__tests__/format-families.test.ts:108). #497"
+    evidence: "short is short_vertical on YouTube, TikTok, Instagram and Facebook and clip on X and LinkedIn (packages/clickhouse/__tests__/format-families.test.ts:95, guard FF2); full is long_horizontal on YouTube and long_vertical on TikTok (packages/clickhouse/__tests__/format-families.test.ts:117). #497"
   - text: "A publish with no asset duration falls back to its declared type rather than being guessed"
     met: true
     evidence: "resolveFormatFamily requires an AssetDuration; known: false gives the declared family with basis 'declared' (packages/clickhouse/src/lib/format-families.ts:242, packages/clickhouse/__tests__/format-families.test.ts:140, guard FF4). The one refinement, a YouTube short over 180 s, needs a known duration (packages/clickhouse/src/lib/format-families.ts:142, sourced in docs/platform-capability-reference.md). The SQL filter does the same with ifNull (packages/clickhouse/__tests__/format-families.test.ts:230, guard FF5), checked row for row against the TS resolver by packages/clickhouse/scripts/verify-queries.ts:3092. #497"
@@ -45,7 +45,7 @@ acceptance_criteria:
     evidence: "DimScope.contentType takes a list, bound with IN; an empty list is refused (packages/clickhouse/src/queries-advanced.ts:84, packages/clickhouse/src/queries-advanced.ts:239, packages/clickhouse/__tests__/queries-advanced.test.ts:1504, guard FF7). DimScope.formatFamily selects a family, on the newest dim row (packages/clickhouse/src/queries-advanced.ts:91, packages/clickhouse/__tests__/queries-advanced.test.ts:1531, guard FF6). #497"
   - text: "No consumer keys a lookup on 'short' | 'long'"
     met: true
-    evidence: "packages/clickhouse/__tests__/format-families.test.ts:273 scans packages/clickhouse/src and packages/features/content-analytics/src; seen red on main's getContentTypeComparison and its two cards (32 lines), green after they moved to format families. #497"
+    evidence: "packages/clickhouse/__tests__/format-families.test.ts:282 scans packages/clickhouse/src and packages/features/content-analytics/src; seen red on main's getContentTypeComparison and its two cards (32 lines), green after they moved to format families. #497"
 open_questions: []
 feature:
   database:

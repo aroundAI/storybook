@@ -25,28 +25,28 @@ package:
 acceptance_criteria:
   - text: "Project creation form includes all Film Studio fields"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:362 — all 11 `settings.*` fields render"
+    evidence: "apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:361 — all 11 `settings.*` fields render"
   - text: "Form is organized into logical sections"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:291 — the four specified cards"
+    evidence: "apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:290 — the four specified cards"
   - text: "Validation works correctly using Zod schemas"
     met: true
-    evidence: "packages/features/film-studio-schemas/__tests__/project.test.ts:85; resolver at `apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:184`"
+    evidence: "packages/features/film-studio-schemas/__tests__/project.test.ts:84; resolver at `apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:184`"
   - text: "Smart defaults are applied based on platform selection"
     met: false
-    reason: "unverified — needs a component or E2E test; the effect at `apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:219` is untested"
+    reason: "unverified — needs a component or E2E test; the effect at `apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:218` is untested"
   - text: "Settings are saved to projects.settings JSONB column"
     met: false
     reason: "unverified — `projects` has no `settings` column; the action writes `projects.metadata` (`apps/web/app/home/[account]/studio/projects/new/_lib/server/create-film-project.action.ts:71`) and no test reads it back"
   - text: "Form provides helpful descriptions and examples"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:400, placeholder at `:295`"
+    evidence: "apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:399, placeholder at `:295`"
   - text: "Multi-select for platforms works correctly"
     met: false
-    reason: "unverified — needs a component or E2E test; `togglePlatform` (`apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:271`) is untested"
+    reason: "unverified — needs a component or E2E test; `togglePlatform` (`apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:270`) is untested"
   - text: "Required fields are enforced"
     met: true
-    evidence: "packages/features/film-studio-schemas/__tests__/project.test.ts:109; name rule at `apps/web/app/home/[account]/studio/projects/new/_lib/schema.ts:10`"
+    evidence: "packages/features/film-studio-schemas/__tests__/project.test.ts:108; name rule at `apps/web/app/home/[account]/studio/projects/new/_lib/schema.ts:10`"
   - text: "Form submission creates project with Film Studio settings"
     met: false
     reason: "unverified — needs an E2E of a successful create; `apps/e2e/tests/refusals/refusals.po.ts:103` drives only the duplicate-name refusal"
@@ -57,10 +57,10 @@ test_plan:
   unit:
     - text: "Form validation with valid data passes"
       met: true
-      evidence: "packages/features/film-studio-schemas/__tests__/project.test.ts:85"
+      evidence: "packages/features/film-studio-schemas/__tests__/project.test.ts:84"
     - text: "Form validation with invalid data fails"
       met: true
-      evidence: "packages/features/film-studio-schemas/__tests__/project.test.ts:109"
+      evidence: "packages/features/film-studio-schemas/__tests__/project.test.ts:108"
     - text: "Smart defaults are applied correctly"
       met: false
       reason: "not met — no test found"
