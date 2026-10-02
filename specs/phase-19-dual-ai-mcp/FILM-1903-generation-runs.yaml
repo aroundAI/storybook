@@ -197,6 +197,12 @@ notes: |
     policy). openRun (part B) writes through the service role or a definer
     function; restore_content_revision is the one definer function in part A.
   - Reads follow the studio rule (KB-48): has_account_access(account_id).
+  - KB-99: generation_runs, content_revisions and account_ai_settings carry
+    kit.require_team_account (workspace tables, team accounts only), so
+    team-accounts-only.test.sql now pins 25 guarded tables. The first
+    merge-queue run of #556 failed that test because the triggers were
+    missing: run the whole tests/database suite via pgthrow before pushing
+    a migration, not only the new file.
   - expire_generation_runs() is service_role only; the cron route calls it
     with the admin client. It does not touch mcp_tool_calls (FILM-1904).
   - Mutation guards: tooling/mutation-guards/film-1903.json, nine pgTAP
@@ -211,7 +217,7 @@ notes: |
   is new; 30-film-studio.sql, 24-llm-usage-analytics.sql and
   60-generation-jobs.sql gained the columns; audio_cues has no schema file),
   types generated with pnpm supabase:web:typegen, and a pgTAP test for every
-  policy and lock (tests/database/generation-runs.test.sql, 45 cases, seen red
+  policy and lock (tests/database/generation-runs.test.sql, 46 cases, seen red
   with the migration skipped: 0 ok, 69 errors).
 feature:
   database:

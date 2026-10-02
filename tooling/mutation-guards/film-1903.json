@@ -56,6 +56,12 @@
       "sql": "create or replace function public.can_write_project(target_project_id uuid) returns boolean language sql stable security definer set search_path = '' as $$ select true $$;"
     },
     {
+      "name": "1903 DB K1 a run may sit on a personal account",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/generation-runs.test.sql",
+      "sql": "drop trigger require_team_account on public.generation_runs;"
+    },
+    {
       "name": "1903 cron expiry runs for any caller",
       "kind": "unit",
       "file": "apps/web/app/api/cron/expire-generation-runs/route.ts",

@@ -3,7 +3,7 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 
 -- A fixed count, so a run that aborts early fails as a plan mismatch rather
 -- than reading like a nearly-passing suite (revenue-records-rls.test.sql).
-select plan(45);
+select plan(46);
 
 -- FILM-1903 part A: the database half of generation runs. Every lock, the
 -- one-open-run index, the read policies, the owner-only settings write and
@@ -494,6 +494,20 @@ select throws_ok(
   'P0002',
   'revision 19030000-0000-4000-8000-0000000000ff does not exist',
   'V4 an unknown revision is refused'
+);
+
+-- ------------------------------------------------------------------
+-- KB-99: a run belongs to a team account, never a personal one
+-- ------------------------------------------------------------------
+set local role postgres;
+
+select throws_ok(
+  $$ insert into public.generation_runs (account_id, project_id, target_type, target_id, stage, mode, created_by)
+     values (tests.get_supabase_uid('gr_out'), '19030000-0000-4000-8000-000000000002', 'episode',
+             '19030000-0000-4000-8000-000000000012', 'ideation', 'server', tests.get_supabase_uid('gr_out')) $$,
+  '23514',
+  'Projects and workspace data belong to a team. Choose a team, or create one, first.',
+  'K1 a run on a personal account is refused, for the service role too (KB-99)'
 );
 
 select * from finish();

@@ -484,3 +484,24 @@ grant execute on function public.expire_generation_runs() to service_role;
 -- Realtime: the studio pages show the lease banner and refresh on commit
 -- ----------------------------------------------------------------------
 alter publication supabase_realtime add table public.generation_runs;
+
+-- ----------------------------------------------------------------------
+-- KB-99: workspace tables belong to a team account
+-- ----------------------------------------------------------------------
+-- The product is team accounts only (a solo user is a team of one). Every
+-- table with a foreign key to accounts carries kit.require_team_account or
+-- is named in team-accounts-only.test.sql's allow list; these three are
+-- workspace tables, so they carry it. The tables are new, so there are no
+-- rows to check first. generation_run_parts reaches its account through
+-- the run and has no foreign key to accounts.
+create trigger require_team_account
+  before insert or update of account_id on public.generation_runs
+  for each row execute function kit.require_team_account();
+
+create trigger require_team_account
+  before insert or update of account_id on public.content_revisions
+  for each row execute function kit.require_team_account();
+
+create trigger require_team_account
+  before insert or update of account_id on public.account_ai_settings
+  for each row execute function kit.require_team_account();

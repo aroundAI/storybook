@@ -232,3 +232,17 @@ create trigger account_ai_settings_set_timestamps
 
 -- Realtime: the studio pages show the lease banner and refresh on commit
 alter publication supabase_realtime add table public.generation_runs;
+
+-- KB-99: workspace tables belong to a team account (team-accounts-only.test.sql
+-- requires the guard on every table with a foreign key to accounts)
+create trigger require_team_account
+  before insert or update of account_id on public.generation_runs
+  for each row execute function kit.require_team_account();
+
+create trigger require_team_account
+  before insert or update of account_id on public.content_revisions
+  for each row execute function kit.require_team_account();
+
+create trigger require_team_account
+  before insert or update of account_id on public.account_ai_settings
+  for each row execute function kit.require_team_account();
