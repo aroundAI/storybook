@@ -121,7 +121,7 @@ notes: |
   | getLanguagePerformance | packages/features/content-analytics/src/server/language-analytics.ts:322 |
   | getPlatformLanguageMatrix | language-analytics.ts:419 |
   | getContentTypeComparison | language-analytics.ts:518 |
-  | the company dashboard's total, computed in the component | packages/features/content-analytics/src/components/company-dashboard.tsx:109 |
+  | the company dashboard's total, computed in the component | packages/features/content-analytics/src/components/company-dashboard.tsx:110 |
   | getShortsSourcePerformance (per short) — **not** through the one definition: (likes + comments) / views, without shares | language-analytics.ts:593 |
 
   The last row escaped FILM-1713's class guard, presumably because its
