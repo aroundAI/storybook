@@ -1036,7 +1036,11 @@ jobs:
     timeout-minutes: 45
     runs-on: ubuntu-latest
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' && needs.changes.outputs.heavy == 'true' && needs.changes.outputs.skip_test != 'true' }}
+    # Nightly and on dispatch only, like the two 🧬 E2E jobs (owner, 2026-10-02):
+    # every Playwright suite runs in the nightly full run on main; the queue
+    # keeps typecheck, unit tests, unit guards, Supabase DB and ClickHouse SQL.
+    # ✅ CI result never required this job (it depends on vars.ENABLE_E2E_JOB).
+    if: ${{ !cancelled() && github.event_name != 'merge_group' && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' && needs.changes.outputs.heavy == 'true' && needs.changes.outputs.skip_test != 'true' }}
     env:
       # No Stripe. The billing specs are skipped (see ENABLE_BILLING_TESTS
       # below), so the repo needs no payment credentials to run this job.
