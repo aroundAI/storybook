@@ -33,7 +33,7 @@ acceptance_criteria:
     evidence: "packages/clickhouse/__tests__/format-families.test.ts:42 reads publishes.content_type's CHECK out of the migration, seen red with 'podcast' added to it; resolveFormatFamily returns unmapped_content_type, never a family (packages/clickhouse/src/lib/format-families.ts:211, packages/clickhouse/__tests__/format-families.test.ts:115); and the live check above. Mutation guards FF3 (tooling/mutation-guards/film-1716.json). #497"
   - text: "teaser and trailer resolve to a family and are not dropped"
     met: true
-    evidence: "Their own families on every platform (packages/clickhouse/__tests__/format-families.test.ts:79, guard FF1); the Language tab's comparison keeps a trailer as a trailer (packages/features/content-analytics/__tests__/language-analytics.test.ts:330, guard FF8), where it used to fold it into long-form and teasers into shorts. #497"
+    evidence: "Their own families on every platform (packages/clickhouse/__tests__/format-families.test.ts:79, guard FF1); the Language tab's comparison keeps a trailer as a trailer (packages/features/content-analytics/__tests__/language-analytics.test.ts:356, guard FF8), where it used to fold it into long-form and teasers into shorts. #497"
   - text: "The same clip on two platforms can resolve to different families"
     met: true
     evidence: "short is short_vertical on YouTube, TikTok, Instagram and Facebook and clip on X and LinkedIn (packages/clickhouse/__tests__/format-families.test.ts:86, guard FF2); full is long_horizontal on YouTube and long_vertical on TikTok (packages/clickhouse/__tests__/format-families.test.ts:108). #497"
