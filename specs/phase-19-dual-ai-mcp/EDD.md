@@ -397,7 +397,8 @@ Every analytics view a user can open in the web app gets a read tool, so the age
 - The route sits outside `enhanceRouteHandler` (that wrapper is cookie-only) and uses a new `withMcpAuth` wrapper: bearer token → connection → user, team, scopes.
 - Credentials never travel as tool arguments; they live only in the `Authorization` header, keeping the OAuth roles separate.
 - CORS allows `https://claude.ai`; the endpoint is public internet, as connectors require.
-- Local development and contract tests use **MCP Inspector** against `http://localhost:3000/api/mcp`.
+- Local development uses **MCP Inspector** against `http://localhost:3000/api/mcp`; the contract test is the SDK's own client (`packages/features/studio-mcp/__tests__/contract.test.ts`), and the E2E suite drives the same calls with a token it creates (FILM-1904).
+- The SDK's transport speaks Node's `IncomingMessage`/`ServerResponse`; a Next route has a Web `Request`. `@kit/studio-mcp`'s `node-adapter` bridges them for the JSON-response mode (FILM-1904).
 
 ### 5. Authentication and tenancy
 
