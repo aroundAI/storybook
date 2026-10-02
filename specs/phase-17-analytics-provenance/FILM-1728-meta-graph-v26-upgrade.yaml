@@ -58,7 +58,7 @@ acceptance_criteria:
     evidence: "apps/web/lambda/publish-worker/handlers/instagram.ts:21 and facebook.ts:22 call InstagramProvider and FacebookProvider (the non-resumable graph-video path kept as the provider option fetchFromUrl, facebook-provider.ts:39); apps/web/lambda/publish-worker/__tests__/meta-bundle.test.ts:67 loads the bundled handlers in plain Node; meta-handlers.test.ts:81 (#493)"
   - text: "(Durability §7.3.D) per-version findings table exists with rows for v24–v26; the test asserts a row per version crossed"
     met: true
-    evidence: "docs/platform-capability-reference.md:642; packages/shared/__tests__/vendor-api-versions.test.ts:513 (#493)"
+    evidence: "docs/platform-capability-reference.md:642; packages/shared/__tests__/vendor-api-versions.test.ts:559 (#493)"
   - text: "(Follow-up) is_ai_generated labelling (§4.4) filed as its own item with the policy question stated"
     met: true
     evidence: "FILM-1731, a DRAFT spec on its own branch docs/film-1731-instagram-ai-label (lead's decision, 2026-10-01): is the AI info label required, expected or optional for us, answered before onboarding other creators"
