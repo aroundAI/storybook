@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PerVideoTotals } from '@kit/clickhouse';
 
+import { viewsNotMeasuredReason } from '../src/lib/views';
 import { getEpisodeAnalytics } from '../src/server/aggregation-queries';
 
 /**
@@ -136,5 +137,63 @@ describe('episode analytics, for figures a platform does not measure (KB-149)', 
     expect(analytics?.avgWatchTimeSeconds).toBe(600);
     expect(analytics?.subscribersGained).toBe(4);
     expect(analytics?.totalSaves).toBe(7);
+  });
+});
+
+/**
+ * KB-166: an episode's null views gave Facebook's reason whatever its
+ * platforms. The scope says which platforms are behind the figure and
+ * which had rows, and the reason is read from that.
+ */
+describe('episode analytics, why its views are null (KB-166)', () => {
+  const facebookNote =
+    'Facebook counts four different kinds of view, and none of them is a view in this sense, so its plays are not counted as views.';
+  const youtubeNoRows =
+    'YouTube is connected, but has no data for any day so far.';
+
+  function facebookRows(): PerVideoTotals {
+    return {
+      ...stats('youtube', { watch: 0, subscribers: 0, saves: 0 }),
+      views: null,
+    };
+  }
+
+  it('YouTube only, no rows yet: the no-data reason, not Facebook’s', async () => {
+    state.publishes = [{ id: 'yt', platform: 'youtube' }];
+
+    const analytics = await getEpisodeAnalytics('episode-1');
+
+    expect(analytics?.totalViews).toBeNull();
+    expect(analytics?.viewsScope).toEqual({
+      platforms: ['youtube'],
+      withRows: [],
+      windowLabel: 'any day so far',
+    });
+    expect(viewsNotMeasuredReason(analytics!.viewsScope)).toBe(youtubeNoRows);
+  });
+
+  it('Facebook only: Facebook’s matrix note', async () => {
+    state.publishes = [{ id: 'fb', platform: 'facebook' }];
+    state.totals.set('fb', facebookRows());
+
+    const analytics = await getEpisodeAnalytics('episode-1');
+
+    expect(analytics?.totalViews).toBeNull();
+    expect(viewsNotMeasuredReason(analytics!.viewsScope)).toBe(facebookNote);
+  });
+
+  it('Facebook with rows and YouTube without: both reasons', async () => {
+    state.publishes = [
+      { id: 'fb', platform: 'facebook' },
+      { id: 'yt', platform: 'youtube' },
+    ];
+    state.totals.set('fb', facebookRows());
+
+    const analytics = await getEpisodeAnalytics('episode-1');
+
+    expect(analytics?.totalViews).toBeNull();
+    expect(viewsNotMeasuredReason(analytics!.viewsScope)).toBe(
+      `${youtubeNoRows} ${facebookNote}`,
+    );
   });
 });

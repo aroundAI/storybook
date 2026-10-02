@@ -345,6 +345,7 @@ export function AnalyticsDashboard({
         previousData={null}
         isLoading={isLoading}
         notMeasuredReason={NOT_COLLECTED_HERE_REASON}
+        viewsScope={projectData?.viewsScope ?? null}
       />
 
       {/* Tabs */}

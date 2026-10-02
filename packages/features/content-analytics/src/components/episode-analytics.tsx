@@ -49,7 +49,12 @@ export function EpisodeAnalytics({ data }: EpisodeAnalyticsProps) {
       </div>
 
       {/* Metric Cards */}
-      <MetricCards data={totals} previousData={null} isLoading={false} />
+      <MetricCards
+        data={totals}
+        previousData={null}
+        isLoading={false}
+        viewsScope={data.viewsScope}
+      />
 
       {/* Platform Breakdown */}
       <Card>

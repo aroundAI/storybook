@@ -211,7 +211,12 @@ describe('the MetricCards', () => {
 
   it('stop drawing a number for what was not measured, and carry a chip each', () => {
     const { container } = renderWithCoverage(
-      <MetricCards data={totals} previousData={null} isLoading={false} />,
+      <MetricCards
+        data={totals}
+        previousData={null}
+        isLoading={false}
+        viewsScope={null}
+      />,
       { result: seeded },
     );
 
@@ -235,7 +240,12 @@ describe('the MetricCards', () => {
 
   it('render without a chip on a page with no coverage provider', () => {
     const { container } = render(
-      <MetricCards data={totals} previousData={null} isLoading={false} />,
+      <MetricCards
+        data={totals}
+        previousData={null}
+        isLoading={false}
+        viewsScope={null}
+      />,
     );
 
     expect(chipOf(container)).toBeNull();

@@ -54,6 +54,7 @@ export function ProjectDashboard({ data }: ProjectDashboardProps) {
         previousData={null}
         isLoading={false}
         notMeasuredReason={NOT_COLLECTED_HERE_REASON}
+        viewsScope={data.viewsScope}
       />
 
       {/* Platform Breakdown */}

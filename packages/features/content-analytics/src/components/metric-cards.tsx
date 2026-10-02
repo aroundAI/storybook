@@ -34,7 +34,7 @@ import {
   formatNumber,
   formatPercent,
 } from '../lib/format';
-import { VIEWS_NOT_MEASURED_REASON } from '../lib/views';
+import { type ViewsScope, viewsNotMeasuredReason } from '../lib/views';
 import type { AnalyticsTotals } from '../types';
 import { CoverageContext } from './coverage-context';
 import { ProvenanceChipFor } from './provenance-chip';
@@ -63,6 +63,11 @@ interface MetricCardsProps {
   isLoading: boolean;
   /** Why a null figure has no value, where it is not the platforms' doing. */
   notMeasuredReason?: string;
+  /**
+   * What the views figure covers, for why it is null (KB-166). Required:
+   * a caller that cannot say passes null, and the card names no platform.
+   */
+  viewsScope: ViewsScope | null;
 }
 
 export function MetricCards({
@@ -70,6 +75,7 @@ export function MetricCards({
   previousData,
   isLoading,
   notMeasuredReason = PLATFORM_NOT_MEASURED_REASON,
+  viewsScope,
 }: MetricCardsProps) {
   // The chip needs the page's coverage. Outside the analytics page — the
   // project, season and episode dashboards mount no provider — the cards
@@ -96,8 +102,8 @@ export function MetricCards({
       description: 'Total video views',
       icon: Eye,
       metricFamily: 'engagement',
-      // Facebook has no single view (KB-153); a 0 here read as none (KB-162).
-      notMeasuredReason: VIEWS_NOT_MEASURED_REASON,
+      // Null is not 0 (KB-162); why, from the scope's platforms (KB-166).
+      notMeasuredReason: viewsNotMeasuredReason(viewsScope),
     },
     {
       key: 'likes',
