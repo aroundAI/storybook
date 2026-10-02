@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { RETIRED_PLATFORMS } from '@kit/publishing/lib/platforms';
 import { OAUTH_APPS } from '@kit/publishing/oauth/apps';
 
 import {
@@ -24,13 +23,10 @@ function encodeState(value: unknown) {
 }
 
 // KB-29: one list of OAuth apps. A platform whose connect can fail must be one
-// the credential resolver knows, and the other way round. A retired platform
-// (FILM-717) has no app, but its routes still answer, so it is named too.
+// the credential resolver knows, and the other way round.
 describe('CONNECT_PLATFORMS', () => {
-  it('names exactly the OAuth apps the credential resolver serves, and the retired platforms', () => {
-    expect([...CONNECT_PLATFORMS].sort()).toEqual(
-      [...OAUTH_APPS, ...RETIRED_PLATFORMS].sort(),
-    );
+  it('names exactly the OAuth apps the credential resolver serves', () => {
+    expect([...CONNECT_PLATFORMS].sort()).toEqual([...OAUTH_APPS].sort());
   });
 });
 
@@ -119,13 +115,6 @@ describe('readConnectFailure', () => {
     expect(
       readConnectFailure({ error: 'tiktok_not_configured' }),
     ).toMatchObject({ code: 'not_configured', platform: 'tiktok' });
-  });
-
-  // FILM-717: the retired platform's routes send this; it must not read as `unknown`.
-  it('reads a retired platform as retired', () => {
-    expect(
-      readConnectFailure({ error: 'platform_retired', platform: 'linkedin' }),
-    ).toMatchObject({ code: 'platform_retired', platform: 'linkedin' });
   });
 
   it('takes the first of a repeated parameter', () => {

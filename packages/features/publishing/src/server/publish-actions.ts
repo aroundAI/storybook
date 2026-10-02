@@ -42,7 +42,6 @@ import {
   ownedEpisodeVideo,
 } from '../lib/owned-episode-video';
 import { ownedEpisodeThumbnail } from '../lib/owned-thumbnail';
-import { isRetiredPlatform } from '../lib/platforms';
 import {
   GetPublishStatusSchema,
   PublishToAllSchema,
@@ -380,11 +379,6 @@ const publishToAllHandler = enhanceAction(
         const platformCtx = { ...ctx, platform: platform.platform };
 
         try {
-          // FILM-717: nothing is written or sent for a retired platform
-          if (isRetiredPlatform(platform.platform)) {
-            throw new TokenRefusal('PLATFORM_RETIRED', platform.platform);
-          }
-
           // Validate token
           const tokenResult = await getAccessToken(platform.connectionId);
           if (tokenResult.error !== undefined) {

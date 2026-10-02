@@ -64,8 +64,7 @@ Results:
 
 FILM-714: with your own developer app, connect an X account from the Platforms
 page, then disconnect it. The local stand-ins already prove the flow; this
-proves your credentials and redirect URLs. (LinkedIn's half was dropped when
-LinkedIn was retired, 2026-10-02, FILM-717.)
+proves your credentials and redirect URLs.
 
 Results:
 

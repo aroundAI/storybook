@@ -29,8 +29,9 @@ import {
  * The `<!-- forbidden -->` block: `scope  wrong -> right  reason`.
  *
  * `scope` is a `|`-separated list of path segments the rule applies to. A
- * deprecation is a fact about one vendor, not about the word: LinkedIn reports
- * a genuine `impressions`, so Meta's 2025-04-21 removal must not reach it.
+ * deprecation is a fact about one vendor, not about the word: another
+ * vendor may report a genuine `impressions`, so Meta's 2025-04-21 removal
+ * must not reach it.
  */
 function forbiddenNames() {
   const body = /<!-- forbidden -->\s*```text\n([\s\S]*?)```/.exec(doc)?.[1];

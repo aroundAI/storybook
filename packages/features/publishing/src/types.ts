@@ -34,7 +34,7 @@ export interface PlatformConnection {
   /** KB-30: the channel's YouTube audience and category; null = not declared yet. */
   youtubeMadeForKids?: boolean | null;
   youtubeCategoryId?: string | null;
-  /** Null for a platform with no analytics requirement (LinkedIn). */
+  /** Null for a platform with no analytics requirement. */
   analyticsAccess?: AnalyticsAccess | null;
 }
 

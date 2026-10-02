@@ -166,9 +166,7 @@ failing: `last_error` says why.
 
 Whether the platform confirmed the revoke is in the `oauth.disconnect` log
 line: `revoke` and `httpStatus`, at `warn` when it did not (KB-45). The
-creator was shown the same, with a link to remove access at the platform. A
-LinkedIn disconnect is always `vendor_offers_none`: LinkedIn gives apps no
-revoke, so the creator removes access there (KB-25).
+creator was shown the same, with a link to remove access at the platform.
 
 ### D. Revoked at Google, or the YouTube token can no longer be refreshed — within 30 days
 

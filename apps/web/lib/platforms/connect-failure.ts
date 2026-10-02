@@ -12,7 +12,6 @@ export const CONNECT_PLATFORMS = [
   'tiktok',
   'meta',
   'twitter',
-  'linkedin',
 ] as const;
 
 export type ConnectPlatform = (typeof CONNECT_PLATFORMS)[number];
@@ -22,7 +21,6 @@ export const CONNECT_PLATFORM_LABELS: Record<ConnectPlatform, string> = {
   tiktok: 'TikTok',
   meta: 'Meta (Facebook and Instagram)',
   twitter: 'X (Twitter)',
-  linkedin: 'LinkedIn',
 };
 
 /** Failures the vendor reported, in the `error` parameter of its redirect. */
@@ -48,8 +46,6 @@ export const CONNECT_FAILURE_CODES = [
   'storage_failed',
   'pending_connection_lost',
   'unexpected',
-  /** The platform is retired (FILM-717); its routes answer with this. */
-  'platform_retired',
   'unknown',
 ] as const;
 

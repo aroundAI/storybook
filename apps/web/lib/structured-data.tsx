@@ -26,7 +26,6 @@ export function getOrganizationSchema(): WithContext {
     sameAs: [
       // Add social media URLs when available
       // 'https://twitter.com/storybook',
-      // 'https://linkedin.com/company/storybook',
     ],
   };
 }

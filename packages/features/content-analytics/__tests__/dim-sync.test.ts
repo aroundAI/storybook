@@ -102,7 +102,9 @@ describe('buildVideoDims — only platforms that can have metrics (FILM-1720)', 
   it('writes no dimension row for a platform outside AnalyticsPlatform', async () => {
     // A LinkedIn publish has no metrics provider, so a dimension row for it
     // can only ever read as a zero-view video in every dim-driven
-    // denominator. X has had one since FILM-1727.
+    // denominator. LinkedIn is retired (FILM-717) but its old publish rows
+    // are kept, so dim-sync still meets them. X has had metrics since
+    // FILM-1727.
     const dims = await buildVideoDims(client, [
       short({ id: 'yt', platform: 'youtube' }),
       short({ id: 'fb', platform: 'facebook' }),

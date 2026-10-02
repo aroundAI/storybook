@@ -8,7 +8,6 @@ import {
   type SourceTable,
   capabilityFor,
 } from '@kit/clickhouse';
-import { isRetiredPlatform } from '@kit/publishing/lib/platforms';
 
 import type { ChannelRef } from '../server/channels';
 import { platformLabel } from './platform-labels';
@@ -518,8 +517,6 @@ export type StripKind =
   | 'not_ingested'
   | 'not_reported'
   | 'unsupported_platform'
-  /** A platform the product retired (FILM-717); its connections are kept. */
-  | 'retired_platform'
   | 'unknown'
   | 'pending';
 
@@ -613,19 +610,11 @@ export function coverageStrip(
         .map((channel) => channel.name),
     );
 
-    items.push(
-      isRetiredPlatform(platform)
-        ? {
-            platform,
-            kind: 'retired_platform',
-            sentence: `${name} (${list.join(', ')}): retired. This app no longer publishes to ${name} or reads from it.`,
-          }
-        : {
-            platform,
-            kind: 'unsupported_platform',
-            sentence: `${name} (${list.join(', ')}): connected, but analytics doesn’t support ${name}.`,
-          },
-    );
+    items.push({
+      platform,
+      kind: 'unsupported_platform',
+      sentence: `${name} (${list.join(', ')}): connected, but analytics doesn’t support ${name}.`,
+    });
   }
 
   const nothing =

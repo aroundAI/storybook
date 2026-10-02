@@ -1,4 +1,3 @@
-import { isRetiredPlatform } from '../lib/platforms';
 import type { PlatformType } from '../types';
 
 /**
@@ -10,8 +9,8 @@ import type { PlatformType } from '../types';
 /**
  * Whether disconnecting asks the platform to revoke our access. The dialog's
  * promise; `REVOKERS` in `oauth/revokers.ts` is the behaviour, and
- * `revokers.test.ts` fails if the two disagree. LinkedIn is false because
- * LinkedIn offers apps no revoke at all (KB-25), not because it is pending.
+ * `revokers.test.ts` fails if the two disagree. A platform whose vendor
+ * offers apps no revoke would be false (KB-25); none does today.
  */
 export const VENDOR_REVOKES: Record<PlatformType, boolean> = {
   youtube: true,
@@ -19,7 +18,6 @@ export const VENDOR_REVOKES: Record<PlatformType, boolean> = {
   instagram: true,
   facebook: true,
   twitter: true,
-  linkedin: false,
 };
 
 /**
@@ -34,14 +32,9 @@ export const DELETES_STATISTICS_ON_DISCONNECT: Record<PlatformType, boolean> = {
   instagram: false,
   facebook: false,
   twitter: false,
-  linkedin: false,
 };
 
 export interface DisconnectCopy {
-  /** What happens to our access; a retired platform has no reconnect (FILM-717). */
-  accessKey: string;
-  /** What is kept; a retired platform's records cannot be re-attached. */
-  keptKey: string;
   revokeKey: string;
   vendorDataKey: string;
   /** The vendor-data sentence ends with a link to the data-deletion page. */
@@ -50,15 +43,8 @@ export interface DisconnectCopy {
 
 export function disconnectCopyFor(platform: PlatformType): DisconnectCopy {
   const deletesStatistics = DELETES_STATISTICS_ON_DISCONNECT[platform];
-  const retired = isRetiredPlatform(platform);
 
   return {
-    accessKey: retired
-      ? 'platforms:disconnectDialog.accessRetired'
-      : 'platforms:disconnectDialog.access',
-    keptKey: retired
-      ? 'platforms:disconnectDialog.keptRetired'
-      : 'platforms:disconnectDialog.kept',
     revokeKey: VENDOR_REVOKES[platform]
       ? 'platforms:disconnectDialog.revokeAsks'
       : 'platforms:disconnectDialog.revokeUnavailable',

@@ -92,7 +92,7 @@ function assertShape(prompt: CatalogPrompt, data: unknown, full: unknown) {
 
 describe('the catalog', () => {
   it('holds every prompt file, each with a generator', () => {
-    // 31 until FILM-717 retired the LinkedIn post prompt.
+    // 31 until FILM-717 removed a publishing prompt.
     expect(catalog).toHaveLength(30);
     for (const prompt of catalog) {
       expect(generatorKindOf(prompt), prompt.key).not.toBeNull();

@@ -20,11 +20,11 @@
       "test": "__tests__/kb61-unchecked-deletes.test.ts"
     },
     {
-      "name": "KB-61 guard: the social post delete stops selecting what it removed",
+      "name": "KB-61 guard: the report delete stops selecting what it removed",
       "kind": "unit",
-      "file": "packages/features/publishing/src/server/social-post-actions.ts",
-      "find": "      .delete()\n      .eq('id', input.postId)\n      .select('id');",
-      "replace": "      .delete()\n      .eq('id', input.postId);",
+      "file": "packages/features/content-analytics/src/server/report-actions.ts",
+      "find": "      .delete()\n      .eq('id', data.id)\n      .select('id');",
+      "replace": "      .delete()\n      .eq('id', data.id);",
       "cwd": "packages/next",
       "test": "__tests__/kb61-unchecked-deletes.test.ts"
     },

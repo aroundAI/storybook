@@ -12,7 +12,6 @@ export const PlatformSchema = z.enum([
   'instagram',
   'facebook',
   'twitter',
-  'linkedin',
 ]);
 
 /**

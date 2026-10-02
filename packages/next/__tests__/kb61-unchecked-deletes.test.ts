@@ -47,8 +47,6 @@ const KNOWN: Record<string, [number, string]> = {
     [1, ADMIN],
 
   // One-time OAuth state, consumed by the callback
-  'apps/web/app/api/platforms/callback/linkedin/route.ts | oauth_states | delete':
-    [1, CLEANUP],
   'apps/web/app/api/platforms/callback/meta/route.ts | oauth_states | delete': [
     1,
     CLEANUP,

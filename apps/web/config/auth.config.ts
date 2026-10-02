@@ -74,8 +74,6 @@ function getProviders() {
     'google',
     'kakao',
     'keycloak',
-    'linkedin',
-    'linkedin_oidc',
     'notion',
     'slack',
     'spotify',

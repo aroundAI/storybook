@@ -46,8 +46,8 @@ describe('every prompt has a generator', () => {
     for (const prompt of catalog) counts[generatorKindOf(prompt)!] += 1;
 
     // FILM-1803 §2: 16 Zod, 4 JSON Schema and 9 with neither, plus the two
-    // evaluation prompts KB-116 added (Zod), less the LinkedIn post prompt
-    // (JSON Schema) retired with LinkedIn (FILM-717).
+    // evaluation prompts KB-116 added (Zod), less the publishing prompt
+    // (JSON Schema) FILM-717 removed.
     expect(counts).toEqual({ zod: 18, 'json-schema': 3, template: 9 });
   });
 });

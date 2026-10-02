@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * FILM-706, FILM-707, FILM-715. The failure branches of every OAuth callback
+ * FILM-706, FILM-707. The failure branches of every OAuth callback
  * are driven in a browser (`connect-failure.spec.ts`); these drive the
  * success branch of TikTok's and Meta's against mocked vendor endpoints and
  * read what each writes to `platform_connections` and where it lands. Meta's includes the Instagram-to-Page link (FILM-707).
@@ -385,48 +385,5 @@ describe('Meta callback success (FILM-707)', () => {
 
     expect(state.stored).toEqual([]);
     expect(landing(response).query).toMatchObject({ error: 'no_pages_found' });
-  });
-});
-
-/**
- * FILM-717. LinkedIn is retired (owner, 2026-10-02). Both routes stay, so a
- * bookmarked connect link or a consent screen finished after the release
- * lands on a page that says so, rather than a 404. Neither calls LinkedIn,
- * stores a row or consumes a nonce, and the answer is a redirect the page
- * reads, not a thrown error (production redacts thrown text).
- */
-describe('LinkedIn is retired (FILM-717)', () => {
-  it('the callback refuses without calling LinkedIn or storing anything', async () => {
-    const fetchMock = stubVendor(() => json({}));
-    const { GET } = await import('~/api/platforms/callback/linkedin/route');
-
-    const response = await GET(callbackRequest('linkedin', {}));
-
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(state.stored).toEqual([]);
-    expect(state.deletedNonces).toEqual([]);
-    expect(landing(response)).toEqual({
-      path: '/settings/platforms',
-      query: {
-        error: 'platform_retired',
-        platform: 'linkedin',
-        account: ACCOUNT,
-      },
-    });
-  });
-
-  it('the connect route refuses before any consent screen', async () => {
-    const fetchMock = stubVendor(() => json({}));
-    const { GET } = await import('~/api/platforms/connect/linkedin/route');
-
-    const response = await GET(
-      new NextRequest(`${ORIGIN}/api/platforms/connect/linkedin?account=acme`),
-    );
-
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(landing(response)).toEqual({
-      path: '/settings/platforms',
-      query: { error: 'platform_retired', platform: 'linkedin' },
-    });
   });
 });

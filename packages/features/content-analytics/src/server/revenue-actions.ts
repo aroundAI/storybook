@@ -344,7 +344,6 @@ export const addManualRevenueAction = enhanceAction(
           | 'instagram'
           | 'facebook'
           | 'twitter'
-          | 'linkedin'
           | 'manual',
         date: record.record_date,
         revenueCents: record.revenue_cents,

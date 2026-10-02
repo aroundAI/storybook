@@ -35,7 +35,7 @@ import {
   ownedEpisodeVideo,
 } from '@kit/publishing/lib/owned-episode-video';
 import { ownedEpisodeThumbnail } from '@kit/publishing/lib/owned-thumbnail';
-import { isRetiredPlatform } from '@kit/publishing/lib/platforms';
+import { isPlatform } from '@kit/publishing/lib/platforms';
 import {
   type TokenErrorCode,
   TokenRefusal,
@@ -256,7 +256,6 @@ async function deleteFromPlatform(
     }
     case 'tiktok':
     case 'instagram':
-    case 'linkedin':
       console.warn(
         `[Publish Worker] Delete not implemented for ${job.platform}, skipping platform deletion.`,
       );
@@ -511,45 +510,17 @@ async function recordJobFailure(job: JobMessage, failure: JobFailure) {
   };
 
   try {
-    if (job.type === 'social_text_post') {
-      const { data: existingPost } = await supabase
-        .from('social_posts')
-        .select('metadata')
-        .eq('id', job.socialPostId)
-        .single();
-
-      const existingMetadata =
-        existingPost?.metadata &&
-        typeof existingPost.metadata === 'object' &&
-        !Array.isArray(existingPost.metadata)
-          ? (existingPost.metadata as Record<string, unknown>)
-          : {};
-
-      await supabase
-        .from('social_posts')
-        .update({
-          status: 'failed',
-          metadata: { ...existingMetadata, ...stored },
-        })
-        .eq('id', job.socialPostId);
-    } else if (job.type === 'publish') {
+    if (job.type === 'publish') {
       await updatePublishStatus(job.publishId, 'failed', stored);
     }
 
     await sendToUser(job.userId, {
-      type:
-        job.type === 'social_text_post'
-          ? 'social-post-error'
-          : job.type === 'delete'
-            ? 'delete-error'
-            : 'publish-error',
+      type: job.type === 'delete' ? 'delete-error' : 'publish-error',
       jobType: 'publish-status',
       platform: job.platform,
+      publishId: job.publishId,
       error: errorMessage,
       timestamp: new Date().toISOString(),
-      ...(job.type === 'social_text_post'
-        ? { socialPostId: job.socialPostId }
-        : { publishId: job.publishId }),
     });
   } catch (notifyError) {
     console.error(
@@ -576,33 +547,29 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
         // Default to 'publish' type for backward compatibility
         job = 'type' in parsed ? parsed : { ...parsed, type: 'publish' };
 
-        // FILM-717: a job for a retired platform queued before it was
-        // retired (a scheduled publish, a LinkedIn social post) is answered,
-        // not retried, and the platform is never called. A delete still
-        // runs: it removes our record of a past publish.
-        if (job.type !== 'delete' && isRetiredPlatform(job.platform)) {
+        // FILM-717: a job for a platform the product removed, queued before
+        // it was removed, is answered as a refusal value, not retried, and
+        // the platform is never called. A delete still runs: it removes our
+        // record of a past publish.
+        if (job.type !== 'delete' && !isPlatform(job.platform)) {
           const errorMessage = tokenErrorMessage(
-            'PLATFORM_RETIRED',
+            'PLATFORM_UNSUPPORTED',
             job.platform,
           );
           console.warn(
-            `[Publish Worker] REFUSED (PLATFORM_RETIRED): ${errorMessage}`,
+            `[Publish Worker] REFUSED (PLATFORM_UNSUPPORTED): ${errorMessage}`,
           );
           await recordJobFailure(job, {
             errorMessage,
-            errorCode: 'PLATFORM_RETIRED',
+            errorCode: 'PLATFORM_UNSUPPORTED',
           });
           return { itemIdentifier: record.messageId, status: 'refused' };
         }
 
         if (job.type === 'delete') {
           await processDelete(job);
-        } else if (job.type === 'publish') {
-          await processPublish(job);
         } else {
-          throw new PublishJobRefused(
-            'Social text posts went to LinkedIn only, which is retired',
-          );
+          await processPublish(job);
         }
 
         return { itemIdentifier: record.messageId, status: 'fulfilled' };

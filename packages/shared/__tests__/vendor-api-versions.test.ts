@@ -78,11 +78,9 @@ const PUBLIC_PAGES = [
   /www\.facebook\.com\/(?:plugins\/video\.php|sharer\/|watch\/|USER\/videos\/|\$\{pageId\}\/videos\/)/g,
   /www\.facebook\.com\$\{data\.permalink_url\}/g,
   /www\.tiktok\.com\/(?:@|creator|embed\/)/g,
-  /www\.linkedin\.com\/(?:feed\/update\/|sharing\/share-offsite\/)/g,
   /(?<![\w.-])x\.com\/storybook/g,
   /www\.facebook\.com\/settings/g,
   /(?<![\w.-])x\.com\/settings\//g,
-  /www\.linkedin\.com\/mypreferences\//g,
   /archive\.org\/details\//g,
   // An identifier in X's error bodies (`type`), never requested; the sandbox
   // must reproduce it byte for byte, and importing the resolver there would
@@ -366,9 +364,9 @@ describe('the Graph pin carries the dates the reference documents', () => {
  *
  * FILM-1723: every pin in `VENDOR_API_PINS` with an end date, not only
  * Meta's. A pin already inside the window stays green only while an open
- * known bug named in its `trackedBy` owns the move (LinkedIn's 202401 was,
- * under KB-164, until FILM-717 retired LinkedIn), so deleting the date is not
- * a way to silence the warning.
+ * known bug named in its `trackedBy` owns the move (KB-164 once held a pin
+ * past sunset this way), so deleting the date is not a way to silence the
+ * warning.
  */
 const WARN_DAYS = 120;
 const DAY_MS = 86_400_000;
@@ -402,11 +400,16 @@ export function expiryProblem(pin: PinnedExpiry, today: Date) {
     : `${pin.vendor} ${pin.version} ${when}. Bump the pin to a version with at least a year left, reading the changelog of every version crossed (${pin.source}). FILM-1728; files: ${files}.`;
 }
 
-function knownBugIsOpen(id: string) {
-  const entry = readFileSync(join(REPO, `specs/known-bugs/${id}.md`), 'utf8');
+function entryIsOpen(entry: string) {
   const status = /^status: (\w+)$/m.exec(entry)?.[1];
 
   return status === 'open' || status === 'partial';
+}
+
+function knownBugIsOpen(id: string) {
+  return entryIsOpen(
+    readFileSync(join(REPO, `specs/known-bugs/${id}.md`), 'utf8'),
+  );
 }
 
 describe('no pinned vendor version is within 120 days of its end (FILM-1728)', () => {
@@ -450,7 +453,11 @@ describe('no pinned vendor version is within 120 days of its end (FILM-1728)', (
   });
 
   it('accepts a known bug as owner of a pin past its end only while it is open', () => {
-    expect(knownBugIsOpen('KB-164')).toBe(true);
+    expect(entryIsOpen('---\nstatus: open\n---')).toBe(true);
+    expect(entryIsOpen('---\nstatus: partial\n---')).toBe(true);
+    expect(entryIsOpen('---\nstatus: fixed\n---')).toBe(false);
+    // KB-164 owned a pin until FILM-717 removed its platform.
+    expect(knownBugIsOpen('KB-164')).toBe(false);
     expect(knownBugIsOpen('KB-14')).toBe(false);
   });
 });

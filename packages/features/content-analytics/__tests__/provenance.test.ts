@@ -310,25 +310,6 @@ describe('the strip', () => {
     });
   });
 
-  // FILM-717: a kept LinkedIn connection is retired, not merely unsupported.
-  it('names a connection on a retired platform as retired', () => {
-    const linkedIn = coverageStrip(
-      viewOf(
-        coverageResult({
-          rows: [],
-          channels: [channelRef('linkedin', { name: 'Seed Studio Co' })],
-        }),
-      ),
-      TAB_FAMILIES['deep-dive'],
-    ).items.find(({ platform }) => platform === 'linkedin');
-
-    expect(linkedIn).toMatchObject({
-      kind: 'retired_platform',
-      sentence:
-        'LinkedIn (Seed Studio Co): retired. This app no longer publishes to LinkedIn or reads from it.',
-    });
-  });
-
   it('tells not connected, connected but empty, not yet collected and not reported apart', () => {
     // Audience: TikTok's families are not_ingested (geography) and
     // unsupported (demographics, device); Instagram's device is unsupported.

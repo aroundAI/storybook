@@ -2,10 +2,11 @@ import type { SQSEvent } from 'aws-lambda';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * FILM-717. LinkedIn is retired. A LinkedIn job already on the queue when it
- * was retired (a scheduled publish, a social post) is answered, not retried:
- * the row is marked failed with a sentence that says LinkedIn is retired,
- * the message is acknowledged, and LinkedIn is never called.
+ * FILM-717. LinkedIn is removed from the product. A LinkedIn job already on
+ * the queue when it was removed (a scheduled publish, a social post) is
+ * answered, not retried: a publish row is marked failed with
+ * PLATFORM_UNSUPPORTED, the message is acknowledged, and LinkedIn is never
+ * called.
  */
 
 const db = vi.hoisted(() => ({
@@ -56,8 +57,8 @@ function event(body: Record<string, unknown>): SQSEvent {
   } as unknown as SQSEvent;
 }
 
-const RETIRED_SENTENCE =
-  'LinkedIn is retired: this app no longer publishes to it. Your LinkedIn connection and what you published there are kept.';
+const SENTENCE =
+  'This app no longer publishes to linkedin, so nothing was sent.';
 
 let fetchMock: ReturnType<typeof vi.fn>;
 
@@ -80,8 +81,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('a job for a retired platform (FILM-717)', () => {
-  it('marks a LinkedIn publish failed as retired and acknowledges it', async () => {
+describe('a job for a platform the product removed (FILM-717)', () => {
+  it('marks a LinkedIn publish failed and acknowledges it', async () => {
     const { handler } = await import('../index');
 
     const result = await handler(
@@ -109,15 +110,15 @@ describe('a job for a retired platform (FILM-717)', () => {
           status: 'failed',
           metadata: expect.objectContaining({
             kept: true,
-            error: RETIRED_SENTENCE,
-            errorCode: 'PLATFORM_RETIRED',
+            error: SENTENCE,
+            errorCode: 'PLATFORM_UNSUPPORTED',
           }),
         },
       },
     ]);
   });
 
-  it('marks a queued LinkedIn social post failed as retired and acknowledges it', async () => {
+  it('acknowledges a queued LinkedIn social post without touching anything', async () => {
     const { handler } = await import('../index');
 
     const result = await handler(
@@ -135,18 +136,6 @@ describe('a job for a retired platform (FILM-717)', () => {
 
     expect(result.batchItemFailures).toEqual([]);
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(db.updates).toEqual([
-      {
-        table: 'social_posts',
-        values: {
-          status: 'failed',
-          metadata: expect.objectContaining({
-            kept: true,
-            error: RETIRED_SENTENCE,
-            errorCode: 'PLATFORM_RETIRED',
-          }),
-        },
-      },
-    ]);
+    expect(db.updates).toEqual([]);
   });
 });

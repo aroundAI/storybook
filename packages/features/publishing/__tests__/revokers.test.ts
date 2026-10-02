@@ -294,21 +294,6 @@ describe('revokeAtVendor', () => {
     });
   });
 
-  // A kept LinkedIn row can still be disconnected after the retirement
-  // (FILM-717); nothing is sent, as before.
-  it('calls nobody for LinkedIn, which offers apps no revoke (KB-25)', async () => {
-    const { revokeAtVendor } = await sandboxedRevokers();
-
-    expect(
-      await revokeAtVendor({
-        platform: 'linkedin',
-        access_token_encrypted: 'enc:t',
-        refresh_token_encrypted: 'enc:r',
-      }),
-    ).toEqual({ status: 'vendor_offers_none' });
-    expect(seen).toEqual([]);
-  });
-
   it('reports an unreachable vendor instead of throwing', async () => {
     vi.stubEnv('NODE_ENV', 'test');
     vi.stubEnv('VENDOR_SANDBOX', '1');

@@ -63,7 +63,6 @@ export const PUBLISH_PLATFORMS = [
   'instagram',
   'facebook',
   'twitter',
-  'linkedin',
 ] as const;
 
 export type PublishPlatform = (typeof PUBLISH_PLATFORMS)[number];
@@ -72,11 +71,11 @@ export type PublishPlatform = (typeof PUBLISH_PLATFORMS)[number];
  * The declared family of every `content_type` on every platform.
  *
  * - `full` is horizontal where the platform's long-form surface is a
- *   player (YouTube, Facebook, X, LinkedIn) and vertical where it is the
+ *   player (YouTube, Facebook, X) and vertical where it is the
  *   same full-screen feed as everything else (TikTok, Instagram).
  * - `short` is `short_vertical` where it lands in a swipe feed (Shorts,
  *   For You, Reels, Facebook Reels) and `clip` where it lands in a mixed
- *   timeline the viewer scrolls past (X, LinkedIn) — the same file, a
+ *   timeline the viewer scrolls past (X) — the same file, a
  *   different view definition and a different reason to stop.
  * - `teaser` and `trailer` are their own families everywhere. They exist to
  *   send viewers elsewhere, so their success is not their own watch time,
@@ -95,7 +94,6 @@ export const FORMAT_BY_CONTENT_TYPE: Record<
     instagram: 'long_vertical',
     facebook: 'long_horizontal',
     twitter: 'long_horizontal',
-    linkedin: 'long_horizontal',
   },
   short: {
     youtube: 'short_vertical',
@@ -103,7 +101,6 @@ export const FORMAT_BY_CONTENT_TYPE: Record<
     instagram: 'short_vertical',
     facebook: 'short_vertical',
     twitter: 'clip',
-    linkedin: 'clip',
   },
   teaser: {
     youtube: 'teaser',
@@ -111,7 +108,6 @@ export const FORMAT_BY_CONTENT_TYPE: Record<
     instagram: 'teaser',
     facebook: 'teaser',
     twitter: 'teaser',
-    linkedin: 'teaser',
   },
   trailer: {
     youtube: 'trailer',
@@ -119,7 +115,6 @@ export const FORMAT_BY_CONTENT_TYPE: Record<
     instagram: 'trailer',
     facebook: 'trailer',
     twitter: 'trailer',
-    linkedin: 'trailer',
   },
 };
 

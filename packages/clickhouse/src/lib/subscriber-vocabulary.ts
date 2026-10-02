@@ -73,7 +73,7 @@ export function roundingErrorOf(roundingStep: number): number {
 
 /**
  * The platforms `captureSubscriberSnapshots` reads a count from. Others —
- * Facebook, X, LinkedIn — are allowed connections but are never snapshotted,
+ * Facebook, X — are allowed connections but are never snapshotted,
  * so "no count yet" would be the wrong explanation for them.
  */
 export const SUBSCRIBER_TRACKED_PLATFORMS = [

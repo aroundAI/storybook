@@ -8,7 +8,6 @@ import {
   ChevronDown,
   Facebook,
   Instagram,
-  Linkedin,
   Plus,
   Youtube,
 } from 'lucide-react';
@@ -71,10 +70,9 @@ const PLATFORM_ICONS: Record<
   instagram: Instagram,
   facebook: Facebook,
   twitter: XIcon,
-  linkedin: Linkedin,
 };
 
-// Platform display order. A retired platform is not offered (FILM-717).
+// Platform display order
 const PLATFORM_ORDER: Platform[] = [
   'youtube',
   'tiktok',

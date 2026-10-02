@@ -113,7 +113,7 @@ describe('recordUploadedFileDuration', () => {
     ).toEqual({ recorded: false, reason: 'write_failed' });
   });
 
-  it.each(['youtube', 'tiktok', 'facebook', 'twitter', 'linkedin'])(
+  it.each(['youtube', 'tiktok', 'facebook', 'twitter'])(
     'leaves %s to its own writer and reads nothing',
     async (platform) => {
       const { client, writes } = fakeClient();

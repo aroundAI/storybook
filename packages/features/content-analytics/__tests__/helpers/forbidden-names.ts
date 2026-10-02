@@ -5,8 +5,9 @@ import { REFERENCE, doc } from './capability-reference';
  * `scope  wrong -> right  reason`.
  *
  * `scope` is a `|`-separated list of path segments the rule applies to. A
- * deprecation is a fact about one vendor, not about the word: LinkedIn reports
- * a genuine `impressions`, so Meta's 2025-04-21 removal must not reach it.
+ * deprecation is a fact about one vendor, not about the word: another
+ * vendor may report a genuine `impressions`, so Meta's 2025-04-21 removal
+ * must not reach it.
  *
  * Its own file, beside `capability-reference.ts` rather than inside it, so
  * that file stays identical to the copy FILM-1703 adds and the two pull

@@ -1,8 +1,13 @@
 /**
- * The values `platform_connections.platform` may hold - its CHECK constraint
- * (`20251205125737_film-studio-tables.sql`). The column is a varchar, so the
- * generated types say `string`; this list is the one place the set is
- * written, and `platforms.test.ts` fails if it and the constraint differ.
+ * The platforms the product supports: every value it may write to
+ * `platform_connections.platform`. The column is a varchar with a CHECK, so
+ * the generated types say `string`; this list is the one place the set is
+ * written, and `platforms.test.ts` holds it to the constraint.
+ *
+ * The CHECK still admits one value this list does not: a platform removed
+ * from the product whose old rows are kept (FILM-717). Such a row is not a
+ * `Platform`: `isPlatform` rejects it, so it is never shown, refreshed or
+ * published to, and nothing can create one.
  *
  * Pure, so client code and the worker lambdas can import it.
  */
@@ -12,7 +17,6 @@ export const PLATFORMS = [
   'instagram',
   'facebook',
   'twitter',
-  'linkedin',
 ] as const;
 
 export type Platform = (typeof PLATFORMS)[number];
@@ -23,7 +27,6 @@ export const PLATFORM_NAMES: Record<Platform, string> = {
   tiktok: 'TikTok',
   instagram: 'Instagram',
   facebook: 'Facebook',
-  linkedin: 'LinkedIn',
   twitter: 'X',
 };
 
@@ -38,30 +41,6 @@ export const PLATFORMS_DELETED_ON_UNPUBLISH = [
   'facebook',
   'twitter',
 ] as const satisfies readonly Platform[];
-
-/**
- * Platforms the product no longer offers (FILM-717). LinkedIn was retired
- * "for now" (owner, 2026-10-02) rather than moving its pinned API version
- * past sunset (KB-164). It stays in `PLATFORMS` because stored connections
- * and publishes keep the value: they are shown as retired and read-only,
- * never connected, refreshed or published to.
- */
-export const RETIRED_PLATFORMS = [
-  'linkedin',
-] as const satisfies readonly Platform[];
-
-export type RetiredPlatform = (typeof RETIRED_PLATFORMS)[number];
-
-export type OfferedPlatform = Exclude<Platform, RetiredPlatform>;
-
-export function isRetiredPlatform(value: string): value is RetiredPlatform {
-  return (RETIRED_PLATFORMS as readonly string[]).includes(value);
-}
-
-/** Every platform a connection can still be made to and published to. */
-export const OFFERED_PLATFORMS = PLATFORMS.filter(
-  (platform): platform is OfferedPlatform => !isRetiredPlatform(platform),
-);
 
 /** Narrows a stored `platform` string, so it is checked rather than cast. */
 export function isPlatform(value: string): value is Platform {

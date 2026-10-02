@@ -43,7 +43,6 @@ describe('platform settings initialisation', () => {
     });
     expect(getDefaultPlatformSettings('facebook')).toEqual({ isReel: false });
     expect(getDefaultPlatformSettings('twitter')).toEqual({});
-    expect(getDefaultPlatformSettings('linkedin')).toEqual({});
   });
 
   it('never assumes a YouTube audience or category (KB-30): the creator declares them', () => {

@@ -20,13 +20,7 @@ import {
   getOAuthAppCredentials,
 } from '../server/oauth-app-credentials';
 import type { PlatformConnection } from './database-types';
-import {
-  type OfferedPlatform,
-  PLATFORM_NAMES,
-  type Platform,
-  isPlatform,
-  isRetiredPlatform,
-} from './platforms';
+import { PLATFORM_NAMES, type Platform, isPlatform } from './platforms';
 import type { TokenErrorCode } from './token-errors';
 import { EXPIRY_BUFFER_MS, isWithinRefreshWindow } from './token-expiry';
 
@@ -55,19 +49,14 @@ export interface TokenValidationResult {
 /**
  * The OAuth app each platform's tokens were minted by. Exhaustive, so a
  * platform added to `Platform` does not compile until it is mapped (KB-15).
- * A retired platform has none: its tokens are never refreshed (FILM-717).
  */
-const PLATFORM_APP: Record<OfferedPlatform, OAuthApp> = {
+const PLATFORM_APP: Record<Platform, OAuthApp> = {
   youtube: 'youtube',
   tiktok: 'tiktok',
   instagram: 'meta',
   facebook: 'meta',
   twitter: 'twitter',
 };
-
-function isOfferedPlatform(value: string): value is OfferedPlatform {
-  return isPlatform(value) && !isRetiredPlatform(value);
-}
 
 interface EnsureValidTokenOptions {
   /**
@@ -155,9 +144,10 @@ async function doEnsureValidToken(
     return { valid: false, error: 'NOT_FOUND' };
   }
 
-  // Kept, never refreshed or torn down, and nobody is asked to reconnect.
-  if (isRetiredPlatform(connection.platform)) {
-    return { valid: false, error: 'PLATFORM_RETIRED' };
+  // A kept row on a removed platform (FILM-717): never refreshed or torn
+  // down, and nobody is asked to reconnect.
+  if (!isPlatform(connection.platform)) {
+    return { valid: false, error: 'PLATFORM_UNSUPPORTED' };
   }
 
   if (!connection.is_active) {
@@ -242,7 +232,7 @@ async function doEnsureValidToken(
 
   // 4. Attempt refresh
   try {
-    if (!isOfferedPlatform(connection.platform)) {
+    if (!isPlatform(connection.platform)) {
       throw new Error(`Unknown platform: ${connection.platform}`);
     }
 
@@ -327,7 +317,7 @@ async function doEnsureValidToken(
       };
     }
 
-    const app = isOfferedPlatform(connection.platform)
+    const app = isPlatform(connection.platform)
       ? PLATFORM_APP[connection.platform]
       : undefined;
     logger.error(
@@ -415,7 +405,7 @@ interface RefreshContext {
  * from the same lookup connect and the callback use (KB-29).
  */
 async function refreshTokenForPlatform(
-  platform: OfferedPlatform,
+  platform: Platform,
   refreshToken: string,
   context: RefreshContext,
 ): Promise<TokenRefreshResult> {

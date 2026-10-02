@@ -35,9 +35,9 @@ const YOUTUBE: Record<TokenErrorCode, string> = {
     "This app can't read your saved YouTube sign-in. Reconnect YouTube in Settings → Platforms to publish.",
   APP_NOT_CONFIGURED:
     "Publishing to YouTube isn't set up yet: this app has no YouTube credentials. Your connection still works; ask your administrator to add them.",
-  // FILM-717: only LinkedIn is retired; the sentence is worded the same way.
-  PLATFORM_RETIRED:
-    'YouTube is retired: this app no longer publishes to it. Your YouTube connection and what you published there are kept.',
+  // FILM-717: only a kept row on a removed platform gets this one.
+  PLATFORM_UNSUPPORTED:
+    'This app no longer publishes to YouTube, so nothing was sent.',
 };
 
 describe('tokenErrorMessage (KB-157)', () => {

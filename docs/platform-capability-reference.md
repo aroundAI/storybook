@@ -37,9 +37,7 @@ open known bug owns the move (FILM-1723, FILM-1728).
 | Meta Graph | `v26.0` | 2028-07-29 (floor) | [developers.facebook.com](https://developers.facebook.com/docs/graph-api/changelog/), read 2026-10-01 | `packages/shared/src/vendors/meta.ts` | Meta lists the end as "TBD" until v27.0 ships (not released, re-read 2026-10-01); the floor is two years from release. See [Graph API versions](#graph-api-versions) |
 | X | `v2` | none published | [docs.x.com](https://docs.x.com/x-api/fundamentals/versioning), read 2026-10-01 | `packages/shared/src/vendors/x.ts` | X states no v2 end date; a major version comes "no more than annually", and a deprecated one keeps working for "a defined period" |
 
-Not in the table: LinkedIn, retired on 2026-10-02 (FILM-717) rather than
-moving its `202401` pin, which LinkedIn sunset on 2025-01-22 (KB-164); nothing
-calls LinkedIn now. Stripe's `2025-08-27.basil`
+Not in the table: Stripe's `2025-08-27.basil`
 (`packages/billing/stripe/src/services/stripe-sdk.ts`), one of Stripe's monthly
 releases, for which [Stripe's versioning page](https://docs.stripe.com/api/versioning)
 (read 2026-10-01) gives no retirement date; and TikTok's `/v2/` and YouTube's
@@ -802,7 +800,6 @@ are FILM-1711's, in `packages/features/publishing/src/oauth/analytics-scopes.ts`
 | Facebook | `POST /{page-id}/video_reels`, `/{page-id}/videos` | `pages_show_list`, `pages_read_engagement`, `pages_manage_posts`, on a Page token with `CREATE_CONTENT` | yes | [Reels publishing](https://developers.facebook.com/docs/video-api/guides/reels-publishing/) |
 | X | `/2/media/upload` (`initialize`, `append`, `finalize`, `STATUS`) | `media.write` | yes, since FILM-1729 (`X_MEDIA_UPLOAD_SCOPE`); older connections are refused at publish and told to reconnect | [initialize media upload](https://docs.x.com/x-api/media/initialize-media-upload) |
 | X | `POST /2/tweets` | `tweet.read`, `tweet.write`, `users.read` | yes | [create post](https://docs.x.com/x-api/posts/create-post) |
-| LinkedIn | `/rest/videos?action=initializeUpload` / `finalizeUpload`, `POST /rest/posts` | `w_member_social` (a member), `w_organization_social` (an organization) | yes: personal asks `w_member_social`, company adds `w_organization_social` | [Videos API](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/videos-api) |
 
 A connection made before a scope was added keeps its old grant: refresh does
 not add scopes. Only X has had one added (`media.write`), and the publish
@@ -1639,109 +1636,6 @@ required_enrollment
 reason
 ```
 
-<!-- fields: linkedin/oauth-token source: https://learn.microsoft.com/en-us/linkedin/shared/authentication/authorization-code-flow -->
-```text
-# The token endpoint's response, fetched 2026-09-30. refresh_token and
-# refresh_token_expires_in are for partners with programmatic refresh; the
-# page's own sample has neither. error and error_description are on the
-# page's error table.
-access_token
-expires_in                 # seconds; 60-day tokens
-refresh_token
-refresh_token_expires_in
-scope                      # space-delimited
-error
-error_description
-```
-
-<!-- fields: linkedin/userinfo source: https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2 -->
-```text
-# GET /v2/userinfo, fetched 2026-09-30. Needs openid; profile gates the
-# name, picture and locale claims, email gates email and email_verified.
-sub
-name
-given_name
-family_name
-picture
-locale
-email
-email_verified
-```
-
-<!-- fields: linkedin/videos source: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/videos-api -->
-```text
-# Videos API, fetched 2026-09-30: initializeUpload, finalizeUpload, get a video.
-value
-uploadUrlsExpireAt
-video
-uploadInstructions
-uploadUrl
-firstByte
-lastByte
-uploadToken
-id
-owner
-status                     # WAITING_UPLOAD, PROCESSING, AVAILABLE, PROCESSING_FAILED
-processingFailureReason    # only when PROCESSING_FAILED
-duration
-aspectRatioWidth
-aspectRatioHeight
-```
-
-<!-- fields: linkedin/assets source: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/vector-asset-api -->
-```text
-# Assets API registerUpload (superseded by Videos; the publish worker still calls it), fetched 2026-09-30.
-value
-mediaArtifact
-uploadMechanism
-com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest
-uploadUrl
-headers
-media-type-family
-asset
-assetRealTimeTopic
-```
-
-<!-- fields: linkedin/ugc-posts source: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/ugc-post-api -->
-```text
-# ugcPosts create (legacy). Source page not re-read 2026-09-30 (the fetch was too large
-# to check); the response body's id is what the publish worker reads.
-id
-```
-
-<!-- fields: linkedin/posts source: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api -->
-```text
-# Posts API, fetched 2026-09-30. Create answers 201 with the id in the x-restli-id
-# header and no body; get returns the post.
-id
-author
-commentary
-visibility
-lifecycleState
-lifecycleStateInfo
-isEditedByAuthor
-isReshareDisabledByAuthor
-distribution
-feedDistribution
-targetEntities
-thirdPartyDistributionChannels
-content
-media
-createdAt
-publishedAt
-lastModifiedAt
-```
-
-<!-- fields: linkedin/api-error source: https://learn.microsoft.com/en-us/linkedin/shared/api-guide/concepts/error-handling -->
-```text
-# fetched 2026-09-30: message, serviceErrorCode and status; code appears on the
-# Posts and Videos pages' error tables.
-message
-serviceErrorCode
-status
-code
-```
-
 _Verified: 2026-09-21_
 
 ---
@@ -1754,8 +1648,8 @@ and one is a real name for a retired feature — but every one of them is wrong 
 
 The first column scopes the rule to the providers it belongs to, matched against the
 file path. **A deprecation is a fact about one vendor, not about the word.**
-LinkedIn genuinely reports `impressions`, so forbidding the token everywhere would
-be a false positive that teaches people to disable the guard.
+Another vendor may genuinely report `impressions`, so forbidding the token
+everywhere would be a false positive that teaches people to disable the guard.
 
 <!-- forbidden -->
 ```text
@@ -1874,10 +1768,6 @@ labelled as such wherever they are used.
 | X revoke answers `{ "revoked": true }` and ends only the token it is given | The user-access-token page documents the call, not the body or a cascade; the app revokes both tokens. The sandbox serves this | inferred |
 | X's Enterprise-only analytics endpoints answer 403 `client-not-enrolled` (title "Client Forbidden") | The problem-object page names the type without an example for these endpoints. The sandbox serves it | inferred |
 | X refuses the same text twice from one account with 403 "You are not allowed to create a Tweet with duplicate content." | Long-standing behaviour, not on the create-post page. The sandbox serves it | inferred |
-| LinkedIn 401s carry `serviceErrorCode` 65600 (invalid), 65601 (revoked) and 65604 (expired), and a missing scope is 403 `ACCESS_DENIED` "Not enough permissions to access: {resource}.{METHOD}.NO_VERSION" | The error-handling page names the cases and the `message`, `serviceErrorCode`, `status` shape; the specific codes and the 403 wording are LinkedIn's usual ones. The sandbox serves them | inferred |
-| LinkedIn's programmatic refresh returns the same refresh token with its remaining `refresh_token_expires_in` | The authorization-code-flow page says programmatic refresh exists for a limited set of partners and points to a page not read. The sandbox plays a partner that has it | inferred |
-| A LinkedIn video upload URL accepts POST and an `Authorization` header | The Assets API page says PUT and no OAuth token; the publish worker POSTs with a Bearer token. The sandbox accepts both rather than fail a call whose live behaviour is unknown | inferred |
-| The Posts API answers 201 with the id in `x-restli-id` and no body | Documented: "the response header `x-restli-id` contains the Post ID". `LinkedInProvider.createPost` reads `data.id` from the body instead; the sandbox serves the documented shape | **documented** |
 | TikTok's token endpoint answers errors with HTTP 400 (401 for a wrong client) and `{ error, error_description, log_id }`; a code challenge sent to authorize is checked at the token endpoint, in base64url or hex; revoke ends the whole grant | Login Kit page not reachable from this network (2026-09-30). The app's callback checks `tokens.error` without `response.ok`, which fits a 200 as well. FILM-1725 Check B | inferred |
 | The Content Posting init answers `publish_id` and `upload_url`, not `upload_id`; a missing scope on any TikTok v2 call is 401 `scope_not_authorized` | Content Posting and error-code pages not reachable (2026-09-30). `TikTokProvider` reads `upload_id` and sends `video_upload_id`, and `isAuthError` does not match `scope_not_authorized`; the sandbox serves what TikTok is understood to. FILM-702, FILM-1725 Check B | inferred |
 | TikTok's `publicaly_available_post_id` is an array of int64 | Documented as such; the sandbox serves the ids as strings because a 19-digit id does not survive `JSON.parse` in JavaScript | inferred |

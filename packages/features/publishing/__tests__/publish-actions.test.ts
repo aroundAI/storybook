@@ -39,7 +39,6 @@ const EPISODE = '00000000-0000-4000-8000-0000000000e1';
 const CONNECTIONS = {
   twitter: '00000000-0000-4000-8000-0000000000c1',
   tiktok: '00000000-0000-4000-8000-0000000000c2',
-  linkedin: '00000000-0000-4000-8000-0000000000c3',
   instagram: '00000000-0000-4000-8000-0000000000c4',
 } as const;
 const VIDEO = `${SUPABASE}/storage/v1/object/public/project-assets/episodes/${EPISODE}/videos/en-1.mp4`;
@@ -496,31 +495,26 @@ describe('Publish Actions', () => {
       );
     });
 
-    // FILM-717: LinkedIn is retired. A request naming it is answered for
-    // that platform alone, and nothing is written or uploaded for it.
-    it('refuses a retired platform on its own, writing nothing for it', async () => {
-      const { publishToAllAction } = await import(
-        '../src/server/publish-actions'
+    // FILM-717: LinkedIn is removed. The action's schema refuses a request
+    // naming it before the handler runs (this file's enhanceAction mock
+    // skips schemas, so the schema is asked directly).
+    it('refuses a removed platform at the schema', async () => {
+      const { PublishToAllSchema } = await import(
+        '../src/lib/schemas/publish.schema'
       );
 
-      const result = await publishToAllAction({
-        episodeId: EPISODE,
-        platforms: [input('tiktok'), input('linkedin')],
-      });
-
-      expect(result).toMatchObject({
-        ok: true,
-        data: [
-          { platform: 'tiktok', status: 'completed' },
-          {
-            platform: 'linkedin',
-            status: 'failed',
-            error:
-              'LinkedIn is retired: this app no longer publishes to it. Your LinkedIn connection and what you published there are kept.',
-          },
-        ],
-      });
-      expect(db.inserted.map((row) => row.platform)).toEqual(['tiktok']);
+      expect(
+        PublishToAllSchema.safeParse({
+          episodeId: EPISODE,
+          platforms: [input('tiktok')],
+        }).success,
+      ).toBe(true);
+      expect(
+        PublishToAllSchema.safeParse({
+          episodeId: EPISODE,
+          platforms: [{ ...input('tiktok'), platform: 'linkedin' }],
+        }).success,
+      ).toBe(false);
     });
   });
 
@@ -580,7 +574,6 @@ describe('Publish Actions', () => {
         'instagram',
         'facebook',
         'twitter',
-        'linkedin',
       ];
 
       platforms.forEach((platform) => {

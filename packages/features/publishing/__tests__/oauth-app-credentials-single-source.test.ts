@@ -17,7 +17,7 @@ const ROOTS = ['apps/web/app', 'apps/web/lib', 'packages/features'];
 
 /** An app credential named anywhere: env variable names and the secret column. */
 const ENV_NAME =
-  /\b(?:TIKTOK_CLIENT_(?:KEY|SECRET)|(?:LINKEDIN|TWITTER|YOUTUBE|GOOGLE)_CLIENT_(?:ID|SECRET)|(?:FACEBOOK|META)_APP_(?:ID|SECRET))\b/;
+  /\b(?:TIKTOK_CLIENT_(?:KEY|SECRET)|(?:TWITTER|YOUTUBE|GOOGLE)_CLIENT_(?:ID|SECRET)|(?:FACEBOOK|META)_APP_(?:ID|SECRET))\b/;
 const SECRET_READ = /select\(\s*['"`][^'"`]*client_secret_encrypted/;
 
 /**

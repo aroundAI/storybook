@@ -19,7 +19,7 @@ export async function generateMetadata() {
 
 async function DataDeletionPage() {
   const { t } = await createI18nServerInstance();
-  const lastUpdated = 'September 24, 2026';
+  const lastUpdated = 'October 2, 2026';
   const companyName = 'Around AI Limited';
   const productName = 'StoryBook';
   const contactEmail = 'privacy@storybook.digital';
@@ -58,7 +58,7 @@ async function DataDeletionPage() {
                 from the address on your {productName} account and tell us what
                 you want deleted: everything we hold about you, or only the data
                 we received from one connected platform (YouTube, Instagram,
-                Facebook, TikTok, X or LinkedIn).
+                Facebook, TikTok or X).
               </p>
               <p>
                 There is no button for this yet. A person at {companyName}{' '}
@@ -78,9 +78,8 @@ async function DataDeletionPage() {
               <p>
                 Deleting data held by {productName} does not change anything on
                 the platform itself. Your videos, posts and statistics on
-                YouTube, Instagram, Facebook, TikTok, X or LinkedIn stay where
-                they are. To delete those, use that platform&apos;s own app or
-                website.
+                YouTube, Instagram, Facebook, TikTok or X stay where they are.
+                To delete those, use that platform&apos;s own app or website.
               </p>
             </div>
           </Section>
@@ -103,12 +102,6 @@ async function DataDeletionPage() {
                   the revoke, the tokens are still deleted here and we tell you
                   so, with a link to the platform&apos;s settings; use the links
                   in section 4 to check that we no longer appear.
-                </li>
-                <li data-test="disconnect-linkedin">
-                  LinkedIn does not let apps revoke their own access, so for
-                  LinkedIn we delete the stored tokens and you remove{' '}
-                  {productName} at LinkedIn as well, using the link in section
-                  4.
                 </li>
                 <li>
                   From that moment we collect nothing further from that account.

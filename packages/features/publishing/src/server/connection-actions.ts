@@ -14,7 +14,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { PlatformConnection as DBPlatformConnection } from '../lib/database-types';
-import { isRetiredPlatform } from '../lib/platforms';
+import { isPlatform } from '../lib/platforms';
 import { GetConnectedPlatformsSchema } from '../lib/schemas/publish.schema';
 import { UpdateYouTubeChannelSettingsSchema } from '../lib/schemas/youtube-declaration.schema';
 import { TokenRefusal, readableTokenError } from '../lib/token-errors';
@@ -39,7 +39,7 @@ export const getConnectionsAction = enhanceAction(
   async (data: { accountId: string }) => {
     const client = getSupabaseServerClient();
 
-    const { data: connections, error } = (await client
+    const { data: stored, error } = (await client
       .from('platform_connections' as 'accounts')
       .select(
         `
@@ -58,6 +58,9 @@ export const getConnectionsAction = enhanceAction(
     if (error) {
       throw new Error('Failed to fetch connections');
     }
+
+    // A kept row on a platform the product removed is not shown (FILM-717).
+    const connections = stored?.filter((conn) => isPlatform(conn.platform));
 
     const followerCounts = await resolveFollowerCounts(connections ?? []);
     const purges = await latestVendorDataPurges(
@@ -587,10 +590,9 @@ export const getConnectedPlatformsAction = enhanceAction(
     // Note: metadata column exists in schema but may not be in generated types yet
     // We cast to access it safely
     // We return a unified structure compatible with both Publish Page and Settings Page
-    // A retired platform's row is kept for Settings, but it is not somewhere
-    // to publish (FILM-717).
-    const publishable = (connections ?? []).filter(
-      (connection) => !isRetiredPlatform(connection.platform),
+    // A kept row on a removed platform is not somewhere to publish (FILM-717).
+    const publishable = (connections ?? []).filter((connection) =>
+      isPlatform(connection.platform),
     );
 
     const followerCounts = await resolveFollowerCounts(

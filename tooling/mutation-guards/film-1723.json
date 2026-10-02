@@ -132,16 +132,6 @@
       "pattern": "video_views"
     },
     {
-      "name": "A pin past its end loses the known bug that owns the move",
-      "kind": "unit",
-      "file": "packages/shared/src/vendors/pins.ts",
-      "find": "    trackedBy: 'KB-164',",
-      "replace": "    trackedBy: null,",
-      "cwd": "packages/shared",
-      "test": "__tests__/vendor-api-versions.test.ts",
-      "pattern": "no pinned vendor version is within 120 days of its end"
-    },
-    {
       "name": "The reference's pinned-versions table disagrees with the pin list",
       "kind": "unit",
       "file": "docs/platform-capability-reference.md",

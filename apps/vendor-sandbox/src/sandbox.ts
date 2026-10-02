@@ -22,7 +22,7 @@ import { type SandboxVersion, sourceStamp } from './version';
 
 /**
  * Default ports (FILM-1803 §1). One process, one origin per vendor, as in
- * production. 4101–4104 are FILM-1802's social platforms (4105 was LinkedIn's, retired by FILM-717).
+ * production. 4101–4104 are FILM-1802's social platforms.
  */
 export const DEFAULT_PORTS = {
   control: 4100,

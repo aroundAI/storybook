@@ -55,11 +55,11 @@
       "name": "PLATFORMS drifts from the platform_connections CHECK",
       "kind": "unit",
       "file": "packages/features/publishing/src/lib/platforms.ts",
-      "find": "  'facebook',\n  'twitter',\n  'linkedin',\n] as const;",
-      "replace": "  'facebook',\n  'linkedin',\n] as const;",
+      "find": "  'facebook',\n  'twitter',\n] as const;",
+      "replace": "  'facebook',\n] as const;",
       "cwd": "packages/features/publishing",
       "test": "__tests__/platforms.test.ts",
-      "pattern": "is exactly the set the platform_connections CHECK allows"
+      "pattern": "less the values kept for old rows"
     },
     {
       "name": "The publish worker hands out a token the app would refresh first",

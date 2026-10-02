@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 
-import { Facebook, Instagram, Linkedin, Twitter, Youtube } from 'lucide-react';
+import { Facebook, Instagram, Twitter, Youtube } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Progress } from '@kit/ui/progress';
@@ -49,7 +49,6 @@ const PLATFORM_CONFIG: Record<
   },
   facebook: { label: 'Facebook', icon: Facebook, color: 'bg-blue-600' },
   twitter: { label: 'Twitter', icon: Twitter, color: 'bg-sky-500' },
-  linkedin: { label: 'LinkedIn', icon: Linkedin, color: 'bg-blue-700' },
   manual: {
     label: 'Manual Entry',
     icon: () => <span className="text-sm">$</span>,

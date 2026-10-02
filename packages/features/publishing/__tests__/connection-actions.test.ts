@@ -199,8 +199,8 @@ describe('Connection Actions', () => {
       });
     });
 
-    // FILM-717: a LinkedIn row is kept, but it is not somewhere to publish.
-    it('leaves out a connection to a retired platform', async () => {
+    // FILM-717: a kept LinkedIn row is not somewhere to publish.
+    it('leaves out a kept row on a removed platform', async () => {
       const row = (id: string, platform: string) => ({
         id,
         platform,
@@ -385,6 +385,39 @@ describe('Connection Actions', () => {
     });
   });
 
+  // FILM-717: the settings page never shows a kept LinkedIn row.
+  describe('getConnectionsAction', () => {
+    it('leaves out a kept row on a removed platform', async () => {
+      const row = (id: string, platform: string) => ({
+        id,
+        account_id: 'test-account-id',
+        platform,
+        platform_account_id: `${platform}-account`,
+        platform_account_name: platform,
+        is_active: true,
+        token_expires_at: new Date(Date.now() + 3600000).toISOString(),
+        scopes: null,
+        metadata: null,
+        disconnected_at: null,
+      });
+
+      mockSupabaseClient.order.mockResolvedValueOnce({
+        data: [row('conn-li', 'linkedin'), row('conn-x', 'twitter')],
+        error: null,
+      });
+
+      const { getConnectionsAction } = await import(
+        '../src/server/connection-actions'
+      );
+
+      const result = await getConnectionsAction({
+        accountId: 'test-account-id',
+      });
+
+      expect(result.map((connection) => connection.id)).toEqual(['conn-x']);
+    });
+  });
+
   describe('PlatformConnection type validation', () => {
     it('should have all required fields', () => {
       const connection: PlatformConnection = {
@@ -428,10 +461,10 @@ describe('Connection Actions', () => {
     it('should allow null values for optional fields', () => {
       const connection: PlatformConnection = {
         id: 'test-id',
-        platform: 'linkedin' as Platform,
+        platform: 'tiktok' as Platform,
         language: 'en',
         platformAccountId: null,
-        platformAccountName: 'Test LinkedIn',
+        platformAccountName: 'Test TikTok',
         avatarUrl: null,
         isActive: true,
         tokenValid: true,

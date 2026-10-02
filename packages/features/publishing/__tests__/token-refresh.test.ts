@@ -389,7 +389,6 @@ describe('formatPlatformName', () => {
     ['tiktok', 'TikTok'],
     ['instagram', 'Instagram'],
     ['facebook', 'Facebook'],
-    ['linkedin', 'LinkedIn'],
     ['twitter', 'X'],
     ['unknown', 'unknown'],
   ])('formats %s as %s', (platform, name) => {
@@ -531,14 +530,14 @@ describe('refresh uses the credentials connect uses (KB-29)', () => {
     );
   });
 
-  // FILM-717: LinkedIn is retired. Its rows are kept, so the token is never
-  // refreshed, the row is not torn down and nobody is told to reconnect.
-  it('refuses a LinkedIn connection as retired, without a vendor call', async () => {
+  // FILM-717: LinkedIn is removed, and its rows are kept. Such a token is
+  // never refreshed, the row is not torn down and nobody is told to reconnect.
+  it('refuses a kept row on a removed platform, without a vendor call', async () => {
     await seedExpiredConnection('linkedin');
 
     const result = await tokenRefresh.ensureValidToken('conn-linkedin', true);
 
-    expect(result).toEqual({ valid: false, error: 'PLATFORM_RETIRED' });
+    expect(result).toEqual({ valid: false, error: 'PLATFORM_UNSUPPORTED' });
     expect(requests).toHaveLength(0);
     expect(storedConnection().is_active).toBe(true);
     expect(fakeDb.tables.notifications ?? []).toEqual([]);
@@ -875,7 +874,7 @@ describe('refreshExpiringTokens', () => {
     );
   });
 
-  it('leaves a retired platform out of the run (FILM-717)', async () => {
+  it('leaves a kept row on a removed platform out of the run (FILM-717)', async () => {
     await seedGlobalCredentials('youtube');
     await addConnection('youtube', 50);
     const linkedin = await addConnection('linkedin', 50);

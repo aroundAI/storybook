@@ -12,11 +12,9 @@
   "disconnectTitle": "Disconnect {{accountName}}?",
   "disconnectDialog": {
     "access": "We'll stop collecting from {{platform}} and delete the access tokens we hold. You won't be able to publish to {{accountName}} until you reconnect.",
-    "accessRetired": "We'll delete the access tokens we hold for {{accountName}}. {{platform}} is retired, so nothing is published to it or collected from it either way.",
     "revokeAsks": "We'll also ask {{platform}} to revoke our access.",
     "revokeUnavailable": "{{platform}} doesn't let apps revoke their own access, so remove our access in {{platform}}'s settings too.",
     "kept": "Kept: your record of what was published, revenue you entered, tags, experiments and channel targets. Reconnect this channel and they're attached again.",
-    "keptRetired": "Kept: your record of what was published, revenue you entered, tags, experiments and channel targets.",
     "vendorDataYouTube": "YouTube's policies require us to delete the statistics we collected from YouTube for this channel. We delete them within 7 days — normally within the hour. If you reconnect, we collect them again from YouTube.",
     "vendorDataKept": "Statistics already collected from {{platform}} are kept until you ask us to delete them.",
     "howToAsk": "How to ask",
@@ -26,10 +24,6 @@
   },
   "limitation": {
     "twitter": "Video uploads to X need the media.write permission. If you connected X before it was requested, disconnect and connect again."
-  },
-  "retired": {
-    "badge": "Retired",
-    "description": "{{platform}} is retired: this app no longer connects or publishes to it. These connections and what you published there are kept, read-only. You can still disconnect them."
   },
   "disconnected": {
     "since": "Disconnected on {{date}}. Your records from this channel are kept.",
@@ -89,7 +83,6 @@
       "storage_failed": "{{platform}} authorised the app, but the connection could not be saved on our side.",
       "pending_connection_lost": "The channel choice could not be finished: the pending {{platform}} connection was not found, or had expired. It is kept for 10 minutes, in the browser that started it.",
       "unexpected": "Something broke on our side while finishing the {{platform}} connection, so we cannot say whether it was saved.",
-      "platform_retired": "{{platform}} is retired: this app no longer connects or publishes to it. Nothing was connected.",
       "unknown": "The connection did not complete, and the address of this page does not say why in a form this app recognises."
     },
     "action": {
@@ -110,7 +103,6 @@
       "storage_failed": "Try again. If it repeats, contact support; the server log line “Platform connect failed” has the reason.",
       "pending_connection_lost": "Start the connection again from Settings → Platforms.",
       "unexpected": "Check the list below before trying again. If it repeats, contact support; the server log line “Platform connect failed” has the reason.",
-      "platform_retired": "Nothing to do. {{platform}} connections made before it was retired, and what you published there, are kept on Settings → Platforms, where you can still disconnect them.",
       "unknown": "Start the connection again from Settings → Platforms."
     }
   }

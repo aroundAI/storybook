@@ -36,12 +36,9 @@ function lookup(key: string): unknown {
 const platforms = Object.keys(VENDOR_REVOKES) as PlatformType[];
 
 describe('disconnectCopyFor (KB-25)', () => {
-  it('promises a revoke for X, and tells the truth about LinkedIn', () => {
+  it('promises a revoke for X', () => {
     expect(disconnectCopyFor('twitter').revokeKey).toBe(
       'platforms:disconnectDialog.revokeAsks',
-    );
-    expect(disconnectCopyFor('linkedin').revokeKey).toBe(
-      'platforms:disconnectDialog.revokeUnavailable',
     );
   });
 
@@ -50,29 +47,10 @@ describe('disconnectCopyFor (KB-25)', () => {
     (platform) => {
       const copy = disconnectCopyFor(platform);
 
-      expect(lookup(copy.accessKey)).toEqual(expect.any(String));
-      expect(lookup(copy.keptKey)).toEqual(expect.any(String));
       expect(lookup(copy.revokeKey)).toEqual(expect.any(String));
       expect(lookup(copy.vendorDataKey)).toEqual(expect.any(String));
     },
   );
-
-  // FILM-717: a retired platform cannot be reconnected, so its dialog must
-  // not say it can. Every other platform keeps the usual sentences.
-  it('promises no reconnect for a retired platform', () => {
-    const retired = disconnectCopyFor('linkedin');
-
-    expect(retired).toMatchObject({
-      accessKey: 'platforms:disconnectDialog.accessRetired',
-      keptKey: 'platforms:disconnectDialog.keptRetired',
-    });
-    expect(String(lookup(retired.accessKey))).not.toMatch(/reconnect/i);
-    expect(String(lookup(retired.keptKey))).not.toMatch(/reconnect/i);
-    expect(disconnectCopyFor('twitter')).toMatchObject({
-      accessKey: 'platforms:disconnectDialog.access',
-      keptKey: 'platforms:disconnectDialog.kept',
-    });
-  });
 
   it('says nothing is merely "not yet" done', () => {
     expect(JSON.stringify(locale)).not.toMatch(/don't yet|do not yet/i);

@@ -38,7 +38,6 @@ const PLATFORM_COLORS: Record<string, string> = {
   instagram: 'bg-pink-100 text-pink-700',
   facebook: 'bg-blue-100 text-blue-700',
   twitter: 'bg-sky-100 text-sky-700',
-  linkedin: 'bg-blue-100 text-blue-700',
 };
 
 export function RevenueTopContent({
