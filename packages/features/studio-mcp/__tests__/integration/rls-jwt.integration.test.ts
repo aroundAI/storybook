@@ -1,5 +1,5 @@
-import { exportPKCS8, generateKeyPair } from 'jose';
-import { randomUUID } from 'node:crypto';
+import { type JWK, exportPKCS8, generateKeyPair, importJWK } from 'jose';
+import { createHash, randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -17,10 +17,14 @@ import { createUserScopedClient } from '../../src/server/user-client';
  *   MCP_INTEGRATION_SUPABASE_URL=http://127.0.0.1:55421 \
  *     npx vitest run __tests__/integration
  *
- * The shared secret path is proven here. The imported-key path is proven
- * negatively: the local stack has no imported signing key, so PostgREST
- * refuses an ES256 token with the error a wrong `kid` produces; the
- * positive half needs a project with the key imported (see the spec).
+ * The shared secret path is proven first. The signing-key path is proven
+ * two ways: an ES256 key the stack does not hold is refused with the error
+ * a wrong `kid` produces; and, when `MCP_INTEGRATION_SIGNING_JWK` carries
+ * the private JWK of a key in the stack's signing set (the local CLI
+ * generates one: `docker inspect supabase_auth_<project>` →
+ * `GOTRUE_JWT_KEYS`; PostgREST verifies against the same set), a token our
+ * asymmetric signer mints with that key and its `kid` runs the user under
+ * RLS exactly as the HS256 one does.
  */
 const SUPABASE_URL = process.env.MCP_INTEGRATION_SUPABASE_URL;
 
@@ -50,6 +54,11 @@ async function post(path: string, key: string, body: unknown, token?: string) {
     throw new Error(`${path} failed (${response.status}): ${text}`);
 
   return text ? JSON.parse(text) : null;
+}
+
+/** A token hash no earlier run of this file left behind (token_hash is the key). */
+function freshHash() {
+  return createHash('sha256').update(randomUUID()).digest('hex');
 }
 
 async function seedUserWithTeam() {
@@ -115,7 +124,7 @@ describe.skipIf(!SUPABASE_URL)('minted RLS JWT against local Supabase', () => {
       p_account_id: me.teamId,
       p_name: 'rls proof',
       p_scopes: ['studio:read'],
-      p_token_hash: 'f'.repeat(64),
+      p_token_hash: freshHash(),
     });
     expect(created.error).toBeNull();
     expect(created.data?.user_id).toBe(me.userId);
@@ -152,4 +161,61 @@ describe.skipIf(!SUPABASE_URL)('minted RLS JWT against local Supabase', () => {
     expect(result.error).not.toBeNull();
     expect(result.error?.code).toBe('PGRST301');
   });
+
+  const SIGNING_JWK = process.env.MCP_INTEGRATION_SIGNING_JWK;
+
+  it.skipIf(!SIGNING_JWK)(
+    "ES256 with a key in the stack's signing set and its kid: PostgREST runs the minted user under RLS",
+    async () => {
+      withEnv();
+      const me = await seedUserWithTeam();
+      const other = await seedUserWithTeam();
+      const keys = JSON.parse(SIGNING_JWK!) as JWK | JWK[];
+      const jwk = (Array.isArray(keys) ? keys[0] : keys)!;
+      // GoTrue's JWK lists both usages; WebCrypto imports a private ECDSA
+      // key for signing only
+      const { key_ops: _keyOps, use: _use, ...privateJwk } = jwk;
+      const privateKey = await importJWK(privateJwk, 'ES256', {
+        extractable: true,
+      });
+
+      const signer = await createAsymmetricSigner({
+        privateKeyPem: await exportPKCS8(privateKey as CryptoKey),
+        kid: jwk.kid!,
+        alg: 'ES256',
+        issuer,
+      });
+      expect(signer.kind).toBe('asymmetric-key');
+
+      const jwt = await signer.sign({
+        userId: me.userId,
+        connectionId: randomUUID(),
+      });
+      const client = createUserScopedClient(jwt);
+
+      const membership = await client.rpc('has_role_on_account', {
+        account_id: me.teamId,
+      });
+      expect(membership.error).toBeNull();
+      expect(membership.data).toBe(true);
+
+      const notMine = await client.rpc('has_role_on_account', {
+        account_id: other.teamId,
+      });
+      expect(notMine.data).toBe(false);
+
+      const teams = await client.from('user_accounts').select('id');
+      expect(teams.error).toBeNull();
+      expect(teams.data?.map((row) => row.id)).toEqual([me.teamId]);
+
+      const created = await client.rpc('create_mcp_personal_access_token', {
+        p_account_id: me.teamId,
+        p_name: 'rls proof es256',
+        p_scopes: ['studio:read'],
+        p_token_hash: freshHash(),
+      });
+      expect(created.error).toBeNull();
+      expect(created.data?.user_id).toBe(me.userId);
+    },
+  );
 });

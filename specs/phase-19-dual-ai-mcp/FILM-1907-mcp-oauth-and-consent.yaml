@@ -56,8 +56,8 @@ acceptance_criteria:
     met: true
     evidence: "token.ts issues only sbk_at_/sbk_rt_ (no Supabase session is created or returned anywhere under src/server/oauth); migration trigger on_auth_user_password_changed (kit.revoke_mcp_grants_on_password_change, fires on a changed encrypted_password only); pgTAP 'a password change revokes every connection of that user' and 'an email change… revokes nothing'; guard OAUTH DB1"
   - text: "RLS signing works with both Supabase key setups: FILM-1904's 5-minute JWT is signed with the legacy JWT secret or with a private key imported into the project's JWT signing keys (selected by env, with the kid set), and a pgTAP or integration test proves auth.uid() and RLS see the minted user in each"
-    met: false
-    reason: "Half met. Both signers exist behind McpJwtSigner (jwt.ts: createHs256Signer, createAsymmetricSigner ES256/RS256 with kid; createMcpJwtSigner selects by MCP_JWT_PRIVATE_KEY + MCP_JWT_KID + MCP_JWT_ALG) and __tests__/jwt-signers.test.ts proves the asymmetric token verifies against its public key with the kid in the header (guard OAUTH U10). The shared-secret half is proven live: __tests__/integration/rls-jwt.integration.test.ts against lane B's Supabase (has_role_on_account true for the user's team and false for another's, user_accounts shows only theirs, create_mcp_personal_access_token binds the row to auth.uid()). The imported-key half cannot be proven on the local stack: Supabase CLI 2.117.0 starts GoTrue and PostgREST with the HS256 secret only and offers no way to import an asymmetric signing key, so the same test shows PostgREST refusing the ES256 token (PGRST301). Proving it needs a hosted project with the key imported; steps in notes"
+    met: true
+    evidence: "Both signers behind McpJwtSigner (jwt.ts: createHs256Signer; createAsymmetricSigner ES256/RS256 with kid; createMcpJwtSigner selects by MCP_JWT_PRIVATE_KEY + MCP_JWT_KID + MCP_JWT_ALG); __tests__/jwt-signers.test.ts (verifies against the public key, kid in the header; guard OAUTH U10). Live, __tests__/integration/rls-jwt.integration.test.ts against lane B's Supabase (CLI 2.117.0 runs GoTrue with a generated ES256 key in GOTRUE_JWT_KEYS and PostgREST with the same JWKS, beside the HS256 secret): the HS256-minted token and an ES256 token minted with that key and its kid each run as the user (has_role_on_account true for their team, false for another's; user_accounts shows theirs only; create_mcp_personal_access_token binds the row to auth.uid()); an ES256 token for a key outside the set is refused PGRST301. Importing a key into a hosted project is the deployment step in notes (#563)"
   - text: "Swappable verifier: withMcpAuth resolves tokens only through an McpTokenVerifier interface; 'own' (default, MCP_AUTH_SERVER=own) checks hashed opaque tokens in mcp_tokens, and the interface admits a 'supabase' verifier for Supabase OAuth server JWTs (issuer, audience, aud = MCP resource URL, client_id claim) mapped to the same McpPrincipal; the protected-resource metadata names whichever authorization server is configured"
     met: true
     evidence: "packages/features/studio-mcp/src/server/oauth/config.ts (MCP_AUTH_SERVER selects createOwnTokenVerifier or createSupabaseTokenVerifier; authorizationServerFromEnv feeds the metadata), route-handler.ts defaultAuthDeps uses it; supabase-verifier.ts (jose jwtVerify on issuer, aud = resource, client_id → mcp_connections by user and client); __tests__/verifier-contract.test.ts runs one contract over both: same McpConnectionRecord, expired/revoked/wrong-audience/malformed refused; guards OAUTH U7, U8, U9"
@@ -70,13 +70,10 @@ test_plan:
     - {text: "McpTokenVerifier contract test run against the 'own' verifier and a stub 'supabase' verifier: both yield the same McpPrincipal for the same user, team and scopes, and both refuse expired, wrong-audience and revoked tokens", met: true, evidence: "packages/features/studio-mcp/__tests__/verifier-contract.test.ts (describe.each over own and supabase, 14 cases); red first: 'Cannot find module supabase-verifier'"}
   integration:
     - {text: "The SDK's OAuth client completes discovery, registration, authorize and token against the local app with local Supabase Auth as the login", met: true, evidence: "apps/e2e/tests/mcp/oauth-sdk-client.spec.ts: @modelcontextprotocol/sdk auth() → REDIRECT after DCR, the consent click in the browser, auth() with the code → AUTHORIZED, then StreamableHTTPClientTransport with the provider calls whoami (#563)"}
-    - {text: "Minted JWT under both key setups: a tool call reads only the signed-in team's rows (RLS), against local Supabase", met: false, reason: "The HS256 half passes (rls-jwt.integration.test.ts against lane B); the imported-key half cannot run locally (criterion 11)"}
+    - {text: "Minted JWT under both key setups: a tool call reads only the signed-in team's rows (RLS), against local Supabase", met: true, evidence: "packages/features/studio-mcp/__tests__/integration/rls-jwt.integration.test.ts, 3 cases against lane B (MCP_INTEGRATION_SUPABASE_URL, MCP_INTEGRATION_SIGNING_JWK from the stack's GOTRUE_JWT_KEYS): HS256 and the stack's ES256 key each see only the user's team; a foreign ES256 key is refused (#563)"}
   e2e:
     - {text: "Playwright: the consent page for a seeded user with two teams, approve, then the Connected apps page shows and revokes the connection; screenshots in the PR", met: true, evidence: "apps/e2e/tests/mcp/oauth-consent.spec.ts (4 tests) and oauth-consent-evidence.spec.ts behind CAPTURE_EVIDENCE=1; screenshots in #563"}
 remaining:
-  - criterion: "RLS signing with a private key imported into the project's JWT signing keys, proven against a Supabase that holds the key"
-    reason: "The signer, its env selection and the kid are built and unit-proven; the local CLI (2.117.0) cannot import a signing key, so the live proof needs a hosted project. Steps in notes"
-    closed_by: "owner"
   - criterion: "Adding the connector by URL in Claude Desktop, signing in and calling whoami works end to end (recorded with screenshots)"
     reason: "Needs a public URL and the owner's Claude account"
     closed_by: "owner"
@@ -141,20 +138,18 @@ notes: |
   middleware's matcher (apps/web/middleware.ts): no browser session reaches
   them.
 
-  ## Owner steps for the two open items
+  ## Deploying with an imported signing key (criterion 11, the hosted step)
 
-  Imported signing key (criterion 11):
   1. Supabase dashboard → Project → Authentication → JWT Signing Keys →
      Import an asymmetric key (ES256 recommended). Note the key id shown.
   2. Set MCP_JWT_PRIVATE_KEY to the PKCS#8 private key, MCP_JWT_KID to that
      id (MCP_JWT_ALG=RS256 if an RSA key was imported) on the deployment;
      leave SUPABASE_JWT_SECRET for the rest of the app.
-  3. Run `MCP_INTEGRATION_SUPABASE_URL=<project url>
-     MCP_INTEGRATION_ANON_KEY=… MCP_INTEGRATION_SERVICE_ROLE_KEY=…
-     npx vitest run __tests__/integration` in packages/features/studio-mcp
-     after changing the second test's expectation to a successful
-     has_role_on_account, or simply call whoami with a PAT against the
-     deployment: a 200 under the asymmetric signer is the proof.
+  3. Call whoami with a PAT against the deployment: a 200 under the
+     asymmetric signer is the proof (the same check the integration test
+     makes locally with the stack's own key).
+
+  ## Owner steps for the open item
 
   Claude Desktop by URL (criterion 13):
   1. Deploy the branch to a public URL (NEXT_PUBLIC_SITE_URL set to it).
