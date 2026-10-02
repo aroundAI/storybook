@@ -9,7 +9,8 @@ record, the validator and the analyzer: it makes **no model call of its own**
 for that work.
 
 **Design document (reviewed by the owner, 2026-10-02):**
-[EDD: Dual AI Architecture](https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
+[EDD: Dual AI Architecture](https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242),
+with a repository copy in [EDD.md](./EDD.md) (diagrams in Mermaid).
 It carries the diagrams (system architecture, the external shot-list sequence,
 the model-access door, the milestone graph) and the full low-level design. The
 specs below are its task breakdown; where a spec and the EDD disagree, the spec
