@@ -345,7 +345,7 @@ test.describe('Company dashboard: a figure no platform measured (KB-162)', () =>
     await expect(notMeasured).toHaveText('Not measured');
     await expect(notMeasured).toHaveAttribute(
       'title',
-      'YouTube is connected, but has no data for the last 30 days.',
+      'YouTube: connected, but no data for the last 30 days.',
     );
     await expect(byTest(views, 'metric-value')).toHaveCount(0);
     await expect(

@@ -91,6 +91,7 @@ function measuredZero(): PerVideoTotals {
       saves: false,
       watch_time_seconds: true,
       subscribers_gained: true,
+      shares: true,
     },
   };
 }

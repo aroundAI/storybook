@@ -112,7 +112,7 @@ describe('LanguagePerformanceCard (FILM-1702)', () => {
   // KB-167: with no previous period measured there is nothing to compare,
   // so no arrow and no "0.0%" beside the views.
   it('draws no change for a language with no previous period', () => {
-    render(
+    renderWithCoverage(
       <LanguagePerformanceCard
         data={[{ ...row('en', 1000, 20), viewsChange: null }]}
       />,
@@ -127,7 +127,7 @@ describe('LanguagePerformanceCard (FILM-1702)', () => {
   });
 
   it('draws a measured change', () => {
-    render(
+    renderWithCoverage(
       <LanguagePerformanceCard
         data={[{ ...row('en', 1000, 20), viewsChange: 25 }]}
       />,
