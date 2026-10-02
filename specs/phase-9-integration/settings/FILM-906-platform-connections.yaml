@@ -69,7 +69,7 @@ test_plan:
   integration:
     - text: "Test OAuth initiation redirect (initiateOAuth function)"
       met: true
-      evidence: "`apps/e2e/tests/platform-connections/analytics-access.spec.ts:163`"
+      evidence: "`apps/e2e/tests/platform-connections/analytics-access.spec.ts:185`"
     - text: "Test disconnect flow (confirmation dialog → mutation → invalidate query)"
       met: false
       reason: "not met — no test found"
