@@ -20,6 +20,7 @@ import type {
   ViewDefinitionChange,
   ViewFormat,
   ViewsColumn,
+  ViewsDenominator,
 } from './view-definitions';
 import {
   PLATFORM_IDS,
@@ -516,46 +517,57 @@ export function computeMeasure(
 
   if (value === null) return absent({ reason: 'zero_denominator' });
 
-  const reachCell = MEASURE_INPUT_SUPPORT[platform].reach;
-  const isFallback = PREFERRED_DENOMINATOR[platform] === 'reach';
-
   return {
     kind: 'value',
     measure,
     value,
-    denominator: {
-      column: chosen.column,
-      role: isFallback ? 'fallback' : 'preferred',
-      ...(isFallback
-        ? {
-            fallbackFor: {
-              preferred: 'reach' as const,
-              because:
-                reachCell?.support === 'not_ingested'
-                  ? ('not_ingested' as const)
-                  : ('not_reported' as const),
-            },
-          }
-        : {}),
-      definitions: chosen.definitions,
-      ...(chosen.instead
-        ? {
-            bridged: {
-              reason: chosen.instead.reason,
-              changedOn: chosen.instead.changedOn,
-              changes: chosen.instead.changes,
-            },
-          }
-        : {}),
-      window: { from, to },
-      platforms: [
-        { platform, inDenominator: true, definitions: chosen.definitions },
-      ],
-      // `views` over one definition, or `engaged_views` bridging the change:
-      // either way the column itself was one metric throughout.
-      crosses: [],
-    },
+    denominator: chosenColumnRecord(platform, chosen, { from, to }),
     window: { from, to },
+  };
+}
+
+/**
+ * The record of a views column FILM-1722's `viewsDenominatorFor` chose for
+ * one platform: `views` over one definition, or `engaged_views` bridging a
+ * change. Either way the column was one metric throughout, so it crosses
+ * nothing. One builder for `computeMeasure` and the genome's cohorts.
+ */
+export function chosenColumnRecord(
+  platform: AnalyticsPlatform,
+  chosen: Extract<ViewsDenominator, { kind: 'column' }>,
+  window: { from: string; to: string },
+): DenominatorStamp {
+  const isFallback = PREFERRED_DENOMINATOR[platform] === 'reach';
+  const reachCell = MEASURE_INPUT_SUPPORT[platform].reach;
+  const definitions = chosen.definitions.map(definitionRef);
+
+  return {
+    column: chosen.column,
+    role: isFallback ? 'fallback' : 'preferred',
+    ...(isFallback
+      ? {
+          fallbackFor: {
+            preferred: 'reach' as const,
+            because:
+              reachCell?.support === 'not_ingested'
+                ? ('not_ingested' as const)
+                : ('not_reported' as const),
+          },
+        }
+      : {}),
+    definitions,
+    ...(chosen.instead
+      ? {
+          bridged: {
+            reason: chosen.instead.reason,
+            changedOn: chosen.instead.changedOn,
+            changes: chosen.instead.changes,
+          },
+        }
+      : {}),
+    window,
+    platforms: [{ platform, inDenominator: true, definitions }],
+    crosses: [],
   };
 }
 

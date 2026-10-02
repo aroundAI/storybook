@@ -188,6 +188,7 @@ export {
   formatDenominatorDate,
   lifetimeWindow,
   poolDenominators,
+  chosenColumnRecord,
   recordViewsDenominator,
   recordedEngagementRatePercent,
   recordedLikesAndCommentsPercent,
@@ -475,7 +476,9 @@ export type {
 export {
   SEGMENT_MEASURES,
   VIEWS_RATE_MEASURES,
+  cohortWindow,
   genomeViewsDenominator,
+  recordCohortViewsDenominator,
   isSegmentMeasure,
   metricProvenanceFor,
   stageMeasureFor,

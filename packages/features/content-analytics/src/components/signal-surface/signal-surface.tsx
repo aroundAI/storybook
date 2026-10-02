@@ -204,6 +204,7 @@ function SurfaceBody({
             <StageDetail
               key={surface.stage}
               surface={surface}
+              denominator={result.denominators[surface.stage]}
               videos={result.videos}
               onSelectVideo={onSelectVideo}
             />

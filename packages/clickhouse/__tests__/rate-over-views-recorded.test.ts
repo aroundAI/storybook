@@ -127,10 +127,10 @@ const NOT_A_RATE_OVER_VIEWS: Record<string, { count: number; why: string }> = {
     count: 5,
     why:
       'The back catalogue’s share of views; and the four genome stage rates ' +
-      '(FILM-1717, SQL in SEGMENT_MEASURE_SQL), whose record is #548’s ' +
-      'genomeViewsDenominator over FILM-1722’s viewsDenominatorFor. #548 ' +
-      'divides them by an interpolated `${sum}` instead of v_views; the ' +
-      'scan counts that form too, so the count stays 5 when it lands.',
+      '(FILM-1717, SEGMENT_MEASURE_SQL), divided by an interpolated `${sum}`: ' +
+      'v_views or v_engaged as genomeViewsDenominator chose. Their record is ' +
+      'recordCohortViewsDenominator, returned with the genome and each ' +
+      'Signal Surface stage.',
   },
   [at('packages', 'clickhouse', 'src', 'lib', 'traffic-groups.ts')]: {
     count: 3,

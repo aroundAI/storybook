@@ -250,6 +250,46 @@
       "cwd": "packages/clickhouse",
       "test": "__tests__/rate-over-views-recorded.test.ts",
       "pattern": "only in lib/measures.ts"
+    },
+    {
+      "name": "RD26 the genome returns its rate without the record",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/genome-actions.ts",
+      "find": "      denominator: recordCohortViewsDenominator({\n        ...cohort,\n        denominator: viewsDenominator,\n      }),",
+      "replace": "      denominator: null,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/genome-actions.test.ts",
+      "pattern": "spanning a change"
+    },
+    {
+      "name": "RD27 a narrowed cohort's record starts at its first video, naming the wrong series",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome-measures.ts",
+      "find": "  const span = publishedFrom === null ? kept : { ...kept, from: publishedFrom };",
+      "replace": "  const span = kept;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome-rate-records.test.ts",
+      "pattern": "narrowed"
+    },
+    {
+      "name": "RD28 a cohort on engaged views is recorded as views",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome-measures.ts",
+      "find": "  if (column !== 'views') {\n    const chosen",
+      "replace": "  if (column === ('none' as string)) {\n    const chosen",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome-rate-records.test.ts",
+      "pattern": "bridge"
+    },
+    {
+      "name": "RD29 a Signal Surface stage hides its record",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/signal-surface/stage-detail.tsx",
+      "find": "        {denominator && 'signal' in surface && (",
+      "replace": "        {denominator && 'signal' in surface && false && (",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/signal-surface-dom.test.tsx",
+      "pattern": "puts the record beside a stage"
     }
   ]
 }

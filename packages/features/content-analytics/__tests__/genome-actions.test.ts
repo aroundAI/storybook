@@ -373,6 +373,14 @@ describe('getGenomeFindingsAction', () => {
       publishedFrom: null,
       instead: { reason: 'view_definition_changed', changedOn: '2026-08-27' },
     });
+    // FILM-1732: the rate carries the record of the series it divided by.
+    expect(result.denominator).toMatchObject({
+      column: 'engaged_views',
+      bridged: { changedOn: '2026-08-27' },
+      window: { from: '2026-06-01' },
+      platforms: [{ platform: 'youtube', inDenominator: true }],
+      crosses: [],
+    });
     expect(result.analysis.measuredCount).toBe(10);
   });
 
@@ -388,6 +396,11 @@ describe('getGenomeFindingsAction', () => {
       column: 'views',
       publishedFrom: null,
       instead: null,
+    });
+    expect(result.denominator).toMatchObject({
+      column: 'views',
+      platforms: [{ platform: 'youtube', inDenominator: true }],
+      crosses: [],
     });
   });
 

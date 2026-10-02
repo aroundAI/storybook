@@ -23,6 +23,8 @@ import type {
 } from './data-provenance';
 import { CAPABILITY_MATRIX } from './data-provenance';
 import type { FormatFamily } from './format-families';
+import type { DenominatorStamp } from './measures';
+import { chosenColumnRecord, recordViewsDenominator } from './measures';
 import { viewFormatOf } from './self-benchmark';
 import type { FunnelStage, SignalId } from './signal-map';
 import { SIGNALS, SIGNAL_MAP, signalSupport } from './signal-map';
@@ -117,6 +119,77 @@ function addDays(date: string, days: number): string {
   return at.toISOString().slice(0, 10);
 }
 
+/**
+ * The days a cohort's checkpoint windows span: its first publication to the
+ * end of its last video's first `checkpointDays`, never past `asOf`. Null
+ * for an empty cohort.
+ */
+export function cohortWindow(input: {
+  publishedAt: readonly string[];
+  checkpointDays: number;
+  asOf: string;
+}): { from: string; to: string } | null {
+  if (input.publishedAt.length === 0) return null;
+
+  const dates = input.publishedAt.map((value) => value.slice(0, 10)).sort();
+  const lastWindowEnd = addDays(dates.at(-1)!, input.checkpointDays - 1);
+  const asOf = input.asOf.slice(0, 10);
+
+  return {
+    from: dates[0]!,
+    to: lastWindowEnd < asOf ? lastWindowEnd : asOf,
+  };
+}
+
+/**
+ * What a cohort's stage rate divided by (FILM-1732), for the series
+ * `genomeViewsDenominator` chose: null for a measure that does not divide
+ * by views, or a cohort with no videos.
+ *
+ * On `views` the record names every definition over the cohort's days and
+ * each change it crosses, as every other rate's does. On a bridging series
+ * it is that series' record from `viewsDenominatorFor`, which crosses
+ * nothing. `publishedFrom` narrows the days as it narrows the cohort.
+ */
+export function recordCohortViewsDenominator(input: {
+  platform: AnalyticsPlatform;
+  formatFamily: FormatFamily;
+  measure: SegmentMeasure;
+  publishedAt: readonly string[];
+  checkpointDays: number;
+  asOf: string;
+  denominator: Pick<
+    GenomeViewsDenominator & { ok: true },
+    'column' | 'publishedFrom'
+  >;
+}): DenominatorStamp | null {
+  const { publishedFrom, column } = input.denominator;
+  const kept = cohortWindow({
+    ...input,
+    publishedAt: input.publishedAt.filter(
+      (value) => publishedFrom === null || value.slice(0, 10) >= publishedFrom,
+    ),
+  });
+
+  if (!isViewsRate(input.measure) || kept === null) return null;
+
+  // A narrowed cohort's series was chosen from where the narrowing starts:
+  // the record covers the same days, so it names the same series.
+  const span = publishedFrom === null ? kept : { ...kept, from: publishedFrom };
+
+  if (column !== 'views') {
+    const chosen = viewsDenominatorFor(input.platform, span.from, span.to, {
+      format: viewFormatOf(input.formatFamily),
+    });
+
+    if (chosen.kind === 'column' && chosen.column === column) {
+      return chosenColumnRecord(input.platform, chosen, span);
+    }
+  }
+
+  return recordViewsDenominator({ platforms: [input.platform], window: span });
+}
+
 export function genomeViewsDenominator(input: {
   platform: AnalyticsPlatform;
   formatFamily: FormatFamily;
@@ -127,15 +200,11 @@ export function genomeViewsDenominator(input: {
   /** 'YYYY-MM-DD HH:MM:SS' or ISO; a window cannot run past it. */
   asOf: string;
 }): GenomeViewsDenominator {
-  if (!isViewsRate(input.measure) || input.publishedAt.length === 0) {
-    return VIEWS;
-  }
+  const span = cohortWindow(input);
 
-  const dates = input.publishedAt.map((value) => value.slice(0, 10)).sort();
-  const from = dates[0]!;
-  const lastWindowEnd = addDays(dates.at(-1)!, input.checkpointDays - 1);
-  const asOf = input.asOf.slice(0, 10);
-  const to = lastWindowEnd < asOf ? lastWindowEnd : asOf;
+  if (!isViewsRate(input.measure) || span === null) return VIEWS;
+
+  const { from, to } = span;
   const options = { format: viewFormatOf(input.formatFamily) };
   const denominator = viewsDenominatorFor(input.platform, from, to, options);
 

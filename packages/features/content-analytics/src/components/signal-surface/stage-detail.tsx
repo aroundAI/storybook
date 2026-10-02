@@ -3,7 +3,11 @@
 import type { ReactNode } from 'react';
 
 import { FUNNEL_STAGE_LABEL, FUNNEL_STAGE_QUESTION } from '@kit/clickhouse';
-import type { MetricProvenance, SignalId } from '@kit/clickhouse';
+import type {
+  DenominatorStamp,
+  MetricProvenance,
+  SignalId,
+} from '@kit/clickhouse';
 
 import {
   BAND_LABEL,
@@ -20,6 +24,7 @@ import {
   signalName,
 } from '../../lib/signal-surface';
 import { FindableDisclosure } from '../findable-disclosure';
+import { RateDenominator } from '../rate-denominator';
 import { VideoLink, type VideoLinkProps } from './video-link';
 
 type Videos = VideoLinkProps['videos'];
@@ -32,10 +37,13 @@ type Videos = VideoLinkProps['videos'];
  */
 export function StageDetail({
   surface,
+  denominator,
   videos,
   onSelectVideo,
 }: {
   surface: StageSurface;
+  /** What the stage's rate divided by (FILM-1732), when it divides by views. */
+  denominator?: DenominatorStamp;
   videos: Videos;
   onSelectVideo: (videoId: string) => void;
 }) {
@@ -64,6 +72,19 @@ export function StageDetail({
         regionTestId="stage-measure"
       >
         <Measure surface={surface} />
+        {denominator && 'signal' in surface && (
+          <p
+            className="flex items-center gap-1 text-xs text-muted-foreground"
+            data-test="stage-denominator"
+          >
+            The views it divides by:
+            <RateDenominator
+              denominator={denominator}
+              figure={signalName(surface.signal)}
+              subject={label}
+            />
+          </p>
+        )}
 
         {(surface.state === 'judged' ||
           surface.state === 'insufficient_cohort' ||
