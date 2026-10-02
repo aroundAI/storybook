@@ -210,9 +210,9 @@ begin
 end;
 $$;
 
--- The LLM job types, as generation_jobs_job_type_check lists them today
--- (20260923025438) plus 'asset_creation', which KB-174 (#553) adds. video,
--- voice, music and sfx are vendor renders, which an external run may
+-- The LLM job types, as generation_jobs_job_type_check lists them
+-- (20260923025438, plus 'asset_creation' from KB-174, 20261002201125).
+-- video, voice, music and sfx are vendor renders, which an external run may
 -- legitimately start (FILM-1909).
 create trigger generation_jobs_server_run_only
   before insert or update of run_id on public.generation_jobs

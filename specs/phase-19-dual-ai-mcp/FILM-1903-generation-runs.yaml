@@ -47,7 +47,7 @@ acceptance_criteria:
     reason: "part B. parent_run_id exists (migrations/20261002201011_film-1903-generation-runs.sql:51); the commit that opens the child is FILM-1901's core"
   - text: "generation_jobs.run_id is required for LLM job types, and a trigger refuses the insert unless the run is an open server-mode run"
     met: false
-    reason: "part A: run_id is added (migrations/20261002201011_film-1903-generation-runs.sql:172-173) and generation_jobs_server_run_only (:216) refuses an insert, or an update of run_id, for the seven LLM job types whenever run_id is present (tests/database/generation-runs.test.sql:104-158, L1); enforced when run_id is present, NOT NULL is part C. Audit (2026-10-03): only the 7 LLM job types in generation_jobs_job_type_check write a generation_jobs row today; the other 8 LLM job types never do (see notes), so part C must add rows for them or guard them elsewhere before NOT NULL means anything for them"
+    reason: "part A: run_id is added (migrations/20261002201011_film-1903-generation-runs.sql:172-173) and generation_jobs_server_run_only (:216) refuses an insert, or an update of run_id, for the eight LLM job types whenever run_id is present (tests/database/generation-runs.test.sql:104-158, L1); enforced when run_id is present, NOT NULL is part C. Audit (2026-10-03): only the 8 LLM job types in generation_jobs_job_type_check (after KB-174, #553) write a generation_jobs row today; the other 7 model-calling job types never do (see notes), so part C must add rows for them or guard them elsewhere before NOT NULL means anything for them"
   - text: "llm_usage_analytics.run_id is added, required for new rows, and a trigger refuses a row whose run is external"
     met: false
     reason: "part A: run_id is added (migrations/20261002201011_film-1903-generation-runs.sql:174-175) and llm_usage_analytics_server_run_only (:228) refuses a row whose run is not an open server run whenever run_id is present (tests/database/generation-runs.test.sql:161-182, L2); NOT NULL is part C, after the gateway (FILM-1902) writes the run id, since executeLLM is the only writer today"
@@ -81,7 +81,7 @@ remaining:
   - criterion: "openRun as the only constructor, run.dispatch with the { runId } message, the worker loading a run by id, child runs, lease renewal, TARGET_CHANGED at finalize, generation_origin stamping, and content_revisions written by commit"
     reason: "part B: application code on FILM-1901's package and FILM-1902's run handle; part A is the database only"
     closed_by: "FILM-1903"
-  - criterion: "generation_jobs.run_id NOT NULL for LLM job types and llm_usage_analytics.run_id NOT NULL; a generation_jobs row (or another guarded path) for the 8 LLM job types that write none today"
+  - criterion: "generation_jobs.run_id NOT NULL for LLM job types and llm_usage_analytics.run_id NOT NULL; a generation_jobs row (or another guarded path) for the 7 model-calling job types that write none today"
     reason: "part C: tightening before every LLM path writes a run would break the worker today; part A fires the locks whenever run_id is present"
     closed_by: "FILM-1903"
   - criterion: "generation_runs.connection_id references mcp_connections(id)"
@@ -168,25 +168,22 @@ notes: |
     with none is accepted, because every LLM job and usage row written today
     has none. Part C sets NOT NULL (generation_jobs for LLM job types,
     llm_usage_analytics for all rows) once part B writes run ids.
-  - The generation_jobs trigger names the 7 LLM job types in
-    generation_jobs_job_type_check (20260923025438): story, screenplay,
-    shot_list, translate-dialogue, audio_cue_generation, story-refinement,
-    screenplay-refinement, plus asset_creation, which KB-174 (#553) adds to
-    the CHECK; the trigger lists it already, so the lock covers it the moment
-    that PR merges (a BEFORE trigger fires before the CHECK, so the test
-    holds either way). video, voice, music and sfx are vendor renders,
-    which an external run may start (FILM-1909), so they are not locked.
-    Of the 16 LlmJobType keys the worker runs
-    (packages/features/prompt-engine/src/lib/llm-job-payloads.ts), 7 map to
-    a job_type in the CHECK and 9 never write a generation_jobs row:
+  - The generation_jobs trigger names the 8 LLM job types in
+    generation_jobs_job_type_check (20260923025438, plus asset_creation from
+    KB-174 / #553, 20261002201125): story, screenplay, shot_list,
+    translate-dialogue, audio_cue_generation, story-refinement,
+    screenplay-refinement, asset_creation. video, voice, music and sfx are
+    vendor renders, which an external run may start (FILM-1909), so they
+    are not locked. Of the 16 LlmJobType keys the worker runs
+    (packages/features/prompt-engine/src/lib/llm-job-payloads.ts), 8 map to
+    a job_type in the CHECK and 8 never write a generation_jobs row:
     season-analysis, season-outline, story-ideation,
     batch-translate-metadata, analytics-insights, language-insights,
-    fact-extraction, asset-creation (until KB-174 / #553 merges), and
-    audio-file-generation (an audio render, not a model call; so 8
-    model-calling job types are outside the generation_jobs lock today, 7
-    after #553). For those the only lock is
-    llm_usage_analytics.run_id, which executeLLM writes; part C must add
-    generation_jobs rows for them or guard the gateway instead.
+    fact-extraction, and audio-file-generation (an audio render, not a model
+    call; so 7 model-calling job types are outside the generation_jobs
+    lock). For those the only lock is llm_usage_analytics.run_id, which
+    executeLLM writes; part C must add generation_jobs rows for them or
+    guard the gateway instead.
   - episodes.version bumps on every update (trigger episodes_increment_version,
     20251205125737_film-studio-tables.sql:103-115), not only on commit. So
     TARGET_CHANGED fires on any edit between brief and finalize, including a
