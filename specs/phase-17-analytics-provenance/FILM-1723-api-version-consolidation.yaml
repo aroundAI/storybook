@@ -225,8 +225,8 @@ notes: |
     because every call goes to /v2/. Neither could be checked without a token.
     (2026-10-01: the first is now settled. LinkedIn's migrations table gives
     202401 a sunset of 2025-01-22. The second still needs a token: KB-164.
-    2026-10-02: neither will be checked. LinkedIn was retired instead, FILM-717,
-    #TBD-LI, and the constant, its pin row and KB-164 went with it.)
+    2026-10-02: neither will be checked. LinkedIn was removed instead, FILM-717,
+    #TBD-LI, and the constant and its pin row went with it; KB-164 is closed.)
   - Nothing under apps/web/lambda/ is typechecked — no tsconfig includes it.
     The touched handlers were checked by hand; four others fail on a type that
     ../index does not export.
@@ -266,7 +266,7 @@ notes: |
 
   The 120-day expiry test now covers every dated pin. One already past its
   end stays green only while an open known bug owns it, which is how
-  LinkedIn's was held: KB-164, filed here, closed when LinkedIn was retired
+  LinkedIn's was held: KB-164, filed here, closed when LinkedIn was removed
   (FILM-717). Whether LinkedIn refuses our /v2/
   calls for it needs a token. Its docs name 202401 as the example of a
   header refused with 426, and an unauthenticated probe is answered 401

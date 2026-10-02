@@ -54,7 +54,7 @@ acceptance_criteria:
     reason: "not run — needs a connected Facebook Page with read_insights, which no fixture or local stack holds (filed 2026-10-01 by FILM-1728, #493)"
   - text: "Check I run: one live connect and disconnect on X and on LinkedIn, with X's revoke answers and the refresh afterwards recorded"
     met: false
-    reason: "not run — no X app credentials or test account (FILM-1729); KB-25/KB-86 proved the requests against a local stand-in only. LinkedIn's half no longer applies: LinkedIn was retired on 2026-10-02 (FILM-717, #TBD-LI)"
+    reason: "not run — no X app credentials or test account (FILM-1729); KB-25/KB-86 proved the requests against a local stand-in only. LinkedIn's half no longer applies: LinkedIn was removed on 2026-10-02 (FILM-717, #TBD-LI)"
   - text: "docs/platform-capability-reference.md open-questions table no longer lists either check, and every row it does list still names an owner"
     met: false
     reason: "not yet — depends on Checks A and B closing"

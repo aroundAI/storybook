@@ -441,9 +441,10 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-712 | [thumbnail-generator](./phase-7-publishing/components/FILM-712-thumbnail-generator.yaml) | 🗑️ RETIRED (#487) | M | FILM-708 |
 | FILM-713 | [upload-only-mode](./phase-7-publishing/components/FILM-713-upload-only-mode.yaml) | 🟡 PARTIAL | M | FILM-701-704 |
 | FILM-714 | [twitter-provider](./phase-7-publishing/providers/FILM-714-twitter-provider.yaml) | 🟡 PARTIAL | M | FILM-708 |
-| FILM-715 | [linkedin-provider](./phase-7-publishing/providers/FILM-715-linkedin-provider.yaml) | 🗑️ RETIRED (FILM-717) | M | FILM-708 |
+| FILM-715 | [linkedin-provider](./phase-7-publishing/providers/FILM-715-linkedin-provider.yaml) | 🗑️ RETIRED (removed, FILM-717) | M | FILM-708 |
 | FILM-716 | [master-video-record-keeping](./phase-7-publishing/FILM-716-master-video-record-keeping.yaml) | ✅ DONE | — | — |
-| FILM-717 | [retire-linkedin](./phase-7-publishing/providers/FILM-717-retire-linkedin.yaml) | ✅ DONE | M | FILM-715, FILM-514 |
+| FILM-717 | [remove-linkedin](./phase-7-publishing/providers/FILM-717-remove-linkedin.yaml) | ✅ DONE | M | FILM-715, FILM-514 |
+| FILM-718 | [linkedin-reintegration](./phase-7-publishing/providers/FILM-718-linkedin-reintegration.yaml) | ⏸️ DEFERRED | — | FILM-717, FILM-715 |
 
 ### Phase 8: Analytics
 

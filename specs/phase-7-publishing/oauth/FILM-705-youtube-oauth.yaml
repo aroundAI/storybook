@@ -51,7 +51,7 @@ acceptance_criteria:
     evidence: "Changed by KB-22: disconnect wipes the stored tokens and keeps the row, so the channel's records survive — `disconnect_platform_connection` (`apps/web/supabase/migrations/20260923140320_kb22-disconnect-keeps-records.sql`)"
   - text: "State/nonce prevents CSRF attacks"
     met: true
-    evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:84`; `apps/e2e/tests/platform-connections/connect-failure.spec.ts:169`"
+    evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:84`; `apps/e2e/tests/platform-connections/connect-failure.spec.ts:170`"
   - text: "Expired states are rejected"
     met: true
     evidence: "`apps/web/app/api/platforms/callback/youtube/route.ts:90`"
@@ -59,17 +59,17 @@ test_plan:
   unit:
     - text: "Test state encoding/decoding"
       met: true
-      evidence: "`apps/e2e/tests/platform-connections/connect-failure.spec.ts:139`, `apps/e2e/tests/platform-connections/connect-failure.spec.ts:185`"
+      evidence: "`apps/e2e/tests/platform-connections/connect-failure.spec.ts:140`, `apps/e2e/tests/platform-connections/connect-failure.spec.ts:186`"
     - text: "Test nonce generation and validation"
       met: false
-      reason: "not met — validation only (`apps/e2e/tests/platform-connections/connect-failure.spec.ts:169`); nothing tests nonce generation"
+      reason: "not met — validation only (`apps/e2e/tests/platform-connections/connect-failure.spec.ts:170`); nothing tests nonce generation"
   integration:
     - text: "Test OAuth flow with mocked Google endpoints"
       met: false
       reason: "not met — only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)"
     - text: "Test token refresh flow"
       met: true
-      evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:470` — drives `ensureValidToken` against a local Google token listener with the global app (KB-29)"
+      evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:467` — drives `ensureValidToken` against a local Google token listener with the global app (KB-29)"
     - text: "Test disconnect flow"
       met: false
       reason: "not met — no test found"

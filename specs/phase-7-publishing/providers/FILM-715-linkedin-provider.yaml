@@ -77,19 +77,19 @@ retirement:
   commit: null
   date: "2026-10-02"
   what_happened: >
-    Retired by owner decision on 2026-10-02 (FILM-717): "retire LinkedIn for
-    now", instead of moving the pinned LinkedIn-Version header, 202401, which
-    LinkedIn sunset on 2025-01-22 (KB-164). "For now": the product stops
-    offering LinkedIn, and the work can come back later. As FILM-514 did for
-    Suno, the integration was deleted: the provider, its OAuth config and app
-    credentials, the version pin, the vendor hosts, the publish worker's
-    handler and text post, the vendor sandbox's LinkedIn origin and the
-    LinkedIn-only Social Posts page. The connect and callback routes stay and
-    answer that LinkedIn is retired. No row was deleted: kept LinkedIn
-    connections show on a read-only "Retired" card and can still be
-    disconnected; past publishes, revenue and social posts are kept. A return
-    is a new spec against LinkedIn's current versioned API (/rest/, an active
-    LinkedIn-Version); this file and the repository history hold the design.
+    Removed by owner decision on 2026-10-02 (FILM-717). The owner first chose
+    to "retire LinkedIn for now" instead of moving the pinned LinkedIn-Version
+    header, 202401, which LinkedIn sunset on 2025-01-22 (KB-164); later the
+    same day, to delete it everywhere, because its text-post path "doesn't fit
+    within how all the other platforms are integrated". As FILM-514 did for
+    Suno, all of it was deleted: the provider and publisher, the text-post
+    path and the Social Posts page, the OAuth connect and callback routes and
+    the card, LinkedIn in publishing, scheduling, the worker and token
+    refresh, the version pin, the vendor sandbox origin, its E2E specs and
+    guards and its documentation. No row or CHECK value was deleted: a kept
+    LinkedIn row is hidden and never refreshed or published to. Re-integration
+    is FILM-718 (DEFERRED); this file and the repository history hold the
+    design.
   replacement: null
 open_questions: []
 notes: |
@@ -97,7 +97,7 @@ notes: |
   - **Phase:** 7 - Publishing
   - **Priority:** P2 (Future Enhancement)
   - **Effort:** M (4-8 hours)
-  - **Status:** RETIRED 2026-10-02 (FILM-717); PARTIAL from the 2026-09-23 audit until then
+  - **Status:** RETIRED (removed) 2026-10-02 (FILM-717); PARTIAL from the 2026-09-23 audit until then
   - **Dependencies:** FILM-708 (Publish Hub), OAuth Infrastructure
   - **Blocks:** None
 

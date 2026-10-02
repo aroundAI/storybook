@@ -43,16 +43,16 @@ acceptance_criteria:
     evidence: "`apps/web/app/api/platforms/callback/tiktok/route.ts:187`"
   - text: "Refresh token rotation is handled correctly"
     met: true
-    evidence: "KB-29: refresh takes the app credentials from the lookup connect and the callback use (`packages/features/publishing/src/lib/token-refresh.ts:409`, `apps/web/app/api/platforms/connect/tiktok/route.ts:90`, `apps/web/app/api/platforms/callback/tiktok/route.ts:106`); the rotated refresh token is stored (`packages/features/publishing/__tests__/token-refresh.test.ts:518`)"
+    evidence: "KB-29: refresh takes the app credentials from the lookup connect and the callback use (`packages/features/publishing/src/lib/token-refresh.ts:423`, `apps/web/app/api/platforms/connect/tiktok/route.ts:90`, `apps/web/app/api/platforms/callback/tiktok/route.ts:106`); the rotated refresh token is stored (`packages/features/publishing/__tests__/token-refresh.test.ts:515`)"
   - text: "Token refresh updates both access and refresh tokens"
     met: true
-    evidence: "`packages/features/publishing/src/lib/token-refresh.ts:253`, `packages/features/publishing/src/lib/token-refresh.ts:260`"
+    evidence: "`packages/features/publishing/src/lib/token-refresh.ts:267`, `packages/features/publishing/src/lib/token-refresh.ts:274`"
   - text: "Disconnect revokes token at TikTok"
     met: true
     evidence: "`packages/features/publishing/src/oauth/tiktok/revoke.ts` (moved from `disconnect.ts` by KB-22)"
   - text: "State/nonce prevents CSRF attacks"
     met: true
-    evidence: "`apps/web/app/api/platforms/callback/tiktok/route.ts:79`; `apps/e2e/tests/platform-connections/connect-failure.spec.ts:169`"
+    evidence: "`apps/web/app/api/platforms/callback/tiktok/route.ts:79`; `apps/e2e/tests/platform-connections/connect-failure.spec.ts:170`"
 test_plan:
   unit:
     - text: "Test PKCE code verifier generation"
@@ -63,17 +63,17 @@ test_plan:
       evidence: "`packages/features/publishing/__tests__/tiktok-pkce.test.ts:30` — RFC 7636 Appendix B's verifier gives its challenge; guard `tooling/mutation-guards/film-706-810.json`"
     - text: "Test state encoding/decoding"
       met: true
-      evidence: "`apps/e2e/tests/platform-connections/connect-failure.spec.ts:139`, `apps/e2e/tests/platform-connections/connect-failure.spec.ts:185`"
+      evidence: "`apps/e2e/tests/platform-connections/connect-failure.spec.ts:140`, `apps/e2e/tests/platform-connections/connect-failure.spec.ts:186`"
   integration:
     - text: "Test OAuth flow with mocked TikTok endpoints"
       met: true
-      evidence: "the callback's success path with mocked fetch (apps/web/lib/platforms/__tests__/callback-success.test.ts:169, :214), and in a browser against the TikTok sandbox, green on two consecutive runs 2026-10-01, retries off: apps/e2e/tests/platform-connections/sandbox-connect-tiktok.spec.ts:51 (consent lists the 5 requested scopes; allow gives one active row named for the vendor's account; stored scopes are the granted ones; tokens encrypted and the decrypted access token is accepted by the sandbox's /v2/user/info/ and returns the row's open_id; second connect reuses the row with a new token), :144 (an unticked video.list is not recorded and the Platforms page shows the analytics notice), :172 (cancel gives access_denied and no row; an injected 500 at /v2/oauth/token gives token_exchange_failed and no row; the retry connects). Unconfirmed lead, not a filed bug: the connect route (apps/web/app/api/platforms/connect/tiktok/route.ts:83) needs NEXT_PUBLIC_APP_URL and does not fall back to NEXT_PUBLIC_SITE_URL as the callbacks do; seen only on a local lane that set the site URL alone"
+      evidence: "the callback's success path with mocked fetch (apps/web/lib/platforms/__tests__/callback-success.test.ts:168, :214), and in a browser against the TikTok sandbox, green on two consecutive runs 2026-10-01, retries off: apps/e2e/tests/platform-connections/sandbox-connect-tiktok.spec.ts:51 (consent lists the 5 requested scopes; allow gives one active row named for the vendor's account; stored scopes are the granted ones; tokens encrypted and the decrypted access token is accepted by the sandbox's /v2/user/info/ and returns the row's open_id; second connect reuses the row with a new token), :144 (an unticked video.list is not recorded and the Platforms page shows the analytics notice), :172 (cancel gives access_denied and no row; an injected 500 at /v2/oauth/token gives token_exchange_failed and no row; the retry connects). Unconfirmed lead, not a filed bug: the connect route (apps/web/app/api/platforms/connect/tiktok/route.ts:83) needs NEXT_PUBLIC_APP_URL and does not fall back to NEXT_PUBLIC_SITE_URL as the callbacks do; seen only on a local lane that set the site URL alone"
     - text: "Test token refresh with rotation"
       met: true
-      evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:518` — drives `ensureValidToken` against a local TikTok listener and asserts the stored rotated token (KB-29)"
+      evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:515` — drives `ensureValidToken` against a local TikTok listener and asserts the stored rotated token (KB-29)"
     - text: "Test disconnect flow"
       met: true
-      evidence: "the action revokes at the vendor then disconnects through the RPC and keeps the row (`packages/features/publishing/__tests__/connection-actions.test.ts:436`); TikTok's revoke call with the app credentials, and its refusal without them (`packages/features/publishing/__tests__/revokers.test.ts:153`, `:173`)"
+      evidence: "the action revokes at the vendor then disconnects through the RPC and keeps the row (`packages/features/publishing/__tests__/connection-actions.test.ts:465`); TikTok's revoke call with the app credentials, and its refusal without them (`packages/features/publishing/__tests__/revokers.test.ts:152`, `:173`)"
   e2e: []
 open_questions:
   - "Should we support TikTok for Business accounts? (post-MVP)"
