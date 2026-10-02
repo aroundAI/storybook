@@ -44,9 +44,9 @@
     {
       "name": "Closed details drop their caveats from the DOM",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/components/overview/analytics-card.tsx",
-      "find": "        {details.caveats && (\n",
-      "replace": "        {open && details.caveats && (\n",
+      "file": "packages/features/content-analytics/src/components/findable-disclosure.tsx",
+      "find": "        {children}\n      </div>\n",
+      "replace": "        {open && children}\n      </div>\n",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/analytics-card-shell.test.tsx",
       "pattern": "stays in the DOM while closed"
@@ -54,7 +54,7 @@
     {
       "name": "Find-in-page no longer opens the details",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/components/overview/analytics-card.tsx",
+      "file": "packages/features/content-analytics/src/components/findable-disclosure.tsx",
       "find": "    element.addEventListener('beforematch', reveal);\n",
       "replace": "    void reveal;\n",
       "cwd": "packages/features/content-analytics",
