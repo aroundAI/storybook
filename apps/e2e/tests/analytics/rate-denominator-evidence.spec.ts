@@ -8,6 +8,7 @@ import {
 import {
   seedProject,
   seedPublishedEpisode,
+  seedSeason,
   seedTeamAccount,
   seedYouTubeConnection,
   updateRows,
@@ -63,10 +64,12 @@ test.describe('FILM-1732 — rate denominator evidence', () => {
     const project = await seedProject(team);
     const connection = await seedYouTubeConnection(team.accountId, 'Channel');
     const title = 'Across the change';
+    // In a season: the Analytics Overview totals a project by its seasons.
+    const { seasonId } = await seedSeason(project.id);
     const { publishId, episodeSlug } = await seedPublishedEpisode(
       project.id,
       connection,
-      { number: 1, title },
+      { number: 1, title, seasonId },
     );
 
     await updateRows('publishes', `id=eq.${publishId}`, {
@@ -144,6 +147,22 @@ test.describe('FILM-1732 — rate denominator evidence', () => {
     await page.getByRole('button', { name: /\d{4} - / }).click();
     await page.getByRole('button', { name: 'Last 90 days' }).click();
     await page.keyboard.press('Escape');
+
+    // The Overview's own summary sentence names the rate too.
+    const summary = byTest(page, 'overview-ai-insight');
+
+    await expect(summary).toContainText('average engagement rate of 10.0%');
+    const summaryRecord = await openRecord(page, summary);
+
+    readings.overviewSentence = {
+      sentence: await summary
+        .getByText(/average engagement rate of/)
+        .innerText(),
+      record: await summaryRecord.innerText(),
+    };
+    await page.screenshot({ path: `${OUT}/04-overview-sentence-record.png` });
+    await page.keyboard.press('Escape');
+
     await byTest(page, 'analytics-tab-content').click();
     await byTest(page, 'content-view-table').click();
     const row = byTest(page, 'content-row');
@@ -151,10 +170,17 @@ test.describe('FILM-1732 — rate denominator evidence', () => {
     await expect(row).toHaveCount(1);
     const rowRecord = await openRecord(page, row);
 
+    const button = byTest(row, 'rate-denominator-trigger');
+    const box = await button.boundingBox();
+
     readings.contentRow = {
       row: await row.innerText(),
       record: await rowRecord.innerText(),
+      buttonLabel: await button.getAttribute('aria-label'),
+      buttonPx: [box!.width, box!.height],
     };
+    expect(box!.width).toBeGreaterThanOrEqual(24);
+    expect(box!.height).toBeGreaterThanOrEqual(24);
     // The table and its open record only: the header tiles above are still
     // reloading for the widened range, which says nothing about this row.
     const table = await byTest(page, 'content-table').boundingBox();

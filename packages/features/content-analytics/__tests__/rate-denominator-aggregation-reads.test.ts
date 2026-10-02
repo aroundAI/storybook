@@ -198,6 +198,19 @@ describe('season and project analytics record their averages (FILM-1732)', () =>
     expect(season?.episodes[0]?.engagement?.denominator).toEqual(record);
   });
 
+  it('reads a ninety-day project window across the change', async () => {
+    const project = await getProjectAnalytics('project-1', {
+      startDate: new Date('2026-07-05T00:00:00Z'),
+      endDate: new Date('2026-10-02T00:00:00Z'),
+    });
+
+    expect(project?.avgEngagementRate.value).toBeCloseTo(11, 10);
+    expect(project?.avgEngagementRate.denominator.window).toEqual({
+      from: '2026-07-05',
+      to: '2026-10-02',
+    });
+  });
+
   it('records the project average over its seasons platforms', async () => {
     const project = await getProjectAnalytics('project-1');
 
