@@ -715,7 +715,11 @@ jobs:
     # CI minutes are rationed: the E2E mutation guards run with the other
     # heavy jobs, in the merge queue (or on a dispatch), not on PR pushes.
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' && needs.changes.outputs.heavy == 'true' && needs.changes.outputs.skip_e2e_guards != 'true' }}
+    # Nightly and on dispatch only, not in the merge queue (owner, 2026-10-02):
+    # in the queue this job was 11,400 of ~27,900 runner-minutes a day and the
+    # main cause of ejected PRs. The nightly full run on main still runs every
+    # guard; ✅ CI result never required this job (see scripts/ci/ci-result.sh).
+    if: ${{ !cancelled() && github.event_name != 'merge_group' && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' && needs.changes.outputs.heavy == 'true' && needs.changes.outputs.skip_e2e_guards != 'true' }}
     env:
       DO_NOT_TRACK: 1
       # The server reads ClickHouse, unlike ⚫️ Test: the evidence specs seed
