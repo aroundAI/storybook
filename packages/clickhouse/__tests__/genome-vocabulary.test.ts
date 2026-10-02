@@ -150,9 +150,19 @@ describe('attributes flow through the existing tag store, with no ClickHouse mig
       join(REPO, 'packages/clickhouse/src/migrations'),
     ).filter((name) => /^\d{3}_/.test(name));
 
-    // 019 (FILM-1722, #492) was the last before FILM-1717; the genome must
-    // not add one.
-    expect(clickhouse.sort().at(-1)).toBe('019_all_surface_aggregates.ts');
+    // The genome reads existing tables; no migration may create or name it.
+    // Not "the last file is N": every later spec's migration broke that pin.
+    const genome = clickhouse.filter((name) =>
+      /genome/i.test(
+        readFileSync(
+          join(REPO, 'packages/clickhouse/src/migrations', name),
+          'utf8',
+        ),
+      ),
+    );
+
+    expect(clickhouse.length).toBeGreaterThan(0);
+    expect(genome).toEqual([]);
   });
 });
 
