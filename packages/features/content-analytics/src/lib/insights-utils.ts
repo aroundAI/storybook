@@ -32,8 +32,12 @@ export function calculateChanges(
   ];
 
   for (const key of keys) {
-    const currentVal = current[key] || 0;
-    const previousVal = previous[key] || 0;
+    const currentVal = current[key];
+    const previousVal = previous[key];
+
+    // Not measured on either side is no change at all (KB-149).
+    if (typeof currentVal !== 'number' || typeof previousVal !== 'number')
+      continue;
 
     if (previousVal > 0) {
       changes[key] = ((currentVal - previousVal) / previousVal) * 100;

@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 
 import { VIEWS_NOT_MEASURED, formatViews } from '../lib/views';
 import type { ProjectAnalytics as ProjectAnalyticsData } from '../server/aggregation-queries';
-import { MetricCards } from './metric-cards';
+import { MetricCards, NOT_COLLECTED_HERE_REASON } from './metric-cards';
 
 interface ProjectDashboardProps {
   data: ProjectAnalyticsData;
@@ -24,8 +24,8 @@ export function ProjectDashboard({ data }: ProjectDashboardProps) {
     likes: data.totalLikes,
     comments: data.totalComments,
     shares: data.totalShares,
-    watchTimeSeconds: 0,
-    subscribersGained: 0,
+    watchTimeSeconds: null,
+    subscribersGained: null,
     revenueCents: data.totalRevenueCents,
     contentCount: data.contentCount,
   };
@@ -49,7 +49,12 @@ export function ProjectDashboard({ data }: ProjectDashboardProps) {
       </div>
 
       {/* Metric Cards */}
-      <MetricCards data={totals} previousData={null} isLoading={false} />
+      <MetricCards
+        data={totals}
+        previousData={null}
+        isLoading={false}
+        notMeasuredReason={NOT_COLLECTED_HERE_REASON}
+      />
 
       {/* Platform Breakdown */}
       <Card>

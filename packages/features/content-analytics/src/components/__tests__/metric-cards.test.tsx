@@ -262,3 +262,55 @@ describe('CompactMetric', () => {
     expect(changeElement).not.toBeNull();
   });
 });
+
+describe('MetricCards, for a figure the platforms did not measure (KB-149)', () => {
+  const tiktokEpisode: AnalyticsTotals = {
+    views: 1200,
+    likes: 80,
+    comments: 5,
+    shares: 3,
+    watchTimeSeconds: null,
+    subscribersGained: null,
+    revenueCents: 0,
+    contentCount: 1,
+  };
+
+  it('says Watch Time and Subscribers were not measured, never 0m or 0', () => {
+    render(
+      <MetricCards
+        data={tiktokEpisode}
+        previousData={null}
+        isLoading={false}
+      />,
+    );
+
+    // Watch time and subscribers, with the platforms' reason; revenue
+    // too, which no platform supplies (FILM-1705), with its own.
+    const titles = screen
+      .getAllByText('Not measured')
+      .map((el) => el.getAttribute('title') ?? '');
+    expect(titles).toHaveLength(3);
+    expect(
+      titles.filter((t) => t.includes('platforms behind these figures')),
+    ).toHaveLength(2);
+    expect(screen.queryByText('0m')).toBeNull();
+    expect(screen.queryByText('0')).toBeNull();
+    // A measured figure beside them is still a number.
+    expect(screen.getByText('1.2K')).toBeDefined();
+  });
+
+  it('still shows a measured watch time and follower gain', () => {
+    render(
+      <MetricCards
+        data={{ ...tiktokEpisode, watchTimeSeconds: 600, subscribersGained: 4 }}
+        previousData={null}
+        isLoading={false}
+      />,
+    );
+
+    // Revenue alone is unmeasured: no platform supplies it (FILM-1705).
+    expect(screen.getAllByText('Not measured')).toHaveLength(1);
+    expect(screen.getByText('10m')).toBeDefined();
+    expect(screen.getByText('4')).toBeDefined();
+  });
+});

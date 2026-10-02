@@ -110,6 +110,16 @@ test.describe('Sync to dashboard, against the sandbox (FILM-1804)', () => {
       comments: served.comments,
       shares: served.shares,
     });
+
+    // KB-149: TikTok sends no watch time and no follower gain, so the
+    // cards say so — not "0m" and "0", which read as nobody watching.
+    for (const key of ['watchTime', 'subscribers']) {
+      const card = byTest(page, `metric-card-${key}`);
+      await expect(byTest(card, 'metric-not-measured')).toHaveText(
+        'Not measured',
+      );
+      await expect(byTest(card, 'metric-value')).toHaveCount(0);
+    }
     if (shoot)
       await page.screenshot({
         path: `${OUT}/sync-1-tiktok-episode.png`,
@@ -189,6 +199,15 @@ test.describe('Sync to dashboard, against the sandbox (FILM-1804)', () => {
       comments: served.comments,
       shares: served.shares,
     });
+
+    // KB-149: a Reel's watch time is measured (FILM-1712) and stays a
+    // figure; Meta reports no follower gain for a media item.
+    const watchTime = byTest(page, 'metric-card-watchTime');
+    await expect(byTest(watchTime, 'metric-value')).toHaveCount(1);
+    await expect(byTest(watchTime, 'metric-not-measured')).toHaveCount(0);
+    await expect(
+      byTest(byTest(page, 'metric-card-subscribers'), 'metric-not-measured'),
+    ).toHaveText('Not measured');
     if (shoot)
       await page.screenshot({
         path: `${OUT}/sync-2-instagram-reel.png`,

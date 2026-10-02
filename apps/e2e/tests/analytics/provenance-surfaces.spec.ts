@@ -180,7 +180,9 @@ test.describe('Provenance surfaces (FILM-1705)', () => {
     for (const key of ['watchTime', 'subscribers', 'revenue']) {
       const card = byTest(page, `metric-card-${key}`);
 
-      await expect(byTest(card, 'metric-unmeasured')).toBeVisible();
+      await expect(byTest(card, 'metric-not-measured')).toHaveText(
+        'Not measured',
+      );
       await expect(byTest(card, 'metric-value')).toHaveCount(0);
     }
     await expect(chipOf(byTest(page, 'metric-card-revenue'))).toHaveText(

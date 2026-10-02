@@ -27,7 +27,7 @@ export function EpisodeAnalytics({ data }: EpisodeAnalyticsProps) {
     comments: data.totalComments,
     shares: data.totalShares,
     watchTimeSeconds: data.avgWatchTimeSeconds,
-    subscribersGained: 0,
+    subscribersGained: data.subscribersGained,
     revenueCents: data.totalRevenueCents,
     contentCount: 1,
   };

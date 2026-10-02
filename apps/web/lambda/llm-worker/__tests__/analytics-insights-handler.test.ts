@@ -184,6 +184,33 @@ describe('processAnalyticsInsights', () => {
     expect(sent.previousPeriodChange).not.toHaveProperty('likes');
   });
 
+  it('accepts a watch time that was not measured, and sends it as null with no change (KB-149)', async () => {
+    // The project dashboard sends null: watch time is not collected for a
+    // whole project. A 0 here told the model nobody watched, and a change
+    // from a measured previous period to it read as -100%.
+    await processAnalyticsInsights(
+      payload({
+        totals: {
+          ...totals(),
+          watchTimeSeconds: null,
+          subscribersGained: null,
+        },
+        previousPeriodTotals: totals({ views: 100 }),
+      }),
+      supabase,
+    );
+
+    const sent = JSON.parse(llm.calls[0]!.variables.analytics_data) as {
+      totals: Record<string, number | null>;
+      previousPeriodChange: Record<string, number>;
+    };
+
+    expect(sent.totals.watchTimeSeconds).toBeNull();
+    expect(sent.previousPeriodChange).not.toHaveProperty('watchTimeSeconds');
+    expect(sent.previousPeriodChange).not.toHaveProperty('subscribersGained');
+    expect(sent.previousPeriodChange.views).toBe(100);
+  });
+
   it('sends no change figures at all without a previous period', async () => {
     await processAnalyticsInsights(payload(), supabase);
 
