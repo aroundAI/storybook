@@ -1,0 +1,44 @@
+{
+  "feature": "Sandbox freshness (local sandbox-backed E2E)",
+  "mutations": [
+    {
+      "name": "SF1 a sandbox from other source is accepted",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/version.ts",
+      "find": "  if (served && served.digest === local.digest) return null;",
+      "replace": "  if (served) return null;",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/version.test.ts",
+      "pattern": "is refused once a source file changes after start"
+    },
+    {
+      "name": "SF2 the sandbox does not serve its source stamp",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/control.ts",
+      "find": "url.pathname === '/__sandbox/version' && version",
+      "replace": "url.pathname === '/__sandbox/version-unserved' && version",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/version.test.ts",
+      "pattern": "serves the stamp of the source it started from"
+    },
+    {
+      "name": "SF3 the prompt files the sandbox loads are left out of its stamp",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/version.ts",
+      "find": "  'packages/features/prompt-engine/src/prompts',\n",
+      "replace": "",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/version.test.ts",
+      "pattern": "hashes every file under the roots"
+    },
+    {
+      "name": "SF4 a sandbox with no version route is taken as fresh",
+      "kind": "e2e",
+      "file": "apps/e2e/tests/utils/sandbox-freshness.ts",
+      "find": "  const served =\n    response.status === 200",
+      "replace": "  if (response.status !== 200) return null;\n  const served =\n    response.status === 200",
+      "spec": "tests/sandbox/sandbox-freshness.spec.ts",
+      "grep": "a sandbox with no version route is refused"
+    }
+  ]
+}

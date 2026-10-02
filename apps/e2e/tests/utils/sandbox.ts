@@ -1,5 +1,6 @@
 import { Page, expect, test } from '@playwright/test';
 
+import { assertSandboxFresh } from './sandbox-freshness';
 import { readRows } from './seed';
 import { byTest, visible } from './visible';
 
@@ -82,6 +83,8 @@ export async function reset(seed?: number) {
  * `test.describe`:
  *
  * - skips unless `SANDBOX_E2E=1`;
+ * - refuses a sandbox started from other source than this checkout's
+ *   (`sandbox-freshness.ts`), which would serve stale vendor responses;
  * - runs the file's tests in order (one sandbox, one failure queue);
  * - starts the file on a fresh sandbox run, under `SANDBOX_SEED` when that
  *   is set, so a failure can be replayed;
@@ -97,6 +100,7 @@ export function sandboxRun() {
   let seed: number | undefined;
 
   test.beforeAll(async () => {
+    await assertSandboxFresh(CONTROL);
     const replay = process.env.SANDBOX_SEED;
     seed = await reset(replay ? Number(replay) : undefined);
     runSeed = seed;

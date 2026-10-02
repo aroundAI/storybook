@@ -1,5 +1,7 @@
 import type http from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { controlHandler } from './control';
 import { listen, urlOf } from './http';
@@ -16,6 +18,7 @@ import { SandboxState } from './state';
 import { elevenLabsHandler } from './vendors/elevenlabs';
 import { geminiHandler } from './vendors/gemini';
 import { openAiHandler } from './vendors/openai';
+import { type SandboxVersion, sourceStamp } from './version';
 
 /**
  * Default ports (FILM-1803 §1). One process, one origin per vendor, as in
@@ -44,6 +47,8 @@ export interface SandboxOptions {
   now?: () => number;
   /** `0` for any free port (tests). */
   ports?: Partial<Record<PortName, number>>;
+  /** The checkout `/__sandbox/version` stamps; tests pass a copy they edit. */
+  root?: string;
 }
 
 export interface Sandbox {
@@ -67,6 +72,13 @@ export async function createSandbox(
     now: options.now,
   });
   const ports = { ...DEFAULT_PORTS, ...options.ports };
+  const version: SandboxVersion = {
+    ...sourceStamp(
+      options.root ?? resolve(fileURLToPath(import.meta.url), '../../../..'),
+    ),
+    pid: process.pid,
+    startedAt: new Date().toISOString(),
+  };
   const servers = {} as Record<PortName, http.Server>;
 
   const boundPorts = () =>
@@ -97,7 +109,7 @@ export async function createSandbox(
       );
     }
     servers.control = await listen(
-      controlHandler(state, boundPorts, social),
+      controlHandler(state, boundPorts, social, version),
       ports.control,
     );
   } catch (error) {

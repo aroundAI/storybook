@@ -346,6 +346,20 @@ lane **A**: `sandbox-sync` reads ClickHouse). Load `local.env` in the
 Playwright shell too: the specs decrypt stored tokens with its
 `ENCRYPTION_KEY` and call the cron routes with its `CRON_SECRET`.
 
+**A sandbox from older source is refused.** A sandbox keeps serving the code
+it started with, so one left running from before a vendor fix serves the old
+responses: one started before #509 answered the Instagram sync spec with
+HTTP 400, and it read as a product bug for an hour. The sandbox stamps its
+source when it starts (`apps/vendor-sandbox/src/version.ts`: its `src/`, and
+the prompt files it builds its LLM catalog from) and serves the stamp at
+`/__sandbox/version`. Before any test, `sandboxRun()` and the three
+`sandbox/*-evidence` specs compare it with this checkout's, and stop with
+"Restart the sandbox from this worktree: …" when the two differ (naming the
+files) or the route is missing (a sandbox older than the route). The check
+guards local runs only: CI starts no sandbox and runs no sandbox spec.
+`sandbox/sandbox-freshness.spec.ts` tests the refusal against stand-in
+control ports, so it needs no sandbox and runs anywhere.
+
 | Flow (FILM-1804 §2) | Spec |
 |---|---|
 | Connect, one per platform | `platform-connections/sandbox-connect-{tiktok,meta,linkedin,youtube-x}.spec.ts` |
@@ -364,7 +378,7 @@ made, and compares the page with that. `tests/utils/sandbox.ts`:
 
 | Helper | What it gives |
 |---|---|
-| `sandboxRun()` | Call inside each `describe`: skips without `SANDBOX_E2E`, runs the file in order, starts it on a fresh sandbox run (`reset`), and prints the seed when a test fails |
+| `sandboxRun()` | Call inside each `describe`: skips without `SANDBOX_E2E`, refuses a sandbox started from other source than this checkout's, runs the file in order, starts it on a fresh sandbox run (`reset`), and prints the seed when a test fails |
 | `ledger(vendor, since)`, `ledgerFor(objectId, since)`, `lastLedgerId()` | Every call the app made, newest first — method, path, query (credentials redacted), status, what was served |
 | `servedTotals(platform, objectId, since)` | The figures in the newest successful response about one video; throws when the app never asked |
 | `failNext({vendor, status, pathIncludes, count})` | The next calls to that endpoint fail with the vendor's own error body: 429, 401, 5xx |
