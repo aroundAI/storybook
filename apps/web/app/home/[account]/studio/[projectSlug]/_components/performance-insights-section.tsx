@@ -66,7 +66,10 @@ export function PerformanceInsightsSection({
               <p className="text-sm font-medium text-muted-foreground">
                 Avg. Engagement
               </p>
-              <p className="mt-1 flex items-center gap-2 text-3xl font-bold text-foreground">
+              <p
+                className="mt-1 flex items-center gap-2 text-3xl font-bold text-foreground"
+                data-test="overview-engagement-rate"
+              >
                 {analytics?.avgEngagementRate.value
                   ? `${analytics.avgEngagementRate.value.toFixed(0)}%`
                   : '0%'}
