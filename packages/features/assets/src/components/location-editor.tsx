@@ -5,7 +5,6 @@ import { useTransition } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 
 import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
@@ -17,22 +16,12 @@ import {
   updateAssetAction,
 } from '../lib/server/asset.mutations';
 import type { Asset, LocationMetadata } from '../lib/types';
+import { LocationFormSchema } from '../lib/schemas/location.schema';
 import { LocationEditorForm } from './location-editor-form';
 
-// Location form schema
-const LocationFormSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(255),
-  description: z.string().max(1000).optional(),
-  fileUrl: z.string().optional(),
-  thumbnailUrl: z.string().optional(),
-  setting: z.string().optional(),
-  timeOfDay: z.string().optional(),
-  weather: z.string().optional(),
-  atmosphere: z.string().optional(),
-  referenceImages: z.array(z.string()).optional(),
-});
-
-export type LocationFormData = z.infer<typeof LocationFormSchema>;
+// The form schema lives with the other asset schemas so the MCP
+// upsert_asset tool validates with the same rules (FILM-1905)
+export type { LocationFormData } from '../lib/schemas/location.schema';
 
 interface LocationEditorProps {
   projectId: string;

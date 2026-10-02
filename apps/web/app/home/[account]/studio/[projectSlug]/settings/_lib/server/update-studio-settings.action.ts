@@ -12,6 +12,8 @@ import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { mergeStudioSettings } from '@kit/projects/service';
+
 import { UpdateStudioSettingsSchema } from '../schemas/studio-settings.schema';
 
 /**
@@ -59,43 +61,11 @@ const updateStudioSettings = enhanceAction(
       'Project not found',
     );
 
-    // Merge new settings with existing metadata
+    // Merge new settings with existing metadata: one key per field, the
+    // same merge the MCP update_project tool applies (project.service.ts)
     const existingMetadata =
       (project.metadata as Record<string, unknown>) || {};
-    const updatedMetadata: Record<string, unknown> = {
-      ...existingMetadata,
-    };
-
-    // Only update fields that were provided
-    if (data.targetAudience !== undefined) {
-      updatedMetadata.targetAudience = data.targetAudience;
-    }
-    if (data.genre !== undefined) {
-      updatedMetadata.genre = data.genre;
-    }
-    if (data.videoStyle !== undefined) {
-      updatedMetadata.videoStyle = data.videoStyle;
-    }
-    if (data.contentStyle !== undefined) {
-      updatedMetadata.contentStyle = data.contentStyle;
-    }
-    if (data.defaultEpisodeDuration !== undefined) {
-      updatedMetadata.defaultEpisodeDuration = data.defaultEpisodeDuration;
-    }
-    if (data.contentRating !== undefined) {
-      updatedMetadata.contentRating = data.contentRating;
-    }
-    if (data.language !== undefined) {
-      updatedMetadata.language = data.language;
-    }
-    if (data.recurringElements !== undefined) {
-      updatedMetadata.recurringElements = data.recurringElements;
-      // Clean up old singular key if it exists (migration compat)
-      delete updatedMetadata.recurringElement;
-    }
-    if (data.projectAestheticStyle !== undefined) {
-      updatedMetadata.projectAestheticStyle = data.projectAestheticStyle;
-    }
+    const updatedMetadata = mergeStudioSettings(existingMetadata, data);
 
     // Update project metadata and description
     const updatePayload: Record<string, unknown> = {
