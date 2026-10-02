@@ -872,7 +872,7 @@ and the API change is additive (§5).
    - E2: diagnostic query check.
    - §27: build, manifest grep and cron-route run on port 3104.
 8. **Records.**
-   - KB-29 → **Fixed (#PR)** plus one row in the FILM-CC-04 *Fixed* table.
+   - KB-29 → **Fixed (#550)** plus one row in the FILM-CC-04 *Fixed* table.
    - FILM-706 "Refresh token rotation is handled correctly" and "Test token
      refresh with rotation": met, with evidence.
    - FILM-707 "Token refresh works for both platforms": met, with evidence.
