@@ -46,7 +46,7 @@
       "kind": "unit",
       "file": "packages/features/content-analytics/src/lib/revenue-by-currency.ts",
       "find": "                rpm: rpmCents(item.revenueCents, views) ?? 0,",
-      "replace": "                rpm: views > 0 ? (item.revenueCents / views) * 1000 : 0,",
+      "replace": "                rpm: (rpmCents(item.revenueCents, views) ?? 0) + 0 * (item.revenueCents / views),",
       "cwd": "packages/clickhouse",
       "test": "__tests__/rate-over-views-recorded.test.ts",
       "pattern": "only in lib/measures.ts"
@@ -170,6 +170,26 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/rate-denominator-revenue-reads.test.ts",
       "pattern": "records the platforms with rows over the window"
+    },
+    {
+      "name": "RD18 a rate written as SQL in a string escapes the class scan",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/revenue-by-currency.ts",
+      "find": "                rpm: rpmCents(item.revenueCents, views) ?? 0,",
+      "replace": "                rpm: rpmCents(item.revenueCents, views) ?? 0,\n                sql: `sum(likes) / nullIf(sum(views), 0)`,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/rate-over-views-recorded.test.ts",
+      "pattern": "only in lib/measures.ts"
+    },
+    {
+      "name": "RD19 a rate through a dividing helper escapes the class scan",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/revenue-by-currency.ts",
+      "find": "                rpm: rpmCents(item.revenueCents, views) ?? 0,",
+      "replace": "                rpm: rpmCents(item.revenueCents, views) ?? 0,\n                likeRate: ratio(item.revenueCents, views),",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/rate-over-views-recorded.test.ts",
+      "pattern": "only in lib/measures.ts"
     }
   ]
 }

@@ -16,21 +16,41 @@ const ROOTS = ['packages', 'apps'];
 const SKIP = new Set(['node_modules', '__tests__', '.next', 'dist', '.turbo']);
 const HOME = path.join('packages', 'clickhouse', 'src', 'lib', 'measures.ts');
 
-/** Something divided by an expression that ends in a views value. */
+/**
+ * Something divided by an expression that ends in a views value, wrapped
+ * in calls or not: `x / views`, `sum(likes) / sum(views)`,
+ * `x / nullIf(sum(d.views), 0)`, `x / Math.max(1, stats.views)`.
+ */
 const DIVIDED_BY_VIEWS =
-  /[\w)\]!]\s*\/\s*\(?\s*[\w.?!]*(?:views|Views|VIEWS)\b(?![\w(])/g;
+  /[\w)\]!]\s*\/\s*\(?\s*(?:[\w.]+\(\s*(?:[^(),;]+,\s*)?)*[\w.?!]*(?:views|Views|VIEWS)\b(?![\w(])/g;
 
-/** Comments and quoted strings say "views" without dividing by them. */
+/**
+ * A helper that divides, handed views as its divisor: `ratio(likes, views)`,
+ * `safeDivide(x, totalViews)`, ClickHouse's `divide(sum(likes), sum(views))`.
+ * The name says it divides; `recorded…` helpers return the record with the
+ * rate, so they are the recording path itself.
+ */
+const HELPER_OVER_VIEWS =
+  /\b(?!recorded)\w*(?:[Rr]atio|[Dd]ivide|[Dd]iv|[Rr]ate|[Pp]ercent|[Pp]ct|Rpm|rpm)\w*\s*\((?:[^()]|\([^()]*\))*?,\s*(?:[\w.]+\(\s*)*[\w.?!]*(?:views|Views|VIEWS)\b(?![\w(])/g;
+
+/**
+ * Comments say "views" without dividing by them, and so does an import
+ * path. Strings stay: a rate written as SQL in a string is still a rate.
+ */
 function code(source: string): string {
   return source
     .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, ''))
-    .replace(/(^|[^:'"`])\/\/[^\n]*/g, '$1')
-    .replace(/'(?:[^'\\\n]|\\.)*'/g, "''")
-    .replace(/"(?:[^"\\\n]|\\.)*"/g, '""');
+    .replace(/(^|[^:'"`\\])\/\/[^\n]*/g, '$1')
+    .replace(/(\bfrom\s*|\bimport\s*\(?\s*)(['"])[^'"\n]*\2/g, "$1''");
 }
 
 function divisionsByViews(source: string): string[] {
-  return code(source).match(DIVIDED_BY_VIEWS) ?? [];
+  const text = code(source);
+
+  return [
+    ...(text.match(DIVIDED_BY_VIEWS) ?? []),
+    ...(text.match(HELPER_OVER_VIEWS) ?? []),
+  ];
 }
 
 const at = (...parts: string[]) => path.join(...parts);
@@ -95,16 +115,37 @@ const NOT_A_RATE_OVER_VIEWS: Record<string, { count: number; why: string }> = {
     why: 'A view-weighted average: views are the weights.',
   },
   [at('packages', 'clickhouse', 'src', 'queries-advanced.ts')]: {
-    count: 1,
-    why: 'The back catalogue’s share of views.',
+    count: 5,
+    why:
+      'The back catalogue’s share of views; and the four genome stage rates ' +
+      '(FILM-1717, SQL in SEGMENT_MEASURE_SQL), whose record is #548’s ' +
+      'genomeViewsDenominator over FILM-1722’s viewsDenominatorFor.',
   },
   [at('packages', 'clickhouse', 'src', 'lib', 'traffic-groups.ts')]: {
     count: 3,
     why: 'Traffic groups’ shares of views.',
   },
   [at('packages', 'clickhouse', 'src', 'lib', 'segment-stats.ts')]: {
+    count: 3,
+    why:
+      'Spread: the best video’s views over the median’s; and pooledRpmCents, ' +
+      'declared and delegating to rpmCents, whose callers carry rpmDenominator.',
+  },
+  [at('packages', 'clickhouse', 'scripts', 'verify-queries.ts')]: {
     count: 1,
-    why: 'Spread: the best video’s views over the median’s.',
+    why: 'The FILM-1732 integration step checking RPM beside its record.',
+  },
+  [at(ANALYTICS, 'lib', 'revenue-by-currency.ts')]: {
+    count: 3,
+    why: 'RPM, ads RPM and a top item’s RPM, each returned beside its rpmDenominator.',
+  },
+  [at(ANALYTICS, 'lib', 'segment-revenue.ts')]: {
+    count: 2,
+    why: 'Segment RPM, declared and pooled; its row carries rpmDenominator.',
+  },
+  [at(ANALYTICS, 'server', 'segment-actions.ts')]: {
+    count: 1,
+    why: 'A segment row’s RPM, set beside segmentRpmDenominator.',
   },
   [at('packages', 'clickhouse', 'src', 'lib', 'cohort-growth.ts')]: {
     count: 1,
@@ -146,13 +187,39 @@ describe('every rate over views is recorded (FILM-1732)', () => {
     expect(divisionsByViews('const r = a /\n    entry.views;')).toHaveLength(1);
   });
 
-  it('does not read an import path, a comment or a string as a division', () => {
+  it('finds a rate written as SQL in a string', () => {
+    expect(
+      divisionsByViews('const sql = `SELECT sum(likes) / sum(views) FROM t`;'),
+    ).toHaveLength(1);
+    expect(
+      divisionsByViews("const sql = 'likes / nullIf(sum(d.views), 0) AS r';"),
+    ).toHaveLength(1);
+    expect(
+      divisionsByViews('const sql = `divide(sum(likes), sum(views)) AS r`;'),
+    ).toHaveLength(1);
+  });
+
+  it('finds a rate through a helper that divides', () => {
+    expect(divisionsByViews('const r = ratio(likes, views);')).toHaveLength(1);
+    expect(
+      divisionsByViews('const r = safeDivide(total.likes, total.views) * 100;'),
+    ).toHaveLength(1);
+    expect(
+      divisionsByViews('const r = percentOf(sum(a, b), stats.views);'),
+    ).toHaveLength(1);
+    expect(
+      divisionsByViews('const r = recordedEngagementRatePercent(t, d);'),
+    ).toEqual([]);
+  });
+
+  it('does not read an import path or a comment as a division', () => {
     expect(
       divisionsByViews(
         [
           "import { addViews } from '../lib/views';",
+          "const m = await import('../lib/views');",
           '// (likes + comments) / views',
-          "const label = 'per 1,000 / views';",
+          '/* ratio(likes, views) */',
         ].join('\n'),
       ),
     ).toEqual([]);
