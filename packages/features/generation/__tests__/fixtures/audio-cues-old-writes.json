@@ -1,0 +1,141 @@
+{
+  "writes": [
+    {
+      "table": "generation_jobs",
+      "op": "update",
+      "payload": {
+        "status": "processing",
+        "started_at": "2026-10-03T12:00:00.000Z"
+      },
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "reference_type",
+            "episode"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "reference_id",
+            "33333333-3333-4333-8333-333333333333"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "job_type",
+            "audio_cue_generation"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "status",
+            "queued"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "audio_cues",
+      "op": "insert",
+      "payload": [
+        {
+          "episode_id": "33333333-3333-4333-8333-333333333333",
+          "scene_number": 1,
+          "cue_type": "ambient",
+          "prompt": "Quiet office atmosphere, air conditioning hum",
+          "start_offset_seconds": 0,
+          "duration_seconds": 11,
+          "is_loopable": true,
+          "status": "pending"
+        },
+        {
+          "episode_id": "33333333-3333-4333-8333-333333333333",
+          "scene_number": 1,
+          "cue_type": "music",
+          "prompt": "Cinematic strings, suspenseful, 70 BPM, in D minor",
+          "start_offset_seconds": 2,
+          "duration_seconds": 17,
+          "is_loopable": false,
+          "status": "pending"
+        },
+        {
+          "episode_id": "33333333-3333-4333-8333-333333333333",
+          "scene_number": 2,
+          "cue_type": "sfx",
+          "prompt": "Footsteps echoing in a concrete car park",
+          "start_offset_seconds": 12.5,
+          "duration_seconds": 3,
+          "is_loopable": false,
+          "status": "pending"
+        },
+        {
+          "episode_id": "33333333-3333-4333-8333-333333333333",
+          "scene_number": null,
+          "cue_type": "sfx",
+          "prompt": "Phone screen chime",
+          "start_offset_seconds": 19,
+          "duration_seconds": 1,
+          "is_loopable": false,
+          "status": "pending"
+        }
+      ],
+      "filters": []
+    },
+    {
+      "table": "generation_jobs",
+      "op": "update",
+      "payload": {
+        "status": "completed",
+        "completed_at": "2026-10-03T12:00:00.000Z",
+        "output_data": {
+          "cuesCreated": 4,
+          "mode": "agentic",
+          "orchestratorSteps": 3,
+          "coveragePercent": 92,
+          "batchedByScene": false
+        }
+      },
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "reference_type",
+            "episode"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "reference_id",
+            "33333333-3333-4333-8333-333333333333"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "job_type",
+            "audio_cue_generation"
+          ]
+        },
+        {
+          "method": "in",
+          "args": [
+            "status",
+            [
+              "queued",
+              "processing"
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "result": {
+    "success": true,
+    "cuesCreated": 4
+  }
+}

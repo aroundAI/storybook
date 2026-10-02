@@ -1,0 +1,53 @@
+{
+  "writes": [
+    {
+      "table": "verified_facts",
+      "op": "insert",
+      "payload": [
+        {
+          "project_id": "22222222-2222-4222-8222-222222222222",
+          "claim": "The Thames Barrier opened in 1982.",
+          "simplified_claim": "The Thames Barrier opened in 1982.",
+          "category": "historical_event",
+          "source_type": "other",
+          "source_citation": "Environment Agency, 2019",
+          "source_title": "Thames Barrier --- a history",
+          "confidence_score": 0.95,
+          "verification_status": "unverified",
+          "created_by": "44444444-4444-4444-8444-444444444444"
+        },
+        {
+          "project_id": "22222222-2222-4222-8222-222222222222",
+          "claim": "The Thames Barrier spans 520 metres.",
+          "simplified_claim": "The Thames Barrier spans 520 metres.",
+          "category": "technical",
+          "source_type": "other",
+          "source_citation": "Environment Agency, 2019",
+          "source_title": "Thames Barrier --- a history",
+          "confidence_score": 0.9,
+          "verification_status": "unverified",
+          "created_by": "44444444-4444-4444-8444-444444444444"
+        }
+      ],
+      "filters": []
+    }
+  ],
+  "result": {
+    "success": true,
+    "data": {
+      "extractedCount": 2,
+      "facts": [
+        {
+          "claim": "The Thames Barrier opened in 1982.",
+          "category": "historical_event",
+          "confidence": 0.95
+        },
+        {
+          "claim": "The Thames Barrier spans 520 metres.",
+          "category": "technical",
+          "confidence": 0.9
+        }
+      ]
+    }
+  }
+}

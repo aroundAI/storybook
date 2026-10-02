@@ -1,0 +1,220 @@
+{
+  "reelScout": {
+    "sceneAnalyses": [
+      {
+        "sceneNumber": 1,
+        "isReelCandidate": true,
+        "viralScore": 8.5,
+        "hookType": "conflict",
+        "estimatedDurationSeconds": 45,
+        "keyMoment": "Maya slams the folder shut: 'You knew.'",
+        "sceneEmotionalArc": "Calm briefing → suspicion → open accusation",
+        "whyThisWorksAsReel": "Self-contained accusation that lands in under a minute.",
+        "whyItDoesntWork": null,
+        "improvementSuggestion": "Open on the folder, not the small talk."
+      },
+      {
+        "sceneNumber": 2,
+        "isReelCandidate": false,
+        "viralScore": 3.2,
+        "hookType": null,
+        "estimatedDurationSeconds": 60,
+        "keyMoment": null,
+        "sceneEmotionalArc": "Exposition → setup for the next episode",
+        "whyThisWorksAsReel": null,
+        "whyItDoesntWork": "Needs episode context; no shareable moment.",
+        "improvementSuggestion": "Combine with the end of scene 1."
+      }
+    ],
+    "topReelCandidates": [1],
+    "orchestratorNote": "Scene 1 is the candidate; lead its first shot with the folder."
+  },
+  "scenes": [
+    {
+      "sceneNumber": 1,
+      "sceneSummary": "Maya confronts Dev with the folder in the office.",
+      "sceneViralScore": 8.5,
+      "sceneHookType": "conflict",
+      "sceneStandaloneSummary": "A colleague is caught in a lie.",
+      "shots": [
+        {
+          "shotNumber": 1,
+          "shotType": "close-up",
+          "cameraDirection": "push_in_slow",
+          "description": "Maya's hand freezes on the folder",
+          "characters": ["Maya Chen"],
+          "duration": 5,
+          "hookMoment": "The hand stops mid-motion",
+          "emotionalTone": "dread",
+          "transitionType": "cut",
+          "frameStrategy": "detail_insert",
+          "primarySubject": { "type": "object", "name": "the folder" },
+          "firstFrameDescription": "A manila folder half-open on a desk, a hand above it",
+          "lastFrameDescription": "The hand flat on the closed folder",
+          "locationArea": "Maya's desk",
+          "locationEnvironmentDescription": "Open-plan office, late morning light through blinds",
+          "veoPrompt": {
+            "shotLine": "SHOT: Close-up, slow push in (thats where the camera is)",
+            "timeline": [
+              {
+                "startTime": "00:00",
+                "endTime": "03:00",
+                "type": "action",
+                "character": "Maya Chen",
+                "content": "Her hand stops above the open folder",
+                "emotion": "dread"
+              },
+              {
+                "startTime": "03:00",
+                "endTime": "05:00",
+                "type": "dialogue",
+                "character": "Maya Chen",
+                "content": "Maya Chen: \"You knew.\" (Tone: cold)",
+                "emotion": "cold"
+              }
+            ],
+            "audio": "Office hum, a distant printer, the folder closing",
+            "style": "85mm, shallow focus, cool daylight, cinematic",
+            "avoid": "subtitles, captions, watermarks, text overlays",
+            "fullPrompt": "SHOT: Close-up, slow push in (thats where the camera is). [00:00-03:00] Maya Chen's hand stops above the open folder. [03:00-05:00] Maya Chen: \"You knew.\" (Tone: cold). AUDIO: Office hum, a distant printer, the folder closing. STYLE: 85mm, shallow focus, cool daylight, cinematic. AVOID: subtitles, captions, watermarks, text overlays."
+          },
+          "metadata": {
+            "location": "The Office",
+            "timeOfDay": "morning",
+            "mood": "tense"
+          }
+        },
+        {
+          "shotNumber": 2,
+          "shotType": "two-shot",
+          "cameraDirection": "static",
+          "description": "Dev and Maya across the desk",
+          "characters": ["Maya Chen", "Dev Patel"],
+          "duration": 7,
+          "hookMoment": "Dev does not answer",
+          "emotionalTone": "confrontation",
+          "transitionType": "cut",
+          "frameStrategy": "two_shot",
+          "primarySubject": { "type": "character", "name": "Dev Patel" },
+          "firstFrameDescription": "Dev standing, Maya seated, the desk between them",
+          "lastFrameDescription": "Dev looks away toward the window",
+          "locationArea": "Maya's desk",
+          "locationEnvironmentDescription": "Open-plan office, late morning light through blinds",
+          "veoPrompt": {
+            "shotLine": "SHOT: Medium two-shot, static (thats where the camera is)",
+            "timeline": [
+              {
+                "startTime": "00:00",
+                "endTime": "04:00",
+                "type": "dialogue",
+                "character": "Dev Patel",
+                "content": "Dev Patel: \"It wasn't like that.\" (Tone: defensive)",
+                "emotion": "defensive"
+              },
+              {
+                "startTime": "04:00",
+                "endTime": "07:00",
+                "type": "reaction",
+                "character": "Maya Chen",
+                "content": "Maya says nothing and waits",
+                "emotion": "controlled anger"
+              }
+            ],
+            "audio": "Office hum, a chair creaking",
+            "style": "35mm, balanced framing, cool daylight, cinematic",
+            "avoid": "subtitles, captions, watermarks",
+            "fullPrompt": "SHOT: Medium two-shot, static (thats where the camera is). [00:00-04:00] Dev Patel: \"It wasn't like that.\" (Tone: defensive). [04:00-07:00] Maya Chen says nothing and waits. AUDIO: Office hum, a chair creaking. STYLE: 35mm, balanced framing, cool daylight, cinematic. AVOID: subtitles, captions, watermarks."
+          },
+          "metadata": {
+            "location": "The Office",
+            "timeOfDay": "morning",
+            "mood": "tense"
+          }
+        }
+      ]
+    },
+    {
+      "sceneNumber": 2,
+      "sceneSummary": "Maya walks the car park alone at night and makes a call.",
+      "sceneViralScore": 3.2,
+      "sceneHookType": null,
+      "sceneStandaloneSummary": null,
+      "shots": [
+        {
+          "shotNumber": 1,
+          "shotType": "wide",
+          "cameraDirection": "static",
+          "description": "Maya crosses the empty car park",
+          "characters": ["Maya Chen"],
+          "duration": 8,
+          "transitionType": "cut",
+          "frameStrategy": "environment_focus",
+          "primarySubject": { "type": "location", "name": "The Car Park" },
+          "firstFrameDescription": "A sodium-lit car park, one figure far off",
+          "lastFrameDescription": "The figure reaches a car",
+          "locationArea": "Level 2",
+          "locationEnvironmentDescription": "Concrete car park, orange sodium lights, wet floor",
+          "veoPrompt": {
+            "shotLine": "SHOT: Wide establishing, static (thats where the camera is)",
+            "timeline": [
+              {
+                "startTime": "00:00",
+                "endTime": "08:00",
+                "type": "action",
+                "character": "Maya Chen",
+                "content": "Maya crosses the empty car park toward her car",
+                "emotion": "weary"
+              }
+            ],
+            "audio": "Dripping water, distant traffic, footsteps echoing",
+            "style": "24mm, deep focus, sodium orange, night, cinematic",
+            "avoid": "subtitles, captions, watermarks",
+            "fullPrompt": "SHOT: Wide establishing, static (thats where the camera is). [00:00-08:00] Maya Chen crosses the empty car park toward her car. AUDIO: Dripping water, distant traffic, footsteps echoing. STYLE: 24mm, deep focus, sodium orange, night, cinematic. AVOID: subtitles, captions, watermarks."
+          },
+          "metadata": {
+            "location": "The Car Park",
+            "timeOfDay": "night",
+            "mood": "lonely"
+          }
+        },
+        {
+          "shotNumber": 2,
+          "shotType": "medium-close-up",
+          "cameraDirection": "handheld",
+          "description": "Maya on the phone by the car",
+          "characters": ["Maya Chen"],
+          "duration": 6,
+          "transitionType": "continuation",
+          "frameStrategy": "character_focus",
+          "primarySubject": { "type": "character", "name": "Maya Chen" },
+          "firstFrameDescription": "Maya leaning on the car, phone to her ear",
+          "lastFrameDescription": "She lowers the phone and looks up",
+          "locationArea": "Level 2",
+          "locationEnvironmentDescription": "Concrete car park, orange sodium lights, wet floor",
+          "veoPrompt": {
+            "shotLine": "SHOT: Medium close-up, handheld (thats where the camera is)",
+            "timeline": [
+              {
+                "startTime": "00:00",
+                "endTime": "06:00",
+                "type": "dialogue",
+                "character": "Maya Chen",
+                "content": "Maya Chen: \"It's me. We need to talk about Dev.\" (Tone: quiet)",
+                "emotion": "quiet"
+              }
+            ],
+            "audio": "Phone line hiss, dripping water",
+            "style": "50mm, handheld, sodium orange, night, cinematic",
+            "avoid": "subtitles, captions, watermarks",
+            "fullPrompt": "SHOT: Medium close-up, handheld (thats where the camera is). [00:00-06:00] Maya Chen: \"It's me. We need to talk about Dev.\" (Tone: quiet). AUDIO: Phone line hiss, dripping water. STYLE: 50mm, handheld, sodium orange, night, cinematic. AVOID: subtitles, captions, watermarks."
+          },
+          "metadata": {
+            "location": "The Car Park",
+            "timeOfDay": "night",
+            "mood": "lonely"
+          }
+        }
+      ]
+    }
+  ]
+}

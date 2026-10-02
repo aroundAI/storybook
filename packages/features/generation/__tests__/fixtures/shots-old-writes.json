@@ -1,0 +1,473 @@
+{
+  "writes": [
+    {
+      "table": "generation_jobs",
+      "op": "update",
+      "payload": {
+        "status": "processing",
+        "started_at": "2026-10-03T12:00:00.000Z"
+      },
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "reference_type",
+            "episode"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "reference_id",
+            "33333333-3333-4333-8333-333333333333"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "job_type",
+            "shot_list"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "status",
+            "queued"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "audio_cues",
+      "op": "delete",
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "episode_id",
+            "33333333-3333-4333-8333-333333333333"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "audio_tracks",
+      "op": "delete",
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "episode_id",
+            "33333333-3333-4333-8333-333333333333"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "shots",
+      "op": "delete",
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "episode_id",
+            "33333333-3333-4333-8333-333333333333"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "shots",
+      "op": "insert",
+      "payload": [
+        {
+          "episode_id": "33333333-3333-4333-8333-333333333333",
+          "scene_number": 1,
+          "shot_number": 1,
+          "sequence_number": 6,
+          "scene_description": "Maya's hand freezes on the folder",
+          "prompt": "SHOT: Close-up, slow push in (thats where the camera is). [00:00-03:00] Maya Chen's hand stops above the open folder. [03:00-05:00] Maya Chen: \"You knew.\" (Tone: cold). AUDIO: Office hum, a distant printer, the folder closing. STYLE: 85mm, shallow focus, cool daylight, cinematic. AVOID: subtitles, captions, watermarks, text overlays.",
+          "duration_seconds": 5,
+          "camera_direction": "push_in_slow",
+          "status": "pending",
+          "shorts_candidate": true,
+          "shorts_metadata": {
+            "viralScore": 8.5,
+            "hookType": "conflict",
+            "estimatedDurationSeconds": 45,
+            "isReelCandidate": true,
+            "whyThisWorksAsReel": "Self-contained accusation that lands in under a minute.",
+            "whyItDoesntWork": null,
+            "keyMoment": "Maya slams the folder shut: 'You knew.'",
+            "sceneEmotionalArc": "Calm briefing → suspicion → open accusation",
+            "improvementSuggestion": "Open on the folder, not the small talk."
+          },
+          "generation_metadata": {
+            "shotType": "close-up",
+            "location": "The Office",
+            "timeOfDay": "morning",
+            "mood": "tense",
+            "characters": [
+              "Maya Chen"
+            ],
+            "veoPrompt": {
+              "shotLine": "SHOT: Close-up, slow push in (thats where the camera is)",
+              "timeline": [
+                {
+                  "startTime": "00:00",
+                  "endTime": "03:00",
+                  "type": "action",
+                  "character": "Maya Chen",
+                  "content": "Her hand stops above the open folder",
+                  "emotion": "dread"
+                },
+                {
+                  "startTime": "03:00",
+                  "endTime": "05:00",
+                  "type": "dialogue",
+                  "character": "Maya Chen",
+                  "content": "Maya Chen: \"You knew.\" (Tone: cold)",
+                  "emotion": "cold"
+                }
+              ],
+              "audio": "Office hum, a distant printer, the folder closing",
+              "style": "85mm, shallow focus, cool daylight, cinematic",
+              "avoid": "subtitles, captions, watermarks, text overlays",
+              "fullPrompt": "SHOT: Close-up, slow push in (thats where the camera is). [00:00-03:00] Maya Chen's hand stops above the open folder. [03:00-05:00] Maya Chen: \"You knew.\" (Tone: cold). AUDIO: Office hum, a distant printer, the folder closing. STYLE: 85mm, shallow focus, cool daylight, cinematic. AVOID: subtitles, captions, watermarks, text overlays."
+            },
+            "isReelCandidate": true
+          },
+          "transition_type": "cut",
+          "frame_strategy": "detail_insert",
+          "primary_subject": {
+            "type": "object",
+            "name": "the folder"
+          },
+          "first_frame_description": "A manila folder half-open on a desk, a hand above it",
+          "last_frame_description": "The hand flat on the closed folder",
+          "location_area": "Maya's desk",
+          "location_environment_description": "Open-plan office, late morning light through blinds"
+        },
+        {
+          "episode_id": "33333333-3333-4333-8333-333333333333",
+          "scene_number": 1,
+          "shot_number": 2,
+          "sequence_number": 7,
+          "scene_description": "Dev and Maya across the desk",
+          "prompt": "SHOT: Medium two-shot, static (thats where the camera is). [00:00-04:00] Dev Patel: \"It wasn't like that.\" (Tone: defensive). [04:00-07:00] Maya Chen says nothing and waits. AUDIO: Office hum, a chair creaking. STYLE: 35mm, balanced framing, cool daylight, cinematic. AVOID: subtitles, captions, watermarks.",
+          "duration_seconds": 7,
+          "camera_direction": "static",
+          "status": "pending",
+          "shorts_candidate": true,
+          "shorts_metadata": {
+            "viralScore": 8.5,
+            "hookType": "conflict",
+            "estimatedDurationSeconds": 45,
+            "isReelCandidate": true,
+            "whyThisWorksAsReel": "Self-contained accusation that lands in under a minute.",
+            "whyItDoesntWork": null,
+            "keyMoment": "Maya slams the folder shut: 'You knew.'",
+            "sceneEmotionalArc": "Calm briefing → suspicion → open accusation",
+            "improvementSuggestion": "Open on the folder, not the small talk."
+          },
+          "generation_metadata": {
+            "shotType": "two-shot",
+            "location": "The Office",
+            "timeOfDay": "morning",
+            "mood": "tense",
+            "characters": [
+              "Maya Chen",
+              "Dev Patel"
+            ],
+            "veoPrompt": {
+              "shotLine": "SHOT: Medium two-shot, static (thats where the camera is)",
+              "timeline": [
+                {
+                  "startTime": "00:00",
+                  "endTime": "04:00",
+                  "type": "dialogue",
+                  "character": "Dev Patel",
+                  "content": "Dev Patel: \"It wasn't like that.\" (Tone: defensive)",
+                  "emotion": "defensive"
+                },
+                {
+                  "startTime": "04:00",
+                  "endTime": "07:00",
+                  "type": "reaction",
+                  "character": "Maya Chen",
+                  "content": "Maya says nothing and waits",
+                  "emotion": "controlled anger"
+                }
+              ],
+              "audio": "Office hum, a chair creaking",
+              "style": "35mm, balanced framing, cool daylight, cinematic",
+              "avoid": "subtitles, captions, watermarks",
+              "fullPrompt": "SHOT: Medium two-shot, static (thats where the camera is). [00:00-04:00] Dev Patel: \"It wasn't like that.\" (Tone: defensive). [04:00-07:00] Maya Chen says nothing and waits. AUDIO: Office hum, a chair creaking. STYLE: 35mm, balanced framing, cool daylight, cinematic. AVOID: subtitles, captions, watermarks."
+            },
+            "isReelCandidate": true
+          },
+          "transition_type": "cut",
+          "frame_strategy": "two_shot",
+          "primary_subject": {
+            "type": "character",
+            "name": "Dev Patel"
+          },
+          "first_frame_description": "Dev standing, Maya seated, the desk between them",
+          "last_frame_description": "Dev looks away toward the window",
+          "location_area": "Maya's desk",
+          "location_environment_description": "Open-plan office, late morning light through blinds"
+        },
+        {
+          "episode_id": "33333333-3333-4333-8333-333333333333",
+          "scene_number": 2,
+          "shot_number": 3,
+          "sequence_number": 8,
+          "scene_description": "Maya crosses the empty car park",
+          "prompt": "SHOT: Wide establishing, static (thats where the camera is). [00:00-08:00] Maya Chen crosses the empty car park toward her car. AUDIO: Dripping water, distant traffic, footsteps echoing. STYLE: 24mm, deep focus, sodium orange, night, cinematic. AVOID: subtitles, captions, watermarks.",
+          "duration_seconds": 8,
+          "camera_direction": "static",
+          "status": "pending",
+          "shorts_candidate": false,
+          "shorts_metadata": {
+            "viralScore": 3.2,
+            "estimatedDurationSeconds": 60,
+            "isReelCandidate": false,
+            "whyThisWorksAsReel": null,
+            "whyItDoesntWork": "Needs episode context; no shareable moment.",
+            "keyMoment": null,
+            "sceneEmotionalArc": "Exposition → setup for the next episode",
+            "improvementSuggestion": "Combine with the end of scene 1."
+          },
+          "generation_metadata": {
+            "shotType": "wide",
+            "location": "The Car Park",
+            "timeOfDay": "night",
+            "mood": "lonely",
+            "characters": [
+              "Maya Chen"
+            ],
+            "veoPrompt": {
+              "shotLine": "SHOT: Wide establishing, static (thats where the camera is)",
+              "timeline": [
+                {
+                  "startTime": "00:00",
+                  "endTime": "08:00",
+                  "type": "action",
+                  "character": "Maya Chen",
+                  "content": "Maya crosses the empty car park toward her car",
+                  "emotion": "weary"
+                }
+              ],
+              "audio": "Dripping water, distant traffic, footsteps echoing",
+              "style": "24mm, deep focus, sodium orange, night, cinematic",
+              "avoid": "subtitles, captions, watermarks",
+              "fullPrompt": "SHOT: Wide establishing, static (thats where the camera is). [00:00-08:00] Maya Chen crosses the empty car park toward her car. AUDIO: Dripping water, distant traffic, footsteps echoing. STYLE: 24mm, deep focus, sodium orange, night, cinematic. AVOID: subtitles, captions, watermarks."
+            },
+            "isReelCandidate": false
+          },
+          "transition_type": "cut",
+          "frame_strategy": "environment_focus",
+          "primary_subject": {
+            "type": "location",
+            "name": "The Car Park"
+          },
+          "first_frame_description": "A sodium-lit car park, one figure far off",
+          "last_frame_description": "The figure reaches a car",
+          "location_area": "Level 2",
+          "location_environment_description": "Concrete car park, orange sodium lights, wet floor"
+        },
+        {
+          "episode_id": "33333333-3333-4333-8333-333333333333",
+          "scene_number": 2,
+          "shot_number": 4,
+          "sequence_number": 9,
+          "scene_description": "Maya on the phone by the car",
+          "prompt": "SHOT: Medium close-up, handheld (thats where the camera is). [00:00-06:00] Maya Chen: \"It's me. We need to talk about Dev.\" (Tone: quiet). AUDIO: Phone line hiss, dripping water. STYLE: 50mm, handheld, sodium orange, night, cinematic. AVOID: subtitles, captions, watermarks.",
+          "duration_seconds": 6,
+          "camera_direction": "handheld",
+          "status": "pending",
+          "shorts_candidate": false,
+          "shorts_metadata": {
+            "viralScore": 3.2,
+            "estimatedDurationSeconds": 60,
+            "isReelCandidate": false,
+            "whyThisWorksAsReel": null,
+            "whyItDoesntWork": "Needs episode context; no shareable moment.",
+            "keyMoment": null,
+            "sceneEmotionalArc": "Exposition → setup for the next episode",
+            "improvementSuggestion": "Combine with the end of scene 1."
+          },
+          "generation_metadata": {
+            "shotType": "medium-close-up",
+            "location": "The Car Park",
+            "timeOfDay": "night",
+            "mood": "lonely",
+            "characters": [
+              "Maya Chen"
+            ],
+            "veoPrompt": {
+              "shotLine": "SHOT: Medium close-up, handheld (thats where the camera is)",
+              "timeline": [
+                {
+                  "startTime": "00:00",
+                  "endTime": "06:00",
+                  "type": "dialogue",
+                  "character": "Maya Chen",
+                  "content": "Maya Chen: \"It's me. We need to talk about Dev.\" (Tone: quiet)",
+                  "emotion": "quiet"
+                }
+              ],
+              "audio": "Phone line hiss, dripping water",
+              "style": "50mm, handheld, sodium orange, night, cinematic",
+              "avoid": "subtitles, captions, watermarks",
+              "fullPrompt": "SHOT: Medium close-up, handheld (thats where the camera is). [00:00-06:00] Maya Chen: \"It's me. We need to talk about Dev.\" (Tone: quiet). AUDIO: Phone line hiss, dripping water. STYLE: 50mm, handheld, sodium orange, night, cinematic. AVOID: subtitles, captions, watermarks."
+            },
+            "isReelCandidate": false
+          },
+          "transition_type": "continuation",
+          "frame_strategy": "character_focus",
+          "primary_subject": {
+            "type": "character",
+            "name": "Maya Chen"
+          },
+          "first_frame_description": "Maya leaning on the car, phone to her ear",
+          "last_frame_description": "She lowers the phone and looks up",
+          "location_area": "Level 2",
+          "location_environment_description": "Concrete car park, orange sodium lights, wet floor"
+        }
+      ],
+      "filters": []
+    },
+    {
+      "table": "episodes",
+      "op": "update",
+      "payload": {
+        "shot_list": {
+          "generatedAt": "2026-10-03T12:00:00.000Z",
+          "totalShots": 4,
+          "totalDuration": 26,
+          "shotTypes": {
+            "wide": 1,
+            "medium": 0,
+            "closeUp": 2
+          },
+          "scenesProcessed": 2,
+          "processingMethod": "shot-orchestrator"
+        },
+        "updated_at": "2026-10-03T12:00:00.000Z"
+      },
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "id",
+            "33333333-3333-4333-8333-333333333333"
+          ]
+        },
+        {
+          "method": "is",
+          "args": [
+            "deleted_at",
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "table": "generation_jobs",
+      "op": "insert",
+      "payload": {
+        "reference_type": "episode",
+        "reference_id": "33333333-3333-4333-8333-333333333333",
+        "job_type": "audio_cue_generation",
+        "status": "queued",
+        "account_id": "11111111-1111-4111-8111-111111111111",
+        "project_id": "22222222-2222-4222-8222-222222222222",
+        "idempotency_key": "audio-cues-33333333-3333-4333-8333-333333333333-1791028800000",
+        "input_data": {
+          "episodeId": "33333333-3333-4333-8333-333333333333"
+        }
+      },
+      "filters": []
+    },
+    {
+      "table": "generation_jobs",
+      "op": "update",
+      "payload": {
+        "status": "completed",
+        "completed_at": "2026-10-03T12:00:00.000Z",
+        "output_data": {
+          "totalShots": 4,
+          "scenesProcessed": 2,
+          "totalDuration": 26
+        }
+      },
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "reference_type",
+            "episode"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "reference_id",
+            "33333333-3333-4333-8333-333333333333"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "job_type",
+            "shot_list"
+          ]
+        },
+        {
+          "method": "in",
+          "args": [
+            "status",
+            [
+              "queued",
+              "processing"
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "queued": [
+    {
+      "jobType": "audio-cue-generation",
+      "userId": "44444444-4444-4444-8444-444444444444",
+      "target": {
+        "accountId": "11111111-1111-4111-8111-111111111111",
+        "projectId": "22222222-2222-4222-8222-222222222222",
+        "episodeId": "33333333-3333-4333-8333-333333333333"
+      },
+      "payload": {
+        "episodeId": "33333333-3333-4333-8333-333333333333",
+        "projectId": "22222222-2222-4222-8222-222222222222",
+        "accountId": "11111111-1111-4111-8111-111111111111"
+      }
+    }
+  ],
+  "result": {
+    "success": true,
+    "data": {
+      "totalShots": 4,
+      "shotsCreated": 4,
+      "metadata": {
+        "totalDuration": 26,
+        "shotTypes": {
+          "wide": 1,
+          "medium": 0,
+          "closeUp": 2
+        },
+        "scenesProcessed": 2
+      }
+    }
+  }
+}
