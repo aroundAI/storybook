@@ -55,8 +55,8 @@
       "name": "FILM-1705 a MetricCard draws a number nothing measured",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
-      "find": "  return metric.value === null ? notMeasured : null;",
-      "replace": "  return null;",
+      "find": "  if (platformsWithData(metric.metricFamily).length === 0) {",
+      "replace": "  if (false) {",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/provenance-surfaces.test.tsx",
       "pattern": "stop drawing a number for what was not measured"
