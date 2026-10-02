@@ -719,12 +719,12 @@ flowchart LR
 - [ ] Enforce output schema validation in the worker (closes today's unvalidated `output.schema` gap)
 - [ ] Add `content_revisions` snapshot on every commit (NFR-14)
 
-* [x] Create `@kit/ai-gateway` with the server writer; make it the only importer of `@kit/llm` and model SDKs; `executeLLM` and `executeLLMForLambda` moved behind it (FILM-1902 part B, #TBD-gateway); `@kit/llm` still exports `createLLMClient` and the providers, to the gateway alone
-* [x] ESLint `no-restricted-imports`, the dependency and import scan (in place of dependency-cruiser) and raw-endpoint grep in the fast lane; each proven red on a planted import (#554, #TBD-gateway)
-* [x] `openRun` as the only run constructor; `run.write()` and `run.dispatch()`; `@kit/agent` takes its writer from the run (#TBD-gateway)
-* [x] SQS message becomes `{ runId }`; worker loads the run and refuses anything but an open server run (#TBD-gateway)
-* [x] Chained stages open child runs with the parent's mode (#TBD-gateway)
-* [x] Stage registry as the source of `StageKey`; matrix test of every registered stage in both modes; test that the stages reaching `run.write()` equal the registry (#TBD-gateway; the stages not yet on the core still reach the executors through the run in scope, and join the matrix as FILM-1901's parts land)
+* [x] Create `@kit/ai-gateway` with the server writer; make it the only importer of `@kit/llm` and model SDKs; `executeLLM` and `executeLLMForLambda` moved behind it (FILM-1902 part B, #567); `@kit/llm` still exports `createLLMClient` and the providers, to the gateway alone
+* [x] ESLint `no-restricted-imports`, the dependency and import scan (in place of dependency-cruiser) and raw-endpoint grep in the fast lane; each proven red on a planted import (#554, #567)
+* [x] `openRun` as the only run constructor; `run.write()` and `run.dispatch()`; `@kit/agent` takes its writer from the run (#567)
+* [x] SQS message becomes `{ runId }`; worker loads the run and refuses anything but an open server run (#567)
+* [x] Chained stages open child runs with the parent's mode (#567)
+* [x] Stage registry as the source of `StageKey`; matrix test of every registered stage in both modes; test that the stages reaching `run.write()` equal the registry (#567; the stages not yet on the core still reach the executors through the run in scope, and join the matrix as FILM-1901's parts land)
 * [ ] Database locks (MCP runs external, LLM jobs need a server run, usage rows need a run id) with pgTAP tests
 * [ ] Delete the uncalled call sites: continuity checker, news actions and services, act-context bridge, agent story generation, element-prompt generator, OpenAI audio embedding, transcription
 
@@ -734,7 +734,7 @@ flowchart LR
 - [ ] `apps/web/app/api/mcp/route.ts`: stateless Streamable HTTP, JSON responses (FR-1, NFR-11)
 - [ ] `withMcpAuth`: PAT lookup, minted user JWT, RLS-scoped Supabase client (FR-3, FR-5, NFR-2)
 - [ ] `mcp_connections`, `mcp_tokens`, `mcp_tool_calls` migrations, types, pgTAP tests
-- [x] `runContext` and the LLM guard in `executeLLM`, `executeLLMForLambda`, `@kit/agent` runner, `createLLMClient` (FR-20): the gateway's `withRun`/`requireRun` and `assertServerRunOpen` (FILM-1902 part B, #TBD-gateway); FILM-1908 wires `ctx.runMode` from the MCP request context
+- [x] `runContext` and the LLM guard in `executeLLM`, `executeLLMForLambda`, `@kit/agent` runner, `createLLMClient` (FR-20): the gateway's `withRun`/`requireRun` and `assertServerRunOpen` (FILM-1902 part B, #567); FILM-1908 wires `ctx.runMode` from the MCP request context
 - [ ] Read tools: `whoami`, projects, episodes, screenplay, shots, dialogue, assets (FR-10)
 - [ ] Split each analytics action into wrapper + service function taking a client; the 20 analyze tools in section 3a (FR-30)
 - [ ] Rate limits in the cache layer (NFR-9); MCP Inspector contract test in CI
