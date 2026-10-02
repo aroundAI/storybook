@@ -27,7 +27,7 @@ summary: >
 acceptance_criteria:
   - text: "GET /.well-known/oauth-protected-resource names the MCP resource URL and the authorization server; GET /.well-known/oauth-authorization-server publishes the authorize, token, register and revoke endpoints, S256 as the only PKCE method, and the supported scopes"
     met: true
-    evidence: "apps/web/app/.well-known/oauth-protected-resource/[[...resource]]/route.ts (root and the path-aware URL the SDK tries first), apps/web/app/.well-known/oauth-authorization-server/route.ts; packages/features/studio-mcp/src/server/oauth/metadata.ts:10,30; __tests__/oauth/clients-and-metadata.test.ts 'discovery metadata'; apps/e2e/tests/mcp/oauth-consent.spec.ts 'the two well-known documents' reads both off the running app (#TBD-1907)"
+    evidence: "apps/web/app/.well-known/oauth-protected-resource/[[...resource]]/route.ts (root and the path-aware URL the SDK tries first), apps/web/app/.well-known/oauth-authorization-server/route.ts; packages/features/studio-mcp/src/server/oauth/metadata.ts:10,30; __tests__/oauth/clients-and-metadata.test.ts 'discovery metadata'; apps/e2e/tests/mcp/oauth-consent.spec.ts 'the two well-known documents' reads both off the running app (#563)"
   - text: "POST /oauth/register implements Dynamic Client Registration (RFC 7591) for public clients; a client metadata document URL is accepted as client_id; both are stored in mcp_oauth_clients"
     met: true
     evidence: "apps/web/app/oauth/register/route.ts (rate-limited per address with the cache's incr); packages/features/studio-mcp/src/server/oauth/clients.ts registerClient:170, resolveClient:214 (fetches an https document on a public host once, requires client_id to equal its URL, caches it with metadata_url); migration 20261002202731_film-1907-oauth-clients-and-codes.sql:34; __tests__/oauth/clients-and-metadata.test.ts (DCR, documents, SSRF refusals); guards OAUTH U11, U12"
@@ -69,10 +69,10 @@ test_plan:
     - {text: "PKCE verification, redirect URI exact match, code reuse refused, refresh rotation and reuse detection", met: true, evidence: "packages/features/studio-mcp/__tests__/oauth/authorize-and-token.test.ts (19 cases) and clients-and-metadata.test.ts (10); red first: both files failed with 'Cannot find module' before src/server/oauth existed; 12 unit guards in tooling/mutation-guards/film-1907.json each go red"}
     - {text: "McpTokenVerifier contract test run against the 'own' verifier and a stub 'supabase' verifier: both yield the same McpPrincipal for the same user, team and scopes, and both refuse expired, wrong-audience and revoked tokens", met: true, evidence: "packages/features/studio-mcp/__tests__/verifier-contract.test.ts (describe.each over own and supabase, 14 cases); red first: 'Cannot find module supabase-verifier'"}
   integration:
-    - {text: "The SDK's OAuth client completes discovery, registration, authorize and token against the local app with local Supabase Auth as the login", met: true, evidence: "apps/e2e/tests/mcp/oauth-sdk-client.spec.ts: @modelcontextprotocol/sdk auth() → REDIRECT after DCR, the consent click in the browser, auth() with the code → AUTHORIZED, then StreamableHTTPClientTransport with the provider calls whoami (#TBD-1907)"}
+    - {text: "The SDK's OAuth client completes discovery, registration, authorize and token against the local app with local Supabase Auth as the login", met: true, evidence: "apps/e2e/tests/mcp/oauth-sdk-client.spec.ts: @modelcontextprotocol/sdk auth() → REDIRECT after DCR, the consent click in the browser, auth() with the code → AUTHORIZED, then StreamableHTTPClientTransport with the provider calls whoami (#563)"}
     - {text: "Minted JWT under both key setups: a tool call reads only the signed-in team's rows (RLS), against local Supabase", met: false, reason: "The HS256 half passes (rls-jwt.integration.test.ts against lane B); the imported-key half cannot run locally (criterion 11)"}
   e2e:
-    - {text: "Playwright: the consent page for a seeded user with two teams, approve, then the Connected apps page shows and revokes the connection; screenshots in the PR", met: true, evidence: "apps/e2e/tests/mcp/oauth-consent.spec.ts (4 tests) and oauth-consent-evidence.spec.ts behind CAPTURE_EVIDENCE=1; screenshots in #TBD-1907"}
+    - {text: "Playwright: the consent page for a seeded user with two teams, approve, then the Connected apps page shows and revokes the connection; screenshots in the PR", met: true, evidence: "apps/e2e/tests/mcp/oauth-consent.spec.ts (4 tests) and oauth-consent-evidence.spec.ts behind CAPTURE_EVIDENCE=1; screenshots in #563"}
 remaining:
   - criterion: "RLS signing with a private key imported into the project's JWT signing keys, proven against a Supabase that holds the key"
     reason: "The signer, its env selection and the kid are built and unit-proven; the local CLI (2.117.0) cannot import a signing key, so the live proof needs a hosted project. Steps in notes"
@@ -94,7 +94,7 @@ notes: |
   metadata_url, created_at) and mcp_authorization_codes (code_hash, client_id,
   user_id, account_id, scopes, code_challenge, redirect_uri, resource,
   expires_at, used_at), both service role only; tokens and connections are
-  FILM-1904's. #TBD-1907 adds mcp_tokens.audience (the resource a token was
+  FILM-1904's. #563 adds mcp_tokens.audience (the resource a token was
   issued for), the FK mcp_connections.client_id → mcp_oauth_clients, a CHECK
   that a consent connection names its client, and two triggers:
   on_mcp_connection_revoked (revoking a connection revokes its tokens) and
@@ -117,7 +117,7 @@ notes: |
   names only, 64 KB, 5 s, client_id must equal the URL), registration abuse
   (per-address hourly limit).
 
-  ## Environment (#TBD-1907)
+  ## Environment (#563)
 
   - MCP_AUTH_SERVER=own|supabase (default own): which verifier withMcpAuth
     runs with and which authorization server the protected-resource
@@ -170,7 +170,7 @@ notes: |
      Connected apps showing the OAuth app row. Attach to this spec's PR
      with `gh pr comment --attach`.
 
-  ## Why some things are the way they are (#TBD-1907)
+  ## Why some things are the way they are (#563)
 
   - The consent form returns the redirect and the browser navigates: a
     server action's redirect() cannot reach a custom scheme or another
