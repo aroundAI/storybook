@@ -86,7 +86,9 @@ notes: |
   barrel or test: `continuity-actions.ts` and `continuity-checker.tsx`;
   `news-actions.ts` with `anchor-service.ts`, `producer-service.ts`,
   `news-story-service.ts`, `entity-extractor.ts` and their tests
-  (producer-rundown, producer-breaks, newsapi-one-request, infer-category —
+  (producer-rundown, producer-breaks, infer-category, and the balance-check
+  case of newsapi-one-request, whose other cases guard the live NewsAPI
+  provider for KB-125 —
   the last tested two pure helpers of the producer that nothing else called);
   `lib/canon/act-context-bridge.ts` and its test; `server/agent-story-generation.ts`;
   `agent/orchestrator.ts` (the ninth site, found by the re-audit; the
