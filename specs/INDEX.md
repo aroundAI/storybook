@@ -625,7 +625,7 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1729 | [x-media-write-scope](./phase-17-analytics-provenance/FILM-1729-x-media-write-scope.yaml) | ⏸️ DEFERRED | S | FILM-1723; X pay-per-use credentials (not held); retired for now by the owner 2026-10-02, X hidden behind X_ENABLED |
 | FILM-1730 | [tiktok-business-api](./phase-17-analytics-provenance/FILM-1730-tiktok-business-api.yaml) | ⏸️ DEFERRED | XL | FILM-1703, FILM-1711, FILM-1721; a TikTok Business developer app (not held); deferred by the owner 2026-10-02, TikTok not a first go-to-market platform |
 | FILM-1731 | [instagram-ai-label](./phase-17-analytics-provenance/FILM-1731-instagram-ai-label.yaml) | DONE | S | FILM-1728; owner decision 2026-10-02 |
-| FILM-1732 | [rate-denominator-records](./phase-17-analytics-provenance/FILM-1732-rate-denominator-records.yaml) | PARTIAL | M | FILM-1713, FILM-1722; FILM-1719 for the record shape |
+| FILM-1732 | [rate-denominator-records](./phase-17-analytics-provenance/FILM-1732-rate-denominator-records.yaml) | ✅ DONE | M | FILM-1713, FILM-1722; FILM-1719 for the record shape |
 
 Three parts. **Provenance** (1701–1709) answers *where did this number come from*. **Signal** (1710–1720) answers *what is it telling me*, which differs per platform. **Reference** (1721–1723) is the researched vendor truth the other two are built on.
 

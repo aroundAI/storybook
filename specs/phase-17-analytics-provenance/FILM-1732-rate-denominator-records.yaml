@@ -3,7 +3,7 @@ title: "Rate Denominator Records"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: PARTIAL
+status: DONE
 effort: M
 dependencies:
   - spec_id: "FILM-1722"
@@ -64,16 +64,11 @@ test_plan:
     - {text: "Each read in notes §2 against a fixture: the value equals today's, and the record is the one hand-computed for the fixture's window and platforms", met: true, evidence: "Met (#549): rate-denominator-aggregation-reads, -language-reads, -dashboard-read, -revenue-reads tests, revenue-by-currency.test.ts and segment-revenue.test.ts in @kit/content-analytics"}
     - {text: "The class scan (extending packages/clickhouse/__tests__/engagement-rate-one-definition.test.ts, or beside it), red with a planted bare division by views", met: true, evidence: "Met (#549): packages/clickhouse/__tests__/rate-over-views-recorded.test.ts, beside the FILM-1713 guard; red under mutation guard RD5"}
   integration:
-    - {text: "Against local ClickHouse 24.8: seed YouTube rows either side of 2026-08-27, read the engagement rate and RPM through the real queries, and check value and record", met: false, reason: "In progress on #549"}
+    - {text: "Against local ClickHouse 24.8: seed YouTube rows either side of 2026-08-27, read the engagement rate and RPM through the real queries, and check value and record", met: true, evidence: "Met (#549): rateDenominatorSteps in packages/clickhouse/scripts/verify-queries.ts, run with `pnpm --filter @kit/clickhouse verify` against ClickHouse 24.8 — 20 Aug to 5 Sep reads 125/1500 = 8.333% with a record naming the legacy, 2025 Shorts and 2026-08-27 YouTube views and the crossing; 28 Aug to 5 Sep reads 85/1100 = 7.727% crossing nothing; RPM 3000/1500 = 2000 cents; segment membership carries each video's platform. 183 passed, 0 failed"}
   e2e:
-    - {text: "Playwright spec with seeded rows: each card shows its figure unchanged and its record; a window crossing 2026-08-27 shows both definitions; gated CAPTURE_EVIDENCE=1 screenshots of the before-and-after-the-change cases", met: false, reason: "In progress on #549"}
-remaining:
-  - criterion: "Test plan: the integration read against local ClickHouse 24.8 and the Playwright evidence spec"
-    reason: "In progress on #549"
-    closed_by: "FILM-1732"
+    - {text: "Playwright spec with seeded rows: each card shows its figure unchanged and its record; a window crossing 2026-08-27 shows both definitions; gated CAPTURE_EVIDENCE=1 screenshots of the before-and-after-the-change cases", met: true, evidence: "Met (#549): apps/e2e/tests/analytics/rate-denominator-evidence.spec.ts, gated CAPTURE_EVIDENCE=1 and CLICKHOUSE_EVIDENCE=1. A YouTube video with days on 25 and 29 Aug reads 10.00% on the episode page, 8% (75/1000, likes and comments) on the project overview and 10.0% in the content table, each with a record naming 27 Aug 2026 as a change inside its window; screenshots on #549. The not-crossing case is the integration read's second window"}
 open_questions:
   - "When a figure's window crosses a definition change, does its card show a visible marker beside the figure, or only the record behind it? Stamping alone changes no figure; a visible marker changes what the card says, which the 2026-09-22 ruling may want the owner to see first"
-  - "Is the engagement-rate column of the content table (one rate per row) stamped per row, or once for the table with per-row records only where a row's window crosses a change?"
 notes: |
   ## 1. Where this came from
 
@@ -191,6 +186,12 @@ notes: |
   The re-sweep found one more copy of it, the studio overview's
   `avgEngagementRate` (apps/web), and the project dashboard's average,
   both now recorded.
+
+  The content table records each row on its own, over that publish's
+  platform from its publication to the read date, since a row's rate is
+  views to date; so a row whose days cross a change says so on that row.
+  Whether a crossing also gets a visible marker beside the figure stays an
+  open question for the owner: today the record sits behind an info button.
 
   Choose the record shape before code, and write the choice here:
 
