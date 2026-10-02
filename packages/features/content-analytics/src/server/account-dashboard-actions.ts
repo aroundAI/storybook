@@ -251,10 +251,14 @@ function mapToAnalyticsTotals(
   };
 }
 
+/**
+ * No projects, no publishes, or no answer from ClickHouse: nothing was
+ * measured, so views are null, never 0 (KB-167).
+ */
 function getEmptyDashboardData(): AccountDashboardData {
   return {
     totals: {
-      views: 0,
+      views: null,
       likes: 0,
       comments: 0,
       shares: 0,
@@ -266,7 +270,7 @@ function getEmptyDashboardData(): AccountDashboardData {
     },
     viewsScope: EMPTY_VIEWS_SCOPE,
     previousPeriodTotals: {
-      views: 0,
+      views: null,
       likes: 0,
       comments: 0,
       shares: 0,

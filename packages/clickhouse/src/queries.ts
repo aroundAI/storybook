@@ -326,11 +326,12 @@ function buildWhereClause(filters: QueryFilters): {
 }
 
 /**
- * Totals over no rows: nothing counted, so 0, and nothing measured, so the
- * columns a platform may not report are null (KB-162).
+ * Totals over no rows. Nothing measured views, nor the columns a platform
+ * may not report, so they are null: no row is not "nobody watched"
+ * (KB-162, KB-167).
  */
 const NO_ROWS_TOTALS: ScopeTotals = {
-  views: 0,
+  views: null,
   likes: 0,
   comments: 0,
   shares: null,
@@ -341,11 +342,11 @@ const NO_ROWS_TOTALS: ScopeTotals = {
 };
 
 /**
- * The identity when summing chunked partials. Views too start null: a
- * chunk's null takes the other side's figure, and a 0 here would turn an
+ * The identity when summing chunked partials. Views start null: a chunk's
+ * null takes the other side's figure, and a 0 here would turn an
  * all-Facebook selection's null into 0 (KB-153).
  */
-const CHUNK_SUM_IDENTITY: ScopeTotals = { ...NO_ROWS_TOTALS, views: null };
+const CHUNK_SUM_IDENTITY: ScopeTotals = NO_ROWS_TOTALS;
 
 /**
  * The SQL for a nullable column's sum over the rows that measured it, and
@@ -481,8 +482,8 @@ async function queryTotalsSingle(
   const row = rows[0]!;
 
   return {
-    // No rows is 0 views; rows that are all Facebook's are not measured.
-    views: Number(row.row_count) === 0 ? 0 : nullableNumber(row.views),
+    // No rows, or rows that are all Facebook's: not measured (KB-167).
+    views: Number(row.row_count) === 0 ? null : nullableNumber(row.views),
     likes: Number(row.likes),
     comments: Number(row.comments),
     shares: measuredSum(row.shares, row.shares_measured),

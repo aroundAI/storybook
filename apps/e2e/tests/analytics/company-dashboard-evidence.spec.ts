@@ -49,7 +49,10 @@ interface Seeded {
 async function seedTeam(
   page: Page,
   platforms: Platform[],
-  { noRows = [] }: { noRows?: Platform[] } = {},
+  {
+    noRows = [],
+    zeroViews = [],
+  }: { noRows?: Platform[]; zeroViews?: Platform[] } = {},
 ): Promise<Seeded> {
   const team = await seedTeamAccount({ emailPrefix: 'kb162' });
   const project = await seedProject(team);
@@ -87,7 +90,9 @@ async function seedTeam(
       { key: SERVICE_ROLE_KEY },
     );
 
-    if (!noRows.includes(platform)) {
+    if (zeroViews.includes(platform)) {
+      rows.push(zeroViewsRow(project.id, publish.id, platform));
+    } else if (!noRows.includes(platform)) {
       rows.push(...metricRows(project.id, publish.id, platform));
     }
   }
@@ -144,6 +149,26 @@ function metricRows(projectId: string, videoId: string, platform: Platform) {
   return tiktok
     ? [row(daysAgo(2), 100, null, null), row(daysAgo(3), 80, null, null)]
     : [row(daysAgo(2), 200, 600, 4)];
+}
+
+/** One day inside the window on which the video was measured at 0 views. */
+function zeroViewsRow(projectId: string, videoId: string, platform: Platform) {
+  return {
+    project_id: projectId,
+    video_id: videoId,
+    platform,
+    metric_date: clickHouseDate(daysAgo(2)),
+    views: 0,
+    likes: 0,
+    comments: 0,
+    shares: 0,
+    saves: null,
+    watch_time_seconds: 0,
+    revenue_cents: 0,
+    subscribers_gained: 0,
+    metric_source: 'analytics_api',
+    extra_metrics: '{}',
+  };
 }
 
 async function openDashboard(page: Page, team: SeededTeam) {
@@ -300,5 +325,51 @@ test.describe('Company dashboard: a figure no platform measured (KB-162)', () =>
     await expect(notMeasured).not.toHaveAttribute('title', /Facebook/);
 
     await shoot(page, '2-youtube-episode-no-rows', 'kb166');
+  });
+
+  /**
+   * KB-167: a YouTube-only team whose publish has no rows yet read
+   * "Views 0". Nothing was measured: the card says "Not measured", with
+   * KB-166's no-data reason, and Avg Engagement has nothing to divide by.
+   */
+  test('a YouTube-only team with no rows yet: Views say Not measured with the no-data reason, never 0', async ({
+    page,
+  }) => {
+    const fixture = await seedTeam(page, ['youtube'], { noRows: ['youtube'] });
+    seeded.push(fixture);
+
+    await openDashboard(page, fixture.team);
+
+    const views = card(page, 'views');
+    const notMeasured = byTest(views, 'metric-not-measured');
+    await expect(notMeasured).toHaveText('Not measured');
+    await expect(notMeasured).toHaveAttribute(
+      'title',
+      'YouTube is connected, but has no data for the last 30 days.',
+    );
+    await expect(byTest(views, 'metric-value')).toHaveCount(0);
+    await expect(
+      byTest(byTest(page, 'summary-card-avg-engagement'), 'summary-value'),
+    ).toHaveText('Not measured');
+
+    await shoot(page, '1-youtube-team-no-rows', 'kb167');
+  });
+
+  test('a YouTube team whose rows counted 0 views: a measured 0 still reads 0', async ({
+    page,
+  }) => {
+    const fixture = await seedTeam(page, ['youtube'], {
+      zeroViews: ['youtube'],
+    });
+    seeded.push(fixture);
+
+    await openDashboard(page, fixture.team);
+
+    await expect(byTest(card(page, 'views'), 'metric-value')).toHaveText('0');
+    await expect(
+      byTest(card(page, 'views'), 'metric-not-measured'),
+    ).toHaveCount(0);
+
+    await shoot(page, '2-youtube-team-measured-zero', 'kb167');
   });
 });

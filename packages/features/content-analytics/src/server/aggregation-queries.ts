@@ -148,7 +148,7 @@ export interface ProjectAnalytics {
   }[];
 }
 
-/** Empty return for zero-data episodes */
+/** An episode with no publishes: nothing measured, so no views (KB-167). */
 function emptyEpisodeAnalytics(
   episodeId: string,
   title: string,
@@ -158,7 +158,7 @@ function emptyEpisodeAnalytics(
     episodeId,
     title,
     episodeNumber,
-    totalViews: 0,
+    totalViews: null,
     viewsScope: EMPTY_VIEWS_SCOPE,
     totalLikes: 0,
     totalComments: 0,
@@ -166,7 +166,7 @@ function emptyEpisodeAnalytics(
     totalSaves: null,
     totalRevenueCents: 0,
     avgWatchTimeSeconds: null,
-    engagementRate: 0,
+    engagementRate: null,
     platformBreakdown: [],
     dailyTrend: [],
     subscribersGained: null,
@@ -409,7 +409,8 @@ export async function getSeasonAnalytics(
       seasonId,
       seasonNumber: season.number,
       title: season.name || `Season ${season.number}`,
-      totalViews: 0,
+      // Nothing published: not measured, never 0 (KB-167).
+      totalViews: null,
       viewsScope: EMPTY_VIEWS_SCOPE,
       totalLikes: 0,
       totalComments: 0,
@@ -477,7 +478,8 @@ export async function getSeasonAnalytics(
       seasonId,
       seasonNumber: season.number,
       title: season.name || `Season ${season.number}`,
-      totalViews: 0,
+      // Nothing published: not measured, never 0 (KB-167).
+      totalViews: null,
       viewsScope: EMPTY_VIEWS_SCOPE,
       totalLikes: 0,
       totalComments: 0,
@@ -492,8 +494,8 @@ export async function getSeasonAnalytics(
         episodeId: ep.id,
         title: ep.title,
         episodeNumber: ep.number,
-        views: 0,
-        engagement: 0,
+        views: null,
+        engagement: null,
         revenue: 0,
       })),
     };
@@ -1112,8 +1114,9 @@ export async function getContentList(
       title: string;
       thumbnail_url: string | null;
     };
+    // No rows yet: views not measured, never 0 (KB-167).
     const stats: AggregatedTotals = latestAnalytics.get(publish.id) ?? {
-      views: 0,
+      views: null,
       likes: 0,
       comments: 0,
       shares: 0,

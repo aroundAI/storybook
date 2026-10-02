@@ -346,7 +346,7 @@ describe('@kit/clickhouse', () => {
         });
       });
 
-      it('should return zeros when no data', async () => {
+      it('should return null views when no data: nothing measured (KB-167)', async () => {
         mockQueryResult.json.mockResolvedValue([]);
 
         const { queryTotals } = await import('../src/queries');
@@ -355,7 +355,7 @@ describe('@kit/clickhouse', () => {
           projectId: '550e8400-e29b-41d4-a716-446655440000',
         });
 
-        expect(result.views).toBe(0);
+        expect(result.views).toBeNull();
         expect(result.revenue_cents).toBe(0);
       });
 
@@ -537,7 +537,7 @@ describe('@kit/clickhouse', () => {
         expect(split[0]).toMatchObject({ platform: 'facebook', views: null });
       });
 
-      it('totals over Facebook rows alone, but 0 over no rows', async () => {
+      it('totals over Facebook rows alone, and over no rows (KB-167)', async () => {
         const { queryTotals } = await import('../src/queries');
         const scope = { projectId: '550e8400-e29b-41d4-a716-446655440000' };
 
@@ -549,7 +549,7 @@ describe('@kit/clickhouse', () => {
         mockQueryResult.json.mockResolvedValue([
           { ...facebookRow, row_count: '0' },
         ]);
-        expect((await queryTotals(scope)).views).toBe(0);
+        expect((await queryTotals(scope)).views).toBeNull();
       });
 
       it('the daily series, pooled and by platform', async () => {

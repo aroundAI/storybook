@@ -101,7 +101,7 @@ function analyticsPlatforms(values: Iterable<string>): AnalyticsPlatform[] {
   return ANALYTICS_PLATFORMS.filter((platform) => set.has(platform));
 }
 
-/** A scope with no publishes: its views are 0, never null. */
+/** A scope with no publishes: its views are null, not 0 (KB-167). */
 export const EMPTY_VIEWS_SCOPE: ViewsScope = {
   platforms: [],
   withRows: [],

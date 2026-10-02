@@ -131,3 +131,41 @@ describe('the account dashboard, for figures no platform measured (KB-162)', () 
     });
   });
 });
+
+/**
+ * KB-167: a total of nothing measured read as 0 views. No publishes, or
+ * ClickHouse failing, is not "nobody watched": the Views card says "Not
+ * measured". A measured 0 is still 0.
+ */
+describe('the account dashboard, when nothing was measured (KB-167)', () => {
+  it('gives no views, not 0, to an account with no projects', async () => {
+    state.hasProjects = false;
+
+    const data = await getAccountDashboardData('account-1');
+
+    expect(data.totals.views).toBeNull();
+    expect(data.previousPeriodTotals.views).toBeNull();
+  });
+
+  it('gives no views, not 0, when ClickHouse fails', async () => {
+    const { queryTotals } = await import('@kit/clickhouse/server');
+    vi.mocked(queryTotals)
+      .mockReset()
+      .mockRejectedValue(new Error('ClickHouse down'));
+
+    const data = await getAccountDashboardData('account-1');
+
+    expect(data.totals.views).toBeNull();
+    expect(data.previousPeriodTotals.views).toBeNull();
+  });
+
+  it('passes on a period with no rows as null, and a measured 0 as 0', async () => {
+    state.current = totals({ views: 0 });
+    state.previous = totals({ views: null });
+
+    const data = await getAccountDashboardData('account-1');
+
+    expect(data.totals.views).toBe(0);
+    expect(data.previousPeriodTotals.views).toBeNull();
+  });
+});

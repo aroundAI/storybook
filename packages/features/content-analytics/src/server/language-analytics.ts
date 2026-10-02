@@ -74,7 +74,11 @@ export interface LanguagePerformance {
    */
   language: string | null;
   views: number;
-  viewsChange: number; // percentage change vs previous period
+  /**
+   * Percentage change vs the previous period; null when that period has no
+   * measured views to compare against — no baseline, not +100% (KB-167).
+   */
+  viewsChange: number | null;
   likes: number;
   comments: number;
   shares: number;
@@ -323,13 +327,13 @@ export async function getLanguagePerformance(
   // Build result
   const results: LanguagePerformance[] = [];
   for (const [language, stats] of languageStats) {
-    const previousViews = previousViewsByLanguage.get(language) || 0;
+    // As the metric cards' `calculateChange`: no previous figure, or a
+    // previous 0, is no baseline (KB-16, KB-167).
+    const previousViews = previousViewsByLanguage.get(language) ?? 0;
     const viewsChange =
       previousViews > 0
         ? ((stats.views - previousViews) / previousViews) * 100
-        : stats.views > 0
-          ? 100
-          : 0;
+        : null;
 
     const engagement = displayedEngagementRatePercent(stats);
 

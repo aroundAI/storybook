@@ -134,18 +134,6 @@ export function LanguagePerformanceCard({
         {rows.slice(0, 6).map((lang) => {
           const percentage =
             totalViews > 0 ? (lang.views / totalViews) * 100 : 0;
-          const TrendIcon =
-            lang.viewsChange > 0
-              ? ArrowUp
-              : lang.viewsChange < 0
-                ? ArrowDown
-                : Minus;
-          const trendColor =
-            lang.viewsChange > 0
-              ? 'text-green-600'
-              : lang.viewsChange < 0
-                ? 'text-red-600'
-                : 'text-muted-foreground';
 
           return (
             <div
@@ -177,12 +165,7 @@ export function LanguagePerformanceCard({
                   >
                     {formatNumber(lang.views)}
                   </span>
-                  <div
-                    className={`flex items-center gap-0.5 text-xs ${trendColor}`}
-                  >
-                    <TrendIcon className="h-3 w-3" />
-                    <span>{formatPercent(Math.abs(lang.viewsChange))}</span>
-                  </div>
+                  <ViewsChange change={lang.viewsChange} />
                 </div>
               </div>
               <Progress value={percentage} className="h-2" />
@@ -258,6 +241,34 @@ export function platformLanguageClaim(
 }
 
 const MATRIX_TITLE = 'Platform × Language Performance';
+
+/**
+ * The change against the previous period. With nothing measured there,
+ * nothing to compare: no arrow and no "0.0%" (KB-167).
+ */
+function ViewsChange({ change }: { change: number | null }) {
+  if (change === null) {
+    return <span className="sr-only">No previous period to compare</span>;
+  }
+
+  const TrendIcon = change > 0 ? ArrowUp : change < 0 ? ArrowDown : Minus;
+  const trendColor =
+    change > 0
+      ? 'text-green-600'
+      : change < 0
+        ? 'text-red-600'
+        : 'text-muted-foreground';
+
+  return (
+    <div
+      className={`flex items-center gap-0.5 text-xs ${trendColor}`}
+      data-test="language-row-change"
+    >
+      <TrendIcon className="h-3 w-3" />
+      <span>{formatPercent(Math.abs(change))}</span>
+    </div>
+  );
+}
 
 export function PlatformLanguageMatrix({
   data,
