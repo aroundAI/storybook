@@ -78,11 +78,10 @@ export class TwitterProvider {
     await this.waitForProcessing(mediaId);
 
     // 6. Create tweet with media
-    const tweetId = await this.createTweet(
-      input.text,
-      mediaId,
-      input.replySettings,
-    );
+    const tweetId = await this.createTweet(input.text, mediaId, {
+      replySettings: input.replySettings,
+      madeWithAi: input.madeWithAi,
+    });
 
     return {
       tweetId,
@@ -244,7 +243,10 @@ export class TwitterProvider {
   private async createTweet(
     text: string,
     mediaId: string,
-    replySettings?: TwitterUploadInput['replySettings'],
+    {
+      replySettings,
+      madeWithAi,
+    }: Pick<TwitterUploadInput, 'replySettings' | 'madeWithAi'>,
   ): Promise<string> {
     const body: Record<string, unknown> = {
       text,
@@ -255,6 +257,11 @@ export class TwitterProvider {
 
     if (replySettings) {
       body.reply_settings = replySettings;
+    }
+
+    // FILM-1731: only a declared publish carries the field
+    if (madeWithAi) {
+      body.made_with_ai = true;
     }
 
     const response = await fetch(`${X_API_BASE}/tweets`, {

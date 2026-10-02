@@ -39,6 +39,8 @@ export interface InstagramUploadInput {
   locationId?: string;
   /** User IDs to tag as collaborators */
   collaborators?: string[];
+  /** The creator declared it AI-generated: Instagram's "AI info" label (FILM-1731) */
+  aiGenerated?: boolean;
 }
 
 /**

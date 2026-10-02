@@ -60,6 +60,8 @@ export class YouTubeProvider {
         // publishAt removed - scheduling handled server-side by cron job
         madeForKids: input.madeForKids,
         selfDeclaredMadeForKids: input.madeForKids,
+        // FILM-1731: only a declared publish carries the field
+        ...(input.containsSyntheticMedia && { containsSyntheticMedia: true }),
       },
     };
 

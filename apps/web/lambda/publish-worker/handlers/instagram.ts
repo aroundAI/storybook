@@ -23,6 +23,7 @@ export async function uploadToInstagram(
       videoUrl: job.videoUrl,
       caption: `${job.title}\n\n${job.description}`,
       shareToFeed: true,
+      aiGenerated: job.aiGenerated === true,
     },
   );
 

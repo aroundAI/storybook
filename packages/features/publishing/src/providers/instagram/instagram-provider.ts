@@ -108,6 +108,11 @@ export class InstagramProvider {
       params.set('collaborators', input.collaborators.join(','));
     }
 
+    // FILM-1731: only a declared publish carries the field
+    if (input.aiGenerated) {
+      params.set('is_ai_generated', 'true');
+    }
+
     const response = await metaFetch(
       `/${this.instagramAccountId}/media?${params}`,
       { method: 'POST', token: this.accessToken },

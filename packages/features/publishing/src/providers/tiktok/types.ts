@@ -22,6 +22,8 @@ export interface TikTokUploadInput {
   brandContentToggle?: boolean;
   /** Whether branded content is organic */
   brandOrganicToggle?: boolean;
+  /** The creator declared it AI-generated: TikTok's AIGC label (FILM-1731) */
+  isAigc?: boolean;
 }
 
 export interface TikTokUploadResult {

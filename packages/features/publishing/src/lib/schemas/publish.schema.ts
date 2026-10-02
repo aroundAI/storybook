@@ -67,6 +67,9 @@ export const PlatformConfigSchema = z.object({
 export const PublishToAllSchema = z.object({
   episodeId: z.string().uuid(),
   platforms: z.array(PlatformConfigSchema).min(1),
+  // FILM-1731: the creator's AI declaration, one for the whole publish.
+  // Absent is "not declared": off, as the publish screen's option starts.
+  aiGenerated: z.boolean().optional(),
 });
 
 /**

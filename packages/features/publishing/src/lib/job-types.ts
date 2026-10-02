@@ -16,6 +16,12 @@ export interface PublishJobMessage extends BaseJobMessage {
   tags: string[];
   thumbnailUrl?: string;
   metadata: Record<string, unknown>;
+  /**
+   * The publish's AI declaration (FILM-1731), sent on the platform's own
+   * AI-label field. Absent on a message queued before it existed: not
+   * declared.
+   */
+  aiGenerated?: boolean;
 }
 
 export interface DeleteJobMessage extends BaseJobMessage {

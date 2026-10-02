@@ -196,6 +196,11 @@ export class TikTokProvider {
       postInfo.brand_organic_toggle = input.brandOrganicToggle;
     }
 
+    // FILM-1731: only a declared publish carries the field
+    if (input.isAigc) {
+      postInfo.is_aigc = true;
+    }
+
     const response = await fetch(
       `${TIKTOK_API_BASE}/post/publish/video/init/`,
       {

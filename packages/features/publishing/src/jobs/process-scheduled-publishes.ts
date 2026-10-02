@@ -49,6 +49,7 @@ interface ScheduledPublish {
   metadata: Record<string, unknown> | null;
   language: string | null;
   content_type: string | null;
+  ai_generated: boolean;
   episodes: {
     project_id: string;
     final_video_url: string | null;
@@ -163,6 +164,7 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
       metadata,
       language,
       content_type,
+      ai_generated,
       episodes(final_video_url, thumbnail_url, localized_videos, shorts_groups, project_id)
     `,
         )
@@ -372,6 +374,7 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
             ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id) ??
             ownedEpisodeThumbnail(episode.thumbnail_url, publish.episode_id),
           platformSpecific: publish.metadata ?? {},
+          aiGenerated: publish.ai_generated,
         },
       );
 
@@ -469,6 +472,8 @@ async function uploadToPlatform(
     tags: string[];
     thumbnailUrl?: string | null;
     platformSpecific: Record<string, unknown>;
+    /** The publish's AI declaration, sent where the platform has a field (FILM-1731) */
+    aiGenerated: boolean;
   },
 ): Promise<{ contentId: string; url: string }> {
   const accountId = connection.platform_account_id ?? '';
@@ -509,6 +514,7 @@ async function uploadToTikTok(
     videoUrl: string;
     title: string;
     platformSpecific: Record<string, unknown>;
+    aiGenerated: boolean;
   },
 ): Promise<{ contentId: string; url: string }> {
   const provider = new TikTokProvider(accessToken);
@@ -520,6 +526,7 @@ async function uploadToTikTok(
     disableStitch: (options.platformSpecific.disableStitch as boolean) ?? false,
     disableComment:
       (options.platformSpecific.disableComment as boolean) ?? false,
+    isAigc: options.aiGenerated,
   });
 
   return { contentId: result.publishId, url: result.videoUrl ?? '' };
@@ -533,6 +540,7 @@ async function uploadToInstagram(
     title: string;
     description: string;
     platformSpecific: Record<string, unknown>;
+    aiGenerated: boolean;
   },
 ): Promise<{ contentId: string; url: string }> {
   const provider = new InstagramProvider(accessToken, accountId);
@@ -541,6 +549,7 @@ async function uploadToInstagram(
     caption: `${options.title}\n\n${options.description}`,
     shareToFeed: (options.platformSpecific.shareToFeed as boolean) ?? true,
     locationId: options.platformSpecific.locationId as string | undefined,
+    aiGenerated: options.aiGenerated,
   });
 
   return { contentId: result.mediaId, url: result.permalink ?? '' };
@@ -573,12 +582,14 @@ async function uploadToTwitter(
   options: {
     videoUrl: string;
     title: string;
+    aiGenerated: boolean;
   },
 ): Promise<{ contentId: string; url: string }> {
   const provider = new TwitterProvider(accessToken);
   const result = await provider.uploadVideo({
     videoPath: options.videoUrl,
     text: options.title,
+    madeWithAi: options.aiGenerated,
   });
 
   return { contentId: result.tweetId, url: result.tweetUrl ?? '' };

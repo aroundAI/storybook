@@ -24,6 +24,8 @@ export interface YouTubeUploadInput {
   madeForKids: boolean;
   /** Default language of the video */
   defaultLanguage?: string;
+  /** The creator declared it AI-generated: realistic altered or synthetic content (FILM-1731) */
+  containsSyntheticMedia?: boolean;
 }
 
 export interface YouTubeUploadResult {

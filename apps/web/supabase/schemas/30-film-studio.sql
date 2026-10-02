@@ -588,6 +588,10 @@ create table if not exists public.publishes (
   duration_seconds integer,
   constraint publishes_duration_seconds_positive_check
     check (duration_seconds > 0),
+  -- The creator declared the video AI-generated (FILM-1731, migration
+  -- 20261002070720): each upload sends it on the platform's own AI-label
+  -- field. False is "not declared", which every earlier publish was.
+  ai_generated boolean not null default false,
   created_at timestamp with time zone default now() not null,
   check (platform in ('youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'linkedin')),
   check (content_type in ('full', 'short', 'teaser', 'trailer')),
@@ -600,6 +604,8 @@ comment on column public.publishes.content_type is 'Content variant: full, short
 comment on column public.publishes.status is 'Publish status: draft, scheduled, queued, publishing, published, failed, unlisted, deleted';
 comment on column public.publishes.platform_content_id is 'Platform video/post ID';
 comment on column public.publishes.analytics_note is 'Free-text analytics note for this video; never synced to ClickHouse';
+comment on column public.publishes.ai_generated is
+  'The creator declared this video AI-generated: sent as each platform''s AI label (FILM-1731)';
 
 -- Indexes for publishes
 create index if not exists idx_publishes_episode_id on public.publishes(episode_id);

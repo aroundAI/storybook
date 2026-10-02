@@ -283,7 +283,7 @@ async function assertXUploadScope(platforms: PublishPlatformInput[]) {
  * Publish video to all selected platforms
  */
 const publishToAllHandler = enhanceAction(
-  async ({ episodeId, platforms }, _user) => {
+  async ({ episodeId, platforms, aiGenerated = false }, _user) => {
     const logger = await getLogger();
     const ctx = {
       name: 'publishing.publishToAll',
@@ -434,6 +434,8 @@ const publishToAllHandler = enhanceAction(
               },
               // Language from explicit request or connection fallback
               language: publishLanguage,
+              // FILM-1731: what every later attempt sends as the AI label
+              ai_generated: aiGenerated,
             })
             .select()
             .single();
@@ -528,6 +530,7 @@ const publishToAllHandler = enhanceAction(
                 : undefined,
               isShort: isShortsPreferred,
               platformSpecific,
+              aiGenerated,
             },
             null,
           );
@@ -748,7 +751,7 @@ const retryPublish = enhanceAction(
           `
         id, episode_id, platform_connection_id, platform, content_type, status,
         title, description, tags, thumbnail_url, platform_content_id, platform_url,
-        scheduled_at, published_at, language, metadata, created_at,
+        scheduled_at, published_at, language, metadata, created_at, ai_generated,
         episodes(final_video_url, thumbnail_url, project_id, project:projects!inner(account_id))
       `,
         )
@@ -871,6 +874,7 @@ const retryPublish = enhanceAction(
             ownedEpisodeThumbnail(publish.thumbnail_url, publish.episode_id) ??
             ownedEpisodeThumbnail(episode.thumbnail_url, publish.episode_id),
           platformSpecific,
+          aiGenerated: publish.ai_generated,
         },
         connection,
       );
@@ -969,6 +973,8 @@ async function uploadToPlatform(
     scheduledAt?: Date;
     isShort?: boolean;
     platformSpecific: Record<string, unknown>;
+    /** The publish's AI declaration, sent where the platform has a field (FILM-1731) */
+    aiGenerated: boolean;
   },
   channel: YouTubeChannelDeclaration | null,
 ): Promise<{ contentId: string; url: string }> {
@@ -1002,6 +1008,7 @@ async function uploadToTikTok(
     title: string;
     description: string;
     platformSpecific: Record<string, unknown>;
+    aiGenerated: boolean;
   },
 ): Promise<{ contentId: string; url: string }> {
   const provider = new TikTokProvider(accessToken);
@@ -1013,6 +1020,7 @@ async function uploadToTikTok(
     disableStitch: (options.platformSpecific.disableStitch as boolean) ?? false,
     disableComment:
       (options.platformSpecific.disableComment as boolean) ?? false,
+    isAigc: options.aiGenerated,
   });
 
   return { contentId: result.publishId, url: result.videoUrl ?? '' };
@@ -1026,6 +1034,7 @@ async function uploadToInstagram(
     title: string;
     description: string;
     platformSpecific: Record<string, unknown>;
+    aiGenerated: boolean;
   },
 ): Promise<{ contentId: string; url: string }> {
   const provider = new InstagramProvider(accessToken, accountId);
@@ -1034,6 +1043,7 @@ async function uploadToInstagram(
     caption: `${options.title}\n\n${options.description}`,
     shareToFeed: (options.platformSpecific.shareToFeed as boolean) ?? true,
     locationId: options.platformSpecific.locationId as string | undefined,
+    aiGenerated: options.aiGenerated,
   });
 
   return { contentId: result.mediaId, url: result.permalink ?? '' };
@@ -1080,12 +1090,14 @@ async function uploadToTwitter(
     videoUrl: string;
     title: string;
     description: string;
+    aiGenerated: boolean;
   },
 ): Promise<{ contentId: string; url: string }> {
   const provider = new TwitterProvider(accessToken);
   const result = await provider.uploadVideo({
     videoPath: options.videoUrl,
     text: options.title,
+    madeWithAi: options.aiGenerated,
   });
 
   return { contentId: result.tweetId, url: result.tweetUrl ?? '' };
