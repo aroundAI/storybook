@@ -1,0 +1,102 @@
+spec_id: "FILM-1901"
+title: "Generation Core: prepare, commit and output schemas per stage"
+phase: 19
+phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
+category: package
+status: DRAFT
+effort: XL
+dependencies: []
+summary: >
+  Splits every AI generation job into prepare (build context, render the
+  prompt, name the output schema), generate (the model call) and commit
+  (validate, persist, chain), and moves prepare and commit out of the 16
+  llm-worker handlers into a new package, @kit/generation. Today the code that
+  decides what to ask the model is fused with the code that decides what to
+  save, so nothing outside the worker can save a stage correctly. After this
+  spec the worker is a thin runner (prepare, orchestrator, commit) with
+  unchanged behaviour, and FILM-1908 can call the very same commit for output
+  Claude submits over MCP. Design: the EDD's "Low-level design, 1. Generation
+  core" (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
+acceptance_criteria:
+  - text: "packages/features/generation exists as @kit/generation and exports StageDefinition, Brief, CheckError, GenerationOrigin, StageKey and the stage registry; it imports nothing from @kit/llm, @kit/agent or a model SDK"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Every stage in the registry table below has a StageDefinition with parts(), prepare(), outputSchema (Zod), check() and commit()"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "prepare() renders the stage's prompt JSON with the same renderTemplate the worker uses and returns a Brief: instructions (system layers + rendered user prompt), structured context, output JSON Schema generated from the Zod schema, example output, quality rubric from the matching quality-evaluation prompt, constraints, targetVersion, expiresAt"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "commit() owns every side effect the handler performs today: episodes JSONB columns and status, shots replacement, dialogue_lines rebuild, audio_cues, canon tables, asset auto-create, chained stages, generation_jobs bookkeeping; it runs in one transaction and snapshots what it replaces into content_revisions (FILM-1903)"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "check() runs the deterministic checks in both modes: schema validity, referential checks (characters and locations exist or are flagged for auto-create), count and duration bounds (SHOT_DURATION_LIMITS, calculateContentScaling), contiguous scene numbering, no empty dialogue, column length caps; errors are {path, code, message}"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "The worker enforces outputSchema on every model reply in server mode (today the prompt's output.schema is not enforced, apps/web/lambda/llm-worker/prompt-registry.ts)"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Each llm-worker handler is rewritten as prepare → orchestrator (run.write, FILM-1902) → commit, with no behaviour change visible in the web app"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "The two synchronous model paths become stages: extractCanonChangesAction (packages/features/episodes/src/server/canon-actions.ts:1479) as episode_summary, and describeAsset (packages/features/episodes/src/lib/server/mutations/asset-link-actions.ts:83) as asset_description"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "The story stage's canon step (apps/web/lambda/llm-worker/utils/commit-story-canon.ts:424) takes canon facts from the stage output instead of a second model call when the run is external"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+test_plan:
+  unit:
+    - {text: "A parity test per stage: a fixture model output through the old handler and through the new commit produces identical rows (run before the old handler is deleted)", met: false, reason: "not met — no test yet"}
+    - {text: "Each check() rejects a planted bad output with the expected {path, code}", met: false, reason: "not met — no test yet"}
+    - {text: "Every prompt JSON referenced by a stage renders with the context prepare() builds (no missing variable)", met: false, reason: "not met — no test yet"}
+  integration:
+    - {text: "Against local Supabase: commit() for shots replaces the episode's shots in one transaction and writes a content_revisions snapshot", met: false, reason: "not met — no test yet"}
+  e2e:
+    - {text: "FILM-1804's studio flow (ideation → story → screenplay → shots → audio) still passes against the AI sandbox after the worker moves onto the core", met: false, reason: "not met — no test yet"}
+open_questions: []
+notes: |
+  ## Stage registry
+
+  | Stage key | Target | Parts | Commit does (moved out of today's handler) |
+  |---|---|---|---|
+  | season_outline | project + season | 1 | create episode rows (today batch-episode-actions.ts, client-saved) |
+  | season_analysis | project | 1 | store the analysis on the season |
+  | ideation | episode | 1 | store ideas on episodes.metadata.ideas (today returned, not stored; FILM-1909 open question) |
+  | story | episode | 1 | story_data, status 'story', canon tables, auto-created character/location assets |
+  | story_refinement | episode | 1 | story_data, metadata.refinement_history |
+  | screenplay | episode | 1 per scene + finalize | screenplay_data, status 'storyboard', rebuild dialogue_lines |
+  | screenplay_refinement | episode or scene | 1 | screenplay_data, rebuild that scene's dialogue_lines |
+  | shots | episode | reel-scout part + 1 per scene + finalize | replace shots, episodes.shot_list, clear stale audio_cues/audio_tracks, chain audio_cues |
+  | audio_cues | episode | 1 per scene | insert audio_cues |
+  | dialogue_translation | episode + language | 1 per scene | insert translated dialogue_lines |
+  | asset_description | asset | 1 | update assets.description / metadata |
+  | fact_extraction | project + research upload | 1 | insert verified_facts |
+  | episode_summary | episode | 1 | SCORE fields and canon changes, as extractCanonChangesAction writes today |
+  | publish_metadata | publish draft | 1 | titles, descriptions, tags per language |
+
+  analytics-insights and language-insights are not stages: in external mode
+  the agent analyses the data itself through FILM-1906's tools; the web
+  buttons stay server mode.
+
+  ## Today's paths this replaces (audit 2026-10-02)
+
+  Worker job types (router: processJob, apps/web/lambda/llm-worker/index.ts):
+  season-outline, season-analysis, story-ideation, story-generation,
+  story-refinement, screenplay-conversion, screenplay-refinement,
+  shot-generation, audio-cue-generation, translate-dialogue, asset-creation,
+  fact-extraction, batch-translate-metadata, analytics-insights,
+  language-insights; audio-file-generation is ElevenLabs only. Orchestrators in
+  packages/features/episodes/src/agent/*-orchestrator.ts keep their director
+  and evaluator skills; only their inputs and outputs move behind the core.
+
+  ## Order of work
+
+  One stage per PR, smallest first (story_refinement, asset_description),
+  each behind its parity test, then the orchestrated stages. The old handler
+  body is deleted in the same PR that proves parity.
+package:
+  package_name: "@kit/generation"
+  path: "packages/features/generation/"
+  exports: ["StageDefinition", "Brief", "CheckError", "GenerationOrigin", "StageKey", "stageRegistry", "getStage"]
+  package_dependencies: ["@kit/supabase", "@kit/prompt-engine", "@kit/shared", "zod", "zod-to-json-schema"]

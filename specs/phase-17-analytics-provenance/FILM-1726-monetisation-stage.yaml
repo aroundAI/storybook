@@ -71,9 +71,6 @@ remaining:
   - criterion: "Facebook's ad-break earnings stored"
     reason: "Requested and parsed (behind FILM-1720's dark switch), stored nowhere: Meta does not document total_video_ad_break_earnings' unit or currency, and ClickHouse revenue is USD by construction (KB-12). FILM-1725 Check K reads one live response; until then revenue × facebook is not_ingested, blocked by FILM-1725."
     closed_by: "FILM-1725"
-  - criterion: "The stage strip renders six stages"
-    reason: "FILM-1719 renders the strip and reads stageReadings, so it gains the stage with no change of its own; its copy says 'five-stage strip' in three places, recorded there."
-    closed_by: "FILM-1719"
 open_questions: []
 notes: |
   ## 1. Why a locked decision is being re-opened

@@ -36,6 +36,7 @@
     "./server/taxonomy-actions": "./src/server/taxonomy-actions.ts",
     "./server/segment-actions": "./src/server/segment-actions.ts",
     "./server/genome-actions": "./src/server/genome-actions.ts",
+    "./server/signal-surface-actions": "./src/server/signal-surface-actions.ts",
     "./server/settings-actions": "./src/server/settings-actions.ts",
     "./server/reach-overview": "./src/server/reach-overview.ts",
     "./components": "./src/components/index.ts",

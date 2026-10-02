@@ -52,6 +52,8 @@ export interface VideoLogTableProps {
     saved: { note: string | null; updatedAt: string | null },
   ) => void;
   onNotePermissionLost: () => void;
+  /** Opens a video's signal surface (FILM-1719). */
+  onOpenSignals?: (videoId: string) => void;
 }
 
 /**
@@ -74,6 +76,7 @@ export function VideoLogTable({
   onSort,
   onNoteSaved,
   onNotePermissionLost,
+  onOpenSignals,
 }: VideoLogTableProps) {
   return (
     <div
@@ -150,6 +153,18 @@ export function VideoLogTable({
                       <SyncProblemBadge status={syncById[row.videoId]!} />
                     ) : null}
                   </span>
+                  {onOpenSignals ? (
+                    <button
+                      type={'button'}
+                      className={
+                        'mt-1 text-xs font-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
+                      }
+                      onClick={() => onOpenSignals(row.videoId)}
+                      data-test={'video-log-signals'}
+                    >
+                      Signals
+                    </button>
+                  ) : null}
                 </TableCell>
                 <TableCell className={'whitespace-nowrap'}>
                   {published ? localDateOf(published) : '—'}

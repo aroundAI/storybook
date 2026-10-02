@@ -1086,13 +1086,13 @@ export async function queryVideoBenchmark(input: {
   const subjectResult = await client.query({
     query: `
       SELECT
-        toString(argMax(account_id, updated_at)) as account_id,
-        toString(argMax(connection_id, updated_at)) as connection_id,
-        argMax(platform, updated_at) as platform,
-        argMax(content_type, updated_at) as content_type,
-        argMax(asset_duration_seconds, updated_at) as asset_duration_seconds,
-        argMax(language, updated_at) as language,
-        toString(argMax(published_at, updated_at)) as published_at
+        toString(argMax(account_id, updated_at)) as subject_account_id,
+        toString(argMax(connection_id, updated_at)) as subject_connection_id,
+        argMax(platform, updated_at) as subject_platform,
+        argMax(content_type, updated_at) as subject_content_type,
+        argMax(asset_duration_seconds, updated_at) as subject_asset_duration_seconds,
+        argMax(language, updated_at) as subject_language,
+        toString(argMax(published_at, updated_at)) as subject_published_at
       FROM video_dim
       WHERE ${found.conditions} AND video_id = {benchmarkVideoId: String}
       GROUP BY video_id
@@ -1106,7 +1106,7 @@ export async function queryVideoBenchmark(input: {
     return { ok: false, videoId: input.videoId, reason: 'video_not_found' };
   }
 
-  const platform = platformIdOfDim(String(dim.platform));
+  const platform = platformIdOfDim(String(dim.subject_platform));
   if (!platform) {
     return {
       ok: false,
@@ -1116,23 +1116,23 @@ export async function queryVideoBenchmark(input: {
   }
 
   const family = formatFamilyOfDim({
-    platform: String(dim.platform),
-    content_type: String(dim.content_type),
+    platform: String(dim.subject_platform),
+    content_type: String(dim.subject_content_type),
     asset_duration_seconds: normalizeAssetDurationSeconds(
-      dim.asset_duration_seconds === null
+      dim.subject_asset_duration_seconds === null
         ? null
-        : Number(dim.asset_duration_seconds),
+        : Number(dim.subject_asset_duration_seconds),
     ),
   });
   if (!family.ok) {
     return { ok: false, videoId: input.videoId, reason: 'unmapped_format' };
   }
 
-  const publishedAt = String(dim.published_at);
-  const dimLanguage = String(dim.language ?? '');
+  const publishedAt = String(dim.subject_published_at);
+  const dimLanguage = String(dim.subject_language ?? '');
   const channel: BenchmarkCohortScope = {
-    accountId: String(dim.account_id),
-    connectionId: String(dim.connection_id),
+    accountId: String(dim.subject_account_id),
+    connectionId: String(dim.subject_connection_id),
     formatFamily: family.family,
     language: dimLanguage,
   };

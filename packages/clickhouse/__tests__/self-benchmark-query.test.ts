@@ -59,13 +59,13 @@ function respondWith(input: {
     if (isDimLookup(call)) {
       return [
         {
-          account_id: ACCOUNT,
-          connection_id: CHANNEL,
-          platform: 'youtube',
-          content_type: 'full',
-          asset_duration_seconds: null,
-          language: 'en',
-          published_at: '2026-03-01 00:00:00',
+          subject_account_id: ACCOUNT,
+          subject_connection_id: CHANNEL,
+          subject_platform: 'youtube',
+          subject_content_type: 'full',
+          subject_asset_duration_seconds: null,
+          subject_language: 'en',
+          subject_published_at: '2026-03-01 00:00:00',
         },
       ];
     }

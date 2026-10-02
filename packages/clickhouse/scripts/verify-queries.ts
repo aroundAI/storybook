@@ -4624,6 +4624,31 @@ async function selfBenchmarkSteps() {
   );
 
   await step(
+    'self-benchmark: a scope naming the account too reads the same video (KB-173)',
+    async () => {
+      // The Signal Surface (FILM-1719) passes project and account. The dim
+      // lookup aliased argMax(account_id) as account_id, so the scope's
+      // `account_id = …` resolved to the aggregate: "Aggregate function
+      // argMax(account_id, updated_at) is found in WHERE".
+      const result = await queryVideoBenchmark({
+        scope: { projectId: SB_PROJECT, accountId: SB_ACCOUNT },
+        videoId: 'sb-subject',
+        checkpoints: [30],
+        asOf,
+      });
+
+      if (!result?.ok) throw new Error(`not ok: ${JSON.stringify(result)}`);
+      const [at30] = result.checkpoints;
+      expectEqual('30 state', at30?.state, 'directional');
+      if (at30?.state !== 'directional') return;
+      expectEqual('30 value', at30.value, 500);
+      expectEqual('30 median', at30.cohortMedian, 300);
+
+      return '@30 500 vs 300 with project + account';
+    },
+  );
+
+  await step(
     'self-benchmark: a thin peer set relaxes window then language, by hand',
     async () => {
       const result = await queryVideoBenchmark({

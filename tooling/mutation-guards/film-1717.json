@@ -154,9 +154,9 @@
     {
       "name": "GN18 another channel's Change log entry backs this channel's claim",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/genome-actions.ts",
-      "find": "          .select('id, status, ended_at, outcome_status, genome_hypothesis')\n          .eq('account_id', input.accountId)\n          .eq('connection_id', input.connectionId)\n",
-      "replace": "          .select('id, status, ended_at, outcome_status, genome_hypothesis')\n          .eq('account_id', input.accountId)\n",
+      "file": "packages/features/content-analytics/src/server/genome-findings.ts",
+      "find": "        .select('id, status, ended_at, outcome_status, genome_hypothesis')\n        .eq('account_id', accountId)\n        .eq('connection_id', connectionId)\n",
+      "replace": "        .select('id, status, ended_at, outcome_status, genome_hypothesis')\n        .eq('account_id', accountId)\n",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/genome-actions.test.ts",
       "pattern": "reads only this channel"
@@ -174,9 +174,9 @@
     {
       "name": "GN20 another channel's experiment backs this channel's claim",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/genome-actions.ts",
-      "find": "          )\n          .eq('account_id', input.accountId)\n          .eq('connection_id', input.connectionId)\n",
-      "replace": "          )\n          .eq('account_id', input.accountId)\n",
+      "file": "packages/features/content-analytics/src/server/genome-findings.ts",
+      "find": "        )\n        .eq('account_id', accountId)\n        .eq('connection_id', connectionId)\n",
+      "replace": "        )\n        .eq('account_id', accountId)\n",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/genome-actions.test.ts",
       "pattern": "reads only this channel"
@@ -184,9 +184,9 @@
     {
       "name": "GN21 the action never reads concluded channel experiments",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/genome-actions.ts",
-      "find": "        const backing = toConcludedChannelExperiment({",
-      "replace": "        const backing = null && toConcludedChannelExperiment({",
+      "file": "packages/features/content-analytics/src/server/genome-findings.ts",
+      "find": "      const backing = toConcludedChannelExperiment({",
+      "replace": "      const backing = null && toConcludedChannelExperiment({",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/genome-actions.test.ts",
       "pattern": "concluded channel experiment"

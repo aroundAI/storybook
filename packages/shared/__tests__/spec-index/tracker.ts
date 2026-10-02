@@ -72,6 +72,7 @@ const DEEP = 'Deep Analytics (Ph 15)';
 const WORKBOOK = 'Workbook Parity (Ph 16)';
 const PROVENANCE = 'Provenance & Signal (Ph 17)';
 const SANDBOX = 'Vendor Sandbox (Ph 18)';
+const DUAL_AI = 'Dual AI (Ph 19)';
 const SHARING = 'Public Sharing';
 
 /**
@@ -140,6 +141,11 @@ export const LAYOUT: Layout = {
       label: '18. Vendor Sandbox',
       scope: SANDBOX,
     },
+    {
+      heading: 'Phase 19: Dual AI (Gemini in the app, Claude over MCP)',
+      label: '19. Dual AI',
+      scope: DUAL_AI,
+    },
     { heading: 'Spikes', label: 'Spikes', scope: MVP },
     { heading: 'Public Sharing', label: 'Public Sharing', scope: SHARING },
   ],
@@ -153,6 +159,7 @@ export const LAYOUT: Layout = {
     WORKBOOK,
     PROVENANCE,
     SANDBOX,
+    DUAL_AI,
     SHARING,
   ],
 };

@@ -3,38 +3,28 @@
 import { z } from 'zod';
 
 import type {
-  CreativeTemplate,
-  GenomeAnalysis,
-  GenomeHypothesis,
   GenomeViewsDenominator,
-  LinkedTest,
-  Recommendation,
   StageMeasureRefusal,
 } from '@kit/clickhouse';
 import {
   FORMAT_FAMILIES,
   FUNNEL_STAGES,
-  analyseGenome,
-  applyLinkedTests,
-  concludedChangeLogEntry,
-  deriveTemplates,
   genomeViewsDenominator,
-  hypothesesFrom,
   isAnalyticsPlatform,
-  metricProvenanceFor,
-  parseGenomeHypothesisKey,
-  recommendFrom,
   stageMeasureFor,
-  toConcludedChannelExperiment,
 } from '@kit/clickhouse';
 import {
   isClickHouseEnabled,
   querySegmentVideoMeasures,
 } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
-import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import {
+  type GenomeFindings,
+  genomeFindingsFrom,
+  loadLinkedTests,
+} from './genome-findings';
 import { assertScopeAccess } from './scope-access';
 
 const GenomeFindingsSchema = z.object({
@@ -55,21 +45,14 @@ export type GenomeRefusal =
 
 export type GenomeFindingsResult =
   | { status: 'refused'; refusal: GenomeRefusal }
-  | {
+  | ({
       status: 'analysed';
       /**
        * The views series the rates divide by, and from when the cohort
        * starts when a change in what a view is narrowed it (FILM-1717).
        */
       viewsDenominator: GenomeViewsDenominator & { ok: true };
-      /** With every concluded test of its hypotheses applied (v2). */
-      analysis: GenomeAnalysis;
-      /** One per finding, each carrying the finding's evidence. */
-      recommendations: Recommendation[];
-      /** What to test next: one per finding not yet causal. */
-      hypotheses: GenomeHypothesis[];
-      templates: CreativeTemplate[];
-    };
+    } & GenomeFindings);
 
 /**
  * Which creative mechanisms separate one channel's winners from its
@@ -174,112 +157,25 @@ export const getGenomeFindingsAction = enhanceAction(
         ? onViews
         : await read(viewsDenominator);
 
-    const analysis = analyseGenome({
-      videos: rows.map((row) => ({
-        videoId: row.videoId,
-        connectionId: row.connectionId,
-        platform,
-        formatFamily: input.formatFamily,
-        assetDurationSeconds: row.assetDurationSeconds,
-        tags: row.tags,
-        value: row.value,
-      })),
-      stage: input.stage,
-      signal: measure.signal,
-      checkpointDays: input.checkpointDays,
-      control: input.control,
-      provenance: metricProvenanceFor(measure.signal, platform),
-    });
-
-    // Concluded tests on this channel that tested a genome hypothesis: Change
-    // log entries (FILM-1610) and channel experiments (FILM-1724). Paged: the
-    // update is wrong if a test is missed. A test on another channel says
-    // nothing about this one, as the genome never compares across creators.
-    const tested = await fetchAllRows<{
-      id: string;
-      status: string;
-      ended_at: string | null;
-      outcome_status: string;
-      genome_hypothesis: string | null;
-    }>(
-      (from, to) =>
-        client
-          .from('analytics_experiments')
-          .select('id, status, ended_at, outcome_status, genome_hypothesis')
-          .eq('account_id', input.accountId)
-          .eq('connection_id', input.connectionId)
-          .eq('status', 'concluded')
-          .not('genome_hypothesis', 'is', null)
-          .order('id')
-          .range(from, to),
-      'genome hypothesis tests',
+    const tests = await loadLinkedTests(
+      client,
+      input.accountId,
+      input.connectionId,
     );
-
-    const channelTested = await fetchAllRows<{
-      id: string;
-      account_id: string;
-      connection_id: string;
-      format_family: string;
-      title: string;
-      hypothesis: string | null;
-      expected_outcome: string | null;
-      status: string;
-      started_at: string | null;
-      ended_at: string | null;
-      conclusion: string | null;
-      outcome_status: string;
-      result_snapshot: unknown;
-      genome_hypothesis: string | null;
-      channel_experiment_styles: {
-        id: string;
-        name: string;
-        description: string | null;
-      }[];
-    }>(
-      (from, to) =>
-        client
-          .from('channel_experiments')
-          .select(
-            'id, account_id, connection_id, format_family, title, hypothesis, expected_outcome, status, started_at, ended_at, conclusion, outcome_status, result_snapshot, genome_hypothesis, channel_experiment_styles(id, name, description)',
-          )
-          .eq('account_id', input.accountId)
-          .eq('connection_id', input.connectionId)
-          .eq('status', 'concluded')
-          .not('genome_hypothesis', 'is', null)
-          .order('id')
-          .range(from, to),
-      'genome hypothesis channel experiments',
-    );
-
-    const tests = [
-      ...tested.flatMap((row): LinkedTest[] => {
-        const hypothesis = parseGenomeHypothesisKey(row.genome_hypothesis);
-        const backing = concludedChangeLogEntry(row);
-
-        return hypothesis && backing ? [{ hypothesis, backing }] : [];
-      }),
-      ...channelTested.flatMap((row): LinkedTest[] => {
-        const hypothesis = parseGenomeHypothesisKey(row.genome_hypothesis);
-        // Null unless concluded with the results the table froze: a
-        // running experiment's associations never back a claim.
-        const backing = toConcludedChannelExperiment({
-          ...row,
-          styles: row.channel_experiment_styles,
-        });
-
-        return hypothesis && backing ? [{ hypothesis, backing }] : [];
-      }),
-    ];
-
-    const updated = applyLinkedTests(analysis, tests);
 
     return {
       status: 'analysed',
       viewsDenominator,
-      analysis: updated,
-      recommendations: updated.findings.map(recommendFrom),
-      hypotheses: hypothesesFrom(updated),
-      templates: deriveTemplates([updated]),
+      ...genomeFindingsFrom({
+        rows,
+        platform,
+        formatFamily: input.formatFamily,
+        stage: input.stage,
+        signal: measure.signal,
+        checkpointDays: input.checkpointDays,
+        control: input.control,
+        tests,
+      }),
     };
   },
   { schema: GenomeFindingsSchema, auth: true },

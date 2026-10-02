@@ -1,0 +1,77 @@
+spec_id: "FILM-1908"
+title: "External Generation Tools and the Story Stage from Claude"
+phase: 19
+phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-1901"
+    note: "prepare and commit for the story stage"
+  - spec_id: "FILM-1903"
+    note: "runs, parts, leases"
+  - spec_id: "FILM-1904"
+    note: "the endpoint and the external-mode request context"
+summary: >
+  The write API an external agent uses: generic generation tools over the
+  stage registry, so registering a stage exposes it to Claude with no extra
+  code. start_generation opens an external run and returns the first brief;
+  submit_generation validates and stores one part, returning field errors or
+  the next brief; finalize_generation runs the same commit() the worker uses,
+  in one transaction. The story stage is the first proved end to end, with
+  zero model calls from StoryBook. Design: the EDD's "2. Generation runs and
+  leases", "3. MCP tool catalogue" and the external shot-list sequence diagram
+  (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
+acceptance_criteria:
+  - text: "Tools (studio:write): start_generation(stage, target, options), get_brief(runId, partKey), submit_generation(runId, partKey, output, model?), finalize_generation(runId), get_run(runId), cancel_generation(runId); stage is an enum generated from the registry"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "start_generation opens an external run (FILM-1903) and returns the first part's Brief; a second start on the same target and stage returns RUN_IN_PROGRESS with who holds it"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "submit_generation validates against the part's outputSchema and check(), stores the part in generation_run_parts, and returns {status: accepted, next, remaining} or {status: rejected, errors[{path, code, message}]}; it never writes content tables"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Submissions are idempotent per (runId, partKey): resubmitting replaces the part; a retried identical call returns the first result"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "finalize_generation checks every required part, re-checks target_version (TARGET_CHANGED), snapshots into content_revisions, runs commit() in one transaction, stamps origin {kind: external, clientName, model (self-reported, labelled so)}, and reports any chained run it opened"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Single-part stages finalize on submit"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "A brief stays under about 60 KB and a submission under about 100 KB; larger stages split into parts"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Story, end to end: an MCP client creates an episode, generates its story through the tools, and the web story page shows it with a 'Claude via MCP' origin; canon tables and auto-created assets match what server mode writes for the same output"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "For that run, llm_usage_analytics has zero rows and the gateway records no server-writer call"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "get_generation_history(episodeId) returns runs, modes, origins and validation failures"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+test_plan:
+  unit:
+    - {text: "submit with a missing field returns rejected with that path; resubmit accepted", met: false, reason: "not met — no test yet"}
+  integration:
+    - {text: "A scripted MCP SDK client against the local app drives start → submit → finalize for the story stage of a seeded episode", met: false, reason: "not met — no test yet"}
+  e2e:
+    - {text: "After the scripted run, Playwright opens the story page and reads the story and its origin badge; screenshots in the PR", met: false, reason: "not met — no test yet"}
+open_questions:
+  - "Is the agent's self-check against the quality rubric enough, or should commit refuse below a deterministic score (e.g. shots without a hook in the first 3 seconds)?"
+notes: |
+  The quality evaluators (idea-quality, story-quality, screenplay-quality,
+  shot-quality, translation-quality prompts) score server-mode output with a
+  second model call. In external mode the same prompt is rendered into the
+  brief as quality_rubric and the agent is asked to self-check; commit runs
+  only the deterministic checks of FILM-1901.
+feature:
+  database: null
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null
+  tools: ["start_generation", "get_brief", "submit_generation", "finalize_generation", "get_run", "cancel_generation", "get_generation_history"]
