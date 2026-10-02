@@ -55,8 +55,8 @@
       "name": "KB-167 a season with no episodes reads 0 views",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
-      "find": "      totalViews: null,\n      viewsScope: EMPTY_VIEWS_SCOPE,\n      totalLikes: 0,\n      totalComments: 0,\n      totalShares: 0,\n      totalSaves: null,\n      totalRevenueCents: null,\n      avgEngagementRate: 0,\n      episodeCount: 0,",
-      "replace": "      totalViews: 0,\n      viewsScope: EMPTY_VIEWS_SCOPE,\n      totalLikes: 0,\n      totalComments: 0,\n      totalShares: 0,\n      totalSaves: null,\n      totalRevenueCents: null,\n      avgEngagementRate: 0,\n      episodeCount: 0,",
+      "find": "      totalViews: null,\n      viewsScope: EMPTY_VIEWS_SCOPE,\n      totalLikes: 0,\n      totalComments: 0,\n      totalShares: 0,\n      totalSaves: null,\n      totalRevenueCents: null,\n      avgEngagementRate: emptyEngagementRate(readWindow(dateFilters, [])),\n      episodeCount: 0,",
+      "replace": "      totalViews: 0,\n      viewsScope: EMPTY_VIEWS_SCOPE,\n      totalLikes: 0,\n      totalComments: 0,\n      totalShares: 0,\n      totalSaves: null,\n      totalRevenueCents: null,\n      avgEngagementRate: emptyEngagementRate(readWindow(dateFilters, [])),\n      episodeCount: 0,",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/nothing-measured-views.test.ts",
       "pattern": "a season with no episodes has no views"
