@@ -13,7 +13,7 @@ import { wholeShotSeconds } from '../src/lib/schemas/shot-list.schema';
 
 const ROOT = resolve(__dirname, '../../../..');
 const WRITERS = [
-  'packages/features/generation/src/stages/shots.ts',
+  'apps/web/lambda/llm-worker/handlers/shot-generation.ts',
   'packages/features/episodes/src/lib/server/mutations/shot-actions.ts',
 ];
 
