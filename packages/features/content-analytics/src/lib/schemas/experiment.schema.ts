@@ -60,7 +60,7 @@ export const BAKED_IN_CATEGORIES: ReadonlySet<string> =
   ]);
 
 export const BAKED_IN_NOTE =
-  'This kind of change is part of the video itself (or, for schedule, of when it went out), so it cannot be made to videos already published. The before and after figures compare the same videos, so they will not measure it. Comparing styles across new videos is what channel experiments (coming) are for.';
+  'This kind of change is part of the video itself (or, for schedule, of when it went out), so it cannot be made to videos already published. The before and after figures compare the same videos, so they will not measure it. Comparing styles across new videos is what Channel experiments are for.';
 
 /** A stored category's label; an unrecognised one shows as stored. */
 export function categoryLabel(category: string): string {

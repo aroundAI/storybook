@@ -300,9 +300,9 @@ begin
     return new;
   end if;
 
-  if new.status is distinct from old.status
-     and not (old.status = 'planned' and new.status in ('running', 'abandoned'))
-     and not (old.status = 'running' and new.status in ('concluded', 'abandoned')) then
+  -- One move rule for the Change log and channel experiments (FILM-1724,
+  -- migration 20261001114902).
+  if not public.experiment_status_move_allowed(old.status, new.status) then
     raise exception 'An experiment cannot move from % to %', old.status, new.status;
   end if;
 

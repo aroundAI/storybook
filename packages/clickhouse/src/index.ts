@@ -307,6 +307,43 @@ export type {
   ViewsDenominator,
 } from './lib/view-definitions';
 
+// Which of a channel's styles work (FILM-1724). `ConcludedChannelExperiment`
+// is the only form a causal claim may cite (FILM-1717/1718/1719).
+export {
+  EXPERIMENT_MEASURES,
+  EXPERIMENT_MEASURE_DEFINITIONS,
+  EXPERIMENT_VERDICT_MIN,
+  HOOK_MAX_DURATION_SECONDS,
+  compareStyles,
+  evidenceKindOf,
+  experimentCheckpoints,
+  experimentFindings,
+  isExperimentMeasure,
+  measurementKey,
+  quantileInclusive,
+  relationBetween,
+  summariseStyle,
+  toConcludedChannelExperiment,
+  verdictFor,
+} from './lib/channel-experiments';
+export type {
+  ChannelExperimentRecord,
+  ChannelExperimentResults,
+  CheckpointVerdict,
+  ConcludedChannelExperiment,
+  ExperimentEvidenceKind,
+  ExperimentFinding,
+  ExperimentMeasure,
+  ExperimentVideoInput,
+  MeasureCheckpointResult,
+  NotMeasurableReason,
+  PairRelation,
+  StyleDistribution,
+  StylePair,
+  StyleSummary,
+  VideoMeasurement,
+} from './lib/channel-experiments';
+
 // A video against its own channel's history at the same age (FILM-1715).
 // Pure, so a card renders the four states from the type the server built.
 export {

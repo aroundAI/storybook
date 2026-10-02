@@ -1164,6 +1164,202 @@ export type Database = {
           },
         ]
       }
+      channel_experiment_styles: {
+        Row: {
+          created_at: string
+          description: string | null
+          experiment_id: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          experiment_id: string
+          id?: string
+          name: string
+          sort_order: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          experiment_id?: string
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_experiment_styles_experiment_id_fkey"
+            columns: ["experiment_id"]
+            isOneToOne: false
+            referencedRelation: "channel_experiments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      channel_experiment_videos: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          connection_id: string
+          experiment_id: string
+          overridden: boolean
+          publish_id: string
+          style_id: string
+          suggested_style_id: string | null
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          connection_id: string
+          experiment_id: string
+          overridden?: boolean
+          publish_id: string
+          style_id: string
+          suggested_style_id?: string | null
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          connection_id?: string
+          experiment_id?: string
+          overridden?: boolean
+          publish_id?: string
+          style_id?: string
+          suggested_style_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_experiment_videos_experiment_fkey"
+            columns: ["experiment_id", "connection_id"]
+            isOneToOne: false
+            referencedRelation: "channel_experiments"
+            referencedColumns: ["id", "connection_id"]
+          },
+          {
+            foreignKeyName: "channel_experiment_videos_publish_fkey"
+            columns: ["publish_id", "connection_id"]
+            isOneToOne: false
+            referencedRelation: "publishes"
+            referencedColumns: ["id", "platform_connection_id"]
+          },
+          {
+            foreignKeyName: "channel_experiment_videos_style_fkey"
+            columns: ["style_id", "experiment_id"]
+            isOneToOne: false
+            referencedRelation: "channel_experiment_styles"
+            referencedColumns: ["id", "experiment_id"]
+          },
+          {
+            foreignKeyName: "channel_experiment_videos_suggested_fkey"
+            columns: ["suggested_style_id", "experiment_id"]
+            isOneToOne: false
+            referencedRelation: "channel_experiment_styles"
+            referencedColumns: ["id", "experiment_id"]
+          },
+        ]
+      }
+      channel_experiments: {
+        Row: {
+          account_id: string
+          conclusion: string | null
+          connection_id: string
+          created_at: string
+          created_by: string | null
+          ended_at: string | null
+          expected_outcome: string | null
+          format_family: string
+          hypothesis: string | null
+          id: string
+          measures: string[]
+          outcome_status: string
+          result_snapshot: Json
+          started_at: string | null
+          status: string
+          time_zone: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          conclusion?: string | null
+          connection_id: string
+          created_at?: string
+          created_by?: string | null
+          ended_at?: string | null
+          expected_outcome?: string | null
+          format_family: string
+          hypothesis?: string | null
+          id?: string
+          measures?: string[]
+          outcome_status?: string
+          result_snapshot?: Json
+          started_at?: string | null
+          status?: string
+          time_zone?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          conclusion?: string | null
+          connection_id?: string
+          created_at?: string
+          created_by?: string | null
+          ended_at?: string | null
+          expected_outcome?: string | null
+          format_family?: string
+          hypothesis?: string | null
+          id?: string
+          measures?: string[]
+          outcome_status?: string
+          result_snapshot?: Json
+          started_at?: string | null
+          status?: string
+          time_zone?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_experiments_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_experiments_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "public_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_experiments_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_experiments_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_experiments_connection_account_fkey"
+            columns: ["connection_id", "account_id"]
+            isOneToOne: false
+            referencedRelation: "platform_connections"
+            referencedColumns: ["id", "account_id"]
+          },
+        ]
+      }
       character_details: {
         Row: {
           asset_id: string
@@ -5572,6 +5768,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      channel_experiment_suggested_style: {
+        Args: { p_experiment_id: string }
+        Returns: string
+      }
       cleanup_expired_oauth_states: { Args: never; Returns: number }
       commit_canon_changes: {
         Args: {
@@ -5592,6 +5792,20 @@ export type Database = {
       count_tagged_publishes: {
         Args: { target_account_id: string }
         Returns: number
+      }
+      create_channel_experiment: {
+        Args: {
+          p_account_id: string
+          p_connection_id: string
+          p_expected_outcome: string
+          p_format_family: string
+          p_hypothesis: string
+          p_measures: string[]
+          p_styles: Json
+          p_time_zone: string
+          p_title: string
+        }
+        Returns: string
       }
       create_character_with_details: {
         Args: {
@@ -5676,6 +5890,10 @@ export type Database = {
       }
       episode_in_account: {
         Args: { account_id: string; episode_id: string }
+        Returns: boolean
+      }
+      experiment_status_move_allowed: {
+        Args: { p_from: string; p_to: string }
         Returns: boolean
       }
       get_account_invitations: {
@@ -6119,6 +6337,14 @@ export type Database = {
       project_in_account: {
         Args: { account_id: string; project_id: string }
         Returns: boolean
+      }
+      publish_format_family: {
+        Args: {
+          p_content_type: string
+          p_duration_seconds: number
+          p_platform: string
+        }
+        Returns: string
       }
       publish_in_account: {
         Args: { account_id: string; publish_id: string }

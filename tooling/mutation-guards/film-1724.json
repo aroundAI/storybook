@@ -1,0 +1,118 @@
+{
+  "feature": "FILM-1724",
+  "mutations": [
+    {
+      "name": "CE-DB1 the 2-8 style count is not checked",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/channel-experiments.test.sql",
+      "sql": "drop trigger channel_experiment_styles_count on public.channel_experiment_styles; drop trigger channel_experiments_style_count on public.channel_experiments;"
+    },
+    {
+      "name": "CE-DB2 assignments are not guarded",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/channel-experiments.test.sql",
+      "sql": "drop trigger channel_experiment_videos_guard on public.channel_experiment_videos;"
+    },
+    {
+      "name": "CE-DB3 the channel experiment lifecycle is not held",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/channel-experiments.test.sql",
+      "sql": "drop trigger channel_experiments_guard_lifecycle on public.channel_experiments;"
+    },
+    {
+      "name": "CE-DB4 any status move is allowed",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/channel-experiments.test.sql",
+      "sql": "create or replace function public.experiment_status_move_allowed(p_from text, p_to text) returns boolean language sql immutable set search_path = '' as $$ select true $$;"
+    },
+    {
+      "name": "CE-DB5 an assignment needs no project role",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/channel-experiments.test.sql",
+      "sql": "alter policy \"channel_experiment_videos_create\" on public.channel_experiment_videos with check (exists (select 1 from public.channel_experiments e where e.id = experiment_id and public.has_account_access(e.account_id)));"
+    },
+    {
+      "name": "CE-DB6 a concluded experiment can be deleted",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/channel-experiments.test.sql",
+      "sql": "alter policy \"channel_experiments_delete\" on public.channel_experiments using (public.has_account_access(account_id));"
+    },
+    {
+      "name": "CE-DB7 early retention is offered on long-form",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/channel-experiments.test.sql",
+      "sql": "alter table public.channel_experiments drop constraint channel_experiments_hook_short_only_check;"
+    },
+    {
+      "name": "CE-DB8 the suggestion ignores how many videos each style has",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/channel-experiments.test.sql",
+      "sql": "create or replace function public.channel_experiment_suggested_style(p_experiment_id uuid) returns uuid language sql stable security invoker set search_path = '' as $$ select s.id from public.channel_experiment_styles s where s.experiment_id = p_experiment_id order by s.sort_order limit 1 $$;"
+    },
+    {
+      "name": "CE-DB9 someone outside the account can add a style",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/channel-experiments.test.sql",
+      "sql": "alter policy \"channel_experiment_styles_create\" on public.channel_experiment_styles with check (true);"
+    },
+    {
+      "name": "CE-E1 the assignment form keeps the last choice, not the new suggestion",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/analytics/channel-experiments/_components/channel-experiment-detail.tsx",
+      "find": "          key={`${data.suggestedStyleId}:${data.videos.length}`}",
+      "replace": "          key={'kept'}",
+      "spec": "tests/channel-experiments/channel-experiments.spec.ts",
+      "grep": "records an override"
+    },
+    {
+      "name": "CE-U1 a pending video counts as a zero",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/channel-experiments.ts",
+      "find": "    else if (measurement.state === 'pending') pending += 1;",
+      "replace": "    else if (measurement.state === 'pending') values.push(0);",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/channel-experiments.test.ts",
+      "pattern": "never as a zero in the median"
+    },
+    {
+      "name": "CE-U2 touching ranges are called a difference",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/channel-experiments.ts",
+      "find": "  if (style.p25 > other.p75) return 'ahead';",
+      "replace": "  if (style.p25 >= other.p75) return 'ahead';",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/channel-experiments.test.ts",
+      "pattern": "treats touching ranges as overlapping"
+    },
+    {
+      "name": "CE-U3 a verdict is given below the threshold",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/channel-experiments.ts",
+      "find": "  if (needs.length > 0) return { kind: 'too_few', threshold, needs };",
+      "replace": "  if (needs.length === styles.length) return { kind: 'too_few', threshold, needs };",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/channel-experiments.test.ts",
+      "pattern": "gives no verdict while any style is under the threshold"
+    },
+    {
+      "name": "CE-U4 a running experiment is causal evidence",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/channel-experiments.ts",
+      "find": "    record.status !== 'concluded' ||\n",
+      "replace": "",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/channel-experiments.test.ts",
+      "pattern": "is null for an experiment that has not concluded"
+    },
+    {
+      "name": "CE-U5 the SQL format family table drifts from FILM-1716's",
+      "kind": "unit",
+      "file": "apps/web/supabase/migrations/20261001114902_channel-experiments.sql",
+      "find": "      ('twitter', 'short', 'clip'),",
+      "replace": "      ('twitter', 'short', 'short_vertical'),",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/channel-experiment-sql.test.ts",
+      "pattern": "maps every"
+    }
+  ]
+}
