@@ -136,6 +136,12 @@
       "sql": "drop policy mcp_tool_calls_read on public.mcp_tool_calls; create policy mcp_tool_calls_read on public.mcp_tool_calls for select to authenticated using (public.has_role_on_account(account_id));"
     },
     {
+      "name": "MCP DB6 a connection is bound to a personal account",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/mcp-connections-rls.test.sql",
+      "sql": "drop trigger require_team_account on public.mcp_connections; drop trigger require_team_account on public.mcp_tool_calls;"
+    },
+    {
       "name": "MCP DB5 a token for another team is created",
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/mcp-connections-rls.test.sql",

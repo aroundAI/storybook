@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(27);
+select plan(29);
 
 -- FILM-1904. An MCP connection is one user's grant inside one team. The user
 -- reads and revokes their own connections and nothing else about them; token
@@ -250,6 +250,25 @@ select throws_ok(
      values ('19040000-0000-4000-8000-00000000000a', 'whoami', 'ok', 'INTERNAL', 1) $$,
   '23514', null,
   'an ok call cannot carry an error code'
+);
+
+-- ==================================
+-- Team accounts only (KB-99): no connection or audit row on a personal account
+-- ==================================
+
+select throws_ok(
+  $$ insert into public.mcp_connections (user_id, account_id, kind, name, scopes)
+     values (tests.get_supabase_uid('mcp_alice'), tests.get_supabase_uid('mcp_alice'),
+             'pat', 'personal', array['studio:read']) $$,
+  '23514', null,
+  'a connection cannot be bound to a personal account, even by the service role'
+);
+
+select throws_ok(
+  $$ insert into public.mcp_tool_calls (account_id, tool, status, duration_ms)
+     values (tests.get_supabase_uid('mcp_alice'), 'whoami', 'ok', 1) $$,
+  '23514', null,
+  'an audit row cannot name a personal account'
 );
 
 select * from finish();

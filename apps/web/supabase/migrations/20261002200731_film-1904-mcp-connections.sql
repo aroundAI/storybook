@@ -43,6 +43,11 @@ create index mcp_connections_user_account_idx
 create index mcp_connections_account_idx
   on public.mcp_connections (account_id);
 
+-- A connection is bound to a team (KB-99: the product is team accounts only)
+create trigger require_team_account
+  before insert or update of account_id on public.mcp_connections
+  for each row execute function kit.require_team_account();
+
 alter table public.mcp_connections enable row level security;
 
 revoke all on public.mcp_connections from anon, authenticated;
@@ -110,6 +115,10 @@ create index mcp_tool_calls_account_created_idx
 
 create index mcp_tool_calls_connection_created_idx
   on public.mcp_tool_calls (connection_id, created_at desc);
+
+create trigger require_team_account
+  before insert or update of account_id on public.mcp_tool_calls
+  for each row execute function kit.require_team_account();
 
 alter table public.mcp_tool_calls enable row level security;
 
