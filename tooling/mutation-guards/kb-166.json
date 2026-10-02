@@ -1,0 +1,75 @@
+{
+  "feature": "KB-166",
+  "mutations": [
+    {
+      "name": "KB-166 the Views card gives Facebook's reason whatever the scope",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "      notMeasuredReason: viewsNotMeasuredReason(viewsScope),",
+      "replace": "      notMeasuredReason: viewsNotMeasuredReason({\n        platforms: ['facebook'],\n        withRows: ['facebook'],\n        windowLabel: '',\n      }),",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/components/__tests__/metric-cards-views.test.tsx",
+      "pattern": "a YouTube-only scope with no rows yet gives the no-data reason"
+    },
+    {
+      "name": "KB-166 a platform with no rows adds no reason",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/views.ts",
+      "find": "    if (scope.withRows.includes(platform)) return [];",
+      "replace": "    return [];",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/views-not-measured-reason.test.ts",
+      "pattern": "YouTube only, no rows yet"
+    },
+    {
+      "name": "KB-166 the matrix loses Facebook's views note",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/data-provenance.ts",
+      "find": "      viewsNote:\n        'Facebook counts four different kinds of view, and none of them is a view in this sense, so its plays are not counted as views.',\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/views-not-measured-reason.test.ts",
+      "pattern": "the matrix has a views note exactly where"
+    },
+    {
+      "name": "KB-166 a views scope counts every publish as having rows",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/views.ts",
+      "find": "        .filter(({ id }) => withRows.has(id))",
+      "replace": "        .filter(() => true)",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/episode-analytics-unmeasured.test.ts",
+      "pattern": "YouTube only, no rows yet"
+    },
+    {
+      "name": "KB-166 the company dashboard sends no views scope",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/account-dashboard-actions.ts",
+      "find": "    viewsScope: viewsScopeOf(\n      allPublishes,",
+      "replace": "    viewsScope: EMPTY_VIEWS_SCOPE ?? viewsScopeOf(\n      allPublishes,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/account-dashboard-unmeasured.test.ts",
+      "pattern": "says which platforms are behind the views"
+    },
+    {
+      "name": "KB-166 the company dashboard's Views card gives Facebook's reason for an empty YouTube publish",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "      notMeasuredReason: viewsNotMeasuredReason(viewsScope),",
+      "replace": "      notMeasuredReason: viewsNotMeasuredReason({\n        platforms: ['facebook'],\n        withRows: ['facebook'],\n        windowLabel: '',\n      }),",
+      "spec": "tests/analytics/company-dashboard-evidence.spec.ts",
+      "grep": "Facebook with rows and YouTube without",
+      "env": { "CLICKHOUSE_EVIDENCE": "1" }
+    },
+    {
+      "name": "KB-166 the episode page's Views card gives Facebook's reason for a YouTube episode with no rows",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "      notMeasuredReason: viewsNotMeasuredReason(viewsScope),",
+      "replace": "      notMeasuredReason: viewsNotMeasuredReason({\n        platforms: ['facebook'],\n        withRows: ['facebook'],\n        windowLabel: '',\n      }),",
+      "spec": "tests/analytics/company-dashboard-evidence.spec.ts",
+      "grep": "a YouTube-only episode with no rows yet",
+      "env": { "CLICKHOUSE_EVIDENCE": "1" }
+    }
+  ]
+}

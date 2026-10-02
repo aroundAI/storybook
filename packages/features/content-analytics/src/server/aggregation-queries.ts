@@ -19,8 +19,16 @@ import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { measuredFigure, sumMeasured } from '../lib/export-coverage';
-import { addViews, compareViewsDesc, viewsShare } from '../lib/views';
-import type { Views } from '../lib/views';
+import {
+  EMPTY_VIEWS_SCOPE,
+  addViews,
+  compareViewsDesc,
+  mergeViewsScopes,
+  viewsScopeOf,
+  viewsShare,
+  viewsWindowLabel,
+} from '../lib/views';
+import type { Views, ViewsScope } from '../lib/views';
 import { assertProjectAccess } from './scope-access';
 
 /**
@@ -31,6 +39,8 @@ export interface EpisodeAnalytics {
   title: string;
   episodeNumber: number;
   totalViews: Views;
+  /** What `totalViews` covers, for why it is null (KB-166). */
+  viewsScope: ViewsScope;
   totalLikes: number;
   totalComments: number;
   totalShares: number;
@@ -69,6 +79,8 @@ export interface SeasonAnalytics {
   seasonNumber: number;
   title: string;
   totalViews: Views;
+  /** What `totalViews` covers, for why it is null (KB-166). */
+  viewsScope: ViewsScope;
   totalLikes: number;
   totalComments: number;
   totalShares: number;
@@ -104,6 +116,8 @@ export interface ProjectAnalytics {
   projectId: string;
   projectName: string;
   totalViews: Views;
+  /** What `totalViews` covers, for why it is null (KB-166). */
+  viewsScope: ViewsScope;
   totalLikes: number;
   totalComments: number;
   totalShares: number;
@@ -143,6 +157,7 @@ function emptyEpisodeAnalytics(
     title,
     episodeNumber,
     totalViews: 0,
+    viewsScope: EMPTY_VIEWS_SCOPE,
     totalLikes: 0,
     totalComments: 0,
     totalShares: 0,
@@ -310,6 +325,11 @@ export async function getEpisodeAnalytics(
     title: episode.title,
     episodeNumber: episode.number,
     totalViews,
+    viewsScope: viewsScopeOf(
+      publishes,
+      perVideoTotals,
+      viewsWindowLabel(dateFilters.startDate, dateFilters.endDate),
+    ),
     totalLikes,
     totalComments,
     totalShares,
@@ -373,6 +393,7 @@ export async function getSeasonAnalytics(
       seasonNumber: season.number,
       title: season.name || `Season ${season.number}`,
       totalViews: 0,
+      viewsScope: EMPTY_VIEWS_SCOPE,
       totalLikes: 0,
       totalComments: 0,
       totalShares: 0,
@@ -413,6 +434,7 @@ export async function getSeasonAnalytics(
       seasonNumber: season.number,
       title: season.name || `Season ${season.number}`,
       totalViews: 0,
+      viewsScope: EMPTY_VIEWS_SCOPE,
       totalLikes: 0,
       totalComments: 0,
       totalShares: 0,
@@ -542,6 +564,11 @@ export async function getSeasonAnalytics(
     seasonNumber: season.number,
     title: season.name || `Season ${season.number}`,
     totalViews,
+    viewsScope: viewsScopeOf(
+      allPublishes,
+      perVideoTotals,
+      viewsWindowLabel(dateFilters.startDate, dateFilters.endDate),
+    ),
     totalLikes,
     totalComments,
     totalShares,
@@ -610,10 +637,12 @@ export async function getProjectAnalytics(
   let totalRevenue = 0;
   let totalEngagement = 0;
   let contentCount = 0;
+  const seasonScopes: ViewsScope[] = [];
 
   for (const s of seasons || []) {
     const analytics = await getSeasonAnalytics(s.id, options);
     if (analytics) {
+      seasonScopes.push(analytics.viewsScope);
       seasonAnalyticsList.push({
         seasonId: s.id,
         seasonNumber: s.number,
@@ -664,6 +693,10 @@ export async function getProjectAnalytics(
     projectId,
     projectName: project.name,
     totalViews,
+    viewsScope: mergeViewsScopes(
+      seasonScopes,
+      viewsWindowLabel(dateFilters.startDate, dateFilters.endDate),
+    ),
     totalLikes,
     totalComments,
     totalShares,

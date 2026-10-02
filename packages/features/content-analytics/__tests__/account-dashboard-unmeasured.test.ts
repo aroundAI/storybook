@@ -119,4 +119,15 @@ describe('the account dashboard, for figures no platform measured (KB-162)', () 
     expect(data.totals.watchTimeSeconds).toBeNull();
     expect(data.totals.subscribersGained).toBeNull();
   });
+
+  // KB-166: the Views card's reason is read from this scope.
+  it('says which platforms are behind the views and which had rows', async () => {
+    const data = await getAccountDashboardData('account-1');
+
+    expect(data.viewsScope).toEqual({
+      platforms: ['tiktok'],
+      withRows: [],
+      windowLabel: 'the last 30 days',
+    });
+  });
 });

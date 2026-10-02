@@ -13,8 +13,13 @@ import { getLogger } from '@kit/shared/logger';
 import { chunkIds, fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import { compareViewsDesc, viewsShare } from '../lib/views';
-import type { Views } from '../lib/views';
+import {
+  EMPTY_VIEWS_SCOPE,
+  compareViewsDesc,
+  viewsScopeOf,
+  viewsShare,
+} from '../lib/views';
+import type { Views, ViewsScope } from '../lib/views';
 import type { AnalyticsTotals, DailyMetric, TopContent } from '../types';
 
 /**
@@ -22,6 +27,8 @@ import type { AnalyticsTotals, DailyMetric, TopContent } from '../types';
  */
 export interface AccountDashboardData {
   totals: AnalyticsTotals;
+  /** What `totals.views` covers, for why it is null (KB-166). */
+  viewsScope: ViewsScope;
   previousPeriodTotals: AnalyticsTotals;
   dailyMetrics: DailyMetric[];
   platformBreakdown: {
@@ -209,6 +216,13 @@ export async function getAccountDashboardData(
 
   return {
     totals: currentAnalyticsTotals,
+    viewsScope: viewsScopeOf(
+      allPublishes,
+      perVideoTotals,
+      options?.startDate || options?.endDate
+        ? `${startDateStr} to ${endDateStr}`
+        : 'the last 30 days',
+    ),
     previousPeriodTotals: previousAnalyticsTotals,
     dailyMetrics,
     platformBreakdown,
@@ -250,6 +264,7 @@ function getEmptyDashboardData(): AccountDashboardData {
       revenueCents: 0,
       contentCount: 0,
     },
+    viewsScope: EMPTY_VIEWS_SCOPE,
     previousPeriodTotals: {
       views: 0,
       likes: 0,

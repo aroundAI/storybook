@@ -310,6 +310,13 @@ export type PlatformCapability = LevelAxis &
      */
     note: string;
     /**
+     * Only on `engagement`, and exactly where the platform has no views
+     * column (FILM-1722's registry): one sentence, rendered verbatim, saying
+     * why it adds nothing to a views total. A null Views figure reads it
+     * (KB-166); the binding test is `views-not-measured-reason.test.ts`.
+     */
+    viewsNote?: string;
+    /**
      * Raw source names the platform reports, for the FILM-1708 drill-down.
      * Unset today: YouTube's live in `traffic-groups.ts`, which this module
      * may not import a value from, and nobody else has any.
@@ -491,6 +498,8 @@ export const CAPABILITY_MATRIX: Record<
       method: 'snapshot_delta_fetch_day',
       ...FACEBOOK_VIDEO,
       note: 'Facebook only reports lifetime totals, so each day shows the reactions, comments and shares since we last checked, dated to the day we checked; it counts four different kinds of view and none is a view in YouTube’s sense, so Facebook adds nothing to a views total.',
+      viewsNote:
+        'Facebook counts four different kinds of view, and none of them is a view in this sense, so its plays are not counted as views.',
       reference: {
         section: 'Facebook',
         surface: 'facebook/video-insights',

@@ -87,7 +87,14 @@ describe('MetricCards', () => {
   };
 
   it('should render 7 skeleton cards when loading', () => {
-    render(<MetricCards data={null} previousData={null} isLoading={true} />);
+    render(
+      <MetricCards
+        data={null}
+        previousData={null}
+        isLoading={true}
+        viewsScope={null}
+      />,
+    );
 
     const skeletons = screen.getAllByTestId('skeleton');
     expect(skeletons.length).toBeGreaterThanOrEqual(7);
@@ -99,6 +106,7 @@ describe('MetricCards', () => {
         data={mockData}
         previousData={mockPreviousData}
         isLoading={false}
+        viewsScope={null}
       />,
     );
 
@@ -112,6 +120,7 @@ describe('MetricCards', () => {
         data={mockData}
         previousData={mockPreviousData}
         isLoading={false}
+        viewsScope={null}
       />,
     );
 
@@ -128,6 +137,7 @@ describe('MetricCards', () => {
         data={mockData}
         previousData={mockPreviousData}
         isLoading={false}
+        viewsScope={null}
       />,
     );
 
@@ -141,7 +151,14 @@ describe('MetricCards', () => {
   });
 
   it('should handle null data gracefully', () => {
-    render(<MetricCards data={null} previousData={null} isLoading={false} />);
+    render(
+      <MetricCards
+        data={null}
+        previousData={null}
+        isLoading={false}
+        viewsScope={null}
+      />,
+    );
 
     const cards = screen.getAllByTestId('card');
     expect(cards).toHaveLength(7);
@@ -155,7 +172,12 @@ describe('MetricCards', () => {
       // `previousData={null}` was read as zero, and every non-zero metric
       // read "+100.0%" with a green arrow.
       const { container } = render(
-        <MetricCards data={mockData} previousData={null} isLoading={false} />,
+        <MetricCards
+          data={mockData}
+          previousData={null}
+          isLoading={false}
+          viewsScope={null}
+        />,
       );
 
       expect(container.querySelector('[data-test="metric-change"]')).toBeNull();
@@ -173,6 +195,7 @@ describe('MetricCards', () => {
           data={mockData}
           previousData={{ ...mockPreviousData, views: 0 }}
           isLoading={false}
+          viewsScope={null}
         />,
       );
 
@@ -194,6 +217,7 @@ describe('MetricCards', () => {
           data={mockData}
           previousData={mockPreviousData}
           isLoading={false}
+          viewsScope={null}
         />,
       );
 
@@ -281,6 +305,7 @@ describe('MetricCards, for a figure the platforms did not measure (KB-149)', () 
         data={tiktokEpisode}
         previousData={null}
         isLoading={false}
+        viewsScope={null}
       />,
     );
 
@@ -305,6 +330,7 @@ describe('MetricCards, for a figure the platforms did not measure (KB-149)', () 
         data={{ ...tiktokEpisode, watchTimeSeconds: 600, subscribersGained: 4 }}
         previousData={null}
         isLoading={false}
+        viewsScope={null}
       />,
     );
 

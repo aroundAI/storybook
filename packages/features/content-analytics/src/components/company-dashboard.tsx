@@ -43,6 +43,7 @@ export function CompanyDashboard({
         data={data.totals}
         previousData={data.previousPeriodTotals}
         isLoading={false}
+        viewsScope={data.viewsScope}
       />
 
       {/* Main Content Grid */}

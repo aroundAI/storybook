@@ -37,13 +37,24 @@ type Platform = 'tiktok' | 'youtube' | 'facebook';
 interface Seeded {
   team: SeededTeam;
   projectId: string;
+  projectSlug: string;
+  /** Each platform's episode slug, for the episode's analytics page. */
+  episodeSlugs: Partial<Record<Platform, string>>;
 }
 
-/** A team with one published video per platform, each on its own channel. */
-async function seedTeam(page: Page, platforms: Platform[]): Promise<Seeded> {
+/**
+ * A team with one published video per platform, each on its own channel.
+ * A platform in `noRows` is published but has no rows yet (KB-166).
+ */
+async function seedTeam(
+  page: Page,
+  platforms: Platform[],
+  { noRows = [] }: { noRows?: Platform[] } = {},
+): Promise<Seeded> {
   const team = await seedTeamAccount({ emailPrefix: 'kb162' });
   const project = await seedProject(team);
   const rows: object[] = [];
+  const episodeSlugs: Seeded['episodeSlugs'] = {};
 
   for (const [index, platform] of platforms.entries()) {
     const connection = await seedYouTubeConnection(
@@ -53,9 +64,16 @@ async function seedTeam(page: Page, platforms: Platform[]): Promise<Seeded> {
     );
     const episode = await insertRow<{ id: string }>(
       'episodes',
-      { project_id: project.id, number: index + 1, title: `${platform} cut` },
+      {
+        project_id: project.id,
+        number: index + 1,
+        title: `${platform} cut`,
+        // The episode routes resolve `[episodeSlug]` by slug.
+        slug: `kb166-${platform}-${project.id.slice(0, 8)}`,
+      },
       { key: SERVICE_ROLE_KEY },
     );
+    episodeSlugs[platform] = `kb166-${platform}-${project.id.slice(0, 8)}`;
     const publish = await insertRow<{ id: string }>(
       'publishes',
       {
@@ -69,13 +87,20 @@ async function seedTeam(page: Page, platforms: Platform[]): Promise<Seeded> {
       { key: SERVICE_ROLE_KEY },
     );
 
-    rows.push(...metricRows(project.id, publish.id, platform));
+    if (!noRows.includes(platform)) {
+      rows.push(...metricRows(project.id, publish.id, platform));
+    }
   }
 
-  await insertClickHouse('video_metrics', rows);
+  if (rows.length > 0) await insertClickHouse('video_metrics', rows);
   await signInAs(page, team);
 
-  return { team, projectId: project.id };
+  return {
+    team,
+    projectId: project.id,
+    projectSlug: project.slug,
+    episodeSlugs,
+  };
 }
 
 /**
@@ -130,7 +155,7 @@ function card(page: Page, key: string) {
   return byTest(page, `metric-card-${key}`);
 }
 
-async function shoot(page: Page, name: string) {
+async function shoot(page: Page, name: string, bug = 'kb162') {
   if (!process.env.CAPTURE_EVIDENCE) return;
 
   await page.mouse.move(0, 0);
@@ -139,7 +164,7 @@ async function shoot(page: Page, name: string) {
     document.getAnimations().every((a) => a.playState !== 'running'),
   );
   mkdirSync(OUT, { recursive: true });
-  await page.screenshot({ path: `${OUT}/kb162-${name}.png`, fullPage: true });
+  await page.screenshot({ path: `${OUT}/${bug}-${name}.png`, fullPage: true });
 }
 
 test.describe('Company dashboard: a figure no platform measured (KB-162)', () => {
@@ -226,5 +251,54 @@ test.describe('Company dashboard: a figure no platform measured (KB-162)', () =>
     await expect(byTest(card(page, 'likes'), 'metric-value')).toHaveText('14');
 
     await shoot(page, '3-facebook-team');
+  });
+
+  /**
+   * KB-166: a null Views total gave Facebook's reason whatever the scope.
+   * The reason comes from the scope's platforms: the matrix's note for one
+   * with no views column, the chip's no-data line for one with no rows.
+   */
+  const FACEBOOK_NOTE =
+    'Facebook counts four different kinds of view, and none of them is a view in this sense, so its plays are not counted as views.';
+
+  test('Facebook with rows and YouTube without: the Views reason names both, each for its own cause', async ({
+    page,
+  }) => {
+    const fixture = await seedTeam(page, ['facebook', 'youtube'], {
+      noRows: ['youtube'],
+    });
+    seeded.push(fixture);
+
+    await openDashboard(page, fixture.team);
+
+    const notMeasured = byTest(card(page, 'views'), 'metric-not-measured');
+    await expect(notMeasured).toHaveText('Not measured');
+    await expect(notMeasured).toHaveAttribute(
+      'title',
+      `YouTube is connected, but has no data for the last 30 days. ${FACEBOOK_NOTE}`,
+    );
+
+    await shoot(page, '1-facebook-and-empty-youtube-team', 'kb166');
+  });
+
+  test('a YouTube-only episode with no rows yet: the Views reason is the no-data one, not Facebook’s', async ({
+    page,
+  }) => {
+    const fixture = await seedTeam(page, ['youtube'], { noRows: ['youtube'] });
+    seeded.push(fixture);
+
+    await page.goto(
+      `/home/${fixture.team.slug}/studio/${fixture.projectSlug}/episodes/${fixture.episodeSlugs.youtube}/analytics`,
+    );
+
+    const notMeasured = byTest(card(page, 'views'), 'metric-not-measured');
+    await expect(notMeasured).toHaveText('Not measured', { timeout: 30_000 });
+    await expect(notMeasured).toHaveAttribute(
+      'title',
+      'YouTube is connected, but has no data for any day so far.',
+    );
+    await expect(notMeasured).not.toHaveAttribute('title', /Facebook/);
+
+    await shoot(page, '2-youtube-episode-no-rows', 'kb166');
   });
 });
