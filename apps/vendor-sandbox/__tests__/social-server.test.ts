@@ -39,15 +39,14 @@ describe('origins', () => {
     }
   });
 
-  it('the default ports are 4101–4105, clear of the AI vendors', async () => {
+  it('the default ports are 4101–4104, clear of the AI vendors', async () => {
     const { DEFAULT_PORTS } = await import('../src/sandbox');
     expect([
       DEFAULT_PORTS.meta,
       DEFAULT_PORTS.tiktok,
       DEFAULT_PORTS.google,
       DEFAULT_PORTS.x,
-      DEFAULT_PORTS.linkedin,
-    ]).toEqual([4101, 4102, 4103, 4104, 4105]);
+    ]).toEqual([4101, 4102, 4103, 4104]);
     expect(new Set(Object.values(DEFAULT_PORTS)).size).toBe(
       Object.keys(DEFAULT_PORTS).length,
     );

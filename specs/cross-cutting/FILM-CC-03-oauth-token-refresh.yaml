@@ -41,13 +41,13 @@ acceptance_criteria:
     evidence: "KB-15: in the web app, `ensureValidToken` refreshes every platform before handing a token out (token-refresh.test.ts, 'X refresh (KB-15)'). The publish worker does not refresh, by design (owner decision, KB-15 D2): a second refresher would race the cron for rotating refresh tokens. It refuses what the app would refresh first, with the same `isWithinRefreshWindow` (apps/web/lambda/publish-worker/__tests__/token.test.ts), and SQS redelivers after the cron, which now leaves every token ≥ 30 minutes from expiry"
   - text: "Failed refresh marks connection as inactive"
     met: true
-    evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:598` and `:640` assert `is_active` false after a refused refresh; both go red with the `markConnectionInactive` call (`packages/features/publishing/src/lib/token-refresh.ts:335`) commented out (2026-09-25)"
+    evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:591` and `:640` assert `is_active` false after a refused refresh; both go red with the `markConnectionInactive` call (`packages/features/publishing/src/lib/token-refresh.ts:339`) commented out (2026-09-25)"
   - text: "Failed refresh sends user notification"
     met: true
-    evidence: "`sendReauthNotification` writes an in-app `warning` notification for the connection's account (`packages/features/publishing/src/lib/token-refresh.ts:715`), on a refused refresh and on a missing refresh token; `packages/features/publishing/__tests__/token-refresh.test.ts:795`, `:776`; guards CC3-1, CC3-2"
+    evidence: "`sendReauthNotification` writes an in-app `warning` notification for the connection's account (`packages/features/publishing/src/lib/token-refresh.ts:678`), on a refused refresh and on a missing refresh token; `packages/features/publishing/__tests__/token-refresh.test.ts:788`, `:776`; guards CC3-1, CC3-2"
   - text: "Notification includes reconnect link"
     met: true
-    evidence: "the notification links to `/home/<account slug>/settings/platforms` (`packages/features/publishing/src/lib/token-refresh.ts:712`), the page `pathsConfig.app.accountPlatforms` names; `packages/features/publishing/__tests__/token-refresh.test.ts:795`; guard CC3-3"
+    evidence: "the notification links to `/home/<account slug>/settings/platforms` (`packages/features/publishing/src/lib/token-refresh.ts:675`), the page `pathsConfig.app.accountPlatforms` names; `packages/features/publishing/__tests__/token-refresh.test.ts:788`; guard CC3-3"
   - text: "Background job refreshes tokens expiring within 1 hour"
     met: true
     evidence: "KB-15: it selected an hour ahead but refreshed only inside the 5-minute buffer, on every platform; it now refreshes what it selects (`CRON_REFRESH_WINDOW_MS`). token-refresh.test.ts, 'refreshExpiringTokens'; the real-DB run is in the KB-15 PR"
@@ -56,7 +56,7 @@ acceptance_criteria:
     evidence: null
   - text: "All refresh attempts are logged"
     met: true
-    evidence: "a stored refresh logs at info (`packages/features/publishing/src/lib/token-refresh.ts:287`), one that could not be stored at error, and every failure path already logged; `packages/features/publishing/__tests__/token-refresh.test.ts:851`; guard CC3-5"
+    evidence: "a stored refresh logs at info (`packages/features/publishing/src/lib/token-refresh.ts:291`), one that could not be stored at error, and every failure path already logged; `packages/features/publishing/__tests__/token-refresh.test.ts:844`; guard CC3-5"
 test_plan:
   unit:
     - text: "Test valid token returns immediately"
@@ -73,14 +73,14 @@ test_plan:
       evidence: null
     - text: "Test failed refresh marks connection inactive"
       met: true
-      evidence: "packages/features/publishing/__tests__/token-refresh.test.ts:598"
+      evidence: "packages/features/publishing/__tests__/token-refresh.test.ts:591"
     - text: "Test notification sent on failure"
       met: true
-      evidence: "packages/features/publishing/__tests__/token-refresh.test.ts:795"
+      evidence: "packages/features/publishing/__tests__/token-refresh.test.ts:788"
   integration:
     - text: "Test full refresh flow with mocked OAuth endpoints"
       met: true
-      evidence: "packages/features/publishing/__tests__/token-refresh.test.ts:490"
+      evidence: "packages/features/publishing/__tests__/token-refresh.test.ts:486"
     - text: "Test cron job processes multiple connections"
       met: true
       evidence: "packages/features/publishing/__tests__/token-refresh.test.ts, 'refreshExpiringTokens' — two platforms in the window, one outside it (KB-15)"

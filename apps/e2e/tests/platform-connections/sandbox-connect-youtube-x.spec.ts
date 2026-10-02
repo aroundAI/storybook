@@ -18,7 +18,7 @@ import { byTest } from '../utils/visible';
 
 /**
  * FILM-1804 §2 "Connect, one per platform", for the two platforms the
- * TikTok, Meta and LinkedIn specs leave: YouTube and X. The real connect
+ * TikTok and Meta specs leave: YouTube and X. The real connect
  * route sends the browser to the sandbox's consent screen (FILM-1802), the
  * real callback exchanges the code and stores the connection, and a second
  * connect into the state the first left re-attaches the same row with a

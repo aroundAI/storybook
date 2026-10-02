@@ -46,7 +46,7 @@
       "kind": "unit",
       "file": "packages/clickhouse/src/types.ts",
       "find": "export type AnalyticsPlatform =\n  | 'youtube'\n  | 'tiktok'\n  | 'instagram'\n  | 'facebook'\n  | 'twitter';",
-      "replace": "export type AnalyticsPlatform =\n  | 'youtube'\n  | 'tiktok'\n  | 'instagram'\n  | 'facebook'\n  | 'twitter'\n  | 'linkedin';",
+      "replace": "export type AnalyticsPlatform =\n  | 'youtube'\n  | 'tiktok'\n  | 'instagram'\n  | 'facebook'\n  | 'twitter'\n  | 'snapchat';",
       "cwd": "packages/clickhouse",
       "test": "__tests__/data-provenance.test.ts",
       "pattern": "lists exactly the members of AnalyticsPlatform"

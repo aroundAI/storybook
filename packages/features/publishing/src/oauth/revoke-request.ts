@@ -20,9 +20,9 @@ export type RevokeStatus =
   /** The app's own client credentials for the platform are missing. */
   | 'not_configured'
   /**
-   * The platform gives apps no way to revoke their own access (LinkedIn —
-   * KB-25). There is deliberately no "not yet" status: every platform either
-   * revokes or records that its vendor offers nothing to call.
+   * The platform gives apps no way to revoke their own access (KB-25; no
+   * supported platform today). There is deliberately no "not yet" status:
+   * every platform either revokes or records that its vendor offers nothing.
    */
   | 'vendor_offers_none';
 

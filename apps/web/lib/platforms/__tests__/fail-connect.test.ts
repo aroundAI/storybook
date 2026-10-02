@@ -230,7 +230,7 @@ describe('failConnect redirects to the landing, on our own origin', () => {
   it('uses the configured origin, not the one the request claims', async () => {
     const response = await failConnect({
       request: new NextRequest('https://evil.example/api/platforms/callback/x'),
-      platform: 'linkedin',
+      platform: 'twitter',
       code: 'missing_params',
       branch: 'missing_params',
     });
@@ -247,13 +247,13 @@ describe('failConnect redirects to the landing, on our own origin', () => {
       request: new NextRequest(
         'http://localhost:3000/api/platforms/callback/x',
       ),
-      platform: 'linkedin',
+      platform: 'twitter',
       code: 'missing_params',
       branch: 'missing_params',
     });
 
     expect(response.headers.get('location')).toBe(
-      'http://localhost:3000/settings/platforms?error=missing_params&platform=linkedin',
+      'http://localhost:3000/settings/platforms?error=missing_params&platform=twitter',
     );
   });
 });
@@ -305,7 +305,7 @@ describe('redactSecrets', () => {
   });
 });
 
-describe('the five callbacks give up through failConnect and nowhere else', () => {
+describe('the callbacks give up through failConnect and nowhere else', () => {
   it.each(CONNECT_PLATFORMS)('callback/%s/route.ts', (platform) => {
     const source = readFileSync(
       resolve(

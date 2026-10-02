@@ -145,8 +145,8 @@ describe('tokens', () => {
     const first = social.issueTokens('x', account.id, ['tweet.read']);
     const second = social.issueTokens('x', account.id, ['tweet.read']);
     const elsewhere = social.issueTokens(
-      'linkedin',
-      social.createAccount('linkedin').id,
+      'tiktok',
+      social.createAccount('tiktok').id,
       [],
     );
 

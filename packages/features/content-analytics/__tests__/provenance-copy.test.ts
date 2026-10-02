@@ -16,7 +16,7 @@ import { describe, expect, it } from 'vitest';
 const SRC = resolve(__dirname, '../src');
 const ROOTS = ['components', 'lib'].map((dir) => join(SRC, dir));
 
-const PLATFORM_NAME = /\b(?:YouTube|TikTok|Instagram|Facebook|LinkedIn)\b/;
+const PLATFORM_NAME = /\b(?:YouTube|TikTok|Instagram|Facebook)\b/;
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

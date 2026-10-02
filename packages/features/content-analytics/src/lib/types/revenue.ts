@@ -27,7 +27,6 @@ export interface RevenueRecord {
     | 'instagram'
     | 'facebook'
     | 'twitter'
-    | 'linkedin'
     | 'manual';
   date: string; // ISO date (YYYY-MM-DD)
   revenueCents: number;

@@ -34,7 +34,6 @@ export function PlatformSpecificSettingsComponent({
     case 'facebook':
       return <FacebookSettings settings={settings} onChange={onChange} />;
     case 'twitter':
-    case 'linkedin':
     default:
       return null;
   }

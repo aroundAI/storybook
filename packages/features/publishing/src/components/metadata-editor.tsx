@@ -9,7 +9,6 @@ import {
   Calendar as CalendarIcon,
   Facebook,
   Instagram,
-  Linkedin,
   Plus,
   X,
   Youtube,
@@ -63,7 +62,6 @@ const PLATFORM_ICONS: Record<Platform, React.ReactNode> = {
   instagram: <Instagram className="h-5 w-5 text-pink-500" />,
   facebook: <Facebook className="h-5 w-5 text-blue-600" />,
   twitter: <XIcon className="h-5 w-5" />,
-  linkedin: <Linkedin className="h-5 w-5 text-blue-700" />,
 };
 
 export function MetadataEditor({

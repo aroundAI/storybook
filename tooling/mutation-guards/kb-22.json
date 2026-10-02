@@ -42,11 +42,11 @@
       "pattern": "KB-45"
     },
     {
-      "name": "U5 The dialog promises a revoke the code does not make",
+      "name": "U5 The dialog and the code disagree about a revoke",
       "kind": "unit",
       "file": "packages/features/publishing/src/components/disconnect-copy.ts",
-      "find": "  twitter: true,\n  linkedin: false,\n};\n\n/**\n * Whether the statistics",
-      "replace": "  twitter: true,\n  linkedin: true,\n};\n\n/**\n * Whether the statistics",
+      "find": "  twitter: true,\n};\n\n/**\n * Whether the statistics",
+      "replace": "  twitter: false,\n};\n\n/**\n * Whether the statistics",
       "cwd": "packages/features/publishing",
       "test": "__tests__/revokers.test.ts",
       "pattern": "agree about revocation"

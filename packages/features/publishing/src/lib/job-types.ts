@@ -32,18 +32,4 @@ export interface DeleteJobMessage extends BaseJobMessage {
   platformAccountId?: string;
 }
 
-export interface SocialTextPostJobMessage {
-  type: 'social_text_post';
-  socialPostId: string;
-  userId: string;
-  platformConnectionId: string;
-  platform: 'linkedin';
-  text: string;
-  visibility: 'PUBLIC' | 'CONNECTIONS';
-  authorUrn: string;
-}
-
-export type JobMessage =
-  | PublishJobMessage
-  | DeleteJobMessage
-  | SocialTextPostJobMessage;
+export type JobMessage = PublishJobMessage | DeleteJobMessage;

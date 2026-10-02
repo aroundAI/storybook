@@ -1,0 +1,152 @@
+spec_id: "FILM-717"
+title: "Remove LinkedIn"
+phase: 7
+phase_name: "Publishing"
+category: feature
+status: DONE
+audited: "2026-10-02"
+effort: M
+dependencies:
+  - spec_id: "FILM-715"
+    note: "the integration this removes"
+  - spec_id: "FILM-514"
+    note: "the precedent for deleting a vendor's code (#386)"
+summary: >
+  LinkedIn is removed from the product. On 2026-10-02 the owner first chose to
+  "retire LinkedIn for now" instead of moving its pinned API version
+  (LinkedIn-Version 202401, sunset by LinkedIn on 2025-01-22, KB-164); later
+  the same day the owner widened that to deleting it everywhere, because its
+  text-post path "doesn't fit within how all the other platforms are
+  integrated", and LinkedIn will be planned again later (FILM-718). Every piece
+  of the integration is deleted, as FILM-514 deleted Suno: the provider and
+  publisher, the text-post path and the Social Posts page built on it, the
+  OAuth connect and callback routes and the card that reached them, LinkedIn
+  in publishing, scheduling, the worker and token refresh, the scope lists,
+  label maps, format families and VENDOR_API_PINS, the vendor sandbox's
+  LinkedIn origin with its fixtures and fidelity tests, its E2E specs and
+  guards, and its sections in the capability reference and docs. The database
+  keeps the value: no migration drops 'linkedin' from a CHECK or deletes a
+  row. A kept LinkedIn row is not a supported platform anywhere in the code,
+  so it is hidden, never refreshed and never published to, and no path can
+  create one.
+acceptance_criteria:
+  - text: "The owner's decisions are recorded with their words and both dates; FILM-715 is RETIRED as removed; KB-164 is closed as resolved by the removal; FILM-718 holds the re-integration, DEFERRED"
+    met: true
+    evidence: "this file; specs/phase-7-publishing/providers/FILM-715-linkedin-provider.yaml (retirement:); specs/known-bugs/KB-164.md; specs/phase-7-publishing/providers/FILM-718-linkedin-reintegration.yaml; specs/INDEX.md"
+  - text: "LinkedIn is not a platform the code supports: PLATFORMS, the OAuth apps, the publish schema, the project target platforms, the format families and every label map leave it out"
+    met: true
+    evidence: "packages/features/publishing/src/lib/platforms.ts:14; packages/features/publishing/src/lib/schemas/publish.schema.ts:9; packages/features/publishing/__tests__/removed-platform.test.ts:13; packages/features/publishing/__tests__/publish-actions.test.ts:501; guards R1, R8 RED"
+  - text: "No code path can create a LinkedIn row: the connect and callback routes are deleted, the schema refuses a LinkedIn publish, and nothing else writes platform 'linkedin'"
+    met: true
+    evidence: "apps/web/app/api/platforms/{connect,callback}/linkedin deleted; apps/e2e/tests/platform-connections/linkedin-removed.spec.ts:63 (404 for both; on main they answered 307); the publish schema refusal above; apps/web/test/film-717-linkedin-removed.test.ts:127 finds no other code naming LinkedIn"
+  - text: "A kept LinkedIn row is handled safely: hidden from Platform Connections, the publish screen and analytics channels; its token never refreshed, deactivated or reported; a queued LinkedIn job answered as a refusal value and acknowledged"
+    met: true
+    evidence: "packages/features/publishing/src/server/connection-actions.ts:63 (settings), :595 (publish screen); packages/features/content-analytics/src/server/channels.ts:169; packages/features/publishing/src/lib/token-refresh.ts:149; packages/features/publishing/src/jobs/refresh-expiring-tokens.ts:95; apps/web/lambda/publish-worker/index.ts:554. Tests, each red on main or under its guard: connection-actions.test.ts:203, :390; channels-language.test.ts:63; token-refresh.test.ts:535, :877; apps/web/lambda/publish-worker/__tests__/removed-platform.test.ts:85, :121; linkedin-removed.spec.ts:42, :80 (both red against main's Platform Connections and connection actions); provenance-surfaces.spec.ts:160. Guards R3–R7, R9 RED"
+  - text: "The integration is deleted everywhere, and a repo-scan test fails if the name returns outside the files that keep it on purpose"
+    met: true
+    evidence: "apps/web/test/film-717-linkedin-removed.test.ts:127 scans apps, packages, tooling, scripts, .github, deployment, docs and the root files case-insensitively; :138 fails if a kept file stops needing its exemption; guard R2 RED. On its first runs it named the mutation guards and a comment, then nothing"
+  - text: "No data is deleted and no enum value is dropped"
+    met: true
+    evidence: "no file under apps/web/supabase/migrations changed; the CHECK values are held to the code by packages/features/publishing/__tests__/platforms.test.ts:61 and packages/clickhouse/__tests__/format-families.test.ts, which name 'linkedin' as kept for old rows"
+  - text: "Guards that covered LinkedIn are removed or re-pointed to the shared rule they guard"
+    met: true
+    evidence: "see notes; every re-pointed guard RED (run.py, 2026-10-02)"
+  - text: "Screenshots of Platform Connections and the publish screen without LinkedIn"
+    met: true
+    evidence: "apps/e2e/tests/platform-connections/linkedin-removed.spec.ts with CAPTURE_EVIDENCE=1: film-717-01-platforms-without-linkedin.png (a team with a kept LinkedIn row), film-717-02-publish-screen.png"
+open_questions: []
+feature:
+  database:
+    tables: []
+    columns_added: []
+    kept:
+      - "'linkedin' stays in the platform CHECKs of platform_connections, publishes, revenue_records and oauth_states, and in publish_format_family; social_posts and its rows stay. Old rows keep their value (owner, 2026-10-02: no destructive migration)"
+  queries:
+    - {name: "getConnectionsAction and getConnectedPlatformsAction leave out a row whose platform is not a Platform", file: "packages/features/publishing/src/server/connection-actions.ts"}
+    - {name: "listAccountChannels and the project channel list leave it out", file: "packages/features/content-analytics/src/server/channels.ts"}
+  actions:
+    - {name: "Social Posts actions deleted (create, generate, approve, publish, regenerate)", file: "packages/features/publishing/src/server/social-post-actions.ts"}
+  ui:
+    - {component: "PlatformConnections: no LinkedIn card", file: "packages/features/publishing/src/components/platform-connections.tsx"}
+    - {component: "Social Posts page and its nav entry deleted", file: "apps/web/config/team-account-navigation.config.tsx"}
+    - {component: "New project form, publish hub selector, share menu, legal pages: no LinkedIn", file: "apps/web/app/home/[account]/studio/projects/new/_lib/schema.ts"}
+  provider_integration: null
+notes: |
+  ## The owner's decisions
+
+  - 2026-10-02, on KB-164: "retire LinkedIn for now", instead of moving the
+    pinned LinkedIn-Version (202401, sunset 2025-01-22). "For now" meant the
+    product stops offering LinkedIn and the work can come back later.
+  - 2026-10-02, later the same day: delete it everywhere, not hide it. Its
+    text-post path "doesn't fit within how all the other platforms are
+    integrated", and LinkedIn will be planned again later (FILM-718). No
+    destructive migration: enum and CHECK values stay, rows stay.
+
+  The first decision was built as a read-only "Retired" card and a
+  platform_retired refusal; the second replaced that with this removal, on the
+  same branch.
+
+  ## How a kept row is handled
+
+  The CHECK still admits 'linkedin', so an old row keeps its value, but
+  `isPlatform` rejects it. Everything that reads a row narrows with it:
+
+  | Reader | What happens to a LinkedIn row |
+  |---|---|
+  | Platform Connections (getConnectionsAction) | not returned, so not shown |
+  | Publish screen (getConnectedPlatformsAction) | not returned, so not a channel |
+  | Analytics channels (listAccountChannels, project channels) | not a channel, so the coverage strip never names it |
+  | ensureValidToken | PLATFORM_UNSUPPORTED: no refresh, no deactivation, no notification |
+  | Refresh cron | not selected |
+  | Publish worker | a queued publish is marked failed with PLATFORM_UNSUPPORTED and acknowledged; a queued social post is acknowledged and nothing is written |
+
+  Nothing creates one: the connect and callback routes are gone, the publish
+  schema refuses 'linkedin', and the scan finds no other writer. A kept
+  connection's token stays encrypted in the database; deleting it is a
+  data-deletion request (the data-deletion page's section 1), handled by hand.
+
+  ## Left on purpose (the scan's KEPT list says why, file by file)
+
+  - Migration history and the schema mirrors of the constraints that keep the
+    value (30-film-studio, 31-oauth-states, 32-platform-connections,
+    38-revenue-tracking, 40-social-posts).
+  - apps/web/supabase/config.toml: Supabase CLI's comment listing every
+    provider it supports.
+  - The tests that prove a kept row is handled, and film-717.json's guards.
+  - Specs: the records of what was built and why (FILM-715, KB-164, KB-145,
+    FILM-1802 and others) still name LinkedIn; specs are history, not code.
+
+  ## Guards
+
+  New, tooling/mutation-guards/film-717.json, all RED: R1 LinkedIn offered
+  again, R2 the name back in code, R3 a kept token refreshed, R4 the cron
+  selecting it, R5 the publish screen listing it, R6 the worker running a
+  queued job, R7 analytics listing it as a channel, R8 the schema admitting
+  it, R9 the settings list returning it.
+
+  Removed with the code they guarded: KB-145 U1 (the LinkedIn callback),
+  FILM-1723 "LinkedIn's version is declared a second time" and "A pin past
+  its end loses the known bug that owns the move" (no pin is past its end
+  now; the T-120 fixture test still covers the rule), SPEC-TESTS U2 (the
+  LinkedIn provider), KB-105 P2 and P3 (the social-post actions).
+
+  Re-pointed to the shared rule they guard, all RED: KB-145 U2 (X's callback),
+  FILM-1801's two host guards (the TikTok worker handler, the Facebook
+  provider), FILM-1723's headline guard (Meta, then X), FILM-1703 and
+  FILM-1714 SM1/SM2 (a sixth platform joining AnalyticsPlatform), FILM-1716
+  FF2 (X's short), KB-22 U5 and KB-25-45 R5 (the dialog and the revokers),
+  KB-15 (PLATFORMS against the CHECK), KB-138 G1 (the API-keys action),
+  KB-61 (the scheduled-report delete).
+
+  ## Tests and E2E
+
+  New: removed-platform.test.ts (publishing), the worker's
+  removed-platform.test.ts, film-717-linkedin-removed.test.ts,
+  linkedin-removed.spec.ts, and the kept-row cases in connection-actions,
+  token-refresh, publish-actions and channels-language. Deleted with the
+  integration: linkedin-provider.test.ts, the sandbox's linkedin-journey and
+  linkedin-fidelity, sandbox-connect-linkedin.spec.ts, the LinkedIn cases in
+  callback-success, disconnect-revoke, sandbox-disconnect-refresh, refusals,
+  ai-sandbox-evidence and data-deletion.
+
+  PR: #541.

@@ -3,8 +3,8 @@ title: "LinkedIn Provider"
 phase: 7
 phase_name: "Publishing"
 category: provider
-status: PARTIAL
-audited: "2026-10-01"
+status: RETIRED
+audited: "2026-10-02"
 effort: M
 dependencies:
   - spec_id: "FILM-708"
@@ -55,71 +55,49 @@ provider:
   webhooks: []
 acceptance_criteria:
   - text: "OAuth 2.0 connection flow works for personal accounts"
-    met: true
-    evidence: "apps/e2e/tests/platform-connections/sandbox-connect-linkedin.spec.ts:50 drives the real connect and callback routes against the LinkedIn sandbox (green on two consecutive runs, 2026-10-01, retries off): the consent screen lists the 4 personal scopes; allow gives one active row (urn:li:person:<sub>, isCompanyPage false) with encrypted tokens, the stored access token is accepted by the sandbox's /v2/userinfo and its sub and name match the row, the refresh token is stored; a second connect reuses the row with a new token. Refresh: KB-29 (packages/features/publishing/__tests__/token-refresh.test.ts:460). No live LinkedIn connect has run (owner check OC-5, FILM-1725 Check I). The stored scopes are the grant LinkedIn's token response names, not the request: a scope unticked on the consent screen is not stored (sandbox-connect-linkedin.spec.ts:183; KB-145 fixed in #508)"
   - text: "OAuth 2.0 connection flow works for company pages"
-    met: false
-    reason: "no longer true — company connect stores the member URN (`apps/web/app/api/platforms/callback/linkedin/route.ts:170`); no organization is chosen; no UI offers `type=company`, and the LinkedIn card says personal profiles only (KB-86)"
   - text: "Video upload with proper initialization and finalization"
-    met: true
-    evidence: "packages/features/publishing/__tests__/linkedin-provider.test.ts:133; LinkedInProvider.uploadVideo end to end against the sandbox (apps/vendor-sandbox/__tests__/linkedin-journey.test.ts:214; KB-141 fixed in #489: createPost reads the post URN from x-restli-id)"
   - text: "Post composition with character limit enforcement"
-    met: true
-    evidence: null
   - text: "Hashtag tracking in composer"
-    met: true
-    evidence: null
   - text: "Analytics retrieval (impressions, likes, comments, shares)"
-    met: false
-    reason: "no longer true — `getPostMetrics` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:323`) has no caller; no LinkedIn metrics are read anywhere"
   - text: "Delete post functionality"
-    met: false
-    reason: "no longer true — `deletePost` (`packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:350`) has no caller; unpublish skips LinkedIn (`apps/web/lambda/publish-worker/index.ts:265-269`)"
   - text: "Video duration validation (10 min personal, 15 min company)"
-    met: false
-    reason: "retired — owner decision 2026-09-30: the limits stay declared constants; LinkedIn rejects a too-long video itself"
 test_plan:
   unit:
     - text: "Test character counting"
-      met: true
-      evidence: "packages/features/publishing/__tests__/linkedin-provider.test.ts:96"
     - text: "Test hashtag extraction"
-      met: false
-      reason: "retired — owner decision 2026-09-30: LinkedIn posts are not scanned for hashtags, and no feature depends on it"
     - text: "Test video duration validation for personal vs company"
-      met: false
-      reason: "retired — owner decision 2026-09-30: the feature is retired"
   integration:
     - text: "Test OAuth flow with mock API"
-      met: true
-      evidence: "the callback's success path with mocked fetch (apps/web/lib/platforms/__tests__/callback-success.test.ts:414: urn:li:person id and the scopes the token response granted; :451 company scopes and no refresh token; :473 a narrower grant is stored as granted, not as requested, and :488 no `scope` stores none (KB-145); :497 no member id stores nothing); and in a browser against the LinkedIn sandbox: apps/e2e/tests/platform-connections/sandbox-connect-linkedin.spec.ts:50 (connect, tokens, scopes, second connect) and :140 (cancel gives the failure page and no row; an injected 500 at /oauth/v2/accessToken gives token_exchange_failed and no row; the retry connects), green on two consecutive runs 2026-10-01, retries off. Failure branches also: apps/e2e/tests/platform-connections/connect-failure.spec.ts"
     - text: "Test video upload initialization"
-      met: true
-      evidence: "packages/features/publishing/__tests__/linkedin-provider.test.ts:133"
     - text: "Test post creation"
-      met: true
-      evidence: "packages/features/publishing/__tests__/linkedin-provider.test.ts:195"
     - text: "Test analytics retrieval"
-      met: true
-      evidence: "packages/features/publishing/__tests__/linkedin-provider.test.ts:246"
   e2e: []
-remaining:
-  - criterion: "OAuth 2.0 connection flow works for company pages"
-    reason: "No product surface offers company connect: no UI passes type=company, and the callback stores the member URN whatever the state says (apps/web/app/api/platforms/callback/linkedin/route.ts:170), so there is nothing to drive in a browser. getOrganizations has no caller. Organization publishing never existed (urn:li:organization appears nowhere in history)"
-    closed_by: "unassigned"
-  - criterion: "Analytics retrieval"
-    reason: "No product surface calls getPostMetrics (packages/features/publishing/src/providers/linkedin/linkedin-provider.ts:319); the provider test covers it, but no LinkedIn metrics are read anywhere and the sandbox serves no LinkedIn analytics"
-    closed_by: "unassigned"
-  - criterion: "Delete post functionality"
-    reason: "No product surface calls deletePost; unpublish skips LinkedIn at the vendor (apps/web/lambda/publish-worker/index.ts:265-269). The sandbox journey calls it through the provider (apps/vendor-sandbox/__tests__/linkedin-journey.test.ts:227), which proves the provider, not a user path"
-    closed_by: "unassigned"
+retirement:
+  commit: null
+  date: "2026-10-02"
+  what_happened: >
+    Removed by owner decision on 2026-10-02 (FILM-717). The owner first chose
+    to "retire LinkedIn for now" instead of moving the pinned LinkedIn-Version
+    header, 202401, which LinkedIn sunset on 2025-01-22 (KB-164); later the
+    same day, to delete it everywhere, because its text-post path "doesn't fit
+    within how all the other platforms are integrated". As FILM-514 did for
+    Suno, all of it was deleted: the provider and publisher, the text-post
+    path and the Social Posts page, the OAuth connect and callback routes and
+    the card, LinkedIn in publishing, scheduling, the worker and token
+    refresh, the version pin, the vendor sandbox origin, its E2E specs and
+    guards and its documentation. No row or CHECK value was deleted: a kept
+    LinkedIn row is hidden and never refreshed or published to. Re-integration
+    is FILM-718 (DEFERRED); this file and the repository history hold the
+    design.
+  replacement: null
 open_questions: []
 notes: |
   ## Metadata
   - **Phase:** 7 - Publishing
   - **Priority:** P2 (Future Enhancement)
   - **Effort:** M (4-8 hours)
-  - **Status:** 🟡 PARTIAL (audit 2026-09-23; was DONE)
+  - **Status:** RETIRED (removed) 2026-10-02 (FILM-717); PARTIAL from the 2026-09-23 audit until then
   - **Dependencies:** FILM-708 (Publish Hub), OAuth Infrastructure
   - **Blocks:** None
 

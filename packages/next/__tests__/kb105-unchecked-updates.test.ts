@@ -62,7 +62,6 @@ const KNOWN: Record<string, [number, string]> = {
   'apps/web/lambda/llm-worker/utils/job-tracking.ts | generation_jobs | update':
     [3, ADMIN],
   'apps/web/lambda/publish-worker/index.ts | publishes | update': [1, ADMIN],
-  'apps/web/lambda/publish-worker/index.ts | social_posts | update': [2, ADMIN],
   'apps/web/lambda/scheduled-publish/index.ts | publishes | update': [3, ADMIN],
   'apps/web/lambda/voice-worker/voice-generation.ts | dialogue_lines | update':
     [3, ADMIN],
@@ -124,8 +123,6 @@ const KNOWN: Record<string, [number, string]> = {
     [1, BOOKKEEPING],
   'packages/features/publishing/src/server/publish-actions.ts | publishes | update':
     [6, `${FAILURE_MARK} + ${JUST_INSERTED} + ${RECORDS_RESULT}`],
-  'packages/features/publishing/src/server/social-post-actions.ts | social_posts | update':
-    [2, `${FAILURE_MARK} + ${RECORDS_RESULT}`],
   'packages/features/team-accounts/src/server/services/account-members.service.ts | accounts_memberships | update':
     [1, ADMIN],
   'packages/supabase/src/external-api-keys.ts | external_api_keys | update': [

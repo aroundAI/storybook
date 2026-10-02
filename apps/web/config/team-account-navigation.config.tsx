@@ -5,7 +5,6 @@ import {
   FlaskConical,
   Globe,
   LayoutDashboard,
-  MessageSquareText,
   Settings,
   Share2,
   Split,
@@ -35,11 +34,6 @@ const getRoutes = (account: string) => [
         label: 'studio:routes.allProjects',
         path: `/home/${account}/studio`,
         Icon: <Film className={iconClasses} />,
-      },
-      {
-        label: 'common:routes.socialPosts',
-        path: `/home/${account}/social-posts`,
-        Icon: <MessageSquareText className={iconClasses} />,
       },
       {
         label: 'common:routes.analytics',

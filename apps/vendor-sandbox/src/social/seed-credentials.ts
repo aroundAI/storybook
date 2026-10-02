@@ -5,8 +5,8 @@ import { SANDBOX_CLIENTS, TABLE_CLIENTS } from './credentials';
  * sandbox's YouTube and Meta clients into the local database's
  * `oauth_app_credentials`, which is where the app reads those two apps'
  * credentials (`getOAuthAppCredentials`) first. TikTok can be saved there too
- * but falls back to its env pair when no row is saved, as LinkedIn and X do
- * (they have no row); the env block carries those.
+ * but falls back to its env pair when no row is saved, as X does
+ * (it has no row); the env block carries those.
  *
  * The secret is encrypted with the app's own `encrypt` under the local
  * ENCRYPTION_KEY, exactly as /admin/platforms stores it.

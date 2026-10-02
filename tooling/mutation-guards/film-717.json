@@ -1,0 +1,95 @@
+{
+  "feature": "FILM-717",
+  "mutations": [
+    {
+      "name": "R1 LinkedIn is offered again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/platforms.ts",
+      "find": "  'facebook',\n  'twitter',\n] as const;",
+      "replace": "  'facebook',\n  'twitter',\n  'linkedin',\n] as const;",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/removed-platform.test.ts",
+      "pattern": "not a platform the product supports"
+    },
+    {
+      "name": "R2 the name comes back in application code",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/apps.ts",
+      "find": "export const OAUTH_APPS = ['youtube', 'tiktok', 'meta', 'twitter'] as const;",
+      "replace": "export const OAUTH_APPS = ['youtube', 'tiktok', 'meta', 'twitter'] as const; // linkedin",
+      "cwd": "apps/web",
+      "test": "test/film-717-linkedin-removed.test.ts",
+      "pattern": "names it"
+    },
+    {
+      "name": "R3 a kept LinkedIn token is refreshed again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/token-refresh.ts",
+      "find": "  if (!isPlatform(connection.platform)) {\n    return { valid: false, error: 'PLATFORM_UNSUPPORTED' };\n  }",
+      "replace": "  if (!isPlatform(connection.platform) && force === undefined) {\n    return { valid: false, error: 'PLATFORM_UNSUPPORTED' };\n  }",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "kept row on a removed platform"
+    },
+    {
+      "name": "R4 the refresh cron selects a kept LinkedIn row again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/jobs/refresh-expiring-tokens.ts",
+      "find": "  const expiringConnections = selected?.filter((connection) =>\n    isPlatform(connection.platform),\n  );",
+      "replace": "  const expiringConnections = selected?.filter((connection) =>\n    Boolean(connection.platform),\n  );",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "out of the run"
+    },
+    {
+      "name": "R5 the publish screen lists a kept LinkedIn row again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/connection-actions.ts",
+      "find": "    const publishable = (connections ?? []).filter((connection) =>\n      isPlatform(connection.platform),\n    );",
+      "replace": "    const publishable = (connections ?? []).filter((connection) =>\n      Boolean(connection.platform),\n    );",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/connection-actions.test.ts",
+      "pattern": "kept row on a removed platform"
+    },
+    {
+      "name": "R6 the worker runs a queued LinkedIn job again",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/index.ts",
+      "find": "        if (job.type !== 'delete' && !isPlatform(job.platform)) {",
+      "replace": "        if (job.type !== 'delete' && !isPlatform(job.platform) && !job.userId) {",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/removed-platform.test.ts",
+      "pattern": "removed"
+    },
+    {
+      "name": "R7 a kept LinkedIn row is a channel again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/channels.ts",
+      "find": "    .filter((row) => isPlatform(row.platform))",
+      "replace": "    .filter((row) => Boolean(row.platform))",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/channels-language.test.ts",
+      "pattern": "kept row on a removed platform"
+    },
+    {
+      "name": "R8 a publish naming LinkedIn passes the schema again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/schemas/publish.schema.ts",
+      "find": "  'twitter',\n]);",
+      "replace": "  'twitter',\n  'link' + 'edin',\n]);",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-actions.test.ts",
+      "pattern": "removed platform at the schema"
+    },
+    {
+      "name": "R9 the settings list returns a kept LinkedIn row again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/connection-actions.ts",
+      "find": "    const connections = stored?.filter((conn) => isPlatform(conn.platform));",
+      "replace": "    const connections = stored?.filter((conn) => Boolean(conn.platform));",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/connection-actions.test.ts",
+      "pattern": "leaves out a kept row on a removed platform"
+    }
+  ]
+}

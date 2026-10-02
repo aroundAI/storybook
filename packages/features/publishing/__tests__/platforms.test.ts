@@ -50,13 +50,25 @@ function platformChecks() {
   return checks;
 }
 
+/**
+ * Values the CHECK still admits for rows the product no longer supports.
+ * LinkedIn was removed (FILM-717, owner 2026-10-02) without a migration:
+ * dropping the value would mean deleting rows, which nobody asked for.
+ */
+const KEPT_FOR_OLD_ROWS = ['linkedin'];
+
 describe('PLATFORMS', () => {
-  it('is exactly the set the platform_connections CHECK allows', () => {
+  it('is the set the platform_connections CHECK allows, less the values kept for old rows', () => {
     const checks = platformChecks();
 
     // Positive control: a broken reader must not pass by finding nothing.
     expect(checks.length).toBeGreaterThan(0);
-    expect(new Set(PLATFORMS)).toEqual(new Set(checks.at(-1)));
+    expect(new Set([...PLATFORMS, ...KEPT_FOR_OLD_ROWS])).toEqual(
+      new Set(checks.at(-1)),
+    );
+    for (const value of KEPT_FOR_OLD_ROWS) {
+      expect(isPlatform(value)).toBe(false);
+    }
   });
 
   it('parses a stored platform instead of trusting it', () => {

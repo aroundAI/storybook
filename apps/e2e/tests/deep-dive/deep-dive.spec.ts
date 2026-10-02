@@ -291,7 +291,7 @@ test.describe('Deep Dive subscribers (FILM-1617)', () => {
 });
 
 test.describe('Deep Dive subscribers for an untracked platform (FILM-1617)', () => {
-  // Facebook, X and LinkedIn are allowed connections that no snapshot is ever
+  // Facebook and X are allowed connections that no snapshot is ever
   // taken for. "No count yet" would send someone looking for a missing
   // snapshot that will never come.
   test('a Facebook-only project says counts are not tracked', async ({

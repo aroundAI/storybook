@@ -52,31 +52,31 @@ acceptance_criteria:
     evidence: "`apps/web/app/api/platforms/callback/meta/route.ts:281`"
   - text: "Token refresh works for both platforms"
     met: true
-    evidence: "KB-29: `refreshMetaToken` gets the global Meta app from the lookup connect and the callback use (`packages/features/publishing/src/lib/token-refresh.ts:409`, `packages/features/publishing/src/lib/token-refresh.ts:422`, `apps/web/app/api/platforms/connect/meta/route.ts:66`, `apps/web/app/api/platforms/callback/meta/route.ts:109`); Instagram and Facebook both map to it. Driven against a local Graph listener (`packages/features/publishing/__tests__/token-refresh.test.ts:490`)"
+    evidence: "KB-29: `refreshMetaToken` gets the global Meta app from the lookup connect and the callback use (`packages/features/publishing/src/lib/token-refresh.ts:413`, `packages/features/publishing/src/lib/token-refresh.ts:426`, `apps/web/app/api/platforms/connect/meta/route.ts:66`, `apps/web/app/api/platforms/callback/meta/route.ts:109`); Instagram and Facebook both map to it. Driven against a local Graph listener (`packages/features/publishing/__tests__/token-refresh.test.ts:486`)"
   - text: "Disconnect removes related connections"
     met: true
     evidence: "The linked Instagram account / Facebook Page is disconnected with it — `disconnect_platform_connection` (`apps/web/supabase/migrations/20260923140320_kb22-disconnect-keeps-records.sql`); since KB-22 the rows are kept, not deleted"
   - text: "Proper error messages for permission issues"
     met: true
-    evidence: "`apps/e2e/tests/platform-connections/connect-failure.spec.ts:107` (KB-19, #297)"
+    evidence: "`apps/e2e/tests/platform-connections/connect-failure.spec.ts:106` (KB-19, #297)"
 test_plan:
   unit:
     - text: "Test state encoding/decoding"
       met: true
-      evidence: "`apps/e2e/tests/platform-connections/connect-failure.spec.ts:139`, `apps/e2e/tests/platform-connections/connect-failure.spec.ts:185`"
+      evidence: "`apps/e2e/tests/platform-connections/connect-failure.spec.ts:138`, `apps/e2e/tests/platform-connections/connect-failure.spec.ts:184`"
     - text: "Test page selection logic"
       met: false
       reason: "retired — owner decision 2026-09-30: every Page Meta returns is connected; an in-app Page choice is not wanted"
   integration:
     - text: "Test OAuth flow with mocked Meta endpoints"
       met: true
-      evidence: "the callback's success path with mocked fetch (apps/web/lib/platforms/__tests__/callback-success.test.ts:275), and in a browser against the Meta sandbox, green on two consecutive runs 2026-10-01, retries off: apps/e2e/tests/platform-connections/sandbox-connect-meta.spec.ts:60 (the dialog lists the 7 requested permissions; one connect yields the Page under Facebook and the linked Instagram account under Instagram, linked_page_id is the Page id, scopes are the granted ones, the Page token is on both rows and the long-lived user token is the refresh token, both accepted by the sandbox Graph /me/permissions; a second connect reuses both rows with a new user token), :190 (declining pages_show_list gives account_lookup_failed and stores nothing), :215 (cancel gives access_denied; an injected 500 at /oauth/access_token gives token_exchange_failed; the retry connects). Unconfirmed lead, not a filed bug: the app requests no read_insights although packages/features/publishing/src/oauth/analytics-scopes.ts:201 lists it as the Facebook insights requirement; the Platforms page showed no analytics notice after a Meta connect, so it is not confirmed as user-visible"
+      evidence: "the callback's success path with mocked fetch (apps/web/lib/platforms/__tests__/callback-success.test.ts:274), and in a browser against the Meta sandbox, green on two consecutive runs 2026-10-01, retries off: apps/e2e/tests/platform-connections/sandbox-connect-meta.spec.ts:60 (the dialog lists the 7 requested permissions; one connect yields the Page under Facebook and the linked Instagram account under Instagram, linked_page_id is the Page id, scopes are the granted ones, the Page token is on both rows and the long-lived user token is the refresh token, both accepted by the sandbox Graph /me/permissions; a second connect reuses both rows with a new user token), :190 (declining pages_show_list gives account_lookup_failed and stores nothing), :215 (cancel gives access_denied; an injected 500 at /oauth/access_token gives token_exchange_failed; the retry connects). Unconfirmed lead, not a filed bug: the app requests no read_insights although packages/features/publishing/src/oauth/analytics-scopes.ts:201 lists it as the Facebook insights requirement; the Platforms page showed no analytics notice after a Meta connect, so it is not confirmed as user-visible"
     - text: "Test token refresh"
       met: true
-      evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:490`"
+      evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:486`"
     - text: "Test Instagram-Page linking"
       met: true
-      evidence: "apps/web/lib/platforms/__tests__/callback-success.test.ts:275 (the Instagram row's `linked_page_id` is the Page's id and it uses the Page token), :331 (no Instagram row for an unlinked Page), :344 (a failed lookup keeps the Page alone), :355 (several Pages); refresh's use of `linked_page_id`: `packages/features/publishing/__tests__/token-refresh.test.ts:492`"
+      evidence: "apps/web/lib/platforms/__tests__/callback-success.test.ts:274 (the Instagram row's `linked_page_id` is the Page's id and it uses the Page token), :331 (no Instagram row for an unlinked Page), :344 (a failed lookup keeps the Page alone), :355 (several Pages); refresh's use of `linked_page_id`: `packages/features/publishing/__tests__/token-refresh.test.ts:488`"
   e2e: []
 remaining:
   - criterion: "Consent screen shows correct permissions"

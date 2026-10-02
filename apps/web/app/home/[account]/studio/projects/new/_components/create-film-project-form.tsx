@@ -193,7 +193,6 @@ export function CreateFilmProjectForm({
           | 'instagram'
           | 'facebook'
           | 'twitter'
-          | 'linkedin'
           | 'custom'
         )[],
         videoStyle: 'cinematic' as const,

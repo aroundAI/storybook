@@ -68,16 +68,6 @@ export const PLATFORM_LIMITS: Record<Platform, PlatformLimits> = {
     minShortsDuration: 0,
     maxShortsDuration: 0,
   },
-  linkedin: {
-    titleMax: 700, // Post text
-    descriptionMax: 0,
-    tagsMax: 0,
-    hashtagsSupported: true, // In post text
-    schedulingSupported: true, // Server-side scheduling
-    shortsSupported: false,
-    minShortsDuration: 0,
-    maxShortsDuration: 0,
-  },
 };
 
 /**
@@ -120,12 +110,6 @@ export const PLATFORM_CONFIG: Record<Platform, PlatformConfig> = {
     color: 'text-black dark:text-white',
     bgColor: 'bg-gray-100 dark:bg-gray-800',
     description: 'Video posts',
-  },
-  linkedin: {
-    name: 'LinkedIn',
-    color: 'text-blue-700',
-    bgColor: 'bg-blue-100 dark:bg-blue-950',
-    description: 'Professional videos',
   },
 };
 
@@ -188,7 +172,6 @@ export function getDefaultPlatformSettings(
         isReel: false,
       };
     case 'twitter':
-    case 'linkedin':
     default:
       return {};
   }

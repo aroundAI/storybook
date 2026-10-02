@@ -20,7 +20,6 @@ import { recordUploadedFileDuration } from '../lib/uploaded-file-duration';
 import type { YouTubeChannelDeclaration } from '../lib/youtube-declaration';
 import { FacebookProvider } from '../providers/facebook';
 import { InstagramProvider } from '../providers/instagram';
-import { LinkedInProvider } from '../providers/linkedin';
 import { TikTokProvider } from '../providers/tiktok';
 import { TwitterProvider } from '../providers/twitter';
 import { uploadToYouTube } from '../server/youtube-upload';
@@ -133,7 +132,7 @@ async function queryWithRetry<T>(
  * Processes scheduled publishes that are due.
  * This job should run every minute via cron.
  *
- * For platforms without native scheduling (TikTok, Instagram, Twitter, LinkedIn),
+ * For platforms without native scheduling (TikTok, Instagram, Twitter),
  * we store the scheduled_at time and this job publishes when the time comes.
  *
  * @returns Statistics about the processing job
@@ -501,8 +500,6 @@ async function uploadToPlatform(
       return uploadToFacebook(accessToken, accountId, options);
     case 'twitter':
       return uploadToTwitter(accessToken, options);
-    case 'linkedin':
-      return uploadToLinkedIn(accessToken, accountId, options);
     default:
       throw new Error(`Unsupported platform: ${platform}`);
   }
@@ -593,26 +590,6 @@ async function uploadToTwitter(
   });
 
   return { contentId: result.tweetId, url: result.tweetUrl ?? '' };
-}
-
-async function uploadToLinkedIn(
-  accessToken: string,
-  authorUrn: string,
-  options: {
-    videoUrl: string;
-    title: string;
-    description: string;
-  },
-): Promise<{ contentId: string; url: string }> {
-  const provider = new LinkedInProvider(accessToken);
-  const result = await provider.uploadVideo({
-    videoPath: options.videoUrl,
-    text: `${options.title}\n\n${options.description}`,
-    visibility: 'PUBLIC',
-    authorUrn,
-  });
-
-  return { contentId: result.postUrn, url: result.postUrl ?? '' };
 }
 
 /**

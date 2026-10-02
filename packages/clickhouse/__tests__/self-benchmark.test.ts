@@ -326,7 +326,7 @@ describe('per-platform checkpoints', () => {
   it('reads the stored twitter platform as the registry’s twitter', () => {
     expect(platformIdOfDim('twitter')).toBe('twitter');
     expect(platformIdOfDim('youtube')).toBe('youtube');
-    expect(platformIdOfDim('linkedin')).toBeNull();
+    expect(platformIdOfDim('myspace')).toBeNull();
     expect(platformIdOfDim('toString')).toBeNull();
   });
 

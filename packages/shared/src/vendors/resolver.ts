@@ -22,9 +22,6 @@ export const VENDORS = {
   'x-api': 'https://api.x.com',
   /** Followed by the user's browser. */
   'x-oauth': 'https://x.com',
-  'linkedin-api': 'https://api.linkedin.com',
-  /** Authorize is followed by the browser; the token endpoint shares the host. */
-  'linkedin-oauth': 'https://www.linkedin.com',
   /** Followed by the user's browser. */
   'google-oauth': 'https://accounts.google.com',
   'google-token': 'https://oauth2.googleapis.com',

@@ -1,4 +1,3 @@
-import { LINKEDIN_REST_VERSION } from './linkedin';
 import {
   META_GRAPH_VERSION,
   META_GRAPH_VERSION_EXPIRES,
@@ -42,17 +41,6 @@ export const VENDOR_API_PINS: readonly VendorApiPin[] = [
     read: '2026-10-01',
     declaredIn: 'packages/shared/src/vendors/meta.ts',
     trackedBy: null,
-  },
-  {
-    vendor: 'LinkedIn',
-    version: LINKEDIN_REST_VERSION,
-    ends: '2025-01-22',
-    endsIsFloor: false,
-    source:
-      'https://learn.microsoft.com/en-us/linkedin/marketing/integrations/migrations',
-    read: '2026-10-01',
-    declaredIn: 'packages/shared/src/vendors/linkedin.ts',
-    trackedBy: 'KB-164',
   },
   {
     vendor: 'X',

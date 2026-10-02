@@ -46,7 +46,7 @@ StoryBook is a complete AI-powered film studio designed for content creators and
 | **Screenplay Conversion** | Auto-convert stories to industry-standard screenplay format |
 | **VEO 3.1 Shot Prompts** | Generate optimized video prompts for AI video generation |
 | **Voice Cloning** | Character-specific voices via ElevenLabs/PlayHT |
-| **Multi-Platform Publishing** | YouTube, TikTok, Instagram, Facebook, Twitter, LinkedIn |
+| **Multi-Platform Publishing** | YouTube, TikTok, Instagram, Facebook, Twitter |
 | **Content Analytics** | Track views, engagement, revenue across all platforms |
 | **Team Collaboration** | Multi-user workspaces with role-based permissions |
 
@@ -446,7 +446,6 @@ You'll be taken to the episode studio with 7 production tabs.
    - Instagram
    - Facebook
    - Twitter
-   - LinkedIn
 
 2. **Publishing Flow:**
    1. Select target platform(s)
@@ -484,7 +483,6 @@ Navigate to: `/home/[account]/studio/[project]/platforms`
 | **Instagram** | Reels, Stories, Feed posts |
 | **Facebook** | Pages, Reels |
 | **Twitter** | Video posts |
-| **LinkedIn** | Professional video content |
 
 **To Connect a Platform:**
 

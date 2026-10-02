@@ -44,12 +44,6 @@ export const PLATFORM_ACCESS_SETTINGS: Record<
     href: 'https://x.com/settings/connected_apps',
     where: 'Settings → Security and account access → Connected apps',
   },
-  linkedin: {
-    id: 'linkedin',
-    label: 'LinkedIn',
-    href: 'https://www.linkedin.com/mypreferences/d/data-sharing-for-permitted-services',
-    where: 'Settings → Data privacy → Permitted services',
-  },
   tiktok: {
     id: 'tiktok',
     label: 'TikTok',

@@ -238,7 +238,7 @@ describe('Auth Callback API Route', () => {
     });
 
     it('should handle other OAuth providers', async () => {
-      const providers = ['facebook', 'twitter', 'linkedin'];
+      const providers = ['facebook', 'twitter', 'github'];
 
       for (const provider of providers) {
         const request = new Request(

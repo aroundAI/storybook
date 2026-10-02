@@ -1,0 +1,39 @@
+spec_id: "FILM-718"
+title: "LinkedIn, re-integrated the way other platforms are"
+phase: 7
+phase_name: "Publishing"
+category: feature
+status: DEFERRED
+dependencies:
+  - spec_id: "FILM-717"
+    note: "the removal this follows"
+  - spec_id: "FILM-715"
+    note: "the design that was removed, for reference"
+summary: >
+  A placeholder, so LinkedIn is planned again rather than forgotten. The owner
+  removed LinkedIn on 2026-10-02 (FILM-717): its text-post path "doesn't fit
+  within how all the other platforms are integrated", and LinkedIn will be
+  planned later. When it is, it comes back the way YouTube, TikTok, Meta and X
+  are integrated: a video publish through the publish screen and the worker,
+  a connect and callback through the shared OAuth helpers, a refresh and a
+  revoke decision, a sandbox origin with fidelity tests, and a capability
+  reference section, against LinkedIn's current versioned API (/rest/, with an
+  active LinkedIn-Version) rather than the sunset 202401 pin on /v2/.
+acceptance_criteria:
+  - text: "The owner decides LinkedIn comes back, and what it is for (video publishing, text posts, analytics)"
+    met: false
+    reason: "deferred — owner, 2026-10-02"
+  - text: "A design that uses the same paths as the other platforms (publish screen, worker, OAuth helpers, sandbox), and an active LinkedIn-Version on /rest/"
+    met: false
+    reason: "deferred until the owner's decision"
+  - text: "Old LinkedIn rows kept by FILM-717 are either re-attached or explicitly left, by a decision recorded here"
+    met: false
+    reason: "deferred until the owner's decision"
+open_questions:
+  - "Does LinkedIn come back for video, for text posts, or both?"
+  - "Do the connections and publishes FILM-717 kept get re-attached, or does a return start clean?"
+notes: |
+  FILM-715 holds the removed design and its acceptance criteria; the
+  repository history holds the code (removed in #541). FILM-717's scan
+  (apps/web/test/film-717-linkedin-removed.test.ts) must be retired by the
+  change that brings LinkedIn back.

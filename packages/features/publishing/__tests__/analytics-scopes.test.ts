@@ -215,7 +215,7 @@ describe('resolveAnalyticsAccess', () => {
     expect(
       resolveAnalyticsAccess({
         scopesEnabled: ALL_ANALYTICS_SCOPES_ENABLED,
-        platform: 'linkedin',
+        platform: 'myspace',
         grantedScopes: [],
       }),
     ).toBeNull();
@@ -266,8 +266,8 @@ describe('videoSyncAuthorisation', () => {
 
 describe('the OAuth callbacks record the grant, not the request', () => {
   // Every file that stores a connection, read from disk so a new writer
-  // cannot be left out (KB-145: LinkedIn's callback was, and stored the list
-  // it asked for). storePlatformConnections is the one way a connection is
+  // cannot be left out (KB-145: one callback was, and stored the list it
+  // asked for). storePlatformConnections is the one way a connection is
   // written (KB-43), so its callers are every place `scopes` is set — the
   // callbacks and the YouTube channel picker that finishes YouTube's connect.
   const WEB = resolve(__dirname, '../../../../apps/web');
@@ -294,7 +294,6 @@ describe('the OAuth callbacks record the grant, not the request', () => {
 
     expect(callbacks).toEqual(
       expect.arrayContaining([
-        'app/api/platforms/callback/linkedin/route.ts',
         'app/api/platforms/callback/meta/route.ts',
         'app/api/platforms/callback/tiktok/route.ts',
         'app/api/platforms/callback/twitter/route.ts',

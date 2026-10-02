@@ -15,8 +15,8 @@
       "name": "FF2 An X short is pooled with YouTube Shorts",
       "kind": "unit",
       "file": "packages/clickhouse/src/lib/format-families.ts",
-      "find": "    twitter: 'clip',\n    linkedin: 'clip',",
-      "replace": "    twitter: 'short_vertical',\n    linkedin: 'clip',",
+      "find": "    facebook: 'short_vertical',\n    twitter: 'clip',",
+      "replace": "    facebook: 'short_vertical',\n    twitter: 'short_vertical',",
       "cwd": "packages/clickhouse",
       "test": "__tests__/format-families.test.ts",
       "pattern": "two platforms"

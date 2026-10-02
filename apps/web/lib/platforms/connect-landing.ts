@@ -14,7 +14,7 @@ type Client = SupabaseClient<Database>;
 /**
  * The account a connect route connects to, from `?accountId=<uuid>` or
  * `?account=<slug>` — the settings page sends the slug. One lookup for every
- * platform: X and LinkedIn read only `accountId`, so the page's Connect
+ * platform: X reads only `accountId`, so the page's Connect
  * button could not have reached them (KB-86).
  *
  * The slug is resolved as the signed-in user, so it only finds an account
@@ -56,7 +56,7 @@ export function connectAccountError(error: 'missing' | 'not_found') {
 
 /**
  * An absolute URL on the account's platforms page, on the configured origin
- * (KB-87). TikTok, X and LinkedIn redirected to the relative
+ * (KB-87). TikTok and X redirected to the relative
  * `/settings/platforms`, which `NextResponse.redirect` refuses — "URL is
  * malformed … Please use only absolute URLs" — so a connection that had just
  * been saved ended on the "Something broke" failure page.

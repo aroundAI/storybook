@@ -15,13 +15,13 @@ summary: >
 acceptance_criteria:
   - text: "Working OAuth implementation with token refresh"
     met: true
-    evidence: "packages/features/publishing/src/lib/token-refresh.ts:419, tested at packages/features/publishing/__tests__/token-refresh.test.ts:518 (the uncalled `oauth/tiktok/refresh.ts` was removed in KB-29)"
+    evidence: "packages/features/publishing/src/lib/token-refresh.ts:423, tested at packages/features/publishing/__tests__/token-refresh.test.ts:514 (the uncalled `oauth/tiktok/refresh.ts` was removed in KB-29)"
   - text: "Successful video upload to TikTok from our app"
     met: false
     reason: "unverified — needs a real upload to a TikTok account (a vendor call, outside this audit); no recorded upload found"
   - text: "Complete documentation of all API quirks and workarounds"
     met: false
-    reason: "not met — no upload/publishing quirks doc (`docs/tiktok-api-quirks.md` never created); FILM-706 and `docs/platform-capability-reference.md:197` cover OAuth and analytics quirks only"
+    reason: "not met — no upload/publishing quirks doc (`docs/tiktok-api-quirks.md` never created); FILM-706 and `docs/platform-capability-reference.md:195` cover OAuth and analytics quirks only"
   - text: "Error handling covers all known error scenarios"
     met: false
     reason: "not met — provider and worker throw generic errors (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:227`); no rate-limit or spam-risk handling"
@@ -30,10 +30,10 @@ acceptance_criteria:
     reason: "not met — upload untested: nothing tests `tiktok-provider.ts` or `apps/web/lambda/publish-worker/handlers/tiktok.ts`; publish tests mock the provider"
   - text: "Clear guidance on rate limit management"
     met: false
-    reason: "not met — only the Display API's 600 req/min is recorded (`docs/platform-capability-reference.md:206`); nothing on upload limits or handling them"
+    reason: "not met — only the Display API's 600 req/min is recorded (`docs/platform-capability-reference.md:204`); nothing on upload limits or handling them"
   - text: "Known issues documented with mitigation strategies"
     met: false
-    reason: "not met — \"Known Issues from Community\" below has no mitigations; `docs/platform-capability-reference.md:197` covers analytics-side issues only"
+    reason: "not met — \"Known Issues from Community\" below has no mitigations; `docs/platform-capability-reference.md:195` covers analytics-side issues only"
 open_questions: []
 research_spike:
   question: >

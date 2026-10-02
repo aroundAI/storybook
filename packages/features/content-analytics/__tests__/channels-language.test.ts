@@ -57,4 +57,33 @@ describe('listAccountChannels', () => {
       expect.objectContaining({ platform: 'youtube', language: 'es' }),
     ]);
   });
+
+  // FILM-717: LinkedIn is removed and its rows are kept; such a row is not a
+  // channel, so no surface lists it or names it unsupported.
+  it('leaves out a kept row on a removed platform', async () => {
+    const row = (id: string, platform: string) => ({
+      id,
+      platform,
+      platform_account_name: platform,
+      is_active: true,
+      metadata: null,
+      language: 'en',
+    });
+    const builder = {
+      select: () => builder,
+      eq: () => builder,
+      order: () => builder,
+      range: async () => ({
+        data: [row('c-li', 'linkedin'), row('c-yt', 'youtube')],
+        error: null,
+      }),
+    };
+
+    const channels = await listAccountChannels(
+      '00000000-0000-4000-8000-0000000000b1',
+      { from: () => builder } as never,
+    );
+
+    expect(channels.map((channel) => channel.connectionId)).toEqual(['c-yt']);
+  });
 });

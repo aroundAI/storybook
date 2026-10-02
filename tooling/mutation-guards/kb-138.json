@@ -4,9 +4,9 @@
     {
       "name": "G1 a thrown not-found hides the failed read again",
       "kind": "unit",
-      "file": "packages/features/publishing/src/server/social-post-actions.ts",
-      "find": "      throw new Error(whyNoRow(error, 'Social post not found'));\n",
-      "replace": "      throw new Error('Social post not found');\n",
+      "file": "apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts",
+      "find": "    throw new Error(whyNoRow(error, 'Account not found'));\n",
+      "replace": "    throw new Error('Account not found');\n",
       "cwd": "packages/next",
       "test": "__tests__/kb138-errors-not-not-found.test.ts",
       "pattern": "thrown or returned"

@@ -239,44 +239,6 @@ export const SCENARIOS: RefusalScenario[] = [
     },
   },
   {
-    area: 'publishing',
-    name: 'approving a post whose text another tab cleared',
-    message:
-      'Cannot approve a post without content. Please generate or write post text first.',
-    run: async (page) => {
-      const team = await seedTeamAccount({ emailPrefix: 'kb6' });
-
-      await seedYouTubeConnection(team.accountId, 'Seeded LinkedIn', {
-        platform: 'linkedin',
-      });
-
-      const post = await insertRow<{ id: string }>(
-        'social_posts',
-        {
-          account_id: team.accountId,
-          raw_notes: 'Notes on the lighthouse shoot',
-          final_text: 'We wrapped the lighthouse shoot today.',
-          status: 'ready_to_review',
-          created_by: team.userId,
-        },
-        service,
-      );
-
-      await signInAs(page, team);
-      await page.goto(`/home/${team.slug}/social-posts/${post.id}`);
-
-      const publish = page.getByRole('button', { name: 'Approve & Publish' });
-
-      // Enabled means the post and its connection have loaded into the page.
-      await expect(publish).toBeEnabled();
-
-      // The other tab: the text goes while this page still shows it.
-      await updateRows('social_posts', `id=eq.${post.id}`, { final_text: '' });
-
-      await publish.click();
-    },
-  },
-  {
     area: 'analytics',
     name: 'adding the same tag twice',
     message: 'A tag with this label already exists in this dimension.',

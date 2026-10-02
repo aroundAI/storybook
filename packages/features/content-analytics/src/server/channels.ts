@@ -2,6 +2,7 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { isPlatform } from '@kit/publishing/lib/platforms';
 import { ALL_ANALYTICS_SCOPES_ENABLED } from '@kit/publishing/oauth/analytics-scope-switch';
 import {
   type AnalyticsAccess,
@@ -125,9 +126,7 @@ export async function listProjectChannels(
     'platform_connections',
   );
 
-  return connections
-    .map(toChannelRef)
-    .sort((a, b) => a.name.localeCompare(b.name));
+  return supported(connections);
 }
 
 /**
@@ -158,7 +157,16 @@ export async function listAccountChannels(
     return query.order('id').range(from, to);
   }, 'account channels');
 
-  return connections
+  return supported(connections);
+}
+
+/**
+ * The rows as channels, leaving out a kept row on a platform the product
+ * removed (FILM-717): it is not a channel anyone can see or publish to.
+ */
+function supported(rows: ConnectionRow[]): ChannelRef[] {
+  return rows
+    .filter((row) => isPlatform(row.platform))
     .map(toChannelRef)
     .sort((a, b) => a.name.localeCompare(b.name));
 }

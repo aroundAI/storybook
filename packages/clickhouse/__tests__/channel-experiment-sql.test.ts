@@ -38,6 +38,13 @@ function latestDefinition(name: string): string {
   throw new Error(`${name} is not defined by any migration`);
 }
 
+/**
+ * Values the database still holds for rows of a platform the product removed
+ * (LinkedIn, FILM-717, owner 2026-10-02). No migration drops them: that would
+ * mean deleting rows, which nobody asked for.
+ */
+const KEPT_FOR_OLD_ROWS = ['linkedin'];
+
 describe('public.publish_format_family', () => {
   const sql = latestDefinition('publish_format_family');
   const declared = sql.slice(
@@ -47,13 +54,13 @@ describe('public.publish_format_family', () => {
   const refinement = sql.slice(sql.indexOf('refinement ('));
 
   it('maps every (platform, content type) pair as FORMAT_BY_CONTENT_TYPE does', () => {
-    const pairs = [...declared.matchAll(/\('(\w+)', '(\w+)', '(\w+)'\)/g)].map(
-      ([, platform, contentType, family]) => ({
+    const pairs = [...declared.matchAll(/\('(\w+)', '(\w+)', '(\w+)'\)/g)]
+      .map(([, platform, contentType, family]) => ({
         platform,
         contentType,
         family,
-      }),
-    );
+      }))
+      .filter(({ platform }) => !KEPT_FOR_OLD_ROWS.includes(platform!));
 
     const expected = CONTENT_TYPES.flatMap((contentType) =>
       PUBLISH_PLATFORMS.map((platform) => ({

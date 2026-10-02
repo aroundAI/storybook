@@ -100,7 +100,6 @@ async function sandboxedRevokers(extraEnv: Record<string, string> = {}) {
   vi.stubEnv('VENDOR_URL_TIKTOK', origin);
   vi.stubEnv('VENDOR_URL_META_GRAPH', origin);
   vi.stubEnv('VENDOR_URL_X_API', origin);
-  vi.stubEnv('VENDOR_URL_LINKEDIN_OAUTH', origin);
   // Anything that escapes to a real host is refused here instead of sent.
   vi.stubEnv('HTTPS_PROXY', origin);
   vi.stubEnv('NO_PROXY', '127.0.0.1');
@@ -293,22 +292,6 @@ describe('revokeAtVendor', () => {
       expect(outcome).toEqual({ status: 'not_configured' });
       expect(seen).toEqual([]);
     });
-  });
-
-  it('calls nobody for LinkedIn, which offers apps no revoke (KB-25)', async () => {
-    const { revokeAtVendor } = await sandboxedRevokers({
-      LINKEDIN_CLIENT_ID: 'li-client',
-      LINKEDIN_CLIENT_SECRET: 'li-secret',
-    });
-
-    expect(
-      await revokeAtVendor({
-        platform: 'linkedin',
-        access_token_encrypted: 'enc:t',
-        refresh_token_encrypted: 'enc:r',
-      }),
-    ).toEqual({ status: 'vendor_offers_none' });
-    expect(seen).toEqual([]);
   });
 
   it('reports an unreachable vendor instead of throwing', async () => {

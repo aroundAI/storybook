@@ -42,14 +42,14 @@
       "pattern": "tells the caller, and warns"
     },
     {
-      "name": "R5 The dialog says X is not revoked, or LinkedIn is (KB-25)",
+      "name": "R5 The dialog says X is not revoked (KB-25)",
       "kind": "unit",
       "file": "packages/features/publishing/src/components/disconnect-copy.ts",
-      "find": "      : 'platforms:disconnectDialog.revokeUnavailable',",
-      "replace": "      : 'platforms:disconnectDialog.revokeAsks',",
+      "find": "      ? 'platforms:disconnectDialog.revokeAsks'",
+      "replace": "      ? 'platforms:disconnectDialog.revokeUnavailable'",
       "cwd": "packages/features/publishing",
       "test": "__tests__/disconnect-copy.test.ts",
-      "pattern": "tells the truth about LinkedIn"
+      "pattern": "promises a revoke for X"
     },
     {
       "name": "L1 A callback redirects to a relative URL again (KB-87)",

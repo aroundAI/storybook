@@ -2,8 +2,8 @@
  * The one label map provenance copy reads platform names from (FILM-1705).
  *
  * Every platform a connection can be on, not only the analytics platforms:
- * the coverage strip names a connected LinkedIn channel as unsupported
- * rather than dropping it, so it needs LinkedIn's name too.
+ * the coverage strip names a connected X channel as unsupported rather than
+ * dropping it, so it needs X's name too.
  */
 export const PLATFORM_LABELS: Record<string, string> = {
   youtube: 'YouTube',
@@ -11,7 +11,6 @@ export const PLATFORM_LABELS: Record<string, string> = {
   instagram: 'Instagram',
   facebook: 'Facebook',
   twitter: 'X',
-  linkedin: 'LinkedIn',
 };
 
 export function platformLabel(platform: string): string {

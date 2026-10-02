@@ -36,6 +36,13 @@ function publishesTable(): string {
   throw new Error('no migration creates public.publishes');
 }
 
+/**
+ * Values the database still holds for rows of a platform the product removed
+ * (LinkedIn, FILM-717, owner 2026-10-02). No migration drops them: that would
+ * mean deleting rows, which nobody asked for.
+ */
+const KEPT_FOR_OLD_ROWS = ['linkedin'];
+
 describe('the vocabularies match the database (FILM-1716)', () => {
   const table = publishesTable();
 
@@ -46,11 +53,13 @@ describe('the vocabularies match the database (FILM-1716)', () => {
     expect([...CONTENT_TYPES].sort()).toEqual(inList(check![1]!).sort());
   });
 
-  it('PUBLISH_PLATFORMS is publishes.platform’s CHECK', () => {
+  it('PUBLISH_PLATFORMS is publishes.platform’s CHECK, less the values kept for old rows', () => {
     const check = /check \(platform in \(([^)]*)\)\)/i.exec(table);
 
     expect(check).not.toBeNull();
-    expect([...PUBLISH_PLATFORMS].sort()).toEqual(inList(check![1]!).sort());
+    expect([...PUBLISH_PLATFORMS, ...KEPT_FOR_OLD_ROWS].sort()).toEqual(
+      inList(check![1]!).sort(),
+    );
   });
 
   it('no later migration rewrites either CHECK behind this test’s back', () => {

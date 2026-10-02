@@ -50,12 +50,6 @@ export const PLATFORM_CONFIGS = {
     defaultAspectRatio: '16:9',
     defaultDuration: 5,
   },
-  linkedin: {
-    label: 'LinkedIn',
-    icon: 'linkedin',
-    defaultAspectRatio: '1:1',
-    defaultDuration: 5,
-  },
   custom: {
     label: 'Custom',
     icon: 'settings',

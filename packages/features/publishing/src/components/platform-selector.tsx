@@ -8,7 +8,6 @@ import {
   ChevronDown,
   Facebook,
   Instagram,
-  Linkedin,
   Plus,
   Youtube,
 } from 'lucide-react';
@@ -71,7 +70,6 @@ const PLATFORM_ICONS: Record<
   instagram: Instagram,
   facebook: Facebook,
   twitter: XIcon,
-  linkedin: Linkedin,
 };
 
 // Platform display order
@@ -81,7 +79,6 @@ const PLATFORM_ORDER: Platform[] = [
   'instagram',
   'facebook',
   'twitter',
-  'linkedin',
 ];
 
 export function PlatformSelector({

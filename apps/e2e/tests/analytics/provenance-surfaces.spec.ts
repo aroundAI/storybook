@@ -24,9 +24,8 @@ import { byTest } from '../utils/visible';
  * FILM-1705 — the provenance surfaces, in a browser.
  *
  * The page the spec's §8 asks for: YouTube connected with rows, TikTok
- * connected with none, Instagram not connected, and a page connected on a
- * platform analytics does not support — LinkedIn, since Facebook became an
- * analytics platform (FILM-1720).
+ * connected with none, Instagram not connected, and a kept row on a platform
+ * the product removed (FILM-717), which the strip must not mention at all.
  *
  * The guard test holds whether or not the server reads ClickHouse (⚫️ Test
  * runs with it off), so it asserts only what does not depend on an
@@ -158,7 +157,7 @@ test.describe('Provenance surfaces (FILM-1705)', () => {
   }) => {
     await seedPage(page, { connections: true, rows: OBSERVED });
 
-    // The strip: one sentence per platform, a LinkedIn page named.
+    // The strip: one sentence per platform; the kept row is not one of them.
     const strip = byTest(page, 'coverage-strip');
 
     await expect(byTest(strip, 'coverage-strip-instagram')).toHaveText(
@@ -169,9 +168,7 @@ test.describe('Provenance surfaces (FILM-1705)', () => {
       'data-kind',
       'not_connected',
     );
-    await expect(byTest(strip, 'coverage-strip-linkedin')).toHaveText(
-      'LinkedIn (Seed Studio Co): connected, but analytics doesn’t support LinkedIn.',
-    );
+    await expect(strip).not.toContainText('Seed Studio Co');
 
     if (OBSERVED) {
       await expect(byTest(strip, 'coverage-strip-youtube')).toHaveAttribute(

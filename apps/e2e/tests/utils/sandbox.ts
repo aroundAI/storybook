@@ -314,10 +314,6 @@ const WHO_AM_I: Record<string, (token: string) => [string, RequestInit]> = {
     'http://127.0.0.1:4104/2/users/me',
     { headers: { Authorization: `Bearer ${token}` } },
   ],
-  linkedin: (token) => [
-    'http://127.0.0.1:4105/v2/userinfo',
-    { headers: { Authorization: `Bearer ${token}` } },
-  ],
   facebook: (token) => [
     `http://127.0.0.1:4101/v18.0/me/permissions?access_token=${encodeURIComponent(token)}`,
     {},

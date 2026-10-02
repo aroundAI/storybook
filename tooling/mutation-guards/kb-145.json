@@ -2,21 +2,11 @@
   "feature": "KB-145",
   "mutations": [
     {
-      "name": "U1 The LinkedIn callback stores the scopes it requested",
-      "kind": "unit",
-      "file": "apps/web/app/api/platforms/callback/linkedin/route.ts",
-      "find": "      scopes: parseGrantedScopes(tokens.scope),\n      metadata: {\n        picture: profile.picture,",
-      "replace": "      scopes: [...LINKEDIN_OAUTH_CONFIG.scopes.personal],\n      metadata: {\n        picture: profile.picture,",
-      "cwd": "apps/web",
-      "test": "lib/platforms/__tests__/callback-success.test.ts",
-      "pattern": "LinkedIn granted"
-    },
-    {
       "name": "U2 A callback storing a requested list passes the grant guard",
       "kind": "unit",
-      "file": "apps/web/app/api/platforms/callback/linkedin/route.ts",
-      "find": "      scopes: parseGrantedScopes(tokens.scope),\n      metadata: {\n        picture: profile.picture,",
-      "replace": "      scopes: [...(state.isCompanyPage ? [] : ['openid'])],\n      metadata: {\n        picture: profile.picture,",
+      "file": "apps/web/app/api/platforms/callback/twitter/route.ts",
+      "find": "      scopes: parseGrantedScopes(tokens.scope),\n      metadata: {\n        scopes_granted_at: new Date().toISOString(),\n        name: twitterUser.name,",
+      "replace": "      scopes: ['tweet.read', 'users.read'],\n      metadata: {\n        scopes_granted_at: new Date().toISOString(),\n        name: twitterUser.name,",
       "cwd": "packages/features/publishing",
       "test": "__tests__/analytics-scopes.test.ts",
       "pattern": "record the grant, not the request"

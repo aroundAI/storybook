@@ -35,7 +35,7 @@ StoryBook is the complete AI-powered film studio for creators and production tea
 - **Music & SFX**: ElevenLabs music generation + shared SFX library
 
 #### 🚀 Publish Tab
-- **Multi-Platform Publishing**: YouTube, TikTok, Instagram, Facebook, Twitter, LinkedIn
+- **Multi-Platform Publishing**: YouTube, TikTok, Instagram, Facebook, Twitter
 - **OAuth Automation**: One-click publishing with platform connections
 - **Analytics Dashboard**: Track views, likes, watch time, revenue across all platforms
 - **Scheduled Publishing**: Queue content for optimal posting times

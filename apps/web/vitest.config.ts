@@ -411,9 +411,11 @@ export default defineConfig({
         __dirname,
         '../../packages/features/publishing/src/oauth/tiktok/index.ts',
       ),
-      '@kit/publishing/oauth/linkedin': path.resolve(
+      // The publish worker imports these by their package paths (FILM-717's
+      // worker test drives its handler).
+      '@kit/publishing/lib': path.resolve(
         __dirname,
-        '../../packages/features/publishing/src/oauth/linkedin/index.ts',
+        '../../packages/features/publishing/src/lib',
       ),
       '@kit/publishing/server/oauth-app-credentials': path.resolve(
         __dirname,

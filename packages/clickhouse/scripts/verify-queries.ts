@@ -1389,8 +1389,8 @@ async function assertions() {
       });
       const refused = await queryTotals({
         projectId: project,
-        // Connectable, not an analytics platform (Facebook is one since
-        // FILM-1720).
+        // A kept row's platform (LinkedIn, retired by FILM-717), never an
+        // analytics platform.
         platforms: ['linkedin'] as unknown as AnalyticsPlatform[],
       }).then(
         () => 'sent',

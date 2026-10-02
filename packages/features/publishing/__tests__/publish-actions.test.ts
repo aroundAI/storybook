@@ -39,7 +39,6 @@ const EPISODE = '00000000-0000-4000-8000-0000000000e1';
 const CONNECTIONS = {
   twitter: '00000000-0000-4000-8000-0000000000c1',
   tiktok: '00000000-0000-4000-8000-0000000000c2',
-  linkedin: '00000000-0000-4000-8000-0000000000c3',
   instagram: '00000000-0000-4000-8000-0000000000c4',
 } as const;
 const VIDEO = `${SUPABASE}/storage/v1/object/public/project-assets/episodes/${EPISODE}/videos/en-1.mp4`;
@@ -55,7 +54,6 @@ const db: DbState = { publishRows: [], inserted: [], updates: [] };
 const providers = vi.hoisted(() => ({
   twitterUpload: vi.fn(),
   tiktokUpload: vi.fn(),
-  linkedinUpload: vi.fn(),
   recordUploadedFileDuration: vi.fn(),
 }));
 
@@ -198,12 +196,6 @@ vi.mock('../src/lib/mp4-facts', () => ({
   })),
 }));
 
-vi.mock('../src/providers/linkedin', () => ({
-  LinkedInProvider: vi.fn().mockImplementation(() => ({
-    uploadVideo: providers.linkedinUpload,
-  })),
-}));
-
 describe('Publish Actions', () => {
   describe('getPublishStatusAction polling', () => {
     const row = (
@@ -333,10 +325,6 @@ describe('Publish Actions', () => {
         publishId: 'tt-1',
         videoUrl: 'https://tiktok.com/v/tt-1',
       });
-      providers.linkedinUpload.mockReset().mockResolvedValue({
-        postUrn: 'urn:li:share:1',
-        postUrl: 'https://linkedin.com/feed/update/1',
-      });
       providers.recordUploadedFileDuration
         .mockReset()
         .mockResolvedValue({ recorded: true, seconds: 45 });
@@ -464,14 +452,14 @@ describe('Publish Actions', () => {
         '../src/server/publish-actions'
       );
 
-      providers.linkedinUpload.mockRejectedValue(new Error('LinkedIn is down'));
+      providers.tiktokUpload.mockRejectedValue(new Error('TikTok is down'));
 
       const result = await publishToAllAction({
         episodeId: EPISODE,
         platforms: [
           input('twitter', '2030-01-01T10:00:00.000Z'),
+          input('instagram'),
           input('tiktok'),
-          input('linkedin'),
         ],
       });
 
@@ -480,32 +468,53 @@ describe('Publish Actions', () => {
         data: [
           { platform: 'twitter', status: 'scheduled', publishId: 'publish-1' },
           {
-            platform: 'tiktok',
+            platform: 'instagram',
             status: 'completed',
-            platformContentId: 'tt-1',
-            platformUrl: 'https://tiktok.com/v/tt-1',
+            platformContentId: 'ig-reel-123',
+            platformUrl: 'https://instagram.com/reel/ig-reel-123',
             publishId: 'publish-2',
           },
           {
-            platform: 'linkedin',
+            platform: 'tiktok',
             status: 'failed',
-            error: 'LinkedIn is down',
+            error: 'TikTok is down',
           },
         ],
       });
       expect(db.inserted.map((row) => [row.platform, row.status])).toEqual([
         ['twitter', 'scheduled'],
+        ['instagram', 'publishing'],
         ['tiktok', 'publishing'],
-        ['linkedin', 'publishing'],
       ]);
       expect(providers.twitterUpload).not.toHaveBeenCalled();
-      expect(providers.tiktokUpload).toHaveBeenCalledTimes(1);
       expect(db.updates).toContainEqual(
         expect.objectContaining({
           status: 'failed',
-          metadata: expect.objectContaining({ error: 'LinkedIn is down' }),
+          metadata: expect.objectContaining({ error: 'TikTok is down' }),
         }),
       );
+    });
+
+    // FILM-717: LinkedIn is removed. The action's schema refuses a request
+    // naming it before the handler runs (this file's enhanceAction mock
+    // skips schemas, so the schema is asked directly).
+    it('refuses a removed platform at the schema', async () => {
+      const { PublishToAllSchema } = await import(
+        '../src/lib/schemas/publish.schema'
+      );
+
+      expect(
+        PublishToAllSchema.safeParse({
+          episodeId: EPISODE,
+          platforms: [input('tiktok')],
+        }).success,
+      ).toBe(true);
+      expect(
+        PublishToAllSchema.safeParse({
+          episodeId: EPISODE,
+          platforms: [{ ...input('tiktok'), platform: 'linkedin' }],
+        }).success,
+      ).toBe(false);
     });
   });
 
@@ -565,7 +574,6 @@ describe('Publish Actions', () => {
         'instagram',
         'facebook',
         'twitter',
-        'linkedin',
       ];
 
       platforms.forEach((platform) => {

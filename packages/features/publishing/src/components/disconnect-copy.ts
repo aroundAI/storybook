@@ -9,8 +9,8 @@ import type { PlatformType } from '../types';
 /**
  * Whether disconnecting asks the platform to revoke our access. The dialog's
  * promise; `REVOKERS` in `oauth/revokers.ts` is the behaviour, and
- * `revokers.test.ts` fails if the two disagree. LinkedIn is false because
- * LinkedIn offers apps no revoke at all (KB-25), not because it is pending.
+ * `revokers.test.ts` fails if the two disagree. A platform whose vendor
+ * offers apps no revoke would be false (KB-25); none does today.
  */
 export const VENDOR_REVOKES: Record<PlatformType, boolean> = {
   youtube: true,
@@ -18,7 +18,6 @@ export const VENDOR_REVOKES: Record<PlatformType, boolean> = {
   instagram: true,
   facebook: true,
   twitter: true,
-  linkedin: false,
 };
 
 /**
@@ -33,7 +32,6 @@ export const DELETES_STATISTICS_ON_DISCONNECT: Record<PlatformType, boolean> = {
   instagram: false,
   facebook: false,
   twitter: false,
-  linkedin: false,
 };
 
 export interface DisconnectCopy {

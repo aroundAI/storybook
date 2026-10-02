@@ -43,10 +43,6 @@ const ENV_SOURCES: Partial<Record<OAuthApp, EnvSource>> = {
     clientId: 'TIKTOK_CLIENT_KEY',
     clientSecret: 'TIKTOK_CLIENT_SECRET',
   },
-  linkedin: {
-    clientId: 'LINKEDIN_CLIENT_ID',
-    clientSecret: 'LINKEDIN_CLIENT_SECRET',
-  },
   twitter: {
     clientId: 'TWITTER_CLIENT_ID',
     clientSecret: 'TWITTER_CLIENT_SECRET',

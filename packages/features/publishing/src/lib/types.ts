@@ -119,7 +119,6 @@ export interface PlatformSpecificSettings {
   isReel?: boolean;
   targeting?: Record<string, unknown>;
   // Twitter
-  // LinkedIn
 }
 
 /**

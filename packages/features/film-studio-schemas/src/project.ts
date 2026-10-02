@@ -20,7 +20,6 @@ export const TargetPlatformSchema = z.enum([
   'instagram',
   'facebook',
   'twitter',
-  'linkedin',
   'custom',
 ]);
 

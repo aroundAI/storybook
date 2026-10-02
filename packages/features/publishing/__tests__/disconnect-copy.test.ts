@@ -36,12 +36,9 @@ function lookup(key: string): unknown {
 const platforms = Object.keys(VENDOR_REVOKES) as PlatformType[];
 
 describe('disconnectCopyFor (KB-25)', () => {
-  it('promises a revoke for X, and tells the truth about LinkedIn', () => {
+  it('promises a revoke for X', () => {
     expect(disconnectCopyFor('twitter').revokeKey).toBe(
       'platforms:disconnectDialog.revokeAsks',
-    );
-    expect(disconnectCopyFor('linkedin').revokeKey).toBe(
-      'platforms:disconnectDialog.revokeUnavailable',
     );
   });
 

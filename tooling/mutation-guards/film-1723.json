@@ -122,16 +122,6 @@
       "pattern": "walks initialize"
     },
     {
-      "name": "LinkedIn's version is declared a second time in the lambda",
-      "kind": "unit",
-      "file": "apps/web/lambda/publish-worker/index.ts",
-      "find": "      'LinkedIn-Version': LINKEDIN_REST_VERSION,",
-      "replace": "      'LinkedIn-Version': '202401',",
-      "cwd": "packages/shared",
-      "test": "__tests__/vendor-api-versions.test.ts",
-      "pattern": "no vendor host or version literal"
-    },
-    {
       "name": "Instagram asks for video_views, removed in the versions the pin crossed",
       "kind": "unit",
       "file": "packages/features/publishing/src/providers/instagram/instagram-provider.ts",
@@ -140,16 +130,6 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/platform-field-names.test.ts",
       "pattern": "video_views"
-    },
-    {
-      "name": "A pin past its end loses the known bug that owns the move",
-      "kind": "unit",
-      "file": "packages/shared/src/vendors/pins.ts",
-      "find": "    trackedBy: 'KB-164',",
-      "replace": "    trackedBy: null,",
-      "cwd": "packages/shared",
-      "test": "__tests__/vendor-api-versions.test.ts",
-      "pattern": "no pinned vendor version is within 120 days of its end"
     },
     {
       "name": "The reference's pinned-versions table disagrees with the pin list",
@@ -165,8 +145,8 @@
       "name": "The reference's headline names a pin that is not the next end",
       "kind": "unit",
       "file": "docs/platform-capability-reference.md",
-      "find": "**Next end: LinkedIn `202401`, which",
-      "replace": "**Next end: Meta Graph `v26.0`, which",
+      "find": "**Next end: Meta Graph `v26.0`, on",
+      "replace": "**Next end: X `v2`, on",
       "cwd": "packages/shared",
       "test": "__tests__/vendor-api-versions.test.ts",
       "pattern": "names the next end above the table"

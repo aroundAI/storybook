@@ -29,24 +29,22 @@ import type {
   DeleteJobMessage,
   JobMessage,
   PublishJobMessage,
-  SocialTextPostJobMessage,
 } from '@kit/publishing/lib/job-types';
 import {
   EPISODE_VIDEO_PUBLISH_REFUSAL,
   ownedEpisodeVideo,
 } from '@kit/publishing/lib/owned-episode-video';
 import { ownedEpisodeThumbnail } from '@kit/publishing/lib/owned-thumbnail';
+import { isPlatform } from '@kit/publishing/lib/platforms';
 import {
+  type TokenErrorCode,
   TokenRefusal,
   tokenErrorCodeOf,
+  tokenErrorMessage,
 } from '@kit/publishing/lib/token-errors';
 import { recordUploadedFileDuration } from '@kit/publishing/lib/uploaded-file-duration';
 import type { YouTubeChannelDeclaration } from '@kit/publishing/lib/youtube-declaration';
-import {
-  LINKEDIN_REST_VERSION,
-  awsClientOptions,
-  vendorUrl,
-} from '@kit/shared/vendors';
+import { awsClientOptions } from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
 
 import { mergeFailureMetadata } from './failure-metadata';
@@ -190,10 +188,6 @@ async function uploadToPlatform(
         await readXGrant(job.platformConnectionId),
       );
     }
-    case 'linkedin': {
-      const { uploadToLinkedIn } = await import('./handlers/linkedin');
-      return uploadToLinkedIn(accessToken, job);
-    }
     default:
       throw new Error(`Unsupported platform: ${job.platform}`);
   }
@@ -262,7 +256,6 @@ async function deleteFromPlatform(
     }
     case 'tiktok':
     case 'instagram':
-    case 'linkedin':
       console.warn(
         `[Publish Worker] Delete not implemented for ${job.platform}, skipping platform deletion.`,
       );
@@ -381,8 +374,6 @@ async function processPublish(job: PublishJobMessage): Promise<void> {
       job.metadata.pageId = tokenResult.platformAccountId;
     } else if (job.platform === 'instagram') {
       job.metadata.accountId = tokenResult.platformAccountId;
-    } else if (job.platform === 'linkedin') {
-      job.metadata.authorUrn = tokenResult.platformAccountId;
     }
   }
 
@@ -499,95 +490,44 @@ async function processDelete(message: DeleteJobMessage): Promise<void> {
   console.log(`[Publish Worker] DELETE SUCCESS: ${job.publishId}`);
 }
 
-/**
- * Process a social text post job (LinkedIn text-only post)
- */
-async function processSocialTextPost(
-  job: SocialTextPostJobMessage,
-): Promise<void> {
-  console.log(
-    `[Publish Worker] Processing social text post ${job.socialPostId}`,
-  );
+interface JobFailure {
+  errorMessage: string;
+  errorCode?: TokenErrorCode;
+  errorStack?: string;
+}
 
-  // 1. Get valid access token
-  const tokenResult = await checkConnectionToken(
-    job.platformConnectionId,
-    supabase,
-  );
-  if (!tokenResult.valid) {
-    throw new TokenRefusal(
-      tokenResult.error ?? 'NO_ACCESS_TOKEN',
-      job.platform,
+/**
+ * Marks the job's row failed with what happened, and tells the user. A
+ * delete leaves the row alone: it is retried or refused as it stands.
+ */
+async function recordJobFailure(job: JobMessage, failure: JobFailure) {
+  const { errorMessage, errorCode, errorStack } = failure;
+  const stored = {
+    error: errorMessage,
+    errorCode,
+    errorStack: errorStack?.split('\n').slice(0, 5).join('\n'),
+    failedAt: new Date().toISOString(),
+  };
+
+  try {
+    if (job.type === 'publish') {
+      await updatePublishStatus(job.publishId, 'failed', stored);
+    }
+
+    await sendToUser(job.userId, {
+      type: job.type === 'delete' ? 'delete-error' : 'publish-error',
+      jobType: 'publish-status',
+      platform: job.platform,
+      publishId: job.publishId,
+      error: errorMessage,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (notifyError) {
+    console.error(
+      `[Publish Worker] Failed to update status or notify user:`,
+      notifyError,
     );
   }
-
-  // 2. Create text-only LinkedIn post
-  const response = await fetch(`${vendorUrl('linkedin-api')}/v2/posts`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${tokenResult.accessToken}`,
-      'Content-Type': 'application/json',
-      'X-Restli-Protocol-Version': '2.0.0',
-      'LinkedIn-Version': LINKEDIN_REST_VERSION,
-    },
-    body: JSON.stringify({
-      author: job.authorUrn,
-      commentary: job.text,
-      visibility: job.visibility,
-      distribution: {
-        feedDistribution: 'MAIN_FEED',
-        targetEntities: [],
-        thirdPartyDistributionChannels: [],
-      },
-      lifecycleState: 'PUBLISHED',
-      isReshareDisabledByAuthor: false,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`LinkedIn text post creation failed: ${error}`);
-  }
-
-  // Get post URN from response header or body
-  let postUrn = response.headers.get('x-restli-id') || '';
-  if (!postUrn) {
-    try {
-      const data = await response.json();
-      postUrn = data.id || '';
-    } catch {
-      // Response may be empty
-    }
-  }
-
-  const postUrl = postUrn
-    ? `https://www.linkedin.com/feed/update/${postUrn}`
-    : '';
-
-  // 3. Update social_posts table
-  await supabase
-    .from('social_posts')
-    .update({
-      status: 'published',
-      platform_post_id: postUrn,
-      platform_url: postUrl,
-      published_at: new Date().toISOString(),
-    })
-    .eq('id', job.socialPostId);
-
-  // 4. Notify user via WebSocket
-  await sendToUser(job.userId, {
-    type: 'social-post-published',
-    jobType: 'publish-status',
-    socialPostId: job.socialPostId,
-    platform: job.platform,
-    url: postUrl,
-    timestamp: new Date().toISOString(),
-  });
-
-  console.log(
-    `[Publish Worker] Social text post SUCCESS: ${job.socialPostId} → ${postUrl}`,
-  );
 }
 
 /**
@@ -601,17 +541,35 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
     event.Records.map(async (record) => {
       let job: JobMessage | undefined;
       try {
-        job = JSON.parse(record.body) as JobMessage;
-
+        const parsed = JSON.parse(record.body) as
+          | JobMessage
+          | Omit<PublishJobMessage, 'type'>;
         // Default to 'publish' type for backward compatibility
-        const jobType = 'type' in job ? job.type : 'publish';
+        job = 'type' in parsed ? parsed : { ...parsed, type: 'publish' };
 
-        if (jobType === 'social_text_post') {
-          await processSocialTextPost(job as SocialTextPostJobMessage);
-        } else if (jobType === 'delete') {
-          await processDelete(job as DeleteJobMessage);
+        // FILM-717: a job for a platform the product removed, queued before
+        // it was removed, is answered as a refusal value, not retried, and
+        // the platform is never called. A delete still runs: it removes our
+        // record of a past publish.
+        if (job.type !== 'delete' && !isPlatform(job.platform)) {
+          const errorMessage = tokenErrorMessage(
+            'PLATFORM_UNSUPPORTED',
+            job.platform,
+          );
+          console.warn(
+            `[Publish Worker] REFUSED (PLATFORM_UNSUPPORTED): ${errorMessage}`,
+          );
+          await recordJobFailure(job, {
+            errorMessage,
+            errorCode: 'PLATFORM_UNSUPPORTED',
+          });
+          return { itemIdentifier: record.messageId, status: 'refused' };
+        }
+
+        if (job.type === 'delete') {
+          await processDelete(job);
         } else {
-          await processPublish(job as PublishJobMessage);
+          await processPublish(job);
         }
 
         return { itemIdentifier: record.messageId, status: 'fulfilled' };
@@ -629,88 +587,8 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
           console.error(`[Publish Worker] Stack trace:\n${errorStack}`);
         }
 
-        // Notify user about failure
         if (job) {
-          try {
-            const isDelete = 'type' in job && job.type === 'delete';
-            const isSocialTextPost =
-              'type' in job && job.type === 'social_text_post';
-            const type = isSocialTextPost
-              ? 'social-post-error'
-              : isDelete
-                ? 'delete-error'
-                : 'publish-error';
-
-            if (isSocialTextPost) {
-              const socialPostId = (job as SocialTextPostJobMessage)
-                .socialPostId;
-
-              const { data: existingPost } = await supabase
-                .from('social_posts')
-                .select('metadata')
-                .eq('id', socialPostId)
-                .single();
-
-              const existingMetadata =
-                existingPost?.metadata &&
-                typeof existingPost.metadata === 'object' &&
-                !Array.isArray(existingPost.metadata)
-                  ? (existingPost.metadata as Record<string, unknown>)
-                  : {};
-
-              await supabase
-                .from('social_posts')
-                .update({
-                  status: 'failed',
-                  metadata: {
-                    ...existingMetadata,
-                    error: errorMessage,
-                    errorCode,
-                    errorStack: errorStack?.split('\n').slice(0, 5).join('\n'),
-                    failedAt: new Date().toISOString(),
-                  },
-                })
-                .eq('id', socialPostId);
-            } else if (!isDelete) {
-              // Only update status for publish jobs, delete jobs are just retried or failed
-              await updatePublishStatus(
-                (job as PublishJobMessage).publishId,
-                'failed',
-                {
-                  error: errorMessage,
-                  errorCode,
-                  errorStack: errorStack?.split('\n').slice(0, 5).join('\n'),
-                  failedAt: new Date().toISOString(),
-                },
-              );
-            }
-
-            // Build notification payload based on job type
-            const notificationPayload: Record<string, unknown> = {
-              type,
-              jobType: 'publish-status',
-              platform: job.platform as string,
-              error: errorMessage,
-              timestamp: new Date().toISOString(),
-            };
-
-            if (isSocialTextPost) {
-              notificationPayload.socialPostId = (
-                job as SocialTextPostJobMessage
-              ).socialPostId;
-            } else {
-              notificationPayload.publishId = (
-                job as PublishJobMessage | DeleteJobMessage
-              ).publishId;
-            }
-
-            await sendToUser(job.userId, notificationPayload);
-          } catch (notifyError) {
-            console.error(
-              `[Publish Worker] Failed to update status or notify user:`,
-              notifyError,
-            );
-          }
+          await recordJobFailure(job, { errorMessage, errorCode, errorStack });
         }
 
         // A refusal is an answer: acknowledged, so SQS does not ask again

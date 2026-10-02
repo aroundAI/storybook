@@ -27,7 +27,7 @@ export async function generateMetadata() {
 
 async function TermsOfServicePage() {
   const { t } = await createI18nServerInstance();
-  const lastUpdated = 'September 25, 2026';
+  const lastUpdated = 'October 2, 2026';
   const companyName = 'Around AI Limited';
   const productName = 'StoryBook';
   const contactEmail = 'legal@storybook.digital';
@@ -127,7 +127,7 @@ async function TermsOfServicePage() {
                 },
                 {
                   title: 'Publishing',
-                  desc: 'Multi-platform publishing to YouTube, TikTok, Instagram, Facebook, Twitter, LinkedIn',
+                  desc: 'Multi-platform publishing to YouTube, TikTok, Instagram, Facebook, Twitter',
                 },
                 {
                   title: 'Analytics',
@@ -262,9 +262,9 @@ async function TermsOfServicePage() {
             <div className="space-y-4">
               <p>
                 The Service allows you to connect your accounts on third-party
-                platforms (YouTube, TikTok, Instagram, Facebook, Twitter,
-                LinkedIn). By connecting these accounts, you authorize us to
-                access and interact with these platforms on your behalf.
+                platforms (YouTube, TikTok, Instagram, Facebook, Twitter). By
+                connecting these accounts, you authorize us to access and
+                interact with these platforms on your behalf.
               </p>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
                 <h3 className="mb-2 font-medium text-slate-900 dark:text-white">

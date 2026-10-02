@@ -18,6 +18,8 @@ export const TOKEN_ERROR_CODES = [
   'TOKEN_UNREADABLE',
   /** An operator fault: the connection is left active (KB-29). */
   'APP_NOT_CONFIGURED',
+  /** A kept row on a platform the product removed (FILM-717): nothing is sent. */
+  'PLATFORM_UNSUPPORTED',
 ] as const;
 
 export type TokenErrorCode = (typeof TOKEN_ERROR_CODES)[number];
@@ -41,6 +43,8 @@ const SENTENCES: Record<TokenErrorCode, (name: string) => string> = {
     `This app can't read your saved ${name} sign-in. Reconnect ${name} in ${SETTINGS} to publish.`,
   APP_NOT_CONFIGURED: (name) =>
     `Publishing to ${name} isn't set up yet: this app has no ${name} credentials. Your connection still works; ask your administrator to add them.`,
+  PLATFORM_UNSUPPORTED: (name) =>
+    `This app no longer publishes to ${name}, so nothing was sent.`,
 };
 
 function platformName(platform: string): string {

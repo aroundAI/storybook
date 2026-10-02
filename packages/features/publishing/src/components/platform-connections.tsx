@@ -12,7 +12,6 @@ import {
   Facebook,
   Globe,
   Instagram,
-  Linkedin,
   Loader2,
   Plus,
   RefreshCw,
@@ -99,9 +98,9 @@ const LANGUAGE_NAMES: Record<string, string> = {
 
 /**
  * Every platform a connection can be made to. A `Record`, so a platform added
- * to `PlatformType` does not compile until it has a card here: X and LinkedIn
- * had connect routes and no card, so their connections could be neither made
- * nor disconnected from this page (KB-86).
+ * to `PlatformType` does not compile until it has a card here: X had a
+ * connect route and no card, so its connections could be neither made nor
+ * disconnected from this page (KB-86).
  */
 const PLATFORM_CARDS: Record<PlatformType, Omit<PlatformConfig, 'id'>> = {
   youtube: {
@@ -144,14 +143,6 @@ const PLATFORM_CARDS: Record<PlatformType, Omit<PlatformConfig, 'id'>> = {
     ],
     multiAccount: true,
     limitationKey: 'platforms:limitation.twitter',
-  },
-  linkedin: {
-    name: 'LinkedIn',
-    color: 'text-sky-700',
-    description: 'Connect your LinkedIn profile',
-    scopes: ['Sign in with LinkedIn', 'Post as you'],
-    multiAccount: false,
-    limitationKey: 'platforms:limitation.linkedin',
   },
 };
 
@@ -622,7 +613,7 @@ function VendorDataPurgeLine({
 
 /**
  * The disconnect went through, but the platform did not confirm it revoked
- * our access — it refused, could not be reached, or (LinkedIn) offers apps no
+ * our access — it refused, could not be reached, or offers apps no
  * way to. Points the creator at the platform's own settings (KB-45).
  */
 function RevokeUnconfirmedMessage({
@@ -1016,7 +1007,6 @@ const PLATFORM_ICONS: Record<
   instagram: Instagram,
   facebook: Facebook,
   twitter: Twitter,
-  linkedin: Linkedin,
 };
 
 function getPlatformIcon(platform: PlatformType) {

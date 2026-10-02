@@ -22,26 +22,6 @@
       "pattern": "retryPublishAction refuses before the upload"
     },
     {
-      "name": "P2 a social post RLS refused is published anyway",
-      "kind": "unit",
-      "file": "packages/features/publishing/src/server/social-post-actions.ts",
-      "find": "    requireAffectedRows(marked, \"You can't publish this post.\");\n",
-      "replace": "",
-      "cwd": "packages/features/publishing",
-      "test": "__tests__/publish-queue-authorization.test.ts",
-      "pattern": "publishSocialPostAction refuses, and no token is read"
-    },
-    {
-      "name": "P3 an approval RLS refused is reported as approved",
-      "kind": "unit",
-      "file": "packages/features/publishing/src/server/social-post-actions.ts",
-      "find": "    requireAffectedRows(approved, \"You can't approve this post.\");\n",
-      "replace": "",
-      "cwd": "packages/features/publishing",
-      "test": "__tests__/publish-queue-authorization.test.ts",
-      "pattern": "approveSocialPostAction refuses rather than reporting it approved"
-    },
-    {
       "name": "V1 a voice clone RLS refused goes on to ElevenLabs",
       "kind": "unit",
       "file": "packages/features/audio-generation/src/server/voice-clone-actions.ts",

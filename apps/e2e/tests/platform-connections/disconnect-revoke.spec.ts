@@ -10,14 +10,14 @@ import { byTest } from '../utils/visible';
 
 /**
  * KB-25, KB-45, KB-86, KB-87 — connecting and disconnecting, against one
- * local listener standing in for Google, X and LinkedIn (FILM-1801's
- * `VENDOR_URL_*`), through the production build.
+ * local listener standing in for Google and X (FILM-1801's `VENDOR_URL_*`),
+ * through the production build.
  *
- * - KB-86: the Platforms page had no X or LinkedIn card, so neither could be
- *   connected or disconnected there.
- * - KB-87: a successful X (and TikTok, LinkedIn) connect redirected to a
- *   relative URL, which Next refuses, so it landed on the failure page.
- * - KB-25: disconnecting X asked X for nothing; LinkedIn offers apps no revoke.
+ * - KB-86: the Platforms page had no X card, so X could be neither connected
+ *   nor disconnected there.
+ * - KB-87: a successful X (and TikTok) connect redirected to a relative URL,
+ *   which Next refuses, so it landed on the failure page.
+ * - KB-25: disconnecting X asked X for nothing.
  * - KB-45: whatever the platform answered, the creator saw the same toast.
  *
  * The server needs, in its environment (`NODE_ENV=test next start`), with
@@ -25,14 +25,12 @@ import { byTest } from '../utils/visible';
  *
  *   ENCRYPTION_KEY=<same as this run's>  VENDOR_SANDBOX=1
  *   VENDOR_URL_GOOGLE_TOKEN  VENDOR_URL_X_API  VENDOR_URL_X_OAUTH
- *   VENDOR_URL_LINKEDIN_OAUTH  VENDOR_URL_LINKEDIN_API
  *     = http://127.0.0.1:$KB25_SANDBOX_PORT
  *   TWITTER_CLIENT_ID=kb25-x-client  TWITTER_CLIENT_SECRET=kb25-x-secret
- *   LINKEDIN_CLIENT_ID=kb25-li-client  LINKEDIN_CLIENT_SECRET=kb25-li-secret
  *
  * and this run needs `KB25_SANDBOX_PORT` and `ENCRYPTION_KEY`. CI's E2E job
- * has none of these, so this file skips there. The live checks against X and
- * LinkedIn wait on credentials: FILM-1725 Check I.
+ * has none of these, so this file skips there. The live check against X
+ * waits on credentials: FILM-1725 Check I.
  */
 
 const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
@@ -61,7 +59,7 @@ async function capture(page: Page, name: string) {
 
 /**
  * One listener for every vendor: Google's `/revoke`; X's authorize page,
- * token, user and revoke endpoints; LinkedIn's authorize page. Each X
+ * token, user and revoke endpoints. Each X
  * authorization issues fresh tokens, so a test can tell which were revoked.
  */
 async function startStandIn(port: number) {
@@ -122,14 +120,6 @@ async function startStandIn(port: number) {
         case '/2/oauth2/revoke':
         case '/revoke':
           return json(stand.revokeStatus, {});
-        // LinkedIn's consent screen: not followed further (the live flow is
-        // FILM-1725's); the test asserts the request that reached it.
-        case '/oauth/v2/authorization':
-          response.setHeader('content-type', 'text/html');
-          response.end(
-            '<h1 data-test="linkedin-consent">LinkedIn stand-in</h1>',
-          );
-          return;
         default:
           return json(404, {});
       }
@@ -310,73 +300,6 @@ test.describe('Connecting and disconnecting, and what the platform is asked (KB-
         .locator('[data-close-button]'),
     ).toBeVisible();
     await capture(page, '05-x-refused-warning');
-  });
-
-  test('LinkedIn: Connect reaches LinkedIn’s consent screen; an existing row disconnects, and LinkedIn — which offers no revoke — is not called', async ({
-    page,
-  }) => {
-    const team = await seedTeamAccount({ emailPrefix: 'kb86li' });
-    const suffix = randomUUID().slice(0, 8);
-    const connectionId = await seedYouTubeConnection(
-      team.accountId,
-      'Acme on LinkedIn',
-      {
-        platform: 'linkedin',
-        platformAccountId: `li-${suffix}`,
-        accessTokenEncrypted: await encryptLikeTheApp(`li-access-${suffix}`),
-        refreshTokenEncrypted: await encryptLikeTheApp(`li-refresh-${suffix}`),
-      },
-    );
-
-    await signInAs(page, team);
-    await page.goto(`/home/${team.slug}/settings/platforms`);
-
-    const linkedin = card(page, 'linkedin');
-
-    await expect(
-      byTest(linkedin, 'platform-limitation-linkedin'),
-    ).toContainText('Personal profiles only');
-    await expect(row(page, connectionId)).toContainText('Acme on LinkedIn');
-    await capture(page, '06-linkedin-card');
-
-    const dialog = await openDisconnect(page, row(page, connectionId));
-
-    await expect(byTest(dialog, 'disconnect-access')).toContainText(
-      "LinkedIn doesn't let apps revoke their own access, so remove our access in LinkedIn's settings too.",
-    );
-    await capture(page, '07-linkedin-dialog');
-
-    await byTest(dialog, 'confirm-disconnect').click();
-    await expect(row(page, connectionId)).toHaveAttribute(
-      'data-status',
-      'disconnected',
-    );
-    await expect(
-      unconfirmed(page).locator(
-        '[data-test="disconnect-revoke-settings-link"]',
-      ),
-    ).toHaveAttribute(
-      'href',
-      'https://www.linkedin.com/mypreferences/d/data-sharing-for-permitted-services',
-    );
-    expect(vendor.seen).toEqual([]);
-    await capture(page, '08-linkedin-warning');
-
-    // Connect: the real connect route sends the browser to LinkedIn's
-    // consent screen with our client and the personal-profile scopes.
-    await page.goto(`/home/${team.slug}/settings/platforms`);
-    await byTest(linkedin, 'connect-platform-linkedin').click();
-    await expect(byTest(page, 'linkedin-consent')).toBeVisible();
-
-    const authorize = vendor.requests('/oauth/v2/authorization')[0];
-
-    expect(authorize?.query.get('client_id')).toBe('kb25-li-client');
-    expect(authorize?.query.get('scope')).toBe(
-      'openid profile email w_member_social',
-    );
-    expect(authorize?.query.get('redirect_uri')).toMatch(
-      /\/api\/platforms\/callback\/linkedin$/,
-    );
   });
 
   test('YouTube: Google refuses — a warning that stays and links to Google; Google agrees — the green toast (KB-45)', async ({

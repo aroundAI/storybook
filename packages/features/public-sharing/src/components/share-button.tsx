@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { Check, Copy, Facebook, Linkedin, Share2, Twitter } from 'lucide-react';
+import { Check, Copy, Facebook, Share2, Twitter } from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
 import {
@@ -39,7 +39,7 @@ export function ShareButton({
     }
   };
 
-  const shareToPlatform = (platform: 'twitter' | 'facebook' | 'linkedin') => {
+  const shareToPlatform = (platform: 'twitter' | 'facebook') => {
     let shareUrl = '';
     const encodedUrl = encodeURIComponent(url);
     const encodedTitle = encodeURIComponent(title);
@@ -50,9 +50,6 @@ export function ShareButton({
         break;
       case 'facebook':
         shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
-        break;
-      case 'linkedin':
-        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
         break;
     }
 
@@ -83,10 +80,6 @@ export function ShareButton({
         <DropdownMenuItem onClick={() => shareToPlatform('facebook')}>
           <Facebook className="mr-2 h-4 w-4" />
           Facebook
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => shareToPlatform('linkedin')}>
-          <Linkedin className="mr-2 h-4 w-4" />
-          LinkedIn
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

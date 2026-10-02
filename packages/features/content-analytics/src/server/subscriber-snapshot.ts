@@ -117,7 +117,7 @@ export async function captureSubscriberSnapshots(): Promise<SubscriberCaptureRes
   const snapshotDate = new Date().toISOString().slice(0, 10);
 
   // Scoped to the platforms with a source. `platform_connections.platform`
-  // also permits facebook, twitter and linkedin, all created by callback
+  // also permits facebook and twitter, both created by callback
   // routes today; attempting them would throw once per connection every
   // night forever, indistinguishable in the logs from a real outage.
   //

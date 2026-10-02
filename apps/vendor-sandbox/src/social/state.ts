@@ -132,8 +132,6 @@ function objectId(rng: Rng, platform: Platform) {
   switch (platform) {
     case 'youtube':
       return token(rng, 11);
-    case 'linkedin':
-      return `urn:li:share:${rng.int(7_000_000_000, 7_399_999_999)}${rng.int(100_000_000, 999_999_999)}`;
     default:
       return `${rng.int(17_000_000, 18_999_999)}${rng.int(100_000_000, 999_999_999)}${rng.int(10, 99)}`;
   }
@@ -256,20 +254,14 @@ export class SocialState {
       `account:${platform}:${this.next(`account:${platform}`)}`,
     );
     const name =
-      platform === 'facebook'
-        ? names.pageName(rng)
-        : platform === 'linkedin'
-          ? names.personName(rng)
-          : names.channelName(rng);
+      platform === 'facebook' ? names.pageName(rng) : names.channelName(rng);
 
     const account: SocialAccount = {
       platform,
       id:
         platform === 'youtube'
           ? `UC${token(rng, 22)}`
-          : platform === 'linkedin'
-            ? token(rng, 10)
-            : objectId(rng, platform),
+          : objectId(rng, platform),
       name,
       handle: names.handle(rng),
       bio: names.bio(rng),

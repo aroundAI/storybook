@@ -95,7 +95,7 @@ acceptance_criteria:
     evidence: null
   - text: "Can retry failed publishes"
     met: false
-    reason: "no longer true — `retryPublishAction` (`packages/features/publishing/src/server/publish-actions.ts:929`) is called only by `PublishHub`, which no page renders since baa752eb"
+    reason: "no longer true — `retryPublishAction` (`packages/features/publishing/src/server/publish-actions.ts:928`) is called only by `PublishHub`, which no page renders since baa752eb"
 test_plan:
   unit:
     - text: "Test platform config initialization"
@@ -103,17 +103,17 @@ test_plan:
       evidence: "packages/features/publishing/__tests__/publish-hub-config.test.ts:32"
     - text: "Test metadata validation"
       met: true
-      evidence: "packages/features/publishing/__tests__/publish-hub-config.test.ts:73"
+      evidence: "packages/features/publishing/__tests__/publish-hub-config.test.ts:72"
     - text: "Test scheduling logic"
       met: true
-      evidence: "the schedule is read and validated (packages/features/publishing/__tests__/publish-hub-config.test.ts:182); the scheduled-versus-immediate branch: packages/features/publishing/__tests__/publish-actions.test.ts:438 (scheduled request stored, nothing uploaded) and :307 (immediate request published now)"
+      evidence: "the schedule is read and validated (packages/features/publishing/__tests__/publish-hub-config.test.ts:181); the scheduled-versus-immediate branch: packages/features/publishing/__tests__/publish-actions.test.ts:426 (scheduled request stored, nothing uploaded) and :307 (immediate request published now)"
   integration:
     - text: "Test multi-platform publish flow"
       met: true
-      evidence: "packages/features/publishing/__tests__/publish-actions.test.ts:462 — one platform scheduled, one live, one failing through `publishToAllAction`, with exact results, inserted statuses and provider call counts"
+      evidence: "packages/features/publishing/__tests__/publish-actions.test.ts:450 — one platform scheduled, one live, one failing through `publishToAllAction`, with exact results, inserted statuses and provider call counts"
     - text: "Test status polling"
       met: true
-      evidence: "packages/features/publishing/__tests__/publish-actions.test.ts:222 — three calls as a row moves from queued to published, exact values; :234 carries a failed publish's error; :249 keeps the newest row per platform. `queued` maps to `pending` in `mapDbStatus`, asserted as is"
+      evidence: "packages/features/publishing/__tests__/publish-actions.test.ts:214 — three calls as a row moves from queued to published, exact values; :234 carries a failed publish's error; :249 keeps the newest row per platform. `queued` maps to `pending` in `mapDbStatus`, asserted as is"
   e2e:
     - text: "Full publish flow with mocked providers"
       met: false

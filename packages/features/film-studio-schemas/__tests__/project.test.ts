@@ -46,7 +46,6 @@ describe('Project Schemas', () => {
         'instagram',
         'facebook',
         'twitter',
-        'linkedin',
         'custom',
       ];
       validPlatforms.forEach((platform) => {
