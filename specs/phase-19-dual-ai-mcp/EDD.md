@@ -243,9 +243,9 @@ Each stage becomes a `StageDefinition` with a pure-ish `prepare`, a strict `outp
 
 | Stage key | Target | Parts | Commit does (moved out of today's handler) |
 | --- | --- | --- | --- |
-| `season_outline` | project + season | 1 | create episode rows (today `batch-episode-actions.ts`) |
-| `season_analysis` | project | 1 | return the analysis; store it on the season |
-| `ideation` | episode | 1 | store ideas on `episodes.metadata.ideas` (today not stored) |
+| `season_outline` | project + season | 1 | create episode rows (FILM-1901 part B; `batch-episode-actions.ts` updates them with the preview's edits) |
+| `season_analysis` | project | 1 | return the analysis; store it on the project (`projects.metadata.latestSeasonAnalysis`: no season row exists until the analysis is approved, FILM-1901 part B) |
+| `ideation` | episode | 1 | store ideas on `episodes.metadata.ideas` for both modes (decided 2026-10-03, FILM-1901 part B) |
 | `story` | episode | 1 | `story_data`, status `story`, canon tables (facts come in the submission), auto-create character/location `assets` |
 | `story_refinement` | episode | 1 | `story_data`, `refinement_history` |
 | `screenplay` | episode | 1 per scene, then finalize | `screenplay_data`, status `storyboard`, rebuild `dialogue_lines` |
@@ -707,7 +707,7 @@ flowchart LR
 
 - [x] Create `packages/features/generation` with `StageDefinition`, `Brief`, `CheckError`, origin types (FR-12, NFR-1) — FILM-1901 part A, with `story_refinement` and `asset_description` as the first two stages behind parity tests
 - [ ] Move typed output Zod schemas from `prompt-engine/src/schemas` into the core; generate JSON Schema from them
-- [ ] Extract `prepare` and `commit` for story, story refinement, screenplay, screenplay refinement, shots, audio cues, translation, asset description, season outline, ideation, publish metadata
+- [ ] Extract `prepare` and `commit` for story, story refinement, screenplay, screenplay refinement, shots, audio cues, translation, asset description, season outline, ideation, publish metadata — story refinement and asset description (part A), story, ideation, season outline and season analysis (part B) done
 - [ ] Rewrite each worker handler as prepare, orchestrator, commit; keep behaviour identical
 - [ ] Parity test per stage: fixture output through the old handler and the new commit, same rows (NFR-1)
 - [ ] Enforce output schema validation in the worker (closes today's unvalidated `output.schema` gap)

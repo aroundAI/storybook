@@ -71,7 +71,7 @@ notes: |
   | 2 | Season analysis | worker season-analysis | stage season_analysis |
   | 3 | Ideation page | worker story-ideation, Ideation Orchestrator | stage ideation |
   | 4 | Story page, bulk actions | worker story-generation, Story Orchestrator | stage story |
-  | 5 | Story canon step | apps/web/lambda/llm-worker/utils/commit-story-canon.ts:424 | facts in the story output |
+  | 5 | Story canon step | apps/web/lambda/llm-worker/utils/commit-story-canon.ts:82 | facts in the story output |
   | 6 | Story refine | worker story-refinement | stage story_refinement |
   | 7 | Screenplay page | worker screenplay-conversion, Screenplay Orchestrator | stage screenplay |
   | 8 | Screenplay refine | worker screenplay-refinement | stage screenplay_refinement |

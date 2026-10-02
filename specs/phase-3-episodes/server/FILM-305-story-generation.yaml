@@ -90,7 +90,7 @@ remaining:
     reason: "the ideation result hardcodes `costCents: 0` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:128`)"
     closed_by: "unassigned"
   - criterion: "`generateFullStoryAction` handles optimistic locking"
-    reason: "the version guard was dropped from the worker's write (f64c9648, 669b66e3) because the orchestrator bumps `version` mid-run (`apps/web/lambda/llm-worker/handlers/story-generation.ts:455`)"
+    reason: "the version guard was dropped from the worker's write (f64c9648, 669b66e3) because the orchestrator bumps `version` mid-run (`packages/features/generation/src/stages/story.ts:449`, the story stage's commit since FILM-1901)"
     closed_by: "owner"
 open_questions: []
 notes: |

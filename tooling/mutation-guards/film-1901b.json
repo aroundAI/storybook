@@ -1,0 +1,65 @@
+{
+  "feature": "FILM-1901",
+  "mutations": [
+    {
+      "name": "The story stage stops refusing a character the project does not have",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/story.ts",
+      "find": "        if (!known.has(character.name.toLowerCase())) {",
+      "replace": "        if (!known.has(character.name.toLowerCase()) && false) {",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stages/story.test.ts",
+      "pattern": "rejects a character the project does not have"
+    },
+    {
+      "name": "The story stage stores canon without the facts the story came with",
+      "kind": "unit",
+      "file": "packages/features/generation/src/canon/story-canon.ts",
+      "find": "  if (!extraction) {\n    console.log(",
+      "replace": "  if (!extraction && false) {\n    console.log(",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/story-canon-memory.test.ts",
+      "pattern": "writes nothing when the story came with no canon facts"
+    },
+    {
+      "name": "The story commit stops closing the generation_jobs row the handler closed",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/story.ts",
+      "find": "    if (isServer) {\n      await markJobCompleted(client, target.episodeId, 'story', {\n        mode: 'agentic-stage1',",
+      "replace": "    if (isServer && false) {\n      await markJobCompleted(client, target.episodeId, 'story', {\n        mode: 'agentic-stage1',",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/stage-parity.test.ts",
+      "pattern": "writes the same rows and returns the same result"
+    },
+    {
+      "name": "The season outline stage accepts the wrong number of outlines",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/season-outline.ts",
+      "find": "    if (out.episodes.length !== target.episodeCount) {",
+      "replace": "    if (out.episodes.length !== target.episodeCount && false) {",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stages/season-outline.test.ts",
+      "pattern": "rejects the wrong number of outlines"
+    },
+    {
+      "name": "The ideation commit stops storing the ideas on the episode",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/ideation.ts",
+      "find": "          ideas: out.ideas,\n          ideas_generated_at: generatedAt,",
+      "replace": "          ideas_generated_at: generatedAt,",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/stage-parity.test.ts",
+      "pattern": "stores the ideas on episodes.metadata.ideas"
+    },
+    {
+      "name": "The season analysis commit stops storing the analysis on the project",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/season-analysis.ts",
+      "find": "          latestSeasonAnalysis: {\n            generatedAt,\n            mode: run.mode,\n            analysis,\n          },",
+      "replace": "          latestSeasonAnalysis: null,",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stages/season-analysis.test.ts",
+      "pattern": "stores the analysis on projects.metadata.latestSeasonAnalysis"
+    }
+  ]
+}
