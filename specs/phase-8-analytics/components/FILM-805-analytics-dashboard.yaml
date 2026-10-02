@@ -67,7 +67,7 @@ acceptance_criteria:
     evidence: null
   - text: "Shows last sync time"
     met: false
-    reason: "no longer true — \"Last updated\" is the page's fetch time (`dataUpdatedAt`); `getSyncStatusAction` is rendered nowhere — `packages/features/content-analytics/src/components/analytics-dashboard.tsx:318`"
+    reason: "no longer true — \"Last updated\" is the page's fetch time (`dataUpdatedAt`); `getSyncStatusAction` is rendered nowhere — `packages/features/content-analytics/src/components/analytics-dashboard.tsx:308`"
   - text: "Auto-refreshes every 5 minutes"
     met: true
     evidence: null
