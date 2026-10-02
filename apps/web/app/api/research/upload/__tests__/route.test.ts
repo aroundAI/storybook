@@ -54,9 +54,14 @@ vi.mock('@kit/episodes/lib/server/pdf-extractor', () => ({
   chunkTextForExtraction: (text: string) => [text],
 }));
 
-vi.mock('@kit/prompt-engine/server', () => ({
-  queueLlmJob: async (job: unknown) => {
+vi.mock('@kit/ai-gateway', () => ({
+  openRunForJob: async (job: unknown) => {
     state.queued.push(job);
+    return {
+      id: 'run-under-test',
+      mode: 'server',
+      dispatch: async () => undefined,
+    };
   },
 }));
 

@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { z } from 'zod';
 
+import { currentRun, serverEmbedder } from '@kit/ai-gateway';
 import {
   effectiveMemoryHorizon,
   resolveProjectType,
@@ -16,7 +17,6 @@ import {
   type PreviousEpisode,
   fetchPreviousEpisodes,
 } from './previous-episodes';
-import { createVoyageEmbedder } from './voyage-embedder';
 
 /** StoryData interface for episode story content */
 export interface StoryData {
@@ -324,9 +324,10 @@ export async function buildEpisodeContext(
         projectType: resolveProjectType(episode.project.metadata).projectType,
         semantic: options.semanticContext
           ? {
-              embedder: createVoyageEmbedder({
-                apiKey: process.env.VOYAGE_API_KEY,
-              }),
+              // Semantic recall embeds through the gateway, for the server
+              // run in scope; an external run reads stored embeddings only
+              // and anything outside a run falls back to sequential (FILM-1902)
+              embedder: semanticEmbedder(),
               query:
                 options.semanticQuery ??
                 [episode.title, episode.description].filter(Boolean).join('\n'),
@@ -1106,4 +1107,10 @@ export function formatFactsForPrompt(
     '- Every fact should appear in the story unless irrelevant to the narrative',
     '- Never fabricate additional scientific claims not in this list',
   ].join('\n');
+}
+
+function semanticEmbedder() {
+  const run = currentRun();
+
+  return run?.mode === 'server' ? serverEmbedder({ run }) : null;
 }

@@ -99,7 +99,7 @@ const generateIdeasTool = createTool({
     context,
   ) => {
     try {
-      const { executeLLM } = await import('@kit/prompt-engine/server');
+      const { executeLLM } = await import('@kit/ai-gateway');
 
       // The same tiering the ideation stage's brief renders (FILM-1901)
       const depthInstructions = premiseDepthInstructions(premise);

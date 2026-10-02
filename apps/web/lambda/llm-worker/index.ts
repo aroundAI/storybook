@@ -25,13 +25,15 @@ import {
 import type { SQSBatchResponse, SQSEvent } from 'aws-lambda';
 import ws from 'ws';
 
-import { setAgentUsageLogger } from '@kit/agent';
-import { logLLMUsage } from '@kit/llm';
+import { setAgentStepWriter } from '@kit/agent';
+import { agentStepWriterForCurrentRun, gatewayBackend } from '@kit/ai-gateway';
+import { type RunHandle, executeServerRun, loadRun } from '@kit/generation';
 import type { LlmJobType } from '@kit/prompt-engine/llm-job-payloads';
 import { awsClientOptions } from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
 
-import { runLlmJob } from './job-boundary';
+import { messageUserId, runLlmJob } from './job-boundary';
+import { workerCtx } from './utils/stage-runtime';
 
 // Initialize DynamoDB client
 const ddbClient = new DynamoDBClient(awsClientOptions('dynamodb'));
@@ -88,9 +90,33 @@ const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey, {
   },
 });
 
-// Every model call the orchestrators' agent loop makes writes a usage row
-// through this client (FILM-1902); the agent package has no client of its own
-setAgentUsageLogger((event) => logLLMUsage(supabase, event));
+// The orchestrators' agent loop reaches a model only through the run the job
+// boundary put in scope (FILM-1902): the gateway checks the run before each
+// step and writes the usage row with its id. The agent package sees no model.
+setAgentStepWriter(agentStepWriterForCurrentRun);
+
+/** The run named by a message, driven through the gateway's backend. */
+function loadWorkerRun(runId: string): Promise<RunHandle | null> {
+  return loadRun(runId, {
+    client: supabase,
+    // Filled from the run itself once loaded; a handle needs only the client
+    accountId: '',
+    userId: '',
+    backend: gatewayBackend,
+  });
+}
+
+/** A registered stage, run through the generation core under its run. */
+function runWorkerStage(run: RunHandle) {
+  return executeServerRun(
+    run,
+    workerCtx(
+      supabase,
+      { accountId: run.accountId, userId: run.createdBy },
+      run,
+    ),
+  );
+}
 
 /**
  * Send message to user via WebSocket
@@ -293,24 +319,33 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
         supabase,
         dispatch: processJob,
         notify: sendToUser,
+        loadRun: loadWorkerRun,
+        runStage: runWorkerStage,
       });
     } catch (error) {
       console.error(`[LLM Worker] Job failed:`, error);
 
-      // Tell the user, when the message names one
-      const userId = messageUserId(record.body);
+      // Tell the user, when the message names one (or its run does)
+      const body = JSON.parse(record.body) as {
+        runId?: string;
+        jobType?: unknown;
+        payload?: { episodeId?: unknown };
+      };
+      const run = body.runId
+        ? await loadWorkerRun(body.runId).catch(() => null)
+        : null;
+      const userId = messageUserId(record.body, run);
 
       if (userId) {
         try {
-          const job = JSON.parse(record.body) as {
-            jobType?: unknown;
-            payload?: { episodeId?: unknown };
-          };
-
           await sendToUser(userId, {
             type: 'llm-error',
-            jobType: job.jobType,
-            episodeId: job.payload?.episodeId,
+            jobType: run?.stage ?? body.jobType,
+            runId: body.runId,
+            episodeId:
+              run?.targetType === 'episode'
+                ? run.targetId
+                : body.payload?.episodeId,
             error: error instanceof Error ? error.message : 'Unknown error',
             timestamp: new Date().toISOString(),
           });
@@ -326,13 +361,3 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
 
   return { batchItemFailures };
 };
-
-function messageUserId(body: string): string | null {
-  try {
-    const { userId } = JSON.parse(body) as { userId?: unknown };
-
-    return typeof userId === 'string' ? userId : null;
-  } catch {
-    return null;
-  }
-}

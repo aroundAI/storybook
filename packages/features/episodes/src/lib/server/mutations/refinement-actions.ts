@@ -81,6 +81,23 @@ const refineStoryHandler = enhanceAction(
       throw new ActionRefusal('Project not found or access denied');
     }
 
+    const { openRunForJob } = await import('@kit/ai-gateway');
+    const run = await openRunForJob(
+      {
+        jobType: 'story-refinement',
+        userId: user.id,
+        target,
+        payload: {
+          episodeId: data.episodeId,
+          projectId: target.projectId,
+          feedback: data.feedback,
+          userId: user.id,
+        },
+        name: 'episodes.refineStory',
+      },
+      { client: client, accountId: target.accountId, userId: user.id },
+    );
+
     // Create generation job for tracking
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: jobError } = await (client as any)
@@ -89,6 +106,7 @@ const refineStoryHandler = enhanceAction(
         reference_type: 'episode',
         reference_id: data.episodeId,
         job_type: 'story-refinement',
+        run_id: run.id,
         status: 'queued',
         account_id: accountId,
         project_id: episode.project_id,
@@ -106,18 +124,7 @@ const refineStoryHandler = enhanceAction(
       );
     }
 
-    const { queueLlmJob } = await import('@kit/prompt-engine/server');
-    await queueLlmJob({
-      jobType: 'story-refinement',
-      userId: user.id,
-      target,
-      payload: {
-        episodeId: data.episodeId,
-        projectId: target.projectId,
-        feedback: data.feedback,
-        userId: user.id,
-      },
-    });
+    await run.dispatch();
 
     logger.info(ctx, 'Story refinement queued');
     return { success: true as const, queued: true };
@@ -182,6 +189,23 @@ const refineScreenplayHandler = enhanceAction(
       throw new ActionRefusal('Project not found or access denied');
     }
 
+    const { openRunForJob } = await import('@kit/ai-gateway');
+    const run = await openRunForJob(
+      {
+        jobType: 'screenplay-refinement',
+        userId: user.id,
+        target,
+        payload: {
+          episodeId: data.episodeId,
+          projectId: target.projectId,
+          feedback: data.feedback,
+          userId: user.id,
+        },
+        name: 'episodes.refineScreenplay',
+      },
+      { client: client, accountId: target.accountId, userId: user.id },
+    );
+
     // Create generation job for tracking
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: jobError } = await (client as any)
@@ -190,6 +214,7 @@ const refineScreenplayHandler = enhanceAction(
         reference_type: 'episode',
         reference_id: data.episodeId,
         job_type: 'screenplay-refinement',
+        run_id: run.id,
         status: 'queued',
         account_id: accountId,
         project_id: episode.project_id,
@@ -207,18 +232,7 @@ const refineScreenplayHandler = enhanceAction(
       );
     }
 
-    const { queueLlmJob } = await import('@kit/prompt-engine/server');
-    await queueLlmJob({
-      jobType: 'screenplay-refinement',
-      userId: user.id,
-      target,
-      payload: {
-        episodeId: data.episodeId,
-        projectId: target.projectId,
-        feedback: data.feedback,
-        userId: user.id,
-      },
-    });
+    await run.dispatch();
 
     logger.info(ctx, 'Screenplay refinement queued');
     return { success: true as const, queued: true };

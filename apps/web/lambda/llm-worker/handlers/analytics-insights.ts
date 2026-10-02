@@ -236,7 +236,7 @@ export async function processAnalyticsInsights(
   }
 
   // Execute LLM
-  const { executeLLM } = await import('@kit/prompt-engine/server');
+  const { executeLLM } = await import('@kit/ai-gateway');
 
   interface InsightsLLMOutput {
     performanceSummary: string;

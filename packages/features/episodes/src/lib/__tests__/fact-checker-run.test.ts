@@ -9,7 +9,7 @@ import { runFactCheck } from '../documentary/fact-checker';
 
 const executeLLM = vi.fn();
 
-vi.mock('@kit/prompt-engine/server', () => ({
+vi.mock('@kit/ai-gateway', () => ({
   executeLLM: (...args: unknown[]) => executeLLM(...args),
 }));
 

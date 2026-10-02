@@ -14,7 +14,7 @@ import { shotDirectorSkill } from '../src/agent/skills/shot-director-skill';
 const calls = vi.hoisted(() => [] as Array<Record<string, unknown>>);
 const durations = vi.hoisted(() => ({ values: [12, 2, 6] }));
 
-vi.mock('@kit/prompt-engine/server', () => ({
+vi.mock('@kit/ai-gateway', () => ({
   executeLLM: async (config: { variables: Record<string, unknown> }) => {
     calls.push(config.variables);
     return {

@@ -14,7 +14,7 @@ import { runStage, screenplayRefinementStage } from '@kit/generation';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
-import { generateWithLambda, workerCtx } from '../utils/stage-runtime';
+import { stageRunDeps, workerCtx } from '../utils/stage-runtime';
 
 interface ScreenplayRefinementResult {
   success: boolean;
@@ -50,7 +50,7 @@ export async function processScreenplayRefinement(
     ctx,
     { episodeId: data.episodeId, feedback: data.feedback },
     // The usage row keeps the job's name, as the handler's executor call did
-    { generate: generateWithLambda(ctx, 'screenplay-refinement') },
+    stageRunDeps(),
   );
 
   if (commit.status === 'skipped') {

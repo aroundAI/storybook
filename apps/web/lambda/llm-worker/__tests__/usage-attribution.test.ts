@@ -23,7 +23,7 @@ const USER = '77777777-7777-4777-8777-777777777777';
 
 const contexts = vi.hoisted(() => [] as Array<{ accountId: string }>);
 
-vi.mock('@kit/prompt-engine/server', () => ({
+vi.mock('@kit/ai-gateway', () => ({
   executeLLM: async (config: { context: { accountId: string } }) => {
     contexts.push(config.context);
     return { data: {} };

@@ -69,7 +69,7 @@ export async function runFactCheck(
   content: string,
   requiredClaims?: string[],
 ): Promise<FactCheckResult> {
-  const { executeLLM } = await import('@kit/prompt-engine/server');
+  const { executeLLM } = await import('@kit/ai-gateway');
   const { accountId, userId, supabase } = await getProjectContext(projectId);
 
   // Fetch all verified facts for this project

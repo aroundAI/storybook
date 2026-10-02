@@ -84,13 +84,33 @@ const generateShotList = enhanceAction(
     const { accountId } = target;
 
     // Queue to Lambda for processing
-    const { queueLlmJob } = await import('@kit/prompt-engine/server');
+    const { openRunForJob } = await import('@kit/ai-gateway');
+
+    const run = await openRunForJob(
+      {
+        jobType: 'shot-generation',
+        userId: user.id,
+        target,
+        payload: {
+          episodeId: data.episodeId,
+          version: episode.version,
+          shotDurationMin: data.shotDurationMin,
+          shotDurationMax: data.shotDurationMax,
+          accountId,
+          userId: user.id,
+          projectId: episode.project_id,
+        },
+        name: 'episodes.generateShotList',
+      },
+      { client: client, accountId: target.accountId, userId: user.id },
+    );
 
     // Create generation job entry for tracking
     const jobData = {
       reference_type: 'episode',
       reference_id: data.episodeId,
       job_type: 'shot_list',
+      run_id: run.id,
       status: 'queued',
       account_id: accountId,
       project_id: episode.project_id,
@@ -115,20 +135,7 @@ const generateShotList = enhanceAction(
       console.log('[shot-list-actions] SUCCESS:', insertedJob);
     }
 
-    await queueLlmJob({
-      jobType: 'shot-generation',
-      userId: user.id,
-      target,
-      payload: {
-        episodeId: data.episodeId,
-        version: episode.version,
-        shotDurationMin: data.shotDurationMin,
-        shotDurationMax: data.shotDurationMax,
-        accountId,
-        userId: user.id,
-        projectId: episode.project_id,
-      },
-    });
+    await run.dispatch();
 
     logger.info(ctx, 'Shot list generation job queued');
     return { success: true, queued: true };

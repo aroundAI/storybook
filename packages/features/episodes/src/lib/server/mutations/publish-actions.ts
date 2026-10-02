@@ -197,7 +197,7 @@ export const batchTranslateMetadataAction = enhanceAction(
     }
 
     // Queue batch job to Lambda
-    const { queueLlmJob } = await import('@kit/prompt-engine/server');
+    const { openRunForJob } = await import('@kit/ai-gateway');
 
     // Get actual userId from session for WebSocket delivery
     const client = getSupabaseServerClient();
@@ -207,12 +207,21 @@ export const batchTranslateMetadataAction = enhanceAction(
     const userId = user?.id || 'system';
 
     // The caller's own text: no tenant rows are read or written (KB-31)
-    await queueLlmJob({
-      jobType: 'batch-translate-metadata',
-      userId,
-      target: noTenantLlmJobTarget(userId),
-      payload: { items: itemsToTranslate },
-    });
+    const run = await openRunForJob(
+      {
+        jobType: 'batch-translate-metadata',
+        userId,
+        target: noTenantLlmJobTarget(userId),
+        payload: { items: itemsToTranslate },
+        name: 'publish.batchTranslateMetadata',
+      },
+      {
+        client: client,
+        accountId: noTenantLlmJobTarget(userId).accountId,
+        userId: userId,
+      },
+    );
+    await run.dispatch();
 
     return {
       success: true,

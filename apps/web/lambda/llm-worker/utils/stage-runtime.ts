@@ -1,23 +1,25 @@
 /**
  * What the worker hands a `@kit/generation` stage: its service-role client
  * and the job's user and account as the `Ctx`, the episode context loader
- * (built here because `buildEpisodeContext` reaches the Voyage embedder,
- * which the core never imports), and today's executor as the `generate`
- * seam. FILM-1902's `run.write` replaces `generateWithLambda`; FILM-1903
- * fills `revisions` and `originColumnsAvailable`.
+ * (built here because `buildEpisodeContext` reaches the gateway's embedder,
+ * which the core never imports), and the run's `write` as the `generate`
+ * seam (FILM-1902): the model is reached only through the run the job
+ * boundary put in scope, which is checked before every call.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type {
-  Brief,
-  Ctx,
-  EpisodeContextLoader,
-  GenerateFn,
-  GenerateResult,
+import { requireRun } from '@kit/ai-gateway';
+import {
+  type Brief,
+  type Ctx,
+  type EpisodeContextLoader,
+  type GenerateResult,
+  type RunHandle,
+  type RunStageDeps,
+  stageCtx,
 } from '@kit/generation';
 import type { Database } from '@kit/supabase/database';
 
-import { executeLLMForLambda } from '../llm-utils';
 import {
   buildEpisodeContext,
   formatCharactersForPrompt,
@@ -82,47 +84,43 @@ export function episodeContextLoader(
   };
 }
 
+/**
+ * The stage context for the job's run: the worker's client and identity,
+ * plus the revision snapshot and origin stamping the run layer adds
+ * (FILM-1903). The run is the one in scope unless given.
+ */
 export function workerCtx(
   supabase: SupabaseClient<Database>,
   job: { accountId: string; userId: string },
+  run: RunHandle = requireRun('the worker stage context'),
 ): Ctx {
-  return {
+  return stageCtx(run, {
     client: supabase,
     accountId: job.accountId,
     userId: job.userId,
     episodeContext: episodeContextLoader(supabase),
     log: (message) => console.log(message),
-  };
+  });
+}
+
+/** The server writer, through the run in scope: `run.write(brief)`. */
+export async function generateWithLambda(
+  brief: Brief,
+): Promise<GenerateResult> {
+  return requireRun(`writing ${brief.stage}:${brief.part.key}`).write(brief);
 }
 
 /**
- * The server writer: the brief's prompt, rendered and sent by the executor,
- * with the job's account and user so the llm_usage_analytics row it writes
- * (FILM-1902, #555) is charged to the right account. `operationName` names
- * the job in that row; it defaults to the stage key.
+ * What `runStage` needs from the run: the writer, the run id on the brief,
+ * TARGET_CHANGED before commit, and the run the commit stamps.
  */
-export function generateWithLambda(
-  ctx: Pick<Ctx, 'accountId' | 'userId'>,
-  operationName?: string,
-): GenerateFn {
-  return async (brief: Brief): Promise<GenerateResult> => {
-    const result = await executeLLMForLambda<unknown>({
-      templateSlug: brief.prompt.slug,
-      accountId: ctx.accountId,
-      userId: ctx.userId,
-      operationName: operationName ?? brief.stage,
-      runId: brief.runId,
-      variables: brief.prompt.variables,
-    });
-
-    return {
-      output: result.data,
-      usage: {
-        provider: result.metadata.provider,
-        model: result.metadata.model,
-        tokens: result.metadata.tokens,
-        latencyMs: result.metadata.latency,
-      },
-    };
+export function stageRunDeps(
+  run: RunHandle = requireRun('running a stage'),
+): RunStageDeps {
+  return {
+    generate: (brief) => run.write(brief),
+    runId: run.id,
+    beforeCommit: () => run.assertTargetUnchanged(),
+    run: (usage) => run.toGenerationRun(usage),
   };
 }

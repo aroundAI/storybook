@@ -94,7 +94,7 @@ async function executeScreenplayGeneration(
     dialogueLinesPerSceneMax,
   } = params;
 
-  const { executeLLM } = await import('@kit/prompt-engine/server');
+  const { executeLLM } = await import('@kit/ai-gateway');
 
   const minutesDuration = Math.round(targetDurationSeconds / 60);
   const avgSceneDuration = Math.round(

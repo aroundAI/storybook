@@ -3,7 +3,7 @@
  *
  * Creates the characters and locations a screenplay names and links them
  * to the episode. Each description is the `asset_description` stage of
- * `@kit/generation` (FILM-1901): prepare → executor → schema → commit
+ * `@kit/generation` (FILM-1901): prepare → run.write → schema → commit
  * (the `assets` upsert). What stays here is the job itself: reading the
  * names out of the screenplay, skipping assets the project already has,
  * linking every asset to the episode's metadata, and the generation_jobs
@@ -12,6 +12,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { requireRun } from '@kit/ai-gateway';
 import {
   type AssetDescriptionOutput,
   type AssetDescriptionTarget,
@@ -20,7 +21,6 @@ import {
   markJobCompleted,
   markJobFailed,
   markJobProcessing,
-  serverRun,
 } from '@kit/generation';
 import {
   type LlmJobPayload,
@@ -29,7 +29,7 @@ import {
 import { whyNoRow } from '@kit/shared/rows';
 import type { Database } from '@kit/supabase/database';
 
-import { generateWithLambda, workerCtx } from '../utils/stage-runtime';
+import { workerCtx } from '../utils/stage-runtime';
 
 interface AssetCreationResult {
   success: boolean;
@@ -231,9 +231,9 @@ async function createAssetsFromScreenplay(
   const newAssets: Array<{ id: string; name: string; type: string }> = [];
 
   if (itemsToCreate.length > 0) {
-    const ctx = workerCtx(supabase, data);
+    const run = requireRun('asset creation');
+    const ctx = workerCtx(supabase, data, run);
     const stage = assetDescriptionStage;
-    const generate = generateWithLambda(ctx, 'asset-creation');
 
     const targets: AssetDescriptionTarget[] = itemsToCreate.map((item) => ({
       projectId: data.projectId,
@@ -248,7 +248,7 @@ async function createAssetsFromScreenplay(
 
         try {
           const brief = await stage.prepare(ctx, target, part!);
-          const generated = await generate(brief);
+          const generated = await run.write({ ...brief, runId: run.id });
           const output: AssetDescriptionOutput = stage.outputSchema.parse(
             generated.output,
           );
@@ -269,10 +269,10 @@ async function createAssetsFromScreenplay(
 
     // 8. Commit each asset row (upsert resurrects a soft-deleted namesake)
     for (const [index, target] of targets.entries()) {
-      const { output, brief, usage } = described[index]!;
+      const { output, usage } = described[index]!;
       const committed = await stage.commit(
         ctx,
-        serverRun({ brief, usage }),
+        run.toGenerationRun(usage),
         target,
         [output],
       );

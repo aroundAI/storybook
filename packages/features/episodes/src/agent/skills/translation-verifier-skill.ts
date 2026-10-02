@@ -57,7 +57,7 @@ const verifyTranslationTool = createTool({
     context,
   ) => {
     try {
-      const { executeLLM } = await import('@kit/prompt-engine/server');
+      const { executeLLM } = await import('@kit/ai-gateway');
 
       const result = await executeLLM<TranslationVerification>({
         templateSlug: 'quality-evaluation/translation-quality',

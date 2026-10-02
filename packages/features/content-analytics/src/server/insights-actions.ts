@@ -151,19 +151,24 @@ const generateInsights = enhanceAction(
     }
 
     // Always queue to Lambda for processing
-    const { queueLlmJob } = await import('@kit/prompt-engine/server');
+    const { openRunForJob } = await import('@kit/ai-gateway');
 
-    await queueLlmJob({
-      jobType: 'analytics-insights',
-      userId: user.id,
-      target,
-      payload: {
-        projectId,
-        analytics,
+    const run = await openRunForJob(
+      {
+        jobType: 'analytics-insights',
         userId: user.id,
-        refresh,
+        target,
+        payload: {
+          projectId,
+          analytics,
+          userId: user.id,
+          refresh,
+        },
+        name: 'analytics.generateInsights',
       },
-    });
+      { client: client, accountId: target.accountId, userId: user.id },
+    );
+    await run.dispatch();
 
     return {
       summary: 'Generating insights in the background...',

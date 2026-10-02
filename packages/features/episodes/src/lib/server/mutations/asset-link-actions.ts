@@ -7,9 +7,9 @@ import { z } from 'zod';
 import {
   type AssetDescriptionTarget,
   type Ctx,
+  type RunHandle,
   assetDescriptionStage,
   fallbackDescription,
-  serverRun,
 } from '@kit/generation';
 import { enhanceAction } from '@kit/next/actions';
 import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
@@ -60,33 +60,48 @@ const BatchCreateUnlinkedSchema = z.object({
 
 /**
  * One description from the story text (KB-126), as the `asset_description`
- * stage's prepare and model call (FILM-1901): the stage renders the prompt
- * and checks the reply against its output schema; the model call stays
- * `executeLLM` until FILM-1902's `run.write` replaces it. Both actions call
- * this: the single-asset one used to send `role` and `arc`, which the
- * template does not read, and not `type_instructions`, which it requires —
- * so every call threw, was caught, and the sidebar's "extract description"
- * came back empty. Not exported: every export of a 'use server' file is an
- * endpoint (KB-58).
+ * stage's prepare and the run's write (FILM-1901, FILM-1902): a run is opened
+ * on the asset-to-be in the team's mode, the stage renders the prompt, the
+ * run writes, and the reply is checked against the stage's output schema.
+ * Both actions call this: the single-asset one used to send `role` and
+ * `arc`, which the template does not read, and not `type_instructions`,
+ * which it requires — so every call threw, was caught, and the sidebar's
+ * "extract description" came back empty. Not exported: every export of a
+ * 'use server' file is an endpoint (KB-58).
  */
 async function describeAsset(
   ctx: Ctx,
   target: AssetDescriptionTarget,
   context: { name: string; accountId: string },
-): Promise<string> {
-  const { executeLLM } = await import('@kit/prompt-engine/server');
+): Promise<{ description: string; run: RunHandle }> {
+  const { openRun } = await import('@kit/ai-gateway');
   const stage = assetDescriptionStage;
 
-  const [part] = await stage.parts(ctx, target);
-  const brief = await stage.prepare(ctx, target, part!);
+  const run = await openRun(
+    'asset_description',
+    {
+      type: 'asset',
+      // The asset may not exist yet: the run is on the description itself
+      id: crypto.randomUUID(),
+      accountId: context.accountId,
+      projectId: target.projectId ?? null,
+      input: { kind: 'stage', target },
+    },
+    { kind: 'web', name: context.name },
+    ctx,
+  );
 
-  const result = await executeLLM<unknown>({
-    templateSlug: brief.prompt.slug,
-    variables: brief.prompt.variables,
-    context,
-  });
+  try {
+    const [part] = await stage.parts(ctx, target);
+    const brief = await stage.prepare(ctx, target, part!);
+    const generated = await run.write(brief);
+    const description = stage.outputSchema.parse(generated.output).description;
 
-  return stage.outputSchema.parse(result.data).description;
+    return { description, run };
+  } catch (error) {
+    await run.fail(error).catch(() => undefined);
+    throw error;
+  }
 }
 
 /**
@@ -104,7 +119,7 @@ export const extractDescriptionAction = enhanceAction(
     }
 
     try {
-      const description = await describeAsset(
+      const { description, run } = await describeAsset(
         { client, accountId: user.id, userId: user.id },
         {
           asset: {
@@ -117,6 +132,9 @@ export const extractDescriptionAction = enhanceAction(
         },
         { name: 'extract-asset-description', accountId: user.id },
       );
+
+      // Nothing is saved from the sidebar's extract: the run is complete
+      await run.complete();
 
       return {
         success: true as const,
@@ -259,31 +277,41 @@ const batchCreateUnlinked = enhanceAction(
       const described = await Promise.all(
         targets.map(async (target) => {
           try {
-            return {
-              description: await describeAsset(ctx, target, {
-                name: 'batch-extract-description',
-                accountId: user.id,
-              }),
-            };
+            return await describeAsset(ctx, target, {
+              name: 'batch-extract-description',
+              accountId: user.id,
+            });
           } catch (err) {
             console.error(
               `[batchCreate] LLM extraction failed for "${target.asset.name}":`,
               err,
             );
 
-            return { description: fallbackDescription(target.asset.type) };
+            return {
+              description: fallbackDescription(target.asset.type),
+              run: null,
+            };
           }
         }),
       );
 
       // 4. Commit each asset row: an upsert on (project_id, type, name), so a
       // soft-deleted asset of the same name is resurrected rather than
-      // refused by the unique constraint
+      // refused by the unique constraint. The run that wrote the description
+      // is the origin the row carries; a fallback description has none.
       for (const [index, target] of targets.entries()) {
-        const committed = await stage.commit(ctx, serverRun({}), target, [
-          described[index]!,
-        ]);
+        const { description, run } = described[index]!;
+        const committed = await stage.commit(
+          ctx,
+          run?.toGenerationRun() ?? {
+            mode: 'server',
+            origin: { kind: 'human', at: new Date().toISOString() },
+          },
+          target,
+          [{ description }],
+        );
 
+        await run?.complete();
         newAssets.push(committed.data.asset);
       }
     }

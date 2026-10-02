@@ -92,7 +92,7 @@ const generateSeasonOutlineTool = createTool({
     context,
   ) => {
     try {
-      const { executeLLM } = await import('@kit/prompt-engine/server');
+      const { executeLLM } = await import('@kit/ai-gateway');
 
       // `season-outline` wraps its array under `wrapper_key: "episodes"`, so
       // executeLLM returns the array itself (KB-115).

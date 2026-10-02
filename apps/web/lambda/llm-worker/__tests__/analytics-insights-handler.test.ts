@@ -28,7 +28,7 @@ const llm = vi.hoisted(() => ({
   respond: (async () => ({ data: {} })) as () => Promise<{ data: unknown }>,
 }));
 
-vi.mock('@kit/prompt-engine/server', () => ({
+vi.mock('@kit/ai-gateway', () => ({
   executeLLM: async (config: {
     templateSlug: string;
     variables: { analytics_data: string };

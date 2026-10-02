@@ -85,18 +85,23 @@ const analyzeSeasonRoadmap = enhanceAction(
     }
 
     // Always queue to Lambda for processing
-    const { queueLlmJob } = await import('@kit/prompt-engine/server');
+    const { openRunForJob } = await import('@kit/ai-gateway');
 
-    await queueLlmJob({
-      jobType: 'season-analysis',
-      userId: user.id,
-      target,
-      payload: {
-        projectId: data.projectId,
-        roadmap: data.roadmap,
-        externalFacts: data.externalFacts,
+    const run = await openRunForJob(
+      {
+        jobType: 'season-analysis',
+        userId: user.id,
+        target,
+        payload: {
+          projectId: data.projectId,
+          roadmap: data.roadmap,
+          externalFacts: data.externalFacts,
+        },
+        name: 'episodes.analyzeSeasonRoadmap',
       },
-    });
+      { client: client, accountId: target.accountId, userId: user.id },
+    );
+    await run.dispatch();
 
     logger.info(ctx, 'Job queued successfully');
     return { success: true, queued: true };

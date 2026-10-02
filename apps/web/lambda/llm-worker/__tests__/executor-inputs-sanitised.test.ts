@@ -2,6 +2,9 @@ import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { withRun } from '@kit/ai-gateway';
+import { fakeRunHandle } from '@kit/generation/testing';
+
 import { P, expectSanitised, fakeClient } from './helpers/injected-rows';
 
 // KB-101 (remaining paths). Project text reaches the LLM worker's executors
@@ -65,13 +68,15 @@ vi.mock('@kit/episodes/agent/translation-orchestrator', () => ({
 vi.mock('@kit/episodes/agent/season-orchestrator', () => ({
   runSeasonOrchestrator: recordAndStop('season orchestrator'),
 }));
-vi.mock('@kit/prompt-engine/server', () => ({
+// Both gateway executors record their input and stop; a handler on the
+// generation core writes through the run in scope, whose backend does the
+// same (FILM-1902)
+vi.mock('@kit/ai-gateway', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kit/ai-gateway')>()),
   executeLLM: vi.fn(async (input: { templateSlug: string }) => {
     seen[input.templateSlug] = input;
     throw STOP;
   }),
-}));
-vi.mock('../llm-utils', () => ({
   executeLLMForLambda: vi.fn(async (input: { templateSlug: string }) => {
     seen[input.templateSlug] = input;
     throw STOP;
@@ -94,8 +99,26 @@ const IDS = {
   version: 1,
 };
 
+const recordingRun = () =>
+  fakeRunHandle({
+    accountId: IDS.accountId,
+    projectId: IDS.projectId,
+    targetId: IDS.episodeId,
+    createdBy: IDS.userId,
+    backend: {
+      write: async (_run, brief) => {
+        seen[brief.prompt.slug] = {
+          templateSlug: brief.prompt.slug,
+          variables: brief.prompt.variables,
+        };
+        throw STOP;
+      },
+      dispatch: async () => undefined,
+    },
+  }).run;
+
 async function run(handler: () => Promise<unknown>) {
-  await handler().catch((error: unknown) => {
+  await withRun(recordingRun(), handler).catch((error: unknown) => {
     if (error !== STOP) throw error;
   });
 }
@@ -405,8 +428,8 @@ describe('every executor-calling handler is accounted for (KB-101)', () => {
       .filter((file) => file.endsWith('.ts'))
       .filter((file) =>
         // An executor directly, an orchestrator, or a `@kit/generation`
-        // stage run through the worker's stage runtime (FILM-1901)
-        /executeLLM|Orchestrator\(|generateWithLambda|runStage\(/.test(
+        // stage written through the run (FILM-1901, FILM-1902)
+        /executeLLM|Orchestrator\(|generateWithLambda|stageRunDeps\(|run\.write\(|runStage\(/.test(
           readFileSync(path.join(dir, file), 'utf8'),
         ),
       )

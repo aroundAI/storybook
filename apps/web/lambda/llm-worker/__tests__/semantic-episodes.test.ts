@@ -9,7 +9,6 @@ import {
   resetSemanticLogLatch,
   withSequentialFallback,
 } from '../utils/semantic-episodes';
-import { createVoyageEmbedder } from '../utils/voyage-embedder';
 
 describe('episodeDocument (KB-35)', () => {
   it('is the title, the plot and the key events the prompt shows', () => {
@@ -97,10 +96,8 @@ describe('fallback and logging (KB-35)', () => {
   afterEach(() => vi.restoreAllMocks());
 
   it('logs a missing key once per cold start', () => {
-    const embedder = createVoyageEmbedder({ apiKey: undefined });
-
-    expect(embedderOrLog(embedder)).toBeNull();
-    expect(embedderOrLog(embedder)).toBeNull();
+    expect(embedderOrLog(null)).toBeNull();
+    expect(embedderOrLog(null)).toBeNull();
     expect(console.info).toHaveBeenCalledTimes(1);
     expect(console.info).toHaveBeenCalledWith(
       '[semantic-context] VOYAGE_API_KEY not set — sequential only',
@@ -108,7 +105,11 @@ describe('fallback and logging (KB-35)', () => {
   });
 
   it('does not log when a key is set', () => {
-    const embedder = createVoyageEmbedder({ apiKey: 'test-key-not-real' });
+    const embedder = {
+      model: 'voyage-3-large',
+      embedDocuments: async () => [],
+      embedQuery: async () => [],
+    };
 
     expect(embedderOrLog(embedder)).toBe(embedder);
     expect(console.info).not.toHaveBeenCalled();

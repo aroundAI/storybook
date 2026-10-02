@@ -62,7 +62,7 @@ export async function processLanguageInsights(
   };
 
   // Execute LLM
-  const { executeLLM } = await import('@kit/prompt-engine/server');
+  const { executeLLM } = await import('@kit/ai-gateway');
 
   interface LanguageInsightsLLMOutput {
     languageSummary: string;

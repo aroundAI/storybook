@@ -88,19 +88,24 @@ const generateStoryIdeasHandler = enhanceAction(
     }
 
     // Always queue to Lambda for processing
-    const { queueLlmJob } = await import('@kit/prompt-engine/server');
+    const { openRunForJob } = await import('@kit/ai-gateway');
 
-    await queueLlmJob({
-      jobType: 'story-ideation',
-      userId: user.id,
-      target,
-      payload: {
-        episodeId: data.episodeId,
-        premise: data.premise,
-        numberOfIdeas: data.numberOfIdeas,
+    const run = await openRunForJob(
+      {
+        jobType: 'story-ideation',
         userId: user.id,
+        target,
+        payload: {
+          episodeId: data.episodeId,
+          premise: data.premise,
+          numberOfIdeas: data.numberOfIdeas,
+          userId: user.id,
+        },
+        name: 'episodes.generateStoryIdeas',
       },
-    });
+      { client: client, accountId: target.accountId, userId: user.id },
+    );
+    await run.dispatch();
 
     logger.info(ctx, 'Story ideation job queued');
     return { success: true, queued: true };
@@ -200,13 +205,40 @@ const generateFullStory = enhanceAction(
     }
 
     // Always queue to Lambda for processing
-    const { queueLlmJob } = await import('@kit/prompt-engine/server');
+    const { openRunForJob } = await import('@kit/ai-gateway');
+
+    const run = await openRunForJob(
+      {
+        jobType: 'story-generation',
+        userId: user.id,
+        target,
+        payload: {
+          episodeId: data.episodeId,
+          title: data.title,
+          logline: data.logline,
+          targetDuration: data.targetDuration,
+          contentStyle: data.contentStyle,
+          style: data.style,
+          version: data.version,
+          accountId,
+          userId: user.id,
+          projectId: episode.project_id,
+          threadCandidates: data.threadCandidates,
+          themes: data.themes,
+          hook: data.hook,
+          visualDirection: data.visualDirection,
+        },
+        name: 'episodes.generateStory',
+      },
+      { client: client, accountId: target.accountId, userId: user.id },
+    );
 
     // Create generation job entry for tracking
     const jobData = {
       reference_type: 'episode',
       reference_id: data.episodeId,
       job_type: 'story',
+      run_id: run.id,
       status: 'queued',
       account_id: accountId,
       project_id: episode.project_id,
@@ -243,27 +275,7 @@ const generateFullStory = enhanceAction(
       );
     }
 
-    await queueLlmJob({
-      jobType: 'story-generation',
-      userId: user.id,
-      target,
-      payload: {
-        episodeId: data.episodeId,
-        title: data.title,
-        logline: data.logline,
-        targetDuration: data.targetDuration,
-        contentStyle: data.contentStyle,
-        style: data.style,
-        version: data.version,
-        accountId,
-        userId: user.id,
-        projectId: episode.project_id,
-        threadCandidates: data.threadCandidates,
-        themes: data.themes,
-        hook: data.hook,
-        visualDirection: data.visualDirection,
-      },
-    });
+    await run.dispatch();
 
     logger.info(ctx, 'Story generation job queued');
     return { success: true, queued: true };

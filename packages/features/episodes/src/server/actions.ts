@@ -289,7 +289,7 @@ const createEpisodeWithContext = enhanceAction(
     // 6. Optionally queue story generation immediately
     if (data.autoGenerateStory && data.hook) {
       try {
-        const { queueLlmJob } = await import('@kit/prompt-engine/server');
+        const { openRunForJob } = await import('@kit/ai-gateway');
 
         // The creator may still lack a writing role on the project (an
         // account member not in project_members): no story for them (KB-31)
@@ -298,6 +298,27 @@ const createEpisodeWithContext = enhanceAction(
         if (!target) {
           throw new Error('Cannot write to this project; story not queued');
         }
+
+        const run = await openRunForJob(
+          {
+            jobType: 'story-generation',
+            userId: user.id,
+            target,
+            payload: {
+              episodeId: episode.id,
+              title: data.title,
+              logline: data.hook,
+              targetDuration: data.targetDuration ?? 300,
+              contentStyle: data.contentStyle ?? 'dialogue-heavy',
+              version: 1,
+              accountId: project.account_id,
+              userId: user.id,
+              projectId: data.projectId,
+            },
+            name: 'episodes.createEpisode',
+          },
+          { client: client, accountId: target.accountId, userId: user.id },
+        );
 
         // Create generation job entry
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -309,25 +330,11 @@ const createEpisodeWithContext = enhanceAction(
           account_id: project.account_id,
           project_id: data.projectId,
           idempotency_key: `story-${episode.id}-${Date.now()}`,
+          run_id: run.id,
           input_data: { episodeId: episode.id, title: data.title },
         });
 
-        await queueLlmJob({
-          jobType: 'story-generation',
-          userId: user.id,
-          target,
-          payload: {
-            episodeId: episode.id,
-            title: data.title,
-            logline: data.hook,
-            targetDuration: data.targetDuration ?? 300,
-            contentStyle: data.contentStyle ?? 'dialogue-heavy',
-            version: 1,
-            accountId: project.account_id,
-            userId: user.id,
-            projectId: data.projectId,
-          },
-        });
+        await run.dispatch();
 
         logger.info(
           { ...ctx, episodeId: episode.id },

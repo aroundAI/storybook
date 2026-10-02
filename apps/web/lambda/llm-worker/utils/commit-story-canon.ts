@@ -38,7 +38,7 @@ export async function extractCanonFacts({
   }
 
   try {
-    const { executeLLM } = await import('@kit/prompt-engine/server');
+    const { executeLLM } = await import('@kit/ai-gateway');
 
     // Fetch active threads for LLM context
     const { data: activeThreads } = await supabase

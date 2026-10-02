@@ -4,8 +4,10 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { withRun } from '@kit/ai-gateway';
 import {
   type RecordedCall,
+  fakeRunHandle,
   flattenRows,
   recordingClient,
   tableResponder,
@@ -59,26 +61,38 @@ const MODEL_OUTPUT: Record<string, unknown> = {
   },
 };
 
-vi.mock('../llm-utils', () => ({
-  executeLLMForLambda: vi.fn(
-    async (input: { templateSlug: string; variables: unknown }) => {
-      executorCalls.push({
-        templateSlug: input.templateSlug,
-        variables: input.variables,
-      });
+/**
+ * The run the handlers write through (FILM-1902): its backend answers each
+ * brief from MODEL_OUTPUT and records what the stage asked for, where the
+ * old test stubbed the Lambda executor.
+ */
+function parityRun() {
+  return fakeRunHandle({
+    accountId: ACCOUNT_ID,
+    projectId: PROJECT_ID,
+    targetId: EPISODE_ID,
+    createdBy: USER_ID,
+    backend: {
+      write: async (_run, brief) => {
+        executorCalls.push({
+          templateSlug: brief.prompt.slug,
+          variables: brief.prompt.variables,
+        });
 
-      return {
-        data: MODEL_OUTPUT[input.templateSlug],
-        metadata: {
-          tokens: 1234,
-          latency: 10,
-          provider: 'gemini',
-          model: 'gemini-3.5-flash',
-        },
-      };
+        return {
+          output: MODEL_OUTPUT[brief.prompt.slug],
+          usage: {
+            tokens: 1234,
+            latencyMs: 10,
+            provider: 'gemini',
+            model: 'gemini-3.5-flash',
+          },
+        };
+      },
+      dispatch: async () => undefined,
     },
-  ),
-}));
+  }).run;
+}
 
 vi.mock('../utils/context-builder', async (importOriginal) => {
   const original =
@@ -264,15 +278,17 @@ describe('story refinement writes what it did before the core (FILM-1901)', () =
     );
     const recording = storyRefinementClient();
 
-    const result = await processStoryRefinement(
-      {
-        accountId: ACCOUNT_ID,
-        projectId: PROJECT_ID,
-        episodeId: EPISODE_ID,
-        userId: USER_ID,
-        feedback: 'Make the ending darker',
-      },
-      recording.client as SupabaseClient<Database>,
+    const result = await withRun(parityRun(), () =>
+      processStoryRefinement(
+        {
+          accountId: ACCOUNT_ID,
+          projectId: PROJECT_ID,
+          episodeId: EPISODE_ID,
+          userId: USER_ID,
+          feedback: 'Make the ending darker',
+        },
+        recording.client as SupabaseClient<Database>,
+      ),
     );
 
     snapshot('story-refinement', {
@@ -295,14 +311,16 @@ describe('asset creation writes what it did before the core (FILM-1901)', () => 
     const { processAssetCreation } = await import('../handlers/asset-creation');
     const recording = assetCreationClient();
 
-    const result = await processAssetCreation(
-      {
-        accountId: ACCOUNT_ID,
-        projectId: PROJECT_ID,
-        episodeId: EPISODE_ID,
-        userId: USER_ID,
-      },
-      recording.client as SupabaseClient<Database>,
+    const result = await withRun(parityRun(), () =>
+      processAssetCreation(
+        {
+          accountId: ACCOUNT_ID,
+          projectId: PROJECT_ID,
+          episodeId: EPISODE_ID,
+          userId: USER_ID,
+        },
+        recording.client as SupabaseClient<Database>,
+      ),
     );
 
     // The generation_jobs writes are new on purpose (KB-174: the bulk action

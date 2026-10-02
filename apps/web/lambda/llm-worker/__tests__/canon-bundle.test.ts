@@ -41,6 +41,16 @@ const require = createRequire(import.meta.url);
 const viteRequire = createRequire(require.resolve('vite/package.json'));
 const esbuild = viteRequire('esbuild') as Esbuild;
 
+/**
+ * SST bundles the workers as ESM with this shim in the banner (sst.config.ts,
+ * nodejs.format esm): the AWS SDK's CommonJS dependencies call require(),
+ * and the gateway (FILM-1902) brings the SQS client into every handler.
+ */
+const SST_REQUIRE_SHIM = [
+  "import { createRequire as topLevelCreateRequire } from 'node:module';",
+  'const require = topLevelCreateRequire(import.meta.url);',
+].join('\n');
+
 const LLM_WORKER = path.resolve(__dirname, '..');
 const outDir = mkdtempSync(path.join(tmpdir(), 'film-1110-bundle-'));
 
@@ -102,6 +112,7 @@ async function bundleAndRunCheckpoint(): Promise<CheckpointRun> {
     platform: 'node',
     format: 'esm',
     target: 'node22',
+    banner: { js: SST_REQUIRE_SHIM },
     outfile: path.join(outDir, 'validation-checkpoint.mjs'),
     logLevel: 'silent',
   });
@@ -171,6 +182,7 @@ describe('season outline in the LLM Lambda bundle (KB-71)', () => {
       platform: 'node',
       format: 'esm',
       target: 'node22',
+      banner: { js: SST_REQUIRE_SHIM },
       outfile: path.join(outDir, 'season-outline.mjs'),
       logLevel: 'silent',
     });

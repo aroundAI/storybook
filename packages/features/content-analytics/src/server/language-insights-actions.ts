@@ -123,22 +123,27 @@ const generateLanguageInsights = enhanceAction(
     }
 
     // Always queue to Lambda for processing
-    const { queueLlmJob } = await import('@kit/prompt-engine/server');
+    const { openRunForJob } = await import('@kit/ai-gateway');
 
-    await queueLlmJob({
-      jobType: 'language-insights',
-      userId: user.id,
-      target,
-      payload: {
-        projectId,
-        languagePerformance: labelledPerformance,
-        platformMatrix: platformMatrix.filter(isLabelled).slice(0, 20),
-        contentType,
-        shorts: shorts.filter(isLabelled),
-        geography: geography.filter(isLabelled),
+    const run = await openRunForJob(
+      {
+        jobType: 'language-insights',
         userId: user.id,
+        target,
+        payload: {
+          projectId,
+          languagePerformance: labelledPerformance,
+          platformMatrix: platformMatrix.filter(isLabelled).slice(0, 20),
+          contentType,
+          shorts: shorts.filter(isLabelled),
+          geography: geography.filter(isLabelled),
+          userId: user.id,
+        },
+        name: 'analytics.generateLanguageInsights',
       },
-    });
+      { client: client, accountId: target.accountId, userId: user.id },
+    );
+    await run.dispatch();
 
     return {
       summary: 'Generating language insights in the background...',
