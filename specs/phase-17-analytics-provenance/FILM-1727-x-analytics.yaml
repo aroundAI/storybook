@@ -91,7 +91,10 @@ notes: |
     reposts have their own column, 018). Migration 021 makes `shares`
     Nullable on video_metrics and video_snapshots, following 014/017; every
     reader keeps NULL apart from 0, and a cross-platform shares sum is the
-    sum of the platforms that report shares.
+    sum of the platforms that report shares. Since KB-162 (#531) shares is
+    one of the measured columns its totals read: an X-only scope's shares,
+    and X's own platform row, are null, and the Shares card says Not
+    measured (guards X17 to X19).
   - **Spend is capped in code.** $0.005 per post read; one read per post per
     UTC day; at most 100 post reads a UTC day ($0.50) counted from the
     publishes so every run sees the others; never from day 29 after publish.
