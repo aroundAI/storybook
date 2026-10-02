@@ -54,9 +54,9 @@
     {
       "name": "X4 The stored screenplay reaches the refinement model raw",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/handlers/screenplay-refinement.ts",
-      "find": "        current_screenplay: JSON.stringify(sanitizeStrings(screenplayData)),\n",
-      "replace": "        current_screenplay: JSON.stringify(screenplayData),\n",
+      "file": "packages/features/generation/src/stages/screenplay-refinement.ts",
+      "find": "        current_screenplay: JSON.stringify(\n          sanitizeStrings(inputs.screenplayData),\n        ),\n",
+      "replace": "        current_screenplay: JSON.stringify(inputs.screenplayData),\n",
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
       "pattern": "screenplay refinement"
@@ -64,7 +64,7 @@
     {
       "name": "X5 The stored story reaches the screenplay model raw",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts",
+      "file": "packages/features/generation/src/stages/screenplay.ts",
       "find": "    const storyData = sanitizeStrings(\n      episode.story_data as Record<string, unknown> | null,\n    );\n",
       "replace": "    const storyData = episode.story_data as Record<string, unknown> | null;\n",
       "cwd": "apps/web",
@@ -124,7 +124,7 @@
     {
       "name": "Y4 Metadata to translate reaches the model raw",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/handlers/batch-translate-metadata.ts",
+      "file": "packages/features/generation/src/stages/publish-metadata.ts",
       "find": "JSON.stringify(sanitizeStrings(itemsForPrompt), null, 2)",
       "replace": "JSON.stringify(itemsForPrompt, null, 2)",
       "cwd": "apps/web",
@@ -154,7 +154,7 @@
     {
       "name": "Y7 Stored dialogue reaches the translation model raw",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/handlers/translate-dialogue.ts",
+      "file": "packages/features/generation/src/stages/dialogue-translation.ts",
       "find": "\"${sanitizeForPrompt(l.text)}\"",
       "replace": "\"${l.text}\"",
       "cwd": "apps/web",
