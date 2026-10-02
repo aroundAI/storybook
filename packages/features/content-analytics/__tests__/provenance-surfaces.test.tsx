@@ -216,7 +216,8 @@ describe('the MetricCards', () => {
     shares: 5,
     watchTimeSeconds: null,
     subscribersGained: null,
-    revenueCents: 0,
+    // Not measured (FILM-1726): a 0 here would be a measured $0.
+    revenueCents: null,
     contentCount: 3,
   };
 
@@ -246,7 +247,7 @@ describe('the MetricCards', () => {
     expect(
       chipOf(container.querySelector('[data-test="metric-card-revenue"]')!)
         ?.textContent,
-    ).toBe('Not yet supported');
+    ).toBe('YouTube only');
   });
 
   it('say views are not measured when no row behind the total has one', () => {

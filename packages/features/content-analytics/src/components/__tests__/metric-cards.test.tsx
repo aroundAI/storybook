@@ -265,11 +265,11 @@ describe('MetricCards', () => {
         />,
       );
 
-      // Five metrics have a baseline; views does not, and revenue draws no
-      // figure at all — the matrix has no platform supplying it (FILM-1705).
+      // Six metrics have a baseline; views does not. Revenue is one of the
+      // six since FILM-1726 stored YouTube's earnings.
       expect(
         container.querySelectorAll('[data-test="metric-change"]'),
-      ).toHaveLength(5);
+      ).toHaveLength(6);
       expect(
         container.querySelector(
           '[data-test="metric-card-views"] [data-test="metric-change"]',

@@ -29,7 +29,7 @@ test.describe('FILM-1726 revenue not measured', () => {
 
     const card = byTest(page, 'metric-card-revenue');
 
-    await expect(byTest(card, 'metric-value')).toHaveText(figure);
+    await expect(byTest(card, 'metric-unmeasured')).toHaveText(figure);
     await expect(byTest(page, 'metric-not-measured-reason')).toHaveCount(
       reasons.length,
     );
@@ -52,7 +52,7 @@ test.describe('FILM-1726 revenue not measured', () => {
 
     await expect(byTest(page, 'episode-revenue')).toHaveText(figure);
     await expect(
-      byTest(byTest(page, 'metric-card-revenue'), 'metric-value'),
+      byTest(byTest(page, 'metric-card-revenue'), 'metric-unmeasured'),
     ).toHaveText(figure);
 
     await page.goto(`/home/${fixture.team.slug}/studio/analytics/experiments`);

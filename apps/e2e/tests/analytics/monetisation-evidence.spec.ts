@@ -1,8 +1,8 @@
-import { type Page, expect, test } from '@playwright/test';
+import { type Locator, type Page, expect, test } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
 import { signInAs } from '../utils/session';
-import { byTest } from '../utils/visible';
+import { byTest, visible } from '../utils/visible';
 import {
   MONETISATION_EXPECTED,
   type MonetisationTeam,
@@ -18,6 +18,17 @@ import {
  * answers are worked out by hand in `monetisation.fixture.ts`.
  */
 const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
+
+/**
+ * The revenue card's figure: digits in `metric-value` when measured, words in
+ * `metric-unmeasured` when not (FILM-1705 keeps the two apart).
+ */
+function revenueFigure(card: Locator): Locator {
+  return visible(
+    card,
+    '[data-test="metric-value"], [data-test="metric-unmeasured"]',
+  );
+}
 
 async function setTheme(page: Page, theme: 'light' | 'dark') {
   await page.evaluate((value) => localStorage.setItem('theme', value), theme);
@@ -39,7 +50,7 @@ async function readSurfaces(
 
   const card = byTest(page, 'metric-card-revenue');
 
-  await expect(byTest(card, 'metric-value')).not.toHaveText('');
+  await expect(revenueFigure(card)).not.toHaveText('');
   // The reasons arrive on their own query.
   if (label === 'unmeasured') {
     await expect(byTest(page, 'metric-not-measured-reason')).toHaveCount(
@@ -50,7 +61,7 @@ async function readSurfaces(
   await expect(
     byTest(byTest(page, 'overview-views'), 'card-figure'),
   ).toBeVisible({ timeout: 60_000 });
-  reading.projectCard = await byTest(card, 'metric-value').textContent();
+  reading.projectCard = await revenueFigure(card).textContent();
   reading.projectReasons = await byTest(
     page,
     'metric-not-measured-reason',
@@ -77,9 +88,8 @@ async function readSurfaces(
   );
   await expect(byTest(page, 'episode-revenue')).toBeVisible();
   reading.episodeHeader = await byTest(page, 'episode-revenue').textContent();
-  reading.episodeCard = await byTest(
+  reading.episodeCard = await revenueFigure(
     byTest(page, 'metric-card-revenue'),
-    'metric-value',
   ).textContent();
   await page.screenshot({
     path: `${OUT}/film-1726-${label}-episode-${theme}.png`,
