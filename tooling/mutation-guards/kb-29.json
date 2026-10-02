@@ -75,8 +75,8 @@
       "name": "The OAuth app list and the connect-failure list drift apart",
       "kind": "unit",
       "file": "packages/features/publishing/src/oauth/apps.ts",
-      "find": "  'twitter',\n",
-      "replace": "",
+      "find": "export const OAUTH_APPS = ['youtube', 'tiktok', 'meta', 'twitter'] as const;",
+      "replace": "export const OAUTH_APPS = ['youtube', 'tiktok', 'meta'] as const;",
       "cwd": "apps/web",
       "test": "lib/platforms/__tests__/connect-failure.test.ts",
       "pattern": "names exactly the OAuth apps the credential resolver serves"
