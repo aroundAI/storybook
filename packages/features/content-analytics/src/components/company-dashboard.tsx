@@ -44,6 +44,7 @@ export function CompanyDashboard({
         previousData={data.previousPeriodTotals}
         isLoading={false}
         viewsScope={data.viewsScope}
+        revenueAccess={data.revenueAccess}
       />
 
       {/* Main Content Grid */}

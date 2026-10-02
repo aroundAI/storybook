@@ -29,7 +29,28 @@ test.describe('FILM-1726 revenue not measured', () => {
 
     const card = byTest(page, 'metric-card-revenue');
 
-    await expect(byTest(card, 'metric-unmeasured')).toHaveText(figure);
+    await expect(byTest(card, 'metric-not-measured')).toHaveText(figure);
+    await expect(byTest(page, 'metric-not-measured-reason')).toHaveCount(
+      reasons.length,
+    );
+    expect(
+      [
+        ...(await byTest(page, 'metric-not-measured-reason').allTextContents()),
+      ].sort(),
+    ).toEqual([...reasons].sort());
+  });
+
+  test('the company dashboard says Not measured, with the same reasons', async ({
+    page,
+  }) => {
+    const fixture = await seedUnmeasuredTeam();
+
+    await signInAs(page, fixture.team);
+    await page.goto(`/home/${fixture.team.slug}`);
+
+    const card = byTest(page, 'metric-card-revenue');
+
+    await expect(byTest(card, 'metric-not-measured')).toHaveText(figure);
     await expect(byTest(page, 'metric-not-measured-reason')).toHaveCount(
       reasons.length,
     );
@@ -52,7 +73,7 @@ test.describe('FILM-1726 revenue not measured', () => {
 
     await expect(byTest(page, 'episode-revenue')).toHaveText(figure);
     await expect(
-      byTest(byTest(page, 'metric-card-revenue'), 'metric-unmeasured'),
+      byTest(byTest(page, 'metric-card-revenue'), 'metric-not-measured'),
     ).toHaveText(figure);
 
     await page.goto(`/home/${fixture.team.slug}/studio/analytics/experiments`);
