@@ -53,9 +53,14 @@ test.describe('Overview truth (KB-16)', () => {
       text.indexOf('Overview Content'),
     );
 
-    await expect(
-      byTest(byTest(page, 'metric-card-views'), 'metric-value'),
-    ).toHaveText('0');
+    // The one publish has no metric row, so Views was not measured: the card
+    // says so instead of drawing 0 (KB-162).
+    const views = byTest(page, 'metric-card-views');
+
+    await expect(byTest(views, 'metric-not-measured')).toHaveText(
+      'Not measured',
+    );
+    await expect(byTest(views, 'metric-value')).toHaveCount(0);
     expect(metricRow).not.toMatch(/\d+\.\d%/);
     await expect(overview.metricChanges()).toHaveCount(0);
     await expect(page.locator('[data-test^="metric-card-"]')).toHaveCount(7);

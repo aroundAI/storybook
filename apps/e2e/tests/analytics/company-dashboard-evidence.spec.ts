@@ -194,7 +194,16 @@ test.describe('Company dashboard: a figure no platform measured (KB-162)', () =>
     await expect(byTest(card(page, 'subscribers'), 'metric-value')).toHaveText(
       '4',
     );
-    await expect(byTest(page, 'metric-not-measured')).toHaveCount(0);
+    // Revenue alone still reads Not measured: no platform supplies it
+    // (FILM-1705).
+    for (const key of ['watchTime', 'subscribers']) {
+      await expect(byTest(card(page, key), 'metric-not-measured')).toHaveCount(
+        0,
+      );
+    }
+    await expect(
+      byTest(card(page, 'revenue'), 'metric-not-measured'),
+    ).toHaveText('Not measured');
     // 180 from TikTok and 200 from YouTube.
     await expect(byTest(card(page, 'views'), 'metric-value')).toHaveText('380');
 
