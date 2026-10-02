@@ -3,7 +3,6 @@
 import { z } from 'zod';
 
 import type {
-  AnalyticsPlatform,
   CreativeTemplate,
   GenomeAnalysis,
   GenomeHypothesis,
@@ -12,7 +11,6 @@ import type {
   StageMeasureRefusal,
 } from '@kit/clickhouse';
 import {
-  ANALYTICS_PLATFORMS,
   FORMAT_FAMILIES,
   FUNNEL_STAGES,
   analyseGenome,
@@ -20,6 +18,7 @@ import {
   concludedChangeLogEntry,
   deriveTemplates,
   hypothesesFrom,
+  isAnalyticsPlatform,
   metricProvenanceFor,
   parseGenomeHypothesisKey,
   recommendFrom,
@@ -64,10 +63,6 @@ export type GenomeFindingsResult =
       hypotheses: GenomeHypothesis[];
       templates: CreativeTemplate[];
     };
-
-function isAnalyticsPlatform(platform: string): platform is AnalyticsPlatform {
-  return (ANALYTICS_PLATFORMS as readonly string[]).includes(platform);
-}
 
 /**
  * Which creative mechanisms separate one channel's winners from its
