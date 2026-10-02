@@ -220,6 +220,26 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/rate-denominator-button.test.tsx",
       "pattern": "is a 24px target"
+    },
+    {
+      "name": "RD23 a malformed window fails the read again",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/measures.ts",
+      "find": "  return valid(from) && valid(to) && from <= to ? { from, to } : null;",
+      "replace": "  return valid(from) || true ? { from: window.from, to: window.to } : null;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/rate-denominator-records.test.ts",
+      "pattern": "a window the record cannot read"
+    },
+    {
+      "name": "RD24 the record carries whole registry entries again",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/measures.ts",
+      "find": "function definitionRef({\n  id,\n  platform,\n  label,\n  effectiveFrom,\n}: ViewDefinition): ViewDefinitionRef {\n  return { id, platform, label, effectiveFrom };",
+      "replace": "function definitionRef(entry: ViewDefinition): ViewDefinitionRef {\n  return entry;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/rate-denominator-records.test.ts",
+      "pattern": "names definitions by reference"
     }
   ]
 }

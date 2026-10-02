@@ -7,6 +7,7 @@ import {
   recordViewsDenominator,
   recordedLikesAndCommentsPercent,
 } from '@kit/clickhouse';
+import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { cached } from '~/lib/cache/data-cache';
@@ -161,27 +162,29 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
     cached(
       `project:${project.id}:analytics-snapshot`,
       async () => {
-        // Get all publish IDs for this project
-        const { data: projectPublishes } = await client
-          .from('publishes')
-          .select(
-            `
-            id,
-            platform,
-            published_at,
-            episodes!inner(project_id)
-          `,
-          )
-          .eq('episodes.project_id', project.id);
+        // Every publish in the project, paged: the totals and the record
+        // of what they divide by both need all of them, past 1,000 rows.
+        const projectPublishes = await fetchAllRows<{
+          id: string;
+          platform: string;
+          published_at: string | null;
+        }>(
+          (from, to) =>
+            client
+              .from('publishes')
+              .select('id, platform, published_at, episodes!inner(project_id)')
+              .eq('episodes.project_id', project.id)
+              .order('id')
+              .range(from, to),
+          'project publishes',
+        );
 
-        const videoIds = (projectPublishes ?? []).map((p) => p.id);
+        const videoIds = projectPublishes.map((p) => p.id);
         // What the rate below divides by (FILM-1732): lifetime totals, so
         // every platform here, from the earliest publish to today.
         const denominatorScope = {
-          platforms: [
-            ...new Set((projectPublishes ?? []).map((p) => p.platform)),
-          ],
-          publishedAt: (projectPublishes ?? []).map((p) => p.published_at),
+          platforms: [...new Set(projectPublishes.map((p) => p.platform))],
+          publishedAt: projectPublishes.map((p) => p.published_at),
         };
 
         if (videoIds.length === 0) {

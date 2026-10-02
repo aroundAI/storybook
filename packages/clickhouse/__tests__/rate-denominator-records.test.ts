@@ -243,3 +243,62 @@ describe('computeMeasure carries the same record shape (FILM-1732)', () => {
     expect(measure.denominator.crosses).toEqual([]);
   });
 });
+
+describe('a window the record cannot read (FILM-1732 review)', () => {
+  it('cuts a timestamp to its day', () => {
+    const stamp = recordViewsDenominator({
+      platforms: ['youtube'],
+      window: { from: '2026-08-20T00:00:00.000Z', to: '2026-09-05T23:59:59Z' },
+    });
+
+    expect(stamp.window).toEqual({ from: '2026-08-20', to: '2026-09-05' });
+    expect(stamp.crosses.map((change) => change.date)).toEqual(['2026-08-27']);
+  });
+
+  it.each([
+    ['malformed', { from: 'yesterday', to: '2026-09-05' }],
+    ['backwards', { from: '2026-09-05', to: '2026-08-20' }],
+  ])(
+    'records a %s window without throwing, naming no definition',
+    (_, window) => {
+      const stamp = recordViewsDenominator({
+        platforms: ['youtube', 'facebook'],
+        window,
+      });
+
+      expect(stamp.window).toEqual({ from: '', to: '' });
+      expect(stamp.crosses).toEqual([]);
+      expect(stamp.platforms).toEqual([
+        { platform: 'youtube', inDenominator: true, definitions: [] },
+        {
+          platform: 'facebook',
+          inDenominator: false,
+          reason: 'no_single_view_definition',
+        },
+      ]);
+      expect(denominatorSentence(stamp)).toBe(
+        'Divided by views. YouTube is in the denominator; the days it was counted over could not be read, so which definition of a view it used is not recorded. Facebook is not in the denominator: it reports no single view.',
+      );
+    },
+  );
+});
+
+describe('the record’s weight (FILM-1732 review)', () => {
+  it('names definitions by reference, not by registry entry', () => {
+    const stamp = recordViewsDenominator({
+      platforms: ['youtube', 'tiktok', 'instagram', 'facebook'],
+      window: { from: '2026-08-20', to: '2026-10-02' },
+    });
+
+    for (const definition of stamp.definitions) {
+      expect(Object.keys(definition).sort()).toEqual([
+        'effectiveFrom',
+        'id',
+        'label',
+        'platform',
+      ]);
+    }
+    // A content list sends one per row: 500 rows stay near 1 MB, not 2.7.
+    expect(JSON.stringify(stamp).length).toBeLessThan(2_200);
+  });
+});

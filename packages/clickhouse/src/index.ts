@@ -196,9 +196,11 @@ export {
 } from './lib/measures';
 export type {
   AttentionEfficiency,
+  DenominatorChange,
   DenominatorPlatform,
   DenominatorStamp,
   DenominatorWindow,
+  ViewDefinitionRef,
   RecordedRate,
   InputSupportCell,
   InstagramMediaSurface,

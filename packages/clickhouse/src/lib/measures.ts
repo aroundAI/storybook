@@ -224,12 +224,29 @@ export const PREFERRED_DENOMINATOR: Readonly<
  * One platform's part in a denominator over a window (FILM-1732): the
  * definitions its figure was counted under, or why it added nothing.
  */
+/**
+ * A definition as a record names it: enough to say what a view was and since
+ * when. A record rides on every rate a read returns, so it carries the id
+ * that keys the registry rather than the registry's whole entry (FILM-1732).
+ */
+export type ViewDefinitionRef = Pick<
+  ViewDefinition,
+  'id' | 'platform' | 'label' | 'effectiveFrom'
+>;
+
+/** A change a window crosses: the day, and the definitions either side. */
+export interface DenominatorChange {
+  date: string;
+  from: ViewDefinitionRef;
+  to: ViewDefinitionRef;
+}
+
 export type DenominatorPlatform =
   | {
       platform: AnalyticsPlatform;
       inDenominator: true;
       /** Every definition in force at some point in the window, earliest first. */
-      definitions: readonly ViewDefinition[];
+      definitions: readonly ViewDefinitionRef[];
     }
   | {
       platform: AnalyticsPlatform;
@@ -247,7 +264,7 @@ export interface DenominatorStamp {
     because: 'not_ingested' | 'not_reported';
   };
   /** Each with its `effectiveFrom`: what the figure was counted under. */
-  definitions: readonly ViewDefinition[];
+  definitions: readonly ViewDefinitionRef[];
   /** Present when the window crossed a change `engaged_views` bridges. */
   bridged?: {
     reason: 'view_definition_changed';
@@ -263,7 +280,7 @@ export interface DenominatorStamp {
    * counts both sides of each. Recorded, never suppressed — suppressing
    * changes the figure, which is FILM-1719's (FILM-1732 §1).
    */
-  crosses: readonly ViewDefinitionChange[];
+  crosses: readonly DenominatorChange[];
 }
 
 /**
@@ -605,6 +622,30 @@ export function lifetimeWindow(
   return { from: earliest && earliest < to ? earliest : to, to };
 }
 
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * The window as ISO days, or null where it cannot be read: a timestamp is
+ * cut to its day, and a malformed or backwards range is not a window.
+ */
+function readableWindow(window: DenominatorWindow): DenominatorWindow | null {
+  const from = window.from?.slice(0, 10) ?? '';
+  const to = window.to?.slice(0, 10) ?? '';
+  const valid = (day: string) =>
+    ISO_DAY.test(day) && !Number.isNaN(Date.parse(`${day}T00:00:00Z`));
+
+  return valid(from) && valid(to) && from <= to ? { from, to } : null;
+}
+
+function definitionRef({
+  id,
+  platform,
+  label,
+  effectiveFrom,
+}: ViewDefinition): ViewDefinitionRef {
+  return { id, platform, label, effectiveFrom };
+}
+
 function definitionsOver(
   platform: AnalyticsPlatform,
   from: string,
@@ -642,11 +683,25 @@ export function recordViewsDenominator(scope: {
   window: DenominatorWindow;
 }): DenominatorStamp {
   const named = new Set(scope.platforms);
-  const { from, to } = scope.window;
-  const crosses: ViewDefinitionChange[] = [];
+  const window = readableWindow(scope.window);
+  const { from, to } = window ?? { from: '', to: '' };
+  const crosses: DenominatorChange[] = [];
 
   const platforms = PLATFORM_IDS.filter((platform) => named.has(platform)).map(
     (platform): DenominatorPlatform => {
+      // No readable days, no definitions to name: the record says so
+      // rather than failing the read the figure came from.
+      if (window === null) {
+        return viewDefinitionAt(platform, isoDay(new Date())).kind ===
+          'no_single_view_definition'
+          ? {
+              platform,
+              inDenominator: false,
+              reason: 'no_single_view_definition',
+            }
+          : { platform, inDenominator: true, definitions: [] };
+      }
+
       const changes = viewDefinitionChangesBetween(platform, from, to);
       const definitions = definitionsOver(platform, from, changes);
 
@@ -658,9 +713,19 @@ export function recordViewsDenominator(scope: {
         };
       }
 
-      crosses.push(...changes);
+      crosses.push(
+        ...changes.map((change) => ({
+          date: change.date,
+          from: definitionRef(change.from),
+          to: definitionRef(change.to),
+        })),
+      );
 
-      return { platform, inDenominator: true, definitions };
+      return {
+        platform,
+        inDenominator: true,
+        definitions: definitions.map(definitionRef),
+      };
     },
   );
 
@@ -745,6 +810,13 @@ export function denominatorSentence(stamp: DenominatorStamp): string {
     if (!part.inDenominator) {
       sentences.push(
         `${name} is not in the denominator: it reports no single view.`,
+      );
+      continue;
+    }
+
+    if (part.definitions.length === 0) {
+      sentences.push(
+        `${name} is in the denominator; the days it was counted over could not be read, so which definition of a view it used is not recorded.`,
       );
       continue;
     }
