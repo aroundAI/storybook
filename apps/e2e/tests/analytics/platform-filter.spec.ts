@@ -1,6 +1,8 @@
 import { type Locator, type Page, expect, test } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
+import { ANALYTICS_PLATFORMS } from '../../../../packages/clickhouse/src/lib/data-provenance';
+import { platformLabel } from '../../../../packages/features/content-analytics/src/lib/platform-labels';
 import {
   type SeededVideo,
   clickHouseDate,
@@ -50,7 +52,26 @@ const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
 const OBSERVED = Boolean(process.env.CLICKHOUSE_EVIDENCE);
 const SLOW = { timeout: 60_000 };
 
-type Platform = 'youtube' | 'tiktok' | 'instagram';
+type Platform = (typeof ANALYTICS_PLATFORMS)[number];
+
+/**
+ * The filter offers every analytics platform, all selected (FILM-1709), and
+ * that list grows (Facebook with FILM-1720, X with FILM-1727): every
+ * expectation about "the rest" is read from it, never written out here.
+ */
+const allBut = (...out: Platform[]) =>
+  ANALYTICS_PLATFORMS.filter((platform) => !out.includes(platform));
+
+const switcherText = (platforms: readonly Platform[]) =>
+  platforms.map(platformLabel).join(' + ');
+
+const ticks = (selected: readonly Platform[]) =>
+  Object.fromEntries(
+    ANALYTICS_PLATFORMS.map((platform) => [
+      platform,
+      selected.includes(platform) ? 'checked' : 'unchecked',
+    ]),
+  );
 
 async function seedPage(page: Page) {
   const team = await seedTeamAccount();
@@ -66,7 +87,11 @@ async function seedPage(page: Page) {
     }),
   };
 
-  const publish = async (number: number, title: string, platform: Platform) => {
+  const publish = async (
+    number: number,
+    title: string,
+    platform: keyof typeof connections,
+  ) => {
     const { publishId } = await seedPublishedEpisode(
       project.id,
       connections[platform],
@@ -187,14 +212,10 @@ async function ticked(page: Page) {
   const options = await openFilter(page);
   const states: Record<string, string | null> = {};
 
-  // Facebook is offered and selected by default since FILM-1720; the
-  // seeded project has nothing there, so it adds no figure.
-  for (const platform of [
-    'youtube',
-    'tiktok',
-    'instagram',
-    'facebook',
-  ] as const) {
+  // Every analytics platform is offered and selected by default; the
+  // seeded project has nothing on those beyond the three, so they add no
+  // figure.
+  for (const platform of ANALYTICS_PLATFORMS) {
     states[platform] = await byTest(options, `platform-filter-${platform}`)
       .locator('button[role="checkbox"]')
       .getAttribute('data-state');
@@ -221,25 +242,23 @@ test.describe('Platform filter completion (FILM-1709)', () => {
 
     for (const tab of ['audience', 'deep-dive', 'language', 'overview']) {
       await openTab(page, tab);
-      await expect(byTest(page, 'platform-filter-trigger')).toContainText('3');
+      await expect(byTest(page, 'platform-filter-trigger')).toContainText(
+        String(allBut('tiktok').length),
+      );
     }
 
-    expect(await ticked(page)).toEqual({
-      youtube: 'checked',
-      tiktok: 'unchecked',
-      instagram: 'checked',
-      facebook: 'checked',
-    });
+    expect(await ticked(page)).toEqual(ticks(allBut('tiktok')));
 
-    // The Deep Dive switcher shows the header's three, named — not the first.
+    // The Deep Dive switcher shows the header's selection, named — not the
+    // first.
     await openTab(page, 'deep-dive');
 
     const switcher = byTest(page, 'deep-dive-platform-switcher');
 
-    await expect(switcher).toHaveText('YouTube + Instagram + Facebook');
+    await expect(switcher).toHaveText(switcherText(allBut('tiktok')));
     await expect(switcher).toHaveAttribute(
       'data-selection',
-      'youtube,instagram,facebook',
+      allBut('tiktok').join(','),
     );
 
     // And sets it: TikTok alone, in the header too.
@@ -248,12 +267,7 @@ test.describe('Platform filter completion (FILM-1709)', () => {
     await expect(switcher).toHaveText('TikTok');
 
     await openTab(page, 'overview');
-    expect(await ticked(page)).toEqual({
-      youtube: 'unchecked',
-      tiktok: 'checked',
-      instagram: 'unchecked',
-      facebook: 'unchecked',
-    });
+    expect(await ticked(page)).toEqual(ticks(['tiktok']));
 
     // The second change, where state bugs hide: back to every platform.
     await openTab(page, 'deep-dive');
@@ -366,7 +380,7 @@ test.describe('Platform filter completion, measured (FILM-1709)', () => {
 
     await openTab(page, 'deep-dive');
     await expect(byTest(page, 'deep-dive-platform-switcher')).toHaveText(
-      'YouTube + Instagram + Facebook',
+      switcherText(allBut('tiktok')),
     );
 
     // ── YouTube deselected instead: the audience splits move ──────────
@@ -435,7 +449,7 @@ test.describe('Platform filter completion, measured (FILM-1709)', () => {
 
       await openTab(page, 'deep-dive');
       await expect(byTest(page, 'deep-dive-platform-switcher')).toHaveText(
-        'YouTube + Instagram + Facebook',
+        switcherText(allBut('tiktok')),
       );
       await page.screenshot({
         path: `${OUT}/film-1709-deep-dive-two-platforms-${theme}.png`,

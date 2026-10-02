@@ -1,6 +1,7 @@
 import { type Locator, type Page, expect, test } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
+import { ANALYTICS_PLATFORMS } from '../../../../packages/clickhouse/src/lib/data-provenance';
 import {
   type SeededVideo,
   clickHouseDate,
@@ -139,6 +140,16 @@ async function toggle(options: Locator, platform: string) {
     .click();
 }
 
+/**
+ * Every platform starts selected; untick all but Instagram. Read from the
+ * shared list, which grows (Facebook with FILM-1720, X with FILM-1727).
+ */
+async function leaveInstagramAlone(options: Locator) {
+  for (const platform of ANALYTICS_PLATFORMS) {
+    if (platform !== 'instagram') await toggle(options, platform);
+  }
+}
+
 test.describe('Provenance surfaces (FILM-1705)', () => {
   test.describe.configure({ timeout: 180_000 });
 
@@ -229,10 +240,7 @@ test.describe('Provenance surfaces (FILM-1705)', () => {
     );
 
     // …and still selectable. Leave Instagram alone selected.
-    // Facebook is offered and selected by default since FILM-1720.
-    await toggle(options, 'youtube');
-    await toggle(options, 'tiktok');
-    await toggle(options, 'facebook');
+    await leaveInstagramAlone(options);
     await expect(instagram.locator('button[role="checkbox"]')).toHaveAttribute(
       'data-state',
       'checked',
@@ -417,8 +425,7 @@ test.describe('Provenance surfaces (FILM-1705) — evidence', () => {
       });
 
       // The state after the interaction: Instagram alone selected.
-      await toggle(options, 'youtube');
-      await toggle(options, 'tiktok');
+      await leaveInstagramAlone(options);
       await page.keyboard.press('Escape');
       await expect(traffic).toHaveAttribute('data-dimmed', 'true');
       await expect(options).toBeHidden();
