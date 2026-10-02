@@ -1,0 +1,65 @@
+{
+  "feature": "FILM-1905 MCP read and author tools",
+  "mutations": [
+    {
+      "name": "MCP-RW U1 an author tool seeds story_data",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/author/episodes.ts",
+      "find": "      metadata: creativeDirectionMetadata(input),\n      targetDurationSeconds: input.targetDuration ?? null,\n    });",
+      "replace": "      metadata: creativeDirectionMetadata(input),\n      targetDurationSeconds: input.targetDuration ?? null,\n      storyData: { logline: input.description ?? null },\n    });",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/no-generated-writes.test.ts",
+      "pattern": "without story_data"
+    },
+    {
+      "name": "MCP-RW U2 an author tool is registered with the read scope",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/author/assets.ts",
+      "find": "  scope: 'studio:write',\n  annotations: {\n    readOnlyHint: false,\n    destructiveHint: false,\n    idempotentHint: true,\n  },\n  async handler(input, context) {\n    const client = context.principal.supabase;\n\n    await requireProjectInAccount(client, context.accountId, input.projectId);\n\n    if (input.type === 'character' && input.location) {",
+      "replace": "  scope: 'studio:read',\n  annotations: {\n    readOnlyHint: false,\n    destructiveHint: false,\n    idempotentHint: true,\n  },\n  async handler(input, context) {\n    const client = context.principal.supabase;\n\n    await requireProjectInAccount(client, context.accountId, input.projectId);\n\n    if (input.type === 'character' && input.location) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/no-generated-writes.test.ts",
+      "pattern": "five author tools"
+    },
+    {
+      "name": "MCP-RW U3 deleted episodes become visible to the read tools",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/read/scope.ts",
+      "find": "    .eq('project.account_id', accountId)\n    .is('deleted_at', null)\n    .maybeSingle();",
+      "replace": "    .eq('project.account_id', accountId)\n    .maybeSingle();",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/read-tools.test.ts",
+      "pattern": "soft-deleted"
+    },
+    {
+      "name": "MCP-RW U4 the page limit cap is lifted",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/pagination.ts",
+      "find": "  .max(PAGE_LIMIT_MAX)\n  .default(PAGE_LIMIT_DEFAULT)",
+      "replace": "  .max(PAGE_LIMIT_MAX * 10)\n  .default(PAGE_LIMIT_DEFAULT)",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/read-tools.test.ts",
+      "pattern": "max 50"
+    },
+    {
+      "name": "MCP-RW U5 a read tool reads another team's project",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/read/scope.ts",
+      "find": "    .eq('id', projectId)\n    .eq('account_id', accountId)\n    .maybeSingle();",
+      "replace": "    .eq('id', projectId)\n    .maybeSingle();",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/read-tools.test.ts",
+      "pattern": "team filter"
+    },
+    {
+      "name": "MCP-RW U6 the workflow guide stops being offered as a prompt",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/prompts.ts",
+      "find": "export const defaultPrompts: McpPromptDefinition[] = [workflowGuidePrompt];",
+      "replace": "export const defaultPrompts: McpPromptDefinition[] = [];",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/workflow-guide.test.ts",
+      "pattern": "MCP prompt"
+    }
+  ]
+}
