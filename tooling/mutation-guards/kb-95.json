@@ -67,9 +67,7 @@
       "find": "        await unwrap(deleteAudioAssetAction({ assetId: asset.id }));",
       "replace": "        await Promise.resolve(deleteAudioAssetAction);",
       "spec": "tests/storage/audio-library-delete.spec.ts",
-      "grep": "stays gone after a reload",
-      "timeout": 150,
-      "known_flake": "KB-165"
+      "grep": "stays gone after a reload"
     },
     {
       "name": "KB-95 DB1 the semantic matcher returns a deleted asset",

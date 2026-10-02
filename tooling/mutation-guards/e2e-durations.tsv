@@ -1,0 +1,61 @@
+# median seconds per E2E guard, RED runs of: 36907782405 36921435603 36930042218 36930044368 36930100843 36930102728 36930706081
+# written by durations.py; read by run.py --shard
+89	A baked-in category unexplained
+115	A channel change discards the sort the reader chose
+133	A3 double-click guard removed
+172	A4 list error state removed
+85	Blank window defaults to 60
+177	C1 pre-ingest windows counted
+128	D-U1 the Video Log keeping its own channel selection
+116	E1 Regenerate offered on a finished non-cue music track again
+85	E1 The reconnect button is offered where reconnecting changes nothing
+84	E1 The user menu loses Profile settings
+121	E1 server date for start
+86	E1 the audience read enabled on the Audience tab alone
+104	E1 the dashboard never hands the grid the revenue it fetched
+106	E1 the revenue mix is drawn in dollars whatever currency it holds
+51	E2 Someone with no team is sent to profile settings, not create-team
+100	E2 the Device Type card rendered from a constant
+102	E2 the grid draws only the first currency's revenue
+118	E2E VS7 the Delete All dialog says only records are removed
+124	E2E WA19 the Publish screen shows takedown controls to a member
+82	E2E the dimension toggle can be switched off
+391	E2E the toggle does not reach the server reads
+271	E3 The create-team dialog opens over a connect failure
+109	E3 the Views card claiming a platform set it has not checked
+157	F1 The slider opens on a number, so an untouched save stores it
+83	F10 due date captured at render
+388	F5e search not sent to the server
+85	F6 channel label not tied to its control
+118	FILM-1610 E2E filtered empty list claims an empty log
+102	FILM-1610 E2E status filter not read from the URL
+100	Form select uncontrolled
+392	G8 outcome input unlabelled
+91	G9 conclude records another verdict
+125	H1 late videos reported as no data
+201	H11 signed-out action redirected by middleware
+85	H2 views at 30 days unexplained
+86	H4 linked state hidden from assistive technology
+82	H5 popover width in Tailwind 3 syntax
+102	H6 created date as the UTC day
+102	K11 the key save upserts on the member's own client
+96	K6 a member's key list decrypts the ciphertext
+90	K7 key controls shown to every role
+52	KB-60 the company page reads accounts again (members only now, so a stranger gets a 404)
+148	KB-61 E2E removing a thumbnail already gone reads as a generic failure
+116	KB-7 E2E Delete offered in every state
+138	KB-7 E2E a refused action no longer re-reads the change
+129	KB-7 E2E edit form opens empty, not on the change
+126	KB-7 E2E locked fields not locked
+76	KB-85/88 the project page reads the list view, so an unlisted link is a 404
+146	KB-89 E2E a refused remove keeps showing the stale card
+204	KB-89 E2E panel keeps its own list apart from the video slots
+107	KB-95 E1 Delete only hides the card again
+103	KB159 M1 a redirected lifecycle action reads the change back
+147	R-13 a failed read rendered as a log with no videos
+164	R-15 the note editor offered to a reader who cannot save
+135	R-8 the log sorted on screen rather than on the server
+141	R2e stale tab restart (both start guards)
+208	The language trend tooltip wraps --popover in hsl() again
+151	The retention drill-down times the cliff against the episode
+109	The row range announced from the click rather than the data
