@@ -25,9 +25,22 @@ const orchestratorInputs = vi.hoisted(
 );
 
 vi.mock('@kit/episodes/agent/season-orchestrator', () => ({
-  runSeasonOrchestrator: async (input: { verifiedFacts?: string }) => {
+  runSeasonOrchestrator: async (input: {
+    verifiedFacts?: string;
+    episodeCount: number;
+    startingNumber: number;
+  }) => {
     orchestratorInputs.push(input);
-    return { success: true, episodes: [], orchestratorSteps: 1 };
+    // One valid outline per requested episode: the stage enforces its
+    // output schema and the requested count (FILM-1901)
+    const episodes = Array.from({ length: input.episodeCount }, (_, i) => ({
+      number: input.startingNumber + i,
+      title: `Episode ${input.startingNumber + i}`,
+      premise: 'A premise long enough to pass.',
+      mainPlot: 'A main plot long enough to pass the minimum length.',
+      arcPosition: 'setup',
+    }));
+    return { success: true, episodes, orchestratorSteps: 1 };
   },
 }));
 
@@ -54,6 +67,10 @@ function fakeClient(tables: Record<string, Row[]>) {
           head = options?.head ?? false;
           return builder;
         },
+        // The stage's commit creates the episode rows (FILM-1901); these
+        // tests look at what reached the orchestrator, not at the rows
+        insert: () => builder,
+        update: () => builder,
         eq(column: string, value: unknown) {
           filters.push([column, value]);
           return builder;

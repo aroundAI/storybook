@@ -97,9 +97,10 @@ export const STORY_PAYLOAD = {
   ],
 };
 
+/** 660 words: inside the 600-900 the brief asks for at 300 seconds. */
 export const STORY_TEXT =
   'Commander Maya Chen floats in the silence of the observation deck. '.repeat(
-    12,
+    60,
   );
 
 export const STORY_ORCHESTRATOR_RESULT = {
@@ -447,6 +448,18 @@ export function parityResponder(): Responder {
     }
 
     const response = base(call);
+
+    // A list read of a table whose fixture is one row: that row, in a list
+    if (
+      response &&
+      !isWrite &&
+      !Array.isArray(response.data) &&
+      response.data !== null &&
+      !has(call, 'single') &&
+      !has(call, 'maybeSingle')
+    ) {
+      return { data: [response.data] };
+    }
 
     if (
       response &&

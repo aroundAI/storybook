@@ -1,32 +1,29 @@
 /**
- * Story Ideation Handler
+ * Story Ideation Handler, on the generation core (FILM-1901).
  *
- * Generates story ideas based on a premise.
- * Uses the Ideation Orchestrator for quality-gated idea generation:
- *   generateIdeas → evaluateIdeas → regenerate weak (max 1 cycle)
- *
- * Uses buildEpisodeContext for rich context (same as local server action).
- * No database writes — returns ideas to frontend via WebSocket.
+ * prepare (the `ideation` stage) builds the brief from the episode's
+ * context; generate runs the Ideation Orchestrator (generateIdeas →
+ * evaluateIdeas → regenerate weak, max 1 cycle); the stage's output schema
+ * is enforced; commit stores the ideas on episodes.metadata.ideas. The
+ * ideas are returned to the frontend via WebSocket as before.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { sanitizeForPrompt } from '@kit/episodes/lib';
+import {
+  ideationOrchestratorInput,
+  ideationStage,
+  runStage,
+} from '@kit/generation';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
-import {
-  buildEpisodeContext,
-  formatCharactersForPrompt,
-  formatLocationsForPrompt,
-  formatRecurringElementsForPrompt,
-  formatVerifiedFactsForPrompt,
-} from '../utils/context-builder';
+import { workerCtx } from '../utils/stage-runtime';
 
 interface StoryIdea {
   title: string;
   logline: string;
   hook: string;
-  conflict: string;
+  conflict?: string;
   themes: string[];
   visualPotential: string;
   qualityScore?: number;
@@ -57,80 +54,61 @@ export async function processStoryIdeation(
     `[Story Ideation] Starting AGENTIC pipeline for episode ${data.episodeId}`,
   );
 
-  // 1. Build rich context using shared context-builder (matches local server action)
-  const episodeContext = await buildEpisodeContext(data.episodeId, supabase);
-
-  const seasonContext = episodeContext.seasonPremise
-    ? `This is Episode ${episodeContext.episodeNumber}${episodeContext.seasonNumber ? ` of Season ${episodeContext.seasonNumber}` : ''}. Season Premise: ${episodeContext.seasonPremise}`
-    : undefined;
-  const directionNotes = episodeContext.seasonDirectionNotes
-    ? `\n\n## SEASON CREATIVE DIRECTION (apply to this episode):\n${episodeContext.seasonDirectionNotes}`
-    : '';
-
-  const previousEpisodesContext =
-    episodeContext.previousEpisodes.length > 0
-      ? `Previous episodes in this season: ${episodeContext.previousEpisodes.map((ep) => `Ep${ep.number}: "${ep.title}"`).join(', ')}`
-      : undefined;
-
-  // 2. Run the Ideation Orchestrator
-  const { runIdeationOrchestrator } = await import(
-    '@kit/episodes/agent/ideation-orchestrator'
-  );
-
-  // Format verified facts for factual content types
-  const verifiedFactsContext =
-    episodeContext.verifiedFacts.length > 0
-      ? formatVerifiedFactsForPrompt(episodeContext.verifiedFacts)
-      : undefined;
-
-  const orchestratorResult = await runIdeationOrchestrator({
+  const ctx = workerCtx(supabase, data);
+  const target = ideationStage.targetSchema.parse({
     episodeId: data.episodeId,
-    // Payload text is the user's: defused before the model sees it (KB-101)
-    premise: data.premise
-      ? sanitizeForPrompt(data.premise)
-      : episodeContext.premise,
+    premise: data.premise || undefined,
     numberOfIdeas: data.numberOfIdeas || 3,
-    genre: episodeContext.genre ?? 'general',
-    targetAudience: episodeContext.targetAudience ?? 'general',
-    accountId: data.accountId,
-    contentType: episodeContext.projectType,
-    verifiedFactsContext,
-    charactersContext: formatCharactersForPrompt(episodeContext.characters),
-    locationsContext: formatLocationsForPrompt(episodeContext.locations),
-    seasonContext:
-      seasonContext || directionNotes
-        ? (seasonContext ?? '') + directionNotes
-        : undefined,
-    previousEpisodesContext,
-    visualStyle: episodeContext.visualStyle,
-    recurringElementsContext: formatRecurringElementsForPrompt(
-      episodeContext.recurringElements,
-    ),
   });
 
-  if (!orchestratorResult.success) {
-    throw new Error(
-      `Ideation Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
-    );
+  let orchestratorSteps: number | undefined;
+
+  const { commit } = await runStage(ideationStage, ctx, target, {
+    generate: async (brief) => {
+      const { runIdeationOrchestrator } = await import(
+        '@kit/episodes/agent/ideation-orchestrator'
+      );
+
+      const orchestratorResult = await runIdeationOrchestrator({
+        ...ideationOrchestratorInput(brief),
+        episodeId: target.episodeId,
+        accountId: data.accountId,
+      });
+
+      if (!orchestratorResult.success) {
+        throw new Error(
+          `Ideation Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
+        );
+      }
+
+      orchestratorSteps = orchestratorResult.orchestratorSteps;
+
+      console.log(
+        `[Story Ideation] Agentic pipeline complete. Steps: ${orchestratorResult.orchestratorSteps}, Ideas: ${orchestratorResult.ideas.length}`,
+      );
+
+      return {
+        output: { ideas: orchestratorResult.ideas },
+        usage: { provider: 'orchestrator', model: 'multi-agent', tokens: 0 },
+      };
+    },
+  });
+
+  if (commit.status === 'skipped') {
+    console.warn(`[Story Ideation] Ideas not stored: ${commit.reason}`);
   }
-
-  const generatedAt = new Date().toISOString();
-
-  console.log(
-    `[Story Ideation] Agentic pipeline complete. Steps: ${orchestratorResult.orchestratorSteps}, Ideas: ${orchestratorResult.ideas.length}`,
-  );
 
   return {
     success: true,
     data: {
-      ideas: orchestratorResult.ideas,
+      ideas: commit.data.ideas,
       metadata: {
         provider: 'orchestrator',
         model: 'multi-agent',
         costCents: 0,
         tokensUsed: 0,
-        generatedAt,
-        orchestratorSteps: orchestratorResult.orchestratorSteps,
+        generatedAt: commit.data.generatedAt,
+        orchestratorSteps,
       },
     },
   };

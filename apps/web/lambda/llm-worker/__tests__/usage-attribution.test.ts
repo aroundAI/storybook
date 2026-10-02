@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { processAnalyticsInsights } from '../handlers/analytics-insights';
 import { processFactExtraction } from '../handlers/fact-extraction';
 import { processLanguageInsights } from '../handlers/language-insights';
-import { commitStoryCanon } from '../utils/commit-story-canon';
+import { extractCanonFacts } from '../utils/commit-story-canon';
 
 /**
  * KB-31: a job's LLM usage is recorded on the account that owns its target.
@@ -110,16 +110,10 @@ describe('LLM usage attribution in the worker', () => {
       apply: () => anyQuery,
     });
 
-    await commitStoryCanon({
+    await extractCanonFacts({
       projectId: PROJECT,
       accountId: ACCOUNT,
-      episodeId: '33333333-3333-4333-8333-333333333333',
-      episodeNumber: 1,
-      season: 1,
-      keyEvents: [],
-      characters: [],
       storyContent: 'A story long enough to be worth extracting. '.repeat(5),
-      createdBy: USER,
       supabase: { from: () => anyQuery, rpc: () => anyQuery } as never,
     });
 

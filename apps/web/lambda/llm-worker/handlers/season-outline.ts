@@ -1,31 +1,34 @@
 /**
- * Season Outline Handler
+ * Season Outline Handler, on the generation core (FILM-1901).
  *
- * Generates episode outlines for a season.
- * Uses the Season Orchestrator for quality-gated outline generation:
- *   generateSeasonOutline → evaluateSeasonArc → revise weak episodes (max 1 cycle)
- *
- * No database writes — returns outlines to frontend for preview via WebSocket.
+ * prepare (the `season_outline` stage) reads the project's characters,
+ * locations and verified facts (KB-71) and builds the brief; generate runs
+ * the Season Orchestrator (generateSeasonOutline → evaluateSeasonArc →
+ * revise weak episodes, max 1 cycle); the stage's output schema is
+ * enforced; commit creates the episode rows. The outlines go back to the
+ * frontend for preview via WebSocket, each carrying its row's id.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { sanitizeForPrompt, sanitizeStrings } from '@kit/episodes/lib';
+import {
+  runStage,
+  seasonOutlineOrchestratorInput,
+  seasonOutlineStage,
+} from '@kit/generation';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
-/** Facts offered to one outline; the prompt asks for every one to be placed. */
-const MAX_OUTLINE_FACTS = 100;
+import { workerCtx } from '../utils/stage-runtime';
 
 interface EpisodeOutline {
+  id: string;
   number: number;
   title: string;
-  synopsis: string;
-  beats: Array<{ label: string; content: string }>;
-  moral?: string;
-  signatureLine?: string;
-  characterNames?: string[];
-  locationNames?: string[];
-  tags?: string[];
+  premise: string;
+  mainPlot: string;
+  characterFocus?: string[];
+  arcPosition: string;
+  fact_ids?: string[];
 }
 
 interface SeasonOutlineResult {
@@ -55,173 +58,64 @@ export async function processSeasonOutline(
     `[Season Outline] Starting AGENTIC pipeline for ${data.episodeCount} episodes`,
   );
 
-  // Fetch project context
-  const { data: project } = await supabase
-    .from('projects')
-    .select('id, name, metadata')
-    .eq('id', data.projectId)
-    .single();
+  const ctx = workerCtx(supabase, data);
+  const target = seasonOutlineStage.targetSchema.parse(data);
 
-  // Read for the model only (this handler writes no project row): defused
-  // once, here, with the characters and locations below (KB-101)
-  const projectMetadata = sanitizeStrings(
-    (project?.metadata as Record<string, unknown>) || {},
-  );
+  let evaluation: {
+    arcScore?: number;
+    arcSummary?: string;
+    orchestratorSteps?: number;
+  } = {};
 
-  // Extract recurring elements from project metadata
-  const recurringElements = Array.isArray(projectMetadata.recurringElements)
-    ? projectMetadata.recurringElements
-    : [];
-  const { formatRecurringElementsForPrompt } = await import(
-    '../utils/context-builder'
-  );
-  const recurringElementFormatted =
-    formatRecurringElementsForPrompt(recurringElements);
-
-  // Fetch existing characters and locations
-  const [charactersResult, locationsResult] = await Promise.all([
-    supabase
-      .from('assets')
-      .select('name, description, metadata')
-      .eq('project_id', data.projectId)
-      .eq('type', 'character')
-      .is('deleted_at', null)
-      .limit(10),
-    supabase
-      .from('assets')
-      .select('name, description')
-      .eq('project_id', data.projectId)
-      .eq('type', 'location')
-      .is('deleted_at', null)
-      .limit(10),
-  ]);
-
-  const characters = sanitizeStrings(charactersResult.data || []);
-  const locations = sanitizeStrings(locationsResult.data || []);
-
-  const existingCharacters =
-    characters.length > 0
-      ? characters.map((c) => `- ${c.name}: ${c.description || ''}`).join('\n')
-      : 'No characters defined yet.';
-
-  const existingLocations =
-    locations.length > 0
-      ? locations.map((l) => `- ${l.name}: ${l.description || ''}`).join('\n')
-      : 'No locations defined yet.';
-
-  // KB-71: the type is `metadata.projectType`, read the one way every other
-  // reader does. Only `verified` facts go in (owner decision, 2026-09-24).
-  const {
-    formatNeighbouringEpisodes,
-    getContentTypeConfig,
-    resolveProjectType,
-  } = await import('@kit/episodes/lib');
-  const { projectType } = resolveProjectType(project?.metadata);
-  let verifiedFactsFormatted = '';
-
-  if (getContentTypeConfig(projectType).requiresFacts) {
-    const [{ data: factsData, error: factsError }, { count: verifiedCount }] =
-      await Promise.all([
-        supabase
-          .from('verified_facts')
-          .select('id, claim, source_citation, category')
-          .eq('project_id', data.projectId)
-          .eq('verification_status', 'verified')
-          .order('created_at', { ascending: true })
-          .order('id', { ascending: true })
-          .limit(MAX_OUTLINE_FACTS),
-        supabase
-          .from('verified_facts')
-          .select('id', { count: 'exact', head: true })
-          .eq('project_id', data.projectId)
-          .eq('verification_status', 'verified'),
-      ]);
-
-    if (factsError) {
-      console.error(
-        '[Season Outline] Failed to fetch verified facts:',
-        factsError,
+  const { commit } = await runStage(seasonOutlineStage, ctx, target, {
+    generate: async (brief) => {
+      const { runSeasonOrchestrator } = await import(
+        '@kit/episodes/agent/season-orchestrator'
       );
-    }
 
-    const facts = factsData ?? [];
+      const orchestratorResult = await runSeasonOrchestrator({
+        ...seasonOutlineOrchestratorInput(brief),
+        projectId: target.projectId,
+        accountId: data.accountId,
+      });
 
-    if (facts.length > 0) {
-      const factLines = facts
-        .map((f) => {
-          const source = f.source_citation
-            ? ` | Source: ${sanitizeForPrompt(f.source_citation)}`
-            : '';
-          const category = f.category
-            ? ` | Category: ${sanitizeForPrompt(f.category)}`
-            : '';
-          return `FACT [${f.id}]: ${sanitizeForPrompt(f.claim)}${source}${category}`;
-        })
-        .join('\n');
+      if (!orchestratorResult.success) {
+        throw new Error(
+          `Season Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
+        );
+      }
 
-      verifiedFactsFormatted = `## VERIFIED FACTS — assign each to an episode\n\n${factLines}\n\nTotal: ${facts.length} facts. Every fact MUST appear in at least one episode's fact_ids array.`;
-    }
+      evaluation = {
+        arcScore: orchestratorResult.arcScore,
+        arcSummary: orchestratorResult.arcSummary,
+        orchestratorSteps: orchestratorResult.orchestratorSteps,
+      };
 
-    console.log(
-      `[Season Outline] projectType=${projectType} loaded=${facts.length} verified=${verifiedCount ?? 'unknown'}` +
-        ((verifiedCount ?? 0) > facts.length
-          ? ` (truncated to ${MAX_OUTLINE_FACTS})`
-          : ''),
-    );
-  }
+      console.log(
+        `[Season Outline] Agentic pipeline complete. Steps: ${orchestratorResult.orchestratorSteps}, ` +
+          `Episodes: ${orchestratorResult.episodes.length}, Arc score: ${orchestratorResult.arcScore?.toFixed(2) ?? 'N/A'}`,
+      );
 
-  // Run the Season Orchestrator
-  const { runSeasonOrchestrator } = await import(
-    '@kit/episodes/agent/season-orchestrator'
-  );
-
-  const orchestratorResult = await runSeasonOrchestrator({
-    projectId: data.projectId,
-    seasonPremise: sanitizeForPrompt(data.seasonPremise),
-    episodeCount: data.episodeCount,
-    startingNumber: data.startingNumber,
-    genre: data.genre
-      ? sanitizeForPrompt(data.genre)
-      : (projectMetadata.genre as string) || 'general',
-    style: data.style ? sanitizeForPrompt(data.style) : 'cinematic',
-    accountId: data.accountId,
-    existingCharacters,
-    existingLocations,
-    recurringElements: recurringElementFormatted,
-    verifiedFacts: verifiedFactsFormatted || undefined,
-    neighbouringEpisodes:
-      formatNeighbouringEpisodes(
-        data.surroundingEpisodes,
-        data.additionalContext,
-      ) || undefined,
+      return {
+        output: { episodes: orchestratorResult.episodes, evaluation },
+        usage: { provider: 'orchestrator', model: 'multi-agent', tokens: 0 },
+      };
+    },
   });
-
-  if (!orchestratorResult.success) {
-    throw new Error(
-      `Season Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
-    );
-  }
-
-  const generatedAt = new Date().toISOString();
-
-  console.log(
-    `[Season Outline] Agentic pipeline complete. Steps: ${orchestratorResult.orchestratorSteps}, ` +
-      `Episodes: ${orchestratorResult.episodes.length}, Arc score: ${orchestratorResult.arcScore?.toFixed(2) ?? 'N/A'}`,
-  );
 
   return {
     success: true,
     data: {
-      episodes: orchestratorResult.episodes,
+      episodes: commit.data.episodes,
       metadata: {
         provider: 'orchestrator',
         model: 'multi-agent',
         costCents: 0,
         tokensUsed: 0,
-        generatedAt,
-        orchestratorSteps: orchestratorResult.orchestratorSteps,
-        arcScore: orchestratorResult.arcScore,
-        arcSummary: orchestratorResult.arcSummary,
+        generatedAt: commit.data.generatedAt,
+        orchestratorSteps: evaluation.orchestratorSteps,
+        arcScore: evaluation.arcScore,
+        arcSummary: evaluation.arcSummary,
       },
     },
   };

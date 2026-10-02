@@ -24,10 +24,7 @@
           "logline": "An astronaut hears her own voice from the future.",
           "hook": "The voice is hers.",
           "conflict": "Obey the mission or act on the warning.",
-          "themes": [
-            "isolation",
-            "time"
-          ],
+          "themes": ["isolation", "time"],
           "visualPotential": "Space against a single lit console.",
           "qualityScore": 0.8
         },
@@ -36,9 +33,7 @@
           "logline": "The signal leaks and the world splits over it.",
           "hook": "Someone knew for decades.",
           "conflict": "Truth against stability.",
-          "themes": [
-            "trust"
-          ],
+          "themes": ["trust"],
           "visualPotential": "Crowds, screens, one quiet lab.",
           "qualityScore": 0.6
         }

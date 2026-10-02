@@ -22,26 +22,18 @@
           "title": "The First Light",
           "premise": "A mysterious signal from deep space awakens humanity.",
           "mainPlot": "Dr. Sarah Chen discovers a pattern in cosmic background radiation that defies natural explanation and races to decode it.",
-          "characterFocus": [
-            "Maya Chen"
-          ],
+          "characterFocus": ["Maya Chen"],
           "arcPosition": "setup",
-          "fact_ids": [
-            "f1"
-          ]
+          "fact_ids": ["f1"]
         },
         {
           "number": 4,
           "title": "Static",
           "premise": "As the world learns about the signal, factions emerge.",
           "mainPlot": "The discovery leaks to the press, sparking global chaos while Marcus uncovers evidence that someone has known for decades.",
-          "characterFocus": [
-            "Director Williams"
-          ],
+          "characterFocus": ["Director Williams"],
           "arcPosition": "rising",
-          "fact_ids": [
-            "f2"
-          ]
+          "fact_ids": ["f2"]
         }
       ],
       "metadata": {

@@ -18,17 +18,14 @@
     "visualStyle": "cinematic",
     "recurringElementsContext": "---\n## RECURRING STORY ELEMENTS — ALL REQUIRED\n\n### Element 1: \"Log entry\" (Placement: end)\n\nThis element MUST appear as the FINAL moment of the episode — nothing follows it.\n\n**What must happen**: Maya records a log entry\n\n---",
     "threadCandidatesContext": "- PROGRESS: \"The missing memo\"",
-    "ideationThemes": [
-      "isolation",
-      "purpose"
-    ],
+    "ideationThemes": ["isolation", "purpose"],
     "ideationHook": "The signal is her own voice from the future.",
     "visualDirection": "Tight interiors against the vastness outside."
   },
   "canonExtractionInput": {
     "templateSlug": "canon-extraction",
     "variables": {
-      "story_content": "Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck.",
+      "story_content": "Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck.",
       "existing_characters": "- Maya Chen\n- Director Williams",
       "existing_threads": "- \"The missing memo\" (plot, open): A memo nobody will acknowledge.. Promises: Find the memo"
     },
@@ -48,31 +45,19 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "reference_type",
-            "episode"
-          ]
+          "args": ["reference_type", "episode"]
         },
         {
           "method": "eq",
-          "args": [
-            "reference_id",
-            "55555555-5555-4555-8555-555555555555"
-          ]
+          "args": ["reference_id", "55555555-5555-4555-8555-555555555555"]
         },
         {
           "method": "eq",
-          "args": [
-            "job_type",
-            "story"
-          ]
+          "args": ["job_type", "story"]
         },
         {
           "method": "eq",
-          "args": [
-            "status",
-            "queued"
-          ]
+          "args": ["status", "queued"]
         }
       ]
     },
@@ -82,7 +67,7 @@
       "payload": {
         "story_data": {
           "premise": "A lonely astronaut hears a signal that carries her own voice.",
-          "fullStory": "Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. ",
+          "fullStory": "Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. ",
           "generatedAt": "2026-10-03T12:00:00.000Z",
           "generatedBy": {
             "mode": "agentic",
@@ -112,26 +97,16 @@
               "arc": "From control to trust."
             }
           ],
-          "themes": [
-            "isolation",
-            "purpose"
-          ],
+          "themes": ["isolation", "purpose"],
           "tone": "contemplative",
           "estimatedSceneCount": 6,
           "episodeSummary": "Maya hears, decodes and finally sends the signal herself.",
           "sentimentScore": 0.6,
-          "keyEvents": [
-            "Maya hears the signal",
-            "Maya sends the warning"
-          ],
+          "keyEvents": ["Maya hears the signal", "Maya sends the warning"],
           "viralStructure": {
             "openingHook": "An alarm from coordinates that do not exist.",
             "curiosityGap": "Who sent the signal?",
-            "emotionalArc": [
-              "unease",
-              "dread",
-              "awe"
-            ],
+            "emotionalArc": ["unease", "dread", "awe"],
             "setupPayoffPair": {
               "setup": "A recurring dream",
               "payoff": "Her own voice"
@@ -165,17 +140,11 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "id",
-            "55555555-5555-4555-8555-555555555555"
-          ]
+          "args": ["id", "55555555-5555-4555-8555-555555555555"]
         },
         {
           "method": "is",
-          "args": [
-            "deleted_at",
-            null
-          ]
+          "args": ["deleted_at", null]
         }
       ]
     },
@@ -194,34 +163,19 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "reference_type",
-            "episode"
-          ]
+          "args": ["reference_type", "episode"]
         },
         {
           "method": "eq",
-          "args": [
-            "reference_id",
-            "55555555-5555-4555-8555-555555555555"
-          ]
+          "args": ["reference_id", "55555555-5555-4555-8555-555555555555"]
         },
         {
           "method": "eq",
-          "args": [
-            "job_type",
-            "story"
-          ]
+          "args": ["job_type", "story"]
         },
         {
           "method": "in",
-          "args": [
-            "status",
-            [
-              "queued",
-              "processing"
-            ]
-          ]
+          "args": ["status", ["queued", "processing"]]
         }
       ]
     },
@@ -231,17 +185,11 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "established_in",
-            "55555555-5555-4555-8555-555555555555"
-          ]
+          "args": ["established_in", "55555555-5555-4555-8555-555555555555"]
         },
         {
           "method": "eq",
-          "args": [
-            "metadata->>auto_generated",
-            "true"
-          ]
+          "args": ["metadata->>auto_generated", "true"]
         }
       ]
     },
@@ -251,17 +199,11 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "episode_id",
-            "55555555-5555-4555-8555-555555555555"
-          ]
+          "args": ["episode_id", "55555555-5555-4555-8555-555555555555"]
         },
         {
           "method": "eq",
-          "args": [
-            "trigger_event",
-            "story_generation"
-          ]
+          "args": ["trigger_event", "story_generation"]
         }
       ]
     },
@@ -271,17 +213,11 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "opened_at",
-            "55555555-5555-4555-8555-555555555555"
-          ]
+          "args": ["opened_at", "55555555-5555-4555-8555-555555555555"]
         },
         {
           "method": "eq",
-          "args": [
-            "auto_generated",
-            true
-          ]
+          "args": ["auto_generated", true]
         }
       ]
     },
@@ -352,25 +288,15 @@
       "op": "update",
       "payload": {
         "metadata": {
-          "character_ids": [
-            "c1"
-          ],
-          "location_ids": [
-            "l1"
-          ],
-          "themes": [
-            "isolation",
-            "purpose"
-          ]
+          "character_ids": ["c1"],
+          "location_ids": ["l1"],
+          "themes": ["isolation", "purpose"]
         }
       },
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "id",
-            "55555555-5555-4555-8555-555555555555"
-          ]
+          "args": ["id", "55555555-5555-4555-8555-555555555555"]
         }
       ]
     },
@@ -383,12 +309,8 @@
         "thread_type": "mystery",
         "opened_at": "55555555-5555-4555-8555-555555555555",
         "description": "Where the signal comes from.",
-        "promises": [
-          "Reveal the sender"
-        ],
-        "episodes_touched": [
-          "55555555-5555-4555-8555-555555555555"
-        ],
+        "promises": ["Reveal the sender"],
+        "episodes_touched": ["55555555-5555-4555-8555-555555555555"],
         "status": "open",
         "auto_generated": true
       },
@@ -399,20 +321,14 @@
       "op": "update",
       "payload": {
         "status": "progressed",
-        "episodes_touched": [
-          "ep-1",
-          "55555555-5555-4555-8555-555555555555"
-        ],
+        "episodes_touched": ["ep-1", "55555555-5555-4555-8555-555555555555"],
         "description": "Williams admits the memo exists.",
         "version": 2
       },
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "id",
-            "thread-1"
-          ]
+          "args": ["id", "thread-1"]
         }
       ]
     },
@@ -422,13 +338,8 @@
       "payload": {
         "episode_id": "55555555-5555-4555-8555-555555555555",
         "plot_summary": "Maya hears, decodes and finally sends the signal herself.",
-        "key_events": [
-          "Maya hears the signal",
-          "Maya sends the warning"
-        ],
-        "character_changes": [
-          "Maya Chen: bored -> alert"
-        ],
+        "key_events": ["Maya hears the signal", "Maya sends the warning"],
+        "character_changes": ["Maya Chen: bored -> alert"],
         "sentiment_score": 0.4,
         "estimated_tokens": 47,
         "updated_at": "2026-10-03T12:00:00.000Z"
@@ -503,23 +414,14 @@
       "op": "update",
       "payload": {
         "metadata": {
-          "character_ids": [
-            "c1",
-            "new-0"
-          ],
-          "location_ids": [
-            "l1",
-            "new-0"
-          ]
+          "character_ids": ["c1", "new-0"],
+          "location_ids": ["l1", "new-0"]
         }
       },
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "id",
-            "55555555-5555-4555-8555-555555555555"
-          ]
+          "args": ["id", "55555555-5555-4555-8555-555555555555"]
         }
       ]
     }
@@ -528,13 +430,10 @@
     "success": true,
     "data": {
       "story": {
-        "fullText": "Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. ",
+        "fullText": "Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. ",
         "title": "The Last Signal",
         "actBreakdown": [],
-        "characters": [
-          "Maya Chen",
-          "Director Williams"
-        ],
+        "characters": ["Maya Chen", "Director Williams"],
         "themes": [],
         "tone": "dialogue-heavy",
         "estimatedSceneCount": 6,

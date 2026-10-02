@@ -45,18 +45,10 @@
           ],
           "moral": "Be kind.",
           "signature_line": null,
-          "character_names": [
-            "Dante"
-          ],
-          "location_names": [
-            "The Market"
-          ],
-          "tags": [
-            "comedy"
-          ],
-          "fact_ids": [
-            "f1"
-          ]
+          "character_names": ["Dante"],
+          "location_names": ["The Market"],
+          "tags": ["comedy"],
+          "fact_ids": ["f1"]
         }
       ]
     }

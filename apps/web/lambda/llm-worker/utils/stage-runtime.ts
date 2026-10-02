@@ -22,10 +22,12 @@ import {
   buildEpisodeContext,
   formatCharactersForPrompt,
   formatCharactersForVeoPrompt,
+  formatFactsForPrompt,
   formatLocationsForPrompt,
   formatLocationsForVeoPrompt,
   formatPreviousEpisodesForPrompt,
   formatRecurringElementsForPrompt,
+  formatVerifiedFactsForPrompt,
 } from './context-builder';
 
 export function episodeContextLoader(
@@ -42,11 +44,32 @@ export function episodeContextLoader(
       seasonNumber: context.seasonNumber,
       seasonPremise: context.seasonPremise,
       seasonDirectionNotes: context.seasonDirectionNotes,
+      premise: context.premise,
+      genre: context.genre,
+      targetAudience: context.targetAudience,
+      visualStyle: context.visualStyle,
+      projectType: context.projectType,
       characters: formatCharactersForPrompt(context.characters),
       locations: formatLocationsForPrompt(context.locations),
       previousEpisodes: formatPreviousEpisodesForPrompt(
         context.previousEpisodes,
       ),
+      previousEpisodeTitles: context.previousEpisodes.map((ep) => ({
+        number: ep.number,
+        title: ep.title,
+      })),
+      // undefined when the project has none, '' never: the story stage
+      // passes it on as the handler did (recurring element: yes / no)
+      recurringElements: context.recurringElements
+        ? formatRecurringElementsForPrompt(context.recurringElements)
+        : undefined,
+      episodeFacts: formatFactsForPrompt(context.episodeFacts),
+      verifiedFacts:
+        context.verifiedFacts.length > 0
+          ? formatVerifiedFactsForPrompt(context.verifiedFacts)
+          : undefined,
+      characterNames: context.characters.map((c) => c.name),
+      locationNames: context.locations.map((l) => l.name),
       counts: {
         characters: context.characters.length,
         locations: context.locations.length,

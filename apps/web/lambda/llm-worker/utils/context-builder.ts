@@ -8,6 +8,7 @@ import {
   sanitizeStrings,
 } from '@kit/episodes/lib';
 import type { ProjectType } from '@kit/film-studio-schemas/project';
+import { formatRecurringElementsForPrompt } from '@kit/generation/formatters';
 import { whyNoRow } from '@kit/shared/rows';
 import type { Database } from '@kit/supabase/database';
 
@@ -824,76 +825,11 @@ ${episodes
 }
 
 /**
- * Format recurring elements for prompt injection.
- * Fully dynamic — no hardcoded values. Every word comes from project settings.
- * Placement-aware: generates distinct instruction text for beginning/middle/end/throughout.
+ * Format recurring elements for prompt injection. The one implementation is
+ * `@kit/generation`'s (FILM-1901): the season stages render project metadata
+ * with it where there is no episode; this keeps the worker's import path.
  */
-export function formatRecurringElementsForPrompt(
-  recurringElements: EpisodeContext['recurringElements'],
-): string {
-  if (!recurringElements || recurringElements.length === 0) return '';
-
-  const placementInstruction: Record<string, string> = {
-    beginning: 'at the START of the episode — before the main story hook',
-    middle: 'at a natural midpoint of the episode',
-    end: 'as the FINAL moment of the episode — nothing follows it',
-    throughout:
-      'at multiple natural points distributed across the entire episode',
-  };
-
-  const elementBlocks = recurringElements.map((el, i) => {
-    const placement = (el.placement ?? 'end').toLowerCase();
-    const when =
-      placementInstruction[placement] ??
-      `at the ${el.placement} of the episode`;
-
-    const lines: string[] = [
-      `### Element ${i + 1}: "${el.name}" (Placement: ${el.placement ?? 'End'})`,
-      '',
-      `This element MUST appear ${when}.`,
-      '',
-    ];
-
-    if (el.location) {
-      lines.push(`**Location / Context**: ${el.location}`);
-      lines.push(
-        'If the story is already in this location at the placement point, embed the element naturally.',
-        'If not, transition to this location at the appropriate time.',
-        '',
-      );
-    }
-
-    if (el.purpose) {
-      lines.push(`**What must happen**: ${el.purpose}`);
-      lines.push('');
-    }
-
-    if (el.dialogueHints) {
-      lines.push(
-        '**Character voice & tone reference** (study the patterns below to understand HOW these characters think, speak, and emote — then generate COMPLETELY ORIGINAL dialogue that captures the same cadence, vocabulary level, and emotional texture):',
-        '',
-        el.dialogueHints,
-        '',
-        '⚠️ The above are CHARACTER VOICE REFERENCES, not templates. ' +
-          'NEVER reproduce or closely paraphrase any specific line from these references. ' +
-          'Instead, internalize the speech patterns, emotional register, ' +
-          'and personality traits demonstrated across ALL examples, ' +
-          "then write fresh dialogue that sounds authentically like these characters in THIS episode's unique situation.",
-      );
-      lines.push('');
-    }
-
-    return lines.join('\n');
-  });
-
-  return [
-    '---',
-    '## RECURRING STORY ELEMENTS — ALL REQUIRED',
-    '',
-    ...elementBlocks,
-    '---',
-  ].join('\n');
-}
+export { formatRecurringElementsForPrompt };
 
 /** @deprecated Use formatRecurringElementsForPrompt instead */
 export const formatRecurringElementForPrompt = (
