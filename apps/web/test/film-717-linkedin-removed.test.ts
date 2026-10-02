@@ -75,6 +75,7 @@ const KEPT = new Set([
   'packages/clickhouse/__tests__/data-provenance.test.ts',
   'packages/clickhouse/scripts/verify-queries.ts',
   'packages/features/content-analytics/__tests__/dim-sync.test.ts',
+  'packages/features/content-analytics/__tests__/genome-actions.test.ts',
   'packages/features/content-analytics/__tests__/platform-filter-surfaces.test.tsx',
   // This file and the guards that prove the rules can fail.
   'apps/web/test/film-717-linkedin-removed.test.ts',
