@@ -55,8 +55,8 @@
       "name": "MS6 No measured revenue reads as $0 in the totals",
       "kind": "unit",
       "file": "packages/clickhouse/src/queries.ts",
-      "find": "  if (rows.length === 0) {\n    return {\n      views: 0,\n      likes: 0,\n      comments: 0,\n      shares: 0,\n      saves: 0,\n      watch_time_seconds: 0,\n      revenue_cents: null,",
-      "replace": "  if (rows.length === 0) {\n    return {\n      views: 0,\n      likes: 0,\n      comments: 0,\n      shares: 0,\n      saves: 0,\n      watch_time_seconds: 0,\n      revenue_cents: 0,",
+      "find": "  // Not measured, not $0: the identity a measured chunk replaces (FILM-1726).\n  revenue_cents: null,",
+      "replace": "  // Not measured, not $0: the identity a measured chunk replaces (FILM-1726).\n  revenue_cents: 0,",
       "cwd": "packages/clickhouse",
       "test": "__tests__/clickhouse.test.ts",
       "pattern": "should return zeros when no data"
