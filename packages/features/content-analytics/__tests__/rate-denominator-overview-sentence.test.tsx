@@ -28,6 +28,7 @@ const analytics: AggregateAnalytics = {
     watchTimeSeconds: null,
     subscribersGained: null,
     revenueCents: null,
+    contentCount: 1,
   },
   contentCount: 1,
   avgEngagementRate: rate.value,
