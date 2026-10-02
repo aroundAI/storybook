@@ -83,7 +83,7 @@ notes: |
   `video_revenue_daily`, after this was written, and YouTube revenue became
   `native` there. Left out, its cell was `null`, so the card read "unknown"
   beside earnings it had. It is a sixth dated branch
-  (packages/clickhouse/src/queries-advanced.ts:1401) and a sixth entry in
+  (packages/clickhouse/src/queries-advanced.ts:1402) and a sixth entry in
   `OBSERVED_COVERAGE_TABLES` (packages/clickhouse/src/lib/data-provenance.ts:1534);
   "five" below means these six. #523
 
