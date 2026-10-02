@@ -259,7 +259,7 @@ describe('the MetricCards', () => {
 
     expect(views.querySelector('[data-test="metric-value"]')).toBeNull();
     expect(
-      views.querySelector('[data-test="metric-unmeasured"]')?.textContent,
+      views.querySelector('[data-test="metric-not-measured"]')?.textContent,
     ).toBe('Not measured');
   });
 
