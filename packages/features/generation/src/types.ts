@@ -136,6 +136,15 @@ export interface EpisodeContextSnapshot {
   locations: string;
   previousEpisodes: string;
   counts: { characters: number; locations: number };
+  /**
+   * The episode's characters and locations with their asset ids, as the
+   * context builder resolved them (the "All Characters" wildcard included):
+   * commit maps dialogue speakers to `character_asset_id` with these.
+   */
+  characterList?: Array<{ id: string; name: string }>;
+  locationList?: Array<{ id: string; name: string }>;
+  /** Recurring story elements formatted for a prompt; '' when there are none */
+  recurringElements?: string;
 }
 
 export type EpisodeContextLoader = (

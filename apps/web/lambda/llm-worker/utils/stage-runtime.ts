@@ -23,6 +23,7 @@ import {
   formatCharactersForPrompt,
   formatLocationsForPrompt,
   formatPreviousEpisodesForPrompt,
+  formatRecurringElementsForPrompt,
 } from './context-builder';
 
 export function episodeContextLoader(
@@ -48,6 +49,12 @@ export function episodeContextLoader(
         characters: context.characters.length,
         locations: context.locations.length,
       },
+      // The screenplay stages map speakers to assets with these (part C)
+      characterList: context.characters.map(({ id, name }) => ({ id, name })),
+      locationList: context.locations.map(({ id, name }) => ({ id, name })),
+      recurringElements: formatRecurringElementsForPrompt(
+        context.recurringElements,
+      ),
     };
   };
 }

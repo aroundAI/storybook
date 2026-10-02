@@ -16,6 +16,7 @@
   "prettier": "@kit/prettier-config",
   "exports": {
     ".": "./src/index.ts",
+    "./duration-scaling": "./src/duration-scaling.ts",
     "./testing": "./src/testing/index.ts"
   },
   "dependencies": {

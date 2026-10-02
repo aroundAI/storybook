@@ -970,83 +970,11 @@ export function formatBeatsForPrompt(
 }
 
 /**
- * Merge story-specific character arcs into the pre-formatted character context block.
- *
- * The `assets` table provides identity: name, role, personality, physical attributes.
- * The `story_data.characters[]` provides episode-specific arcs: how the character changes.
- *
- * This function appends arc information into each character's block in the formatted string,
- * matching by name (case-insensitive). The result is a single prompt block with BOTH
- * identity constraints AND narrative arc guidance.
- *
- * @param formattedCharacters - Output of formatCharactersForPrompt() (locked identity block)
- * @param storyCharacters - Array from storyData.characters (name, role, arc)
- * @returns Enriched character context string with arcs appended per character
+ * Merge story-specific character arcs into the pre-formatted character
+ * context block. Lives in `@kit/generation` (the screenplay stage renders
+ * the same block for its brief, FILM-1901); re-exported for the worker.
  */
-export function mergeCharacterArcs(
-  formattedCharacters: string,
-  storyCharacters: Array<{ name: string; role: string; arc: string }>,
-): string {
-  if (storyCharacters.length === 0 || !formattedCharacters) {
-    return formattedCharacters;
-  }
-
-  // Build lookup: lowercase name → arc
-  const arcMap = new Map(
-    storyCharacters
-      .filter((c) => c.arc)
-      .map((c) => [c.name.toLowerCase().trim(), c.arc]),
-  );
-
-  if (arcMap.size === 0) return formattedCharacters;
-
-  // The formatted character block has this structure:
-  //   CHARACTER 1 — LOCKED IDENTITY (...):
-  //     Name: Dante
-  //     Role: protagonist
-  //     Description: ...
-  //     Personality: ...
-  //     Identity (immutable): ...
-  //
-  //   CHARACTER 2 — LOCKED IDENTITY (...):
-  //     ...
-  //
-  // Strategy: Walk line-by-line, detect "Name: X" lines, match arc,
-  // insert "Arc in this episode: ..." before the next CHARACTER header or EOF.
-
-  const lines = formattedCharacters.split('\n');
-  const enrichedLines: string[] = [];
-  let pendingArc: string | null = null;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]!;
-
-    // If we hit a new CHARACTER header and have a pending arc, insert it
-    if (line.startsWith('CHARACTER ') && pendingArc) {
-      enrichedLines.push(`  Arc in this episode: ${pendingArc}`);
-      pendingArc = null;
-    }
-
-    enrichedLines.push(line);
-
-    // Check if this line is a "Name:" line — match the arc
-    const nameMatch = line.match(/^\s+Name:\s+(.+)$/);
-    if (nameMatch) {
-      const name = nameMatch[1]!.toLowerCase().trim();
-      const arc = arcMap.get(name);
-      if (arc) {
-        pendingArc = arc;
-      }
-    }
-  }
-
-  // Flush any remaining pending arc at end of string
-  if (pendingArc) {
-    enrichedLines.push(`  Arc in this episode: ${pendingArc}`);
-  }
-
-  return enrichedLines.join('\n');
-}
+export { mergeCharacterArcs } from '@kit/generation';
 
 // =============================================================================
 // VEO 3.1 Enhanced Formatting Functions

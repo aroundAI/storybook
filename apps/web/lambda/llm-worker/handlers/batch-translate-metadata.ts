@@ -2,33 +2,52 @@
  * Batch Translate Metadata Handler
  *
  * Translates multiple content items (full videos, shorts groups) across
- * multiple languages in a SINGLE LLM call.
+ * multiple languages in a SINGLE LLM call. The work is the
+ * `publish_metadata` stage of `@kit/generation` (FILM-1901): prepare builds
+ * the brief, the executor writes, the reply is checked against the stage's
+ * schema, and commit returns every item with its translation or, when the
+ * model skipped it, its own text. Nothing is written: the publish draft
+ * lives in the publish screen, which receives this result over WebSocket.
+ *
+ * A failed or rejected model reply falls back to the original text for
+ * every item, as it always did: publishing does not block on translation.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { sanitizeStrings } from '@kit/episodes/lib';
+import {
+  type Brief,
+  type GenerateResult,
+  type TranslatedPublishItem,
+  publishMetadataStage,
+  runStage,
+} from '@kit/generation';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
-interface TranslatedItem {
-  id: string;
-  translatedTitle: string;
-  translatedDescription: string;
-  targetLanguage: string;
-  contentType: 'full-video' | 'shorts-group';
-  groupId?: string;
-}
+import { workerCtx } from '../utils/stage-runtime';
 
 interface BatchTranslateResult {
   success: boolean;
   data: {
-    items: TranslatedItem[];
+    items: TranslatedPublishItem[];
   };
+}
+
+async function generateWithExecuteLLM(brief: Brief): Promise<GenerateResult> {
+  const { executeLLM } = await import('@kit/prompt-engine/server');
+
+  const result = await executeLLM<unknown>({
+    templateSlug: brief.prompt.slug,
+    variables: brief.prompt.variables,
+    context: { name: 'batch-translate-metadata', accountId: 'system' },
+  });
+
+  return { output: result.data };
 }
 
 export async function processBatchTranslateMetadata(
   payload: Record<string, unknown>,
-  _supabase: SupabaseClient<Database>,
+  supabase: SupabaseClient<Database>,
 ): Promise<BatchTranslateResult> {
   const data = parseLlmJobPayload('batch-translate-metadata', payload);
 
@@ -38,61 +57,27 @@ export async function processBatchTranslateMetadata(
     return { success: true, data: { items: [] } };
   }
 
-  // Build input for LLM - include id and targetLanguage for each item
-  const itemsForPrompt = data.items.map((item) => ({
-    id: item.id,
-    targetLanguage: item.targetLanguage,
-    title: item.title,
-    description: item.description,
-  }));
-
-  const { executeLLM } = await import('@kit/prompt-engine/server');
-
   try {
-    // SINGLE LLM CALL for all items across all languages
-    const result = await executeLLM<{
-      translations: Array<{
-        id: string;
-        targetLanguage: string;
-        title: string;
-        description: string;
-      }>;
-    }>({
-      templateSlug: 'batch-translate-metadata',
-      variables: {
-        // Titles and descriptions to translate, defused (KB-101)
-        items: JSON.stringify(sanitizeStrings(itemsForPrompt), null, 2),
-        itemCount: data.items.length,
-      },
-      context: { name: 'batch-translate-metadata', accountId: 'system' },
-    });
-
-    // Match results by id (order doesn't matter)
-    const translationsMap = new Map(
-      result.data?.translations?.map((t) => [t.id, t]) || [],
+    const { commit } = await runStage(
+      publishMetadataStage,
+      workerCtx(supabase, {
+        accountId: data.accountId,
+        userId: data.userId ?? 'system',
+      }),
+      { items: data.items },
+      { generate: generateWithExecuteLLM },
     );
 
-    // Build output with original metadata enriched
-    const translatedItems: TranslatedItem[] = data.items.map((item) => {
-      const translation = translationsMap.get(item.id);
-      return {
-        id: item.id,
-        translatedTitle: translation?.title || item.title,
-        translatedDescription: translation?.description || item.description,
-        targetLanguage: item.targetLanguage,
-        contentType: item.contentType,
-        groupId: item.groupId,
-      };
-    });
+    console.log(
+      `[Batch Translate] Complete: ${commit.data.items.length} items`,
+    );
 
-    console.log(`[Batch Translate] Complete: ${translatedItems.length} items`);
-
-    return { success: true, data: { items: translatedItems } };
+    return { success: true, data: { items: commit.data.items } };
   } catch (error) {
     console.error('[Batch Translate] LLM call failed:', error);
 
     // Fallback: return original text for all items
-    const fallbackItems: TranslatedItem[] = data.items.map((item) => ({
+    const fallbackItems: TranslatedPublishItem[] = data.items.map((item) => ({
       id: item.id,
       translatedTitle: item.title,
       translatedDescription: item.description,

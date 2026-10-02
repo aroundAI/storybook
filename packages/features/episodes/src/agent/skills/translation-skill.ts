@@ -5,6 +5,8 @@
  * Uses the `dialogue-translation` prompt template to translate
  * numbered dialogue lines into the target language while preserving
  * emotional tone, cultural context, and optionally lip-sync timing.
+ * The language codes and style guides live in `@kit/generation`'s
+ * dialogue_translation stage, which renders the same prompt as a brief.
  *
  * Used by the Translation Orchestrator to translate dialogue for
  * multi-language episode output.
@@ -13,69 +15,11 @@ import { z } from 'zod';
 
 import type { Skill } from '@kit/agent';
 import { createTool, toolError, toolSuccess } from '@kit/agent';
-
-const LANGUAGE_CODE_MAP: Record<string, string> = {
-  hindi: 'hi',
-  spanish: 'es',
-  portuguese: 'pt',
-  french: 'fr',
-  german: 'de',
-  japanese: 'ja',
-  korean: 'ko',
-  chinese: 'zh',
-  arabic: 'ar',
-  bengali: 'bn',
-};
-
-const LANGUAGE_STYLE_GUIDES: Record<string, string> = {
-  hi: `HINDI STYLE: Natural spoken Hinglish in Devanagari script.
-
-TARGET TONE: How a 10-year-old Indian kid actually talks at home — mixing Hindi and English naturally.
-Write EVERYTHING in Devanagari script (including English loanwords → transliterate them).
-
-CORE PRINCIPLE: If an Indian kid would say it that way in real life, it's correct.
-
-USE COMMON HINDI WORDS (everyone knows these):
-  दोपहर, सुबह, रात, खाना, पानी, दोस्त, कहानी, रास्ता, जगह, आवाज़,
-  चुपचाप, अंधेरा, डर, हिम्मत, मज़ा, तैयार, ज़रूर, सच में, पक्का
-
-REPLACE FORMAL/TEXTBOOK HINDI WITH ENGLISH LOANWORDS (Indians use these daily):
-  ❌ गश्त → ✅ पैट्रोलिंग
-  ❌ संदिग्ध → ✅ सस्पेक्ट
-  ❌ प्रमाण → ✅ एविडेंस
-  ❌ आक्रमण → ✅ अटैक
-  ❌ सैनिक → ✅ सोल्जर
-  ❌ अभियान → ✅ मिशन
-  ❌ संकेत → ✅ सिग्नल
-  ❌ निरीक्षण → ✅ चेक
-  ❌ योजना → ✅ प्लान
-  ❌ समस्या → ✅ प्रॉब्लम
-
-ENGLISH WORDS TO TRANSLITERATE (write in Devanagari):
-  team → टीम, cool → कूल, perfect → परफेक्ट, ready → रेडी,
-  sorry → सॉरी, thanks → थैंक्स, okay → ओके, actually → एक्चुअली
-
-EXAMPLE TRANSLATIONS:
-  ❌ "दोपहर की गश्त बहुत शांत है" (textbook Hindi)
-  ❌ "Afternoon patrol बहुत शांत है" (unnecessary English)
-  ✅ "दोपहर की पैट्रोलिंग आज बहुत शांत है" (natural Hinglish)
-
-  ❌ "यह बहुत संदिग्ध लग रहा है" (formal)
-  ✅ "ये बहुत सस्पिशस लग रहा है" (how kids actually talk)
-
-  ❌ "हमें एक योजना बनानी होगी" (formal)
-  ✅ "हमें एक प्लान बनाना होगा" (natural)`,
-
-  bn: `BENGALI STYLE: Banglish for young Bengali audience.
-Similar to Hinglish — urban Bengali youth naturally mix English words.
-Keep commonly-understood English nouns. Use Bengali script for Bengali portions.
-Grammar should be Bengali with English words mixed in naturally.`,
-
-  _default: `TRANSLATION STYLE: Full translation to target language.
-Use MODERN COLLOQUIAL language — how young speakers actually talk TODAY.
-Avoid formal/literary vocabulary. Use the everyday register.
-Translate ALL content words (except proper nouns and audio tags).`,
-};
+import {
+  DEFAULT_TARGET_DEMOGRAPHIC,
+  LANGUAGE_CODE_MAP,
+  languageStyleGuide,
+} from '@kit/generation';
 
 const translateDialogueTool = createTool({
   name: 'translateDialogue',
@@ -106,11 +50,10 @@ const translateDialogueTool = createTool({
 
       // Look up language-specific style guide
       const langCode = LANGUAGE_CODE_MAP[targetLanguage.toLowerCase()] ?? '';
-      const styleGuide =
-        LANGUAGE_STYLE_GUIDES[langCode] ?? LANGUAGE_STYLE_GUIDES._default!;
+      const styleGuide = languageStyleGuide(langCode);
       const targetDemographic =
         ((context as Record<string, unknown>).targetAudience as string) ||
-        'children and young teens (ages 6-15)';
+        DEFAULT_TARGET_DEMOGRAPHIC;
 
       const result = await executeLLM<string>({
         templateSlug: 'dialogue-translation',

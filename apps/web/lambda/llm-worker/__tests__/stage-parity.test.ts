@@ -12,10 +12,11 @@ import {
 
 // FILM-1901 part C: parity for screenplay, screenplay_refinement,
 // dialogue_translation and publish_metadata. The goldens under
-// fixtures/parity/ were captured from the handlers as they stood before the
-// rewrite (`UPDATE_PARITY=1`), with the model stubbed to return the fixture
-// below and the clock pinned. The rewritten handlers must issue the same
-// writes, in the same order, and return the same result.
+// fixtures/parity/ were recorded from the handlers as they stood before the
+// rewrite (`RECORD_PARITY=1`, the commit before the bodies were deleted),
+// with the model stubbed to return the fixture below and the clock pinned.
+// The rewritten handlers must issue the same writes, in the same order, and
+// return the same result. Part A's stages are in generation-parity.test.ts.
 
 const NOW = new Date('2026-10-03T12:00:00.000Z');
 
@@ -357,16 +358,19 @@ function expectGolden(name: string, actual: unknown) {
   const file = path.join(FIXTURES, `${name}.json`);
   const serialised = JSON.stringify(actual, null, 2) + '\n';
 
-  if (process.env.UPDATE_PARITY) {
+  if (process.env.RECORD_PARITY === '1') {
     mkdirSync(FIXTURES, { recursive: true });
     writeFileSync(file, serialised);
     return;
   }
 
-  expect(existsSync(file), `${file} missing; run with UPDATE_PARITY=1`).toBe(
-    true,
+  expect(
+    existsSync(file),
+    `${file} missing: record it with RECORD_PARITY=1 against the old handler`,
+  ).toBe(true);
+  expect(JSON.parse(serialised)).toEqual(
+    JSON.parse(readFileSync(file, 'utf8')),
   );
-  expect(JSON.parse(serialised)).toEqual(JSON.parse(readFileSync(file, 'utf8')));
 }
 
 describe('stage parity: the rewritten handlers write what the old ones wrote (FILM-1901)', () => {

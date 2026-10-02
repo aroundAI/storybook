@@ -36,6 +36,10 @@ const WORLD: EpisodeContextSnapshot = {
   locations: '**Locations**: Observation deck',
   previousEpisodes: 'Episode 2: First Contact',
   counts: { characters: 1, locations: 1 },
+  // Part C's screenplay stages map speakers with these
+  characterList: [{ id: 'c1', name: 'Maya Chen' }],
+  locationList: [{ id: 'l1', name: 'Observation deck' }],
+  recurringElements: '',
 };
 
 const STORY = {
@@ -46,22 +50,65 @@ const STORY = {
   keyEvents: ['Signal found'],
 };
 
+const SCREENPLAY = {
+  scenes: [
+    {
+      number: 1,
+      heading: 'INT. OBSERVATION DECK - NIGHT',
+      location: 'Observation deck',
+      timeOfDay: 'night',
+      description: 'Maya watches the monitor.',
+      dialogue: [{ character: 'Maya Chen', text: 'There it is again.' }],
+      estimatedDuration: 30,
+    },
+  ],
+  metadata: { characters: ['Maya Chen'], locations: ['Observation deck'] },
+};
+
+const ENGLISH_LINE = {
+  id: '99999999-9999-4999-8999-999999999999',
+  episode_id: EPISODE_ID,
+  character_asset_id: 'c1',
+  shot_id: null,
+  text: 'There it is again.',
+  sequence_number: 1,
+  scene_number: 1,
+  timeline_start_seconds: 0,
+  estimated_duration_seconds: 2,
+};
+
 function episodeClient(overrides: Record<string, unknown> = {}) {
-  return recordingClient(
-    tableResponder({
-      episodes: {
-        id: EPISODE_ID,
-        title: 'The Last Signal',
-        status: 'story',
-        story_data: STORY,
-        metadata: { refinement_history: [] },
-        version: 4,
-        deleted_at: null,
-        ...overrides,
-      },
-      generation_jobs: null,
-    }),
-  );
+  const fixtures = tableResponder({
+    episodes: {
+      id: EPISODE_ID,
+      number: 3,
+      title: 'The Last Signal',
+      status: 'story',
+      story_data: STORY,
+      screenplay_data: SCREENPLAY,
+      metadata: { refinement_history: [] },
+      version: 4,
+      target_duration_seconds: 120,
+      deleted_at: null,
+      project: { id: PROJECT_ID, account_id: ACCOUNT_ID, metadata: {} },
+      ...overrides,
+    },
+    generation_jobs: null,
+    dialogue_lines: null,
+  });
+
+  return recordingClient((call: RecordedCall) => {
+    // dialogue_translation reads the English lines, then the translated ones
+    if (call.table === 'dialogue_lines' && writesOf([call]).length === 0) {
+      const language = call.chain.find(
+        (step) => step.method === 'eq' && step.args[0] === 'language',
+      )?.args[1];
+
+      return { data: language === 'en' ? [ENGLISH_LINE] : [] };
+    }
+
+    return fixtures(call);
+  });
 }
 
 function ctxFor(client: Ctx['client'], extra: Partial<Ctx> = {}): Ctx {
@@ -91,15 +138,19 @@ afterAll(() => {
   vi.useRealTimers();
 });
 
-describe('the registry holds the part A stages', () => {
-  it('registers story_refinement and asset_description', () => {
+describe('the registry holds the part A and part C stages', () => {
+  it('registers story_refinement, asset_description and the four part C stages', () => {
     expect(registeredStageKeys().sort()).toEqual([
       'asset_description',
+      'dialogue_translation',
+      'publish_metadata',
+      'screenplay',
+      'screenplay_refinement',
       'story_refinement',
     ]);
     expect(getStage('story_refinement')).toBe(storyRefinementStage);
     expect(getStage('asset_description')).toBe(assetDescriptionStage);
-    expect(stageRegistry.size).toBe(2);
+    expect(stageRegistry.size).toBe(6);
   });
 });
 
@@ -110,6 +161,24 @@ describe('every registered stage renders its prompt with the context prepare() b
       projectId: PROJECT_ID,
       asset: { name: 'Maya Chen', type: 'character' as const, role: 'lead' },
       storyContext: 'Maya floats in the silence.',
+    },
+    screenplay: { episodeId: EPISODE_ID },
+    screenplay_refinement: { episodeId: EPISODE_ID, feedback: 'Calmer' },
+    dialogue_translation: {
+      episodeId: EPISODE_ID,
+      targetLanguage: 'es',
+      preserveTiming: true,
+    },
+    publish_metadata: {
+      items: [
+        {
+          id: 'full-video-hi',
+          contentType: 'full-video' as const,
+          title: 'The Last Signal',
+          description: 'An astronaut hears her own voice.',
+          targetLanguage: 'hi',
+        },
+      ],
     },
   };
 

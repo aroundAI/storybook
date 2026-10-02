@@ -80,6 +80,10 @@ export default defineConfig({
         __dirname,
         '../../packages/features/generation/src/testing/index.ts',
       ),
+      '@kit/generation/duration-scaling': path.resolve(
+        __dirname,
+        '../../packages/features/generation/src/duration-scaling.ts',
+      ),
       '@kit/generation': path.resolve(
         __dirname,
         '../../packages/features/generation/src/index.ts',
@@ -87,6 +91,10 @@ export default defineConfig({
       '@kit/prompt-engine/prompts': path.resolve(
         __dirname,
         '../../packages/features/prompt-engine/src/prompts',
+      ),
+      '@kit/prompt-engine/schemas': path.resolve(
+        __dirname,
+        '../../packages/features/prompt-engine/src/schemas/index.ts',
       ),
       '@kit/ui/navigation-schema': path.resolve(
         __dirname,

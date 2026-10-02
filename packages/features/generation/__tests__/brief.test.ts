@@ -6,6 +6,7 @@ import storyRefinement from '@kit/prompt-engine/prompts/story-generation/story-r
 import {
   BRIEF_TTL_MS,
   type PromptFile,
+  type StageKey,
   buildBrief,
   checkWithSchema,
   getStage,
@@ -156,6 +157,10 @@ describe('stage registry', () => {
       commit: async () => ({ status: 'committed' as const, data: null }),
     };
 
+    // The real publish_metadata stage registers at import; stand it aside
+    const real = stageRegistry.get('publish_metadata');
+    stageRegistry.delete('publish_metadata');
+
     try {
       registerStage(stage);
       expect(getStage('publish_metadata')).toBe(stage);
@@ -163,12 +168,13 @@ describe('stage registry', () => {
       expect(() => registerStage({ ...stage })).toThrow(/already registered/);
     } finally {
       stageRegistry.delete('publish_metadata');
+      if (real) stageRegistry.set('publish_metadata', real);
     }
   });
 
   it('names the registered stages when one is missing', () => {
-    expect(() => getStage('publish_metadata')).toThrow(
-      /publish_metadata is not registered/,
+    expect(() => getStage('not_a_stage' as StageKey)).toThrow(
+      /not_a_stage is not registered/,
     );
   });
 });
