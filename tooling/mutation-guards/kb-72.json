@@ -44,7 +44,7 @@
     {
       "name": "M5 sanitizeStrings passes strings through untouched",
       "kind": "unit",
-      "file": "packages/features/episodes/src/lib/sanitize-for-prompt.ts",
+      "file": "packages/shared/src/prompt-sanitiser/index.ts",
       "find": "  if (typeof value === 'string') return sanitizeForPrompt(value) as T;\n",
       "replace": "  if (typeof value === 'string') return value;\n",
       "cwd": "packages/features/episodes",
