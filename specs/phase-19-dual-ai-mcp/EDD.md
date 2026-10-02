@@ -736,12 +736,12 @@ flowchart LR
 
 ### M2 OAuth and consent (M)
 
-- [ ] Protected-resource and authorization-server metadata endpoints
-- [ ] `/oauth/register` (DCR) and client metadata document support; `mcp_oauth_clients`
-- [ ] `/oauth/authorize` consent page: sign in, pick team, approve scopes (FR-2)
-- [ ] `/oauth/token` with PKCE, refresh rotation, audience binding; `/oauth/revoke`
-- [ ] Settings → Connected apps: list, rename, revoke connections and PATs (FR-4)
-- [ ] Playwright spec for the consent page; screenshots in the PR
+- [x] Protected-resource and authorization-server metadata endpoints (FILM-1907)
+- [x] `/oauth/register` (DCR) and client metadata document support; `mcp_oauth_clients` (FILM-1907)
+- [x] `/oauth/authorize` consent page: sign in, pick team, approve scopes (FR-2) (FILM-1907)
+- [x] `/oauth/token` with PKCE, refresh rotation, audience binding; `/oauth/revoke` (FILM-1907)
+- [ ] Settings → Connected apps: list, rename, revoke connections and PATs (FR-4) — list and revoke shipped (FILM-1904, FILM-1907); rename is not built
+- [x] Playwright spec for the consent page; screenshots in the PR (FILM-1907)
 
 ### M3 External story stage (M)
 

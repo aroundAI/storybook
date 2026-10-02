@@ -33,7 +33,9 @@ const ENV_KEYS = [
   'SUPABASE_JWT_SECRET',
   'NEXT_PUBLIC_SUPABASE_URL',
 ] as const;
-const saved = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
+const saved = Object.fromEntries(
+  ENV_KEYS.map((key) => [key, process.env[key]]),
+);
 
 afterEach(() => {
   for (const key of ENV_KEYS) {
@@ -44,7 +46,9 @@ afterEach(() => {
 
 describe.each(['ES256', 'RS256'] as const)('asymmetric signer: %s', (alg) => {
   it('signs a 5-minute user token that verifies against the public key and names its kid', async () => {
-    const { privateKey, publicKey } = await generateKeyPair(alg, { extractable: true });
+    const { privateKey, publicKey } = await generateKeyPair(alg, {
+      extractable: true,
+    });
     const pem = await exportPKCS8(privateKey);
 
     const signer = await createAsymmetricSigner({
@@ -59,7 +63,11 @@ describe.each(['ES256', 'RS256'] as const)('asymmetric signer: %s', (alg) => {
     const jwt = await signer.sign({ userId: USER, connectionId: CONNECTION });
     const header = decodeProtectedHeader(jwt);
 
-    expect(header).toMatchObject({ alg, kid: 'storybook-mcp-2026-10', typ: 'JWT' });
+    expect(header).toMatchObject({
+      alg,
+      kid: 'storybook-mcp-2026-10',
+      typ: 'JWT',
+    });
 
     const { payload } = await jwtVerify(jwt, publicKey, {
       issuer: ISSUER,
@@ -93,7 +101,8 @@ describe.each(['ES256', 'RS256'] as const)('asymmetric signer: %s', (alg) => {
 describe('the signer the environment selects', () => {
   it('is HS256 with the shared secret when no private key is set', async () => {
     delete process.env.MCP_JWT_PRIVATE_KEY;
-    process.env.SUPABASE_JWT_SECRET = 'super-secret-jwt-token-with-at-least-32-characters-long';
+    process.env.SUPABASE_JWT_SECRET =
+      'super-secret-jwt-token-with-at-least-32-characters-long';
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://127.0.0.1:55321';
 
     const signer = createMcpJwtSigner();
@@ -106,13 +115,19 @@ describe('the signer the environment selects', () => {
   });
 
   it('is the asymmetric signer when MCP_JWT_PRIVATE_KEY and MCP_JWT_KID are set, and the kid is required', async () => {
-    const { privateKey, publicKey } = await generateKeyPair('ES256', { extractable: true });
+    const { privateKey, publicKey } = await generateKeyPair('ES256', {
+      extractable: true,
+    });
 
     // The usual way a PEM lands in an env file: newlines escaped.
-    process.env.MCP_JWT_PRIVATE_KEY = (await exportPKCS8(privateKey)).replace(/\n/g, '\\n');
+    process.env.MCP_JWT_PRIVATE_KEY = (await exportPKCS8(privateKey)).replace(
+      /\n/g,
+      '\\n',
+    );
     process.env.MCP_JWT_KID = 'imported-key';
     delete process.env.MCP_JWT_ALG;
-    process.env.SUPABASE_JWT_SECRET = 'super-secret-jwt-token-with-at-least-32-characters-long';
+    process.env.SUPABASE_JWT_SECRET =
+      'super-secret-jwt-token-with-at-least-32-characters-long';
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://127.0.0.1:55321';
 
     const signer = createMcpJwtSigner();
@@ -120,8 +135,13 @@ describe('the signer the environment selects', () => {
     expect(signer.kind).toBe('asymmetric-key');
 
     const jwt = await signer.sign({ userId: USER, connectionId: CONNECTION });
-    expect(decodeProtectedHeader(jwt)).toMatchObject({ alg: 'ES256', kid: 'imported-key' });
-    await expect(jwtVerify(jwt, publicKey, { issuer: ISSUER })).resolves.toBeDefined();
+    expect(decodeProtectedHeader(jwt)).toMatchObject({
+      alg: 'ES256',
+      kid: 'imported-key',
+    });
+    await expect(
+      jwtVerify(jwt, publicKey, { issuer: ISSUER }),
+    ).resolves.toBeDefined();
 
     delete process.env.MCP_JWT_KID;
     expect(() => createMcpJwtSigner()).toThrow(/MCP_JWT_KID/);
@@ -139,7 +159,9 @@ describe('HS256 signer', () => {
 
     const { payload } = await jwtVerify(
       jwt,
-      new TextEncoder().encode('super-secret-jwt-token-with-at-least-32-characters-long'),
+      new TextEncoder().encode(
+        'super-secret-jwt-token-with-at-least-32-characters-long',
+      ),
       { issuer: ISSUER, audience: 'authenticated' },
     );
 

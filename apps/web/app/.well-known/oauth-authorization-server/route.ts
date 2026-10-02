@@ -3,7 +3,10 @@ import {
   siteOriginFromEnv,
 } from '@kit/studio-mcp/server';
 
-import { discoveryResponse, discoveryPreflight } from '../_lib/discovery-response';
+import {
+  discoveryPreflight,
+  discoveryResponse,
+} from '../_lib/discovery-response';
 
 /**
  * RFC 8414: our own authorization server's endpoints, PKCE S256 only, the

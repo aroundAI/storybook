@@ -27,8 +27,8 @@ export function AddToClaudeCard() {
       <CardContent className="space-y-3 text-sm">
         <ol className="list-decimal space-y-1 pl-5">
           <li>
-            In Claude, open <strong>Settings → Connectors → Add custom
-            connector</strong>.
+            In Claude, open{' '}
+            <strong>Settings → Connectors → Add custom connector</strong>.
           </li>
           <li>
             Paste this URL:{' '}

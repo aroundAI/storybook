@@ -104,7 +104,10 @@ export async function createAsymmetricSigner(options: {
     throw new Error('MCP_JWT_KID is required with an imported signing key');
   }
 
-  const key = await importPKCS8(normalisePem(options.privateKeyPem), options.alg);
+  const key = await importPKCS8(
+    normalisePem(options.privateKeyPem),
+    options.alg,
+  );
   const ttl = options.ttlSeconds ?? MCP_USER_JWT_TTL_SECONDS;
 
   return signerFor(key, options.kid, options.alg, options.issuer, ttl);
@@ -164,7 +167,9 @@ export function createMcpJwtSigner(): McpJwtSigner {
     }
 
     if (!ASYMMETRIC_ALGS.includes(alg)) {
-      throw new Error(`MCP_JWT_ALG must be one of ${ASYMMETRIC_ALGS.join(', ')}`);
+      throw new Error(
+        `MCP_JWT_ALG must be one of ${ASYMMETRIC_ALGS.join(', ')}`,
+      );
     }
 
     let signer: Promise<McpJwtSigner> | undefined;

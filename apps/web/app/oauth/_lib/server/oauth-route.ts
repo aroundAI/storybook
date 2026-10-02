@@ -16,7 +16,8 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, Mcp-Protocol-Version',
+  'Access-Control-Allow-Headers':
+    'Content-Type, Authorization, Mcp-Protocol-Version',
 };
 
 export function oauthDeps() {
@@ -40,8 +41,15 @@ export async function bodyParams(request: Request): Promise<URLSearchParams> {
       throw new OAuthError('invalid_request', 'The body is not valid JSON.');
     }
 
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      throw new OAuthError('invalid_request', 'The body must be a JSON object.');
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
+      throw new OAuthError(
+        'invalid_request',
+        'The body must be a JSON object.',
+      );
     }
 
     const params = new URLSearchParams();
@@ -60,7 +68,10 @@ export async function jsonBody(request: Request): Promise<unknown> {
   try {
     return await request.json();
   } catch {
-    throw new OAuthError('invalid_client_metadata', 'The body is not valid JSON.');
+    throw new OAuthError(
+      'invalid_client_metadata',
+      'The body is not valid JSON.',
+    );
   }
 }
 

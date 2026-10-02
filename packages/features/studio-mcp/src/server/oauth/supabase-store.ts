@@ -32,7 +32,8 @@ export function createSupabaseOAuthStore(
         .eq('client_id', clientId)
         .maybeSingle();
 
-      if (error) throw new Error(`mcp_oauth_clients read failed: ${error.message}`);
+      if (error)
+        throw new Error(`mcp_oauth_clients read failed: ${error.message}`);
 
       return data ? toClient(data) : null;
     },
@@ -49,7 +50,8 @@ export function createSupabaseOAuthStore(
         { onConflict: 'client_id' },
       );
 
-      if (error) throw new Error(`mcp_oauth_clients write failed: ${error.message}`);
+      if (error)
+        throw new Error(`mcp_oauth_clients write failed: ${error.message}`);
     },
 
     async saveCode(code) {
@@ -66,7 +68,10 @@ export function createSupabaseOAuthStore(
         used_at: code.usedAt,
       });
 
-      if (error) throw new Error(`mcp_authorization_codes write failed: ${error.message}`);
+      if (error)
+        throw new Error(
+          `mcp_authorization_codes write failed: ${error.message}`,
+        );
     },
 
     async consumeCode(codeHash, now) {
@@ -80,7 +85,10 @@ export function createSupabaseOAuthStore(
         .select('*')
         .maybeSingle();
 
-      if (error) throw new Error(`mcp_authorization_codes consume failed: ${error.message}`);
+      if (error)
+        throw new Error(
+          `mcp_authorization_codes consume failed: ${error.message}`,
+        );
 
       if (data) return { ok: true, code: toCode(data) };
 
@@ -91,7 +99,9 @@ export function createSupabaseOAuthStore(
         .maybeSingle();
 
       if (lookupError) {
-        throw new Error(`mcp_authorization_codes read failed: ${lookupError.message}`);
+        throw new Error(
+          `mcp_authorization_codes read failed: ${lookupError.message}`,
+        );
       }
 
       return { ok: false, reason: existing ? 'used' : 'unknown' };
@@ -111,7 +121,8 @@ export function createSupabaseOAuthStore(
         .select('*')
         .single();
 
-      if (error) throw new Error(`mcp_connections write failed: ${error.message}`);
+      if (error)
+        throw new Error(`mcp_connections write failed: ${error.message}`);
 
       return toConnection(data);
     },
@@ -123,7 +134,8 @@ export function createSupabaseOAuthStore(
         .eq('id', connectionId)
         .maybeSingle();
 
-      if (error) throw new Error(`mcp_connections read failed: ${error.message}`);
+      if (error)
+        throw new Error(`mcp_connections read failed: ${error.message}`);
 
       return data ? toConnection(data) : null;
     },
@@ -137,7 +149,8 @@ export function createSupabaseOAuthStore(
         .eq('id', connectionId)
         .is('revoked_at', null);
 
-      if (error) throw new Error(`mcp_connections revoke failed: ${error.message}`);
+      if (error)
+        throw new Error(`mcp_connections revoke failed: ${error.message}`);
 
       const { error: tokensError } = await admin
         .from('mcp_tokens')
@@ -145,7 +158,8 @@ export function createSupabaseOAuthStore(
         .eq('connection_id', connectionId)
         .is('revoked_at', null);
 
-      if (tokensError) throw new Error(`mcp_tokens revoke failed: ${tokensError.message}`);
+      if (tokensError)
+        throw new Error(`mcp_tokens revoke failed: ${tokensError.message}`);
     },
 
     async saveTokens(tokens) {
@@ -243,7 +257,12 @@ function toToken(row: Tables['mcp_tokens']['Row']): TokenRecord {
   return {
     tokenHash: row.token_hash,
     connectionId: row.connection_id,
-    kind: row.kind === 'access' ? 'access' : row.kind === 'refresh' ? 'refresh' : 'pat',
+    kind:
+      row.kind === 'access'
+        ? 'access'
+        : row.kind === 'refresh'
+          ? 'refresh'
+          : 'pat',
     expiresAt: row.expires_at,
     rotatedFrom: row.rotated_from,
     revokedAt: row.revoked_at,

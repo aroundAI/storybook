@@ -1,5 +1,4 @@
 import { randomBytes } from 'node:crypto';
-
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -73,9 +72,13 @@ async function approve(
   params: URLSearchParams,
   now = new Date(),
 ) {
-  const parsed = await parseAuthorizeRequest(params, { store, resource: RESOURCE });
+  const parsed = await parseAuthorizeRequest(params, {
+    store,
+    resource: RESOURCE,
+  });
 
-  if (!parsed.ok) throw new Error(`unexpected refusal: ${JSON.stringify(parsed)}`);
+  if (!parsed.ok)
+    throw new Error(`unexpected refusal: ${JSON.stringify(parsed)}`);
 
   return issueAuthorizationCode(store, {
     request: parsed.request,
@@ -107,7 +110,11 @@ async function exchange(
     else params.set(key, value);
   }
 
-  return handleTokenRequest(params, { store, resource: RESOURCE, now: () => now });
+  return handleTokenRequest(params, {
+    store,
+    resource: RESOURCE,
+    now: () => now,
+  });
 }
 
 async function refusal(promise: Promise<unknown>) {
@@ -136,7 +143,10 @@ describe('/oauth/authorize request parsing', () => {
     const store = storeWithClient();
     const { params } = authorizeParams();
 
-    const parsed = await parseAuthorizeRequest(params, { store, resource: RESOURCE });
+    const parsed = await parseAuthorizeRequest(params, {
+      store,
+      resource: RESOURCE,
+    });
 
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
@@ -150,7 +160,10 @@ describe('/oauth/authorize request parsing', () => {
     const store = storeWithClient();
     const { params } = authorizeParams({ client_id: 'nobody' });
 
-    const parsed = await parseAuthorizeRequest(params, { store, resource: RESOURCE });
+    const parsed = await parseAuthorizeRequest(params, {
+      store,
+      resource: RESOURCE,
+    });
 
     expect(parsed).toMatchObject({ ok: false, kind: 'render' });
     if (parsed.ok || parsed.kind !== 'render') return;
@@ -167,7 +180,10 @@ describe('/oauth/authorize request parsing', () => {
       'https://CLAUDE.ai/api/mcp/auth_callback',
     ]) {
       const { params } = authorizeParams({ redirect_uri: uri });
-      const parsed = await parseAuthorizeRequest(params, { store, resource: RESOURCE });
+      const parsed = await parseAuthorizeRequest(params, {
+        store,
+        resource: RESOURCE,
+      });
 
       expect(parsed, uri).toMatchObject({ ok: false, kind: 'render' });
       if (parsed.ok || parsed.kind !== 'render') return;
@@ -187,7 +203,10 @@ describe('/oauth/authorize request parsing', () => {
 
     for (const overrides of cases) {
       const { params } = authorizeParams(overrides);
-      const parsed = await parseAuthorizeRequest(params, { store, resource: RESOURCE });
+      const parsed = await parseAuthorizeRequest(params, {
+        store,
+        resource: RESOURCE,
+      });
 
       expect(parsed, JSON.stringify(overrides)).toMatchObject({
         ok: false,
@@ -211,7 +230,9 @@ describe('/oauth/authorize request parsing', () => {
     );
     expect(scope).toMatchObject({ ok: false, kind: 'redirect' });
     if (scope.ok || scope.kind !== 'redirect') return;
-    expect(new URL(scope.location).searchParams.get('error')).toBe('invalid_scope');
+    expect(new URL(scope.location).searchParams.get('error')).toBe(
+      'invalid_scope',
+    );
 
     const resource = await parseAuthorizeRequest(
       authorizeParams({ resource: 'https://other.example/api/mcp' }).params,
@@ -219,14 +240,22 @@ describe('/oauth/authorize request parsing', () => {
     );
     expect(resource).toMatchObject({ ok: false, kind: 'redirect' });
     if (resource.ok || resource.kind !== 'redirect') return;
-    expect(new URL(resource.location).searchParams.get('error')).toBe('invalid_target');
+    expect(new URL(resource.location).searchParams.get('error')).toBe(
+      'invalid_target',
+    );
   });
 
   it('defaults the scopes to read and write when none are requested, and accepts a trailing slash on the resource', async () => {
     const store = storeWithClient();
-    const { params } = authorizeParams({ scope: null, resource: `${RESOURCE}/` });
+    const { params } = authorizeParams({
+      scope: null,
+      resource: `${RESOURCE}/`,
+    });
 
-    const parsed = await parseAuthorizeRequest(params, { store, resource: RESOURCE });
+    const parsed = await parseAuthorizeRequest(params, {
+      store,
+      resource: RESOURCE,
+    });
 
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
@@ -344,9 +373,12 @@ describe('/oauth/token authorization_code', () => {
         exchange(store, code, useVerifier ?? codeVerifier, overrides),
       );
 
-      expect(['invalid_grant', 'invalid_target', 'invalid_request', 'invalid_client']).toContain(
-        error.code,
-      );
+      expect([
+        'invalid_grant',
+        'invalid_target',
+        'invalid_request',
+        'invalid_client',
+      ]).toContain(error.code);
     }
 
     expect(store.tokens.size).toBe(0);
@@ -367,7 +399,10 @@ describe('/oauth/token authorization_code', () => {
 
   it('refuses an unknown grant type', async () => {
     const store = storeWithClient();
-    const params = new URLSearchParams({ grant_type: 'password', client_id: 'claude' });
+    const params = new URLSearchParams({
+      grant_type: 'password',
+      client_id: 'claude',
+    });
 
     const error = await refusal(
       handleTokenRequest(params, { store, resource: RESOURCE }),
@@ -405,7 +440,11 @@ describe('/oauth/token refresh_token', () => {
       else params.set(key, value);
     }
 
-    return handleTokenRequest(params, { store, resource: RESOURCE, now: () => now });
+    return handleTokenRequest(params, {
+      store,
+      resource: RESOURCE,
+      now: () => now,
+    });
   }
 
   it('rotates: a new pair is issued, the old refresh token is revoked and named as rotated_from', async () => {
@@ -438,10 +477,16 @@ describe('/oauth/token refresh_token', () => {
 
     expect(error.code).toBe('invalid_grant');
 
-    const connectionId = store.tokens.get(hashToken(next.access_token))!.connectionId;
+    const connectionId = store.tokens.get(
+      hashToken(next.access_token),
+    )!.connectionId;
     expect(store.connections.get(connectionId)?.revokedAt).not.toBeNull();
-    expect(store.tokens.get(hashToken(next.access_token))?.revokedAt).not.toBeNull();
-    expect(store.tokens.get(hashToken(next.refresh_token!))?.revokedAt).not.toBeNull();
+    expect(
+      store.tokens.get(hashToken(next.access_token))?.revokedAt,
+    ).not.toBeNull();
+    expect(
+      store.tokens.get(hashToken(next.refresh_token!))?.revokedAt,
+    ).not.toBeNull();
   });
 
   it('refuses an expired refresh token, a revoked connection, another client and another resource', async () => {
@@ -449,9 +494,15 @@ describe('/oauth/token refresh_token', () => {
 
     const expired = await connected(t0);
     expect(
-      (await refusal(
-        refresh(expired.store, expired.tokens.refresh_token!, new Date('2026-11-03T10:00:00Z')),
-      )).code,
+      (
+        await refusal(
+          refresh(
+            expired.store,
+            expired.tokens.refresh_token!,
+            new Date('2026-11-03T10:00:00Z'),
+          ),
+        )
+      ).code,
     ).toBe('invalid_grant');
 
     const revoked = await connected(t0);
@@ -460,25 +511,35 @@ describe('/oauth/token refresh_token', () => {
     )!.connectionId;
     await revoked.store.revokeConnection(connectionId, t0);
     expect(
-      (await refusal(refresh(revoked.store, revoked.tokens.refresh_token!, t0))).code,
+      (await refusal(refresh(revoked.store, revoked.tokens.refresh_token!, t0)))
+        .code,
     ).toBe('invalid_grant');
 
     const otherClient = await connected(t0);
     expect(
-      (await refusal(
-        refresh(otherClient.store, otherClient.tokens.refresh_token!, t0, {
-          client_id: 'someone-else',
-        }),
-      )).code,
+      (
+        await refusal(
+          refresh(otherClient.store, otherClient.tokens.refresh_token!, t0, {
+            client_id: 'someone-else',
+          }),
+        )
+      ).code,
     ).toBe('invalid_grant');
 
     const otherResource = await connected(t0);
     expect(
-      (await refusal(
-        refresh(otherResource.store, otherResource.tokens.refresh_token!, t0, {
-          resource: 'https://other.example/api/mcp',
-        }),
-      )).code,
+      (
+        await refusal(
+          refresh(
+            otherResource.store,
+            otherResource.tokens.refresh_token!,
+            t0,
+            {
+              resource: 'https://other.example/api/mcp',
+            },
+          ),
+        )
+      ).code,
     ).toBe('invalid_target');
   });
 
@@ -500,27 +561,44 @@ describe('/oauth/revoke', () => {
     const { code } = await approve(store, params, now);
     const tokens = await exchange(store, code, codeVerifier, {}, now);
 
-    await handleRevokeRequest(new URLSearchParams({ token: tokens.access_token }), {
-      store,
-      now: () => now,
-    });
+    await handleRevokeRequest(
+      new URLSearchParams({ token: tokens.access_token }),
+      {
+        store,
+        now: () => now,
+      },
+    );
 
-    expect(store.tokens.get(hashToken(tokens.access_token))?.revokedAt).toBe(now.toISOString());
-    expect(store.tokens.get(hashToken(tokens.refresh_token!))?.revokedAt).toBeNull();
+    expect(store.tokens.get(hashToken(tokens.access_token))?.revokedAt).toBe(
+      now.toISOString(),
+    );
+    expect(
+      store.tokens.get(hashToken(tokens.refresh_token!))?.revokedAt,
+    ).toBeNull();
 
     await handleRevokeRequest(
-      new URLSearchParams({ token: tokens.refresh_token!, token_type_hint: 'refresh_token' }),
+      new URLSearchParams({
+        token: tokens.refresh_token!,
+        token_type_hint: 'refresh_token',
+      }),
       { store, now: () => now },
     );
 
-    const connectionId = store.tokens.get(hashToken(tokens.access_token))!.connectionId;
-    expect(store.connections.get(connectionId)?.revokedAt).toBe(now.toISOString());
+    const connectionId = store.tokens.get(
+      hashToken(tokens.access_token),
+    )!.connectionId;
+    expect(store.connections.get(connectionId)?.revokedAt).toBe(
+      now.toISOString(),
+    );
 
     await expect(
-      handleRevokeRequest(new URLSearchParams({ token: 'sbk_at_' + 'x'.repeat(43) }), {
-        store,
-        now: () => now,
-      }),
+      handleRevokeRequest(
+        new URLSearchParams({ token: 'sbk_at_' + 'x'.repeat(43) }),
+        {
+          store,
+          now: () => now,
+        },
+      ),
     ).resolves.toBeUndefined();
   });
 });

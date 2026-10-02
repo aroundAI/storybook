@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-import { MCP_SCOPES, McpScopeSchema, type McpScope } from '../../scopes';
+import { MCP_SCOPES, type McpScope, McpScopeSchema } from '../../scopes';
 import { hashToken } from '../token';
 import { resolveClient } from './clients';
 import { OAuthError } from './errors';
@@ -91,7 +91,10 @@ export async function parseAuthorizeRequest(
 
   if (params.get('response_type') !== 'code') {
     return redirectWith(
-      new OAuthError('unsupported_response_type', 'response_type must be code.'),
+      new OAuthError(
+        'unsupported_response_type',
+        'response_type must be code.',
+      ),
     );
   }
 
@@ -229,7 +232,11 @@ export function denialLocation(request: AuthorizeRequest) {
   );
 }
 
-function errorLocation(redirectUri: string, error: OAuthError, state: string | null) {
+function errorLocation(
+  redirectUri: string,
+  error: OAuthError,
+  state: string | null,
+) {
   const location = new URL(redirectUri);
 
   location.searchParams.set('error', error.code);
@@ -241,5 +248,9 @@ function errorLocation(redirectUri: string, error: OAuthError, state: string | n
 }
 
 function render(code: OAuthError['code'], description: string): AuthorizeParse {
-  return { ok: false, kind: 'render', error: new OAuthError(code, description) };
+  return {
+    ok: false,
+    kind: 'render',
+    error: new OAuthError(code, description),
+  };
 }

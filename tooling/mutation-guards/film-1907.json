@@ -1,0 +1,167 @@
+{
+  "feature": "FILM-1907 MCP OAuth 2.1 authorization server, consent and Connected apps",
+  "mutations": [
+    {
+      "name": "OAUTH U1 the PKCE verifier is no longer checked at the token endpoint",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/token.ts",
+      "find": "  if (!verifyPkce(codeVerifier, grant.codeChallenge)) {",
+      "replace": "  if (!verifyPkce(codeVerifier, grant.codeChallenge) && false) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/authorize-and-token.test.ts",
+      "pattern": "refuses a wrong verifier"
+    },
+    {
+      "name": "OAUTH U2 the redirect URI is matched loosely at /oauth/authorize",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/authorize.ts",
+      "find": "  if (!redirectUri || !client.redirectUris.includes(redirectUri)) {",
+      "replace": "  if (!redirectUri || !client.redirectUris.some((uri) => redirectUri.startsWith(uri))) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/authorize-and-token.test.ts",
+      "pattern": "not registered exactly"
+    },
+    {
+      "name": "OAUTH U3 a used authorization code is redeemed again",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/store.ts",
+      "find": "      if (code.usedAt) return { ok: false, reason: 'used' };",
+      "replace": "",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/authorize-and-token.test.ts",
+      "pattern": "refuses the same code twice"
+    },
+    {
+      "name": "OAUTH U4 reuse of a rotated refresh token is treated as a normal refresh",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/token.ts",
+      "find": "  if (token.revokedAt || (await deps.store.hasRotatedChild(presentedHash))) {",
+      "replace": "  if (false) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/authorize-and-token.test.ts",
+      "pattern": "reuse of a rotated refresh token"
+    },
+    {
+      "name": "OAUTH U5 the resource parameter is no longer checked at /oauth/authorize",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/authorize.ts",
+      "find": "  if (requestedResource && !resourceMatches(requestedResource, deps.resource)) {",
+      "replace": "  if (false) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/authorize-and-token.test.ts",
+      "pattern": "a resource other than the MCP URL"
+    },
+    {
+      "name": "OAUTH U6 a code lives longer than 60 seconds",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/authorize.ts",
+      "find": "export const AUTHORIZATION_CODE_TTL_SECONDS = 60;",
+      "replace": "export const AUTHORIZATION_CODE_TTL_SECONDS = 600;",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/authorize-and-token.test.ts",
+      "pattern": "60 seconds"
+    },
+    {
+      "name": "OAUTH U7 a refresh token is accepted as a bearer credential",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/token.ts",
+      "find": "const BEARER_TOKEN_SHAPE = /^sbk_(?:pat|at)_[A-Za-z0-9_-]{43}$/;",
+      "replace": "const BEARER_TOKEN_SHAPE = /^sbk_(?:pat|at|rt)_[A-Za-z0-9_-]{43}$/;",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/verifier-contract.test.ts",
+      "pattern": "refresh token presented as a bearer token"
+    },
+    {
+      "name": "OAUTH U8 the own verifier accepts a token issued for another resource",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/own-verifier.ts",
+      "find": "        data.audience &&\n        options.resource &&",
+      "replace": "        false &&",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/verifier-contract.test.ts",
+      "pattern": "issued for another resource"
+    },
+    {
+      "name": "OAUTH U9 the supabase verifier ignores the audience",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/supabase-verifier.ts",
+      "find": "      if (!audiences.some((aud) => resourceMatches(aud, options.audience))) {",
+      "replace": "      if (false) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/verifier-contract.test.ts",
+      "pattern": "issued for another resource"
+    },
+    {
+      "name": "OAUTH U10 the asymmetric signer drops the kid",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/jwt.ts",
+      "find": "        .setProtectedHeader({ alg, typ: 'JWT', kid })",
+      "replace": "        .setProtectedHeader({ alg, typ: 'JWT' })",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/jwt-signers.test.ts",
+      "pattern": "names its kid"
+    },
+    {
+      "name": "OAUTH U11 a client metadata document is fetched from a private address",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/clients.ts",
+      "find": "  if (isLoopbackHost(host) || isIP(host) !== 0) return false;",
+      "replace": "  if (isLoopbackHost(host)) return false;",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/clients-and-metadata.test.ts",
+      "pattern": "never fetches a loopback or private address"
+    },
+    {
+      "name": "OAUTH U12 a client metadata document is trusted without its client_id matching its URL",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/oauth/clients.ts",
+      "find": "    (body as { client_id?: unknown }).client_id !== url",
+      "replace": "    false",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/oauth/clients-and-metadata.test.ts",
+      "pattern": "client_id is not its own URL"
+    },
+    {
+      "name": "OAUTH DB1 a password change no longer revokes the user's grants",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/mcp-oauth-clients-and-codes.test.sql",
+      "sql": "drop trigger on_auth_user_password_changed on auth.users;"
+    },
+    {
+      "name": "OAUTH DB2 revoking a connection leaves its tokens live",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/mcp-oauth-clients-and-codes.test.sql",
+      "sql": "drop trigger on_mcp_connection_revoked on public.mcp_connections;"
+    },
+    {
+      "name": "OAUTH DB3 a consent connection may name no client",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/mcp-oauth-clients-and-codes.test.sql",
+      "sql": "alter table public.mcp_connections drop constraint mcp_connections_oauth_has_client;"
+    },
+    {
+      "name": "OAUTH DB4 authorization codes readable by signed-in users",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/mcp-oauth-clients-and-codes.test.sql",
+      "sql": "grant select on public.mcp_authorization_codes to authenticated;"
+    },
+    {
+      "name": "OAUTH E1 the consent page redirects to an unregistered redirect URI",
+      "kind": "e2e",
+      "file": "packages/features/studio-mcp/src/server/oauth/authorize.ts",
+      "find": "  if (!redirectUri || !client.redirectUris.includes(redirectUri)) {",
+      "replace": "  if (!redirectUri) {",
+      "spec": "tests/mcp/oauth-consent.spec.ts",
+      "grep": "never a redirect"
+    },
+    {
+      "name": "OAUTH E2 revoking from Connected apps leaves the access token working",
+      "kind": "e2e",
+      "file": "packages/features/studio-mcp/src/server/own-verifier.ts",
+      "find": "      if (data.revoked_at || connection.revoked_at) {",
+      "replace": "      if (data.revoked_at) {",
+      "spec": "tests/mcp/oauth-consent.spec.ts",
+      "grep": "Connected apps lists and revokes the grant"
+    }
+  ]
+}

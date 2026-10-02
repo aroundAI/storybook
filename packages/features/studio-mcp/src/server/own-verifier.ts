@@ -39,7 +39,7 @@ export function createOwnTokenVerifier(
       const { data, error } = await admin
         .from('mcp_tokens')
         .select(
-          'token_hash, kind, audience, expires_at, revoked_at, connection:mcp_connections!inner(id, user_id, account_id, kind, name, scopes, revoked_at)',
+          'token_hash, audience, expires_at, revoked_at, connection:mcp_connections!inner(id, user_id, account_id, kind, name, scopes, revoked_at)',
         )
         .eq('token_hash', hashToken(token))
         .maybeSingle();
@@ -50,10 +50,6 @@ export function createOwnTokenVerifier(
 
       if (!data) {
         return { ok: false, reason: 'unknown' };
-      }
-
-      if (data.kind === 'refresh') {
-        return { ok: false, reason: 'malformed' };
       }
 
       if (

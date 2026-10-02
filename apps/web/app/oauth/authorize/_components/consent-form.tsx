@@ -46,7 +46,8 @@ const SCOPE_LABELS: Record<McpScope, { label: string; description: string }> = {
   },
   'studio:render': {
     label: 'Start renders',
-    description: 'Voice, music and sound renders with ElevenLabs, which cost money',
+    description:
+      'Voice, music and sound renders with ElevenLabs, which cost money',
   },
 };
 
@@ -122,8 +123,8 @@ export function ConsentForm(props: {
         </CardTitle>
         <CardDescription className="space-y-1">
           <span className="block">
-            It will act as {props.userEmail ?? 'you'} in the team you choose, and
-            will be sent back to <code>{props.redirectHost}</code>.
+            It will act as {props.userEmail ?? 'you'} in the team you choose,
+            and will be sent back to <code>{props.redirectHost}</code>.
           </span>
           {props.metadataUrl ? (
             <span className="block text-xs">
@@ -163,7 +164,9 @@ export function ConsentForm(props: {
                             value={team.id}
                             data-test={`oauth-consent-team-${team.slug}`}
                           />
-                          <span className="text-sm font-medium">{team.name}</span>
+                          <span className="text-sm font-medium">
+                            {team.name}
+                          </span>
                         </label>
                       ))}
                     </RadioGroup>

@@ -51,7 +51,9 @@ export function siteOriginFromEnv() {
 export function mcpResourceFromEnv() {
   const override = process.env.MCP_RESOURCE_URL;
 
-  return override ? new URL(override).toString().replace(/\/+$/, '') : mcpResourceUrl(siteOriginFromEnv());
+  return override
+    ? new URL(override).toString().replace(/\/+$/, '')
+    : mcpResourceUrl(siteOriginFromEnv());
 }
 
 export function supabaseIssuerFromEnv() {

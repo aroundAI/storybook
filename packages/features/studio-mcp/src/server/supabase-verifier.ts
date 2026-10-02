@@ -9,7 +9,7 @@ import {
   jwtVerify,
 } from 'jose';
 
-import { McpScopeSchema, type McpScope } from '../scopes';
+import { type McpScope, McpScopeSchema } from '../scopes';
 import type {
   McpConnectionRecord,
   McpTokenVerification,
@@ -131,13 +131,11 @@ export function createSupabaseTokenVerifier(
 function narrowToClaim(granted: McpScope[], claim: unknown): McpScope[] {
   if (typeof claim !== 'string') return granted;
 
-  const claimed = claim
-    .split(/\s+/)
-    .flatMap((scope) => {
-      const parsed = McpScopeSchema.safeParse(scope);
+  const claimed = claim.split(/\s+/).flatMap((scope) => {
+    const parsed = McpScopeSchema.safeParse(scope);
 
-      return parsed.success ? [parsed.data] : [];
-    });
+    return parsed.success ? [parsed.data] : [];
+  });
 
   const narrowed = granted.filter((scope) => claimed.includes(scope));
 

@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-import { McpScopeSchema, type McpScope } from '../../scopes';
+import { type McpScope, McpScopeSchema } from '../../scopes';
 import { hashToken } from '../token';
 import { OAuthError } from './errors';
 import { verifyPkce } from './pkce';
@@ -72,9 +72,13 @@ async function exchangeAuthorizationCode(
   const resource = params.get('resource');
 
   if (!code) throw new OAuthError('invalid_request', 'code is required.');
-  if (!clientId) throw new OAuthError('invalid_request', 'client_id is required.');
+  if (!clientId)
+    throw new OAuthError('invalid_request', 'client_id is required.');
   if (!codeVerifier) {
-    throw new OAuthError('invalid_request', 'code_verifier is required (PKCE).');
+    throw new OAuthError(
+      'invalid_request',
+      'code_verifier is required (PKCE).',
+    );
   }
 
   if (resource && !resourceMatches(resource, deps.resource)) {
@@ -98,11 +102,17 @@ async function exchangeAuthorizationCode(
   const grant = consumed.code;
 
   if (grant.clientId !== clientId) {
-    throw new OAuthError('invalid_grant', 'The code was issued to another client.');
+    throw new OAuthError(
+      'invalid_grant',
+      'The code was issued to another client.',
+    );
   }
 
   if (new Date(grant.expiresAt) <= now) {
-    throw new OAuthError('invalid_grant', 'The authorization code has expired.');
+    throw new OAuthError(
+      'invalid_grant',
+      'The authorization code has expired.',
+    );
   }
 
   if (redirectUri !== grant.redirectUri) {
@@ -113,11 +123,17 @@ async function exchangeAuthorizationCode(
   }
 
   if (!verifyPkce(codeVerifier, grant.codeChallenge)) {
-    throw new OAuthError('invalid_grant', 'code_verifier does not match code_challenge.');
+    throw new OAuthError(
+      'invalid_grant',
+      'code_verifier does not match code_challenge.',
+    );
   }
 
   if (!resourceMatches(grant.resource, deps.resource)) {
-    throw new OAuthError('invalid_target', 'The code was issued for another resource.');
+    throw new OAuthError(
+      'invalid_target',
+      'The code was issued for another resource.',
+    );
   }
 
   const client = await deps.store.getClient(grant.clientId);
@@ -188,11 +204,17 @@ async function refreshTokens(
   }
 
   if (clientId && connection.clientId !== clientId) {
-    throw new OAuthError('invalid_grant', 'The refresh token belongs to another client.');
+    throw new OAuthError(
+      'invalid_grant',
+      'The refresh token belongs to another client.',
+    );
   }
 
   if (token.audience && !resourceMatches(token.audience, deps.resource)) {
-    throw new OAuthError('invalid_target', 'The refresh token was issued for another resource.');
+    throw new OAuthError(
+      'invalid_target',
+      'The refresh token was issued for another resource.',
+    );
   }
 
   const scopes = narrowScopes(params.get('scope'), connection.scopes);
@@ -226,7 +248,10 @@ function narrowScopes(requested: string | null, granted: McpScope[]) {
     .filter((scope) => granted.includes(scope));
 
   if (scopes.length === 0) {
-    throw new OAuthError('invalid_scope', 'The requested scopes exceed the grant.');
+    throw new OAuthError(
+      'invalid_scope',
+      'The requested scopes exceed the grant.',
+    );
   }
 
   return scopes;

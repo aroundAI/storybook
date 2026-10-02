@@ -102,7 +102,9 @@ async function AuthorizePage(props: PageProps) {
       clientName={parsed.request.client.clientName}
       clientId={parsed.request.client.clientId}
       metadataUrl={parsed.request.client.metadataUrl}
-      redirectHost={new URL(parsed.request.redirectUri).host || parsed.request.redirectUri}
+      redirectHost={
+        new URL(parsed.request.redirectUri).host || parsed.request.redirectUri
+      }
       scopes={parsed.request.scopes}
       teams={memberships}
       userEmail={auth.data.email ?? null}

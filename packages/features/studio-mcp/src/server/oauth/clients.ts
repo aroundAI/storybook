@@ -1,6 +1,5 @@
-import { isIP } from 'node:net';
 import { randomBytes } from 'node:crypto';
-
+import { isIP } from 'node:net';
 import { z } from 'zod';
 
 import { OAuthError } from './errors';
@@ -68,7 +67,9 @@ export function isAllowedRedirectUri(value: string) {
       return false;
     default:
       // A private-use scheme (RFC 8252 §7.1), e.g. cursor://…
-      return /^[a-z][a-z0-9+.-]*:$/i.test(url.protocol) && url.protocol.length > 1;
+      return (
+        /^[a-z][a-z0-9+.-]*:$/i.test(url.protocol) && url.protocol.length > 1
+      );
   }
 }
 
@@ -85,8 +86,8 @@ export function validateClientMetadata(body: unknown): ClientMetadata & {
   const parsed = ClientMetadataSchema.safeParse(body);
 
   if (!parsed.success) {
-    const redirectProblem = parsed.error.issues.some((issue) =>
-      issue.path[0] === 'redirect_uris',
+    const redirectProblem = parsed.error.issues.some(
+      (issue) => issue.path[0] === 'redirect_uris',
     );
 
     throw new OAuthError(
@@ -182,7 +183,10 @@ export async function registerClient(
   };
 }
 
-type FetchLike = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+type FetchLike = (
+  input: string | URL | Request,
+  init?: RequestInit,
+) => Promise<Response>;
 
 /**
  * The client for a `client_id`: a stored one, or, when the id is an https
@@ -238,7 +242,11 @@ export function isFetchableMetadataUrl(value: string) {
   const host = url.hostname.replace(/^\[|\]$/g, '');
 
   if (isLoopbackHost(host) || isIP(host) !== 0) return false;
-  if (host.endsWith('.local') || host.endsWith('.internal') || !host.includes('.')) {
+  if (
+    host.endsWith('.local') ||
+    host.endsWith('.internal') ||
+    !host.includes('.')
+  ) {
     return false;
   }
 

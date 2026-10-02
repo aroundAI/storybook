@@ -1,6 +1,5 @@
-import { randomBytes } from 'node:crypto';
-
 import { SignJWT, exportJWK, generateKeyPair } from 'jose';
+import { randomBytes } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import type { McpConnectionRecord, McpTokenVerifier } from '../src';
@@ -63,7 +62,9 @@ function fakeAdmin(rows: Map<string, Record<string, unknown>>) {
 function ownHarness(): Harness {
   const rows = new Map<string, Record<string, unknown>>();
   const admin = fakeAdmin(rows);
-  const verifier = createOwnTokenVerifier(admin, () => NOW, { resource: RESOURCE });
+  const verifier = createOwnTokenVerifier(admin, () => NOW, {
+    resource: RESOURCE,
+  });
 
   return {
     verifier,
@@ -126,7 +127,10 @@ async function supabaseHarness(): Promise<Harness> {
         client_id: 'claude-client',
         scope: 'studio:read studio:write',
       })
-        .setProtectedHeader({ alg: 'ES256', kid: (await exportJWK(publicKey)).kid })
+        .setProtectedHeader({
+          alg: 'ES256',
+          kid: (await exportJWK(publicKey)).kid,
+        })
         .setIssuer(issuer)
         .setSubject(USER)
         .setAudience(state === 'wrong-audience' ? OTHER_RESOURCE : RESOURCE)
@@ -158,7 +162,9 @@ describe.each([
   it('refuses an expired token as expired', async () => {
     const harness = await makeHarness();
 
-    expect(await harness.verifier.verify(await harness.issue('expired'))).toEqual({
+    expect(
+      await harness.verifier.verify(await harness.issue('expired')),
+    ).toEqual({
       ok: false,
       reason: 'expired',
     });
@@ -167,7 +173,9 @@ describe.each([
   it('refuses a revoked grant as revoked', async () => {
     const harness = await makeHarness();
 
-    expect(await harness.verifier.verify(await harness.issue('revoked'))).toEqual({
+    expect(
+      await harness.verifier.verify(await harness.issue('revoked')),
+    ).toEqual({
       ok: false,
       reason: 'revoked',
     });
@@ -195,7 +203,9 @@ describe('own verifier: only bearer credentials', () => {
   it('a refresh token presented as a bearer token is malformed, even when its hash is stored', async () => {
     const rows = new Map<string, Record<string, unknown>>();
     const admin = fakeAdmin(rows);
-    const verifier = createOwnTokenVerifier(admin, () => NOW, { resource: RESOURCE });
+    const verifier = createOwnTokenVerifier(admin, () => NOW, {
+      resource: RESOURCE,
+    });
     const refresh = `sbk_rt_${randomBytes(32).toString('base64url')}`;
 
     rows.set(hashToken(refresh), {
@@ -215,13 +225,18 @@ describe('own verifier: only bearer credentials', () => {
       },
     });
 
-    expect(await verifier.verify(refresh)).toEqual({ ok: false, reason: 'malformed' });
+    expect(await verifier.verify(refresh)).toEqual({
+      ok: false,
+      reason: 'malformed',
+    });
   });
 
   it('a personal access token has no audience and is accepted for any resource', async () => {
     const rows = new Map<string, Record<string, unknown>>();
     const admin = fakeAdmin(rows);
-    const verifier = createOwnTokenVerifier(admin, () => NOW, { resource: RESOURCE });
+    const verifier = createOwnTokenVerifier(admin, () => NOW, {
+      resource: RESOURCE,
+    });
     const pat = `sbk_pat_${randomBytes(32).toString('base64url')}`;
 
     rows.set(hashToken(pat), {
