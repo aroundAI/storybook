@@ -6,27 +6,55 @@ import type { ReactNode } from 'react';
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { resolveConfidence } from '@kit/clickhouse';
+import { type FormatFamily, resolveConfidence } from '@kit/clickhouse';
 
 import {
+  LanguageComparisonChart,
+  ShortsROICard,
+} from '../src/components/analytics-enhancement-cards';
+import {
+  ContentTypeCard,
   LanguagePerformanceCard,
   PlatformLanguageMatrix,
 } from '../src/components/language-analytics-cards';
+import { GeographyHeatmapCard } from '../src/components/language-insights-cards';
+import { LanguageTrendChart } from '../src/components/language-trend-chart';
+import { CAUSAL_VOCABULARY } from '../src/components/overview/card-claim';
+import { TopShortsCard } from '../src/components/shorts-geography-cards';
 import { TagMediansCard } from '../src/components/taxonomy/tag-medians-card';
-import type { LanguagePerformance } from '../src/server/language-analytics';
+import type {
+  ContentTypeComparison,
+  LanguagePerformance,
+} from '../src/server/language-analytics';
+import { renderWithCoverage } from './helpers/coverage';
 
 // `@kit/ui` does not resolve its React runtime from this package's test
 // environment; the other component tests stub it the same way.
-vi.mock('@kit/ui/card', () => {
-  const passthrough = ({ children, ...props }: { children?: ReactNode }) => (
-    <div {...props}>{children}</div>
+//
+// The charts are SVG with no layout under happy-dom, so recharts is stood
+// in for: containers render their children, and a ReferenceLine leaves a
+// marker carrying its `x`, so the line the chart draws can be read.
+vi.mock('recharts', () => {
+  const container = ({ children }: { children?: ReactNode }) => (
+    <div>{children}</div>
   );
+  const nothing = () => null;
 
   return {
-    Card: passthrough,
-    CardContent: passthrough,
-    CardHeader: passthrough,
-    CardTitle: passthrough,
+    Area: nothing,
+    AreaChart: container,
+    Bar: container,
+    BarChart: container,
+    CartesianGrid: nothing,
+    Cell: nothing,
+    Legend: nothing,
+    ReferenceLine: ({ x }: { x?: string }) => (
+      <i data-test="reference-line" data-x={x} />
+    ),
+    ResponsiveContainer: container,
+    Tooltip: nothing,
+    XAxis: nothing,
+    YAxis: nothing,
   };
 });
 vi.mock('@kit/ui/progress', () => ({ Progress: () => <div /> }));
@@ -82,7 +110,7 @@ const ROWS = [
 
 describe('LanguagePerformanceCard (FILM-1702)', () => {
   it('names the unlabelled bucket, and not as a language', () => {
-    render(<LanguagePerformanceCard data={ROWS} />);
+    renderWithCoverage(<LanguagePerformanceCard data={ROWS} />);
 
     const notSet = byTest('language-row-__not_set__');
 
@@ -93,7 +121,9 @@ describe('LanguagePerformanceCard (FILM-1702)', () => {
   });
 
   it('names the dimension it is grouped by', () => {
-    const { rerender } = render(<LanguagePerformanceCard data={ROWS} />);
+    const { rerender } = renderWithCoverage(
+      <LanguagePerformanceCard data={ROWS} />,
+    );
 
     expect(byTest('language-dimension-label-performance').textContent).toBe(
       'By content language',
@@ -111,7 +141,7 @@ describe('LanguagePerformanceCard (FILM-1702)', () => {
   });
 
   it('dims a thin language and shows its n, rather than hiding it', () => {
-    render(<LanguagePerformanceCard data={ROWS} />);
+    renderWithCoverage(<LanguagePerformanceCard data={ROWS} />);
 
     const spanish = byTest('language-row-es');
 
@@ -123,7 +153,7 @@ describe('LanguagePerformanceCard (FILM-1702)', () => {
   });
 
   it('says so when no video has reached the checkpoint, instead of a zero median', () => {
-    render(<LanguagePerformanceCard data={ROWS} />);
+    renderWithCoverage(<LanguagePerformanceCard data={ROWS} />);
 
     const hindi = byTest('language-row-hi');
 
@@ -134,7 +164,7 @@ describe('LanguagePerformanceCard (FILM-1702)', () => {
   });
 
   it('never crowns the unlabelled bucket as the top language', () => {
-    render(<LanguagePerformanceCard data={ROWS} />);
+    renderWithCoverage(<LanguagePerformanceCard data={ROWS} />);
 
     expect(byTest('language-row-__not_set__').textContent).not.toContain('Top');
     expect(byTest('language-row-en').textContent).toContain('Top');
@@ -155,7 +185,9 @@ describe('PlatformLanguageMatrix (FILM-1702)', () => {
   });
 
   it('heads each column with the language name, not only a flag', () => {
-    render(<PlatformLanguageMatrix data={[entry('es', 1), entry(null, 9)]} />);
+    renderWithCoverage(
+      <PlatformLanguageMatrix data={[entry('es', 1), entry(null, 9)]} />,
+    );
 
     expect(byTest('matrix-language-es').textContent).toContain('Spanish');
     expect(byTest('matrix-language-__not_set__').textContent).toBe(
@@ -164,7 +196,7 @@ describe('PlatformLanguageMatrix (FILM-1702)', () => {
   });
 
   it('does not name the unlabelled column as the best combination', () => {
-    const { container } = render(
+    const { container } = renderWithCoverage(
       <PlatformLanguageMatrix data={[entry('es', 1), entry(null, 9)]} />,
     );
 
@@ -193,5 +225,142 @@ describe('TagMediansCard, language rows (FILM-1702)', () => {
     );
 
     expect(byTest('tag-medians-segment').textContent).toBe('Language not set');
+  });
+});
+
+describe('LanguageTrendChart, view-definition boundaries (FILM-1722 via FILM-1707)', () => {
+  const day = (date: string, views: number) => ({
+    date,
+    viewsByLanguage: { en: views },
+  });
+
+  it('marks a range that crosses 27 Aug 2026, on the last drawn day before it', () => {
+    const { container } = renderWithCoverage(
+      <LanguageTrendChart
+        data={[
+          day('2026-08-20', 100),
+          day('2026-08-26', 100),
+          day('2026-08-28', 300),
+        ]}
+      />,
+    );
+
+    const marks = container.querySelectorAll(
+      '[data-test="view-definition-mark"]',
+    );
+
+    expect(marks).toHaveLength(1);
+    expect(marks[0]!.getAttribute('data-date')).toBe('2026-08-27');
+    expect(marks[0]!.textContent).toContain('changed what counts as a view');
+    expect(byTest('reference-line', container).getAttribute('data-x')).toBe(
+      '2026-08-26',
+    );
+  });
+
+  it('marks nothing over a range wholly after the change', () => {
+    const { container } = renderWithCoverage(
+      <LanguageTrendChart
+        data={[day('2026-09-01', 100), day('2026-09-20', 200)]}
+      />,
+    );
+
+    expect(
+      container.querySelectorAll('[data-test="view-definition-mark"]'),
+    ).toHaveLength(0);
+    expect(
+      container.querySelectorAll('[data-test="reference-line"]'),
+    ).toHaveLength(0);
+  });
+});
+
+describe('the Language tab on the one shell (FILM-1707)', () => {
+  const side = (
+    family: FormatFamily,
+    views: number,
+    engagement: number,
+    contentCount: number,
+  ) => ({
+    family,
+    views,
+    likes: 0,
+    comments: 0,
+    shares: 0,
+    engagement,
+    revenueCents: 0,
+    subscribersGained: 0,
+    contentCount,
+  });
+
+  const contentType: ContentTypeComparison = {
+    families: [
+      side('short_vertical', 600, 4, 6),
+      side('long_horizontal', 900, 2, 3),
+    ],
+    unclassified: 0,
+    durationUnknown: 0,
+  };
+
+  const cards = [
+    ['language performance', <LanguagePerformanceCard key="p" data={ROWS} />],
+    ['matrix', <PlatformLanguageMatrix key="m" data={[]} />],
+    ['content type', <ContentTypeCard key="c" data={contentType} />],
+    [
+      'trend',
+      <LanguageTrendChart
+        key="t"
+        data={[{ date: '2026-09-01', viewsByLanguage: { en: 5 } }]}
+      />,
+    ],
+    ['comparison', <LanguageComparisonChart key="l" data={ROWS} />],
+    ['shorts ROI', <ShortsROICard key="r" contentTypeData={contentType} />],
+    ['top shorts', <TopShortsCard key="s" data={[]} />],
+    [
+      'geography',
+      <GeographyHeatmapCard
+        key="g"
+        data={[
+          {
+            language: 'es',
+            countries: [{ country: 'MX', percentage: 60, views: 6 }],
+          },
+        ]}
+      />,
+    ],
+  ] as const;
+
+  it.each(cards)('the %s card is an AnalyticsCard with a chip', (_, card) => {
+    const { container } = renderWithCoverage(card);
+
+    const shell = container.querySelector('[data-card-shell="analytics"]');
+
+    expect(shell).not.toBeNull();
+    expect(shell!.getAttribute('data-metric-family')).toMatch(
+      /^(engagement|geography|engagement,revenue)$/,
+    );
+    expect(byTest('provenance-chip', container)).toBeTruthy();
+  });
+
+  it.each(cards)('the %s claim asserts no cause', (_, card) => {
+    const { container } = renderWithCoverage(card);
+    const sentence = container.querySelector('[data-test="card-sentence"]');
+
+    expect(sentence?.textContent).toBeTruthy();
+    expect(sentence!.textContent).not.toMatch(CAUSAL_VOCABULARY);
+  });
+
+  it('gives no ratio, rather than a zero, when one side has no videos', () => {
+    const { container } = renderWithCoverage(
+      <ShortsROICard
+        contentTypeData={{
+          ...contentType,
+          families: [side('short_vertical', 600, 4, 6)],
+        }}
+      />,
+    );
+
+    expect(container.querySelector('[data-test="card-figure"]')).toBeNull();
+    expect(byTest('card-no-figure', container).textContent).toBe(
+      'No ratio yet.',
+    );
   });
 });

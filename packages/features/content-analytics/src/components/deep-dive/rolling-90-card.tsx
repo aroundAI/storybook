@@ -3,6 +3,7 @@
 import { Skeleton } from '@kit/ui/skeleton';
 
 import { formatNumber } from '../../lib/format';
+import type { ViewDefinitionMark } from '../../lib/view-definition-marks';
 import type { CardClaim } from '../overview/card-claim';
 
 /** One day from getRollingViewsAction. */
@@ -16,6 +17,8 @@ interface Rolling90CardProps {
   /** Days in chronological order, gaps zero-filled by the query */
   points: RollingViewsEntry[];
   windowDays: number;
+  /** View-definition changes inside the range, drawn as a dashed rule (FILM-1722). */
+  marks?: readonly ViewDefinitionMark[];
 }
 
 function dayInWords(date: string): string {
@@ -81,7 +84,11 @@ const HEIGHT = 56;
  * The rolling total over time. The figure and its sentence are the shell's
  * (`rolling90Claim`); this is the shape behind them.
  */
-export function Rolling90Card({ points, windowDays }: Rolling90CardProps) {
+export function Rolling90Card({
+  points,
+  windowDays,
+  marks = [],
+}: Rolling90CardProps) {
   if (points.length < windowDays) {
     return null;
   }
@@ -95,6 +102,20 @@ export function Rolling90Card({ points, windowDays }: Rolling90CardProps) {
       return `${index === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(' ');
+  // A rolling total steps for `windowDays` after a change, not on the day:
+  // the rule marks where the counting changed, which is what explains it.
+  const rules = marks.flatMap((mark) => {
+    const index = points.findIndex((point) => point.date >= mark.date);
+
+    return index < 0
+      ? []
+      : [
+          {
+            key: `${mark.platform}:${mark.date}`,
+            x: (index / (points.length - 1)) * WIDTH,
+          },
+        ];
+  });
 
   return (
     <svg
@@ -112,6 +133,20 @@ export function Rolling90Card({ points, windowDays }: Rolling90CardProps) {
         strokeWidth={1.5}
         vectorEffect={'non-scaling-stroke'}
       />
+      {rules.map(({ key, x }) => (
+        <line
+          key={key}
+          x1={x}
+          x2={x}
+          y1={0}
+          y2={HEIGHT}
+          stroke={'currentColor'}
+          strokeDasharray={'3 3'}
+          className={'text-muted-foreground'}
+          vectorEffect={'non-scaling-stroke'}
+          data-test={'view-definition-rule'}
+        />
+      ))}
     </svg>
   );
 }

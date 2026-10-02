@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { type ComponentType, useEffect, useRef, useState } from 'react';
 
 import Image from 'next/image';
 
@@ -22,16 +22,22 @@ import { useLlmJob } from '@kit/ui/hooks';
 import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
 
+import { insightsProvenance } from '../lib/insights-provenance';
 import {
   insightsFromJobResult,
   insightsStaleTime,
 } from '../lib/insights-result';
 import { generateInsightsAction } from '../server/insights-actions';
 import type { AggregateAnalytics } from '../types';
+import { useCoverageView } from './coverage-context';
+import { AnalyticsCard } from './overview/analytics-card';
+import type { CardClaim } from './overview/card-claim';
 
 interface AIInsightsProps {
   projectId: string;
   analytics: AggregateAnalytics | null;
+  /** The window the figures cover; the coverage provider's when absent. */
+  windowLabel?: string;
 }
 
 /** What the action returns once a refusal is unwrapped (KB-6) */
@@ -40,8 +46,18 @@ type InsightsData = Extract<
   { ok: true }
 >['data'];
 
-export function AIInsights({ projectId, analytics }: AIInsightsProps) {
-  const [wsInsights, setWsInsights] = useState<InsightsData | null>(null);
+export function AIInsights({
+  projectId,
+  analytics,
+  windowLabel,
+}: AIInsightsProps) {
+  const { windowLabel: coverageWindow } = useCoverageView();
+  // When the job's answer arrived travels with it: it is half of what the
+  // cards say about where the reading came from.
+  const [wsInsights, setWsInsights] = useState<{
+    data: InsightsData;
+    receivedAt: number;
+  } | null>(null);
   const forceRefresh = useRef(false);
 
   // WebSocket for async LLM results (uses shared provider from layout)
@@ -57,7 +73,7 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
       const delivered = insightsFromJobResult(llmResult);
 
       if (delivered) {
-        setWsInsights(delivered);
+        setWsInsights({ data: delivered, receivedAt: Date.now() });
         toast.success('AI insights generated');
       }
     } else if (llmStatus === 'error') {
@@ -69,6 +85,7 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
     data: queryInsights,
     isLoading,
     isFetching,
+    dataUpdatedAt,
     refetch,
   } = useQuery({
     queryKey: ['ai-insights', projectId, analytics],
@@ -91,7 +108,7 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
   });
 
   // Use WebSocket result if available, otherwise query result
-  const insights = wsInsights || queryInsights;
+  const insights = wsInsights?.data || queryInsights;
   const awaitingJob =
     queryInsights === null && !wsInsights && llmStatus !== 'error';
 
@@ -105,19 +122,22 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
     return <InsightsSkeleton />;
   }
 
+  // Which numbers the model was handed and when — its provenance, since no
+  // platform reported what it wrote (FILM-1707 §3).
+  const provenance = insightsProvenance(
+    analytics,
+    windowLabel ?? coverageWindow,
+    wsInsights ? wsInsights.receivedAt : dataUpdatedAt || null,
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-            AI Insights
-          </h2>
-          <Badge
-            variant="secondary"
-            className="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300"
-          >
+          <Sparkles className="h-5 w-5 text-muted-foreground" />
+          <h2 className="text-lg font-bold">AI Insights</h2>
+          <Badge variant="secondary" className="rounded-full">
             Powered by Claude
           </Badge>
         </div>
@@ -127,7 +147,6 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
           onClick={handleRefresh}
           data-test="ai-insights-refresh"
           disabled={isFetching}
-          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
         >
           <RefreshCw
             className={`mr-1 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`}
@@ -136,184 +155,167 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
         </Button>
       </div>
 
-      {/* Summary - Gradient Card */}
-      <div className="rounded-xl border border-purple-100 bg-gradient-to-r from-purple-50 to-white p-6 shadow-sm dark:border-purple-900/50 dark:from-purple-900/20 dark:to-gray-800">
-        <p className="text-sm leading-relaxed text-gray-800 dark:text-gray-200">
-          {insights?.summary}
-        </p>
-      </div>
-
-      {/* Insight Cards - 2x2 Grid */}
       <div className="grid grid-cols-1 gap-6 pb-8 md:grid-cols-2">
-        {/* Key Trends - Emerald */}
+        <AnalyticsCard
+          title="Summary"
+          icon={Sparkles}
+          metricFamily="generated"
+          provenanceNote={provenance}
+          claim={{
+            figure: null,
+            noFigure: 'Not a measurement.',
+            sentence: provenance,
+          }}
+          details={null}
+          colSpan={2}
+          data-test="ai-insights-summary"
+        >
+          <p className="text-sm leading-relaxed">{insights?.summary}</p>
+        </AnalyticsCard>
+
         <InsightCard
           icon={TrendingUp}
           title="Key Trends"
           insights={insights?.trends}
           emptyText="No trends to report for this period."
-          iconBgColor="bg-emerald-50 dark:bg-emerald-900/30"
-          iconColor="text-emerald-600 dark:text-emerald-400"
-          bulletColor="bg-emerald-500"
+          provenance={provenance}
           dataTest="ai-insights-trends"
         />
 
-        {/* Content Recommendations - Blue */}
         <InsightCard
           icon={Lightbulb}
           title="Content Recommendations"
           insights={insights?.contentRecommendations}
-          iconBgColor="bg-blue-50 dark:bg-blue-900/30"
-          iconColor="text-blue-600 dark:text-blue-400"
-          bulletColor="bg-blue-500"
+          provenance={provenance}
+          dataTest="ai-insights-recommendations"
         />
 
-        {/* Optimal Posting Times - Orange */}
         <InsightCard
           icon={Clock}
           title="Optimal Posting Times"
           insights={insights?.postingStrategy}
-          iconBgColor="bg-orange-50 dark:bg-orange-900/30"
-          iconColor="text-orange-600 dark:text-orange-400"
-          bulletColor="bg-orange-500"
+          provenance={provenance}
+          dataTest="ai-insights-posting"
         />
 
-        {/* Audience Insights - Pink */}
         <InsightCard
           icon={Users}
           title="Audience Insights"
           insights={insights?.audienceInsights}
           emptyText="No audience breakdown was available to analyse."
-          iconBgColor="bg-pink-50 dark:bg-pink-900/30"
-          iconColor="text-pink-600 dark:text-pink-400"
-          bulletColor="bg-pink-500"
+          provenance={provenance}
           dataTest="ai-insights-audience"
         />
 
-        {/* Recommended Actions - Amber (Special styling) */}
-        {insights?.actionItems && insights.actionItems.length > 0 && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 shadow-sm transition-shadow hover:shadow-md dark:border-amber-800 dark:bg-amber-900/10">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="rounded-lg bg-amber-100 p-2 text-amber-700 dark:bg-amber-900/30 dark:text-amber-500">
-                <CheckCircle className="h-5 w-5" />
-              </div>
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white">
-                Recommended Actions
-              </h3>
-            </div>
-            <ul className="space-y-4">
-              {insights.actionItems.map((action, index) => (
-                <li key={action} className="flex gap-3">
-                  <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-amber-200 text-xs font-bold text-amber-800 dark:bg-amber-800 dark:text-amber-200">
-                    {index + 1}
+        <InsightCard
+          icon={CheckCircle}
+          title="Recommended Actions"
+          insights={insights?.actionItems}
+          provenance={provenance}
+          numbered
+          dataTest="ai-insights-actions"
+        />
+
+        {insights && (
+          <AnalyticsCard
+            title="Why These Videos Performed Well"
+            metricFamily="generated"
+            provenanceNote={provenance}
+            claim={READING}
+            details={null}
+            colSpan={2}
+            data-test="ai-insights-top-performers"
+          >
+            {insights.topPerformers.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                No top content was available to analyse.
+              </p>
+            )}
+            <div className="space-y-4">
+              {insights.topPerformers.map((item) => (
+                <div key={item.title} className="flex gap-4">
+                  {item.thumbnailUrl && (
+                    <div className="relative h-14 w-24 flex-shrink-0 overflow-hidden rounded">
+                      <Image
+                        src={item.thumbnailUrl}
+                        alt={item.title}
+                        fill
+                        className="object-cover"
+                        sizes="96px"
+                        unoptimized
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <p className="line-clamp-1 font-medium">{item.title}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {item.analysis}
+                    </p>
                   </div>
-                  <p className="pt-0.5 text-sm leading-relaxed text-gray-800 dark:text-gray-200">
-                    {action}
-                  </p>
-                </li>
+                </div>
               ))}
-            </ul>
-          </div>
+            </div>
+          </AnalyticsCard>
         )}
       </div>
-
-      {/* Top Performers */}
-      {insights && (
-        <div
-          data-test="ai-insights-top-performers"
-          className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
-        >
-          <h3 className="mb-4 text-base font-semibold text-gray-900 dark:text-white">
-            Why These Videos Performed Well
-          </h3>
-          {insights.topPerformers.length === 0 && (
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              No top content was available to analyse.
-            </p>
-          )}
-          <div className="space-y-4">
-            {insights.topPerformers.map((item) => (
-              <div key={item.title} className="flex gap-4">
-                {item.thumbnailUrl && (
-                  <div className="relative h-14 w-24 flex-shrink-0 overflow-hidden rounded">
-                    <Image
-                      src={item.thumbnailUrl}
-                      alt={item.title}
-                      fill
-                      className="object-cover"
-                      sizes="96px"
-                      unoptimized
-                    />
-                  </div>
-                )}
-                <div>
-                  <p className="line-clamp-1 font-medium text-gray-900 dark:text-white">
-                    {item.title}
-                  </p>
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-                    {item.analysis}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
+/** Every card here leads with what it is, not with a figure. */
+const READING: CardClaim = {
+  figure: null,
+  noFigure: 'Not a measurement.',
+  sentence: 'A language model’s reading of the figures on this page.',
+};
+
 interface InsightCardProps {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
   title: string;
   insights: string[] | undefined;
   emptyText?: string;
-  dataTest?: string;
-  iconBgColor: string;
-  iconColor: string;
-  bulletColor: string;
+  provenance: string;
+  numbered?: boolean;
+  dataTest: string;
 }
 
+/** One list from the model's answer, on the shared shell. */
 function InsightCard({
-  icon: Icon,
+  icon,
   title,
   insights,
   emptyText,
+  provenance,
+  numbered = false,
   dataTest,
-  iconBgColor,
-  iconColor,
-  bulletColor,
 }: InsightCardProps) {
   if (!insights?.length && !emptyText) return null;
 
+  const List = numbered ? 'ol' : 'ul';
+
   return (
-    <div
+    <AnalyticsCard
+      title={title}
+      icon={icon}
+      metricFamily="generated"
+      provenanceNote={provenance}
+      claim={READING}
+      details={null}
       data-test={dataTest}
-      className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800"
     >
-      <div className="mb-4 flex items-center gap-3">
-        <div className={`rounded-lg p-2 ${iconBgColor}`}>
-          <Icon className={`h-5 w-5 ${iconColor}`} />
-        </div>
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
-          {title}
-        </h3>
-      </div>
       {!insights?.length && (
-        <p className="text-sm text-gray-500 dark:text-gray-400">{emptyText}</p>
+        <p className="text-sm text-muted-foreground">{emptyText}</p>
       )}
-      <ul className="space-y-4">
-        {insights?.map((insight) => (
-          <li key={insight} className="flex items-start gap-3">
-            <span
-              className={`mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full ${bulletColor}`}
-            />
-            <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-              {insight}
-            </p>
-          </li>
-        ))}
-      </ul>
-    </div>
+      {insights?.length ? (
+        <List
+          className={`space-y-3 pl-5 text-sm leading-relaxed ${numbered ? 'list-decimal' : 'list-disc'}`}
+        >
+          {insights.map((insight) => (
+            <li key={insight}>{insight}</li>
+          ))}
+        </List>
+      ) : null}
+    </AnalyticsCard>
   );
 }
 

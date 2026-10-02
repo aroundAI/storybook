@@ -256,6 +256,10 @@ describe('queryVideoBenchmark (FILM-1715)', () => {
       expect(subject?.query).toContain(fragment);
       expect(cohort?.query).toContain(fragment);
     }
+    // Both halves read every row: Deep Dive's date-axis rule (FILM-1707 §2)
+    // must not reach the peers alone, or a peer and its video differ.
+    expect(subject?.query).not.toContain('metric_source !=');
+    expect(cohort?.query).not.toContain('metric_source !=');
     expect(subject?.query_params.asOf).toBe(cohort?.query_params.asOf);
   });
 
@@ -325,6 +329,8 @@ describe('queryCohortMedians ingest start (FILM-1715)', () => {
     await queryCohortMedians({
       scope: { projectId: PROJECT },
       viewsColumn: 'engaged_views',
+      // The benchmark's call: off a date axis, the series picks its table.
+      onDateAxis: false,
     });
 
     const call = mockClickHouseClient.query.mock.calls[0]?.[0];

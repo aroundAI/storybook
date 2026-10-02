@@ -3,11 +3,12 @@
  */
 import type { ReactNode } from 'react';
 
-import { cleanup, render } from '@testing-library/react';
+import { cleanup } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ContentTypeCard } from '../src/components/language-analytics-cards';
 import type { FormatFamilyTotals } from '../src/server/language-analytics';
+import { renderWithCoverage } from './helpers/coverage';
 
 vi.mock('@kit/ui/card', () => {
   const passthrough = ({ children, ...props }: { children?: ReactNode }) => (
@@ -53,7 +54,7 @@ function row(container: HTMLElement) {
 
 describe('the format-family card, for a follower gain no video measured (KB-162)', () => {
   it('says the follower gain was not measured, never 0', () => {
-    const { container } = render(
+    const { container } = renderWithCoverage(
       <ContentTypeCard
         data={{
           families: [family(null)],
@@ -70,7 +71,7 @@ describe('the format-family card, for a follower gain no video measured (KB-162)
   });
 
   it('still shows a measured follower gain', () => {
-    const { container } = render(
+    const { container } = renderWithCoverage(
       <ContentTypeCard
         data={{ families: [family(4)], unclassified: 0, durationUnknown: 0 }}
       />,

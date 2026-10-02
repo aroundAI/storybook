@@ -73,8 +73,8 @@ acceptance_criteria:
     met: false
     reason: "not yet implemented — spec status is DRAFT, unaudited (moved here from FILM-1713: the module proves it, the surfaces are held until this spec, owner ruling 2026-09-22)"
   - text: "A chart crossing a view-definition boundary marks it rather than drawing a step change"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited (moved here from FILM-1722: viewDefinitionChangesBetween exists, no chart calls it)"
+    met: true
+    evidence: "Built by FILM-1707 (#528), which FILM-1722 §12 named alongside this spec: packages/features/content-analytics/src/lib/view-definition-marks.ts, drawn by every mounted views-over-time chart (FILM-1707 §9)"
   - text: "No rate is computed without recording which denominator definition it used"
     met: false
     reason: "not yet implemented — spec status is DRAFT, unaudited (moved here from FILM-1722 and FILM-1713: the registry can stamp the definition, no surface does)"

@@ -107,6 +107,8 @@ const TABS = [
   'deep-dive',
   'video-log',
   'language',
+  // FILM-1707: its trigger has a hook now, and it reads the page's coverage.
+  'insights',
 ] as const;
 
 test.describe('Observed coverage requests (FILM-1704)', () => {

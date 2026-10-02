@@ -3,7 +3,6 @@
 import { Film, Globe, MapPin, Video } from 'lucide-react';
 
 import type { LanguageDimension } from '@kit/clickhouse';
-import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Skeleton } from '@kit/ui/skeleton';
 
 import { formatNumber } from '../lib/format';
@@ -18,6 +17,8 @@ import type {
   ShortsSourcePerformance,
 } from '../server/language-analytics';
 import { LanguageDimensionLabel } from './language-dimension-label';
+import { AnalyticsCard } from './overview/analytics-card';
+import type { CardClaim } from './overview/card-claim';
 
 // =============================================================================
 // Top Shorts Card (Phase 3)
@@ -30,65 +31,67 @@ interface TopShortsCardProps {
   isLoading?: boolean;
 }
 
+/** The leading short's views, and which short it is. */
+export function topShortsClaim(
+  data: readonly ShortsSourcePerformance[],
+): CardClaim {
+  const top = data[0];
+
+  if (!top) {
+    return {
+      figure: null,
+      noFigure: 'No shorts yet.',
+      sentence: 'Publish shorts to see which clips have the most views.',
+    };
+  }
+
+  // Not measured sorts last, so a top short without views means none has
+  // them (KB-153): no figure, never a 0.
+  if (top.views === null) {
+    return {
+      figure: null,
+      noFigure: `Views ${VIEWS_NOT_MEASURED.toLowerCase()}`,
+      sentence: 'No short here has a views figure to rank by.',
+    };
+  }
+
+  const level = data.filter((short) => short.views === top.views).length;
+
+  return level > 1
+    ? {
+        figure: formatNumber(top.views),
+        sentence: `${level} shorts are level on views, so there is no single top short.`,
+      }
+    : {
+        figure: formatNumber(top.views),
+        sentence: `“${top.publishTitle}” has the most views of the shorts.`,
+      };
+}
+
+const TOP_SHORTS_TITLE = 'Top Performing Shorts';
+
 export function TopShortsCard({
   data,
   dimension = 'content',
   isLoading,
 }: TopShortsCardProps) {
   if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Video className="h-4 w-4" />
-            Top Performing Shorts
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <Skeleton className="h-10 w-16 rounded" />
-              <div className="flex-1 space-y-1">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-3 w-24" />
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    );
+    return <TopShortsCardSkeleton />;
   }
 
-  if (!data || data.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Video className="h-4 w-4" />
-            Top Performing Shorts
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            No shorts data available. Publish shorts to see which clips perform
-            best.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const shorts = data ?? [];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Video className="h-4 w-4" />
-          Top Performing Shorts
-        </CardTitle>
+    <AnalyticsCard
+      title={TOP_SHORTS_TITLE}
+      icon={Video}
+      metricFamily={'engagement'}
+      claim={topShortsClaim(shorts)}
+      data-test={'top-shorts-card'}
+    >
+      <div className="space-y-3">
         <LanguageDimensionLabel dimension={dimension} card="shorts" />
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {data.slice(0, 5).map((short, index) => (
+        {shorts.slice(0, 5).map((short, index) => (
           <div key={short.publishId} className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted font-bold text-muted-foreground">
               #{index + 1}
@@ -128,18 +131,21 @@ export function TopShortsCard({
             </div>
           </div>
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </AnalyticsCard>
   );
 }
 
 export function TopShortsCardSkeleton() {
   return (
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-5 w-40" />
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <AnalyticsCard
+      title={TOP_SHORTS_TITLE}
+      icon={Video}
+      metricFamily={'engagement'}
+      claim={'loading'}
+      details={null}
+    >
+      <div className="space-y-3">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex items-center gap-3">
             <Skeleton className="h-10 w-10 rounded-lg" />
@@ -149,8 +155,8 @@ export function TopShortsCardSkeleton() {
             </div>
           </div>
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </AnalyticsCard>
   );
 }
 
@@ -163,57 +169,50 @@ interface GeographyCardProps {
   isLoading?: boolean;
 }
 
+/**
+ * The largest single country share within the first language listed — a
+ * share of that language's views, not of all views.
+ */
+export function languageGeographyClaim(
+  data: readonly GeographyByLanguage[],
+  dimension: LanguageDimension = 'content',
+): CardClaim {
+  const first = data[0];
+  const top = first?.countries[0];
+
+  if (!first || !top) {
+    return {
+      figure: null,
+      noFigure: 'No geographic data yet.',
+      sentence: 'No platform has reported where these languages are watched.',
+    };
+  }
+
+  return {
+    figure: `${top.percentage.toFixed(0)}%`,
+    sentence: `${top.country} has the largest share of ${languageName(first.language, dimension)} views.`,
+  };
+}
+
+const LANGUAGE_GEOGRAPHY_TITLE = 'Geographic Reach by Language';
+
 export function LanguageGeographyCard({ data, isLoading }: GeographyCardProps) {
   if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Globe className="h-4 w-4" />
-            Geographic Reach by Language
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="space-y-2">
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-3 w-full" />
-              <Skeleton className="h-3 w-4/5" />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    );
+    return <LanguageGeographyCardSkeleton />;
   }
 
-  if (!data || data.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Globe className="h-4 w-4" />
-            Geographic Reach by Language
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            No geographic data available yet.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const rows = data ?? [];
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Globe className="h-4 w-4" />
-          Geographic Reach by Language
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {data.slice(0, 3).map((langData) => (
+    <AnalyticsCard
+      title={LANGUAGE_GEOGRAPHY_TITLE}
+      icon={Globe}
+      metricFamily={'geography'}
+      claim={languageGeographyClaim(rows)}
+      data-test={'language-geography-card'}
+    >
+      <div className="space-y-6">
+        {rows.slice(0, 3).map((langData) => (
           <div key={languageKey(langData.language)} className="space-y-3">
             <div className="flex items-center gap-2 font-medium">
               {languageFlag(langData.language) ? (
@@ -238,18 +237,21 @@ export function LanguageGeographyCard({ data, isLoading }: GeographyCardProps) {
             </div>
           </div>
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </AnalyticsCard>
   );
 }
 
 export function LanguageGeographyCardSkeleton() {
   return (
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-5 w-48" />
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <AnalyticsCard
+      title={LANGUAGE_GEOGRAPHY_TITLE}
+      icon={Globe}
+      metricFamily={'geography'}
+      claim={'loading'}
+      details={null}
+    >
+      <div className="space-y-4">
         {Array.from({ length: 2 }).map((_, i) => (
           <div key={i} className="space-y-2">
             <Skeleton className="h-4 w-20" />
@@ -257,7 +259,7 @@ export function LanguageGeographyCardSkeleton() {
             <Skeleton className="h-3 w-4/5" />
           </div>
         ))}
-      </CardContent>
-    </Card>
+      </div>
+    </AnalyticsCard>
   );
 }

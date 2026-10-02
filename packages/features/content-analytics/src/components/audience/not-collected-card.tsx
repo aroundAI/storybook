@@ -25,7 +25,18 @@ export function NotCollectedCard({
   'data-test': dataTest,
 }: NotCollectedCardProps) {
   return (
-    <AudienceCard title={title} icon={icon} data-test={dataTest}>
+    <AudienceCard
+      title={title}
+      icon={icon}
+      metricFamily={'not_collected'}
+      provenanceNote={reason}
+      claim={{
+        figure: null,
+        noFigure: 'Not collected.',
+        sentence: 'There is no figure here: this is not something we measure.',
+      }}
+      data-test={dataTest}
+    >
       <AudienceCardEmpty
         heading="We don't collect this"
         data-test="audience-not-collected"

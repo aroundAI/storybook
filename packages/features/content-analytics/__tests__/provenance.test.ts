@@ -430,6 +430,19 @@ describe('TAB_FAMILIES', () => {
         'audience/device-type-card.tsx',
       ],
     ],
+    // FILM-1707: the tabs that moved onto the shell.
+    ['content', ['content/content-card.tsx', 'content-table-panel.tsx']],
+    ['video-log', ['video-log/video-log-tab.tsx']],
+    [
+      'language',
+      [
+        'language-analytics-cards.tsx',
+        'language-trend-chart.tsx',
+        'language-insights-cards.tsx',
+        'shorts-geography-cards.tsx',
+        'analytics-enhancement-cards.tsx',
+      ],
+    ],
   ] as const)('lists every family the %s cards declare', (tab, files) => {
     const declared = new Set(files.flatMap((file) => families(read(file))));
 

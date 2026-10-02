@@ -3,7 +3,7 @@ title: "Six-Tab Adoption and the Deep Dive Scope Decision"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: DRAFT
+status: DONE
 effort: L
 dependencies:
   - spec_id: "FILM-1702"
@@ -26,38 +26,38 @@ summary: >
   explaining why.
 acceptance_criteria:
   - text: "All six tabs use one card shell; `@kit/ui/card` no longer appears in the analytics feature's card layer"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/features/content-analytics/__tests__/card-layer.test.ts:71 walks every module each tab's entry component reaches by import (Overview, Content cards and table, Audience, Deep Dive, Video Log, Language, AI Insights — seven tabs since the Video Log joined) and finds no @kit/ui/card, and finds AnalyticsCard in each; the dashboard itself imports none. Language (12 cards), AI Insights, Audience, Content, Video Log, weekly diagnostics and Overview's two panels moved onto AnalyticsCard. The seven MetricCards above the tabs keep their compact shell with FILM-1705's chip: they are the page header, not a tab's cards (#528)"
   - text: "Every card on every tab declares a metric family and renders a chip derived from the matrix"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "metricFamily is required on AnalyticsCard and the shell draws the chip from it (packages/features/content-analytics/src/components/overview/analytics-card.tsx:156). In the browser, apps/e2e/tests/analytics/six-tab-adoption.spec.ts:243 opens all seven tabs and asserts every card carries exactly one chip and a family, with ClickHouse on and off. Figures no platform reports have their own kinds — recorded, generated, summary, not_collected — chipped Recorded / Not measured / Page summary / Not collected (packages/features/content-analytics/__tests__/six-tab-adoption.test.tsx:225). TAB_FAMILIES' test now reads the Content, Video Log and Language files (#528)"
   - text: "The Deep Dive scope decision is recorded in this file with its rationale before implementation"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "§2 'Decided (owner, 2026-09-22): option 2, plus option 1's platform switcher', recorded before this was built; §9 records how it was built"
   - text: "No Deep Dive card silently mixes true-daily and snapshot-delta rows in a time-bucketed aggregate"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/clickhouse/src/queries-advanced.ts:289 (trueDailyRows: video_metrics FINAL without metric_source = 'snapshot_delta') and :174 (videos whose rows are all fetch-dated left out, by isFetchDated, packages/clickhouse/src/lib/data-provenance.ts:1294), used by the median (both modes), rolling, back-catalog and cohort queries; packages/clickhouse/__tests__/queries-advanced.test.ts:1465 (10 red with the predicate removed). Against real ClickHouse, packages/clickhouse/scripts/verify-queries.ts:3788 seeds a TikTok sync gap across a month boundary: 5 date-axis asserts fail on the old queries (rolling 1,440 for 240; January count 2 for 1) and pass on these; the lifetime total stays 1,440 on both. Read off the page in apps/e2e/tests/analytics/six-tab-adoption.spec.ts:378 — §9 has the before/after table. FILM-1715's self-benchmark (#501, landed meanwhile) is not a date axis: queryVideoBenchmark reads its peers with onDateAxis false, as its own video, so the rule never reaches one half alone (packages/clickhouse/__tests__/self-benchmark-query.test.ts:236, red with the peers moved onto the date axis) (#528)"
   - text: "Whichever option §2 selects, the resulting scope is visible to the reader rather than implicit"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "A date-axis card's chip names only what it plots ('YouTube only', never '2 of 4 platforms' — four since FILM-1720 added Facebook, which the matrix also dates to the fetch) and the card says 'TikTok isn’t shown here — it reports running totals, not daily views.' when the project publishes there, and nothing for a YouTube-only creator (packages/features/content-analytics/__tests__/six-tab-adoption.test.tsx:93). The platform switcher (packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:600) makes scope.platform explicit, all platforms by default; a fetch-dated choice reads 'Not on a date axis' / 'Not drawn for this platform.' and asks nothing. The one-time, per-viewer dismissible note (deep-dive-tab.tsx:597) says the figures moved and why. Driven in the browser, apps/e2e/tests/analytics/six-tab-adoption.spec.ts:287 (#528)"
   - text: "An Instagram audience figure is not presented as per-video measurement"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "The chip carries the matrix's account_level note for each covered platform and the shell shows it in the card (packages/features/content-analytics/src/components/overview/analytics-card.tsx:222) — every Audience card and Overview's Gender and Top Regions; packages/features/content-analytics/__tests__/six-tab-adoption.test.tsx:184, red with the line removed (tooling/mutation-guards/film-1707.json) (#528)"
   - text: "The locally-built Overview insight string is not chipped as though it were generated or measured"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/features/content-analytics/src/components/overview/ai-insight-card.tsx:43 — the page-built sentence is metricFamily 'summary', chipped 'Page summary' (it was 'engagement', 'Up to 3 platforms · partly derived'); red against the old mapping; apps/e2e/tests/analytics/six-tab-adoption.spec.ts:276 in the browser (#528)"
   - text: "Content cards show one platform indication, not a badge and a chip saying the same thing"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/features/content-analytics/src/components/content/content-card.tsx:77 — the chip, narrowed to the card's platform, is the indication; the brand-coloured badge is gone. audience-content-cards.test.tsx 'says its platform once, in the chip' (red with the badge back) and apps/e2e/tests/analytics/six-tab-adoption.spec.ts:457 with seeded rows (#528)"
   - text: "The three unmounted Deep Dive cards compile against the v2 shell"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "Phase 16 has since mounted all three (§4's first case): YppProgressCard inside the Partner Programme AnalyticsCard, WeeklyDiagnosticsTable and RetentionCurveChart inside the weekly diagnostics card, now on the shell (packages/features/content-analytics/src/components/deep-dive/deep-dive-tab.tsx:1003). pnpm typecheck passes (#528)"
   - text: "Tab-switching does not refetch coverage; the provider is above the tabs"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "The dashboard's CoverageProvider wraps the Tabs; Deep Dive's nested 52-week one is cached for 30 minutes. apps/e2e/tests/analytics/coverage-requests.spec.ts:115 counts coverage requests off the wire across every tab, now including AI Insights (its trigger gained a hook): one per window (#528)"
   - text: "A chart crossing a view-definition boundary marks it (from `viewDefinitionChangesBetween`) rather than drawing a step change — handed on by FILM-1722 §12, whose criterion stays open until this lands"
-    met: false
-    reason: "not met — spec not yet built"
+    met: true
+    evidence: "packages/features/content-analytics/src/lib/view-definition-marks.ts turns viewDefinitionChangesBetween into marks for the platforms a chart plots; the shell prints them (analytics-card.tsx:249) and each chart draws the line: Performance Over Time and the Language trend (ReferenceLine, packages/features/content-analytics/src/components/performance-chart.tsx:93, language-trend-chart.tsx:206), Deep Dive's median and back-catalog bars and rolling line, a caption on both traffic cards. six-tab-adoption.test.tsx:262, performance-over-time-card.test.tsx, language-cards.test.tsx (each red with marks removed); live on the evidence page, whose August bucket holds 27 Aug 2026 (#528)"
 open_questions: []
 notes: |
   ## 1. Overview
@@ -239,6 +239,59 @@ notes: |
   splitting per-tab once the shell work in FILM-1706 has settled, and the
   acceptance criteria are written so that a per-tab split still satisfies them
   incrementally.
+  ## 9. As built (2026-10-01, #528)
+
+  **The rule, in one place.** `isFetchDated` (packages/clickhouse,
+  data-provenance.ts, beside `allowedMetricSources`) reads the matrix's
+  `snapshot_delta_fetch_day`. The four date-axis queries apply it twice:
+  rows by `metric_source != 'snapshot_delta'`, and videos whose rows are
+  all fetch-dated left out of the dim side — otherwise a LEFT JOIN counts a
+  TikTok upload as a zero-view video in the median and cohort. No query
+  names a platform. Cards declare `onDateAxis`; the chip and the sentence
+  come from the same function.
+
+  **Which cards are which.** Date axis (true-daily only): median views
+  (both modes), rolling 90-day views, back catalog, upload cohorts.
+  Weekly diagnostics is per upload and to date, not on a date axis, so it
+  keeps every platform and says so in its Details — §2 listed it among
+  the time-bucketed figures, but its governing rule ("a fetch-dated figure
+  never goes on a date axis") puts it with the lifetime ones. Traffic,
+  subscribers, Partner Programme and the subscriber-share proxy do not
+  read video_metrics views.
+
+  **The switcher** is single-platform, matching `DimScope.platform`, and
+  lives on the tab. It also reaches the subscriber series, weekly
+  diagnostics and subscriber-share actions, which had dropped a platform.
+  FILM-1709 decides whether the header's multi-select drives it; it should
+  not add a second control.
+
+  **Measured, read off the page** (six-tab-adoption.spec.ts, fixture in
+  its header; M0 = Aug 2026, M1 = Sep 2026). "Before" is the same page
+  built with the queries as they were before this spec:
+
+  | figure | before | after | by hand |
+  |---|---|---|---|
+  | rolling 90-day views | 1.4K (1,440) | 240 | 100+50+30+20+40 |
+  | median by upload month, Aug | 700 (2 videos) | 200 (1) | yt-a alone |
+  | median by upload month, Sep | 40 (1) | 40 (1) | yt-b |
+  | median of views in period, Aug | 325 (2) | 150 (1) | yt-a 100+50 |
+  | median of views in period, Sep | 50, mean 263 (3) | 45 (2) | yt-a 50, yt-b 40 |
+  | back catalog denominator, Aug / Sep | 650 / 790 | 150 / 90 | YouTube rows only |
+  | chip on those cards | — | YouTube only | |
+
+  The September "views in period" median is the sync gap: TikTok's 700,
+  mostly August's views, was dated to the 4 September fetch.
+
+  **Decided here, not reopened elsewhere.** The audience `city` and `os`
+  dimensions FILM-1701 left to this spec get no surface: §5 rules out any
+  new card. The Overview's sparkline under Total Views is never drawn
+  (the dashboard passes no daily series), so it needs no mark;
+  ComparisonChart is exported but mounted nowhere.
+
+  **Found:** KB-155 (the median chart drew its bars above itself), fixed
+  here. The median and rolling claims still compare across 27 Aug 2026 in
+  their sentences ("down 80% on August"); suppressing that is
+  FILM-1715/FILM-1719's, per FILM-1722 §12 — the charts now mark it.
 feature:
   database:
     tables: []

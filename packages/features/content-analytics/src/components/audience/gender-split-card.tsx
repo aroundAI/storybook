@@ -3,7 +3,9 @@
 import { Users2 } from 'lucide-react';
 
 import { DonutChart } from '../charts/donut-chart';
+import { genderClaim } from '../overview/card-claim';
 import { AudienceCard, AudienceCardEmpty } from './audience-card';
+import { NO_GENDER_CLAIM } from './audience-claims';
 
 interface GenderSplitCardProps {
   /** Percentage of viewers per gender. Absent when none was reported. */
@@ -25,6 +27,7 @@ export function GenderSplitCard({ genders }: GenderSplitCardProps) {
         title="Gender Split"
         icon={Users2}
         metricFamily="demographics"
+        claim={NO_GENDER_CLAIM}
         data-test="audience-card-gender"
       >
         <AudienceCardEmpty>
@@ -45,6 +48,7 @@ export function GenderSplitCard({ genders }: GenderSplitCardProps) {
       title="Gender Split"
       icon={Users2}
       metricFamily="demographics"
+      claim={genderClaim({ male, female, other })}
       data-test="audience-card-gender"
     >
       <div className="flex flex-1 flex-col items-center justify-center py-4">

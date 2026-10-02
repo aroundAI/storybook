@@ -141,7 +141,7 @@ notes: |
 
   | Figure | Site |
   |---|---|
-  | Shorts ROI card's revenue per view, computed in the component from getContentTypeComparison | packages/features/content-analytics/src/components/analytics-enhancement-cards.tsx:231 |
+  | Shorts ROI card's revenue per view, computed in the component from getContentTypeComparison | packages/features/content-analytics/src/components/analytics-enhancement-cards.tsx:263 |
 
   Considered and out of scope, each for a stated reason:
 

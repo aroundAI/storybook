@@ -242,10 +242,13 @@ test.describe('Provenance surfaces (FILM-1705)', () => {
     );
     await expect(byTest(traffic, 'card-sentence')).toBeVisible();
 
-    // The median card can cover Instagram, so it is not dimmed.
-    await expect(byTest(page, 'deep-dive-median')).not.toHaveAttribute(
-      'data-dimmed',
-      'true',
+    // The median card is on a date axis, which no fetch-dated platform
+    // reaches (FILM-1707 §2): dimmed too, and it says why.
+    const median = byTest(page, 'deep-dive-median');
+
+    await expect(median).toHaveAttribute('data-dimmed', 'true');
+    await expect(byTest(median, 'card-dimmed-reason')).toHaveText(
+      'Instagram isn’t shown here — it reports running totals, not daily views.',
     );
 
     // The second state: YouTube selected again, the card is back.

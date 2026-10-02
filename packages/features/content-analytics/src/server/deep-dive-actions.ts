@@ -410,6 +410,11 @@ export const getReturningViewerProxyAction = enhanceAction(
         );
       }
 
+      // The Deep Dive's platform switcher (FILM-1707).
+      if (scope.platform) {
+        publishQuery = publishQuery.eq('platform', scope.platform);
+      }
+
       return publishQuery.order('id').range(from, to);
     }, 'returning-viewer publishes');
 

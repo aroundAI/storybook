@@ -14,7 +14,11 @@ import {
   Users,
 } from 'lucide-react';
 
-import { TRAFFIC_SOURCE_GROUPS } from '@kit/clickhouse';
+import {
+  ANALYTICS_PLATFORMS,
+  TRAFFIC_SOURCE_GROUPS,
+  platformsWithData,
+} from '@kit/clickhouse';
 import type { AnalyticsPlatform, TrafficGroupBucket } from '@kit/clickhouse';
 import { Button } from '@kit/ui/button';
 
@@ -22,6 +26,11 @@ import { unwrap } from '../../lib/action-result';
 import { platformLabel } from '../../lib/platform-labels';
 import { TAB_FAMILIES } from '../../lib/provenance';
 import { isUnavailable } from '../../lib/query-state';
+import { dateAxisScope, isFetchDated } from '../../lib/row-dating';
+import {
+  type ViewDefinitionMark,
+  marksForBuckets,
+} from '../../lib/view-definition-marks';
 import {
   getBackCatalogAction,
   getCohortCurvesAction,
@@ -56,12 +65,14 @@ import {
   CohortCurvesChartSkeleton,
 } from './cohort-curves-chart';
 import type { CohortEntry } from './cohort-curves-chart';
+import { DateAxisNote } from './date-axis-note';
 import {
   MedianViewsCard,
   MedianViewsCardSkeleton,
   medianViewsClaim,
   medianViewsDetails,
 } from './median-views-card';
+import { PlatformSwitcher } from './platform-switcher';
 import {
   RetentionCurveChart,
   RetentionCurveChartSkeleton,
@@ -176,25 +187,62 @@ export function DeepDiveTab({
   const [medianMode, setMedianMode] = useState<MedianMode>(
     'cohort_views_to_date',
   );
+  // FILM-1707 §2: the platform is explicit in the scope and changeable.
+  // Every platform by default, under the date-axis rule.
+  const [platform, setPlatform] = useState<AnalyticsPlatform | undefined>();
 
   /**
    * The filters this tab narrows its scope by. Channel comes from the
-   * dashboard; `ScopeSchema` also accepts platform, content type and
-   * language, which join this object when they get a control.
+   * dashboard, platform from this tab's switcher; `ScopeSchema` also accepts
+   * content type and language, which join this object when they get a
+   * control.
    */
-  const filters = { connectionId };
+  const filters = { connectionId, platform };
 
-  // "All channels" leaves `connectionId` out of the scope entirely rather
-  // than sending a sentinel, so the actions see exactly today's scope.
+  // "All" leaves a key out of the scope entirely rather than sending a
+  // sentinel, so the actions see exactly the scope the reader chose.
   const scope = useMemo(
-    () =>
-      filters.connectionId
-        ? { projectId, connectionId: filters.connectionId }
-        : { projectId },
-    [projectId, filters.connectionId],
+    () => ({
+      projectId,
+      ...(filters.connectionId ? { connectionId: filters.connectionId } : {}),
+      ...(filters.platform ? { platform: filters.platform } : {}),
+    }),
+    [projectId, filters.connectionId, filters.platform],
   );
 
   const channelsQuery = useProjectChannels(projectId);
+
+  // The channel list follows the platform: a channel on another platform
+  // could only ever answer "nothing".
+  const channels = (channelsQuery.data ?? []).filter(
+    (channel) => !filters.platform || channel.platform === filters.platform,
+  );
+
+  const onPlatformChange = (next: AnalyticsPlatform | undefined) => {
+    const current = channelsQuery.data?.find(
+      (channel) => channel.connectionId === filters.connectionId,
+    );
+
+    if (next && current && current.platform !== next) {
+      onConnectionChange(undefined);
+    }
+
+    setPlatform(next);
+  };
+
+  // A single fetch-dated platform has nothing true to put on a date axis:
+  // those cards say why instead of asking (FILM-1707 §2).
+  const nothingDated =
+    filters.platform !== undefined && isFetchDated(filters.platform);
+
+  // What the date-axis cards plot, and the fetch-dated platforms this
+  // project publishes to, for the one-time note.
+  const selection = filters.platform ? [filters.platform] : ANALYTICS_PLATFORMS;
+  const plotted = dateAxisScope(selection, []).platforms;
+  const excluded = dateAxisScope(
+    ANALYTICS_PLATFORMS,
+    (channelsQuery.data ?? []).map((channel) => channel.platform),
+  ).excluded;
 
   const selectedChannel = channelsQuery.data?.find(
     (channel) => channel.connectionId === filters.connectionId,
@@ -204,19 +252,27 @@ export function DeepDiveTab({
   // YouTube channel, and the gate is YouTube's, so any other selection skips
   // the query and says why.
   const yppApplies =
-    !filters.connectionId ||
-    (selectedChannel?.platform === 'youtube' && selectedChannel.isActive);
+    (!filters.platform || filters.platform === YPP_PLATFORM) &&
+    (!filters.connectionId ||
+      (selectedChannel?.platform === 'youtube' && selectedChannel.isActive));
 
   // Every key carries the selected channel: a key without it would keep
   // serving the all-channel cache entry after the filter changed.
   const medianQuery = useQuery({
-    queryKey: ['deep-dive-median', projectId, filters.connectionId, medianMode],
+    queryKey: [
+      'deep-dive-median',
+      projectId,
+      filters.connectionId,
+      filters.platform,
+      medianMode,
+    ],
     queryFn: () =>
       getMedianPerformanceAction({
         scope,
         bucket: 'month',
         mode: medianMode,
       }),
+    enabled: !nothingDated,
   });
 
   // Read on every render rather than frozen at mount, so the window follows
@@ -268,6 +324,7 @@ export function DeepDiveTab({
       'deep-dive-traffic-breakdown',
       projectId,
       filters.connectionId,
+      filters.platform,
       trafficWindow.key,
     ],
     queryFn: () =>
@@ -369,30 +426,78 @@ export function DeepDiveTab({
   };
 
   const backCatalogQuery = useQuery({
-    queryKey: ['deep-dive-back-catalog', projectId, filters.connectionId],
+    queryKey: [
+      'deep-dive-back-catalog',
+      projectId,
+      filters.connectionId,
+      filters.platform,
+    ],
     queryFn: () => getBackCatalogAction({ scope, ageDays: 90 }),
+    enabled: !nothingDated,
   });
 
   const rollingQuery = useQuery({
-    queryKey: ['deep-dive-rolling', projectId, filters.connectionId],
+    queryKey: [
+      'deep-dive-rolling',
+      projectId,
+      filters.connectionId,
+      filters.platform,
+    ],
     queryFn: () =>
       getRollingViewsAction({ scope, windowDays: ROLLING_WINDOW_DAYS }),
+    enabled: !nothingDated,
   });
 
   const returningViewerQuery = useQuery({
-    queryKey: ['deep-dive-returning-viewer', projectId, filters.connectionId],
+    queryKey: [
+      'deep-dive-returning-viewer',
+      projectId,
+      filters.connectionId,
+      filters.platform,
+    ],
     queryFn: () => getReturningViewerProxyAction({ scope }),
   });
 
   const cohortQuery = useQuery({
-    queryKey: ['deep-dive-cohorts', projectId, filters.connectionId],
+    queryKey: [
+      'deep-dive-cohorts',
+      projectId,
+      filters.connectionId,
+      filters.platform,
+    ],
     queryFn: () =>
       getCohortCurvesAction({
         scope,
         checkpoints: [30, 90, 180, 365],
         bucket: 'quarter',
       }),
+    enabled: !nothingDated,
   });
+
+  // Where a chart crosses a change in what counts as a view (FILM-1722):
+  // marked, for the platforms each chart actually plots.
+  const medianMarks = marksForBuckets(
+    plotted,
+    (medianQuery.data ?? []).map(({ bucket }) => bucket),
+    'month',
+  );
+  const backCatalogMarks = marksForBuckets(
+    plotted,
+    (backCatalogQuery.data ?? []).map(({ bucket }) => bucket),
+    'month',
+  );
+  const rollingMarks = marksForBuckets(
+    plotted,
+    (rollingQuery.data ?? []).map(({ date }) => date),
+    'day',
+  );
+  const trafficMarks: ViewDefinitionMark[] = marksForBuckets(
+    platformsWithData('traffic_sources').filter((platform) =>
+      selection.includes(platform),
+    ),
+    trafficBuckets.map(({ bucket }) => bucket),
+    'week',
+  );
 
   const subscriberWindowFrom = useMemo(() => {
     const from = new Date(`${today}T00:00:00.000Z`);
@@ -407,6 +512,7 @@ export function DeepDiveTab({
       'deep-dive-subscriber-series',
       projectId,
       filters.connectionId,
+      filters.platform,
       today,
     ],
     queryFn: () =>
@@ -493,9 +599,15 @@ export function DeepDiveTab({
         data-test={'deep-dive-coverage-strip'}
       />
 
-      <div className={'flex items-center justify-end'}>
+      <DateAxisNote excluded={excluded} />
+
+      <div className={'flex flex-wrap items-center justify-end gap-2'}>
+        <PlatformSwitcher
+          value={filters.platform}
+          onChange={onPlatformChange}
+        />
         <ChannelFilter
-          channels={channelsQuery.data ?? []}
+          channels={channels}
           value={filters.connectionId}
           onChange={onConnectionChange}
           isLoading={channelsQuery.isLoading}
@@ -508,8 +620,14 @@ export function DeepDiveTab({
           title={'Median views per video'}
           icon={TrendingUp}
           metricFamily={'engagement'}
-          claim={claimFromQuery(medianQuery, (buckets) =>
-            medianViewsClaim(buckets, medianMode),
+          platforms={filters.platform ? [filters.platform] : undefined}
+          onDateAxis
+          marks={medianMarks}
+          claim={dateAxisClaim(
+            nothingDated,
+            claimFromQuery(medianQuery, (buckets) =>
+              medianViewsClaim(buckets, medianMode),
+            ),
           )}
           details={medianViewsDetails(medianQuery.data ?? [], medianMode)}
           colSpan={2}
@@ -518,6 +636,7 @@ export function DeepDiveTab({
             <div className={'flex gap-2 text-xs'}>
               <button
                 type={'button'}
+                data-test={'median-mode-cohort'}
                 onClick={() => setMedianMode('cohort_views_to_date')}
                 className={
                   medianMode === 'cohort_views_to_date'
@@ -529,6 +648,7 @@ export function DeepDiveTab({
               </button>
               <button
                 type={'button'}
+                data-test={'median-mode-period'}
                 onClick={() => setMedianMode('views_in_period')}
                 className={
                   medianMode === 'views_in_period'
@@ -547,7 +667,10 @@ export function DeepDiveTab({
             message={'Median views could not be loaded.'}
             dataTest={'median-error'}
           >
-            <MedianViewsCard buckets={medianQuery.data ?? []} />
+            <MedianViewsCard
+              buckets={medianQuery.data ?? []}
+              marks={medianMarks}
+            />
           </QueryState>
         </AnalyticsCard>
 
@@ -568,6 +691,7 @@ export function DeepDiveTab({
             TRAFFIC_FAILURE,
           )}
           details={trafficShareDetails('week')}
+          marks={trafficMarks}
           data-test={'deep-dive-traffic-share'}
         >
           {trafficBreakdownQuery.isLoading ? (
@@ -596,6 +720,7 @@ export function DeepDiveTab({
             trafficBuckets,
             sourceNotesFor('traffic_sources'),
           )}
+          marks={trafficMarks}
           data-test={'deep-dive-traffic-breakdown'}
         >
           {trafficBreakdownQuery.isLoading ? (
@@ -615,7 +740,13 @@ export function DeepDiveTab({
             'Share of views from videos over 90 days old — the compounding signal.'
           }
           metricFamily={'engagement'}
-          claim={claimFromQuery(backCatalogQuery, backCatalogClaim)}
+          platforms={filters.platform ? [filters.platform] : undefined}
+          onDateAxis
+          marks={backCatalogMarks}
+          claim={dateAxisClaim(
+            nothingDated,
+            claimFromQuery(backCatalogQuery, backCatalogClaim),
+          )}
           details={{
             method:
               'Views in each month from videos more than 90 days old, as a share of all views that month.',
@@ -628,7 +759,10 @@ export function DeepDiveTab({
             message={'Back catalog contribution could not be loaded.'}
             dataTest={'back-catalog-error'}
           >
-            <BackCatalogCard buckets={backCatalogQuery.data ?? []} />
+            <BackCatalogCard
+              buckets={backCatalogQuery.data ?? []}
+              marks={backCatalogMarks}
+            />
           </QueryState>
         </AnalyticsCard>
 
@@ -639,8 +773,14 @@ export function DeepDiveTab({
             'Views over the trailing 90 days, which monthly totals are too noisy to show.'
           }
           metricFamily={'engagement'}
-          claim={claimFromQuery(rollingQuery, (points) =>
-            rolling90Claim(points, ROLLING_WINDOW_DAYS),
+          platforms={filters.platform ? [filters.platform] : undefined}
+          onDateAxis
+          marks={rollingMarks}
+          claim={dateAxisClaim(
+            nothingDated,
+            claimFromQuery(rollingQuery, (points) =>
+              rolling90Claim(points, ROLLING_WINDOW_DAYS),
+            ),
           )}
           details={{
             method:
@@ -657,6 +797,7 @@ export function DeepDiveTab({
             <Rolling90Card
               points={rollingQuery.data ?? []}
               windowDays={ROLLING_WINDOW_DAYS}
+              marks={rollingMarks}
             />
           </QueryState>
         </AnalyticsCard>
@@ -694,14 +835,19 @@ export function DeepDiveTab({
           title={'Upload cohorts'}
           icon={CalendarRange}
           metricFamily={'engagement'}
-          claim={claimFromQuery(
-            cohortQuery,
-            (): CardClaim => ({
-              figure: null,
-              noFigure: 'A comparison of curves has no single number.',
-              sentence:
-                'Views per video at matched ages, one line per upload quarter.',
-            }),
+          platforms={filters.platform ? [filters.platform] : undefined}
+          onDateAxis
+          claim={dateAxisClaim(
+            nothingDated,
+            claimFromQuery(
+              cohortQuery,
+              (): CardClaim => ({
+                figure: null,
+                noFigure: 'A comparison of curves has no single number.',
+                sentence:
+                  'Views per video at matched ages, one line per upload quarter.',
+              }),
+            ),
           )}
           details={{
             method:
@@ -783,6 +929,7 @@ export function DeepDiveTab({
       <WeeklyDiagnosticsSection
         projectId={projectId}
         connectionId={filters.connectionId}
+        platform={filters.platform}
       />
     </div>
   );
@@ -797,6 +944,9 @@ export function DeepDiveTab({
       from={trafficWindow.from.toISOString().slice(0, 10)}
       to={trafficWindow.to.toISOString().slice(0, 10)}
       windowLabel={TRAFFIC_WINDOW_LABEL}
+      // One platform chosen here narrows what the cards dim for; otherwise
+      // the header filter's selection carries through.
+      selectedPlatforms={filters.platform ? [filters.platform] : undefined}
     >
       {tab}
     </CoverageProvider>
@@ -815,20 +965,31 @@ export function DeepDiveTab({
 function WeeklyDiagnosticsSection({
   projectId,
   connectionId,
+  platform,
 }: {
   projectId: string;
   connectionId: string | undefined;
+  platform: AnalyticsPlatform | undefined;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
 
   const diagnosticsQuery = useQuery({
     // The channel belongs in the key: without it, switching channels reads
     // the previous channel's rows back out of the cache.
-    queryKey: ['weekly-diagnostics', projectId, connectionId ?? 'all'],
+    queryKey: [
+      'weekly-diagnostics',
+      projectId,
+      connectionId ?? 'all',
+      platform ?? 'all',
+    ],
     queryFn: () =>
       unwrap(
         getWeeklyDiagnosticsAction({
-          scope: { projectId, ...(connectionId ? { connectionId } : {}) },
+          scope: {
+            projectId,
+            ...(connectionId ? { connectionId } : {}),
+            ...(platform ? { platform } : {}),
+          },
           sinceDays: DIAGNOSTICS_WINDOW_DAYS,
           limit: DIAGNOSTICS_LIMIT,
         }),
@@ -841,69 +1002,114 @@ function WeeklyDiagnosticsSection({
     enabled: selected !== null,
   });
 
+  // On the one shell (FILM-1707), and still apart from the grid above.
+  // Per upload and to date — not on a date axis — so it keeps every
+  // platform: a total cannot be moved by the day a change was recorded on.
   return (
-    <section
-      className={'mt-4 flex flex-col gap-4 border-t pt-6'}
-      data-test={'weekly-diagnostics-section'}
-    >
-      <div className={'flex flex-col gap-1'}>
-        <h3 className={'text-base font-semibold'}>This week’s uploads</h3>
-        <p className={'max-w-2xl text-sm text-muted-foreground'}>
-          A breakage check, not a strategy input. A low click-through rate means
-          the packaging failed on that video and a sharp early drop means its
-          intro did — fix the specific thing rather than generalising from one
-          upload. Follows the channel selected above.
-        </p>
-      </div>
-
-      <QueryState
-        query={diagnosticsQuery}
-        skeleton={<WeeklyDiagnosticsTableSkeleton />}
-        message={'The weekly diagnostics could not be loaded.'}
-        dataTest={'weekly-diagnostics-error'}
+    <div className={'mt-4 border-t pt-6'}>
+      <AnalyticsCard
+        title={'This week’s uploads'}
+        icon={Activity}
+        metricFamily={['engagement', 'reach', 'retention_curve']}
+        claim={claimFromQuery(
+          diagnosticsQuery,
+          (rows): CardClaim =>
+            rows.length === 0
+              ? {
+                  figure: null,
+                  noFigure: 'No uploads this week.',
+                  sentence: `Nothing was published in the last ${DIAGNOSTICS_WINDOW_DAYS} days.`,
+                }
+              : {
+                  figure: rows.length.toLocaleString('en-US'),
+                  sentence: `${rows.length === 1 ? 'Upload' : 'Uploads'} in the last ${DIAGNOSTICS_WINDOW_DAYS} days, each checked on its own.`,
+                },
+          'The weekly diagnostics could not be loaded — a fetch failure, not an absence of uploads.',
+        )}
+        details={{
+          method:
+            'Each upload’s figures to date, not a series over time, so every platform is included: the day a change was recorded on cannot move a total.',
+        }}
+        colSpan={2}
+        data-test={'weekly-diagnostics-section'}
       >
-        <WeeklyDiagnosticsTable
-          rows={diagnosticsQuery.data ?? []}
-          onSelect={setSelected}
-          selectedPublishId={selected}
-        />
-      </QueryState>
-
-      {selected ? (
-        <div
-          id={'retention-drilldown'}
-          className={'flex flex-col gap-2'}
-          data-test={'retention-drilldown'}
-        >
-          <div className={'flex items-center justify-between'}>
-            <h4 className={'text-sm font-medium'}>Audience retention</h4>
-            <Button
-              variant={'ghost'}
-              size={'sm'}
-              onClick={() => setSelected(null)}
-              data-test={'retention-drilldown-close'}
-            >
-              Close
-            </Button>
-          </div>
+        <div className={'flex flex-col gap-4'}>
+          <p className={'max-w-2xl text-sm text-muted-foreground'}>
+            A breakage check, not a strategy input. A low click-through rate
+            means the packaging failed on that video and a sharp early drop
+            means its intro did — fix the specific thing rather than
+            generalising from one upload. Follows the channel selected above.
+          </p>
 
           <QueryState
-            query={curveQuery}
-            skeleton={<RetentionCurveChartSkeleton />}
-            message={'That retention curve could not be loaded.'}
-            dataTest={'retention-curve-error'}
+            query={diagnosticsQuery}
+            skeleton={<WeeklyDiagnosticsTableSkeleton />}
+            message={'The weekly diagnostics could not be loaded.'}
+            dataTest={'weekly-diagnostics-error'}
           >
-            {/* The asset's own duration (FILM-1710), or `duration_unknown` —
-                in which case the cliff is described without a timestamp. */}
-            <RetentionCurveChart
-              points={curveQuery.data?.points ?? []}
-              duration={curveQuery.data?.duration}
+            <WeeklyDiagnosticsTable
+              rows={diagnosticsQuery.data ?? []}
+              onSelect={setSelected}
+              selectedPublishId={selected}
             />
           </QueryState>
+
+          {selected ? (
+            <div
+              id={'retention-drilldown'}
+              className={'flex flex-col gap-2'}
+              data-test={'retention-drilldown'}
+            >
+              <div className={'flex items-center justify-between'}>
+                <h4 className={'text-sm font-medium'}>Audience retention</h4>
+                <Button
+                  variant={'ghost'}
+                  size={'sm'}
+                  onClick={() => setSelected(null)}
+                  data-test={'retention-drilldown-close'}
+                >
+                  Close
+                </Button>
+              </div>
+
+              <QueryState
+                query={curveQuery}
+                skeleton={<RetentionCurveChartSkeleton />}
+                message={'That retention curve could not be loaded.'}
+                dataTest={'retention-curve-error'}
+              >
+                {/* The asset's own duration (FILM-1710), or `duration_unknown` —
+                in which case the cliff is described without a timestamp. */}
+                <RetentionCurveChart
+                  points={curveQuery.data?.points ?? []}
+                  duration={curveQuery.data?.duration}
+                />
+              </QueryState>
+            </div>
+          ) : null}
         </div>
-      ) : null}
-    </section>
+      </AnalyticsCard>
+    </div>
   );
+}
+
+/**
+ * A date-axis card's claim when the switcher holds one fetch-dated
+ * platform: nothing true to plot, said as a consequence of the choice
+ * rather than as a failure. The shell's chip says why.
+ */
+function dateAxisClaim(
+  nothingDated: boolean,
+  claim: CardClaim | 'loading',
+): CardClaim | 'loading' {
+  if (!nothingDated) return claim;
+
+  return {
+    figure: null,
+    noFigure: 'Not drawn for this platform.',
+    sentence:
+      'Choose all platforms, or one that reports daily views, to see this figure.',
+  };
 }
 
 /**

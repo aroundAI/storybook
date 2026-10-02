@@ -26,12 +26,20 @@ import {
   getVideoLogAction,
 } from '../../server/video-log-actions';
 import { ChannelFilter } from '../deep-dive/channel-filter';
+import { AnalyticsCard } from '../overview/analytics-card';
 import { useSyncStatuses } from '../sync-status/sync-status';
 import { useProjectChannels } from '../use-project-channels';
 import { VideoLogTable } from './video-log-table';
 
 /** The workbook's Sheet 1 columns; the action's own default. */
 const CHECKPOINTS = [30, 90, 180, 365];
+
+/** What the table is, in place of a figure: it has no total by design. */
+const VIDEO_LOG_CLAIM = {
+  figure: null,
+  noFigure: 'One row per video.',
+  sentence: `Views at ${CHECKPOINTS.slice(0, -1).join(', ')} and ${CHECKPOINTS.at(-1)} days after publishing, with lifetime views, impressions, click-through rate, watch duration and recorded revenue.`,
+} as const;
 
 export interface VideoLogTabProps {
   projectId: string;
@@ -150,103 +158,116 @@ export function VideoLogTab({
         />
       </div>
 
-      {query.isLoading ? (
-        <VideoLogTableSkeleton />
-      ) : isUnavailable(query) ? (
-        <div
-          className={'flex flex-col items-start gap-2 rounded-lg border p-6'}
-          role={'alert'}
-          data-test={'video-log-error'}
-        >
-          <p className={'text-sm font-medium'}>
-            The Video Log could not be loaded.
-          </p>
-          <Button
-            variant={'outline'}
-            size={'sm'}
-            onClick={() => void query.refetch()}
-            data-test={'video-log-retry'}
+      {/* On the one card shell (FILM-1707): the table's figures carry the
+          chip every other tab's do. */}
+      <AnalyticsCard
+        title={'Video Log'}
+        metricFamily={['engagement', 'reach', 'watch_time', 'revenue']}
+        claim={VIDEO_LOG_CLAIM}
+        details={null}
+        data-test={'video-log-card'}
+      >
+        {query.isLoading ? (
+          <VideoLogTableSkeleton />
+        ) : isUnavailable(query) ? (
+          <div
+            className={'flex flex-col items-start gap-2 rounded-lg border p-6'}
+            role={'alert'}
+            data-test={'video-log-error'}
           >
-            Try again
-          </Button>
-        </div>
-      ) : rows.length === 0 ? (
-        <EmptyState
-          hasChannelFilter={Boolean(connectionId)}
-          page={view.page}
-          onFirstPage={() => setView({ ...view, page: 0 })}
-        />
-      ) : (
-        <>
-          {syncQuery.isError ? (
-            <p
-              className={'text-sm text-muted-foreground'}
-              role={'alert'}
-              data-test={'video-log-sync-status-error'}
-            >
-              Whether these videos&rsquo; latest syncs succeeded could not be
-              loaded.
+            <p className={'text-sm font-medium'}>
+              The Video Log could not be loaded.
             </p>
-          ) : null}
-
-          <VideoLogTable
-            rows={rows}
-            syncById={syncById}
-            checkpoints={CHECKPOINTS}
-            view={view}
-            onSort={onSort}
-            onNoteSaved={(publishId, saved) => {
-              // Patch the row in place so the note stays on screen, then
-              // re-query so the next read agrees with the database.
-              queryClient.setQueryData<VideoLogRow[]>(queryKey, (current) =>
-                current?.map((row) =>
-                  row.videoId === publishId
-                    ? {
-                        ...row,
-                        analyticsNote: saved.note,
-                        analyticsNoteUpdatedAt: saved.updatedAt,
-                      }
-                    : row,
-                ),
-              );
-              void queryClient.invalidateQueries({ queryKey });
-            }}
-            onNotePermissionLost={() =>
-              void queryClient.invalidateQueries({ queryKey })
-            }
-          />
-
-          <div className={'flex items-center justify-between gap-3'}>
-            <span
-              className={'text-sm text-muted-foreground'}
-              data-test={'video-log-range'}
+            <Button
+              variant={'outline'}
+              size={'sm'}
+              onClick={() => void query.refetch()}
+              data-test={'video-log-retry'}
             >
-              {videoLogRangeLabel(settled.current.page, settled.current.count)}
-            </span>
-
-            <span className={'flex gap-2'}>
-              <Button
-                variant={'outline'}
-                size={'sm'}
-                disabled={view.page === 0 || stale}
-                onClick={() => setView({ ...view, page: view.page - 1 })}
-                data-test={'video-log-previous'}
-              >
-                Previous
-              </Button>
-              <Button
-                variant={'outline'}
-                size={'sm'}
-                disabled={!hasMore || stale}
-                onClick={() => setView({ ...view, page: view.page + 1 })}
-                data-test={'video-log-next'}
-              >
-                Next
-              </Button>
-            </span>
+              Try again
+            </Button>
           </div>
-        </>
-      )}
+        ) : rows.length === 0 ? (
+          <EmptyState
+            hasChannelFilter={Boolean(connectionId)}
+            page={view.page}
+            onFirstPage={() => setView({ ...view, page: 0 })}
+          />
+        ) : (
+          <>
+            {syncQuery.isError ? (
+              <p
+                className={'text-sm text-muted-foreground'}
+                role={'alert'}
+                data-test={'video-log-sync-status-error'}
+              >
+                Whether these videos&rsquo; latest syncs succeeded could not be
+                loaded.
+              </p>
+            ) : null}
+
+            <VideoLogTable
+              rows={rows}
+              syncById={syncById}
+              checkpoints={CHECKPOINTS}
+              view={view}
+              onSort={onSort}
+              onNoteSaved={(publishId, saved) => {
+                // Patch the row in place so the note stays on screen, then
+                // re-query so the next read agrees with the database.
+                queryClient.setQueryData<VideoLogRow[]>(queryKey, (current) =>
+                  current?.map((row) =>
+                    row.videoId === publishId
+                      ? {
+                          ...row,
+                          analyticsNote: saved.note,
+                          analyticsNoteUpdatedAt: saved.updatedAt,
+                        }
+                      : row,
+                  ),
+                );
+                void queryClient.invalidateQueries({ queryKey });
+              }}
+              onNotePermissionLost={() =>
+                void queryClient.invalidateQueries({ queryKey })
+              }
+            />
+
+            <div className={'flex items-center justify-between gap-3'}>
+              <span
+                className={'text-sm text-muted-foreground'}
+                data-test={'video-log-range'}
+              >
+                {videoLogRangeLabel(
+                  settled.current.page,
+                  settled.current.count,
+                )}
+              </span>
+
+              <span className={'flex gap-2'}>
+                <Button
+                  variant={'outline'}
+                  size={'sm'}
+                  disabled={view.page === 0 || stale}
+                  onClick={() => setView({ ...view, page: view.page - 1 })}
+                  data-test={'video-log-previous'}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant={'outline'}
+                  size={'sm'}
+                  disabled={!hasMore || stale}
+                  onClick={() => setView({ ...view, page: view.page + 1 })}
+                  data-test={'video-log-next'}
+                >
+                  Next
+                </Button>
+              </span>
+            </div>
+          </>
+        )}
+      </AnalyticsCard>
     </div>
   );
 }

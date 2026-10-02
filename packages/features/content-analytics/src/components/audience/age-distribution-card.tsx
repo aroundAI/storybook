@@ -3,6 +3,7 @@
 import { Users } from 'lucide-react';
 
 import { AudienceCard, AudienceCardEmpty } from './audience-card';
+import { topAgeGroupClaim } from './audience-claims';
 
 interface AgeGroup {
   /** The platform's own bucket, e.g. `age18-24`. */
@@ -44,6 +45,7 @@ export function AgeDistributionCard({ ageGroups }: AgeDistributionCardProps) {
         title="Age Distribution"
         icon={Users}
         metricFamily="demographics"
+        claim={topAgeGroupClaim([])}
         data-test="audience-card-age"
       >
         <AudienceCardEmpty>
@@ -61,6 +63,7 @@ export function AgeDistributionCard({ ageGroups }: AgeDistributionCardProps) {
       title="Age Distribution"
       icon={Users}
       metricFamily="demographics"
+      claim={topAgeGroupClaim(normalizedData)}
       data-test="audience-card-age"
     >
       <div className="space-y-4">

@@ -11,6 +11,7 @@ import {
   Legend,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -22,6 +23,7 @@ import { ToggleGroup, ToggleGroupItem } from '@kit/ui/toggle-group';
 
 import { formatDate, formatNumber } from '../lib/format';
 import { PLATFORM_COLORS } from '../lib/platform-colors';
+import { type ViewDefinitionMark, isoDay } from '../lib/view-definition-marks';
 import type { DailyMetric } from '../types';
 
 type MetricType = 'views' | 'likes' | 'comments' | 'shares';
@@ -38,12 +40,19 @@ interface PerformanceChartProps {
   data: DailyMetric[];
   platforms: string[];
   height?: number;
+  /**
+   * Where the range crosses a change in what counts as a view (FILM-1722).
+   * Drawn as a dashed line on the day, so a step there reads as the count
+   * changing; the card beside the chart says what changed.
+   */
+  marks?: readonly ViewDefinitionMark[];
 }
 
 export const PerformanceChart = React.memo(function PerformanceChart({
   data,
   platforms,
   height = 350,
+  marks = [],
 }: PerformanceChartProps) {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('views');
   const [chartType, setChartType] = useState<ChartType>('area');
@@ -65,6 +74,31 @@ export const PerformanceChart = React.memo(function PerformanceChart({
       return point;
     });
   }, [data, selectedMetric, showPlatformBreakdown, platforms]);
+
+  // A category axis draws a line only at a value it holds: the first day on
+  // or after the change. A change before the first point is not drawn.
+  const markLines = useMemo(
+    () =>
+      marks.flatMap((mark) => {
+        const point = data.find((d) => isoDay(d.date) >= mark.date);
+
+        return point
+          ? [{ key: `${mark.platform}:${mark.date}`, x: point.date }]
+          : [];
+      }),
+    [marks, data],
+  );
+
+  const referenceLines = markLines.map(({ key, x }) => (
+    <ReferenceLine
+      key={key}
+      x={x}
+      stroke="currentColor"
+      strokeDasharray="4 4"
+      className="text-muted-foreground"
+      ifOverflow="extendDomain"
+    />
+  ));
 
   const handleExport = useCallback(() => {
     const svg = document.querySelector('.recharts-wrapper svg');
@@ -148,6 +182,7 @@ export const PerformanceChart = React.memo(function PerformanceChart({
           <YAxis tickFormatter={formatNumber} className="text-xs" />
           <Tooltip content={<CustomTooltip />} />
           <Legend />
+          {referenceLines}
 
           {showPlatformBreakdown ? (
             platforms.map((platform) => (
@@ -187,6 +222,7 @@ export const PerformanceChart = React.memo(function PerformanceChart({
         <YAxis tickFormatter={formatNumber} className="text-xs" />
         <Tooltip content={<CustomTooltip />} />
         <Legend />
+        {referenceLines}
 
         {showPlatformBreakdown ? (
           platforms.map((platform) => (

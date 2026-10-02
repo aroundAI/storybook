@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AIInsights } from '../src/components/ai-insights';
 import type { InsightsResult } from '../src/types';
+import { TestCoverage } from './helpers/coverage';
 
 const action = vi.hoisted(() => ({
   insights: null as unknown,
@@ -62,7 +63,13 @@ async function renderPanel(insights: InsightsResult) {
 
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <AIInsights projectId="p" analytics={analytics} />
+      <TestCoverage>
+        <AIInsights
+          projectId="p"
+          analytics={analytics}
+          windowLabel="2026-09-01 to 2026-09-30"
+        />
+      </TestCoverage>
     </QueryClientProvider>,
   );
 
@@ -105,5 +112,29 @@ describe('the insights panel', () => {
       'No top content was available',
     );
     expect(document.querySelectorAll('li')).toHaveLength(0);
+  });
+
+  /**
+   * FILM-1707 §3: a generated reading is not a measurement. Every card is
+   * on the shared shell, chipped as not measured, and says what it was
+   * given and for which window — never which platform "reported" it.
+   */
+  it('chips every card as not measured and states what the model was given', async () => {
+    await renderPanel(answer({ trends: ['Views rose.'] }));
+
+    const cards = [...document.querySelectorAll('[data-card-shell]')];
+
+    expect(cards.length).toBeGreaterThanOrEqual(4);
+
+    for (const card of cards) {
+      expect(card.getAttribute('data-metric-family')).toBe('generated');
+      expect(
+        card.querySelector('[data-test="provenance-chip"]')?.textContent,
+      ).toContain('Not measured');
+    }
+
+    expect(text('ai-insights-summary')).toContain(
+      'given this project’s totals for 2026-09-01 to 2026-09-30',
+    );
   });
 });

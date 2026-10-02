@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 
 import { Globe } from 'lucide-react';
 
+import { topRegionClaim } from '../overview/card-claim';
 import { AudienceCard, AudienceCardEmpty } from './audience-card';
 
 interface GeographyCardProps {
@@ -68,7 +69,7 @@ export function GeographyCard({ geography }: GeographyCardProps) {
         title="Top Geographies"
         icon={Globe}
         metricFamily="geography"
-        rowSpan={true}
+        claim={topRegionClaim([])}
         data-test="audience-card-geography"
       >
         <AudienceCardEmpty>
@@ -83,7 +84,7 @@ export function GeographyCard({ geography }: GeographyCardProps) {
       title="Top Geographies"
       icon={Globe}
       metricFamily="geography"
-      rowSpan={true}
+      claim={topRegionClaim(sortedCountries)}
       data-test="audience-card-geography"
     >
       <div className="space-y-4">

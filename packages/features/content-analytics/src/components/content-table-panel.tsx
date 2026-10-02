@@ -12,6 +12,8 @@ import {
   listTagsAction,
 } from '../server/taxonomy-actions';
 import { ContentTable } from './content-table';
+import { AnalyticsCard } from './overview/analytics-card';
+import type { CardClaim } from './overview/card-claim';
 import type { ContentTag } from './taxonomy/tag-manager';
 
 interface ContentTablePanelProps {
@@ -81,19 +83,52 @@ export function ContentTablePanel({
     [projectId, queryClient],
   );
 
+  // The table is the Content tab's other view; on the one shell like its
+  // cards (FILM-1707), so its figures carry a chip too.
   return (
-    <ContentTable
-      data={data}
-      isLoading={isLoading}
-      tagging={{
-        tags: tagsQuery.data ?? [],
-        tagsByPublish: assignmentsQuery.data ?? {},
-        isLoading: tagsQuery.isLoading || assignmentsQuery.isLoading,
-        isError:
-          (tagsQuery.isError && tagsQuery.data === undefined) ||
-          (assignmentsQuery.isError && assignmentsQuery.data === undefined),
-        onApply,
-      }}
-    />
+    <AnalyticsCard
+      title={'Published content'}
+      metricFamily={'engagement'}
+      claim={contentTableClaim(data, isLoading)}
+      details={null}
+      data-test={'content-table-card'}
+    >
+      <ContentTable
+        data={data}
+        isLoading={isLoading}
+        tagging={{
+          tags: tagsQuery.data ?? [],
+          tagsByPublish: assignmentsQuery.data ?? {},
+          isLoading: tagsQuery.isLoading || assignmentsQuery.isLoading,
+          isError:
+            (tagsQuery.isError && tagsQuery.data === undefined) ||
+            (assignmentsQuery.isError && assignmentsQuery.data === undefined),
+          onApply,
+        }}
+      />
+    </AnalyticsCard>
   );
+}
+
+/** How many items the table lists — the one figure it leads with. */
+export function contentTableClaim(
+  data: ContentListItem[] | undefined,
+  isLoading: boolean,
+): CardClaim | 'loading' {
+  if (isLoading) return 'loading';
+
+  const count = data?.length ?? 0;
+
+  if (count === 0) {
+    return {
+      figure: null,
+      noFigure: 'Nothing published in this period.',
+      sentence: 'Items published in the selected period are listed here.',
+    };
+  }
+
+  return {
+    figure: count.toLocaleString('en-US'),
+    sentence: `${count === 1 ? 'Item' : 'Items'} published in the selected period, one row each, with views to date.`,
+  };
 }

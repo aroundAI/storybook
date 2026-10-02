@@ -5166,6 +5166,214 @@ async function unmeasuredTotalsSteps() {
   );
 }
 
+const DATED_PROJECT = '17071707-1707-1707-1707-170717071701';
+const DATED_ACCOUNT = '17071707-1707-1707-1707-170717071702';
+const DATED_YOUTUBE = '17071707-1707-1707-1707-170717071703';
+const DATED_TIKTOK = '17071707-1707-1707-1707-170717071704';
+
+/**
+ * FILM-1707 §2: a fetch-dated figure never goes on a date axis.
+ *
+ * | video | platform | published  | rows (date: views)                          | source         |
+ * |-------|----------|------------|---------------------------------------------|----------------|
+ * | yt-a  | youtube  | 2026-01-10 | 01-11: 100 · 01-31: 50 · 02-01: 30 · 02-02: 20 | analytics_api |
+ * | yt-b  | youtube  | 2026-02-05 | 02-06: 40                                   | analytics_api  |
+ * | tt-a  | tiktok   | 2026-01-15 | 01-20: 500 · 02-04: 700                     | snapshot_delta |
+ *
+ * tt-a's sync gap runs from 01-21 to 02-03, across the month boundary: the
+ * 700 it gained over that gap — late January's views as much as
+ * February's — is dated 02-04, the day we fetched. Every date-axis figure
+ * below is YouTube's alone, worked out by hand, so it is the same figure
+ * whether tt-a's rows exist, are re-dated or are missing: the gap cannot
+ * move it. The lifetime total still counts tt-a's 1,200.
+ */
+async function fetchDatedSteps() {
+  const scope = { projectId: DATED_PROJECT };
+  const videos: {
+    id: string;
+    platform: 'youtube' | 'tiktok';
+    connection: string;
+    published: string;
+    source: 'analytics_api' | 'snapshot_delta';
+    days: Record<string, number>;
+  }[] = [
+    {
+      id: 'yt-a',
+      platform: 'youtube',
+      connection: DATED_YOUTUBE,
+      published: '2026-01-10',
+      source: 'analytics_api',
+      days: {
+        '2026-01-11': 100,
+        '2026-01-31': 50,
+        '2026-02-01': 30,
+        '2026-02-02': 20,
+      },
+    },
+    {
+      id: 'yt-b',
+      platform: 'youtube',
+      connection: DATED_YOUTUBE,
+      published: '2026-02-05',
+      source: 'analytics_api',
+      days: { '2026-02-06': 40 },
+    },
+    {
+      id: 'tt-a',
+      platform: 'tiktok',
+      connection: DATED_TIKTOK,
+      published: '2026-01-15',
+      source: 'snapshot_delta',
+      days: { '2026-01-20': 500, '2026-02-04': 700 },
+    },
+  ];
+
+  await step('seed: fetch-dated fixture (FILM-1707)', async () => {
+    await clearFixtureRows([DATED_PROJECT], []);
+
+    await insertVideoDims(
+      videos.map((video) => ({
+        ...dimFor({
+          id: video.id,
+          project: DATED_PROJECT,
+          account: DATED_ACCOUNT,
+          connection: video.connection,
+          published: video.published,
+        }),
+        platform: video.platform,
+      })),
+    );
+
+    await insertVideoMetrics(
+      videos.flatMap((video) =>
+        Object.entries(video.days).map(([date, views]) => ({
+          ...metricFor({ project: DATED_PROJECT, id: video.id, date, views }),
+          platform: video.platform,
+          metric_source: video.source,
+          // TikTok does not measure these; NULL, as ingest writes them.
+          ...(video.platform === 'tiktok'
+            ? {
+                saves: null,
+                watch_time_seconds: null,
+                subscribers_gained: null,
+              }
+            : {}),
+        })),
+      ),
+    );
+  });
+
+  await step('assert: median by upload month is true-daily only', async () => {
+    const buckets = await queryMedianViewsPerVideo({
+      scope,
+      bucket: 'month',
+      mode: 'cohort_views_to_date',
+    });
+    const january = buckets.find((b) => b.bucket === '2026-01-01');
+    const february = buckets.find((b) => b.bucket === '2026-02-01');
+
+    // January uploads: yt-a alone, 100 + 50 + 30 + 20 = 200. tt-a (1,200)
+    // is not a zero and not a second video: pooled, the median of
+    // [200, 1200] was 700.
+    expectEqual('jan count', january?.videoCount, 1);
+    expectEqual('jan median', january?.medianViews, 200);
+    // February uploads: yt-b, 40.
+    expectEqual('feb count', february?.videoCount, 1);
+    expectEqual('feb median', february?.medianViews, 40);
+  });
+
+  await step('assert: median of views in period ignores the gap', async () => {
+    const buckets = await queryMedianViewsPerVideo({
+      scope,
+      bucket: 'month',
+      mode: 'views_in_period',
+    });
+    const january = buckets.find((b) => b.bucket === '2026-01-01');
+    const february = buckets.find((b) => b.bucket === '2026-02-01');
+
+    // January: yt-a 100 + 50 = 150. Pooled it was median [150, 500] = 325.
+    expectEqual('jan count', january?.videoCount, 1);
+    expectEqual('jan median', january?.medianViews, 150);
+    // February: yt-a 30 + 20 = 50, yt-b 40 → median of [40, 50] = 45.
+    // Pooled, the gap's 700 made it [40, 50, 700] → 50.
+    expectEqual('feb count', february?.videoCount, 2);
+    expectEqual('feb median', february?.medianViews, 45);
+  });
+
+  await step('assert: rolling views are true-daily only', async () => {
+    const points = await queryRollingViews({
+      scope,
+      windowDays: 7,
+      startDate: '2026-01-01',
+      endDate: '2026-02-10',
+    });
+    const total = points.reduce((sum, point) => sum + point.views, 0);
+    const fetchDay = points.find((point) => point.date === '2026-02-04');
+
+    // 100 + 50 + 30 + 20 + 40 = 240; pooled it was 1,440.
+    expectEqual('daily views summed', total, 240);
+    // The fetch day carries no views: tt-a's 700 is not plotted there.
+    expectEqual('views on 02-04', fetchDay?.views, 0);
+  });
+
+  await step('assert: back-catalog share is true-daily only', async () => {
+    const buckets = await queryBackCatalogShare({
+      scope,
+      ageDays: 20,
+      startDate: '2026-01-01',
+      endDate: '2026-02-28',
+    });
+    const january = buckets.find((b) => b.bucket === '2026-01-01');
+    const february = buckets.find((b) => b.bucket === '2026-02-01');
+
+    // January: yt-a 100 at age 1, 50 at age 21 (> 20) → 50 of 150.
+    expectEqual('jan total', january?.totalViews, 150);
+    expectEqual('jan back', january?.backCatalogViews, 50);
+    // February: yt-a 30 (22) + 20 (23) back; yt-b 40 at age 1 → 50 of 90.
+    // Pooled, tt-a's 700 joined the denominator: 50 of 790.
+    expectEqual('feb total', february?.totalViews, 90);
+    expectEqual('feb back', february?.backCatalogViews, 50);
+  });
+
+  await step('assert: cohort medians are true-daily only', async () => {
+    const rows = await queryCohortMedians({
+      scope,
+      checkpoints: [30],
+      bucket: 'month',
+      asOf: '2026-06-01 00:00:00',
+    });
+    const january = rows.find((row) => row.cohort === '2026-01-01');
+
+    // January cohort: yt-a's first 30 days hold all four rows, 200. tt-a
+    // is not in the cohort; pooled, median [200, 1200] was 700.
+    expectEqual('jan videos', january?.videoCount, 1);
+    expectEqual('jan @30 median', january?.checkpoints[30]?.medianViews, 200);
+    expectEqual(
+      'jan @30 mature',
+      january?.checkpoints[30]?.matureVideoCount,
+      1,
+    );
+  });
+
+  await step(
+    'assert: a lifetime total still pools every platform',
+    async () => {
+      const totals = await queryTotals({
+        projectId: DATED_PROJECT,
+        startDate: '2026-01-01',
+        endDate: '2026-02-28',
+      });
+
+      // 240 YouTube + 1,200 TikTok: fetch-day dating cannot move a sum.
+      expectEqual('total views', totals.views, 1440);
+    },
+  );
+
+  await step('clear: fetch-dated fixture', () =>
+    clearFixtureRows([DATED_PROJECT], []),
+  );
+}
+
 async function main() {
   if (!isClickHouseEnabled()) {
     console.error(
@@ -5184,6 +5392,7 @@ async function main() {
   await selfBenchmarkSteps();
   await channelExperimentSteps();
   await handComputedSteps();
+  await fetchDatedSteps();
   await observedCoverageSteps();
   await unmeasuredTotalsSteps();
   // Last: it fills a project with noise, and nothing above should see it.

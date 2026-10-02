@@ -2,6 +2,7 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { AnalyticsPlatform } from '@kit/clickhouse';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
@@ -17,7 +18,7 @@ export interface AnalyticsScope {
   projectId?: string;
   accountId?: string;
   connectionId?: string;
-  platform?: 'youtube' | 'tiktok' | 'instagram';
+  platform?: AnalyticsPlatform;
   contentType?: string;
   language?: string;
   channelLanguage?: string;

@@ -47,6 +47,7 @@ export function ContentGrid({
       {data.map((item) => (
         <ContentCard
           key={item.publishId}
+          publishId={item.publishId}
           title={item.publishTitle}
           subtitle={item.episodeTitle}
           thumbnailUrl={item.thumbnailUrl ?? undefined}

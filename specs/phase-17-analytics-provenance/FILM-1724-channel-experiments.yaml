@@ -288,10 +288,10 @@ feature:
   queries:
     - name: "queryChannelExperimentVideoDays"
       purpose: "each assigned video's own first N days of metrics and reach, with its channel's ingest start (channelIngestSql); scoped by account and channel"
-      file: "packages/clickhouse/src/queries-advanced.ts:2533"
+      file: "packages/clickhouse/src/queries-advanced.ts:2605"
     - name: "queryVideoViewsAtAge"
       purpose: "not called: its one ingest lag per video is the video's, not the channel's, and FILM-1715 moved to the channel's; views at age are summed from queryChannelExperimentVideoDays instead, judged by judgeSubjectCheckpoint"
-      file: "packages/clickhouse/src/queries-advanced.ts:1980"
+      file: "packages/clickhouse/src/queries-advanced.ts:2052"
     - name: "queryNetSubscribersForVideos"
       purpose: "not called: it takes one calendar window for every video, and a channel experiment needs each video's own first 30 days; its fold, foldNetSubscribers, is reused"
       file: "packages/clickhouse/src/queries-detail.ts:689"
