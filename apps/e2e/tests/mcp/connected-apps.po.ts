@@ -56,9 +56,7 @@ export class ConnectedAppsPageObject {
 
   row(name: string): Locator {
     return this.rows().filter({
-      has: this.page.locator('[data-test="mcp-connection-name"]', {
-        hasText: name,
-      }),
+      has: byTest(this.page, 'mcp-connection-name').filter({ hasText: name }),
     });
   }
 
