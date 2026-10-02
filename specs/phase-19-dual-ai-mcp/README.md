@@ -128,9 +128,10 @@ step stays a web action.
 
 ## Open questions (owner)
 
-1. FILM-1907: build our own minimal OAuth 2.1 authorization server
-   (recommended: works with any `AUTH_PROVIDER`) or use Supabase Auth's OAuth
-   server feature?
+1. ~~FILM-1907: own OAuth server or Supabase's?~~ Decided 2026-10-02: our
+   own small authorization server, compatible with Supabase (Supabase Auth is
+   the login and identity, RLS applies, and a Supabase verifier can be swapped
+   in behind `McpTokenVerifier`).
 2. FILM-1908: is the agent's self-check against the quality rubric enough, or
    should commit refuse below a deterministic score?
 3. FILM-1909: store ideation output on `episodes.metadata.ideas` for both modes

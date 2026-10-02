@@ -29,7 +29,7 @@ acceptance_criteria:
   - text: "withMcpAuth: a request without a valid bearer token gets 401 with WWW-Authenticate pointing at the protected-resource metadata (FILM-1907 serves it); a valid one yields McpPrincipal {userId, accountId, connectionId, scopes, clientName, supabase}"
     met: false
     reason: "not met — drafted 2026-10-02, no code yet"
-  - text: "The principal's Supabase client carries a 5-minute JWT (sub = user, role = authenticated) signed with the project JWT secret; no tool handler can obtain a service-role client"
+  - text: "The principal's Supabase client carries a 5-minute JWT (sub = user, role = authenticated) signed with the project JWT secret or an imported signing key (FILM-1907); no tool handler can obtain a service-role client"
     met: false
     reason: "not met — drafted 2026-10-02, no code yet"
   - text: "Tool handlers run inside the MCP request context, which fixes run mode 'external' for openRun (FILM-1903); the mode is not a tool argument"
