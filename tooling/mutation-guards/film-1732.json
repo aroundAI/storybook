@@ -5,8 +5,8 @@
       "name": "RD1 the builder drops the crossings",
       "kind": "unit",
       "file": "packages/clickhouse/src/lib/measures.ts",
-      "find": "      crosses.push(...changes);\n",
-      "replace": "",
+      "find": "      crosses.push(\n        ...changes.map(",
+      "replace": "      [].push(\n        ...changes.map(",
       "cwd": "packages/clickhouse",
       "test": "__tests__/rate-denominator-records.test.ts",
       "pattern": "spanning 2026-08-27"
