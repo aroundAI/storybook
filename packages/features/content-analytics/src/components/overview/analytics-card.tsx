@@ -1,18 +1,10 @@
 'use client';
 
-import {
-  type ComponentType,
-  type ReactNode,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-} from 'react';
+import { type ComponentType, type ReactNode, useId } from 'react';
 
-import { ChevronRight, Info } from 'lucide-react';
+import { Info } from 'lucide-react';
 
 import type { AnalyticsPlatform } from '@kit/clickhouse';
-import { Collapsible, CollapsibleTrigger } from '@kit/ui/collapsible';
 import { Separator } from '@kit/ui/separator';
 import { Skeleton } from '@kit/ui/skeleton';
 import {
@@ -24,6 +16,7 @@ import {
 import { cn } from '@kit/ui/utils';
 
 import type { ViewDefinitionMark } from '../../lib/view-definition-marks';
+import { FindableDisclosure } from '../findable-disclosure';
 import { ProvenanceChip, useCardProvenance } from '../provenance-chip';
 import {
   type CardClaim,
@@ -313,16 +306,7 @@ function Claim({ claim }: { claim: CardClaim | 'loading' }) {
   );
 }
 
-/**
- * The "Details" disclosure.
- *
- * Radix's `CollapsibleContent` renders nothing while closed, so browser
- * find could never reach a caveat. The region is ours instead, and stays
- * in the DOM: React renders it `hidden`, and once mounted it is upgraded
- * to `hidden="until-found"`, which lets find-in-page match inside it and
- * fire `beforematch` — the cue to open. Radix still owns the trigger, so
- * `aria-expanded` and the keyboard behave as its other disclosures do.
- */
+/** The "Details" disclosure: in the DOM while closed, so browser find reaches it. */
 function Disclosure({
   title,
   details,
@@ -334,95 +318,58 @@ function Disclosure({
   sources: string[] | null;
   dataTest?: string;
 }) {
-  const [open, setOpen] = useState(false);
-  const regionId = useId();
-  const region = useRef<HTMLDivElement>(null);
-
-  // A DOM event with no React prop, and an attribute value React cannot
-  // express (it renders `hidden` as a boolean). Both need the element.
-  useEffect(() => {
-    const element = region.current;
-
-    if (!element) return;
-
-    if (!open) element.setAttribute('hidden', 'until-found');
-
-    const reveal = () => setOpen(true);
-
-    element.addEventListener('beforematch', reveal);
-
-    return () => element.removeEventListener('beforematch', reveal);
-  }, [open]);
-
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger
-        aria-controls={regionId}
-        className="inline-flex items-center gap-1 rounded-sm text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        data-test={dataTest ? `${dataTest}-details-trigger` : undefined}
-      >
-        <ChevronRight
-          aria-hidden
-          className={cn('size-3.5 transition-transform', open && 'rotate-90')}
-        />
-        Details
-      </CollapsibleTrigger>
+    <FindableDisclosure
+      label={'Details'}
+      regionLabel={`${title} details`}
+      triggerTestId={dataTest ? `${dataTest}-details-trigger` : undefined}
+      regionTestId={dataTest ? `${dataTest}-details` : undefined}
+    >
+      {details.breakdown && (
+        <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1">
+          {details.breakdown.map(({ label, value }) => (
+            <div key={label} className="contents">
+              <dt className="text-muted-foreground">{label}</dt>
+              <dd className="text-right tabular-nums">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
 
-      <div
-        id={regionId}
-        ref={region}
-        role="region"
-        aria-label={`${title} details`}
-        hidden={!open}
-        className="mt-3 flex flex-col gap-3 text-sm"
-        data-test={dataTest ? `${dataTest}-details` : undefined}
-      >
-        {details.breakdown && (
-          <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1">
-            {details.breakdown.map(({ label, value }) => (
-              <div key={label} className="contents">
-                <dt className="text-muted-foreground">{label}</dt>
-                <dd className="text-right tabular-nums">{value}</dd>
-              </div>
+      {(details.source || (sources && sources.length > 0)) && (
+        <div className="flex flex-col gap-1">
+          <h3 className="text-xs font-medium">Where this comes from</h3>
+          {details.source ? (
+            <div className="text-xs text-muted-foreground">
+              {details.source}
+            </div>
+          ) : (
+            sources?.map((note) => (
+              <p key={note} className="text-xs text-muted-foreground">
+                {note}
+              </p>
+            ))
+          )}
+        </div>
+      )}
+
+      {details.method && (
+        <div className="flex flex-col gap-1">
+          <h3 className="text-xs font-medium">How it’s computed</h3>
+          <p className="text-xs text-muted-foreground">{details.method}</p>
+        </div>
+      )}
+
+      {details.caveats && (
+        <>
+          <Separator />
+          <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
+            {details.caveats.map((caveat, index) => (
+              <li key={index}>{caveat}</li>
             ))}
-          </dl>
-        )}
-
-        {(details.source || (sources && sources.length > 0)) && (
-          <div className="flex flex-col gap-1">
-            <h3 className="text-xs font-medium">Where this comes from</h3>
-            {details.source ? (
-              <div className="text-xs text-muted-foreground">
-                {details.source}
-              </div>
-            ) : (
-              sources?.map((note) => (
-                <p key={note} className="text-xs text-muted-foreground">
-                  {note}
-                </p>
-              ))
-            )}
-          </div>
-        )}
-
-        {details.method && (
-          <div className="flex flex-col gap-1">
-            <h3 className="text-xs font-medium">How it’s computed</h3>
-            <p className="text-xs text-muted-foreground">{details.method}</p>
-          </div>
-        )}
-
-        {details.caveats && (
-          <>
-            <Separator />
-            <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
-              {details.caveats.map((caveat, index) => (
-                <li key={index}>{caveat}</li>
-              ))}
-            </ul>
-          </>
-        )}
-      </div>
-    </Collapsible>
+          </ul>
+        </>
+      )}
+    </FindableDisclosure>
   );
 }

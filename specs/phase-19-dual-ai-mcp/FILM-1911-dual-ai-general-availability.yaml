@@ -1,0 +1,55 @@
+spec_id: "FILM-1911"
+title: "Dual AI General Availability: docs, dashboards, alerts, no-LLM boot"
+phase: 19
+phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
+category: feature
+status: DRAFT
+effort: S
+dependencies:
+  - spec_id: "FILM-1907"
+    note: "OAuth sign-in from Claude"
+  - spec_id: "FILM-1909"
+    note: "every stage available externally"
+  - spec_id: "FILM-1910"
+    note: "the web shows both modes"
+summary: >
+  The last step before the connector is offered to users: a docs page with
+  the connector URL and a walkthrough, monitoring for the MCP surface, an
+  alert that fires if an external run ever records a model call, and proof
+  that a deployment with no LLM env vars still serves external mode fully.
+  Design: the EDD's "Security, observability and rollout"
+  (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
+acceptance_criteria:
+  - text: "A user docs page (apps/web/content/documentation) explains adding the connector in Claude, signing in, the scopes, the workflow and revoking access, with screenshots taken from a real run"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Monitoring panels: calls per tool, error rate by code, p95 by tool, runs by mode and status, expired leases per day"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "An alert fires if llm_usage_analytics ever has a row whose run is external (the FILM-1903 trigger should make this impossible; the alert proves it stays so)"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Boot test: the app with no LLM_* / GEMINI_* / GOOGLE_* model variables starts, serves every MCP tool, and refuses server-mode generation with a clear message"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "The MCP connector feature flag is removed; team AI settings (FILM-1910) are the control"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+test_plan:
+  unit: []
+  integration:
+    - {text: "The boot test runs in CI with model variables unset", met: false, reason: "not met — no test yet"}
+  e2e: []
+open_questions:
+  - "Is ChatGPT's connector support in scope for GA, or Claude first and other clients as they come?"
+notes: |
+  Rollout, each step reversible by its flag: core refactor dark (FILM-1901,
+  FILM-1902, FILM-1903); read-only connector with PATs for the owner's team
+  (FILM-1904 to FILM-1906); OAuth (FILM-1907); external generation stage by
+  stage (FILM-1908, FILM-1909); this spec.
+feature:
+  database: null
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null

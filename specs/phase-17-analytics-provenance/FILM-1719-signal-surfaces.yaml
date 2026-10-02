@@ -3,7 +3,7 @@ title: "Signal Surfaces"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: DRAFT
+status: PARTIAL
 audited: "2026-09-30"
 effort: L
 dependencies:
@@ -31,59 +31,68 @@ summary: >
   produced by a spec below, it does not appear here.
 acceptance_criteria:
   - text: "The verdict depth answers \"what do I do next\" without expansion"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "Depth 1 is open with nothing to expand: the strip with FILM-1718's diagnosis sentence (packages/features/content-analytics/src/components/signal-surface/signal-surface.tsx:198), then each stage's first three genome findings, each with its recommendation and evidence, outside any disclosure (packages/features/content-analytics/src/components/signal-surface/genome-findings.tsx:92, :208). Read on the page in apps/e2e/tests/analytics/signal-surface-evidence.spec.ts. #550"
   - text: "A band appears alone only in the five-stage strip"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "The band label renders only in a strip cell (packages/features/content-analytics/src/components/signal-surface/stage-strip.tsx:152); the drill-down renders measureLine instead (packages/features/content-analytics/src/components/signal-surface/stage-detail.tsx:159). packages/features/content-analytics/__tests__/signal-surface-dom.test.tsx \"never shows a band alone: value, lift, typical and n travel together\". #550"
   - text: "The drill-down shows value, lift, cohort median and n together"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "measureLine (packages/features/content-analytics/src/lib/signal-surface.ts:419) puts all four in one line. On the page: \"0:10 average view duration · 0.6x typical · typical = 0:40 · n = 20\" (apps/e2e/tests/analytics/signal-surface-evidence.spec.ts). #550"
   - text: "The five empty states are distinguishable in the DOM, not only visually"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "Each cell carries data-stage-state (packages/features/content-analytics/src/components/signal-surface/stage-strip.tsx:75), and each state renders differently: unbound and dark a muted rule and their reason, not_judgable and insufficient_cohort the value and why, judged a band and meter. packages/features/content-analytics/__tests__/signal-surface-dom.test.tsx \"renders the five emptinesses differently in the DOM, not only visually\" (seen red by dropping the value from the insufficient cell); on the page the fixture reads reach unbound, hook dark, attention judged below, transmission insufficient_cohort, audience not_judgable, monetisation dark (apps/e2e/tests/analytics/signal-surface-evidence.spec.ts). #550"
   - text: "No zero-length bar is ever rendered"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "Only a judged stage draws a BandMeter (packages/features/content-analytics/src/components/signal-surface/stage-strip.tsx:155): three fixed-size segments, never a length scaled from the value. packages/features/content-analytics/__tests__/signal-surface-dom.test.tsx \"draws a bar only for a judged stage, and every segment has a size\"; on the page three bars, all on attention, each 24×6 px (apps/e2e/tests/analytics/signal-surface-evidence.spec.ts). #550"
   - text: "not_judgable and insufficient_cohort still show a measured value where one exists"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "Both cells render stage-value where a value exists (packages/features/content-analytics/src/components/signal-surface/stage-strip.tsx:168). On the page Transmission (insufficient_cohort, typical is zero) shows 1.0%, and Audience, with no figure, shows the reason and no value rather than a zero (apps/e2e/tests/analytics/signal-surface-evidence.spec.ts). #550"
   - text: "The number of judged stages is visible beside the diagnosis"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "signal-coverage sits under signal-diagnosis with data-judged-count (packages/features/content-analytics/src/components/signal-surface/stage-strip.tsx:46, :53). On the page: \"Judged on 1 of 6 stages.\" (apps/e2e/tests/analytics/signal-surface-evidence.spec.ts). #550"
   - text: "No recommendation renders without its evidence"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "A recommendation is rendered only from recommendFrom(finding), in the same FindingCard as its EvidenceBlock, as siblings (packages/features/content-analytics/src/components/signal-surface/genome-findings.tsx:208, :237). packages/features/content-analytics/__tests__/signal-surface-dom.test.tsx \"renders every recommendation beside its evidence block\"; on the page no recommendation lacks a sibling evidence block (apps/e2e/tests/analytics/signal-surface-evidence.spec.ts). #550"
   - text: "Comparables are navigable links, not counts"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "Both comparable sets and the peer table render VideoLink, an <a> that opens that video's own signals (packages/features/content-analytics/src/components/signal-surface/video-link.tsx:29), plus its platform link when known. packages/features/content-analytics/__tests__/signal-surface-dom.test.tsx \"lists both comparable sets as links, and the evidence level\"; on the page clicking a comparable switches the surface to that video (apps/e2e/tests/analytics/signal-surface-evidence.spec.ts). #550"
   - text: "Claim strength is distinguishable in the wording"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "claimSentence (packages/features/content-analytics/src/lib/signal-surface.ts:515) fills FILM-1717's CLAIM_WORDING per strength, beside a strength badge. packages/features/content-analytics/__tests__/signal-surface.test.ts \"reads differently for each strength\". On the page: \"Changing to result first: yes increased attention (concluded Change log entry, …)\" and \"Among comparable videos, result first: no is associated with 0.97x attention\". #550"
   - text: "A causal claim renders only beside the concluded Change log entry (FILM-1610) or concluded channel experiment (FILM-1724) that backs it, and says which kind"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "A causal finding renders genome-backing with data-backing-kind, and its claim sentence names the backing (backingSentence, packages/features/content-analytics/src/lib/signal-surface.ts:503); a causal claim exists only when FILM-1717's applyLinkedTests found a concluded test. packages/features/content-analytics/__tests__/signal-surface-dom.test.tsx \"words each strength differently, and a causal claim only beside its test\"; on the page one causal finding, data-backing-kind change_log (apps/e2e/tests/analytics/signal-surface-evidence.spec.ts). #550"
   - text: "All depths are keyboard-reachable and present in the DOM for browser find"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "FindableDisclosure (packages/features/content-analytics/src/components/signal-surface/../findable-disclosure.tsx:46) keeps the region in the DOM with hidden=\"until-found\" and opens on beforematch; its trigger is a Radix button. packages/features/content-analytics/__tests__/signal-surface-dom.test.tsx \"keeps every depth in the DOM while closed, and flips aria-expanded\" and \"is reachable from the keyboard: every trigger is a button\"; on the page Enter on the measure trigger flips aria-expanded (apps/e2e/tests/analytics/signal-surface-evidence.spec.ts). #550"
   - text: "Depth 3 names the provider field and ingestion path"
-    met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited"
+    met: true
+    evidence: "The Raw disclosure renders the stage's MetricProvenance: provider fields (packages/features/content-analytics/src/components/signal-surface/stage-detail.tsx:256) and ingestion path (:272), with the 20 peer rows it was compared against (apps/e2e/tests/analytics/signal-surface-evidence.spec.ts). #550"
   - text: "engagedViews backs any YouTube series crossing 2026-08-27"
     met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited (moved here from FILM-1713: the module proves it, the surfaces are held until this spec, owner ruling 2026-09-22)"
+    reason: "Not switched. The stage rates come from querySegmentVideoMeasures, which divides by views; reading engaged_views across 2026-08-27 changes the figures the 2026-09-22 ruling holds, and needs that query changed, which this spec does not do (no new query). The module side is FILM-1713's computeMeasure, already bridged"
   - text: "A chart crossing a view-definition boundary marks it rather than drawing a step change"
     met: true
     evidence: "Built by FILM-1707 (#528), which FILM-1722 §12 named alongside this spec: packages/features/content-analytics/src/lib/view-definition-marks.ts, drawn by every mounted views-over-time chart (FILM-1707 §9)"
   - text: "No rate is computed without recording which denominator definition it used"
     met: false
-    reason: "not yet implemented — spec status is DRAFT, unaudited (moved here from FILM-1722 and FILM-1713: the registry can stamp the definition, no surface does)"
+    reason: "Not met. The surface shows share_rate, comment_rate and subscriber_conversion, each over views, without recording which view definition. Rate denominator records are FILM-1732's (owner, 2026-10-02); #549 extends FILM-1713's DenominatorStamp to carry it, and this surface adopts that rather than defining a second shape"
 open_questions: []
+remaining:
+  - criterion: "engagedViews backs any YouTube series crossing 2026-08-27"
+    reason: "Switching the stage rates to engaged views changes figures the owner's 2026-09-22 ruling holds, and needs querySegmentVideoMeasures to read engaged_views across the change. FILM-1732 says switching stays here; no one is building it yet"
+    closed_by: "unassigned"
+  - criterion: "No rate is computed without recording which denominator definition it used"
+    reason: "The stage rates are not stamped. FILM-1732 owns the record shape and stamps the reads"
+    closed_by: "FILM-1732"
 feature:
   database: null
   queries: []
-  actions: []
-  ui: []
+  actions:
+    - "getSignalSurfaceAction (packages/features/content-analytics/src/server/signal-surface-actions.ts)"
+  ui:
+    - "SignalSurface, opened from the Video Log's Signals button (packages/features/content-analytics/src/components/signal-surface/)"
   provider_integration: null
 notes: |
   ## Overview
@@ -230,3 +239,39 @@ notes: |
   the one it replaces — which would defeat the design half of this phase.
   The three-depth split is the mitigation, and depth 1 must stay genuinely
   scannable: one strip, one sentence.
+
+  ## As built (2026-10-02, #550)
+
+  The Video Log's Signals button opens the surface for one video, at a
+  checkpoint the video is old enough for (7, 30 or 90 days). One action,
+  `getSignalSurfaceAction`, composes existing reads and adds no query:
+  FILM-1715's `queryVideoBenchmark` for the subject's metadata and whether
+  the checkpoint can be judged, FILM-1714's `stageReadings`, FILM-1717's
+  `querySegmentVideoMeasures` for each stage's figure on every video of the
+  channel, `benchmarkVideoAgainstCohort` over those, FILM-1718's
+  `diagnoseStages`, and FILM-1717's genome analysis per stage. Pure
+  decisions live in `src/lib/signal-surface.ts`.
+
+  Six stages, not five: FILM-1726 added Monetisation, and the strip reads
+  `stageReadings`, so it renders six. "The five empty states" are the five
+  kinds of cell; there is a sixth stage, not a sixth state.
+
+  Limits, recorded rather than hidden:
+
+  - Language is never held for stage peers. The segment measures carry no
+    language, so every stage comparison is across all languages and says
+    so (`relaxedAxes` always includes `language`). The 24-month window
+    widens to 48 only when 24 holds too few peers, and says so.
+  - Hook on a Short (first_3s_retention) and Monetisation have no
+    per-video checkpoint reading, so they render dark with that reason.
+    Instagram and Facebook stages are measurable but have no segment
+    measure yet, so they render dark the same way. The cell says which gap
+    it is; FILM-1718's coverage sentence calls both "not collected yet".
+  - Building it found KB-173: `queryVideoBenchmark` failed whenever its
+    scope named the account, which this surface is the first to do.
+
+  Evidence: `__tests__/signal-surface.test.ts` (13),
+  `__tests__/signal-surface-dom.test.tsx` (11, the spec's DOM assertions),
+  and `apps/e2e/tests/analytics/signal-surface-evidence.spec.ts` against
+  local ClickHouse with the spec's fixture on one screen
+  (`CLICKHOUSE_EVIDENCE=1`).

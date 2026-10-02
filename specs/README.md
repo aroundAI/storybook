@@ -69,7 +69,8 @@ specs/
 ├── phase-15-deep-analytics/       # Analytics discipline
 ├── phase-16-workbook-parity/      # Workbook parity
 ├── phase-17-analytics-provenance/ # Provenance and signal
-└── phase-18-local-vendor-sandbox/ # Local vendor sandbox
+├── phase-18-local-vendor-sandbox/ # Local vendor sandbox
+└── phase-19-dual-ai-mcp/          # Gemini in the app, Claude over MCP
 ```
 
 Every phase folder's own subdirectories (`database/`, `components/`,

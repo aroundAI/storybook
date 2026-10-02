@@ -1,0 +1,102 @@
+spec_id: "FILM-1902"
+title: "Model Gateway: one door to every AI model"
+phase: 19
+phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
+category: package
+status: DRAFT
+effort: L
+dependencies:
+  - spec_id: "FILM-1901"
+    note: "the stage registry is what the gateway's call sites must equal"
+  - spec_id: "FILM-1903"
+    note: "run.write() and run.dispatch() live on the run handle; build the two together"
+summary: >
+  Makes it impossible to reach a model without going through a generation run,
+  and makes the run, not the caller, decide who writes. A new package,
+  @kit/ai-gateway, holds the server writer and is the only package allowed to
+  import @kit/llm or a model SDK; business code gets output from
+  run.write(part), and the run's mode resolves the writer (Gemini in server
+  mode, "wait for the agent's submission" in external mode). The owner's
+  requirement, 2026-10-02: no dangling entry points, and a future developer who
+  forgets the external path must not open a hole where Claude-driven work
+  triggers Gemini. This spec turns that into build-time, run-time and
+  database-time refusals, and deletes every model call site that has no caller.
+  Design: the EDD's "6. One door to AI models"
+  (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
+acceptance_criteria:
+  - text: "@kit/ai-gateway exists and is the only workspace package that depends on @kit/llm, @google/genai, openai, @anthropic-ai/sdk or the Voyage client"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "@kit/llm's public entry stops exporting the providers, createLLMClient and executeLLM; executeLLM and executeLLMForLambda move behind the gateway"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "An ESLint no-restricted-imports rule and a dependency-cruiser rule in the fast lane fail any import of @kit/llm or a model SDK outside packages/ai-gateway; each is proven red on a planted import"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "A CI grep fails on a raw request to generativelanguage.googleapis.com, aiplatform.googleapis.com, api.openai.com, api.anthropic.com or api.voyageai.com outside the gateway and apps/vendor-sandbox (FILM-1801's resolver hosts included)"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "The @kit/agent runner (packages/agent/src/runner.ts) no longer calls a provider itself; it takes a write function from the run"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "The server writer refuses before any model call unless its run is mode 'server' and open (status briefed or in_progress, lease not expired), with LLM_FORBIDDEN_EXTERNAL_RUN"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Every model call writes llm_usage_analytics with its run_id"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Deleted, with no remaining import: packages/features/episodes/src/server/continuity-actions.ts and the ContinuityChecker component; packages/features/episodes/src/server/news-actions.ts and the anchor, producer, entity-extractor and news-story services; packages/features/episodes/src/lib/canon/act-context-bridge.ts; packages/features/episodes/src/server/agent-story-generation.ts; packages/features/assets/src/lib/element-prompt/llm-generator.ts; packages/features/audio-generation/src/lib/audio-embedding.ts; packages/llm/src/transcription.ts"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "A test asserts the set of stages that reach run.write() equals the stage registry: no model call outside a registered stage"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "A matrix test runs every registered stage in both modes against fixtures (server mode against the FILM-1803 AI sandbox, external mode with a submitted fixture) and asserts zero llm_usage_analytics rows for external runs"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+test_plan:
+  unit:
+    - {text: "run.write() on an external run never reaches the server writer; on a server run, it does once per part", met: false, reason: "not met — no test yet"}
+    - {text: "The server writer throws LLM_FORBIDDEN_EXTERNAL_RUN for an external, expired or cancelled run", met: false, reason: "not met — no test yet"}
+  integration:
+    - {text: "Lint and dependency-cruiser fail a planted `import { createLLMClient } from '@kit/llm'` in packages/features/episodes (red), pass once removed (green)", met: false, reason: "not met — no test yet"}
+  e2e: []
+open_questions: []
+notes: |
+  ## Every live path to a model today (audit 2026-10-02) and where it goes
+
+  | # | Triggered by | Code path | After this spec |
+  |---|---|---|---|
+  | 1 | Season outline | worker season-outline, Season Orchestrator | stage season_outline |
+  | 2 | Season analysis | worker season-analysis | stage season_analysis |
+  | 3 | Ideation page | worker story-ideation, Ideation Orchestrator | stage ideation |
+  | 4 | Story page, bulk actions | worker story-generation, Story Orchestrator | stage story |
+  | 5 | Story canon step | apps/web/lambda/llm-worker/utils/commit-story-canon.ts:424 | facts in the story output |
+  | 6 | Story refine | worker story-refinement | stage story_refinement |
+  | 7 | Screenplay page | worker screenplay-conversion, Screenplay Orchestrator | stage screenplay |
+  | 8 | Screenplay refine | worker screenplay-refinement | stage screenplay_refinement |
+  | 9 | Visual studio | worker shot-generation, Shot Orchestrator | stage shots |
+  | 10 | After shots, audio studio | worker audio-cue-generation | stage audio_cues |
+  | 11 | Audio studio translate | worker translate-dialogue | stage dialogue_translation |
+  | 12 | Asset creation | worker asset-creation | stage asset_description |
+  | 13 | Research upload | worker fact-extraction | stage fact_extraction |
+  | 14 | Publish metadata translate | worker batch-translate-metadata | stage publish_metadata |
+  | 15 | Analytics insights | worker analytics-insights | server only, through the gateway |
+  | 16 | Language insights | worker language-insights | server only, through the gateway |
+  | 17 | Publish page episode summary | canon-actions.ts:1479 (synchronous) | stage episode_summary |
+  | 18 | Sidebar extract description | asset-link-actions.ts:83 (synchronous) | stage asset_description |
+  | 19 | Story/ideation context | apps/web/lambda/llm-worker/utils/voyage-embedder.ts | gateway embedder; prepare reads stored episode_embeddings only in external mode |
+
+  ## Why build-time first
+
+  A runtime guard is correct only while every developer remembers it. The
+  import boundary means a new feature that wants a model cannot compile
+  without going through the gateway, and the gateway's only input is a run;
+  a run only exists for a registered stage, and registering a stage gives it
+  the external path for free (FILM-1908's generic tools). Forgetting the
+  external path therefore fails the matrix test instead of shipping a hole.
+package:
+  package_name: "@kit/ai-gateway"
+  path: "packages/ai-gateway/"
+  exports: ["createServerWriter", "createExternalWriter", "resolveWriter", "embedForServerRun"]
+  package_dependencies: ["@kit/llm", "@kit/generation", "@kit/supabase"]
