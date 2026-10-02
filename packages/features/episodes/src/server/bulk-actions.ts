@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { enhanceAction } from '@kit/next/actions';
 import { authorizeEpisodeTargets } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
+import type { Database } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -17,6 +18,55 @@ interface BatchQueueResult {
   success: true;
   queued: number;
   failed: Array<{ episodeId: string; error: string }>;
+}
+
+interface PendingJob {
+  episodeId: string;
+  send: () => Promise<unknown>;
+}
+
+/**
+ * Records the generation_jobs rows, then queues their SQS jobs. The worker
+ * updates each row by (episode, job_type, status = queued) and the UI reads
+ * it for progress, status and cost, so the row must exist before the message
+ * can be consumed, and a row that cannot be written fails its episodes as a
+ * value and queues nothing. KB-174: the 'asset_creation' row was refused by
+ * the job_type CHECK, logged at warn, and the work ran with no record.
+ */
+async function recordJobsThenQueue(
+  client: ReturnType<typeof getSupabaseServerClient<Database>>,
+  jobEntries: Array<Record<string, unknown>>,
+  pending: PendingJob[],
+  failed: BatchQueueResult['failed'],
+): Promise<number> {
+  if (jobEntries.length === 0) return 0;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: jobError } = await (client as any)
+    .from('generation_jobs')
+    .insert(jobEntries);
+
+  if (jobError) {
+    const error = `Could not record the generation job: ${jobError.message}`;
+    for (const job of pending) {
+      failed.push({ episodeId: job.episodeId, error });
+    }
+    return 0;
+  }
+
+  let queued = 0;
+  for (const job of pending) {
+    try {
+      await job.send();
+      queued++;
+    } catch (err) {
+      failed.push({
+        episodeId: job.episodeId,
+        error: err instanceof Error ? err.message : 'Queue failed',
+      });
+    }
+  }
+  return queued;
 }
 
 // ─── Schemas ────────────────────────────────────────────────────────────────
@@ -177,7 +227,7 @@ export const batchGenerateStoriesAction = enhanceAction(
     const { queueLlmJob } = await import('@kit/prompt-engine/server');
     const failed: BatchQueueResult['failed'] = [];
     const jobEntries: Array<Record<string, unknown>> = [];
-    let queued = 0;
+    const pending: PendingJob[] = [];
 
     for (const ep of data.episodes) {
       const target = allowed.get(ep.episodeId);
@@ -216,48 +266,37 @@ export const batchGenerateStoriesAction = enhanceAction(
         input_data: { episodeId: ep.episodeId, title: ep.title },
       });
 
-      try {
-        await queueLlmJob({
-          jobType: 'story-generation',
-          userId: user.id,
-          target,
-          payload: {
-            episodeId: ep.episodeId,
-            title: ep.title,
-            logline: ep.logline,
-            targetDuration: ep.targetDuration,
-            contentStyle: ep.contentStyle,
-            version: ep.version,
-            accountId,
+      pending.push({
+        episodeId: ep.episodeId,
+        send: () =>
+          queueLlmJob({
+            jobType: 'story-generation',
             userId: user.id,
-            projectId: episode.project_id as string,
-            themes: ep.themes,
-            hook: ep.hook,
-            visualDirection: ep.visualDirection,
-          },
-        });
-        queued++;
-      } catch (err) {
-        failed.push({
-          episodeId: ep.episodeId,
-          error: err instanceof Error ? err.message : 'Queue failed',
-        });
-      }
+            target,
+            payload: {
+              episodeId: ep.episodeId,
+              title: ep.title,
+              logline: ep.logline,
+              targetDuration: ep.targetDuration,
+              contentStyle: ep.contentStyle,
+              version: ep.version,
+              accountId,
+              userId: user.id,
+              projectId: episode.project_id as string,
+              themes: ep.themes,
+              hook: ep.hook,
+              visualDirection: ep.visualDirection,
+            },
+          }),
+      });
     }
 
-    // Batch-insert generation job entries (non-blocking)
-    if (jobEntries.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: jobError } = await (client as any)
-        .from('generation_jobs')
-        .insert(jobEntries);
-      if (jobError) {
-        logger.warn(
-          { ...ctx, error: jobError },
-          'Failed to batch-create generation jobs',
-        );
-      }
-    }
+    const queued = await recordJobsThenQueue(
+      client,
+      jobEntries,
+      pending,
+      failed,
+    );
 
     logger.info(
       { ...ctx, queued, failed: failed.length },
@@ -306,7 +345,7 @@ export const batchConvertScreenplaysAction = enhanceAction(
     const { queueLlmJob } = await import('@kit/prompt-engine/server');
     const failed: BatchQueueResult['failed'] = [];
     const jobEntries: Array<Record<string, unknown>> = [];
-    let queued = 0;
+    const pending: PendingJob[] = [];
 
     for (const ep of data.episodes) {
       const target = allowed.get(ep.episodeId);
@@ -351,42 +390,32 @@ export const batchConvertScreenplaysAction = enhanceAction(
         input_data: { episodeId: ep.episodeId },
       });
 
-      try {
-        await queueLlmJob({
-          jobType: 'screenplay-conversion',
-          userId: user.id,
-          target,
-          payload: {
-            episodeId: ep.episodeId,
-            dialogueStyle: ep.dialogueStyle,
-            contentStyle: ep.contentStyle,
-            version: episode.version as number,
-            accountId,
+      pending.push({
+        episodeId: ep.episodeId,
+        send: () =>
+          queueLlmJob({
+            jobType: 'screenplay-conversion',
             userId: user.id,
-            projectId: episode.project_id as string,
-          },
-        });
-        queued++;
-      } catch (err) {
-        failed.push({
-          episodeId: ep.episodeId,
-          error: err instanceof Error ? err.message : 'Queue failed',
-        });
-      }
+            target,
+            payload: {
+              episodeId: ep.episodeId,
+              dialogueStyle: ep.dialogueStyle,
+              contentStyle: ep.contentStyle,
+              version: episode.version as number,
+              accountId,
+              userId: user.id,
+              projectId: episode.project_id as string,
+            },
+          }),
+      });
     }
 
-    if (jobEntries.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: jobError } = await (client as any)
-        .from('generation_jobs')
-        .insert(jobEntries);
-      if (jobError) {
-        logger.warn(
-          { ...ctx, error: jobError },
-          'Failed to batch-create generation jobs',
-        );
-      }
-    }
+    const queued = await recordJobsThenQueue(
+      client,
+      jobEntries,
+      pending,
+      failed,
+    );
 
     logger.info(
       { ...ctx, queued, failed: failed.length },
@@ -439,7 +468,7 @@ export const batchGenerateShotsAction = enhanceAction(
     const { queueLlmJob } = await import('@kit/prompt-engine/server');
     const failed: BatchQueueResult['failed'] = [];
     const jobEntries: Array<Record<string, unknown>> = [];
-    let queued = 0;
+    const pending: PendingJob[] = [];
 
     for (const ep of data.episodes) {
       const target = allowed.get(ep.episodeId);
@@ -473,40 +502,30 @@ export const batchGenerateShotsAction = enhanceAction(
         input_data: { episodeId: ep.episodeId },
       });
 
-      try {
-        await queueLlmJob({
-          jobType: 'shot-generation',
-          userId: user.id,
-          target,
-          payload: {
-            episodeId: ep.episodeId,
-            version: episode.version as number,
-            accountId,
+      pending.push({
+        episodeId: ep.episodeId,
+        send: () =>
+          queueLlmJob({
+            jobType: 'shot-generation',
             userId: user.id,
-            projectId: episode.project_id as string,
-          },
-        });
-        queued++;
-      } catch (err) {
-        failed.push({
-          episodeId: ep.episodeId,
-          error: err instanceof Error ? err.message : 'Queue failed',
-        });
-      }
+            target,
+            payload: {
+              episodeId: ep.episodeId,
+              version: episode.version as number,
+              accountId,
+              userId: user.id,
+              projectId: episode.project_id as string,
+            },
+          }),
+      });
     }
 
-    if (jobEntries.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: jobError } = await (client as any)
-        .from('generation_jobs')
-        .insert(jobEntries);
-      if (jobError) {
-        logger.warn(
-          { ...ctx, error: jobError },
-          'Failed to batch-create generation jobs',
-        );
-      }
-    }
+    const queued = await recordJobsThenQueue(
+      client,
+      jobEntries,
+      pending,
+      failed,
+    );
 
     logger.info(
       { ...ctx, queued, failed: failed.length },
@@ -570,7 +589,7 @@ export const batchCreateAssetsAction = enhanceAction(
     const { queueLlmJob } = await import('@kit/prompt-engine/server');
     const failed: BatchQueueResult['failed'] = [];
     const jobEntries: Array<Record<string, unknown>> = [];
-    let queued = 0;
+    const pending: PendingJob[] = [];
 
     for (const ep of data.episodes) {
       const target = allowed.get(ep.episodeId);
@@ -615,39 +634,29 @@ export const batchCreateAssetsAction = enhanceAction(
         input_data: { episodeId: ep.episodeId, projectId: data.projectId },
       });
 
-      try {
-        await queueLlmJob({
-          jobType: 'asset-creation',
-          userId: user.id,
-          target,
-          payload: {
-            episodeId: ep.episodeId,
-            projectId: data.projectId,
-            accountId,
+      pending.push({
+        episodeId: ep.episodeId,
+        send: () =>
+          queueLlmJob({
+            jobType: 'asset-creation',
             userId: user.id,
-          },
-        });
-        queued++;
-      } catch (err) {
-        failed.push({
-          episodeId: ep.episodeId,
-          error: err instanceof Error ? err.message : 'Queue failed',
-        });
-      }
+            target,
+            payload: {
+              episodeId: ep.episodeId,
+              projectId: data.projectId,
+              accountId,
+              userId: user.id,
+            },
+          }),
+      });
     }
 
-    if (jobEntries.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: jobError } = await (client as any)
-        .from('generation_jobs')
-        .insert(jobEntries);
-      if (jobError) {
-        logger.warn(
-          { ...ctx, error: jobError },
-          'Failed to batch-create generation jobs',
-        );
-      }
-    }
+    const queued = await recordJobsThenQueue(
+      client,
+      jobEntries,
+      pending,
+      failed,
+    );
 
     logger.info(
       { ...ctx, queued, failed: failed.length },

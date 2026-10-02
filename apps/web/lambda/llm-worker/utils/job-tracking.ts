@@ -8,20 +8,13 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { GenerationJobType } from '@kit/prompt-engine/generation-job-types';
 import type { Database } from '@kit/supabase/database';
 
-// The job types the worker tracks. Each must be allowed by the
-// generation_jobs_job_type_check constraint (latest:
-// 20260923025438_generation_jobs_refinement_job_types.sql), or every
-// update below matches no row.
-export type GenerationJobType =
-  | 'story'
-  | 'story-refinement'
-  | 'screenplay'
-  | 'screenplay-refinement'
-  | 'shot_list'
-  | 'translate-dialogue'
-  | 'audio_cue_generation';
+// The job types the worker may track: the generation_jobs_job_type_check
+// list, held to the migration by prompt-engine's generation-job-types.test.ts
+// (KB-174). A value outside it would make every update below match no row.
+export type { GenerationJobType };
 
 export type GenerationJobStatus =
   | 'queued'
