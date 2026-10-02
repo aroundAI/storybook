@@ -1,5 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import type {
+  AudioCueGenerationOutput,
+  FactExtractionOutput,
+} from '@kit/prompt-engine/schemas';
+
 import {
   StageOutputRejected,
   audioCuesStage,
@@ -12,11 +17,6 @@ import {
   singlePart,
 } from '../src';
 import { recordingClient, tableResponder } from '../src/testing';
-import type {
-  AudioCueGenerationOutput,
-  FactExtractionOutput,
-} from '@kit/prompt-engine/schemas';
-
 import type { PartSpec } from '../src/types';
 import audioOld from './fixtures/audio-cues-old-writes.json';
 import summaryFixture from './fixtures/episode-summary-fixture.json';
@@ -132,7 +132,10 @@ describe('shots stage', () => {
       previous_scene_summary: '',
     });
     expect(scene.outputSchema).toMatchObject({
-      properties: { kind: { const: 'scene' }, sceneNumber: { type: 'integer' } },
+      properties: {
+        kind: { const: 'scene' },
+        sceneNumber: { type: 'integer' },
+      },
     });
     expect(scene.constraints).toMatchObject({
       sceneNumber: 2,
@@ -175,12 +178,15 @@ describe('shots stage', () => {
       (w) => !(w.table === 'generation_jobs' && w.op === 'insert'),
     );
 
-    expect(comparable(recording.writes())).toEqual(comparable(oldWrites as never));
+    expect(comparable(recording.writes())).toEqual(
+      comparable(oldWrites as never),
+    );
 
     const inserted = recording
       .writes()
-      .find((w) => w.table === 'shots' && w.op === 'insert')!
-      .payload as Array<Record<string, unknown>>;
+      .find((w) => w.table === 'shots' && w.op === 'insert')!.payload as Array<
+      Record<string, unknown>
+    >;
 
     expect(
       inserted.map((r) => [r.scene_number, r.shot_number, r.sequence_number]),
@@ -231,8 +237,9 @@ describe('shots stage', () => {
 
     const inserted = recording
       .writes()
-      .find((w) => w.table === 'shots' && w.op === 'insert')!
-      .payload as Array<Record<string, unknown>>;
+      .find((w) => w.table === 'shots' && w.op === 'insert')!.payload as Array<
+      Record<string, unknown>
+    >;
 
     expect(inserted.every((r) => r.generation_origin)).toBe(true);
     expect(inserted[0]!.generation_origin).toMatchObject({
@@ -358,12 +365,19 @@ describe('shots stage', () => {
 
       expect(
         codes(
-          await shotsStage.check(ctx(), shotsTarget, scene1 as never, scenePart(2)),
+          await shotsStage.check(
+            ctx(),
+            shotsTarget,
+            scene1 as never,
+            scenePart(2),
+          ),
         ),
       ).toEqual([['sceneNumber', 'wrong_scene']]);
 
       expect(
-        codes(await shotsStage.check(ctx(), shotsTarget, scene1 as never, reelPart)),
+        codes(
+          await shotsStage.check(ctx(), shotsTarget, scene1 as never, reelPart),
+        ),
       ).toEqual([['kind', 'wrong_part']]);
     });
 
@@ -393,7 +407,10 @@ describe('shots stage', () => {
     it('is what the runner enforces: a bad scene fails the stage and the job', async () => {
       const recording = shotsClient();
       const outputs = shotsPartOutputs();
-      outputs.set('scene:2', { ...(outputs.get('scene:2') as object), shots: [] });
+      outputs.set('scene:2', {
+        ...(outputs.get('scene:2') as object),
+        shots: [],
+      });
 
       await expect(
         runStage(shotsStage, ctxFor(recording.client), shotsTarget, {
@@ -421,7 +438,10 @@ describe('audio_cues stage', () => {
   }
 
   it('has one part per scene of the shot list, sceneless shots last as their own part', async () => {
-    const parts = await audioCuesStage.parts(ctxFor(audioClient().client), target);
+    const parts = await audioCuesStage.parts(
+      ctxFor(audioClient().client),
+      target,
+    );
 
     expect(parts.map((p) => [p.key, p.label])).toEqual([
       ['scene:1', 'Scene 1'],
@@ -431,7 +451,10 @@ describe('audio_cues stage', () => {
   });
 
   it('renders the audio prompt for one scene with every variable filled', async () => {
-    const parts = await audioCuesStage.parts(ctxFor(audioClient().client), target);
+    const parts = await audioCuesStage.parts(
+      ctxFor(audioClient().client),
+      target,
+    );
     const brief = await audioCuesStage.prepare(
       ctxFor(audioClient().client),
       target,
@@ -477,7 +500,12 @@ describe('audio_cues stage', () => {
   });
 
   describe('check()', () => {
-    const part = (key: string): PartSpec => ({ key, index: 0, total: 3, label: key });
+    const part = (key: string): PartSpec => ({
+      key,
+      index: 0,
+      total: 3,
+      label: key,
+    });
     const cue = {
       ...audioFixture.cues[0]!,
       startShotSequence: 1,
@@ -539,7 +567,9 @@ describe('fact_extraction stage', () => {
 
     expect(brief.prompt.slug).toBe('fact-extraction');
     expect(brief.instructions).not.toMatch(NO_TEMPLATE_VARIABLE);
-    expect(brief.instructions).toContain('**Source Citation**: Environment Agency, 2019');
+    expect(brief.instructions).toContain(
+      '**Source Citation**: Environment Agency, 2019',
+    );
     expect(brief.instructions).not.toContain('```ignore');
     expect(brief.instructions).toContain('The Thames Barrier opened in 1982.');
     expect(brief.constraints).toMatchObject({ maxFacts: 30 });
@@ -574,7 +604,10 @@ describe('fact_extraction stage', () => {
       { generate: async () => ({ output: { facts: [] } }) },
     );
 
-    expect(commit).toMatchObject({ status: 'skipped', data: { extractedCount: 0 } });
+    expect(commit).toMatchObject({
+      status: 'skipped',
+      data: { extractedCount: 0 },
+    });
     expect(recording.writes()).toEqual([]);
   });
 
@@ -590,7 +623,11 @@ describe('fact_extraction stage', () => {
         singlePart('facts', 'Facts'),
       ),
     ).toEqual([
-      { path: 'facts.0.claim', code: 'empty_claim', message: 'A fact needs a claim' },
+      {
+        path: 'facts.0.claim',
+        code: 'empty_claim',
+        message: 'A fact needs a claim',
+      },
     ]);
 
     const bad = checkWithSchema(factExtractionStage.outputSchema, {
@@ -628,7 +665,9 @@ describe('episode_summary stage', () => {
     expect(brief.prompt.slug).toBe('canon-extraction');
     expect(brief.prompt.variables).toEqual(summaryOld.executeLLM.variables);
     expect(brief.instructions).not.toMatch(NO_TEMPLATE_VARIABLE);
-    expect(brief.instructions).toContain('- "The Missing Report" (mystery, open)');
+    expect(brief.instructions).toContain(
+      '- "The Missing Report" (mystery, open)',
+    );
   });
 
   it('returns the extraction the action returned, and writes nothing: the canon write stays behind review', async () => {
@@ -658,7 +697,9 @@ describe('episode_summary stage', () => {
         {
           extraction: {
             ...extraction,
-            immutableEvents: [{ ...extraction.immutableEvents[0]!, eventKey: '' }],
+            immutableEvents: [
+              { ...extraction.immutableEvents[0]!, eventKey: '' },
+            ],
           },
         } as never,
         singlePart('extraction', 'Extraction'),

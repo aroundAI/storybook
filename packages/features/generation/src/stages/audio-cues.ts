@@ -19,12 +19,7 @@ import { sanitizeStrings } from '@kit/shared/prompt-sanitiser';
 import { type PromptFile, buildBrief } from '../brief';
 import { markJobCompleted } from '../jobs';
 import { registerStage } from '../registry';
-import type {
-  CheckError,
-  Ctx,
-  PartSpec,
-  StageDefinition,
-} from '../types';
+import type { CheckError, Ctx, PartSpec, StageDefinition } from '../types';
 import { logTo, memoPerCtx } from './memo';
 
 export const AudioCuesTargetSchema = z.object({
@@ -225,7 +220,10 @@ export function buildAudioCueRows(
       scene_number: episode.sceneOf.get(cue.startShotSequence) ?? null,
       cue_type: cue.type,
       prompt: cue.prompt,
-      start_offset_seconds: Math.max(0, shotStart + (cue.startOffsetInShot || 0)),
+      start_offset_seconds: Math.max(
+        0,
+        shotStart + (cue.startOffsetInShot || 0),
+      ),
       duration_seconds: cue.durationSeconds,
       is_loopable: cue.type === 'ambient',
       status: 'pending',
@@ -316,7 +314,10 @@ export const audioCuesStage: StageDefinition<
           code: 'unknown_shot',
           message: `Shot ${cue.startShotSequence} is not in ${part.label} (shots ${[...durations.keys()].join(', ')})`,
         });
-      } else if (cue.startOffsetInShot < 0 || cue.startOffsetInShot > shotDuration) {
+      } else if (
+        cue.startOffsetInShot < 0 ||
+        cue.startOffsetInShot > shotDuration
+      ) {
         errors.push({
           path: `${at}.startOffsetInShot`,
           code: 'offset_outside_shot',
@@ -356,7 +357,9 @@ export const audioCuesStage: StageDefinition<
 
     if (rows.length > 0) {
       const stamped = ctx.originColumnsAvailable
-        ? rows.map((row) => ({ ...row, generation_origin: run.origin }) as AudioCueRow)
+        ? rows.map(
+            (row) => ({ ...row, generation_origin: run.origin }) as AudioCueRow,
+          )
         : rows;
 
       const { error } = await ctx.client.from('audio_cues').insert(stamped);

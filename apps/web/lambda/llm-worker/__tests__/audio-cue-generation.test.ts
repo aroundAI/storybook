@@ -2,8 +2,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { recordingClient, tableResponder } from '@kit/generation/testing';
 
-import audioOld from '../../../../../packages/features/generation/__tests__/fixtures/audio-cues-old-writes.json';
 import fixture from '../../../../../packages/features/generation/__tests__/fixtures/audio-cues-fixture.json';
+import audioOld from '../../../../../packages/features/generation/__tests__/fixtures/audio-cues-old-writes.json';
 import {
   cuesByPart,
   processAudioCueGeneration,
@@ -60,7 +60,10 @@ describe('processAudioCueGeneration', () => {
   it('writes the rows the old handler wrote: a sceneless cue with no scene (KB-92), the cue on a missing shot dropped', async () => {
     const recording = pagedShots(fixture.shots);
 
-    const result = await processAudioCueGeneration(fixture.ids, recording.client);
+    const result = await processAudioCueGeneration(
+      fixture.ids,
+      recording.client,
+    );
 
     expect(result).toEqual({ success: true, cuesCreated: 4 });
     expect(orchestratorInputs).toHaveLength(1);
@@ -73,11 +76,8 @@ describe('processAudioCueGeneration', () => {
 
     expect(sorted(recording.writes())).toEqual(sorted(audioOld.writes));
 
-    const inserted = recording
-      .writes()
-      .find((w) => w.table === 'audio_cues')!.payload as Array<
-      Record<string, unknown>
-    >;
+    const inserted = recording.writes().find((w) => w.table === 'audio_cues')!
+      .payload as Array<Record<string, unknown>>;
 
     expect(inserted.map((row) => [row.prompt, row.scene_number])).toEqual([
       ['Quiet office atmosphere, air conditioning hum', 1],
@@ -89,7 +89,9 @@ describe('processAudioCueGeneration', () => {
 
   it('fails the job, with the part and the field, when the orchestrator names a cue type the prompt does not define', async () => {
     const recording = pagedShots(fixture.shots);
-    const orchestrator = await import('@kit/episodes/agent/audio-cue-orchestrator');
+    const orchestrator = await import(
+      '@kit/episodes/agent/audio-cue-orchestrator'
+    );
     const spy = vi
       .spyOn(orchestrator, 'runAudioCueOrchestrator')
       .mockResolvedValueOnce({
@@ -100,7 +102,9 @@ describe('processAudioCueGeneration', () => {
 
     await expect(
       processAudioCueGeneration(fixture.ids, recording.client),
-    ).rejects.toThrow(/audio_cues output for part scene:1 rejected: cues\.0\.type invalid_enum_value/);
+    ).rejects.toThrow(
+      /audio_cues output for part scene:1 rejected: cues\.0\.type invalid_enum_value/,
+    );
 
     expect(recording.writes().map((w) => [w.table, w.op])).toEqual([
       ['generation_jobs', 'update'],
@@ -114,8 +118,18 @@ describe('processAudioCueGeneration', () => {
 
 describe('cuesByPart', () => {
   const groups = [
-    { partKey: 'scene:1', sceneNumber: 1, shotSequences: [1, 2], durationSeconds: 11 },
-    { partKey: 'scene:none', sceneNumber: null, shotSequences: [4], durationSeconds: 4 },
+    {
+      partKey: 'scene:1',
+      sceneNumber: 1,
+      shotSequences: [1, 2],
+      durationSeconds: 11,
+    },
+    {
+      partKey: 'scene:none',
+      sceneNumber: null,
+      shotSequences: [4],
+      durationSeconds: 4,
+    },
   ];
 
   it('files each cue under the scene of its first shot and drops one on a shot the episode lacks', () => {

@@ -28,7 +28,10 @@ import {
   type ContentStyle,
   calculateContentScaling,
 } from '@kit/shared/duration-scaling';
-import { sanitizeForPrompt, sanitizeStrings } from '@kit/shared/prompt-sanitiser';
+import {
+  sanitizeForPrompt,
+  sanitizeStrings,
+} from '@kit/shared/prompt-sanitiser';
 import { whyNoRow } from '@kit/shared/rows';
 import type { Json } from '@kit/supabase/database';
 
@@ -83,12 +86,11 @@ export const ReelScoutPartOutputSchema = ReelScoutOutputSchema.extend({
   kind: z.literal('reel_scout'),
 });
 
-export const SceneShotsPartOutputSchema = SceneShotGenerationOutputSchema.extend(
-  {
+export const SceneShotsPartOutputSchema =
+  SceneShotGenerationOutputSchema.extend({
     kind: z.literal('scene'),
     sceneNumber: z.number().int().positive(),
-  },
-);
+  });
 
 export const ShotsPartOutputSchema = z.discriminatedUnion('kind', [
   ReelScoutPartOutputSchema,
@@ -221,7 +223,8 @@ export function loadShotsEpisode(
     const scaling = calculateContentScaling({
       targetDurationSeconds:
         episode.target_duration_seconds || storyData.targetDuration || 300,
-      contentStyle: (storyData.contentStyle ?? 'dialogue-heavy') as ContentStyle,
+      contentStyle: (storyData.contentStyle ??
+        'dialogue-heavy') as ContentStyle,
     });
 
     return {
@@ -670,7 +673,9 @@ export const shotsStage: StageDefinition<
           'If the reel_scout part listed this scene in topReelCandidates, lead shot 1 with a visual hook',
       },
       targetVersion: episode.version,
-      rubricVariables: { context_hint: `Scene ${scene.number} of ${episode.scenes.length}` },
+      rubricVariables: {
+        context_hint: `Scene ${scene.number} of ${episode.scenes.length}`,
+      },
     });
   },
 
@@ -865,9 +870,7 @@ export const shotsStage: StageDefinition<
       .is('deleted_at', null);
 
     if (updateError) {
-      log(
-        `[Shot Generation] Failed to update episode: ${updateError.message}`,
-      );
+      log(`[Shot Generation] Failed to update episode: ${updateError.message}`);
     }
 
     const reelCandidateScenes = reelScout?.topReelCandidates ?? [];

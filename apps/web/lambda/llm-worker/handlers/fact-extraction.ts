@@ -8,13 +8,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import {
-  type Ctx,
   type FactExtractionData,
   factExtractionStage,
   runStage,
 } from '@kit/generation';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
+
+import { workerCtx } from '../utils/stage-runtime';
 
 interface FactExtractionResult {
   success: boolean;
@@ -31,11 +32,7 @@ export async function processFactExtraction(
     `[Fact Extraction] Starting extraction for project ${data.projectId}`,
   );
 
-  const ctx: Ctx = {
-    client: supabase,
-    accountId: data.accountId,
-    userId: data.userId,
-  };
+  const ctx = workerCtx(supabase, data);
 
   const { commit } = await runStage(factExtractionStage, ctx, data, {
     generate: async (brief) => {

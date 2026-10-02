@@ -42,7 +42,9 @@ function orchestratorResult() {
     reelCandidateScenes: shotsOutput.reelScout.topReelCandidates,
     sceneAnalyses: shotsOutput.reelScout.sceneAnalyses,
     orchestratorNote: shotsOutput.reelScout.orchestratorNote,
-    sceneResults: shotsOutput.scenes.map(({ shots: _shots, ...scene }) => scene),
+    sceneResults: shotsOutput.scenes.map(
+      ({ shots: _shots, ...scene }) => scene,
+    ),
     shotQualityScore: 0.85,
     shotQualityDecision: 'pass',
     orchestratorSteps: 4,
@@ -155,9 +157,7 @@ describe('processShotGeneration', () => {
     );
 
     expect(queued).toHaveLength(queuedBefore);
-    expect(
-      recording.writes().filter((w) => w.table === 'shots'),
-    ).toEqual([]);
+    expect(recording.writes().filter((w) => w.table === 'shots')).toEqual([]);
 
     spy.mockRestore();
   });
@@ -179,13 +179,17 @@ describe('partOutputsFrom', () => {
       sceneSummary: shotsOutput.scenes[1]!.sceneSummary,
       sceneViralScore: 3.2,
     });
-    expect((parts.get('scene:2') as { shots: unknown[] }).shots).toHaveLength(2);
+    expect((parts.get('scene:2') as { shots: unknown[] }).shots).toHaveLength(
+      2,
+    );
   });
 
   it('gives a scene the Shot Director lost nothing, so the stage refuses it rather than saving a shot list without it', () => {
     const result = orchestratorResult();
     result.shots = result.shots.filter((s) => s.sceneNumber !== 2);
-    result.sceneResults = result.sceneResults.filter((s) => s.sceneNumber !== 2);
+    result.sceneResults = result.sceneResults.filter(
+      (s) => s.sceneNumber !== 2,
+    );
 
     const scene2 = partOutputsFrom(result as never, [1, 2]).get('scene:2') as {
       shots: unknown[];

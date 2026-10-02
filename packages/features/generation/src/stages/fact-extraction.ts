@@ -145,7 +145,8 @@ export const factExtractionStage: StageDefinition<
     const rows = buildVerifiedFactRows(target, facts);
     const stamped = ctx.originColumnsAvailable
       ? rows.map(
-          (row) => ({ ...row, generation_origin: run.origin }) as VerifiedFactRow,
+          (row) =>
+            ({ ...row, generation_origin: run.origin }) as VerifiedFactRow,
         )
       : rows;
 

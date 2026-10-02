@@ -13,7 +13,6 @@ import type { ShotOrchestratorResult } from '@kit/episodes/agent/shot-orchestrat
 import {
   type Brief,
   type CommitResult,
-  type Ctx,
   type GenerateFn,
   REEL_SCOUT_PART,
   type ShotsBriefContext,
@@ -30,7 +29,7 @@ import {
 } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
-import { episodeContextLoader } from '../utils/episode-context-loader';
+import { workerCtx } from '../utils/stage-runtime';
 
 interface ShotGenerationResult {
   success: boolean;
@@ -57,16 +56,12 @@ export async function processShotGeneration(
     shotDuration: { min: data.shotDurationMin, max: data.shotDurationMax },
   };
 
-  const ctx: Ctx = {
-    client: supabase,
-    accountId: data.accountId,
-    userId: data.userId,
-    episodeContext: episodeContextLoader(supabase),
-  };
-
-  const { commit } = await runStage(shotsStage, ctx, target, {
-    generate: orchestratedShots(data),
-  });
+  const { commit } = await runStage(
+    shotsStage,
+    workerCtx(supabase, data),
+    target,
+    { generate: orchestratedShots(data) },
+  );
 
   if (commit.status === 'committed') {
     await queueFollowOn(supabase, data, commit);
@@ -150,7 +145,10 @@ async function runOrchestratorForParts(
     );
   }
 
-  return partOutputsFrom(result, context.scenes.map((scene) => scene.number));
+  return partOutputsFrom(
+    result,
+    context.scenes.map((scene) => scene.number),
+  );
 }
 
 /** The orchestrator's one result, as the stage's parts. */

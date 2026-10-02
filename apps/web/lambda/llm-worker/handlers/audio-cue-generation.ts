@@ -13,7 +13,6 @@ import type { AudioCueOrchestratorResult } from '@kit/episodes/agent/audio-cue-o
 import {
   type AudioCuesBriefContext,
   type AudioCuesTarget,
-  type Ctx,
   type GenerateFn,
   type GenerateResult,
   audioCuesStage,
@@ -26,6 +25,8 @@ import {
 } from '@kit/prompt-engine/llm-job-payloads';
 import type { AudioCueGenerationOutput } from '@kit/prompt-engine/schemas';
 import type { Database } from '@kit/supabase/database';
+
+import { workerCtx } from '../utils/stage-runtime';
 
 /**
  * Above this many shots the orchestrator runs once per scene: its 40K token
@@ -50,16 +51,16 @@ export async function processAudioCueGeneration(
     userId: data.userId,
   };
 
-  const ctx: Ctx = {
-    client: supabase,
-    accountId: data.accountId,
-    userId: data.userId ?? '',
-  };
-
   try {
-    const { commit } = await runStage(audioCuesStage, ctx, target, {
-      generate: orchestratedAudioCues(data),
-    });
+    const { commit } = await runStage(
+      audioCuesStage,
+      workerCtx(supabase, {
+        accountId: data.accountId,
+        userId: data.userId ?? '',
+      }),
+      target,
+      { generate: orchestratedAudioCues(data) },
+    );
 
     return { success: true, cuesCreated: commit.data.cuesCreated };
   } catch (error) {
@@ -150,14 +151,12 @@ async function runOrchestratorForParts(
         `[Audio Generation] Processing ${group.partKey}: ${sceneShots.length} shots, ${group.durationSeconds}s`,
       );
 
-      const result: AudioCueOrchestratorResult = await runAudioCueOrchestrator(
-        {
-          episodeId: data.episodeId,
-          accountId: data.accountId,
-          shotsJson: JSON.stringify(sceneShots),
-          totalDurationSeconds: group.durationSeconds,
-        },
-      );
+      const result: AudioCueOrchestratorResult = await runAudioCueOrchestrator({
+        episodeId: data.episodeId,
+        accountId: data.accountId,
+        shotsJson: JSON.stringify(sceneShots),
+        totalDurationSeconds: group.durationSeconds,
+      });
 
       orchestratorSteps += result.orchestratorSteps;
 

@@ -38,7 +38,13 @@ vi.mock('@kit/prompt-engine/server', () => ({
     calls.push(config);
     return {
       data: replies.shift(),
-      metadata: { latency: 1, tokens: 1, cost: 0, provider: 'gemini', model: 'm' },
+      metadata: {
+        latency: 1,
+        tokens: 1,
+        cost: 0,
+        provider: 'gemini',
+        model: 'm',
+      },
     };
   },
 }));
