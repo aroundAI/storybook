@@ -240,6 +240,16 @@
       "cwd": "packages/clickhouse",
       "test": "__tests__/rate-denominator-records.test.ts",
       "pattern": "names definitions by reference"
+    },
+    {
+      "name": "RD25 a rate over an interpolated divisor escapes the class scan",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/revenue-by-currency.ts",
+      "find": "                rpm: rpmCents(item.revenueCents, views) ?? 0,",
+      "replace": "                rpm: rpmCents(item.revenueCents, views) ?? 0,\n                sql: `sum(likes) / ${denominatorColumn}`,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/rate-over-views-recorded.test.ts",
+      "pattern": "only in lib/measures.ts"
     }
   ]
 }

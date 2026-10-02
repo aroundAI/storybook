@@ -34,6 +34,14 @@ const HELPER_OVER_VIEWS =
   /\b(?!recorded)\w*(?:[Rr]atio|[Dd]ivide|[Dd]iv|[Rr]ate|[Pp]ercent|[Pp]ct|Rpm|rpm)\w*\s*\((?:[^()]|\([^()]*\))*?,\s*(?:[\w.]+\(\s*)*[\w.?!]*(?:views|Views|VIEWS)\b(?![\w(])/g;
 
 /**
+ * A division by an interpolated value in SQL: `v_shares / ${denominator}`.
+ * What `${…}` holds cannot be read here, so it counts until it is listed
+ * with a reason, whatever it names. A space before the slash, as SQL
+ * writes a division and a path (`/home/${slug}`) never does.
+ */
+const DIVIDED_BY_INTERPOLATION = /[\w)\]]\s+\/\s*\$\{[^}]*\}/g;
+
+/**
  * Comments say "views" without dividing by them, and so does an import
  * path. Strings stay: a rate written as SQL in a string is still a rate.
  */
@@ -50,6 +58,7 @@ function divisionsByViews(source: string): string[] {
   return [
     ...(text.match(DIVIDED_BY_VIEWS) ?? []),
     ...(text.match(HELPER_OVER_VIEWS) ?? []),
+    ...(text.match(DIVIDED_BY_INTERPOLATION) ?? []),
   ];
 }
 
@@ -119,7 +128,9 @@ const NOT_A_RATE_OVER_VIEWS: Record<string, { count: number; why: string }> = {
     why:
       'The back catalogue’s share of views; and the four genome stage rates ' +
       '(FILM-1717, SQL in SEGMENT_MEASURE_SQL), whose record is #548’s ' +
-      'genomeViewsDenominator over FILM-1722’s viewsDenominatorFor.',
+      'genomeViewsDenominator over FILM-1722’s viewsDenominatorFor. #548 ' +
+      'divides them by an interpolated `${sum}` instead of v_views; the ' +
+      'scan counts that form too, so the count stays 5 when it lands.',
   },
   [at('packages', 'clickhouse', 'src', 'lib', 'traffic-groups.ts')]: {
     count: 3,
@@ -197,6 +208,12 @@ describe('every rate over views is recorded (FILM-1732)', () => {
     expect(
       divisionsByViews('const sql = `divide(sum(likes), sum(views)) AS r`;'),
     ).toHaveLength(1);
+    expect(
+      divisionsByViews('const sql = `if(v > 0, v_shares / ${sum}, NULL)`;'),
+    ).toHaveLength(1);
+    expect(divisionsByViews('page.goto(`/home/${slug}/analytics`);')).toEqual(
+      [],
+    );
   });
 
   it('finds a rate through a helper that divides', () => {
