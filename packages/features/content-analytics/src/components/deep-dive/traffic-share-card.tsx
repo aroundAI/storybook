@@ -9,6 +9,7 @@ import { Badge } from '@kit/ui/badge';
 import { Skeleton } from '@kit/ui/skeleton';
 import { cn } from '@kit/ui/utils';
 
+import { platformLabel } from '../../lib/platform-labels';
 import type { CardDetails } from '../overview/analytics-card';
 import type { CardClaim } from '../overview/card-claim';
 import { ChartMark, ChartMarks, formatTrueShare } from './chart-marks';
@@ -351,7 +352,7 @@ export function trafficBreakdownClaim(
 export const TRAFFIC_BREAKDOWN_DETAILS = {
   method: 'Each source’s share of all views across the whole window shown.',
   caveats: [
-    'Shares cover videos published through this platform. Views on channel videos that never matched a publish are not counted, so these percentages will not match YouTube Studio exactly.',
+    'Shares cover videos published through this platform. Views on channel videos that never matched a publish are not counted, so these percentages will not match the platform’s own analytics exactly.',
   ],
 } as const;
 
@@ -395,9 +396,9 @@ function TrafficSourceDrillDown({
       ) : (
         <>
           <p>
-            YouTube’s own traffic-source codes behind each group, as a share of
-            all {windowViews.toLocaleString()} views. Only codes that occurred
-            are listed.
+            {platformLabel('youtube')}’s own traffic-source codes behind each
+            group, as a share of all {windowViews.toLocaleString()} views. Only
+            codes that occurred are listed.
           </p>
           <ul className={'flex flex-col gap-2'}>
             {occurred.map((group) => (

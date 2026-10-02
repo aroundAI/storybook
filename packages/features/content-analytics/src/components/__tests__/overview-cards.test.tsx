@@ -1,9 +1,10 @@
 /**
  * @vitest-environment happy-dom
  */
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { renderWithCoverage } from '../../../__tests__/helpers/coverage';
 import { ABSENT, measured } from '../../lib/measured';
 import type { ProjectRevenue } from '../../lib/project-revenue';
 import { CommentsCard } from '../overview/comments-card';
@@ -32,7 +33,7 @@ vi.mock('@kit/ui/tooltip', () => ({
  */
 describe('SharesCard', () => {
   it('shows the total and says the breakdown is not collected', () => {
-    const { container } = render(<SharesCard shares={1234} />);
+    const { container } = renderWithCoverage(<SharesCard shares={1234} />);
 
     expect(screen.getByText('1,234')).toBeDefined();
     expect(
@@ -57,7 +58,7 @@ describe('SharesCard', () => {
 
 describe('RevenueCard', () => {
   it('draws one card per currency, each with its own recorded mix', () => {
-    const { container } = render(
+    const { container } = renderWithCoverage(
       <RevenueCard
         revenue={measured<ProjectRevenue[]>([
           {
@@ -89,7 +90,7 @@ describe('RevenueCard', () => {
   });
 
   it('names no currency when there is only one', () => {
-    const { container } = render(
+    const { container } = renderWithCoverage(
       <RevenueCard
         revenue={measured<ProjectRevenue[]>([
           { currency: 'USD', totalRevenueCents: 500, byType: { other: 500 } },
@@ -104,7 +105,9 @@ describe('RevenueCard', () => {
   });
 
   it('says nothing was recorded rather than showing $0 with a split', () => {
-    const { container } = render(<RevenueCard revenue={measured([])} />);
+    const { container } = renderWithCoverage(
+      <RevenueCard revenue={measured([])} />,
+    );
 
     expect(
       container.querySelector('[data-test="overview-revenue-none"]'),
@@ -116,7 +119,7 @@ describe('RevenueCard', () => {
   });
 
   it('says so when the revenue could not be read', () => {
-    const { container } = render(<RevenueCard revenue={ABSENT} />);
+    const { container } = renderWithCoverage(<RevenueCard revenue={ABSENT} />);
 
     expect(
       container.querySelector('[data-test="overview-revenue-absent"]'),
@@ -142,7 +145,7 @@ describe('RevenueCard', () => {
 
 describe('CommentsCard', () => {
   it('names the most discussed item only when given one', () => {
-    const { container, rerender } = render(
+    const { container, rerender } = renderWithCoverage(
       <CommentsCard comments={0} mostDiscussed={null} />,
     );
 
@@ -171,7 +174,7 @@ describe('CommentsCard', () => {
 
 describe('PlatformSplitCard', () => {
   it('states the denominator in the footer', () => {
-    const { container } = render(
+    const { container } = renderWithCoverage(
       <PlatformSplitCard
         platforms={[
           { platform: 'youtube', views: 3000 },
@@ -188,7 +191,9 @@ describe('PlatformSplitCard', () => {
   });
 
   it('says when no views were recorded, with no footer', () => {
-    const { container } = render(<PlatformSplitCard platforms={[]} />);
+    const { container } = renderWithCoverage(
+      <PlatformSplitCard platforms={[]} />,
+    );
 
     expect(container.textContent).toContain(
       'No views recorded in this period.',

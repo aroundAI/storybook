@@ -20,15 +20,14 @@ export function returningViewerClaim(split: SubscribedSplit): CardClaim {
     return {
       figure: null,
       noFigure: 'No subscriber split reported yet.',
-      sentence:
-        'YouTube reports whether views came from subscribers; none have been ingested for these videos.',
+      sentence: 'No subscriber split has been collected for these videos yet.',
     };
   }
 
   return {
     figure: `${Math.round(split.subscribedShare * 100)}%`,
     sentence:
-      'of views came from subscribers. A proxy for returning viewers, not a count of them: YouTube does not report new against returning viewers.',
+      'of views came from subscribers. A proxy for returning viewers, not a count of them: no platform reports new against returning viewers.',
   };
 }
 

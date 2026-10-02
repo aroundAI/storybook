@@ -2,6 +2,11 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { ALL_ANALYTICS_SCOPES_ENABLED } from '@kit/publishing/oauth/analytics-scope-switch';
+import {
+  type AnalyticsAccess,
+  resolveAnalyticsAccess,
+} from '@kit/publishing/oauth/analytics-scopes';
 import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -18,6 +23,12 @@ export interface ChannelRef {
   isActive: boolean;
   /** The channel's target language (`platform_connections.language`). */
   language: string;
+  /**
+   * Whether the grant reaches its platform's analytics (FILM-1711), so the
+   * coverage strip can tell "not authorised" from "no data in the window"
+   * (FILM-1705). `null` for a platform analytics has no requirement for.
+   */
+  analyticsAccess: AnalyticsAccess['summary'] | null;
 }
 
 interface ConnectionRow {
@@ -27,6 +38,7 @@ interface ConnectionRow {
   is_active: boolean | null;
   metadata: { thumbnail_url?: string } | null;
   language: string;
+  scopes?: string[] | null;
 }
 
 function toChannelRef(row: ConnectionRow): ChannelRef {
@@ -37,6 +49,16 @@ function toChannelRef(row: ConnectionRow): ChannelRef {
     thumbnailUrl: row.metadata?.thumbnail_url ?? null,
     isActive: row.is_active ?? false,
     language: row.language,
+    // The summary does not depend on which scopes our connect requests ask
+    // for — that switch only chooses among the ways of *not* holding one —
+    // so any switch gives this answer, and no server setting is read here.
+    analyticsAccess:
+      resolveAnalyticsAccess({
+        platform: row.platform,
+        grantedScopes: row.scopes,
+        metadata: row.metadata,
+        scopesEnabled: ALL_ANALYTICS_SCOPES_ENABLED,
+      })?.summary ?? null,
   };
 }
 
@@ -95,7 +117,7 @@ export async function listProjectChannels(
       client
         .from('platform_connections')
         .select(
-          'id, platform, platform_account_name, is_active, metadata, language',
+          'id, platform, platform_account_name, is_active, metadata, language, scopes',
         )
         .in('id', chunk)
         .order('id')
@@ -122,7 +144,7 @@ export async function listAccountChannels(
     let query = client
       .from('platform_connections')
       .select(
-        'id, platform, platform_account_name, is_active, metadata, language',
+        'id, platform, platform_account_name, is_active, metadata, language, scopes',
       )
       .eq('account_id', accountId);
 

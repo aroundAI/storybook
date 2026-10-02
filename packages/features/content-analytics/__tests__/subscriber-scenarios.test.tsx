@@ -114,6 +114,7 @@ function channelOf(s: SubscriberScenario) {
     thumbnailUrl: null,
     isActive: s.isActive,
     language: 'en',
+    analyticsAccess: null,
   };
 }
 

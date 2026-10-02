@@ -135,7 +135,7 @@
       "name": "FILM-1704 capability waits for the coverage query to paint",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/components/coverage-context.tsx",
-      "find": "        if (fromMatrix) return [platform, fromMatrix];\n",
+      "find": "      if (fromMatrix) return [platform, fromMatrix];\n",
       "replace": "",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/coverage-context.test.tsx",

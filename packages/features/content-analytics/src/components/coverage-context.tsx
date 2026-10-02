@@ -16,13 +16,14 @@ import {
   CAPABILITY_MATRIX,
   capabilityCoverage,
 } from '@kit/clickhouse';
-import type {
-  AnalyticsPlatform,
-  CoverageState,
-  MetricFamily,
-} from '@kit/clickhouse';
+import type { AnalyticsPlatform, MetricFamily } from '@kit/clickhouse';
 
 import type { CoverageMatrixResult } from '../lib/coverage';
+import type {
+  CoverageCell,
+  CoverageView,
+  FamilyCells,
+} from '../lib/provenance';
 import type { Scope } from '../lib/schemas/traffic.schema';
 import { getCoverageMatrixAction } from '../server/coverage-actions';
 
@@ -48,8 +49,10 @@ const COVERAGE_GC_TIME_MS = 60 * 60 * 1000;
  * - `'pending'` while the observed half is in flight;
  * - `null` when it cannot be measured: ClickHouse is off, the request
  *   failed, or the family's table is not one the coverage query reads.
+ *
+ * Defined with the surfaces that read it (`lib/provenance.ts`).
  */
-export type CoverageCell = CoverageState | 'pending' | null;
+export type { CoverageCell };
 
 export interface FamilyCoverage {
   family: MetricFamily;
@@ -62,6 +65,12 @@ interface CoverageContextValue {
   windowLabel: string;
   status: 'pending' | 'error' | 'success';
   result: CoverageMatrixResult | undefined;
+  /**
+   * The platform filter's selection (FILM-1705): a card none of whose
+   * platforms is selected dims rather than blanks. Inherited by a nested
+   * provider, so Deep Dive's own window keeps the page's selection.
+   */
+  selectedPlatforms: readonly AnalyticsPlatform[];
 }
 
 export const CoverageContext = createContext<CoverageContextValue | null>(null);
@@ -97,6 +106,8 @@ interface CoverageProviderProps {
   /** Last calendar day of the window, inclusive. */
   to: string;
   windowLabel: string;
+  /** Defaults to the enclosing provider's selection, or every platform. */
+  selectedPlatforms?: readonly AnalyticsPlatform[];
   children: ReactNode;
 }
 
@@ -117,9 +128,13 @@ export function CoverageProvider({
   from,
   to,
   windowLabel,
+  selectedPlatforms,
   children,
 }: CoverageProviderProps) {
   const window = useSettledWindow(from, to);
+  const parent = useContext(CoverageContext);
+  const selected =
+    selectedPlatforms ?? parent?.selectedPlatforms ?? ANALYTICS_PLATFORMS;
 
   const query = useQuery({
     // By value, field by field: callers build `scope` inline, and a key
@@ -144,8 +159,13 @@ export function CoverageProvider({
   });
 
   const value = useMemo<CoverageContextValue>(
-    () => ({ windowLabel, status: query.status, result: query.data }),
-    [windowLabel, query.status, query.data],
+    () => ({
+      windowLabel,
+      status: query.status,
+      result: query.data,
+      selectedPlatforms: selected,
+    }),
+    [windowLabel, query.status, query.data, selected],
   );
 
   return (
@@ -155,12 +175,29 @@ export function CoverageProvider({
   );
 }
 
-/**
- * What one card needs to say about its coverage. The capability half is
- * filled in on the first render — it is a fact about the product, not about
- * this project — and only the cells that need an observation wait for one.
- */
-export function useCoverage(family: MetricFamily): FamilyCoverage {
+function cellsFor(
+  context: CoverageContextValue,
+  family: MetricFamily,
+): FamilyCells {
+  const { status, result } = context;
+
+  return Object.fromEntries(
+    ANALYTICS_PLATFORMS.map((platform): [AnalyticsPlatform, CoverageCell] => {
+      const fromMatrix = capabilityCoverage(
+        CAPABILITY_MATRIX[family][platform],
+      );
+
+      if (fromMatrix) return [platform, fromMatrix];
+      if (status === 'success' && result) {
+        return [platform, result.matrix[family][platform]];
+      }
+
+      return [platform, status === 'error' ? null : 'pending'];
+    }),
+  ) as FamilyCells;
+}
+
+function useCoverageContext(): CoverageContextValue {
   const context = useContext(CoverageContext);
 
   if (!context) {
@@ -169,24 +206,47 @@ export function useCoverage(family: MetricFamily): FamilyCoverage {
     );
   }
 
-  const { windowLabel, status, result } = context;
+  return context;
+}
 
-  return useMemo(() => {
-    const platforms = Object.fromEntries(
-      ANALYTICS_PLATFORMS.map((platform): [AnalyticsPlatform, CoverageCell] => {
-        const fromMatrix = capabilityCoverage(
-          CAPABILITY_MATRIX[family][platform],
-        );
+/**
+ * What one card needs to say about its coverage. The capability half is
+ * filled in on the first render — it is a fact about the product, not about
+ * this project — and only the cells that need an observation wait for one.
+ */
+export function useCoverage(family: MetricFamily): FamilyCoverage {
+  const context = useCoverageContext();
 
-        if (fromMatrix) return [platform, fromMatrix];
-        if (status === 'success' && result) {
-          return [platform, result.matrix[family][platform]];
-        }
+  return useMemo(
+    () => ({
+      family,
+      windowLabel: context.windowLabel,
+      platforms: cellsFor(context, family),
+    }),
+    [family, context],
+  );
+}
 
-        return [platform, status === 'error' ? null : 'pending'];
-      }),
-    ) as Record<AnalyticsPlatform, CoverageCell>;
+/**
+ * The page's coverage as the provenance surfaces read it (FILM-1705): every
+ * family's cells, the connections and the filter's selection, from the
+ * nearest provider. Throws outside one, like `useCoverage`.
+ */
+export function useCoverageView(): CoverageView & {
+  selectedPlatforms: readonly AnalyticsPlatform[];
+} {
+  const context = useCoverageContext();
 
-    return { family, windowLabel, platforms };
-  }, [family, windowLabel, status, result]);
+  return useMemo(
+    () => ({
+      windowLabel: context.windowLabel,
+      cellsFor: (family: MetricFamily) => cellsFor(context, family),
+      channels:
+        context.status === 'success' ? context.result?.channels : undefined,
+      observed:
+        context.status === 'success' ? context.result?.observed : undefined,
+      selectedPlatforms: context.selectedPlatforms,
+    }),
+    [context],
+  );
 }

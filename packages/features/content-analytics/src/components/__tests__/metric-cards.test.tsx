@@ -176,10 +176,11 @@ describe('MetricCards', () => {
         />,
       );
 
-      // Six metrics have a baseline; views does not.
+      // Five metrics have a baseline; views does not, and revenue draws no
+      // figure at all — the matrix has no platform supplying it (FILM-1705).
       expect(
         container.querySelectorAll('[data-test="metric-change"]'),
-      ).toHaveLength(6);
+      ).toHaveLength(5);
       expect(
         container.querySelector(
           '[data-test="metric-card-views"] [data-test="metric-change"]',

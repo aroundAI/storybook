@@ -91,6 +91,7 @@ export function DeviceTypeCard({ deviceType }: DeviceTypeCardProps) {
       <AudienceCard
         title="Device Type"
         icon={Smartphone}
+        metricFamily="device"
         data-test="audience-card-device"
       >
         <AudienceCardEmpty heading="No device data" data-test="device-empty">
@@ -104,6 +105,7 @@ export function DeviceTypeCard({ deviceType }: DeviceTypeCardProps) {
     <AudienceCard
       title="Device Type"
       icon={Smartphone}
+      metricFamily="device"
       data-test="audience-card-device"
       footerInsight={
         <span data-test="device-total-views">

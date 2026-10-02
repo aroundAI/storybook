@@ -596,7 +596,7 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1702 | [language-dimension-reconciliation](./phase-17-analytics-provenance/FILM-1702-language-dimension-reconciliation.yaml) | ✅ DONE | L | FILM-1606 |
 | FILM-1703 | [provenance-capability-model](./phase-17-analytics-provenance/FILM-1703-provenance-capability-model.yaml) | ✅ DONE | M | FILM-1721 |
 | FILM-1704 | [observed-coverage](./phase-17-analytics-provenance/FILM-1704-observed-coverage.yaml) | ✅ DONE | M | FILM-1703 |
-| FILM-1705 | [provenance-surfaces](./phase-17-analytics-provenance/FILM-1705-provenance-surfaces.yaml) | DRAFT | L | FILM-1701, FILM-1703, FILM-1704, FILM-1706 |
+| FILM-1705 | [provenance-surfaces](./phase-17-analytics-provenance/FILM-1705-provenance-surfaces.yaml) | PARTIAL | L | FILM-1701, FILM-1703, FILM-1704, FILM-1706 |
 | FILM-1706 | [analytics-card-shell](./phase-17-analytics-provenance/FILM-1706-analytics-card-shell.yaml) | ✅ DONE | M | FILM-1703 |
 | FILM-1707 | [six-tab-adoption](./phase-17-analytics-provenance/FILM-1707-six-tab-adoption.yaml) | DRAFT | L | FILM-1702, FILM-1705, FILM-1706 |
 | FILM-1708 | [traffic-drill-down-colour-ramp](./phase-17-analytics-provenance/FILM-1708-traffic-drill-down-colour-ramp.yaml) | ✅ DONE | M | FILM-1605, FILM-1706 |

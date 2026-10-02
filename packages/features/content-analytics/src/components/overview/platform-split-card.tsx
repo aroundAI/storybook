@@ -7,11 +7,7 @@ import { viewsToAdd } from '../../lib/views';
 import type { Views } from '../../lib/views';
 import { HorizontalProgress } from '../charts/horizontal-progress';
 import { AnalyticsCard } from './analytics-card';
-import {
-  platformLabel,
-  platformSplitClaim,
-  platformsWithViews,
-} from './card-claim';
+import { platformLabel, platformSplitClaim } from './card-claim';
 
 interface PlatformViews {
   platform: string;
@@ -46,7 +42,6 @@ export function PlatformSplitCard({ platforms }: PlatformSplitCardProps) {
       icon={PieChart}
       description="View distribution across platforms"
       metricFamily="engagement"
-      platforms={platformsWithViews(platforms)}
       claim={platformSplitClaim(platforms)}
       details={
         totalViews > 0

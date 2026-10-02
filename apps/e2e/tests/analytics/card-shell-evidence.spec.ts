@@ -144,7 +144,9 @@ async function readCards(page: Page) {
         card.querySelector('[data-test="card-no-figure"]')?.textContent ?? null,
       sentence:
         card.querySelector('[data-test="card-sentence"]')?.textContent ?? '',
-      hasDetails: card.querySelector('button[aria-controls]') !== null,
+      hasDetails: [...card.querySelectorAll('button[aria-controls]')].some(
+        (button) => button.textContent?.trim() === 'Details',
+      ),
     })),
   );
 }

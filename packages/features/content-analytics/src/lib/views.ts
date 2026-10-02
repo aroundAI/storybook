@@ -1,3 +1,5 @@
+import { platformLabel } from './platform-labels';
+
 /**
  * A views figure as ClickHouse hands it back since migration 020: `null`
  * where every row behind it is a platform with no single view (Facebook,
@@ -12,8 +14,7 @@ export { addViews } from '@kit/clickhouse';
 
 export const VIEWS_NOT_MEASURED = 'Not measured';
 
-export const VIEWS_NOT_MEASURED_REASON =
-  'Facebook counts four different kinds of view, and none of them is a view in this sense, so its plays are not counted as views.';
+export const VIEWS_NOT_MEASURED_REASON = `${platformLabel('facebook')} counts four different kinds of view, and none of them is a view in this sense, so its plays are not counted as views.`;
 
 /** Most views first; not measured after every measured figure. */
 export function compareViewsDesc(

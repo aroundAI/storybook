@@ -14,11 +14,13 @@ import {
   Users,
 } from 'lucide-react';
 
-import { ANALYTICS_PLATFORMS, TRAFFIC_SOURCE_GROUPS } from '@kit/clickhouse';
+import { TRAFFIC_SOURCE_GROUPS } from '@kit/clickhouse';
 import type { AnalyticsPlatform, TrafficGroupBucket } from '@kit/clickhouse';
 import { Button } from '@kit/ui/button';
 
 import { unwrap } from '../../lib/action-result';
+import { platformLabel } from '../../lib/platform-labels';
+import { TAB_FAMILIES } from '../../lib/provenance';
 import { isUnavailable } from '../../lib/query-state';
 import {
   getBackCatalogAction,
@@ -35,6 +37,7 @@ import {
 } from '../../server/diagnostics-actions';
 import { getSubscriberSeriesAction } from '../../server/subscriber-series-actions';
 import { CoverageProvider } from '../coverage-context';
+import { CoverageStrip } from '../coverage-strip';
 import { AnalyticsCard } from '../overview/analytics-card';
 import {
   type CardClaim,
@@ -140,6 +143,13 @@ const TRAFFIC_WINDOW_LABEL = `the last ${TRAFFIC_WINDOW_WEEKS} complete weeks`;
 const TRAFFIC_FAILURE =
   'Traffic-source data could not be loaded — a fetch failure, not an absence of data.';
 
+/**
+ * The Partner Programme is one platform's, and the card covers only it. The
+ * name comes from the label map, like every platform name on this page.
+ */
+const YPP_PLATFORM = 'youtube' satisfies AnalyticsPlatform;
+const YPP_PLATFORM_NAME = platformLabel(YPP_PLATFORM);
+
 /** Days of subscriber history the curve shows — a year, like YPP's window. */
 const SUBSCRIBER_WINDOW_DAYS = 365;
 
@@ -189,18 +199,6 @@ export function DeepDiveTab({
   const selectedChannel = channelsQuery.data?.find(
     (channel) => channel.connectionId === filters.connectionId,
   );
-
-  // The platforms these cards cover, for "where this comes from": the
-  // selected channel's, or every channel's in the project.
-  const scopePlatforms = useMemo(() => {
-    const platforms = new Set(
-      (selectedChannel ? [selectedChannel] : (channelsQuery.data ?? [])).map(
-        (channel) => channel.platform,
-      ),
-    );
-
-    return ANALYTICS_PLATFORMS.filter((platform) => platforms.has(platform));
-  }, [selectedChannel, channelsQuery.data]) satisfies AnalyticsPlatform[];
 
   // `getYppProgressAction` throws for a connection that is not an active
   // YouTube channel, and the gate is YouTube's, so any other selection skips
@@ -468,8 +466,7 @@ export function DeepDiveTab({
     ? {
         figure: null,
         noFigure: 'Does not apply to this channel.',
-        sentence:
-          'The Partner Programme gate is YouTube’s, so it applies only to an active YouTube channel.',
+        sentence: `The Partner Programme gate is ${YPP_PLATFORM_NAME}’s, so it applies only to an active ${YPP_PLATFORM_NAME} channel.`,
       }
     : claimFromQuery(
         {
@@ -483,13 +480,19 @@ export function DeepDiveTab({
         () => ({
           figure: null,
           noFigure: 'Progress is per channel.',
-          sentence:
-            'Progress toward the YouTube Partner Programme gate, one card per channel.',
+          sentence: `Progress toward the ${YPP_PLATFORM_NAME} Partner Programme gate, one card per channel.`,
         }),
       );
 
   const tab = (
     <div className={'flex flex-col gap-4'} data-test={'deep-dive-tab'}>
+      {/* This tab's strip, inside this tab's provider: it describes the 52
+          weeks these cards read, not the header's range. */}
+      <CoverageStrip
+        families={TAB_FAMILIES['deep-dive']}
+        data-test={'deep-dive-coverage-strip'}
+      />
+
       <div className={'flex items-center justify-end'}>
         <ChannelFilter
           channels={channelsQuery.data ?? []}
@@ -505,7 +508,6 @@ export function DeepDiveTab({
           title={'Median views per video'}
           icon={TrendingUp}
           metricFamily={'engagement'}
-          platforms={scopePlatforms}
           claim={claimFromQuery(medianQuery, (buckets) =>
             medianViewsClaim(buckets, medianMode),
           )}
@@ -556,7 +558,6 @@ export function DeepDiveTab({
             'Whether the algorithm has decided what this channel is for.'
           }
           metricFamily={'traffic_sources'}
-          platforms={scopePlatforms}
           claim={claimFromQuery(
             trafficQueryState,
             () =>
@@ -586,7 +587,6 @@ export function DeepDiveTab({
             'Search, Shorts, external, playlists, the channel page and direct — plus an Other residual — as a share of views.'
           }
           metricFamily={'traffic_sources'}
-          platforms={scopePlatforms}
           claim={claimFromQuery(
             trafficQueryState,
             () => trafficBreakdownClaim(trafficBuckets, TRAFFIC_WINDOW_LABEL),
@@ -594,7 +594,7 @@ export function DeepDiveTab({
           )}
           details={trafficBreakdownDetails(
             trafficBuckets,
-            sourceNotesFor('traffic_sources', scopePlatforms),
+            sourceNotesFor('traffic_sources'),
           )}
           data-test={'deep-dive-traffic-breakdown'}
         >
@@ -615,7 +615,6 @@ export function DeepDiveTab({
             'Share of views from videos over 90 days old — the compounding signal.'
           }
           metricFamily={'engagement'}
-          platforms={scopePlatforms}
           claim={claimFromQuery(backCatalogQuery, backCatalogClaim)}
           details={{
             method:
@@ -640,7 +639,6 @@ export function DeepDiveTab({
             'Views over the trailing 90 days, which monthly totals are too noisy to show.'
           }
           metricFamily={'engagement'}
-          platforms={scopePlatforms}
           claim={claimFromQuery(rollingQuery, (points) =>
             rolling90Claim(points, ROLLING_WINDOW_DAYS),
           )}
@@ -670,12 +668,12 @@ export function DeepDiveTab({
             'A stand-in for returning viewers: how much of the audience is already subscribed.'
           }
           metricFamily={'follower_status'}
-          platforms={scopePlatforms}
           claim={claimFromQuery(returningViewerQuery, returningViewerClaim)}
           details={{
+            // Which platforms are in the share is the chip's, from the
+            // matrix: this list used to name them by hand.
             caveats: [
-              'A proxy, not a measurement: YouTube reports no new-versus-returning split outside Studio, and a subscriber can be watching a video for the first time.',
-              'YouTube only. TikTok and Instagram report no subscriber split, so their views are not in this share.',
+              'A proxy, not a measurement: no platform reports new against returning viewers, and a subscriber can be watching a video for the first time.',
             ],
           }}
           data-test={'deep-dive-returning-viewer'}
@@ -696,7 +694,6 @@ export function DeepDiveTab({
           title={'Upload cohorts'}
           icon={CalendarRange}
           metricFamily={'engagement'}
-          platforms={scopePlatforms}
           claim={claimFromQuery(
             cohortQuery,
             (): CardClaim => ({
@@ -730,7 +727,6 @@ export function DeepDiveTab({
           title={'Subscribers'}
           icon={Users}
           metricFamily={'channel_totals'}
-          platforms={scopePlatforms}
           claim={claimFromQuery(
             subscriberCardQuery,
             (): CardClaim => ({
@@ -762,10 +758,10 @@ export function DeepDiveTab({
         </AnalyticsCard>
 
         <AnalyticsCard
-          title={'YouTube Partner Programme'}
+          title={`${YPP_PLATFORM_NAME} Partner Programme`}
           icon={BadgeCheck}
           metricFamily={['channel_totals', 'watch_time']}
-          platforms={['youtube']}
+          platforms={[YPP_PLATFORM]}
           claim={yppClaim}
           details={{
             caveats: [
@@ -962,7 +958,8 @@ function YppProgressSection({
         className={'text-sm text-muted-foreground'}
         data-test={'ypp-not-applicable'}
       >
-        Partner Programme progress applies to active YouTube channels.
+        Partner Programme progress applies to active {YPP_PLATFORM_NAME}{' '}
+        channels.
       </p>
     );
   }
@@ -985,7 +982,7 @@ function YppProgressSection({
         className={'text-sm text-muted-foreground'}
         data-test={'ypp-no-channels'}
       >
-        No active YouTube channel publishes in this project.
+        No active {YPP_PLATFORM_NAME} channel publishes in this project.
       </p>
     );
   }

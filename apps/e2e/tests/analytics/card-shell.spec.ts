@@ -182,7 +182,11 @@ test.describe('Analytics card shell (FILM-1706)', () => {
     const marks = await cards(page).evaluateAll((all) =>
       all.map((card) => ({
         title: card.querySelector('h2')?.textContent,
-        trigger: card.querySelector('button[aria-controls]') !== null,
+        // The Details trigger, by its words: the provenance chip (FILM-1705)
+        // is a popover trigger too, and also carries aria-controls.
+        trigger: [...card.querySelectorAll('button[aria-controls]')].some(
+          (button) => button.textContent?.trim() === 'Details',
+        ),
         hover: card.className.includes('hover:bg-accent'),
       })),
     );

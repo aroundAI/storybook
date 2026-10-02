@@ -43,6 +43,7 @@ export function AgeDistributionCard({ ageGroups }: AgeDistributionCardProps) {
       <AudienceCard
         title="Age Distribution"
         icon={Users}
+        metricFamily="demographics"
         data-test="audience-card-age"
       >
         <AudienceCardEmpty>
@@ -59,6 +60,7 @@ export function AgeDistributionCard({ ageGroups }: AgeDistributionCardProps) {
     <AudienceCard
       title="Age Distribution"
       icon={Users}
+      metricFamily="demographics"
       data-test="audience-card-age"
     >
       <div className="space-y-4">

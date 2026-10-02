@@ -6,6 +6,9 @@ import {
 } from '@kit/clickhouse';
 
 import { formatNumber } from '../../lib/format';
+import { platformLabel } from '../../lib/platform-labels';
+
+export { platformLabel };
 
 /**
  * What a card shows, for the provenance it declares (FILM-1706).
@@ -38,10 +41,10 @@ export type CardClaim =
 export const CAUSAL_VOCABULARY =
   /\b(?:because|due to|driven by|drives?|driving|caused?|causes|causing|thanks to|as a result|leads? to|results? in)\b/i;
 
-const RECORDED_SOURCE =
+export const RECORDED_SOURCE =
   'Revenue recorded against this project’s videos — entered by you, or imported from a connected platform.';
 
-const GENERATED_SOURCE =
+export const GENERATED_SOURCE =
   'Written by a language model from the figures on this page. It is a reading of them, not a measurement.';
 
 /**
@@ -112,13 +115,6 @@ export function countClaim(value: number | null, sentence: string): CardClaim {
     : { figure: value.toLocaleString('en-US'), sentence };
 }
 
-const PLATFORM_LABELS: Record<string, string> = {
-  youtube: 'YouTube',
-  tiktok: 'TikTok',
-  instagram: 'Instagram',
-  facebook: 'Facebook',
-};
-
 /**
  * The platforms among `rows` that have any views, as matrix platforms — so
  * a card says where its figure comes from only for platforms it covers.
@@ -144,10 +140,6 @@ export function platformsWithViews(
         known.includes(platform),
     ),
   );
-}
-
-export function platformLabel(platform: string): string {
-  return PLATFORM_LABELS[platform.toLowerCase()] ?? platform;
 }
 
 const percent = (share: number) => `${Math.round(share * 100)}%`;

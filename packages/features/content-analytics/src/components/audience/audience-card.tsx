@@ -2,11 +2,14 @@
 
 import { MoreHorizontal } from 'lucide-react';
 
+import type { MetricFamily } from '@kit/clickhouse';
 import {
   EmptyState,
   EmptyStateHeading,
   EmptyStateText,
 } from '@kit/ui/empty-state';
+
+import { ProvenanceChipFor } from '../provenance-chip';
 
 interface AudienceCardProps {
   /** Card title */
@@ -15,6 +18,12 @@ interface AudienceCardProps {
   icon?: React.ComponentType<{ className?: string }>;
   /** Span 2 rows */
   rowSpan?: boolean;
+  /**
+   * What the card shows, for its provenance chip (FILM-1705). Absent only
+   * for a card that shows nothing measured — the "we don't collect this"
+   * slots.
+   */
+  metricFamily?: MetricFamily;
   /**
    * Footer text. Only ever something derived from the rows the card shows:
    * these used to be canned sentences — "Male viewership has increased by
@@ -35,6 +44,7 @@ export function AudienceCard({
   title,
   icon: Icon,
   rowSpan = false,
+  metricFamily,
   footerInsight,
   children,
   className = '',
@@ -55,9 +65,14 @@ export function AudienceCard({
             {Icon && <Icon className="h-5 w-5 text-blue-500" />}
             {title}
           </h3>
-          <button className="text-gray-400 transition-colors hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400">
-            <MoreHorizontal className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {metricFamily && (
+              <ProvenanceChipFor metricFamily={metricFamily} title={title} />
+            )}
+            <button className="text-gray-400 transition-colors hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400">
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}

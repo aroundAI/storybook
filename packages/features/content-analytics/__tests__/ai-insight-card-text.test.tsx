@@ -1,10 +1,11 @@
 /**
  * @vitest-environment happy-dom
  */
-import { cleanup, render } from '@testing-library/react';
+import { cleanup } from '@testing-library/react';
 import { afterEach, expect, it } from 'vitest';
 
 import { AIInsightCard } from '../src/components/overview/ai-insight-card';
+import { renderWithCoverage } from './helpers/coverage';
 
 /**
  * The card rendered `summary` with `dangerouslySetInnerHTML`. Today its one
@@ -19,7 +20,7 @@ const PAYLOAD =
   '<img src=x onerror="window.__xss=1"><script>window.__xss=2</script>Views held.';
 
 it('renders a summary as text, never as markup', () => {
-  const { container } = render(<AIInsightCard summary={PAYLOAD} />);
+  const { container } = renderWithCoverage(<AIInsightCard summary={PAYLOAD} />);
 
   expect(container.querySelector('img')).toBeNull();
   expect(container.querySelector('script')).toBeNull();
