@@ -10,7 +10,8 @@
 #      (code=false) that is 📚 Docs checks. Otherwise it is the fast lane
 #      (typecheck, format, unit tests, ClickHouse SQL), plus the heavy jobs
 #      that do not depend on vars.ENABLE_E2E_JOB when heavy=true (the merge
-#      queue and a dispatch): 🐘 Supabase DB and 🧪 Unit guards.
+#      queue, a dispatch and the nightly run): 🐘 Supabase DB and 🧪 Unit
+#      guards, unless an enforced scope skipped them (skip_*=true).
 # Any other job may be skipped: that is how the fast lane and the E2E switch
 # work. Table test: scripts/ci/ci-result.test.sh.
 set -euo pipefail
@@ -40,7 +41,11 @@ if [ "$code" = false ]; then
 else
   required=(typescript format clickhouse-sql unit-test)
   if [ "$heavy" = true ]; then
-    required+=(supabase-db unit-guards unit-guards-result)
+    # An enforced scope (scripts/ci/scope-heavy.sh, vars.CI_SCOPE_HEAVY)
+    # may skip these two; only an explicit `true` lets it.
+    [ "$(output changes skip_supabase)" = true ] || required+=(supabase-db)
+    [ "$(output changes skip_unit_guards)" = true ] || required+=(unit-guards)
+    required+=(unit-guards-result)
   fi
 fi
 

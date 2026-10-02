@@ -20,7 +20,14 @@ python3 tooling/mutation-guards/run.py --kind unit   # CI: Unit Tests job
 python3 tooling/mutation-guards/run.py --kind pgtap  # CI: Supabase DB job (needs supabase start)
 python3 tooling/mutation-guards/run.py --kind e2e    # by hand (see below)
 python3 tooling/mutation-guards/run.py --only "R6 list unpaged"   # one entry, by its whole name
+python3 tooling/mutation-guards/run.py --kind unit --changed origin/main   # only what a change touches
 ```
+
+`--changed BASE` (or a `BASE...HEAD` range) keeps the entries whose mutated
+file or test changed since the merge base, plus every entry of a changed
+guard JSON; when git cannot list the changes, every entry runs. `--list`
+prints the selection without running it. The merge queue uses both when
+`vars.CI_SCOPE_HEAVY` is `true` (`scripts/ci/scope-heavy.sh`).
 
 `--only` matches a whole entry name exactly, and a value that names no entry
 stops the run before anything executes, listing names that contain it. It used

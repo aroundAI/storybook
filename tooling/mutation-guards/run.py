@@ -12,6 +12,7 @@ happens.
     python3 tooling/mutation-guards/run.py --kind pgtap     # CI: Supabase DB job
     python3 tooling/mutation-guards/run.py --kind e2e       # CI: E2E guards job; needs a dev server
     python3 tooling/mutation-guards/run.py --self-test      # the runner's own red check
+    python3 tooling/mutation-guards/run.py --kind unit --changed origin/main   # only what a change touches
 
 Outcomes per entry:
   RED           the guard failed under its mutation — it guards
@@ -579,6 +580,7 @@ def load_entries():
         data = json.load(open(path))
         for entry in data['mutations']:
             entry['feature'] = data['feature']
+            entry['source'] = os.path.relpath(path, ROOT)
             entries.append(entry)
     return entries
 
@@ -809,6 +811,95 @@ def mutated_files(entry):
     return files or [None]
 
 
+def test_paths(entry):
+    """The repo-relative path of the test an entry runs: a unit `test` is
+    relative to its `cwd`, an E2E `spec` to apps/e2e, a pgTAP `test` to the
+    root."""
+    if entry['kind'] == 'unit':
+        return [os.path.normpath(os.path.join(entry['cwd'], entry['test']))]
+    if entry['kind'] == 'e2e':
+        return [os.path.normpath(os.path.join('apps/e2e', entry['spec']))]
+    return [os.path.normpath(entry['test'])]
+
+
+def changed_files(base):
+    """The paths changed between `base` and HEAD (from their merge-base), or
+    None when git cannot tell — the caller then runs every guard. `base` may
+    be a whole `BASE...HEAD` range instead."""
+    spec = base if '...' in base else f'{base}...HEAD'
+    try:
+        result = subprocess.run(
+            ['git', 'diff', '--name-only', '--no-renames', spec],
+            cwd=ROOT, capture_output=True, text=True, timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    return [line for line in result.stdout.splitlines() if line]
+
+
+def changed_selection(entries, changed):
+    """The entries a change can affect (Phase 2 of the merge-queue design):
+    one whose mutated file or test changed, and every entry of a changed
+    guard JSON. A guard's verdict is a fact about its file and its test, so
+    an entry neither touches is left to the nightly full run."""
+    changed = set(changed)
+    return [
+        entry for entry in entries
+        if entry.get('source') in changed
+        or any(path in changed for path in mutated_files(entry) if path)
+        or any(path in changed for path in test_paths(entry))
+    ]
+
+
+def self_test_changed():
+    """--changed's own table: which entries a set of changed paths selects."""
+    entries = [
+        {'name': 'A', 'kind': 'unit', 'file': 'pkg/src/a.ts', 'cwd': 'pkg',
+         'test': '__tests__/a.test.ts', 'source': 'tooling/mutation-guards/x.json'},
+        {'name': 'B', 'kind': 'e2e', 'file': 'apps/web/b.tsx',
+         'spec': 'tests/b.spec.ts', 'source': 'tooling/mutation-guards/y.json'},
+        {'name': 'C', 'kind': 'pgtap', 'test': 'apps/web/supabase/tests/database/c.test.sql',
+         'source': 'tooling/mutation-guards/y.json'},
+        {'name': 'D', 'kind': 'unit', 'file': 'pkg/src/d.ts', 'cwd': 'pkg',
+         'test': '__tests__/d.test.ts', 'source': 'tooling/mutation-guards/z.json',
+         'edits': [{'file': 'pkg/src/e.ts', 'find': 'x', 'replace': 'y'}]},
+    ]
+    for label, changed, want in [
+        ('mutated file', ['pkg/src/a.ts'], ['A']),
+        ('unit test, relative to cwd', ['pkg/__tests__/a.test.ts'], ['A']),
+        ('E2E spec, relative to apps/e2e', ['apps/e2e/tests/b.spec.ts'], ['B']),
+        ('E2E mutated file', ['apps/web/b.tsx'], ['B']),
+        ('pgTAP test', ['apps/web/supabase/tests/database/c.test.sql'], ['C']),
+        ('a changed guard JSON selects every entry in it',
+         ['tooling/mutation-guards/y.json'], ['B', 'C']),
+        ("a file an edit names", ['pkg/src/e.ts'], ['D']),
+        ('an unrelated change', ['specs/INDEX.md', 'pkg/src/other.ts'], []),
+        ('exact paths, not prefixes', ['pkg/src/a.ts.bak', 'pkg/src'], []),
+        ('nothing changed', [], []),
+    ]:
+        got = [entry['name'] for entry in changed_selection(entries, changed)]
+        if got != want:
+            print(f'SELF-TEST FAILED: --changed {label}: {got!r}, expected {want!r}')
+            return 1
+    if changed_files('HEAD') != [] or changed_files('HEAD...HEAD') != []:
+        print('SELF-TEST FAILED: --changed HEAD should list no changed file')
+        return 1
+    if changed_files('0' * 40) is not None:
+        print('SELF-TEST FAILED: --changed on an unknown base must say it cannot tell')
+        return 1
+    # Every real entry's test path must exist, or --changed would never
+    # select it when only its test changes.
+    gone = [f'{entry["feature"]}: {entry["name"]}: {path}'
+            for entry in load_entries() for path in test_paths(entry)
+            if not os.path.exists(os.path.join(ROOT, path))]
+    if gone:
+        print('SELF-TEST FAILED: entries whose test path does not exist:',
+              *gone, sep='\n  ')
+        return 1
+    return 0
+
+
 def self_test(base_env):
     """The runner's own red check: a mutation that changes nothing must be
     reported as STAYED GREEN. If it came back RED, the runner would be
@@ -874,6 +965,8 @@ def self_test(base_env):
             return 1
     if not needs_sandbox({'needs': 'sandbox'}) or needs_sandbox({'kind': 'e2e'}):
         print('SELF-TEST FAILED: needs_sandbox does not tell a sandbox entry apart')
+        return 1
+    if self_test_changed():
         return 1
     duplicates = duplicate_names(load_entries())
     if duplicates:
@@ -993,6 +1086,13 @@ def main():
     parser.add_argument('--shard', metavar='I/N',
                         help='run shard I of N (1-based), split by e2e-durations.tsv, '
                              'so parallel CI jobs split the E2E guards')
+    parser.add_argument('--changed', metavar='BASE',
+                        help='run only entries whose mutated file or test changed since '
+                             'BASE (git diff BASE...HEAD, or pass that range), plus every '
+                             'entry of a changed '
+                             'guard JSON; when git cannot tell, every entry runs')
+    parser.add_argument('--list', action='store_true',
+                        help='print the selected entry names, one per line, and run nothing')
     args = parser.parse_args()
 
     base_env = dict(os.environ)
@@ -1032,6 +1132,14 @@ def main():
                     for path in mutated_files(entry)))
     ]
 
+    if args.changed:
+        changed = changed_files(args.changed)
+        if changed is None:
+            print(f'--changed {args.changed}: git cannot list the changes, so every '
+                  'selected guard runs.', file=sys.stderr)
+        else:
+            entries = changed_selection(entries, changed)
+
     if args.shard:
         index, count = (int(part) for part in args.shard.split('/'))
         if not 1 <= index <= count:
@@ -1039,6 +1147,14 @@ def main():
             return 1
         entries = shard_entries(entries, index, count, load_durations())
 
+    if args.list:
+        for entry in entries:
+            print(entry['name'])
+        return 0
+
+    if not entries and args.changed:
+        print(f'No mutation guard is affected by the changes since {args.changed}.')
+        return 0
     if not entries:
         print('No mutation guards selected.')
         return 1
