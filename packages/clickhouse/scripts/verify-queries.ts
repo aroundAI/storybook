@@ -5618,6 +5618,8 @@ async function xSteps() {
         all_surface_views: null,
         all_surface_likes: null,
         all_surface_comments: null,
+        ig_reels_avg_watch_time_ms: null,
+        ig_reels_skip_rate: null,
       },
     ]);
 

@@ -109,7 +109,7 @@ describe('the chip', () => {
     );
 
     expect(provenanceChip(both, ['engagement'])).toMatchObject({
-      label: '2 of 4 platforms · partly derived',
+      label: '2 of 5 platforms · partly derived',
       tone: 'derived',
       state: 'covered',
       muted: false,
@@ -208,8 +208,8 @@ describe('the chip', () => {
     );
 
     expect(provenanceChip(off, ['engagement'])).toMatchObject({
-      // Instagram is not connected, so it is not in "up to".
-      label: 'Up to 3 of 4 platforms · partly derived',
+      // Instagram and X are not connected, so they are not in "up to".
+      label: 'Up to 3 of 5 platforms · partly derived',
       state: 'unknown',
     });
     // The audience families' table is not read by the coverage query.
@@ -227,7 +227,7 @@ describe('the chip', () => {
       provenanceChip(viewOf(undefined), ['traffic_sources']),
     ).toMatchObject({ label: 'YouTube only', state: 'pending' });
     expect(provenanceChip(viewOf(undefined), ['engagement'])).toMatchObject({
-      label: 'Up to 4 platforms · partly derived',
+      label: 'Up to 5 platforms · partly derived',
       state: 'pending',
     });
   });
@@ -275,6 +275,8 @@ describe('the strip', () => {
       ['instagram', 'not_connected'],
       // Supported since FILM-1720: connected, and empty in the window.
       ['facebook', 'no_data_in_window'],
+      // Supported since FILM-1727, and not connected in this seed.
+      ['twitter', 'not_connected'],
     ]);
     expect(item('youtube').sentence).toBe('YouTube: data through 2026-09-29.');
     expect(item('tiktok').sentence).toBe(
@@ -370,6 +372,7 @@ describe('the filter’s third state', () => {
     expect(reasons).toEqual({
       instagram:
         'Instagram: not connected. Connect a channel in settings to include it.',
+      twitter: 'X: not connected. Connect a channel in settings to include it.',
     });
   });
 });

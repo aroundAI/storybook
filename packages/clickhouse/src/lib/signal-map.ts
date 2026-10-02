@@ -440,6 +440,8 @@ export const SIGNALS: Record<SignalId, SignalDefinition> = {
 // Input gaps: a vendor field the family level cannot see
 // ---------------------------------------------------------------------------
 
+const CONTENT_ANALYTICS = 'packages/features/content-analytics/src';
+
 /**
  * Where a family is ingested on a platform but the one field a signal reads
  * is not. Read at the family level, such a signal would claim a figure

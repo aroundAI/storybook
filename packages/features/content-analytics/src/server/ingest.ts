@@ -24,7 +24,10 @@ import type {
 } from '../providers/facebook/types';
 import type { InstagramInsightsResult } from '../providers/instagram/types';
 import type { TikTokAnalyticsResult } from '../providers/tiktok/types';
-import type { XPlaybackQuartiles } from '../providers/twitter/types';
+import type {
+  XAnalyticsResult,
+  XPlaybackQuartiles,
+} from '../providers/twitter/types';
 import type {
   YouTubeAnalyticsResult,
   YouTubeDailyMetrics,
@@ -160,14 +163,15 @@ function denominatorDelta(
  * enter a delta and are never derived: the average is not total ÷ views
  * (FILM-1712), and the skip rate is not rescaled, because Meta does not say
  * whether it is 0–100 or 0–1. Null wherever Meta reported nothing, and on
- * TikTok and Facebook, which have neither.
+ * TikTok, Facebook and X, which have neither.
  */
 export function reelsAttention(
-  platform: 'tiktok' | 'instagram' | 'facebook',
+  platform: 'tiktok' | 'instagram' | 'facebook' | 'twitter',
   analytics:
     | TikTokAnalyticsResult
     | InstagramInsightsResult
-    | FacebookInsightsResult,
+    | FacebookInsightsResult
+    | XAnalyticsResult,
 ): InstagramReelsAttention {
   if (platform !== 'instagram') {
     return { ig_reels_avg_watch_time_ms: null, ig_reels_skip_rate: null };
@@ -182,7 +186,7 @@ export function reelsAttention(
 }
 
 /**
- * Today's lifetime snapshot of a TikTok, Instagram or Facebook post: the
+ * Today's lifetime snapshot of a TikTok, Instagram, Facebook or X post: the
  * counters that become tomorrow's baseline, Facebook's denominators as their
  * own columns (FILM-1720), and Instagram's Reels attention figures, which are
  * stored but never subtracted (KB-151).
@@ -190,13 +194,14 @@ export function reelsAttention(
 export function buildSnapshotRow(input: {
   projectId: string;
   videoId: string;
-  platform: 'tiktok' | 'instagram' | 'facebook';
+  platform: 'tiktok' | 'instagram' | 'facebook' | 'twitter';
   snapshotDate: string;
   totals: CumulativeTotals;
   analytics:
     | TikTokAnalyticsResult
     | InstagramInsightsResult
-    | FacebookInsightsResult;
+    | FacebookInsightsResult
+    | XAnalyticsResult;
 }): VideoSnapshot {
   const { denominators, ...counters } = input.totals;
 
