@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+
 import type { z } from 'zod';
 
 import type { Database, Json } from '@kit/supabase/database';
@@ -103,7 +104,9 @@ export function mergeStudioSettings(
   existingMetadata: Record<string, unknown> | null | undefined,
   data: Omit<z.infer<typeof UpdateStudioSettingsSchema>, 'projectId'>,
 ): Record<string, unknown> {
-  const updatedMetadata: Record<string, unknown> = { ...(existingMetadata ?? {}) };
+  const updatedMetadata: Record<string, unknown> = {
+    ...(existingMetadata ?? {}),
+  };
 
   if (data.targetAudience !== undefined) {
     updatedMetadata.targetAudience = data.targetAudience;

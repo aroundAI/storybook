@@ -51,4 +51,17 @@ export {
 } from './audit';
 export { SERVER_INFO, buildMcpServer, type ToolRuntime } from './build-server';
 export { collectNodeResponse, toNodeRequest } from './node-adapter';
-export { defaultTools, whoamiTool } from './tools';
+export {
+  authorTools,
+  defaultTools,
+  getWorkflowGuideTool,
+  readTools,
+  whoamiTool,
+} from './tools';
+export { WORKFLOW_GUIDE_TEXT } from './tools/workflow-guide';
+export {
+  defaultPrompts,
+  workflowGuidePrompt,
+  type McpPromptDefinition,
+  type McpPromptMessage,
+} from './prompts';

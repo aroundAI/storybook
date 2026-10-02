@@ -35,7 +35,43 @@ export const getEpisode = defineTool({
 });
 ```
 
-Then pass it to the route: `createMcpRouteHandlers({ tools: [...defaultTools, getEpisode] })`.
+Then pass it to the route: `createMcpRouteHandlers({ tools: [...defaultTools, getEpisode] })`,
+or append it to the list in `src/server/tools/index.ts`, which is what the
+route serves by default.
+
+## The tools today
+
+| Tool | Scope | What it does |
+| --- | --- | --- |
+| `whoami` | any | user, team, scopes, generation mode (FILM-1904) |
+| `get_workflow_guide` | read | stage order, what each stage needs, how brief/submit/finalize work; also the `workflow_guide` prompt |
+| `list_projects`, `get_project` | read | projects of the bound team with their series settings; episode, character and location counts |
+| `list_episodes`, `get_episode` | read | episodes without deleted ones; `get_episode` adds stage status (locked/available/done per stage), the story, a screenplay summary, counts and per-stage origin (null until FILM-1903) |
+| `get_screenplay`, `get_shots`, `get_dialogue` | read | full stage content, paged by scene |
+| `list_assets` | read | characters (with details) and locations, other types on request |
+| `create_project`, `update_project` | write | name, description, slug, status, and the studio settings page's series settings |
+| `create_episode`, `update_episode` | write | title, description (logline), target duration, content style, visual tone, tone notes; `update_episode` is optimistic-locked (`TARGET_CHANGED`) |
+| `upsert_asset` | write | a character or a location, by `assetId` or by type and name |
+
+Every list and long-content tool pages with `cursor` and `limit` (max 50);
+screenplay, shots and dialogue page by whole scenes
+(`src/server/tools/pagination.ts`). Each author tool validates with the same
+Zod schema as its web form (`@kit/projects/schemas`,
+`@kit/projects/schemas/studio-settings`, `@kit/episodes/schemas`,
+`@kit/episodes/schemas/create-episode-wizard`, `@kit/assets/character-schemas`,
+`@kit/assets/schemas/location`) and writes through the same service function
+the web action calls (`@kit/projects/service`, `@kit/episodes/server/episode-service`,
+`@kit/assets/service`, `@kit/assets/character/service`). None writes
+`story_data`, `screenplay_data`, `shot_list`, `shots`, `dialogue_lines` or
+`audio_cues`; `__tests__/tools/no-generated-writes.test.ts` fails if one starts to.
+
+Two kinds of refusal reach a client: the SDK validates `inputSchema` before
+the handler and answers a JSON-RPC `-32602` ("Invalid arguments"), which the
+SDK client throws; a refusal the handler or database makes (slug taken,
+version moved, row not in your team) is a tool result with `isError` and
+the error contract (`VALIDATION_FAILED`, `TARGET_CHANGED`, `NOT_FOUND`).
+Every read is scoped to the bound team on top of RLS, so another team's id
+is `NOT_FOUND`, never `FORBIDDEN`.
 
 What the registry does around every handler, so a tool does not:
 
@@ -110,6 +146,16 @@ MCP Inspector: `npx @modelcontextprotocol/inspector`, transport Streamable
 HTTP, URL `http://localhost:3000/api/mcp`, header `Authorization: Bearer …`.
 The contract test (`__tests__/contract.test.ts`) does the same with the SDK
 client when `MCP_CONTRACT_URL` and `MCP_CONTRACT_TOKEN` are set.
+
+`__tests__/tools/read-author.integration.test.ts` (FILM-1905) seeds two
+teams and a token against a local Supabase and drives every read and author
+tool through the SDK client, in-process by default or against a running
+server with `MCP_INTEGRATION_URL`:
+
+```bash
+MCP_INTEGRATION=1 E2E_SUPABASE_URL=http://127.0.0.1:55321 \
+  pnpm --filter @kit/studio-mcp test read-author.integration
+```
 
 `packages/mcp-server` is a different thing: a stdio developer tool with SQL
 execution. `__tests__/boundaries.test.ts` fails if anything reachable from

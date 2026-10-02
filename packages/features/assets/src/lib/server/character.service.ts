@@ -104,7 +104,8 @@ export async function updateCharacterWithDetails(
 
   const detailsPatch: Record<string, Json> = {};
 
-  if (data.personality !== undefined) detailsPatch.personality = data.personality;
+  if (data.personality !== undefined)
+    detailsPatch.personality = data.personality;
   if (data.elementPrompt !== undefined)
     detailsPatch.element_prompt = data.elementPrompt;
   if (data.referenceImages !== undefined)

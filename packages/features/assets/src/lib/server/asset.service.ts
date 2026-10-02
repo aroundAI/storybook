@@ -4,7 +4,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { Database, Json } from '@kit/supabase/database';
 
-import type { CreateAssetInput, UpdateAssetInput } from '../schemas/asset.schema';
+import type {
+  CreateAssetInput,
+  UpdateAssetInput,
+} from '../schemas/asset.schema';
 import type { Asset, AssetRow } from '../types';
 import { mapRowToAsset } from '../types';
 
@@ -98,7 +101,8 @@ export async function updateAssetRow(
   if (data.name !== undefined) updates.name = data.name;
   if (data.description !== undefined) updates.description = data.description;
   if (data.fileUrl !== undefined) updates.file_url = data.fileUrl;
-  if (data.thumbnailUrl !== undefined) updates.thumbnail_url = data.thumbnailUrl;
+  if (data.thumbnailUrl !== undefined)
+    updates.thumbnail_url = data.thumbnailUrl;
   if (data.metadata !== undefined) updates.metadata = data.metadata as Json;
 
   const { data: asset, error } = await client

@@ -58,7 +58,10 @@ const createAsset = enhanceAction(
       throw new ActionRefusal(inserted.refusal);
     }
 
-    logger.info({ ...ctx, assetId: inserted.data.id }, 'Asset created successfully');
+    logger.info(
+      { ...ctx, assetId: inserted.data.id },
+      'Asset created successfully',
+    );
 
     // Revalidate asset pages
     revalidatePath('/home/[account]/studio/[projectSlug]/assets', 'page');

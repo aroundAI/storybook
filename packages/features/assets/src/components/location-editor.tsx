@@ -11,12 +11,12 @@ import { Button } from '@kit/ui/button';
 import { Form } from '@kit/ui/form';
 import { toast } from '@kit/ui/sonner';
 
+import { LocationFormSchema } from '../lib/schemas/location.schema';
 import {
   createAssetAction,
   updateAssetAction,
 } from '../lib/server/asset.mutations';
 import type { Asset, LocationMetadata } from '../lib/types';
-import { LocationFormSchema } from '../lib/schemas/location.schema';
 import { LocationEditorForm } from './location-editor-form';
 
 // The form schema lives with the other asset schemas so the MCP

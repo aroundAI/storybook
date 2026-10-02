@@ -16,6 +16,7 @@ import {
 import { runWithMcpRequestContext } from '../request-context';
 import { hasScope } from '../scopes';
 import type { ToolCallRecord } from './audit';
+import { type McpPromptDefinition, defaultPrompts } from './prompts';
 import { type RateLimits, checkRateLimits } from './rate-limit';
 
 export interface ToolRuntime {
@@ -48,8 +49,19 @@ export function buildMcpServer(
   tools: McpToolDefinition[],
   runtime: ToolRuntime,
   requestId: string,
+  prompts: McpPromptDefinition[] = defaultPrompts,
 ) {
   const server = new McpServer(SERVER_INFO);
+
+  // Prompts carry no data of the caller's and no scope: today only the
+  // workflow guide (FILM-1905), the same text get_workflow_guide returns.
+  for (const prompt of prompts) {
+    server.registerPrompt(
+      prompt.name,
+      { title: prompt.title, description: prompt.description },
+      () => ({ messages: prompt.messages({}) }),
+    );
+  }
 
   for (const tool of tools) {
     server.registerTool(

@@ -7,6 +7,8 @@ import type { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { generateEpisodeSlug } from '../lib/slug-utils';
 import { OptimisticLockError } from '../lib/status-workflow';
 
+export { OptimisticLockError };
+
 /**
  * The episode writes a user authors by hand, callable with any Supabase
  * client: the web's server actions pass the cookie session's client, the

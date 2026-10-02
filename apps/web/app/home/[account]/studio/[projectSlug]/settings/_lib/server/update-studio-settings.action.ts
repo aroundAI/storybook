@@ -7,12 +7,11 @@ import { revalidatePath } from 'next/cache';
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import { requireRow, returnRefusals } from '@kit/next/refusals';
+import { mergeStudioSettings } from '@kit/projects/service';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-
-import { mergeStudioSettings } from '@kit/projects/service';
 
 import { UpdateStudioSettingsSchema } from '../schemas/studio-settings.schema';
 
