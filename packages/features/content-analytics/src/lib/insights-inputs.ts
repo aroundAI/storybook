@@ -1,3 +1,5 @@
+import type { RecordedRate } from '@kit/clickhouse';
+
 import type { AudienceData, TopContent, TrendFact } from '../types';
 import { compareViewsDesc } from './views';
 import type { Views } from './views';
@@ -26,7 +28,7 @@ interface ContentRow {
   platform: string;
   views: Views;
   likes: number;
-  engagementRate: number | null;
+  engagementRate: RecordedRate | null;
 }
 
 /** The window of the same length that ends the day before `range` starts. */
@@ -129,7 +131,8 @@ export function topContentForInsights(
       title: item.publishTitle || item.episodeTitle,
       views: item.views,
       likes: item.likes,
-      engagementRate: item.engagementRate,
+      // The model is given the figure; the record stays on the cards.
+      engagementRate: item.engagementRate?.value ?? null,
       platform: item.platform,
     }));
 

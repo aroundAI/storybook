@@ -8,6 +8,7 @@ export {
 export type { MetricConfig } from './metric-cards';
 
 export { PerformanceChart } from './performance-chart';
+export { RateDenominator } from './rate-denominator';
 export { SparklineChart } from './sparkline-chart';
 export { ComparisonChart } from './comparison-chart';
 

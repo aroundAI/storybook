@@ -21,6 +21,7 @@ import {
 
 import { FORMAT_FAMILY_LABEL } from '@kit/clickhouse';
 import type { FormatFamily, LanguageDimension } from '@kit/clickhouse';
+import { poolDenominators, recordViewsDenominator } from '@kit/clickhouse';
 import { Badge } from '@kit/ui/badge';
 import { Skeleton } from '@kit/ui/skeleton';
 
@@ -37,11 +38,13 @@ import {
 } from '../lib/language-labels';
 import type {
   ContentTypeComparison,
+  FormatFamilyTotals,
   LanguagePerformance,
 } from '../server/language-analytics';
 import { LanguageDimensionLabel } from './language-dimension-label';
 import { AnalyticsCard } from './overview/analytics-card';
 import type { CardClaim } from './overview/card-claim';
+import { RateDenominator } from './rate-denominator';
 
 // =============================================================================
 // Language Comparison Chart (Side-by-Side)
@@ -154,20 +157,34 @@ export function LanguageComparisonChart({
 const CLIP_FAMILY: FormatFamily = 'short_vertical';
 const SOURCE_FAMILY: FormatFamily = 'long_horizontal';
 
-function familyTotals(data: ContentTypeComparison, family: FormatFamily) {
-  return (
-    data.families.find((row) => row.family === family) ?? {
-      family,
-      views: 0,
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      engagement: 0,
-      revenueCents: null,
-      subscribersGained: 0,
-      contentCount: 0,
-    }
-  );
+function familyTotals(
+  data: ContentTypeComparison,
+  family: FormatFamily,
+): FormatFamilyTotals & { published: boolean } {
+  const found = data.families.find((row) => row.family === family);
+
+  if (found) return { ...found, published: true };
+
+  return {
+    family,
+    views: 0,
+    likes: 0,
+    comments: 0,
+    shares: 0,
+    // A family with nothing published: 0 over no platform, and says so.
+    engagement: {
+      value: 0,
+      denominator: recordViewsDenominator({
+        platforms: [],
+        window: data.window,
+      }),
+    },
+    revenueCents: null,
+    revenuePerViewCents: null,
+    subscribersGained: 0,
+    contentCount: 0,
+    published: false,
+  };
 }
 
 interface ShortsROICardProps {
@@ -259,14 +276,16 @@ function ShortsROIBody({
     sources.contentCount > 0 ? sources.views / sources.contentCount : 0;
   const shortsMultiplier =
     viewsPerSource > 0 ? viewsPerShort / viewsPerSource : 0;
-  const engagementDiff = clips.engagement - sources.engagement;
+  const engagementDiff = clips.engagement.value - sources.engagement.value;
+  // A difference of two rates: recorded over both families' platforms.
+  const engagementDiffDenominator = poolDenominators(
+    [clips, sources].flatMap((row) =>
+      row.published ? [row.engagement.denominator] : [],
+    ),
+    contentTypeData.window,
+  );
   // Null when no clip's earnings were measured (FILM-1726): not $0.
-  const shortsRevenuePerView =
-    clips.revenueCents === null
-      ? null
-      : clips.views > 0
-        ? clips.revenueCents / clips.views
-        : 0;
+  const shortsRevenuePerView = clips.revenuePerViewCents;
 
   return (
     <div className="space-y-4">
@@ -304,18 +323,32 @@ function ShortsROIBody({
         </div>
         <div className="flex items-center justify-between rounded-lg bg-muted/30 p-2">
           <span className="text-sm">Engagement difference</span>
-          <Badge variant={engagementDiff > 0 ? 'default' : 'secondary'}>
-            {engagementDiff > 0 ? '+' : ''}
-            {engagementDiff.toFixed(1)}%
-          </Badge>
+          <span className="inline-flex items-center gap-1">
+            <Badge variant={engagementDiff > 0 ? 'default' : 'secondary'}>
+              {engagementDiff > 0 ? '+' : ''}
+              {engagementDiff.toFixed(1)}%
+            </Badge>
+            <RateDenominator
+              denominator={engagementDiffDenominator}
+              figure="engagement difference"
+            />
+          </span>
         </div>
         <div className="flex items-center justify-between rounded-lg bg-muted/30 p-2">
           <span className="text-sm">Revenue/view (shorts)</span>
-          <Badge variant="outline" data-test="roi-revenue-per-view">
-            {shortsRevenuePerView === null
-              ? REVENUE_NOT_MEASURED
-              : `$${(shortsRevenuePerView / 100).toFixed(4)}`}
-          </Badge>
+          <span className="inline-flex items-center gap-1">
+            <Badge variant="outline" data-test="roi-revenue-per-view">
+              {shortsRevenuePerView === null
+                ? REVENUE_NOT_MEASURED
+                : `$${(shortsRevenuePerView.value / 100).toFixed(4)}`}
+            </Badge>
+            {shortsRevenuePerView && (
+              <RateDenominator
+                denominator={shortsRevenuePerView.denominator}
+                figure="revenue per view"
+              />
+            )}
+          </span>
         </div>
       </div>
     </div>
@@ -368,11 +401,11 @@ export function BestEpisodesToClipCard({
     const clips = familyTotals(contentTypeData, CLIP_FAMILY);
     const sources = familyTotals(contentTypeData, SOURCE_FAMILY);
 
-    if (clips.engagement > sources.engagement) {
+    if (clips.engagement.value > sources.engagement.value) {
       recommendations.push({
         icon: <TrendingUp className="h-4 w-4 text-green-500" />,
         title: 'Shorts outperform horizontal long-form',
-        description: `Shorts have ${(clips.engagement - sources.engagement).toFixed(1)}% higher engagement. Create more clips from high-performing episodes.`,
+        description: `Shorts have ${(clips.engagement.value - sources.engagement.value).toFixed(1)}% higher engagement. Create more clips from high-performing episodes.`,
         priority: 'high',
       });
     }
@@ -408,13 +441,13 @@ export function BestEpisodesToClipCard({
     }
 
     const highEngagementLang = labelledLanguages.find(
-      (l) => l.engagement > 5 && l.contentCount < 5,
+      (l) => l.engagement.value > 5 && l.contentCount < 5,
     );
     if (highEngagementLang) {
       recommendations.push({
         icon: <TrendingUp className="h-4 w-4 text-purple-500" />,
         title: `Expand ${languageName(highEngagementLang.language)} content`,
-        description: `High engagement (${highEngagementLang.engagement.toFixed(1)}%) but low volume. Great opportunity for more clips.`,
+        description: `High engagement (${highEngagementLang.engagement.value.toFixed(1)}%) but low volume. Great opportunity for more clips.`,
         priority: 'medium',
       });
     }

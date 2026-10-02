@@ -10,6 +10,7 @@ import {
   concludedChangeLogEntry,
   genomeHypothesisKey,
   metricProvenanceFor,
+  recordViewsDenominator,
   stageReading,
 } from '@kit/clickhouse';
 import type {
@@ -290,6 +291,57 @@ describe('the drill-down', () => {
     expect(link.tagName).toBe('A');
     expect(link.getAttribute('href')).toBeTruthy();
     expect(link.textContent).toBe('Peer zero');
+  });
+});
+
+describe('what a stage rate divided by (FILM-1732)', () => {
+  const transmission = STAGES.find((s) => s.stage === 'transmission')!;
+  const denominator = recordViewsDenominator({
+    platforms: ['youtube'],
+    window: { from: '2026-08-20', to: '2026-09-30' },
+  });
+
+  it('puts the record beside a stage that divides by views', () => {
+    const { container } = render(
+      <ol>
+        <StageDetail
+          surface={transmission}
+          denominator={denominator}
+          videos={{}}
+          onSelectVideo={() => {}}
+        />
+      </ol>,
+    );
+    const trigger = container.querySelector<HTMLElement>(
+      '[data-test="stage-denominator"] [data-test="rate-denominator-trigger"]',
+    )!;
+
+    expect(trigger.getAttribute('aria-label')).toBe(
+      'What the shares per view of Transmission was divided by',
+    );
+    expect(trigger.getAttribute('data-crosses')).toBe('true');
+
+    fireEvent.click(trigger);
+
+    expect(
+      document.querySelector('[data-test="rate-denominator"]')?.textContent,
+    ).toContain('YouTube changed what a view is on 27 Aug 2026');
+  });
+
+  it('puts none beside a stage given no record', () => {
+    const { container } = render(
+      <ol>
+        <StageDetail
+          surface={transmission}
+          videos={{}}
+          onSelectVideo={() => {}}
+        />
+      </ol>,
+    );
+
+    expect(
+      container.querySelector('[data-test="stage-denominator"]'),
+    ).toBeNull();
   });
 });
 

@@ -3,6 +3,7 @@
 import { z } from 'zod';
 
 import type {
+  DenominatorStamp,
   FormatFamily,
   FunnelStage,
   GenomeAnalysis,
@@ -14,6 +15,7 @@ import {
   benchmarkCheckpointsFor,
   isAnalyticsPlatform,
   metricProvenanceFor,
+  recordCohortViewsDenominator,
   stageMeasureFor,
   stageReadings,
 } from '@kit/clickhouse';
@@ -61,6 +63,12 @@ export type SignalSurfaceResult =
       /** In funnel order. */
       stages: StageSurface[];
       diagnosis: StageDiagnosis;
+      /**
+       * What each stage's rate divided by, over the days its videos were
+       * read (FILM-1732); absent where the stage's measure is not a rate
+       * over views.
+       */
+      denominators: Partial<Record<FunnelStage, DenominatorStamp>>;
       /** FILM-1717's findings at each stage that has a per-video measure. */
       genome: Partial<Record<FunnelStage, GenomeAnalysis>>;
       /** The subject's own tags, so a finding can say whether it carries one. */
@@ -192,6 +200,27 @@ export const getSignalSurfaceAction = enhanceAction(
       }).analysis;
     });
 
+    // These rates divide by views as read (no bridging here): the record
+    // says which definitions that covered, and any change it crossed.
+    const denominators: Partial<Record<FunnelStage, DenominatorStamp>> = {};
+    readings.forEach((reading, index) => {
+      const measured = stageRows[index];
+      if (!measured) return;
+
+      const record = recordCohortViewsDenominator({
+        platform,
+        formatFamily,
+        measure: measured.signal,
+        publishedAt: measured.rows
+          .filter((row) => row.formatFamily === formatFamily)
+          .map((row) => row.publishedAt),
+        checkpointDays: input.checkpointDays,
+        asOf: asOfSql,
+        denominator: { column: 'views', publishedFrom: null },
+      });
+      if (record) denominators[reading.stage] = record;
+    });
+
     const subjectTags =
       stageRows
         .flatMap((measured) => measured?.rows ?? [])
@@ -247,6 +276,7 @@ export const getSignalSurfaceAction = enhanceAction(
           stages.map((stage) => [stage.stage, stage]),
         ) as Record<FunnelStage, StageSurface>,
       ),
+      denominators,
       genome,
       subjectTags,
       videos,

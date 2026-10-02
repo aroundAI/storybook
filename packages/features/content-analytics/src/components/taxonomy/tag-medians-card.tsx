@@ -4,6 +4,7 @@ import { BarChart3 } from 'lucide-react';
 
 import { fromDimLanguage, interpretSpread } from '@kit/clickhouse';
 import type { SegmentConfidence } from '@kit/clickhouse';
+import type { DenominatorStamp } from '@kit/clickhouse';
 import { Progress } from '@kit/ui/progress';
 import { Skeleton } from '@kit/ui/skeleton';
 import { cn } from '@kit/ui/utils';
@@ -11,6 +12,7 @@ import { cn } from '@kit/ui/utils';
 import { languageName } from '../../lib/language-labels';
 import type { MoneyByCurrency } from '../../lib/money';
 import { formatMoney } from '../../lib/money';
+import { RateDenominator } from '../rate-denominator';
 
 /** One segment's aggregated performance, from getMedianByTagAction. */
 export interface TagMedianEntry {
@@ -28,6 +30,8 @@ export interface TagMedianEntry {
    * rate per currency the segment was paid in (KB-12).
    */
   rpm?: MoneyByCurrency | null;
+  /** What `rpm` divided by (FILM-1732). */
+  rpmDenominator?: DenominatorStamp | null;
 }
 
 interface TagMediansCardProps {
@@ -184,9 +188,18 @@ export function TagMediansCard({
             ) : null}
 
             {row.rpm && row.rpm.length > 0 ? (
-              <span data-test={'segment-rpm'}>
-                {formatRpm(row.rpm)}
-                {attributedRevenueOnly ? ' (per-video revenue only)' : ''}
+              <span className="inline-flex items-center gap-1">
+                <span data-test={'segment-rpm'}>
+                  {formatRpm(row.rpm)}
+                  {attributedRevenueOnly ? ' (per-video revenue only)' : ''}
+                </span>
+                {row.rpmDenominator && (
+                  <RateDenominator
+                    denominator={row.rpmDenominator}
+                    figure="RPM"
+                    subject={segmentLabel(row.segment, segmentNoun)}
+                  />
+                )}
               </span>
             ) : null}
           </div>

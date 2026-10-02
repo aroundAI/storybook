@@ -76,16 +76,13 @@ acceptance_criteria:
     met: true
     evidence: "Built by FILM-1707 (#528), which FILM-1722 §12 named alongside this spec: packages/features/content-analytics/src/lib/view-definition-marks.ts, drawn by every mounted views-over-time chart (FILM-1707 §9)"
   - text: "No rate is computed without recording which denominator definition it used"
-    met: false
-    reason: "Not met. The surface shows share_rate, comment_rate and subscriber_conversion, each over views, without recording which view definition. Rate denominator records are FILM-1732's (owner, 2026-10-02); #549 extends FILM-1713's DenominatorStamp to carry it, and this surface adopts that rather than defining a second shape"
+    met: true
+    evidence: "Met by FILM-1732 (#549): getSignalSurfaceAction returns each stage rate's record (`denominators`, FILM-1713's DenominatorStamp, built by recordCohortViewsDenominator over the days its videos were read), and StageDetail shows it beside the stage's measure (data-test='stage-denominator'). signal-surface-dom.test.tsx, guard RD29; signal-surface-evidence.spec.ts reads the Attention stage's record across 27 Aug 2026 against local ClickHouse. The figures are unchanged: still over views, the switch is the criterion above"
 open_questions: []
 remaining:
   - criterion: "engagedViews backs any YouTube series crossing 2026-08-27"
     reason: "Switching the stage rates to engaged views changes figures the owner's 2026-09-22 ruling holds, and needs querySegmentVideoMeasures to read engaged_views across the change. FILM-1732 says switching stays here; no one is building it yet"
     closed_by: "unassigned"
-  - criterion: "No rate is computed without recording which denominator definition it used"
-    reason: "The stage rates are not stamped. FILM-1732 owns the record shape and stamps the reads"
-    closed_by: "FILM-1732"
 feature:
   database: null
   queries: []

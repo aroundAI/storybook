@@ -3,6 +3,7 @@
 import { z } from 'zod';
 
 import type {
+  DenominatorStamp,
   GenomeViewsDenominator,
   StageMeasureRefusal,
 } from '@kit/clickhouse';
@@ -11,6 +12,7 @@ import {
   FUNNEL_STAGES,
   genomeViewsDenominator,
   isAnalyticsPlatform,
+  recordCohortViewsDenominator,
   stageMeasureFor,
 } from '@kit/clickhouse';
 import {
@@ -52,6 +54,11 @@ export type GenomeFindingsResult =
        * starts when a change in what a view is narrowed it (FILM-1717).
        */
       viewsDenominator: GenomeViewsDenominator & { ok: true };
+      /**
+       * What the stage's rate divided by, over the cohort's days (FILM-1732);
+       * null for a measure that does not divide by views, or no videos.
+       */
+      denominator: DenominatorStamp | null;
     } & GenomeFindings);
 
 /**
@@ -138,14 +145,15 @@ export const getGenomeFindingsAction = enhanceAction(
       publishedFrom: null,
       instead: null,
     });
-    const viewsDenominator = genomeViewsDenominator({
+    const cohort = {
       platform,
       formatFamily: input.formatFamily,
       measure: measure.signal,
       publishedAt: onViews.map((row) => row.publishedAt),
       checkpointDays: input.checkpointDays,
       asOf,
-    });
+    };
+    const viewsDenominator = genomeViewsDenominator(cohort);
 
     if (!viewsDenominator.ok) {
       return { status: 'refused', refusal: viewsDenominator.refusal };
@@ -166,6 +174,10 @@ export const getGenomeFindingsAction = enhanceAction(
     return {
       status: 'analysed',
       viewsDenominator,
+      denominator: recordCohortViewsDenominator({
+        ...cohort,
+        denominator: viewsDenominator,
+      }),
       ...genomeFindingsFrom({
         rows,
         platform,

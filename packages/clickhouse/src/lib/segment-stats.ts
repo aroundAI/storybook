@@ -9,6 +9,7 @@
  * The aggregation stays in SQL; only the statistics live here. Same line
  * FILM-1604 drew between queryCohortMedians and lib/cohort-growth.ts.
  */
+import { rpmCents } from './measures';
 
 /** Mature videos a segment needs before its figures stop being noise. */
 export const CONFIDENCE_DIRECTIONAL_MIN = 5;
@@ -70,9 +71,7 @@ export function pooledRpmCents(
   revenueCents: number,
   views: number,
 ): number | null {
-  if (views <= 0) return null;
-
-  return (revenueCents / views) * 1000;
+  return rpmCents(revenueCents, views);
 }
 
 /**

@@ -218,6 +218,41 @@ test.describe('FILM-1719 — signal surfaces with data', () => {
       /^0:10 average view duration · 0\.\dx typical · typical = 0:40 · n = 20$/,
     );
 
+    // FILM-1732: what the rate divided by. The subject's 30 days start 60
+    // days ago, so its window runs over YouTube's 27 Aug change.
+    const recordTrigger = byTest(
+      byTest(attention, 'stage-denominator'),
+      'rate-denominator-trigger',
+    );
+    await expect(recordTrigger).toHaveAttribute(
+      'aria-label',
+      'What the average view duration of Attention was divided by',
+    );
+    await expect(recordTrigger).toHaveAttribute('data-crosses', 'true');
+    await recordTrigger.click();
+    const stageRecord = byTest(page, 'rate-denominator');
+    await expect(stageRecord).toContainText(
+      'YouTube changed what a view is on 27 Aug 2026',
+    );
+    const stageRecordText = await stageRecord.textContent();
+    const recordBox = await stageRecord.boundingBox();
+    const detailBox = await attention.boundingBox();
+    const top = Math.min(recordBox!.y, detailBox!.y);
+    await page.screenshot({
+      path: `${OUT}/06-stage-record.png`,
+      clip: {
+        x: detailBox!.x,
+        y: top,
+        width: detailBox!.width,
+        height:
+          Math.max(
+            recordBox!.y + recordBox!.height,
+            detailBox!.y + detailBox!.height,
+          ) - top,
+      },
+    });
+    await page.keyboard.press('Escape');
+
     // Depth 3: the provider field and the ingestion path.
     const rawTrigger = byTest(attention, 'stage-raw-trigger');
     await rawTrigger.click();
@@ -260,6 +295,7 @@ test.describe('FILM-1719 — signal surfaces with data', () => {
     const readings = {
       states,
       measureLine: await line.textContent(),
+      stageRecord: stageRecordText,
       coverage: await byTest(surface, 'signal-coverage').textContent(),
       diagnosis: await byTest(surface, 'signal-diagnosis').textContent(),
       bars,

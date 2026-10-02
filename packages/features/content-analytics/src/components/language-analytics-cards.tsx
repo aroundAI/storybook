@@ -32,6 +32,7 @@ import type {
 import { LanguageDimensionLabel } from './language-dimension-label';
 import { AnalyticsCard } from './overview/analytics-card';
 import type { CardClaim } from './overview/card-claim';
+import { RateDenominator } from './rate-denominator';
 
 // =============================================================================
 // Language Performance Card
@@ -173,7 +174,14 @@ export function LanguagePerformanceCard({
                 <span data-test="language-row-share">
                   {formatPercent(percentage)} of total
                 </span>
-                <span>{formatPercent(lang.engagement)} engagement</span>
+                <span className="inline-flex items-center gap-1">
+                  {formatPercent(lang.engagement.value)} engagement
+                  <RateDenominator
+                    denominator={lang.engagement.denominator}
+                    figure="engagement rate"
+                    subject={languageName(lang.language, dimension)}
+                  />
+                </span>
               </div>
               <p
                 className="text-xs text-muted-foreground"
@@ -208,7 +216,7 @@ function bestCombination(
     .filter((entry) => entry.language !== null)
     .reduce<
       PlatformLanguageEntry | undefined
-    >((best, entry) => (!best || entry.engagementRate > best.engagementRate ? entry : best), undefined);
+    >((best, entry) => (!best || entry.engagementRate.value > best.engagementRate.value ? entry : best), undefined);
 }
 
 export function platformLanguageClaim(
@@ -235,7 +243,7 @@ export function platformLanguageClaim(
   }
 
   return {
-    figure: formatPercent(best.engagementRate),
+    figure: formatPercent(best.engagementRate.value),
     sentence: `The highest engagement rate of any labelled language on any platform: ${languageName(best.language, dimension)} on ${platformLabel(best.platform)}.`,
   };
 }
@@ -346,8 +354,13 @@ export function PlatformLanguageMatrix({
                               <div className="font-medium tabular-nums">
                                 {formatNumber(entry.views)}
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                {formatPercent(entry.engagementRate)}
+                              <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                                {formatPercent(entry.engagementRate.value)}
+                                <RateDenominator
+                                  denominator={entry.engagementRate.denominator}
+                                  figure="engagement rate"
+                                  subject={`${languageName(lang, dimension)} on ${platformLabel(platform)}`}
+                                />
                               </div>
                             </div>
                           ) : (
@@ -367,7 +380,7 @@ export function PlatformLanguageMatrix({
             <TrendingUp className="h-4 w-4" />
             Best: {languageName(bestEntry.language, dimension)} on{' '}
             {platformLabel(bestEntry.platform)} (
-            {formatPercent(bestEntry.engagementRate)} engagement)
+            {formatPercent(bestEntry.engagementRate.value)} engagement)
           </div>
         )}
       </div>
@@ -485,7 +498,14 @@ function FormatFamilyTable({ data }: { data: ContentTypeComparison }) {
                   className="py-3 pl-3 text-right tabular-nums"
                   data-test="format-family-engagement"
                 >
-                  {formatPercent(row.engagement)}
+                  <span className="inline-flex items-center gap-1">
+                    {formatPercent(row.engagement.value)}
+                    <RateDenominator
+                      denominator={row.engagement.denominator}
+                      figure="engagement rate"
+                      subject={FORMAT_FAMILY_LABEL[row.family]}
+                    />
+                  </span>
                 </td>
                 <td className="py-3 pl-3 text-right tabular-nums">
                   {row.subscribersGained === null

@@ -1,6 +1,10 @@
 import 'server-only';
 
-import { displayedEngagementRatePercent } from '@kit/clickhouse';
+import {
+  recordViewsDenominator,
+  recordedEngagementRatePercent,
+} from '@kit/clickhouse';
+import type { DenominatorWindow, RecordedRate } from '@kit/clickhouse';
 import {
   formatDateStr,
   queryDailyTimeSeries,
@@ -25,6 +29,11 @@ import type { Views, ViewsScope } from '../lib/views';
 import type { AnalyticsTotals, DailyMetric, TopContent } from '../types';
 import { readAccountRevenueAccess } from './revenue-access-reader';
 
+/** A top item on the dashboard: its engagement rate carries its record (FILM-1732). */
+export type AccountTopContent = Omit<TopContent, 'engagementRate'> & {
+  engagementRate: RecordedRate | null;
+};
+
 /**
  * Account-level dashboard data combining all projects
  */
@@ -32,6 +41,12 @@ export interface AccountDashboardData {
   totals: AnalyticsTotals;
   /** What `totals.views` covers, for why it is null (KB-166). */
   viewsScope: ViewsScope;
+  /**
+   * The total engagement rate with its record (FILM-1732); null when no
+   * views were measured. Computed here, where the platforms are known,
+   * rather than in the card.
+   */
+  engagementRate: RecordedRate | null;
   /** Why revenue is not measured, when it is not (FILM-1726). */
   revenueAccess: RevenueAccessNote[];
   previousPeriodTotals: AnalyticsTotals;
@@ -41,7 +56,7 @@ export interface AccountDashboardData {
     views: Views;
     percentage: number | null;
   }[];
-  topContent: TopContent[];
+  topContent: AccountTopContent[];
   productionStatus: {
     inProgress: number;
     finalized: number;
@@ -248,8 +263,27 @@ async function getAccountFigures(
     shares: d.shares,
   }));
 
+  const window = { from: startDateStr, to: endDateStr };
+  const engagementRate =
+    currentAnalyticsTotals.views === null
+      ? null
+      : recordedEngagementRatePercent(
+          {
+            ...currentAnalyticsTotals,
+            views: currentAnalyticsTotals.views,
+            // X's unmeasured shares add none (FILM-1727).
+            shares: currentAnalyticsTotals.shares ?? 0,
+          },
+          recordViewsDenominator({
+            platforms: allPublishes
+              .filter(({ id }) => perVideoTotals.has(id))
+              .map(({ platform }) => platform),
+            window,
+          }),
+        );
+
   // Top content (top 5 by views)
-  const topContent = buildTopContent(allPublishes, perVideoTotals);
+  const topContent = buildTopContent(allPublishes, perVideoTotals, window);
 
   // Production status (stays Supabase)
   const productionStatus = await getProductionStatus(projectIds);
@@ -263,6 +297,7 @@ async function getAccountFigures(
         ? `${startDateStr} to ${endDateStr}`
         : 'the last 30 days',
     ),
+    engagementRate,
     previousPeriodTotals: previousAnalyticsTotals,
     dailyMetrics,
     platformBreakdown,
@@ -310,6 +345,7 @@ function getEmptyDashboardData(): Omit<AccountDashboardData, 'revenueAccess'> {
       contentCount: 0,
     },
     viewsScope: EMPTY_VIEWS_SCOPE,
+    engagementRate: null,
     previousPeriodTotals: {
       views: null,
       likes: 0,
@@ -349,6 +385,7 @@ interface PublishRow {
 function buildTopContent(
   publishes: PublishRow[],
   perVideoTotals: Map<string, AggregatedTotals>,
+  window: DenominatorWindow,
 ): AccountDashboardData['topContent'] {
   const contentList: AccountDashboardData['topContent'] = [];
 
@@ -361,7 +398,10 @@ function buildTopContent(
     const engagementRate =
       stats.views === null
         ? null
-        : displayedEngagementRatePercent({ ...stats, views: stats.views });
+        : recordedEngagementRatePercent(
+            { ...stats, views: stats.views },
+            recordViewsDenominator({ platforms: [publish.platform], window }),
+          );
 
     contentList.push({
       id: publish.id,

@@ -22,6 +22,7 @@ import {
   coverageResult,
   renderWithCoverage,
 } from './helpers/coverage';
+import { recorded } from './helpers/recorded-rate';
 
 vi.mock('next/image', () => ({
   default: (props: { alt: string }) => <span data-image={props.alt} />,
@@ -165,7 +166,7 @@ describe('a content card', () => {
       views={1200}
       likes={30}
       comments={4}
-      engagementRate={2.8}
+      engagementRate={recorded(2.8)}
     />
   );
 

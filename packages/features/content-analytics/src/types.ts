@@ -1,3 +1,5 @@
+import type { DenominatorStamp } from '@kit/clickhouse';
+
 import type { EstimatedRevenue } from './lib/estimated-revenue';
 import type { Views } from './lib/views';
 
@@ -178,6 +180,8 @@ export interface AggregateAnalytics {
   trendFacts?: TrendFact[];
   contentCount: number;
   avgEngagementRate: number;
+  /** What `avgEngagementRate` divided by (FILM-1732), for the page's own sentence. */
+  avgEngagementDenominator?: DenominatorStamp;
   /** Share breakdown by type */
   shareBreakdown?: ShareBreakdown;
   /** Revenue breakdown by source */

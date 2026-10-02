@@ -14,6 +14,7 @@ import { formatRevenueCents } from '../lib/estimated-revenue';
 import { VIEWS_NOT_MEASURED, formatViews } from '../lib/views';
 import type { ProjectAnalytics as ProjectAnalyticsData } from '../server/aggregation-queries';
 import { MetricCards, NOT_COLLECTED_HERE_REASON } from './metric-cards';
+import { RateDenominator } from './rate-denominator';
 
 interface ProjectDashboardProps {
   data: ProjectAnalyticsData;
@@ -173,8 +174,15 @@ export function ProjectDashboard({ data }: ProjectDashboardProps) {
             <CardTitle className="text-base">Avg Engagement</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">
-              {data.avgEngagementRate.toFixed(2)}%
+            <p
+              className="flex items-center gap-2 text-3xl font-bold"
+              data-test="avg-engagement-rate"
+            >
+              {data.avgEngagementRate.value.toFixed(2)}%
+              <RateDenominator
+                denominator={data.avgEngagementRate.denominator}
+                figure="average engagement rate"
+              />
             </p>
           </CardContent>
         </Card>

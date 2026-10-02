@@ -1720,6 +1720,7 @@ function segmentPerVideoSql(
         d.video_id as video_id,
         ${grouping} as segment,
         d.published_at as published_at,
+        d.platform as platform,
         dateDiff('day', d.published_at, {asOf: DateTime}) as age_days,
         if(
           any(i.ingest_start) > toDate(0),
@@ -1743,7 +1744,7 @@ function segmentPerVideoSql(
       LEFT JOIN metrics m
         ON m.video_id = d.video_id AND m.project_id = d.project_id
       LEFT JOIN ingest i ON i.connection_id = d.connection_id
-      GROUP BY video_id, segment, d.published_at
+      GROUP BY video_id, segment, d.published_at, d.platform
     )
   `;
 }
@@ -2106,6 +2107,8 @@ export interface SegmentMembershipRow {
    * cover. Without it the two halves of the rate measure different spans.
    */
   publishedAt: string;
+  /** The video's platform: what the segment's RPM pooled (FILM-1732). */
+  platform: string;
 }
 
 /**
@@ -2192,7 +2195,8 @@ export async function querySegmentMembership(input: {
     SELECT
       segment,
       video_id,
-      toString(published_at) as published_at
+      toString(published_at) as published_at,
+      platform
     FROM per_video
     WHERE ${segmentEligible(days)}${tagFilter ? ` AND ${tagFilter}` : ''}${keyset}
     ORDER BY segment ASC, video_id ASC
@@ -2209,12 +2213,14 @@ export async function querySegmentMembership(input: {
     segment: string;
     video_id: string;
     published_at: string;
+    platform: string;
   }>();
 
   return rows.map((row) => ({
     segment: String(row.segment),
     videoId: String(row.video_id),
     publishedAt: String(row.published_at),
+    platform: String(row.platform),
   }));
 }
 

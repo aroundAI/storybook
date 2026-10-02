@@ -5,9 +5,12 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import { Trophy } from 'lucide-react';
 
+import type { RecordedRate } from '@kit/clickhouse';
+
 import { formatNumber, formatPercent } from '../../lib/format';
 import { VIEWS_NOT_MEASURED, formatViews } from '../../lib/views';
 import type { Views } from '../../lib/views';
+import { RateDenominator } from '../rate-denominator';
 import { AnalyticsCard } from './analytics-card';
 import { topContentClaim } from './card-claim';
 
@@ -18,7 +21,7 @@ interface TopContentItem {
   publishedAt: string;
   platform: string;
   views: Views;
-  engagementRate: number | null;
+  engagementRate: RecordedRate | null;
 }
 
 interface TopContentCardProps {
@@ -95,11 +98,18 @@ export function TopContentCard({ content, onViewAll }: TopContentCardProps) {
                   {item.platform}
                 </span>
                 <span>{formatViews(item.views, formatNumber)} Views</span>
-                <span className="font-semibold text-green-600 dark:text-green-400">
+                <span className="inline-flex items-center gap-1 font-semibold text-green-600 dark:text-green-400">
                   {item.engagementRate === null
                     ? VIEWS_NOT_MEASURED
-                    : formatPercent(item.engagementRate)}{' '}
+                    : formatPercent(item.engagementRate.value)}{' '}
                   ER
+                  {item.engagementRate && (
+                    <RateDenominator
+                      denominator={item.engagementRate.denominator}
+                      figure="engagement rate"
+                      subject={item.title}
+                    />
+                  )}
                 </span>
               </div>
             </div>

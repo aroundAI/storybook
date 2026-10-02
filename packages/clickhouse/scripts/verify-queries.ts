@@ -41,6 +41,12 @@ import {
 } from '../src/lib/genome-loop';
 import { metricProvenanceFor } from '../src/lib/genome-measures';
 import type { SegmentMeasure } from '../src/lib/genome-measures';
+import {
+  denominatorSentence,
+  recordViewsDenominator,
+  recordedEngagementRatePercent,
+  rpmCents,
+} from '../src/lib/measures';
 import { VIEWS_DATA_WINDOWS } from '../src/lib/self-benchmark';
 import { addViews } from '../src/lib/views';
 import {
@@ -3316,6 +3322,186 @@ async function revenueSteps() {
   await step('clear: revenue fixture', () => clearFixtureRows(projects, []));
 }
 
+const RATE_DENOMINATOR_PROJECT = '17321732-1732-4732-8732-173217321732';
+const RD_YOUTUBE = 'rd-yt';
+const RD_TIKTOK = 'rd-tt';
+
+/**
+ * FILM-1732: a rate read off the real tables carries a record of what its
+ * views were, and a window across YouTube's 2026-08-27 change says so.
+ *
+ *   | video | platform | day        | views | likes | comments | shares |
+ *   |-------|----------|------------|-------|-------|----------|--------|
+ *   | rd-yt | youtube  | 2026-08-25 | 400   | 20    | 10       | 10     |
+ *   | rd-yt | youtube  | 2026-08-29 | 600   | 30    | 15       | 15     |
+ *   | rd-tt | tiktok   | 2026-08-29 | 500   | 25    | 0        | 0      |
+ *
+ *   2026-08-20..2026-09-05: 40 + 60 + 25 = 125 interactions over
+ *   1500 views = 8.333…%, crossing YouTube's change: the record names the
+ *   long-form view, the 2025 Shorts view and the 2026-08-27 view.
+ *   2026-08-28..2026-09-05: 85 over 1100 = 7.727…%, crossing nothing.
+ *   RPM on 3000 cents over 1500 views = 2000 cents.
+ */
+async function rateDenominatorSteps() {
+  const projects = [RATE_DENOMINATOR_PROJECT];
+  const scope = { projectId: RATE_DENOMINATOR_PROJECT };
+  const row = (input: {
+    id: string;
+    platform: 'youtube' | 'tiktok';
+    date: string;
+    views: number;
+    likes: number;
+    comments: number;
+    shares: number;
+  }) => ({
+    ...metricFor({
+      project: RATE_DENOMINATOR_PROJECT,
+      id: input.id,
+      date: input.date,
+      views: input.views,
+    }),
+    platform: input.platform,
+    likes: input.likes,
+    comments: input.comments,
+    shares: input.shares,
+  });
+
+  await step('seed: rate denominator fixture', async () => {
+    await clearFixtureRows(projects, []);
+    await insertVideoDims(
+      [
+        [RD_YOUTUBE, 'youtube'],
+        [RD_TIKTOK, 'tiktok'],
+      ].map(([id, platform]) => ({
+        video_id: id!,
+        project_id: RATE_DENOMINATOR_PROJECT,
+        account_id: ACCOUNT,
+        episode_id: EPISODE,
+        connection_id: CHANNEL_EN,
+        platform: platform as 'youtube' | 'tiktok',
+        content_type: 'full',
+        language: 'en',
+        channel_language: 'en',
+        title: id!,
+        published_at: '2026-08-20 00:00:00',
+        episode_duration_seconds: 600,
+        asset_duration_seconds: null,
+        tags: [],
+      })),
+    );
+    await insertVideoMetrics([
+      row({
+        id: RD_YOUTUBE,
+        platform: 'youtube',
+        date: '2026-08-25',
+        views: 400,
+        likes: 20,
+        comments: 10,
+        shares: 10,
+      }),
+      row({
+        id: RD_YOUTUBE,
+        platform: 'youtube',
+        date: '2026-08-29',
+        views: 600,
+        likes: 30,
+        comments: 15,
+        shares: 15,
+      }),
+      row({
+        id: RD_TIKTOK,
+        platform: 'tiktok',
+        date: '2026-08-29',
+        views: 500,
+        likes: 25,
+        comments: 0,
+        shares: 0,
+      }),
+    ]);
+  });
+
+  await step('hand: a rate across 2026-08-27 records both views', async () => {
+    const window = { from: '2026-08-20', to: '2026-09-05' };
+    const totals = await queryTotals({
+      ...scope,
+      startDate: window.from,
+      endDate: window.to,
+    });
+    const rate = recordedEngagementRatePercent(
+      { ...totals, views: totals.views ?? 0, shares: totals.shares ?? 0 },
+      recordViewsDenominator({ platforms: ['youtube', 'tiktok'], window }),
+    );
+
+    expectEqual('views', totals.views, 1500);
+    expectClose('rate', rate.value, (125 / 1500) * 100);
+    expectEqual(
+      'crosses',
+      rate.denominator.crosses.map((c) => [c.to.platform, c.date]),
+      [['youtube', '2026-08-27']],
+    );
+    expectEqual(
+      'youtube definitions',
+      rate.denominator.platforms
+        .filter((p) => p.platform === 'youtube' && p.inDenominator)
+        .flatMap((p) => (p.inDenominator ? p.definitions : []))
+        .map((d) => d.id),
+      [
+        'youtube.views.legacy',
+        'youtube.views.shorts.2025-03-31',
+        'youtube.views.2026-08-27',
+      ],
+    );
+    expectEqual('rpm', rpmCents(3000, totals.views ?? 0), 2000);
+
+    return denominatorSentence(rate.denominator);
+  });
+
+  await step('hand: a rate after 2026-08-27 crosses nothing', async () => {
+    const window = { from: '2026-08-28', to: '2026-09-05' };
+    const totals = await queryTotals({
+      ...scope,
+      startDate: window.from,
+      endDate: window.to,
+    });
+    const rate = recordedEngagementRatePercent(
+      { ...totals, views: totals.views ?? 0, shares: totals.shares ?? 0 },
+      recordViewsDenominator({ platforms: ['youtube', 'tiktok'], window }),
+    );
+
+    expectEqual('views', totals.views, 1100);
+    expectClose('rate', rate.value, (85 / 1100) * 100);
+    expectEqual('crosses', rate.denominator.crosses, []);
+
+    return `${rate.value.toFixed(3)}%, one definition per platform`;
+  });
+
+  await step(
+    "hand: segment membership names each video's platform",
+    async () => {
+      const rows = await querySegmentMembership({
+        scope,
+        segment: { kind: 'language' },
+        asOf: '2026-10-02',
+      });
+
+      expectEqual(
+        'platforms',
+        rows.map((r) => [r.videoId, r.platform]).sort(),
+        [
+          [RD_TIKTOK, 'tiktok'],
+          [RD_YOUTUBE, 'youtube'],
+        ],
+      );
+
+      return rows.map((r) => `${r.videoId}=${r.platform}`).join(', ');
+    },
+  );
+
+  await step('clear: rate denominator fixture', () =>
+    clearFixtureRows(projects, []),
+  );
+}
+
 function expectEqual(label: string, actual: unknown, expected: unknown): void {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
     throw new Error(
@@ -6522,6 +6708,7 @@ async function main() {
   await observedCoverageSteps();
   await unmeasuredTotalsSteps();
   await noRowsViewsSteps();
+  await rateDenominatorSteps();
   // Last: it fills a project with noise, and nothing above should see it.
   await scanScopeSteps();
 

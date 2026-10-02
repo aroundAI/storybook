@@ -26,6 +26,8 @@
  * ratio those windows happen to stand in.
  */
 import { pooledRpmCents } from '@kit/clickhouse';
+import { recordViewsDenominator } from '@kit/clickhouse';
+import type { DenominatorStamp } from '@kit/clickhouse';
 
 import type { CurrencyAmount, MoneyByCurrency } from './money';
 import { createMoneyFold } from './money';
@@ -44,6 +46,8 @@ export interface MembershipEntry {
   windowStart: string;
   /** Exclusive last day of that window, 'YYYY-MM-DD'. */
   windowEnd: string;
+  /** The video's platform, for what its views add to (FILM-1732). */
+  platform: string;
 }
 
 /**
@@ -149,6 +153,36 @@ export function segmentRpm(
   }
 
   return rates;
+}
+
+/**
+ * What a segment's RPM divided by (FILM-1732): its videos' platforms, over
+ * the span their checkpoint windows cover together — the days its
+ * `totalViews` was counted over.
+ */
+export function segmentRpmDenominator(
+  membership: Map<string, MembershipEntry>,
+  segment: string,
+): DenominatorStamp | null {
+  const members = [...membership.values()].filter((entry) =>
+    entry.segments.includes(segment),
+  );
+  const span = revenueFetchWindow(
+    new Map(members.map((entry, index) => [String(index), entry])),
+  );
+
+  if (!span) return null;
+
+  const last = new Date(`${span.toExclusive}T00:00:00Z`);
+  last.setUTCDate(last.getUTCDate() - 1);
+
+  return recordViewsDenominator({
+    platforms: members.map((entry) => entry.platform),
+    window: {
+      from: span.from,
+      to: [span.from, last.toISOString().slice(0, 10)].sort().at(-1)!,
+    },
+  });
 }
 
 export function createSegmentRevenueFold(

@@ -95,8 +95,8 @@
       "name": "The AI card renders its summary as markup again",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/components/overview/ai-insight-card.tsx",
-      "find": "<p className=\"text-sm leading-relaxed\">{summary}</p>",
-      "replace": "<p\n        className=\"text-sm leading-relaxed\"\n        dangerouslySetInnerHTML={{ __html: summary }}\n      />",
+      "find": "        {summary}\n        {summaryAside",
+      "replace": "        <span dangerouslySetInnerHTML={{ __html: summary }} />\n        {summaryAside",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/ai-insight-card-text.test.tsx",
       "pattern": "renders a summary as text"

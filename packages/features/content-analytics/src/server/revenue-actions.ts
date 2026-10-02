@@ -2,6 +2,7 @@
 
 import 'server-only';
 
+import { recordViewsDenominator } from '@kit/clickhouse';
 import { queryTotalsByVideoIds } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
@@ -43,18 +44,18 @@ import { forEachAccountRevenueRow } from './revenue-queries';
  * views from content that earned nothing still count — otherwise RPM is
  * computed only over revenue-bearing videos and reads far too high.
  */
-async function fetchAccountPublishIds(
+async function fetchAccountPublishes(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   accountId: string,
-): Promise<string[]> {
+): Promise<{ id: string; platform: string }[]> {
   // Paged. This is the denominator itself, so a short read inflates every
   // RPM figure — the precise defect this function was added to remove.
-  const rows = await fetchAllRows<{ id: string }>(
+  const rows = await fetchAllRows<{ id: string; platform: string }>(
     (from, to) =>
       client
         .from('publishes')
-        .select('id, episodes!inner(projects!inner(account_id))')
+        .select('id, platform, episodes!inner(projects!inner(account_id))')
         .eq('status', 'published')
         .eq('episodes.projects.account_id', accountId)
         .order('id')
@@ -62,7 +63,7 @@ async function fetchAccountPublishIds(
     'account publish ids',
   );
 
-  return rows.map((row) => row.id);
+  return rows.map(({ id, platform }) => ({ id, platform }));
 }
 
 /**
@@ -94,21 +95,23 @@ export const getRevenueSummaryAction = enhanceAction(
     // RPM denominator is every published video's views in the window, not
     // only the ones that earned — otherwise RPM is inflated by excluding
     // content that produced views but no revenue row.
-    const denominatorPublishIds = await fetchAccountPublishIds(
-      client,
-      accountId,
-    );
+    const denominatorPublishes = await fetchAccountPublishes(client, accountId);
 
     let totalViews = 0;
+    const pooledPlatforms = new Set<string>();
 
-    if (denominatorPublishIds.length > 0) {
+    if (denominatorPublishes.length > 0) {
       const perVideoTotals = await queryTotalsByVideoIds(
-        denominatorPublishIds,
+        denominatorPublishes.map(({ id }) => id),
         { startDate, endDate },
       );
 
       for (const [, stats] of perVideoTotals) {
         totalViews += viewsToAdd(stats.views);
+      }
+
+      for (const { id, platform } of denominatorPublishes) {
+        if (perVideoTotals.has(id)) pooledPlatforms.add(platform);
       }
     }
 
@@ -130,6 +133,10 @@ export const getRevenueSummaryAction = enhanceAction(
     return fold.result({
       period: { start: startDate, end: endDate },
       totalViews,
+      denominator: recordViewsDenominator({
+        platforms: pooledPlatforms,
+        window: { from: startDate, to: endDate },
+      }),
     });
   },
   {
@@ -632,7 +639,7 @@ export const getTopContentByRevenueAction = enhanceAction(
       }
     }
 
-    return fold.result(viewsMap, limit);
+    return fold.result(viewsMap, limit, { from: startDate, to: endDate });
   },
   {
     auth: true,

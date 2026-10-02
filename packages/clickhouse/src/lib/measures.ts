@@ -20,8 +20,15 @@ import type {
   ViewDefinitionChange,
   ViewFormat,
   ViewsColumn,
+  ViewsDenominator,
 } from './view-definitions';
-import { VIEW_DEFINITIONS, viewsDenominatorFor } from './view-definitions';
+import {
+  PLATFORM_IDS,
+  VIEW_DEFINITIONS,
+  viewDefinitionAt,
+  viewDefinitionChangesBetween,
+  viewsDenominatorFor,
+} from './view-definitions';
 
 export type MeasureId =
   | 'engagement_rate'
@@ -214,6 +221,41 @@ export const PREFERRED_DENOMINATOR: Readonly<
   twitter: 'views',
 };
 
+/**
+ * One platform's part in a denominator over a window (FILM-1732): the
+ * definitions its figure was counted under, or why it added nothing.
+ */
+/**
+ * A definition as a record names it: enough to say what a view was and since
+ * when. A record rides on every rate a read returns, so it carries the id
+ * that keys the registry rather than the registry's whole entry (FILM-1732).
+ */
+export type ViewDefinitionRef = Pick<
+  ViewDefinition,
+  'id' | 'platform' | 'label' | 'effectiveFrom'
+>;
+
+/** A change a window crosses: the day, and the definitions either side. */
+export interface DenominatorChange {
+  date: string;
+  from: ViewDefinitionRef;
+  to: ViewDefinitionRef;
+}
+
+export type DenominatorPlatform =
+  | {
+      platform: AnalyticsPlatform;
+      inDenominator: true;
+      /** Every definition in force at some point in the window, earliest first. */
+      definitions: readonly ViewDefinitionRef[];
+    }
+  | {
+      platform: AnalyticsPlatform;
+      inDenominator: false;
+      /** Facebook stores NULL views (FILM-1720 option A): no definition to name. */
+      reason: 'no_single_view_definition';
+    };
+
 /** What a rate divided by, stamped on every value. */
 export interface DenominatorStamp {
   column: ViewsColumn | 'reach';
@@ -223,13 +265,32 @@ export interface DenominatorStamp {
     because: 'not_ingested' | 'not_reported';
   };
   /** Each with its `effectiveFrom`: what the figure was counted under. */
-  definitions: readonly ViewDefinition[];
+  definitions: readonly ViewDefinitionRef[];
   /** Present when the window crossed a change `engaged_views` bridges. */
   bridged?: {
     reason: 'view_definition_changed';
     changedOn: string;
     changes: readonly ViewDefinitionChange[];
   };
+  /** The days the figure was counted over, inclusive (FILM-1732). */
+  window: { from: string; to: string };
+  /** Each platform pooled into the figure, and how it entered the denominator. */
+  platforms: readonly DenominatorPlatform[];
+  /**
+   * The definition changes inside the window, earliest first: the figure
+   * counts both sides of each. Recorded, never suppressed — suppressing
+   * changes the figure, which is FILM-1719's (FILM-1732 §1).
+   */
+  crosses: readonly DenominatorChange[];
+}
+
+/**
+ * A rate as a read returns it (FILM-1732): today's figure and what it was
+ * divided by, together, so a card cannot render one without the other.
+ */
+export interface RecordedRate {
+  value: number;
+  denominator: DenominatorStamp;
 }
 
 export type MeasureAbsence =
@@ -423,6 +484,11 @@ export function computeMeasure(
               column: 'reach',
               role: 'preferred',
               definitions: [definition],
+              window: { from, to },
+              platforms: [
+                { platform, inDenominator: true, definitions: [definition] },
+              ],
+              crosses: [],
             },
             window: { from, to },
           };
@@ -451,39 +517,57 @@ export function computeMeasure(
 
   if (value === null) return absent({ reason: 'zero_denominator' });
 
-  const reachCell = MEASURE_INPUT_SUPPORT[platform].reach;
-  const isFallback = PREFERRED_DENOMINATOR[platform] === 'reach';
-
   return {
     kind: 'value',
     measure,
     value,
-    denominator: {
-      column: chosen.column,
-      role: isFallback ? 'fallback' : 'preferred',
-      ...(isFallback
-        ? {
-            fallbackFor: {
-              preferred: 'reach' as const,
-              because:
-                reachCell?.support === 'not_ingested'
-                  ? ('not_ingested' as const)
-                  : ('not_reported' as const),
-            },
-          }
-        : {}),
-      definitions: chosen.definitions,
-      ...(chosen.instead
-        ? {
-            bridged: {
-              reason: chosen.instead.reason,
-              changedOn: chosen.instead.changedOn,
-              changes: chosen.instead.changes,
-            },
-          }
-        : {}),
-    },
+    denominator: chosenColumnRecord(platform, chosen, { from, to }),
     window: { from, to },
+  };
+}
+
+/**
+ * The record of a views column FILM-1722's `viewsDenominatorFor` chose for
+ * one platform: `views` over one definition, or `engaged_views` bridging a
+ * change. Either way the column was one metric throughout, so it crosses
+ * nothing. One builder for `computeMeasure` and the genome's cohorts.
+ */
+export function chosenColumnRecord(
+  platform: AnalyticsPlatform,
+  chosen: Extract<ViewsDenominator, { kind: 'column' }>,
+  window: { from: string; to: string },
+): DenominatorStamp {
+  const isFallback = PREFERRED_DENOMINATOR[platform] === 'reach';
+  const reachCell = MEASURE_INPUT_SUPPORT[platform].reach;
+  const definitions = chosen.definitions.map(definitionRef);
+
+  return {
+    column: chosen.column,
+    role: isFallback ? 'fallback' : 'preferred',
+    ...(isFallback
+      ? {
+          fallbackFor: {
+            preferred: 'reach' as const,
+            because:
+              reachCell?.support === 'not_ingested'
+                ? ('not_ingested' as const)
+                : ('not_reported' as const),
+          },
+        }
+      : {}),
+    definitions,
+    ...(chosen.instead
+      ? {
+          bridged: {
+            reason: chosen.instead.reason,
+            changedOn: chosen.instead.changedOn,
+            changes: chosen.instead.changes,
+          },
+        }
+      : {}),
+    window,
+    platforms: [{ platform, inDenominator: true, definitions }],
+    crosses: [],
   };
 }
 
@@ -508,4 +592,338 @@ export function attentionEfficiency(input: {
         reason: { reason: 'duration_unknown' },
       }
     : { kind: 'value', measure: 'attention_efficiency', value };
+}
+
+// =============================================================================
+// Rate denominator records (FILM-1732)
+// =============================================================================
+
+/** The days a pooled figure was counted over, inclusive, as ISO dates. */
+export interface DenominatorWindow {
+  from: string;
+  to: string;
+}
+
+const PLATFORM_NAMES: Record<AnalyticsPlatform, string> = {
+  youtube: 'YouTube',
+  tiktok: 'TikTok',
+  instagram: 'Instagram',
+  facebook: 'Facebook',
+  twitter: 'X',
+};
+
+function isoDay(value: Date | string): string {
+  return (typeof value === 'string' ? value : value.toISOString()).slice(0, 10);
+}
+
+/**
+ * The window of a read with no date filter: lifetime totals were counted
+ * from the earliest publish in the set to the day of the read, so that is
+ * the span the record covers — not "no window" (FILM-1732 §3).
+ */
+export function lifetimeWindow(
+  publishedAt: Iterable<string | null | undefined>,
+  readOn: Date = new Date(),
+): DenominatorWindow {
+  const to = isoDay(readOn);
+  const earliest = [...publishedAt]
+    .filter((value): value is string => Boolean(value))
+    .map(isoDay)
+    .sort()[0];
+
+  return { from: earliest && earliest < to ? earliest : to, to };
+}
+
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * The window as ISO days, or null where it cannot be read: a timestamp is
+ * cut to its day, and a malformed or backwards range is not a window.
+ */
+function readableWindow(window: DenominatorWindow): DenominatorWindow | null {
+  const from = window.from?.slice(0, 10) ?? '';
+  const to = window.to?.slice(0, 10) ?? '';
+  const valid = (day: string) =>
+    ISO_DAY.test(day) && !Number.isNaN(Date.parse(`${day}T00:00:00Z`));
+
+  return valid(from) && valid(to) && from <= to ? { from, to } : null;
+}
+
+function definitionRef({
+  id,
+  platform,
+  label,
+  effectiveFrom,
+}: ViewDefinition): ViewDefinitionRef {
+  return { id, platform, label, effectiveFrom };
+}
+
+function definitionsOver(
+  platform: AnalyticsPlatform,
+  from: string,
+  changes: readonly ViewDefinitionChange[],
+): readonly ViewDefinition[] | null {
+  const atStart = viewDefinitionAt(platform, from);
+
+  if (atStart.kind === 'no_single_view_definition') return null;
+
+  const found =
+    atStart.kind === 'single'
+      ? [atStart.definition]
+      : atStart.kind === 'by_format'
+        ? [atStart.shorts, atStart.other]
+        : [];
+
+  for (const change of changes) found.push(change.from, change.to);
+
+  return [...new Map(found.map((entry) => [entry.id, entry])).values()].sort(
+    (a, b) => (a.effectiveFrom ?? '').localeCompare(b.effectiveFrom ?? ''),
+  );
+}
+
+/**
+ * What a rate over the stored `views` column divided by, for the platforms
+ * pooled into it over `window` — the one place a FILM-1732 record is built.
+ * Pure: the reads pass what they summed, and nothing re-derives it.
+ *
+ * A platform whose views are NULL (Facebook) is recorded as not in the
+ * denominator. Every definition change inside the window is recorded in
+ * `crosses`; the figure is not touched.
+ */
+export function recordViewsDenominator(scope: {
+  platforms: Iterable<string>;
+  window: DenominatorWindow;
+}): DenominatorStamp {
+  const named = new Set(scope.platforms);
+  const window = readableWindow(scope.window);
+  const { from, to } = window ?? { from: '', to: '' };
+  const crosses: DenominatorChange[] = [];
+
+  const platforms = PLATFORM_IDS.filter((platform) => named.has(platform)).map(
+    (platform): DenominatorPlatform => {
+      // No readable days, no definitions to name: the record says so
+      // rather than failing the read the figure came from.
+      if (window === null) {
+        return viewDefinitionAt(platform, isoDay(new Date())).kind ===
+          'no_single_view_definition'
+          ? {
+              platform,
+              inDenominator: false,
+              reason: 'no_single_view_definition',
+            }
+          : { platform, inDenominator: true, definitions: [] };
+      }
+
+      const changes = viewDefinitionChangesBetween(platform, from, to);
+      const definitions = definitionsOver(platform, from, changes);
+
+      if (definitions === null) {
+        return {
+          platform,
+          inDenominator: false,
+          reason: 'no_single_view_definition',
+        };
+      }
+
+      crosses.push(
+        ...changes.map((change) => ({
+          date: change.date,
+          from: definitionRef(change.from),
+          to: definitionRef(change.to),
+        })),
+      );
+
+      return {
+        platform,
+        inDenominator: true,
+        definitions: definitions.map(definitionRef),
+      };
+    },
+  );
+
+  // Instagram's own rates prefer reach (not yet ingested, FILM-1712): any
+  // views figure that pools Instagram is, for that part, the fallback.
+  const fallback = platforms.find(
+    (part) =>
+      part.inDenominator && PREFERRED_DENOMINATOR[part.platform] === 'reach',
+  );
+  const reachSupport = fallback
+    ? MEASURE_INPUT_SUPPORT[fallback.platform].reach?.support
+    : undefined;
+
+  return {
+    column: 'views',
+    role: fallback ? 'fallback' : 'preferred',
+    ...(fallback
+      ? {
+          fallbackFor: {
+            preferred: 'reach' as const,
+            because:
+              reachSupport === 'not_ingested'
+                ? ('not_ingested' as const)
+                : ('not_reported' as const),
+          },
+        }
+      : {}),
+    definitions: platforms.flatMap((part) =>
+      part.inDenominator ? part.definitions : [],
+    ),
+    window: { from, to },
+    platforms,
+    crosses: crosses.sort((a, b) => a.date.localeCompare(b.date)),
+  };
+}
+
+const MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+/** 2026-08-27 as "27 Aug 2026": fixed, so server and browser agree. */
+export function formatDenominatorDate(iso: string): string {
+  const [year, month, day] = iso.split('-');
+
+  return `${Number(day)} ${MONTHS[Number(month) - 1]} ${year}`;
+}
+
+const COLUMN_WORDS: Record<DenominatorStamp['column'], string> = {
+  views: 'views',
+  engaged_views: 'engaged views',
+  reach: 'accounts reached',
+};
+
+/**
+ * The record in words, for the disclosure beside a figure: what it was
+ * divided by, over which days, each platform's definitions with the date
+ * each began, and every change the window crosses.
+ */
+export function denominatorSentence(stamp: DenominatorStamp): string {
+  const { from, to } = stamp.window;
+  // A summary drawn before its period is chosen has no dates to name.
+  const sentences = [
+    from && to
+      ? `Divided by ${COLUMN_WORDS[stamp.column]}, counted from ${formatDenominatorDate(from)} to ${formatDenominatorDate(to)}.`
+      : `Divided by ${COLUMN_WORDS[stamp.column]}.`,
+  ];
+
+  for (const part of stamp.platforms) {
+    const name = PLATFORM_NAMES[part.platform];
+
+    if (!part.inDenominator) {
+      sentences.push(
+        `${name} is not in the denominator: it reports no single view.`,
+      );
+      continue;
+    }
+
+    if (part.definitions.length === 0) {
+      sentences.push(
+        `${name} is in the denominator; the days it was counted over could not be read, so which definition of a view it used is not recorded.`,
+      );
+      continue;
+    }
+
+    const counted = part.definitions
+      .map((entry) =>
+        entry.effectiveFrom
+          ? `${entry.label}, since ${formatDenominatorDate(entry.effectiveFrom)}`
+          : entry.label,
+      )
+      .join('; ');
+
+    sentences.push(`${name} counted a view as: ${counted}.`);
+  }
+
+  for (const change of stamp.crosses) {
+    sentences.push(
+      `${PLATFORM_NAMES[change.to.platform]} changed what a view is on ${formatDenominatorDate(change.date)}, inside this window, so the figure counts both.`,
+    );
+  }
+
+  if (stamp.platforms.length === 0) {
+    sentences.push('No platform contributed views to this figure.');
+  }
+
+  return sentences.join(' ');
+}
+
+/** Engagement rate as the dashboards show it, with its record (FILM-1732). */
+export function recordedEngagementRatePercent(
+  totals: EngagementCounts & { views: number },
+  denominator: DenominatorStamp,
+): RecordedRate {
+  return { value: displayedEngagementRatePercent(totals), denominator };
+}
+
+/**
+ * Likes and comments per view, as a percentage, 0 without views: the
+ * figure two surfaces label engagement while leaving shares out (KB-171).
+ * A second definition, kept as it is so no figure moves; named here so it
+ * is recorded rather than recomputed inline.
+ */
+export function recordedLikesAndCommentsPercent(
+  totals: Pick<EngagementCounts, 'likes' | 'comments'> & { views: number },
+  denominator: DenominatorStamp,
+): RecordedRate {
+  const value = ratio(totals.likes + totals.comments, totals.views);
+
+  return { value: value === null ? 0 : value * 100, denominator };
+}
+
+/**
+ * Revenue per thousand views, in cents: Σrevenue / Σviews × 1000. Null with
+ * no views to divide by. The one RPM definition; `pooledRpmCents` and the
+ * revenue folds call it.
+ */
+export function rpmCents(revenueCents: number, views: number): number | null {
+  const value = ratio(revenueCents, views);
+
+  return value === null ? null : value * 1000;
+}
+
+/**
+ * Revenue per view, in cents, with its record: null when no revenue was
+ * measured (FILM-1726), 0 without views — the Shorts ROI card's figure.
+ */
+export function recordedRevenuePerViewCents(
+  revenueCents: number | null,
+  views: number,
+  denominator: DenominatorStamp,
+): RecordedRate | null {
+  if (revenueCents === null) return null;
+
+  return { value: ratio(revenueCents, views) ?? 0, denominator };
+}
+
+/**
+ * One record for a figure pooled from figures that each carry one — a
+ * project's mean of its seasons' rates: every platform any of them pooled,
+ * over the span they cover together. `fallback` when there are none.
+ */
+export function poolDenominators(
+  stamps: readonly DenominatorStamp[],
+  fallback: DenominatorWindow,
+): DenominatorStamp {
+  const froms = stamps.map((stamp) => stamp.window.from).sort();
+  const tos = stamps.map((stamp) => stamp.window.to).sort();
+
+  return recordViewsDenominator({
+    platforms: stamps.flatMap((stamp) =>
+      stamp.platforms.map((part) => part.platform),
+    ),
+    window: {
+      from: froms[0] ?? fallback.from,
+      to: tos.at(-1) ?? fallback.to,
+    },
+  });
 }
