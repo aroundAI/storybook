@@ -3,7 +3,7 @@ title: "Generation Runs: leases, parts, revisions and the locks that keep Gemini
 phase: 19
 phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: L
 dependencies:
   - spec_id: "FILM-1901"
@@ -23,56 +23,73 @@ summary: >
   if application code is wrong. Design: the EDD's "2. Generation runs and
   leases", "Database changes" and "6. One door to AI models"
   (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
+  Built in three parts: A, the database (#TBD-1903); B, openRun, run.dispatch,
+  the worker and the commits, on FILM-1901's package; C, the NOT NULL
+  tightening once every LLM path writes a run.
 acceptance_criteria:
   - text: "A hand-written migration creates generation_runs, generation_run_parts and content_revisions as specified below, with RLS, and the generated types are regenerated (not hand-edited)"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "apps/web/supabase/migrations/20261002201011_film-1903-generation-runs.sql:26 (generation_runs), :91 (generation_run_parts), :108 (content_revisions), :133 (account_ai_settings), :262-294 (policies); types regenerated from a database with the migration into packages/supabase/src/database.types.ts and apps/web/lib/database.types.ts; RLS proven in apps/web/supabase/tests/database/generation-runs.test.sql:283-353 (#TBD-1903, part A)"
   - text: "A partial unique index allows one open run per (target_type, target_id, stage); a second openRun fails with RUN_IN_PROGRESS naming the holder"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "part A: generation_runs_one_open exists (migrations/20261002201011_film-1903-generation-runs.sql:79) and refuses a second open run while allowing one after cancel or expiry (tests/database/generation-runs.test.sql:215-269, U1 and X1). The RUN_IN_PROGRESS refusal naming the holder is openRun's, part B (#TBD-1903)"
   - text: "openRun(stage, target, origin) is the only way to insert a run; the mode comes from the caller's context (web: account_ai_settings default; MCP request: 'external'), never from a parameter"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "part B. Part A leaves authenticated with no insert or update privilege on generation_runs (tests/database/generation-runs.test.sql:301-315), so until openRun exists only the service role writes a run; account_ai_settings, which openRun reads, exists with owners-write / members-read (#TBD-1903)"
   - text: "queueLlmJob (packages/features/prompt-engine/src/lib/server/sqs-helper.ts) is private to the gateway, reachable only through run.dispatch(), which refuses a non-server run; the SQS message is { runId }"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "part B, on FILM-1901's package and FILM-1902's run handle; nothing in part A touches the SQS message"
   - text: "The llm-worker loads the run by id and refuses (without a model call) a run that is not mode 'server' and open; a replayed message for a committed run is a no-op"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "part B. The database half holds already: a generation_jobs row for an LLM job type whose run is not an open server run is refused, including a committed one (tests/database/generation-runs.test.sql:104-118)"
   - text: "Chained stages (shots → audio_cues, story → asset_description) open child runs with parent_run_id and the parent's mode; an external parent never produces a queued job"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "part B. parent_run_id exists (migrations/20261002201011_film-1903-generation-runs.sql:51); the commit that opens the child is FILM-1901's core"
   - text: "generation_jobs.run_id is required for LLM job types, and a trigger refuses the insert unless the run is an open server-mode run"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "part A: run_id is added (migrations/20261002201011_film-1903-generation-runs.sql:172-173) and generation_jobs_server_run_only (:216) refuses an insert, or an update of run_id, for the seven LLM job types whenever run_id is present (tests/database/generation-runs.test.sql:104-158, L1); enforced when run_id is present, NOT NULL is part C. Audit (2026-10-03): only the 7 LLM job types in generation_jobs_job_type_check write a generation_jobs row today; the other 8 LLM job types never do (see notes), so part C must add rows for them or guard them elsewhere before NOT NULL means anything for them"
   - text: "llm_usage_analytics.run_id is added, required for new rows, and a trigger refuses a row whose run is external"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "part A: run_id is added (migrations/20261002201011_film-1903-generation-runs.sql:174-175) and llm_usage_analytics_server_run_only (:228) refuses a row whose run is not an open server run whenever run_id is present (tests/database/generation-runs.test.sql:161-182, L2); NOT NULL is part C, after the gateway (FILM-1902) writes the run id, since executeLLM is the only writer today"
   - text: "A CHECK makes a run opened from an MCP connection external (connection_id is null or mode = 'external')"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "apps/web/supabase/migrations/20261002201011_film-1903-generation-runs.sql:58 (mcp_runs_are_external); apps/web/supabase/tests/database/generation-runs.test.sql:185-201 (L3: a server-mode run with a connection id is refused, an external one accepted) (#TBD-1903, part A)"
   - text: "finalize re-checks target_version and refuses with TARGET_CHANGED if the target was edited since the brief; commit bumps episodes.version"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "part B. Audit (2026-10-03): episodes.version already moves on every update, by trigger episodes_increment_version (migrations/20251205125737_film-studio-tables.sql:103-115), so a commit bumps it without doing anything, and TARGET_CHANGED fires on any edit between brief and finalize, including a restore; that is acceptable. target_version exists (migrations/20261002201011_film-1903-generation-runs.sql:44)"
   - text: "Any call on a run renews its 30-minute lease; a cron route (CRON_SECRET pattern) marks runs past their lease expired and frees the target"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "part A does the cron half: apps/web/app/api/cron/expire-generation-runs/route.ts calls expire_generation_runs() (migrations/20261002201011_film-1903-generation-runs.sql:456), which marks every open run past lease_expires_at expired with error.code LEASE_EXPIRED and so frees the target (tests/database/generation-runs.test.sql:245-269, X1); scheduled hourly in sst.config.ts (StorybookExpireGenerationRunsCron) through apps/web/lambda/expire-generation-runs/index.ts; route unit test apps/web/app/api/cron/expire-generation-runs/__tests__/route.test.ts. Renewing the lease on every call is the run handle's, part B"
   - text: "generation_runs is in the supabase_realtime publication"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "apps/web/supabase/migrations/20261002201011_film-1903-generation-runs.sql:484; apps/web/supabase/tests/database/generation-runs.test.sql:271-276 reads it back from pg_publication_tables (#TBD-1903, part A)"
   - text: "Every commit stamps generation_origin ({kind, runId, model, promptSlug, promptVersion, clientName, at}) on shots, dialogue_lines, audio_cues and assets, and per stage on episodes.generation_origin"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "part B stamps them. The columns exist (migrations/20261002201011_film-1903-generation-runs.sql:151-157): nullable on shots, dialogue_lines, audio_cues and assets (null = written before FILM-1903 or by hand), not null default '{}' on episodes"
   - text: "A content_revisions snapshot can be restored by a security-definer rollback function, gated on write permission"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "apps/web/supabase/migrations/20261002201011_film-1903-generation-runs.sql:310 (restore_content_revision: can_write_project of the target's project, writes the replaced content as a new revision first, bumps episodes.version); apps/web/supabase/tests/database/generation-runs.test.sql:433-499 (V1 member refused, V2 owner restores story and shots, V3 undo revision, V4 unsupported target and unknown revision refused); listed in definer-functions-inventory.test.sql (#TBD-1903, part A)"
 test_plan:
-  unit: []
+  unit:
+    - {text: "The expiry cron route refuses a caller without the bearer secret before touching the database, fails closed without CRON_SECRET, and reports a failed expiry as a 500", met: true, evidence: "apps/web/app/api/cron/expire-generation-runs/__tests__/route.test.ts; mutation guards '1903 cron …' in tooling/mutation-guards/film-1903.json proven red (#TBD-1903)"}
   integration:
-    - {text: "pgTAP: each lock refuses its bad insert (LLM job on an external run, LLM job with no run, usage row on an external run, MCP connection run with mode server)", met: false, reason: "not met — no test yet"}
-    - {text: "pgTAP: RLS lets a team member read the team's runs and parts, and no one else", met: false, reason: "not met — no test yet"}
-    - {text: "A second openRun on the same target and stage fails while the first is open, succeeds after cancel or expiry", met: false, reason: "not met — no test yet"}
+    - {text: "pgTAP: each lock refuses its bad insert (LLM job on an external run, LLM job with no run, usage row on an external run, MCP connection run with mode server)", met: false, reason: "three of four in apps/web/supabase/tests/database/generation-runs.test.sql: L1 (LLM job on an external run, and on a closed run), L2 (usage row on an external run), L3 (MCP connection run with mode server). 'LLM job with no run' is accepted on purpose in part A (:144-149) and becomes a refusal in part C"}
+    - {text: "pgTAP: RLS lets a team member read the team's runs and parts, and no one else", met: true, evidence: "apps/web/supabase/tests/database/generation-runs.test.sql:283-353 (R1 member reads runs, parts and revisions; R2 cannot write any; R3 a stranger reads none) (#TBD-1903)"}
+    - {text: "A second openRun on the same target and stage fails while the first is open, succeeds after cancel or expiry", met: false, reason: "the database half is proven: a second insert is refused while the first is open and accepted after cancel and after expire_generation_runs() (generation-runs.test.sql:215-269, U1 and X1); the openRun call is part B"}
   e2e: []
+remaining:
+  - criterion: "openRun as the only constructor, run.dispatch with the { runId } message, the worker loading a run by id, child runs, lease renewal, TARGET_CHANGED at finalize, generation_origin stamping, and content_revisions written by commit"
+    reason: "part B: application code on FILM-1901's package and FILM-1902's run handle; part A is the database only"
+    closed_by: "FILM-1903"
+  - criterion: "generation_jobs.run_id NOT NULL for LLM job types and llm_usage_analytics.run_id NOT NULL; a generation_jobs row (or another guarded path) for the 8 LLM job types that write none today"
+    reason: "part C: tightening before every LLM path writes a run would break the worker today; part A fires the locks whenever run_id is present"
+    closed_by: "FILM-1903"
+  - criterion: "generation_runs.connection_id references mcp_connections(id)"
+    reason: "mcp_connections is FILM-1904's table, built in parallel; the column exists without the foreign key, and the CHECK mcp_runs_are_external already applies"
+    closed_by: "FILM-1904"
+  - criterion: "the cron trims mcp_tool_calls older than 90 days"
+    reason: "mcp_tool_calls is FILM-1904's table and does not exist on main; the expire-generation-runs route leaves that line out until it does"
+    closed_by: "FILM-1904"
 open_questions: []
 notes: |
   ## Tables
@@ -84,21 +101,44 @@ notes: |
   lease_expires_at, target_version, brief_hash, prompt_slug, prompt_version,
   origin jsonb, connection_id (FILM-1904), job_id (generation_jobs),
   parent_run_id, error jsonb, created_by, created_at, finalized_at. TEXT with
-  CHECK, matching generation_jobs, not Postgres enums.
+  CHECK, matching generation_jobs, not Postgres enums. finalized_at is set
+  when the run reaches any terminal status (expiry sets it too, with
+  error.code = 'LEASE_EXPIRED').
 
   generation_run_parts: run_id, part_key ('reel_scout', 'scene:4'), output
   jsonb, validation jsonb, submitted_at; pk (run_id, part_key). Resubmitting a
   part replaces it.
 
   content_revisions: id, account_id, target_type, target_id, stage, run_id,
-  snapshot jsonb, created_at.
+  snapshot jsonb, created_at. run_id is null for a revision written by
+  restore_content_revision itself (the undo of a restore).
 
   account_ai_settings (read by openRun; UI in FILM-1910): account_id pk,
-  server_generation_enabled, external_generation_enabled, default_mode.
+  server_generation_enabled, external_generation_enabled, default_mode,
+  created_at, updated_at. Owners write (has_role_on_account(account_id,
+  'owner'), not has_permission settings.manage: the member role holds that
+  permission too, 20240319163440_roles-seed.sql), members read.
 
   Additive columns: generation_origin jsonb on shots, dialogue_lines,
   audio_cues, assets; episodes.generation_origin jsonb keyed by stage;
   generation_jobs.run_id; llm_usage_analytics.run_id.
+
+  ## Snapshot contract (content_revisions.snapshot)
+
+  Written by commit (part B), read by restore_content_revision (part A):
+
+  - episode target: {"episode": {story_data, screenplay_data, shot_list,
+    metadata, status, generation_origin}, "shots": [to_jsonb(row), …],
+    "dialogue_lines": […], "audio_cues": […]}
+  - asset target: {"asset": {description, metadata, generation_origin}}
+
+  Every key is optional and only present keys are restored: a present row
+  array replaces the episode's rows of that table (dialogue_lines reference
+  shots, so a shots snapshot should carry dialogue_lines too); a present
+  episode/asset column is written, an absent one kept. The restore writes
+  what it replaces as a new revision covering the same keys and returns its
+  id, so a restore is itself undoable. Scene, season and publish targets
+  raise feature_not_supported until a later part defines their shape.
 
   ## Lock sketch
 
@@ -121,15 +161,69 @@ notes: |
   llm_usage_analytics insert. generation_jobs keeps tracking SQS work and
   costs; a server run links to its job.
 
+  ## Staging and audit facts (2026-10-03, part A)
+
+  - Both triggers fire `before insert or update of run_id … when (new.run_id
+    is not null)`. Part A: enforced whenever a row carries a run id; a row
+    with none is accepted, because every LLM job and usage row written today
+    has none. Part C sets NOT NULL (generation_jobs for LLM job types,
+    llm_usage_analytics for all rows) once part B writes run ids.
+  - The generation_jobs trigger names the 7 LLM job types in
+    generation_jobs_job_type_check (20260923025438): story, screenplay,
+    shot_list, translate-dialogue, audio_cue_generation, story-refinement,
+    screenplay-refinement, plus asset_creation, which KB-174 (#553) adds to
+    the CHECK; the trigger lists it already, so the lock covers it the moment
+    that PR merges (a BEFORE trigger fires before the CHECK, so the test
+    holds either way). video, voice, music and sfx are vendor renders,
+    which an external run may start (FILM-1909), so they are not locked.
+    Of the 16 LlmJobType keys the worker runs
+    (packages/features/prompt-engine/src/lib/llm-job-payloads.ts), 7 map to
+    a job_type in the CHECK and 9 never write a generation_jobs row:
+    season-analysis, season-outline, story-ideation,
+    batch-translate-metadata, analytics-insights, language-insights,
+    fact-extraction, asset-creation (until KB-174 / #553 merges), and
+    audio-file-generation (an audio render, not a model call; so 8
+    model-calling job types are outside the generation_jobs lock today, 7
+    after #553). For those the only lock is
+    llm_usage_analytics.run_id, which executeLLM writes; part C must add
+    generation_jobs rows for them or guard the gateway instead.
+  - episodes.version bumps on every update (trigger episodes_increment_version,
+    20251205125737_film-studio-tables.sql:103-115), not only on commit. So
+    TARGET_CHANGED fires on any edit between brief and finalize, including a
+    restore_content_revision, which is the intended conservative behaviour.
+  - generation_runs.connection_id has no foreign key yet: mcp_connections is
+    FILM-1904's and was built in parallel. The migration comments the column
+    `-- FK to mcp_connections added once FILM-1904 lands`.
+  - Writes to generation_runs, generation_run_parts and content_revisions are
+    the service role's, or SECURITY DEFINER functions that check write
+    permission: authenticated holds select only (no write grant, no write
+    policy). openRun (part B) writes through the service role or a definer
+    function; restore_content_revision is the one definer function in part A.
+  - Reads follow the studio rule (KB-48): has_account_access(account_id).
+  - expire_generation_runs() is service_role only; the cron route calls it
+    with the admin client. It does not touch mcp_tool_calls (FILM-1904).
+  - Mutation guards: tooling/mutation-guards/film-1903.json, nine pgTAP
+    entries (each lock, the index, expiry, the read policy, the settings
+    write, the restore permission check) and two unit entries (the route's
+    bearer check and its error path).
+
   ## Migration discipline
 
   Hand-written migrations only (CLAUDE.md: no supabase db diff), mirrored into
-  apps/web/supabase/schemas/ where a schema file exists, types generated with
-  pnpm supabase:web:typegen, and a pgTAP test for every policy and lock.
+  apps/web/supabase/schemas/ where a schema file exists (75-generation-runs.sql
+  is new; 30-film-studio.sql, 24-llm-usage-analytics.sql and
+  60-generation-jobs.sql gained the columns; audio_cues has no schema file),
+  types generated with pnpm supabase:web:typegen, and a pgTAP test for every
+  policy and lock (tests/database/generation-runs.test.sql, 45 cases, seen red
+  with the migration skipped: 0 ok, 69 errors).
 feature:
   database:
     tables: ["generation_runs", "generation_run_parts", "content_revisions", "account_ai_settings"]
     columns_added: ["shots.generation_origin", "dialogue_lines.generation_origin", "audio_cues.generation_origin", "assets.generation_origin", "episodes.generation_origin", "generation_jobs.run_id", "llm_usage_analytics.run_id"]
+    functions: ["assert_server_run (trigger)", "restore_content_revision(uuid) (security definer)", "expire_generation_runs() (service_role)"]
+    triggers: ["generation_jobs_server_run_only", "llm_usage_analytics_server_run_only", "account_ai_settings_set_timestamps"]
+    indexes: ["generation_runs_one_open (partial unique)", "idx_generation_runs_account", "idx_generation_runs_target", "idx_generation_runs_open_lease", "idx_content_revisions_target", "idx_content_revisions_run", "idx_generation_jobs_run", "idx_llm_usage_analytics_run"]
+    policies: ["generation_runs_read", "generation_run_parts_read", "content_revisions_read", "account_ai_settings_read", "account_ai_settings_insert", "account_ai_settings_update"]
   queries: []
   actions: [{name: "openRun", file: "packages/features/generation/src/runs/open-run.ts"}, {name: "expireRuns (cron route)", file: "apps/web/app/api/cron/expire-generation-runs/route.ts"}]
   ui: []
