@@ -34,6 +34,6 @@ open_questions:
   - "Do the connections and publishes FILM-717 kept get re-attached, or does a return start clean?"
 notes: |
   FILM-715 holds the removed design and its acceptance criteria; the
-  repository history holds the code (removed in #TBD-LI). FILM-717's scan
+  repository history holds the code (removed in #541). FILM-717's scan
   (apps/web/test/film-717-linkedin-removed.test.ts) must be retired by the
   change that brings LinkedIn back.

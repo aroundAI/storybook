@@ -226,7 +226,7 @@ notes: |
     (2026-10-01: the first is now settled. LinkedIn's migrations table gives
     202401 a sunset of 2025-01-22. The second still needs a token: KB-164.
     2026-10-02: neither will be checked. LinkedIn was removed instead, FILM-717,
-    #TBD-LI, and the constant and its pin row went with it; KB-164 is closed.)
+    #541, and the constant and its pin row went with it; KB-164 is closed.)
   - Nothing under apps/web/lambda/ is typechecked — no tsconfig includes it.
     The touched handlers were checked by hand; four others fail on a type that
     ../index does not export.
