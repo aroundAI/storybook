@@ -13,7 +13,6 @@ import type {
   CommitResult,
   Ctx,
   GenerateFn,
-  GenerationRun,
   GenerationUsage,
   StageDefinition,
 } from './types';
@@ -42,6 +41,7 @@ export async function runStage<TTarget, TOut, TData>(
     const outputs: TOut[] = [];
     let usage: GenerationUsage | undefined;
     let lastBrief: Brief | undefined;
+    let diagnostics: Record<string, unknown> | undefined;
 
     for (const part of parts) {
       const brief = await stage.prepare(ctx, target, part);
@@ -61,6 +61,10 @@ export async function runStage<TTarget, TOut, TData>(
           : generated.usage;
       }
 
+      if (generated.diagnostics) {
+        diagnostics = { ...diagnostics, ...generated.diagnostics };
+      }
+
       const checked = checkWithSchema(stage.outputSchema, generated.output);
 
       if (!checked.ok) {
@@ -76,7 +80,12 @@ export async function runStage<TTarget, TOut, TData>(
       outputs.push(checked.value);
     }
 
-    const run = serverRun({ brief: lastBrief, usage, runId: deps.runId });
+    const run = serverRun({
+      brief: lastBrief,
+      usage,
+      runId: deps.runId,
+      diagnostics,
+    });
 
     const commit = await stage.commit(ctx, run, target, outputs);
 

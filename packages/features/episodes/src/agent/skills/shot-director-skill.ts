@@ -149,7 +149,17 @@ const generateShotsTool = createTool({
         locationEnvironmentDescription?: string | null;
       };
 
+      /** What the prompt says about the scene as a whole (FILM-1901) */
+      type SceneResult = {
+        sceneNumber: number;
+        sceneSummary?: string;
+        sceneViralScore?: number;
+        sceneHookType?: string | null;
+        sceneStandaloneSummary?: string | null;
+      };
+
       const allShots: ShotResult[] = [];
+      const sceneResults: SceneResult[] = [];
       let failedScenes = 0;
 
       for (let i = 0; i < mergedScenes.length; i += CONCURRENCY) {
@@ -165,7 +175,10 @@ const generateShotsTool = createTool({
         // Use Promise.allSettled for per-scene resilience —
         // one failed scene should NOT kill the entire batch
         const batchSettled = await Promise.allSettled(
-          batch.map(async (scene): Promise<ShotResult[]> => {
+          batch.map(
+            async (
+              scene,
+            ): Promise<{ shots: ShotResult[]; scene: SceneResult }> => {
             const isReelCandidate = reelCandidateScenes.includes(scene.number);
 
             console.log(
@@ -225,6 +238,9 @@ const generateShotsTool = createTool({
                 locationEnvironmentDescription?: string | null;
               }>;
               sceneSummary: string;
+              sceneViralScore?: number;
+              sceneHookType?: string | null;
+              sceneStandaloneSummary?: string | null;
             }>({
               templateSlug: 'scene-shot-generation',
               variables: {
@@ -260,8 +276,18 @@ const generateShotsTool = createTool({
               `[Shot Director] Scene ${scene.number} complete — ${normalizedShots.length} shots generated`,
             );
 
-            return normalizedShots;
-          }),
+            return {
+              shots: normalizedShots,
+              scene: {
+                sceneNumber: scene.number,
+                sceneSummary: result.data.sceneSummary,
+                sceneViralScore: result.data.sceneViralScore,
+                sceneHookType: result.data.sceneHookType,
+                sceneStandaloneSummary: result.data.sceneStandaloneSummary,
+              },
+            };
+          },
+          ),
         );
 
         // Collect successful results, log failures
@@ -270,7 +296,8 @@ const generateShotsTool = createTool({
           const scene = batch[j]!;
 
           if (result.status === 'fulfilled') {
-            allShots.push(...result.value);
+            allShots.push(...result.value.shots);
+            sceneResults.push(result.value.scene);
           } else {
             failedScenes++;
             console.error(
@@ -304,6 +331,7 @@ const generateShotsTool = createTool({
 
       return toolSuccess({
         shots: shotsWithSequence,
+        sceneResults,
         totalShots: shotsWithSequence.length,
         scenesProcessed: scenes.length,
         reelCandidatesOptimized: reelCandidateScenes.length,

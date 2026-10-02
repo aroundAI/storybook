@@ -10,6 +10,8 @@ export function serverRun(input: {
   usage?: GenerationUsage;
   runId?: string;
   now?: Date;
+  /** Server-side figures the writer reported, for commit to record */
+  diagnostics?: Record<string, unknown>;
 }): GenerationRun {
   return {
     id: input.runId,
@@ -23,5 +25,6 @@ export function serverRun(input: {
       at: (input.now ?? new Date()).toISOString(),
     },
     usage: input.usage,
+    diagnostics: input.diagnostics,
   };
 }

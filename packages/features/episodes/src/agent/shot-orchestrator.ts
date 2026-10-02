@@ -90,6 +90,15 @@ export interface GeneratedShotResult {
   locationEnvironmentDescription?: string | null;
 }
 
+/** What the scene-shot-generation prompt said about a scene as a whole. */
+export interface SceneShotResultSummary {
+  sceneNumber: number;
+  sceneSummary?: string;
+  sceneViralScore?: number;
+  sceneHookType?: string | null;
+  sceneStandaloneSummary?: string | null;
+}
+
 export interface ReelSceneAnalysis {
   sceneNumber: number;
   isReelCandidate: boolean;
@@ -120,6 +129,10 @@ export interface ShotOrchestratorResult {
   reelCandidateScenes: number[];
   /** Full per-scene Reel Scout analysis — viralScore, hookType, whyThisWorksAsReel, etc. */
   sceneAnalyses: ReelSceneAnalysis[];
+  /** The Reel Scout's note to the orchestrator */
+  orchestratorNote?: string;
+  /** The Shot Director's scene-level fields, one per scene that succeeded */
+  sceneResults?: SceneShotResultSummary[];
   /** Shot quality evaluation score (0-1). >= 0.8 = production-ready */
   shotQualityScore?: number;
   /** Shot quality decision: 'pass' | 'revise' | 'rework' */
@@ -209,10 +222,14 @@ export async function runShotOrchestrator(
   }
 
   // Extract shots from tool steps (most reliable)
-  type GenerateShotsResult = { shots?: GeneratedShotResult[] };
+  type GenerateShotsResult = {
+    shots?: GeneratedShotResult[];
+    sceneResults?: SceneShotResultSummary[];
+  };
   type AnalyzeScenesResult = {
     topReelCandidates?: number[];
     sceneAnalyses?: ReelSceneAnalysis[];
+    orchestratorNote?: string;
   };
 
   const shotsSteps = result.steps.filter(
@@ -226,6 +243,7 @@ export async function runShotOrchestrator(
     | GenerateShotsResult
     | undefined;
   const shots = (shotsData?.shots ?? []) as GeneratedShotResult[];
+  const sceneResults = shotsData?.sceneResults ?? [];
 
   const reelStep = result.steps.find(
     (s) =>
@@ -318,6 +336,8 @@ export async function runShotOrchestrator(
     shots,
     reelCandidateScenes,
     sceneAnalyses,
+    orchestratorNote: reelData?.orchestratorNote,
+    sceneResults,
     shotQualityScore: qualityData?.overallScore,
     shotQualityDecision: qualityData?.decision,
     orchestratorSteps: result.steps.length,
