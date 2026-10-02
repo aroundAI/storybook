@@ -105,7 +105,7 @@ Audited on 2026-10-02 by searching `apps/` and `packages/` for every caller of `
 | 18 | Episode sidebar, extract description and batch create | `asset-link-actions.ts:83`, synchronous | `extract-asset-description` | stage `asset_description` |
 | 19 | Story and ideation context building | `llm-worker/utils/voyage-embedder.ts` via `context-builder.ts` | Voyage embeddings (not Gemini) | `prepare` uses stored `episode_embeddings` only; stale ones fall back to recency, as they already do with no Voyage key |
 
-**No caller today** (exported but not reached from any page, route or job): `continuity-actions.ts` (the `ContinuityChecker` component is not mounted), `news-actions.ts` and the news services (anchor, producer, entity extractor, news story), `lib/canon/act-context-bridge.ts`, `server/agent-story-generation.ts`, `assets/src/lib/element-prompt/llm-generator.ts`, `audio-generation/src/lib/audio-embedding.ts` (OpenAI embeddings) and `llm/src/transcription.ts` (OpenAI). They are deleted in M0 (LLD section 6), so the stage registry becomes the complete list of AI features.
+**No caller today** (exported but not reached from any page, route or job): `continuity-actions.ts` (the `ContinuityChecker` component is not mounted), `news-actions.ts` and the news services (anchor, producer, entity extractor, news story), `lib/canon/act-context-bridge.ts`, `server/agent-story-generation.ts`, `assets/src/lib/element-prompt/llm-generator.ts`, `audio-generation/src/lib/audio-embedding.ts` (OpenAI embeddings), `llm/src/transcription.ts` (OpenAI) and, found by FILM-1902's re-audit, `agent/orchestrator.ts` (`runContentOrchestrator`, exported as `@kit/episodes/agent/orchestrator`). Nine in all, deleted in M0 (LLD section 6, FILM-1902 part A), so the stage registry becomes the complete list of AI features.
 
 **Not an LLM**: ElevenLabs voice, music and SFX (render tools), and `audio-file-generation`. **Dev only**: the vendor sandbox's fake Gemini and `LLM_FORCE_PROVIDER=local`.
 
@@ -451,7 +451,7 @@ flowchart TD
 
 **Knowing who wrote what.** Every model call logs its run id, every commit stamps `generation_origin`, and every run records its mode. "Was this Gemini or Claude?" is one query, for any artifact.
 
-**No dangling entry points.** The eight call sites with no caller today are deleted in M0: `continuity-actions.ts` and the unmounted `ContinuityChecker`, `news-actions.ts` with the anchor, producer, entity-extractor and news-story services, `act-context-bridge.ts`, `agent-story-generation.ts`, the element-prompt `llm-generator.ts`, `audio-embedding.ts` and `transcription.ts`. They stay in git history; reviving one means registering it as a stage, which gives it both modes. After M0 the gateway's call sites equal the registry, and a test asserts it.
+**No dangling entry points.** The nine call sites with no caller today are deleted in M0: `continuity-actions.ts` and the unmounted `ContinuityChecker`, `news-actions.ts` with the anchor, producer, entity-extractor and news-story services, `act-context-bridge.ts`, `agent-story-generation.ts`, `agent/orchestrator.ts`, the element-prompt `llm-generator.ts`, `audio-embedding.ts` and `transcription.ts`. They stay in git history; reviving one means registering it as a stage, which gives it both modes. After M0 the gateway's call sites equal the registry, and a test asserts it.
 
 ### 7. Origin and provenance
 

@@ -3,8 +3,8 @@ title: "News Aggregator Service"
 phase: 11
 phase_name: "Canon Integration & Content Types"
 category: feature
-status: DONE
-audited: "2026-09-23"
+status: RETIRED
+audited: "2026-10-03"
 effort: L
 dependencies:
   - spec_id: "FILM-1135"
@@ -22,34 +22,32 @@ summary: >
   balanced reporting.
 acceptance_criteria:
   - text: "`NewsStoryService` created using `ExternalContextAggregator`"
-    met: true
-    evidence: null
   - text: "`discoverTopStories()` returns clustered stories"
-    met: true
-    evidence: null
   - text: "Stories include balanced perspectives (left, center, right)"
-    met: true
-    evidence: "the aggregator selects `bias_label` (`packages/features/episodes/src/lib/server/services/context-aggregator.ts:112`, :150) and `NewsAPIProvider` sets it on each article (`packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:150`), so `getBalancedSources` (`packages/features/episodes/src/types/news-sources.ts:35`) buckets by the seeded outlet label; asserted in `packages/features/episodes/__tests__/newsapi-one-request.test.ts`. The labels are the seed's own (`external_sources.bias_label`), not verified by the owner (FILM-1133)"
   - text: "Entity extraction merges across articles"
-    met: true
-    evidence: null
   - text: "Topic context includes summary"
-    met: true
-    evidence: null
   - text: "Server actions exported"
-    met: true
-    evidence: null
+retirement:
+  commit: null
+  date: "2026-10-03"
+  what_happened: >
+    All six criteria were met when audited on 2026-09-23, but nothing reached
+    the layer this spec built: `NewsStoryService` (`news-story-service.ts`),
+    the entity extractor (`entity-extractor.ts`) and the two server actions
+    in `news-actions.ts` were exported and never called from a page, route or
+    job. FILM-1902 (#TBD-1902) deleted them with the other uncalled model call
+    sites. What they were built on stays and is live: the unified aggregator
+    (FILM-1135, `context-aggregator.ts`), the NewsAPI provider (FILM-1130) and
+    the `news-generation/*` prompts in the prompt engine. The seeded bias
+    labels they bucketed by are still unverified by the owner (FILM-1133).
+  replacement: "packages/features/episodes/src/lib/server/services/context-aggregator.ts"
 open_questions: []
 feature:
   database:
     tables: []
     columns_added: []
   queries: []
-  actions:
-    - name: "discoverTopStoriesAction"
-      file: "packages/features/episodes/src/server/news-actions.ts"
-    - name: "getNewsTopicContextAction"
-      file: "packages/features/episodes/src/server/news-actions.ts"
+  actions: []
   ui: []
   provider_integration: null
 notes: |

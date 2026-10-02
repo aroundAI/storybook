@@ -496,7 +496,7 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-1104 | [Validation Integration](./phase-11-canon-integration/integration/FILM-1104-validation-integration.yaml) | 🟡 PARTIAL | M | #175 | FILM-1003 |
 | FILM-1110 | [Content Type Enum](./phase-11-canon-integration/content-types/FILM-1110-content-type-enum.yaml) | ✅ DONE | S | #176, #311 | - |
 | FILM-1111 | [Content Type Configs](./phase-11-canon-integration/content-types/FILM-1111-content-type-configs.yaml) | ✅ DONE | M | #176, #325 | FILM-1110 |
-| FILM-1112 | [Act Context Bridge](./phase-11-canon-integration/content-types/FILM-1112-act-context-bridge.yaml) | 🟡 PARTIAL | L | #177 | FILM-1110 |
+| FILM-1112 | [Act Context Bridge](./phase-11-canon-integration/content-types/FILM-1112-act-context-bridge.yaml) | 🗑️ RETIRED (FILM-1902) | L | #177 | FILM-1110 |
 | FILM-1113 | [Sequel System](./phase-11-canon-integration/content-types/FILM-1113-sequel-system.yaml) | 🟡 PARTIAL | M | #177 | FILM-1110 |
 | FILM-1120 | [Verified Facts Table](./phase-11-canon-integration/fact-management/FILM-1120-verified-facts-table.yaml) | 🟡 PARTIAL | M | #178, #344 | - |
 | FILM-1121 | [Fact Management UI](./phase-11-canon-integration/fact-management/FILM-1121-fact-management-ui.yaml) | 🟡 PARTIAL | L | #185 | FILM-1120 |
@@ -504,9 +504,9 @@ Retired 2026-09-23 (FILM-607). FILM-608 dropped the kept tables (owner-approved 
 | FILM-1123 | [Fact-Checker Role Prompt](./phase-11-canon-integration/fact-management/FILM-1123-fact-checker-role.yaml) | 🟡 PARTIAL | M | #178 | FILM-304 |
 | FILM-1130 | [News Source Registry](./phase-11-canon-integration/news-system/FILM-1130-news-source-registry.yaml) | ✅ DONE | M | #182 | ~~FILM-1135~~ |
 | FILM-1131 | [News Article Cache](./phase-11-canon-integration/news-system/FILM-1131-news-article-cache.yaml) | 🟡 PARTIAL | M | #182 | ~~FILM-1135~~ |
-| FILM-1132 | [News Aggregator API](./phase-11-canon-integration/news-system/FILM-1132-news-aggregator-api.yaml) | ✅ DONE | L | #182 | ~~FILM-1135~~ |
-| FILM-1133 | [News Anchor Role](./phase-11-canon-integration/news-system/FILM-1133-anchor-role.yaml) | 🟡 PARTIAL | M | — | FILM-1132 |
-| FILM-1134 | [Producer Role](./phase-11-canon-integration/news-system/FILM-1134-producer-role.yaml) | 🟡 PARTIAL | M | — | FILM-1133 |
+| FILM-1132 | [News Aggregator API](./phase-11-canon-integration/news-system/FILM-1132-news-aggregator-api.yaml) | 🗑️ RETIRED (FILM-1902) | L | #182 | ~~FILM-1135~~ |
+| FILM-1133 | [News Anchor Role](./phase-11-canon-integration/news-system/FILM-1133-anchor-role.yaml) | 🗑️ RETIRED (FILM-1902) | M | — | FILM-1132 |
+| FILM-1134 | [Producer Role](./phase-11-canon-integration/news-system/FILM-1134-producer-role.yaml) | 🗑️ RETIRED (FILM-1902) | M | — | FILM-1133 |
 | FILM-1135 | [External Context Provider](./phase-11-canon-integration/providers/FILM-1135-external-context-provider.yaml) | 🟡 PARTIAL | L | #181 | - |
 | FILM-1140 | [Research Hub UI](./phase-11-canon-integration/ui-integration/FILM-1140-research-hub-ui.yaml) | 🟡 PARTIAL | L | — | FILM-1120 |
 | FILM-1141 | [Fact Source Upload](./phase-11-canon-integration/ui-integration/FILM-1141-fact-source-upload.yaml) | 🟡 PARTIAL | M | — | FILM-1140 |
@@ -655,7 +655,7 @@ The web app keeps generating with Gemini on Vertex AI; the app also serves a rem
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
 | FILM-1901 | [generation-core](./phase-19-dual-ai-mcp/FILM-1901-generation-core.yaml) | PARTIAL | XL | - |
-| FILM-1902 | [model-gateway](./phase-19-dual-ai-mcp/FILM-1902-model-gateway.yaml) | DRAFT | L | FILM-1901, FILM-1903 (built together) |
+| FILM-1902 | [model-gateway](./phase-19-dual-ai-mcp/FILM-1902-model-gateway.yaml) | PARTIAL | L | FILM-1901, FILM-1903 (built together) |
 | FILM-1903 | [generation-runs](./phase-19-dual-ai-mcp/FILM-1903-generation-runs.yaml) | PARTIAL | L | FILM-1901, FILM-1902 |
 | FILM-1904 | [mcp-endpoint-and-tokens](./phase-19-dual-ai-mcp/FILM-1904-mcp-endpoint-and-tokens.yaml) | DRAFT | M | - |
 | FILM-1905 | [mcp-read-and-author-tools](./phase-19-dual-ai-mcp/FILM-1905-mcp-read-and-author-tools.yaml) | DRAFT | M | FILM-1904 |

@@ -3,8 +3,8 @@ title: "Movie Act Context Bridge"
 phase: 11
 phase_name: "Canon Integration & Content Types"
 category: feature
-status: PARTIAL
-audited: "2026-09-23"
+status: RETIRED
+audited: "2026-10-03"
 effort: L
 dependencies:
   - spec_id: "FILM-1110"
@@ -25,37 +25,30 @@ feature:
   provider_integration: null
 acceptance_criteria:
   - text: "`ActContextBridge` type fully defined"
-    met: true
-    evidence: null
   - text: "`act_context_bridges` table created with migration"
-    met: true
-    evidence: null
   - text: "`buildActContextBridge` extracts state via LLM"
-    met: true
-    evidence: null
   - text: "`formatBridgeForPrompt` produces readable output"
-    met: true
-    evidence: null
   - text: "`validateAgainstBridge` catches dead character resurrection"
-    met: true
-    evidence: null
   - text: "Movie generation uses bridges between acts"
-    met: false
-    reason: "no longer true — `act_context_bridges` is never written or read; `buildActContextBridge` has no caller (only 15f9940f)"
   - text: "Context is correctly populated for 3-act and 5-act structures"
-    met: false
-    reason: "no longer true — nothing populates bridges; the agent tool covers acts 1–3 only (`packages/features/episodes/src/agent/skills/act-context-skill.ts:48`)"
 test_plan:
   unit: []
   integration: []
   e2e: []
-remaining:
-  - criterion: "Movie generation uses bridges between acts"
-    reason: "The story agent's `extractActContext` returns a bridge inside one run and drops it; nothing stores it or feeds the next act"
-    closed_by: "owner"
-  - criterion: "3-act and 5-act structures"
-    reason: "Nothing populates `act_context_bridges`"
-    closed_by: "owner"
+retirement:
+  commit: null
+  date: "2026-10-03"
+  what_happened: >
+    `lib/canon/act-context-bridge.ts` (`buildActContextBridge`,
+    `formatBridgeForPrompt`, `validateAgainstBridge`, `getActContextBridge`)
+    and its test had no caller: `act_context_bridges` was never written or
+    read, and movie generation never fed one act's bridge to the next.
+    FILM-1902 (#TBD-1902) deleted the module with the other uncalled model
+    call sites. The `ActContextBridge` type (`types/act-context.ts`) and the
+    `act_context_bridges` table stay. What the story agent uses today is the
+    act-context skill, which extracts a bridge inside one run and drops it;
+    carrying it across acts is not scheduled.
+  replacement: "packages/features/episodes/src/agent/skills/act-context-skill.ts"
 open_questions: []
 notes: |
   Priority (source frontmatter): medium

@@ -3,8 +3,8 @@ title: "News Anchor LLM Role Prompt"
 phase: 11
 phase_name: "Canon Integration & Content Types"
 category: feature
-status: PARTIAL
-audited: "2026-09-30"
+status: RETIRED
+audited: "2026-10-03"
 effort: M
 dependencies:
   - spec_id: "FILM-1132"
@@ -17,27 +17,23 @@ summary: >
   attribution, and balanced coverage.
 acceptance_criteria:
   - text: "Anchor role prompt generates valid broadcast scripts"
-    met: false
-    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM output used unvalidated (`packages/features/episodes/src/lib/server/services/anchor-service.ts:119`); no test or eval"
   - text: "All claims are attributed to sources"
-    met: false
-    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — prompt rule only (`packages/features/prompt-engine/src/prompts/news-generation/anchor-role.json`); LLM behaviour, no test"
   - text: "Script includes ANCHOR, GRAPHIC, TRANSITION cues"
-    met: false
-    reason: "unverified — the prompt asks for all three types; nothing checks the output; no test"
   - text: "Balance checker identifies bias distribution"
-    met: true
-    evidence: "packages/features/episodes/src/lib/server/services/context-aggregator.ts:112 selects `external_sources.bias_label` and :150 hands it on; packages/features/episodes/src/lib/server/providers/newsapi-provider.ts:150 sets `biasLabel` on each article, so checkSourceBalance (anchor-service.ts:143) sees real labels; test packages/features/episodes/__tests__/newsapi-one-request.test.ts:179 (distribution { center: 1, center_left: 1 }). Caveat: the labels are the seed's (apps/web/supabase/migrations/20260211200003_seed_news_sources.sql, sourced to Ad Fontes / AllSides per its comment) and have not been checked by the owner; no static map was added"
   - text: "Server actions are authenticated"
-    met: true
-    evidence: "packages/features/episodes/src/server/news-actions.ts:82, :115"
-remaining:
-  - criterion: "Anchor role prompt generates valid broadcast scripts; all claims attributed to sources"
-    reason: "Owner check OC-1 (docs/OWNER-CHECKS.md): LLM behaviour, no test or eval"
-    closed_by: "owner"
-  - criterion: "Script includes ANCHOR, GRAPHIC, TRANSITION cues"
-    reason: "The prompt asks for all three; nothing checks the output"
-    closed_by: "unassigned"
+retirement:
+  commit: null
+  date: "2026-10-03"
+  what_happened: >
+    The anchor service (`anchor-service.ts`), the news server actions
+    (`news-actions.ts`) and their test (`newsapi-one-request.test.ts`) had no
+    caller from any page, route or job, and FILM-1902 (#TBD-1902) deleted them
+    with the other uncalled model call sites. Before that, the balance checker
+    and the authenticated actions were met; the script criteria were owner
+    checks never run (OC-1). The `news-generation/anchor-role` prompt stays
+    registered in the prompt engine and served by the vendor sandbox; reviving
+    the feature means registering a stage (FILM-1901).
+  replacement: null
 open_questions: []
 feature:
   database:
