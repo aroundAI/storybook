@@ -90,6 +90,9 @@ acceptance_criteria:
   - text: "A hypothesis key may name monetisation, the sixth stage FILM-1726 appended (#523)"
     met: true
     evidence: "Both genome_hypothesis CHECKs accept monetisation (pgTAP apps/web/supabase/tests/database/genome-hypothesis-link.test.sql:106, red without it); the TypeScript pattern derives from FUNNEL_STAGES, which includes it since #523, and the test pins the two as one pattern (packages/clickhouse/__tests__/genome-loop.test.ts:164; red with monetisation dropped from the CHECK). #545"
+  - text: "Rate measures across a view-definition change"
+    met: true
+    evidence: "A rate that divides by views (VIEWS_RATE_MEASURES, packages/clickhouse/src/lib/genome-measures.ts:54) is read on engaged views when the cohort's checkpoint windows cross YouTube's 2026-08-27 change, and the cohort starts where engaged views begin; a video missing engaged views on any day its rate reads has no rate, never one over part of its window (verify-queries 'a day without engaged views leaves no engaged rate', guards GN22, GN23); anything else is refused by name (view_definition_changed), never mixed (genomeViewsDenominator, packages/clickhouse/src/lib/genome-measures.ts:120, built on FILM-1715's viewsDenominatorFor). The segment query divides by engaged views when asked (SEGMENT_DENOMINATORS, packages/clickhouse/src/queries-advanced.ts:1609), and getGenomeFindingsAction re-reads on them (packages/features/content-analytics/src/server/genome-actions.ts:158). Tests: packages/clickhouse/__tests__/genome-views-denominator.test.ts:34, genome-actions.test.ts; on ClickHouse 24.8, verify-queries' 'genome: rates on engaged views, by hand' (packages/clickhouse/scripts/verify-queries.ts:6161) reads 0.02, 0.08 and null, and [null, null, null] with the engaged leg removed. #548"
 open_questions: []
 feature:
   database:
@@ -120,9 +123,6 @@ remaining:
   - criterion: "v1 ships and is useful before v2 begins"
     reason: "Retired by the owner on 2026-10-01: v1 and v2 were built together. Nothing is left to build"
     closed_by: null
-  - criterion: "Rate measures across a view-definition change"
-    reason: "share_rate, comment_rate, subscriber_conversion and average_view_duration divide by views. A cohort spanning YouTube's 2026-08-27 views change mixes two denominators, so later videos read lower. FILM-1715 reads engaged views across a change (viewsDenominatorFor); the segment query's per-video measures do not yet"
-    closed_by: "unassigned"
 notes: |
   ## Overview
 

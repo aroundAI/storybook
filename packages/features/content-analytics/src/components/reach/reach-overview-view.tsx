@@ -290,10 +290,19 @@ function ChannelReachCard({
                 ? `As of ${latest.asOf}.`
                 : 'Nothing recorded for this window yet; the nightly sync records it.'}
             </p>
-            {detailed && latest ? (
+            {detailed && latest && channel.platform === 'instagram' ? (
               <p className="text-xs" data-test="channel-reach-split">
                 Followers: {formatNullable(latest.followers)} · Not following:{' '}
                 {formatNullable(latest.nonFollowers)}
+              </p>
+            ) : null}
+            {detailed && latest && channel.platform !== 'instagram' ? (
+              <p
+                className="text-xs text-muted-foreground"
+                data-test="channel-reach-split-reason"
+              >
+                {PLATFORM_LABEL[channel.platform]} does not split these viewers
+                into followers and people who do not follow.
               </p>
             ) : null}
           </>

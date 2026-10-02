@@ -11,8 +11,10 @@ import {
 import type { AggregatedTotals, ScopeTotals } from '@kit/clickhouse/server';
 import { getLogger } from '@kit/shared/logger';
 import { chunkIds, fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
+import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import type { RevenueAccessNote } from '../lib/revenue-access';
 import {
   EMPTY_VIEWS_SCOPE,
   compareViewsDesc,
@@ -21,6 +23,7 @@ import {
 } from '../lib/views';
 import type { Views, ViewsScope } from '../lib/views';
 import type { AnalyticsTotals, DailyMetric, TopContent } from '../types';
+import { readAccountRevenueAccess } from './revenue-access-reader';
 
 /**
  * Account-level dashboard data combining all projects
@@ -29,6 +32,8 @@ export interface AccountDashboardData {
   totals: AnalyticsTotals;
   /** What `totals.views` covers, for why it is null (KB-166). */
   viewsScope: ViewsScope;
+  /** Why revenue is not measured, when it is not (FILM-1726). */
+  revenueAccess: RevenueAccessNote[];
   previousPeriodTotals: AnalyticsTotals;
   dailyMetrics: DailyMetric[];
   platformBreakdown: {
@@ -46,6 +51,8 @@ export interface AccountDashboardData {
   projectCount: number;
 }
 
+type Client = ReturnType<typeof getSupabaseServerClient<Database>>;
+
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 /**
@@ -58,6 +65,39 @@ export async function getAccountDashboardData(
 ): Promise<AccountDashboardData> {
   const client = getSupabaseServerClient();
 
+  // A fact about the account's connections, not the window or its
+  // projects, so it is read beside the figures rather than from them.
+  const [data, revenueAccess] = await Promise.all([
+    getAccountFigures(client, accountId, options),
+    readRevenueAccessOrNone(client, accountId),
+  ]);
+
+  return { ...data, revenueAccess };
+}
+
+/**
+ * The reasons explain a figure; failing to read them must not cost the
+ * dashboard its figures. Without them the card still says Not measured.
+ */
+async function readRevenueAccessOrNone(
+  client: Client,
+  accountId: string,
+): Promise<RevenueAccessNote[]> {
+  try {
+    return await readAccountRevenueAccess(client, accountId);
+  } catch (err) {
+    getLogger().then((logger) =>
+      logger.warn({ err, accountId }, 'Revenue access unreadable'),
+    );
+    return [];
+  }
+}
+
+async function getAccountFigures(
+  client: Client,
+  accountId: string,
+  options?: { startDate?: Date; endDate?: Date },
+): Promise<Omit<AccountDashboardData, 'revenueAccess'>> {
   // Default to last 30 days
   const endDate = options?.endDate || new Date();
   const startDate =
@@ -253,9 +293,10 @@ function mapToAnalyticsTotals(
 
 /**
  * No projects, no publishes, or no answer from ClickHouse: nothing was
- * measured, so views are null, never 0 (KB-167).
+ * measured, so views are null, never 0 (KB-167), and revenue is Not
+ * measured, never $0 (FILM-1726).
  */
-function getEmptyDashboardData(): AccountDashboardData {
+function getEmptyDashboardData(): Omit<AccountDashboardData, 'revenueAccess'> {
   return {
     totals: {
       views: null,
@@ -265,7 +306,7 @@ function getEmptyDashboardData(): AccountDashboardData {
       // Nothing measured (KB-162).
       watchTimeSeconds: null,
       subscribersGained: null,
-      revenueCents: 0,
+      revenueCents: null,
       contentCount: 0,
     },
     viewsScope: EMPTY_VIEWS_SCOPE,
@@ -277,7 +318,7 @@ function getEmptyDashboardData(): AccountDashboardData {
       // Nothing measured (KB-162).
       watchTimeSeconds: null,
       subscribersGained: null,
-      revenueCents: 0,
+      revenueCents: null,
       contentCount: 0,
     },
     dailyMetrics: [],

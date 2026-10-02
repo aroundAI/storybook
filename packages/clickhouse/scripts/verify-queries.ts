@@ -6098,7 +6098,9 @@ async function genomeSteps() {
           subscribers_gained: video.id === 'gn-01' ? 10 : null,
           subscribers_lost: 0,
           metric_source: 'analytics_api',
-          engaged_views: null,
+          // Read only when a rate divides by engaged views (FILM-1717).
+          engaged_views:
+            video.id === 'gn-01' ? 500 : video.id === 'gn-02' ? 250 : null,
           extra_metrics: '{}',
         }),
       ),
@@ -6179,6 +6181,59 @@ async function genomeSteps() {
 
     return 'impressions, ctr, duration, comments, conversion';
   });
+
+  await step(
+    'genome: rates on engaged views, by hand (FILM-1717)',
+    async () => {
+      const onEngaged = (measure: SegmentMeasure) =>
+        querySegmentVideoMeasures({
+          scope,
+          measure,
+          checkpointDays: 30,
+          asOf,
+          viewsColumn: 'engaged_views',
+        });
+      const shares = await onEngaged('share_rate');
+
+      // gn-01: 10 shares over 500 engaged views; gn-02: 20 over 250. The
+      // others have no engaged-view day: no rate, never a zero one.
+      expectEqual(
+        'share rate',
+        shares.slice(0, 3).map((row) => row.value),
+        [0.02, 0.08, null],
+      );
+      expectEqual(
+        'measured',
+        shares.filter((row) => row.value !== null).length,
+        2,
+      );
+      // gn-01: 5,000 s over 500; 10 subscribers over 500; 3 comments over 500.
+      const first = async (measure: SegmentMeasure) =>
+        (await onEngaged(measure))[0]!.value;
+      expectEqual('duration', await first('average_view_duration'), 10);
+      expectEqual('conversion', await first('subscriber_conversion'), 0.02);
+      expectEqual('comments', await first('comment_rate'), 0.006);
+      // CTR does not divide by views: the series changes nothing.
+      expectClose('ctr', (await first('impressions_ctr')) ?? Number.NaN, 0.05);
+
+      // The aggregate reads the same series: median of 0.02 and 0.08.
+      const all = await querySegmentPerformance({
+        scope,
+        segment: { kind: 'all' },
+        minVideos: 1,
+        checkpointDays: 30,
+        asOf,
+        measure: 'share_rate',
+        viewsColumn: 'engaged_views',
+      });
+      expectEqual('n', all[0]?.measure?.measuredVideoCount, 2);
+      expectClose('median', all[0]?.measure?.median ?? Number.NaN, 0.05);
+      // Views themselves are not read from the engaged leg.
+      expectEqual('total views', all[0]?.totalViews, 10000);
+
+      return 'gn-01 0.02, gn-02 0.08, median 0.05 (n=2)';
+    },
+  );
 
   await step(
     'genome: the segment query’s measure median agrees with the genome’s',
@@ -6392,6 +6447,50 @@ async function genomeSteps() {
       );
 
       return 'identity:high 1.45x observed; template identity+result_first on gn-09, gn-10; causal via change_log';
+    },
+  );
+
+  await step(
+    'genome: a day without engaged views leaves no engaged rate (FILM-1717)',
+    async () => {
+      // gn-01 gains a later day with 40 shares on 1,000 views and no
+      // engaged views (a failed read, or a day before the backfill). Its
+      // 50 shares no longer divide by one day's 500: no rate, where the
+      // partial denominator would read 0.1.
+      await insertVideoMetrics([
+        {
+          project_id: GN_PROJECT,
+          video_id: 'gn-01',
+          platform: 'youtube',
+          metric_date: '2026-01-06',
+          views: 1000,
+          likes: 0,
+          comments: 0,
+          shares: 40,
+          saves: null,
+          watch_time_seconds: null,
+          subscribers_gained: null,
+          subscribers_lost: 0,
+          metric_source: 'analytics_api',
+          engaged_views: null,
+          extra_metrics: '{}',
+        },
+      ]);
+      const rows = await querySegmentVideoMeasures({
+        scope,
+        measure: 'share_rate',
+        checkpointDays: 30,
+        asOf,
+        viewsColumn: 'engaged_views',
+      });
+
+      expectEqual(
+        'share rate',
+        rows.slice(0, 2).map((row) => row.value),
+        [null, 0.08],
+      );
+
+      return 'gn-01 unmeasured on a partial series, gn-02 0.08';
     },
   );
 

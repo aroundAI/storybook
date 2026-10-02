@@ -20,6 +20,7 @@ import {
 } from '@kit/clickhouse';
 
 import type {
+  FacebookAudience,
   FacebookInsightsResult,
   FacebookRetentionGraph,
 } from '../providers/facebook/types';
@@ -572,6 +573,73 @@ export function buildFacebookRetentionPoints(input: {
     audience_watch_ratio: point.watchRatio,
   }));
 }
+
+/**
+ * Facebook's audience breakdowns as audience rows (FILM-1720): 3-second
+ * views by age and by gender (Meta's `F.18-24` keys summed each way) and
+ * by country. Views are 3-second views, the same denominator the video's
+ * other Facebook figures use; `percentage` is each key's share of its
+ * dimension, 0–100. Meta's F/M/U are stored as the gender values the other
+ * platforms' rows use. Nothing reported, no rows: never a row of zeros.
+ */
+export function buildFacebookAudienceRows(input: {
+  projectId: string;
+  videoId: string;
+  audience: FacebookAudience | null;
+}): VideoAudienceRow[] {
+  const audience = input.audience;
+
+  if (!audience) return [];
+
+  const sum = (
+    entries: readonly { key: string; views: number }[],
+  ): Map<string, number> => {
+    const totals = new Map<string, number>();
+    for (const { key, views } of entries) {
+      totals.set(key, (totals.get(key) ?? 0) + views);
+    }
+    return totals;
+  };
+
+  const rows = (
+    dimension: VideoAudienceRow['dimension'],
+    totals: Map<string, number>,
+  ): VideoAudienceRow[] => {
+    const all = [...totals.values()].reduce((a, b) => a + b, 0);
+
+    return [...totals].map(([key, views]) => ({
+      project_id: input.projectId,
+      video_id: input.videoId,
+      platform: 'facebook' as const,
+      dimension,
+      key,
+      views,
+      percentage: all > 0 ? (views / all) * 100 : 0,
+    }));
+  };
+
+  return [
+    ...rows(
+      'age_group',
+      sum(audience.ageGender.map((e) => ({ key: e.ageGroup, views: e.views }))),
+    ),
+    ...rows(
+      'gender',
+      sum(
+        audience.ageGender.map((e) => ({
+          key: FACEBOOK_GENDER[e.gender],
+          views: e.views,
+        })),
+      ),
+    ),
+    ...rows(
+      'country',
+      sum(audience.countries.map((e) => ({ key: e.country, views: e.views }))),
+    ),
+  ];
+}
+
+const FACEBOOK_GENDER = { F: 'female', M: 'male', U: 'other' } as const;
 
 /**
  * X's five playback points (FILM-1727): the share of plays that started

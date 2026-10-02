@@ -1165,11 +1165,10 @@ export const CAPABILITY_MATRIX: Record<
       },
     },
     facebook: {
-      level: 'not_ingested',
-      table: null,
-      blockedBy: 'FILM-1720',
+      level: 'native',
+      table: 'channel_windows',
       ...FACEBOOK_VIDEO,
-      note: 'Facebook reports how many different people saw your Page’s content over a day, a week or 28 days, but we do not collect it yet.',
+      note: 'Facebook reports how many different people saw your Page’s content over a day, 7 days or 28 days, and we record each every night, though it reports no 30-day figure.',
       reference: {
         section: 'Facebook',
         surface: 'facebook/page-insights',
@@ -1224,11 +1223,10 @@ export const CAPABILITY_MATRIX: Record<
       },
     },
     facebook: {
-      level: 'not_ingested',
-      table: null,
-      blockedBy: 'FILM-1720',
+      level: 'native',
+      table: 'channel_subscribers',
       ...FACEBOOK_VIDEO,
-      note: 'Facebook reports your Page’s follower count, but we do not record it yet, so no Facebook follower figure is shown.',
+      note: 'Facebook reports your Page’s follower count, which we record once a day; channel-wide daily views are not collected.',
       reference: {
         section: 'Facebook',
         surface: 'facebook/page-fields',
@@ -1282,11 +1280,10 @@ export const CAPABILITY_MATRIX: Record<
       },
     },
     facebook: {
-      level: 'not_ingested',
-      table: null,
-      blockedBy: 'FILM-1720',
+      level: 'native',
+      table: 'video_audience',
       ...FACEBOOK_VIDEO,
-      note: 'Facebook reports each video’s 3-second views by age and gender, but we do not collect them yet.',
+      note: 'Facebook reports each video’s 3-second views by age and gender, so these are views, not people.',
       reference: {
         section: 'Facebook',
         surface: 'facebook/video-insights',
@@ -1340,11 +1337,10 @@ export const CAPABILITY_MATRIX: Record<
       },
     },
     facebook: {
-      level: 'not_ingested',
-      table: null,
-      blockedBy: 'FILM-1720',
+      level: 'native',
+      table: 'video_audience',
       ...FACEBOOK_VIDEO,
-      note: 'Facebook reports each video’s views by country, but we do not collect them yet.',
+      note: 'Facebook reports each video’s 3-second views by country, so these are views, not people.',
       reference: {
         section: 'Facebook',
         surface: 'facebook/video-insights',

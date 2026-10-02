@@ -285,3 +285,85 @@ describe('Facebook video insights, through the app provider', () => {
     }
   });
 });
+
+describe("a Page's other figures (FILM-1720)", () => {
+  it("splits a video's 3-second views by age and gender, and by country", async () => {
+    now = T0 + 5 * DAY;
+    const page = await pageToken(await requested('meta,facebook'));
+    const result = await (
+      await provider(page.token)
+    ).getVideoInsights({ videoId: SEEDED_VIDEO });
+    const audience = result.audience!;
+    const total = (rows: { views: number }[]) =>
+      rows.reduce((sum, row) => sum + row.views, 0);
+
+    expect(audience.ageGender.length).toBeGreaterThan(0);
+    expect(audience.countries.length).toBeGreaterThan(0);
+    // Each breakdown is a share of the same 3-second views, nothing more.
+    expect(total(audience.ageGender)).toBe(result.totals.threeSecondViews);
+    expect(total(audience.countries)).toBe(result.totals.threeSecondViews);
+    for (const row of audience.ageGender) {
+      expect(['F', 'M', 'U']).toContain(row.gender);
+      expect(row.ageGroup).toMatch(/^\d{2}(-\d{2}|\+)$/);
+    }
+  });
+
+  it("reads the Page's followers and unique viewers, from declared fields", async () => {
+    now = T0 + 5 * DAY;
+    const page = await pageToken(await requested('meta,facebook'));
+    const facebook = await provider(page.token);
+
+    const node = await graph(`/${page.id}`, {
+      access_token: page.token,
+      fields: 'followers_count',
+    });
+    expect(
+      undeclaredKeys(
+        entry('GET', '/{version}/{page-id}?fields=followers_count'),
+        node.body,
+      ),
+    ).toEqual([]);
+
+    const insights = await graph(`/${page.id}/insights`, {
+      access_token: page.token,
+      metric: 'page_total_media_view_unique',
+      period: 'week',
+      since: String(Math.floor((now - 7 * DAY) / 1000)),
+      until: String(Math.floor(now / 1000)),
+    });
+    expect(insights.status).toBe(200);
+    expect(
+      undeclaredKeys(
+        entry('GET', '/{version}/{page-id}/insights'),
+        insights.body,
+      ),
+    ).toEqual([]);
+
+    const followers = await facebook.getPageFollowerCount(page.id);
+    expect(followers.ok).toBe(true);
+
+    const asOf = new Date(T0 + 4 * DAY).toISOString().slice(0, 10);
+    const viewers = Object.fromEntries(
+      (await facebook.getPageUniqueViewers(page.id, asOf)).map((w) => [
+        w.windowDays,
+        w.viewers,
+      ]),
+    );
+    // Unique people over a longer window are never fewer than a shorter one.
+    expect(viewers[1]).not.toBeNull();
+    expect(viewers[7]!).toBeGreaterThanOrEqual(viewers[1]!);
+    expect(viewers[28]!).toBeGreaterThanOrEqual(viewers[7]!);
+  });
+
+  it('a connection made with the switch off cannot read Page insights', async () => {
+    const page = await pageToken(await requested('meta'));
+    const { FacebookInsightsScopeError } = await import(
+      '@kit/content-analytics/providers/facebook'
+    );
+    const asOf = new Date(T0 + 4 * DAY).toISOString().slice(0, 10);
+
+    await expect(
+      (await provider(page.token)).getPageUniqueViewers(page.id, asOf),
+    ).rejects.toBeInstanceOf(FacebookInsightsScopeError);
+  });
+});

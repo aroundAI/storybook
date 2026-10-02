@@ -4,18 +4,13 @@ import { z } from 'zod';
 
 import { LANGUAGE_DIMENSIONS } from '@kit/clickhouse';
 import { enhanceAction } from '@kit/next/actions';
-import { resolveAnalyticsAccess } from '@kit/publishing/oauth/analytics-scopes';
-import { analyticsScopesEnabled } from '@kit/publishing/server/analytics-scope-switch';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
   type ProjectRevenue,
   foldProjectRevenue,
 } from '../lib/project-revenue';
-import {
-  type RevenueAccessNote,
-  revenueAccessNotes,
-} from '../lib/revenue-access';
+import type { RevenueAccessNote } from '../lib/revenue-access';
 import type { SummaryRevenueRow } from '../lib/revenue-by-currency';
 import { PlatformSelectionSchema } from '../lib/schemas/platforms.schema';
 import {
@@ -29,6 +24,7 @@ import {
   getLanguagePerformance,
   getPlatformLanguageMatrix,
 } from './language-analytics';
+import { readAccountRevenueAccess } from './revenue-access-reader';
 import { forEachProjectRevenueRow } from './revenue-queries';
 import { assertProjectAccess } from './scope-access';
 
@@ -186,29 +182,7 @@ export const getProjectRevenueAccessAction = enhanceAction(
     if (projectError) throw projectError;
     if (!project) return null;
 
-    const { data: connections, error } = await client
-      .from('platform_connections')
-      .select('platform, scopes, metadata')
-      .eq('account_id', project.account_id)
-      .is('disconnected_at', null)
-      .order('id');
-
-    if (error) throw error;
-
-    const scopesEnabled = analyticsScopesEnabled();
-
-    return revenueAccessNotes(
-      (connections ?? []).map((connection) => ({
-        platform: connection.platform,
-        entries:
-          resolveAnalyticsAccess({
-            platform: connection.platform,
-            grantedScopes: connection.scopes,
-            metadata: connection.metadata,
-            scopesEnabled,
-          })?.entries ?? null,
-      })),
-    );
+    return readAccountRevenueAccess(client, project.account_id);
   },
   {
     schema: z.object({ projectId: z.string().uuid() }),

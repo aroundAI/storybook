@@ -230,6 +230,66 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/csv-and-platform-colors.test.ts",
       "pattern": "leaves a Facebook row"
+    },
+    {
+      "name": "FB11 a Page's followers are read without its insights",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/subscriber-snapshot.ts",
+      "find": "holdsRequirement('facebook.page-fields', connection.scopes)",
+      "replace": "true",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/facebook-page-figures.test.ts",
+      "pattern": "a publishing connection reads neither"
+    },
+    {
+      "name": "FB12 a Page's reach is read without its insights",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/channel-reach-windows.ts",
+      "find": "holdsRequirement('facebook.page-insights', connection.scopes)",
+      "replace": "true",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/facebook-page-figures.test.ts",
+      "pattern": "a publishing connection reads neither"
+    },
+    {
+      "name": "FB13 the follower record reads authorised for every publishing connection",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/oauth/analytics-scopes.ts",
+      "find": "      scopes: ['read_insights', 'pages_read_engagement'],\n      endpoints: [/\\$\\{pageId\\}\\?fields=/],",
+      "replace": "      scopes: ['pages_read_engagement'],\n      endpoints: [/\\$\\{pageId\\}\\?fields=/],",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/facebook-page-figures.test.ts",
+      "pattern": "a publishing connection reads neither"
+    },
+    {
+      "name": "FB14 a day missing a window is recorded, and never asked for again",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/channel-reach-windows.ts",
+      "find": "        if (missing.length > 0) {",
+      "replace": "        if (missing.length < 0) {",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/facebook-page-reach-capture.test.ts",
+      "pattern": "writes nothing for a day Meta has not finished"
+    },
+    {
+      "name": "FB15 a Page's backlog runs past the usage ceiling",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/providers/facebook/facebook-insights.ts",
+      "find": "      this.usagePercent = Math.max(this.usagePercent ?? 0, usage);",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/facebook-page-reach-capture.test.ts",
+      "pattern": "stops the Page's backlog at the usage ceiling"
+    },
+    {
+      "name": "FB16 a Facebook audience share is its raw views",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/ingest.ts",
+      "find": "      percentage: all > 0 ? (views / all) * 100 : 0,",
+      "replace": "      percentage: views,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/facebook-page-figures.test.ts",
+      "pattern": "sums each age group across genders"
     }
   ]
 }

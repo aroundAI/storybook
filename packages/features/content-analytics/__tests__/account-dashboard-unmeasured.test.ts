@@ -13,7 +13,13 @@ const state: {
   current: ScopeTotals;
   previous: ScopeTotals;
   hasProjects: boolean;
-} = { current: totals(), previous: totals(), hasProjects: true };
+  connections: { platform: string; scopes: string[]; metadata: null }[];
+} = {
+  current: totals(),
+  previous: totals(),
+  hasProjects: true,
+  connections: [],
+};
 
 function totals(overrides: Partial<ScopeTotals> = {}): ScopeTotals {
   return {
@@ -54,13 +60,15 @@ vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: () => ({
     from: (table: string) =>
       builder(
-        !state.hasProjects
-          ? []
-          : table === 'projects'
-            ? [{ id: 'project-1', name: 'Project' }]
-            : table === 'publishes'
-              ? [{ id: 'tt-1', platform: 'tiktok', episodes: { id: 'e-1' } }]
-              : [],
+        table === 'platform_connections'
+          ? state.connections
+          : !state.hasProjects
+            ? []
+            : table === 'projects'
+              ? [{ id: 'project-1', name: 'Project' }]
+              : table === 'publishes'
+                ? [{ id: 'tt-1', platform: 'tiktok', episodes: { id: 'e-1' } }]
+                : [],
       ),
   }),
 }));
@@ -83,6 +91,7 @@ beforeEach(async () => {
   state.current = totals();
   state.previous = totals();
   state.hasProjects = true;
+  state.connections = [];
 });
 
 describe('the account dashboard, for figures no platform measured (KB-162)', () => {
@@ -167,5 +176,46 @@ describe('the account dashboard, when nothing was measured (KB-167)', () => {
 
     expect(data.totals.views).toBe(0);
     expect(data.previousPeriodTotals.views).toBeNull();
+  });
+});
+
+/**
+ * FILM-1726: the project and episode dashboards said why revenue was Not
+ * measured; the company dashboard said Not measured and stopped. Its
+ * reasons are the account's connections, the same notes the project
+ * dashboard reads.
+ */
+describe('the account dashboard, on why revenue is not measured (FILM-1726)', () => {
+  it("gives the reasons from the account's connections", async () => {
+    state.current = totals({ revenue_cents: null });
+    state.connections = [{ platform: 'tiktok', scopes: [], metadata: null }];
+
+    const data = await getAccountDashboardData('account-1');
+
+    expect(data.totals.revenueCents).toBeNull();
+    expect(data.revenueAccess).toEqual([
+      expect.objectContaining({
+        platform: 'tiktok',
+        state: 'unsupported',
+        owner: 'platform',
+      }),
+    ]);
+  });
+
+  it('gives no reasons for an account with no connections', async () => {
+    const data = await getAccountDashboardData('account-1');
+
+    expect(data.revenueAccess).toEqual([]);
+  });
+
+  it('reads Not measured, never $0, and still says why, with no publishes', async () => {
+    state.hasProjects = false;
+    state.connections = [{ platform: 'tiktok', scopes: [], metadata: null }];
+
+    const data = await getAccountDashboardData('account-1');
+
+    expect(data.totals.revenueCents).toBeNull();
+    expect(data.previousPeriodTotals.revenueCents).toBeNull();
+    expect(data.revenueAccess).toHaveLength(1);
   });
 });

@@ -12,7 +12,7 @@ import {
 
 /**
  * FILM-1726 — screenshots and DOM readings for every surface whose revenue
- * text changed: the project's metric cards, the episode page, the Shorts
+ * text changed: the company dashboard, the project's metric cards, the episode page, the Shorts
  * ROI card and the experiment deltas. One team's YouTube channel reports
  * earnings; the other's channels cannot, each for its own reason. The
  * answers are worked out by hand in `monetisation.fixture.ts`.
@@ -21,12 +21,12 @@ const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
 
 /**
  * The revenue card's figure: digits in `metric-value` when measured, words in
- * `metric-unmeasured` when not (FILM-1705 keeps the two apart).
+ * `metric-not-measured` when not (FILM-1705 keeps the two apart).
  */
 function revenueFigure(card: Locator): Locator {
   return visible(
     card,
-    '[data-test="metric-value"], [data-test="metric-unmeasured"]',
+    '[data-test="metric-value"], [data-test="metric-not-measured"]',
   );
 }
 
@@ -44,9 +44,29 @@ async function readSurfaces(
   const base = `/home/${fixture.team.slug}/studio`;
   const reading: Record<string, unknown> = {};
 
+  // The company dashboard: every project of the account.
+  await page.goto(`/home/${fixture.team.slug}`);
+  await setTheme(page, theme);
+
+  const companyCard = byTest(page, 'metric-card-revenue');
+
+  await expect(revenueFigure(companyCard)).not.toHaveText('');
+  if (label === 'unmeasured') {
+    await expect(byTest(page, 'metric-not-measured-reason')).toHaveCount(
+      MONETISATION_EXPECTED.unmeasured.reasons.length,
+    );
+  }
+  reading.companyCard = await revenueFigure(companyCard).textContent();
+  reading.companyReasons = await byTest(
+    page,
+    'metric-not-measured-reason',
+  ).allTextContents();
+  await page.screenshot({
+    path: `${OUT}/film-1726-${label}-company-${theme}.png`,
+  });
+
   // The project's cards.
   await page.goto(`${base}/${fixture.projectSlug}/analytics`);
-  await setTheme(page, theme);
 
   const card = byTest(page, 'metric-card-revenue');
 
@@ -157,6 +177,9 @@ test.describe('FILM-1726 monetisation — evidence', () => {
       const a = measured[`measured-${theme}`] as Record<string, unknown>;
       const b = measured[`unmeasured-${theme}`] as Record<string, unknown>;
 
+      // One project, so the account's figure is the project's.
+      expect(a.companyCard, theme).toBe(yes.projectCard);
+      expect(a.companyReasons, theme).toEqual([]);
       expect(a.projectCard, theme).toBe(yes.projectCard);
       expect(a.projectReasons, theme).toEqual([]);
       expect(a.episodeHeader, theme).toBe(yes.episodeHeader);
@@ -164,6 +187,10 @@ test.describe('FILM-1726 monetisation — evidence', () => {
       expect(a.roiRevenuePerView, theme).toBe(yes.roiRevenuePerView);
       expect(a.experimentDelta, theme).toContain(yes.experimentDelta);
 
+      expect(b.companyCard, theme).toBe(no.figure);
+      expect([...(b.companyReasons as string[])].sort(), theme).toEqual(
+        [...no.reasons].sort(),
+      );
       expect(b.projectCard, theme).toBe(no.figure);
       expect([...(b.projectReasons as string[])].sort(), theme).toEqual(
         [...no.reasons].sort(),

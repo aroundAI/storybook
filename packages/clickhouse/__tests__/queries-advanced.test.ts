@@ -1121,6 +1121,23 @@ describe('queries-advanced', () => {
       );
     });
 
+    it('divides by engaged views only when every day the rate reads has them (FILM-1717)', async () => {
+      await run(
+        { kind: 'all' },
+        { measure: 'share_rate', viewsColumn: 'engaged_views' },
+      );
+      const { query } = lastQuery();
+
+      // A window whose shares cover days the engaged series lacks would
+      // divide a whole window by part of one, and read high.
+      expect(query).toContain('v_engaged_days >= v_metric_days');
+      expect(query).toContain('v_shares / v_engaged');
+      expect(query).toContain('FROM video_metrics FINAL');
+
+      await run({ kind: 'all' }, { measure: 'share_rate' });
+      expect(lastQuery().query).toContain('v_shares / v_views');
+    });
+
     it('refuses a segment kind outside the closed lookup', async () => {
       // The grouping expression is interpolated, so an unrecognised kind
       // must fail loudly rather than reaching SQL.

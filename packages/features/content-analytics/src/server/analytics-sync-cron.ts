@@ -41,6 +41,7 @@ import { syncAssetDurations } from './asset-duration-sync';
 import type { AssetDurationCandidate } from './asset-duration-sync';
 import {
   buildAudienceRows,
+  buildFacebookAudienceRows,
   buildFacebookRetentionPoints,
   buildRetentionPoints,
   buildSnapshotDeltaRow,
@@ -960,13 +961,21 @@ async function ingestCumulativeSnapshot(
   ]);
 
   if (platform === 'facebook') {
-    // Facebook's audience breakdowns are not collected yet (FILM-1720
-    // remaining); its retention graph is.
+    const facebook = analytics as FacebookInsightsResult;
+
     await insertRetentionCurves(
       buildFacebookRetentionPoints({
         projectId,
         videoId: publish.id,
-        retention: (analytics as FacebookInsightsResult).retention,
+        retention: facebook.retention,
+      }),
+    );
+    // 3-second views by age, gender and country (FILM-1720).
+    await insertVideoAudience(
+      buildFacebookAudienceRows({
+        projectId,
+        videoId: publish.id,
+        audience: facebook.audience,
       }),
     );
     return;

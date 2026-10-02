@@ -9,11 +9,14 @@ import {
   queryPlatformBreakdown,
   queryPostsAccountsReached,
 } from '@kit/clickhouse/server';
+import { analyticsScopesEnabled } from '@kit/publishing/server/analytics-scope-switch';
 import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
   type Counts,
+  FACEBOOK_NOT_GRANTED_REASON,
+  FACEBOOK_NOT_REQUESTED_REASON,
   type Measured,
   type ReachWindow,
   channelReachAvailability,
@@ -24,6 +27,7 @@ import {
   totalCounts,
   windowBounds,
 } from '../lib/reach-overview';
+import { readsChannelReach } from './channel-reach-windows';
 
 /** How far back the history chart reaches. */
 const HISTORY_DAYS = 365;
@@ -85,11 +89,12 @@ export async function loadReachOverview(input: {
       id: string;
       platform: string;
       platform_account_name: string | null;
+      scopes: string[] | null;
     }>(
       (start, end) =>
         client
           .from('platform_connections')
-          .select('id, platform, platform_account_name')
+          .select('id, platform, platform_account_name, scopes')
           .eq('account_id', input.accountId)
           .is('disconnected_at', null)
           .order('id')
@@ -139,6 +144,7 @@ async function loadChannel(
     id: string;
     platform: AnalyticsPlatform;
     platform_account_name: string | null;
+    scopes: string[] | null;
   },
   window: ReachWindow,
   history: { from: string; to: string },
@@ -149,11 +155,29 @@ async function loadChannel(
     platform: connection.platform,
     name,
   };
+
+  // Facebook ships dark: a Page read without its insights never fills.
+  if (connection.platform === 'facebook' && !readsChannelReach(connection)) {
+    return {
+      ...base,
+      reach: {
+        measured: false,
+        reason: analyticsScopesEnabled().has('facebook')
+          ? FACEBOOK_NOT_GRANTED_REASON
+          : FACEBOOK_NOT_REQUESTED_REASON,
+      },
+      newAccounts: null,
+    };
+  }
+
   const availability = channelReachAvailability(connection.platform, window);
 
-  // Only Instagram records channel windows today; the matrix says so, and
+  // Instagram and Facebook record channel windows; the matrix says so, and
   // this is the read that would change if another platform did.
-  if (!availability.measured || connection.platform !== 'instagram') {
+  if (
+    !availability.measured ||
+    (connection.platform !== 'instagram' && connection.platform !== 'facebook')
+  ) {
     return {
       ...base,
       reach: availability.measured
@@ -166,12 +190,13 @@ async function loadChannel(
   const [rows, fresh] = await Promise.all([
     queryChannelReach({
       connectionId: connection.id,
-      platform: 'instagram',
+      platform: connection.platform,
       windowDays: window === 7 ? 7 : 30,
       from: history.from,
       to: history.to,
     }),
-    window === 7
+    // "New in the last 7 days" needs Instagram's 23-day window.
+    window === 7 && connection.platform === 'instagram'
       ? queryChannelNewAccounts({
           connectionId: connection.id,
           from: history.to,

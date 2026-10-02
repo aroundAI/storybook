@@ -192,6 +192,26 @@
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/revenue-records-unmeasured.test.sql",
       "sql": "create or replace function public.revenue_cents_by_publish(p_publish_ids uuid[]) returns table (publish_id uuid, currency text, cents bigint) language sql stable security invoker set search_path = '' as $$ select r.publish_id, r.currency::text, sum(r.revenue_cents)::bigint from public.revenue_records r where r.publish_id = any(p_publish_ids) group by r.publish_id, r.currency::text $$;"
+    },
+    {
+      "name": "MS21 the empty company dashboard reads $0 revenue",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/account-dashboard-actions.ts",
+      "find": "      subscribersGained: null,\n      revenueCents: null,\n      contentCount: 0,\n    },\n    viewsScope: EMPTY_VIEWS_SCOPE,",
+      "replace": "      subscribersGained: null,\n      revenueCents: 0,\n      contentCount: 0,\n    },\n    viewsScope: EMPTY_VIEWS_SCOPE,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/account-dashboard-unmeasured.test.ts",
+      "pattern": "reads Not measured, never .0, and still says why, with no publishes"
+    },
+    {
+      "name": "MS22 the company dashboard drops the reasons revenue is not measured",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/account-dashboard-actions.ts",
+      "find": "  return { ...data, revenueAccess };",
+      "replace": "  return { ...data, revenueAccess: [] };",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/account-dashboard-unmeasured.test.ts",
+      "pattern": "gives the reasons from the account's connections"
     }
   ]
 }

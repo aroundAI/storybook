@@ -40,6 +40,7 @@ function reel(
       ...overrides,
     },
     retention: null,
+    audience: null,
     adBreaks: {
       access: 'account_type_gated',
       earnings: null,

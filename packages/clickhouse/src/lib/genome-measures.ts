@@ -23,8 +23,11 @@ import type {
 } from './data-provenance';
 import { CAPABILITY_MATRIX } from './data-provenance';
 import type { FormatFamily } from './format-families';
+import { viewFormatOf } from './self-benchmark';
 import type { FunnelStage, SignalId } from './signal-map';
 import { SIGNALS, SIGNAL_MAP, signalSupport } from './signal-map';
+import type { ViewDefinitionChange, ViewsColumn } from './view-definitions';
+import { viewsDenominatorFor } from './view-definitions';
 
 /**
  * Signals the segment query can compute per video over its first N days.
@@ -47,6 +50,138 @@ export function isSegmentMeasure(signal: string): signal is SegmentMeasure {
   return (SEGMENT_MEASURES as readonly string[]).includes(signal);
 }
 
+/** The measures that divide by views, so depend on what a view is. */
+export const VIEWS_RATE_MEASURES = [
+  'average_view_duration',
+  'share_rate',
+  'comment_rate',
+  'subscriber_conversion',
+] as const satisfies readonly SegmentMeasure[];
+
+function isViewsRate(measure: SegmentMeasure): boolean {
+  return (VIEWS_RATE_MEASURES as readonly string[]).includes(measure);
+}
+
+/**
+ * The views series a genome cohort's rates divide by (FILM-1717), chosen by
+ * FILM-1722's `viewsDenominatorFor` over the dates the cohort's checkpoint
+ * windows span, never here.
+ *
+ * - One definition throughout: `views`, as before.
+ * - A change inside the span, bridged by a stored continuous series
+ *   (YouTube's engaged views): that series, for every video.
+ * - A change the series begins too late to bridge: the cohort starts where
+ *   the series begins (`publishedFrom`), as FILM-1715's benchmark narrows
+ *   its window (owner, 2026-10-01). Older videos are left out, not read on
+ *   the other denominator.
+ * - No series at all: refused, with the change named.
+ *
+ * Measures that do not divide by views (impressions, CTR), and spans the
+ * registry suppresses for another reason, keep `views`: the change does not
+ * reach them.
+ */
+export type GenomeViewsDenominator =
+  | {
+      ok: true;
+      column: ViewsColumn;
+      /** Videos published before this date (UTC) are left out; null keeps all. */
+      publishedFrom: string | null;
+      /** Present when the series is not `views`: the change it bridges. */
+      instead: {
+        reason: 'view_definition_changed';
+        changedOn: string;
+        changes: readonly ViewDefinitionChange[];
+      } | null;
+    }
+  | {
+      ok: false;
+      refusal: {
+        kind: 'view_definition_changed';
+        changedOn: string;
+        changes: readonly ViewDefinitionChange[];
+      };
+    };
+
+const VIEWS: GenomeViewsDenominator = {
+  ok: true,
+  column: 'views',
+  publishedFrom: null,
+  instead: null,
+};
+
+function addDays(date: string, days: number): string {
+  const at = new Date(`${date}T00:00:00Z`);
+
+  at.setUTCDate(at.getUTCDate() + days);
+
+  return at.toISOString().slice(0, 10);
+}
+
+export function genomeViewsDenominator(input: {
+  platform: AnalyticsPlatform;
+  formatFamily: FormatFamily;
+  measure: SegmentMeasure;
+  /** The cohort's publication instants, as the segment query returns them. */
+  publishedAt: readonly string[];
+  checkpointDays: number;
+  /** 'YYYY-MM-DD HH:MM:SS' or ISO; a window cannot run past it. */
+  asOf: string;
+}): GenomeViewsDenominator {
+  if (!isViewsRate(input.measure) || input.publishedAt.length === 0) {
+    return VIEWS;
+  }
+
+  const dates = input.publishedAt.map((value) => value.slice(0, 10)).sort();
+  const from = dates[0]!;
+  const lastWindowEnd = addDays(dates.at(-1)!, input.checkpointDays - 1);
+  const asOf = input.asOf.slice(0, 10);
+  const to = lastWindowEnd < asOf ? lastWindowEnd : asOf;
+  const options = { format: viewFormatOf(input.formatFamily) };
+  const denominator = viewsDenominatorFor(input.platform, from, to, options);
+
+  if (denominator.kind === 'column') {
+    return {
+      ok: true,
+      column: denominator.column,
+      publishedFrom: null,
+      instead: denominator.instead ?? null,
+    };
+  }
+
+  if (denominator.reason !== 'view_definition_changed') return VIEWS;
+
+  const { changedOn, changes, continuousAlternative } = denominator;
+  const continuousFrom =
+    continuousAlternative?.definition.effectiveFrom ?? null;
+
+  if (
+    continuousFrom !== null &&
+    continuousFrom > from &&
+    continuousFrom <= to
+  ) {
+    const narrowed = viewsDenominatorFor(
+      input.platform,
+      continuousFrom,
+      to,
+      options,
+    );
+
+    if (narrowed.kind === 'column' && narrowed.column !== 'views') {
+      return {
+        ok: true,
+        column: narrowed.column,
+        publishedFrom: continuousFrom,
+        instead: { reason: 'view_definition_changed', changedOn, changes },
+      };
+    }
+  }
+
+  return {
+    ok: false,
+    refusal: { kind: 'view_definition_changed', changedOn, changes },
+  };
+}
+
 /** Why a stage cannot be scored for an attribute on this platform and format. */
 export type StageMeasureRefusal =
   | {
@@ -63,7 +198,8 @@ export type StageMeasureRefusal =
       kind: 'no_checkpoint_measure';
       /** Bound and ingested, but not readable per video at a checkpoint yet. */
       signal: SignalId;
-    };
+    }
+  | (GenomeViewsDenominator & { ok: false })['refusal'];
 
 export type StageMeasure =
   | { ok: true; stage: FunnelStage; signal: SegmentMeasure }
