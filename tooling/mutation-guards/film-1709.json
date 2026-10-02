@@ -95,8 +95,8 @@
       "name": "FILM-1709 a headline figure nobody asked for says nothing about why",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
-      "find": "  const unmeasured = noFigureReason ?? unmeasuredReason(metric);",
-      "replace": "  const unmeasured = unmeasuredReason(metric);",
+      "find": "          {noFigureReason !== undefined ? (",
+      "replace": "          {false ? (",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/platform-filter-surfaces.test.tsx",
       "pattern": "draw no zero for figures nobody asked for"
