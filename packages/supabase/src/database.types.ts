@@ -3545,6 +3545,194 @@ export type Database = {
           },
         ]
       }
+      mcp_connections: {
+        Row: {
+          account_id: string
+          client_id: string | null
+          created_at: string
+          id: string
+          kind: string
+          last_used_at: string | null
+          name: string
+          revoked_at: string | null
+          scopes: string[]
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          last_used_at?: string | null
+          name: string
+          revoked_at?: string | null
+          scopes?: string[]
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          last_used_at?: string | null
+          name?: string
+          revoked_at?: string | null
+          scopes?: string[]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_connections_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_connections_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "public_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_connections_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_connections_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mcp_tokens: {
+        Row: {
+          connection_id: string
+          created_at: string
+          expires_at: string | null
+          kind: string
+          revoked_at: string | null
+          rotated_from: string | null
+          token_hash: string
+        }
+        Insert: {
+          connection_id: string
+          created_at?: string
+          expires_at?: string | null
+          kind: string
+          revoked_at?: string | null
+          rotated_from?: string | null
+          token_hash: string
+        }
+        Update: {
+          connection_id?: string
+          created_at?: string
+          expires_at?: string | null
+          kind?: string
+          revoked_at?: string | null
+          rotated_from?: string | null
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_tokens_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "mcp_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_tokens_rotated_from_fkey"
+            columns: ["rotated_from"]
+            isOneToOne: false
+            referencedRelation: "mcp_tokens"
+            referencedColumns: ["token_hash"]
+          },
+        ]
+      }
+      mcp_tool_calls: {
+        Row: {
+          account_id: string
+          connection_id: string | null
+          created_at: string
+          duration_ms: number
+          error_code: string | null
+          id: string
+          run_id: string | null
+          status: string
+          tool: string
+          user_id: string | null
+        }
+        Insert: {
+          account_id: string
+          connection_id?: string | null
+          created_at?: string
+          duration_ms: number
+          error_code?: string | null
+          id?: string
+          run_id?: string | null
+          status: string
+          tool: string
+          user_id?: string | null
+        }
+        Update: {
+          account_id?: string
+          connection_id?: string | null
+          created_at?: string
+          duration_ms?: number
+          error_code?: string | null
+          id?: string
+          run_id?: string | null
+          status?: string
+          tool?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_tool_calls_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_tool_calls_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "public_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_tool_calls_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_tool_calls_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_tool_calls_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "mcp_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       narrative_threads: {
         Row: {
           auto_generated: boolean
@@ -6161,6 +6349,32 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "invitations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_mcp_personal_access_token: {
+        Args: {
+          p_account_id: string
+          p_name: string
+          p_scopes: string[]
+          p_token_hash: string
+        }
+        Returns: {
+          account_id: string
+          client_id: string | null
+          created_at: string
+          id: string
+          kind: string
+          last_used_at: string | null
+          name: string
+          revoked_at: string | null
+          scopes: string[]
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "mcp_connections"
           isOneToOne: true
           isSetofReturn: false
         }
