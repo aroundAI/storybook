@@ -24,9 +24,9 @@ const CASCADE =
 
 const KNOWN: Record<string, [number, string]> = {
   // Service role / admin client
-  'apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts | dialogue_lines | delete':
-    [1, ADMIN],
-  'apps/web/lambda/llm-worker/handlers/screenplay-refinement.ts | dialogue_lines | delete':
+  // The screenplay stages' dialogue_lines rebuild (FILM-1901 part C), run by
+  // the worker's service role; was the two screenplay handlers' delete
+  'packages/features/generation/src/stages/shared/dialogue-lines.ts | dialogue_lines | delete':
     [1, ADMIN],
   'apps/web/lambda/llm-worker/handlers/shot-generation.ts | audio_cues | delete':
     [1, ADMIN],
