@@ -19,17 +19,21 @@
 create table public.generation_runs (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null references public.accounts(id) on delete cascade,
-  project_id uuid not null references public.projects(id) on delete cascade,
+  -- null for a run on the caller's own text (publish_metadata), part B
+  project_id uuid references public.projects(id) on delete cascade,
   target_type text not null
-    check (target_type in ('episode', 'scene', 'asset', 'season', 'publish')),
+    check (target_type in ('episode', 'scene', 'asset', 'season', 'project', 'publish', 'audio_cue')),
   target_id uuid not null,
-  -- the FILM-1901 stage registry
+  -- the FILM-1901 stage registry, plus the server-only keys part B added:
+  -- analytics_insights and language_insights are model calls with no content
+  -- stage, audio_render the worker's ElevenLabs render job
   stage text not null
     check (stage in (
       'season_outline', 'season_analysis', 'ideation', 'story',
       'story_refinement', 'screenplay', 'screenplay_refinement', 'shots',
       'audio_cues', 'dialogue_translation', 'asset_description',
-      'fact_extraction', 'episode_summary', 'publish_metadata'
+      'fact_extraction', 'episode_summary', 'publish_metadata',
+      'analytics_insights', 'language_insights', 'audio_render'
     )),
   mode text not null check (mode in ('server', 'external')),
   status text not null default 'briefed'
@@ -40,6 +44,10 @@ create table public.generation_runs (
   prompt_slug text,
   prompt_version integer,
   origin jsonb not null default '{}'::jsonb,
+  -- what the run was asked to do (part B): {kind: 'stage', target} for a
+  -- registered stage, {kind: 'job', jobType, payload} for a worker job not
+  -- yet on the generation core
+  input jsonb not null default '{}'::jsonb,
   -- FK to mcp_connections added once FILM-1904 lands
   connection_id uuid,
   job_id uuid references public.generation_jobs(id) on delete set null,
@@ -75,7 +83,7 @@ create table public.content_revisions (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null references public.accounts(id) on delete cascade,
   target_type text not null
-    check (target_type in ('episode', 'scene', 'asset', 'season', 'publish')),
+    check (target_type in ('episode', 'scene', 'asset', 'season', 'project', 'publish', 'audio_cue')),
   target_id uuid not null,
   stage text not null,
   run_id uuid references public.generation_runs(id) on delete set null,
@@ -229,6 +237,28 @@ create trigger account_ai_settings_set_timestamps
 --   service_role only (the cron route api/cron/expire-generation-runs):
 --   marks every briefed/in_progress run past lease_expires_at 'expired'
 --   with error.code = 'LEASE_EXPIRED', returns the count.
+--
+-- Part B (20261002205007): the lifecycle functions a run is driven through,
+-- all SECURITY DEFINER and gated on can_drive_generation_run(account,
+-- project): the service role, or can_write_project of the run's project, or
+-- the caller's own account when the run names no project.
+--
+-- can_drive_generation_run(p_account_id uuid, p_project_id uuid) returns boolean
+-- open_generation_run(p_account_id, p_target_type, p_target_id, p_stage,
+--   p_mode, p_input, p_origin, p_project_id default null, p_target_version,
+--   p_prompt_slug, p_prompt_version, p_connection_id, p_parent_run_id,
+--   p_created_by) returns jsonb
+--   {ok: true, run} or {ok: false, code: 'RUN_IN_PROGRESS', holder} when
+--   generation_runs_one_open refuses; created_by is the caller, or
+--   p_created_by for the service role (a child run is its parent's user).
+-- renew_generation_run_lease(p_run_id uuid) returns jsonb
+--   {ok: true, run} with lease_expires_at = now() + 30 min, or {ok: false,
+--   code: 'RUN_NOT_OPEN' | 'RUN_NOT_FOUND', run} for a terminal or expired run.
+-- transition_generation_run(p_run_id uuid, p_status text, p_error jsonb) returns jsonb
+--   in_progress (renews the lease) or a terminal status (sets finalized_at,
+--   keeps p_error); a terminal run never moves again (RUN_NOT_OPEN).
+-- record_content_revision(p_run_id uuid, p_snapshot jsonb) returns uuid
+--   files the snapshot under the run's own account, target and stage.
 
 -- Realtime: the studio pages show the lease banner and refresh on commit
 alter publication supabase_realtime add table public.generation_runs;

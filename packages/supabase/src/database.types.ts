@@ -3090,12 +3090,13 @@ export type Database = {
           error: Json | null
           finalized_at: string | null
           id: string
+          input: Json
           job_id: string | null
           lease_expires_at: string | null
           mode: string
           origin: Json
           parent_run_id: string | null
-          project_id: string
+          project_id: string | null
           prompt_slug: string | null
           prompt_version: number | null
           stage: string
@@ -3113,12 +3114,13 @@ export type Database = {
           error?: Json | null
           finalized_at?: string | null
           id?: string
+          input?: Json
           job_id?: string | null
           lease_expires_at?: string | null
           mode: string
           origin?: Json
           parent_run_id?: string | null
-          project_id: string
+          project_id?: string | null
           prompt_slug?: string | null
           prompt_version?: number | null
           stage: string
@@ -3136,12 +3138,13 @@ export type Database = {
           error?: Json | null
           finalized_at?: string | null
           id?: string
+          input?: Json
           job_id?: string | null
           lease_expires_at?: string | null
           mode?: string
           origin?: Json
           parent_run_id?: string | null
-          project_id?: string
+          project_id?: string | null
           prompt_slug?: string | null
           prompt_version?: number | null
           stage?: string
@@ -6358,6 +6361,10 @@ export type Database = {
         Args: { target_team_account_id: string; target_user_id: string }
         Returns: boolean
       }
+      can_drive_generation_run: {
+        Args: { p_account_id: string; p_project_id: string }
+        Returns: boolean
+      }
       can_edit_project: {
         Args: { target_project_id: string }
         Returns: boolean
@@ -6983,6 +6990,25 @@ export type Database = {
           similarity: number
         }[]
       }
+      open_generation_run: {
+        Args: {
+          p_account_id: string
+          p_connection_id?: string
+          p_created_by?: string
+          p_input: Json
+          p_mode: string
+          p_origin: Json
+          p_parent_run_id?: string
+          p_project_id?: string
+          p_prompt_slug?: string
+          p_prompt_version?: number
+          p_stage: string
+          p_target_id: string
+          p_target_type: string
+          p_target_version?: number
+        }
+        Returns: Json
+      }
       plan_dialogue_timeline: { Args: { p_updates: Json }; Returns: number }
       project_in_account: {
         Args: { account_id: string; project_id: string }
@@ -7004,10 +7030,15 @@ export type Database = {
         Args: { p_connection_id: string }
         Returns: Json
       }
+      record_content_revision: {
+        Args: { p_run_id: string; p_snapshot: Json }
+        Returns: string
+      }
       remove_episode_from_threads_touched: {
         Args: { p_episode_id: string; p_project_id: string }
         Returns: undefined
       }
+      renew_generation_run_lease: { Args: { p_run_id: string }; Returns: Json }
       replace_experiment_publishes: {
         Args: { p_experiment_id: string; p_publish_ids: string[] }
         Returns: undefined
@@ -7077,6 +7108,10 @@ export type Database = {
       transfer_team_account_ownership: {
         Args: { new_owner_id: string; target_account_id: string }
         Returns: undefined
+      }
+      transition_generation_run: {
+        Args: { p_error?: Json; p_run_id: string; p_status: string }
+        Returns: Json
       }
       update_character_with_details: {
         Args: {
