@@ -313,7 +313,19 @@ test.describe('Platform filter completion (FILM-1709)', () => {
 
     await byTest(page, 'analytics-select-all-platforms').click();
     await expect(panel).toHaveCount(0);
-    await expect(metricValue(page, 'views')).toBeVisible(SLOW);
+    await expect(views).not.toHaveAttribute('data-dimmed', 'true', SLOW);
+
+    // Back to every platform's total. Without metric rows (⚫️ Test reads
+    // no ClickHouse) no video has a view, so the total is null and says
+    // "Not measured" — never 0 (KB-153, KB-162).
+    if (OBSERVED) {
+      await expect(metricValue(page, 'views')).toBeVisible(SLOW);
+    } else {
+      await expect(byTest(views, 'metric-unmeasured')).toHaveText(
+        'Not measured',
+      );
+      await expect(byTest(views, 'metric-value')).toHaveCount(0);
+    }
   });
 });
 
