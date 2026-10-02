@@ -228,12 +228,26 @@ describe('Meta sandbox: publishing a Reel through the app providers', () => {
       sandbox.social.object('instagram', declared.mediaId).details,
     ).toMatchObject({ isAiGenerated: true });
 
-    // The post the test above published was not declared.
-    const undeclared = sandbox.social
-      .listObjects('instagram')
-      .filter((o) => o.caption === 'Lighthouse, second night');
-    expect(undeclared).toHaveLength(1);
-    expect(undeclared[0]!.details ?? {}).not.toHaveProperty('isAiGenerated');
+    // A container created without the parameter is kept as undeclared.
+    const plain = await graph(
+      `/${igId}/media`,
+      {
+        media_type: 'REELS',
+        video_url: 'https://cdn.example.org/harbour-plain.mp4',
+        access_token: pageToken,
+      },
+      { method: 'POST' },
+    );
+    const containers = sandbox.social.list<{
+      id: string;
+      aiGenerated?: boolean;
+    }>('ig-container');
+    expect(
+      containers.find((c) => c.id === (plain.body as { id: string }).id),
+    ).not.toHaveProperty('aiGenerated');
+    expect(
+      containers.find((c) => c.id === declared.containerId),
+    ).toMatchObject({ aiGenerated: true });
 
     const refused = await graph(
       `/${igId}/media`,
