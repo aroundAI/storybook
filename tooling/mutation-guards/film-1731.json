@@ -1,0 +1,115 @@
+{
+  "feature": "FILM-1731",
+  "mutations": [
+    {
+      "name": "AIL1 Instagram's container drops is_ai_generated",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/providers/instagram/instagram-provider.ts",
+      "find": "    if (input.aiGenerated) {\n      params.set('is_ai_generated', 'true');",
+      "replace": "    if (false) {\n      params.set('is_ai_generated', 'true');",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/ai-label-providers.test.ts",
+      "pattern": "is_ai_generated"
+    },
+    {
+      "name": "AIL2 YouTube's insert drops containsSyntheticMedia",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/providers/youtube/youtube-provider.ts",
+      "find": "        ...(input.containsSyntheticMedia && { containsSyntheticMedia: true }),\n",
+      "replace": "",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/ai-label-providers.test.ts",
+      "pattern": "containsSyntheticMedia"
+    },
+    {
+      "name": "AIL3 TikTok's init sends is_aigc whether declared or not",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/providers/tiktok/tiktok-provider.ts",
+      "find": "    if (input.isAigc) {\n      postInfo.is_aigc = true;",
+      "replace": "    if (true) {\n      postInfo.is_aigc = true;",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/ai-label-providers.test.ts",
+      "pattern": "is_aigc"
+    },
+    {
+      "name": "AIL4 X's post drops made_with_ai",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/providers/twitter/twitter-provider.ts",
+      "find": "    if (madeWithAi) {\n      body.made_with_ai = true;",
+      "replace": "    if (false) {\n      body.made_with_ai = true;",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/ai-label-providers.test.ts",
+      "pattern": "made_with_ai"
+    },
+    {
+      "name": "AIL5 a publish does not store its declaration",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "              ai_generated: aiGenerated,\n",
+      "replace": "              ai_generated: false,\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/ai-label-publish-action.test.ts",
+      "pattern": "FILM-1731"
+    },
+    {
+      "name": "AIL6 the map claims Facebook takes the label",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/ai-label.ts",
+      "find": "  facebook: null,\n",
+      "replace": "  facebook: 'is_ai_generated',\n",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/ai-label.test.ts",
+      "pattern": "Facebook"
+    },
+    {
+      "name": "AIL7 the worker labels every Instagram Reel",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/handlers/instagram.ts",
+      "find": "      aiGenerated: job.aiGenerated === true,\n",
+      "replace": "      aiGenerated: true,\n",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/ai-label.test.ts",
+      "pattern": "Instagram"
+    },
+    {
+      "name": "AIL8 the worker's YouTube upload drops containsSyntheticMedia",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/handlers/youtube.ts",
+      "find": "      ...(job.aiGenerated === true && { containsSyntheticMedia: true }),\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/ai-label.test.ts",
+      "pattern": "containsSyntheticMedia"
+    },
+    {
+      "name": "AIL9 the worker's TikTok init drops is_aigc",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/handlers/tiktok.ts",
+      "find": "          ...(job.aiGenerated === true && { is_aigc: true }),\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/ai-label.test.ts",
+      "pattern": "TikTok"
+    },
+    {
+      "name": "AIL10 the worker labels every X post",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/handlers/twitter.ts",
+      "find": "      ...(job.aiGenerated === true && { made_with_ai: true }),\n",
+      "replace": "      ...{ made_with_ai: true },\n",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/ai-label.test.ts",
+      "pattern": "X,"
+    },
+    {
+      "name": "AIL11 the sandbox forgets an Instagram post was declared",
+      "kind": "unit",
+      "file": "apps/vendor-sandbox/src/social/vendors/meta/publishing.ts",
+      "find": "    ...(container.aiGenerated ? { details: { isAiGenerated: true } } : {}),\n",
+      "replace": "",
+      "cwd": "apps/vendor-sandbox",
+      "test": "__tests__/meta-publishing.test.ts",
+      "pattern": "FILM-1731"
+    }
+  ]
+}
