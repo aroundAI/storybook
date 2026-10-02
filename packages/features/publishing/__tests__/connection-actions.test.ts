@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Platform, PlatformConnection } from '../src/lib/types';
 
@@ -6,6 +6,15 @@ import type { Platform, PlatformConnection } from '../src/lib/types';
 vi.mock('server-only', () => ({}));
 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
+
+// Off, as shipped (owner, 2026-10-02); a test switches it on to bring X back.
+const xSwitch = vi.hoisted(() => ({ on: false }));
+
+vi.mock('../src/lib/x-switch', () => ({
+  get X_ENABLED() {
+    return xSwitch.on;
+  },
+}));
 
 // Mock @kit/next/actions
 vi.mock('@kit/next/actions', () => ({
@@ -402,7 +411,7 @@ describe('Connection Actions', () => {
       });
 
       mockSupabaseClient.order.mockResolvedValueOnce({
-        data: [row('conn-li', 'linkedin'), row('conn-x', 'twitter')],
+        data: [row('conn-li', 'linkedin'), row('conn-yt', 'youtube')],
         error: null,
       });
 
@@ -414,7 +423,60 @@ describe('Connection Actions', () => {
         accountId: 'test-account-id',
       });
 
-      expect(result.map((connection) => connection.id)).toEqual(['conn-x']);
+      expect(result.map((connection) => connection.id)).toEqual(['conn-yt']);
+    });
+  });
+
+  // X is hidden while `X_ENABLED` is off: a kept X row is shown neither in
+  // settings nor on the publish screen, and switching X on shows it again.
+  describe('a kept X row', () => {
+    const row = (id: string, platform: string) => ({
+      id,
+      account_id: 'test-account-id',
+      platform,
+      platform_account_id: `${platform}-account`,
+      platform_account_name: platform,
+      is_active: true,
+      token_expires_at: new Date(Date.now() + 3600000).toISOString(),
+      scopes: null,
+      metadata: null,
+      disconnected_at: null,
+    });
+
+    async function listed(action: 'settings' | 'publish') {
+      mockSupabaseClient.order.mockResolvedValueOnce({
+        data: [row('conn-x', 'twitter'), row('conn-yt', 'youtube')],
+        error: null,
+      });
+
+      const { getConnectionsAction, getConnectedPlatformsAction } =
+        await import('../src/server/connection-actions');
+      const read =
+        action === 'settings'
+          ? getConnectionsAction
+          : getConnectedPlatformsAction;
+      const result = await read({ accountId: 'test-account-id' });
+
+      return result.map((connection) => connection.id);
+    }
+
+    afterEach(() => {
+      xSwitch.on = false;
+    });
+
+    it('is not shown in settings while X is hidden', async () => {
+      expect(await listed('settings')).toEqual(['conn-yt']);
+    });
+
+    it('is not offered on the publish screen while X is hidden', async () => {
+      expect(await listed('publish')).toEqual(['conn-yt']);
+    });
+
+    it('is shown in both again once X is switched on', async () => {
+      xSwitch.on = true;
+
+      expect(await listed('settings')).toEqual(['conn-x', 'conn-yt']);
+      expect(await listed('publish')).toEqual(['conn-x', 'conn-yt']);
     });
   });
 

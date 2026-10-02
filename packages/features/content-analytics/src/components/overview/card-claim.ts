@@ -1,5 +1,4 @@
 import {
-  ANALYTICS_PLATFORMS,
   type AnalyticsPlatform,
   type MetricFamily,
   capabilityFor,
@@ -7,6 +6,7 @@ import {
 
 import { formatNumber } from '../../lib/format';
 import { platformLabel } from '../../lib/platform-labels';
+import { SHOWN_ANALYTICS_PLATFORMS } from '../../lib/shown-platforms';
 
 export { platformLabel };
 
@@ -90,7 +90,7 @@ export function notFromAPlatformSource(kind: NotFromAPlatform): string {
  */
 export function sourceNotesFor(
   metricFamily: CardMetricFamily,
-  platforms: readonly AnalyticsPlatform[] = ANALYTICS_PLATFORMS,
+  platforms: readonly AnalyticsPlatform[] = SHOWN_ANALYTICS_PLATFORMS,
 ): string[] {
   if (isNotFromAPlatform(metricFamily)) {
     return [notFromAPlatformSource(metricFamily)];
@@ -166,9 +166,9 @@ function withViews<T extends { views: number | null }>(
 export function platformsWithViews(
   rows: readonly { platform: string; views: number | null }[] | undefined,
 ): AnalyticsPlatform[] {
-  const known: readonly string[] = ANALYTICS_PLATFORMS;
+  const known: readonly string[] = SHOWN_ANALYTICS_PLATFORMS;
 
-  return ANALYTICS_PLATFORMS.filter((platform) =>
+  return SHOWN_ANALYTICS_PLATFORMS.filter((platform) =>
     (rows ?? []).some(
       (row) =>
         row.views !== null &&

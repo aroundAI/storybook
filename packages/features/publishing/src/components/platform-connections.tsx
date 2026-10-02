@@ -52,6 +52,7 @@ import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
 import { Trans } from '@kit/ui/trans';
 
+import { isHiddenPlatform } from '../lib/platforms';
 import type {
   AnalyticsAccess,
   AnalyticsAccessEntry,
@@ -146,9 +147,10 @@ const PLATFORM_CARDS: Record<PlatformType, Omit<PlatformConfig, 'id'>> = {
   },
 };
 
-const PLATFORMS: PlatformConfig[] = Object.entries(PLATFORM_CARDS).map(
-  ([id, card]) => ({ id: id as PlatformType, ...card }),
-);
+/** The cards shown: a hidden platform's (X while `X_ENABLED` is off) is not. */
+const PLATFORMS: PlatformConfig[] = Object.entries(PLATFORM_CARDS)
+  .filter(([id]) => !isHiddenPlatform(id))
+  .map(([id, card]) => ({ id: id as PlatformType, ...card }));
 
 interface PlatformConnectionsProps {
   accountSlug: string;

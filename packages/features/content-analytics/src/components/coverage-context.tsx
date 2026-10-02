@@ -25,6 +25,7 @@ import type {
   FamilyCells,
 } from '../lib/provenance';
 import type { Scope } from '../lib/schemas/traffic.schema';
+import { SHOWN_ANALYTICS_PLATFORMS } from '../lib/shown-platforms';
 import { getCoverageMatrixAction } from '../server/coverage-actions';
 
 /**
@@ -134,7 +135,7 @@ export function CoverageProvider({
   const window = useSettledWindow(from, to);
   const parent = useContext(CoverageContext);
   const selected =
-    selectedPlatforms ?? parent?.selectedPlatforms ?? ANALYTICS_PLATFORMS;
+    selectedPlatforms ?? parent?.selectedPlatforms ?? SHOWN_ANALYTICS_PLATFORMS;
 
   const query = useQuery({
     // By value, field by field: callers build `scope` inline, and a key
@@ -181,6 +182,8 @@ function cellsFor(
 ): FamilyCells {
   const { status, result } = context;
 
+  // Every platform's cell, so the record is whole; which are shown is the
+  // selection's, read from the shown list.
   return Object.fromEntries(
     ANALYTICS_PLATFORMS.map((platform): [AnalyticsPlatform, CoverageCell] => {
       const fromMatrix = capabilityCoverage(

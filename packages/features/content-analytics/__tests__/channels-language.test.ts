@@ -1,6 +1,19 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { listAccountChannels } from '../src/server/channels';
+
+// Off, as shipped (owner, 2026-10-02); a test switches it on.
+const xSwitch = vi.hoisted(() => ({ on: false }));
+
+vi.mock('@kit/publishing/lib/x-switch', () => ({
+  get X_ENABLED() {
+    return xSwitch.on;
+  },
+}));
+
+afterEach(() => {
+  xSwitch.on = false;
+});
 
 vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: () => ({}),
@@ -85,5 +98,44 @@ describe('listAccountChannels', () => {
     );
 
     expect(channels.map((channel) => channel.connectionId)).toEqual(['c-yt']);
+  });
+
+  // X is hidden while `X_ENABLED` is off: its kept channel is not listed,
+  // so the strip, the switcher and the coverage counts never meet it.
+  async function channelsWithX() {
+    const row = (id: string, platform: string) => ({
+      id,
+      platform,
+      platform_account_name: platform,
+      is_active: true,
+      metadata: null,
+      language: 'en',
+    });
+    const builder = {
+      select: () => builder,
+      eq: () => builder,
+      order: () => builder,
+      range: async () => ({
+        data: [row('c-x', 'twitter'), row('c-yt', 'youtube')],
+        error: null,
+      }),
+    };
+
+    const channels = await listAccountChannels(
+      '00000000-0000-4000-8000-0000000000b1',
+      { from: () => builder } as never,
+    );
+
+    return channels.map((channel) => channel.connectionId).sort();
+  }
+
+  it('leaves out a kept X channel while X is hidden', async () => {
+    expect(await channelsWithX()).toEqual(['c-yt']);
+  });
+
+  it('lists the X channel again once X is switched on', async () => {
+    xSwitch.on = true;
+
+    expect(await channelsWithX()).toEqual(['c-x', 'c-yt']);
   });
 });

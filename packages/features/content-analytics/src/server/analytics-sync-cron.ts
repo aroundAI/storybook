@@ -12,6 +12,7 @@ import {
   queryLatestSnapshots,
 } from '@kit/clickhouse/server';
 import type { SnapshotTotals } from '@kit/clickhouse/server';
+import { isOfferedPlatform } from '@kit/publishing/lib/platforms';
 import { getLogger } from '@kit/shared/logger';
 import { fetchAllByIds } from '@kit/shared/pagination';
 import { readFailed, whyNoRow } from '@kit/shared/rows';
@@ -311,12 +312,14 @@ export async function fetchPublishesForSync(
   // Query publishes that:
   // 1. Have status = 'published'
   // 2. Have a platform_content_id (means they were actually published)
-  // 3. Platform is one the sync reads (SYNC_PLATFORMS) — X only while
-  //    X_ANALYTICS_ENABLED is on, because every X read is billed (FILM-1727)
+  // 3. Platform is one the sync reads (SYNC_PLATFORMS) and the product
+  //    offers — X only while X_ENABLED is on and X_ANALYTICS_ENABLED too,
+  //    because every X read is billed (FILM-1727)
   // 4. Sorted by published_at descending (newer content first)
   const xEnabled = xAnalyticsEnabled(process.env);
   const platforms = SYNC_PLATFORMS.filter(
-    (platform) => xEnabled || platform !== 'twitter',
+    (platform) =>
+      isOfferedPlatform(platform) && (xEnabled || platform !== 'twitter'),
   );
 
   const { data, error } = await client

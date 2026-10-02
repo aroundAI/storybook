@@ -43,7 +43,7 @@ import { Textarea } from '@kit/ui/textarea';
 
 import {
   CreateFilmProjectSchema,
-  PLATFORM_CONFIGS,
+  OFFERED_TARGET_PLATFORMS,
   getSmartDefaults,
 } from '../_lib/schema';
 import {
@@ -401,7 +401,7 @@ export function CreateFilmProjectForm({
                     published
                   </FormDescription>
                   <div className="mt-2 grid grid-cols-2 gap-3 md:grid-cols-4">
-                    {Object.entries(PLATFORM_CONFIGS).map(([key, config]) => {
+                    {OFFERED_TARGET_PLATFORMS.map(([key, config]) => {
                       const platformKey = key as TargetPlatform;
                       const isSelected = (
                         form.getValues('settings.targetPlatforms') || []

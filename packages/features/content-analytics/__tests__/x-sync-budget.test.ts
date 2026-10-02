@@ -13,6 +13,16 @@ vi.mock('@kit/clickhouse/server', () => ({
   formatDateStr: () => '2026-10-01',
 }));
 vi.mock('@kit/supabase/server-admin-client', () => ({}));
+
+// X's read budget is kept code, tested here as it runs when X is switched
+// on; one test switches it off (owner, 2026-10-02).
+const xSwitch = vi.hoisted(() => ({ on: true }));
+
+vi.mock('@kit/publishing/lib/x-switch', () => ({
+  get X_ENABLED() {
+    return xSwitch.on;
+  },
+}));
 vi.mock('@kit/shared/logger', () => ({ getLogger: async () => ({}) }));
 vi.mock('../src/providers/instagram', () => ({
   InstagramInsightsScopeError: class extends Error {},
@@ -119,6 +129,25 @@ describe('X is dark until switched on', () => {
 
     expect(asked.platforms).toContain('twitter');
     expect(result.publishes.map(({ id }) => id)).toEqual(['a']);
+  });
+
+  it('does not ask for them while X is hidden, even when it is "true"', async () => {
+    vi.stubEnv('X_ANALYTICS_ENABLED', 'true');
+    xSwitch.on = false;
+    const { client, asked } = clientWith([xPublish('a', 1)], 0);
+
+    try {
+      await fetchPublishesForSync(client, 50);
+    } finally {
+      xSwitch.on = true;
+    }
+
+    expect(asked.platforms).toEqual([
+      'youtube',
+      'tiktok',
+      'instagram',
+      'facebook',
+    ]);
   });
 });
 

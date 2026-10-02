@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { StudioProjectSettingsSchema } from '@kit/film-studio-schemas/project';
+import { isHiddenPlatform } from '@kit/publishing/lib/platforms';
 
 // Film Studio project creation schema
 // Combines basic project fields with studio-specific settings
@@ -57,6 +58,11 @@ export const PLATFORM_CONFIGS = {
     defaultDuration: 5,
   },
 } as const;
+
+/** The targets a new project offers: not a hidden platform (X while `X_ENABLED` is off). */
+export const OFFERED_TARGET_PLATFORMS = Object.entries(PLATFORM_CONFIGS).filter(
+  ([key]) => !isHiddenPlatform(key),
+);
 
 // Get smart defaults based on selected platforms
 export function getSmartDefaults(platforms: string[]): {

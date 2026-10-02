@@ -51,6 +51,7 @@
     "./lib/youtube-declaration": "./src/lib/youtube-declaration.ts",
     "./lib/schemas/youtube-declaration": "./src/lib/schemas/youtube-declaration.schema.ts",
     "./lib/platforms": "./src/lib/platforms.ts",
+    "./lib/x-switch": "./src/lib/x-switch.ts",
     "./lib/ai-label": "./src/lib/ai-label.ts",
     "./lib/schemas/publish": "./src/lib/schemas/publish.schema.ts",
     "./lib/token-expiry": "./src/lib/token-expiry.ts",

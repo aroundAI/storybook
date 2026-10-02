@@ -13,9 +13,19 @@ import {
   Users,
 } from 'lucide-react';
 
+import {
+  OFFERED_PLATFORMS,
+  PLATFORM_NAMES,
+} from '@kit/publishing/lib/platforms';
+
 import { SitePageHeader } from '~/(marketing)/_components/site-page-header';
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { withI18n } from '~/lib/i18n/with-i18n';
+
+/** The platforms offered: a hidden one (X while `X_ENABLED` is off) is not listed. */
+const PLATFORM_LIST = OFFERED_PLATFORMS.map(
+  (platform) => PLATFORM_NAMES[platform],
+).join(', ');
 
 export async function generateMetadata() {
   const { t } = await createI18nServerInstance();
@@ -127,7 +137,7 @@ async function TermsOfServicePage() {
                 },
                 {
                   title: 'Publishing',
-                  desc: 'Multi-platform publishing to YouTube, TikTok, Instagram, Facebook, Twitter',
+                  desc: `Multi-platform publishing to ${PLATFORM_LIST}`,
                 },
                 {
                   title: 'Analytics',
@@ -262,9 +272,9 @@ async function TermsOfServicePage() {
             <div className="space-y-4">
               <p>
                 The Service allows you to connect your accounts on third-party
-                platforms (YouTube, TikTok, Instagram, Facebook, Twitter). By
-                connecting these accounts, you authorize us to access and
-                interact with these platforms on your behalf.
+                platforms ({PLATFORM_LIST}). By connecting these accounts, you
+                authorize us to access and interact with these platforms on your
+                behalf.
               </p>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
                 <h3 className="mb-2 font-medium text-slate-900 dark:text-white">

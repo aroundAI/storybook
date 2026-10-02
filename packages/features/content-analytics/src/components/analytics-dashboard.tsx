@@ -7,7 +7,6 @@ import { subDays } from 'date-fns';
 import { formatDistanceToNow } from 'date-fns';
 import { Download, PieChart, TrendingUp } from 'lucide-react';
 
-import { ANALYTICS_PLATFORMS } from '@kit/clickhouse';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -34,6 +33,7 @@ import {
   orderedSelection,
 } from '../lib/platform-selection';
 import { TAB_FAMILIES, isAnalyticsTab } from '../lib/provenance';
+import { SHOWN_ANALYTICS_PLATFORMS } from '../lib/shown-platforms';
 import { isoDay, viewDefinitionMarks } from '../lib/view-definition-marks';
 import { VIEWS_NOT_MEASURED, viewsShare, viewsToAdd } from '../lib/views';
 import type { Views } from '../lib/views';
@@ -90,7 +90,7 @@ export function AnalyticsDashboard({
   });
   // Every analytics platform, selected (FILM-1709 × FILM-1720).
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([
-    ...ANALYTICS_PLATFORMS,
+    ...SHOWN_ANALYTICS_PLATFORMS,
   ]);
   const [activeTab, setActiveTab] = useState('overview');
   // The channel filter, shared by the Deep Dive and the Video Log: picking a
@@ -378,7 +378,9 @@ export function AnalyticsDashboard({
 
         {!anySelected && (
           <NoPlatformSelected
-            onSelectAll={() => setSelectedPlatforms([...ANALYTICS_PLATFORMS])}
+            onSelectAll={() =>
+              setSelectedPlatforms([...SHOWN_ANALYTICS_PLATFORMS])
+            }
           />
         )}
 

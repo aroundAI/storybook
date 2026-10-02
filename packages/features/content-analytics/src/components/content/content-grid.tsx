@@ -2,10 +2,10 @@
 
 import { Video } from 'lucide-react';
 
-import { ANALYTICS_PLATFORMS } from '@kit/clickhouse';
 import { Skeleton } from '@kit/ui/skeleton';
 
 import { platformLabel } from '../../lib/platform-labels';
+import { SHOWN_ANALYTICS_PLATFORMS } from '../../lib/shown-platforms';
 import type { ContentListItem } from '../../server/aggregation-queries';
 import { ContentCard } from './content-card';
 
@@ -36,7 +36,7 @@ export function ContentGrid({
         </h3>
         <p className="mt-2 max-w-sm text-sm text-gray-500 dark:text-gray-400">
           Content will appear here once you publish videos to{' '}
-          {ANALYTICS_PLATFORMS.map(platformLabel).join(', ')}.
+          {SHOWN_ANALYTICS_PLATFORMS.map(platformLabel).join(', ')}.
         </p>
       </div>
     );

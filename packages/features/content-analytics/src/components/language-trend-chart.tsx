@@ -15,7 +15,6 @@ import {
   YAxis,
 } from 'recharts';
 
-import { ANALYTICS_PLATFORMS } from '@kit/clickhouse';
 import type { LanguageDimension } from '@kit/clickhouse';
 import { Skeleton } from '@kit/ui/skeleton';
 
@@ -25,6 +24,7 @@ import {
   languageFromKey,
   languageName,
 } from '../lib/language-labels';
+import { SHOWN_ANALYTICS_PLATFORMS } from '../lib/shown-platforms';
 import {
   bucketOfMark,
   isoDay,
@@ -116,7 +116,11 @@ export function LanguageTrendChart({
   const marks = useMemo(() => {
     const dates = data.map((entry) => isoDay(entry.date)).sort();
 
-    return viewDefinitionMarks(ANALYTICS_PLATFORMS, dates[0], dates.at(-1));
+    return viewDefinitionMarks(
+      SHOWN_ANALYTICS_PLATFORMS,
+      dates[0],
+      dates.at(-1),
+    );
   }, [data]);
 
   if (isLoading) {

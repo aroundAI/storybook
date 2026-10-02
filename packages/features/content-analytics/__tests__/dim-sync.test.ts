@@ -1,7 +1,20 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { buildVideoDims } from '../src/server/dim-sync';
 import type { PublishDimRow } from '../src/server/dim-sync';
+
+// Off, as shipped (owner, 2026-10-02); a test switches it on.
+const xSwitch = vi.hoisted(() => ({ on: false }));
+
+vi.mock('@kit/publishing/lib/x-switch', () => ({
+  get X_ENABLED() {
+    return xSwitch.on;
+  },
+}));
+
+afterEach(() => {
+  xSwitch.on = false;
+});
 
 vi.mock('@kit/shared/logger', () => ({
   getLogger: async () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
@@ -104,7 +117,9 @@ describe('buildVideoDims — only platforms that can have metrics (FILM-1720)', 
     // can only ever read as a zero-view video in every dim-driven
     // denominator. LinkedIn is retired (FILM-717) but its old publish rows
     // are kept, so dim-sync still meets them. X has had metrics since
-    // FILM-1727.
+    // FILM-1727, and is written once it is switched on.
+    xSwitch.on = true;
+
     const dims = await buildVideoDims(client, [
       short({ id: 'yt', platform: 'youtube' }),
       short({ id: 'fb', platform: 'facebook' }),
@@ -113,5 +128,14 @@ describe('buildVideoDims — only platforms that can have metrics (FILM-1720)', 
     ]);
 
     expect(dims.map((dim) => dim.video_id)).toEqual(['yt', 'fb', 'x']);
+  });
+
+  it('writes none for a kept X publish while X is hidden', async () => {
+    const dims = await buildVideoDims(client, [
+      short({ id: 'yt', platform: 'youtube' }),
+      short({ id: 'x', platform: 'twitter' }),
+    ]);
+
+    expect(dims.map((dim) => dim.video_id)).toEqual(['yt']);
   });
 });

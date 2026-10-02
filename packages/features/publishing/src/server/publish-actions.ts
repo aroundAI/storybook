@@ -42,6 +42,7 @@ import {
   ownedEpisodeVideo,
 } from '../lib/owned-episode-video';
 import { ownedEpisodeThumbnail } from '../lib/owned-thumbnail';
+import { isOfferedPlatform } from '../lib/platforms';
 import {
   GetPublishStatusSchema,
   PublishToAllSchema,
@@ -1153,7 +1154,13 @@ export const getEpisodePublishesAction = enhanceAction(
       }
     }
 
-    return (publishes ?? []).map((p) => {
+    // A kept publish on a hidden platform (X while `X_ENABLED` is off) is
+    // not shown.
+    const shown = (publishes ?? []).filter((p) =>
+      isOfferedPlatform(p.platform),
+    );
+
+    return shown.map((p) => {
       const chTotals = analyticsMap.get(p.id);
 
       return {

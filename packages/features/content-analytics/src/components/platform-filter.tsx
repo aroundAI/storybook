@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 
 import { Filter } from 'lucide-react';
 
-import { ANALYTICS_PLATFORMS, type AnalyticsPlatform } from '@kit/clickhouse';
+import { type AnalyticsPlatform } from '@kit/clickhouse';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { Checkbox } from '@kit/ui/checkbox';
@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@kit/ui/popover';
 import { cn } from '@kit/ui/utils';
 
 import { platformLabel } from '../lib/platform-labels';
+import { SHOWN_ANALYTICS_PLATFORMS } from '../lib/shown-platforms';
 
 const PLATFORM_COLORS: Partial<Record<AnalyticsPlatform, string>> = {
   youtube: 'bg-red-500',
@@ -25,7 +26,7 @@ const PLATFORM_COLORS: Partial<Record<AnalyticsPlatform, string>> = {
  * filter cannot name is one "every platform" silently drops. The list is
  * the shared one, so a platform added to `AnalyticsPlatform` appears here.
  */
-const PLATFORMS = ANALYTICS_PLATFORMS.map((id) => ({
+const PLATFORMS = SHOWN_ANALYTICS_PLATFORMS.map((id) => ({
   id,
   label: platformLabel(id),
   color: PLATFORM_COLORS[id] ?? 'bg-muted-foreground',
