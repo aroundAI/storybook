@@ -5,8 +5,8 @@
       "name": "FILM-1709 the platform filter offers only the first three analytics platforms",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/components/platform-filter.tsx",
-      "find": "const PLATFORMS = ANALYTICS_PLATFORMS.map((id) => ({",
-      "replace": "const PLATFORMS = ANALYTICS_PLATFORMS.slice(0, 3).map((id) => ({",
+      "find": "const PLATFORMS = SHOWN_ANALYTICS_PLATFORMS.map((id) => ({",
+      "replace": "const PLATFORMS = SHOWN_ANALYTICS_PLATFORMS.slice(0, 3).map((id) => ({",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/provenance-surfaces.test.tsx",
       "pattern": "selects every platform with All"
@@ -65,8 +65,8 @@
       "name": "FILM-1709 the action boundary accepts an empty selection",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/lib/schemas/platforms.schema.ts",
-      "find": "  .min(1, 'Select at least one platform');",
-      "replace": ";",
+      "find": "  .min(1, 'Select at least one platform')\n  .refine(",
+      "replace": "  .refine(",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/platform-filter-surfaces.test.tsx",
       "pattern": "takes analytics platforms, at least one"
