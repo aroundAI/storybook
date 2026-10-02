@@ -13,6 +13,9 @@ export const PAT_PREFIX = 'sbk_pat_';
 /** 32 random bytes, base64url: 43 characters after the prefix. */
 const OWN_TOKEN_SHAPE = /^sbk_(?:pat|at|rt)_[A-Za-z0-9_-]{43}$/;
 
+/** The two that may be sent as `Authorization: Bearer`; a refresh token may not. */
+const BEARER_TOKEN_SHAPE = /^sbk_(?:pat|at)_[A-Za-z0-9_-]{43}$/;
+
 export function generatePersonalAccessToken() {
   return `${PAT_PREFIX}${randomBytes(32).toString('base64url')}`;
 }
@@ -24,6 +27,11 @@ export function hashToken(token: string) {
 /** Whether a presented string is even a token of ours, before any lookup. */
 export function isOwnTokenShape(token: string) {
   return OWN_TOKEN_SHAPE.test(token);
+}
+
+/** Whether a presented string is a credential the MCP endpoint accepts. */
+export function isBearerTokenShape(token: string) {
+  return BEARER_TOKEN_SHAPE.test(token);
 }
 
 /**

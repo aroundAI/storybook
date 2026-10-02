@@ -14,9 +14,16 @@ export {
 } from './with-mcp-auth';
 export { createOwnTokenVerifier } from './own-verifier';
 export {
+  createSupabaseTokenVerifier,
+  supabaseJwks,
+  type SupabaseVerifierOptions,
+} from './supabase-verifier';
+export {
   MCP_USER_JWT_TTL_SECONDS,
+  createAsymmetricSigner,
   createHs256Signer,
   createMcpJwtSigner,
+  type McpJwtAsymmetricAlg,
   type McpJwtSigner,
   type McpUserJwtClaims,
 } from './jwt';
@@ -26,8 +33,10 @@ export {
   bearerToken,
   generatePersonalAccessToken,
   hashToken,
+  isBearerTokenShape,
   isOwnTokenShape,
 } from './token';
+export * from './oauth';
 export {
   createPersonalAccessToken,
   listMcpConnections,
