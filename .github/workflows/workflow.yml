@@ -542,7 +542,11 @@ jobs:
     #
     # Under an enforced scope (Phase 2) only the guards whose file or test
     # changed run (`run.py --changed`), on as many shards as they fill, up
-    # to four; with none, the job is skipped. Otherwise all four run all.
+    # to six; with none, the job is skipped. Otherwise all six run all.
+    #
+    # Six since 2026-10-02: ~980 entries took 12-15 minutes a shard on four,
+    # and #522's queue run lost shard 4 to the 15-minute limit with every
+    # guard already red.
     timeout-minutes: 15
     runs-on: ubuntu-latest
     needs: changes
@@ -550,7 +554,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: ${{ fromJSON(needs.changes.outputs.unit_shards || '[1, 2, 3, 4]') }}
+        shard: ${{ fromJSON(needs.changes.outputs.unit_shards || '[1, 2, 3, 4, 5, 6]') }}
     env:
       DO_NOT_TRACK: 1
 
