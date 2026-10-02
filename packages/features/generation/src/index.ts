@@ -55,4 +55,5 @@ export {
   type GenerationJobStatus,
 } from './jobs';
 export { runStage, type RunStageResult } from './run-stage';
+export { serverRun } from './run';
 export * from './stages';

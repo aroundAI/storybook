@@ -4,6 +4,13 @@ import { revalidatePath } from 'next/cache';
 
 import { z } from 'zod';
 
+import {
+  type AssetDescriptionTarget,
+  type Ctx,
+  assetDescriptionStage,
+  fallbackDescription,
+  serverRun,
+} from '@kit/generation';
 import { enhanceAction } from '@kit/next/actions';
 import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { whyNoRow } from '@kit/shared/rows';
@@ -51,51 +58,35 @@ const BatchCreateUnlinkedSchema = z.object({
   storyContext: z.string().max(50000),
 });
 
-const CHARACTER_INSTRUCTIONS =
-  'Write a 4-6 sentence description including: Physical appearance (approximate age, ethnicity/skin tone, build, hair color/style, eye color, distinguishing features like scars or tattoos). Clothing and style (what they wear in this story). Demeanor and expression (how they carry themselves, typical body language). Their role and significance. Be specific — commit to physical details based on what the text states or implies from the setting/time period.';
-
-const LOCATION_INSTRUCTIONS =
-  'Write a 3-5 sentence description including: Physical environment (size, architecture, materials, colors, lighting). Atmosphere and mood (sounds, smells, temperature). Notable features (landmarks, furniture, natural elements). How this place functions in the story. Be vivid and specific for environment concept art generation.';
-
 /**
- * One description from the story text (KB-126). Both actions call this: the
- * single-asset one used to send `role` and `arc`, which the template does not
- * read, and not `type_instructions`, which it requires — so every call threw,
- * was caught, and the sidebar's "extract description" came back empty.
- * Not exported: every export of a 'use server' file is an endpoint (KB-58).
+ * One description from the story text (KB-126), as the `asset_description`
+ * stage's prepare and model call (FILM-1901): the stage renders the prompt
+ * and checks the reply against its output schema; the model call stays
+ * `executeLLM` until FILM-1902's `run.write` replaces it. Both actions call
+ * this: the single-asset one used to send `role` and `arc`, which the
+ * template does not read, and not `type_instructions`, which it requires —
+ * so every call threw, was caught, and the sidebar's "extract description"
+ * came back empty. Not exported: every export of a 'use server' file is an
+ * endpoint (KB-58).
  */
 async function describeAsset(
-  item: {
-    name: string;
-    type: 'character' | 'location';
-    role?: string;
-    arc?: string;
-  },
-  storyContext: string,
+  ctx: Ctx,
+  target: AssetDescriptionTarget,
   context: { name: string; accountId: string },
 ): Promise<string> {
   const { executeLLM } = await import('@kit/prompt-engine/server');
+  const stage = assetDescriptionStage;
 
-  const extraParts: string[] = [];
-  if (item.role) extraParts.push(`Known role: ${item.role}`);
-  if (item.arc) extraParts.push(`Character arc: ${item.arc}`);
+  const [part] = await stage.parts(ctx, target);
+  const brief = await stage.prepare(ctx, target, part!);
 
-  const result = await executeLLM<{ description: string }>({
-    templateSlug: 'story-generation/extract-asset-description',
-    variables: {
-      name: item.name,
-      type: item.type,
-      extra_context: extraParts.join('. '),
-      type_instructions:
-        item.type === 'character'
-          ? CHARACTER_INSTRUCTIONS
-          : LOCATION_INSTRUCTIONS,
-      story_context: storyContext.slice(0, 10000),
-    },
+  const result = await executeLLM<unknown>({
+    templateSlug: brief.prompt.slug,
+    variables: brief.prompt.variables,
     context,
   });
 
-  return result.data.description;
+  return stage.outputSchema.parse(result.data).description;
 }
 
 /**
@@ -113,10 +104,19 @@ export const extractDescriptionAction = enhanceAction(
     }
 
     try {
-      const description = await describeAsset(data, data.storyContext, {
-        name: 'extract-asset-description',
-        accountId: user.id,
-      });
+      const description = await describeAsset(
+        { client, accountId: user.id, userId: user.id },
+        {
+          asset: {
+            name: data.name,
+            type: data.type,
+            role: data.role,
+            arc: data.arc,
+          },
+          storyContext: data.storyContext,
+        },
+        { name: 'extract-asset-description', accountId: user.id },
+      );
 
       return {
         success: true as const,
@@ -244,71 +244,48 @@ const batchCreateUnlinked = enhanceAction(
       (item) => !existingMap.has(`${item.type}:${item.name.toLowerCase()}`),
     );
 
-    let newAssets: Array<{ id: string; name: string; type: string }> = [];
+    const newAssets: Array<{ id: string; name: string; type: string }> = [];
 
     if (itemsToCreate.length > 0) {
-      // 3. Extract descriptions in parallel via LLM
-      const descriptionResults = await Promise.allSettled(
-        itemsToCreate.map(async (item) => {
+      const ctx: Ctx = { client, accountId: user.id, userId: user.id };
+      const stage = assetDescriptionStage;
+      const targets: AssetDescriptionTarget[] = itemsToCreate.map((item) => ({
+        projectId: data.projectId,
+        asset: item,
+        storyContext: data.storyContext,
+      }));
+
+      // 3. Describe in parallel; a failed description still gets an asset
+      const described = await Promise.all(
+        targets.map(async (target) => {
           try {
-            return await describeAsset(item, data.storyContext, {
-              name: 'batch-extract-description',
-              accountId: user.id,
-            });
+            return {
+              description: await describeAsset(ctx, target, {
+                name: 'batch-extract-description',
+                accountId: user.id,
+              }),
+            };
           } catch (err) {
             console.error(
-              `[batchCreate] LLM extraction failed for "${item.name}":`,
+              `[batchCreate] LLM extraction failed for "${target.asset.name}":`,
               err,
             );
-            return '';
+
+            return { description: fallbackDescription(target.asset.type) };
           }
         }),
       );
 
-      // 4. Build asset rows for new items only
-      const assetRows = itemsToCreate.map((item, i) => {
-        const descResult = descriptionResults[i];
-        const description =
-          descResult?.status === 'fulfilled' ? descResult.value : '';
+      // 4. Commit each asset row: an upsert on (project_id, type, name), so a
+      // soft-deleted asset of the same name is resurrected rather than
+      // refused by the unique constraint
+      for (const [index, target] of targets.entries()) {
+        const committed = await stage.commit(ctx, serverRun({}), target, [
+          described[index]!,
+        ]);
 
-        return {
-          project_id: data.projectId,
-          type: item.type,
-          name: item.name,
-          description:
-            description ||
-            `${item.type === 'character' ? 'Character' : 'Location'} from story`,
-          metadata: item.role
-            ? { role: item.role, autoCreated: true }
-            : { autoCreated: true },
-        };
-      });
-
-      // 5. Insert new assets (upsert to handle soft-deleted assets with same name)
-      // The unique constraint covers ALL rows including soft-deleted ones,
-      // so we use upsert to "resurrect" any previously deleted assets.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: created, error: insertError } = await (client as any)
-        .from('assets')
-        .upsert(
-          assetRows.map((row) => ({ ...row, deleted_at: null })),
-          {
-            onConflict: 'project_id,type,name',
-            ignoreDuplicates: false,
-          },
-        )
-        .select('id, name, type');
-
-      if (insertError) {
-        console.error('[batchCreate] Upsert failed:', insertError);
-        throw new Error('Failed to create assets');
+        newAssets.push(committed.data.asset);
       }
-
-      newAssets = (created ?? []) as Array<{
-        id: string;
-        name: string;
-        type: string;
-      }>;
     }
 
     // 6. Combine: existing (pre-existing in library) + newly created

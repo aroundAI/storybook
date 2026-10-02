@@ -59,8 +59,6 @@ const KNOWN: Record<string, [number, string]> = {
     [1, ADMIN],
   'apps/web/lambda/llm-worker/utils/commit-story-canon.ts | narrative_threads | update':
     [2, ADMIN],
-  'apps/web/lambda/llm-worker/utils/job-tracking.ts | generation_jobs | update':
-    [3, ADMIN],
   'apps/web/lambda/publish-worker/index.ts | publishes | update': [1, ADMIN],
   'apps/web/lambda/scheduled-publish/index.ts | publishes | update': [3, ADMIN],
   'apps/web/lambda/voice-worker/voice-generation.ts | dialogue_lines | update':
@@ -99,6 +97,10 @@ const KNOWN: Record<string, [number, string]> = {
     [1, ADMIN],
   'packages/features/content-analytics/src/server/vendor-data-purge.ts | vendor_data_purges | update':
     [3, ADMIN],
+  'packages/features/generation/src/jobs.ts | generation_jobs | update': [
+    3,
+    ADMIN,
+  ],
   'packages/features/episodes/src/agent/orchestrator.ts | episodes | update': [
     2,
     DEAD,

@@ -7,7 +7,9 @@
  */
 import { StageOutputRejected, checkWithSchema } from './checks';
 import { markJobCompleted, markJobFailed, markJobProcessing } from './jobs';
+import { serverRun } from './run';
 import type {
+  Brief,
   CommitResult,
   Ctx,
   GenerateFn,
@@ -39,14 +41,12 @@ export async function runStage<TTarget, TOut, TData>(
     const parts = await stage.parts(ctx, target);
     const outputs: TOut[] = [];
     let usage: GenerationUsage | undefined;
-    let promptSlug: string | undefined;
-    let promptVersion: number | undefined;
+    let lastBrief: Brief | undefined;
 
     for (const part of parts) {
       const brief = await stage.prepare(ctx, target, part);
       brief.runId = deps.runId;
-      promptSlug = brief.prompt.slug;
-      promptVersion = brief.prompt.version;
+      lastBrief = brief;
 
       const generated = await deps.generate(brief);
 
@@ -76,19 +76,7 @@ export async function runStage<TTarget, TOut, TData>(
       outputs.push(checked.value);
     }
 
-    const run: GenerationRun = {
-      id: deps.runId,
-      mode: 'server',
-      origin: {
-        kind: 'server',
-        runId: deps.runId,
-        model: usage?.model,
-        promptSlug,
-        promptVersion,
-        at: new Date().toISOString(),
-      },
-      usage,
-    };
+    const run = serverRun({ brief: lastBrief, usage, runId: deps.runId });
 
     const commit = await stage.commit(ctx, run, target, outputs);
 

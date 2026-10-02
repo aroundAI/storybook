@@ -43,29 +43,16 @@
       "op": "update",
       "payload": {
         "metadata": {
-          "character_ids": [
-            "asset-maya",
-            "asset-new-Dr. Osei"
-          ],
-          "location_ids": [
-            "asset-new-Observation deck"
-          ],
-          "character_names": [
-            "Maya Chen",
-            "Dr. Osei"
-          ],
-          "location_names": [
-            "Observation deck"
-          ]
+          "character_ids": ["asset-maya", "asset-new-Dr. Osei"],
+          "location_ids": ["asset-new-Observation deck"],
+          "character_names": ["Maya Chen", "Dr. Osei"],
+          "location_names": ["Observation deck"]
         }
       },
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "id",
-            "55555555-5555-4555-8555-555555555555"
-          ]
+          "args": ["id", "55555555-5555-4555-8555-555555555555"]
         }
       ]
     }
@@ -99,13 +86,8 @@
       "created": 2,
       "linked": 1,
       "skipped": 0,
-      "characters": [
-        "Maya Chen",
-        "Dr. Osei"
-      ],
-      "locations": [
-        "Observation deck"
-      ]
+      "characters": ["Maya Chen", "Dr. Osei"],
+      "locations": ["Observation deck"]
     }
   }
 }

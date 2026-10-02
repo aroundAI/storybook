@@ -10,31 +10,19 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "reference_type",
-            "episode"
-          ]
+          "args": ["reference_type", "episode"]
         },
         {
           "method": "eq",
-          "args": [
-            "reference_id",
-            "55555555-5555-4555-8555-555555555555"
-          ]
+          "args": ["reference_id", "55555555-5555-4555-8555-555555555555"]
         },
         {
           "method": "eq",
-          "args": [
-            "job_type",
-            "story-refinement"
-          ]
+          "args": ["job_type", "story-refinement"]
         },
         {
           "method": "eq",
-          "args": [
-            "status",
-            "queued"
-          ]
+          "args": ["status", "queued"]
         }
       ]
     },
@@ -57,30 +45,20 @@
               "arc": "From hope to resolve"
             }
           ],
-          "themes": [
-            "isolation",
-            "sacrifice"
-          ],
+          "themes": ["isolation", "sacrifice"],
           "tone": "bleak",
           "estimatedSceneCount": 7,
           "episodeSummary": "Maya hears a signal and chooses silence.",
           "sentimentScore": 0.3,
-          "keyEvents": [
-            "Maya hears the signal",
-            "Maya cuts the transmitter"
-          ],
+          "keyEvents": ["Maya hears the signal", "Maya cuts the transmitter"],
           "viralStructure": {
             "openingHook": "An alarm"
           },
           "lastRefinedAt": "2026-10-03T12:00:00.000Z"
         },
         "metadata": {
-          "character_ids": [
-            "c1"
-          ],
-          "character_names": [
-            "Maya Chen"
-          ],
+          "character_ids": ["c1"],
+          "character_names": ["Maya Chen"],
           "refinement_history": [
             {
               "timestamp": "2026-10-01T00:00:00.000Z",
@@ -110,16 +88,12 @@
                 "arc": "routine"
               }
             ],
-            "themes": [
-              "isolation"
-            ],
+            "themes": ["isolation"],
             "tone": "contemplative",
             "estimatedSceneCount": 8,
             "episodeSummary": "Maya discovers a signal.",
             "sentimentScore": 0.6,
-            "keyEvents": [
-              "Signal found"
-            ],
+            "keyEvents": ["Signal found"],
             "viralStructure": {
               "openingHook": "An alarm"
             }
@@ -130,17 +104,11 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "id",
-            "55555555-5555-4555-8555-555555555555"
-          ]
+          "args": ["id", "55555555-5555-4555-8555-555555555555"]
         },
         {
           "method": "is",
-          "args": [
-            "deleted_at",
-            null
-          ]
+          "args": ["deleted_at", null]
         }
       ]
     },
@@ -160,34 +128,19 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "reference_type",
-            "episode"
-          ]
+          "args": ["reference_type", "episode"]
         },
         {
           "method": "eq",
-          "args": [
-            "reference_id",
-            "55555555-5555-4555-8555-555555555555"
-          ]
+          "args": ["reference_id", "55555555-5555-4555-8555-555555555555"]
         },
         {
           "method": "eq",
-          "args": [
-            "job_type",
-            "story-refinement"
-          ]
+          "args": ["job_type", "story-refinement"]
         },
         {
           "method": "in",
-          "args": [
-            "status",
-            [
-              "queued",
-              "processing"
-            ]
-          ]
+          "args": ["status", ["queued", "processing"]]
         }
       ]
     }
@@ -223,18 +176,12 @@
             "arc": "From hope to resolve"
           }
         ],
-        "themes": [
-          "isolation",
-          "sacrifice"
-        ],
+        "themes": ["isolation", "sacrifice"],
         "tone": "bleak",
         "estimatedSceneCount": 7,
         "episodeSummary": "Maya hears a signal and chooses silence.",
         "sentimentScore": 0.3,
-        "keyEvents": [
-          "Maya hears the signal",
-          "Maya cuts the transmitter"
-        ],
+        "keyEvents": ["Maya hears the signal", "Maya cuts the transmitter"],
         "viralStructure": {
           "openingHook": "An alarm"
         },

@@ -209,12 +209,16 @@ function assetCreationClient() {
         ? write.payload
         : [write.payload];
 
+      const created = rows.map((row) => ({
+        id: `asset-new-${(row as { name: string }).name}`,
+        name: (row as { name: string }).name,
+        type: (row as { type: string }).type,
+      }));
+
       return {
-        data: rows.map((row) => ({
-          id: `asset-new-${(row as { name: string }).name}`,
-          name: (row as { name: string }).name,
-          type: (row as { type: string }).type,
-        })),
+        data: call.chain.some((step) => step.method === 'single')
+          ? created[0]
+          : created,
       };
     }
 

@@ -394,7 +394,9 @@ describe('every executor-calling handler is accounted for (KB-101)', () => {
     const callers = readdirSync(dir)
       .filter((file) => file.endsWith('.ts'))
       .filter((file) =>
-        /executeLLM|Orchestrator\(/.test(
+        // An executor directly, an orchestrator, or a `@kit/generation`
+        // stage run through the worker's stage runtime (FILM-1901)
+        /executeLLM|Orchestrator\(|generateWithLambda|runStage\(/.test(
           readFileSync(path.join(dir, file), 'utf8'),
         ),
       )

@@ -265,7 +265,7 @@ Each stage becomes a `StageDefinition` with a pure-ish `prepare`, a strict `outp
 - `output_schema`: JSON Schema generated from the Zod output schema (`zod-to-json-schema`), plus one example output from the prompt's `output.example_output`.
 - `quality_rubric`: the matching `quality-evaluation/*.json` prompt (idea-quality, story-quality, screenplay-quality, shot-quality, translation-quality) rendered as a self-check checklist. In server mode an evaluator LLM scores against it; in external mode the agent is asked to self-check, and commit runs only the deterministic checks.
 - `constraints`: deterministic limits the commit will enforce (e.g. shot duration 3 to 10 s from `SHOT_DURATION_LIMITS`, target scene and shot counts from `calculateContentScaling`, character names that must exist).
-- `run_id`, `part`, `target_version`, `expires_at`.
+- `run_id`, `part`, `target_version` (null for a target with no version column, such as an asset), `expires_at`, and `prompt { slug, version, variables }` so a server executor that renders the prompt itself sends the same text an external agent reads in `instructions` (FILM-1901 part A).
 
 **Deterministic checks in commit** (both modes): schema validity; referential checks (every character and location named exists or is flagged for auto-create); count and duration bounds; scene numbering contiguity; no empty dialogue; text length caps per column. Errors return as a list of `{path, code, message}` so the agent can fix and resubmit the same part.
 
@@ -704,7 +704,7 @@ flowchart LR
 
 ### M0 Generation core (L)
 
-- [ ] Create `packages/features/generation` with `StageDefinition`, `Brief`, `CheckError`, origin types (FR-12, NFR-1)
+- [x] Create `packages/features/generation` with `StageDefinition`, `Brief`, `CheckError`, origin types (FR-12, NFR-1) — FILM-1901 part A, with `story_refinement` and `asset_description` as the first two stages behind parity tests
 - [ ] Move typed output Zod schemas from `prompt-engine/src/schemas` into the core; generate JSON Schema from them
 - [ ] Extract `prepare` and `commit` for story, story refinement, screenplay, screenplay refinement, shots, audio cues, translation, asset description, season outline, ideation, publish metadata
 - [ ] Rewrite each worker handler as prepare, orchestrator, commit; keep behaviour identical
