@@ -4,11 +4,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  ANALYTICS_PLATFORMS,
-  type ObservedCoverageRow,
-  capabilityFor,
-} from '@kit/clickhouse';
+import { type ObservedCoverageRow, capabilityFor } from '@kit/clickhouse';
 
 import { CoverageStrip } from '../src/components/coverage-strip';
 import { MetricCards } from '../src/components/metric-cards';
@@ -169,7 +165,13 @@ describe('the platform filter', () => {
     fireEvent.click(screen.getByText('Platforms'));
     fireEvent.click(screen.getByText('All'));
 
-    expect(onChange).toHaveBeenCalledWith([...ANALYTICS_PLATFORMS]);
+    // Every platform shown: X is hidden (owner, 2026-10-02).
+    expect(onChange).toHaveBeenCalledWith([
+      'youtube',
+      'tiktok',
+      'instagram',
+      'facebook',
+    ]);
   });
 });
 
@@ -190,8 +192,7 @@ describe('the strip', () => {
       ['coverage-strip-instagram', 'not_connected'],
       // Supported since FILM-1720: connected, and empty in the window.
       ['coverage-strip-facebook', 'no_data_in_window'],
-      // Supported since FILM-1727, and not connected in this seed.
-      ['coverage-strip-twitter', 'not_connected'],
+      // X, supported since FILM-1727, is hidden (owner, 2026-10-02).
     ]);
   });
 

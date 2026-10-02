@@ -2,7 +2,6 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { ANALYTICS_PLATFORMS } from '@kit/clickhouse';
 import { insertVideoDims, toDimLanguage } from '@kit/clickhouse/server';
 import type { VideoDim } from '@kit/clickhouse/server';
 import { getLogger } from '@kit/shared/logger';
@@ -11,6 +10,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 
 import { normalizeAssetDurationSeconds } from '../lib/asset-duration';
 import { isAnalyticsPlatform } from '../lib/reach-overview';
+import { SHOWN_ANALYTICS_PLATFORMS } from '../lib/shown-platforms';
 
 // Use generic SupabaseClient type to avoid strict type checking issues
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -95,7 +95,7 @@ export async function upsertVideoDims(publishIds?: string[]): Promise<number> {
       .select(PUBLISH_DIM_COLUMNS)
       .eq('status', 'published')
       .not('published_at', 'is', null)
-      .in('platform', [...ANALYTICS_PLATFORMS])
+      .in('platform', [...SHOWN_ANALYTICS_PLATFORMS])
       .order('id');
 
   let synced = 0;

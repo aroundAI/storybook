@@ -25,8 +25,8 @@
       "name": "X3 X publishes are fetched while X analytics is switched off",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/server/analytics-sync-cron.ts",
-      "find": "    (platform) => xEnabled || platform !== 'twitter',",
-      "replace": "    (platform) => true || platform !== 'twitter',",
+      "find": "      isOfferedPlatform(platform) && (xEnabled || platform !== 'twitter'),",
+      "replace": "      isOfferedPlatform(platform) && (true || platform !== 'twitter'),",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/x-sync-budget.test.ts",
       "pattern": "does not even ask for X publishes"

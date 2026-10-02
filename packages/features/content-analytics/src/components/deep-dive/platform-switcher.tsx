@@ -1,6 +1,6 @@
 'use client';
 
-import { ANALYTICS_PLATFORMS, type AnalyticsPlatform } from '@kit/clickhouse';
+import { type AnalyticsPlatform } from '@kit/clickhouse';
 import {
   Select,
   SelectContent,
@@ -11,12 +11,13 @@ import {
 
 import { platformLabel } from '../../lib/platform-labels';
 import { selectsEveryPlatform } from '../../lib/platform-selection';
+import { SHOWN_ANALYTICS_PLATFORMS } from '../../lib/shown-platforms';
 
 /** Radix `Select` cannot hold an empty value; "All platforms" needs a token. */
 const ALL_PLATFORMS = 'all';
 
 function isPlatform(value: string): value is AnalyticsPlatform {
-  return (ANALYTICS_PLATFORMS as readonly string[]).includes(value);
+  return (SHOWN_ANALYTICS_PLATFORMS as readonly string[]).includes(value);
 }
 
 /**
@@ -48,7 +49,7 @@ export function PlatformSwitcher({
     <Select
       value={current}
       onValueChange={(next) =>
-        onChange(isPlatform(next) ? [next] : [...ANALYTICS_PLATFORMS])
+        onChange(isPlatform(next) ? [next] : [...SHOWN_ANALYTICS_PLATFORMS])
       }
     >
       <SelectTrigger
@@ -68,7 +69,7 @@ export function PlatformSwitcher({
           All platforms
         </SelectItem>
 
-        {ANALYTICS_PLATFORMS.map((platform) => (
+        {SHOWN_ANALYTICS_PLATFORMS.map((platform) => (
           <SelectItem
             key={platform}
             value={platform}

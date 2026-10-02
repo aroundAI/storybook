@@ -32,6 +32,7 @@ import {
 
 import { describeFollowerCount } from '../lib/follower-count';
 import { PLATFORM_CONFIG } from '../lib/platform-limits';
+import { OFFERED_PLATFORMS } from '../lib/platforms';
 import type {
   FollowerCountSource,
   Platform,
@@ -72,14 +73,9 @@ const PLATFORM_ICONS: Record<
   twitter: XIcon,
 };
 
-// Platform display order
-const PLATFORM_ORDER: Platform[] = [
-  'youtube',
-  'tiktok',
-  'instagram',
-  'facebook',
-  'twitter',
-];
+// Platform display order: the offered ones (X is hidden while `X_ENABLED`
+// is off)
+const PLATFORM_ORDER = OFFERED_PLATFORMS;
 
 export function PlatformSelector({
   platforms,

@@ -1,0 +1,185 @@
+{
+  "feature": "X hidden for now (owner, 2026-10-02)",
+  "mutations": [
+    {
+      "name": "XH1 X ships switched on",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/x-switch.ts",
+      "find": "export const X_ENABLED: boolean = false;",
+      "replace": "export const X_ENABLED: boolean = true;",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/x-hidden.test.ts",
+      "pattern": "is switched off"
+    },
+    {
+      "name": "XH2 the switch no longer hides X",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/platforms.ts",
+      "find": "  return value === 'twitter' && !X_ENABLED;",
+      "replace": "  return value === 'twitter' && !X_ENABLED && false;",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/x-hidden.test.ts",
+      "pattern": "is not offered, though"
+    },
+    {
+      "name": "XH3 switching X on does not bring it back",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/platforms.ts",
+      "find": "  return value === 'twitter' && !X_ENABLED;",
+      "replace": "  return value === 'twitter';",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/x-hidden.test.ts",
+      "pattern": "is offered again"
+    },
+    {
+      "name": "XH4 the publish screen gives X videos while hidden",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/constants.ts",
+      "find": "  return platforms.includes(platform) && !isHiddenPlatform(platform);",
+      "replace": "  return platforms.includes(platform);",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/x-hidden.test.ts",
+      "pattern": "takes no video"
+    },
+    {
+      "name": "XH5 settings shows a kept X row",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/connection-actions.ts",
+      "find": "    const connections = stored?.filter((conn) =>\n      isOfferedPlatform(conn.platform),\n    );",
+      "replace": "    const connections = stored?.filter(\n      (conn) => isOfferedPlatform(conn.platform) || conn.platform === 'twitter',\n    );",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/connection-actions.test.ts",
+      "pattern": "is not shown in settings while X is hidden"
+    },
+    {
+      "name": "XH6 the publish screen offers a kept X channel",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/connection-actions.ts",
+      "find": "    const publishable = (connections ?? []).filter((connection) =>\n      isOfferedPlatform(connection.platform),\n    );",
+      "replace": "    const publishable = (connections ?? []).filter(\n      (connection) =>\n        isOfferedPlatform(connection.platform) ||\n        connection.platform === 'twitter',\n    );",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/connection-actions.test.ts",
+      "pattern": "is not offered on the publish screen while X is hidden"
+    },
+    {
+      "name": "XH7 a kept X token is refreshed while hidden",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/token-refresh.ts",
+      "find": "  if (!isOfferedPlatform(connection.platform)) {\n    return { valid: false, error: 'PLATFORM_UNSUPPORTED' };",
+      "replace": "  if (!isPlatform(connection.platform)) {\n    return { valid: false, error: 'PLATFORM_UNSUPPORTED' };",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "refuses a kept X token"
+    },
+    {
+      "name": "XH8 the refresh cron selects a kept X row",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/jobs/refresh-expiring-tokens.ts",
+      "find": "  const expiringConnections = selected?.filter((connection) =>\n    isOfferedPlatform(connection.platform),\n  );",
+      "replace": "  const expiringConnections = selected?.filter(\n    (connection) =>\n      isOfferedPlatform(connection.platform) ||\n      connection.platform === 'twitter',\n  );",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "leaves a kept X row out of the refresh run"
+    },
+    {
+      "name": "XH9 the episode history lists a kept X publish",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "    const shown = (publishes ?? []).filter((p) =>\n      isOfferedPlatform(p.platform),\n    );",
+      "replace": "    const shown = publishes ?? [];",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-actions.test.ts",
+      "pattern": "leaves the X publish out while X is hidden"
+    },
+    {
+      "name": "XH10 the worker runs a queued X job while hidden",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/index.ts",
+      "find": "        if (job.type !== 'delete' && !isOfferedPlatform(job.platform)) {",
+      "replace": "        if (\n          job.type !== 'delete' &&\n          !isOfferedPlatform(job.platform) &&\n          job.platform !== 'twitter'\n        ) {",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/removed-platform.test.ts",
+      "pattern": "marks the X publish failed"
+    },
+    {
+      "name": "XH11 the X connect route starts a connect while hidden",
+      "kind": "unit",
+      "file": "apps/web/app/api/platforms/connect/twitter/route.ts",
+      "find": "  if (!isOfferedPlatform('twitter')) {\n    return new NextResponse(null, { status: 404 });",
+      "replace": "  if (!isOfferedPlatform('twitter') && request.url === '') {\n    return new NextResponse(null, { status: 404 });",
+      "cwd": "apps/web",
+      "test": "test/x-hidden.test.ts",
+      "pattern": "answers 404 while X is hidden"
+    },
+    {
+      "name": "XH12 a new project offers X as a target while hidden",
+      "kind": "unit",
+      "file": "apps/web/app/home/[account]/studio/projects/new/_lib/schema.ts",
+      "find": "  ([key]) => !isHiddenPlatform(key),\n);",
+      "replace": "  ([key]) => !isHiddenPlatform(key) || key === 'twitter',\n);",
+      "cwd": "apps/web",
+      "test": "test/x-hidden.test.ts",
+      "pattern": "do not include X while it is hidden"
+    },
+    {
+      "name": "XH13 the analytics filter offers X while hidden",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/shown-platforms.ts",
+      "find": "  ANALYTICS_PLATFORMS.filter((platform) => isOfferedPlatform(platform));",
+      "replace": "  ANALYTICS_PLATFORMS.filter((platform) => isAnalyticsPlatform(platform));",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/x-hidden.test.ts",
+      "pattern": "offers four platforms in the filter"
+    },
+    {
+      "name": "XH14 the chip counts X while hidden",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/provenance.ts",
+      "find": "  families: readonly MetricFamily[],\n  platforms: readonly AnalyticsPlatform[] = SHOWN_ANALYTICS_PLATFORMS,\n): ProvenanceChip {",
+      "replace": "  families: readonly MetricFamily[],\n  platforms: readonly AnalyticsPlatform[] = ANALYTICS_PLATFORMS,\n): ProvenanceChip {",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/x-hidden.test.ts",
+      "pattern": "counts out of four"
+    },
+    {
+      "name": "XH15 an analytics request may select X while hidden",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/schemas/platforms.schema.ts",
+      "find": "  .refine((selection) => selection.every(isShownAnalyticsPlatform), {",
+      "replace": "  .refine((selection) => selection.length > 0, {",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/x-hidden.test.ts",
+      "pattern": "refuses a request that selects X"
+    },
+    {
+      "name": "XH16 analytics lists a kept X channel",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/channels.ts",
+      "find": "    .filter((row) => isOfferedPlatform(row.platform))",
+      "replace": "    .filter((row) => isOfferedPlatform(row.platform) || row.platform === 'twitter')",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/channels-language.test.ts",
+      "pattern": "leaves out a kept X channel while X is hidden"
+    },
+    {
+      "name": "XH17 the sync reads X while hidden",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/analytics-sync-cron.ts",
+      "find": "      isOfferedPlatform(platform) && (xEnabled || platform !== 'twitter'),",
+      "replace": "      xEnabled || platform !== 'twitter',",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/x-sync-budget.test.ts",
+      "pattern": "does not ask for them while X is hidden"
+    },
+    {
+      "name": "XH18 dim-sync writes a kept X publish while hidden",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/reach-overview.ts",
+      "find": "  return isShownAnalyticsPlatform(platform);",
+      "replace": "  return isShownAnalyticsPlatform(platform) || platform === 'twitter';",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/dim-sync.test.ts",
+      "pattern": "writes none for a kept X publish while X is hidden"
+    }
+  ]
+}

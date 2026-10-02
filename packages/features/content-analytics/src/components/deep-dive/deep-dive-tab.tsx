@@ -14,11 +14,7 @@ import {
   Users,
 } from 'lucide-react';
 
-import {
-  ANALYTICS_PLATFORMS,
-  TRAFFIC_SOURCE_GROUPS,
-  platformsWithData,
-} from '@kit/clickhouse';
+import { TRAFFIC_SOURCE_GROUPS, platformsWithData } from '@kit/clickhouse';
 import type { AnalyticsPlatform, TrafficGroupBucket } from '@kit/clickhouse';
 import { Button } from '@kit/ui/button';
 
@@ -28,6 +24,7 @@ import { isSelected, selectsEveryPlatform } from '../../lib/platform-selection';
 import { TAB_FAMILIES } from '../../lib/provenance';
 import { isUnavailable } from '../../lib/query-state';
 import { dateAxisScope, isFetchDated } from '../../lib/row-dating';
+import { SHOWN_ANALYTICS_PLATFORMS } from '../../lib/shown-platforms';
 import {
   type ViewDefinitionMark,
   marksForBuckets,
@@ -260,10 +257,10 @@ export function DeepDiveTab({
 
   // What the date-axis cards plot, and the fetch-dated platforms this
   // project publishes to, for the one-time note.
-  const selection = filters.platforms ?? ANALYTICS_PLATFORMS;
+  const selection = filters.platforms ?? SHOWN_ANALYTICS_PLATFORMS;
   const plotted = dateAxisScope(selection, []).platforms;
   const excluded = dateAxisScope(
-    ANALYTICS_PLATFORMS,
+    SHOWN_ANALYTICS_PLATFORMS,
     (channelsQuery.data ?? []).map((channel) => channel.platform),
   ).excluded;
 

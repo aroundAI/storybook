@@ -20,7 +20,12 @@ import {
   getOAuthAppCredentials,
 } from '../server/oauth-app-credentials';
 import type { PlatformConnection } from './database-types';
-import { PLATFORM_NAMES, type Platform, isPlatform } from './platforms';
+import {
+  PLATFORM_NAMES,
+  type Platform,
+  isOfferedPlatform,
+  isPlatform,
+} from './platforms';
 import type { TokenErrorCode } from './token-errors';
 import { EXPIRY_BUFFER_MS, isWithinRefreshWindow } from './token-expiry';
 
@@ -144,9 +149,10 @@ async function doEnsureValidToken(
     return { valid: false, error: 'NOT_FOUND' };
   }
 
-  // A kept row on a removed platform (FILM-717): never refreshed or torn
-  // down, and nobody is asked to reconnect.
-  if (!isPlatform(connection.platform)) {
+  // A kept row on a removed platform (FILM-717), or on a hidden one (X while
+  // `X_ENABLED` is off): never refreshed or torn down, nothing is sent with
+  // its token, and nobody is asked to reconnect.
+  if (!isOfferedPlatform(connection.platform)) {
     return { valid: false, error: 'PLATFORM_UNSUPPORTED' };
   }
 

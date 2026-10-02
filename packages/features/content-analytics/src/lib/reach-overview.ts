@@ -1,11 +1,11 @@
 import {
-  ANALYTICS_PLATFORMS,
   type AnalyticsPlatform,
   VIEWS_COLUMN_PLATFORMS,
   capabilityFor,
 } from '@kit/clickhouse';
 
 import { platformLabel } from './platform-labels';
+import { isShownAnalyticsPlatform } from './shown-platforms';
 
 /**
  * The cross-platform reach page's rules (design approved 2026-09-28), kept
@@ -89,10 +89,11 @@ export function postReachAvailability(
     : { measured: false, reason: `Not measured: ${capability.note}` };
 }
 
+/** An analytics platform the page shows: not X while `X_ENABLED` is off. */
 export function isAnalyticsPlatform(
   platform: string,
 ): platform is AnalyticsPlatform {
-  return (ANALYTICS_PLATFORMS as readonly string[]).includes(platform);
+  return isShownAnalyticsPlatform(platform);
 }
 
 export interface Counts {

@@ -1,6 +1,7 @@
 /**
  * Shared language and platform constants for publishing features
  */
+import { isHiddenPlatform } from './platforms';
 
 export const SUPPORTED_LANGUAGES = [
   'en',
@@ -56,11 +57,12 @@ export const SHORTS_PLATFORMS = [
   'twitter',
 ] as const;
 
+/** A hidden platform (X while `X_ENABLED` is off) takes neither. */
 export function takesVideo(kind: 'full' | 'short', platform: string) {
   const platforms: readonly string[] =
     kind === 'full' ? FULL_VIDEO_PLATFORMS : SHORTS_PLATFORMS;
 
-  return platforms.includes(platform);
+  return platforms.includes(platform) && !isHiddenPlatform(platform);
 }
 
 // Helper to parse comma-separated tags

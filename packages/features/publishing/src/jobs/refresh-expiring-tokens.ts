@@ -3,7 +3,7 @@ import 'server-only';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
-import { isPlatform } from '../lib/platforms';
+import { isOfferedPlatform } from '../lib/platforms';
 import { CRON_REFRESH_WINDOW_MS } from '../lib/token-expiry';
 import { ensureValidToken } from '../lib/token-refresh';
 
@@ -90,9 +90,10 @@ export async function refreshExpiringTokens(): Promise<RefreshJobResult> {
     return { checked: 0, refreshed: 0, failed: 0 };
   }
 
-  // A kept row on a removed platform is never refreshed (FILM-717).
+  // A kept row on a removed or hidden platform is never refreshed
+  // (FILM-717; X while `X_ENABLED` is off).
   const expiringConnections = selected?.filter((connection) =>
-    isPlatform(connection.platform),
+    isOfferedPlatform(connection.platform),
   );
 
   if (!expiringConnections || expiringConnections.length === 0) {

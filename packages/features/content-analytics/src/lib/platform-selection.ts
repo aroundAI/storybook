@@ -1,4 +1,6 @@
-import { ANALYTICS_PLATFORMS, type AnalyticsPlatform } from '@kit/clickhouse';
+import { type AnalyticsPlatform } from '@kit/clickhouse';
+
+import { SHOWN_ANALYTICS_PLATFORMS } from './shown-platforms';
 
 /**
  * The platform filter's selection, as the page and the actions read it
@@ -20,13 +22,17 @@ export function isSelected(
 export function orderedSelection(
   selected: readonly AnalyticsPlatform[],
 ): AnalyticsPlatform[] {
-  return ANALYTICS_PLATFORMS.filter((platform) => selected.includes(platform));
+  return SHOWN_ANALYTICS_PLATFORMS.filter((platform) =>
+    selected.includes(platform),
+  );
 }
 
 export function selectsEveryPlatform(
   selected: readonly AnalyticsPlatform[],
 ): boolean {
-  return ANALYTICS_PLATFORMS.every((platform) => selected.includes(platform));
+  return SHOWN_ANALYTICS_PLATFORMS.every((platform) =>
+    selected.includes(platform),
+  );
 }
 
 /**

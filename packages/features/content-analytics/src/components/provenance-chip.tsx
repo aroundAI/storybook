@@ -2,11 +2,7 @@
 
 import { useMemo } from 'react';
 
-import {
-  ANALYTICS_PLATFORMS,
-  type AnalyticsPlatform,
-  type MetricFamily,
-} from '@kit/clickhouse';
+import { type AnalyticsPlatform, type MetricFamily } from '@kit/clickhouse';
 import { badgeVariants } from '@kit/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@kit/ui/popover';
 import { cn } from '@kit/ui/utils';
@@ -23,6 +19,7 @@ import {
   fetchDatedSentence,
   isFetchDated,
 } from '../lib/row-dating';
+import { SHOWN_ANALYTICS_PLATFORMS } from '../lib/shown-platforms';
 import { useCoverageView } from './coverage-context';
 import {
   type CardMetricFamily,
@@ -126,18 +123,18 @@ export function useCardProvenance(
     const families = familiesOf(metricFamily);
     const dateAxis = onDateAxis
       ? dateAxisScope(
-          platforms ?? ANALYTICS_PLATFORMS,
+          platforms ?? SHOWN_ANALYTICS_PLATFORMS,
           (view.channels ?? []).map(({ platform }) => platform),
         )
       : null;
 
     if (dateAxis && dateAxis.platforms.length === 0) {
       return {
-        chip: nothingToPlot(platforms ?? ANALYTICS_PLATFORMS),
+        chip: nothingToPlot(platforms ?? SHOWN_ANALYTICS_PLATFORMS),
         windowLabel: view.windowLabel,
         dimming: {
           dimmed: true,
-          reasons: [fetchDatedSentence(platforms ?? ANALYTICS_PLATFORMS)],
+          reasons: [fetchDatedSentence(platforms ?? SHOWN_ANALYTICS_PLATFORMS)],
         },
         dateAxis,
       };
@@ -151,7 +148,7 @@ export function useCardProvenance(
     // The figure is the selected platforms' since FILM-1709 filters in the
     // query, so the chip speaks for those alone. A dimmed card keeps the
     // platforms it is about: its chip says what it would cover.
-    const inFigure = (plotted ?? ANALYTICS_PLATFORMS).filter((platform) =>
+    const inFigure = (plotted ?? SHOWN_ANALYTICS_PLATFORMS).filter((platform) =>
       view.selectedPlatforms.includes(platform),
     );
 

@@ -35,7 +35,7 @@ import {
   ownedEpisodeVideo,
 } from '@kit/publishing/lib/owned-episode-video';
 import { ownedEpisodeThumbnail } from '@kit/publishing/lib/owned-thumbnail';
-import { isPlatform } from '@kit/publishing/lib/platforms';
+import { isOfferedPlatform } from '@kit/publishing/lib/platforms';
 import {
   type TokenErrorCode,
   TokenRefusal,
@@ -547,11 +547,11 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
         // Default to 'publish' type for backward compatibility
         job = 'type' in parsed ? parsed : { ...parsed, type: 'publish' };
 
-        // FILM-717: a job for a platform the product removed, queued before
-        // it was removed, is answered as a refusal value, not retried, and
-        // the platform is never called. A delete still runs: it removes our
-        // record of a past publish.
-        if (job.type !== 'delete' && !isPlatform(job.platform)) {
+        // FILM-717: a job for a platform the product removed or hides (X
+        // while `X_ENABLED` is off), queued before that, is answered as a
+        // refusal value, not retried, and the platform is never called. A
+        // delete still runs: it removes our record of a past publish.
+        if (job.type !== 'delete' && !isOfferedPlatform(job.platform)) {
           const errorMessage = tokenErrorMessage(
             'PLATFORM_UNSUPPORTED',
             job.platform,

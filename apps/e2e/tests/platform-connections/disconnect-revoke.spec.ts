@@ -7,6 +7,7 @@ import { encryptLikeTheApp } from '../utils/crypto';
 import { seedTeamAccount, seedYouTubeConnection } from '../utils/seed';
 import { signInAs } from '../utils/session';
 import { byTest } from '../utils/visible';
+import { X_ENABLED, X_HIDDEN } from '../utils/x-switch';
 
 /**
  * KB-25, KB-45, KB-86, KB-87 — connecting and disconnecting, against one
@@ -193,6 +194,7 @@ test.describe('Connecting and disconnecting, and what the platform is asked (KB-
   test('X: Connect lands on the platforms page with the new row; Disconnect revokes both tokens at X; a refusal is shown', async ({
     page,
   }) => {
+    test.skip(!X_ENABLED, X_HIDDEN);
     const team = await seedTeamAccount({ emailPrefix: 'kb86x' });
     vendor.stand.xUser = {
       id: `x-${randomUUID().slice(0, 8)}`,

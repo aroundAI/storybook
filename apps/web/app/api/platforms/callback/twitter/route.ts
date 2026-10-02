@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { isOfferedPlatform } from '@kit/publishing/lib/platforms';
 import { parseGrantedScopes } from '@kit/publishing/oauth/analytics-scopes';
 import {
   TWITTER_OAUTH_CONFIG,
@@ -101,6 +102,12 @@ async function handleCallback(request: NextRequest) {
 
   if (!codeVerifier) {
     return fail({ code: 'invalid_state', branch: 'code_verifier_missing' });
+  }
+
+  // X is hidden while `X_ENABLED` is off: a consent started before it was
+  // hidden stores nothing.
+  if (!isOfferedPlatform('twitter')) {
+    return fail({ code: 'not_configured', branch: 'platform_hidden' });
   }
 
   const credentials = await getOAuthAppCredentials('twitter');

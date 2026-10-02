@@ -12,6 +12,7 @@ import {
 import type { ChannelRef } from '../server/channels';
 import { platformLabel } from './platform-labels';
 import { NO_PLATFORM_SELECTED } from './platform-selection';
+import { SHOWN_ANALYTICS_PLATFORMS } from './shown-platforms';
 
 /**
  * Provenance surfaces (FILM-1705): what the chip on a card, the strip under
@@ -324,7 +325,7 @@ function coverageWords(
 
   // Every platform the filter left in: named, since "All 2 platforms"
   // reads as though there were only two (FILM-1709).
-  if (platforms.length === total && total < ANALYTICS_PLATFORMS.length) {
+  if (platforms.length === total && total < SHOWN_ANALYTICS_PLATFORMS.length) {
     return `${upTo ? 'Up to ' : ''}${platforms.map(platformLabel).join(' + ')}`;
   }
 
@@ -364,7 +365,7 @@ function toneFor(
 export function provenanceChip(
   view: CoverageView,
   families: readonly MetricFamily[],
-  platforms: readonly AnalyticsPlatform[] = ANALYTICS_PLATFORMS,
+  platforms: readonly AnalyticsPlatform[] = SHOWN_ANALYTICS_PLATFORMS,
 ): ProvenanceChip {
   const chip = chipFor(view, families, platforms);
 
@@ -541,7 +542,7 @@ export function coverageStrip(
 ): CoverageStrip {
   const window = view.windowLabel;
 
-  const items: StripItem[] = ANALYTICS_PLATFORMS.map((platform) => {
+  const items: StripItem[] = SHOWN_ANALYTICS_PLATFORMS.map((platform) => {
     const name = platformLabel(platform);
     const coverage = platformCoverage(view, families, platform);
 
@@ -643,7 +644,7 @@ export function filterAvailability(strip: CoverageStrip): {
   const reasons: Partial<Record<AnalyticsPlatform, string>> = {};
   const available: AnalyticsPlatform[] = [];
 
-  for (const platform of ANALYTICS_PLATFORMS) {
+  for (const platform of SHOWN_ANALYTICS_PLATFORMS) {
     const item = strip.items.find((entry) => entry.platform === platform);
 
     if (item && dims.includes(item.kind)) {
@@ -664,7 +665,7 @@ export function filterAvailability(strip: CoverageStrip): {
 export function cardDimming(
   families: readonly MetricFamily[],
   selected: readonly AnalyticsPlatform[],
-  platforms: readonly AnalyticsPlatform[] = ANALYTICS_PLATFORMS,
+  platforms: readonly AnalyticsPlatform[] = SHOWN_ANALYTICS_PLATFORMS,
 ): { dimmed: false } | { dimmed: true; reasons: string[] } {
   if (families.length === 0) return { dimmed: false };
 

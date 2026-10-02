@@ -15,6 +15,7 @@ import {
 import { seedTeamAccount, updateRows } from '../utils/seed';
 import { signInAs } from '../utils/session';
 import { byTest } from '../utils/visible';
+import { X_ENABLED, X_HIDDEN } from '../utils/x-switch';
 
 /**
  * FILM-1804 §2 "Disconnect and reconnect" and "Token refresh", against the
@@ -50,6 +51,7 @@ test.describe('Disconnect, reconnect and token refresh, against the sandbox (FIL
     test(`${card}: disconnect revokes at the vendor, which then refuses the token; reconnect is a fresh grant into the same row`, async ({
       page,
     }) => {
+      test.skip(card === 'twitter' && !X_ENABLED, X_HIDDEN);
       const team = await seedTeamAccount({ emailPrefix: `sbx-revoke-${card}` });
       await signInAs(page, team);
       await connectThroughSandbox(page, team.slug, card);
@@ -109,6 +111,7 @@ test.describe('Disconnect, reconnect and token refresh, against the sandbox (FIL
     test(`${card}: a token near expiry is refreshed by the cron route, and the vendor accepts the new one`, async ({
       page,
     }) => {
+      test.skip(card === 'twitter' && !X_ENABLED, X_HIDDEN);
       const team = await seedTeamAccount({
         emailPrefix: `sbx-refresh-${card}`,
       });

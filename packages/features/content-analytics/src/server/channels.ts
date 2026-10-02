@@ -2,7 +2,7 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { isPlatform } from '@kit/publishing/lib/platforms';
+import { isOfferedPlatform } from '@kit/publishing/lib/platforms';
 import { ALL_ANALYTICS_SCOPES_ENABLED } from '@kit/publishing/oauth/analytics-scope-switch';
 import {
   type AnalyticsAccess,
@@ -162,11 +162,12 @@ export async function listAccountChannels(
 
 /**
  * The rows as channels, leaving out a kept row on a platform the product
- * removed (FILM-717): it is not a channel anyone can see or publish to.
+ * removed (FILM-717) or hides (X while `X_ENABLED` is off): it is not a
+ * channel anyone can see or publish to.
  */
 function supported(rows: ConnectionRow[]): ChannelRef[] {
   return rows
-    .filter((row) => isPlatform(row.platform))
+    .filter((row) => isOfferedPlatform(row.platform))
     .map(toChannelRef)
     .sort((a, b) => a.name.localeCompare(b.name));
 }

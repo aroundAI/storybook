@@ -1,10 +1,7 @@
-import {
-  ANALYTICS_PLATFORMS,
-  type AnalyticsPlatform,
-  CAPABILITY_MATRIX,
-} from '@kit/clickhouse';
+import { type AnalyticsPlatform, CAPABILITY_MATRIX } from '@kit/clickhouse';
 
 import { coverageLines } from './provenance';
+import { SHOWN_ANALYTICS_PLATFORMS } from './shown-platforms';
 
 /**
  * A views figure as ClickHouse hands it back since migration 020: `null`
@@ -36,7 +33,7 @@ function unique(items: readonly string[]): string[] {
  * view. Every such platform's matrix note, so no platform is named here.
  */
 export const VIEWS_NOT_MEASURED_REASON = unique(
-  ANALYTICS_PLATFORMS.flatMap((platform) => {
+  SHOWN_ANALYTICS_PLATFORMS.flatMap((platform) => {
     const note = viewsNotReportedNote(platform);
     return note ? [note] : [];
   }),
@@ -76,7 +73,7 @@ export function viewsNotMeasuredReason(scope: ViewsScope | null): string {
     observed: true,
   };
 
-  const lines = ANALYTICS_PLATFORMS.filter((platform) =>
+  const lines = SHOWN_ANALYTICS_PLATFORMS.filter((platform) =>
     scope.platforms.includes(platform),
   ).flatMap((platform) => {
     const note = viewsNotReportedNote(platform);
@@ -98,7 +95,7 @@ export function viewsNotMeasuredReason(scope: ViewsScope | null): string {
 function analyticsPlatforms(values: Iterable<string>): AnalyticsPlatform[] {
   const set = new Set(values);
 
-  return ANALYTICS_PLATFORMS.filter((platform) => set.has(platform));
+  return SHOWN_ANALYTICS_PLATFORMS.filter((platform) => set.has(platform));
 }
 
 /** A scope with no publishes: its views are null, not 0 (KB-167). */

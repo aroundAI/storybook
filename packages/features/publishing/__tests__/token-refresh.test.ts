@@ -182,6 +182,16 @@ vi.mock('@kit/supabase/server-admin-client', () => ({
   getSupabaseServerAdminClient: () => fakeDb.client,
 }));
 
+// X's refresh is kept code, tested here as it runs when X is switched on;
+// `while X is hidden` below switches it off (owner, 2026-10-02).
+const xSwitch = vi.hoisted(() => ({ on: true }));
+
+vi.mock('../src/lib/x-switch', () => ({
+  get X_ENABLED() {
+    return xSwitch.on;
+  },
+}));
+
 vi.mock('@kit/shared/logger', () => ({
   getLogger: async () => ({
     error: (ctx: Row, msg: string) => logged.error.push([ctx, msg]),
@@ -541,6 +551,56 @@ describe('refresh uses the credentials connect uses (KB-29)', () => {
     expect(requests).toHaveLength(0);
     expect(storedConnection().is_active).toBe(true);
     expect(fakeDb.tables.notifications ?? []).toEqual([]);
+  });
+});
+
+// X is hidden while `X_ENABLED` is off: its rows are kept, never refreshed,
+// and nothing is sent with their tokens.
+describe('while X is hidden', () => {
+  beforeEach(() => {
+    xSwitch.on = false;
+  });
+
+  afterEach(() => {
+    xSwitch.on = true;
+  });
+
+  it('refuses a kept X token without a vendor call, and asks nobody to reconnect', async () => {
+    await seedExpiredConnection('twitter');
+
+    const result = await tokenRefresh.ensureValidToken('conn-twitter', true);
+
+    expect(result).toEqual({ valid: false, error: 'PLATFORM_UNSUPPORTED' });
+    expect(requests).toHaveLength(0);
+    expect(storedConnection().is_active).toBe(true);
+    expect(fakeDb.tables.notifications ?? []).toEqual([]);
+  });
+
+  it('leaves a kept X row out of the refresh run', async () => {
+    await seedGlobalCredentials('youtube');
+    await addConnection('youtube', 50);
+    const twitter = await addConnection('twitter', 50);
+
+    const { refreshExpiringTokens } = await import(
+      '../src/jobs/refresh-expiring-tokens'
+    );
+    const result = await refreshExpiringTokens();
+
+    expect(result).toEqual({ checked: 1, refreshed: 1, failed: 0 });
+    expect(requests.map((r) => r.path)).toEqual(['/token']);
+    expect(await decrypted('refresh_token_encrypted', twitter)).toBe(
+      'old-refresh-token',
+    );
+  });
+
+  it('refreshes X again once the switch is on', async () => {
+    xSwitch.on = true;
+    await seedExpiredConnection('twitter');
+
+    const result = await tokenRefresh.ensureValidToken('conn-twitter', true);
+
+    expect(result).toMatchObject({ valid: true });
+    expect(requests.map((r) => r.path)).toEqual(['/2/oauth2/token']);
   });
 });
 

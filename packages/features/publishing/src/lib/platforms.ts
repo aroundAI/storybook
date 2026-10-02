@@ -1,3 +1,5 @@
+import { X_ENABLED } from './x-switch';
+
 /**
  * The platforms the product supports: every value it may write to
  * `platform_connections.platform`. The column is a varchar with a CHECK, so
@@ -46,3 +48,26 @@ export const PLATFORMS_DELETED_ON_UNPUBLISH = [
 export function isPlatform(value: string): value is Platform {
   return (PLATFORMS as readonly string[]).includes(value);
 }
+
+/**
+ * A platform the product supports but does not show: X while `X_ENABLED` is
+ * off (owner, 2026-10-02). Unlike a removed platform its code stays, so
+ * switching it on is all it takes to offer it again.
+ */
+export function isHiddenPlatform(value: string): boolean {
+  return value === 'twitter' && !X_ENABLED;
+}
+
+/**
+ * A stored `platform` a person may see, connect, publish to and have
+ * refreshed. Every surface that lists platforms or acts on a kept row reads
+ * this rather than `isPlatform`, so a hidden platform's rows are kept and
+ * never touched.
+ */
+export function isOfferedPlatform(value: string): value is Platform {
+  return isPlatform(value) && !isHiddenPlatform(value);
+}
+
+/** Every platform offered, in `PLATFORMS` order. */
+export const OFFERED_PLATFORMS: readonly Platform[] =
+  PLATFORMS.filter(isOfferedPlatform);

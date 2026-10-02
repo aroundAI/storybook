@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Platform, PublishResult } from '../src/lib/types';
 
@@ -62,6 +62,21 @@ const adminClient = vi.hoisted(() => ({ service: 'role' }));
 
 vi.mock('@kit/supabase/server-admin-client', () => ({
   getSupabaseServerAdminClient: () => adminClient,
+}));
+
+vi.mock('@kit/clickhouse/server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kit/clickhouse/server')>()),
+  queryTotalsByVideoIds: vi.fn(async () => new Map()),
+}));
+
+// Publishing to X is tested as it runs with X switched on; the episode's
+// history below switches it off (owner, 2026-10-02).
+const xSwitch = vi.hoisted(() => ({ on: true }));
+
+vi.mock('../src/lib/x-switch', () => ({
+  get X_ENABLED() {
+    return xSwitch.on;
+  },
 }));
 
 vi.mock('../src/lib/uploaded-file-duration', () => ({
@@ -580,5 +595,54 @@ describe('Publish Actions', () => {
         expect(typeof platform).toBe('string');
       });
     });
+  });
+});
+
+// X is hidden while `X_ENABLED` is off: a kept X publish is not listed on
+// the publish screen, and switching X on lists it again.
+describe('an episode history with a kept X publish', () => {
+  const publish = (id: string, platform: string) => ({
+    id,
+    platform,
+    content_type: 'full',
+    status: 'published',
+    title: 'Episode',
+    description: null,
+    platform_content_id: `${platform}-1`,
+    platform_url: null,
+    language: 'en',
+    scheduled_at: null,
+    published_at: '2026-10-01T00:00:00Z',
+    created_at: '2026-10-01T00:00:00Z',
+    metadata: null,
+    platform_connections: { platform_account_name: 'Acme' },
+  });
+
+  async function listed() {
+    db.publishRows = [
+      publish('pub-x', 'twitter'),
+      publish('pub-yt', 'youtube'),
+    ];
+
+    const { getEpisodePublishesAction } = await import(
+      '../src/server/publish-actions'
+    );
+    const result = await getEpisodePublishesAction({ episodeId: 'episode-1' });
+
+    return result.map((row) => row.id);
+  }
+
+  afterEach(() => {
+    xSwitch.on = true;
+  });
+
+  it('leaves the X publish out while X is hidden', async () => {
+    xSwitch.on = false;
+
+    expect(await listed()).toEqual(['pub-yt']);
+  });
+
+  it('lists it again once X is switched on', async () => {
+    expect(await listed()).toEqual(['pub-x', 'pub-yt']);
   });
 });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+import { isOfferedPlatform } from '@kit/publishing/lib/platforms';
 import {
   TWITTER_OAUTH_CONFIG,
   TwitterOAuthState,
@@ -24,6 +25,11 @@ import {
  * - returnUrl: Where to redirect after OAuth completes
  */
 export async function GET(request: NextRequest) {
+  // X is hidden while `X_ENABLED` is off: there is nothing to connect.
+  if (!isOfferedPlatform('twitter')) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   const logger = await getLogger();
   const ctx = { name: 'oauth.twitter.connect' };
 

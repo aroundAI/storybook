@@ -27,6 +27,15 @@ vi.mock('@kit/publishing/lib/uploaded-file-duration', () => ({
   recordUploadedFileDuration: vi.fn(),
 }));
 
+// Off, as shipped (owner, 2026-10-02); a test switches it on.
+const xSwitch = vi.hoisted(() => ({ on: false }));
+
+vi.mock('@kit/publishing/lib/x-switch', () => ({
+  get X_ENABLED() {
+    return xSwitch.on;
+  },
+}));
+
 vi.mock('@supabase/supabase-js', () => ({
   createClient: () => ({
     from(table: string) {
@@ -137,5 +146,57 @@ describe('a job for a platform the product removed (FILM-717)', () => {
     expect(result.batchItemFailures).toEqual([]);
     expect(fetchMock).not.toHaveBeenCalled();
     expect(db.updates).toEqual([]);
+  });
+});
+
+// X is hidden while `X_ENABLED` is off: a queued X job is refused the same
+// way, and X is never called.
+describe('a job for X while X is hidden', () => {
+  const job = {
+    type: 'publish',
+    publishId: 'publish-x',
+    platform: 'twitter',
+    platformConnectionId: 'conn-x',
+    userId: 'user-1',
+    episodeId: 'episode-1',
+    videoUrl: 'https://cdn.test/v.mp4',
+    title: 't',
+    description: 'd',
+    tags: [],
+    metadata: {},
+  };
+
+  afterEach(() => {
+    xSwitch.on = false;
+  });
+
+  it('marks the X publish failed and acknowledges it, without calling X', async () => {
+    const { handler } = await import('../index');
+
+    const result = await handler(event(job));
+
+    expect(result.batchItemFailures).toEqual([]);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(db.updates).toEqual([
+      {
+        table: 'publishes',
+        values: {
+          status: 'failed',
+          metadata: expect.objectContaining({
+            errorCode: 'PLATFORM_UNSUPPORTED',
+          }),
+        },
+      },
+    ]);
+  });
+
+  it('runs the X job once X is switched on', async () => {
+    xSwitch.on = true;
+    const { handler } = await import('../index');
+
+    await handler(event(job));
+
+    expect(JSON.stringify(db.updates)).not.toContain('PLATFORM_UNSUPPORTED');
+    expect(db.reads.length).toBeGreaterThan(0);
   });
 });
