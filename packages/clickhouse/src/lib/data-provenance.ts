@@ -480,12 +480,15 @@ const INSTAGRAM_USER = {
  * with a Page token. `read_insights` and `pages_manage_engagement` are asked
  * for only while `ANALYTICS_SCOPES_ENABLED` names `facebook`, and App Review
  * stands between us and any Page we do not own: shipped dark (owner,
- * 2026-10-01). Meta keeps two years of video insights.
+ * 2026-10-01). Meta keeps two years of video insights, counted back from
+ * the request: "Data is only available for the past 2 years" (video_insights
+ * reference, read 2026-10-02). Nothing ends a video's insights two years
+ * after it was posted (KB-163).
  */
 const FACEBOOK_VIDEO = {
   access: 'review_required',
   availability: 'included',
-  window: { maxAgeDays: 730, anchoredOn: 'publish_date' },
+  window: { maxAgeDays: 730, anchoredOn: 'request_date' },
 } as const satisfies SurfaceAxes;
 
 /**

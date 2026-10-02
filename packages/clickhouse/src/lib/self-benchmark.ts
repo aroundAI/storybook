@@ -92,19 +92,17 @@ export interface BenchmarkCohortScope {
 }
 
 /**
- * How far back each platform serves a post's views, from the capability
- * matrix (FILM-1703) where the platform is in it. X is (FILM-1727): its
- * posts lookup serves 30 days from post creation ("The 30-day wall" — the
- * pay-per-use path; the Enterprise window is undocumented, FILM-1725).
- * Facebook's is the capability reference's
- * (`docs/platform-capability-reference.md`): two years at request time
- * (summary table).
+ * How far back each platform serves a post's views: the capability matrix's
+ * (FILM-1703) engagement window, and only that. A window stated here as well
+ * is a second copy that drifts the day either is corrected — Facebook's did,
+ * anchored on the request here and on publish there (KB-163). The suite
+ * fails any entry that is not the matrix's own object.
  */
 export const VIEWS_DATA_WINDOWS: Readonly<Record<PlatformId, DataWindow>> = {
   youtube: capabilityFor('engagement', 'youtube').window,
   tiktok: capabilityFor('engagement', 'tiktok').window,
   instagram: capabilityFor('engagement', 'instagram').window,
-  facebook: { maxAgeDays: 730, anchoredOn: 'request_date' },
+  facebook: capabilityFor('engagement', 'facebook').window,
   twitter: capabilityFor('engagement', 'twitter').window,
 };
 
