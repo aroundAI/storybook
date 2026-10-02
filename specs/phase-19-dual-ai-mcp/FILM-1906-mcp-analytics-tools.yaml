@@ -23,13 +23,13 @@ summary: >
 acceptance_criteria:
   - text: "Each area in the table below has its tool, wrapping the listed server functions, with the listed scope"
     met: false
-    reason: "not met — part B (the tools) follows FILM-1904's endpoint; part A (#TBD-1906) made every listed function a service the tools can call"
+    reason: "not met — part B (the tools) follows FILM-1904's endpoint; part A (#559) made every listed function a service the tools can call"
   - text: "Each wrapped action is split into wrapper + service(client, input); the web page keeps calling the wrapper and its behaviour is unchanged"
     met: true
-    evidence: "#TBD-1906. Every action in the table is `enhanceAction(async (input) => xxxService(getSupabaseServerClient(), input))` over a `*-service.ts` sibling (packages/features/content-analytics/src/server/dashboard-actions.ts:40 → dashboard-service.ts:63 is the pattern; the two plain functions, getAccountDashboardData and loadReachOverview, wrap getAccountDashboardDataService and loadReachOverviewService the same way). The package's 1863 existing tests pass with two signature-only edits (scope-access.test.ts, channels-actions.test.ts); packages/features/content-analytics/__tests__/action-service-delegation.test.ts:284 asserts, for all 70 split actions, that the wrapper hands its service the cookie client and its input by identity — red when one wrapper dropped a field (1 failed, 69 passed), green restored"
+    evidence: "#559. Every action in the table is `enhanceAction(async (input) => xxxService(getSupabaseServerClient(), input))` over a `*-service.ts` sibling (packages/features/content-analytics/src/server/dashboard-actions.ts:40 → dashboard-service.ts:63 is the pattern; the two plain functions, getAccountDashboardData and loadReachOverview, wrap getAccountDashboardDataService and loadReachOverviewService the same way). The package's 1863 existing tests pass with two signature-only edits (scope-access.test.ts, channels-actions.test.ts); packages/features/content-analytics/__tests__/action-service-delegation.test.ts:284 asserts, for all 70 split actions, that the wrapper hands its service the cookie client and its input by identity — red when one wrapper dropped a field (1 failed, 69 passed), green restored"
   - text: "Authorisation is the service's own: assertScopeAccess(client, scope), assertProjectAccess(client, …) and assertAccountAccess(client, …) (packages/features/content-analytics/src/server/scope-access.ts:44) run on the client the caller passed — the web passes the cookie session's, a tool passes its principal's — and RLS covers the actions that derive their ids from RLS-filtered rows; a lint rule forbids importing @kit/clickhouse from @kit/studio-mcp"
     met: false
-    reason: "part A (#TBD-1906) moved the checks onto the caller's client: assertScopeAccess no longer builds its own cookie client, so a service cannot read with one client and authorise with another. The lint rule is part B, with the package it guards"
+    reason: "part A (#559) moved the checks onto the caller's client: assertScopeAccess no longer builds its own cookie client, so a service cannot read with one client and authorise with another. The lint rule is part B, with the package it guards"
   - text: "Results carry the freshness and coverage notes the dashboards show; with CLICKHOUSE_ENABLED=false (production's state) a tool returns the same 'not available' state as the page, with its reason, never zeros"
     met: false
     reason: "part B (the tools) after FILM-1904. The services already return the page's states: getGenomeFindingsService → { status: 'refused', refusal: { kind: 'analytics_off' } }, getSignalSurfaceService → { status: 'analytics_off' }, getChannelExperimentService → results { kind: 'analytics_off' }, getCoverageMatrixService → observed: false, getAccountDashboardDataService → null totals; the tools must pass them through"
@@ -38,7 +38,7 @@ acceptance_criteria:
     reason: "part B (the tools) after FILM-1904; the check is getProjectRevenueAccessService(client, { projectId }) in dashboard-service.ts, ready to call"
   - text: "analytics_insights_cache gets a member read policy so get_saved_insights can read it under RLS (today service role only)"
     met: true
-    evidence: "#TBD-1906. apps/web/supabase/migrations/20261002203253_film-1906-insights-cache-member-read.sql:14 — `grant select … to authenticated` and `analytics_insights_cache_read`, SELECT for a member of the project's account via has_account_access; no write grant. apps/web/supabase/tests/database/analytics-insights-cache-rls.test.sql:72 — owner and member read the project's rows, an outsider sees none, a member's insert, update and delete are refused with 42501; red with the migration skipped (the grant assertion and both reads fail), 8/8 green with it. not-built-db-guards.test.sql keeps the service role as the only writer"
+    evidence: "#559. apps/web/supabase/migrations/20261002203253_film-1906-insights-cache-member-read.sql:14 — `grant select … to authenticated` and `analytics_insights_cache_read`, SELECT for a member of the project's account via has_account_access; no write grant. apps/web/supabase/tests/database/analytics-insights-cache-rls.test.sql:72 — owner and member read the project's rows, an outsider sees none, a member's insert, update and delete are refused with 42501; red with the migration skipped (the grant assertion and both reads fail), 8/8 green with it. not-built-db-guards.test.sql keeps the service role as the only writer"
   - text: "get_ai_usage reads llm_usage_analytics under its existing has_account_access policy (migration 20260923041957) and splits by run mode (FILM-1903)"
     met: false
     reason: "part B (the tools) after FILM-1904"
@@ -79,7 +79,7 @@ remaining:
     closed_by: "FILM-1906"
 open_questions: []
 notes: |
-  ## Part A (#TBD-1906): the services
+  ## Part A (#559): the services
 
   Every function in the table below is now `xxxService(client, input)` in a
   `*-service.ts` beside its `*-actions.ts`, where `client` is the caller's
@@ -155,7 +155,7 @@ notes: |
   | taxonomy-service.ts | listTagsService, getPublishTagsService, getMedianByTagService, setPublishTagsService, bulkTagPublishesService |
   | signal-surface-service.ts | getSignalSurfaceService |
 feature:
-  database: {tables: [], columns_added: [], policies_added: ["analytics_insights_cache_read (member SELECT via the project's account; #TBD-1906)"]}
+  database: {tables: [], columns_added: [], policies_added: ["analytics_insights_cache_read (member SELECT via the project's account; #559)"]}
   queries: []
   actions: []
   ui: []
