@@ -24,46 +24,46 @@ summary: >
 acceptance_criteria:
   - text: "A pattern is computed from the set of judged stage bands"
     met: true
-    evidence: "diagnoseStages (packages/clickhouse/src/lib/stage-diagnosis.ts:396) matches only judged bands: a StageJudgement is a band or an exclusion (packages/clickhouse/src/lib/stage-diagnosis.ts:59), and coverage lists the judged stages each with its band (packages/clickhouse/src/lib/stage-diagnosis.ts:312). Asserted for every combination at packages/clickhouse/__tests__/stage-diagnosis.test.ts:253. #502"
+    evidence: "diagnoseStages (packages/clickhouse/src/lib/stage-diagnosis.ts:396) matches only judged bands: a StageJudgement is a band or an exclusion (packages/clickhouse/src/lib/stage-diagnosis.ts:59), and coverage lists the judged stages each with its band (packages/clickhouse/src/lib/stage-diagnosis.ts:312). Asserted for every combination at packages/clickhouse/__tests__/stage-diagnosis.test.ts:255. #502"
   - text: "The pattern set is closed, named, and exhaustively tested"
     met: true
-    evidence: "STAGE_PATTERNS (packages/clickhouse/src/lib/stage-diagnosis.ts:158) is a const list of six named rows, StagePatternId its closed union (packages/clickhouse/src/lib/stage-diagnosis.ts:238). Exhaustive: all 7^5 = 16,807 combinations of three bands and four exclusions over the five stages, checked against an oracle written separately from the table (packages/clickhouse/__tests__/stage-diagnosis.test.ts:253), and the 3^5 = 243 fully judged ones split 1/1/27/27/9/1 with 177 no_clear_pattern (packages/clickhouse/__tests__/stage-diagnosis.test.ts:261). Guard SD6. #502"
+    evidence: "STAGE_PATTERNS (packages/clickhouse/src/lib/stage-diagnosis.ts:158) is a const list of six named rows, StagePatternId its closed union (packages/clickhouse/src/lib/stage-diagnosis.ts:238). Exhaustive: all 7^5 = 16,807 combinations of three bands and four exclusions over the five stages, checked against an oracle written separately from the table (packages/clickhouse/__tests__/stage-diagnosis.test.ts:255), and the 3^5 = 243 fully judged ones split 1/1/27/27/9/1 with 177 no_clear_pattern (packages/clickhouse/__tests__/stage-diagnosis.test.ts:263). Guard SD6. #502"
   - text: "Patterns are evaluated in a documented precedence order, first match wins"
     met: true
-    evidence: "matchPattern takes the first row that matches, in table order (packages/clickhouse/src/lib/stage-diagnosis.ts:267); reversing it fails packages/clickhouse/__tests__/stage-diagnosis.test.ts:325 (guard SD9). The rows are pairwise exclusive today once two stages are judged, so order decides nothing yet; packages/clickhouse/__tests__/stage-diagnosis.test.ts:342 counts overlaps so the day it starts to is visible. #502"
+    evidence: "matchPattern takes the first row that matches, in table order (packages/clickhouse/src/lib/stage-diagnosis.ts:267); reversing it fails packages/clickhouse/__tests__/stage-diagnosis.test.ts:327 (guard SD9). The rows are pairwise exclusive today once two stages are judged, so order decides nothing yet; packages/clickhouse/__tests__/stage-diagnosis.test.ts:344 counts overlaps so the day it starts to is visible. #502"
   - text: "A fully-judged combination matching no pattern yields no_clear_pattern"
     met: true
-    evidence: "packages/clickhouse/src/lib/stage-diagnosis.ts:412 returns no_clear_pattern when no row matches; an all-typical video is no_clear_pattern (packages/clickhouse/__tests__/stage-diagnosis.test.ts:389). #502"
+    evidence: "packages/clickhouse/src/lib/stage-diagnosis.ts:412 returns no_clear_pattern when no row matches; an all-typical video is no_clear_pattern (packages/clickhouse/__tests__/stage-diagnosis.test.ts:391). #502"
   - text: "no_clear_pattern is distinguishable from \"too few judged stages\" — different causes, different sentences"
     met: true
-    evidence: "Distinct kinds with distinct sentences: NO_CLEAR_PATTERN_SENTENCE (packages/clickhouse/src/lib/stage-diagnosis.ts:344) and tooFewSentence (packages/clickhouse/src/lib/stage-diagnosis.ts:322); asserted at packages/clickhouse/__tests__/stage-diagnosis.test.ts:457 (guard SD8). #502"
+    evidence: "Distinct kinds with distinct sentences: NO_CLEAR_PATTERN_SENTENCE (packages/clickhouse/src/lib/stage-diagnosis.ts:344) and tooFewSentence (packages/clickhouse/src/lib/stage-diagnosis.ts:322); asserted at packages/clickhouse/__tests__/stage-diagnosis.test.ts:459 (guard SD8). #502"
   - text: "typical bands are handled explicitly, not treated as either above or below"
     met: true
-    evidence: "meets (packages/clickhouse/src/lib/stage-diagnosis.ts:280): a named above or below needs that exact band, and the 'others' clauses need it where judged, so typical satisfies neither side (packages/clickhouse/src/lib/stage-diagnosis.ts:124). Swapping typical into any constrained cell of any row breaks that row (packages/clickhouse/__tests__/stage-diagnosis.test.ts:375, guard SD1). #502"
+    evidence: "meets (packages/clickhouse/src/lib/stage-diagnosis.ts:280): a named above or below needs that exact band, and the 'others' clauses need it where judged, so typical satisfies neither side (packages/clickhouse/src/lib/stage-diagnosis.ts:124). Swapping typical into any constrained cell of any row breaks that row (packages/clickhouse/__tests__/stage-diagnosis.test.ts:377, guard SD1). #502"
   - text: "The number of judged stages is reported alongside the diagnosis"
     met: true
-    evidence: "Every outcome carries coverage.judgedCount and stageCount (packages/clickhouse/src/lib/stage-diagnosis.ts:312) and a coverage sentence; a pattern over two judged stages differs from the same pattern over five (packages/clickhouse/__tests__/stage-diagnosis.test.ts:399, guard SD3). #502"
+    evidence: "Every outcome carries coverage.judgedCount and stageCount (packages/clickhouse/src/lib/stage-diagnosis.ts:312) and a coverage sentence; a pattern over two judged stages differs from the same pattern over five (packages/clickhouse/__tests__/stage-diagnosis.test.ts:401, guard SD3). #502"
   - text: "Too few judged stages yields a named absent state, not the nearest pattern"
     met: true
-    evidence: "Below MIN_JUDGED_STAGES (2, packages/clickhouse/src/lib/stage-diagnosis.ts:245, counted over PATTERN_STAGES since FILM-1726 #523) the outcome is too_few_judged with minJudged (packages/clickhouse/src/lib/stage-diagnosis.ts:374), never a row (packages/clickhouse/__tests__/stage-diagnosis.test.ts:433, guard SD2). Below two the rows do overlap (Reach above alone fits rows 2 and 6), which packages/clickhouse/__tests__/stage-diagnosis.test.ts:342 shows. #502"
+    evidence: "Below MIN_JUDGED_STAGES (2, packages/clickhouse/src/lib/stage-diagnosis.ts:245, counted over PATTERN_STAGES since FILM-1726 #523) the outcome is too_few_judged with minJudged (packages/clickhouse/src/lib/stage-diagnosis.ts:374), never a row (packages/clickhouse/__tests__/stage-diagnosis.test.ts:435, guard SD2). Below two the rows do overlap (Reach above alone fits rows 2 and 6), which packages/clickhouse/__tests__/stage-diagnosis.test.ts:344 shows. #502"
   - text: "Unbound, dark, not_judgable and insufficient_cohort stages are excluded from the pattern and counted separately"
     met: true
-    evidence: "judgeStage (packages/clickhouse/src/lib/stage-diagnosis.ts:75) maps unbound and dark readings (FILM-1714) and not_judgable and insufficient_cohort benchmarks (FILM-1715) to exclusions, without asking for a benchmark where there is no figure; coverage.excluded lists each under its reason (packages/clickhouse/__tests__/stage-diagnosis.test.ts:412, :518, :529; guards SD4, SD5, SD11). A dark stage and a below stage give different patterns (packages/clickhouse/__tests__/stage-diagnosis.test.ts:480). #502"
+    evidence: "judgeStage (packages/clickhouse/src/lib/stage-diagnosis.ts:75) maps unbound and dark readings (FILM-1714) and not_judgable and insufficient_cohort benchmarks (FILM-1715) to exclusions, without asking for a benchmark where there is no figure; coverage.excluded lists each under its reason (packages/clickhouse/__tests__/stage-diagnosis.test.ts:414, :518, :529; guards SD4, SD5, SD11). A dark stage and a below stage give different patterns (packages/clickhouse/__tests__/stage-diagnosis.test.ts:482). #502"
   - text: "No diagnosis string asserts a cause or a viewer's mental state"
     met: true
-    evidence: "Every sentence the diagnosis can produce, over all 16,807 combinations, is checked against a causal and state-of-mind vocabulary (packages/clickhouse/__tests__/stage-diagnosis.test.ts:493, guard SD7), and the pattern sentences are an inline snapshot (packages/clickhouse/__tests__/stage-diagnosis.test.ts:211), so any edit to the wording is a visible diff. #502"
+    evidence: "Every sentence the diagnosis can produce, over all 16,807 combinations, is checked against a causal and state-of-mind vocabulary (packages/clickhouse/__tests__/stage-diagnosis.test.ts:495, guard SD7), and the pattern sentences are an inline snapshot (packages/clickhouse/__tests__/stage-diagnosis.test.ts:211), so any edit to the wording is a visible diff. #502"
   - text: "No diagnosis depends on the content genome"
     met: true
-    evidence: "The module imports only ../types, ./signal-map and ./self-benchmark, asserted from its source (packages/clickhouse/__tests__/stage-diagnosis.test.ts:634, guard SD10). #502"
+    evidence: "The module imports only ../types, ./signal-map and ./self-benchmark, asserted from its source (packages/clickhouse/__tests__/stage-diagnosis.test.ts:636, guard SD10). #502"
   - text: "No absolute threshold appears in this layer"
     met: true
-    evidence: "A StageJudgement holds a band and no figure (packages/clickhouse/src/lib/stage-diagnosis.ts:59), so no threshold can be applied here; two benchmarks a thousandfold apart in the same band give the same judgement, and reading .value is a type error (packages/clickhouse/__tests__/stage-diagnosis.test.ts:576). MIN_JUDGED_STAGES counts stages, not a measurement. #502"
+    evidence: "A StageJudgement holds a band and no figure (packages/clickhouse/src/lib/stage-diagnosis.ts:59), so no threshold can be applied here; two benchmarks a thousandfold apart in the same band give the same judgement, and reading .value is a type error (packages/clickhouse/__tests__/stage-diagnosis.test.ts:578). MIN_JUDGED_STAGES counts stages, not a measurement. #502"
   - text: "The diagnosis never contradicts the bands it was computed from"
     met: true
-    evidence: "For every pattern outcome over all combinations, each stage the row names or constrains reports the band the row requires, read back from the diagnosis's own coverage (packages/clickhouse/__tests__/stage-diagnosis.test.ts:279). #502"
+    evidence: "For every pattern outcome over all combinations, each stage the row names or constrains reports the band the row requires, read back from the diagnosis's own coverage (packages/clickhouse/__tests__/stage-diagnosis.test.ts:281). #502"
   - text: "A video with all stages dark produces a coverage statement, not a diagnosis"
     met: true
-    evidence: "No judged stage yields too_few_judged, whose sentences say no stage could be judged and list every stage with its reason (packages/clickhouse/__tests__/stage-diagnosis.test.ts:465). #502"
+    evidence: "No judged stage yields too_few_judged, whose sentences say no stage could be judged and list every stage with its reason (packages/clickhouse/__tests__/stage-diagnosis.test.ts:467). #502"
 open_questions: []
 feature:
   database: null
