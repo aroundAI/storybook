@@ -93,6 +93,35 @@ alter table public.mcp_tokens
 comment on column public.mcp_tokens.audience is
   'The MCP resource URL the token is bound to (RFC 8707); null for a personal access token';
 
+-- Revoking a connection revokes every token of it, wherever the revoke
+-- came from: Connected apps (a user, who may update revoked_at and nothing
+-- on mcp_tokens), /oauth/revoke, refresh-token reuse, or the password
+-- trigger below. The verifier already refuses a token whose connection is
+-- revoked; this keeps the token rows honest too.
+create function kit.revoke_mcp_tokens_of_connection()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  update public.mcp_tokens
+     set revoked_at = new.revoked_at
+   where connection_id = new.id
+     and revoked_at is null;
+
+  return new;
+end;
+$$;
+
+revoke all on function kit.revoke_mcp_tokens_of_connection() from public;
+
+create trigger on_mcp_connection_revoked
+after update of revoked_at on public.mcp_connections
+for each row
+when (old.revoked_at is null and new.revoked_at is not null)
+execute procedure kit.revoke_mcp_tokens_of_connection();
+
 -- A password change is the moment a user stops trusting whoever held their
 -- credentials. Supabase sessions end with it; MCP grants are our own, so we
 -- end them here. Runs as the definer because GoTrue (supabase_auth_admin)
@@ -110,13 +139,6 @@ begin
      set revoked_at = now()
    where user_id = new.id
      and revoked_at is null;
-
-  update public.mcp_tokens t
-     set revoked_at = now()
-    from public.mcp_connections c
-   where c.id = t.connection_id
-     and c.user_id = new.id
-     and t.revoked_at is null;
 
   return new;
 end;

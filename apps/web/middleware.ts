@@ -14,7 +14,13 @@ const CSRF_SECRET_COOKIE = 'csrfSecret';
 const NEXT_ACTION_HEADER = 'next-action';
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|images|locales|assets|api/).*)'],
+  // The OAuth token, registration and revocation endpoints and the
+  // discovery documents are called by MCP clients, never by a browser with
+  // our cookies, so the CSRF check and the auth redirects do not apply
+  // (FILM-1907). /oauth/authorize is a page and stays covered.
+  matcher: [
+    '/((?!_next/static|_next/image|images|locales|assets|api/|oauth/register|oauth/token|oauth/revoke|\\.well-known/).*)',
+  ],
 };
 
 const getUser = (request: NextRequest, response: NextResponse) => {

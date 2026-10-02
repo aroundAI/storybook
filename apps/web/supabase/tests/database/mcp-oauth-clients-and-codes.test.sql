@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(25);
+select plan(28);
 
 -- FILM-1907. The OAuth server's two tables are reachable by the service role
 -- only; a consent connection names a registered client; a code carries a
@@ -79,6 +79,11 @@ select fk_ok(
 select function_privs_are(
   'kit', 'revoke_mcp_grants_on_password_change', array[]::text[], 'authenticated', array[]::text[],
   'authenticated cannot execute the password-change trigger function'
+);
+
+select function_privs_are(
+  'kit', 'revoke_mcp_tokens_of_connection', array[]::text[], 'authenticated', array[]::text[],
+  'authenticated cannot execute the connection-revoked trigger function'
 );
 
 -- ==================================
@@ -219,6 +224,30 @@ select is(
   (select revoked_at is null from public.mcp_tokens where token_hash = repeat('d', 64)),
   true,
   'bob''s token is untouched by alice''s password change'
+);
+
+-- ==================================
+-- Revoking a connection, as the user does from Connected apps, revokes its tokens
+-- ==================================
+
+select makerkit.authenticate_as('oauth_bob');
+
+update public.mcp_connections set revoked_at = now()
+ where id = '19070000-0000-4000-8000-000000000003';
+
+select is(
+  (select revoked_at is not null from public.mcp_connections
+    where id = '19070000-0000-4000-8000-000000000003'),
+  true,
+  'bob revokes his own consent connection'
+);
+
+set local role postgres;
+
+select is(
+  (select revoked_at is not null from public.mcp_tokens where token_hash = repeat('d', 64)),
+  true,
+  'revoking the connection revoked its token, which bob himself may not touch'
 );
 
 -- ==================================
