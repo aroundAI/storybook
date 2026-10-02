@@ -14,7 +14,9 @@ CREATE TABLE IF NOT EXISTS public.generation_jobs (
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMPTZ DEFAULT now(),
     started_at TIMESTAMPTZ,
-    completed_at TIMESTAMPTZ
+    completed_at TIMESTAMPTZ,
+    -- FILM-1903: the server-mode run this job executes; NOT NULL for LLM job types is part C
+    run_id UUID REFERENCES public.generation_runs(id) ON DELETE SET NULL
 );
 
 -- Index for finding active jobs by episode

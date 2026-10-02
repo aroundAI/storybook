@@ -83,6 +83,8 @@ create table if not exists public.episodes (
   shot_list jsonb,
   metadata jsonb default '{}'::jsonb not null,
   version integer default 1 not null,
+  -- FILM-1903: per stage, {"story": {kind, runId, model, ...}, "screenplay": {...}}
+  generation_origin jsonb default '{}'::jsonb not null,
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
   deleted_at timestamp with time zone default null,
@@ -147,6 +149,8 @@ create table if not exists public.assets (
   file_url text,
   thumbnail_url text,
   metadata jsonb default '{}'::jsonb not null,
+  -- FILM-1903: {kind: server|external|human, runId, model, promptSlug, promptVersion, clientName, at}
+  generation_origin jsonb,
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
   check (type in ('character', 'location', 'prop', 'voice', 'music', 'sfx')),
@@ -198,6 +202,8 @@ create table if not exists public.generation_jobs (
   started_at timestamp with time zone,
   completed_at timestamp with time zone,
   created_at timestamp with time zone default now() not null,
+  -- FILM-1903: the server-mode run this job executes (75-generation-runs.sql guards it); NOT NULL for LLM job types is part C
+  run_id uuid references public.generation_runs(id) on delete set null,
   -- Mirrors migrations/*_kb174-asset-creation-job-type.sql; held to
   -- GENERATION_JOB_TYPES by prompt-engine's generation-job-types.test.ts
   check (job_type in ('video', 'voice', 'music', 'sfx', 'story', 'screenplay', 'shot_list', 'translate-dialogue', 'audio_cue_generation', 'story-refinement', 'screenplay-refinement', 'asset_creation')),
@@ -380,6 +386,8 @@ create table if not exists public.shots (
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
   deleted_at timestamp with time zone default null,
+  -- FILM-1903: {kind: server|external|human, runId, model, promptSlug, promptVersion, clientName, at}
+  generation_origin jsonb,
   check (status in ('pending', 'queued', 'generating', 'completed', 'failed', 'approved')),
   check (duration_seconds > 0 and duration_seconds <= 60),
   unique(episode_id, sequence_number)
@@ -436,6 +444,8 @@ create table if not exists public.dialogue_lines (
   audio_url text,
   status varchar(50) default 'pending' not null,
   generation_metadata jsonb,
+  -- FILM-1903: {kind: server|external|human, runId, model, promptSlug, promptVersion, clientName, at}
+  generation_origin jsonb,
   created_at timestamp with time zone default now() not null,
   check (status in ('pending', 'generating', 'completed', 'failed')),
   unique(episode_id, sequence_number)
