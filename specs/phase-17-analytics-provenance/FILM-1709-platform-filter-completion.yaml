@@ -53,8 +53,7 @@ acceptance_criteria:
   - text: "The selection survives tab switches"
     met: true
     evidence: "apps/e2e/tests/analytics/platform-filter.spec.ts:231 deselects TikTok, walks four tabs and back, and reads the ticked boxes and the Deep Dive switcher (#529)"
-open_questions:
-  - "With Facebook an analytics platform (FILM-1720, #504) and X to follow (FILM-1727), the filter offers every AnalyticsPlatform and starts with all of them selected. That default was decided while rebasing (r1719, 2026-10-02) and is the owner's to confirm."
+open_questions: []
 notes: |
   ## 1. Overview
 
@@ -204,7 +203,8 @@ notes: |
   X joins when FILM-1727 adds it to the list. Held by
   packages/features/content-analytics/__tests__/provenance-surfaces.test.tsx:158,
   red with the list cut to three (guard in tooling/mutation-guards/film-1709.json).
-  The default is open for the owner (open_questions).
+  The default was decided while rebasing (r1719, 2026-10-02); confirmed by
+  the owner, 2026-10-02.
 
   **Language** reads through `video_dim` since FILM-1702, so narrowing its
   video set narrows all six reads. **Video Log** takes `platforms` too; its
