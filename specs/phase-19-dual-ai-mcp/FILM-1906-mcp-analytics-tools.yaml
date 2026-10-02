@@ -3,7 +3,7 @@ title: "MCP Analytics Tools: every analytics view, read-only, same checks"
 phase: 19
 phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: L
 dependencies:
   - spec_id: "FILM-1904"
@@ -23,31 +23,31 @@ summary: >
 acceptance_criteria:
   - text: "Each area in the table below has its tool, wrapping the listed server functions, with the listed scope"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "not met — part B (the tools) follows FILM-1904's endpoint; part A (#TBD-1906) made every listed function a service the tools can call"
   - text: "Each wrapped action is split into wrapper + service(client, input); the web page keeps calling the wrapper and its behaviour is unchanged"
+    met: true
+    evidence: "#TBD-1906. Every action in the table is `enhanceAction(async (input) => xxxService(getSupabaseServerClient(), input))` over a `*-service.ts` sibling (packages/features/content-analytics/src/server/dashboard-actions.ts:40 → dashboard-service.ts:63 is the pattern; the two plain functions, getAccountDashboardData and loadReachOverview, wrap getAccountDashboardDataService and loadReachOverviewService the same way). The package's 1863 existing tests pass with two signature-only edits (scope-access.test.ts, channels-actions.test.ts); packages/features/content-analytics/__tests__/action-service-delegation.test.ts:284 asserts, for all 70 split actions, that the wrapper hands its service the cookie client and its input by identity — red when one wrapper dropped a field (1 failed, 69 passed), green restored"
+  - text: "Authorisation is the service's own: assertScopeAccess(client, scope), assertProjectAccess(client, …) and assertAccountAccess(client, …) (packages/features/content-analytics/src/server/scope-access.ts:44) run on the client the caller passed — the web passes the cookie session's, a tool passes its principal's — and RLS covers the actions that derive their ids from RLS-filtered rows; a lint rule forbids importing @kit/clickhouse from @kit/studio-mcp"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
-  - text: "Authorisation is the service's own: assertScopeAccess, assertProjectAccess and assertAccountAccess (packages/features/content-analytics/src/server/scope-access.ts) and RLS for the actions that derive their ids from RLS-filtered rows; a lint rule forbids importing @kit/clickhouse from @kit/studio-mcp"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "part A (#TBD-1906) moved the checks onto the caller's client: assertScopeAccess no longer builds its own cookie client, so a service cannot read with one client and authorise with another. The lint rule is part B, with the package it guards"
   - text: "Results carry the freshness and coverage notes the dashboards show; with CLICKHOUSE_ENABLED=false (production's state) a tool returns the same 'not available' state as the page, with its reason, never zeros"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "part B (the tools) after FILM-1904. The services already return the page's states: getGenomeFindingsService → { status: 'refused', refusal: { kind: 'analytics_off' } }, getSignalSurfaceService → { status: 'analytics_off' }, getChannelExperimentService → results { kind: 'analytics_off' }, getCoverageMatrixService → observed: false, getAccountDashboardDataService → null totals; the tools must pass them through"
   - text: "get_revenue applies the same revenue-access check as the web (getProjectRevenueAccessAction)"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "part B (the tools) after FILM-1904; the check is getProjectRevenueAccessService(client, { projectId }) in dashboard-service.ts, ready to call"
   - text: "analytics_insights_cache gets a member read policy so get_saved_insights can read it under RLS (today service role only)"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "#TBD-1906. apps/web/supabase/migrations/20261002203253_film-1906-insights-cache-member-read.sql:14 — `grant select … to authenticated` and `analytics_insights_cache_read`, SELECT for a member of the project's account via has_account_access; no write grant. apps/web/supabase/tests/database/analytics-insights-cache-rls.test.sql:72 — owner and member read the project's rows, an outsider sees none, a member's insert, update and delete are refused with 42501; red with the migration skipped (the grant assertion and both reads fail), 8/8 green with it. not-built-db-guards.test.sql keeps the service role as the only writer"
   - text: "get_ai_usage reads llm_usage_analytics under its existing has_account_access policy (migration 20260923041957) and splits by run mode (FILM-1903)"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "part B (the tools) after FILM-1904"
   - text: "Write tools (studio:write): update_publish_note, assign_publish_tags, create_experiment, start_experiment, conclude_experiment, abandon_experiment, wrapping updatePublishNoteAction, taxonomy-actions and experiment-actions"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "part B (the tools) after FILM-1904; their services exist: updatePublishNoteService, setPublishTagsService / bulkTagPublishesService, createExperimentService, startExperimentService, concludeExperimentService, abandonExperimentService"
   - text: "Not exposed: /api/analytics/* ingest and sync routes, report ingest, cron jobs, revenue manual entry and platform revenue sync, report schedule changes, the super-admin dashboard"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "part B (the tools) after FILM-1904; part A split none of these (manualSyncAction, the manual revenue and sync-from-platform actions and the schedule writers keep their own client), so there is no service for a tool to reach"
 test_plan:
   unit:
     - {text: "Each tool's figures equal the page's for the same seeded scope (one test per area, reusing the action's existing fixtures)", met: false, reason: "not met — no test yet"}
@@ -55,9 +55,55 @@ test_plan:
     - {text: "Against local ClickHouse (scripts/local-env.sh up): seeded rows with a hand-computed answer read back through get_project_analytics and get_deep_dive", met: false, reason: "not met — no test yet"}
     - {text: "A token for team A asking for team B's project, account or connection gets FORBIDDEN from every tool", met: false, reason: "not met — no test yet"}
   e2e: []
+remaining:
+  - criterion: "Each area in the table below has its tool, wrapping the listed server functions, with the listed scope"
+    reason: "part B: the @kit/studio-mcp tools over the services, once FILM-1904 provides the endpoint and the RLS-scoped principal"
+    closed_by: "FILM-1906"
+  - criterion: "Authorisation is the service's own … a lint rule forbids importing @kit/clickhouse from @kit/studio-mcp"
+    reason: "part B: the lint rule lands with the package it guards"
+    closed_by: "FILM-1906"
+  - criterion: "Results carry the freshness and coverage notes the dashboards show; with CLICKHOUSE_ENABLED=false a tool returns the same 'not available' state as the page"
+    reason: "part B: the tools pass the services' states through"
+    closed_by: "FILM-1906"
+  - criterion: "get_revenue applies the same revenue-access check as the web"
+    reason: "part B"
+    closed_by: "FILM-1906"
+  - criterion: "get_ai_usage reads llm_usage_analytics … and splits by run mode"
+    reason: "part B"
+    closed_by: "FILM-1906"
+  - criterion: "Write tools (studio:write)"
+    reason: "part B"
+    closed_by: "FILM-1906"
+  - criterion: "Not exposed: ingest, sync, cron, manual revenue, schedules, super-admin"
+    reason: "part B: asserted on the tool catalogue once it exists"
+    closed_by: "FILM-1906"
 open_questions: []
 notes: |
-  ## Coverage (inventory of packages/features/content-analytics/src/server/, 2026-10-02)
+  ## Part A (#TBD-1906): the services
+
+  Every function in the table below is now `xxxService(client, input)` in a
+  `*-service.ts` beside its `*-actions.ts`, where `client` is the caller's
+  Supabase client (`AnalyticsClient`, packages/features/content-analytics/src/server/analytics-client.ts)
+  and `input` is the action's parsed schema output. The `'use server'` file
+  keeps only the wrappers, because every export of such a file is a callable
+  endpoint and a function taking a client must not be one. The schemas that
+  used to be module-private in the actions files are exported from the
+  service files, so a tool parses the same shape as the page. Each service
+  has a package subpath (`@kit/content-analytics/server/<name>-service`), and
+  `assertScopeAccess` is exported at `@kit/content-analytics/server/scope-access`.
+
+  The underlying readers that built their own client
+  (`aggregation-queries.ts`, `language-analytics.ts`) take it as a trailing
+  parameter that defaults to the cookie session's, so their direct callers
+  and tests are unchanged. `getAccountDashboardData` and `loadReachOverview`
+  are plain functions the pages call; they wrap
+  `getAccountDashboardDataService` and `loadReachOverviewService`.
+
+  Not split, because no tool reaches them: `manualSyncAction`, the manual
+  revenue entry and platform revenue sync, the revenue report, the report
+  generator and the schedule writers, and `createTag`/`deleteTag`.
+
+  ## Coverage (inventory of packages/features/content-analytics/src/server/, 2026-10-02; services added 2026-10-03)
 
   | Area (web route) | Tool | Wraps | Scope |
   |---|---|---|---|
@@ -68,6 +114,7 @@ notes: |
   | Video log | get_video_log | getVideoLogAction | project or account, optional channel |
   | Language | get_language_analytics (view: performance, platform_matrix, content_type, shorts_source, geography, trend, divergence) | language-analytics.ts actions | project |
   | Episode analytics | get_episode_analytics | getEpisodeAnalyticsAction, getSyncStatusAction | episode |
+  | Video funnel (FILM-1719, on the episode analytics page) | get_video_funnel | getSignalSurfaceAction | project and video, checkpoint |
   | Revenue (/studio/analytics) | get_revenue (view: summary, timeseries, top_content, projection, by_currency) | revenue-actions.ts, revenue-queries.ts, getProjectRevenueByCurrencyAction | account |
   | Reach | get_reach_overview | loadReachOverview | account, per channel |
   | Experiments | list_experiments, get_experiment | experiment-actions.ts, watched-metric-snapshot.ts | account, optional project |
@@ -82,8 +129,33 @@ notes: |
 
   get_generation_history (runs, origins and validation failures for an
   episode) is FILM-1908's.
+
+  ## The services, by file (what part B imports)
+
+  | File (packages/features/content-analytics/src/server/) | Services |
+  |---|---|
+  | account-dashboard-actions.ts | getAccountDashboardDataService |
+  | dashboard-service.ts | getProjectAnalyticsService, getContentListService, getProjectDailyMetricsService, getProjectAudienceDataService, getProjectRevenueByCurrencyService, getProjectRevenueAccessService, getLanguagePerformanceService, getPlatformLanguageMatrixService, getContentTypeComparisonService, getShortsSourcePerformanceService, getGeographyByLanguageService, getLanguageTrendService, getLanguageDivergenceService |
+  | deep-dive-service.ts | getMedianPerformanceService, getRollingViewsService, getTrafficBreakdownService, getBackCatalogService, getCohortCurvesService, getYppProgressService, getReturningViewerProxyService |
+  | diagnostics-service.ts | getWeeklyDiagnosticsService, getRetentionCurveService, getEpisodeAnalyticsService, getEpisodeRetentionPublishService |
+  | subscriber-series-service.ts | getSubscriberSeriesService |
+  | video-log-service.ts | getVideoLogService |
+  | sync-service.ts | getSyncStatusService |
+  | reach-overview.ts | loadReachOverviewService |
+  | segment-service.ts | getSegmentPerformanceService |
+  | genome-service.ts | getGenomeFindingsService |
+  | coverage-service.ts | getCoverageMatrixService |
+  | channels-service.ts | listChannelsService |
+  | report-service.ts | listGeneratedReportsService, getGeneratedReportDownloadService, getScheduledReportsService |
+  | settings-service.ts | getAnalyticsSettingsService |
+  | publish-notes-service.ts | updatePublishNoteService |
+  | revenue-service.ts | getRevenueSummaryService, getRevenueProjectionService, getRevenueTimeSeriesService, getTopContentByRevenueService |
+  | experiment-service.ts | listExperimentsService, getExperimentService, listExperimentsDueForReviewService, listLinkablePublishesService, createExperimentService, updateExperimentService, startExperimentService, concludeExperimentService, abandonExperimentService, deleteExperimentService |
+  | channel-experiment-service.ts | listChannelExperimentsService, getChannelExperimentService, and the ten write services beside them |
+  | taxonomy-service.ts | listTagsService, getPublishTagsService, getMedianByTagService, setPublishTagsService, bulkTagPublishesService |
+  | signal-surface-service.ts | getSignalSurfaceService |
 feature:
-  database: {tables: [], columns_added: [], policies_added: ["analytics_insights_cache member read"]}
+  database: {tables: [], columns_added: [], policies_added: ["analytics_insights_cache_read (member SELECT via the project's account; #TBD-1906)"]}
   queries: []
   actions: []
   ui: []
