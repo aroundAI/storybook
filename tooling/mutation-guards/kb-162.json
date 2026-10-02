@@ -85,8 +85,8 @@
       "name": "KB-162 the Views card gives the watch-time reason for unmeasured views",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
-      "find": "              title={metric.notMeasuredReason ?? notMeasuredReason}",
-      "replace": "              title={notMeasuredReason}",
+      "find": "    metric.notMeasuredReason ?? notMeasuredReason,",
+      "replace": "    notMeasuredReason,",
       "cwd": "packages/features/content-analytics",
       "test": "src/components/__tests__/metric-cards-views.test.tsx",
       "pattern": "says Views were not measured"
