@@ -26,17 +26,13 @@ describe('the AI-label map', () => {
 
 describe('aiLabelUnsupportedNote', () => {
   it('names Facebook when a Page is among the channels', () => {
-    expect(
-      aiLabelUnsupportedNote(['youtube', 'facebook', 'instagram']),
-    ).toBe(
+    expect(aiLabelUnsupportedNote(['youtube', 'facebook', 'instagram'])).toBe(
       "Facebook can't take the AI label: its publishing API has no field for it, so the video goes out there without one.",
     );
   });
 
   it('names each unsupported platform once, however many channels it has', () => {
-    expect(
-      aiLabelUnsupportedNote(['facebook', 'linkedin', 'facebook']),
-    ).toBe(
+    expect(aiLabelUnsupportedNote(['facebook', 'linkedin', 'facebook'])).toBe(
       "Facebook and LinkedIn can't take the AI label: their publishing API has no field for it, so the video goes out there without one.",
     );
   });

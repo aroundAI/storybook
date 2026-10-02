@@ -164,7 +164,8 @@ describe('X: made_with_ai on POST /2/tweets', () => {
 
   async function postBody(madeWithAi: boolean | undefined) {
     const calls = stubFetch((url) => {
-      if (url === X_MEDIA_UPLOAD.initialize) return json({ data: { id: MEDIA_ID } });
+      if (url === X_MEDIA_UPLOAD.initialize)
+        return json({ data: { id: MEDIA_ID } });
       if (url === X_MEDIA_UPLOAD.status(MEDIA_ID)) {
         return json({
           data: { id: MEDIA_ID, processing_info: { state: 'succeeded' } },

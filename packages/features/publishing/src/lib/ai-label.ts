@@ -1,4 +1,4 @@
-import { PLATFORM_NAMES, PLATFORMS, type Platform } from './platforms';
+import { PLATFORMS, PLATFORM_NAMES, type Platform } from './platforms';
 
 /**
  * FILM-1731. The field each platform's publish API takes for a creator's

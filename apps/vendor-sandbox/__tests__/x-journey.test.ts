@@ -135,9 +135,9 @@ describe('X, end to end through the app’s own clients', () => {
       text: 'Not declared.',
     });
 
-    expect(sandbox.social.object('x', declared.tweetId).details).toMatchObject(
-      { madeWithAi: true },
-    );
+    expect(sandbox.social.object('x', declared.tweetId).details).toMatchObject({
+      madeWithAi: true,
+    });
     expect(
       sandbox.social.object('x', plain.tweetId).details,
     ).not.toHaveProperty('madeWithAi');

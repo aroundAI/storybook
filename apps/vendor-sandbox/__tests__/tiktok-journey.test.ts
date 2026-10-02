@@ -171,9 +171,9 @@ describe('TikTok, end to end through the app’s own clients', () => {
     expect(publishes.find((p) => p.id === declared.publishId)).toMatchObject({
       isAigc: true,
     });
-    expect(
-      publishes.find((p) => p.id === plain.publishId),
-    ).not.toHaveProperty('isAigc');
+    expect(publishes.find((p) => p.id === plain.publishId)).not.toHaveProperty(
+      'isAigc',
+    );
 
     const { vendorUrl } = await import('@kit/shared/vendors');
     const refused = await fetch(

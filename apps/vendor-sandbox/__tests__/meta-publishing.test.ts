@@ -245,9 +245,9 @@ describe('Meta sandbox: publishing a Reel through the app providers', () => {
     expect(
       containers.find((c) => c.id === (plain.body as { id: string }).id),
     ).not.toHaveProperty('aiGenerated');
-    expect(
-      containers.find((c) => c.id === declared.containerId),
-    ).toMatchObject({ aiGenerated: true });
+    expect(containers.find((c) => c.id === declared.containerId)).toMatchObject(
+      { aiGenerated: true },
+    );
 
     const refused = await graph(
       `/${igId}/media`,
