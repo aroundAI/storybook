@@ -68,6 +68,7 @@ export {
   whoamiTool,
 } from './tools';
 export { WORKFLOW_GUIDE_TEXT } from './tools/workflow-guide';
+export { analyticsTools } from './tools/analytics';
 export {
   defaultPrompts,
   workflowGuidePrompt,
