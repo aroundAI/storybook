@@ -1,0 +1,64 @@
+{
+  "executorInput": {
+    "templateSlug": "season-generation",
+    "variables": {
+      "roadmap": "* **Creature:** The Dragon\n* **The Mystery:** Something is missing\n* **Moral:** Be kind.",
+      "verified_facts": "## VERIFIED FACTS — assign each to an episode\n\nFACT [f1]: Dragons hoard gold. | Source: Lore, p.3\n\nTotal: 1 facts. Every fact MUST appear in at least one episode's fact_ids array.",
+      "recurring_element": "---\n## RECURRING STORY ELEMENTS — ALL REQUIRED\n\n### Element 1: \"Log entry\" (Placement: end)\n\nThis element MUST appear as the FINAL moment of the episode — nothing follows it.\n\n**What must happen**: Maya records a log entry\n\n---"
+    }
+  },
+  "writes": [],
+  "result": {
+    "success": true,
+    "data": {
+      "premise": "A detective and a dragon solve small mysteries.",
+      "tone": "comedic",
+      "target_audience": "kids 4-8",
+      "characters": [
+        {
+          "name": "Dante",
+          "role": "protagonist",
+          "description": "A patient detective."
+        }
+      ],
+      "locations": [
+        {
+          "name": "The Market",
+          "description": "A busy square.",
+          "setting": "town"
+        }
+      ],
+      "episodes": [
+        {
+          "number": 1,
+          "title": "The Missing Weight",
+          "synopsis": "Something goes missing and it was a misunderstanding.",
+          "beats": [
+            {
+              "label": "Creature",
+              "content": "The Dragon"
+            },
+            {
+              "label": "The Mystery",
+              "content": "Something is missing"
+            }
+          ],
+          "moral": "Be kind.",
+          "signature_line": null,
+          "character_names": [
+            "Dante"
+          ],
+          "location_names": [
+            "The Market"
+          ],
+          "tags": [
+            "comedy"
+          ],
+          "fact_ids": [
+            "f1"
+          ]
+        }
+      ]
+    }
+  }
+}

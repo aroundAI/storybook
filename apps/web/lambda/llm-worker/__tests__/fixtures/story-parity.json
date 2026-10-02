@@ -1,0 +1,559 @@
+{
+  "executorInput": {
+    "episodeId": "55555555-5555-4555-8555-555555555555",
+    "episodeTitle": "The Last Signal",
+    "episodeLogline": "A lonely astronaut hears a signal that carries her own voice.",
+    "genre": "sci-fi",
+    "targetAudience": "adults",
+    "targetDurationSeconds": 300,
+    "contentStyle": "dialogue-heavy",
+    "projectId": "22222222-2222-4222-8222-222222222222",
+    "episodeNumber": 2,
+    "accountId": "11111111-1111-4111-8111-111111111111",
+    "contentType": "series",
+    "charactersContext": "⚠️ CHARACTER IDENTITIES ARE NON-NEGOTIABLE. Use EXACTLY the characters below with EXACTLY the gender, age, and personality described. Do NOT invent attributes, rename, or rewrite any character.\n\nCHARACTER 1 — LOCKED IDENTITY (do NOT change gender, age, or personality):\n  Name: Maya Chen\n  Role: protagonist\n  Description: Commander of the relay mission.\n  Personality: Methodical, lonely, dry humour\n  Identity (immutable): Gender: female, Age: 38\n  Clothing: grey flight suit\n\nCHARACTER 2 — LOCKED IDENTITY (do NOT change gender, age, or personality):\n  Name: Director Williams\n  Role: supporting\n  Description: Mission director back on Earth.",
+    "locationsContext": "**Locations**:\n- **Observation Deck** (spacecraft interior): A glass-walled deck facing Earth.\n  Atmosphere: silent, blue-lit",
+    "seasonContext": "This is Episode 2 of Season 1. Season Premise: Humanity builds its first deep-space relay.\n\n## SEASON CREATIVE DIRECTION (apply to this episode):\nKeep every episode under ten minutes.",
+    "previousEpisodesContext": "**Previous Episodes (for continuity)**:\n- Episode 1: \"Launch Day\"\n  Plot: Maya leaves Earth and settles into the relay station.\n  Key Events: Maya launches; First transmission home\n\n**Continuity Guidelines**:\n- Reference events/characters from previous episodes where natural\n- Maintain character development arcs\n- Build on key events from prior episodes\n- Acknowledge established relationships and dynamics",
+    "visualStyle": "cinematic",
+    "recurringElementsContext": "---\n## RECURRING STORY ELEMENTS — ALL REQUIRED\n\n### Element 1: \"Log entry\" (Placement: end)\n\nThis element MUST appear as the FINAL moment of the episode — nothing follows it.\n\n**What must happen**: Maya records a log entry\n\n---",
+    "threadCandidatesContext": "- PROGRESS: \"The missing memo\"",
+    "ideationThemes": [
+      "isolation",
+      "purpose"
+    ],
+    "ideationHook": "The signal is her own voice from the future.",
+    "visualDirection": "Tight interiors against the vastness outside."
+  },
+  "canonExtractionInput": {
+    "templateSlug": "canon-extraction",
+    "variables": {
+      "story_content": "Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck.",
+      "existing_characters": "- Maya Chen\n- Director Williams",
+      "existing_threads": "- \"The missing memo\" (plot, open): A memo nobody will acknowledge.. Promises: Find the memo"
+    },
+    "context": {
+      "name": "canon-extraction-auto",
+      "accountId": "11111111-1111-4111-8111-111111111111"
+    }
+  },
+  "writes": [
+    {
+      "table": "generation_jobs",
+      "op": "update",
+      "payload": {
+        "status": "processing",
+        "started_at": "2026-10-03T12:00:00.000Z"
+      },
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "reference_type",
+            "episode"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "reference_id",
+            "55555555-5555-4555-8555-555555555555"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "job_type",
+            "story"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "status",
+            "queued"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "episodes",
+      "op": "update",
+      "payload": {
+        "story_data": {
+          "premise": "A lonely astronaut hears a signal that carries her own voice.",
+          "fullStory": "Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. ",
+          "generatedAt": "2026-10-03T12:00:00.000Z",
+          "generatedBy": {
+            "mode": "agentic",
+            "orchestratorSteps": 5,
+            "viralScore": 0.72
+          },
+          "title": "The Last Signal",
+          "targetDuration": 300,
+          "contentStyle": "dialogue-heavy",
+          "genre": "sci-fi",
+          "targetAudience": "adults",
+          "videoStyle": "cinematic",
+          "actBreakdown": {
+            "act1": "Maya hears the signal.",
+            "act2": "Maya decodes it.",
+            "act3": "Maya sends it."
+          },
+          "characters": [
+            {
+              "name": "Maya Chen",
+              "role": "protagonist",
+              "arc": "From routine to purpose."
+            },
+            {
+              "name": "Director Williams",
+              "role": "supporting",
+              "arc": "From control to trust."
+            }
+          ],
+          "themes": [
+            "isolation",
+            "purpose"
+          ],
+          "tone": "contemplative",
+          "estimatedSceneCount": 6,
+          "episodeSummary": "Maya hears, decodes and finally sends the signal herself.",
+          "sentimentScore": 0.6,
+          "keyEvents": [
+            "Maya hears the signal",
+            "Maya sends the warning"
+          ],
+          "viralStructure": {
+            "openingHook": "An alarm from coordinates that do not exist.",
+            "curiosityGap": "Who sent the signal?",
+            "emotionalArc": [
+              "unease",
+              "dread",
+              "awe"
+            ],
+            "setupPayoffPair": {
+              "setup": "A recurring dream",
+              "payoff": "Her own voice"
+            },
+            "loopBeat": "Maya alone at the console, now sending.",
+            "memorableScene": "Maya hears her own voice describe the present."
+          },
+          "viralQuality": {
+            "overallScore": 0.72,
+            "decision": "pass",
+            "whyThisWorks": "A tight curiosity gap.",
+            "whatToImprove": "The ending resolves too quickly.",
+            "dimensionScores": {
+              "hookStrength": 0.8,
+              "curiosityGap": 0.9,
+              "emotionalArc": 0.7,
+              "setupPayoff": 0.6,
+              "dialogueSubtext": 0.7,
+              "loopability": 0.6,
+              "memorableMoment": 0.7
+            },
+            "revisionsApplied": [],
+            "orchestratorSteps": 5,
+            "reelCandidates": []
+          }
+        },
+        "status": "story",
+        "target_duration_seconds": 300,
+        "updated_at": "2026-10-03T12:00:00.000Z"
+      },
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "id",
+            "55555555-5555-4555-8555-555555555555"
+          ]
+        },
+        {
+          "method": "is",
+          "args": [
+            "deleted_at",
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "table": "generation_jobs",
+      "op": "update",
+      "payload": {
+        "status": "completed",
+        "completed_at": "2026-10-03T12:00:00.000Z",
+        "output_data": {
+          "mode": "agentic-stage1",
+          "orchestratorSteps": 5,
+          "viralScore": 0.72
+        }
+      },
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "reference_type",
+            "episode"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "reference_id",
+            "55555555-5555-4555-8555-555555555555"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "job_type",
+            "story"
+          ]
+        },
+        {
+          "method": "in",
+          "args": [
+            "status",
+            [
+              "queued",
+              "processing"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "table": "immutable_events",
+      "op": "delete",
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "established_in",
+            "55555555-5555-4555-8555-555555555555"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "metadata->>auto_generated",
+            "true"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "character_states",
+      "op": "delete",
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "episode_id",
+            "55555555-5555-4555-8555-555555555555"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "trigger_event",
+            "story_generation"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "narrative_threads",
+      "op": "delete",
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "opened_at",
+            "55555555-5555-4555-8555-555555555555"
+          ]
+        },
+        {
+          "method": "eq",
+          "args": [
+            "auto_generated",
+            true
+          ]
+        }
+      ]
+    },
+    {
+      "table": "immutable_events",
+      "op": "insert",
+      "payload": [
+        {
+          "project_id": "22222222-2222-4222-8222-222222222222",
+          "event_type": "world_fact",
+          "event_key": "maya-hears-the-signal-ep2",
+          "established_in": "55555555-5555-4555-8555-555555555555",
+          "season": 1,
+          "episode_number": 2,
+          "description": "Maya hears the signal",
+          "metadata": {
+            "auto_generated": true,
+            "source": "story_generation"
+          },
+          "created_by": "44444444-4444-4444-8444-444444444444"
+        },
+        {
+          "project_id": "22222222-2222-4222-8222-222222222222",
+          "event_type": "world_fact",
+          "event_key": "maya-sends-the-warning-ep2",
+          "established_in": "55555555-5555-4555-8555-555555555555",
+          "season": 1,
+          "episode_number": 2,
+          "description": "Maya sends the warning",
+          "metadata": {
+            "auto_generated": true,
+            "source": "story_generation"
+          },
+          "created_by": "44444444-4444-4444-8444-444444444444"
+        }
+      ],
+      "filters": []
+    },
+    {
+      "table": "character_states",
+      "op": "insert",
+      "payload": [
+        {
+          "character_id": "c1",
+          "episode_id": "55555555-5555-4555-8555-555555555555",
+          "state_type": "goal",
+          "state_value": {
+            "arc": "From routine to purpose.",
+            "role": "protagonist"
+          },
+          "trigger_event": "story_generation"
+        },
+        {
+          "character_id": "c2",
+          "episode_id": "55555555-5555-4555-8555-555555555555",
+          "state_type": "goal",
+          "state_value": {
+            "arc": "From control to trust.",
+            "role": "supporting"
+          },
+          "trigger_event": "story_generation"
+        }
+      ],
+      "filters": []
+    },
+    {
+      "table": "episodes",
+      "op": "update",
+      "payload": {
+        "metadata": {
+          "character_ids": [
+            "c1"
+          ],
+          "location_ids": [
+            "l1"
+          ],
+          "themes": [
+            "isolation",
+            "purpose"
+          ]
+        }
+      },
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "id",
+            "55555555-5555-4555-8555-555555555555"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "narrative_threads",
+      "op": "insert",
+      "payload": {
+        "project_id": "22222222-2222-4222-8222-222222222222",
+        "thread_name": "The signal",
+        "thread_type": "mystery",
+        "opened_at": "55555555-5555-4555-8555-555555555555",
+        "description": "Where the signal comes from.",
+        "promises": [
+          "Reveal the sender"
+        ],
+        "episodes_touched": [
+          "55555555-5555-4555-8555-555555555555"
+        ],
+        "status": "open",
+        "auto_generated": true
+      },
+      "filters": []
+    },
+    {
+      "table": "narrative_threads",
+      "op": "update",
+      "payload": {
+        "status": "progressed",
+        "episodes_touched": [
+          "ep-1",
+          "55555555-5555-4555-8555-555555555555"
+        ],
+        "description": "Williams admits the memo exists.",
+        "version": 2
+      },
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "id",
+            "thread-1"
+          ]
+        }
+      ]
+    },
+    {
+      "table": "episode_summaries",
+      "op": "upsert",
+      "payload": {
+        "episode_id": "55555555-5555-4555-8555-555555555555",
+        "plot_summary": "Maya hears, decodes and finally sends the signal herself.",
+        "key_events": [
+          "Maya hears the signal",
+          "Maya sends the warning"
+        ],
+        "character_changes": [
+          "Maya Chen: bored -> alert"
+        ],
+        "sentiment_score": 0.4,
+        "estimated_tokens": 47,
+        "updated_at": "2026-10-03T12:00:00.000Z"
+      },
+      "options": {
+        "onConflict": "episode_id"
+      },
+      "filters": []
+    },
+    {
+      "table": "world_states",
+      "op": "insert",
+      "payload": {
+        "project_id": "22222222-2222-4222-8222-222222222222",
+        "episode_id": "55555555-5555-4555-8555-555555555555",
+        "location": "The relay station",
+        "time_period": "Month three",
+        "atmosphere": null,
+        "active_conflicts": [],
+        "updated_at": "2026-10-03T12:00:00.000Z"
+      },
+      "filters": []
+    },
+    {
+      "table": "assets",
+      "op": "upsert",
+      "payload": [
+        {
+          "project_id": "22222222-2222-4222-8222-222222222222",
+          "type": "character",
+          "name": "Kai",
+          "description": "A voice on the relay.",
+          "metadata": {
+            "role": "supporting",
+            "personality": "A voice on the relay.",
+            "physicalAttributes": {
+              "rawDescription": "Unseen; a warm baritone."
+            },
+            "autoCreated": true
+          }
+        }
+      ],
+      "options": {
+        "onConflict": "project_id,type,name",
+        "ignoreDuplicates": true
+      },
+      "filters": []
+    },
+    {
+      "table": "assets",
+      "op": "upsert",
+      "payload": [
+        {
+          "project_id": "22222222-2222-4222-8222-222222222222",
+          "type": "location",
+          "name": "The Relay Core",
+          "description": "The humming heart of the station.",
+          "metadata": {
+            "setting": "machine room",
+            "autoCreated": true
+          }
+        }
+      ],
+      "options": {
+        "onConflict": "project_id,type,name",
+        "ignoreDuplicates": true
+      },
+      "filters": []
+    },
+    {
+      "table": "episodes",
+      "op": "update",
+      "payload": {
+        "metadata": {
+          "character_ids": [
+            "c1",
+            "new-0"
+          ],
+          "location_ids": [
+            "l1",
+            "new-0"
+          ]
+        }
+      },
+      "filters": [
+        {
+          "method": "eq",
+          "args": [
+            "id",
+            "55555555-5555-4555-8555-555555555555"
+          ]
+        }
+      ]
+    }
+  ],
+  "result": {
+    "success": true,
+    "data": {
+      "story": {
+        "fullText": "Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. ",
+        "title": "The Last Signal",
+        "actBreakdown": [],
+        "characters": [
+          "Maya Chen",
+          "Director Williams"
+        ],
+        "themes": [],
+        "tone": "dialogue-heavy",
+        "estimatedSceneCount": 6,
+        "episodeSummary": "A tight curiosity gap.",
+        "sentimentScore": 0.72
+      },
+      "episode": {
+        "id": "55555555-5555-4555-8555-555555555555",
+        "status": "story",
+        "version": 3
+      },
+      "metadata": {
+        "provider": "orchestrator",
+        "model": "multi-agent",
+        "costCents": 0,
+        "tokensUsed": 0,
+        "generatedAt": "2026-10-03T12:00:00.000Z",
+        "orchestratorSteps": 5
+      }
+    }
+  }
+}

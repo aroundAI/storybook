@@ -1,0 +1,59 @@
+{
+  "executorInput": {
+    "projectId": "22222222-2222-4222-8222-222222222222",
+    "seasonPremise": "Humanity builds its first deep-space relay.",
+    "episodeCount": 2,
+    "startingNumber": 3,
+    "genre": "sci-fi",
+    "style": "cinematic",
+    "accountId": "11111111-1111-4111-8111-111111111111",
+    "existingCharacters": "- Maya Chen: Commander.\n- Director Williams: Director.",
+    "existingLocations": "- Observation Deck: A glass deck.",
+    "recurringElements": "---\n## RECURRING STORY ELEMENTS — ALL REQUIRED\n\n### Element 1: \"Log entry\" (Placement: end)\n\nThis element MUST appear as the FINAL moment of the episode — nothing follows it.\n\n**What must happen**: Maya records a log entry\n\n---",
+    "verifiedFacts": "## VERIFIED FACTS — assign each to an episode\n\nFACT [f1]: The relay orbits at L2. | Source: Mission brief | Category: orbit\nFACT [f2]: Signals take four seconds to reach Earth.\n\nTotal: 2 facts. Every fact MUST appear in at least one episode's fact_ids array."
+  },
+  "writes": [],
+  "result": {
+    "success": true,
+    "data": {
+      "episodes": [
+        {
+          "number": 3,
+          "title": "The First Light",
+          "premise": "A mysterious signal from deep space awakens humanity.",
+          "mainPlot": "Dr. Sarah Chen discovers a pattern in cosmic background radiation that defies natural explanation and races to decode it.",
+          "characterFocus": [
+            "Maya Chen"
+          ],
+          "arcPosition": "setup",
+          "fact_ids": [
+            "f1"
+          ]
+        },
+        {
+          "number": 4,
+          "title": "Static",
+          "premise": "As the world learns about the signal, factions emerge.",
+          "mainPlot": "The discovery leaks to the press, sparking global chaos while Marcus uncovers evidence that someone has known for decades.",
+          "characterFocus": [
+            "Director Williams"
+          ],
+          "arcPosition": "rising",
+          "fact_ids": [
+            "f2"
+          ]
+        }
+      ],
+      "metadata": {
+        "provider": "orchestrator",
+        "model": "multi-agent",
+        "costCents": 0,
+        "tokensUsed": 0,
+        "generatedAt": "2026-10-03T12:00:00.000Z",
+        "orchestratorSteps": 4,
+        "arcScore": 0.81,
+        "arcSummary": "Stakes escalate cleanly."
+      }
+    }
+  }
+}
