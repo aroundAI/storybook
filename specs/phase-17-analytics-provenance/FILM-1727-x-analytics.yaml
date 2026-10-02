@@ -42,7 +42,7 @@ acceptance_criteria:
     evidence: "packages/clickhouse/src/lib/data-provenance.ts:454 (posts lookup, metered) and :472 (Enterprise, declared, nothing calls it); packages/features/content-analytics/src/providers/twitter/x-analytics.ts; dark in production: packages/features/content-analytics/src/lib/x-read-budget.ts (`X_ANALYTICS_ENABLED`) (#522)"
   - text: "The two X quartile vocabularies are never mixed"
     met: true
-    evidence: "packages/features/content-analytics/__tests__/platform-field-names.test.ts:180 binds the provider's requests to the x/post-lookup and x/post-metrics blocks; `playback25` lives only in x/media-analytics, and adding it to the provider's request turned the test red (2026-10-01) (#522)"
+    evidence: "packages/features/content-analytics/__tests__/platform-field-names.test.ts:181 binds the provider's requests to the x/post-lookup and x/post-metrics blocks; `playback25` lives only in x/media-analytics, and adding it to the provider's request turned the test red (2026-10-01) (#522)"
   - text: "X's 30-day wall is expressed as a DataWindow anchored on publish date"
     met: true
     evidence: "packages/clickhouse/src/lib/data-provenance.ts:462; the sync stops a day inside it, packages/features/content-analytics/src/lib/x-read-budget.ts:37, guarded by X1 in tooling/mutation-guards/film-1727.json (#522)"

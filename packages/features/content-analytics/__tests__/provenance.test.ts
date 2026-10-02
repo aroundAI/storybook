@@ -294,19 +294,22 @@ describe('the strip', () => {
   });
 
   it('names a connection outside the analytics platforms as unsupported rather than dropping it', () => {
-    const x = coverageStrip(
+    // Every connectable platform has analytics since FILM-1727 and FILM-717;
+    // the next one added to publishing without analytics lands here.
+    const next = coverageStrip(
       viewOf(
         coverageResult({
           rows: [],
-          channels: [channelRef('twitter', { name: 'Seed Studio' })],
+          channels: [channelRef('snapchat', { name: 'Seed Studio' })],
         }),
       ),
       TAB_FAMILIES['deep-dive'],
-    ).items.find(({ platform }) => platform === 'twitter');
+    ).items.find(({ platform }) => platform === 'snapchat');
 
-    expect(x).toMatchObject({
+    expect(next).toMatchObject({
       kind: 'unsupported_platform',
-      sentence: 'X (Seed Studio): connected, but analytics doesn’t support X.',
+      sentence:
+        'snapchat (Seed Studio): connected, but analytics doesn’t support snapchat.',
     });
   });
 
