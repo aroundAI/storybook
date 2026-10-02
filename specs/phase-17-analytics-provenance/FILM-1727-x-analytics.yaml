@@ -3,7 +3,7 @@ title: "X Analytics"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: PARTIAL
+status: DEFERRED
 effort: L
 dependencies:
   - spec_id: "FILM-1711"
@@ -27,6 +27,10 @@ summary: >
   and dark, and records that the decisive unknown is the undocumented
   historical window on /2/media/analytics, not the price — which
   FILM-1725 Check A must settle before the Enterprise tier can be scoped.
+  Retired for now by the owner, 2026-10-02: go-to-market platforms are
+  YouTube, Instagram and Facebook; X is hidden behind X_ENABLED
+  (packages/features/publishing/src/lib/x-switch.ts:13), code kept; resume by
+  switching it on and running FILM-1725's X checks.
 acceptance_criteria:
   - text: "The platform vocabulary (x vs twitter) is settled and consistent before the migration runs"
     met: true
@@ -73,6 +77,25 @@ remaining:
     closed_by: "unassigned"
 open_questions: []
 notes: |
+  ## Deferred 2026-10-02 — X is hidden, its code kept (#TBD-hide-x)
+
+  Retired for now by the owner, 2026-10-02: go-to-market platforms are
+  YouTube, Instagram and Facebook; X is hidden behind X_ENABLED
+  (packages/features/publishing/src/lib/x-switch.ts:13), code kept; resume
+  by switching it on and running FILM-1725's X checks.
+
+  Hidden, not removed as FILM-717 removed a platform. While the switch is
+  off no surface offers X (Platform Connections, the connect route, the
+  publish screen, new-project targets, the analytics filter, strip, chips
+  and counts), and a kept X connection or publish is never shown,
+  refreshed, synced or published to (isOfferedPlatform,
+  packages/features/publishing/src/lib/platforms.ts:67;
+  SHOWN_ANALYTICS_PLATFORMS,
+  packages/features/content-analytics/src/lib/shown-platforms.ts:16). No
+  row is deleted. Guards XH1-XH18 (tooling/mutation-guards/x-hidden.json)
+  prove each gate, and the criteria below record the work as it stood when
+  X was hidden: they hold again once it is switched on.
+
   ## Decisions recorded on 2026-10-01
 
   - **Built against the local vendor sandbox, shipped dark (owner).** X is

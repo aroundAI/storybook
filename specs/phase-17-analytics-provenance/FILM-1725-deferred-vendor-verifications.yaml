@@ -21,7 +21,7 @@ summary: >
 acceptance_criteria:
   - text: "Check A run, and its result recorded in FILM-1721's ledger with a date"
     met: false
-    reason: "not run — X has no sandbox and closed Free/Basic/Pro to new signups on 2026-02-06; needs a paid pay-per-use token"
+    reason: "not run — X has no sandbox and closed Free/Basic/Pro to new signups on 2026-02-06; needs a paid pay-per-use token. X retired for now by the owner, 2026-10-02: go-to-market platforms are YouTube, Instagram and Facebook; X is hidden behind X_ENABLED (packages/features/publishing/src/lib/x-switch.ts:13), code kept; this check runs when X is switched back on (#TBD-hide-x)"
   - text: "If Enterprise-only is confirmed, the /2/media/analytics field names are removed from the reference's x/enterprise-analytics block or marked unreachable, so the guard stops treating them as requestable"
     met: false
     reason: "blocked on Check A"
@@ -39,7 +39,7 @@ acceptance_criteria:
     reason: "not run — no Meta app credentials or connected Page outside production. Amended 2026-10-01 by FILM-1728 (#493): the pin moved to v26.0, so the run is owed at that deploy; if it never ran for v23.0, one run against v26.0 closes both"
   - text: "Check E run once media.write is held, and the result recorded there too"
     met: false
-    reason: "not run — no X token; X has no sandbox (see Check A)"
+    reason: "not run — no X token; X has no sandbox (see Check A). X retired for now by the owner, 2026-10-02: go-to-market platforms are YouTube, Instagram and Facebook; X is hidden behind X_ENABLED (packages/features/publishing/src/lib/x-switch.ts:13), code kept; this check runs when X is switched back on (#TBD-hide-x)"
   - text: "Check F run per vendor before FILM-1711's scopes reach production, and the result recorded in docs/vendor-review-status.md"
     met: false
     reason: "not run — needs each vendor's app credentials and a test account; local and CI have neither. Owner decision 2026-09-22: FILM-1711's PR merges as-is, and this check gates the deploy"
@@ -57,7 +57,7 @@ acceptance_criteria:
     reason: "not run — needs a connected Page with read_insights that earns from ad breaks (filed 2026-10-01 by FILM-1726). Until it runs, Facebook earnings are read and never stored"
   - text: "Check I run: one live connect and disconnect on X and on LinkedIn, with X's revoke answers and the refresh afterwards recorded"
     met: false
-    reason: "not run — no X app credentials or test account (FILM-1729); KB-25/KB-86 proved the requests against a local stand-in only. LinkedIn's half no longer applies: LinkedIn was removed on 2026-10-02 (FILM-717, #541)"
+    reason: "not run — no X app credentials or test account (FILM-1729); KB-25/KB-86 proved the requests against a local stand-in only. LinkedIn's half no longer applies: LinkedIn was removed on 2026-10-02 (FILM-717, #541). X retired for now by the owner, 2026-10-02: go-to-market platforms are YouTube, Instagram and Facebook; X is hidden behind X_ENABLED (packages/features/publishing/src/lib/x-switch.ts:13), code kept; this check runs when X is switched back on (#TBD-hide-x)"
   - text: "docs/platform-capability-reference.md open-questions table no longer lists either check, and every row it does list still names an owner"
     met: false
     reason: "not yet — depends on Checks A and B closing"
@@ -368,6 +368,13 @@ notes: |
   None of those needs a vendor answer. They need a decision and an afternoon.
 
   ## 5. When to bring this back
+
+  **X is hidden, 2026-10-02 (#TBD-hide-x).** Retired for now by the owner:
+  go-to-market platforms are YouTube, Instagram and Facebook; X is hidden
+  behind X_ENABLED (packages/features/publishing/src/lib/x-switch.ts:13),
+  code kept. Checks A, E and I's X half are the live checks that bring it
+  back: switch X_ENABLED on, then run them before X is offered to anyone.
+  Until then none of them is owed, whatever the triggers below say.
 
   Un-defer Check A on any of:
 

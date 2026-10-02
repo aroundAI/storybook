@@ -46,7 +46,7 @@ acceptance_criteria:
     reason: "unverified — needs a component or E2E test; `togglePlatform` (`apps/web/app/home/[account]/studio/projects/new/_components/create-film-project-form.tsx:270`) is untested"
   - text: "Required fields are enforced"
     met: true
-    evidence: "packages/features/film-studio-schemas/__tests__/project.test.ts:108; name rule at `apps/web/app/home/[account]/studio/projects/new/_lib/schema.ts:10`"
+    evidence: "packages/features/film-studio-schemas/__tests__/project.test.ts:108; name rule at `apps/web/app/home/[account]/studio/projects/new/_lib/schema.ts:11`"
   - text: "Form submission creates project with Film Studio settings"
     met: false
     reason: "unverified — needs an E2E of a successful create; `apps/e2e/tests/refusals/refusals.po.ts:103` drives only the duplicate-name refusal"
