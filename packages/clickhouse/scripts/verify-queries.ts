@@ -5887,7 +5887,6 @@ async function noRowsViewsSteps() {
         shares: 0,
         saves: null,
         watch_time_seconds: 0,
-        revenue_cents: 0,
         subscribers_gained: 0,
         subscribers_lost: null,
         metric_source: 'analytics_api',
