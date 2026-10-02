@@ -5,6 +5,7 @@ import {
   FlaskConical,
   Globe,
   LayoutDashboard,
+  Plug,
   Settings,
   Share2,
   Split,
@@ -90,6 +91,11 @@ const getRoutes = (account: string) => [
         label: 'common:routes.publicProfile',
         path: `/home/${account}/settings/public-profile`,
         Icon: <Globe className={iconClasses} />,
+      },
+      {
+        label: 'common:routes.connectedApps',
+        path: `/home/${account}/settings/connected-apps`,
+        Icon: <Plug className={iconClasses} />,
       },
       featureFlagsConfig.enableTeamAccountBilling
         ? {

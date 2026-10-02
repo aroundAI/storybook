@@ -43,7 +43,10 @@ export async function checkRateLimits(
   const limits = input.limits ?? DEFAULT_RATE_LIMITS;
   const now = input.now ?? Date.now();
   const windowStart = Math.floor(now / WINDOW_MS) * WINDOW_MS;
-  const retryAfterS = Math.max(1, Math.ceil((windowStart + WINDOW_MS - now) / 1000));
+  const retryAfterS = Math.max(
+    1,
+    Math.ceil((windowStart + WINDOW_MS - now) / 1000),
+  );
   const ttl = 2 * (WINDOW_MS / 1000);
 
   const counters: Array<{ limit: RateLimitName; key: string; max: number }> = [

@@ -4,21 +4,14 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { Database } from '@kit/supabase/database';
 
-import { McpScopeSchema, type McpScope } from '../scopes';
+import type { McpConnectionSummary } from '../connections';
+import { type McpScope, McpScopeSchema } from '../scopes';
 import { generatePersonalAccessToken, hashToken } from './token';
 
 export type McpConnectionRow =
   Database['public']['Tables']['mcp_connections']['Row'];
 
-export interface McpConnectionSummary {
-  id: string;
-  kind: 'oauth' | 'pat';
-  name: string;
-  scopes: McpScope[];
-  createdAt: string;
-  lastUsedAt: string | null;
-  revokedAt: string | null;
-}
+export type { McpConnectionSummary };
 
 /**
  * Mints a personal access token for the signed-in user on one team. The
@@ -32,15 +25,12 @@ export async function createPersonalAccessToken(
 ) {
   const token = generatePersonalAccessToken();
 
-  const { data, error } = await client.rpc(
-    'create_mcp_personal_access_token',
-    {
-      p_account_id: input.accountId,
-      p_name: input.name,
-      p_scopes: input.scopes,
-      p_token_hash: hashToken(token),
-    },
-  );
+  const { data, error } = await client.rpc('create_mcp_personal_access_token', {
+    p_account_id: input.accountId,
+    p_name: input.name,
+    p_scopes: input.scopes,
+    p_token_hash: hashToken(token),
+  });
 
   if (error) {
     return { ok: false as const, error };

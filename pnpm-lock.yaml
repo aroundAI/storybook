@@ -379,6 +379,9 @@ importers:
       '@kit/storage':
         specifier: workspace:*
         version: link:../../packages/features/storage
+      '@kit/studio-mcp':
+        specifier: workspace:*
+        version: link:../../packages/features/studio-mcp
       '@kit/supabase':
         specifier: workspace:*
         version: link:../../packages/supabase

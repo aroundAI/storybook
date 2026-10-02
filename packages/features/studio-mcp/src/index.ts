@@ -19,6 +19,7 @@ export {
   type McpScope,
 } from './scopes';
 export type { McpPrincipal } from './principal';
+export type { McpConnectionSummary } from './connections';
 export {
   defineTool,
   isWriteTool,

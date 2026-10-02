@@ -1,8 +1,7 @@
 import 'server-only';
 
-import { randomUUID } from 'node:crypto';
-
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { randomUUID } from 'node:crypto';
 
 import { createCacheClient } from '@kit/cache';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -61,7 +60,10 @@ export function createMcpRouteHandlers(options: McpRouteOptions = {}) {
   async function POST(request: Request) {
     const requestId = randomUUID();
 
-    const auth = await withMcpAuth(request, (options.auth ?? defaultAuthDeps)());
+    const auth = await withMcpAuth(
+      request,
+      (options.auth ?? defaultAuthDeps)(),
+    );
 
     if (!auth.ok) {
       const body = auth.error.toBody();
@@ -167,7 +169,10 @@ export function createMcpRouteHandlers(options: McpRouteOptions = {}) {
         }),
         {
           status: 405,
-          headers: { 'Content-Type': 'application/json', Allow: 'POST, OPTIONS' },
+          headers: {
+            'Content-Type': 'application/json',
+            Allow: 'POST, OPTIONS',
+          },
         },
       ),
       request,

@@ -16,7 +16,11 @@ export const whoamiTool = defineTool({
     'The user and team this connection acts as, the scopes it holds, and the generation mode (always external over MCP).',
   inputSchema: {},
   scope: null,
-  annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  annotations: {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+  },
   async handler(_input, context) {
     const { principal, accountId } = context;
 

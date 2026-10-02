@@ -137,5 +137,9 @@ function refused(
   message: string,
   details?: Record<string, unknown>,
 ): McpAuthResult {
-  return { ok: false, status, error: new McpToolError(code, message, { details }) };
+  return {
+    ok: false,
+    status,
+    error: new McpToolError(code, message, { details }),
+  };
 }

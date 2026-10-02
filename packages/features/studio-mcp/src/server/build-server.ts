@@ -34,7 +34,7 @@ const ACCOUNT_ARG = z
   .max(100)
   .optional()
   .describe(
-    "Team slug. Optional; when given it must be the team this connection is bound to (whoami lists it).",
+    'Team slug. Optional; when given it must be the team this connection is bound to (whoami lists it).',
   );
 
 /**
@@ -61,7 +61,13 @@ export function buildMcpServer(
         annotations: { title: tool.title, ...tool.annotations },
       },
       (args) =>
-        runTool(tool, args as Record<string, unknown>, principal, runtime, requestId),
+        runTool(
+          tool,
+          args as Record<string, unknown>,
+          principal,
+          runtime,
+          requestId,
+        ),
     );
   }
 

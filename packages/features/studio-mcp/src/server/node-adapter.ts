@@ -65,26 +65,23 @@ export function collectNodeResponse(): CollectedResponse {
   const setHeaders = (incoming?: Record<string, unknown>) => {
     for (const [key, value] of Object.entries(incoming ?? {})) {
       if (value === undefined) continue;
-      headers.set(
-        key,
-        Array.isArray(value) ? value.join(', ') : String(value),
-      );
+      headers.set(key, Array.isArray(value) ? value.join(', ') : String(value));
     }
   };
 
+  // Object.assign would copy a getter's value once; these must stay live.
+  Object.defineProperties(emitter, {
+    statusCode: {
+      get: () => statusCode,
+      set: (code: number) => {
+        statusCode = code;
+      },
+    },
+    headersSent: { get: () => headersSent },
+    writableEnded: { get: () => ended },
+  });
+
   const res = Object.assign(emitter, {
-    get statusCode() {
-      return statusCode;
-    },
-    set statusCode(code: number) {
-      statusCode = code;
-    },
-    get headersSent() {
-      return headersSent;
-    },
-    get writableEnded() {
-      return ended;
-    },
     writeHead(code: number, maybeHeaders?: unknown, more?: unknown) {
       statusCode = code;
       const given = typeof maybeHeaders === 'string' ? more : maybeHeaders;
@@ -124,7 +121,8 @@ export function collectNodeResponse(): CollectedResponse {
       headersSent = true;
 
       const body = Buffer.concat(chunks);
-      const bodyless = statusCode === 204 || statusCode === 304 || body.length === 0;
+      const bodyless =
+        statusCode === 204 || statusCode === 304 || body.length === 0;
 
       resolve(
         new Response(bodyless ? null : new Uint8Array(body), {

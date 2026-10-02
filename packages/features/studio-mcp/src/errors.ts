@@ -69,7 +69,9 @@ export class McpToolError extends Error {
 
     return {
       isError: true as const,
-      content: [{ type: 'text' as const, text: `${body.code}: ${body.message}` }],
+      content: [
+        { type: 'text' as const, text: `${body.code}: ${body.message}` },
+      ],
       structuredContent: body as unknown as Record<string, unknown>,
     };
   }
