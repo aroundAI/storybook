@@ -110,6 +110,15 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/platform-filter-surfaces.test.tsx",
       "pattern": "says the strip’s own sentence when the one selected platform has no data"
+    },
+    {
+      "name": "FILM-1709 a dimmed headline card's reasons run a screen tall again",
+      "kind": "e2e",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "            className=\"mb-2 line-clamp-3 text-xs text-muted-foreground\"",
+      "replace": "            className=\"mb-2 text-xs text-muted-foreground\"",
+      "spec": "tests/analytics/six-tab-adoption.spec.ts",
+      "grep": "the switcher scopes the tab"
     }
   ]
 }
