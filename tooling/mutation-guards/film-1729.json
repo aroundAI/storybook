@@ -60,6 +60,28 @@
       "cwd": "packages/features/publishing",
       "test": "__tests__/mp4-facts.test.ts",
       "pattern": "rotated"
+    },
+    {
+      "name": "XS7 Reconnecting X after a disconnect leaves the row disconnected",
+      "kind": "e2e",
+      "needs": "sandbox",
+      "file": "apps/web/app/api/platforms/callback/twitter/route.ts",
+      "find": "      is_active: true,\n      updated_at: new Date().toISOString(),\n",
+      "replace": "      updated_at: new Date().toISOString(),\n",
+      "spec": "tests/platform-connections/sandbox-x-upload-scope.spec.ts",
+      "grep": "refused with the reason on screen",
+      "env": { "SANDBOX_E2E": "1" }
+    },
+    {
+      "name": "XS8 The X card stops naming video upload among the permissions it requests",
+      "kind": "e2e",
+      "needs": "sandbox",
+      "file": "packages/features/publishing/src/components/platform-connections.tsx",
+      "find": "      'Read and write posts',\n      'Upload videos',\n",
+      "replace": "      'Read and write posts',\n",
+      "spec": "tests/platform-connections/sandbox-x-upload-scope.spec.ts",
+      "grep": "refused with the reason on screen",
+      "env": { "SANDBOX_E2E": "1" }
     }
   ]
 }
