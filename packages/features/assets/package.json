@@ -58,7 +58,6 @@
   },
   "dependencies": {
     "@kit/cache": "workspace:*",
-    "@kit/llm": "workspace:*",
     "@kit/next": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/storage": "workspace:*",

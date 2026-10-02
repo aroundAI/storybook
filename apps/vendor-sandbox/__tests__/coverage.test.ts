@@ -54,15 +54,11 @@ describe('every prompt has a generator', () => {
 
 /**
  * Every agent the app runs must be one the sandbox can drive. The names are
- * read from the `runAgent` call sites, not restated. Two have no caller at
- * all and are listed with the evidence.
+ * read from the `runAgent` call sites, not restated. An agent with no caller
+ * is listed here with the evidence; the list is empty since FILM-1902 deleted
+ * the two that had none (content-orchestrator, story-generator).
  */
-const UNREACHABLE_AGENTS: Record<string, string> = {
-  'content-orchestrator':
-    'runContentOrchestrator (packages/features/episodes/src/agent/orchestrator.ts) has no caller',
-  'story-generator':
-    'runAgentStoryGeneration (packages/features/episodes/src/server/agent-story-generation.ts) has no caller',
-};
+const UNREACHABLE_AGENTS: Record<string, string> = {};
 
 function sources(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -86,7 +82,7 @@ describe('every agent has a script', () => {
   );
 
   it('finds the runAgent call sites', () => {
-    expect(agents.length).toBeGreaterThanOrEqual(9);
+    expect(agents.length).toBeGreaterThanOrEqual(7);
   });
 
   it('names the agents with neither a script nor a reason', () => {

@@ -1269,9 +1269,6 @@ importers:
       '@kit/cache':
         specifier: workspace:*
         version: link:../../cache
-      '@kit/llm':
-        specifier: workspace:*
-        version: link:../../llm
       '@kit/next':
         specifier: workspace:*
         version: link:../../next
@@ -1357,9 +1354,6 @@ importers:
       '@kit/assets':
         specifier: workspace:*
         version: link:../assets
-      '@kit/llm':
-        specifier: workspace:*
-        version: link:../../llm
       '@kit/next':
         specifier: workspace:*
         version: link:../../next
@@ -1660,9 +1654,6 @@ importers:
       '@kit/eslint-config':
         specifier: workspace:*
         version: link:../../../tooling/eslint
-      '@kit/llm':
-        specifier: workspace:*
-        version: link:../../llm
       '@kit/next':
         specifier: workspace:*
         version: link:../../next

@@ -67,8 +67,6 @@ const KNOWN: Record<string, [number, string]> = {
     [1, LAST_USED],
   'packages/billing/gateway/src/server/services/billing-event-handler/billing-event-handler.service.ts | orders | update':
     [2, ADMIN],
-  'packages/features/audio-generation/src/lib/audio-embedding.ts | audio_assets | update':
-    [1, BOOKKEEPING],
   'packages/features/audio-generation/src/server/audio-asset-actions.ts | audio_assets | update':
     [1, BOOKKEEPING],
   'packages/features/audio-generation/src/server/audio-cue-actions.ts | audio_cues | update':
@@ -100,10 +98,6 @@ const KNOWN: Record<string, [number, string]> = {
   'packages/features/generation/src/jobs.ts | generation_jobs | update': [
     3,
     ADMIN,
-  ],
-  'packages/features/episodes/src/agent/orchestrator.ts | episodes | update': [
-    2,
-    DEAD,
   ],
   'packages/features/episodes/src/agent/story-orchestrator.ts | episodes | update':
     [1, ADMIN],

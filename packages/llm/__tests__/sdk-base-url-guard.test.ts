@@ -117,7 +117,6 @@ describe('LLM SDKs never choose their own host (FILM-1805)', () => {
         'packages/llm/src/providers/openai.ts OpenAI',
         'packages/llm/src/providers/anthropic.ts Anthropic',
         'packages/llm/src/providers/gemini.ts GoogleGenAI',
-        'packages/llm/src/transcription.ts OpenAI',
       ]),
     );
   });
