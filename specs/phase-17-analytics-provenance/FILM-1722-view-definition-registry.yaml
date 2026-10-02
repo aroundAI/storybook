@@ -3,7 +3,7 @@ title: "View Definition Registry"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: PARTIAL
+status: DONE
 audited: "2026-09-30"
 effort: M
 dependencies:
@@ -16,8 +16,8 @@ summary: >
   (packages/clickhouse/src/lib/view-definitions.ts, exported from @kit/clickhouse)
   recording what `views` meant on a given platform on a given date, so that no
   comparison spanning a definition change is computed silently. The registry
-  itself shipped; adoption by the surfaces that compute comparisons has not —
-  see remaining.
+  itself shipped, and with FILM-1732 (#549) every rate over views records
+  which definitions it divided by.
 acceptance_criteria:
   - text: "Every platform's views has a recorded definition with an effective date"
     met: true
@@ -47,20 +47,17 @@ acceptance_criteria:
     met: true
     evidence: "FILM-1707 (#528): packages/features/content-analytics/src/lib/view-definition-marks.ts calls viewDefinitionChangesBetween for the platforms each chart plots; every mounted views-over-time chart draws the mark and says what changed — Overview's Performance Over Time, the Language trend, Deep Dive's median, back-catalog, rolling and both traffic cards (FILM-1707 §9). Suppressing the comparisons that span it stays FILM-1715/FILM-1719's"
   - text: "No rate is computed without recording which denominator definition it used"
-    met: false
-    reason: "All but one path. FILM-1732 (#549) records every engagement rate, RPM and revenue per view with the views definitions over its window and the changes it crosses, shown on every card, and its class scan fails a division by views outside lib/measures.ts, in code, in SQL strings or through a dividing helper. The genome stage rates from #545 (share rate, comment rate, subscriber conversion, average view duration, SQL in queries-advanced.ts) still divide by views with no record; #548 records them (genomeViewsDenominator over viewsDenominatorFor), and the scan lists them as #548's until it lands. Cohort growth and cohort medians stay FILM-1715's own criterion"
+    met: true
+    evidence: "FILM-1732 (#549): every engagement rate, RPM and revenue per view returns a record of the views definitions over its window and the changes it crosses, shown beside the figure on every card; the genome stage rates (#545, #548) and the Signal Surface's stage rates carry recordCohortViewsDenominator's record of the series genomeViewsDenominator chose. packages/clickhouse/__tests__/rate-over-views-recorded.test.ts fails a division by views outside lib/measures.ts, in code, in SQL strings, through a dividing helper or over an interpolated divisor, each form seen red. Cohort growth and cohort medians stay FILM-1715's own criterion"
   - text: "Instagram's aggregates (total_views_count, total_like_count, total_comments_count) are requested and stored only once defined here, never as views"
     met: true
     evidence: "#492. Defined in INSTAGRAM_AGGREGATES (packages/clickhouse/src/lib/view-definitions.ts:966), and the provider's request takes its field list from that table, never by name (packages/features/content-analytics/src/providers/instagram/instagram-insights.ts:115, `${INSTAGRAM_AGGREGATE_FIELDS}`). Stored in all_surface_views / _likes / _comments (ClickHouse migration 019): lifetime in video_snapshots, the day's increase in video_metrics, null when not measured; AllSurfaceColumn is disjoint from ViewsColumn, so no views denominator can read one. Tests, each seen red first: packages/clickhouse/__tests__/view-definitions.test.ts:725, packages/features/content-analytics/__tests__/provider-result-fields.test.ts:150, __tests__/ingest.test.ts:620, apps/vendor-sandbox/__tests__/meta-fidelity.test.ts:264 (the sandbox serves the three); `pnpm --filter @kit/clickhouse verify` against ClickHouse 24.8, 118 passed, and red (117/1, `got 10400 and 8000`) with a bare argMax; guards VD6–VD9 in tooling/mutation-guards/film-1722.json, all RED"
-remaining:
-  - criterion: "No rate is computed without recording which denominator definition it used"
-    reason: "The genome stage rates (#545) are the one path without a record; #548 adds it. FILM-1732 (#549) covers every other rate over views"
-    closed_by: "#548"
+remaining: []
 open_questions: []
 notes: |
-  Partly shipped. The registry is done, and its adoption is done with FILM-1732
-  (#549) for every rate over views except the genome stage rates, which #548
-  records. The registry is
+  Shipped. The registry is done, and its adoption is done with FILM-1732
+  (#549) for every rate over views, the genome stage rates included. The
+  registry is
   packages/clickhouse/src/lib/view-definitions.ts, exported from the client-safe
   @kit/clickhouse barrel. It is bound to docs/platform-capability-reference.md
   by packages/features/content-analytics/__tests__/view-definition-sources.test.ts:
