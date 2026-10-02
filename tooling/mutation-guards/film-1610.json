@@ -136,8 +136,8 @@
     {
       "name": "Pinned totals reordered",
       "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
-      "find": "  const totals = {\n    views: 0,\n    likes: 0,",
-      "replace": "  const totals = {\n    likes: 0,\n    views: 0,",
+      "find": "  const totals: ExperimentSnapshot['totals'] = {\n    views: 0,\n    likes: 0,",
+      "replace": "  const totals: ExperimentSnapshot['totals'] = {\n    likes: 0,\n    views: 0,",
       "kind": "unit",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-snapshot.test.ts"
