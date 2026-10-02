@@ -71,7 +71,8 @@ describe('the selection, at the action boundary', () => {
       'tiktok',
     ]);
     expect(PlatformSelectionSchema.safeParse([]).success).toBe(false);
-    // Not an analytics platform: never sent to a ClickHouse query.
+    // A kept row's platform (FILM-717), not an analytics platform: never
+    // sent to a ClickHouse query.
     expect(PlatformSelectionSchema.safeParse(['linkedin']).success).toBe(false);
   });
 

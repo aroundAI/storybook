@@ -827,7 +827,6 @@ platform requires the disclosure) are quoted in the FILM-1731 spec's notes.
 | TikTok | `POST /v2/post/publish/video/init/` | `post_info.is_aigc: true`. "Set to true if the video is AI generated content"; not required | [Direct Post reference](https://developers.tiktok.com/doc/content-posting-api-reference-direct-post) — read as an Internet Archive capture of 2026-08-24; TikTok's hosts refused this network |
 | X | `POST /2/tweets` | `made_with_ai: true`. "Disclose that the tweet contains AI-generated media"; not required | [Create Post](https://docs.x.com/x-api/posts/create-post) |
 | Facebook | `POST /{page-id}/video_reels`, `/{page-id}/videos` | **none.** Searched for `is_ai_generated`, "AI info", `ai_generated`, synthetic; the positive control (`file_url`, `content_category`) was found. The publish screen says so beside the option | [Page Videos](https://developers.facebook.com/docs/graph-api/reference/page/videos/) |
-| LinkedIn | `POST /rest/posts`, Videos API | **none** found in the Posts or Videos API | [Post schema](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/post-api-schema?view=li-lms-2026-09) |
 
 Where each is sent: the providers (`InstagramProvider`, `YouTubeProvider`,
 `TikTokProvider`, `TwitterProvider`) for publish-now, retry and the in-app

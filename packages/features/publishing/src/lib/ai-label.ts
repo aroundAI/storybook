@@ -9,8 +9,7 @@ import { PLATFORMS, PLATFORM_NAMES, type Platform } from './platforms';
  * - YouTube: `status.containsSyntheticMedia` on videos.insert;
  * - TikTok: `post_info.is_aigc` on POST /v2/post/publish/video/init/;
  * - X: `made_with_ai` on POST /2/tweets;
- * - Facebook: none on the Page video or Reels calls;
- * - LinkedIn: none on the Posts or Videos API.
+ * - Facebook: none on the Page video or Reels calls.
  *
  * Pure, so the publish screen, the providers and the worker lambdas read
  * the same map.
@@ -21,7 +20,6 @@ export const AI_LABEL_FIELD: Record<Platform, string | null> = {
   tiktok: 'post_info.is_aigc',
   twitter: 'made_with_ai',
   facebook: null,
-  linkedin: null,
 };
 
 /** The platforms whose publish API has no AI-label field. */

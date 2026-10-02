@@ -842,8 +842,8 @@ describe('unclaimedPlatforms', () => {
   });
 
   it('reports a platform it has never heard of', () => {
-    // LinkedIn is a publish platform with no analytics; Facebook (FILM-1720)
-    // and X (FILM-1727) joined AnalyticsPlatform.
+    // LinkedIn survives only in old rows (retired by FILM-717) and never had
+    // analytics; Facebook (FILM-1720) and X (FILM-1727) joined AnalyticsPlatform.
     expect(unclaimedPlatforms('engagement', ['linkedin'])).toEqual([
       'linkedin',
     ]);

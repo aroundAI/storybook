@@ -12,11 +12,8 @@ import {
  * platforms' display names — never a hand-typed list.
  */
 describe('the AI-label map', () => {
-  it('has no field for Facebook Pages or LinkedIn, and one for every other platform', () => {
-    expect([...PLATFORMS_WITHOUT_AI_LABEL].sort()).toEqual([
-      'facebook',
-      'linkedin',
-    ]);
+  it('has no field for Facebook Pages, and one for every other platform', () => {
+    expect([...PLATFORMS_WITHOUT_AI_LABEL]).toEqual(['facebook']);
     expect(AI_LABEL_FIELD.instagram).toBe('is_ai_generated');
     expect(AI_LABEL_FIELD.youtube).toBe('status.containsSyntheticMedia');
     expect(AI_LABEL_FIELD.tiktok).toBe('post_info.is_aigc');
@@ -32,8 +29,8 @@ describe('aiLabelUnsupportedNote', () => {
   });
 
   it('names each unsupported platform once, however many channels it has', () => {
-    expect(aiLabelUnsupportedNote(['facebook', 'linkedin', 'facebook'])).toBe(
-      "Facebook and LinkedIn can't take the AI label: their publishing API has no field for it, so the video goes out there without one.",
+    expect(aiLabelUnsupportedNote(['facebook', 'youtube', 'facebook'])).toBe(
+      "Facebook can't take the AI label: its publishing API has no field for it, so the video goes out there without one.",
     );
   });
 

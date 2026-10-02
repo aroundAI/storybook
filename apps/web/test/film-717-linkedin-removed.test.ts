@@ -71,6 +71,11 @@ const KEPT = new Set([
   'apps/web/lambda/publish-worker/__tests__/removed-platform.test.ts',
   'apps/e2e/tests/platform-connections/linkedin-removed.spec.ts',
   'apps/e2e/tests/analytics/provenance-surfaces.spec.ts',
+  // A kept row's platform is refused before any analytics read or dim row.
+  'packages/clickhouse/__tests__/data-provenance.test.ts',
+  'packages/clickhouse/scripts/verify-queries.ts',
+  'packages/features/content-analytics/__tests__/dim-sync.test.ts',
+  'packages/features/content-analytics/__tests__/platform-filter-surfaces.test.tsx',
   // This file and the guards that prove the rules can fail.
   'apps/web/test/film-717-linkedin-removed.test.ts',
   'tooling/mutation-guards/film-717.json',
