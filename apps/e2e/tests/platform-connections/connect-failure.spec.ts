@@ -23,8 +23,9 @@ const PLATFORMS = [
   { id: 'tiktok', label: 'TikTok' },
   { id: 'meta', label: 'Meta (Facebook and Instagram)' },
   { id: 'twitter', label: 'X (Twitter)' },
-  { id: 'linkedin', label: 'LinkedIn' },
 ] as const;
+// LinkedIn is retired (FILM-717): its callback answers every request with the
+// retirement, which `linkedin-retired.spec.ts` drives.
 
 const OUT = process.env.EVIDENCE_DIR ?? 'evidence';
 
@@ -235,12 +236,12 @@ test.describe('A failed connect — the branches that share one helper', () => {
     const user = await seedUser('kb19-solo');
 
     await signInAs(page, user);
-    await page.goto(callback('linkedin', { error: 'access_denied' }));
+    await page.goto(callback('twitter', { error: 'access_denied' }));
 
     await expect(failure(page)).toBeVisible();
     expect(new URL(page.url()).pathname).toBe('/home/teams/create');
     await expect(byTest(failure(page), 'connect-failure-title')).toHaveText(
-      'LinkedIn was not connected',
+      'X (Twitter) was not connected',
     );
     // The create-team dialog waits: opened over the message, it hides it.
     await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -262,12 +263,12 @@ test.describe('A failed connect — the branches that share one helper', () => {
     await seedMembership(team.userId, other.accountId);
 
     await signInAs(page, team);
-    await page.goto(callback('linkedin', { error: 'access_denied' }));
+    await page.goto(callback('twitter', { error: 'access_denied' }));
 
     await expect(failure(page)).toBeVisible();
     expect(new URL(page.url()).pathname).toBe('/home/settings');
     await expect(byTest(failure(page), 'connect-failure-title')).toHaveText(
-      'LinkedIn was not connected',
+      'X (Twitter) was not connected',
     );
     await captureIfAsked(page, 'kb99-02-several-teams');
 

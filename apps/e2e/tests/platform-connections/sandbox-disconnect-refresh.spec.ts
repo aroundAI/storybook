@@ -23,8 +23,7 @@ import { byTest } from '../utils/visible';
  * near expiry is refreshed by the real cron route, the vendor accepting the
  * new one.
  *
- * LinkedIn offers apps no revoke (KB-25), so it is not in the disconnect
- * set: `disconnect-revoke.spec.ts` covers that it is not called. X has a
+ * LinkedIn is retired (FILM-717), so it is in neither set. X has a
  * refresh path today (`refreshXToken`), so it is refreshed here rather than
  * recorded as a gap, as the spec's §2 expected when it was written.
  */
@@ -41,11 +40,6 @@ const REFRESHES = [
   { card: 'youtube', vendor: 'google', tokenPath: '/token' },
   { card: 'tiktok', vendor: 'tiktok', tokenPath: '/v2/oauth/token/' },
   { card: 'twitter', vendor: 'x', tokenPath: '/2/oauth2/token' },
-  {
-    card: 'linkedin',
-    vendor: 'linkedin',
-    tokenPath: '/oauth/v2/accessToken',
-  },
   { card: 'facebook', vendor: 'meta', tokenPath: '/oauth/access_token' },
 ] as const;
 

@@ -275,7 +275,9 @@ test.describe('AI sandbox — inline flows (FILM-1803)', () => {
       expect(egressRefusals().length).toBe(refusedBefore);
     });
 
-    test('social-post variants, an asset description and canon extraction are answered by the sandbox, and nothing leaves the machine', async ({
+    // The LinkedIn social-post variants were here until Social Posts was
+    // retired with LinkedIn (FILM-717).
+    test('an asset description and canon extraction are answered by the sandbox, and nothing leaves the machine', async ({
       page,
     }) => {
       test.setTimeout(240_000);
@@ -318,31 +320,8 @@ test.describe('AI sandbox — inline flows (FILM-1803)', () => {
       );
       await signInAs(page, team);
 
-      // --- Social posts: LinkedIn variants, with research off (Brave is a vendor too).
-      let since = await lastId();
-      await page.goto(`/home/${team.slug}/social-posts`);
-      await page
-        .getByPlaceholder(/Paste your notes, ideas, or commentary here/)
-        .fill(
-          'A diner that stays open through the storm teaches more about service than any playbook does.',
-        );
-      await page.locator('#research-toggle').click();
-      await page
-        .getByRole('button', { name: 'Generate LinkedIn Post Variants' })
-        .click();
-      await expect(
-        page.getByText(/Generated \d+ LinkedIn post variants?/).first(),
-      ).toBeVisible({ timeout: 60_000 });
-      expect(
-        (await geminiReplies(since, 'linkedin-post-generation')).length,
-      ).toBeGreaterThan(0);
-      await page.waitForURL(/\/social-posts\/[0-9a-f-]{36}$/);
-      await expect(page.getByText('Post Preview')).toBeVisible();
-      if (shoot)
-        await page.screenshot({ path: `${OUT}/08-social-variants.png` });
-
       // --- Story sidebar: the description of an asset that is not in the library yet.
-      since = await lastId();
+      let since = await lastId();
       const episodePath = `/home/${team.slug}/studio/${project.slug}/episodes/${episodeSlug}`;
       await page.goto(`${episodePath}/story`);
       await byTest(page, 'story-sidebar-toggle').click();

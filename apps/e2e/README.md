@@ -362,7 +362,7 @@ control ports, so it needs no sandbox and runs anywhere.
 
 | Flow (FILM-1804 §2) | Spec |
 |---|---|
-| Connect, one per platform | `platform-connections/sandbox-connect-{tiktok,meta,linkedin,youtube-x}.spec.ts` |
+| Connect, one per platform | `platform-connections/sandbox-connect-{tiktok,meta,youtube-x}.spec.ts` (LinkedIn retired, FILM-717) |
 | Disconnect and reconnect; token refresh | `platform-connections/sandbox-disconnect-refresh.spec.ts` |
 | Publish | `publishing/sandbox-publish.spec.ts` (inline); `sandbox/publish-queue-evidence.spec.ts` (scheduled, FILM-1806) |
 | Sync to dashboard, #278, #279 | `analytics/sandbox-sync.spec.ts` |
