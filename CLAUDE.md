@@ -276,14 +276,17 @@ with any file Prettier would change, so an unformatted push is a red build.
   verdict: the fast lane skips and 📚 Docs checks runs
   (`scripts/ci/code-patch-unchanged.sh`). Touch any code line in the same
   push and the fast lane runs. The PR's code on top of the *new* main is
-  fully tested by its merge-queue run.
+  tested by its merge-queue run.
 - **The merge queue is the gate** (2026-10-01). A PR run is the fast lane
   (🔎 Changes, ʦ TypeScript, 💅 Format, 🧪 Unit Tests, 🗄️ ClickHouse SQL, or
-  📚 Docs checks); the heavy jobs (🧪 Unit guards, 🐘 Supabase DB, ⚫️ Test)
-  run once, when the PR is queued, on main + the PR, and nothing runs after
-  the merge. 🧬 E2E guards and 🧬 E2E evidence run only in the nightly full
-  run and on dispatch, not in the queue (owner, 2026-10-02). The queue builds
-  one entry at a time. The one required check is
+  📚 Docs checks); the heavy jobs (🧪 Unit guards, on six shards, and
+  🐘 Supabase DB) run once, when the PR is queued, on main + the PR, and
+  nothing runs after the merge. ⚫️ Test, 🧬 E2E evidence and 🧬 E2E guards
+  run only in the nightly full run and on dispatch, not in the queue (owner,
+  2026-10-02). The queue builds up to 10 entries at once. A stacked PR
+  cannot share the queue with its parent: the parent's squash leaves the
+  child UNMERGEABLE, so rebase the child onto main after the parent merges.
+  The one required check is
   **✅ CI result**. Actions → Workflow → Run workflow runs the full suite on
   a branch on demand. `scripts/ci/minutes.sh <pr|run-id>` reports what a PR
   or run cost in runner-minutes.
