@@ -1,0 +1,53 @@
+spec_id: "FILM-1912"
+title: "Performance Context: past episodes inform new briefs"
+phase: 19
+phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-1911"
+    note: "both modes stable first (owner, 2026-10-02: 'first we need to make sure this dual AI architecture can work')"
+  - spec_id: "FILM-1732"
+    note: "honest rate denominators before rates feed generation"
+  - spec_id: "FILM-1906"
+    note: "the analytics services the context reads"
+summary: >
+  The owner's later addition: generation can lean on what worked and what did
+  not in earlier episodes. Briefs gain an optional performance_context block,
+  built from the analytics StoryBook already computes, so Claude and Gemini
+  (through the same prepare) both see it. Because every artifact carries its
+  origin from FILM-1903, analytics can also compare Gemini-written and
+  Claude-written episodes. Design: the EDD's "Phase 2: past performance as
+  context" (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
+acceptance_criteria:
+  - text: "buildPerformanceContext(projectId, stage) in @kit/generation returns, for the same project or channel, the top and bottom episodes by retention and velocity with their hooks, scene counts, shot pacing and dialogue density, plus relevant genome findings (getGenomeFindingsAction) and concluded experiments"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "The block is capped (a few KB) and labelled with sample size and data freshness; below a minimum sample it says so instead of ranking"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "It reads through the FILM-1906 service functions under the caller's scope, never @kit/clickhouse directly"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "It is included in briefs for ideation, story and shots in both modes, behind a team setting"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Analytics can split episode performance by generation origin (Gemini vs Claude via MCP)"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+test_plan:
+  unit:
+    - {text: "Context for a seeded project ranks a hand-computed top and bottom episode correctly; a thin sample produces the 'not enough data' label", met: false, reason: "not met — no test yet"}
+  integration: []
+  e2e: []
+open_questions: []
+notes: |
+  With CLICKHOUSE_ENABLED=false (production's current state) the context is
+  omitted with its reason, never filled with zeros.
+feature:
+  database: null
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null

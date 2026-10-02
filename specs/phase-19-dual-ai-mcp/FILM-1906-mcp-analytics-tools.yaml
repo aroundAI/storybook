@@ -1,0 +1,90 @@
+spec_id: "FILM-1906"
+title: "MCP Analytics Tools: every analytics view, read-only, same checks"
+phase: 19
+phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
+category: feature
+status: DRAFT
+effort: L
+dependencies:
+  - spec_id: "FILM-1904"
+    note: "the endpoint and the RLS-scoped principal"
+summary: >
+  Every analytics view a user can open in the web app gets a read tool, so an
+  agent sees what the dashboards show and nothing they do not. About twenty
+  tools, one per dashboard area, with a view argument where an area has
+  several panels. Each tool calls the same service code as the page: the
+  enhanceAction wrappers in packages/features/content-analytics/src/server/
+  are split into a thin wrapper and an exported service function that takes a
+  Supabase client, so authorisation (scope-access.ts and RLS) is unchanged.
+  This matters because ClickHouse has no row-level security; the tools must
+  never query @kit/clickhouse directly. Design: the EDD's "3a. Analytics
+  exposed over MCP"
+  (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
+acceptance_criteria:
+  - text: "Each area in the table below has its tool, wrapping the listed server functions, with the listed scope"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Each wrapped action is split into wrapper + service(client, input); the web page keeps calling the wrapper and its behaviour is unchanged"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Authorisation is the service's own: assertScopeAccess, assertProjectAccess and assertAccountAccess (packages/features/content-analytics/src/server/scope-access.ts) and RLS for the actions that derive their ids from RLS-filtered rows; a lint rule forbids importing @kit/clickhouse from @kit/studio-mcp"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Results carry the freshness and coverage notes the dashboards show; with CLICKHOUSE_ENABLED=false (production's state) a tool returns the same 'not available' state as the page, with its reason, never zeros"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "get_revenue applies the same revenue-access check as the web (getProjectRevenueAccessAction)"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "analytics_insights_cache gets a member read policy so get_saved_insights can read it under RLS (today service role only)"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "get_ai_usage reads llm_usage_analytics under its existing has_account_access policy (migration 20260923041957) and splits by run mode (FILM-1903)"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Write tools (studio:write): update_publish_note, assign_publish_tags, create_experiment, start_experiment, conclude_experiment, abandon_experiment, wrapping updatePublishNoteAction, taxonomy-actions and experiment-actions"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Not exposed: /api/analytics/* ingest and sync routes, report ingest, cron jobs, revenue manual entry and platform revenue sync, report schedule changes, the super-admin dashboard"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+test_plan:
+  unit:
+    - {text: "Each tool's figures equal the page's for the same seeded scope (one test per area, reusing the action's existing fixtures)", met: false, reason: "not met — no test yet"}
+  integration:
+    - {text: "Against local ClickHouse (scripts/local-env.sh up): seeded rows with a hand-computed answer read back through get_project_analytics and get_deep_dive", met: false, reason: "not met — no test yet"}
+    - {text: "A token for team A asking for team B's project, account or connection gets FORBIDDEN from every tool", met: false, reason: "not met — no test yet"}
+  e2e: []
+open_questions: []
+notes: |
+  ## Coverage (inventory of packages/features/content-analytics/src/server/, 2026-10-02)
+
+  | Area (web route) | Tool | Wraps | Scope |
+  |---|---|---|---|
+  | Account home (/home/[account]) | get_account_overview | getAccountDashboardData | account |
+  | Project dashboard overview, content, audience | get_project_analytics (view: overview, content, daily, audience) | getProjectAnalyticsAction, getContentListAction, getProjectDailyMetricsAction, getProjectAudienceDataAction | project, optional channel and platform |
+  | Deep dive | get_deep_dive (view: median, rolling_views, traffic, back_catalog, cohorts, ypp_progress, returning_viewers, weekly_diagnostics, subscribers) | deep-dive-actions.ts, getWeeklyDiagnosticsAction, getSubscriberSeriesAction | project or account, optional channel |
+  | Retention | get_retention_curve | getRetentionCurveAction, getEpisodeRetentionPublishAction | episode or publish |
+  | Video log | get_video_log | getVideoLogAction | project or account, optional channel |
+  | Language | get_language_analytics (view: performance, platform_matrix, content_type, shorts_source, geography, trend, divergence) | language-analytics.ts actions | project |
+  | Episode analytics | get_episode_analytics | getEpisodeAnalyticsAction, getSyncStatusAction | episode |
+  | Revenue (/studio/analytics) | get_revenue (view: summary, timeseries, top_content, projection, by_currency) | revenue-actions.ts, revenue-queries.ts, getProjectRevenueByCurrencyAction | account |
+  | Reach | get_reach_overview | loadReachOverview | account, per channel |
+  | Experiments | list_experiments, get_experiment | experiment-actions.ts, watched-metric-snapshot.ts | account, optional project |
+  | Channel experiments | list_channel_experiments, get_channel_experiment | channel-experiment-actions.ts | account and channel |
+  | Tags and segments | get_tag_performance (view: tags, median_by_tag, segments) | taxonomy-actions.ts, getSegmentPerformanceAction | project or account |
+  | Genome (no page yet) | get_genome_findings | getGenomeFindingsAction | account, channel, format, stage |
+  | Coverage and channels | get_data_coverage, list_channels | getCoverageMatrixAction, listChannelsAction | project or account |
+  | Reports | list_reports, get_report_download | listGeneratedReportsAction, getGeneratedReportDownloadAction, getScheduledReportsAction | account |
+  | Analytics settings | get_analytics_settings | getAnalyticsSettingsAction | account and channel |
+  | Saved Gemini insights | get_saved_insights | analytics_insights_cache | project |
+  | AI usage and cost | get_ai_usage | llm_usage_analytics, generation job costs | account |
+
+  get_generation_history (runs, origins and validation failures for an
+  episode) is FILM-1908's.
+feature:
+  database: {tables: [], columns_added: [], policies_added: ["analytics_insights_cache member read"]}
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null

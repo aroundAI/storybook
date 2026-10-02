@@ -1,0 +1,107 @@
+spec_id: "FILM-1904"
+title: "MCP Endpoint, Personal Access Tokens and Request Auth"
+phase: 19
+phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
+category: feature
+status: DRAFT
+effort: M
+dependencies: []
+summary: >
+  StoryBook serves a remote MCP server at /api/mcp over Streamable HTTP, in
+  stateless mode, inside the existing Next.js app, so Claude Desktop, claude.ai
+  or any MCP client can connect to it as a custom connector. A new package,
+  @kit/studio-mcp, holds the tool registry; each tool is a thin adapter over an
+  existing service or @kit/generation. withMcpAuth resolves a bearer token to a
+  connection (user, team, scopes) and mints a 5-minute Supabase JWT so every
+  query runs under RLS as that user. This spec ships personal access tokens as
+  the first credential (OAuth is FILM-1907), plus rate limits and an audit log.
+  The existing packages/mcp-server is a stdio developer tool with SQL execution
+  and is never exposed. Design: the EDD's "4. Transport and endpoint" and
+  "5. Authentication and tenancy"
+  (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
+acceptance_criteria:
+  - text: "apps/web/app/api/mcp/route.ts serves POST with StreamableHTTPServerTransport from @modelcontextprotocol/sdk in stateless mode (no session id, JSON responses); GET and DELETE answer 405"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "A fresh McpServer is built per request from @kit/studio-mcp's registry; nothing is held in memory between calls; it runs on both Vercel and Lambda via OpenNext"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "withMcpAuth: a request without a valid bearer token gets 401 with WWW-Authenticate pointing at the protected-resource metadata (FILM-1907 serves it); a valid one yields McpPrincipal {userId, accountId, connectionId, scopes, clientName, supabase}"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "The principal's Supabase client carries a 5-minute JWT (sub = user, role = authenticated) signed with the project JWT secret; no tool handler can obtain a service-role client"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Tool handlers run inside the MCP request context, which fixes run mode 'external' for openRun (FILM-1903); the mode is not a tool argument"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Personal access tokens: created in account settings (shown once, sbk_pat_ prefix), stored as SHA-256 hashes, bound to one user and one team, with chosen scopes (studio:read, studio:write, studio:render), revocable; revocation takes effect on the next call"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Team membership is re-checked on every call; tools accept an optional account slug, checked against membership"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Rate limits per connection and per team (default 120 calls/min, 20 writes/min) in the cache layer; over the limit returns RATE_LIMITED with retry_after_s"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Every call writes an mcp_tool_calls row (tool, status, error_code, duration_ms, run_id) without the payload; Authorization headers are never logged"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Tool errors return isError with structuredContent {code, message, retryable, details}; codes: UNAUTHORIZED, FORBIDDEN, NOT_FOUND, VALIDATION_FAILED, RUN_IN_PROGRESS, TARGET_CHANGED, RUN_EXPIRED, RATE_LIMITED, INTERNAL"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Tools carry readOnlyHint, destructiveHint and idempotentHint annotations; whoami returns user, team, scopes and mode defaults"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "A test asserts no route or package reachable from apps/web imports packages/mcp-server"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+test_plan:
+  unit:
+    - {text: "withMcpAuth: missing, malformed, expired, revoked and wrong-team tokens each refused with the right code", met: false, reason: "not met — no test yet"}
+  integration:
+    - {text: "MCP Inspector (or the SDK client) against http://localhost:3000/api/mcp lists tools and calls whoami with a PAT; a contract test runs in CI", met: false, reason: "not met — no test yet"}
+    - {text: "pgTAP: a user reads and revokes only their own mcp_connections", met: false, reason: "not met — no test yet"}
+  e2e:
+    - {text: "Settings page: create a PAT, see it once, revoke it; screenshots in the PR (CLAUDE.md)", met: false, reason: "not met — no test yet"}
+open_questions:
+  - "Endpoint inside the Next.js app (recommended: reuses auth, Supabase clients and feature services) or its own Lambda for independent scaling and timeouts?"
+notes: |
+  ## Tables
+
+  mcp_connections: id, user_id, account_id, client_id (FILM-1907), kind
+  ('oauth','pat'), name, scopes text[], last_used_at, revoked_at, created_at.
+  RLS: a user reads and revokes their own.
+
+  mcp_tokens: token_hash pk, connection_id, kind ('access','refresh','pat'),
+  expires_at, rotated_from, revoked_at. Service role only (the auth wrapper
+  and the FILM-1907 endpoints).
+
+  mcp_tool_calls: id, connection_id, user_id, account_id, tool, run_id,
+  status, error_code, duration_ms, created_at. Team owners read; 90-day
+  retention by cron.
+
+  ## Why the route sits outside enhanceRouteHandler
+
+  enhanceRouteHandler (packages/next/src/routes/index.ts) authenticates with
+  the cookie session only. The MCP route needs bearer tokens, so it gets its
+  own wrapper that ends in the same kind of user-scoped Supabase client.
+
+  ## Reference
+
+  Claude custom connectors: https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp
+  (public internet, OAuth via Claude's published identity, automatic
+  registration or a pre-registered client, or fixed request headers). The
+  owner also shared https://heeki.medium.com/building-an-mcp-server-as-an-api-developer-cfc162d06a83:
+  stateless Streamable HTTP on Lambda, credentials out of tool arguments,
+  MCP Inspector for testing.
+feature:
+  database:
+    tables: ["mcp_connections", "mcp_tokens", "mcp_tool_calls"]
+    columns_added: []
+  queries: []
+  actions: [{name: "createPersonalAccessTokenAction", file: "apps/web/app/home/[account]/settings/connected-apps/_lib/server/actions.ts"}, {name: "revokeMcpConnectionAction", file: "apps/web/app/home/[account]/settings/connected-apps/_lib/server/actions.ts"}]
+  ui: [{component: "ConnectedAppsSettings", file: "apps/web/app/home/[account]/settings/connected-apps/page.tsx"}]
+  provider_integration: null
+  package: {name: "@kit/studio-mcp", path: "packages/features/studio-mcp/"}
+  route: "apps/web/app/api/mcp/route.ts"

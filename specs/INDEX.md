@@ -646,6 +646,27 @@ Local stand-ins for every social platform and AI vendor, on local ports: statefu
 | FILM-1805 | [local-models-and-sdk-base-urls](./phase-18-local-vendor-sandbox/FILM-1805-local-models-and-sdk-base-urls.yaml) | ✅ DONE | M | FILM-1801; FILM-513 for KB-21's lip-sync half |
 | FILM-1806 | [local-job-queue](./phase-18-local-vendor-sandbox/FILM-1806-local-job-queue.yaml) | ✅ DONE | M | FILM-1801, FILM-1803 |
 
+### Phase 19: Dual AI (Gemini in the app, Claude over MCP)
+
+See [phase-19-dual-ai-mcp/README.md](./phase-19-dual-ai-mcp/README.md) for the problem table, the two flows, locked decisions and open questions, and the [design document](https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242) for the diagrams and low-level design.
+
+The web app keeps generating with Gemini on Vertex AI; the app also serves a remote MCP server so Claude Desktop or any MCP client can drive the whole workflow, with StoryBook as system of record and analyzer and no model call of its own for that work. Every model call goes through one gateway, and a generation run's mode decides who writes.
+
+| Task ID | Name | Status | Effort | Dependencies |
+|---------|------|--------|--------|--------------|
+| FILM-1901 | [generation-core](./phase-19-dual-ai-mcp/FILM-1901-generation-core.yaml) | DRAFT | XL | - |
+| FILM-1902 | [model-gateway](./phase-19-dual-ai-mcp/FILM-1902-model-gateway.yaml) | DRAFT | L | FILM-1901, FILM-1903 (built together) |
+| FILM-1903 | [generation-runs](./phase-19-dual-ai-mcp/FILM-1903-generation-runs.yaml) | DRAFT | L | FILM-1901, FILM-1902 |
+| FILM-1904 | [mcp-endpoint-and-tokens](./phase-19-dual-ai-mcp/FILM-1904-mcp-endpoint-and-tokens.yaml) | DRAFT | M | - |
+| FILM-1905 | [mcp-read-and-author-tools](./phase-19-dual-ai-mcp/FILM-1905-mcp-read-and-author-tools.yaml) | DRAFT | M | FILM-1904 |
+| FILM-1906 | [mcp-analytics-tools](./phase-19-dual-ai-mcp/FILM-1906-mcp-analytics-tools.yaml) | DRAFT | L | FILM-1904 |
+| FILM-1907 | [mcp-oauth-and-consent](./phase-19-dual-ai-mcp/FILM-1907-mcp-oauth-and-consent.yaml) | DRAFT | L | FILM-1904 |
+| FILM-1908 | [external-generation-story](./phase-19-dual-ai-mcp/FILM-1908-external-generation-story.yaml) | DRAFT | M | FILM-1901, FILM-1903, FILM-1904 |
+| FILM-1909 | [external-generation-all-stages](./phase-19-dual-ai-mcp/FILM-1909-external-generation-all-stages.yaml) | DRAFT | L | FILM-1908 |
+| FILM-1910 | [dual-mode-web-ux](./phase-19-dual-ai-mcp/FILM-1910-dual-mode-web-ux.yaml) | DRAFT | M | FILM-1903, FILM-1908 |
+| FILM-1911 | [dual-ai-general-availability](./phase-19-dual-ai-mcp/FILM-1911-dual-ai-general-availability.yaml) | DRAFT | S | FILM-1907, FILM-1909, FILM-1910 |
+| FILM-1912 | [performance-context](./phase-19-dual-ai-mcp/FILM-1912-performance-context.yaml) | DRAFT | M | FILM-1911, FILM-1732, FILM-1906 |
+
 ### Spikes
 
 | Task ID | Name | Status | Effort | Dependencies |
