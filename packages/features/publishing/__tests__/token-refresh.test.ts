@@ -289,7 +289,6 @@ beforeEach(async () => {
     'GOOGLE_TOKEN',
     'TIKTOK',
     'META_GRAPH',
-    'LINKEDIN_OAUTH',
     'X_API',
     'X_OAUTH',
   ]) {
@@ -298,8 +297,6 @@ beforeEach(async () => {
   vi.stubEnv('ENCRYPTION_KEY', randomBytes(32).toString('base64'));
   vi.stubEnv('TIKTOK_CLIENT_KEY', 'env-tiktok-client-key');
   vi.stubEnv('TIKTOK_CLIENT_SECRET', 'env-tiktok-client-secret');
-  vi.stubEnv('LINKEDIN_CLIENT_ID', 'env-linkedin-client-id');
-  vi.stubEnv('LINKEDIN_CLIENT_SECRET', 'env-linkedin-client-secret');
   vi.stubEnv('TWITTER_CLIENT_ID', 'env-x-client-id');
   vi.stubEnv('TWITTER_CLIENT_SECRET', 'env-x-client-secret');
 
@@ -534,20 +531,17 @@ describe('refresh uses the credentials connect uses (KB-29)', () => {
     );
   });
 
-  it('LinkedIn refreshes with the env app connect uses', async () => {
+  // FILM-717: LinkedIn is retired. Its rows are kept, so the token is never
+  // refreshed, the row is not torn down and nobody is told to reconnect.
+  it('refuses a LinkedIn connection as retired, without a vendor call', async () => {
     await seedExpiredConnection('linkedin');
 
-    const result = await tokenRefresh.ensureValidToken('conn-linkedin');
+    const result = await tokenRefresh.ensureValidToken('conn-linkedin', true);
 
-    expect(result).toEqual({ valid: true, accessToken: 'new-access-token' });
-    expect(requests).toHaveLength(1);
-    expect(requests[0]!.path).toBe('/oauth/v2/accessToken');
-    expect(Object.fromEntries(requests[0]!.form)).toEqual({
-      grant_type: 'refresh_token',
-      refresh_token: 'old-refresh-token',
-      client_id: 'env-linkedin-client-id',
-      client_secret: 'env-linkedin-client-secret',
-    });
+    expect(result).toEqual({ valid: false, error: 'PLATFORM_RETIRED' });
+    expect(requests).toHaveLength(0);
+    expect(storedConnection().is_active).toBe(true);
+    expect(fakeDb.tables.notifications ?? []).toEqual([]);
   });
 });
 
@@ -857,7 +851,7 @@ describe('refreshExpiringTokens', () => {
     await seedGlobalCredentials('youtube');
     const youtube = await addConnection('youtube', 50);
     const twitter = await addConnection('twitter', 50);
-    await addConnection('linkedin', 24 * 60); // outside the window
+    await addConnection('youtube', 24 * 60); // outside the window
 
     const { refreshExpiringTokens } = await import(
       '../src/jobs/refresh-expiring-tokens'
@@ -879,6 +873,21 @@ describe('refreshExpiringTokens', () => {
     expect(await decrypted('refresh_token_encrypted', twitter)).toBe(
       'x-rotated-refresh-token-1',
     );
+  });
+
+  it('leaves a retired platform out of the run (FILM-717)', async () => {
+    await seedGlobalCredentials('youtube');
+    await addConnection('youtube', 50);
+    const linkedin = await addConnection('linkedin', 50);
+
+    const { refreshExpiringTokens } = await import(
+      '../src/jobs/refresh-expiring-tokens'
+    );
+    const result = await refreshExpiringTokens();
+
+    expect(result).toEqual({ checked: 1, refreshed: 1, failed: 0 });
+    expect(requests.map((r) => r.path)).toEqual(['/token']);
+    expect(linkedin.is_active).toBe(true);
   });
 
   it('counts one failed read as one failure and refreshes the rest (KB-161)', async () => {
@@ -943,16 +952,16 @@ describe('a connection that needs reconnecting', () => {
   });
 
   it('notifies the team when the connection has no refresh token to use', async () => {
-    await seedExpiredConnection('linkedin');
+    await seedExpiredConnection('twitter');
     storedConnection().refresh_token_encrypted = null;
 
-    const result = await tokenRefresh.ensureValidToken('conn-linkedin');
+    const result = await tokenRefresh.ensureValidToken('conn-twitter');
 
     expect(result).toMatchObject({ error: 'NO_REFRESH_TOKEN' });
     expect(storedConnection().is_active).toBe(false);
     expect(notifications()).toHaveLength(1);
     expect(notifications()[0]).toMatchObject({
-      body: 'Your LinkedIn connection has expired. Reconnect it to keep publishing.',
+      body: 'Your X connection has expired. Reconnect it to keep publishing.',
       link: '/home/acme-films/settings/platforms',
     });
   });

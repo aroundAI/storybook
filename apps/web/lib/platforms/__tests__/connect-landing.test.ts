@@ -137,7 +137,8 @@ describe('no connect or callback route redirects to a string (KB-87)', () => {
     expect(stringRedirects ?? []).toEqual([]);
   });
 
-  it.each(['twitter', 'linkedin', 'youtube', 'tiktok', 'meta'])(
+  // LinkedIn's connect route refuses before resolving anything (FILM-717).
+  it.each(['twitter', 'youtube', 'tiktok', 'meta'])(
     'connect/%s resolves the account through resolveConnectAccount',
     (platform) => {
       const source = readFileSync(

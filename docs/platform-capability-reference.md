@@ -24,8 +24,7 @@ the [ledger](#documented-vs-inferred-ledger). Anything nobody can answer is in
 
 ## Pinned vendor API versions
 
-**Next end: LinkedIn `202401`, which LinkedIn sunset on 2025-01-22 ([KB-164](../specs/known-bugs/KB-164.md)).
-After it, Meta Graph `v26.0`, on 2028-07-29 at the earliest.**
+**Next end: Meta Graph `v26.0`, on 2028-07-29 at the earliest.**
 
 Each version we pin, the day its vendor stops serving it, and where that date
 was read. The list is `VENDOR_API_PINS` in `packages/shared/src/vendors/pins.ts`;
@@ -35,11 +34,12 @@ open known bug owns the move (FILM-1723, FILM-1728).
 
 | Vendor | Pinned | Ends | Source | Declared in | Notes |
 |---|---|---|---|---|---|
-| LinkedIn | `202401` | 2025-01-22 | [learn.microsoft.com](https://learn.microsoft.com/en-us/linkedin/marketing/integrations/migrations), read 2026-10-01 | `packages/shared/src/vendors/linkedin.ts` | **Past sunset.** LinkedIn's [versioning page](https://learn.microsoft.com/en-us/linkedin/marketing/versioning) names `202401` as its example of a header refused with 426 `NONEXISTENT_VERSION`; oldest active today is `202510`, until 2026-10-15; latest `202609`. Our calls go to `/v2/`, where the header is not documented, and an unauthenticated probe returns 401 before the version is read, so whether LinkedIn refuses them needs a token. KB-164 |
 | Meta Graph | `v26.0` | 2028-07-29 (floor) | [developers.facebook.com](https://developers.facebook.com/docs/graph-api/changelog/), read 2026-10-01 | `packages/shared/src/vendors/meta.ts` | Meta lists the end as "TBD" until v27.0 ships (not released, re-read 2026-10-01); the floor is two years from release. See [Graph API versions](#graph-api-versions) |
 | X | `v2` | none published | [docs.x.com](https://docs.x.com/x-api/fundamentals/versioning), read 2026-10-01 | `packages/shared/src/vendors/x.ts` | X states no v2 end date; a major version comes "no more than annually", and a deprecated one keeps working for "a defined period" |
 
-Not in the table: Stripe's `2025-08-27.basil`
+Not in the table: LinkedIn, retired on 2026-10-02 (FILM-717) rather than
+moving its `202401` pin, which LinkedIn sunset on 2025-01-22 (KB-164); nothing
+calls LinkedIn now. Stripe's `2025-08-27.basil`
 (`packages/billing/stripe/src/services/stripe-sdk.ts`), one of Stripe's monthly
 releases, for which [Stripe's versioning page](https://docs.stripe.com/api/versioning)
 (read 2026-10-01) gives no retirement date; and TikTok's `/v2/` and YouTube's

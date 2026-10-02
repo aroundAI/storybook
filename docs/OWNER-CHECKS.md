@@ -60,12 +60,12 @@ and watch time stay empty, by design.
 
 Results:
 
-## OC-5 · X and LinkedIn sign-in — 20 minutes
+## OC-5 · X sign-in — 10 minutes
 
-FILM-714 and FILM-715: with your own developer apps, connect an X account and a
-LinkedIn personal account from the Platforms page, then disconnect each. The
-local stand-ins already prove the flow; this proves your credentials and
-redirect URLs.
+FILM-714: with your own developer app, connect an X account from the Platforms
+page, then disconnect it. The local stand-ins already prove the flow; this
+proves your credentials and redirect URLs. (LinkedIn's half was dropped when
+LinkedIn was retired, 2026-10-02, FILM-717.)
 
 Results:
 

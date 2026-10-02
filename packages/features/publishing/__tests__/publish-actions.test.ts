@@ -55,7 +55,6 @@ const db: DbState = { publishRows: [], inserted: [], updates: [] };
 const providers = vi.hoisted(() => ({
   twitterUpload: vi.fn(),
   tiktokUpload: vi.fn(),
-  linkedinUpload: vi.fn(),
   recordUploadedFileDuration: vi.fn(),
 }));
 
@@ -198,12 +197,6 @@ vi.mock('../src/lib/mp4-facts', () => ({
   })),
 }));
 
-vi.mock('../src/providers/linkedin', () => ({
-  LinkedInProvider: vi.fn().mockImplementation(() => ({
-    uploadVideo: providers.linkedinUpload,
-  })),
-}));
-
 describe('Publish Actions', () => {
   describe('getPublishStatusAction polling', () => {
     const row = (
@@ -333,10 +326,6 @@ describe('Publish Actions', () => {
         publishId: 'tt-1',
         videoUrl: 'https://tiktok.com/v/tt-1',
       });
-      providers.linkedinUpload.mockReset().mockResolvedValue({
-        postUrn: 'urn:li:share:1',
-        postUrl: 'https://linkedin.com/feed/update/1',
-      });
       providers.recordUploadedFileDuration
         .mockReset()
         .mockResolvedValue({ recorded: true, seconds: 45 });
@@ -464,14 +453,14 @@ describe('Publish Actions', () => {
         '../src/server/publish-actions'
       );
 
-      providers.linkedinUpload.mockRejectedValue(new Error('LinkedIn is down'));
+      providers.tiktokUpload.mockRejectedValue(new Error('TikTok is down'));
 
       const result = await publishToAllAction({
         episodeId: EPISODE,
         platforms: [
           input('twitter', '2030-01-01T10:00:00.000Z'),
+          input('instagram'),
           input('tiktok'),
-          input('linkedin'),
         ],
       });
 
@@ -480,32 +469,58 @@ describe('Publish Actions', () => {
         data: [
           { platform: 'twitter', status: 'scheduled', publishId: 'publish-1' },
           {
-            platform: 'tiktok',
+            platform: 'instagram',
             status: 'completed',
-            platformContentId: 'tt-1',
-            platformUrl: 'https://tiktok.com/v/tt-1',
+            platformContentId: 'ig-reel-123',
+            platformUrl: 'https://instagram.com/reel/ig-reel-123',
             publishId: 'publish-2',
           },
           {
-            platform: 'linkedin',
+            platform: 'tiktok',
             status: 'failed',
-            error: 'LinkedIn is down',
+            error: 'TikTok is down',
           },
         ],
       });
       expect(db.inserted.map((row) => [row.platform, row.status])).toEqual([
         ['twitter', 'scheduled'],
+        ['instagram', 'publishing'],
         ['tiktok', 'publishing'],
-        ['linkedin', 'publishing'],
       ]);
       expect(providers.twitterUpload).not.toHaveBeenCalled();
-      expect(providers.tiktokUpload).toHaveBeenCalledTimes(1);
       expect(db.updates).toContainEqual(
         expect.objectContaining({
           status: 'failed',
-          metadata: expect.objectContaining({ error: 'LinkedIn is down' }),
+          metadata: expect.objectContaining({ error: 'TikTok is down' }),
         }),
       );
+    });
+
+    // FILM-717: LinkedIn is retired. A request naming it is answered for
+    // that platform alone, and nothing is written or uploaded for it.
+    it('refuses a retired platform on its own, writing nothing for it', async () => {
+      const { publishToAllAction } = await import(
+        '../src/server/publish-actions'
+      );
+
+      const result = await publishToAllAction({
+        episodeId: EPISODE,
+        platforms: [input('tiktok'), input('linkedin')],
+      });
+
+      expect(result).toMatchObject({
+        ok: true,
+        data: [
+          { platform: 'tiktok', status: 'completed' },
+          {
+            platform: 'linkedin',
+            status: 'failed',
+            error:
+              'LinkedIn is retired: this app no longer publishes to it. Your LinkedIn connection and what you published there are kept.',
+          },
+        ],
+      });
+      expect(db.inserted.map((row) => row.platform)).toEqual(['tiktok']);
     });
   });
 

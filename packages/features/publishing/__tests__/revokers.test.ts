@@ -100,7 +100,6 @@ async function sandboxedRevokers(extraEnv: Record<string, string> = {}) {
   vi.stubEnv('VENDOR_URL_TIKTOK', origin);
   vi.stubEnv('VENDOR_URL_META_GRAPH', origin);
   vi.stubEnv('VENDOR_URL_X_API', origin);
-  vi.stubEnv('VENDOR_URL_LINKEDIN_OAUTH', origin);
   // Anything that escapes to a real host is refused here instead of sent.
   vi.stubEnv('HTTPS_PROXY', origin);
   vi.stubEnv('NO_PROXY', '127.0.0.1');
@@ -295,11 +294,10 @@ describe('revokeAtVendor', () => {
     });
   });
 
+  // A kept LinkedIn row can still be disconnected after the retirement
+  // (FILM-717); nothing is sent, as before.
   it('calls nobody for LinkedIn, which offers apps no revoke (KB-25)', async () => {
-    const { revokeAtVendor } = await sandboxedRevokers({
-      LINKEDIN_CLIENT_ID: 'li-client',
-      LINKEDIN_CLIENT_SECRET: 'li-secret',
-    });
+    const { revokeAtVendor } = await sandboxedRevokers();
 
     expect(
       await revokeAtVendor({

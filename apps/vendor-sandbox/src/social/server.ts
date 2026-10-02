@@ -27,7 +27,6 @@ export const SOCIAL_ORIGINS = {
     ],
   },
   x: { port: 4104, resolverNames: ['x-api', 'x-oauth'] },
-  linkedin: { port: 4105, resolverNames: ['linkedin-api', 'linkedin-oauth'] },
 } as const;
 
 export type SocialOrigin = keyof typeof SOCIAL_ORIGINS;

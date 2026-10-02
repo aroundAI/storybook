@@ -19,7 +19,6 @@ export const PLATFORMS = [
   'instagram',
   'facebook',
   'x',
-  'linkedin',
 ] as const;
 
 export type Platform = (typeof PLATFORMS)[number];
@@ -102,18 +101,6 @@ export const CENTRES: Record<Platform, PlatformCentres> = {
       saves: 0.0012,
       follows: 0.0008,
       completion: 0.28,
-    },
-  },
-  linkedin: {
-    medianViews: 310,
-    logSpread: 1.4,
-    ratios: {
-      likes: 0.022,
-      comments: 0.0034,
-      shares: 0.0017,
-      saves: 0,
-      follows: 0.0014,
-      completion: 0.33,
     },
   },
 };

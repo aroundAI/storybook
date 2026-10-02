@@ -134,9 +134,9 @@
     {
       "name": "A publish lambda writes a vendor host literal again",
       "kind": "unit",
-      "file": "apps/web/lambda/publish-worker/handlers/linkedin.ts",
-      "find": "    `${vendorUrl('linkedin-api')}/v2/ugcPosts`,",
-      "replace": "    'https://api.linkedin.com/v2/ugcPosts',",
+      "file": "apps/web/lambda/publish-worker/handlers/tiktok.ts",
+      "find": "    `${vendorUrl('tiktok')}/v2/post/publish/video/init/`,",
+      "replace": "    'https://open.tiktokapis.com/v2/post/publish/video/init/',",
       "cwd": "packages/shared",
       "test": "__tests__/vendor-api-versions.test.ts",
       "pattern": "no vendor host or version literal"
@@ -154,9 +154,9 @@
     {
       "name": "An OAuth dialog host is written beside a permalink, which the public-page allowance must not hide",
       "kind": "unit",
-      "file": "packages/features/publishing/src/providers/linkedin/linkedin-provider.ts",
-      "find": "const LINKEDIN_API_BASE = `${vendorUrl('linkedin-api')}/v2`;",
-      "replace": "const LINKEDIN_API_BASE = `${vendorUrl('linkedin-api')}/v2`;\nconst LINKEDIN_TOKEN_URL = 'https://www.linkedin.com/oauth/v2/accessToken';",
+      "file": "packages/features/publishing/src/providers/facebook/facebook-provider.ts",
+      "find": "          ? `https://www.facebook.com${data.permalink_url}`\n          : undefined,",
+      "replace": "          ? `https://www.facebook.com${data.permalink_url}`\n          : 'https://www.facebook.com/v26.0/dialog/oauth' && undefined,",
       "cwd": "packages/shared",
       "test": "__tests__/vendor-api-versions.test.ts",
       "pattern": "no vendor host or version literal"

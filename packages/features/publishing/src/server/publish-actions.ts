@@ -42,6 +42,7 @@ import {
   ownedEpisodeVideo,
 } from '../lib/owned-episode-video';
 import { ownedEpisodeThumbnail } from '../lib/owned-thumbnail';
+import { isRetiredPlatform } from '../lib/platforms';
 import {
   GetPublishStatusSchema,
   PublishToAllSchema,
@@ -65,7 +66,6 @@ import {
 } from '../lib/youtube-declaration';
 import { FacebookProvider } from '../providers/facebook';
 import { InstagramProvider } from '../providers/instagram';
-import { LinkedInProvider } from '../providers/linkedin';
 import { TikTokProvider } from '../providers/tiktok';
 import { TwitterProvider } from '../providers/twitter';
 import { TWITTER_CONSTRAINTS } from '../providers/twitter/types';
@@ -380,6 +380,11 @@ const publishToAllHandler = enhanceAction(
         const platformCtx = { ...ctx, platform: platform.platform };
 
         try {
+          // FILM-717: nothing is written or sent for a retired platform
+          if (isRetiredPlatform(platform.platform)) {
+            throw new TokenRefusal('PLATFORM_RETIRED', platform.platform);
+          }
+
           // Validate token
           const tokenResult = await getAccessToken(platform.connectionId);
           if (tokenResult.error !== undefined) {
@@ -994,8 +999,6 @@ async function uploadToPlatform(
       return uploadToFacebook(accessToken, accountId, options);
     case 'twitter':
       return uploadToTwitter(accessToken, options);
-    case 'linkedin':
-      return uploadToLinkedIn(accessToken, accountId, options);
     default:
       throw new Error(`Unsupported platform: ${platform}`);
   }
@@ -1101,26 +1104,6 @@ async function uploadToTwitter(
   });
 
   return { contentId: result.tweetId, url: result.tweetUrl ?? '' };
-}
-
-async function uploadToLinkedIn(
-  accessToken: string,
-  authorUrn: string,
-  options: {
-    videoUrl: string;
-    title: string;
-    description: string;
-  },
-): Promise<{ contentId: string; url: string }> {
-  const provider = new LinkedInProvider(accessToken);
-  const result = await provider.uploadVideo({
-    videoPath: options.videoUrl,
-    text: `${options.title}\n\n${options.description}`,
-    visibility: 'PUBLIC',
-    authorUrn,
-  });
-
-  return { contentId: result.postUrn, url: result.postUrl ?? '' };
 }
 
 /**

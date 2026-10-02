@@ -16,7 +16,6 @@ export async function startSandbox(seed = 1803) {
       tiktok: 0,
       google: 0,
       x: 0,
-      linkedin: 0,
     },
   });
 

@@ -22,7 +22,7 @@ import { type SandboxVersion, sourceStamp } from './version';
 
 /**
  * Default ports (FILM-1803 §1). One process, one origin per vendor, as in
- * production. 4101–4105 are FILM-1802's social platforms.
+ * production. 4101–4104 are FILM-1802's social platforms (4105 was LinkedIn's, retired by FILM-717).
  */
 export const DEFAULT_PORTS = {
   control: 4100,
@@ -30,7 +30,6 @@ export const DEFAULT_PORTS = {
   tiktok: SOCIAL_ORIGINS.tiktok.port,
   google: SOCIAL_ORIGINS.google.port,
   x: SOCIAL_ORIGINS.x.port,
-  linkedin: SOCIAL_ORIGINS.linkedin.port,
   openai: 4110,
   gemini: 4112,
   elevenlabs: 4113,

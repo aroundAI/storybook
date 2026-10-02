@@ -12,16 +12,6 @@
       "pattern": "refuses a tweet over 280"
     },
     {
-      "name": "SPEC-TESTS U2 a LinkedIn video post one character over the limit is sent",
-      "kind": "unit",
-      "file": "packages/features/publishing/src/providers/linkedin/linkedin-provider.ts",
-      "find": "// Validate post text length\n    if (input.text.length > LINKEDIN_CONSTRAINTS.post.maxLength) {",
-      "replace": "// Validate post text length\n    if (input.text.length > LINKEDIN_CONSTRAINTS.post.maxLength + 1) {",
-      "cwd": "packages/features/publishing",
-      "test": "__tests__/linkedin-provider.test.ts",
-      "pattern": "refuses a video post over the limit"
-    },
-    {
       "name": "SPEC-TESTS U3 last month ends now instead of on its last day",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/lib/report-date-range.ts",

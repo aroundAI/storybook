@@ -53,6 +53,11 @@ import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
 import { Trans } from '@kit/ui/trans';
 
+import {
+  type OfferedPlatform,
+  RETIRED_PLATFORMS,
+  type RetiredPlatform,
+} from '../lib/platforms';
 import type {
   AnalyticsAccess,
   AnalyticsAccessEntry,
@@ -103,7 +108,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
  * had connect routes and no card, so their connections could be neither made
  * nor disconnected from this page (KB-86).
  */
-const PLATFORM_CARDS: Record<PlatformType, Omit<PlatformConfig, 'id'>> = {
+const PLATFORM_CARDS: Record<OfferedPlatform, Omit<PlatformConfig, 'id'>> = {
   youtube: {
     name: 'YouTube',
     color: 'text-red-500',
@@ -145,19 +150,27 @@ const PLATFORM_CARDS: Record<PlatformType, Omit<PlatformConfig, 'id'>> = {
     multiAccount: true,
     limitationKey: 'platforms:limitation.twitter',
   },
-  linkedin: {
-    name: 'LinkedIn',
-    color: 'text-sky-700',
-    description: 'Connect your LinkedIn profile',
-    scopes: ['Sign in with LinkedIn', 'Post as you'],
-    multiAccount: false,
-    limitationKey: 'platforms:limitation.linkedin',
-  },
 };
 
 const PLATFORMS: PlatformConfig[] = Object.entries(PLATFORM_CARDS).map(
   ([id, card]) => ({ id: id as PlatformType, ...card }),
 );
+
+/**
+ * Platforms the product no longer offers (FILM-717). Nothing can be connected
+ * to one; a card appears only while the account still has rows for it, so
+ * those can be seen and disconnected.
+ */
+const RETIRED_CARDS: Record<RetiredPlatform, PlatformConfig> = {
+  linkedin: {
+    id: 'linkedin',
+    name: 'LinkedIn',
+    color: 'text-sky-700',
+    description: '',
+    scopes: [],
+    multiAccount: false,
+  },
+};
 
 interface PlatformConnectionsProps {
   accountSlug: string;
@@ -215,6 +228,20 @@ export function PlatformConnections({
             accountId={accountId}
           />
         );
+      })}
+
+      {RETIRED_PLATFORMS.map((id) => {
+        const platformConnections =
+          connections?.filter((c) => c.platform === id) ?? [];
+
+        return platformConnections.length > 0 ? (
+          <RetiredPlatformCard
+            key={id}
+            platform={RETIRED_CARDS[id]}
+            connections={platformConnections}
+            accountId={accountId}
+          />
+        ) : null;
       })}
     </div>
   );
@@ -321,6 +348,120 @@ function PlatformCard({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * A platform the product no longer offers (FILM-717): its connections are
+ * kept and shown, read-only. No connect, reconnect, refresh or language; the
+ * one action left is Disconnect, which deletes the tokens we hold.
+ */
+function RetiredPlatformCard({
+  platform,
+  connections,
+  accountId,
+}: {
+  platform: PlatformConfig;
+  connections: PlatformConnection[];
+  accountId: string;
+}) {
+  const Icon = getPlatformIcon(platform.id);
+
+  return (
+    <Card data-test={`platform-card-${platform.id}`} data-retired="true">
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <Icon className="h-6 w-6 text-muted-foreground" />
+          <div>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg">{platform.name}</CardTitle>
+              <Badge
+                variant="outline"
+                className="text-muted-foreground"
+                data-test={`platform-retired-${platform.id}`}
+              >
+                <Trans i18nKey="platforms:retired.badge" defaults="Retired" />
+              </Badge>
+            </div>
+            <CardDescription data-test={`platform-retired-note-${platform.id}`}>
+              <Trans
+                i18nKey="platforms:retired.description"
+                values={{ platform: platform.name }}
+              />
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {connections.map((connection) => (
+            <RetiredConnectionRow
+              key={connection.id}
+              connection={connection}
+              platform={platform}
+              accountId={accountId}
+            />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RetiredConnectionRow({
+  connection,
+  platform,
+  accountId,
+}: ConnectionRowProps) {
+  const [showDisconnect, setShowDisconnect] = useState(false);
+  const disconnected = connection.status === 'disconnected';
+
+  return (
+    <>
+      <div
+        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed p-3 opacity-80"
+        data-test="connection-row"
+        data-connection-id={connection.id}
+        data-status={connection.status}
+      >
+        <div className="flex items-center gap-3">
+          <Avatar className="grayscale">
+            <AvatarImage src={connection.profileImageUrl} />
+            <AvatarFallback>
+              {connection.accountName?.[0]?.toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{connection.accountName}</span>
+              {disconnected && <ConnectionStatusBadge status="disconnected" />}
+            </div>
+          </div>
+        </div>
+
+        {!disconnected && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowDisconnect(true)}
+            title="Disconnect"
+            aria-label={`Disconnect ${connection.accountName}`}
+            data-test="disconnect-connection"
+          >
+            <Unplug className="h-4 w-4 text-destructive" />
+          </Button>
+        )}
+      </div>
+
+      {showDisconnect && (
+        <DisconnectDialog
+          connection={connection}
+          platform={platform}
+          accountId={accountId}
+          onClose={() => setShowDisconnect(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -753,7 +894,7 @@ function DisconnectDialog({
             <div className="space-y-3 text-sm text-muted-foreground">
               <p data-test="disconnect-access">
                 <Trans
-                  i18nKey="platforms:disconnectDialog.access"
+                  i18nKey={copy.accessKey}
                   values={{ ...names, platform: platform.name }}
                 />{' '}
                 <Trans
@@ -772,7 +913,7 @@ function DisconnectDialog({
               )}
 
               <p data-test="disconnect-kept">
-                <Trans i18nKey="platforms:disconnectDialog.kept" />
+                <Trans i18nKey={copy.keptKey} />
               </p>
 
               <p data-test="disconnect-vendor-data">

@@ -347,22 +347,6 @@ describe('a channel of another account (KB-109)', () => {
     });
     expect(state.tokensRequested).toEqual([]);
   });
-
-  it('publishSocialPostAction refuses it before any token is read', async () => {
-    state.caller = OWNER;
-    vi.resetModules();
-    const { publishSocialPostAction } = await import(
-      '../src/server/social-post-actions'
-    );
-
-    const result = await publishSocialPostAction({ postId: POST });
-
-    expect(result).toEqual({
-      ok: false,
-      error: "That channel isn't connected to this account.",
-    });
-    expect(state.tokensRequested).toEqual([]);
-  });
 });
 
 describe('a status mark RLS refuses stops before the platform (KB-105)', () => {
@@ -381,44 +365,6 @@ describe('a status mark RLS refuses stops before the platform (KB-105)', () => {
     expect(result).toEqual({
       ok: false,
       error: "You can't retry this publish.",
-    });
-  });
-
-  it('publishSocialPostAction refuses, and no token is read', async () => {
-    state.caller = OWNER;
-    state.postConnection = CONNECTION;
-    state.updateMatchesNothing = true;
-    vi.resetModules();
-    const { publishSocialPostAction } = await import(
-      '../src/server/social-post-actions'
-    );
-
-    const result = await publishSocialPostAction({ postId: POST });
-
-    expect(result).toEqual({
-      ok: false,
-      error: "You can't publish this post.",
-    });
-    expect(state.tokensRequested).toEqual([]);
-  });
-
-  it('approveSocialPostAction refuses rather than reporting it approved', async () => {
-    state.caller = OWNER;
-    state.postConnection = CONNECTION;
-    state.updateMatchesNothing = true;
-    vi.resetModules();
-    const { approveSocialPostAction } = await import(
-      '../src/server/social-post-actions'
-    );
-
-    const result = await approveSocialPostAction({
-      postId: POST,
-      platformConnectionId: CONNECTION,
-    });
-
-    expect(result).toEqual({
-      ok: false,
-      error: "You can't approve this post.",
     });
   });
 });

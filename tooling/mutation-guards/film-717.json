@@ -1,0 +1,123 @@
+{
+  "feature": "FILM-717",
+  "mutations": [
+    {
+      "name": "R1 the LinkedIn app credentials are read again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/oauth-app-credentials.ts",
+      "find": "  twitter: {\n    clientId: 'TWITTER_CLIENT_ID',",
+      "replace": "  twitter: {\n    clientId: process.env.LINKEDIN_CLIENT_ID ? 'TWITTER_CLIENT_ID' : 'TWITTER_CLIENT_ID',",
+      "cwd": "apps/web",
+      "test": "test/film-717-linkedin-retired.test.ts",
+      "pattern": "carries it"
+    },
+    {
+      "name": "R2 a LinkedIn token is refreshed again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/lib/token-refresh.ts",
+      "find": "  if (isRetiredPlatform(connection.platform)) {\n    return { valid: false, error: 'PLATFORM_RETIRED' };\n  }",
+      "replace": "  if (isRetiredPlatform(connection.platform) && force === undefined) {\n    return { valid: false, error: 'PLATFORM_RETIRED' };\n  }",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "as retired"
+    },
+    {
+      "name": "R3 the refresh cron selects a retired platform again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/jobs/refresh-expiring-tokens.ts",
+      "find": "    (connection) => !isRetiredPlatform(connection.platform),",
+      "replace": "    (connection) => Boolean(connection.platform),",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/token-refresh.test.ts",
+      "pattern": "retired platform out of the run"
+    },
+    {
+      "name": "R4 the publish screen lists a LinkedIn channel again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/connection-actions.ts",
+      "find": "      (connection) => !isRetiredPlatform(connection.platform),",
+      "replace": "      (connection) => Boolean(connection.platform),",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/connection-actions.test.ts",
+      "pattern": "retired platform"
+    },
+    {
+      "name": "R5 a publish to LinkedIn is attempted again",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/server/publish-actions.ts",
+      "find": "          if (isRetiredPlatform(platform.platform)) {\n            throw new TokenRefusal('PLATFORM_RETIRED', platform.platform);",
+      "replace": "          if (isRetiredPlatform(platform.platform) && !platform.platform) {\n            throw new TokenRefusal('PLATFORM_RETIRED', platform.platform);",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/publish-actions.test.ts",
+      "pattern": "retired platform on its own"
+    },
+    {
+      "name": "R6 the worker runs a queued LinkedIn job again",
+      "kind": "unit",
+      "file": "apps/web/lambda/publish-worker/index.ts",
+      "find": "        if (job.type !== 'delete' && isRetiredPlatform(job.platform)) {",
+      "replace": "        if (job.type !== 'delete' && isRetiredPlatform(job.platform) && !job.userId) {",
+      "cwd": "apps/web",
+      "test": "lambda/publish-worker/__tests__/retired-platform.test.ts",
+      "pattern": "retired"
+    },
+    {
+      "name": "R7 the LinkedIn callback says something other than retired",
+      "kind": "unit",
+      "file": "apps/web/app/api/platforms/callback/linkedin/route.ts",
+      "find": "    code: 'platform_retired',",
+      "replace": "    code: 'not_configured',",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/callback-success.test.ts",
+      "pattern": "LinkedIn is retired"
+    },
+    {
+      "name": "R8 the LinkedIn connect route says something other than retired",
+      "kind": "unit",
+      "file": "apps/web/app/api/platforms/connect/linkedin/route.ts",
+      "find": "    code: 'platform_retired',",
+      "replace": "    code: 'not_configured',",
+      "cwd": "apps/web",
+      "test": "lib/platforms/__tests__/callback-success.test.ts",
+      "pattern": "LinkedIn is retired"
+    },
+    {
+      "name": "R9 the coverage strip calls a kept LinkedIn page unsupported",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/provenance.ts",
+      "find": "      isRetiredPlatform(platform)\n        ? {",
+      "replace": "      isRetiredPlatform(platform) && !platform\n        ? {",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/provenance.test.ts",
+      "pattern": "retired platform as retired"
+    },
+    {
+      "name": "R10 the disconnect dialog promises a LinkedIn reconnect",
+      "kind": "unit",
+      "file": "packages/features/publishing/src/components/disconnect-copy.ts",
+      "find": "  const retired = isRetiredPlatform(platform);",
+      "replace": "  const retired = isRetiredPlatform(platform) && !platform;",
+      "cwd": "packages/features/publishing",
+      "test": "__tests__/disconnect-copy.test.ts",
+      "pattern": "promises no reconnect"
+    },
+    {
+      "name": "E1 a kept LinkedIn connection is hidden from Platform Connections",
+      "kind": "e2e",
+      "file": "packages/features/publishing/src/components/platform-connections.tsx",
+      "find": "        return platformConnections.length > 0 ? (\n          <RetiredPlatformCard",
+      "replace": "        return platformConnections.length > 1000 ? (\n          <RetiredPlatformCard",
+      "spec": "tests/platform-connections/linkedin-retired.spec.ts",
+      "grep": "retired and read-only"
+    },
+    {
+      "name": "E2 a kept LinkedIn connection can be reconnected or renewed",
+      "kind": "e2e",
+      "file": "packages/features/publishing/src/components/platform-connections.tsx",
+      "find": "          <RetiredPlatformCard\n            key={id}\n            platform={RETIRED_CARDS[id]}\n            connections={platformConnections}\n            accountId={accountId}\n          />",
+      "replace": "          <PlatformCard\n            key={id}\n            platform={RETIRED_CARDS[id]}\n            connections={platformConnections}\n            accountSlug={accountSlug}\n            accountId={accountId}\n          />",
+      "spec": "tests/platform-connections/linkedin-retired.spec.ts",
+      "grep": "retired and read-only"
+    }
+  ]
+}

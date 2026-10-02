@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { isRetiredPlatform } from '../src/lib/platforms';
 import { ALL_ANALYTICS_SCOPES_ENABLED } from '../src/oauth/analytics-scope-switch';
 import {
   ANALYTICS_SCOPE_REQUIREMENTS,
@@ -288,13 +289,16 @@ describe('the OAuth callbacks record the grant, not the request', () => {
     .sort();
 
   it('covers every platform callback', () => {
-    const callbacks = readdirSync(resolve(PLATFORMS, 'callback')).map(
-      (platform) => `app/api/platforms/callback/${platform}/route.ts`,
-    );
+    // A retired platform's callback refuses and stores nothing (FILM-717).
+    const callbacks = readdirSync(resolve(PLATFORMS, 'callback'))
+      .filter((platform) => !isRetiredPlatform(platform))
+      .map((platform) => `app/api/platforms/callback/${platform}/route.ts`);
 
+    expect(ROUTES).not.toContain(
+      'app/api/platforms/callback/linkedin/route.ts',
+    );
     expect(callbacks).toEqual(
       expect.arrayContaining([
-        'app/api/platforms/callback/linkedin/route.ts',
         'app/api/platforms/callback/meta/route.ts',
         'app/api/platforms/callback/tiktok/route.ts',
         'app/api/platforms/callback/twitter/route.ts',

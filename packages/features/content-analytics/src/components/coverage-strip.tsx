@@ -25,6 +25,7 @@ const DOT: Record<StripKind, string> = {
   not_ingested: 'border border-muted-foreground',
   not_reported: 'border border-muted-foreground',
   unsupported_platform: 'border border-muted-foreground',
+  retired_platform: 'border border-muted-foreground',
 };
 
 /**

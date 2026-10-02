@@ -5,9 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 /**
  * FILM-706, FILM-707, FILM-715. The failure branches of every OAuth callback
  * are driven in a browser (`connect-failure.spec.ts`); these drive the
- * success branch of TikTok's, Meta's and LinkedIn's against mocked vendor
- * endpoints and read what each writes to `platform_connections` and where it
- * lands. Meta's includes the Instagram-to-Page link (FILM-707).
+ * success branch of TikTok's and Meta's against mocked vendor endpoints and
+ * read what each writes to `platform_connections` and where it lands. Meta's includes the Instagram-to-Page link (FILM-707).
  */
 
 const state = vi.hoisted(() => ({
@@ -389,120 +388,45 @@ describe('Meta callback success (FILM-707)', () => {
   });
 });
 
-describe('LinkedIn callback success (FILM-715)', () => {
-  function linkedin(overrides: { tokens?: unknown; profile?: Response } = {}) {
-    return stubVendor((url) =>
-      url.pathname === '/oauth/v2/accessToken'
-        ? json(
-            overrides.tokens ?? {
-              access_token: 'li-access',
-              refresh_token: 'li-refresh',
-              expires_in: 5_184_000,
-              scope: 'email,openid,profile,w_member_social',
-            },
-          )
-        : (overrides.profile ??
-          json({
-            sub: 'abc123',
-            name: 'Acme Founder',
-            picture: 'https://cdn.example.test/li.png',
-            email: 'founder@acme.test',
-          })),
-    );
-  }
-
-  it('stores the member as urn:li:person with the scopes LinkedIn granted', async () => {
-    const fetchMock = linkedin();
+/**
+ * FILM-717. LinkedIn is retired (owner, 2026-10-02). Both routes stay, so a
+ * bookmarked connect link or a consent screen finished after the release
+ * lands on a page that says so, rather than a 404. Neither calls LinkedIn,
+ * stores a row or consumes a nonce, and the answer is a redirect the page
+ * reads, not a thrown error (production redacts thrown text).
+ */
+describe('LinkedIn is retired (FILM-717)', () => {
+  it('the callback refuses without calling LinkedIn or storing anything', async () => {
+    const fetchMock = stubVendor(() => json({}));
     const { GET } = await import('~/api/platforms/callback/linkedin/route');
 
     const response = await GET(callbackRequest('linkedin', {}));
 
-    const sent = new URLSearchParams(String(fetchMock.mock.calls[0]![1]?.body));
-
-    expect(Object.fromEntries(sent)).toMatchObject({
-      grant_type: 'authorization_code',
-      code: 'vendor-code',
-      redirect_uri: `${ORIGIN}/api/platforms/callback/linkedin`,
-    });
-    expect(state.stored).toEqual([
-      expect.objectContaining({
-        account_id: ACCOUNT,
-        platform: 'linkedin',
-        platform_account_id: 'urn:li:person:abc123',
-        platform_account_name: 'Acme Founder',
-        access_token_encrypted: 'enc(li-access)',
-        refresh_token_encrypted: 'enc(li-refresh)',
-        scopes: ['email', 'openid', 'profile', 'w_member_social'],
-        metadata: {
-          picture: 'https://cdn.example.test/li.png',
-          email: 'founder@acme.test',
-          isCompanyPage: false,
-          scopes_granted_at: expect.any(String),
-        },
-      }),
-    ]);
-    expect(state.deletedNonces).toEqual([`oauth_states:${NONCE}`]);
-    expect(landing(response)).toEqual({
-      path: '/home/acme/settings/platforms',
-      query: { success: 'linkedin_connected', profile: 'Acme Founder' },
-    });
-  });
-
-  it('stores the company scopes for a company page and no refresh token when none is issued', async () => {
-    linkedin({
-      tokens: {
-        access_token: 'li-access',
-        expires_in: 5_184_000,
-        scope: 'openid profile email w_member_social w_organization_social',
-      },
-    });
-    const { GET } = await import('~/api/platforms/callback/linkedin/route');
-
-    await GET(callbackRequest('linkedin', { isCompanyPage: true }));
-
-    expect(state.stored[0]).toMatchObject({
-      refresh_token_encrypted: null,
-      scopes: expect.arrayContaining(['w_organization_social']),
-      metadata: expect.objectContaining({ isCompanyPage: true }),
-    });
-  });
-
-  // KB-145. LinkedIn's token response names what was granted in `scope`
-  // ("URL-encoded, space-delimited list of member permissions", per
-  // learn.microsoft.com/en-us/linkedin/shared/authentication/authorization-code-flow).
-  it('stores the scopes LinkedIn granted, not the ones the app asked for', async () => {
-    linkedin({
-      tokens: {
-        access_token: 'li-access',
-        expires_in: 5_184_000,
-        scope: 'openid profile email',
-      },
-    });
-    const { GET } = await import('~/api/platforms/callback/linkedin/route');
-
-    await GET(callbackRequest('linkedin', {}));
-
-    expect(state.stored[0]?.scopes).toEqual(['openid', 'profile', 'email']);
-  });
-
-  it('records no scopes when LinkedIn sends none, rather than the ones asked for', async () => {
-    linkedin({ tokens: { access_token: 'li-access', expires_in: 5_184_000 } });
-    const { GET } = await import('~/api/platforms/callback/linkedin/route');
-
-    await GET(callbackRequest('linkedin', {}));
-
-    expect(state.stored[0]?.scopes).toEqual([]);
-  });
-
-  it('stores nothing when LinkedIn returns no member id', async () => {
-    linkedin({ profile: json({ name: 'No Sub' }) });
-    const { GET } = await import('~/api/platforms/callback/linkedin/route');
-
-    const response = await GET(callbackRequest('linkedin', {}));
-
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(state.stored).toEqual([]);
-    expect(landing(response).query).toMatchObject({
-      error: 'account_lookup_failed',
+    expect(state.deletedNonces).toEqual([]);
+    expect(landing(response)).toEqual({
+      path: '/settings/platforms',
+      query: {
+        error: 'platform_retired',
+        platform: 'linkedin',
+        account: ACCOUNT,
+      },
+    });
+  });
+
+  it('the connect route refuses before any consent screen', async () => {
+    const fetchMock = stubVendor(() => json({}));
+    const { GET } = await import('~/api/platforms/connect/linkedin/route');
+
+    const response = await GET(
+      new NextRequest(`${ORIGIN}/api/platforms/connect/linkedin?account=acme`),
+    );
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(landing(response)).toEqual({
+      path: '/settings/platforms',
+      query: { error: 'platform_retired', platform: 'linkedin' },
     });
   });
 });

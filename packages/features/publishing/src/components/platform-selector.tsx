@@ -74,14 +74,13 @@ const PLATFORM_ICONS: Record<
   linkedin: Linkedin,
 };
 
-// Platform display order
+// Platform display order. A retired platform is not offered (FILM-717).
 const PLATFORM_ORDER: Platform[] = [
   'youtube',
   'tiktok',
   'instagram',
   'facebook',
   'twitter',
-  'linkedin',
 ];
 
 export function PlatformSelector({

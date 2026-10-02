@@ -5,9 +5,6 @@ import { youtubeDataRoutes } from './google/data';
 import { googleFailure } from './google/errors';
 import { googleOAuthRoutes } from './google/oauth';
 import { youtubeReportingRoutes } from './google/reporting';
-import { linkedInDataRoutes } from './linkedin/data';
-import { linkedInFailure } from './linkedin/errors';
-import { linkedInOAuthRoutes } from './linkedin/oauth';
 import { metaFailure } from './meta/errors';
 import { facebookInsightsRoutes } from './meta/facebook-insights';
 import { metaInsightsRoutes } from './meta/insights';
@@ -57,9 +54,5 @@ export const SOCIAL_ROUTES: Record<
   x: {
     routes: [mediaRoute, ...xOAuthRoutes, ...xDataRoutes],
     failure: xFailure,
-  },
-  linkedin: {
-    routes: [mediaRoute, ...linkedInOAuthRoutes, ...linkedInDataRoutes],
-    failure: linkedInFailure,
   },
 };

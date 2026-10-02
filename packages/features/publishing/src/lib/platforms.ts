@@ -39,6 +39,30 @@ export const PLATFORMS_DELETED_ON_UNPUBLISH = [
   'twitter',
 ] as const satisfies readonly Platform[];
 
+/**
+ * Platforms the product no longer offers (FILM-717). LinkedIn was retired
+ * "for now" (owner, 2026-10-02) rather than moving its pinned API version
+ * past sunset (KB-164). It stays in `PLATFORMS` because stored connections
+ * and publishes keep the value: they are shown as retired and read-only,
+ * never connected, refreshed or published to.
+ */
+export const RETIRED_PLATFORMS = [
+  'linkedin',
+] as const satisfies readonly Platform[];
+
+export type RetiredPlatform = (typeof RETIRED_PLATFORMS)[number];
+
+export type OfferedPlatform = Exclude<Platform, RetiredPlatform>;
+
+export function isRetiredPlatform(value: string): value is RetiredPlatform {
+  return (RETIRED_PLATFORMS as readonly string[]).includes(value);
+}
+
+/** Every platform a connection can still be made to and published to. */
+export const OFFERED_PLATFORMS = PLATFORMS.filter(
+  (platform): platform is OfferedPlatform => !isRetiredPlatform(platform),
+);
+
 /** Narrows a stored `platform` string, so it is checked rather than cast. */
 export function isPlatform(value: string): value is Platform {
   return (PLATFORMS as readonly string[]).includes(value);

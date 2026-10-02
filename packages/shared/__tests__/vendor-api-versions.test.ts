@@ -148,12 +148,6 @@ const VERSION_RULES: Rule[] = [
     pattern: /\/1\.1\/[a-z]/,
     use: 'X_MEDIA_UPLOAD - the v1.1 media upload is retired; X_API_BASE for the rest',
   },
-  {
-    name: 'LinkedIn version literal',
-    pattern: /['"`]20\d{4}['"`]/,
-    appliesTo: /linkedin|publish-worker/i,
-    use: 'LINKEDIN_REST_VERSION',
-  },
 ];
 
 function escapeRegExp(text: string) {
@@ -302,7 +296,6 @@ describe('vendor API versions are declared once (FILM-1723)', () => {
     expect(declared.match(/https:\/\/api\.(?:twitter|x)\.com/g)).toEqual([
       'https://api.x.com',
     ]);
-    expect(declared.match(/['"`]20\d{4}['"`]/g)).toHaveLength(1);
   });
 });
 
@@ -373,9 +366,9 @@ describe('the Graph pin carries the dates the reference documents', () => {
  *
  * FILM-1723: every pin in `VENDOR_API_PINS` with an end date, not only
  * Meta's. A pin already inside the window stays green only while an open
- * known bug named in its `trackedBy` owns the move (LinkedIn's 202401 is past
- * sunset, and KB-164 is that bug), so deleting the date is not a way to
- * silence the warning.
+ * known bug named in its `trackedBy` owns the move (LinkedIn's 202401 was,
+ * under KB-164, until FILM-717 retired LinkedIn), so deleting the date is not
+ * a way to silence the warning.
  */
 const WARN_DAYS = 120;
 const DAY_MS = 86_400_000;

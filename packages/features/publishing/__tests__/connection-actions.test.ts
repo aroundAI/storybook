@@ -199,6 +199,35 @@ describe('Connection Actions', () => {
       });
     });
 
+    // FILM-717: a LinkedIn row is kept, but it is not somewhere to publish.
+    it('leaves out a connection to a retired platform', async () => {
+      const row = (id: string, platform: string) => ({
+        id,
+        platform,
+        platform_account_id: `${platform}-account`,
+        platform_account_name: platform,
+        is_active: true,
+        token_expires_at: new Date(Date.now() + 3600000).toISOString(),
+        scopes: null,
+        metadata: null,
+      });
+
+      mockSupabaseClient.order.mockResolvedValueOnce({
+        data: [row('conn-li', 'linkedin'), row('conn-yt', 'youtube')],
+        error: null,
+      });
+
+      const { getConnectedPlatformsAction } = await import(
+        '../src/server/connection-actions'
+      );
+
+      const result = await getConnectedPlatformsAction({
+        accountId: 'test-account-id',
+      });
+
+      expect(result.map((connection) => connection.id)).toEqual(['conn-yt']);
+    });
+
     describe('follower badge source (FILM-1617)', () => {
       const youtube = {
         id: 'conn-yt',

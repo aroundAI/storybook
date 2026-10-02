@@ -5,7 +5,7 @@
  * cannot work against a real vendor.
  *
  * The same values are written where the app reads them: the env block
- * (`scripts/lib/vendor-sandbox-env.d/social.sh`) for TikTok, LinkedIn and X,
+ * (`scripts/lib/vendor-sandbox-env.d/social.sh`) for TikTok and X,
  * and `oauth_app_credentials` (`pnpm --filter vendor-sandbox
  * seed-credentials`) for YouTube and Meta.
  */
@@ -26,19 +26,14 @@ export const SANDBOX_CLIENTS = {
     clientId: 'sandbox-x-client-id',
     clientSecret: 'sandbox-x-client-secret-not-a-real-secret',
   },
-  linkedin: {
-    clientId: 'sandboxlinkedinclient',
-    clientSecret: 'sandbox-linkedin-client-secret-not-a-real-secret',
-  },
 } as const;
 
 export type SandboxClientApp = keyof typeof SANDBOX_CLIENTS;
 
-/** The env variables the app reads for the three env-configured apps. */
+/** The env variables the app reads for the two env-configured apps. */
 export const CLIENT_ENV = {
   tiktok: ['TIKTOK_CLIENT_KEY', 'TIKTOK_CLIENT_SECRET'],
   twitter: ['TWITTER_CLIENT_ID', 'TWITTER_CLIENT_SECRET'],
-  linkedin: ['LINKEDIN_CLIENT_ID', 'LINKEDIN_CLIENT_SECRET'],
 } as const satisfies Partial<
   Record<SandboxClientApp, readonly [string, string]>
 >;

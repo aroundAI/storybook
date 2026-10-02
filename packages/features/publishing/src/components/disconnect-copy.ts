@@ -1,3 +1,4 @@
+import { isRetiredPlatform } from '../lib/platforms';
 import type { PlatformType } from '../types';
 
 /**
@@ -37,6 +38,10 @@ export const DELETES_STATISTICS_ON_DISCONNECT: Record<PlatformType, boolean> = {
 };
 
 export interface DisconnectCopy {
+  /** What happens to our access; a retired platform has no reconnect (FILM-717). */
+  accessKey: string;
+  /** What is kept; a retired platform's records cannot be re-attached. */
+  keptKey: string;
   revokeKey: string;
   vendorDataKey: string;
   /** The vendor-data sentence ends with a link to the data-deletion page. */
@@ -45,8 +50,15 @@ export interface DisconnectCopy {
 
 export function disconnectCopyFor(platform: PlatformType): DisconnectCopy {
   const deletesStatistics = DELETES_STATISTICS_ON_DISCONNECT[platform];
+  const retired = isRetiredPlatform(platform);
 
   return {
+    accessKey: retired
+      ? 'platforms:disconnectDialog.accessRetired'
+      : 'platforms:disconnectDialog.access',
+    keptKey: retired
+      ? 'platforms:disconnectDialog.keptRetired'
+      : 'platforms:disconnectDialog.kept',
     revokeKey: VENDOR_REVOKES[platform]
       ? 'platforms:disconnectDialog.revokeAsks'
       : 'platforms:disconnectDialog.revokeUnavailable',

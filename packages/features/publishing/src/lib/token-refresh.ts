@@ -7,7 +7,6 @@ import { metaFetch } from '@kit/shared/vendors';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import type { OAuthApp } from '../oauth/apps';
-import { LINKEDIN_OAUTH_CONFIG } from '../oauth/linkedin/config';
 import { TIKTOK_OAUTH_CONFIG } from '../oauth/tiktok/config';
 import {
   TWITTER_OAUTH_CONFIG,
@@ -21,7 +20,13 @@ import {
   getOAuthAppCredentials,
 } from '../server/oauth-app-credentials';
 import type { PlatformConnection } from './database-types';
-import { PLATFORM_NAMES, type Platform, isPlatform } from './platforms';
+import {
+  type OfferedPlatform,
+  PLATFORM_NAMES,
+  type Platform,
+  isPlatform,
+  isRetiredPlatform,
+} from './platforms';
 import type { TokenErrorCode } from './token-errors';
 import { EXPIRY_BUFFER_MS, isWithinRefreshWindow } from './token-expiry';
 
@@ -50,15 +55,19 @@ export interface TokenValidationResult {
 /**
  * The OAuth app each platform's tokens were minted by. Exhaustive, so a
  * platform added to `Platform` does not compile until it is mapped (KB-15).
+ * A retired platform has none: its tokens are never refreshed (FILM-717).
  */
-const PLATFORM_APP: Record<Platform, OAuthApp> = {
+const PLATFORM_APP: Record<OfferedPlatform, OAuthApp> = {
   youtube: 'youtube',
   tiktok: 'tiktok',
   instagram: 'meta',
   facebook: 'meta',
-  linkedin: 'linkedin',
   twitter: 'twitter',
 };
+
+function isOfferedPlatform(value: string): value is OfferedPlatform {
+  return isPlatform(value) && !isRetiredPlatform(value);
+}
 
 interface EnsureValidTokenOptions {
   /**
@@ -146,6 +155,11 @@ async function doEnsureValidToken(
     return { valid: false, error: 'NOT_FOUND' };
   }
 
+  // Kept, never refreshed or torn down, and nobody is asked to reconnect.
+  if (isRetiredPlatform(connection.platform)) {
+    return { valid: false, error: 'PLATFORM_RETIRED' };
+  }
+
   if (!connection.is_active) {
     return { valid: false, error: 'CONNECTION_INACTIVE', requiresReauth: true };
   }
@@ -228,7 +242,7 @@ async function doEnsureValidToken(
 
   // 4. Attempt refresh
   try {
-    if (!isPlatform(connection.platform)) {
+    if (!isOfferedPlatform(connection.platform)) {
       throw new Error(`Unknown platform: ${connection.platform}`);
     }
 
@@ -313,7 +327,7 @@ async function doEnsureValidToken(
       };
     }
 
-    const app = isPlatform(connection.platform)
+    const app = isOfferedPlatform(connection.platform)
       ? PLATFORM_APP[connection.platform]
       : undefined;
     logger.error(
@@ -401,7 +415,7 @@ interface RefreshContext {
  * from the same lookup connect and the callback use (KB-29).
  */
 async function refreshTokenForPlatform(
-  platform: Platform,
+  platform: OfferedPlatform,
   refreshToken: string,
   context: RefreshContext,
 ): Promise<TokenRefreshResult> {
@@ -420,8 +434,6 @@ async function refreshTokenForPlatform(
     case 'instagram':
     case 'facebook':
       return refreshMetaToken(refreshToken, platform, credentials, context);
-    case 'linkedin':
-      return refreshLinkedInToken(refreshToken, credentials);
     case 'twitter':
       return refreshXToken(refreshToken, credentials);
     default: {
@@ -583,45 +595,6 @@ async function refreshMetaToken(
     accessToken: page.access_token,
     refreshToken: newUserToken, // Store refreshed user token for next cycle
     expiresAt,
-  };
-}
-
-/**
- * Refreshes a LinkedIn OAuth token
- */
-async function refreshLinkedInToken(
-  refreshToken: string,
-  oauthApp: OAuthAppCredentials,
-): Promise<TokenRefreshResult> {
-  const response = await fetch(LINKEDIN_OAUTH_CONFIG.tokenUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-      client_id: oauthApp.clientId,
-      client_secret: oauthApp.clientSecret,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(
-      `LinkedIn refresh failed: ${error.error_description ?? error.error ?? 'Unknown error'}`,
-    );
-  }
-
-  const data = await response.json();
-
-  if (!data.access_token) {
-    throw new Error('LinkedIn refresh failed: No access token returned');
-  }
-
-  return {
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token, // LinkedIn may return new refresh token
-    // LinkedIn access tokens expire in 60 days (5184000 seconds)
-    expiresAt: new Date(Date.now() + (data.expires_in ?? 5184000) * 1000),
   };
 }
 

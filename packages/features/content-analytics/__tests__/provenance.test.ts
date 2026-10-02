@@ -294,6 +294,24 @@ describe('the strip', () => {
   });
 
   it('names a connection outside the analytics platforms as unsupported rather than dropping it', () => {
+    const x = coverageStrip(
+      viewOf(
+        coverageResult({
+          rows: [],
+          channels: [channelRef('twitter', { name: 'Seed Studio' })],
+        }),
+      ),
+      TAB_FAMILIES['deep-dive'],
+    ).items.find(({ platform }) => platform === 'twitter');
+
+    expect(x).toMatchObject({
+      kind: 'unsupported_platform',
+      sentence: 'X (Seed Studio): connected, but analytics doesn’t support X.',
+    });
+  });
+
+  // FILM-717: a kept LinkedIn connection is retired, not merely unsupported.
+  it('names a connection on a retired platform as retired', () => {
     const linkedIn = coverageStrip(
       viewOf(
         coverageResult({
@@ -305,9 +323,9 @@ describe('the strip', () => {
     ).items.find(({ platform }) => platform === 'linkedin');
 
     expect(linkedIn).toMatchObject({
-      kind: 'unsupported_platform',
+      kind: 'retired_platform',
       sentence:
-        'LinkedIn (Seed Studio Co): connected, but analytics doesn’t support LinkedIn.',
+        'LinkedIn (Seed Studio Co): retired. This app no longer publishes to LinkedIn or reads from it.',
     });
   });
 

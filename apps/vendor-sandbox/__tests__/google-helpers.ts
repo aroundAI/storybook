@@ -21,7 +21,6 @@ const FREE_PORTS = {
   tiktok: 0,
   google: 0,
   x: 0,
-  linkedin: 0,
 };
 
 /** A sandbox on free ports with a clock the test moves, and the app's env pointed at it. */

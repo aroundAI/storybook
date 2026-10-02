@@ -18,7 +18,9 @@ export const CreateFilmProjectSchema = z.object({
 
 export type CreateFilmProjectInput = z.infer<typeof CreateFilmProjectSchema>;
 
-// Platform configuration for smart defaults
+// Platform configuration for smart defaults: the target platforms a new
+// project offers. LinkedIn is retired (FILM-717); a project that already
+// targets it keeps the value, which the settings schema still accepts.
 export const PLATFORM_CONFIGS = {
   youtube: {
     label: 'YouTube',
@@ -48,12 +50,6 @@ export const PLATFORM_CONFIGS = {
     label: 'Twitter/X',
     icon: 'twitter',
     defaultAspectRatio: '16:9',
-    defaultDuration: 5,
-  },
-  linkedin: {
-    label: 'LinkedIn',
-    icon: 'linkedin',
-    defaultAspectRatio: '1:1',
     defaultDuration: 5,
   },
   custom: {

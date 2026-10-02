@@ -48,6 +48,8 @@ export const CONNECT_FAILURE_CODES = [
   'storage_failed',
   'pending_connection_lost',
   'unexpected',
+  /** The platform is retired (FILM-717); its routes answer with this. */
+  'platform_retired',
   'unknown',
 ] as const;
 

@@ -32,15 +32,17 @@ export interface DeleteJobMessage extends BaseJobMessage {
   platformAccountId?: string;
 }
 
+/**
+ * A LinkedIn text post from the Social Posts page, which was retired with
+ * LinkedIn (FILM-717). Nothing sends one now; the worker reads one queued
+ * before the retirement only to mark its post failed as retired.
+ */
 export interface SocialTextPostJobMessage {
   type: 'social_text_post';
   socialPostId: string;
   userId: string;
   platformConnectionId: string;
   platform: 'linkedin';
-  text: string;
-  visibility: 'PUBLIC' | 'CONNECTIONS';
-  authorUrn: string;
 }
 
 export type JobMessage =
