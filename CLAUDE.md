@@ -279,11 +279,11 @@ with any file Prettier would change, so an unformatted push is a red build.
   fully tested by its merge-queue run.
 - **The merge queue is the gate** (2026-10-01). A PR run is the fast lane
   (🔎 Changes, ʦ TypeScript, 💅 Format, 🧪 Unit Tests, 🗄️ ClickHouse SQL, or
-  📚 Docs checks); the heavy jobs (🧪 Unit guards, 🐘 Supabase DB, ⚫️ Test,
-  🧬 E2E evidence) run once, when the PR is queued, on main + the PR, and
-  nothing runs after the merge. 🧬 E2E guards run only in the nightly full
-  run and on dispatch, not in the queue (owner, 2026-10-02: they were 41% of
-  a day's minutes). The queue builds one entry at a time. The one required check is
+  📚 Docs checks); the heavy jobs (🧪 Unit guards, 🐘 Supabase DB, ⚫️ Test)
+  run once, when the PR is queued, on main + the PR, and nothing runs after
+  the merge. 🧬 E2E guards and 🧬 E2E evidence run only in the nightly full
+  run and on dispatch, not in the queue (owner, 2026-10-02). The queue builds
+  one entry at a time. The one required check is
   **✅ CI result**. Actions → Workflow → Run workflow runs the full suite on
   a branch on demand. `scripts/ci/minutes.sh <pr|run-id>` reports what a PR
   or run cost in runner-minutes.

@@ -883,7 +883,10 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-latest
     needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' && needs.changes.outputs.heavy == 'true' && needs.changes.outputs.skip_test != 'true' }}
+    # Nightly and on dispatch only, like 🧬 E2E guards (owner, 2026-10-02):
+    # scoping runs it for any change to apps/e2e, so test-only PRs paid for it.
+    # ✅ CI result never required it; the nightly full run on main runs it.
+    if: ${{ !cancelled() && github.event_name != 'merge_group' && needs.changes.outputs.code != 'false' && vars.ENABLE_E2E_JOB == 'true' && needs.changes.outputs.heavy == 'true' && needs.changes.outputs.skip_test != 'true' }}
     env:
       DO_NOT_TRACK: 1
       # The server reads ClickHouse, unlike ⚫️ Test: the evidence specs seed
