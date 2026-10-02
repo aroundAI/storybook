@@ -62,6 +62,14 @@ export const PlatformConfigSchema = z.object({
 });
 
 /**
+ * FILM-1731. The creator's AI declaration, as the publish screen's form
+ * holds it: one answer for the whole publish.
+ */
+export const AiLabelDeclarationSchema = z.object({
+  aiGenerated: z.boolean(),
+});
+
+/**
  * Schema for publishToAllAction
  */
 export const PublishToAllSchema = z.object({
@@ -69,7 +77,7 @@ export const PublishToAllSchema = z.object({
   platforms: z.array(PlatformConfigSchema).min(1),
   // FILM-1731: the creator's AI declaration, one for the whole publish.
   // Absent is "not declared": off, as the publish screen's option starts.
-  aiGenerated: z.boolean().optional(),
+  aiGenerated: AiLabelDeclarationSchema.shape.aiGenerated.optional(),
 });
 
 /**

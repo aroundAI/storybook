@@ -12,6 +12,7 @@ import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { Textarea } from '@kit/ui/textarea';
 
+import { AiLabelDeclaration } from './ai-label-declaration';
 import { ChannelBadge } from './platform-ui';
 import type { PlatformConnection } from './publish-types';
 
@@ -31,6 +32,9 @@ interface PublishSettingsSidebarProps {
   connectionsCount: number;
   accountSlug?: string;
   onRefreshConnections: () => void;
+  /** The publish's AI declaration (FILM-1731) */
+  aiGenerated: boolean;
+  onAiGeneratedChange: (aiGenerated: boolean) => void;
   children?: ReactNode;
 }
 
@@ -42,6 +46,8 @@ export function PublishSettingsSidebar({
   connectionsCount,
   accountSlug,
   onRefreshConnections,
+  aiGenerated,
+  onAiGeneratedChange,
   children,
 }: PublishSettingsSidebarProps) {
   return (
@@ -87,6 +93,13 @@ export function PublishSettingsSidebar({
             />
             <p className="mt-1 text-xs text-gray-500">Comma-separated</p>
           </div>
+          <AiLabelDeclaration
+            aiGenerated={aiGenerated}
+            onChange={onAiGeneratedChange}
+            platforms={Object.values(channelsByLanguage)
+              .flat()
+              .map((channel) => channel.platform)}
+          />
         </CardContent>
       </Card>
 
