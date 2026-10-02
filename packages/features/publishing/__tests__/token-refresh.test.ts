@@ -34,9 +34,15 @@ const { fakeDb, logged } = vi.hoisted(() => {
   const tables: Record<string, Row[]> = {};
   const updates: Array<{ table: string; patch: Row }> = [];
   /** Returned by the update that stores refreshed tokens, when set. */
-  const failures: { tokenWrite: unknown; insert: unknown } = {
+  const failures: {
+    tokenWrite: unknown;
+    insert: unknown;
+    /** A single-row read of this id fails with `error` (KB-161). */
+    read: { id: string; error: unknown } | null;
+  } = {
     tokenWrite: null,
     insert: null,
+    read: null,
   };
 
   interface Result {
@@ -50,6 +56,7 @@ const { fakeDb, logged } = vi.hoisted(() => {
     private returning = false;
     private readonly filters: Array<(row: Row) => boolean> = [];
     private sortColumn: string | null = null;
+    private id: unknown;
 
     constructor(private readonly table: string) {}
 
@@ -71,6 +78,7 @@ const { fakeDb, logged } = vi.hoisted(() => {
     }
 
     eq(column: string, value: unknown) {
+      if (column === 'id') this.id = value;
       this.filters.push((row) => row[column] === value);
       return this;
     }
@@ -133,6 +141,9 @@ const { fakeDb, logged } = vi.hoisted(() => {
       }
 
       if (mode === 'many') return { data: rows, error: null };
+      if (failures.read && failures.read.id === this.id) {
+        return { data: null, error: failures.read.error };
+      }
       if (rows[0]) return { data: { ...rows[0] }, error: null };
       if (mode === 'maybeSingle') return { data: null, error: null };
 
@@ -160,6 +171,7 @@ const { fakeDb, logged } = vi.hoisted(() => {
         updates.length = 0;
         failures.tokenWrite = null;
         failures.insert = null;
+        failures.read = null;
       },
     },
     logged,
@@ -400,6 +412,28 @@ describe('ensureValidToken before any refresh', () => {
       valid: false,
       error: 'NOT_FOUND',
     });
+  });
+
+  /**
+   * KB-161. `.single()` reports a missing row as PGRST116; anything else is a
+   * read that failed, which says nothing about whether the connection exists.
+   */
+  it('throws a failed read rather than answering NOT_FOUND', async () => {
+    await seedExpiredConnection('youtube');
+    fakeDb.failures.read = {
+      id: 'conn-youtube',
+      error: {
+        code: '57014',
+        message: 'canceling statement due to statement timeout',
+      },
+    };
+
+    await expect(tokenRefresh.ensureValidToken('conn-youtube')).rejects.toThrow(
+      'Platform connection not found: the read failed (canceling statement due to statement timeout)',
+    );
+    expect(storedConnection().is_active).toBe(true);
+    expect(fakeDb.updates).toHaveLength(0);
+    expect(requests).toHaveLength(0);
   });
 
   it('returns CONNECTION_INACTIVE for an inactive connection', async () => {
@@ -845,6 +879,36 @@ describe('refreshExpiringTokens', () => {
     expect(await decrypted('refresh_token_encrypted', twitter)).toBe(
       'x-rotated-refresh-token-1',
     );
+  });
+
+  it('counts one failed read as one failure and refreshes the rest (KB-161)', async () => {
+    await seedGlobalCredentials('youtube');
+    const unread = await addConnection('twitter', 50);
+    const youtube = await addConnection('youtube', 50);
+    fakeDb.failures.read = {
+      id: unread.id,
+      error: { code: '08006', message: 'connection reset' },
+    };
+
+    const { refreshExpiringTokens } = await import(
+      '../src/jobs/refresh-expiring-tokens'
+    );
+    const result = await refreshExpiringTokens();
+
+    expect(result).toEqual({ checked: 2, refreshed: 1, failed: 1 });
+    expect(requests.map((r) => r.path)).toEqual(['/token']);
+    expect(Date.parse(youtube.token_expires_at)).toBeGreaterThan(
+      Date.now() + 55 * 60_000,
+    );
+    expect(unread.is_active).toBe(true);
+    expect(logged.error).toContainEqual([
+      expect.objectContaining({
+        platform: 'twitter',
+        error:
+          'Platform connection not found: the read failed (connection reset)',
+      }),
+      expect.stringContaining('Error refreshing twitter'),
+    ]);
   });
 });
 

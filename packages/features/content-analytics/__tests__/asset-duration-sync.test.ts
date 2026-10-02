@@ -209,6 +209,38 @@ describe('syncAssetDurations', () => {
     expect(result).toMatchObject({ written: 0, gaps: { not_reported: 1 } });
   });
 
+  // KB-161: a connection whose read failed costs only its own publishes,
+  // and is not counted as a connection without a valid token.
+  it('skips a connection whose token read throws, and syncs the next', async () => {
+    const { client, writes } = fakeClient();
+
+    youtubeDurations.mockResolvedValue(new Map([['content-p2', 45]]));
+
+    const result = await syncAssetDurations(
+      client,
+      [
+        candidate('p1', 'youtube', 'conn-1'),
+        candidate('p2', 'youtube', 'conn-2'),
+      ],
+      {
+        ensureValidToken: async (connectionId) => {
+          if (connectionId === 'conn-1') {
+            throw new Error(
+              'Platform connection not found: the read failed (connection reset)',
+            );
+          }
+          return validToken();
+        },
+      },
+    );
+
+    expect(writes.map((w) => w.filters[0])).toEqual([['eq', 'id', 'p2']]);
+    expect(result).toMatchObject({
+      written: 1,
+      gaps: { provider_error: 1 },
+    });
+  });
+
   it('never asks Meta: an Instagram publish is not a candidate at all', async () => {
     const { client, writes } = fakeClient();
     const ensureValidToken = vi.fn(validToken);

@@ -2,6 +2,7 @@ import 'server-only';
 
 import { decrypt, encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
+import { readFailed, whyNoRow } from '@kit/shared/rows';
 import { metaFetch } from '@kit/shared/vendors';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
@@ -129,7 +130,17 @@ async function doEnsureValidToken(
     `,
     )
     .eq('id', connectionId)
-    .single()) as { data: PlatformConnection | null; error: unknown };
+    .single()) as {
+    data: PlatformConnection | null;
+    error: { code?: string; message: string } | null;
+  };
+
+  // A read that failed says nothing about whether the connection exists, so
+  // it is thrown, never answered as NOT_FOUND. Every caller already catches
+  // per row or per request (KB-161, KB-138).
+  if (readFailed(error)) {
+    throw new Error(whyNoRow(error, 'Platform connection not found'));
+  }
 
   if (error || !connection) {
     return { valid: false, error: 'NOT_FOUND' };

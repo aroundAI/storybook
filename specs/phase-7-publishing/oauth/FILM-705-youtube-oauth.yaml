@@ -69,7 +69,7 @@ test_plan:
       reason: "not met — only failure branches are tested (`apps/e2e/tests/platform-connections/connect-failure.spec.ts`)"
     - text: "Test token refresh flow"
       met: true
-      evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:436` — drives `ensureValidToken` against a local Google token listener with the global app (KB-29)"
+      evidence: "`packages/features/publishing/__tests__/token-refresh.test.ts:470` — drives `ensureValidToken` against a local Google token listener with the global app (KB-29)"
     - text: "Test disconnect flow"
       met: false
       reason: "not met — no test found"
