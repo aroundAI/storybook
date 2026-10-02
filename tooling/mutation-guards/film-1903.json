@@ -1,5 +1,5 @@
 {
-  "feature": "FILM-1903 generation runs, part A: the database locks and the expiry cron",
+  "feature": "FILM-1903 generation runs: the database locks and expiry cron (part A), openRun and the run handle (part B)",
   "mutations": [
     {
       "name": "1903 DB L1 the LLM-job lock is dropped",
@@ -80,6 +80,76 @@
       "cwd": "apps/web",
       "test": "app/api/cron/expire-generation-runs/__tests__/route.test.ts",
       "pattern": "reports a failed expiry"
+    },
+    {
+      "name": "1903 B a second open run is not RUN_IN_PROGRESS",
+      "kind": "unit",
+      "file": "packages/features/generation/src/runs/store.ts",
+      "find": "    throw new RunError(\n      'RUN_IN_PROGRESS',",
+      "replace": "    console.warn(\n      'RUN_IN_PROGRESS',",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/runs.test.ts",
+      "pattern": "a second open run on the target and stage is RUN_IN_PROGRESS"
+    },
+    {
+      "name": "1903 B the MCP seam no longer makes a run external",
+      "kind": "unit",
+      "file": "packages/features/generation/src/runs/open-run.ts",
+      "find": "  const requested = ctx.connectionId ? 'external' : ctx.runMode?.();",
+      "replace": "  const requested = undefined;",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/runs.test.ts",
+      "pattern": "an MCP request is external, through the runMode seam"
+    },
+    {
+      "name": "1903 B dispatch sends an external run",
+      "kind": "unit",
+      "file": "packages/features/generation/src/runs/run-handle.ts",
+      "find": "    if (this.row.mode !== 'server') {\n      throw new RunError(\n        'RUN_NOT_SERVER',",
+      "replace": "    if (false) {\n      throw new RunError(\n        'RUN_NOT_SERVER',",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/dispatch-and-jobs.test.ts",
+      "pattern": "refuses an external run before the backend is reached"
+    },
+    {
+      "name": "1903 B finalize commits over a moved target",
+      "kind": "unit",
+      "file": "packages/features/generation/src/runs/run-handle.ts",
+      "find": "    if (current !== null && current !== this.row.targetVersion) {",
+      "replace": "    if (false) {",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/runs.test.ts",
+      "pattern": "assertTargetUnchanged refuses a moved episode"
+    },
+    {
+      "name": "1903 B the worker runs an external run",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/job-boundary.ts",
+      "find": "  if (run.mode !== 'server' || !run.isOpen()) {",
+      "replace": "  if (false) {",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/job-boundary.test.ts",
+      "pattern": "refuses an external run without a model call"
+    },
+    {
+      "name": "1903 B the worker re-runs a committed run",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/job-boundary.ts",
+      "find": "  if (run.status === 'committed') {",
+      "replace": "  if (false) {",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/job-boundary.test.ts",
+      "pattern": "treats a replayed message for a committed run as a no-op"
+    },
+    {
+      "name": "1903 B a child run takes the caller's mode, not its parent's",
+      "kind": "unit",
+      "file": "packages/features/generation/src/runs/open-run.ts",
+      "find": "    mode: RENDER_STAGES.has(stage) ? 'server' : parent.mode,",
+      "replace": "    mode: 'server',",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/runs.test.ts",
+      "pattern": "a child run takes its parent"
     }
   ]
 }

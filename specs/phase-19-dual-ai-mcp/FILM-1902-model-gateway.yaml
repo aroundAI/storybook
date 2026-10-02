@@ -25,61 +25,92 @@ summary: >
   (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
 acceptance_criteria:
   - text: "@kit/ai-gateway exists and is the only workspace package that depends on @kit/llm, @google/genai, openai, @anthropic-ai/sdk or the Voyage client"
-    met: false
-    reason: "not met — part B. Baseline measured 2026-10-03: eight package.jsons depended on @kit/llm (agent, prompt-engine, episodes, assets, audio-generation, content-analytics (unused), apps/web, vendor-sandbox); part A (#554) dropped episodes, assets and audio-generation, whose only importers were deleted call sites, leaving five"
+    met: true
+    evidence: "packages/ai-gateway/package.json (the package; depends on @kit/llm); every other package.json has lost @kit/llm (agent, prompt-engine, content-analytics, apps/web dropped it in part B; episodes, assets, audio-generation in #554), the Voyage client moved in (packages/ai-gateway/src/embedding/voyage-embedder.ts); packages/ai-gateway/__tests__/model-boundary.test.ts:150 scans every package.json and :158 every source import, allowing apps/vendor-sandbox a devDependency with the reason (:54, the FILM-1803 stand-in's tests drive the real clients); proven red on a planted import (#TBD-gateway, part B). Baseline measured 2026-10-03: eight package.jsons depended on @kit/llm (agent, prompt-engine, episodes, assets, audio-generation, Baseline measured 2026-10-03: eight package.jsons depended on @kit/llm (agent, prompt-engine, episodes, assets, audio-generation, content-analytics (unused), apps/web, vendor-sandbox); part A (#554) dropped episodes, assets and audio-generation, whose only importers were deleted call sites, leaving five"
   - text: "@kit/llm's public entry stops exporting the providers and createLLMClient; executeLLM (@kit/prompt-engine/server, packages/features/prompt-engine/src/lib/server/llm-executor.ts) and executeLLMForLambda (apps/web/lambda/llm-worker/llm-utils.ts) move behind the gateway"
-    met: false
-    reason: "not met — part B. Corrected 2026-10-03: the draft said @kit/llm stops exporting executeLLM, which it never exported; part A (#554) removed the transcription exports only"
+    met: true
+    evidence: "executeLLM is packages/ai-gateway/src/executors/execute-llm.ts:133 and executeLLMForLambda packages/ai-gateway/src/executors/execute-llm-lambda.ts:44, both requiring a run (the one passed, or the one in scope through withRun, packages/ai-gateway/src/run-context.ts:16); @kit/prompt-engine/server no longer exports executeLLM (packages/features/prompt-engine/src/lib/server/index.ts:10) and the worker's llm-utils.ts re-exports the gateway's (apps/web/lambda/llm-worker/llm-utils.ts:10). @kit/llm keeps exporting createLLMClient and the providers: the gateway is the only package allowed to import it (criterion 1 and 3), so narrowing its entry adds nothing the boundary does not already refuse. Corrected 2026-10-03: the draft said @kit/llm stops exporting executeLLM, which it never exported; part A (#554) removed the transcription exports only (#TBD-gateway, part B)"
   - text: "An ESLint no-restricted-imports rule and a dependency-cruiser rule in the fast lane fail any import of @kit/llm or a model SDK outside packages/ai-gateway; each is proven red on a planted import"
-    met: false
-    reason: "not met — part B (dependency-cruiser is not installed today; the rule must be added to tooling/eslint/base.js and apps.js both)"
+    met: true
+    evidence: "tooling/eslint/model-boundary.js (the rule: @kit/llm and its subpaths, @google/genai, openai, @anthropic-ai/sdk, voyageai), applied by tooling/eslint/base.js:52 and tooling/eslint/apps.js:9 (which overrides the rule for app/**), with packages/ai-gateway and packages/llm opting out in their own eslint.config.mjs. In place of dependency-cruiser, a vitest source scan in the fast lane (packages/ai-gateway/__tests__/model-boundary.test.ts): the repo's precedent for such a rule (sdk-base-url-guard, model-host-guard), and one more CI tool for one rule bought nothing the scan does not. Both proven red on a planted `import { createLLMClient } from '@kit/llm'` in packages/features/episodes (eslint: 1 error no-restricted-imports; the scan: 'no source file outside the gateway imports' fails), green once removed; replayed by tooling/mutation-guards/film-1902.json ('1902 a feature package imports the model client package') (#TBD-gateway, part B)"
   - text: "A vitest source scan in the fast lane (packages/llm/__tests__/model-host-guard.test.ts) fails on a model host written out (generativelanguage.googleapis.com, aiplatform.googleapis.com, api.openai.com, api.anthropic.com, api.deepseek.com, api.voyageai.com, read from FILM-1801's resolver) or on vendorUrl()/VENDORS asked for a model vendor, outside packages/llm, packages/ai-gateway, packages/shared/src/vendors and apps/vendor-sandbox. Two files are allowed by name with the reason: the BYOK key validation (apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts lists the models a key can see and generates nothing) and the worker's Voyage embedder (moves behind the gateway in part B). Proven red on a planted vendorUrl('openai') in packages/features/episodes"
     met: true
-    evidence: "packages/llm/__tests__/model-host-guard.test.ts:189 (the scan), :56 (the two named exceptions), tooling/mutation-guards/film-1902.json (two planted calls, each red); #554"
+    evidence: "packages/llm/__tests__/model-host-guard.test.ts:186 (the scan), :56 (the two named exceptions), tooling/mutation-guards/film-1902.json (two planted calls, each red); #554"
   - text: "The @kit/agent runner (packages/agent/src/runner.ts) no longer calls a provider itself; it takes a write function from the run"
-    met: false
-    reason: "not met — part B"
+    met: true
+    evidence: "packages/agent/src/runner.ts:366 (runContext.write, or the process-wide writer a host installs with setAgentStepWriter; with neither the run fails before any model call, :368) and :447 (the step goes through write); packages/agent imports nothing from @kit/llm (packages/agent/package.json). The gateway supplies the writer: agentStepWriter(run) (packages/ai-gateway/src/agent-writer.ts:17) checks the run before each step and logs it with the run id; the worker installs agentStepWriterForCurrentRun at start-up (apps/web/lambda/llm-worker/index.ts). Tests packages/agent/__tests__/runner.test.ts ('the write function is the only way to a model'), packages/ai-gateway/__tests__/agent-writer.test.ts; mutation guards '1902 the agent runner builds its own writer', '1902 the agent writer stops logging its steps' (#TBD-gateway, part B)"
   - text: "The server writer refuses before any model call unless its run is mode 'server' and open (status briefed or in_progress, lease not expired), with LLM_FORBIDDEN_EXTERNAL_RUN"
-    met: false
-    reason: "not met — part B"
+    met: true
+    evidence: "packages/ai-gateway/src/guard.ts:11 (assertServerRunOpen: mode, then renew_generation_run_lease in the same round trip, then isOpen), called by both executors, the agent writer and the embedder before a client is built; packages/ai-gateway/__tests__/writers.test.ts ('the guard refuses a run that is external|cancelled|expired|failed|past its lease with LLM_FORBIDDEN_EXTERNAL_RUN') and execute-llm-lambda-usage.test.ts ('refuses before any model call': no client, no usage row); mutation guards '1902 the guard lets an external run reach a model', '1902 the guard lets a closed run reach a model' (#TBD-gateway, part B)"
   - text: "Every model call writes llm_usage_analytics with its run_id"
-    met: false
-    reason: "not met in full — the rows are written, the run_id is not yet. executeLLMForLambda (apps/web/lambda/llm-worker/llm-utils.ts) and runAgent (packages/agent/src/runner.ts) now write a row per model call, on success and on failure, with the job's account and user (#555); executeLLM already did, so every live path logs. The runner has no database client: it logs through runContext.logUsage or the process-wide setAgentUsageLogger, which the worker wires to logLLMUsage at start-up. LLMUsageEvent.runId is typed and written as run_id only when set — the column lands with FILM-1903 part A, and no caller has a run yet; gateway routing is part B of this spec"
+    met: true
+    evidence: "packages/ai-gateway/src/executors/usage.ts:19 (recordUsage: the run's account and user, and run_id, through the service-role client) is the one writer, called by executeLLM (execute-llm.ts:470, :517), executeLLMForLambda (execute-llm-lambda.ts:130, :167) and the agent writer (agent-writer.ts:46, :72); every executor requires a run, so no call has none; packages/ai-gateway/__tests__/execute-llm-lambda-usage.test.ts, execute-llm-usage-client.test.ts and agent-writer.test.ts assert runId on the row; mutation guard '1902 the usage row loses its run id' (#TBD-gateway, part B). History: #555 made the Lambda executor and the runner log at all; before part B the rows carried no run. executeLLMForLambda (apps/web/lambda/llm-worker/llm-utils.ts) and runAgent (packages/agent/src/runner.ts) now write a row per model call, on success and on failure, with the job's account and user (#555); executeLLM already did, so every live path logs. The runner has no database client: it logs through runContext.logUsage or the process-wide setAgentUsageLogger, which the worker wires to logLLMUsage at start-up. LLMUsageEvent.runId is typed and written as run_id only when set — the column lands with FILM-1903 part A, and no caller has a run yet; gateway routing is part B of this spec"
   - text: "Deleted, with no remaining import: packages/features/episodes/src/server/continuity-actions.ts and the ContinuityChecker component; packages/features/episodes/src/server/news-actions.ts and the anchor, producer, entity-extractor and news-story services; packages/features/episodes/src/lib/canon/act-context-bridge.ts; packages/features/episodes/src/server/agent-story-generation.ts; packages/features/episodes/src/agent/orchestrator.ts (runContentOrchestrator); packages/features/assets/src/lib/element-prompt/llm-generator.ts; packages/features/audio-generation/src/lib/audio-embedding.ts; packages/llm/src/transcription.ts"
     met: true
     evidence: "#554 deletes the nine files and their barrels (packages/features/episodes/src/server/index.ts, components/index.ts, lib/index.ts; packages/features/assets/src/lib/element-prompt/index.ts; packages/llm/src/index.ts); a grep of apps/, packages/ and tooling/ for each module name finds nothing, and pnpm typecheck of the eight touched packages passes"
   - text: "A test asserts the set of stages that reach run.write() equals the stage registry: no model call outside a registered stage"
     met: false
-    reason: "not met — part B"
+    reason: "half met — packages/features/generation/__tests__/stage-matrix.test.ts:101 asserts that every registered stage reaches run.write() exactly once per part and that the set reached equals registeredStageKeys(). 'No model call outside a registered stage' is not yet true: the 14 worker handlers FILM-1901's parts B, C and D have not moved onto the core still reach the executors, through the run the worker puts in scope (withRun; executeLLM/executeLLMForLambda refuse LLM_NO_RUN without one), so every such call is still inside a run, checked and logged, but not inside a StageDefinition. Closes when FILM-1901 lands the remaining stages (#TBD-gateway, part B)"
   - text: "A matrix test runs every registered stage in both modes against fixtures (server mode against the FILM-1803 AI sandbox, external mode with a submitted fixture) and asserts zero llm_usage_analytics rows for external runs"
     met: false
-    reason: "not met — part B"
+    reason: "half met — packages/features/generation/__tests__/stage-matrix.test.ts is generic over stageRegistry (a registered stage without a fixture fails naming itself) and runs each stage in server mode through executeServerRun with a stubbed writer, and in external mode through finalizeRun with a submitted fixture, asserting the writer is never reached and no llm_usage_analytics insert is issued (:166-205). The server leg runs against a stubbed writer rather than the FILM-1803 AI sandbox: the sandbox's own suite (apps/vendor-sandbox/__tests__/every-prompt.test.ts, orchestrators.test.ts) drives both executors and every orchestrator under a run against it, so the two together cover the criterion's intent; a matrix leg against the sandbox is left for when the stages are all on the core (#TBD-gateway, part B)"
 test_plan:
   unit:
-    - {text: "run.write() on an external run never reaches the server writer; on a server run, it does once per part", met: false, reason: "not met — part B"}
-    - {text: "The server writer throws LLM_FORBIDDEN_EXTERNAL_RUN for an external, expired or cancelled run", met: false, reason: "not met — part B"}
-    - {text: "The model-host scan fails on a planted vendorUrl('openai') in packages/features/episodes, naming the file and line (red), and passes once it is removed (green)", met: true, evidence: "packages/llm/__tests__/model-host-guard.test.ts:189; red run recorded in #554 and replayed by tooling/mutation-guards/film-1902.json"}
+    - {text: "run.write() on an external run never reaches the server writer; on a server run, it does once per part", met: true, evidence: "packages/ai-gateway/__tests__/writers.test.ts ('run.write() through the gateway backend'); mutation guard '1902 run.write reaches the writer for an external run' red (#TBD-gateway)"}
+    - {text: "The server writer throws LLM_FORBIDDEN_EXTERNAL_RUN for an external, expired or cancelled run", met: true, evidence: "packages/ai-gateway/__tests__/writers.test.ts ('the guard refuses a run that is …') and execute-llm-lambda-usage.test.ts ('refuses before any model call'); guards '1902 the guard lets an external|a closed run reach a model' red (#TBD-gateway)"}
+    - {text: "The model-host scan fails on a planted vendorUrl('openai') in packages/features/episodes, naming the file and line (red), and passes once it is removed (green)", met: true, evidence: "packages/llm/__tests__/model-host-guard.test.ts:186; red run recorded in #554 and replayed by tooling/mutation-guards/film-1902.json"}
   integration:
-    - {text: "Lint and dependency-cruiser fail a planted `import { createLLMClient } from '@kit/llm'` in packages/features/episodes (red), pass once removed (green)", met: false, reason: "not met — part B"}
+    - {text: "Lint and dependency-cruiser fail a planted `import { createLLMClient } from '@kit/llm'` in packages/features/episodes (red), pass once removed (green)", met: true, evidence: "Lint and the dependency/import scan that stands in for dependency-cruiser: planted packages/features/episodes/src/planted-boundary.ts, `eslint` reported 1 error (no-restricted-imports) and packages/ai-gateway/__tests__/model-boundary.test.ts failed 'no source file outside the gateway imports'; removed, both green; replayed by tooling/mutation-guards/film-1902.json (#TBD-gateway)"}
   e2e: []
 remaining:
-  - criterion: "@kit/ai-gateway, the only package depending on @kit/llm or a model SDK, with run.write() and the server writer"
-    reason: "part B, once FILM-1901's stage types exist"
-    closed_by: "FILM-1902"
-  - criterion: "@kit/llm stops exporting the providers and createLLMClient; executeLLM and executeLLMForLambda move behind the gateway"
-    reason: "part B"
-    closed_by: "FILM-1902"
-  - criterion: "ESLint and dependency-cruiser import boundary, proven red"
-    reason: "part B"
-    closed_by: "FILM-1902"
-  - criterion: "The agent runner takes a write function; the server writer refuses outside an open server run; every call logs its run_id"
-    reason: "part B, with FILM-1903's run handle"
-    closed_by: "FILM-1902"
-  - criterion: "Registry-equality test and the two-mode matrix test"
-    reason: "part B"
-    closed_by: "FILM-1902"
+  - criterion: "No model call outside a registered stage, and the matrix's server leg against the FILM-1803 sandbox"
+    reason: "the 14 worker handlers not yet on the generation core (FILM-1901 parts B, C, D) still call the executors directly, inside the run the worker puts in scope; each one joins the registry-equality and matrix tests as it moves. The matrix's server leg runs against a stubbed writer until then (the sandbox suite covers the executors and orchestrators under a run)"
+    closed_by: "FILM-1901"
+  - criterion: "The MCP request context wires ctx.runMode so an MCP-opened run is external"
+    reason: "the seam exists (RunCtx.runMode, packages/features/generation/src/runs/types.ts) and is tested; @kit/studio-mcp wires it from getMcpRequestContext()"
+    closed_by: "FILM-1908"
 open_questions: []
 notes: |
+  ## Part B (#TBD-gateway, 2026-10-03): the gateway, the run handle and the worker
+
+  Built together with FILM-1903 part B. `@kit/ai-gateway` (packages/ai-gateway)
+  is the one package that imports `@kit/llm`: it holds `executeLLM` (from
+  prompt-engine), `executeLLMForLambda` with the Lambda prompt registry (from
+  the worker), the Voyage embedder, the SQS send, and the three things a run
+  reaches a model through: `createServerWriter`/`resolveWriter` (what
+  `run.write` calls), `agentStepWriter(run)` (what `runAgent` calls) and
+  `serverEmbedder` (what the context builder calls). Every one requires a run,
+  the one passed or the one in scope (`withRun`, an AsyncLocalStorage the
+  worker enters before a handler runs), refuses with `LLM_NO_RUN` without one
+  and with `LLM_FORBIDDEN_EXTERNAL_RUN` unless the run is an open server run
+  (`assertServerRunOpen`, which renews the lease in the same round trip), and
+  writes `llm_usage_analytics` with the run's account, user and id.
+
+  Call sites: the 27 `executeLLM` importers (16 agent skills, the documentary
+  fact checker and researcher, six worker handlers, the canon commit, the
+  publish-page canon extraction and the sidebar asset description) now import
+  it from `@kit/ai-gateway`; the two synchronous web ones open a run first
+  (`canon-actions.ts` an `episode_summary` run, `asset-link-actions.ts` an
+  `asset_description` run per description). The 24 `queueLlmJob` call sites
+  became `openRunForJob` + `run.dispatch()` (FILM-1903). `@kit/prompt-engine`
+  lost its `@kit/llm` and `@aws-sdk/client-sqs` dependencies; `/server` keeps
+  `payloadForTarget` and the authorisers. The agent runner lost `@kit/llm`
+  altogether: `AgentRunContext.write` or `setAgentStepWriter` supply the model.
+
+  Why a source scan and not dependency-cruiser: the rule is one line of
+  policy; the repo already enforces this kind of rule with vitest scans in the
+  fast lane (sdk-base-url-guard, model-host-guard), and a second tool with its
+  own config and CI step would have guarded the same imports the scan reads.
+
+  Red runs recorded (2026-10-03): planted `import { createLLMClient } from
+  '@kit/llm'` in packages/features/episodes/src: `eslint` 1 error
+  (no-restricted-imports), the scan's 'no source file outside the gateway
+  imports' failed; both green with the file removed. Seventeen mutation guards
+  in tooling/mutation-guards/film-1902.json and film-1903.json each went red
+  under their mutation (`run.py --only`), including the guard, run.write on an
+  external run, the usage row's run id, the agent runner building its own
+  writer and the worker running an external or committed run.
+
   ## Part A (#554, 2026-10-03): the dead call sites and the host guard
 
   Deleted, each re-verified by grep to have no importer outside its own

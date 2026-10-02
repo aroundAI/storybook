@@ -50,7 +50,7 @@ acceptance_criteria:
     evidence: null
   - text: "`generateFullStoryAction` handles optimistic locking"
     met: false
-    reason: "no longer true — version checked only when queueing (`packages/features/episodes/src/server/story-actions.ts:185`); the worker's write drops the guard (f64c9648)"
+    reason: "no longer true — version checked only when queueing (`packages/features/episodes/src/server/story-actions.ts:190`); the worker's write drops the guard (f64c9648)"
   - text: "`generateFullStoryAction` completes within 30 seconds"
     met: false
     reason: "owner check OC-10 (docs/OWNER-CHECKS.md) — runtime timing of an async agent job; needs a timed run"
@@ -59,7 +59,7 @@ acceptance_criteria:
     evidence: null
   - text: "All actions respect RLS policies"
     met: true
-    evidence: "KB-31, #315: both story actions queue their LLM job only after `authorizeEpisodeTarget` (`packages/features/episodes/src/server/story-actions.ts:80`, `:156`), which asks `can_write_project` on the episode's project as the caller (`packages/features/prompt-engine/src/lib/server/llm-job-target.ts:85`); `queueLlmJob` requires that target and sends only its ids (`packages/features/prompt-engine/src/lib/server/sqs-helper.ts:76`, `:90`). Red on the old code: `packages/features/episodes/__tests__/llm-job-authorization.test.ts` (27 tests, green on main)"
+    evidence: "KB-31, #315: both story actions queue their LLM job only after `authorizeEpisodeTarget` (`packages/features/episodes/src/server/story-actions.ts:80`, `:156`), which asks `can_write_project` on the episode's project as the caller (`packages/features/prompt-engine/src/lib/server/llm-job-target.ts:85`); `openRunForJob` requires that target and stores only its ids on the run (`packages/ai-gateway/src/jobs.ts:78`, `:81`); the queue message is the run id (FILM-1903). Red on the old code: `packages/features/episodes/__tests__/llm-job-authorization.test.ts` (27 tests, green on main)"
   - text: "Supports Claude, GPT-4, and Gemini providers"
     met: true
     evidence: null
@@ -74,7 +74,7 @@ acceptance_criteria:
     evidence: null
   - text: "Tracks costs accurately"
     met: false
-    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — per-call cost is logged (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:688`) from `packages/llm/src/pricing.ts`; rates not checked against vendor prices"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — per-call cost is logged (`packages/ai-gateway/src/executors/execute-llm.ts:470`) from `packages/llm/src/pricing.ts`; rates not checked against vendor prices"
   - text: "TypeScript compiles without errors"
     met: true
     evidence: "`pnpm typecheck` runs `web`'s `typecheck`, whose second half is `tsc --noEmit -p lambda/tsconfig.json` (`apps/web/package.json:23`); that config includes every worker file (`apps/web/lambda/tsconfig.json:23`) and CI's TypeScript job runs it (`.github/workflows/workflow.yml:143`) — KB-14, #309. Passes on `main` at `b21bd33e` (KB-80), with `@kit/episodes`' own `tsc --noEmit`; `handlers/story-ideation.ts` and `handlers/story-generation.ts` are in the lambda program"

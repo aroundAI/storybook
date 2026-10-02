@@ -46,7 +46,7 @@ Today every piece of creative text is written by Gemini inside an SQS-driven Lam
 
 ### How a generation runs today
 
-1. A server action (e.g. `generateShotListAction`, `packages/features/episodes/src/lib/server/mutations/shot-list-actions.ts:32`) authorises the target, inserts a `generation_jobs` row with status `queued`, and calls `queueLlmJob` (`prompt-engine/src/lib/server/sqs-helper.ts:75`).
+1. A server action (e.g. `generateShotListAction`, `packages/features/episodes/src/lib/server/mutations/shot-list-actions.ts:32`) authorises the target, opens a run for the job (`openRunForJob`, `packages/ai-gateway/src/jobs.ts:105`, FILM-1903 part B), inserts a `generation_jobs` row with status `queued` and the run id, and calls `run.dispatch()`; `queueLlmJob` is gone.
 2. The LLM worker (`apps/web/lambda/llm-worker/index.ts:166`) routes by `jobType` to one of 16 handlers. It runs with a service-role client, 15 min timeout and reserved concurrency 3 to avoid Gemini 429s (`sst.config.ts:649`).
 3. Most stages run an **orchestrator** on `@kit/agent` (`packages/features/episodes/src/agent/*-orchestrator.ts`): a director skill writes, an evaluator skill scores, and the loop can retry. Skills call `executeLLM` with a prompt slug.
 4. Prompts are JSON in `packages/features/prompt-engine/src/prompts/**`. Each carries `system_prompts`, a `user_prompt` template, `variables`, an `output.schema` and an `output.schema_for_llm`. All 30 pin `gemini` / `gemini-3.5-flash`; provider keys and `GEMINI_VERTEXAI`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION` come from env.
@@ -433,7 +433,7 @@ flowchart TD
   DP -->|mode = external| REF[Refused]
   SQS --> WK[Worker loads run, refuses unless open server run]
   WK --> SW
-  X[Any other import of a model SDK] -.->|lint, dependency-cruiser and grep fail CI| LLM
+  X[Any other import of a model SDK] -.->|lint, the dependency and import scan, and grep fail CI| LLM
   T1[DB trigger: LLM job needs a server run] -.-> SQS
   T2[DB trigger: usage row refused for external run] -.-> SW
 ```
@@ -442,7 +442,7 @@ flowchart TD
 
 **Five mechanisms, each closing one way in.**
 
-1. **Single owner of model SDKs.** A new package `@kit/ai-gateway` holds the server writer and is the only package allowed to depend on `@kit/llm`, `@google/genai`, `openai`, `@anthropic-ai/sdk` or the Voyage client. `@kit/llm` stops exporting providers, `executeLLM` and `createLLMClient` from its public entry. An ESLint `no-restricted-imports` rule and a dependency-cruiser check in the 💅/ʦ fast lane fail any other import, and a CI grep fails on raw `fetch` to `generativelanguage`, `aiplatform`, `api.openai.com` or `api.voyageai.com` outside the gateway. The `@kit/agent` runner takes a `write` function from the run instead of calling Gemini itself.
+1. **Single owner of model SDKs.** A new package `@kit/ai-gateway` holds the server writer and is the only package allowed to depend on `@kit/llm`, `@google/genai`, `openai`, `@anthropic-ai/sdk` or the Voyage client. `@kit/llm` stops exporting providers, `executeLLM` and `createLLMClient` from its public entry. An ESLint `no-restricted-imports` rule (`tooling/eslint/model-boundary.js`, applied by `base.js` and `apps.js`) and a vitest source scan in the fast lane (`packages/ai-gateway/__tests__/model-boundary.test.ts`: every package.json's dependencies and every source import; the repo's precedent for this kind of rule, chosen over adding dependency-cruiser as a second tool for one rule, FILM-1902 part B) fail any other import, and a CI grep fails on raw `fetch` to `generativelanguage`, `aiplatform`, `api.openai.com` or `api.voyageai.com` outside the gateway. The `@kit/agent` runner takes a `write` function from the run instead of calling Gemini itself.
 2. **Runs are the only door, and mode is decided once.** `openRun(stage, target, origin)` is the only constructor. Web server actions get the team default (server unless the team chose otherwise); MCP tools always get `external`, hard-coded in the MCP request context, not passed as an argument; the worker never opens a run. The mode is stored on the row and never changes.
 3. **Workers carry only a run id.** `queueLlmJob` becomes private to the gateway and is reachable only through `run.dispatch()`, which refuses unless `run.mode = 'server'`. The SQS message is `{ runId }`; the worker loads the run, and the server writer re-checks the mode and an open lease before its first model call. So even a mistaken enqueue from an MCP path, or a replayed message, cannot make Gemini write external work.
 4. **Chained work inherits mode.** Commit returns the follow-on stages (shots chain audio cues; story chains canon and asset descriptions). The core opens each as a child run with `parent_run_id` and the parent's mode. An external shots run produces an external audio-cue run waiting for Claude, never a queued Gemini job.
@@ -479,6 +479,7 @@ Nine new tables and a few additive columns, all in hand-written migrations under
 - `generation_origin jsonb` on `shots`, `dialogue_lines`, `audio_cues` and `assets`.
 - `episodes.generation_origin jsonb`, keyed by stage (`{ "story": {...}, "screenplay": {...} }`), because story and screenplay live in JSONB columns on `episodes`.
 - `generation_jobs.run_id uuid references generation_runs(id)`, required for LLM job types, so no Gemini job exists without a server run.
+- `generation_runs.input jsonb` (FILM-1903 part B): what the run was asked to do, `{kind: 'stage', target}` for a registered stage or `{kind: 'job', jobType, payload}` for a worker job not yet on the core, since the worker loads only a run id.
 
 * `generation_runs.parent_run_id`, so chained stages inherit their parent's mode.
 * `llm_usage_analytics.run_id`, required, so every model call is attributable to a run.
@@ -489,12 +490,16 @@ Nine new tables and a few additive columns, all in hand-written migrations under
 create table public.generation_runs (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null references public.accounts(id) on delete cascade,
-  project_id uuid not null references public.projects(id) on delete cascade,
-  target_type text not null check (target_type in ('episode','scene','asset','season','publish')),
+  -- null for a run on the caller's own text (publish_metadata), FILM-1903 part B
+  project_id uuid references public.projects(id) on delete cascade,
+  target_type text not null check (target_type in ('episode','scene','asset','season','project','publish','audio_cue')),
   target_id uuid not null,
   stage text not null check (stage in ('season_outline','ideation','story','story_refinement',
     'screenplay','screenplay_refinement','shots','audio_cues','dialogue_translation',
-    'asset_description','publish_metadata','season_analysis','fact_extraction','episode_summary')),
+    'asset_description','publish_metadata','season_analysis','fact_extraction','episode_summary',
+    -- server-only keys (FILM-1903 part B): model calls with no content stage, and the audio
+    -- render job, which rides the same queue; no StageDefinition serves them
+    'analytics_insights','language_insights','audio_render')),
   mode text not null check (mode in ('server','external')),
   status text not null default 'briefed'
     check (status in ('briefed','in_progress','committed','failed','cancelled','expired')),
@@ -714,12 +719,12 @@ flowchart LR
 - [ ] Enforce output schema validation in the worker (closes today's unvalidated `output.schema` gap)
 - [ ] Add `content_revisions` snapshot on every commit (NFR-14)
 
-* [ ] Create `@kit/ai-gateway` with the server writer; make it the only importer of `@kit/llm` and model SDKs; stop exporting providers, `executeLLM` and `createLLMClient` publicly
-* [ ] ESLint `no-restricted-imports`, dependency-cruiser rule and raw-endpoint grep in the fast lane; prove each fails on a planted import
-* [ ] `openRun` as the only run constructor; `run.write()` and `run.dispatch()`; `@kit/agent` takes its writer from the run
-* [ ] SQS message becomes `{ runId }`; worker loads the run and refuses anything but an open server run
-* [ ] Chained stages open child runs with the parent's mode
-* [ ] Stage registry as the source of `StageKey`; matrix test of every stage in both modes; test that gateway call sites equal the registry
+* [x] Create `@kit/ai-gateway` with the server writer; make it the only importer of `@kit/llm` and model SDKs; `executeLLM` and `executeLLMForLambda` moved behind it (FILM-1902 part B, #TBD-gateway); `@kit/llm` still exports `createLLMClient` and the providers, to the gateway alone
+* [x] ESLint `no-restricted-imports`, the dependency and import scan (in place of dependency-cruiser) and raw-endpoint grep in the fast lane; each proven red on a planted import (#554, #TBD-gateway)
+* [x] `openRun` as the only run constructor; `run.write()` and `run.dispatch()`; `@kit/agent` takes its writer from the run (#TBD-gateway)
+* [x] SQS message becomes `{ runId }`; worker loads the run and refuses anything but an open server run (#TBD-gateway)
+* [x] Chained stages open child runs with the parent's mode (#TBD-gateway)
+* [x] Stage registry as the source of `StageKey`; matrix test of every registered stage in both modes; test that the stages reaching `run.write()` equal the registry (#TBD-gateway; the stages not yet on the core still reach the executors through the run in scope, and join the matrix as FILM-1901's parts land)
 * [ ] Database locks (MCP runs external, LLM jobs need a server run, usage rows need a run id) with pgTAP tests
 * [ ] Delete the uncalled call sites: continuity checker, news actions and services, act-context bridge, agent story generation, element-prompt generator, OpenAI audio embedding, transcription
 
@@ -729,7 +734,7 @@ flowchart LR
 - [ ] `apps/web/app/api/mcp/route.ts`: stateless Streamable HTTP, JSON responses (FR-1, NFR-11)
 - [ ] `withMcpAuth`: PAT lookup, minted user JWT, RLS-scoped Supabase client (FR-3, FR-5, NFR-2)
 - [ ] `mcp_connections`, `mcp_tokens`, `mcp_tool_calls` migrations, types, pgTAP tests
-- [ ] `runContext` and the LLM guard in `executeLLM`, `executeLLMForLambda`, `@kit/agent` runner, `createLLMClient` (FR-20)
+- [x] `runContext` and the LLM guard in `executeLLM`, `executeLLMForLambda`, `@kit/agent` runner, `createLLMClient` (FR-20): the gateway's `withRun`/`requireRun` and `assertServerRunOpen` (FILM-1902 part B, #TBD-gateway); FILM-1908 wires `ctx.runMode` from the MCP request context
 - [ ] Read tools: `whoami`, projects, episodes, screenplay, shots, dialogue, assets (FR-10)
 - [ ] Split each analytics action into wrapper + service function taking a client; the 20 analyze tools in section 3a (FR-30)
 - [ ] Rate limits in the cache layer (NFR-9); MCP Inspector contract test in CI
