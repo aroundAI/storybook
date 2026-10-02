@@ -20,6 +20,7 @@
     "./render-template": "./src/lib/render-template.ts",
     "./prompt-registry": "./src/lib/server/prompt-registry.ts",
     "./llm-job-payloads": "./src/lib/llm-job-payloads.ts",
+    "./generation-job-types": "./src/lib/generation-job-types.ts",
     "./types": "./src/lib/types.ts",
     "./validation": "./src/lib/validation/index.ts",
     "./schemas": "./src/schemas/index.ts"
