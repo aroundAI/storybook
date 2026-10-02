@@ -9,12 +9,14 @@ import {
   queryPlatformBreakdown,
   queryPostsAccountsReached,
 } from '@kit/clickhouse/server';
+import { analyticsScopesEnabled } from '@kit/publishing/server/analytics-scope-switch';
 import { fetchAllByIds, fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
   type Counts,
   FACEBOOK_NOT_GRANTED_REASON,
+  FACEBOOK_NOT_REQUESTED_REASON,
   type Measured,
   type ReachWindow,
   channelReachAvailability,
@@ -158,7 +160,12 @@ async function loadChannel(
   if (connection.platform === 'facebook' && !readsChannelReach(connection)) {
     return {
       ...base,
-      reach: { measured: false, reason: FACEBOOK_NOT_GRANTED_REASON },
+      reach: {
+        measured: false,
+        reason: analyticsScopesEnabled().has('facebook')
+          ? FACEBOOK_NOT_GRANTED_REASON
+          : FACEBOOK_NOT_REQUESTED_REASON,
+      },
       newAccounts: null,
     };
   }

@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  ALL_ANALYTICS_SCOPES_ENABLED,
+  NO_ANALYTICS_SCOPES_ENABLED,
+} from '@kit/publishing/oauth/analytics-scope-switch';
+import { resolveAnalyticsAccess } from '@kit/publishing/oauth/analytics-scopes';
+
+import {
   FACEBOOK_THIRTY_DAY_REASON,
   channelReachAvailability,
 } from '../src/lib/reach-overview';
@@ -49,6 +55,45 @@ describe('Facebook is read only once its insights are granted', () => {
   });
 });
 
+describe('the record and the code agree on reading a Page', () => {
+  const PUBLISHING = [
+    'pages_show_list',
+    'pages_manage_posts',
+    'pages_read_engagement',
+  ];
+  const state = (
+    requirementId: string,
+    scopes: string[],
+    scopesEnabled = NO_ANALYTICS_SCOPES_ENABLED,
+  ) =>
+    resolveAnalyticsAccess({
+      platform: 'facebook',
+      grantedScopes: scopes,
+      scopesEnabled,
+    })?.entries.find((entry) => entry.requirementId === requirementId)?.state;
+
+  it('a publishing connection reads neither, and is told not requested', () => {
+    expect(readsFollowers(connection('facebook', PUBLISHING))).toBe(false);
+    expect(readsChannelReach(connection('facebook', PUBLISHING))).toBe(false);
+    expect(state('facebook.page-fields', PUBLISHING)).toBe('not_requested');
+    expect(state('facebook.page-insights', PUBLISHING)).toBe('not_requested');
+  });
+
+  it('reads exactly when the record says authorised', () => {
+    for (const scopes of [PUBLISHING, FULL, [...PUBLISHING, 'read_insights']]) {
+      const authorised = (id: string) =>
+        state(id, scopes, ALL_ANALYTICS_SCOPES_ENABLED) === 'authorised';
+
+      expect(readsFollowers(connection('facebook', scopes))).toBe(
+        authorised('facebook.page-fields'),
+      );
+      expect(readsChannelReach(connection('facebook', scopes))).toBe(
+        authorised('facebook.page-insights'),
+      );
+    }
+  });
+});
+
 describe("a Page's reach on the reach page", () => {
   it('7 days is measured; 30 days says Facebook has no such window', () => {
     expect(channelReachAvailability('facebook', 7).measured).toBe(true);
@@ -66,14 +111,14 @@ describe('buildFacebookAudienceRows', () => {
     videoId: 'v1',
     audience: {
       ageGender: [
-        { gender: 'F', ageGroup: '18-24', views: 10 },
-        { gender: 'M', ageGroup: '18-24', views: 30 },
-        { gender: 'F', ageGroup: '25-34', views: 50 },
-        { gender: 'U', ageGroup: '65+', views: 10 },
+        { gender: 'F', ageGroup: '18-24', views: 20 },
+        { gender: 'M', ageGroup: '18-24', views: 60 },
+        { gender: 'F', ageGroup: '25-34', views: 100 },
+        { gender: 'U', ageGroup: '65+', views: 20 },
       ],
       countries: [
-        { country: 'US', views: 75 },
-        { country: 'GB', views: 25 },
+        { country: 'US', views: 150 },
+        { country: 'GB', views: 50 },
       ],
     },
   });
@@ -87,22 +132,22 @@ describe('buildFacebookAudienceRows', () => {
 
   it('sums each age group across genders, as a share of its dimension', () => {
     expect(of('age_group')).toEqual({
-      '18-24': [40, 40],
-      '25-34': [50, 50],
-      '65+': [10, 10],
+      '18-24': [80, 40],
+      '25-34': [100, 50],
+      '65+': [20, 10],
     });
   });
 
   it('sums each gender across ages, named as the other platforms name them', () => {
     expect(of('gender')).toEqual({
-      female: [60, 60],
-      male: [30, 30],
-      other: [10, 10],
+      female: [120, 60],
+      male: [60, 30],
+      other: [20, 10],
     });
   });
 
   it('keeps countries as Meta reports them', () => {
-    expect(of('country')).toEqual({ US: [75, 75], GB: [25, 25] });
+    expect(of('country')).toEqual({ US: [150, 75], GB: [50, 25] });
     expect(rows.every((row) => row.platform === 'facebook')).toBe(true);
   });
 

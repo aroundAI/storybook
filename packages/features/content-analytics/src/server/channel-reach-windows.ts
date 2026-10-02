@@ -130,6 +130,64 @@ export function readsChannelReach(connection: {
   );
 }
 
+/** One day of a channel's windows, from its platform. */
+function channelReader(
+  connectionId: string,
+  platform: 'instagram' | 'facebook',
+  accountId: string,
+  accessToken: string,
+): {
+  readDay: (asOf: string) => Promise<ChannelWindowRow[]>;
+  usagePercent: () => number | null;
+} {
+  if (platform === 'facebook') {
+    const provider = createFacebookInsightsProvider(accessToken);
+
+    return {
+      usagePercent: () => provider.usagePercent,
+      readDay: async (asOf) =>
+        (await provider.getPageUniqueViewers(accountId, asOf)).map(
+          (window) => ({
+            connectionId,
+            platform: 'facebook',
+            asOf,
+            windowDays: window.windowDays,
+            accountsReached: window.viewers,
+            // Meta splits a Page's viewers by follower for plays, not people.
+            accountsReachedFollowers: null,
+            accountsReachedNonFollowers: null,
+            source: 'fb_page_insights',
+          }),
+        ),
+    };
+  }
+
+  const provider = createInstagramInsightsProvider(accessToken, accountId);
+
+  return {
+    usagePercent: () => provider.usagePercent,
+    readDay: (asOf) =>
+      Promise.all(
+        REACH_WINDOWS.map(async (window) => {
+          const reach = await provider.getAccountReach(
+            reachWindowBounds(asOf, window),
+          );
+
+          return {
+            connectionId,
+            platform: 'instagram' as const,
+            asOf,
+            windowDays: window.windowDays,
+            accountsReached: reach.accountsReached,
+            accountsReachedFollowers: reach.followers,
+            accountsReachedNonFollowers: reach.nonFollowers,
+            source: 'ig_account_insights',
+          };
+        }),
+      ),
+  };
+}
+
 export interface ChannelReachCaptureResult {
   channels: number;
   rowsWritten: number;
@@ -217,39 +275,11 @@ export async function captureChannelReachWindows(
         since: addDays(today, -BACKFILL_DAYS),
       });
 
-      if (platform === 'facebook') {
-        const pageId = connection.platform_account_id;
-        const provider = createFacebookInsightsProvider(token.accessToken);
-
-        for (const asOf of missingAsOfDays(today, complete)) {
-          if (Date.now() >= deadline) {
-            budgetExhausted = true;
-            break;
-          }
-
-          const viewers = await provider.getPageUniqueViewers(pageId, asOf);
-          const rows: ChannelWindowRow[] = viewers.map((window) => ({
-            connectionId: connection.id,
-            platform: 'facebook',
-            asOf,
-            windowDays: window.windowDays,
-            accountsReached: window.viewers,
-            // Meta splits a Page's viewers by follower for plays, not people.
-            accountsReachedFollowers: null,
-            accountsReachedNonFollowers: null,
-            source: 'fb_page_insights',
-          }));
-
-          await insertChannelWindows(rows);
-          rowsWritten += rows.length;
-        }
-
-        continue;
-      }
-
-      const provider = createInstagramInsightsProvider(
-        token.accessToken,
+      const reader = channelReader(
+        connection.id,
+        platform,
         connection.platform_account_id,
+        token.accessToken,
       );
 
       for (const asOf of missingAsOfDays(today, complete)) {
@@ -258,38 +288,31 @@ export async function captureChannelReachWindows(
           break;
         }
 
-        const rows: ChannelWindowRow[] = await Promise.all(
-          REACH_WINDOWS.map(async (window) => {
-            const reach = await provider.getAccountReach(
-              reachWindowBounds(asOf, window),
-            );
+        // One day's windows land together, so a day is never half-recorded,
+        // and a day missing any window is not recorded at all: it is
+        // complete once written, and would never be asked for again.
+        const rows = await reader.readDay(asOf);
+        const missing = rows.filter((row) => row.accountsReached === null);
+        if (missing.length > 0) {
+          throw new Error(
+            `${platform} gave no figure for ${asOf} over ${missing
+              .map((row) => `${row.windowDays} days`)
+              .join(', ')}; retried next run`,
+          );
+        }
 
-            return {
-              connectionId: connection.id,
-              platform: 'instagram' as const,
-              asOf,
-              windowDays: window.windowDays,
-              accountsReached: reach.accountsReached,
-              accountsReachedFollowers: reach.followers,
-              accountsReachedNonFollowers: reach.nonFollowers,
-              source: 'ig_account_insights',
-            };
-          }),
-        );
-
-        // One day's windows land together, so a day is never half-recorded.
         await insertChannelWindows(rows);
         rowsWritten += rows.length;
 
-        // Leave headroom under Meta's hourly allowance: the rest of this
-        // channel's backlog waits for the next run.
-        if ((provider.usagePercent ?? 0) >= USAGE_CEILING) {
+        // Leave headroom under Meta's allowance: the rest of this channel's
+        // backlog waits for the next run.
+        if ((reader.usagePercent() ?? 0) >= USAGE_CEILING) {
           throttled += 1;
           logger.warn(
             {
               ...ctx,
               connectionId: connection.id,
-              usagePercent: provider.usagePercent,
+              usagePercent: reader.usagePercent(),
             },
             'Channel reach capture paused at the rate-limit ceiling',
           );

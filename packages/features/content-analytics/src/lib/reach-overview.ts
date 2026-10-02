@@ -27,8 +27,11 @@ export const NINETY_DAY_REASON =
 
 export const FACEBOOK_THIRTY_DAY_REASON = `Not measured: ${platformLabel('facebook')} reports how many people saw a Page’s content over a day, 7 days or 28 days, not 30, and a 30-day figure cannot be built from those.`;
 
-/** A Page whose connection was made without its insights is never read. */
-export const FACEBOOK_NOT_GRANTED_REASON = `Not measured: this ${platformLabel('facebook')} Page was connected without permission to read its insights, so how many people saw its content is not recorded.`;
+/** Facebook is switched off: no Page is asked for its insights yet. */
+export const FACEBOOK_NOT_REQUESTED_REASON = `Not measured: we do not ask ${platformLabel('facebook')} for permission to read a Page’s insights yet, so reconnecting would not change anything.`;
+
+/** Facebook is on, but this Page was connected before it was. */
+export const FACEBOOK_NOT_GRANTED_REASON = `Not measured: this ${platformLabel('facebook')} Page was connected before we asked for permission to read its insights. Reconnect it to grant that permission.`;
 
 export function parseReachWindow(value: string | undefined): ReachWindow {
   const days = Number(value);

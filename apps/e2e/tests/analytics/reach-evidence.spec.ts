@@ -244,10 +244,11 @@ test.describe('Reach page — figures and evidence', () => {
       byTest(byTest(page, 'reach-count-views'), 'reach-count-reason'),
     ).toHaveText(/four different kinds of view/);
     await expect(reach.count('comments')).toHaveText('4');
-    // Connected without Page insights: never read, and it says so.
+    // Facebook is switched off: never read, and reconnecting is not offered
+    // as the way to fix it.
     await expect(
       byTest(reach.channel(facebook.connectionId), 'channel-reach-reason'),
-    ).toHaveText(/connected without permission to read its insights/);
+    ).toHaveText(/reconnecting would not change anything/);
     readings.facebook7 = await byTest(page, 'reach-overview').innerText();
     await shoot(page, '07-facebook-tab-7-days');
 

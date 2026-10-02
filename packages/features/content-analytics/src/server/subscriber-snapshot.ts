@@ -119,7 +119,7 @@ async function readCount(
 export function readsFollowers(connection: ConnectionRow): boolean {
   return (
     connection.platform !== 'facebook' ||
-    holdsRequirement('facebook.video-insights', connection.scopes)
+    holdsRequirement('facebook.page-fields', connection.scopes)
   );
 }
 

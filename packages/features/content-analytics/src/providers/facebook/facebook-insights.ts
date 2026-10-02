@@ -3,7 +3,11 @@ import 'server-only';
 import type { SubscriberCountResult } from '@kit/shared/subscribers';
 import { metaFetch } from '@kit/shared/vendors';
 
-import { MetaRateLimitError, isMetaThrottle } from '../../lib/meta-usage';
+import {
+  MetaRateLimitError,
+  isMetaThrottle,
+  metaUsagePercent,
+} from '../../lib/meta-usage';
 import type {
   FacebookAudience,
   FacebookInsightsInput,
@@ -126,6 +130,13 @@ export class FacebookInsightsScopeError extends Error {
 class FacebookReadRefused extends Error {}
 
 export class FacebookInsightsProvider {
+  /**
+   * The highest share of Meta's allowance any response so far has reported,
+   * or null before one did. A Page token is metered per Page, so the nightly
+   * reach backfill stops before Meta throttles the Page's video reads too.
+   */
+  usagePercent: number | null = null;
+
   constructor(private accessToken: string) {}
 
   async getVideoInsights(
@@ -368,6 +379,11 @@ export class FacebookInsightsProvider {
   }
 
   private async parse<T>(response: Response): Promise<T> {
+    const usage = metaUsagePercent(response.headers);
+    if (usage !== null) {
+      this.usagePercent = Math.max(this.usagePercent ?? 0, usage);
+    }
+
     const body = (await response.json().catch(() => ({}))) as T & GraphBody;
     const code = body.error?.code;
     const message = body.error?.message ?? `HTTP ${response.status}`;

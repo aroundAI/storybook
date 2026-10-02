@@ -219,7 +219,11 @@ export const ANALYTICS_SCOPE_REQUIREMENTS: readonly AnalyticsScopeRequirement[] 
     {
       id: 'facebook.page-fields',
       platform: 'facebook',
-      scopes: ['pages_read_engagement'],
+      // Meta needs only pages_read_engagement, which every publishing
+      // connection holds; read_insights is required too so the count ships
+      // dark with the rest of Facebook's analytics (FILM-1720), and this
+      // record says "not requested" while the switch is off.
+      scopes: ['read_insights', 'pages_read_engagement'],
       endpoints: [/\$\{pageId\}\?fields=/],
       gains: 'Your Facebook Page’s follower count',
       provider: 'implemented',
