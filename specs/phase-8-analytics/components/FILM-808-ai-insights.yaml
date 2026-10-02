@@ -56,13 +56,13 @@ acceptance_criteria:
     evidence: "shown once the wrapper is unwrapped (`packages/features/content-analytics/src/components/ai-insights.tsx:213`; test `packages/features/content-analytics/__tests__/insights-result.test.ts:18`); unit-tested only, not reproduced in a browser"
   - text: "Caches insights to avoid repeated LLM calls"
     met: true
-    evidence: "server cache: the worker serves a stored answer for 24 hours and stores a miss (apps/web/lambda/llm-worker/handlers/analytics-insights.ts:119 read, :129 TTL check, :145 write; table analytics_insights_cache), tests apps/web/lambda/llm-worker/__tests__/analytics-insights-handler.test.ts:262, :252, :262; the trend, audience and top-content inputs are in the hash and INSIGHTS_PROMPT_VERSION = 2 is in the key, so an answer from the earlier prompt is a miss (:420, :452); client: the queued null is no longer held for an hour (packages/features/content-analytics/src/components/ai-insights.tsx:89, packages/features/content-analytics/__tests__/insights-result.test.ts:30)"
+    evidence: "server cache: the worker serves a stored answer for 24 hours and stores a miss (apps/web/lambda/llm-worker/handlers/analytics-insights.ts:119 read, :129 TTL check, :145 write; table analytics_insights_cache), tests apps/web/lambda/llm-worker/__tests__/analytics-insights-handler.test.ts:262, :252, :262; the trend, audience and top-content inputs are in the hash and INSIGHTS_PROMPT_VERSION = 2 is in the key, so an answer from the earlier prompt is a miss (:420, :452); client: the queued null is no longer held for an hour (packages/features/content-analytics/src/components/ai-insights.tsx:106, packages/features/content-analytics/__tests__/insights-result.test.ts:30)"
   - text: "Shows loading state during generation"
     met: true
     evidence: "the skeleton shows while a queued job has not delivered (`awaitingJob`, `packages/features/content-analytics/src/components/ai-insights.tsx:112`, `:103`); verified by reading, no component test. If the WebSocket message is lost the skeleton stays until a reload"
   - text: "Allows manual refresh of insights"
     met: true
-    evidence: "the Refresh button sets `refresh: true` (`packages/features/content-analytics/src/components/ai-insights.tsx:76`, `:128`), the payload accepts it (`packages/features/prompt-engine/src/lib/llm-job-payloads.ts:178`) and the worker skips the cache read and overwrites (`apps/web/lambda/llm-worker/handlers/analytics-insights.ts:225`); test `apps/web/lambda/llm-worker/__tests__/analytics-insights-handler.test.ts:303`"
+    evidence: "the Refresh button sets `refresh: true` (`packages/features/content-analytics/src/components/ai-insights.tsx:93`, `:128`), the payload accepts it (`packages/features/prompt-engine/src/lib/llm-job-payloads.ts:178`) and the worker skips the cache read and overwrites (`apps/web/lambda/llm-worker/handlers/analytics-insights.ts:225`); test `apps/web/lambda/llm-worker/__tests__/analytics-insights-handler.test.ts:303`"
 test_plan:
   unit:
     - text: "Test `calculateChanges` function"
