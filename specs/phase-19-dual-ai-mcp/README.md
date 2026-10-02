@@ -9,7 +9,8 @@ record, the validator and the analyzer: it makes **no model call of its own**
 for that work.
 
 **Design document (reviewed by the owner, 2026-10-02):**
-[EDD: Dual AI Architecture](https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
+[EDD: Dual AI Architecture](https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242),
+with a repository copy in [EDD.md](./EDD.md) (diagrams in Mermaid).
 It carries the diagrams (system architecture, the external shot-list sequence,
 the model-access door, the milestone graph) and the full low-level design. The
 specs below are its task breakdown; where a spec and the EDD disagree, the spec
@@ -128,9 +129,10 @@ step stays a web action.
 
 ## Open questions (owner)
 
-1. FILM-1907: build our own minimal OAuth 2.1 authorization server
-   (recommended: works with any `AUTH_PROVIDER`) or use Supabase Auth's OAuth
-   server feature?
+1. ~~FILM-1907: own OAuth server or Supabase's?~~ Decided 2026-10-02: our
+   own small authorization server, compatible with Supabase (Supabase Auth is
+   the login and identity, RLS applies, and a Supabase verifier can be swapped
+   in behind `McpTokenVerifier`).
 2. FILM-1908: is the agent's self-check against the quality rubric enough, or
    should commit refuse below a deterministic score?
 3. FILM-1909: store ideation output on `episodes.metadata.ideas` for both modes
