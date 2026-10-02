@@ -58,8 +58,8 @@ acceptance_criteria:
     met: true
     evidence: "Findings rank by rankingDistance on the adjusted lift (packages/clickhouse/src/lib/genome-evidence.ts:269): the naive control ranks 2.8x on n=2 first, adjusted it ranks below 1.35x on n=100 (packages/clickhouse/__tests__/genome.test.ts:254), and analyseGenome orders its findings the same way (packages/clickhouse/__tests__/genome.test.ts:266). Guards GN3, GN4. #545"
   - text: "Evidence level is visible, and sparse evidence is labelled rather than hidden"
-    met: false
-    reason: "Data half met: every finding carries its level, FILM-1606's tiers renamed Early signal / Directional / Established pattern (packages/clickhouse/src/lib/genome-evidence.ts:49), and evidenceLabel (packages/clickhouse/src/lib/genome-evidence.ts:276) says \"Early signal — 2 videos · 1.42x adjusted\"; a two-video finding is returned, not filtered (packages/clickhouse/__tests__/genome.test.ts:415). Rendering half: no surface shows findings yet — rendering is FILM-1719's (this spec's Out of scope)"
+    met: true
+    evidence: "Data: every finding carries its level, FILM-1606's tiers renamed Early signal / Directional / Established pattern (packages/clickhouse/src/lib/genome-evidence.ts:49), and evidenceLabel (packages/clickhouse/src/lib/genome-evidence.ts:276) says \"Early signal — 2 videos · 1.42x adjusted\"; a two-video finding is returned, not filtered (packages/clickhouse/__tests__/genome.test.ts:415). Rendering: FILM-1719 shows each finding's strength and evidenceLabel beside it, a two-video finding included (packages/features/content-analytics/src/components/signal-surface/genome-findings.tsx:240; packages/features/content-analytics/__tests__/signal-surface-dom.test.tsx \"lists both comparable sets as links, and the evidence level\"; on the page, \"Directional, 7 videos, 1.06x adjusted\" in apps/e2e/tests/analytics/signal-surface-evidence.spec.ts). #PR"
   - text: "A recommendation cannot be constructed without an Evidence"
     met: true
     evidence: "Recommendation (packages/clickhouse/src/lib/genome-evidence.ts:322) has a required evidence and a brand only recommendFrom(finding) adds; a recommendation without evidence does not compile (packages/clickhouse/__tests__/genome.test.ts:454; seen red by making evidence optional and dropping the brand). #545"
@@ -86,7 +86,7 @@ acceptance_criteria:
     evidence: "deriveTemplates and instantiateTemplate (packages/clickhouse/src/lib/genome-loop.ts:219, :309); CreativeTemplate's mechanisms are a non-empty tuple, each with its Evidence (packages/clickhouse/src/lib/genome-loop.ts:193; packages/clickhouse/__tests__/genome-loop.test.ts:367). Tested at packages/clickhouse/__tests__/genome-loop.test.ts:315 and :251 (GN16), and on ClickHouse: identity:high + result_first:yes on gn-09, gn-10 (packages/clickhouse/scripts/verify-queries.ts:4603). #545"
   - text: "A concluded channel experiment (FILM-1724) backs a causal claim only where its styles separated"
     met: true
-    evidence: "channel_experiments.genome_hypothesis with the same CHECK and freeze as the Change log's (apps/web/supabase/migrations/20261002122828_genome-semantic-and-hypothesis-link.sql:71; pgTAP apps/web/supabase/tests/database/genome-hypothesis-link.test.sql:145, guard GN-DB4). getGenomeFindingsAction reads this channel's concluded linked experiments (packages/features/content-analytics/src/server/genome-actions.ts:179; packages/features/content-analytics/__tests__/genome-actions.test.ts:220, :237; GN20, GN21). causalTestOf (packages/clickhouse/src/lib/genome-evidence.ts:102) counts a confirmed experiment as confirming only when FILM-1724's experimentFindings holds a non-overlapping pair (packages/clickhouse/__tests__/genome-loop.test.ts:230, :257; GN19). #545"
+    evidence: "channel_experiments.genome_hypothesis with the same CHECK and freeze as the Change log's (apps/web/supabase/migrations/20261002122828_genome-semantic-and-hypothesis-link.sql:71; pgTAP apps/web/supabase/tests/database/genome-hypothesis-link.test.sql:145, guard GN-DB4). getGenomeFindingsAction reads this channel's concluded linked experiments (packages/features/content-analytics/src/server/genome-findings.ts:101; packages/features/content-analytics/__tests__/genome-actions.test.ts:220, :237; GN20, GN21). causalTestOf (packages/clickhouse/src/lib/genome-evidence.ts:102) counts a confirmed experiment as confirming only when FILM-1724's experimentFindings holds a non-overlapping pair (packages/clickhouse/__tests__/genome-loop.test.ts:230, :257; GN19). #545"
   - text: "A hypothesis key may name monetisation, the sixth stage FILM-1726 appended (#523)"
     met: true
     evidence: "Both genome_hypothesis CHECKs accept monetisation (pgTAP apps/web/supabase/tests/database/genome-hypothesis-link.test.sql:106, red without it); the TypeScript pattern derives from FUNNEL_STAGES, which includes it since #523, and the test pins the two as one pattern (packages/clickhouse/__tests__/genome-loop.test.ts:164; red with monetisation dropped from the CHECK). #545"
@@ -104,7 +104,7 @@ feature:
       file: "packages/clickhouse/src/queries-advanced.ts:1742"
   actions:
     - name: "getGenomeFindingsAction"
-      file: "packages/features/content-analytics/src/server/genome-actions.ts:75"
+      file: "packages/features/content-analytics/src/server/genome-actions.ts:54"
   ui:
     - component: "TagManager"
       file: "packages/features/content-analytics/src/components/taxonomy/tag-manager.tsx:95"
@@ -117,9 +117,6 @@ feature:
     - "Three claim strengths: observed, controlled_association, causal (causal gated on a concluded Change log entry (FILM-1610) or a concluded channel experiment (FILM-1724); the claim names which)"
     - "Evidence object: level, n, cohort n, comparable definition, claim strength, observed and adjusted lift, shrinkage factor, both comparable sets, source rows, MetricProvenance"
 remaining:
-  - criterion: "Evidence level is visible, and sparse evidence is labelled rather than hidden"
-    reason: "The rendering half: no surface shows genome findings yet. The level and its label are on every finding for FILM-1719 to render"
-    closed_by: "FILM-1719"
   - criterion: "v1 ships and is useful before v2 begins"
     reason: "Retired by the owner on 2026-10-01: v1 and v2 were built together. Nothing is left to build"
     closed_by: null
