@@ -149,6 +149,16 @@
       "cwd": "apps/vendor-sandbox",
       "test": "__tests__/x-fidelity.test.ts",
       "pattern": "initialize takes a total_bytes"
+    },
+    {
+      "name": "X16 a refused X read is recorded as failed, not as a scope error",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/sync-status.ts",
+      "find": "    error instanceof FacebookInsightsScopeError ||\n    error instanceof XAnalyticsScopeError\n",
+      "replace": "    error instanceof FacebookInsightsScopeError\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/sync-status.test.ts",
+      "pattern": "records X’s refused read and rate limit"
     }
   ]
 }

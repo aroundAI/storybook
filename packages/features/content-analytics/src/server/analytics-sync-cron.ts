@@ -18,7 +18,6 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 
 import { planRevenueRowWrites } from '../lib/revenue-mix';
 import { MAX_CONSECUTIVE_FAILURES } from '../lib/sync-status';
-import type { FacebookInsightsResult } from '../providers/facebook';
 import {
   type XReadRefusal,
   decideXRead,
@@ -26,6 +25,7 @@ import {
   utcDayStart,
   xAnalyticsEnabled,
 } from '../lib/x-read-budget';
+import type { FacebookInsightsResult } from '../providers/facebook';
 import { createFacebookInsightsProvider } from '../providers/facebook';
 import { createInstagramInsightsProvider } from '../providers/instagram';
 import type { InstagramInsightsResult } from '../providers/instagram';

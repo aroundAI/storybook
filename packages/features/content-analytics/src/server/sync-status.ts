@@ -81,7 +81,10 @@ export function classifySyncFailure(error: unknown): {
     return { status: 'scope_error', errorType: 'scope', message, reason };
   }
 
-  if (error instanceof TikTokRateLimitError || error instanceof XRateLimitError) {
+  if (
+    error instanceof TikTokRateLimitError ||
+    error instanceof XRateLimitError
+  ) {
     return { status: 'rate_limited', errorType: 'rate_limit', message, reason };
   }
 
