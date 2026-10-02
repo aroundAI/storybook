@@ -160,6 +160,8 @@ describe('@kit/clickhouse', () => {
             accounts_reached: null,
             reposts: null,
             ...ALL_SURFACE_UNMEASURED,
+            ig_reels_avg_watch_time_ms: null,
+            ig_reels_skip_rate: null,
           },
         ];
 

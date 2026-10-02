@@ -49,6 +49,15 @@ export const MAX_WINDOW_S = 30 * 86_400;
 /** The 2026 Reels watch-time unit, as Meta's own titles label it. */
 const MS = 1000;
 
+/**
+ * The share of a Reel's views skipped in the first 3 seconds. The growth
+ * model draws no skip behaviour of its own, so this is fixed. Meta calls
+ * `reels_skip_rate` a percentage and shows no value, so the sandbox serves
+ * one on 0–100; the app stores it unscaled either way, and FILM-1714
+ * withholds it until a live response settles the scale (KB-151).
+ */
+const SKIP_PERCENT = 31.5;
+
 function mediaObjects(social: SocialState, account: SocialAccount) {
   // A seeded post the app already knew is adopted with no account; there is
   // one Instagram account per sandbox, so it is this one's.
@@ -234,6 +243,7 @@ const MEDIA_METRICS = new Set([
   'shares',
   'ig_reels_avg_watch_time',
   'ig_reels_video_view_total_time',
+  'reels_skip_rate',
 ]);
 
 /** GET /{ig-media-id}/insights?metric=… — lifetime, per post. */
@@ -320,6 +330,7 @@ const mediaInsights: SocialRoute = ({
     // uses reach, a count below views, so nothing here can pass by assuming
     // the average is derivable from views.
     ig_reels_avg_watch_time: reach > 0 ? Math.round(watchedMs / reach) : 0,
+    reels_skip_rate: views > 0 ? SKIP_PERCENT : 0,
   };
 
   sendJson(res, 200, {

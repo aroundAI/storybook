@@ -169,6 +169,103 @@ describe('InstagramInsightsProvider', () => {
       expect(result.totals.shares).toBe(10);
     });
 
+    // KB-151: Meta documents both for REELS only. The average is Meta's own
+    // quotient (749,526 ms over 221 views read 6,194, FILM-1712), so it is
+    // kept as reported, never total ÷ views; the skip rate likewise.
+    it('asks a Reel for its average watch time and skip rate, and keeps both as reported', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({ media_type: 'VIDEO', media_product_type: 'REELS' }),
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: [
+              { name: 'views', values: [{ value: 221 }] },
+              {
+                name: 'ig_reels_video_view_total_time',
+                values: [{ value: 749526 }],
+              },
+              { name: 'ig_reels_avg_watch_time', values: [{ value: 6194 }] },
+              { name: 'reels_skip_rate', values: [{ value: 37.5 }] },
+            ],
+          }),
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: [] }),
+      });
+
+      const result = await provider.getMediaInsights({ mediaId: 'reel' });
+
+      const insights = new URL(String(mockFetch.mock.calls[1]![0]));
+      expect(insights.searchParams.get('metric')!.split(',')).toEqual(
+        expect.arrayContaining(['ig_reels_avg_watch_time', 'reels_skip_rate']),
+      );
+      expect(result.totals.avgWatchTimeMs).toBe(6194);
+      expect(result.totals.reelsSkipRate).toBe(37.5);
+    });
+
+    it('reads a metric Meta returns with no value as not measured, not 0', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({ media_type: 'VIDEO', media_product_type: 'REELS' }),
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: [
+              { name: 'views', values: [{ value: 40 }] },
+              { name: 'ig_reels_avg_watch_time', values: [] },
+              { name: 'reels_skip_rate', values: [] },
+            ],
+          }),
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: [] }),
+      });
+
+      const result = await provider.getMediaInsights({ mediaId: 'reel' });
+
+      expect(result.totals.views).toBe(40);
+      expect(result.totals.avgWatchTimeMs).toBeNull();
+      expect(result.totals.reelsSkipRate).toBeNull();
+    });
+
+    it('asks a feed post for neither Reels-only figure, and reports both as null', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({ media_type: 'VIDEO', media_product_type: 'FEED' }),
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: [{ name: 'views', values: [{ value: 9 }] }],
+          }),
+      });
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: [] }),
+      });
+
+      const result = await provider.getMediaInsights({ mediaId: 'post' });
+
+      const metrics = new URL(
+        String(mockFetch.mock.calls[1]![0]),
+      ).searchParams.get('metric')!;
+      expect(metrics).not.toContain('reels_skip_rate');
+      expect(metrics).not.toContain('ig_reels_avg_watch_time');
+      expect(result.totals.avgWatchTimeMs).toBeNull();
+      expect(result.totals.reelsSkipRate).toBeNull();
+    });
+
     it('should fetch insights for a Video using the views metric', async () => {
       // Mock media type response
       mockFetch.mockResolvedValueOnce({

@@ -625,8 +625,9 @@ export const CAPABILITY_MATRIX: Record<
         ],
       },
     },
-    // Never `unsupported`: Instagram documents both fields for Reels and we
-    // have simply never requested them.
+    // The family is the stored total. Meta's own average and the skip rate
+    // are on video_snapshots since KB-151 (migration 023), read by the
+    // signal map rather than this entry.
     instagram: {
       level: 'derived',
       table: 'video_metrics',

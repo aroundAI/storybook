@@ -218,7 +218,7 @@ describe('Meta sandbox: Instagram reads, through the app provider', () => {
     const raw = await graph(`/${SEEDED_REEL}/insights`, {
       access_token: pageToken,
       metric:
-        'views,reach,total_interactions,likes,comments,saved,shares,ig_reels_avg_watch_time,ig_reels_video_view_total_time',
+        'views,reach,total_interactions,likes,comments,saved,shares,ig_reels_avg_watch_time,ig_reels_video_view_total_time,reels_skip_rate',
     });
     expect(
       undeclaredKeys(
@@ -245,11 +245,19 @@ describe('Meta sandbox: Instagram reads, through the app provider', () => {
       Math.round(value.ig_reels_video_view_total_time! / value.views!),
     );
 
+    // KB-151: a share of views, on Meta's "percentage" scale, never above it.
+    expect(value.reels_skip_rate).toBeGreaterThan(0);
+    expect(value.reels_skip_rate).toBeLessThanOrEqual(100);
+
     const insights = await (
       await provider()
     ).getMediaInsights({ mediaId: SEEDED_REEL });
     expect(insights.totals.views).toBe(value.views);
     expect(insights.totals.reach).toBe(value.reach);
+    // KB-151: both Reels attention figures reach the provider's totals as
+    // served, the average not recomputed from the total.
+    expect(insights.totals.avgWatchTimeMs).toBe(value.ig_reels_avg_watch_time);
+    expect(insights.totals.reelsSkipRate).toBe(value.reels_skip_rate);
     // FILM-1712: reposts ride on the media-info call, a count no larger than
     // the shares that carry them.
     expect(insights.totals.reposts).toBe(reposts);

@@ -131,6 +131,7 @@ export const META_SERVED: readonly ServedEndpoint[] = [
       'shares',
       'ig_reels_avg_watch_time',
       'ig_reels_video_view_total_time',
+      'reels_skip_rate',
     ],
     envelope: cite(
       MEDIA_INSIGHTS_PAGE,

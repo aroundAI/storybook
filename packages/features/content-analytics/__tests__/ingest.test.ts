@@ -1,15 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
+import type { InstagramInsightsResult } from '../src/providers/instagram/types';
+import type { TikTokAnalyticsResult } from '../src/providers/tiktok/types';
 import type { YouTubeAnalyticsResult } from '../src/providers/youtube/types';
 import {
   accountsReachedDelta,
   buildAudienceRows,
   buildRetentionPoints,
   buildSnapshotDeltaRow,
+  buildSnapshotRow,
   buildYouTubeDailyRows,
   computeSnapshotDelta,
   computeYouTubeWindow,
   latestDataDate,
+  reelsAttention,
   shouldWriteMetricRow,
   snapshotDeltaMetricDate,
 } from '../src/server/ingest';
@@ -472,6 +476,94 @@ describe('buildSnapshotDeltaRow', () => {
   it("keeps Instagram reposts and writes TikTok's as null", () => {
     expect(build('instagram').reposts).toBe(6);
     expect(build('tiktok').reposts).toBeNull();
+  });
+});
+
+// KB-151. Lifetime figures Meta computes itself: they go to the snapshot as
+// reported, never into a day's delta and never derived from the total.
+describe('reelsAttention', () => {
+  const reel = (avgWatchTimeMs: number | null, reelsSkipRate: number | null) =>
+    ({
+      mediaId: 'reel',
+      mediaType: 'VIDEO',
+      mediaProductType: 'REELS',
+      totals: {
+        views: 221,
+        reach: 121,
+        totalInteractions: 0,
+        likes: 0,
+        comments: 0,
+        saved: 0,
+        shares: 0,
+        watchTimeMs: 749_526,
+        avgWatchTimeMs,
+        reelsSkipRate,
+        reposts: null,
+        allSurfaceViews: null,
+        allSurfaceLikes: null,
+        allSurfaceComments: null,
+      },
+    }) satisfies InstagramInsightsResult;
+
+  it("stores Meta's average, not total ÷ views (FILM-1712's live Reel)", () => {
+    const attention = reelsAttention('instagram', reel(6194, 37.5));
+
+    // 749,526 ÷ 221 is 3,391: the figure that must not appear.
+    expect(attention).toEqual({
+      ig_reels_avg_watch_time_ms: 6194,
+      ig_reels_skip_rate: 37.5,
+    });
+  });
+
+  it('is null, not 0, where Meta omits either', () => {
+    expect(reelsAttention('instagram', reel(null, null))).toEqual({
+      ig_reels_avg_watch_time_ms: null,
+      ig_reels_skip_rate: null,
+    });
+    expect(reelsAttention('instagram', reel(0, 0))).toEqual({
+      ig_reels_avg_watch_time_ms: 0,
+      ig_reels_skip_rate: 0,
+    });
+  });
+
+  // The writer is where KB-151's average was lost: the provider had it.
+  it('reaches the snapshot row the sync inserts, beside the counters', () => {
+    const row = buildSnapshotRow({
+      projectId: '550e8400-e29b-41d4-a716-446655440000',
+      videoId: 'publish-ig',
+      platform: 'instagram',
+      snapshotDate: '2026-10-01',
+      totals: {
+        views: 221,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        saves: 0,
+        watch_time_seconds: 750,
+        subscribers_gained: null,
+        accounts_reached: 121,
+        reposts: null,
+        ...ALL_SURFACE_UNMEASURED,
+      },
+      analytics: reel(6194, 37.5),
+    });
+
+    expect(row).toMatchObject({
+      platform: 'instagram',
+      views: 221,
+      watch_time_seconds: 750,
+      ig_reels_avg_watch_time_ms: 6194,
+      ig_reels_skip_rate: 37.5,
+    });
+  });
+
+  it('is null on TikTok, which reports neither', () => {
+    expect(
+      reelsAttention('tiktok', {
+        videoId: 'tt',
+        totals: { views: 1, likes: 0, comments: 0, shares: 0 },
+      } as unknown as TikTokAnalyticsResult),
+    ).toEqual({ ig_reels_avg_watch_time_ms: null, ig_reels_skip_rate: null });
   });
 });
 

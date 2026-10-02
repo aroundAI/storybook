@@ -70,6 +70,13 @@ export interface InstagramTotals {
   watchTimeMs: number | null;
   avgWatchTimeMs: number | null;
   /**
+   * Reels only: "the percentage of views from people who skipped during the
+   * first 3 seconds", as Meta reports it (KB-151). Meta tags it estimated and
+   * in development, and does not say whether it is 0–100 or 0–1, so nothing
+   * rescales it. Null for other media, or when Meta omits it.
+   */
+  reelsSkipRate: number | null;
+  /**
    * Lifetime reposts: `reposts_count`, a Media node field for FEED and
    * REELS (FILM-1712). Null for a Story, or when Meta omits it.
    */

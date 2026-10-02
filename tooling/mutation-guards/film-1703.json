@@ -65,8 +65,8 @@
       "name": "Instagram watch time stops being requested while its total is still read",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/providers/instagram/instagram-insights.ts",
-      "find": "? ['ig_reels_avg_watch_time', 'ig_reels_video_view_total_time']",
-      "replace": "? ['ig_reels_avg_watch_time']",
+      "find": "                    'ig_reels_avg_watch_time',\n                    'ig_reels_video_view_total_time',\n                    'reels_skip_rate',",
+      "replace": "                    'ig_reels_avg_watch_time',\n                    'reels_skip_rate',",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/provider-result-fields.test.ts",
       "pattern": "every total is read from a requested field"

@@ -135,16 +135,19 @@ export type SignalId = (typeof SIGNAL_IDS)[number];
 /**
  * A vendor field whose unit the vendor does not document. The figure is
  * withheld until someone has seen the unit in a live response. A 1000×
- * error from reading milliseconds as seconds is silent and looks plausible.
+ * error from reading milliseconds as seconds is silent and looks plausible,
+ * and so is a 100× one from reading a 0–1 fraction as a percentage.
  */
+type SignalUnit = 'milliseconds' | 'seconds' | 'percent';
+
 export type SignalUnitCheck =
   | {
-      unit: 'milliseconds' | 'seconds';
+      unit: SignalUnit;
       confirmed: { on: string; how: string };
       pending?: undefined;
     }
   | {
-      unit: 'milliseconds' | 'seconds';
+      unit: SignalUnit;
       confirmed?: undefined;
       /** Who confirms it: a spec id, or `'owner'`. Becomes the blocker. */
       pending: { owner: string; question: string };
@@ -278,6 +281,17 @@ export const SIGNALS: Record<SignalId, SignalDefinition> = {
     composition: 'measured',
     definition:
       'The share of a Reel’s views from people who skipped it within the first 3 seconds.',
+    // Stored as reported since KB-151. Meta calls it a percentage but shows
+    // no value, so whether 25% arrives as 25 or 0.25 is unknown until a live
+    // response is read, as FILM-1712 read the watch-time unit.
+    unitCheck: {
+      unit: 'percent',
+      pending: {
+        owner: 'owner',
+        question:
+          'Does reels_skip_rate arrive as a percentage (0–100) or a fraction (0–1)? Read one live Reel’s value beside what Instagram’s app shows for it.',
+      },
+    },
   },
   share_rate: {
     id: 'share_rate',
@@ -396,13 +410,11 @@ export const SIGNALS: Record<SignalId, SignalDefinition> = {
 // Input gaps: a vendor field the family level cannot see
 // ---------------------------------------------------------------------------
 
-const CONTENT_ANALYTICS = 'packages/features/content-analytics/src';
-
 /**
  * Where a family is ingested on a platform but the one field a signal reads
- * is not. Instagram `watch_time` is `derived` because the total is stored.
- * The average and the skip rate are not. Read at the family level, those
- * two signals would claim a figure nobody stores.
+ * is not. Read at the family level, such a signal would claim a figure
+ * nobody stores. (Instagram's average watch time and skip rate were the
+ * first two, until KB-151 stored them.)
  *
  * A gap can only make support weaker, and only to `not_ingested`. It never
  * makes support stronger, and it is never written into
@@ -429,29 +441,9 @@ export interface SignalInputGap {
   marker: string;
 }
 
-export const SIGNAL_INPUT_GAPS: readonly SignalInputGap[] = [
-  {
-    // Requested since FILM-1712, then dropped: `avgWatchTimeMs` is read
-    // nowhere outside the provider, and ingest pins
-    // `avg_view_duration_seconds` to null for Instagram.
-    signal: 'ig_reels_avg_watch_time',
-    platform: 'instagram',
-    field: 'ig_reels_avg_watch_time',
-    blockedBy: 'KB-151',
-    note: 'Instagram reports how long a Reel was played on average, but we do not store that figure yet, so no Instagram average watch time is shown.',
-    within: `${CONTENT_ANALYTICS}/server`,
-    marker: 'avgWatchTimeMs',
-  },
-  {
-    signal: 'reels_skip_rate',
-    platform: 'instagram',
-    field: 'reels_skip_rate',
-    blockedBy: 'KB-151',
-    note: 'Instagram reports how many viewers skipped a Reel in its first 3 seconds, but we do not ask for that figure yet, so no Instagram skip rate is shown.',
-    within: `${CONTENT_ANALYTICS}/providers/instagram`,
-    marker: 'reels_skip_rate',
-  },
-];
+// Empty since KB-151 stored Instagram's average watch time and skip rate,
+// the two gaps it held. The rules stay for the next field-level gap.
+export const SIGNAL_INPUT_GAPS: readonly SignalInputGap[] = [];
 
 // ---------------------------------------------------------------------------
 // Support, computed

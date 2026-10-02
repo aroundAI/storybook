@@ -34,6 +34,7 @@ import type {
   FunnelStage,
   SignalDefinition,
   SignalId,
+  SignalInputGap,
   StageBinding,
 } from '../src/lib/signal-map';
 
@@ -461,28 +462,23 @@ describe('support is computed from the matrix, never authored', () => {
 // Input gaps: weaken only, and only while true
 // ---------------------------------------------------------------------------
 
-describe('an input gap holds only while nothing collects the field', () => {
-  it('finds the code it is scanning', () => {
-    for (const gap of SIGNAL_INPUT_GAPS) {
-      expect(filesUnder(gap.within).length, gap.within).toBeGreaterThan(0);
-    }
-  });
+// Source files only: a backup or an editor's swap file beside the code is not
+// code that collects the field.
+function staleGaps(gaps: readonly SignalInputGap[]) {
+  return gaps.flatMap((gap) =>
+    filesUnder(gap.within)
+      .filter((file) => /\.tsx?$/.test(file))
+      .filter((file) => readFileSync(file, 'utf8').includes(gap.marker))
+      .map(
+        (file) =>
+          `${gap.signal} on ${gap.platform}: ${gap.marker} is in ${file.slice(REPO.length + 1)}, so the gap is closed — remove it`,
+      ),
+  );
+}
 
-  it('is stale once its marker appears', () => {
-    const stale = SIGNAL_INPUT_GAPS.flatMap((gap) =>
-      filesUnder(gap.within)
-        .filter((file) => readFileSync(file, 'utf8').includes(gap.marker))
-        .map(
-          (file) =>
-            `${gap.signal} on ${gap.platform}: ${gap.marker} is in ${file.slice(REPO.length + 1)}, so the gap is closed — remove it`,
-        ),
-    );
-
-    expect(stale).toEqual([]);
-  });
-
-  it('is redundant where the families are already that weak', () => {
-    const redundant = SIGNAL_INPUT_GAPS.filter((gap) => {
+function redundantGaps(gaps: readonly SignalInputGap[]) {
+  return gaps
+    .filter((gap) => {
       const withoutGap = computeSignalSupport(
         SIGNALS[gap.signal],
         gap.platform,
@@ -492,9 +488,62 @@ describe('an input gap holds only while nothing collects the field', () => {
         SUPPORT_ORDER.indexOf(withoutGap.level) >=
         SUPPORT_ORDER.indexOf('not_ingested')
       );
-    }).map((gap) => `${gap.signal} on ${gap.platform}`);
+    })
+    .map((gap) => `${gap.signal} on ${gap.platform}`);
+}
 
-    expect(redundant).toEqual([]);
+/**
+ * The two gaps KB-151 closed, kept as probes so both rules are still seen to
+ * fire with SIGNAL_INPUT_GAPS empty. The average's marker is now in the
+ * ingest code, so this probe is stale by construction.
+ */
+const KB_151_AVERAGE_GAP: SignalInputGap = {
+  signal: 'ig_reels_avg_watch_time',
+  platform: 'instagram',
+  field: 'ig_reels_avg_watch_time',
+  blockedBy: 'KB-151',
+  note: 'Instagram reports how long a Reel was played on average, but we do not store that figure yet.',
+  within: 'packages/features/content-analytics/src/server',
+  marker: 'avgWatchTimeMs',
+};
+
+describe('an input gap holds only while nothing collects the field', () => {
+  it('finds the code it is scanning', () => {
+    for (const gap of [...SIGNAL_INPUT_GAPS, KB_151_AVERAGE_GAP]) {
+      expect(filesUnder(gap.within).length, gap.within).toBeGreaterThan(0);
+    }
+  });
+
+  it('is stale once its marker appears', () => {
+    expect(staleGaps(SIGNAL_INPUT_GAPS)).toEqual([]);
+  });
+
+  it('flags a closed gap as stale (KB-151 stored the average)', () => {
+    expect(staleGaps([KB_151_AVERAGE_GAP])).toHaveLength(1);
+  });
+
+  it('is redundant where the families are already that weak', () => {
+    expect(redundantGaps(SIGNAL_INPUT_GAPS)).toEqual([]);
+  });
+
+  it('flags a gap on a signal whose families are already not ingested', () => {
+    // TikTok watch time is FILM-1730's, so a gap there adds nothing.
+    const onTikTok = { ...KB_151_AVERAGE_GAP, platform: 'tiktok' as const };
+    expect(redundantGaps([KB_151_AVERAGE_GAP])).toEqual([]);
+    expect(redundantGaps([onTikTok])).toEqual([
+      'ig_reels_avg_watch_time on tiktok',
+    ]);
+  });
+
+  it('weakens support to not_ingested, with its blocker, and never strengthens it', () => {
+    const support = computeSignalSupport(
+      SIGNALS.ig_reels_avg_watch_time,
+      'instagram',
+      [KB_151_AVERAGE_GAP],
+    );
+    expect(support.level).toBe('not_ingested');
+    expect(support.gap).toBe(KB_151_AVERAGE_GAP);
+    expect(support.blockers).toEqual(['KB-151']);
   });
 
   it('names a blocker and a creator-facing note, once per signal and platform', () => {
@@ -584,18 +633,23 @@ describe('Instagram bindings', () => {
     );
   });
 
-  it('both Attention signals render dark with KB-151 named, never as a figure', () => {
+  // KB-151 stored both. The average's unit is confirmed, so Attention is
+  // measurable; the skip rate's scale is not, so it stays dark on the owner.
+  it('Attention is measurable once KB-151 stores the average; the skip rate waits on its scale', () => {
     const attention = stageReading('instagram', 'short_vertical', 'attention');
 
-    expect(attention.status).toBe('dark');
+    expect(attention.status).toBe('measurable');
     if (attention.status === 'unbound') return;
-    expect(attention.blockers).toEqual(['KB-151']);
+    expect(attention.primary.gap).toBeNull();
+    expect(attention.blockers).toEqual([]);
 
     const skip = attention.supporting.find(
       (support) => support.signal === 'reels_skip_rate',
     );
+    expect(skip?.gap).toBeNull();
     expect(skip?.level).toBe('not_ingested');
-    expect(skip?.blockers).toEqual(['KB-151']);
+    expect(skip?.unitPending?.owner).toBe('owner');
+    expect(skip?.blockers).toEqual(['owner']);
   });
 
   it('leaves Hook and Audience unbound for a Reel, with the reason', () => {
