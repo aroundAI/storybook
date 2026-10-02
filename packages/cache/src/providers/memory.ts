@@ -219,6 +219,23 @@ export class MemoryCache implements CacheClient {
   }
 
   /**
+   * Add one to a counter, creating it with the TTL when absent or expired.
+   * Synchronous inside, so two awaiting callers see consecutive values.
+   */
+  async incr(key: string, ttlSeconds: number): Promise<number> {
+    const now = Date.now();
+    const entry = this.cache.get(key) as CacheEntry<number> | undefined;
+
+    if (!entry || now > entry.expiresAt || typeof entry.value !== 'number') {
+      await this.set(key, 1, ttlSeconds);
+      return 1;
+    }
+
+    entry.value += 1;
+    return entry.value;
+  }
+
+  /**
    * Get cache performance metrics
    */
   getMetrics(): CacheMetrics {

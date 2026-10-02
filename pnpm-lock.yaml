@@ -2176,6 +2176,49 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.5.0)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jiti@2.5.1)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.51.2)(tsx@4.21.0)
 
+  packages/features/studio-mcp:
+    dependencies:
+      '@kit/cache':
+        specifier: workspace:*
+        version: link:../../cache
+      '@kit/shared':
+        specifier: workspace:*
+        version: link:../../shared
+      '@kit/supabase':
+        specifier: workspace:*
+        version: link:../../supabase
+      '@modelcontextprotocol/sdk':
+        specifier: 1.18.0
+        version: 1.18.0
+      '@supabase/supabase-js':
+        specifier: 2.57.4
+        version: 2.57.4
+      jose:
+        specifier: 6.2.12
+        version: 6.2.12
+      zod:
+        specifier: ^3.25.74
+        version: 3.25.76
+    devDependencies:
+      '@kit/eslint-config':
+        specifier: workspace:*
+        version: link:../../../tooling/eslint
+      '@kit/prettier-config':
+        specifier: workspace:*
+        version: link:../../../tooling/prettier
+      '@kit/tsconfig':
+        specifier: workspace:*
+        version: link:../../../tooling/typescript
+      '@types/node':
+        specifier: ^24.5.0
+        version: 24.5.0
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.5.0)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jiti@2.5.1)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.51.2)(tsx@4.21.0)
+
   packages/features/team-accounts:
     dependencies:
       nanoid:
@@ -18847,7 +18890,7 @@ snapshots:
 
   '@types/estree-jsx@1.0.5':
     dependencies:
-      '@types/estree': 1.0.8
+      '@types/estree': 1.0.9
 
   '@types/estree@1.0.8': {}
 
@@ -20751,7 +20794,7 @@ snapshots:
 
   estree-walker@3.0.3:
     dependencies:
-      '@types/estree': 1.0.8
+      '@types/estree': 1.0.9
 
   esutils@2.0.3: {}
 
@@ -22245,7 +22288,7 @@ snapshots:
 
   micromark-extension-mdx-expression@3.0.1:
     dependencies:
-      '@types/estree': 1.0.8
+      '@types/estree': 1.0.9
       devlop: 1.1.0
       micromark-factory-mdx-expression: 2.0.3
       micromark-factory-space: 2.0.1
@@ -22256,7 +22299,7 @@ snapshots:
 
   micromark-extension-mdx-jsx@3.0.2:
     dependencies:
-      '@types/estree': 1.0.8
+      '@types/estree': 1.0.9
       devlop: 1.1.0
       estree-util-is-identifier-name: 3.0.0
       micromark-factory-mdx-expression: 2.0.3
@@ -22273,7 +22316,7 @@ snapshots:
 
   micromark-extension-mdxjs-esm@3.0.0:
     dependencies:
-      '@types/estree': 1.0.8
+      '@types/estree': 1.0.9
       devlop: 1.1.0
       micromark-core-commonmark: 2.0.3
       micromark-util-character: 2.1.1
@@ -22309,7 +22352,7 @@ snapshots:
 
   micromark-factory-mdx-expression@2.0.3:
     dependencies:
-      '@types/estree': 1.0.8
+      '@types/estree': 1.0.9
       devlop: 1.1.0
       micromark-factory-space: 2.0.1
       micromark-util-character: 2.1.1
@@ -22373,7 +22416,7 @@ snapshots:
 
   micromark-util-events-to-acorn@2.0.3:
     dependencies:
-      '@types/estree': 1.0.8
+      '@types/estree': 1.0.9
       '@types/unist': 3.0.3
       devlop: 1.1.0
       estree-util-visit: 2.0.0

@@ -39,6 +39,18 @@ vi.mock('ioredis', () => {
         get: vi.fn().mockImplementation(async (key: string) => {
           return mockData.get(key) || null;
         }),
+        // The INCR + EXPIRE script: counts in mockData, remembers the TTL
+        // only on the increment that created the key.
+        eval: vi
+          .fn()
+          .mockImplementation(
+            async (_script: string, _keys: number, key: string, ttl: string) => {
+              const count = Number(mockData.get(key) ?? '0') + 1;
+              mockData.set(key, String(count));
+              if (count === 1) mockData.set(`${key}:ttl`, ttl);
+              return count;
+            },
+          ),
         set: vi.fn().mockImplementation(async (key: string, value: string) => {
           mockData.set(key, value);
           return 'OK';
@@ -113,6 +125,19 @@ describe('RedisCache', () => {
       await cache.del('key1');
       const result = await cache.get('key1');
       expect(result).toBeNull();
+    });
+
+    it('incr runs INCR and EXPIRE as one script and returns the count (FILM-1904)', async () => {
+      expect(await cache.incr('rl:conn', 120)).toBe(1);
+      expect(await cache.incr('rl:conn', 120)).toBe(2);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const client = (cache as any).client;
+
+      expect(client.eval).toHaveBeenCalledTimes(2);
+      expect(client.eval.mock.calls[0][0]).toMatch(/INCR[\s\S]*EXPIRE/);
+      expect(client.eval.mock.calls[0].slice(1)).toEqual([1, 'rl:conn', '120']);
+      expect(await cache.get('rl:conn:ttl')).toBe(120);
     });
 
     it('should clear all keys', async () => {

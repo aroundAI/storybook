@@ -1,0 +1,45 @@
+{
+  "name": "@kit/studio-mcp",
+  "private": true,
+  "sideEffects": false,
+  "version": "0.1.0",
+  "description": "StoryBook's remote MCP server: tool registry, bearer auth, rate limits and audit (FILM-1904)",
+  "scripts": {
+    "clean": "git clean -xdf .turbo node_modules",
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "prettier": "@kit/prettier-config",
+  "exports": {
+    ".": "./src/index.ts",
+    "./request-context": "./src/request-context.ts",
+    "./server": "./src/server/index.ts"
+  },
+  "dependencies": {
+    "@kit/cache": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "@kit/supabase": "workspace:*",
+    "@modelcontextprotocol/sdk": "1.18.0",
+    "@supabase/supabase-js": "2.57.4",
+    "jose": "6.2.12",
+    "zod": "^3.25.74"
+  },
+  "devDependencies": {
+    "@kit/eslint-config": "workspace:*",
+    "@kit/prettier-config": "workspace:*",
+    "@kit/tsconfig": "workspace:*",
+    "@types/node": "^24.5.0",
+    "server-only": "^0.0.1",
+    "vitest": "^3.2.4"
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "src/*"
+      ]
+    }
+  }
+}
