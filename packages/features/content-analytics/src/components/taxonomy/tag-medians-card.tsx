@@ -197,6 +197,7 @@ export function TagMediansCard({
                   <RateDenominator
                     denominator={row.rpmDenominator}
                     figure="RPM"
+                    subject={segmentLabel(row.segment, segmentNoun)}
                   />
                 )}
               </span>

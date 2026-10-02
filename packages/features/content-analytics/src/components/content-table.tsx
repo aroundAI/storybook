@@ -408,6 +408,7 @@ export function ContentTable({
                       <RateDenominator
                         denominator={item.engagementRate.denominator}
                         figure="engagement rate"
+                        subject={item.publishTitle}
                       />
                     </span>
                   )}

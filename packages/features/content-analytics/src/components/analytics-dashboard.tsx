@@ -299,6 +299,7 @@ export function AnalyticsDashboard({
         ),
         contentCount: projectData.contentCount ?? 0,
         avgEngagementRate: projectData.avgEngagementRate.value,
+        avgEngagementDenominator: projectData.avgEngagementRate.denominator,
       }
     : null;
 

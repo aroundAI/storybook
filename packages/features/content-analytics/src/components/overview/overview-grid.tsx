@@ -15,6 +15,7 @@ import type {
   AudienceData,
   InsightsResult,
 } from '../../types';
+import { RateDenominator } from '../rate-denominator';
 import { AIInsightCard } from './ai-insight-card';
 import { platformLabel } from './card-claim';
 import { CommentsCard } from './comments-card';
@@ -198,6 +199,17 @@ export function OverviewGrid({
       {/* Row 2: AI Insight (2 cols), Shares */}
       <AIInsightCard
         summary={aiSummary}
+        summaryAside={
+          // The page's own sentence names the average engagement rate.
+          !insights?.summary &&
+          hasData &&
+          analytics?.avgEngagementDenominator && (
+            <RateDenominator
+              denominator={analytics.avgEngagementDenominator}
+              figure="average engagement rate"
+            />
+          )
+        }
         author={insights?.summary ? 'model' : 'page'}
         insights={aiInsights}
         onViewReport={onViewAIReport}

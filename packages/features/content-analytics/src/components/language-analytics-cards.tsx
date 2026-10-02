@@ -179,6 +179,7 @@ export function LanguagePerformanceCard({
                   <RateDenominator
                     denominator={lang.engagement.denominator}
                     figure="engagement rate"
+                    subject={languageName(lang.language, dimension)}
                   />
                 </span>
               </div>
@@ -358,6 +359,7 @@ export function PlatformLanguageMatrix({
                                 <RateDenominator
                                   denominator={entry.engagementRate.denominator}
                                   figure="engagement rate"
+                                  subject={`${languageName(lang, dimension)} on ${platformLabel(platform)}`}
                                 />
                               </div>
                             </div>
@@ -501,6 +503,7 @@ function FormatFamilyTable({ data }: { data: ContentTypeComparison }) {
                     <RateDenominator
                       denominator={row.engagement.denominator}
                       figure="engagement rate"
+                      subject={FORMAT_FAMILY_LABEL[row.family]}
                     />
                   </span>
                 </td>

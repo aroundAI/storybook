@@ -190,6 +190,36 @@
       "cwd": "packages/clickhouse",
       "test": "__tests__/rate-over-views-recorded.test.ts",
       "pattern": "only in lib/measures.ts"
+    },
+    {
+      "name": "RD20 the Overview summary names the rate without its record",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/overview/overview-grid.tsx",
+      "find": "          analytics?.avgEngagementDenominator && (",
+      "replace": "          false && (",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/rate-denominator-overview-sentence.test.tsx",
+      "pattern": "puts the record beside the summary"
+    },
+    {
+      "name": "RD21 every row's button reads the same",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/rate-denominator.tsx",
+      "find": "            subject\n              ? `What the ${figure} of ${subject} was divided by`",
+      "replace": "            false\n              ? `What the ${figure} of ${subject} was divided by`",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/rate-denominator-button.test.tsx",
+      "pattern": "names the row it belongs to"
+    },
+    {
+      "name": "RD22 the button shrinks back to 12px",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/rate-denominator.tsx",
+      "find": "'-m-[5px] inline-flex size-6 shrink-0",
+      "replace": "'inline-flex shrink-0",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/rate-denominator-button.test.tsx",
+      "pattern": "is a 24px target"
     }
   ]
 }

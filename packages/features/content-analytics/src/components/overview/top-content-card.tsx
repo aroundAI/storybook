@@ -107,6 +107,7 @@ export function TopContentCard({ content, onViewAll }: TopContentCardProps) {
                     <RateDenominator
                       denominator={item.engagementRate.denominator}
                       figure="engagement rate"
+                      subject={item.title}
                     />
                   )}
                 </span>

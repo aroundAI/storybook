@@ -1,5 +1,7 @@
 'use client';
 
+import type { ReactNode } from 'react';
+
 import { ArrowRight, CheckCircle, Lightbulb, Sparkles } from 'lucide-react';
 
 import { AnalyticsCard } from './analytics-card';
@@ -13,6 +15,8 @@ interface AIInsightCardProps {
    * whatever the model wrote.
    */
   summary: string;
+  /** Beside the summary: the record of a rate it restates (FILM-1732). */
+  summaryAside?: ReactNode;
   /**
    * Who wrote `summary`. `page` when it restates this page's own figures —
    * the only case today, since nothing passes the grid a model's reading —
@@ -54,6 +58,7 @@ const BY_AUTHOR = {
 
 export function AIInsightCard({
   summary,
+  summaryAside,
   author = 'model',
   insights = [],
   onViewReport,
@@ -81,7 +86,10 @@ export function AIInsightCard({
       }
       data-test="overview-ai-insight"
     >
-      <p className="text-sm leading-relaxed">{summary}</p>
+      <p className="text-sm leading-relaxed">
+        {summary}
+        {summaryAside && <> {summaryAside}</>}
+      </p>
       {insights.length > 0 && (
         <ul className="mt-3 space-y-1">
           {insights.map((insight, index) => (

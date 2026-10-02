@@ -134,6 +134,7 @@ export function ContentCard({
                 <RateDenominator
                   denominator={engagementRate.denominator}
                   figure="engagement rate"
+                  subject={title}
                 />
               )
             }

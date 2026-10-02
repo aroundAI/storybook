@@ -162,6 +162,7 @@ export function RevenueTopContent({
                     <RateDenominator
                       denominator={item.rpmDenominator}
                       figure="RPM"
+                      subject={item.title}
                     />
                   </span>
                 </TableCell>

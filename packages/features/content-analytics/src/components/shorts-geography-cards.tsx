@@ -132,6 +132,7 @@ export function TopShortsCard({
                   <RateDenominator
                     denominator={short.engagement.denominator}
                     figure="likes and comments per view"
+                    subject={short.publishTitle}
                   />
                 )}
               </div>

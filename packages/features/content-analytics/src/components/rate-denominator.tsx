@@ -16,11 +16,17 @@ import { cn } from '@kit/ui/utils';
 export function RateDenominator({
   denominator,
   figure,
+  subject,
   className,
 }: {
   denominator: DenominatorStamp;
   /** What the figure is, for the button's accessible name: "engagement rate". */
   figure: string;
+  /**
+   * Whose figure it is, where one card repeats the button per row: the
+   * video, language or tag. Without it every row's button reads the same.
+   */
+  subject?: string;
   className?: string;
 }) {
   return (
@@ -28,15 +34,21 @@ export function RateDenominator({
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label={`What the ${figure} was divided by`}
+          aria-label={
+            subject
+              ? `What the ${figure} of ${subject} was divided by`
+              : `What the ${figure} was divided by`
+          }
           data-test="rate-denominator-trigger"
           data-crosses={denominator.crosses.length > 0}
           className={cn(
-            'inline-flex shrink-0 items-center rounded-sm align-middle text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+            // 24px to touch (WCAG 2.5.8), drawn at 14px; the negative margin
+            // keeps the line it sits in from growing.
+            '-m-[5px] inline-flex size-6 shrink-0 items-center justify-center rounded-sm align-middle text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
             className,
           )}
         >
-          <Info className="h-3 w-3" aria-hidden />
+          <Info className="size-3.5" aria-hidden />
         </button>
       </PopoverTrigger>
       <PopoverContent

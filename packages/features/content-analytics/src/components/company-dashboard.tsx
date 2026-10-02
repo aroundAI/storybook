@@ -316,6 +316,7 @@ const TopContentCard = React.memo(function TopContentCard({
                       <RateDenominator
                         denominator={item.engagementRate.denominator}
                         figure="engagement rate"
+                        subject={item.title}
                         className="ml-1"
                       />
                     )}
