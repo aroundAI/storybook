@@ -44,7 +44,12 @@ vi.mock('ioredis', () => {
         eval: vi
           .fn()
           .mockImplementation(
-            async (_script: string, _keys: number, key: string, ttl: string) => {
+            async (
+              _script: string,
+              _keys: number,
+              key: string,
+              ttl: string,
+            ) => {
               const count = Number(mockData.get(key) ?? '0') + 1;
               mockData.set(key, String(count));
               if (count === 1) mockData.set(`${key}:ttl`, ttl);
