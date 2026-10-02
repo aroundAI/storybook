@@ -1322,7 +1322,6 @@ async function assertions() {
         saves: null,
         watch_time_seconds: null,
         subscribers_gained: null,
-        revenue_cents: 0,
         extra_metrics: '{}',
         metric_source:
           platform === 'youtube' ? 'reporting_api' : 'snapshot_delta',
