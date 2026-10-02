@@ -40,7 +40,7 @@ remaining:
       the cache writes what they return
       (`packages/features/episodes/src/lib/server/services/context-aggregator.ts:374`).
       `extractEntitiesFromArticle` ran only in memory for clustering, in the
-      `news-story-service.ts` FILM-1902 deleted (#TBD-1902); nothing persists
+      `news-story-service.ts` FILM-1902 deleted (#554); nothing persists
       entities
     closed_by: "unassigned"
 open_questions: []

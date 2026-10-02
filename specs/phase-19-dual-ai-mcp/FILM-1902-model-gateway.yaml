@@ -26,16 +26,16 @@ summary: >
 acceptance_criteria:
   - text: "@kit/ai-gateway exists and is the only workspace package that depends on @kit/llm, @google/genai, openai, @anthropic-ai/sdk or the Voyage client"
     met: false
-    reason: "not met — part B. Baseline measured 2026-10-03: eight package.jsons depended on @kit/llm (agent, prompt-engine, episodes, assets, audio-generation, content-analytics (unused), apps/web, vendor-sandbox); part A (#TBD-1902) dropped episodes, assets and audio-generation, whose only importers were deleted call sites, leaving five"
+    reason: "not met — part B. Baseline measured 2026-10-03: eight package.jsons depended on @kit/llm (agent, prompt-engine, episodes, assets, audio-generation, content-analytics (unused), apps/web, vendor-sandbox); part A (#554) dropped episodes, assets and audio-generation, whose only importers were deleted call sites, leaving five"
   - text: "@kit/llm's public entry stops exporting the providers and createLLMClient; executeLLM (@kit/prompt-engine/server, packages/features/prompt-engine/src/lib/server/llm-executor.ts) and executeLLMForLambda (apps/web/lambda/llm-worker/llm-utils.ts) move behind the gateway"
     met: false
-    reason: "not met — part B. Corrected 2026-10-03: the draft said @kit/llm stops exporting executeLLM, which it never exported; part A (#TBD-1902) removed the transcription exports only"
+    reason: "not met — part B. Corrected 2026-10-03: the draft said @kit/llm stops exporting executeLLM, which it never exported; part A (#554) removed the transcription exports only"
   - text: "An ESLint no-restricted-imports rule and a dependency-cruiser rule in the fast lane fail any import of @kit/llm or a model SDK outside packages/ai-gateway; each is proven red on a planted import"
     met: false
     reason: "not met — part B (dependency-cruiser is not installed today; the rule must be added to tooling/eslint/base.js and apps.js both)"
   - text: "A vitest source scan in the fast lane (packages/llm/__tests__/model-host-guard.test.ts) fails on a model host written out (generativelanguage.googleapis.com, aiplatform.googleapis.com, api.openai.com, api.anthropic.com, api.deepseek.com, api.voyageai.com, read from FILM-1801's resolver) or on vendorUrl()/VENDORS asked for a model vendor, outside packages/llm, packages/ai-gateway, packages/shared/src/vendors and apps/vendor-sandbox. Two files are allowed by name with the reason: the BYOK key validation (apps/web/app/home/[account]/settings/_lib/server/api-keys-actions.ts lists the models a key can see and generates nothing) and the worker's Voyage embedder (moves behind the gateway in part B). Proven red on a planted vendorUrl('openai') in packages/features/episodes"
     met: true
-    evidence: "packages/llm/__tests__/model-host-guard.test.ts:189 (the scan), :56 (the two named exceptions), tooling/mutation-guards/film-1902.json (two planted calls, each red); #TBD-1902"
+    evidence: "packages/llm/__tests__/model-host-guard.test.ts:189 (the scan), :56 (the two named exceptions), tooling/mutation-guards/film-1902.json (two planted calls, each red); #554"
   - text: "The @kit/agent runner (packages/agent/src/runner.ts) no longer calls a provider itself; it takes a write function from the run"
     met: false
     reason: "not met — part B"
@@ -47,7 +47,7 @@ acceptance_criteria:
     reason: "not met in full — the rows are written, the run_id is not yet. executeLLMForLambda (apps/web/lambda/llm-worker/llm-utils.ts) and runAgent (packages/agent/src/runner.ts) now write a row per model call, on success and on failure, with the job's account and user (#555); executeLLM already did, so every live path logs. The runner has no database client: it logs through runContext.logUsage or the process-wide setAgentUsageLogger, which the worker wires to logLLMUsage at start-up. LLMUsageEvent.runId is typed and written as run_id only when set — the column lands with FILM-1903 part A, and no caller has a run yet; gateway routing is part B of this spec"
   - text: "Deleted, with no remaining import: packages/features/episodes/src/server/continuity-actions.ts and the ContinuityChecker component; packages/features/episodes/src/server/news-actions.ts and the anchor, producer, entity-extractor and news-story services; packages/features/episodes/src/lib/canon/act-context-bridge.ts; packages/features/episodes/src/server/agent-story-generation.ts; packages/features/episodes/src/agent/orchestrator.ts (runContentOrchestrator); packages/features/assets/src/lib/element-prompt/llm-generator.ts; packages/features/audio-generation/src/lib/audio-embedding.ts; packages/llm/src/transcription.ts"
     met: true
-    evidence: "#TBD-1902 deletes the nine files and their barrels (packages/features/episodes/src/server/index.ts, components/index.ts, lib/index.ts; packages/features/assets/src/lib/element-prompt/index.ts; packages/llm/src/index.ts); a grep of apps/, packages/ and tooling/ for each module name finds nothing, and pnpm typecheck of the eight touched packages passes"
+    evidence: "#554 deletes the nine files and their barrels (packages/features/episodes/src/server/index.ts, components/index.ts, lib/index.ts; packages/features/assets/src/lib/element-prompt/index.ts; packages/llm/src/index.ts); a grep of apps/, packages/ and tooling/ for each module name finds nothing, and pnpm typecheck of the eight touched packages passes"
   - text: "A test asserts the set of stages that reach run.write() equals the stage registry: no model call outside a registered stage"
     met: false
     reason: "not met — part B"
@@ -58,7 +58,7 @@ test_plan:
   unit:
     - {text: "run.write() on an external run never reaches the server writer; on a server run, it does once per part", met: false, reason: "not met — part B"}
     - {text: "The server writer throws LLM_FORBIDDEN_EXTERNAL_RUN for an external, expired or cancelled run", met: false, reason: "not met — part B"}
-    - {text: "The model-host scan fails on a planted vendorUrl('openai') in packages/features/episodes, naming the file and line (red), and passes once it is removed (green)", met: true, evidence: "packages/llm/__tests__/model-host-guard.test.ts:189; red run recorded in #TBD-1902 and replayed by tooling/mutation-guards/film-1902.json"}
+    - {text: "The model-host scan fails on a planted vendorUrl('openai') in packages/features/episodes, naming the file and line (red), and passes once it is removed (green)", met: true, evidence: "packages/llm/__tests__/model-host-guard.test.ts:189; red run recorded in #554 and replayed by tooling/mutation-guards/film-1902.json"}
   integration:
     - {text: "Lint and dependency-cruiser fail a planted `import { createLLMClient } from '@kit/llm'` in packages/features/episodes (red), pass once removed (green)", met: false, reason: "not met — part B"}
   e2e: []
@@ -80,7 +80,7 @@ remaining:
     closed_by: "FILM-1902"
 open_questions: []
 notes: |
-  ## Part A (#TBD-1902, 2026-10-03): the dead call sites and the host guard
+  ## Part A (#554, 2026-10-03): the dead call sites and the host guard
 
   Deleted, each re-verified by grep to have no importer outside its own
   barrel or test: `continuity-actions.ts` and `continuity-checker.tsx`;

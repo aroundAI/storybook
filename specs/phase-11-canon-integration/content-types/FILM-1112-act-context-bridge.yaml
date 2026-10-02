@@ -43,7 +43,7 @@ retirement:
     `formatBridgeForPrompt`, `validateAgainstBridge`, `getActContextBridge`)
     and its test had no caller: `act_context_bridges` was never written or
     read, and movie generation never fed one act's bridge to the next.
-    FILM-1902 (#TBD-1902) deleted the module with the other uncalled model
+    FILM-1902 (#554) deleted the module with the other uncalled model
     call sites. The `ActContextBridge` type (`types/act-context.ts`) and the
     `act_context_bridges` table stay. What the story agent uses today is the
     act-context skill, which extracts a bridge inside one run and drops it;

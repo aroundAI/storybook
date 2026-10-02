@@ -30,7 +30,7 @@ retirement:
     positions, duration fitting, the episode orchestrator), the news server
     actions (`news-actions.ts`) and the tests `producer-rundown`,
     `producer-breaks` and `infer-category` had no caller from any page, route
-    or job, and FILM-1902 (#TBD-1902) deleted them with the other uncalled
+    or job, and FILM-1902 (#554) deleted them with the other uncalled
     model call sites. Before that, five of the six criteria were met and the
     rundown-validity criterion was an owner check never run (OC-1). The
     `news-generation/producer-role` prompt stays registered in the prompt

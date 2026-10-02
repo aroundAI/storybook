@@ -46,7 +46,7 @@ retirement:
   commit: "d38cdc38"
   date: "2025-12-09"
   what_happened: >
-    Built in d38cdc38 (2025-12-09) but never mounted: no page renders `ContinuityChecker` (`packages/features/episodes/src/components/continuity-checker.tsx`), and nothing outside it calls `checkContinuityAction` or `fixContinuityIssueAction`. Continuity checking in the product is FILM-1007's canon validation: `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/inline-violation-warning.tsx`, mounted in `story-screen.tsx:252`. FILM-1902 (#TBD-1902) deleted both files as uncalled model call sites. Kept as a record; not outstanding work.
+    Built in d38cdc38 (2025-12-09) but never mounted: no page renders `ContinuityChecker` (`packages/features/episodes/src/components/continuity-checker.tsx`), and nothing outside it calls `checkContinuityAction` or `fixContinuityIssueAction`. Continuity checking in the product is FILM-1007's canon validation: `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/inline-violation-warning.tsx`, mounted in `story-screen.tsx:252`. FILM-1902 (#554) deleted both files as uncalled model call sites. Kept as a record; not outstanding work.
   replacement: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/inline-violation-warning.tsx"
 open_questions: []
 notes: |
