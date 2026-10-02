@@ -7,7 +7,7 @@ import {
   insertClickHouse,
 } from '../utils/clickhouse';
 import { insertRow, seedPublishedVideos, serviceRoleAuth } from '../utils/seed';
-import { byTest } from '../utils/visible';
+import { byTest, visible } from '../utils/visible';
 import { VideoLogPageObject } from './video-log.po';
 
 /**
@@ -128,11 +128,10 @@ test.describe('FILM-1719 — signal surfaces with data', () => {
     await videoLog.goToAnalytics(team.slug, project.slug);
     await videoLog.openVideoLog();
 
-    await videoLog
-      .rows()
-      .filter({ hasText: 'Subject short' })
-      .locator('[data-test="video-log-signals"]')
-      .click();
+    await byTest(
+      videoLog.rows().filter({ hasText: 'Subject short' }),
+      'video-log-signals',
+    ).click();
 
     // Tall enough that the surface is inside the viewport whole: the app
     // scrolls in its own container, so an element screenshot of anything
@@ -145,18 +144,16 @@ test.describe('FILM-1719 — signal surfaces with data', () => {
     await expect(strip).toBeVisible();
 
     const cell = (stage: string) =>
-      strip.locator(`[data-test="stage-cell"][data-stage="${stage}"]`);
+      visible(strip, `[data-test="stage-cell"][data-stage="${stage}"]`);
 
     // The five states, from the DOM.
-    const states = await strip
-      .locator('[data-test="stage-cell"]')
-      .evaluateAll((cells) =>
-        cells.map((c) => [
-          c.getAttribute('data-stage'),
-          c.getAttribute('data-stage-state'),
-          c.getAttribute('data-band'),
-        ]),
-      );
+    const states = await byTest(strip, 'stage-cell').evaluateAll((cells) =>
+      cells.map((c) => [
+        c.getAttribute('data-stage'),
+        c.getAttribute('data-stage-state'),
+        c.getAttribute('data-band'),
+      ]),
+    );
     expect(states).toEqual([
       ['reach', 'unbound', null],
       ['hook', 'dark', null],
@@ -206,7 +203,8 @@ test.describe('FILM-1719 — signal surfaces with data', () => {
     await surface.screenshot({ path: `${OUT}/01-strip.png` });
 
     // Depth 2: value, lift, typical and n together.
-    const attention = surface.locator(
+    const attention = visible(
+      surface,
       '[data-test="stage-detail"][data-stage="attention"]',
     );
     const measureTrigger = byTest(attention, 'stage-measure-trigger');
@@ -234,20 +232,20 @@ test.describe('FILM-1719 — signal surfaces with data', () => {
     // Genome: every recommendation beside its evidence, claims by strength.
     const findings = byTest(surface, 'genome-finding');
     await expect(findings.first()).toBeVisible();
-    const orphaned = await surface
-      .locator('[data-test="recommendation"]')
-      .evaluateAll(
-        (els) =>
-          els.filter(
-            (el) =>
-              ![...(el.parentElement?.children ?? [])].some(
-                (s) => s.getAttribute('data-test') === 'evidence',
-              ),
-          ).length,
-      );
+    // Every recommendation, the folded ones included, so read from the list.
+    const orphaned = await byTest(surface, 'genome-findings').evaluate(
+      (list) =>
+        [...list.querySelectorAll('[data-test="recommendation"]')].filter(
+          (el) =>
+            ![...(el.parentElement?.children ?? [])].some(
+              (s) => s.getAttribute('data-test') === 'evidence',
+            ),
+        ).length,
+    );
     expect(orphaned).toBe(0);
 
-    const causal = surface.locator(
+    const causal = visible(
+      surface,
       '[data-test="genome-finding"][data-strength="causal"]',
     );
     await expect(causal).toHaveCount(1);
@@ -265,15 +263,13 @@ test.describe('FILM-1719 — signal surfaces with data', () => {
       coverage: await byTest(surface, 'signal-coverage').textContent(),
       diagnosis: await byTest(surface, 'signal-diagnosis').textContent(),
       bars,
-      claims: await surface
-        .locator('[data-test="genome-finding"]')
-        .evaluateAll((els) =>
-          els.map((el) => [
-            el.getAttribute('data-strength'),
-            el.querySelector('[data-test="genome-claim"]')?.textContent,
-            el.querySelector('[data-test="evidence-label"]')?.textContent,
-          ]),
-        ),
+      claims: await byTest(surface, 'genome-finding').evaluateAll((els) =>
+        els.map((el) => [
+          el.getAttribute('data-strength'),
+          el.querySelector('[data-test="genome-claim"]')?.textContent,
+          el.querySelector('[data-test="evidence-label"]')?.textContent,
+        ]),
+      ),
     };
     console.log('SIGNAL_SURFACE_READINGS', JSON.stringify(readings, null, 2));
 
