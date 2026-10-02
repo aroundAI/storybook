@@ -1,17 +1,17 @@
 import 'server-only';
 
+import { SYNCED_PLATFORMS } from '../lib/sync-status';
 import type { ConnectionGrant } from './sync-authorisation';
 
 /**
  * Supported platforms for analytics sync
  */
-/** The platforms the analytics sync reads: every one with a metrics provider. */
-export const SYNC_PLATFORMS = [
-  'youtube',
-  'tiktok',
-  'instagram',
-  'facebook',
-] as const;
+/**
+ * The platforms the analytics sync reads: every one with a metrics provider.
+ * The same list the client-safe sync status reads (KB-150), so the sync and
+ * what a creator is told about it cannot disagree on a platform.
+ */
+export const SYNC_PLATFORMS = SYNCED_PLATFORMS;
 
 export type SyncPlatform = (typeof SYNC_PLATFORMS)[number];
 
@@ -179,15 +179,5 @@ export interface SyncSchedule {
     | 'after_90_days';
 }
 
-/**
- * Sync status response for getSyncStatusAction
- */
-export interface SyncStatusResponse {
-  publishId: string;
-  platform: string;
-  lastSyncedAt: string | null;
-  lastSyncStatus: string | null;
-  lastError: string | null;
-  consecutiveFailures: number;
-  requiresReauth: boolean;
-}
+/** KB-150: defined beside `describeSyncStatus`, which reads it. */
+export type { SyncStatusResponse } from '../lib/sync-status';

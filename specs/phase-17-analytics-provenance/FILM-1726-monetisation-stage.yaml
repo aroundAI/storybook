@@ -106,7 +106,7 @@ notes: |
   **Resolved by FILM-1711 (#289, merged 2026-09-22; recorded 2026-09-25).**
   The sync writes revenue only when it was measured
   (`if (normalizedData.revenue_measured)`,
-  `packages/features/content-analytics/src/server/analytics-sync-cron.ts:551`),
+  `packages/features/content-analytics/src/server/analytics-sync-cron.ts:539`),
   and YouTube without the monetary scope is unmeasured; and
   `planRevenueRowWrites`
   (`packages/features/content-analytics/src/lib/revenue-mix.ts:128`) never

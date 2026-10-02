@@ -13,6 +13,7 @@ import {
 
 import { languageName } from '../../lib/language-labels';
 import { localDateOf } from '../../lib/local-date';
+import type { SyncStatusView } from '../../lib/sync-status';
 import {
   checkpointState,
   isPartial,
@@ -24,6 +25,7 @@ import type {
   VideoLogView,
 } from '../../lib/video-log-paging';
 import type { VideoLogRow } from '../../server/video-log-actions';
+import { SyncProblemBadge } from '../sync-status/sync-status';
 import {
   CheckpointCell,
   PartialBadge,
@@ -38,6 +40,8 @@ import { NoteCell } from './note-cell';
 
 export interface VideoLogTableProps {
   rows: VideoLogRow[];
+  /** Each row's analytics sync record, by publish id (KB-150). */
+  syncById?: Record<string, SyncStatusView>;
   /** The checkpoint ages the rows carry, in the order they are shown. */
   checkpoints: number[];
   view: VideoLogView;
@@ -64,6 +68,7 @@ export interface VideoLogTableProps {
  */
 export function VideoLogTable({
   rows,
+  syncById = {},
   checkpoints,
   view,
   onSort,
@@ -140,6 +145,9 @@ export function VideoLogTable({
                     </span>
                     {isPartial(row) ? (
                       <PartialBadge lagDays={row.ingestLagDays!} />
+                    ) : null}
+                    {syncById[row.videoId] ? (
+                      <SyncProblemBadge status={syncById[row.videoId]!} />
                     ) : null}
                   </span>
                 </TableCell>

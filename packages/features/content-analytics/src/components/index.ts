@@ -201,3 +201,6 @@ export {
   type ContentTag,
   type TagMedianEntry,
 } from './taxonomy';
+
+// Analytics sync status (KB-150)
+export { EpisodeSyncStatus } from './sync-status/sync-status';
