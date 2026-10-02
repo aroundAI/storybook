@@ -4,7 +4,7 @@ import { Skeleton } from '@kit/ui/skeleton';
 import { cn } from '@kit/ui/utils';
 
 import {
-  VIEW_DEFINITION_BUCKET,
+  VIEW_DEFINITION_BAR_EDGE,
   type ViewDefinitionMark,
   markedBuckets,
 } from '../../lib/view-definition-marks';
@@ -103,7 +103,7 @@ export function BackCatalogCard({
             }
             className={cn(
               'flex flex-1 flex-col justify-end rounded-sm bg-muted',
-              marked.has(bucket.bucket) && VIEW_DEFINITION_BUCKET,
+              marked.has(bucket.bucket) && VIEW_DEFINITION_BAR_EDGE,
             )}
             style={{ height: '100%' }}
             detail={`${bucket.bucket}: ${formatTrueShare(bucket.share)} of ${bucket.totalViews.toLocaleString()} views`}

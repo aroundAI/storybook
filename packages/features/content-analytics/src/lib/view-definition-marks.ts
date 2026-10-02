@@ -89,7 +89,7 @@ export function markedBuckets(
 }
 
 /** How a bar chart draws a boundary: a dashed rule on the bar's leading edge. */
-export const VIEW_DEFINITION_BUCKET =
+export const VIEW_DEFINITION_BAR_EDGE =
   'border-l-2 border-dashed border-muted-foreground';
 
 /**
