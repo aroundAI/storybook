@@ -12,8 +12,13 @@ says the scope is waiting on the vendor and shows **no** reconnect button. Flipp
 to `approved` is what starts prompting existing connections to reconnect — so flip it
 only when the row below says approved, with a date.
 
-Nobody has submitted anything yet. Submitting needs a person with access to each
-vendor's developer console; it cannot be done from the repository.
+**Update, 2026-10-02 (per owner):** Meta App Review and Meta Business Verification
+are submitted. The owner said so on 2026-10-02 ("Meta App Review and Business
+Verification submission — this is already done"); the repository holds no
+submission date or case ID, so none is recorded here. Neither is approved, so
+`review` in code stays `required` for both. Nothing else in the table below has been
+submitted. Submitting needs a person with access to each vendor's developer console;
+it cannot be done from the repository.
 
 **How to do each of these by hand is in
 [vendor-review-runbook.md](./vendor-review-runbook.md)**: the pre-deploy check for
@@ -36,8 +41,8 @@ because nothing has been started.
 
 | Vendor | What is needed | Scopes it unlocks | Status | Date | Owner | `review` in code |
 |---|---|---|---|---|---|---|
-| Meta | **App Review** (Advanced Access) | `instagram_manage_insights`; `read_insights` and `pages_manage_engagement` for FILM-1720 (requested only while `ANALYTICS_SCOPES_ENABLED` names `facebook`) | not submitted | 2026-09-22 | unassigned | `required` |
-| Meta | **Business Verification** | required alongside App Review — both, not either | not submitted | 2026-09-22 | unassigned | `required` |
+| Meta | **App Review** (Advanced Access) | `instagram_manage_insights`; `read_insights` and `pages_manage_engagement` for FILM-1720 (requested only while `ANALYTICS_SCOPES_ENABLED` names `facebook`) | submitted, per owner; not yet approved | 2026-10-02 (recorded; submission date not given) | owner | `required` |
+| Meta | **Business Verification** | required alongside App Review — both, not either | submitted, per owner; not yet approved | 2026-10-02 (recorded; submission date not given) | owner | `required` |
 | Meta | Data Use Checkup | keeps the above; annual | not due until access is granted | — | unassigned | — |
 | TikTok | App review (mandatory for production on every scope) | `video.list`, `user.info.stats` | not submitted | 2026-09-22 | unassigned | `required` |
 | Google | OAuth consent screen lists `yt-analytics-monetary.readonly`; re-verification if Google asks for it | `yt-analytics-monetary.readonly` | **not checked** — see below | 2026-09-22 | unassigned | `approved` |
