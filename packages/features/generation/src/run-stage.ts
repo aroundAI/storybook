@@ -13,6 +13,7 @@ import type {
   CommitResult,
   Ctx,
   GenerateFn,
+  GenerationRun,
   GenerationUsage,
   StageDefinition,
 } from './types';

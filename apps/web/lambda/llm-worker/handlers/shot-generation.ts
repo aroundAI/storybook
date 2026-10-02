@@ -1,55 +1,43 @@
 /**
  * Shot Generation Handler — Stage 3
  *
- * Stage 3 of the 3-stage agentic content pipeline.
- * Runs the Shot Orchestrator: Reel Scout → Shot Director.
- * WRITES TO DATABASE:
- * - Inserts rows into shots table
- * - Updates episode.shot_list
+ * The `shots` stage of `@kit/generation` (FILM-1901): prepare → the Shot
+ * Orchestrator (Reel Scout → Shot Director per scene → Shot Quality) →
+ * outputSchema and check per part → commit. Commit replaces the episode's
+ * shots and its `shot_list`, clears stale cues and tracks, and names the
+ * chained `audio_cues` stage, which this handler queues as a job.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { ReelSceneAnalysis } from '@kit/episodes/agent/shot-orchestrator';
-import { sanitizeForPrompt, sanitizeStrings } from '@kit/episodes/lib';
-import { wholeShotSeconds } from '@kit/episodes/schemas/shot-list';
-import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
-import { whyNoRow } from '@kit/shared/rows';
-import type { Database, Json } from '@kit/supabase/database';
-
+import type { ShotOrchestratorResult } from '@kit/episodes/agent/shot-orchestrator';
 import {
-  markJobCompleted,
-  markJobFailed,
-  markJobProcessing,
-} from '../utils/job-tracking';
+  type Brief,
+  type CommitResult,
+  type Ctx,
+  type GenerateFn,
+  REEL_SCOUT_PART,
+  type ShotsBriefContext,
+  type ShotsCommitData,
+  type ShotsPartOutput,
+  type ShotsTarget,
+  runStage,
+  scenePartKey,
+  shotsStage,
+} from '@kit/generation';
+import {
+  type LlmJobPayload,
+  parseLlmJobPayload,
+} from '@kit/prompt-engine/llm-job-payloads';
+import type { Database } from '@kit/supabase/database';
 
-interface ScreenplayScene {
-  number: number;
-  heading: string;
-  location: string;
-  timeOfDay: string;
-  description: string;
-  action: string[];
-  estimatedDuration?: number;
-  // Stored screenplays carry the line as `text` (orchestrator output) or, in
-  // older rows, `dialogue`.
-  dialogue: Array<{
-    character: string;
-    text?: string;
-    dialogue?: string;
-    parenthetical?: string;
-  }>;
-}
+import { episodeContextLoader } from '../utils/episode-context-loader';
 
 interface ShotGenerationResult {
   success: boolean;
   data: {
     totalShots: number;
     shotsCreated: number;
-    metadata: {
-      totalDuration: number;
-      shotTypes: { wide: number; medium: number; closeUp: number };
-      scenesProcessed: number;
-    };
+    metadata: ShotsCommitData['metadata'];
   };
 }
 
@@ -61,483 +49,191 @@ export async function processShotGeneration(
 
   console.log(`[Shot Generation] Processing for episode ${data.episodeId}`);
 
-  // Mark job as processing
-  await markJobProcessing(supabase, data.episodeId, 'shot_list');
+  const target: ShotsTarget = {
+    episodeId: data.episodeId,
+    projectId: data.projectId,
+    accountId: data.accountId,
+    userId: data.userId,
+    shotDuration: { min: data.shotDurationMin, max: data.shotDurationMax },
+  };
 
-  try {
-    // 1. Fetch episode with screenplay
-    const { data: episode, error: episodeError } = await supabase
-      .from('episodes')
-      .select(
-        `
-            id, title, version, screenplay_data, story_data,
-            project:projects(id, account_id, metadata)
-        `,
-      )
-      .eq('id', data.episodeId)
-      .single();
+  const ctx: Ctx = {
+    client: supabase,
+    accountId: data.accountId,
+    userId: data.userId,
+    episodeContext: episodeContextLoader(supabase),
+  };
 
-    if (episodeError || !episode) {
-      throw new Error(whyNoRow(episodeError, 'Episode not found'));
-    }
+  const { commit } = await runStage(shotsStage, ctx, target, {
+    generate: orchestratedShots(data),
+  });
 
-    const screenplayData = episode.screenplay_data as {
-      scenes: ScreenplayScene[];
-    } | null;
-    if (!screenplayData?.scenes?.length) {
-      throw new Error('Episode must have screenplay generated first');
-    }
-
-    const scenes = screenplayData.scenes;
-
-    // 2. Build episode context using episode.metadata.character_ids/location_ids
-    // This ensures we use the episode-specific characters/locations, not all project assets
-    const {
-      buildEpisodeContext,
-      formatCharactersForVeoPrompt,
-      formatLocationsForVeoPrompt,
-      formatRecurringElementsForPrompt,
-    } = await import('../utils/context-builder');
-
-    const episodeContext = await buildEpisodeContext(data.episodeId, supabase);
-    const characters = episodeContext.characters;
-    const locations = episodeContext.locations;
-
-    console.log(
-      `[Shot Generation] Episode context: ${characters.length} characters, ${locations.length} locations`,
-    );
-
-    // Format using VEO 3.1 optimized formatters
-    const charactersFormatted =
-      formatCharactersForVeoPrompt(characters) || 'No characters defined.';
-    const locationsFormatted =
-      formatLocationsForVeoPrompt(locations) || 'No locations defined.';
-    const recurringElementsFormatted = formatRecurringElementsForPrompt(
-      episodeContext.recurringElements,
-    );
-
-    // 3. Run the Stage 3 Shot Orchestrator (Reel Scout + Shot Director)
-    const { runShotOrchestrator } = await import(
-      '@kit/episodes/agent/shot-orchestrator'
-    );
-
-    console.log(
-      `[Shot Generation] Starting Shot Orchestrator — ` +
-        `${scenes.length} scenes, ${characters.length} characters, ${locations.length} locations`,
-    );
-
-    // Diagnostic: inspect raw scene shape from DB so CloudWatch shows data issues immediately
-    console.log(
-      `[Shot Generation] Raw scene[0] keys: ${Object.keys(scenes[0] as unknown as Record<string, unknown>).join(', ')}`,
-    );
-    console.log(
-      `[Shot Generation] Scene action fields: ${scenes
-        .map((s, i) => {
-          const raw = s as unknown as Record<string, unknown>;
-          return `scene${i + 1}=${Array.isArray(raw['action']) ? 'array(' + (raw['action'] as unknown[]).length + ')' : typeof raw['action']}`;
-        })
-        .join(', ')}`,
-    );
-
-    const orchestratorResult = await runShotOrchestrator({
-      episodeId: data.episodeId,
-      // Stored title and screenplay, defused for the model (KB-101)
-      episodeTitle: sanitizeForPrompt(episode.title),
-      genre: episodeContext.genre ?? 'general',
-      targetAudience: episodeContext.targetAudience ?? 'general',
-      visualStyle: episodeContext.visualStyle ?? 'cinematic',
-      accountId: data.accountId,
-      // Map screenplay scenes — screenplay_data stores action lines in `description` (string),
-      // not in a separate `action` array. Derive action from description when absent.
-      scenes: sanitizeStrings(scenes).map((s, idx) => {
-        const raw = s as unknown as Record<string, unknown>;
-        const hasStoredAction =
-          Array.isArray(raw['action']) &&
-          (raw['action'] as unknown[]).length > 0;
-        const action = hasStoredAction
-          ? (raw['action'] as string[])
-          : (s.description ?? '')
-              .split('\n')
-              .map((l: string) => l.trim())
-              .filter(Boolean);
-
-        console.log(
-          `[Shot Generation] Scene ${idx + 1}/${scenes.length} — ` +
-            `actionSource=${hasStoredAction ? 'stored-array' : 'description-split'}, ` +
-            `actionLines=${action.length}, dialogueLines=${(s.dialogue ?? []).length}`,
-        );
-
-        return {
-          number: s.number,
-          heading: s.heading,
-          location: s.location,
-          timeOfDay: s.timeOfDay,
-          description: s.description,
-          action,
-          dialogue: (s.dialogue ?? []).map((d) => ({
-            character: d.character,
-            text: d.text ?? d.dialogue ?? '',
-            parenthetical: d.parenthetical,
-          })),
-          estimatedDuration: s.estimatedDuration,
-        };
-      }),
-      charactersVeoContext: charactersFormatted,
-      locationsVeoContext: locationsFormatted,
-      recurringElementsContext: recurringElementsFormatted,
-      shotDuration: {
-        min: data.shotDurationMin,
-        max: data.shotDurationMax,
-      },
-    });
-
-    console.log(
-      `[Shot Generation] Orchestrator completed — ` +
-        `success: ${orchestratorResult.success}, ` +
-        `shots: ${orchestratorResult.shots.length}, ` +
-        `reel candidates: ${orchestratorResult.reelCandidateScenes.join(', ') || 'none'}, ` +
-        `steps: ${orchestratorResult.orchestratorSteps}`,
-    );
-
-    if (!orchestratorResult.success) {
-      throw new Error(
-        `Shot Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
-      );
-    }
-
-    if (orchestratorResult.shots.length === 0) {
-      throw new Error(
-        'Shot Director returned 0 shots. All scene-shot-generation LLM calls failed. ' +
-          'Check CloudWatch for [Shot Director] error logs and verify scene-shot-generation prompt config.',
-      );
-    }
-
-    // Validate shot count is reasonable for the number of scenes
-    const expectedMin = scenes.length * 2;
-    const expectedMax = scenes.length * 10;
-    const totalShots = orchestratorResult.shots.length;
-
-    if (totalShots < expectedMin) {
-      console.warn(
-        `[Shot Generation] LOW SHOT COUNT WARNING: Only ${totalShots} shots for ${scenes.length} scenes ` +
-          `(expected at least ${expectedMin}). Some scenes may have failed silently. ` +
-          `Episode: ${data.episodeId}`,
-      );
-    } else if (totalShots > expectedMax) {
-      console.warn(
-        `[Shot Generation] HIGH SHOT COUNT WARNING: ${totalShots} shots for ${scenes.length} scenes ` +
-          `(expected at most ${expectedMax}). May indicate duplicate generation. ` +
-          `Episode: ${data.episodeId}`,
-      );
-    }
-
-    const reelCandidateSet = new Set(orchestratorResult.reelCandidateScenes);
-
-    // Build lookup: sceneNumber → full Reel Scout analysis (viralScore, hookType, etc.)
-    const sceneAnalysisMap = new Map<number, ReelSceneAnalysis>(
-      orchestratorResult.sceneAnalyses.map((a) => [a.sceneNumber, a]),
-    );
-    console.log(
-      `[Shot Generation] sceneAnalysisMap: ${sceneAnalysisMap.size} entries from Reel Scout. ` +
-        `Reel candidates: ${orchestratorResult.reelCandidateScenes.join(', ') || 'none'}`,
-    );
-    console.log(
-      `[Shot Generation] Per-scene viral scores: ${
-        [...sceneAnalysisMap.entries()]
-          .map(
-            ([sceneNum, a]) =>
-              `scene${sceneNum}=${a.viralScore}(${a.isReelCandidate ? 'candidate' : 'non-candidate'})`,
-          )
-          .join(', ') || 'no data'
-      }`,
-    );
-
-    // 4. Query existing shots for correct sequence number base
-    const { data: existingShots } = await supabase
-      .from('shots')
-      .select('sequence_number')
-      .eq('episode_id', data.episodeId)
-      .is('deleted_at', null)
-      .order('sequence_number', { ascending: false })
-      .limit(1);
-
-    let sequenceNumber = (existingShots?.[0]?.sequence_number ?? 0) + 1;
-    console.log(
-      `[Shot Generation] Starting sequence number: ${sequenceNumber}`,
-    );
-
-    // 5. Build shots table rows from flat orchestrator output
-    const allShots: Array<{
-      episode_id: string;
-      scene_number: number;
-      shot_number: number;
-      sequence_number: number;
-      scene_description: string;
-      prompt: string;
-      duration_seconds: number;
-      camera_direction: string | null;
-      status: string;
-      shorts_candidate: boolean;
-      shorts_metadata: Json | null;
-      generation_metadata: Json;
-      // OpenClaw Shot Intelligence
-      transition_type: string | null;
-      frame_strategy: string | null;
-      primary_subject: Json | null;
-      first_frame_description: string | null;
-      last_frame_description: string | null;
-      location_area: string | null;
-      location_environment_description: string | null;
-    }> = [];
-
-    const shotTypes = { wide: 0, medium: 0, closeUp: 0 };
-    let totalDuration = 0;
-
-    for (const shot of orchestratorResult.shots) {
-      const sceneIsCandidate = reelCandidateSet.has(shot.sceneNumber);
-      const sceneAnalysis = sceneAnalysisMap.get(shot.sceneNumber);
-
-      // Log every shot so we can trace the data flow in CloudWatch
-      console.log(
-        `[Shot Generation] Shot ${shot.sceneNumber}.${shot.shotNumber} — ` +
-          `candidate=${sceneIsCandidate}, ` +
-          `viralScore=${sceneAnalysis?.viralScore ?? 'N/A'}, ` +
-          `hookType=${sceneAnalysis?.hookType ?? shot.metadata.hookType ?? 'none'}`,
-      );
-
-      // Build shorts_metadata for ALL shots (not just candidates) so the sidebar
-      // can show viral intelligence and "not a candidate" reasoning for every scene.
-      const shortsMetadata: Json | null = sceneAnalysis
-        ? {
-            viralScore: sceneAnalysis.viralScore,
-            hookType: sceneAnalysis.hookType ?? shot.metadata.hookType,
-            estimatedDurationSeconds:
-              sceneAnalysis.estimatedDurationSeconds ?? shot.duration,
-            isReelCandidate: sceneAnalysis.isReelCandidate,
-            whyThisWorksAsReel: sceneAnalysis.whyThisWorksAsReel ?? null,
-            whyItDoesntWork: sceneAnalysis.whyItDoesntWork ?? null,
-            keyMoment: sceneAnalysis.keyMoment ?? null,
-            sceneEmotionalArc: sceneAnalysis.sceneEmotionalArc ?? null,
-            improvementSuggestion: sceneAnalysis.improvementSuggestion ?? null,
-          }
-        : sceneIsCandidate
-          ? {
-              hookType: shot.metadata.hookType,
-              estimatedDurationSeconds: shot.duration,
-              isReelCandidate: true,
-            }
-          : null;
-
-      // OpenClaw Shot Intelligence (typed via SceneShotOutputSchema)
-      allShots.push({
-        episode_id: data.episodeId,
-        scene_number: shot.sceneNumber,
-        shot_number: shot.shotNumber,
-        sequence_number: sequenceNumber++,
-        scene_description: shot.description,
-        prompt: shot.veoPrompt?.fullPrompt || shot.description,
-        duration_seconds: wholeShotSeconds(shot.duration),
-        camera_direction: shot.cameraDirection ?? null,
-        status: 'pending',
-        shorts_candidate: sceneIsCandidate,
-        shorts_metadata: shortsMetadata,
-        generation_metadata: {
-          shotType: shot.shotType,
-          location: shot.metadata.location,
-          timeOfDay: shot.metadata.timeOfDay,
-          mood: shot.metadata.mood,
-          characters: shot.characters ?? [],
-          veoPrompt: shot.veoPrompt,
-          isReelCandidate: sceneIsCandidate,
-        },
-        transition_type: shot.transitionType ?? null,
-        frame_strategy: shot.frameStrategy ?? null,
-        primary_subject: shot.primarySubject ?? null,
-        first_frame_description: shot.firstFrameDescription ?? null,
-        last_frame_description: shot.lastFrameDescription ?? null,
-        location_area: shot.locationArea ?? null,
-        location_environment_description:
-          shot.locationEnvironmentDescription ?? null,
-      });
-
-      if (shot.shotType === 'wide') shotTypes.wide++;
-      else if (shot.shotType === 'medium') shotTypes.medium++;
-      else if (shot.shotType?.includes('close')) shotTypes.closeUp++;
-      totalDuration += shot.duration;
-    }
-
-    if (allShots.length === 0) {
-      throw new Error('No shots were generated');
-    }
-
-    // 5. CLEAR existing data then INSERT new shots (idempotent)
-    // Without this, re-running generation stacks duplicate shots.
-    const { error: clearAudioCuesErr } = await supabase
-      .from('audio_cues')
-      .delete()
-      .eq('episode_id', data.episodeId);
-
-    if (clearAudioCuesErr) {
-      console.warn(
-        `[Shot Generation] Failed to clear existing audio cues: ${clearAudioCuesErr.message}`,
-      );
-    }
-
-    const { error: clearAudioTracksErr } = await supabase
-      .from('audio_tracks')
-      .delete()
-      .eq('episode_id', data.episodeId);
-
-    if (clearAudioTracksErr) {
-      console.warn(
-        `[Shot Generation] Failed to clear existing audio tracks: ${clearAudioTracksErr.message}`,
-      );
-    }
-
-    const { error: clearShotsErr } = await supabase
-      .from('shots')
-      .delete()
-      .eq('episode_id', data.episodeId);
-
-    if (clearShotsErr) {
-      console.warn(
-        `[Shot Generation] Failed to clear existing shots: ${clearShotsErr.message}`,
-      );
-    }
-
-    console.log(
-      `[Shot Generation] Cleared existing data for episode ${data.episodeId}. Inserting ${allShots.length} new shots.`,
-    );
-
-    const { error: insertError } = await supabase
-      .from('shots')
-      .insert(allShots);
-
-    if (insertError) {
-      throw new Error(`Failed to insert shots: ${insertError.message}`);
-    }
-
-    // 6. UPDATE episode with shot_list metadata
-    const shotListData = {
-      generatedAt: new Date().toISOString(),
-      totalShots: allShots.length,
-      totalDuration,
-      shotTypes,
-      scenesProcessed: scenes.length,
-      processingMethod: 'shot-orchestrator',
-    };
-
-    // 6. Guard: Skip write if episode was deleted during processing
-    const { data: currentEpisode } = await supabase
-      .from('episodes')
-      .select('status, deleted_at')
-      .eq('id', data.episodeId)
-      .single();
-
-    if (!currentEpisode || currentEpisode.deleted_at) {
-      console.warn(
-        '[Shot Generation] Episode was deleted during generation. Skipping write.',
-      );
-      await markJobCompleted(supabase, data.episodeId, 'shot_list', {
-        skipped: true,
-        reason: 'episode-deleted',
-      });
-    } else {
-      const { error: updateError } = await supabase
-        .from('episodes')
-        .update({
-          shot_list: shotListData,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', data.episodeId)
-        // NOTE: No .eq('version', ...) — version may drift during orchestrator mid-run writes
-        .is('deleted_at', null);
-
-      if (updateError) {
-        console.error(
-          '[Shot Generation] Failed to update episode:',
-          updateError,
-        );
-      }
-    }
-
-    console.log(
-      `[Shot Generation] Stage 3 complete. ${allShots.length} shots across ${scenes.length} scenes. Reel candidates: ${orchestratorResult.reelCandidateScenes.join(', ') || 'none'}`,
-    );
-
-    // 7. Queue Audio Refinement Job (The Dedicated Audio Pass)
-    // We decouple audio generation to ensure coherence across shots (merging music, coherent SFX)
-    console.log('[Shot Generation] Queuing audio refinement job');
-    const { chainedLlmJobTarget, queueLlmJob } = await import(
-      '@kit/prompt-engine/server'
-    );
-
-    // Create generation job entry for tracking audio cue generation
-    const audioJobData = {
-      reference_type: 'episode',
-      reference_id: data.episodeId,
-      job_type: 'audio_cue_generation',
-      status: 'queued',
-      account_id: data.accountId,
-      project_id: data.projectId,
-      idempotency_key: `audio-cues-${data.episodeId}-${Date.now()}`,
-      input_data: { episodeId: data.episodeId },
-    };
-
-    const { error: audioJobError } = await supabase
-      .from('generation_jobs')
-      .insert(audioJobData);
-
-    if (audioJobError) {
-      console.error(
-        '[Shot Generation] Failed to create audio cue job:',
-        audioJobError,
-      );
-    }
-
-    await queueLlmJob({
-      jobType: 'audio-cue-generation',
-      userId: data.userId,
-      // The same episode this job's producer authorised (KB-31)
-      target: chainedLlmJobTarget({
-        accountId: data.accountId,
-        projectId: data.projectId,
-        episodeId: data.episodeId,
-      }),
-      payload: {
-        episodeId: data.episodeId,
-        projectId: data.projectId,
-        accountId: data.accountId,
-      },
-    });
-
-    // Mark job as completed
-    await markJobCompleted(supabase, data.episodeId, 'shot_list', {
-      totalShots: allShots.length,
-      scenesProcessed: scenes.length,
-      totalDuration,
-    });
-
-    return {
-      success: true,
-      data: {
-        totalShots: allShots.length,
-        shotsCreated: allShots.length,
-        metadata: {
-          totalDuration,
-          shotTypes,
-          scenesProcessed: scenes.length,
-        },
-      },
-    };
-  } catch (error) {
-    // Mark job as failed
-    await markJobFailed(
-      supabase,
-      data.episodeId,
-      'shot_list',
-      error instanceof Error ? error.message : 'Unknown error',
-    );
-    throw error;
+  if (commit.status === 'committed') {
+    await queueFollowOn(supabase, data, commit);
   }
+
+  return {
+    success: true,
+    data: {
+      totalShots: commit.data.totalShots,
+      shotsCreated: commit.data.shotsCreated,
+      metadata: commit.data.metadata,
+    },
+  };
+}
+
+/**
+ * The server writer: the orchestrator produces every part in one run, on
+ * the first brief it is asked for; later briefs are answered from it.
+ */
+function orchestratedShots(data: LlmJobPayload<'shot-generation'>): GenerateFn {
+  let outputs: Map<string, ShotsPartOutput> | undefined;
+
+  return async (brief) => {
+    outputs ??= await runOrchestratorForParts(brief, data);
+
+    const output = outputs.get(brief.part.key);
+
+    if (!output) {
+      throw new Error(
+        `The Shot Orchestrator produced nothing for part ${brief.part.key}`,
+      );
+    }
+
+    return { output };
+  };
+}
+
+async function runOrchestratorForParts(
+  brief: Brief,
+  data: LlmJobPayload<'shot-generation'>,
+): Promise<Map<string, ShotsPartOutput>> {
+  const context = brief.context as unknown as ShotsBriefContext;
+  const { runShotOrchestrator } = await import(
+    '@kit/episodes/agent/shot-orchestrator'
+  );
+
+  console.log(
+    `[Shot Generation] Starting Shot Orchestrator — ${context.scenes.length} scenes`,
+  );
+
+  const result = await runShotOrchestrator({
+    episodeId: data.episodeId,
+    episodeTitle: context.episode.title,
+    genre: context.genre,
+    targetAudience: context.targetAudience,
+    visualStyle: context.visualStyle,
+    accountId: data.accountId,
+    scenes: context.scenes,
+    charactersVeoContext: context.charactersVeo || 'No characters defined.',
+    locationsVeoContext: context.locationsVeo || 'No locations defined.',
+    recurringElementsContext: context.recurringElements,
+    shotDuration: context.shotDuration,
+  });
+
+  console.log(
+    `[Shot Generation] Orchestrator completed — success: ${result.success}, ` +
+      `shots: ${result.shots.length}, reel candidates: ${result.reelCandidateScenes.join(', ') || 'none'}, ` +
+      `steps: ${result.orchestratorSteps}`,
+  );
+
+  if (!result.success) {
+    throw new Error(
+      `Shot Orchestrator failed: ${result.error ?? 'Unknown error'}`,
+    );
+  }
+
+  if (result.shots.length === 0) {
+    throw new Error(
+      'Shot Director returned 0 shots. All scene-shot-generation LLM calls failed. ' +
+        'Check CloudWatch for [Shot Director] error logs and verify scene-shot-generation prompt config.',
+    );
+  }
+
+  return partOutputsFrom(result, context.scenes.map((scene) => scene.number));
+}
+
+/** The orchestrator's one result, as the stage's parts. */
+export function partOutputsFrom(
+  result: ShotOrchestratorResult,
+  sceneNumbers: number[],
+): Map<string, ShotsPartOutput> {
+  const outputs = new Map<string, ShotsPartOutput>();
+
+  outputs.set(REEL_SCOUT_PART, {
+    kind: 'reel_scout',
+    sceneAnalyses: result.sceneAnalyses,
+    topReelCandidates: result.reelCandidateScenes,
+    orchestratorNote: result.orchestratorNote ?? '',
+  } as ShotsPartOutput);
+
+  for (const sceneNumber of sceneNumbers) {
+    const scene = result.sceneResults?.find(
+      (s) => s.sceneNumber === sceneNumber,
+    );
+
+    outputs.set(scenePartKey(sceneNumber), {
+      kind: 'scene',
+      sceneNumber,
+      shots: result.shots.filter((shot) => shot.sceneNumber === sceneNumber),
+      sceneSummary: scene?.sceneSummary,
+      sceneViralScore: scene?.sceneViralScore,
+      sceneHookType: scene?.sceneHookType,
+      sceneStandaloneSummary: scene?.sceneStandaloneSummary,
+    } as unknown as ShotsPartOutput);
+  }
+
+  return outputs;
+}
+
+/**
+ * The dedicated audio pass follows every shot list. Commit names it; the
+ * worker queues it as a job here. FILM-1903 replaces this with a child run
+ * opened in the parent's mode.
+ */
+async function queueFollowOn(
+  supabase: SupabaseClient<Database>,
+  data: LlmJobPayload<'shot-generation'>,
+  commit: CommitResult<ShotsCommitData>,
+) {
+  const audio = commit.followOn?.find((next) => next.stage === 'audio_cues');
+
+  if (!audio) return;
+
+  console.log('[Shot Generation] Queuing audio refinement job');
+
+  const { chainedLlmJobTarget, queueLlmJob } = await import(
+    '@kit/prompt-engine/server'
+  );
+
+  const { error } = await supabase.from('generation_jobs').insert({
+    reference_type: 'episode',
+    reference_id: data.episodeId,
+    job_type: 'audio_cue_generation',
+    status: 'queued',
+    account_id: data.accountId,
+    project_id: data.projectId,
+    idempotency_key: `audio-cues-${data.episodeId}-${Date.now()}`,
+    input_data: { episodeId: data.episodeId },
+  });
+
+  if (error) {
+    console.error('[Shot Generation] Failed to create audio cue job:', error);
+  }
+
+  await queueLlmJob({
+    jobType: 'audio-cue-generation',
+    userId: data.userId,
+    // The same episode this job's producer authorised (KB-31)
+    target: chainedLlmJobTarget({
+      accountId: data.accountId,
+      projectId: data.projectId,
+      episodeId: data.episodeId,
+    }),
+    payload: {
+      episodeId: data.episodeId,
+      projectId: data.projectId,
+      accountId: data.accountId,
+    },
+  });
 }

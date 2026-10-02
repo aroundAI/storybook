@@ -221,9 +221,16 @@ export function fakeClient() {
         return single ? null : [];
       };
 
+      let pastFirstPage = false;
       const chain: Record<string, unknown> = {
         then: (resolve: (v: unknown) => unknown) =>
-          resolve({ data: rows(), error: null }),
+          resolve({ data: pastFirstPage ? [] : rows(), error: null }),
+        // A paged read (`fetchAllRows`) stops at an empty page
+        range: (from: number) => {
+          calls.push(['range', from]);
+          pastFirstPage = from > 0;
+          return chain;
+        },
       };
       for (const m of [
         'update',

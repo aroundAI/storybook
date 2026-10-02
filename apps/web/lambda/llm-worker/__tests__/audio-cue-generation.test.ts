@@ -1,101 +1,135 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { recordingClient, tableResponder } from '@kit/generation/testing';
 
-import { processAudioCueGeneration } from '../handlers/audio-cue-generation';
+import audioOld from '../../../../../packages/features/generation/__tests__/fixtures/audio-cues-old-writes.json';
+import fixture from '../../../../../packages/features/generation/__tests__/fixtures/audio-cues-fixture.json';
+import {
+  cuesByPart,
+  processAudioCueGeneration,
+} from '../handlers/audio-cue-generation';
+
+type Cue = Parameters<typeof cuesByPart>[0][number];
+const cues = fixture.cues as Cue[];
 
 /**
- * KB-92: a cue takes its scene from the shot it starts on, and a shot's scene
- * is optional. A cue on a sceneless shot is saved with no scene, beside every
- * other cue; it is not dropped and not given a made-up scene 0.
+ * The audio-cue handler on the `audio_cues` stage (FILM-1901): one
+ * orchestrator run, its cues split by the scene of their first shot, then
+ * the stage's check and commit. The writes are the ones the old handler made
+ * for the same fixture (recorded before its body was deleted).
  *
+ * KB-92: a cue takes its scene from the shot it starts on, and a shot's
+ * scene is optional. A cue on a sceneless shot is saved with no scene,
+ * beside every other cue; it is not dropped and not given a made-up scene 0.
  * `audio_cues.scene_number` accepting null is proven against the database by
- * `supabase/tests/database/audio-cue-scene-optional.test.sql`; this test
- * guards the handler's half, which a "skip it" or `?? 0` fix would change.
+ * `supabase/tests/database/audio-cue-scene-optional.test.sql`.
  */
 
-type Row = Record<string, unknown>;
-
-const EPISODE = '33333333-3333-4333-8333-333333333333';
-const PROJECT = '22222222-2222-4222-8222-222222222222';
-const ACCOUNT = '11111111-1111-4111-8111-111111111111';
-
-vi.mock('../utils/job-tracking', () => ({
-  markJobProcessing: vi.fn(),
-  markJobCompleted: vi.fn(),
-  markJobFailed: vi.fn(),
-}));
+const orchestratorInputs = vi.hoisted(() => [] as Array<{ shotsJson: string }>);
 
 vi.mock('@kit/episodes/agent/audio-cue-orchestrator', () => ({
-  runAudioCueOrchestrator: async () => ({
-    success: true,
-    orchestratorSteps: 1,
-    coveragePercent: 100,
-    cues: [1, 2, 3].map((seq) => ({
-      type: 'sfx',
-      prompt: `cue on shot ${seq}`,
-      startShotSequence: seq,
-      startOffsetInShot: 0,
-      durationSeconds: 2,
-    })),
-  }),
+  runAudioCueOrchestrator: async (input: { shotsJson: string }) => {
+    orchestratorInputs.push(input);
+    return {
+      success: true,
+      cues: fixture.cues,
+      verdict: 'pass',
+      ...fixture.orchestrator,
+    };
+  },
 }));
 
-function fakeClient(shots: Row[]) {
-  const inserted: Row[][] = [];
-  const client = {
-    from(table: string) {
-      const builder = {
-        select: () => builder,
-        eq: () => builder,
-        is: () => builder,
-        order: () => Promise.resolve({ data: shots, error: null }),
-        insert(rows: Row[]) {
-          if (table === 'audio_cues') inserted.push(rows);
-          return Promise.resolve({ error: null });
-        },
-      };
-      return builder;
-    },
-  };
-  return {
-    client: client as unknown as SupabaseClient,
-    inserted,
-  };
+function pagedShots(shots: unknown[]) {
+  const base = tableResponder({ shots });
+
+  return recordingClient((call) => {
+    const range = call.chain.find((step) => step.method === 'range');
+    if (range && Number(range.args[0]) > 0) return { data: [] };
+    return base(call);
+  });
 }
 
-function shot(sequence: number, scene: number | null): Row {
-  return {
-    sequence_number: sequence,
-    scene_number: scene,
-    duration_seconds: 4,
-    scene_description: `shot ${sequence}`,
-    prompt: '',
-    generation_metadata: null,
-  };
-}
+describe('processAudioCueGeneration', () => {
+  beforeAll(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(fixture.now));
+  });
 
-describe('processAudioCueGeneration (KB-92)', () => {
-  beforeEach(() => vi.clearAllMocks());
+  afterAll(() => vi.useRealTimers());
 
-  it('saves a cue on a sceneless shot with no scene, beside the others', async () => {
-    const { client, inserted } = fakeClient([
-      shot(1, 1),
-      shot(2, null),
-      shot(3, 2),
+  it('writes the rows the old handler wrote: a sceneless cue with no scene (KB-92), the cue on a missing shot dropped', async () => {
+    const recording = pagedShots(fixture.shots);
+
+    const result = await processAudioCueGeneration(fixture.ids, recording.client);
+
+    expect(result).toEqual({ success: true, cuesCreated: 4 });
+    expect(orchestratorInputs).toHaveLength(1);
+    expect(JSON.parse(orchestratorInputs[0]!.shotsJson)).toHaveLength(4);
+
+    const sorted = (writes: unknown[]) =>
+      writes
+        .map((w) => JSON.parse(JSON.stringify(w)) as unknown)
+        .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+
+    expect(sorted(recording.writes())).toEqual(sorted(audioOld.writes));
+
+    const inserted = recording
+      .writes()
+      .find((w) => w.table === 'audio_cues')!.payload as Array<
+      Record<string, unknown>
+    >;
+
+    expect(inserted.map((row) => [row.prompt, row.scene_number])).toEqual([
+      ['Quiet office atmosphere, air conditioning hum', 1],
+      ['Cinematic strings, suspenseful, 70 BPM, in D minor', 1],
+      ['Footsteps echoing in a concrete car park', 2],
+      ['Phone screen chime', null],
     ]);
+  });
 
-    const result = await processAudioCueGeneration(
-      { episodeId: EPISODE, projectId: PROJECT, accountId: ACCOUNT },
-      client,
+  it('fails the job, with the part and the field, when the orchestrator names a cue type the prompt does not define', async () => {
+    const recording = pagedShots(fixture.shots);
+    const orchestrator = await import('@kit/episodes/agent/audio-cue-orchestrator');
+    const spy = vi
+      .spyOn(orchestrator, 'runAudioCueOrchestrator')
+      .mockResolvedValueOnce({
+        success: true,
+        orchestratorSteps: 1,
+        cues: [{ ...fixture.cues[0]!, type: 'voice' as never }],
+      });
+
+    await expect(
+      processAudioCueGeneration(fixture.ids, recording.client),
+    ).rejects.toThrow(/audio_cues output for part scene:1 rejected: cues\.0\.type invalid_enum_value/);
+
+    expect(recording.writes().map((w) => [w.table, w.op])).toEqual([
+      ['generation_jobs', 'update'],
+      ['generation_jobs', 'update'],
+    ]);
+    expect(recording.writes()[1]!.payload).toMatchObject({ status: 'failed' });
+
+    spy.mockRestore();
+  });
+});
+
+describe('cuesByPart', () => {
+  const groups = [
+    { partKey: 'scene:1', sceneNumber: 1, shotSequences: [1, 2], durationSeconds: 11 },
+    { partKey: 'scene:none', sceneNumber: null, shotSequences: [4], durationSeconds: 4 },
+  ];
+
+  it('files each cue under the scene of its first shot and drops one on a shot the episode lacks', () => {
+    const parts = cuesByPart(
+      [
+        { ...cues[0]!, startShotSequence: 2 },
+        { ...cues[3]!, startShotSequence: 4 },
+        { ...cues[4]!, startShotSequence: 9 },
+      ],
+      { groups },
     );
 
-    expect(result).toEqual({ success: true, cuesCreated: 3 });
-    expect(inserted).toHaveLength(1);
-    expect(inserted[0]!.map((row) => [row.prompt, row.scene_number])).toEqual([
-      ['cue on shot 1', 1],
-      ['cue on shot 2', null],
-      ['cue on shot 3', 2],
-    ]);
+    expect([...parts.keys()]).toEqual(['scene:1', 'scene:none']);
+    expect(parts.get('scene:1')).toHaveLength(1);
+    expect(parts.get('scene:none')).toHaveLength(1);
   });
 });
