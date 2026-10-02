@@ -1,3 +1,5 @@
+import { RateDenominator } from '@kit/content-analytics/components';
+
 import { Sparkline, formatNumber } from './overview-constants';
 import type { OverviewAnalytics } from './overview-constants';
 
@@ -64,10 +66,16 @@ export function PerformanceInsightsSection({
               <p className="text-sm font-medium text-muted-foreground">
                 Avg. Engagement
               </p>
-              <p className="mt-1 text-3xl font-bold text-foreground">
-                {analytics?.avgEngagementRate
-                  ? `${analytics.avgEngagementRate.toFixed(0)}%`
+              <p className="mt-1 flex items-center gap-2 text-3xl font-bold text-foreground">
+                {analytics?.avgEngagementRate.value
+                  ? `${analytics.avgEngagementRate.value.toFixed(0)}%`
                   : '0%'}
+                {analytics && (
+                  <RateDenominator
+                    denominator={analytics.avgEngagementRate.denominator}
+                    figure="average engagement"
+                  />
+                )}
               </p>
             </div>
             <span className="rounded-md bg-muted px-2 py-1 text-xs font-bold text-muted-foreground">
@@ -77,7 +85,7 @@ export function PerformanceInsightsSection({
           <div className="h-1.5 w-full rounded-full bg-muted">
             <div
               className="h-1.5 rounded-full bg-green-500"
-              style={{ width: `${analytics?.avgEngagementRate ?? 0}%` }}
+              style={{ width: `${analytics?.avgEngagementRate.value ?? 0}%` }}
             />
           </div>
         </div>

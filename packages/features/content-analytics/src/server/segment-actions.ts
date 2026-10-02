@@ -2,6 +2,7 @@
 
 import { z } from 'zod';
 
+import type { DenominatorStamp } from '@kit/clickhouse';
 import type {
   SegmentKind,
   SegmentPerformanceRow,
@@ -22,6 +23,7 @@ import {
   retainSurvivingSegments,
   revenueFetchWindow,
   segmentRpm,
+  segmentRpmDenominator,
   yearChunks,
 } from '../lib/segment-revenue';
 import { MAX_TAG_MIN_SAMPLE } from '../lib/ypp-targets';
@@ -82,6 +84,8 @@ export interface SegmentPerformanceEntry extends SegmentPerformanceRow {
    * segment has no views.
    */
   rpm?: MoneyByCurrency | null;
+  /** What `rpm` divided by, present with it (FILM-1732). */
+  rpmDenominator?: DenominatorStamp | null;
 }
 
 /** Why `rpm` is absent, when it is. */
@@ -180,6 +184,7 @@ async function collectMembership(input: {
 
       membership.set(row.videoId, {
         segments: [row.segment],
+        platform: row.platform,
         ...checkpointWindow(row.publishedAt, input.checkpointDays),
       });
     }
@@ -373,6 +378,7 @@ export const getSegmentPerformanceAction = enhanceAction(
       rows: rows.map((row) => ({
         ...row,
         rpm: segmentRpm(revenueBySegment, row.segment, row.totalViews),
+        rpmDenominator: segmentRpmDenominator(membership, row.segment),
       })),
       revenueStatus: 'included' as const,
       attributedRevenueOnly: true,

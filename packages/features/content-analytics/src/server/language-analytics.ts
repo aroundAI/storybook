@@ -2,13 +2,18 @@ import 'server-only';
 
 import {
   FORMAT_FAMILIES,
-  displayedEngagementRatePercent,
   formatFamilyOfDim,
+  recordViewsDenominator,
+  recordedEngagementRatePercent,
+  recordedLikesAndCommentsPercent,
+  recordedRevenuePerViewCents,
 } from '@kit/clickhouse';
 import type {
   AnalyticsPlatform,
+  DenominatorWindow,
   FormatFamily,
   LanguageDimension,
+  RecordedRate,
   SegmentConfidence,
 } from '@kit/clickhouse';
 import {
@@ -84,7 +89,8 @@ export interface LanguagePerformance {
   likes: number;
   comments: number;
   shares: number;
-  engagement: number; // engagementRatio (FILM-1713), as a percentage
+  /** engagementRatio (FILM-1713) as a percentage, recorded (FILM-1732). */
+  engagement: RecordedRate;
   /** USD; null where no day's earnings were measured (FILM-1726). */
   revenueCents: EstimatedRevenue;
   contentCount: number;
@@ -108,7 +114,8 @@ export interface PlatformLanguageEntry {
   likes: number;
   comments: number;
   shares: number;
-  engagementRate: number;
+  /** Recorded over this one platform (FILM-1732). */
+  engagementRate: RecordedRate;
   /** USD; null where no day's earnings were measured (FILM-1726). */
   revenueCents: EstimatedRevenue;
   contentCount: number;
@@ -121,9 +128,15 @@ export interface FormatFamilyTotals {
   likes: number;
   comments: number;
   shares: number;
-  engagement: number;
+  /** Recorded over the family's platforms (FILM-1732). */
+  engagement: RecordedRate;
   /** USD; null where no day's earnings were measured (FILM-1726). */
   revenueCents: EstimatedRevenue;
+  /**
+   * Revenue per view in cents, recorded (FILM-1732): null where no
+   * earnings were measured, 0 without views. The Shorts ROI card's figure.
+   */
+  revenuePerViewCents: RecordedRate | null;
   /** Null where no video measured it: only YouTube reports it (KB-162). */
   subscribersGained: number | null;
   contentCount: number;
@@ -147,6 +160,8 @@ export interface ContentTypeComparison {
   unclassified: number;
   /** Videos placed by their declared type, their asset duration unknown. */
   durationUnknown: number;
+  /** The days every family's rates were counted over (FILM-1732). */
+  window: DenominatorWindow;
 }
 
 // =============================================================================
@@ -278,6 +293,8 @@ export async function getLanguagePerformance(
       revenueCents: EstimatedRevenue;
       publishCount: number;
       videoCount: number;
+      /** The platforms of the videos whose totals are in it (FILM-1732). */
+      platforms: Set<string>;
     }
   >();
 
@@ -291,16 +308,23 @@ export async function getLanguagePerformance(
       revenueCents: null,
       publishCount: 0,
       videoCount: 0,
+      platforms: new Set<string>(),
     };
 
     current.videoCount++;
     languageStats.set(language, current);
   }
 
+  const platformByVideo = new Map(
+    videos.map((video) => [video.videoId, video.platform]),
+  );
+
   for (const [publishId, stats] of currentTotals) {
     const current = languageStats.get(languageByVideo.get(publishId) ?? null);
 
     if (!current) continue;
+
+    current.platforms.add(platformByVideo.get(publishId) ?? 'unknown');
 
     current.views += viewsToAdd(stats.views);
     current.likes += stats.likes;
@@ -344,7 +368,13 @@ export async function getLanguagePerformance(
         ? ((stats.views - previousViews) / previousViews) * 100
         : null;
 
-    const engagement = displayedEngagementRatePercent(stats);
+    const engagement = recordedEngagementRatePercent(
+      stats,
+      recordViewsDenominator({
+        platforms: stats.platforms,
+        window: { from: startDateStr, to: endDateStr },
+      }),
+    );
 
     results.push({
       language,
@@ -452,7 +482,13 @@ export async function getPlatformLanguageMatrix(
   // Build result
   const results: PlatformLanguageEntry[] = [];
   for (const entry of matrix.values()) {
-    const engagementRate = displayedEngagementRatePercent(entry);
+    const engagementRate = recordedEngagementRatePercent(
+      entry,
+      recordViewsDenominator({
+        platforms: [entry.platform],
+        window: { from: startDateStr, to: endDateStr },
+      }),
+    );
 
     results.push({
       platform: entry.platform,
@@ -491,7 +527,7 @@ export async function getContentTypeComparison(
     undefined,
     options?.platforms,
   );
-  if (!resolved) return getEmptyComparison();
+  if (!resolved) return getEmptyComparison(startDate, endDate);
 
   const { videos, videoIds } = resolved;
 
@@ -517,8 +553,14 @@ export async function getContentTypeComparison(
 
   const totals = new Map<
     FormatFamily,
-    Omit<FormatFamilyTotals, 'engagement'>
+    Omit<FormatFamilyTotals, 'engagement' | 'revenuePerViewCents'> & {
+      platforms: Set<string>;
+    }
   >();
+  const platformByVideo = new Map(
+    videos.map((video) => [video.videoId, video.platform]),
+  );
+  const window = { from: startDateStr, to: endDateStr };
   let unclassified = 0;
   let durationUnknown = 0;
 
@@ -540,8 +582,10 @@ export async function getContentTypeComparison(
       revenueCents: null,
       subscribersGained: null,
       contentCount: 0,
+      platforms: new Set<string>(),
     };
 
+    target.platforms.add(platformByVideo.get(publishId) ?? 'unknown');
     target.views += viewsToAdd(stats.views);
     target.likes += stats.likes;
     target.comments += stats.comments;
@@ -558,18 +602,44 @@ export async function getContentTypeComparison(
 
   return {
     families: FORMAT_FAMILIES.flatMap((family) => {
-      const total = totals.get(family);
-      return total
-        ? [{ ...total, engagement: displayedEngagementRatePercent(total) }]
-        : [];
+      const found = totals.get(family);
+
+      if (!found) return [];
+
+      const { platforms, ...total } = found;
+      const denominator = recordViewsDenominator({ platforms, window });
+
+      return [
+        {
+          ...total,
+          engagement: recordedEngagementRatePercent(total, denominator),
+          revenuePerViewCents: recordedRevenuePerViewCents(
+            total.revenueCents,
+            total.views,
+            denominator,
+          ),
+        },
+      ];
     }),
     unclassified,
     durationUnknown,
+    window,
   };
 }
 
-function getEmptyComparison(): ContentTypeComparison {
-  return { families: [], unclassified: 0, durationUnknown: 0 };
+function getEmptyComparison(
+  startDate: Date,
+  endDate: Date,
+): ContentTypeComparison {
+  return {
+    families: [],
+    unclassified: 0,
+    durationUnknown: 0,
+    window: {
+      from: startDate.toISOString().split('T')[0]!,
+      to: endDate.toISOString().split('T')[0]!,
+    },
+  };
 }
 
 // =============================================================================
@@ -592,7 +662,11 @@ export interface ShortsSourcePerformance {
   views: Views;
   likes: number;
   comments: number;
-  engagement: number | null;
+  /**
+   * Likes and comments per view — shares left out, unlike every other
+   * engagement figure (KB-171) — recorded (FILM-1732). Null without views.
+   */
+  engagement: RecordedRate | null;
 }
 
 /**
@@ -639,9 +713,13 @@ export async function getShortsSourcePerformance(
     const engagement =
       stats.views === null
         ? null
-        : stats.views > 0
-          ? ((stats.likes + stats.comments) / stats.views) * 100
-          : 0;
+        : recordedLikesAndCommentsPercent(
+            { ...stats, views: stats.views },
+            recordViewsDenominator({
+              platforms: [video.platform],
+              window: { from: startDateStr, to: endDateStr },
+            }),
+          );
 
     results.push({
       publishId: video.videoId,

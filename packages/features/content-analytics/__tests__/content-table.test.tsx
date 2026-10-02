@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ContentTable } from '../src/components/content-table';
 import type { ContentTableTagging } from '../src/components/content-table';
 import type { ContentListItem } from '../src/server/aggregation-queries';
+import { recorded } from './helpers/recorded-rate';
 
 vi.mock('next/image', () => ({
   default: () => null,
@@ -34,7 +35,7 @@ function item(publishId: string, title: string): ContentListItem {
     comments: 0,
     shares: 0,
     saves: 0,
-    engagementRate: 1,
+    engagementRate: recorded(1),
   };
 }
 

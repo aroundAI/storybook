@@ -24,6 +24,7 @@ import { formatNumber } from '../lib/format';
 import { BULK_TAG_MAX_TAGS } from '../lib/schemas/taxonomy.schema';
 import { VIEWS_NOT_MEASURED, formatViews } from '../lib/views';
 import type { ContentListItem } from '../server/aggregation-queries';
+import { RateDenominator } from './rate-denominator';
 import type { ContentTag } from './taxonomy/tag-manager';
 import { TagPicker } from './taxonomy/tag-picker';
 
@@ -138,8 +139,8 @@ export function ContentTable({
           bVal = b.comments;
           break;
         case 'engagementRate':
-          aVal = a.engagementRate ?? Number.NEGATIVE_INFINITY;
-          bVal = b.engagementRate ?? Number.NEGATIVE_INFINITY;
+          aVal = a.engagementRate?.value ?? Number.NEGATIVE_INFINITY;
+          bVal = b.engagementRate?.value ?? Number.NEGATIVE_INFINITY;
           break;
         case 'publishedAt':
           aVal = a.publishedAt;
@@ -402,7 +403,13 @@ export function ContentTable({
                       {VIEWS_NOT_MEASURED}
                     </span>
                   ) : (
-                    <EngagementBadge rate={item.engagementRate} />
+                    <span className="inline-flex items-center gap-1">
+                      <EngagementBadge rate={item.engagementRate.value} />
+                      <RateDenominator
+                        denominator={item.engagementRate.denominator}
+                        figure="engagement rate"
+                      />
+                    </span>
                   )}
                 </TableCell>
                 <TableCell className="text-muted-foreground">

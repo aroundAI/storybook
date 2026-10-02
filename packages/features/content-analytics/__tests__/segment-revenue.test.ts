@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
+import { recordViewsDenominator } from '@kit/clickhouse';
+
 import {
   checkpointWindow,
   createSegmentRevenueFold,
   retainSurvivingSegments,
   revenueFetchWindow,
   segmentRpm,
+  segmentRpmDenominator,
   yearChunks,
 } from '../src/lib/segment-revenue';
 
@@ -18,6 +21,7 @@ const membership = () =>
         segments: ['topic:cooking', 'format:tutorial'],
         windowStart: '2026-01-01',
         windowEnd: '2026-01-31',
+        platform: 'youtube',
       },
     ],
     [
@@ -26,6 +30,7 @@ const membership = () =>
         segments: ['topic:cooking'],
         windowStart: '2026-02-01',
         windowEnd: '2026-03-03',
+        platform: 'facebook',
       },
     ],
   ]);
@@ -228,6 +233,7 @@ describe('retainSurvivingSegments', () => {
           segments: ['kept', 'trimmed'],
           windowStart: '2026-01-01',
           windowEnd: '2026-01-31',
+          platform: 'youtube',
         },
       ],
     ]);
@@ -245,6 +251,7 @@ describe('retainSurvivingSegments', () => {
           segments: ['gone-a', 'gone-b'],
           windowStart: '2026-01-01',
           windowEnd: '2026-01-31',
+          platform: 'youtube',
         },
       ],
     ]);
@@ -264,6 +271,7 @@ describe('retainSurvivingSegments', () => {
           segments: ['gone-a', 'gone-b'],
           windowStart: '2026-01-01',
           windowEnd: '2026-01-31',
+          platform: 'youtube',
         },
       ],
     ]);
@@ -377,5 +385,28 @@ describe('yearChunks', () => {
       from: '2028-02-29',
       toExclusive: '2029-03-01',
     });
+  });
+});
+
+describe('segmentRpmDenominator (FILM-1732)', () => {
+  it('records the segment videos platforms over their checkpoint windows together', () => {
+    expect(segmentRpmDenominator(membership(), 'topic:cooking')).toEqual(
+      recordViewsDenominator({
+        platforms: ['youtube', 'facebook'],
+        // 01-01 to 03-03 exclusive: the last counted day is 03-02.
+        window: { from: '2026-01-01', to: '2026-03-02' },
+      }),
+    );
+  });
+
+  it('records only the videos in the segment', () => {
+    const record = segmentRpmDenominator(membership(), 'format:tutorial');
+
+    expect(record?.platforms.map((part) => part.platform)).toEqual(['youtube']);
+    expect(record?.window).toEqual({ from: '2026-01-01', to: '2026-01-30' });
+  });
+
+  it('is null for a segment with no member', () => {
+    expect(segmentRpmDenominator(membership(), 'topic:none')).toBeNull();
   });
 });

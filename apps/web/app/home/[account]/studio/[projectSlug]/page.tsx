@@ -2,6 +2,11 @@ import type { Metadata } from 'next';
 
 import { notFound } from 'next/navigation';
 
+import {
+  lifetimeWindow,
+  recordViewsDenominator,
+  recordedLikesAndCommentsPercent,
+} from '@kit/clickhouse';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { cached } from '~/lib/cache/data-cache';
@@ -162,15 +167,30 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
           .select(
             `
             id,
+            platform,
+            published_at,
             episodes!inner(project_id)
           `,
           )
           .eq('episodes.project_id', project.id);
 
         const videoIds = (projectPublishes ?? []).map((p) => p.id);
+        // What the rate below divides by (FILM-1732): lifetime totals, so
+        // every platform here, from the earliest publish to today.
+        const denominatorScope = {
+          platforms: [
+            ...new Set((projectPublishes ?? []).map((p) => p.platform)),
+          ],
+          publishedAt: (projectPublishes ?? []).map((p) => p.published_at),
+        };
 
         if (videoIds.length === 0) {
-          return { totalViews: 0, totalLikes: 0, totalComments: 0 };
+          return {
+            totalViews: 0,
+            totalLikes: 0,
+            totalComments: 0,
+            ...denominatorScope,
+          };
         }
 
         try {
@@ -181,6 +201,7 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
             totalViews: totals.views,
             totalLikes: totals.likes,
             totalComments: totals.comments,
+            ...denominatorScope,
           };
         } catch (err) {
           // ClickHouse unavailable — log and return zeros
@@ -188,7 +209,12 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
           getLogger().then((logger) =>
             logger.warn({ err }, 'ClickHouse unavailable for project snapshot'),
           );
-          return { totalViews: 0, totalLikes: 0, totalComments: 0 };
+          return {
+            totalViews: 0,
+            totalLikes: 0,
+            totalComments: 0,
+            ...denominatorScope,
+          };
         }
       },
       CACHE_TTL.analytics,
@@ -243,14 +269,19 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
         totalViews: analyticsSnapshot.totalViews,
         totalLikes: analyticsSnapshot.totalLikes,
         totalComments: analyticsSnapshot.totalComments,
-        avgEngagementRate:
-          analyticsSnapshot.totalViews !== null &&
-          analyticsSnapshot.totalViews > 0
-            ? ((analyticsSnapshot.totalLikes +
-                analyticsSnapshot.totalComments) /
-                analyticsSnapshot.totalViews) *
-              100
-            : 0,
+        // Likes and comments per view, shares left out (KB-171), recorded.
+        avgEngagementRate: recordedLikesAndCommentsPercent(
+          {
+            likes: analyticsSnapshot.totalLikes,
+            comments: analyticsSnapshot.totalComments,
+            views: analyticsSnapshot.totalViews ?? 0,
+          },
+          recordViewsDenominator({
+            // A snapshot cached before FILM-1732 has neither field.
+            platforms: analyticsSnapshot.platforms ?? [],
+            window: lifetimeWindow(analyticsSnapshot.publishedAt ?? []),
+          }),
+        ),
         contentCount: publishedCount ?? 0,
       }
     : null;

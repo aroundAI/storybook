@@ -27,6 +27,7 @@ import type {
   LanguagePerformance,
 } from '../src/server/language-analytics';
 import { renderWithCoverage } from './helpers/coverage';
+import { TEST_WINDOW, recorded } from './helpers/recorded-rate';
 
 // `@kit/ui` does not resolve its React runtime from this package's test
 // environment; the other component tests stub it the same way.
@@ -84,7 +85,7 @@ function row(
     likes: 0,
     comments: 0,
     shares: 0,
-    engagement: 0,
+    engagement: recorded(0),
     revenueCents: 0,
     contentCount: 1,
     videoCount: mature ?? 2,
@@ -208,7 +209,7 @@ describe('PlatformLanguageMatrix (FILM-1702)', () => {
     likes: 0,
     comments: 0,
     shares: 0,
-    engagementRate,
+    engagementRate: recorded(engagementRate),
     revenueCents: 0,
     contentCount: 1,
   });
@@ -314,8 +315,9 @@ describe('the Language tab on the one shell (FILM-1707)', () => {
     likes: 0,
     comments: 0,
     shares: 0,
-    engagement,
+    engagement: recorded(engagement),
     revenueCents: 0,
+    revenuePerViewCents: recorded(0),
     subscribersGained: 0,
     contentCount,
   });
@@ -327,6 +329,7 @@ describe('the Language tab on the one shell (FILM-1707)', () => {
     ],
     unclassified: 0,
     durationUnknown: 0,
+    window: TEST_WINDOW,
   };
 
   const cards = [

@@ -19,6 +19,7 @@ import type {
 import { LanguageDimensionLabel } from './language-dimension-label';
 import { AnalyticsCard } from './overview/analytics-card';
 import type { CardClaim } from './overview/card-claim';
+import { RateDenominator } from './rate-denominator';
 
 // =============================================================================
 // Top Shorts Card (Phase 3)
@@ -123,10 +124,16 @@ export function TopShortsCard({
                   {languageName(short.language, dimension)}
                 </span>
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 {short.engagement === null
                   ? VIEWS_NOT_MEASURED
-                  : `${short.engagement.toFixed(1)}% eng`}
+                  : `${short.engagement.value.toFixed(1)}% eng`}
+                {short.engagement && (
+                  <RateDenominator
+                    denominator={short.engagement.denominator}
+                    figure="likes and comments per view"
+                  />
+                )}
               </div>
             </div>
           </div>

@@ -36,6 +36,7 @@ import {
 } from '../server/revenue-actions';
 import { DateRangePicker, type DateRangeValue } from './date-range-picker';
 import { ManualRevenueForm } from './manual-revenue-form';
+import { RateDenominator } from './rate-denominator';
 import { RevenueChart } from './revenue-chart';
 import { RevenueMixCard } from './revenue-mix-card';
 import { RevenuePlatformBreakdown } from './revenue-platform-breakdown';
@@ -541,11 +542,17 @@ function RevenueSummaryTiles({
             <SummaryUnavailable tile="rpm" />
           ) : (
             <>
-              <div
-                className="text-2xl font-bold"
-                data-test="revenue-tile-value"
-              >
-                {formatCents(summary.rpm)}
+              <div className="flex items-center gap-2">
+                <div
+                  className="text-2xl font-bold"
+                  data-test="revenue-tile-value"
+                >
+                  {formatCents(summary.rpm)}
+                </div>
+                <RateDenominator
+                  denominator={summary.rpmDenominator}
+                  figure="RPM"
+                />
               </div>
               <p className="text-xs text-muted-foreground">per 1,000 views</p>
             </>

@@ -6,8 +6,17 @@
  */
 import 'server-only';
 
-import { displayedEngagementRatePercent } from '@kit/clickhouse';
-import type { AnalyticsPlatform } from '@kit/clickhouse';
+import {
+  lifetimeWindow,
+  poolDenominators,
+  recordViewsDenominator,
+  recordedEngagementRatePercent,
+} from '@kit/clickhouse';
+import type {
+  AnalyticsPlatform,
+  DenominatorWindow,
+  RecordedRate,
+} from '@kit/clickhouse';
 import {
   queryAudienceRows,
   queryDailyTimeSeries,
@@ -55,7 +64,8 @@ export interface EpisodeAnalytics {
    * watch time, nor does an Instagram post that is not a Reel (KB-149).
    */
   avgWatchTimeSeconds: number | null;
-  engagementRate: number | null;
+  /** With the views definitions it divided by (FILM-1732). */
+  engagementRate: RecordedRate | null;
   platformBreakdown: {
     platform: string;
     views: Views;
@@ -90,7 +100,8 @@ export interface SeasonAnalytics {
   /** Null where no publish measured it: TikTok reports no saves (KB-162). */
   totalSaves: number | null;
   totalRevenueCents: EstimatedRevenue;
-  avgEngagementRate: number;
+  /** The mean of the episodes' rates, recorded over all their platforms (FILM-1732). */
+  avgEngagementRate: RecordedRate;
   episodeCount: number;
   topEpisode: {
     episodeId: string;
@@ -107,7 +118,7 @@ export interface SeasonAnalytics {
     title: string;
     episodeNumber: number;
     views: Views;
-    engagement: number | null;
+    engagement: RecordedRate | null;
     revenue: EstimatedRevenue;
   }[];
 }
@@ -127,7 +138,8 @@ export interface ProjectAnalytics {
   /** Null where no publish measured it (KB-162). */
   totalSaves: number | null;
   totalRevenueCents: EstimatedRevenue;
-  avgEngagementRate: number;
+  /** The mean of the seasons' rates, recorded over all their platforms (FILM-1732). */
+  avgEngagementRate: RecordedRate;
   contentCount: number;
   seasons: {
     seasonId: string;
@@ -176,6 +188,43 @@ function emptyEpisodeAnalytics(
 }
 
 /**
+ * The days a read's totals were counted over (FILM-1732): its date filter,
+ * and where it has no bound, lifetime totals' — the earliest publish to the
+ * day of the read.
+ */
+function readWindow(
+  dateFilters: { startDate?: string; endDate?: string },
+  publishes: readonly { published_at?: string | null }[],
+): DenominatorWindow {
+  const lifetime = lifetimeWindow(
+    publishes.map(({ published_at }) => published_at),
+  );
+
+  return {
+    from: dateFilters.startDate ?? lifetime.from,
+    to: dateFilters.endDate ?? lifetime.to,
+  };
+}
+
+/** The platforms whose publishes have totals in `withRows`. */
+function contributingPlatforms(
+  publishes: readonly { id: string; platform: string }[],
+  withRows: { has: (id: string) => boolean },
+): string[] {
+  return publishes
+    .filter(({ id }) => withRows.has(id))
+    .map(({ platform }) => platform);
+}
+
+/** A rate of 0 over nothing: a scope with no publishes still says so (FILM-1732). */
+function emptyEngagementRate(window: DenominatorWindow): RecordedRate {
+  return {
+    value: 0,
+    denominator: recordViewsDenominator({ platforms: [], window }),
+  };
+}
+
+/**
  * A running total of a figure some platforms do not measure: an unmeasured
  * part adds nothing, and a total of nothing measured stays null (KB-149).
  */
@@ -216,7 +265,7 @@ export async function getEpisodeAnalytics(
   // Get all publishes for this episode
   const { data: publishes } = await client
     .from('publishes')
-    .select('id, platform')
+    .select('id, platform, published_at')
     .eq('episode_id', episodeId);
 
   if (!publishes || publishes.length === 0) {
@@ -317,12 +366,18 @@ export async function getEpisodeAnalytics(
   const engagementRate =
     totalViews === null
       ? null
-      : displayedEngagementRatePercent({
-          views: totalViews,
-          likes: totalLikes,
-          comments: totalComments,
-          shares: totalShares,
-        });
+      : recordedEngagementRatePercent(
+          {
+            views: totalViews,
+            likes: totalLikes,
+            comments: totalComments,
+            shares: totalShares,
+          },
+          recordViewsDenominator({
+            platforms: contributingPlatforms(publishes, perVideoTotals),
+            window: readWindow(dateFilters, publishes),
+          }),
+        );
 
   return {
     episodeId,
@@ -406,6 +461,14 @@ export async function getSeasonAnalytics(
     'season episodes',
   );
 
+  const dateFilters =
+    options?.startDate && options?.endDate
+      ? {
+          startDate: options.startDate.toISOString().split('T')[0],
+          endDate: options.endDate.toISOString().split('T')[0],
+        }
+      : {};
+
   if (episodes.length === 0) {
     return {
       seasonId,
@@ -419,7 +482,7 @@ export async function getSeasonAnalytics(
       totalShares: 0,
       totalSaves: null,
       totalRevenueCents: null,
-      avgEngagementRate: 0,
+      avgEngagementRate: emptyEngagementRate(readWindow(dateFilters, [])),
       episodeCount: 0,
       topEpisode: null,
       lowestEpisode: null,
@@ -436,12 +499,13 @@ export async function getSeasonAnalytics(
     id: string;
     platform: string;
     episode_id: string;
+    published_at: string | null;
   }>(
     episodeIds,
     (chunk, from, to) => {
       let query = client
         .from('publishes')
-        .select('id, platform, episode_id')
+        .select('id, platform, episode_id, published_at')
         .in('episode_id', chunk);
 
       // In the query, not on the totals afterwards: a summed total cannot
@@ -467,7 +531,7 @@ export async function getSeasonAnalytics(
       totalShares: 0,
       totalSaves: 0,
       totalRevenueCents: 0,
-      avgEngagementRate: 0,
+      avgEngagementRate: emptyEngagementRate(readWindow(dateFilters, [])),
       episodeCount: 0,
       topEpisode: null,
       lowestEpisode: null,
@@ -488,7 +552,7 @@ export async function getSeasonAnalytics(
       totalShares: 0,
       totalSaves: null,
       totalRevenueCents: null,
-      avgEngagementRate: 0,
+      avgEngagementRate: emptyEngagementRate(readWindow(dateFilters, [])),
       episodeCount: episodes.length,
       topEpisode: null,
       lowestEpisode: null,
@@ -513,14 +577,6 @@ export async function getSeasonAnalytics(
 
   // Batch: single ClickHouse query for all publish IDs
   const allPublishIds = allPublishes.map((p) => p.id);
-  const dateFilters =
-    options?.startDate && options?.endDate
-      ? {
-          startDate: options.startDate.toISOString().split('T')[0],
-          endDate: options.endDate.toISOString().split('T')[0],
-        }
-      : {};
-
   const perVideoTotals = await queryTotalsByVideoIds(
     allPublishIds,
     dateFilters,
@@ -564,12 +620,18 @@ export async function getSeasonAnalytics(
     const epEngagement =
       epViews === null
         ? null
-        : displayedEngagementRatePercent({
-            views: epViews,
-            likes: epLikes,
-            comments: epComments,
-            shares: epShares,
-          });
+        : recordedEngagementRatePercent(
+            {
+              views: epViews,
+              likes: epLikes,
+              comments: epComments,
+              shares: epShares,
+            },
+            recordViewsDenominator({
+              platforms: contributingPlatforms(epPublishes, perVideoTotals),
+              window: readWindow(dateFilters, epPublishes),
+            }),
+          );
 
     episodeAnalytics.push({
       episodeId: ep.id,
@@ -586,7 +648,7 @@ export async function getSeasonAnalytics(
     totalShares += epShares;
     totalRevenue = addRevenue(totalRevenue, epRevenue);
     if (epEngagement !== null) {
-      totalEngagement += epEngagement;
+      totalEngagement += epEngagement.value;
       engagedEpisodes++;
     }
   }
@@ -626,8 +688,16 @@ export async function getSeasonAnalytics(
     totalShares,
     totalSaves: sumMeasured(saves).value,
     totalRevenueCents: totalRevenue,
-    avgEngagementRate:
-      engagedEpisodes > 0 ? totalEngagement / engagedEpisodes : 0,
+    avgEngagementRate: {
+      value: engagedEpisodes > 0 ? totalEngagement / engagedEpisodes : 0,
+      // Over the episodes whose rates it averages: every platform they pooled.
+      denominator: poolDenominators(
+        episodeAnalytics.flatMap(({ engagement }) =>
+          engagement ? [engagement.denominator] : [],
+        ),
+        readWindow(dateFilters, allPublishes),
+      ),
+    },
     episodeCount: episodeAnalytics.length,
     topEpisode,
     lowestEpisode,
@@ -690,6 +760,7 @@ export async function getProjectAnalytics(
   let totalEngagement = 0;
   let contentCount = 0;
   const seasonScopes: ViewsScope[] = [];
+  const seasonDenominators: RecordedRate['denominator'][] = [];
 
   for (const s of seasons || []) {
     const analytics = await getSeasonAnalytics(s.id, options);
@@ -710,7 +781,8 @@ export async function getProjectAnalytics(
       totalShares += analytics.totalShares;
       seasonSaves.push(analytics.totalSaves);
       totalRevenue = addRevenue(totalRevenue, analytics.totalRevenueCents);
-      totalEngagement += analytics.avgEngagementRate;
+      totalEngagement += analytics.avgEngagementRate.value;
+      seasonDenominators.push(analytics.avgEngagementRate.denominator);
       contentCount += analytics.episodeCount;
     }
   }
@@ -755,10 +827,16 @@ export async function getProjectAnalytics(
     totalShares,
     totalSaves: sumMeasured(seasonSaves).value,
     totalRevenueCents: totalRevenue,
-    avgEngagementRate:
-      seasonAnalyticsList.length > 0
-        ? totalEngagement / seasonAnalyticsList.length
-        : 0,
+    avgEngagementRate: {
+      value:
+        seasonAnalyticsList.length > 0
+          ? totalEngagement / seasonAnalyticsList.length
+          : 0,
+      denominator: poolDenominators(
+        seasonDenominators,
+        readWindow(dateFilters, []),
+      ),
+    },
     contentCount,
     seasons: seasonAnalyticsList,
     platformTotals: platformTotalsList,
@@ -1040,7 +1118,8 @@ export interface ContentListItem {
   shares: number;
   /** Null where the platform did not measure it: TikTok, YouTube (KB-162). */
   saves: number | null;
-  engagementRate: number | null;
+  /** Lifetime, so recorded from its publish date to today (FILM-1732). */
+  engagementRate: RecordedRate | null;
 }
 
 /**
@@ -1130,7 +1209,13 @@ export async function getContentList(
     const engagementRate =
       stats.views === null
         ? null
-        : displayedEngagementRatePercent({ ...stats, views: stats.views });
+        : recordedEngagementRatePercent(
+            { ...stats, views: stats.views },
+            recordViewsDenominator({
+              platforms: [publish.platform],
+              window: lifetimeWindow([publish.published_at]),
+            }),
+          );
 
     return {
       publishId: publish.id,

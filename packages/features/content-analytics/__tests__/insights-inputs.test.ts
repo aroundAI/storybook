@@ -6,6 +6,7 @@ import {
   previousPeriod,
   topContentForInsights,
 } from '../src/lib/insights-inputs';
+import { recorded } from './helpers/recorded-rate';
 
 const row = (platform: string, views: number, likes = 0) => ({
   platform,
@@ -93,7 +94,7 @@ describe('topContentForInsights', () => {
     platform: 'youtube',
     views,
     likes: 1,
-    engagementRate: 0.1,
+    engagementRate: recorded(0.1),
   });
 
   it('keeps the five most viewed, by views, and skips unviewed content', () => {

@@ -18,6 +18,7 @@ import { VIEWS_NOT_MEASURED, viewsShare } from '../lib/views';
 import type { EpisodeAnalytics as EpisodeAnalyticsData } from '../server/aggregation-queries';
 import { getProjectRevenueAccessAction } from '../server/dashboard-actions';
 import { MetricCards } from './metric-cards';
+import { RateDenominator } from './rate-denominator';
 
 interface EpisodeAnalyticsProps {
   data: EpisodeAnalyticsData;
@@ -155,10 +156,19 @@ export function EpisodeAnalytics({ data, projectId }: EpisodeAnalyticsProps) {
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4">
-            <div className="text-4xl font-bold">
+            <div
+              className="flex items-center gap-2 text-4xl font-bold"
+              data-test="episode-engagement-rate"
+            >
               {data.engagementRate === null
                 ? VIEWS_NOT_MEASURED
-                : `${data.engagementRate.toFixed(2)}%`}
+                : `${data.engagementRate.value.toFixed(2)}%`}
+              {data.engagementRate && (
+                <RateDenominator
+                  denominator={data.engagementRate.denominator}
+                  figure="engagement rate"
+                />
+              )}
             </div>
             <div className="text-muted-foreground">
               <p>Engagement Rate</p>

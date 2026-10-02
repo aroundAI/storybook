@@ -12,7 +12,6 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
-import { displayedEngagementRatePercent } from '@kit/clickhouse';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Progress } from '@kit/ui/progress';
 import { Skeleton } from '@kit/ui/skeleton';
@@ -21,6 +20,7 @@ import { VIEWS_NOT_MEASURED } from '../lib/views';
 import type { AccountDashboardData } from '../server/account-dashboard-actions';
 import { MetricCards } from './metric-cards';
 import { PerformanceChart } from './performance-chart';
+import { RateDenominator } from './rate-denominator';
 
 interface CompanyDashboardProps {
   accountId: string;
@@ -104,13 +104,20 @@ export function CompanyDashboard({
           icon={<TrendingUp className="h-5 w-5" />}
           title="Avg Engagement"
           value={
-            // The held figure (FILM-1722 §12) adds the shares of the
-            // platforms that report them; X's unmeasured shares add none.
-            data.totals.views === null
+            // The held figure (FILM-1722 §12), recorded (FILM-1732).
+            data.engagementRate === null
               ? VIEWS_NOT_MEASURED
-              : data.totals.views > 0
-                ? `${displayedEngagementRatePercent({ ...data.totals, views: data.totals.views, shares: data.totals.shares ?? 0 }).toFixed(1)}%`
+              : data.totals.views !== null && data.totals.views > 0
+                ? `${data.engagementRate.value.toFixed(1)}%`
                 : '0%'
+          }
+          aside={
+            data.engagementRate && (
+              <RateDenominator
+                denominator={data.engagementRate.denominator}
+                figure="engagement rate"
+              />
+            )
           }
         />
         <SummaryCard
@@ -304,7 +311,14 @@ const TopContentCard = React.memo(function TopContentCard({
                   <div className="text-xs text-muted-foreground">
                     {item.views === null
                       ? `Views ${VIEWS_NOT_MEASURED.toLowerCase()}`
-                      : `${formatNumber(item.views)} views • ${item.engagementRate?.toFixed(1)}% engagement`}
+                      : `${formatNumber(item.views)} views • ${item.engagementRate?.value.toFixed(1)}% engagement`}
+                    {item.engagementRate && (
+                      <RateDenominator
+                        denominator={item.engagementRate.denominator}
+                        figure="engagement rate"
+                        className="ml-1"
+                      />
+                    )}
                   </div>
                 </div>
                 <span className="text-xs text-muted-foreground capitalize">
@@ -326,10 +340,13 @@ const SummaryCard = React.memo(function SummaryCard({
   icon,
   title,
   value,
+  aside,
 }: {
   icon: React.ReactNode;
   title: string;
   value: string;
+  /** Beside the value: what a rate was divided by (FILM-1732). */
+  aside?: React.ReactNode;
 }) {
   return (
     <Card
@@ -339,8 +356,11 @@ const SummaryCard = React.memo(function SummaryCard({
         <div className="rounded-lg bg-primary/10 p-2 text-primary">{icon}</div>
         <div>
           <div className="text-xs text-muted-foreground">{title}</div>
-          <div className="text-2xl font-semibold" data-test="summary-value">
-            {value}
+          <div className="flex items-center gap-2">
+            <div className="text-2xl font-semibold" data-test="summary-value">
+              {value}
+            </div>
+            {aside}
           </div>
         </div>
       </CardContent>

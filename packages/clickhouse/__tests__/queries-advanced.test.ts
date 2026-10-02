@@ -1290,6 +1290,7 @@ describe('queries-advanced', () => {
           segment: 'en',
           video_id: 'v1',
           published_at: '2026-01-01 00:00:00',
+          platform: 'youtube',
         },
       ]);
 
@@ -1302,6 +1303,8 @@ describe('queries-advanced', () => {
           segment: 'en',
           videoId: 'v1',
           publishedAt: '2026-01-01 00:00:00',
+          // What the segment's RPM pooled (FILM-1732).
+          platform: 'youtube',
         },
       ]);
     });

@@ -13,6 +13,9 @@
  * A share, a trend and an RPM are all computed **within** a currency. A
  * share of a sum across two needs an exchange rate, and there are none here.
  */
+import { recordViewsDenominator, rpmCents } from '@kit/clickhouse';
+import type { DenominatorStamp, DenominatorWindow } from '@kit/clickhouse';
+
 import type { CurrencyAmount } from './money';
 import { DEFAULT_CURRENCY, createCurrencyPartition } from './money';
 import {
@@ -108,8 +111,16 @@ export function createRevenueSummaryFold() {
     result(context: {
       period: { start: string; end: string };
       totalViews: number;
+      /** What `totalViews` pooled; omitted, a record of no platform. */
+      denominator?: DenominatorStamp;
     }): RevenueSummary[] {
       const { period, totalViews } = context;
+      const rpmDenominator =
+        context.denominator ??
+        recordViewsDenominator({
+          platforms: [],
+          window: { from: period.start, to: period.end },
+        });
       const dayCount = inclusiveDayCount(period.start, period.end);
 
       return parts
@@ -134,10 +145,8 @@ export function createRevenueSummaryFold() {
           const payoutSharePercent = payoutShare(byType) * 100;
 
           /** Cents per 1000 views. Display sites divide by 100. */
-          const allInRpmCents =
-            totalViews > 0 ? (totalRevenueCents / totalViews) * 1000 : 0;
-          const adsRpmCents =
-            totalViews > 0 ? (adsRevenueCents / totalViews) * 1000 : 0;
+          const allInRpmCents = rpmCents(totalRevenueCents, totalViews) ?? 0;
+          const adsRpmCents = rpmCents(adsRevenueCents, totalViews) ?? 0;
 
           const trendPercent =
             previousTotal > 0
@@ -154,6 +163,7 @@ export function createRevenueSummaryFold() {
             byContent: part.byContent,
             byType,
             rpm: allInRpmCents,
+            rpmDenominator,
             totalViews,
             adsRevenueCents,
             nonAdRevenueCents,
@@ -359,7 +369,7 @@ function projectionOf(
 
 type TopContentDetails = Omit<
   TopRevenueContent,
-  'revenueCents' | 'views' | 'rpm'
+  'revenueCents' | 'views' | 'rpm' | 'rpmDenominator'
 >;
 
 /**
@@ -398,6 +408,8 @@ export function createTopContentFold() {
     result(
       viewsByPublish: Map<string, number>,
       limit: number,
+      /** The days `viewsByPublish` was counted over (FILM-1732). */
+      window: DenominatorWindow,
     ): TopRevenueContentByCurrency[] {
       return parts
         .entries((byPublish) =>
@@ -415,7 +427,11 @@ export function createTopContentFold() {
               return {
                 ...item,
                 views,
-                rpm: views > 0 ? (item.revenueCents / views) * 1000 : 0,
+                rpm: rpmCents(item.revenueCents, views) ?? 0,
+                rpmDenominator: recordViewsDenominator({
+                  platforms: [item.platform],
+                  window,
+                }),
               };
             })
             .sort(

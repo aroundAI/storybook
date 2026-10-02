@@ -2,6 +2,7 @@
  * Revenue Tracking Types - FILM-810
  * Types for revenue analytics and monetization data
  */
+import type { DenominatorStamp } from '@kit/clickhouse';
 
 /**
  * Detailed breakdown of revenue by source type
@@ -58,6 +59,13 @@ export interface RevenueSummary {
   byType: Record<string, number>;
   /** Cents per 1000 views, all revenue categories. Alias of allInRpmCents. */
   rpm: number;
+  /**
+   * What all three RPMs divided by (FILM-1732): one record, because every
+   * currency's RPM is over the same views. Beside the figures rather than
+   * wrapping them, because this shape is persisted in
+   * `revenue_reports.summary_data` and the figures keep their type there.
+   */
+  rpmDenominator: DenominatorStamp;
   /** Views for every published video in the window, revenue-bearing or not. */
   totalViews: number;
   /** Platform payouts: ads + Premium. */
@@ -176,6 +184,8 @@ export interface TopRevenueContent {
   revenueCents: number;
   views: number;
   rpm: number;
+  /** What `rpm` divided by: this item's platform over the window (FILM-1732). */
+  rpmDenominator: DenominatorStamp;
   thumbnailUrl?: string;
 }
 

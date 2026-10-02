@@ -17,6 +17,7 @@ import {
 import { formatNumber } from '../lib/format';
 import { DEFAULT_CURRENCY, formatCurrencyAmount } from '../lib/money';
 import type { TopRevenueContent } from '../lib/types/revenue';
+import { RateDenominator } from './rate-denominator';
 
 interface RevenueTopContentProps {
   data: TopRevenueContent[];
@@ -156,7 +157,13 @@ export function RevenueTopContent({
                   {formatCents(item.revenueCents)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
-                  {formatCents(item.rpm)}
+                  <span className="inline-flex items-center gap-1">
+                    {formatCents(item.rpm)}
+                    <RateDenominator
+                      denominator={item.rpmDenominator}
+                      figure="RPM"
+                    />
+                  </span>
                 </TableCell>
               </TableRow>
             ))}

@@ -1,3 +1,5 @@
+import type { RecordedRate } from '@kit/clickhouse';
+
 export interface Episode {
   id: string;
   title: string;
@@ -27,7 +29,8 @@ export interface OverviewAnalytics {
   totalViews: number | null;
   totalLikes: number;
   totalComments: number;
-  avgEngagementRate: number;
+  /** Likes and comments per view (KB-171), with its record (FILM-1732). */
+  avgEngagementRate: RecordedRate;
   contentCount: number;
   seasons?: {
     seasonId: string;

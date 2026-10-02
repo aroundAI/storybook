@@ -1,0 +1,175 @@
+{
+  "feature": "FILM-1732",
+  "mutations": [
+    {
+      "name": "RD1 the builder drops the crossings",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/measures.ts",
+      "find": "      crosses.push(...changes);\n",
+      "replace": "",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/rate-denominator-records.test.ts",
+      "pattern": "spanning 2026-08-27"
+    },
+    {
+      "name": "RD2 Facebook is given a definition",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/measures.ts",
+      "find": "      if (definitions === null) {\n        return {\n          platform,\n          inDenominator: false,",
+      "replace": "      if (false) {\n        return {\n          platform,\n          inDenominator: false,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/rate-denominator-records.test.ts",
+      "pattern": "not in the denominator"
+    },
+    {
+      "name": "RD3 an undated read records the latest publish, not the earliest",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/measures.ts",
+      "find": "    .map(isoDay)\n    .sort()[0];",
+      "replace": "    .map(isoDay)\n    .sort()\n    .at(-1);",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/rate-denominator-records.test.ts",
+      "pattern": "earliest publish to the read date"
+    },
+    {
+      "name": "RD4 the sentence leaves out the crossing",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/measures.ts",
+      "find": "  for (const change of stamp.crosses) {",
+      "replace": "  for (const change of stamp.crosses.slice(1)) {",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/rate-denominator-records.test.ts",
+      "pattern": "names the window"
+    },
+    {
+      "name": "RD5 a bare division by views escapes the class scan",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/revenue-by-currency.ts",
+      "find": "                rpm: rpmCents(item.revenueCents, views) ?? 0,",
+      "replace": "                rpm: views > 0 ? (item.revenueCents / views) * 1000 : 0,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/rate-over-views-recorded.test.ts",
+      "pattern": "only in lib/measures.ts"
+    },
+    {
+      "name": "RD6 the episode read records no window from its date filter",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "            platforms: contributingPlatforms(publishes, perVideoTotals),\n            window: readWindow(dateFilters, publishes),",
+      "replace": "            platforms: contributingPlatforms(publishes, perVideoTotals),\n            window: readWindow({}, publishes),",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/rate-denominator-aggregation-reads.test.ts",
+      "pattern": "date filter as the window"
+    },
+    {
+      "name": "RD7 the episode read records platforms with no rows",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "function contributingPlatforms(\n  publishes: readonly { id: string; platform: string }[],\n  withRows: { has: (id: string) => boolean },\n): string[] {\n  return publishes\n    .filter(({ id }) => withRows.has(id))\n    .map(({ platform }) => platform);",
+      "replace": "function contributingPlatforms(\n  publishes: readonly { id: string; platform: string }[],\n  withRows: { has: (id: string) => boolean },\n): string[] {\n  return publishes\n    .filter(({ id }) => withRows.has(id) || true)\n    .map(({ platform }) => platform);",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/rate-denominator-aggregation-reads.test.ts",
+      "pattern": "leaves out a platform with no rows"
+    },
+    {
+      "name": "RD8 the content list records no platform",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "              platforms: [publish.platform],\n              window: lifetimeWindow([publish.published_at]),",
+      "replace": "              platforms: [],\n              window: lifetimeWindow([publish.published_at]),",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/rate-denominator-aggregation-reads.test.ts",
+      "pattern": "over its own platform"
+    },
+    {
+      "name": "RD9 the project average records the season windows only from the filter",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/measures.ts",
+      "find": "      from: froms[0] ?? fallback.from,",
+      "replace": "      from: fallback.from,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/rate-denominator-aggregation-reads.test.ts",
+      "pattern": "project average over its seasons"
+    },
+    {
+      "name": "RD10 a segment RPM records no platform",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/segment-revenue.ts",
+      "find": "    platforms: members.map((entry) => entry.platform),",
+      "replace": "    platforms: [],",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/segment-revenue.test.ts",
+      "pattern": "segmentRpmDenominator"
+    },
+    {
+      "name": "RD11 a top-content RPM records no platform",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/revenue-by-currency.ts",
+      "find": "                rpmDenominator: recordViewsDenominator({\n                  platforms: [item.platform],",
+      "replace": "                rpmDenominator: recordViewsDenominator({\n                  platforms: [],",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/revenue-by-currency.test.ts",
+      "pattern": "own platform and the window"
+    },
+    {
+      "name": "RD12 a language records no platform",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
+      "find": "    current.platforms.add(platformByVideo.get(publishId) ?? 'unknown');",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/rate-denominator-language-reads.test.ts",
+      "pattern": "records the platforms whose rows were summed"
+    },
+    {
+      "name": "RD13 a matrix cell records no platform",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
+      "find": "        platforms: [entry.platform],",
+      "replace": "        platforms: [],",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/rate-denominator-language-reads.test.ts",
+      "pattern": "records each cell over its one platform"
+    },
+    {
+      "name": "RD14 a format family records no platform",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
+      "find": "    target.platforms.add(platformByVideo.get(publishId) ?? 'unknown');",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/rate-denominator-language-reads.test.ts",
+      "pattern": "records every platform pooled into a family"
+    },
+    {
+      "name": "RD15 a top short records no platform",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
+      "find": "              platforms: [video.platform],",
+      "replace": "              platforms: [],",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/rate-denominator-language-reads.test.ts",
+      "pattern": "records each short over its own platform"
+    },
+    {
+      "name": "RD16 a dashboard top item records no platform",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/account-dashboard-actions.ts",
+      "find": "recordViewsDenominator({ platforms: [publish.platform], window }),",
+      "replace": "recordViewsDenominator({ platforms: [], window }),",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/rate-denominator-dashboard-read.test.ts",
+      "pattern": "records each top item over its own platform"
+    },
+    {
+      "name": "RD17 the revenue summary records no platform",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/revenue-actions.ts",
+      "find": "        if (perVideoTotals.has(id)) pooledPlatforms.add(platform);",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/rate-denominator-revenue-reads.test.ts",
+      "pattern": "records the platforms with rows over the window"
+    }
+  ]
+}

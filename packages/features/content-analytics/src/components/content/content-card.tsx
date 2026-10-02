@@ -4,13 +4,14 @@ import Image from 'next/image';
 
 import { format } from 'date-fns';
 
-import type { AnalyticsPlatform } from '@kit/clickhouse';
+import type { AnalyticsPlatform, RecordedRate } from '@kit/clickhouse';
 
 import { formatNumber, formatPercent } from '../../lib/format';
 import { VIEWS_NOT_MEASURED } from '../../lib/views';
 import type { Views } from '../../lib/views';
 import { AnalyticsCard } from '../overview/analytics-card';
 import type { CardClaim } from '../overview/card-claim';
+import { RateDenominator } from '../rate-denominator';
 
 interface ContentCardProps {
   publishId?: string;
@@ -31,8 +32,8 @@ interface ContentCardProps {
   likes: number;
   /** Comment count */
   comments: number;
-  /** Engagement rate percentage */
-  engagementRate: number | null;
+  /** Engagement rate percentage, with what it was divided by (FILM-1732) */
+  engagementRate: RecordedRate | null;
   /** Click handler */
   onClick?: () => void;
 }
@@ -62,7 +63,7 @@ export function contentCardClaim({
     sentence:
       engagementRate === null
         ? `Views to date. ${published}.`
-        : `Views to date. ${published} · ${formatPercent(engagementRate)} engagement.`,
+        : `Views to date. ${published} · ${formatPercent(engagementRate.value)} engagement.`,
   };
 }
 
@@ -126,7 +127,15 @@ export function ContentCard({
             value={
               engagementRate === null
                 ? VIEWS_NOT_MEASURED
-                : formatPercent(engagementRate)
+                : formatPercent(engagementRate.value)
+            }
+            aside={
+              engagementRate && (
+                <RateDenominator
+                  denominator={engagementRate.denominator}
+                  figure="engagement rate"
+                />
+              )
             }
           />
         </dl>
@@ -154,11 +163,22 @@ export function ContentCard({
   );
 }
 
-function ContentMetric({ label, value }: { label: string; value: string }) {
+function ContentMetric({
+  label,
+  value,
+  aside,
+}: {
+  label: string;
+  value: string;
+  aside?: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col">
       <dt className="mb-0.5 text-xs text-muted-foreground">{label}</dt>
-      <dd className="font-medium tabular-nums">{value}</dd>
+      <dd className="flex items-center gap-1 font-medium tabular-nums">
+        {value}
+        {aside}
+      </dd>
     </div>
   );
 }

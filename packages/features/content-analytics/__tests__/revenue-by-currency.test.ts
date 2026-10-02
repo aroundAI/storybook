@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { recordViewsDenominator } from '@kit/clickhouse';
+
 import {
   createRevenueProjectionFold,
   createRevenueSeriesFold,
@@ -148,6 +150,11 @@ describe('createRevenueSummaryFold', () => {
         byContent: { 'episode-1': 1200 },
         byType: { ads: 1200, sponsorship: 500 },
         rpm: 170,
+        // No denominator passed: a record of no platform over the period.
+        rpmDenominator: recordViewsDenominator({
+          platforms: [],
+          window: { from: period.start, to: period.end },
+        }),
         totalViews: 10_000,
         adsRevenueCents: 1200,
         nonAdRevenueCents: 500,
@@ -279,7 +286,10 @@ describe('createTopContentFold', () => {
     fold.add(details('a'), { currency: 'EUR', cents: 500 });
     fold.add(details('b'), { currency: 'USD', cents: 1500 });
 
-    const ranked = fold.result(new Map([['a', 10_000]]), 10);
+    const ranked = fold.result(new Map([['a', 10_000]]), 10, {
+      from: period.start,
+      to: period.end,
+    });
 
     // Summed, `a` led with 1700.
     expect(
@@ -306,6 +316,25 @@ describe('createTopContentFold', () => {
     ]);
 
     expect(fold.publishIds().sort()).toEqual(['a', 'b']);
+  });
+
+  it("records each item's RPM over its own platform and the window (FILM-1732)", () => {
+    const fold = createTopContentFold();
+
+    fold.add(details('a'), { currency: 'USD', cents: 1200 });
+
+    const { items } = fold.result(new Map([['a', 10_000]]), 10, {
+      from: '2026-08-01',
+      to: '2026-09-15',
+    })[0]!;
+
+    expect(items[0]!.rpm).toBe(120);
+    expect(items[0]!.rpmDenominator).toEqual(
+      recordViewsDenominator({
+        platforms: ['youtube'],
+        window: { from: '2026-08-01', to: '2026-09-15' },
+      }),
+    );
   });
 });
 

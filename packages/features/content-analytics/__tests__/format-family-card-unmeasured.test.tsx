@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ContentTypeCard } from '../src/components/language-analytics-cards';
 import type { FormatFamilyTotals } from '../src/server/language-analytics';
 import { renderWithCoverage } from './helpers/coverage';
+import { TEST_WINDOW, recorded } from './helpers/recorded-rate';
 
 vi.mock('@kit/ui/card', () => {
   const passthrough = ({ children, ...props }: { children?: ReactNode }) => (
@@ -40,8 +41,9 @@ const family = (subscribersGained: number | null): FormatFamilyTotals => ({
   likes: 40,
   comments: 3,
   shares: 2,
-  engagement: 3.75,
+  engagement: recorded(3.75),
   revenueCents: 0,
+  revenuePerViewCents: recorded(0),
   subscribersGained,
   contentCount: 2,
 });
@@ -60,6 +62,7 @@ describe('the format-family card, for a follower gain no video measured (KB-162)
           families: [family(null)],
           unclassified: 0,
           durationUnknown: 0,
+          window: TEST_WINDOW,
         }}
       />,
     );
@@ -73,7 +76,12 @@ describe('the format-family card, for a follower gain no video measured (KB-162)
   it('still shows a measured follower gain', () => {
     const { container } = renderWithCoverage(
       <ContentTypeCard
-        data={{ families: [family(4)], unclassified: 0, durationUnknown: 0 }}
+        data={{
+          families: [family(4)],
+          unclassified: 0,
+          durationUnknown: 0,
+          window: TEST_WINDOW,
+        }}
       />,
     );
 
