@@ -83,7 +83,7 @@ test_plan:
       evidence: "`packages/features/content-analytics/__tests__/utils.test.ts:27`"
     - text: "Test data normalization"
       met: true
-      evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:253` (`buildYouTubeDailyRows`)"
+      evidence: "`packages/features/content-analytics/__tests__/ingest.test.ts:254` (`buildYouTubeDailyRows`)"
   integration:
     - text: "Test with mocked YouTube API"
       met: true
