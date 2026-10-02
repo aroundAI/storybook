@@ -13,6 +13,12 @@ import { describe, expect, it } from 'vitest';
  * 2. A tool handler gets one database client, the principal's RLS-scoped
  *    one. Nothing under this package's `src/server/tools/` may import a
  *    service-role client, directly or through the lambda admin client.
+ *
+ * 3. FILM-1906: ClickHouse has no row-level security, so nothing in this
+ *    package may import `@kit/clickhouse` (root or any subpath); analytics
+ *    reach it only through `@kit/content-analytics` services, which prove
+ *    the scope on the principal's client first. The package's ESLint config
+ *    carries the same rule; this scan runs where lint is scoped out.
  */
 
 const REPO = resolve(__dirname, '../../../..');
@@ -57,6 +63,9 @@ const DEV_MCP_SERVER = IMPORT_OF(
 );
 const ADMIN_CLIENT = IMPORT_OF(
   /@kit\/supabase\/(?:server-admin-client|lambda-admin-client)|[./]*(?:server|lambda)-admin-client/,
+);
+const CLICKHOUSE = IMPORT_OF(
+  /(?:@kit\/clickhouse|[./]*packages\/clickhouse)(?:\/[^'"]*)?/,
 );
 
 function offenders(files: string[], pattern: RegExp) {
@@ -138,6 +147,53 @@ describe('tool handlers cannot obtain a service-role client', () => {
 
   it('finds none under src/server/tools', () => {
     expect(offenders(tools, ADMIN_CLIENT)).toEqual([]);
+  });
+});
+
+describe('nothing in @kit/studio-mcp imports @kit/clickhouse', () => {
+  const sources = FILES.filter((file) =>
+    file.startsWith('packages/features/studio-mcp/src/'),
+  );
+
+  it('scans the package’s sources, the analytics tools included', () => {
+    expect(sources).toContain(
+      'packages/features/studio-mcp/src/server/tools/analytics/shared.ts',
+    );
+    expect(sources).toContain(
+      'packages/features/studio-mcp/src/server/build-server.ts',
+    );
+  });
+
+  it('would catch the root, a subpath and a relative path', () => {
+    expect(
+      offendersIn(
+        `import { isClickHouseEnabled } from '@kit/clickhouse/server';`,
+        CLICKHOUSE,
+      ),
+    ).toBe(1);
+    expect(
+      offendersIn(
+        `import { FUNNEL_STAGES } from '@kit/clickhouse';`,
+        CLICKHOUSE,
+      ),
+    ).toBe(1);
+    expect(
+      offendersIn(
+        `const q = await import("../../../../packages/clickhouse/src/server")`,
+        CLICKHOUSE,
+      ),
+    ).toBe(1);
+    // The services are the allowed door.
+    expect(
+      offendersIn(
+        `import { getDeepDive } from '@kit/content-analytics/server/deep-dive-service';`,
+        CLICKHOUSE,
+      ),
+    ).toBe(0);
+  });
+
+  it('finds no such import in the package', () => {
+    expect(offenders(sources, CLICKHOUSE)).toEqual([]);
   });
 });
 

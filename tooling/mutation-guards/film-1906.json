@@ -1,0 +1,95 @@
+{
+  "feature": "FILM-1906 MCP analytics tools: same checks and caveats as the web",
+  "mutations": [
+    {
+      "name": "MCP-A U1 another team's project passes once the user is a member there",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/analytics/shared.ts",
+      "find": "  if (resolved !== undefined && resolved !== context.accountId) {",
+      "replace": "  if (resolved !== undefined && resolved !== context.accountId && false) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/analytics-forbidden.test.ts",
+      "pattern": "as a member of both teams"
+    },
+    {
+      "name": "MCP-A U2 a row of another team is returned when RLS shows it",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/analytics/shared.ts",
+      "find": "  if (!data || data.account_id !== context.accountId) {",
+      "replace": "  if (!data) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/analytics-forbidden.test.ts",
+      "pattern": "as a member of both teams"
+    },
+    {
+      "name": "MCP-A U3 ClickHouse off loses its reason",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/analytics/shared.ts",
+      "find": "    reason: coverage.observed ? null : NOT_MEASURED_REASON,",
+      "replace": "    reason: null,",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/analytics-tools-equal-pages.test.ts",
+      "pattern": "null totals and a reason"
+    },
+    {
+      "name": "MCP-A U4 a service refusal crashes as INTERNAL",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/analytics/shared.ts",
+      "find": "    if (error instanceof ActionRefusal) {",
+      "replace": "    if (error instanceof ActionRefusal && false) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/analytics-tools-equal-pages.test.ts",
+      "pattern": "FORBIDDEN with the same words"
+    },
+    {
+      "name": "MCP-A U5 get_revenue reads figures without the web's revenue-access notes",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/analytics/revenue.ts",
+      "find": "      return notes;\n    });",
+      "replace": "      return [];\n    });",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/analytics-tools-equal-pages.test.ts",
+      "pattern": "with the web’s access notes"
+    },
+    {
+      "name": "MCP-A U6 a tool imports ClickHouse directly",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/analytics/settings.ts",
+      "find": "import 'server-only';",
+      "replace": "import 'server-only';\nimport { isClickHouseEnabled } from '@kit/clickhouse/server';",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/boundaries.test.ts",
+      "pattern": "finds no such import in the package"
+    },
+    {
+      "name": "MCP-A U7 a sync tool joins the catalogue",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/analytics/index.ts",
+      "find": "export const analyticsTools: McpToolDefinition[] = [\n  ...analyticsReadTools,\n  ...analyticsWriteTools,\n];",
+      "replace": "export const analyticsTools: McpToolDefinition[] = [\n  ...analyticsReadTools,\n  ...analyticsWriteTools,\n  { ...analyticsReadTools[0]!, name: 'manual_sync' },\n];",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/analytics-catalogue.test.ts",
+      "pattern": "exposes nothing criterion 9 forbids"
+    },
+    {
+      "name": "MCP-A U8 get_ai_usage reports an empty split instead of none",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/analytics/ai-usage.ts",
+      "find": "          ? group(rows, (row) => row.generation_runs?.mode ?? 'unattributed')\n          : null,",
+      "replace": "          ? group(rows, (row) => row.generation_runs?.mode ?? 'unattributed')\n          : [],",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/analytics-ai-usage.test.ts",
+      "pattern": "byMode is null and names FILM-1903"
+    },
+    {
+      "name": "MCP-A U9 a list page may exceed 50",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/analytics/shared.ts",
+      "find": "  limit: z.number().int().min(1).max(50).default(25),",
+      "replace": "  limit: z.number().int().min(1).max(500).default(25),",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/analytics-catalogue.test.ts",
+      "pattern": "a limit of at most 50"
+    }
+  ]
+}
