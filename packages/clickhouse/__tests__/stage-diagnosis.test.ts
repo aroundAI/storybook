@@ -241,7 +241,9 @@ describe('the pattern set', () => {
   });
 });
 
-describe('diagnoseStages, exhaustively', () => {
+// Every test here walks all 3^6 stage combinations; on a shared CI runner one
+// took 6.3s against vitest's 5s default (#523's fast lane). Time, not logic.
+describe('diagnoseStages, exhaustively', { timeout: 30_000 }, () => {
   const fullyJudged = [...everyCombination([below, typical, above])];
   const everything = [...everyCombination(OPTIONS)];
 
