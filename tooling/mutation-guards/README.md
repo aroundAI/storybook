@@ -54,19 +54,50 @@ with its seconds; refresh the file from recent green queue runs with
 
 | Outcome | Meaning | What to do |
 |---|---|---|
-| `RED` | The test failed with its fix removed. It guards. | Nothing |
+| `RED` | The test failed with its fix removed, on every attempt (see [Attempts](#attempts-and-what-red-means)). A failure on a timeout counts, the same as a failed assertion. It guards. | Nothing |
 | `STAYED GREEN` | The test passed with its fix removed. | The test no longer checks what it claims. Fix the test |
 | `MISSING` | The mutation's target text is not in the file. | The code moved. Update `find` to the new code — deliberately a failure, so a refactor cannot quietly orphan a guard |
-| `NOT GREEN` | The test fails even on the real code — or, for an E2E guard, every test it selects skipped, so it could never fail. An E2E baseline whose every failed attempt is a navigation timeout (`page.goto`, `page.waitForURL`, … `Timeout Nms exceeded`) is first re-run once, after 30 seconds, and its line says `[baseline retried after a navigation timeout]`; it is `NOT GREEN` only if the re-run fails too. Any other failure is not re-run. | Fix the test first; a failure under mutation would prove nothing. For a skip, give the run what the skip asks for (K11 needed `ENCRYPTION_KEY`) |
-| `TIMED OUT` | The guard never finished, on the real code or the mutated one. Either Playwright ended it at its `--global-timeout` (10 minutes, or the entry's `timeout`), or its command ran 90 seconds past that and was killed with every process it started (a unit or pgTAP command: 15 minutes, `GUARD_TIMEOUT`). The 90 seconds are there because Playwright's own runner can freeze too: on #521 KB-95 ran to a flat 15 minutes with a 150-second budget. It proved nothing either way, and is never counted as `RED`. The run goes on to the next entry, so a shard still reports every guard (KB-165). | Read the output printed under it: it is the test's own report up to the hang. A Playwright test has a 2-minute timeout, and that runs inside the worker, so a run this long means the worker itself stopped answering |
+| `NOT GREEN` | The test fails even on the real code — or, for an E2E guard, every test it selects skipped, so it could never fail. An E2E baseline is `NOT GREEN` only when all three of its attempts fail. An attempt that failed only on time (the test timeout, or a navigation timeout such as `page.goto: Timeout Nms exceeded`) is followed by a 30-second pause before the next. A baseline that needed more than one attempt says `[baseline passed on attempt N]` on its line. | Fix the test first; a failure under mutation would prove nothing. For a skip, give the run what the skip asks for (K11 needed `ENCRYPTION_KEY`) |
+| `TIMED OUT` | One attempt never finished, on the real code or the mutated one. Either Playwright ended it at its `--global-timeout` (5 minutes per attempt, or the entry's `timeout`), or its command ran 90 seconds past that and was killed with every process it started (a unit or pgTAP command: 15 minutes, `GUARD_TIMEOUT`). It proved nothing either way, and is never counted as `RED`. The run goes on to the next entry, so a shard still reports every guard (KB-165). | Read the output printed under it: every attempt's own report, under `--- attempt N/3 ---`. One attempt is a 2-minute test plus up to 2 minutes of teardown, so an attempt past 5 minutes means the runner itself was stalled |
 | `AMBIGUOUS` | A `find` matches more than once in its file (counted after the entry's earlier edits), or an edit names a `file` other than the entry's. Checked before any test runs, and for every entry by `--self-test`. | Extend `find` with surrounding lines until it names one place. The runner used to mutate the first match, which after a rebase can be another copy of the line (#350) |
 
 Any outcome but `RED` fails the run, with one exception. An E2E entry may
 carry `"known_flake": "KB-<n>"`, naming the known bug that makes it hang at
 random. Its `TIMED OUT` is then printed but not counted. Its other outcomes
 still fail the run. Give such an entry a short `"timeout"` (seconds, for
-Playwright's `--global-timeout`) so the hang costs minutes, not the shard.
-`KB-95 E1` is the first (KB-165). Remove the mark when the KB is fixed.
+each attempt's `--global-timeout`) so the hang costs minutes, not the shard.
+No entry carries one now: `KB-95 E1` did, until KB-165 was found to be
+attempts sharing one budget rather than a hang.
+
+## Attempts, and what RED means
+
+Each E2E run makes up to three attempts, and each attempt is its own
+`npx playwright test … --retries=0 --global-timeout=300000`. The baseline is
+green if any attempt passes. A mutation is `RED` only if **every** attempt
+fails, so one flaky failure is never read as detection.
+
+**A failure on a timeout counts as a failure.** That holds for the test
+timeout and for a navigation timeout, and the attempt is counted the same as
+one that failed an assertion. The baseline has just passed the same test on
+the real code, within the same limits. A mutation that stops the page from
+ever reaching the asserted state is caught by exactly that timeout. The
+cost is that a runner stalled through all three mutated attempts reads as
+`RED`, not `STAYED GREEN`. A green baseline minutes earlier, on the same
+runner, is the evidence that it was not stalled throughout. **An attempt that
+never finished is not a failure.** If Playwright's `--global-timeout` or the
+kill limit ended it, the guard is `TIMED OUT`, never `RED`.
+
+**The attempts are run.py's, not Playwright's `--retries` (KB-165).** With
+`--retries=2` the three attempts shared one 10-minute `--global-timeout`. A
+failed attempt costs far more than the 2-minute test timeout. Playwright
+then spends up to another test timeout on each of after-hooks and fixture
+teardown, worker cleanup, and saving the trace
+(`playwright/lib/worker/workerMain.js`). On a stalled runner, three failing
+attempts ran past 10 minutes, and Playwright ended the run during the third.
+The line reporter prints an attempt's error only once the test is final, so
+the output stopped at `[3/1] (retries)` and looked like a frozen worker. Now
+each attempt has its own 5-minute budget, and its error is printed when it
+ends.
 
 ## Adding an entry
 
@@ -139,7 +170,7 @@ end-to-end; what was gained is a guard set that means what it says.
 
 ## A guard cannot prove a race
 
-`--retries=2` on both runs, and a mutation counts as caught only if **every**
+Three attempts on both runs, and a mutation counts as caught only if **every**
 attempt fails. That rule is what keeps one flaky failure from being read as
 detection, and it also means a defect that only appears *sometimes* cannot
 have an e2e guard.

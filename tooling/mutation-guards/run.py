@@ -78,13 +78,28 @@ class GuardTimedOut(Exception):
         self.output = output
 
 
-# Seconds Playwright may spend on one E2E guard command (its --global-timeout),
-# unless the entry sets `timeout`. Three attempts at the 2-minute test timeout
-# fit inside it. It is enforced by Playwright's runner, outside the worker, so
-# it also ends a run whose worker stopped answering — which no test timeout
-# can, because those run inside the worker (KB-165: a frozen worker ran
-# silent until GUARD_TIMEOUT, then until the job was cancelled).
-E2E_GLOBAL_TIMEOUT = 600
+# Attempts an E2E guard gets on each run: the baseline passes if any attempt
+# does, and a mutation counts as caught only if every attempt fails — a single
+# flaky failure proves nothing either way. run.py makes the attempts, one
+# Playwright command each (`--retries=0`), not Playwright's own retries.
+#
+# KB-165: with `--retries=2` under one 600s --global-timeout, the budget was
+# shared by three attempts, and a failed attempt costs far more than the
+# 2-minute test timeout: Playwright then gives after-hooks and fixture
+# teardown, worker cleanup and trace saving a test timeout each
+# (playwright/lib/worker/workerMain.js). On a stalled runner three failing
+# attempts ran past 600s, Playwright ended the run during the third, and the
+# line reporter — which prints an attempt's error only once the test is
+# final — had printed nothing since `[1/1]`: it read as a frozen worker. It
+# was not one; reproduced locally, every attempt had failed on a timeout.
+E2E_ATTEMPTS = 3
+
+# Seconds Playwright may spend on one attempt (its --global-timeout), unless
+# the entry sets `timeout`: the test timeout and one more for its teardown,
+# with a minute to spare. It is enforced by Playwright's runner, outside the
+# worker, so it also ends an attempt whose worker stopped answering — which
+# no test timeout can, because those run inside the worker.
+E2E_ATTEMPT_TIMEOUT = 300
 
 # Playwright's line when --global-timeout ends a run. It exits 1, so without
 # this check a hang under a mutation would be counted as RED.
@@ -103,7 +118,7 @@ E2E_KILL_GRACE = 90
 def kill_limit(entry):
     """Seconds an entry's guard command may run before it is killed."""
     if entry['kind'] == 'e2e':
-        return entry.get('timeout', E2E_GLOBAL_TIMEOUT) + E2E_KILL_GRACE
+        return entry.get('timeout', E2E_ATTEMPT_TIMEOUT) + E2E_KILL_GRACE
     return GUARD_TIMEOUT
 
 
@@ -219,13 +234,10 @@ def guard_command(entry, base_env):
         env.update(load_env_file(os.path.join(ROOT, 'deployment/config/local.env')))
         env.setdefault('PLAYWRIGHT_BASE_URL', 'http://localhost:3100')
         env.update(entry.get('env', {}))
+        # One attempt per command; run_attempts() makes E2E_ATTEMPTS of them.
         cmd = ['npx', 'playwright', 'test', entry['spec'], '--project=chromium',
-               # Two retries on both runs: the baseline passes if any
-               # attempt does, and a mutation counts as caught only if every
-               # attempt fails — a single flaky failure proves nothing
-               # either way.
-               '--reporter=line', '--retries=2', '-g', entry['grep'],
-               f'--global-timeout={entry.get("timeout", E2E_GLOBAL_TIMEOUT) * 1000}']
+               '--reporter=line', '--retries=0', '-g', entry['grep'],
+               f'--global-timeout={entry.get("timeout", E2E_ATTEMPT_TIMEOUT) * 1000}']
         return cmd, os.path.join(ROOT, 'apps/e2e'), env
 
     raise ValueError(f'no guard command for kind {kind}')
@@ -256,37 +268,67 @@ NAVIGATION_TIMEOUT = re.compile(
     r'page\.(?:goto|reload|goBack|goForward|waitForURL|waitForNavigation|waitForLoadState)'
     r': Timeout \d+ms exceeded')
 
-# Seconds to wait before the one re-run a baseline gets after failing only on
-# navigation timeouts. The stalls behind them pass (see the job's comment in
-# .github/workflows/workflow.yml); Playwright's own retries come seconds apart.
+# The line Playwright prints when the test, not one call in it, ran out of time.
+TEST_TIMEOUT = re.compile(r'Test timeout of \d+ms exceeded')
+
+# Seconds a baseline waits before its next attempt after one that failed only
+# on time. The stalls behind them pass (see the job's comment in
+# .github/workflows/workflow.yml); Playwright's own retries came seconds apart.
 BASELINE_RETRY_PAUSE = 30
 
 
 def navigation_timeouts_only(output):
-    """True when an E2E baseline failed, and every attempt's error is a page
-    that did not finish navigating in time. On #520 and #514 a baseline went
-    NOT GREEN on `page.goto` and `page.waitForURL` timeouts while the runner
-    stalled — the server log showed the pages served, or PostgREST rejecting
-    a token as issued in the future. An assertion, a test timeout or a refused
-    connection says something about the code or the server, and is not this."""
+    """True when an E2E attempt failed, and every error is a page that did not
+    finish navigating in time. On #520 and #514 a baseline went NOT GREEN on
+    `page.goto` and `page.waitForURL` timeouts while the runner stalled — the
+    server log showed the pages served, or PostgREST rejecting a token as
+    issued in the future. An assertion or a refused connection says something
+    about the code or the server, and is not this."""
     errors = PLAYWRIGHT_ERROR.findall(output)
     return bool(errors) and all(
         name == 'TimeoutError' and NAVIGATION_TIMEOUT.match(message)
         for name, message in errors)
 
 
-def run_baseline(entry, base_env):
-    """The guard on the real code: (exit code, output, retried). An E2E
-    baseline that failed only on navigation timeouts is run once more, after a
-    pause, and the entry is reported as retried."""
-    cmd, cwd, env = guard_command(entry, base_env)
-    code, output = run(cmd, cwd, env, limit=kill_limit(entry))
-    if code == 0 or entry['kind'] != 'e2e' or not navigation_timeouts_only(output):
-        return code, output, False
-    time.sleep(BASELINE_RETRY_PAUSE)
-    code, retry_output = run(cmd, cwd, env, limit=kill_limit(entry))
-    return code, (output + '\n--- baseline re-run after a navigation timeout ---\n'
-                  + retry_output), True
+def failed_on_time(output):
+    """An attempt that failed only because something took too long: a
+    navigation timeout, or the test timeout (whose follow-on errors, such as
+    a page closed under a pending `goto`, are its consequence). On a stalled
+    runner this is what every attempt of a healthy guard does (KB-165)."""
+    return bool(TEST_TIMEOUT.search(output)) or navigation_timeouts_only(output)
+
+
+def run_attempts(entry, cmd, cwd, env, pause_after_timeout=False):
+    """Runs a guard: (exit code, output, attempts made). A unit guard runs
+    once. An E2E guard makes up to E2E_ATTEMPTS attempts, each its own
+    Playwright command with its own --global-timeout, and stops at the first
+    that passes; the exit code is that attempt's, or the last one's. Every
+    attempt's output is kept under a header, so a failure says what each
+    attempt did. With `pause_after_timeout` (the baseline), an attempt that
+    failed only on time is followed by a pause before the next.
+
+    An attempt Playwright or the kill limit ended raises GuardTimedOut, with
+    the earlier attempts' output in front of its own."""
+    attempts = E2E_ATTEMPTS if entry['kind'] == 'e2e' else 1
+    printed = ''
+    for attempt in range(1, attempts + 1):
+        started = time.monotonic()
+        try:
+            code, output = run(cmd, cwd, env, limit=kill_limit(entry))
+        except GuardTimedOut as timed_out:
+            timed_out.output = (printed + f'--- attempt {attempt}/{attempts}: did not '
+                                f'finish ---\n{timed_out.output}')
+            raise
+        if attempts > 1:
+            verdict = 'passed' if code == 0 else 'failed'
+            output = (f'--- attempt {attempt}/{attempts}: {verdict} '
+                      f'({time.monotonic() - started:.0f}s) ---\n{output}')
+        printed += output if printed == '' else '\n' + output
+        if code == 0:
+            return code, printed, attempt
+        if pause_after_timeout and attempt < attempts and failed_on_time(output):
+            time.sleep(BASELINE_RETRY_PAUSE)
+    return code, printed, attempts
 
 
 def run_code_mutation(entry, base_env):
@@ -299,9 +341,10 @@ def run_code_mutation(entry, base_env):
 
     # Baseline: the guard must pass on the real code, or its failure under
     # the mutation would be counted as detection when it is not.
-    code, output, retried = run_baseline(entry, base_env)
-    if retried:
-        entry['baseline_retried'] = True
+    cmd, cwd, env = guard_command(entry, base_env)
+    code, output, attempts = run_attempts(entry, cmd, cwd, env, pause_after_timeout=True)
+    if code == 0 and attempts > 1:
+        entry['baseline_attempts'] = attempts
     if code != 0:
         return 'NOT GREEN', output
     if nothing_passed(entry, output):
@@ -327,10 +370,18 @@ def run_code_mutation(entry, base_env):
         # a random STAYED GREEN (KB-3, seen once on #290, green 12 of 12 on
         # re-run). Nothing tells us the change was served, so a first green
         # gets a second run after a much longer wait before it is believed.
+        #
+        # An attempt that fails on a timeout counts as failed, the same as
+        # one that fails an assertion: the baseline has just shown the same
+        # test passing on the real code within the same limits, and a
+        # mutation that keeps the page from ever reaching the asserted state
+        # is caught by exactly that timeout. What does not count is an
+        # attempt that never finished (Playwright's --global-timeout or the
+        # kill limit): that is TIMED OUT, never RED.
         waits = E2E_WAITS if entry['kind'] == 'e2e' else (0,)
         for wait in waits:
             time.sleep(wait)
-            code, output = run(cmd, cwd, env, limit=kill_limit(entry))
+            code, output, _ = run_attempts(entry, cmd, cwd, env)
             if code != 0:
                 break
         return ('RED' if code != 0 else 'STAYED GREEN'), output
@@ -510,26 +561,48 @@ def self_test_steadiness(base_env, toothless):
         if navigation_timeouts_only(output) != want:
             print(f'SELF-TEST FAILED: navigation_timeouts_only {label}: expected {want}')
             return 1
+    test_timeout = ('    Test timeout of 120000ms exceeded.\n'
+                    '    Error: page.goto: Target page, context or browser has been closed\n')
+    for label, output, want in [
+        ('a test timeout that closed the page (KB-165)', test_timeout, True),
+        ('a navigation timeout', goto, True),
+        ('an assertion', assertion, False),
+        ('a locator timeout, not a navigation',
+         '    TimeoutError: locator.click: Timeout 10000ms exceeded.\n', False),
+    ]:
+        if failed_on_time(output) != want:
+            print(f'SELF-TEST FAILED: failed_on_time {label}: expected {want}')
+            return 1
 
-    # The retry end to end, on a real (no-op) mutation: each guard command
-    # prints the next scripted outcome; the run must retry only the baseline
-    # that failed on navigation, once, and say so.
+    # The attempts end to end, on a real (no-op) mutation: each guard command
+    # is one attempt and prints the next scripted outcome (KB-165: attempts
+    # were Playwright's retries, sharing one --global-timeout).
     global guard_command, BASELINE_RETRY_PAUSE, E2E_WAITS
-    passed, failed = 'echo "  1 passed (2.0s)"', 'exit 1'
-    script = {'goto': f"printf '%s' '{goto}'; exit 1", 'assert': f"printf '%s' '{assertion}'; exit 1",
-              'pass': passed, 'fail': failed}
-    saved = guard_command, BASELINE_RETRY_PAUSE, E2E_WAITS
-    BASELINE_RETRY_PAUSE, E2E_WAITS = 0, (0,)
+    script = {'goto': f"printf '%s' '{goto}'; exit 1",
+              'timeout': f"printf '%s' '{test_timeout}'; exit 1",
+              'assert': f"printf '%s' '{assertion}'; exit 1",
+              'pass': 'echo "  1 passed (2.0s)"', 'fail': 'exit 1',
+              'ended': "echo 'Timed out waiting 300s for the test suite to run'; exit 1"}
+    saved = guard_command, BASELINE_RETRY_PAUSE, E2E_WAITS, time.sleep
+    pauses = []
+    BASELINE_RETRY_PAUSE, E2E_WAITS = 0.001, (0,)
+    time.sleep = lambda seconds: pauses.append(seconds) if seconds else None
     try:
-        for label, outcomes, want_status, want_retried, want_calls in [
-            ('navigation timeout, then green: retried, then RED',
-             ['goto', 'pass', 'fail'], 'RED', True, 3),
-            ('assertion on the real code: NOT GREEN, no retry',
-             ['assert', 'pass', 'fail'], 'NOT GREEN', False, 1),
-            ('navigation timeout twice: NOT GREEN after one retry',
-             ['goto', 'goto', 'pass'], 'NOT GREEN', True, 2),
-            ('green first time: no retry', ['pass', 'fail'], 'RED', False, 2),
+        for label, outcomes, want in [
+            ('every mutated attempt fails: RED after three',
+             ['pass', 'fail', 'fail', 'fail'], ('RED', None, 4, 0)),
+            ('every mutated attempt times out: still RED (KB-165)',
+             ['pass', 'timeout', 'timeout', 'timeout'], ('RED', None, 4, 0)),
+            ('one mutated attempt passes: STAYED GREEN',
+             ['pass', 'fail', 'pass'], ('STAYED GREEN', None, 3, 0)),
+            ('three failed baselines: NOT GREEN, no pause after an assertion',
+             ['assert', 'assert', 'assert'], ('NOT GREEN', None, 3, 0)),
+            ('baseline passes on its third attempt, after two timeouts and pauses',
+             ['timeout', 'goto', 'pass', 'fail', 'fail', 'fail'], ('RED', 3, 6, 2)),
+            ('an attempt Playwright ended: TIMED OUT, never RED',
+             ['pass', 'fail', 'ended'], ('TIMED OUT', None, 3, 0)),
         ]:
+            pauses.clear()
             with tempfile.TemporaryDirectory() as scratch:
                 counter = os.path.join(scratch, 'runs')
                 cases = ' '.join(f'{n}) {script[o]};;' for n, o in enumerate(outcomes, 1))
@@ -537,18 +610,21 @@ def self_test_steadiness(base_env, toothless):
                            f'echo $n > {counter}; case $n in {cases} esac')
                 guard_command = lambda entry, env: (['sh', '-c', command], ROOT, env)
                 entry = dict(toothless, kind='e2e', name=f'self-test: {label}')
-                status, _ = run_entry(entry, base_env)
+                status, output = run_entry(entry, base_env)
                 runs = int(open(counter).read())
-            got = (status, bool(entry.get('baseline_retried')), runs)
-            if got != (want_status, want_retried, want_calls):
-                print(f'SELF-TEST FAILED: baseline retry, {label}: got {got}, expected '
-                      f'{(want_status, want_retried, want_calls)}')
+            got = (status, entry.get('baseline_attempts'), runs, len(pauses))
+            if got != want:
+                print(f'SELF-TEST FAILED: attempts, {label}: got (status, baseline '
+                      f'attempts, commands, pauses) {got}, expected {want}')
+                return 1
+            if status == 'TIMED OUT' and '--- attempt 1/3: failed' not in output:
+                print('SELF-TEST FAILED: a TIMED OUT dropped the attempts before it')
                 return 1
     finally:
-        guard_command, BASELINE_RETRY_PAUSE, E2E_WAITS = saved
+        guard_command, BASELINE_RETRY_PAUSE, E2E_WAITS, time.sleep = saved
 
     for label, entry, want in [
-        ('e2e default', {'kind': 'e2e'}, E2E_GLOBAL_TIMEOUT + E2E_KILL_GRACE),
+        ('e2e default', {'kind': 'e2e'}, E2E_ATTEMPT_TIMEOUT + E2E_KILL_GRACE),
         ('e2e with its own budget', {'kind': 'e2e', 'timeout': 150}, 150 + E2E_KILL_GRACE),
         ('unit', {'kind': 'unit'}, GUARD_TIMEOUT),
     ]:
@@ -729,7 +805,9 @@ def self_test(base_env):
             print(f'SELF-TEST FAILED: counts_as_failure {label}: expected {want}')
             return 1
     e2e_entry = {'kind': 'e2e', 'spec': 's', 'grep': 'g'}
-    for entry, want in [(e2e_entry, f'--global-timeout={E2E_GLOBAL_TIMEOUT * 1000}'),
+    # One attempt per Playwright command, each under its own budget (KB-165).
+    for entry, want in [(e2e_entry, f'--global-timeout={E2E_ATTEMPT_TIMEOUT * 1000}'),
+                        (e2e_entry, '--retries=0'),
                         (dict(e2e_entry, timeout=150), '--global-timeout=150000')]:
         if want not in guard_command(entry, {})[0]:
             print(f'SELF-TEST FAILED: an e2e guard command lacks {want}')
@@ -821,8 +899,8 @@ def main():
         started = time.monotonic()
         status, output = run_entry(entry, base_env)
         # The seconds are what durations.py reads back to rebalance shards.
-        retried = ' [baseline retried after a navigation timeout]' \
-            if entry.get('baseline_retried') else ''
+        retried = f' [baseline passed on attempt {entry["baseline_attempts"]}]' \
+            if entry.get('baseline_attempts') else ''
         print(f'{status:13} [{entry["kind"]}] {entry["feature"]}: {entry["name"]}'
               f' ({time.monotonic() - started:.0f}s){retried}', flush=True)
         if counts_as_failure(entry, status):
@@ -838,10 +916,10 @@ def main():
     print(f'\n{len(entries) - len(failures) - len(excused)} of {len(entries)} guards '
           'went red under their mutation'
           + (f'; {len(excused)} known flake(s) timed out, not counted' if excused else ''))
-    retried = [entry['name'] for entry in entries if entry.get('baseline_retried')]
+    retried = [entry['name'] for entry in entries if entry.get('baseline_attempts')]
     if retried:
-        print(f'{len(retried)} baseline(s) failed only on navigation timeouts and were '
-              're-run once:', *retried, sep='\n  ')
+        print(f'{len(retried)} baseline(s) passed only after a failed attempt:',
+              *retried, sep='\n  ')
     for entry, status, output in failures:
         print(f'\n--- {status}: {entry["name"]}')
         if status == 'STAYED GREEN':

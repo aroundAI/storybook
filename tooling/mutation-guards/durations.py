@@ -25,7 +25,7 @@ from run import DURATIONS, load_entries  # noqa: E402
 STAMP = re.compile(r'(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)\.\d+Z (.*)$')
 OUTCOME = re.compile(
     r'^(RED|NOT GREEN|STAYED GREEN|TIMED OUT|MISSING|AMBIGUOUS)\s+\[e2e\] '
-    r'(.*?)(?: \((\d+)s\))?(?: \[baseline retried[^]]*\])?$')
+    r'(.*?)(?: \((\d+)s\))?(?: \[baseline (?:retried|passed on attempt)[^]]*\])?$')
 STEP = re.compile(r'##\[group\]Run .*(run\.py --kind e2e|SCOPED)')
 
 
