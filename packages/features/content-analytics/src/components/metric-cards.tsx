@@ -38,8 +38,10 @@ import type { AnalyticsTotals } from '../types';
 import { CoverageContext } from './coverage-context';
 import { ProvenanceChipFor } from './provenance-chip';
 
+// Names no platform: which ones report a figure is the chip's to say, from
+// the matrix (FILM-1705).
 const PLATFORM_NOT_MEASURED_REASON =
-  'The platforms behind these figures did not report it: TikTok sends no watch time or follower gain, and Instagram sends no follower gain.';
+  'The platforms behind these figures did not report it: not every platform sends a watch time or a follower gain for a video.';
 
 /** For the analytics, project and season views, which do not read these figures. */
 export const NOT_COLLECTED_HERE_REASON =

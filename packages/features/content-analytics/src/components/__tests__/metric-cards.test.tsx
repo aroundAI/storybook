@@ -290,7 +290,9 @@ describe('MetricCards, for a figure the platforms did not measure (KB-149)', () 
       .getAllByText('Not measured')
       .map((el) => el.getAttribute('title') ?? '');
     expect(titles).toHaveLength(3);
-    expect(titles.filter((t) => t.includes('TikTok sends no'))).toHaveLength(2);
+    expect(
+      titles.filter((t) => t.includes('platforms behind these figures')),
+    ).toHaveLength(2);
     expect(screen.queryByText('0m')).toBeNull();
     expect(screen.queryByText('0')).toBeNull();
     // A measured figure beside them is still a number.
