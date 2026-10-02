@@ -48,7 +48,7 @@ acceptance_criteria:
     evidence: "SignalComposition 'measured' | 'ratio' | 'interpolated' (packages/clickhouse/src/lib/signal-map.ts:110), carried apart from level. packages/clickhouse/__tests__/signal-map.test.ts:453: YouTube share_rate is a ratio and native; Instagram accounts_reached is measured and derived. #500"
   - text: "SUPPORT_ORDER is explicit and its ordering argued in a comment"
     met: true
-    evidence: "packages/clickhouse/src/lib/data-provenance.ts:162 SUPPORT_ORDER, with the argument at packages/clickhouse/src/lib/data-provenance.ts:145 (not_ingested above unsupported: a signal with an unsupported input can never exist, so unsupported wins) and weakestSupport at packages/clickhouse/src/lib/data-provenance.ts:170. packages/clickhouse/__tests__/signal-map.test.ts:384, :392, :400; guard SM7. #500"
+    evidence: "packages/clickhouse/src/lib/data-provenance.ts:163 SUPPORT_ORDER, with the argument at packages/clickhouse/src/lib/data-provenance.ts:146 (not_ingested above unsupported: a signal with an unsupported input can never exist, so unsupported wins) and weakestSupport at packages/clickhouse/src/lib/data-provenance.ts:171. packages/clickhouse/__tests__/signal-map.test.ts:387, :392, :400; guard SM7. #500"
   - text: "Adding a platform fails two test suites until both the matrix and the map are extended"
     met: true
     evidence: "Both suites read the AnalyticsPlatform union out of types.ts: packages/clickhouse/__tests__/signal-map.test.ts:105 and packages/clickhouse/__tests__/data-provenance.test.ts:398. Guards SM1 and SM2 add 'facebook', and both went red. #500"

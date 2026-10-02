@@ -117,7 +117,7 @@ notes: |
   `insertVideoTrafficSources` has exactly three call sites in the repository —
   `server/reporting/report-ingest.ts:316`,
   `apps/web/scripts/seed-local-analytics.ts:302` and
-  `packages/clickhouse/scripts/verify-queries.ts:270` — and every one hardcodes
+  `packages/clickhouse/scripts/verify-queries.ts:268` — and every one hardcodes
   `platform: 'youtube'`. The column exists on the table and in the type; in
   practice it has never held another value.
 
