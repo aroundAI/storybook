@@ -110,6 +110,9 @@ export async function processScreenplayRefinement(
       };
     }>({
       templateSlug: 'screenplay-refinement',
+      accountId: data.accountId,
+      userId: data.userId,
+      operationName: 'screenplay-refinement',
       variables: {
         // Stored text and the user's feedback, defused for the model (KB-101)
         current_screenplay: JSON.stringify(sanitizeStrings(screenplayData)),

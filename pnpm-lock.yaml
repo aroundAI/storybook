@@ -286,6 +286,9 @@ importers:
       '@kit/admin':
         specifier: workspace:*
         version: link:../../packages/features/admin
+      '@kit/agent':
+        specifier: workspace:*
+        version: link:../../packages/agent
       '@kit/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics

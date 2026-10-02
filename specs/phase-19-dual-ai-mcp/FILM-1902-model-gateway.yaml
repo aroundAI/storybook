@@ -44,7 +44,7 @@ acceptance_criteria:
     reason: "not met — drafted 2026-10-02, no code yet"
   - text: "Every model call writes llm_usage_analytics with its run_id"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "not met in full — the rows are written, the run_id is not yet. executeLLMForLambda (apps/web/lambda/llm-worker/llm-utils.ts) and runAgent (packages/agent/src/runner.ts) now write a row per model call, on success and on failure, with the job's account and user (#555); executeLLM already did, so every live path logs. The runner has no database client: it logs through runContext.logUsage or the process-wide setAgentUsageLogger, which the worker wires to logLLMUsage at start-up. LLMUsageEvent.runId is typed and written as run_id only when set — the column lands with FILM-1903 part A, and no caller has a run yet; gateway routing is part B of this spec"
   - text: "Deleted, with no remaining import: packages/features/episodes/src/server/continuity-actions.ts and the ContinuityChecker component; packages/features/episodes/src/server/news-actions.ts and the anchor, producer, entity-extractor and news-story services; packages/features/episodes/src/lib/canon/act-context-bridge.ts; packages/features/episodes/src/server/agent-story-generation.ts; packages/features/assets/src/lib/element-prompt/llm-generator.ts; packages/features/audio-generation/src/lib/audio-embedding.ts; packages/llm/src/transcription.ts"
     met: false
     reason: "not met — drafted 2026-10-02, no code yet"

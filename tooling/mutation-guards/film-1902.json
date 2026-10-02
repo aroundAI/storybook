@@ -1,0 +1,45 @@
+{
+  "feature": "FILM-1902",
+  "mutations": [
+    {
+      "name": "the agent runner stops logging its model calls",
+      "kind": "unit",
+      "file": "packages/agent/src/runner.ts",
+      "find": "  const logUsage = runContext.logUsage ?? defaultUsageLogger;",
+      "replace": "  const logUsage: AgentUsageLogger | undefined = undefined;",
+      "cwd": "packages/agent",
+      "test": "__tests__/runner-usage.test.ts",
+      "pattern": "logs a successful call"
+    },
+    {
+      "name": "the Lambda executor stops writing the usage row",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/llm-utils.ts",
+      "find": "    await logLLMUsage(client, event);",
+      "replace": "    void [client, event];",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/executor-usage.test.ts",
+      "pattern": "logs a successful call through the service-role"
+    },
+    {
+      "name": "the Lambda executor logs nothing when the call fails",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/llm-utils.ts",
+      "find": "    // Log the call (failure), then let the job fail as before\n    await recordUsage({",
+      "replace": "    await Promise.resolve({",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/executor-usage.test.ts",
+      "pattern": "logs a failed call with the provider"
+    },
+    {
+      "name": "season-analysis stops naming the job's account on its model call",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/season-analysis.ts",
+      "find": "    accountId,\n    userId,\n    operationName: 'season-analysis',\n",
+      "replace": "    operationName: 'season-analysis',\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/executor-usage.test.ts",
+      "pattern": "season-analysis.ts passes accountId"
+    }
+  ]
+}

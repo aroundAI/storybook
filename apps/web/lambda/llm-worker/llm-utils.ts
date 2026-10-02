@@ -4,12 +4,18 @@
  * These functions are extracted from @kit/prompt-engine/server but modified
  * to work in Lambda environment (no Next.js server-only dependencies).
  */
-import type { LLMProvider } from '@kit/llm';
-import { createLLMClient, forcedLocalConfig } from '@kit/llm';
+import type { LLMProvider, LLMUsageEvent } from '@kit/llm';
+import {
+  LLMError,
+  createLLMClient,
+  forcedLocalConfig,
+  logLLMUsage,
+} from '@kit/llm';
 import {
   assertPromptLlm,
   renderTemplate,
 } from '@kit/prompt-engine/render-template';
+import { createLambdaAdminClient } from '@kit/supabase/lambda-admin-client';
 
 import { type PromptTemplate, getPromptTemplate } from './prompt-registry';
 
@@ -192,14 +198,42 @@ export function extractJSON<T = unknown>(
 }
 
 /**
+ * Write one llm_usage_analytics row as the service role (KB-52), the way
+ * executeLLM does. Never throws: a missing row is reported, not a failed job.
+ */
+async function recordUsage(event: LLMUsageEvent) {
+  try {
+    const client = createLambdaAdminClient();
+
+    if (!client) {
+      throw new Error('Service-role client unavailable');
+    }
+
+    await logLLMUsage(client, event);
+  } catch (error) {
+    console.error('[LLM Lambda] Failed to log LLM usage analytics:', error);
+  }
+}
+
+/**
  * Execute LLM call with prompt template
  * Lambda-compatible version
+ *
+ * Every call writes llm_usage_analytics (FILM-1902): on success with the
+ * response's tokens and cost, on failure with the error. Handlers pass the
+ * job's `accountId` and `userId` so the row is charged to the right account;
+ * `runId` is the generation run (FILM-1903) once the worker is handed one.
  */
 export async function executeLLMForLambda<T = unknown>(config: {
   templateSlug: string;
   variables: Record<string, unknown>;
   maxTokens?: number;
   temperature?: number;
+  accountId?: string;
+  userId?: string;
+  /** Defaults to the template slug */
+  operationName?: string;
+  runId?: string;
 }): Promise<{
   data: T;
   metadata: {
@@ -210,107 +244,163 @@ export async function executeLLMForLambda<T = unknown>(config: {
   };
 }> {
   const startTime = Date.now();
+  const usage = {
+    accountId: config.accountId ?? '',
+    userId: config.userId,
+    runId: config.runId,
+    templateSlug: config.templateSlug,
+    operationName: config.operationName ?? config.templateSlug,
+  };
+  // Known once the prompt is rendered; the failure row carries the last value
+  let provider: string = 'unknown';
+  let model = 'unknown';
 
-  // 1. Load and render prompt
-  const rendered = await loadAndRenderPromptForLambda(
-    config.templateSlug,
-    config.variables,
-  );
-
-  console.log(
-    `[LLM Lambda] Loaded prompt: ${config.templateSlug} v${rendered.version}`,
-  );
-
-  // 2. Build messages
-  let systemPromptContent = rendered.systemPrompt;
-  if (rendered.output?.schema_for_llm) {
-    systemPromptContent +=
-      '\n\n**Expected Output Schema:**\n' + rendered.output.schema_for_llm;
-  }
-
-  const messages = [
-    { role: 'system' as const, content: systemPromptContent },
-    { role: 'user' as const, content: rendered.userPrompt },
-  ];
-
-  // 3. Create LLM client
-  const forcedLocal = forcedLocalConfig();
-  const provider = forcedLocal?.provider ?? rendered.llmConfig.provider;
-  const model = forcedLocal?.model ?? rendered.llmConfig.model;
-  const apiKey = forcedLocal?.apiKey ?? getApiKeyForProvider(provider);
-
-  if (!apiKey) {
-    throw new Error(`No API key found for provider: ${provider}`);
-  }
-
-  console.log(`[LLM Lambda] Creating client: ${provider}/${model}`);
-
-  const llm = createLLMClient(
-    forcedLocal ?? {
-      provider: provider as LLMProvider,
-      model,
-      apiKey,
-      baseUrl: provider === 'local' ? process.env.LOCAL_API_URL : undefined,
-      vertexai: provider === 'gemini' && process.env.GEMINI_VERTEXAI === 'true',
-      project: process.env.GOOGLE_CLOUD_PROJECT,
-      location: process.env.GOOGLE_CLOUD_LOCATION,
-    },
-  );
-
-  // 4. Execute LLM call
-  const maxTokens = config.maxTokens ?? rendered.llmConfig.max_tokens ?? 4000;
-  const temperature =
-    config.temperature ?? rendered.llmConfig.temperature ?? 0.5;
-
-  console.log(
-    `[LLM Lambda] Executing with maxTokens=${maxTokens}, temperature=${temperature}`,
-  );
-
-  const response = await llm.createChatCompletion({
-    messages,
-    temperature,
-    maxTokens,
-  });
-
-  const latency = Date.now() - startTime;
-  console.log(
-    `[LLM Lambda] Got response in ${latency}ms, tokens=${response.usage.totalTokens}`,
-  );
-
-  // 5. Extract and return data
-  const responseType = rendered.output?.type || 'object';
-  const wrapperKey = rendered.output?.wrapper_key;
-
-  let data: T;
-  if (responseType === 'text') {
-    data = (response.message.content ?? '') as T;
-  } else {
-    const fullData = extractJSON<unknown>(
-      response.message.content ?? '',
-      responseType,
+  try {
+    // 1. Load and render prompt
+    const rendered = await loadAndRenderPromptForLambda(
+      config.templateSlug,
+      config.variables,
     );
 
-    if (wrapperKey) {
-      if (
-        typeof fullData !== 'object' ||
-        fullData === null ||
-        !(wrapperKey in fullData)
-      ) {
-        throw new Error(`Key "${wrapperKey}" not found in response`);
-      }
-      data = (fullData as Record<string, unknown>)[wrapperKey] as T;
-    } else {
-      data = fullData as T;
-    }
-  }
+    console.log(
+      `[LLM Lambda] Loaded prompt: ${config.templateSlug} v${rendered.version}`,
+    );
 
-  return {
-    data,
-    metadata: {
-      tokens: response.usage.totalTokens,
-      latency,
-      provider,
-      model,
-    },
-  };
+    // 2. Build messages
+    let systemPromptContent = rendered.systemPrompt;
+    if (rendered.output?.schema_for_llm) {
+      systemPromptContent +=
+        '\n\n**Expected Output Schema:**\n' + rendered.output.schema_for_llm;
+    }
+
+    const messages = [
+      { role: 'system' as const, content: systemPromptContent },
+      { role: 'user' as const, content: rendered.userPrompt },
+    ];
+
+    // 3. Create LLM client
+    const forcedLocal = forcedLocalConfig();
+    provider = forcedLocal?.provider ?? rendered.llmConfig.provider;
+    model = forcedLocal?.model ?? rendered.llmConfig.model;
+    const apiKey = forcedLocal?.apiKey ?? getApiKeyForProvider(provider);
+
+    if (!apiKey) {
+      throw new Error(`No API key found for provider: ${provider}`);
+    }
+
+    console.log(`[LLM Lambda] Creating client: ${provider}/${model}`);
+
+    const llm = createLLMClient(
+      forcedLocal ?? {
+        provider: provider as LLMProvider,
+        model,
+        apiKey,
+        baseUrl: provider === 'local' ? process.env.LOCAL_API_URL : undefined,
+        vertexai:
+          provider === 'gemini' && process.env.GEMINI_VERTEXAI === 'true',
+        project: process.env.GOOGLE_CLOUD_PROJECT,
+        location: process.env.GOOGLE_CLOUD_LOCATION,
+      },
+    );
+
+    // 4. Execute LLM call
+    const maxTokens = config.maxTokens ?? rendered.llmConfig.max_tokens ?? 4000;
+    const temperature =
+      config.temperature ?? rendered.llmConfig.temperature ?? 0.5;
+
+    console.log(
+      `[LLM Lambda] Executing with maxTokens=${maxTokens}, temperature=${temperature}`,
+    );
+
+    const response = await llm.createChatCompletion({
+      messages,
+      temperature,
+      maxTokens,
+    });
+
+    const latency = Date.now() - startTime;
+    console.log(
+      `[LLM Lambda] Got response in ${latency}ms, tokens=${response.usage.totalTokens}`,
+    );
+
+    // 5. Extract and return data
+    const responseType = rendered.output?.type || 'object';
+    const wrapperKey = rendered.output?.wrapper_key;
+
+    let data: T;
+    if (responseType === 'text') {
+      data = (response.message.content ?? '') as T;
+    } else {
+      const fullData = extractJSON<unknown>(
+        response.message.content ?? '',
+        responseType,
+      );
+
+      if (wrapperKey) {
+        if (
+          typeof fullData !== 'object' ||
+          fullData === null ||
+          !(wrapperKey in fullData)
+        ) {
+          throw new Error(`Key "${wrapperKey}" not found in response`);
+        }
+        data = (fullData as Record<string, unknown>)[wrapperKey] as T;
+      } else {
+        data = fullData as T;
+      }
+    }
+
+    // 6. Log the call (success)
+    await recordUsage({
+      ...usage,
+      llmProvider: provider,
+      llmModel: model,
+      promptTokens: response.usage.promptTokens,
+      completionTokens: response.usage.completionTokens,
+      totalTokens: response.usage.totalTokens,
+      promptCost: response.cost?.prompt,
+      completionCost: response.cost?.completion,
+      totalCost: response.cost?.total,
+      latencyMs: latency,
+      status: 'success',
+      requestConfig: {
+        temperature,
+        maxTokens,
+        responseFormat: rendered.llmConfig.response_format,
+      },
+      responseMetadata: { finishReason: response.finishReason },
+    });
+
+    return {
+      data,
+      metadata: {
+        tokens: response.usage.totalTokens,
+        latency,
+        provider,
+        model,
+      },
+    };
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+
+    // Log the call (failure), then let the job fail as before
+    await recordUsage({
+      ...usage,
+      llmProvider: provider,
+      llmModel: model,
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      latencyMs: Date.now() - startTime,
+      status: 'failure',
+      errorCode:
+        error instanceof LLMError
+          ? (error.code ?? 'UNKNOWN_ERROR')
+          : 'UNKNOWN_ERROR',
+      errorMessage: errorMessage.substring(0, 1000),
+    });
+
+    throw error;
+  }
 }

@@ -25,6 +25,8 @@ import {
 import type { SQSBatchResponse, SQSEvent } from 'aws-lambda';
 import ws from 'ws';
 
+import { setAgentUsageLogger } from '@kit/agent';
+import { logLLMUsage } from '@kit/llm';
 import type { LlmJobType } from '@kit/prompt-engine/llm-job-payloads';
 import { awsClientOptions } from '@kit/shared/vendors';
 import type { Database } from '@kit/supabase/database';
@@ -85,6 +87,10 @@ const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey, {
     transport: ws as unknown as typeof WebSocket,
   },
 });
+
+// Every model call the orchestrators' agent loop makes writes a usage row
+// through this client (FILM-1902); the agent package has no client of its own
+setAgentUsageLogger((event) => logLLMUsage(supabase, event));
 
 /**
  * Send message to user via WebSocket

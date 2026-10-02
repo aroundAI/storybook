@@ -17,6 +17,7 @@ pnpm --filter @kit/cache --fail-if-no-match test
 pnpm --filter @kit/branding --fail-if-no-match test
 pnpm --filter @kit/next --fail-if-no-match test
 pnpm --filter @kit/llm --fail-if-no-match test
+pnpm --filter @kit/agent --fail-if-no-match test
 pnpm --filter @kit/stripe --fail-if-no-match test
 pnpm --filter @kit/billing-gateway --fail-if-no-match test
 pnpm --filter @kit/lemon-squeezy --fail-if-no-match test

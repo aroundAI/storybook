@@ -6,11 +6,20 @@
  */
 import type { z } from 'zod';
 
-import type { ChatMessage, LLMProvider } from '@kit/llm';
+import type { ChatMessage, LLMProvider, LLMUsageEvent } from '@kit/llm';
 
 // =============================================================================
 // TOOL TYPES
 // =============================================================================
+
+/**
+ * Receives one llm_usage_analytics event per model call the runner makes
+ * (FILM-1902). This package has no database client, so the host wires it:
+ * the LLM worker passes the event to `logLLMUsage` with its service-role
+ * client. It is awaited inside a try/catch — a logger that throws is
+ * reported and the run goes on.
+ */
+export type AgentUsageLogger = (event: LLMUsageEvent) => Promise<void> | void;
 
 /**
  * Execution context provided to tools during an agent run.
@@ -19,6 +28,10 @@ import type { ChatMessage, LLMProvider } from '@kit/llm';
 export interface AgentRunContext {
   accountId: string;
   userId?: string;
+  /** The generation run (FILM-1903) stamped on every usage row of this run */
+  runId?: string;
+  /** Overrides the process-wide logger set with `setAgentUsageLogger` */
+  logUsage?: AgentUsageLogger;
   /** Allows passing arbitrary extra data to tools (e.g. _scenesContext) */
   [key: string]: unknown;
 }
