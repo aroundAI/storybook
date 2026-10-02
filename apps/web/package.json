@@ -65,6 +65,7 @@
     "@kit/email-templates": "workspace:*",
     "@kit/episodes": "workspace:*",
     "@kit/film-studio-schemas": "workspace:*",
+    "@kit/generation": "workspace:*",
     "@kit/i18n": "workspace:*",
     "@kit/jobs": "workspace:*",
     "@kit/llm": "workspace:*",

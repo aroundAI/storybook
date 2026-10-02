@@ -21,6 +21,7 @@
     "./crypto": "./src/crypto/index.ts",
     "./pagination": "./src/pagination/index.ts",
     "./rows": "./src/rows/index.ts",
+    "./prompt-sanitiser": "./src/prompt-sanitiser/index.ts",
     "./subscribers": "./src/subscribers/index.ts",
     "./vendors": "./src/vendors/index.ts"
   },

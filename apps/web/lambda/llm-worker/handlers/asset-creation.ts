@@ -1,11 +1,35 @@
+/**
+ * Asset Creation Handler
+ *
+ * Creates the characters and locations a screenplay names and links them
+ * to the episode. Each description is the `asset_description` stage of
+ * `@kit/generation` (FILM-1901): prepare → executor → schema → commit
+ * (the `assets` upsert). What stays here is the job itself: reading the
+ * names out of the screenplay, skipping assets the project already has,
+ * linking every asset to the episode's metadata, and the generation_jobs
+ * row the bulk action inserted as 'asset_creation' (KB-174), which this
+ * handler now moves through processing to completed or failed.
+ */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { sanitizeForPrompt, sanitizeStrings } from '@kit/episodes/lib';
-import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
+import {
+  type AssetDescriptionOutput,
+  type AssetDescriptionTarget,
+  assetDescriptionStage,
+  fallbackDescription,
+  markJobCompleted,
+  markJobFailed,
+  markJobProcessing,
+  serverRun,
+} from '@kit/generation';
+import {
+  type LlmJobPayload,
+  parseLlmJobPayload,
+} from '@kit/prompt-engine/llm-job-payloads';
 import { whyNoRow } from '@kit/shared/rows';
 import type { Database } from '@kit/supabase/database';
 
-import { executeLLMForLambda } from '../llm-utils';
+import { generateWithLambda, workerCtx } from '../utils/stage-runtime';
 
 interface AssetCreationResult {
   success: boolean;
@@ -40,16 +64,10 @@ interface ScreenplayData {
   scenes?: ScreenplayScene[];
 }
 
-const CHARACTER_INSTRUCTIONS =
-  'Write a 4-6 sentence description including: Physical appearance (approximate age, ethnicity/skin tone, build, hair color/style, eye color, distinguishing features like scars or tattoos). Clothing and style (what they wear in this story). Demeanor and expression (how they carry themselves, typical body language). Their role and significance. Be specific — commit to physical details based on what the text states or implies from the setting/time period.';
-
-const LOCATION_INSTRUCTIONS =
-  'Write a 3-5 sentence description including: Physical environment (size, architecture, materials, colors, lighting). Atmosphere and mood (sounds, smells, temperature). Notable features (landmarks, furniture, natural elements). How this place functions in the story. Be vivid and specific for environment concept art generation.';
-
 function buildScreenplayContext(scenes: ScreenplayScene[]): string {
   if (scenes.length === 0) return '';
 
-  const text = scenes
+  return scenes
     .map((scene) => {
       const parts: string[] = [];
       parts.push(`SCENE ${scene.number}: ${scene.heading}`);
@@ -64,8 +82,6 @@ function buildScreenplayContext(scenes: ScreenplayScene[]): string {
       return parts.join('\n');
     })
     .join('\n\n');
-
-  return text.slice(0, 10000);
 }
 
 export async function processAssetCreation(
@@ -78,6 +94,36 @@ export async function processAssetCreation(
     `[Asset Creation] Processing for episode ${data.episodeId}, project ${data.projectId}`,
   );
 
+  await markJobProcessing(supabase, data.episodeId, JOB_TYPE);
+
+  try {
+    const result = await createAssetsFromScreenplay(data, supabase);
+
+    await markJobCompleted(supabase, data.episodeId, JOB_TYPE, {
+      created: result.data.created,
+      linked: result.data.linked,
+      characters: result.data.characters.length,
+      locations: result.data.locations.length,
+    });
+
+    return result;
+  } catch (error) {
+    await markJobFailed(
+      supabase,
+      data.episodeId,
+      JOB_TYPE,
+      error instanceof Error ? error.message : 'Unknown error',
+    );
+    throw error;
+  }
+}
+
+const JOB_TYPE = 'asset_creation';
+
+async function createAssetsFromScreenplay(
+  data: LlmJobPayload<'asset-creation'>,
+  supabase: SupabaseClient<Database>,
+): Promise<AssetCreationResult> {
   // 1. Fetch episode screenplay_data
   const { data: episode, error: episodeError } = await supabase
     .from('episodes')
@@ -139,15 +185,14 @@ export async function processAssetCreation(
     };
   }
 
-  // 4. Build screenplay context for LLM
-  // The stored screenplay, defused for the model (KB-101)
-  const storyContext = buildScreenplayContext(sanitizeStrings(scenes));
+  // 4. The screenplay as the text each description is read from; the
+  // stage's prepare defuses it for the model (KB-101)
+  const storyContext = buildScreenplayContext(scenes);
 
   // 5. Query existing assets in the project
   const allNames = [...characterNames, ...locationNames];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: existingAssets } = await (supabase as any)
+  const { data: existingAssets } = await supabase
     .from('assets')
     .select('id, name, type')
     .eq('project_id', data.projectId)
@@ -183,93 +228,67 @@ export async function processAssetCreation(
     `[Asset Creation] ${itemsToCreate.length} items to create, ${existingMap.size} already exist`,
   );
 
-  let newAssets: Array<{ id: string; name: string; type: string }> = [];
+  const newAssets: Array<{ id: string; name: string; type: string }> = [];
 
   if (itemsToCreate.length > 0) {
-    // 7. Extract descriptions in parallel via LLM
-    const descriptionResults = await Promise.allSettled(
-      itemsToCreate.map(async (item) => {
-        try {
-          const result = await executeLLMForLambda<{ description: string }>({
-            templateSlug: 'story-generation/extract-asset-description',
-            accountId: data.accountId,
-            userId: data.userId,
-            operationName: 'asset-creation',
-            variables: {
-              // The asset keeps its name as written; the model sees it defused
-              name: sanitizeForPrompt(item.name),
-              type: item.type,
-              extra_context: '',
-              type_instructions:
-                item.type === 'character'
-                  ? CHARACTER_INSTRUCTIONS
-                  : LOCATION_INSTRUCTIONS,
-              story_context: storyContext,
-            },
-          });
+    const ctx = workerCtx(supabase, data);
+    const stage = assetDescriptionStage;
+    const generate = generateWithLambda(ctx, 'asset-creation');
 
-          return result.data.description;
+    const targets: AssetDescriptionTarget[] = itemsToCreate.map((item) => ({
+      projectId: data.projectId,
+      asset: { name: item.name, type: item.type },
+      storyContext,
+    }));
+
+    // 7. Describe in parallel; a failed description still gets an asset
+    const described = await Promise.all(
+      targets.map(async (target) => {
+        const [part] = await stage.parts(ctx, target);
+
+        try {
+          const brief = await stage.prepare(ctx, target, part!);
+          const generated = await generate(brief);
+          const output: AssetDescriptionOutput = stage.outputSchema.parse(
+            generated.output,
+          );
+
+          return { output, brief, usage: generated.usage };
         } catch (err) {
           console.error(
-            `[Asset Creation] LLM extraction failed for "${item.name}":`,
+            `[Asset Creation] LLM extraction failed for "${target.asset.name}":`,
             err,
           );
-          return '';
+
+          return {
+            output: { description: fallbackDescription(target.asset.type) },
+          };
         }
       }),
     );
 
-    // 8. Build asset rows
-    const assetRows = itemsToCreate.map((item, i) => {
-      const descResult = descriptionResults[i];
-      const description =
-        descResult?.status === 'fulfilled' ? descResult.value : '';
+    // 8. Commit each asset row (upsert resurrects a soft-deleted namesake)
+    for (const [index, target] of targets.entries()) {
+      const { output, brief, usage } = described[index]!;
+      const committed = await stage.commit(
+        ctx,
+        serverRun({ brief, usage }),
+        target,
+        [output],
+      );
 
-      return {
-        project_id: data.projectId,
-        type: item.type,
-        name: item.name,
-        description:
-          description ||
-          `${item.type === 'character' ? 'Character' : 'Location'} from story`,
-        metadata: { autoCreated: true },
-      };
-    });
-
-    // 9. Upsert assets (handles soft-deleted with same name)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: created, error: insertError } = await (supabase as any)
-      .from('assets')
-      .upsert(
-        assetRows.map((row) => ({ ...row, deleted_at: null })),
-        {
-          onConflict: 'project_id,type,name',
-          ignoreDuplicates: false,
-        },
-      )
-      .select('id, name, type');
-
-    if (insertError) {
-      console.error('[Asset Creation] Upsert failed:', insertError);
-      throw new Error('Failed to create assets');
+      newAssets.push(committed.data.asset);
     }
-
-    newAssets = (created ?? []) as Array<{
-      id: string;
-      name: string;
-      type: string;
-    }>;
 
     console.log(`[Asset Creation] Created ${newAssets.length} new assets`);
   }
 
-  // 10. Combine existing + new assets
+  // 9. Combine existing + new assets
   const allAssets = [...Array.from(existingMap.values()), ...newAssets];
 
-  // 11. Link all to episode metadata
+  // 10. Link all to episode metadata
   if (allAssets.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: currentEpisode } = await (supabase as any)
+    const { data: currentEpisode } = await supabase
       .from('episodes')
       .select('metadata')
       .eq('id', data.episodeId)
@@ -315,8 +334,7 @@ export async function processAssetCreation(
       }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any)
+    await supabase
       .from('episodes')
       .update({
         metadata: {
