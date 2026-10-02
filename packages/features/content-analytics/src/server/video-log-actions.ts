@@ -13,6 +13,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { MoneyByCurrency } from '../lib/money';
 import { createMoneyFold } from '../lib/money';
+import { PlatformSelectionSchema } from '../lib/schemas/platforms.schema';
 import { listAccountChannels, listProjectChannels } from './channels';
 import { assertScopeAccess } from './scope-access';
 
@@ -25,6 +26,8 @@ const VideoLogSchema = z.object({
   connectionId: z.string().uuid().optional(),
   contentType: z.string().max(50).optional(),
   language: z.string().max(10).optional(),
+  /** The page's platform filter (FILM-1709); absent is every platform. */
+  platforms: PlatformSelectionSchema.optional(),
   checkpoints: z
     .array(z.number().int().min(1).max(730))
     .max(6)
@@ -138,6 +141,7 @@ export const getVideoLogAction = enhanceAction(
       connectionId: input.connectionId,
       contentType: input.contentType,
       language: input.language,
+      platforms: input.platforms,
     };
 
     await assertScopeAccess(scope);

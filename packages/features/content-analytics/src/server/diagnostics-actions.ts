@@ -96,9 +96,9 @@ export const getWeeklyDiagnosticsAction = withRefusals(
           query = query.eq('platform_connection_id', scope.connectionId);
         }
 
-        // The Deep Dive's platform switcher (FILM-1707), honoured the same way.
-        if (scope.platform) {
-          query = query.eq('platform', scope.platform);
+        // The page's platform filter (FILM-1709), honoured the same way.
+        if (scope.platforms) {
+          query = query.in('platform', scope.platforms);
         }
 
         return query

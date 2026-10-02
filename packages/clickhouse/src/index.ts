@@ -105,6 +105,8 @@ export {
   allowedMetricSources,
   FETCH_DATED_METRIC_SOURCE,
   isFetchDated,
+  isAnalyticsPlatform,
+  assertPlatformSelection,
   capabilityCoverage,
   capabilityFor,
   coverageAsOf,

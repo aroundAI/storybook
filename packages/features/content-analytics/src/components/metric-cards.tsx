@@ -25,6 +25,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@kit/ui/tooltip';
+import { cn } from '@kit/ui/utils';
 
 import type { ChangeResult } from '../lib/format';
 import {
@@ -37,7 +38,11 @@ import {
 import { type ViewsScope, viewsNotMeasuredReason } from '../lib/views';
 import type { AnalyticsTotals } from '../types';
 import { CoverageContext } from './coverage-context';
-import { ProvenanceChipFor } from './provenance-chip';
+import {
+  type CardProvenance,
+  ProvenanceChip,
+  useCardProvenance,
+} from './provenance-chip';
 
 // Names no platform: which ones report a figure is the chip's to say, from
 // the matrix (FILM-1705).
@@ -68,6 +73,12 @@ interface MetricCardsProps {
    * a caller that cannot say passes null, and the card names no platform.
    */
   viewsScope: ViewsScope | null;
+  /**
+   * Said in every card's figure slot when `data` is null because nothing
+   * was asked for — no platform selected (FILM-1709). Absent, a null
+   * `data` keeps its old meaning.
+   */
+  noFigureReason?: string;
 }
 
 export function MetricCards({
@@ -76,6 +87,7 @@ export function MetricCards({
   isLoading,
   notMeasuredReason = PLATFORM_NOT_MEASURED_REASON,
   viewsScope,
+  noFigureReason,
 }: MetricCardsProps) {
   // The chip needs the page's coverage. Outside the analytics page — the
   // project, season and episode dashboards mount no provider — the cards
@@ -167,24 +179,56 @@ export function MetricCards({
     },
   ];
 
+  // Nothing was asked for: every card says so, rather than a figure (FILM-1709).
+  const noFigure = data === null ? noFigureReason : undefined;
+
   return (
     <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
-      {metrics.map((metric) => (
-        <MetricCard
-          key={metric.key}
-          metric={metric}
-          chip={
-            withProvenance ? (
-              <ProvenanceChipFor
-                metricFamily={metric.metricFamily}
-                title={metric.label}
-              />
-            ) : undefined
-          }
-          notMeasuredReason={notMeasuredReason}
-        />
-      ))}
+      {metrics.map((metric) =>
+        withProvenance ? (
+          <MetricCardWithProvenance
+            key={metric.key}
+            metric={metric}
+            notMeasuredReason={notMeasuredReason}
+            noFigureReason={noFigure}
+          />
+        ) : (
+          <MetricCard
+            key={metric.key}
+            metric={metric}
+            notMeasuredReason={notMeasuredReason}
+            noFigureReason={noFigure}
+          />
+        ),
+      )}
     </div>
+  );
+}
+
+/**
+ * A MetricCard on the analytics page: its chip and, under the platform
+ * filter, whether it dims and why — the same `useCardProvenance` the card
+ * shell reads, so a headline figure and the cards below it agree.
+ */
+function MetricCardWithProvenance({
+  metric,
+  notMeasuredReason,
+  noFigureReason,
+}: {
+  metric: MetricConfig;
+  notMeasuredReason: string;
+  noFigureReason?: string;
+}) {
+  const provenance = useCardProvenance(metric.metricFamily);
+
+  return (
+    <MetricCard
+      metric={metric}
+      chip={<ProvenanceChip provenance={provenance} title={metric.label} />}
+      dimming={provenance.dimming}
+      notMeasuredReason={notMeasuredReason}
+      noFigureReason={noFigureReason}
+    />
   );
 }
 
@@ -227,12 +271,18 @@ export function MetricCard({
   metric,
   chip,
   notMeasuredReason = PLATFORM_NOT_MEASURED_REASON,
+  dimming = { dimmed: false },
+  noFigureReason,
 }: {
   metric: MetricConfig;
   /** FILM-1705's provenance chip, when the page has coverage to give one. */
   chip?: ReactNode;
   /** Why a null figure has no value: the tooltip of its "Not measured". */
   notMeasuredReason?: string;
+  /** Dimmed, never blanked, when the filter leaves it nothing to cover (FILM-1709). */
+  dimming?: CardProvenance['dimming'];
+  /** Why there is no figure when none was asked for. */
+  noFigureReason?: string;
 }) {
   const {
     label,
@@ -248,12 +298,15 @@ export function MetricCard({
     metric.notMeasuredReason ?? notMeasuredReason,
   );
   const change =
-    unmeasured === null && value !== null
+    noFigureReason === undefined && unmeasured === null && value !== null
       ? calculateChange(value, previousValue)
       : null;
 
   return (
-    <Card data-test={`metric-card-${metric.key}`}>
+    <Card
+      data-test={`metric-card-${metric.key}`}
+      data-dimmed={dimming.dimmed ? 'true' : undefined}
+    >
       <CardContent className="px-4 pt-4 pb-3">
         <div className="mb-2 flex items-start justify-between gap-2">
           <div className="flex items-center gap-1.5">
@@ -274,6 +327,13 @@ export function MetricCard({
               </TooltipTrigger>
               <TooltipContent>
                 <p className="max-w-xs text-sm">{description}</p>
+                {dimming.dimmed && (
+                  <ul className="mt-1 flex max-w-xs flex-col gap-0.5 text-xs">
+                    {dimming.reasons.map((reason) => (
+                      <li key={reason}>{reason}</li>
+                    ))}
+                  </ul>
+                )}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -281,8 +341,34 @@ export function MetricCard({
 
         {chip && <div className="mb-2 flex">{chip}</div>}
 
-        <div className="flex items-baseline justify-between">
-          {unmeasured !== null || value === null ? (
+        {/* Clamped: one sentence per platform made a headline card in a
+            seven-column row several screens tall, pushing every tab below the
+            fold. The whole reason stays in the DOM and in the info tooltip. */}
+        {dimming.dimmed && (
+          <p
+            className="mb-2 line-clamp-3 text-xs text-muted-foreground"
+            title={dimming.reasons.join(' ')}
+            data-test="metric-dimmed-reason"
+          >
+            {dimming.reasons.join(' ')}
+          </p>
+        )}
+
+        <div
+          className={cn(
+            'flex items-baseline justify-between',
+            dimming.dimmed && 'opacity-50',
+          )}
+        >
+          {noFigureReason !== undefined ? (
+            // Nothing was asked for, which is not "not measured" (FILM-1709).
+            <span
+              className="text-sm font-medium text-muted-foreground"
+              data-test="metric-unmeasured"
+            >
+              {noFigureReason}
+            </span>
+          ) : unmeasured !== null || value === null ? (
             // As the reach overview's cards do: words, not a 0 that reads
             // as "nobody watched" (KB-149), and the reason on hover.
             <span

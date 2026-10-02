@@ -783,7 +783,7 @@ describe('queries-advanced', () => {
       const { queryCohortMedians } = await import('../src/queries-advanced');
 
       await queryCohortMedians({
-        scope: { projectId: PROJECT, platform: 'youtube' },
+        scope: { projectId: PROJECT, platforms: ['youtube'] },
       });
 
       // Every projected column is aliased to its own name, and several are
@@ -1680,17 +1680,18 @@ describe('queries-advanced', () => {
       },
     );
 
-    it('keeps the switcher’s platform predicate', async () => {
-      const { query_params } = await issued((q) =>
+    it('keeps the filter’s platform predicate, every platform chosen', async () => {
+      const { query, query_params } = await issued((q) =>
         q.queryRollingViews({
-          scope: { projectId: PROJECT, platform: 'youtube' },
+          scope: { projectId: PROJECT, platforms: ['youtube', 'instagram'] },
           windowDays: 90,
           startDate: '2026-01-01',
           endDate: '2026-06-30',
         }),
       );
 
-      expect(query_params.scopePlatform).toBe('youtube');
+      expect(query).toContain('platform IN {scopePlatforms: Array(String)}');
+      expect(query_params.scopePlatforms).toEqual(['youtube', 'instagram']);
     });
 
     it('leaves the traffic breakdown alone: it does not read video_metrics', async () => {

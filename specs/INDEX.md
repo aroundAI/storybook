@@ -600,7 +600,7 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1706 | [analytics-card-shell](./phase-17-analytics-provenance/FILM-1706-analytics-card-shell.yaml) | ✅ DONE | M | FILM-1703 |
 | FILM-1707 | [six-tab-adoption](./phase-17-analytics-provenance/FILM-1707-six-tab-adoption.yaml) | DONE | L | FILM-1702, FILM-1705, FILM-1706 |
 | FILM-1708 | [traffic-drill-down-colour-ramp](./phase-17-analytics-provenance/FILM-1708-traffic-drill-down-colour-ramp.yaml) | ✅ DONE | M | FILM-1605, FILM-1706 |
-| FILM-1709 | [platform-filter-completion](./phase-17-analytics-provenance/FILM-1709-platform-filter-completion.yaml) | DRAFT | L | FILM-1704, FILM-1707 |
+| FILM-1709 | [platform-filter-completion](./phase-17-analytics-provenance/FILM-1709-platform-filter-completion.yaml) | DONE | L | FILM-1704, FILM-1707 |
 | FILM-1710 | [asset-duration](./phase-17-analytics-provenance/FILM-1710-asset-duration.yaml) | ✅ DONE | M | FILM-1711 (TikTok leg only) |
 | FILM-1711 | [analytics-authorisation](./phase-17-analytics-provenance/FILM-1711-analytics-authorisation.yaml) | 🟡 PARTIAL | L | FILM-1721 |
 | FILM-1712 | [metric-recovery](./phase-17-analytics-provenance/FILM-1712-metric-recovery.yaml) | ✅ DONE | L | FILM-1711, FILM-1721 |

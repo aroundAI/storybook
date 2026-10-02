@@ -152,8 +152,12 @@ describe('a card on a date axis', () => {
     );
 
     expect(chipOf(container).textContent).toBe('Not on a date axis');
+    // Dimmed with the reason, as any pick a card cannot cover (FILM-1709).
     expect(
-      container.querySelector('[data-test="card-coverage-note"]')?.textContent,
+      container.querySelector('[data-card-shell]')?.getAttribute('data-dimmed'),
+    ).toBe('true');
+    expect(
+      container.querySelector('[data-test="card-dimmed-reason"]')?.textContent,
     ).toBe(
       'TikTok isn’t shown here — it reports running totals, not daily views.',
     );

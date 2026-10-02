@@ -154,7 +154,7 @@ describe('the chip', () => {
       state: 'no_data_in_window',
     });
     expect(chip.bodyLines).toEqual([
-      `TikTok is connected (tiktok channel), but has no data for ${WINDOW}.`,
+      `TikTok: connected (tiktok channel), but no data for ${WINDOW}.`,
     ]);
   });
 
@@ -163,7 +163,9 @@ describe('the chip', () => {
     const chip = provenanceChip(none, ['traffic_sources']);
 
     expect(chip).toMatchObject({ label: 'Not connected', muted: true });
-    expect(chip.bodyLines.join(' ')).toMatch(/Connect one to include YouTube/);
+    expect(chip.bodyLines.join(' ')).toBe(
+      'YouTube: not connected. Connect a channel in settings to include it.',
+    );
   });
 
   it('says not yet supported, or not reported, when the matrix rules every platform out', () => {
@@ -197,7 +199,7 @@ describe('the chip', () => {
     expect(a.state).toBe('not_authorised');
     expect(b.state).toBe('no_data_in_window');
     expect(a.bodyLines).not.toEqual(b.bodyLines);
-    expect(a.bodyLines.join(' ')).toMatch(/access to its analytics/);
+    expect(a.bodyLines.join(' ')).toMatch(/analytics access isn’t granted/);
   });
 
   it('claims only “up to” what it can cover while coverage cannot be measured', () => {
@@ -278,7 +280,9 @@ describe('the strip', () => {
     expect(item('tiktok').sentence).toBe(
       `TikTok: connected (@seedstudio), but no data for ${WINDOW}.`,
     );
-    expect(item('instagram').sentence).toBe('Instagram: not connected.');
+    expect(item('instagram').sentence).toBe(
+      'Instagram: not connected. Connect a channel in settings to include it.',
+    );
   });
 
   it('names a connected Facebook channel rather than dropping it', () => {
@@ -363,7 +367,10 @@ describe('the filter’s third state', () => {
     // Connected-but-empty depends on the window, which the header filter
     // does not share with Deep Dive, so it does not dim.
     expect(available).toEqual(['youtube', 'tiktok', 'facebook']);
-    expect(reasons).toEqual({ instagram: 'Instagram: not connected.' });
+    expect(reasons).toEqual({
+      instagram:
+        'Instagram: not connected. Connect a channel in settings to include it.',
+    });
   });
 });
 

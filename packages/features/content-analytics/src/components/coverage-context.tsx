@@ -145,7 +145,7 @@ export function CoverageProvider({
       scope.projectId,
       scope.accountId,
       scope.connectionId,
-      scope.platform,
+      scope.platforms?.join(','),
       scope.contentType,
       scope.language,
       window.from,

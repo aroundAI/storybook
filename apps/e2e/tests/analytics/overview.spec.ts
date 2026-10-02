@@ -48,6 +48,8 @@ test.describe('Overview truth (KB-16)', () => {
     // text so the unfixed page, which has no `data-test` there, is measured
     // by the same rule. Each card now carries its provenance chip between
     // its label and its figure (FILM-1705), so the figure is read by id.
+    // No row behind the total has a view, so since FILM-1720 it is not
+    // measured — said in words, never drawn as 0 (KB-153).
     const metricRow = text.slice(
       text.indexOf('Export'),
       text.indexOf('Overview Content'),

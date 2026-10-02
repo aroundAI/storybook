@@ -8,6 +8,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 
+import type { AnalyticsPlatform } from '@kit/clickhouse';
 import { Button } from '@kit/ui/button';
 import { Skeleton } from '@kit/ui/skeleton';
 
@@ -43,6 +44,8 @@ const VIDEO_LOG_CLAIM = {
 
 export interface VideoLogTabProps {
   projectId: string;
+  /** The page's platform filter (FILM-1709): in its own order, never empty. */
+  platforms: AnalyticsPlatform[];
   /** The channel filter, shared with the Deep Dive tab. */
   connectionId: string | undefined;
   onConnectionChange: (connectionId: string | undefined) => void;
@@ -58,6 +61,7 @@ export interface VideoLogTabProps {
  */
 export function VideoLogTab({
   projectId,
+  platforms,
   connectionId,
   onConnectionChange,
 }: VideoLogTabProps) {
@@ -67,16 +71,18 @@ export function VideoLogTab({
   // The view, and the channel it was built for. Changing channel starts
   // again at the first page; keeping that here rather than in an effect
   // means the render after a channel change already asks for page one.
-  const [state, setState] = useState<
-    VideoLogView & { forConnection: string | undefined }
-  >({ ...DEFAULT_VIDEO_LOG_VIEW, forConnection: connectionId });
+  const scopeKey = `${connectionId ?? 'all'}|${platforms.join(',')}`;
+  const [state, setState] = useState<VideoLogView & { forScope: string }>({
+    ...DEFAULT_VIDEO_LOG_VIEW,
+    forScope: scopeKey,
+  });
 
-  // A channel change starts again at the first page, and keeps the sort:
+  // A channel or platform change starts again at the first page, and keeps the sort:
   // filtering is not a request to be re-sorted, and silently dropping the
   // column a reader chose makes the list reorder itself for no visible
   // reason.
   const view: VideoLogView =
-    state.forConnection === connectionId
+    state.forScope === scopeKey
       ? state
       : {
           orderBy: state.orderBy,
@@ -88,6 +94,7 @@ export function VideoLogTab({
     'video-log',
     projectId,
     connectionId ?? 'all',
+    platforms,
     view.orderBy,
     view.orderDirection,
     view.page,
@@ -99,6 +106,7 @@ export function VideoLogTab({
       getVideoLogAction({
         projectId,
         ...(connectionId ? { connectionId } : {}),
+        platforms,
         checkpoints: CHECKPOINTS,
         ...videoLogRequest(view),
       }),
@@ -106,7 +114,7 @@ export function VideoLogTab({
   });
 
   const setView = (next: VideoLogView) =>
-    setState({ ...next, forConnection: connectionId });
+    setState({ ...next, forScope: scopeKey });
 
   const onSort = (column: VideoLogSortColumn) =>
     setView(nextVideoLogSort(view, column));
@@ -143,10 +151,10 @@ export function VideoLogTab({
           className={'max-w-2xl text-sm text-muted-foreground'}
           data-test={'video-log-scope-note'}
         >
-          Every video in this project, with views at fixed ages so videos
-          published months apart can be compared. The date range and platform
-          filters above do not apply here, and there is no total: the table
-          loads one page at a time.
+          Every video on the selected platforms, with views at fixed ages so
+          videos published months apart can be compared. The date range above
+          does not apply here, and there is no total: the table loads one page
+          at a time.
         </p>
 
         <ChannelFilter

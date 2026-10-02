@@ -275,7 +275,7 @@ test.describe('Company dashboard: a figure no platform measured (KB-162)', () =>
     await expect(notMeasured).toHaveText('Not measured');
     await expect(notMeasured).toHaveAttribute(
       'title',
-      `YouTube is connected, but has no data for the last 30 days. ${FACEBOOK_NOTE}`,
+      `YouTube: connected, but no data for the last 30 days. ${FACEBOOK_NOTE}`,
     );
 
     await shoot(page, '1-facebook-and-empty-youtube-team', 'kb166');
@@ -295,7 +295,7 @@ test.describe('Company dashboard: a figure no platform measured (KB-162)', () =>
     await expect(notMeasured).toHaveText('Not measured', { timeout: 30_000 });
     await expect(notMeasured).toHaveAttribute(
       'title',
-      'YouTube is connected, but has no data for any day so far.',
+      'YouTube: connected, but no data for any day so far.',
     );
     await expect(notMeasured).not.toHaveAttribute('title', /Facebook/);
 

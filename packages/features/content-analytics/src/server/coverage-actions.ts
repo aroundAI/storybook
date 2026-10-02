@@ -10,6 +10,7 @@ import { enhanceAction } from '@kit/next/actions';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { CoverageMatrixResult } from '../lib/coverage';
+import { isSelected } from '../lib/platform-selection';
 import { CoverageMatrixSchema } from '../lib/schemas/coverage.schema';
 import { listAccountChannels } from './channels';
 import { assertScopeAccess } from './scope-access';
@@ -38,7 +39,7 @@ export const getCoverageMatrixAction = enhanceAction(
     ).filter(
       (channel) =>
         (!scope.connectionId || channel.connectionId === scope.connectionId) &&
-        (!scope.platform || channel.platform === scope.platform),
+        (!scope.platforms || isSelected(scope.platforms, channel.platform)),
     );
 
     const connectedPlatforms = channels

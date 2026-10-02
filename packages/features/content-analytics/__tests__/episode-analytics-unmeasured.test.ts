@@ -148,8 +148,7 @@ describe('episode analytics, for figures a platform does not measure (KB-149)', 
 describe('episode analytics, why its views are null (KB-166)', () => {
   const facebookNote =
     'Facebook counts four different kinds of view, and none of them is a view in this sense, so its plays are not counted as views.';
-  const youtubeNoRows =
-    'YouTube is connected, but has no data for any day so far.';
+  const youtubeNoRows = 'YouTube: connected, but no data for any day so far.';
 
   function facebookRows(): PerVideoTotals {
     return {

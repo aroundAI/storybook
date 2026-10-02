@@ -7,6 +7,7 @@
 import 'server-only';
 
 import { displayedEngagementRatePercent } from '@kit/clickhouse';
+import type { AnalyticsPlatform } from '@kit/clickhouse';
 import {
   queryAudienceRows,
   queryDailyTimeSeries,
@@ -352,11 +353,26 @@ export async function getEpisodeAnalytics(
 }
 
 /**
- * Get analytics for a season
+ * A read narrowed by the page's platform filter (FILM-1709). Absent is
+ * every platform; an empty list never gets here — the action's schema
+ * refuses it, and the page does not ask.
+ */
+interface PlatformScopedRead {
+  startDate?: Date;
+  endDate?: Date;
+  platforms?: AnalyticsPlatform[];
+}
+
+/**
+ * Get analytics for a season.
+ *
+ * With `platforms`, only those platforms' publishes are read, and an
+ * episode counts towards `episodeCount` only if it has one of them: an
+ * episode published to TikTok alone is not content on a YouTube-only view.
  */
 export async function getSeasonAnalytics(
   seasonId: string,
-  options?: { startDate?: Date; endDate?: Date },
+  options?: PlatformScopedRead,
 ): Promise<SeasonAnalytics | null> {
   const client = getSupabaseServerClient();
 
@@ -418,15 +434,42 @@ export async function getSeasonAnalytics(
     episode_id: string;
   }>(
     episodeIds,
-    (chunk, from, to) =>
-      client
+    (chunk, from, to) => {
+      let query = client
         .from('publishes')
         .select('id, platform, episode_id')
-        .in('episode_id', chunk)
-        .order('id')
-        .range(from, to),
+        .in('episode_id', chunk);
+
+      // In the query, not on the totals afterwards: a summed total cannot
+      // be taken apart by platform again (FILM-1709 §3).
+      if (options?.platforms) {
+        query = query.in('platform', options.platforms);
+      }
+
+      return query.order('id').range(from, to);
+    },
     'season publishes',
   );
+
+  if (allPublishes.length === 0 && options?.platforms) {
+    return {
+      seasonId,
+      seasonNumber: season.number,
+      title: season.name || `Season ${season.number}`,
+      totalViews: 0,
+      viewsScope: EMPTY_VIEWS_SCOPE,
+      totalLikes: 0,
+      totalComments: 0,
+      totalShares: 0,
+      totalSaves: 0,
+      totalRevenueCents: 0,
+      avgEngagementRate: 0,
+      episodeCount: 0,
+      topEpisode: null,
+      lowestEpisode: null,
+      episodes: [],
+    };
+  }
 
   if (allPublishes.length === 0) {
     return {
@@ -490,7 +533,11 @@ export async function getSeasonAnalytics(
   let totalEngagement = 0;
   let engagedEpisodes = 0;
 
-  for (const ep of episodes) {
+  const counted = options?.platforms
+    ? episodes.filter((ep) => publishesByEpisode.has(ep.id))
+    : episodes;
+
+  for (const ep of counted) {
     const epPublishes = publishesByEpisode.get(ep.id) ?? [];
     let epViews: Views = null;
     let epLikes = 0;
@@ -589,7 +636,7 @@ export async function getSeasonAnalytics(
  */
 export async function getProjectAnalytics(
   projectId: string,
-  options?: { startDate?: Date; endDate?: Date },
+  options?: PlatformScopedRead,
 ): Promise<ProjectAnalytics | null> {
   const client = getSupabaseServerClient();
 
@@ -675,6 +722,7 @@ export async function getProjectAnalytics(
   const platformData = await queryPlatformBreakdown({
     projectId,
     ...dateFilters,
+    ...(options?.platforms ? { platforms: options.platforms } : {}),
   });
 
   const platformTotalsList = platformData
@@ -733,7 +781,7 @@ export interface ProjectDailyMetric {
  */
 export async function getProjectDailyMetrics(
   projectId: string,
-  options?: { startDate?: Date; endDate?: Date },
+  options?: PlatformScopedRead,
 ): Promise<ProjectDailyMetric[]> {
   // Verify membership before querying ClickHouse by project id. The row
   // alone is not enough: public projects are readable by any signed-in
@@ -755,6 +803,7 @@ export async function getProjectDailyMetrics(
   return queryDailyTimeSeriesByPlatform({
     projectId,
     ...dateFilters,
+    ...(options?.platforms ? { platforms: options.platforms } : {}),
   });
 }
 
@@ -796,23 +845,27 @@ export interface DeviceTypeBreakdown {
  */
 export async function getProjectAudienceData(
   projectId: string,
-  options?: { startDate?: Date; endDate?: Date },
+  options?: PlatformScopedRead,
 ): Promise<ProjectAudienceData | null> {
   const client = getSupabaseServerClient();
 
   // Get all publishes for this project. Paged: audience percentages are
   // view-weighted by the per-video totals these ids fetch, so truncation
   // skews the demographic and geographic splits, not just the totals.
-  const allPublishes = await fetchAllRows<{ id: string }>(
-    (from, to) =>
-      client
-        .from('publishes')
-        .select('id, episodes!inner(project_id)')
-        .eq('episodes.project_id', projectId)
-        .order('id')
-        .range(from, to),
-    'project audience publishes',
-  );
+  // Narrowed to the selected platforms here, so every split below is
+  // over their videos alone (FILM-1709).
+  const allPublishes = await fetchAllRows<{ id: string }>((from, to) => {
+    let query = client
+      .from('publishes')
+      .select('id, episodes!inner(project_id)')
+      .eq('episodes.project_id', projectId);
+
+    if (options?.platforms) {
+      query = query.in('platform', options.platforms);
+    }
+
+    return query.order('id').range(from, to);
+  }, 'project audience publishes');
 
   if (allPublishes.length === 0) {
     return null;
@@ -990,11 +1043,7 @@ export interface ContentListItem {
  */
 export async function getContentList(
   projectId: string,
-  options?: {
-    platforms?: string[];
-    startDate?: Date;
-    endDate?: Date;
-  },
+  options?: PlatformScopedRead,
 ): Promise<ContentListItem[]> {
   const client = getSupabaseServerClient();
 
@@ -1028,7 +1077,7 @@ export async function getContentList(
       .eq('episodes.project_id', projectId)
       .not('published_at', 'is', null);
 
-    if (options?.platforms && options.platforms.length > 0) {
+    if (options?.platforms) {
       query = query.in('platform', options.platforms);
     }
     if (options?.startDate) {

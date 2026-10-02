@@ -4,7 +4,11 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { type ObservedCoverageRow, capabilityFor } from '@kit/clickhouse';
+import {
+  ANALYTICS_PLATFORMS,
+  type ObservedCoverageRow,
+  capabilityFor,
+} from '@kit/clickhouse';
 
 import { CoverageStrip } from '../src/components/coverage-strip';
 import { MetricCards } from '../src/components/metric-cards';
@@ -127,7 +131,10 @@ describe('the platform filter', () => {
         selected={['youtube']}
         onChange={onChange}
         available={['youtube', 'tiktok']}
-        reasons={{ instagram: 'Instagram: not connected.' }}
+        reasons={{
+          instagram:
+            'Instagram: not connected. Connect a channel in settings to include it.',
+        }}
       />,
     );
 
@@ -139,7 +146,9 @@ describe('the platform filter', () => {
 
     expect(instagram.getAttribute('data-available')).toBe('false');
     expect(instagram.className).toContain('opacity-60');
-    expect(instagram.textContent).toContain('Instagram: not connected.');
+    expect(instagram.textContent).toContain(
+      'Instagram: not connected. Connect a channel in settings to include it.',
+    );
 
     fireEvent.click(instagram.querySelector('button[role="checkbox"]')!);
 
@@ -160,7 +169,7 @@ describe('the platform filter', () => {
     fireEvent.click(screen.getByText('Platforms'));
     fireEvent.click(screen.getByText('All'));
 
-    expect(onChange).toHaveBeenCalledWith(['youtube', 'tiktok', 'instagram']);
+    expect(onChange).toHaveBeenCalledWith([...ANALYTICS_PLATFORMS]);
   });
 });
 
@@ -236,6 +245,23 @@ describe('the MetricCards', () => {
       chipOf(container.querySelector('[data-test="metric-card-revenue"]')!)
         ?.textContent,
     ).toBe('Not yet supported');
+  });
+
+  it('say views are not measured when no row behind the total has one', () => {
+    const { container } = render(
+      <MetricCards
+        data={{ ...totals, views: null }}
+        previousData={null}
+        isLoading={false}
+        viewsScope={null}
+      />,
+    );
+    const views = container.querySelector('[data-test="metric-card-views"]')!;
+
+    expect(views.querySelector('[data-test="metric-value"]')).toBeNull();
+    expect(
+      views.querySelector('[data-test="metric-not-measured"]')?.textContent,
+    ).toBe('Not measured');
   });
 
   it('render without a chip on a page with no coverage provider', () => {

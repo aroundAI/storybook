@@ -2,13 +2,14 @@
 
 import { z } from 'zod';
 
-import { ANALYTICS_PLATFORMS } from '@kit/clickhouse';
 import { querySubscriberSeries } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
 import { fetchAllRows } from '@kit/shared/pagination';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { isSelected } from '../lib/platform-selection';
+import { PlatformSelectionSchema } from '../lib/schemas/platforms.schema';
 import { listProjectChannels } from './channels';
 import { assertScopeAccess } from './scope-access';
 
@@ -21,9 +22,9 @@ const ScopeSchema = z
     projectId: z.string().uuid().optional(),
     accountId: z.string().uuid().optional(),
     connectionId: z.string().uuid().optional(),
-    // The Deep Dive's platform switcher (FILM-1707). Listed, not passed
-    // through: zod strips a key the schema does not name.
-    platform: z.enum(ANALYTICS_PLATFORMS).optional(),
+    // The page's platform filter (FILM-1709). Listed, not passed through:
+    // zod strips a key the schema does not name.
+    platforms: PlatformSelectionSchema.optional(),
   })
   .refine((scope) => scope.projectId || scope.accountId, {
     message: 'projectId or accountId is required',
@@ -57,7 +58,9 @@ async function resolveConnectionIds(
     );
 
     ids = channels
-      .filter((c) => !scope.platform || c.platform === scope.platform)
+      .filter(
+        (c) => !scope.platforms || isSelected(scope.platforms, c.platform),
+      )
       .map((c) => c.connectionId);
   } else {
     if (!accountId) return [];
@@ -71,8 +74,8 @@ async function resolveConnectionIds(
         .eq('is_active', true)
         .eq('account_id', accountId);
 
-      // The Deep Dive's platform switcher (FILM-1707), like the channel.
-      if (scope.platform) query = query.eq('platform', scope.platform);
+      // The page's platform filter (FILM-1709), like the channel.
+      if (scope.platforms) query = query.in('platform', scope.platforms);
 
       return query.order('id').range(rangeFrom, rangeTo);
     }, 'subscriber series connections');

@@ -12,6 +12,7 @@ import {
   sumTotalsByChunk,
 } from './chunked';
 import { getClickHouseClient, isClickHouseEnabled } from './client';
+import { assertPlatformSelection } from './lib/data-provenance';
 import { PLATFORM_ENUM_TYPE } from './lib/platform-enum';
 import { addViews } from './lib/views';
 import { FACEBOOK_DENOMINATOR_COLUMNS } from './types';
@@ -298,7 +299,11 @@ function buildWhereClause(filters: QueryFilters): {
     params.videoIds = filters.videoIds;
   }
 
-  if (filters.platforms && filters.platforms.length > 0) {
+  // Present means "these platforms": an empty list is refused, not read as
+  // every platform (FILM-1709). The Enum is the column's own, built from
+  // the list the guard checks against.
+  if (filters.platforms !== undefined) {
+    assertPlatformSelection(filters.platforms);
     conditions.push(`platform IN {platforms: Array(${PLATFORM_ENUM_TYPE})}`);
     params.platforms = filters.platforms;
   }
