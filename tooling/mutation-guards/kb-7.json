@@ -28,8 +28,8 @@
     {
       "name": "KB-7 delete action no longer checks the status",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
-      "find": "      assertCanDelete(context.status);\n",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
+      "find": "  assertCanDelete(context.status);\n",
       "replace": "",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-actions.test.ts",
@@ -38,8 +38,8 @@
     {
       "name": "KB-7 delete write no longer conditioned on the status",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
-      "find": "        .in('status', ['planned', 'abandoned'])\n",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
+      "find": "    .in('status', ['planned', 'abandoned'])\n",
       "replace": "",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-actions.test.ts",
@@ -48,9 +48,9 @@
     {
       "name": "KB-8 re-measure also runs for an age-bounded metric",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
-      "find": "        isWatchedMetricKey(metric) &&\n        WATCHED_METRICS[metric].windowed\n",
-      "replace": "        isWatchedMetricKey(metric)\n",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
+      "find": "    isWatchedMetricKey(metric) &&\n    WATCHED_METRICS[metric].windowed\n",
+      "replace": "    isWatchedMetricKey(metric)\n",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-actions.test.ts",
       "pattern": "age-bounded"
@@ -58,9 +58,9 @@
     {
       "name": "KB-8 baseline not measured again at conclusion",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
-      "find": "        result.baselineRemeasured = await resolveWatchedMetric({",
-      "replace": "        void await resolveWatchedMetric({",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
+      "find": "    result.baselineRemeasured = await resolveWatchedMetric({",
+      "replace": "    void await resolveWatchedMetric({",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-actions.test.ts",
       "pattern": "keeps it beside the result"

@@ -79,7 +79,7 @@ notes: |
     rate is computed without recording which denominator definition it
     used".
   - FILM-1713 met its own half: `computeMeasure` returns a value stamped with
-    a `DenominatorStamp` (packages/clickhouse/src/lib/measures.ts:218):
+    a `DenominatorStamp` (packages/clickhouse/src/lib/measures.ts:260):
     column, preferred or fallback, the view definitions with `effectiveFrom`,
     and `bridged` when engaged views carried it across a change. But the
     surfaces were kept on `displayedEngagementRatePercent`, the one
@@ -114,14 +114,14 @@ notes: |
 
   | Read | Site |
   |---|---|
-  | getEpisodeAnalytics | packages/features/content-analytics/src/server/aggregation-queries.ts:287 |
+  | getEpisodeAnalytics | packages/features/content-analytics/src/server/aggregation-queries.ts:337 |
   | getSeasonAnalytics | aggregation-queries.ts:453 |
   | getContentList (per row) | aggregation-queries.ts:1003 |
-  | buildTopContent (account dashboard) | packages/features/content-analytics/src/server/account-dashboard-actions.ts:360 |
-  | getLanguagePerformance | packages/features/content-analytics/src/server/language-analytics.ts:371 |
+  | buildTopContent (account dashboard) | packages/features/content-analytics/src/server/account-dashboard-actions.ts:383 |
+  | getLanguagePerformance | packages/features/content-analytics/src/server/language-analytics.ts:376 |
   | getPlatformLanguageMatrix | language-analytics.ts:419 |
   | getContentTypeComparison | language-analytics.ts:518 |
-  | the company dashboard's total, computed in the component until #549 moved it into getAccountDashboardData | packages/features/content-analytics/src/server/account-dashboard-actions.ts:230 (X's unmeasured shares add none, FILM-1727) |
+  | the company dashboard's total, computed in the component until #549 moved it into getAccountDashboardData | packages/features/content-analytics/src/server/account-dashboard-actions.ts:253 (X's unmeasured shares add none, FILM-1727) |
   | getShortsSourcePerformance (per short) — **not** through the one definition: (likes + comments) / views, without shares | language-analytics.ts:593 |
 
   The last row escaped FILM-1713's class guard, presumably because its
@@ -135,7 +135,7 @@ notes: |
   |---|---|
   | getRevenueSummaryAction → createRevenueSummaryFold (all-in and ads RPM per currency) | packages/features/content-analytics/src/lib/revenue-by-currency.ts:148 |
   | getTopContentByRevenueAction → createTopContentFold (per item) | revenue-by-currency.ts:418 |
-  | segment RPM: segment-actions.ts:375 → segmentRpm → pooledRpmCents | packages/features/content-analytics/src/lib/segment-revenue.ts:144, packages/clickhouse/src/lib/segment-stats.ts:69 |
+  | segment RPM: segment-actions.ts:375 → segmentRpm → pooledRpmCents | packages/features/content-analytics/src/lib/segment-revenue.ts:148, packages/clickhouse/src/lib/segment-stats.ts:70 |
 
   Others over views:
 

@@ -227,8 +227,8 @@
     {
       "name": "GN12 the analysis is read before the scope is proven",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/genome-actions.ts",
-      "find": "    await assertScopeAccess(scope);\n",
+      "file": "packages/features/content-analytics/src/server/genome-service.ts",
+      "find": "  await assertScopeAccess(client, scope);\n",
       "replace": "",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/genome-actions.test.ts",
@@ -237,8 +237,8 @@
     {
       "name": "GN13 analytics off reads as an empty analysis",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/genome-actions.ts",
-      "find": "    if (!isClickHouseEnabled()) {\n      return { status: 'refused', refusal: { kind: 'analytics_off' } };\n    }",
+      "file": "packages/features/content-analytics/src/server/genome-service.ts",
+      "find": "  if (!isClickHouseEnabled()) {\n    return { status: 'refused', refusal: { kind: 'analytics_off' } };\n  }",
       "replace": "",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/genome-actions.test.ts",
@@ -257,9 +257,9 @@
     {
       "name": "GN23 a cohort across a view change is scored on views",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/genome-actions.ts",
-      "find": "        : await read(viewsDenominator);",
-      "replace": "        : onViews;",
+      "file": "packages/features/content-analytics/src/server/genome-service.ts",
+      "find": "      : await read(viewsDenominator);",
+      "replace": "      : onViews;",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/genome-actions.test.ts",
       "pattern": "reads a cohort spanning a change in what a view is on engaged views"

@@ -30,10 +30,6 @@ const state: {
   rpcCalls: [],
 };
 
-vi.mock('@kit/supabase/server-client', () => ({
-  getSupabaseServerClient: () => client,
-}));
-
 const client = {
   from: (table: string) => ({
     select: () => ({
@@ -118,9 +114,9 @@ describe('assertScopeAccess', () => {
   it('goes through the membership check for a project scope', async () => {
     state.project = { account_id: 'other-account' };
 
-    await expect(assertScopeAccess({ projectId: 'p1' })).rejects.toThrow(
-      'Project not found or access denied',
-    );
+    await expect(
+      assertScopeAccess(asClient, { projectId: 'p1' }),
+    ).rejects.toThrow('Project not found or access denied');
   });
 
   it('still refuses a channel from another account once access is proven', async () => {
@@ -129,7 +125,7 @@ describe('assertScopeAccess', () => {
     state.connection = { id: 'c1', account_id: 'a2' };
 
     await expect(
-      assertScopeAccess({ projectId: 'p1', connectionId: 'c1' }),
+      assertScopeAccess(asClient, { projectId: 'p1', connectionId: 'c1' }),
     ).rejects.toThrow('Channel not found or not part of this scope');
   });
 
@@ -139,7 +135,7 @@ describe('assertScopeAccess', () => {
     state.connection = { id: 'c1', account_id: 'a1' };
 
     await expect(
-      assertScopeAccess({ projectId: 'p1', connectionId: 'c1' }),
+      assertScopeAccess(asClient, { projectId: 'p1', connectionId: 'c1' }),
     ).resolves.toBe('a1');
   });
 });

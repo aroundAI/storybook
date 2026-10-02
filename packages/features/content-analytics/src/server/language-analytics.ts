@@ -41,6 +41,7 @@ import {
 } from '../lib/language-labels';
 import { compareViewsDesc, viewsToAdd } from '../lib/views';
 import type { Views } from '../lib/views';
+import type { AnalyticsClient } from './analytics-client';
 import { assertScopeAccess } from './scope-access';
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -182,6 +183,7 @@ export interface ContentTypeComparison {
  * made here instead; "no access" answers with nothing, as it always did.
  */
 async function resolveProjectVideos(
+  client: AnalyticsClient,
   projectId: string,
   dimensionInput: unknown,
   contentType?: string,
@@ -190,7 +192,7 @@ async function resolveProjectVideos(
   const dimension = resolveLanguageDimension(dimensionInput);
 
   try {
-    await assertScopeAccess({ projectId });
+    await assertScopeAccess(client, { projectId });
   } catch {
     return null;
   }
@@ -228,6 +230,8 @@ async function resolveProjectVideos(
 export async function getLanguagePerformance(
   projectId: string,
   options?: LanguageReadOptions,
+  // The caller's client (FILM-1906); the cookie session's when none is given.
+  client: AnalyticsClient = getSupabaseServerClient(),
 ): Promise<LanguagePerformance[]> {
   const endDate = options?.endDate || new Date();
   const startDate =
@@ -242,6 +246,7 @@ export async function getLanguagePerformance(
   );
 
   const resolved = await resolveProjectVideos(
+    client,
     projectId,
     options?.dimension,
     undefined,
@@ -404,12 +409,14 @@ export async function getLanguagePerformance(
 export async function getPlatformLanguageMatrix(
   projectId: string,
   options?: LanguageReadOptions,
+  client: AnalyticsClient = getSupabaseServerClient(),
 ): Promise<PlatformLanguageEntry[]> {
   const endDate = options?.endDate || new Date();
   const startDate =
     options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
 
   const resolved = await resolveProjectVideos(
+    client,
     projectId,
     options?.dimension,
     undefined,
@@ -516,12 +523,14 @@ export async function getPlatformLanguageMatrix(
 export async function getContentTypeComparison(
   projectId: string,
   options?: Omit<LanguageReadOptions, 'dimension'>,
+  client: AnalyticsClient = getSupabaseServerClient(),
 ): Promise<ContentTypeComparison> {
   const endDate = options?.endDate || new Date();
   const startDate =
     options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
 
   const resolved = await resolveProjectVideos(
+    client,
     projectId,
     undefined,
     undefined,
@@ -676,6 +685,7 @@ export interface ShortsSourcePerformance {
 export async function getShortsSourcePerformance(
   projectId: string,
   options?: LanguageReadOptions & { limit?: number },
+  client: AnalyticsClient = getSupabaseServerClient(),
 ): Promise<ShortsSourcePerformance[]> {
   const endDate = options?.endDate || new Date();
   const startDate =
@@ -683,6 +693,7 @@ export async function getShortsSourcePerformance(
   const limit = options?.limit || 10;
 
   const resolved = await resolveProjectVideos(
+    client,
     projectId,
     options?.dimension,
     'short',
@@ -741,6 +752,7 @@ export async function getShortsSourcePerformance(
   // Episode titles are not a dimension, so they stay in Postgres — looked
   // up for the rows that survived the cut, not for the whole library.
   const episodeTitles = await fetchEpisodeTitles(
+    client,
     top.flatMap((short) =>
       short.sourceEpisodeId ? [short.sourceEpisodeId] : [],
     ),
@@ -755,14 +767,13 @@ export async function getShortsSourcePerformance(
 }
 
 async function fetchEpisodeTitles(
+  client: AnalyticsClient,
   episodeIds: string[],
 ): Promise<Map<string, string>> {
   const titles = new Map<string, string>();
   const uniqueIds = [...new Set(episodeIds)];
 
   if (uniqueIds.length === 0) return titles;
-
-  const client = getSupabaseServerClient();
 
   const episodes = await fetchAllByIds<{ id: string; title: string }>(
     uniqueIds,
@@ -809,12 +820,14 @@ export interface GeographyByLanguage {
 export async function getGeographyByLanguage(
   projectId: string,
   options?: LanguageReadOptions,
+  client: AnalyticsClient = getSupabaseServerClient(),
 ): Promise<GeographyByLanguage[]> {
   const endDate = options?.endDate || new Date();
   const startDate =
     options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
 
   const resolved = await resolveProjectVideos(
+    client,
     projectId,
     options?.dimension,
     undefined,
@@ -914,12 +927,14 @@ export interface LanguageTrendEntry {
 export async function getLanguageTrend(
   projectId: string,
   options?: LanguageReadOptions,
+  client: AnalyticsClient = getSupabaseServerClient(),
 ): Promise<LanguageTrendEntry[]> {
   const endDate = options?.endDate || new Date();
   const startDate =
     options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
 
   const resolved = await resolveProjectVideos(
+    client,
     projectId,
     options?.dimension,
     undefined,
@@ -983,9 +998,10 @@ export async function getLanguageTrend(
 export async function getLanguageDivergence(
   projectId: string,
   options?: Pick<LanguageReadOptions, 'platforms'>,
+  client: AnalyticsClient = getSupabaseServerClient(),
 ): Promise<LanguageDivergence | null> {
   try {
-    await assertScopeAccess({ projectId });
+    await assertScopeAccess(client, { projectId });
   } catch {
     return null;
   }

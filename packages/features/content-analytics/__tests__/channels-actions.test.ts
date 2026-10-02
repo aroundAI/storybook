@@ -47,7 +47,9 @@ describe('listChannelsAction', () => {
   it('lists the channels a project publishes to', async () => {
     await expect(listChannelsAction({ projectId })).resolves.toEqual([channel]);
 
-    expect(mocks.assertScopeAccess).toHaveBeenCalledWith({ projectId });
+    expect(mocks.assertScopeAccess).toHaveBeenCalledWith(expect.anything(), {
+      projectId,
+    });
     expect(mocks.listProjectChannels).toHaveBeenCalledOnce();
     expect(mocks.listAccountChannels).not.toHaveBeenCalled();
   });
@@ -55,7 +57,9 @@ describe('listChannelsAction', () => {
   it("lists an account's channels when no project is given", async () => {
     await listChannelsAction({ accountId });
 
-    expect(mocks.assertScopeAccess).toHaveBeenCalledWith({ accountId });
+    expect(mocks.assertScopeAccess).toHaveBeenCalledWith(expect.anything(), {
+      accountId,
+    });
     expect(mocks.listAccountChannels).toHaveBeenCalledOnce();
     expect(mocks.listProjectChannels).not.toHaveBeenCalled();
   });

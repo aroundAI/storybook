@@ -164,8 +164,8 @@
     {
       "name": "RD17 the revenue summary records no platform",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/revenue-actions.ts",
-      "find": "        if (perVideoTotals.has(id)) pooledPlatforms.add(platform);",
+      "file": "packages/features/content-analytics/src/server/revenue-service.ts",
+      "find": "      if (perVideoTotals.has(id)) pooledPlatforms.add(platform);",
       "replace": "",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/rate-denominator-revenue-reads.test.ts",
@@ -254,9 +254,9 @@
     {
       "name": "RD26 the genome returns its rate without the record",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/genome-actions.ts",
-      "find": "      denominator: recordCohortViewsDenominator({\n        ...cohort,\n        denominator: viewsDenominator,\n      }),",
-      "replace": "      denominator: null,",
+      "file": "packages/features/content-analytics/src/server/genome-service.ts",
+      "find": "    denominator: recordCohortViewsDenominator({\n      ...cohort,\n      denominator: viewsDenominator,\n    }),",
+      "replace": "    denominator: null,",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/genome-actions.test.ts",
       "pattern": "spanning a change"

@@ -154,7 +154,7 @@ const NOT_A_RATE_OVER_VIEWS: Record<string, { count: number; why: string }> = {
     count: 2,
     why: 'Segment RPM, declared and pooled; its row carries rpmDenominator.',
   },
-  [at(ANALYTICS, 'server', 'segment-actions.ts')]: {
+  [at(ANALYTICS, 'server', 'segment-service.ts')]: {
     count: 1,
     why: 'A segment row’s RPM, set beside segmentRpmDenominator.',
   },

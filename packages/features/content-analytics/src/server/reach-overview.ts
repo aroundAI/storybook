@@ -27,6 +27,7 @@ import {
   totalCounts,
   windowBounds,
 } from '../lib/reach-overview';
+import type { AnalyticsClient } from './analytics-client';
 import { readsChannelReach } from './channel-reach-windows';
 
 /** How far back the history chart reaches. */
@@ -71,18 +72,37 @@ export interface ReachOverview {
   posts: PostRow[];
 }
 
-export async function loadReachOverview(input: {
+export interface ReachOverviewInput {
   accountId: string;
   window: ReachWindow;
   now?: Date;
-}): Promise<ReachOverview> {
+}
+
+/**
+ * The reach page's read: the cookie-session wrapper over
+ * `loadReachOverviewService` (FILM-1906).
+ */
+export async function loadReachOverview(
+  input: ReachOverviewInput,
+): Promise<ReachOverview> {
+  return loadReachOverviewService(getSupabaseServerClient(), input);
+}
+
+/**
+ * Reach across an account's channels and posts, as a service over the
+ * caller's client (FILM-1906). Access is RLS's: the connections and
+ * projects are read through the client, and every ClickHouse read is
+ * bounded by the project ids that read returned.
+ */
+export async function loadReachOverviewService(
+  client: AnalyticsClient,
+  input: ReachOverviewInput,
+): Promise<ReachOverview> {
   const now = input.now ?? new Date();
   const { from, to } = windowBounds(input.window, now);
   const historyFrom = isoDay(
     new Date(Date.parse(`${to}T00:00:00Z`) - HISTORY_DAYS * 86_400_000),
   );
-
-  const client = getSupabaseServerClient();
 
   const connections = (
     await fetchAllRows<{
@@ -126,7 +146,7 @@ export async function loadReachOverview(input: {
       ),
     ),
     loadCounts(projectIds, from, to),
-    loadPosts(projectIds, from, to),
+    loadPosts(client, projectIds, from, to),
   ]);
 
   const platforms = [
@@ -243,13 +263,12 @@ async function loadCounts(
 }
 
 async function loadPosts(
+  client: AnalyticsClient,
   projectIds: string[],
   from: string,
   to: string,
 ): Promise<PostRow[]> {
   if (projectIds.length === 0) return [];
-
-  const client = getSupabaseServerClient();
 
   const publishes = (
     await fetchAllByIds<{

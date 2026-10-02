@@ -114,9 +114,9 @@
     {
       "name": "The retention drill-down times the cliff against the episode",
       "kind": "e2e",
-      "file": "packages/features/content-analytics/src/server/diagnostics-actions.ts",
-      "find": "        duration: resolveAssetDuration(publish.duration_seconds),",
-      "replace": "        duration: resolveAssetDuration(1320),",
+      "file": "packages/features/content-analytics/src/server/diagnostics-service.ts",
+      "find": "    duration: resolveAssetDuration(publish.duration_seconds),",
+      "replace": "    duration: resolveAssetDuration(1320),",
       "spec": "tests/deep-dive/asset-duration-evidence.spec.ts",
       "grep": "times the cliff against the asset",
       "env": {

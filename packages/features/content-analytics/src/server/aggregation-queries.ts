@@ -41,6 +41,7 @@ import {
   viewsWindowLabel,
 } from '../lib/views';
 import type { Views, ViewsScope } from '../lib/views';
+import type { AnalyticsClient } from './analytics-client';
 import { assertProjectAccess } from './scope-access';
 
 /**
@@ -244,9 +245,9 @@ function addMeasured(
 export async function getEpisodeAnalytics(
   episodeId: string,
   dateRange?: { start: Date; end: Date },
+  // The caller's client (FILM-1906); the cookie session's when none is given.
+  client: AnalyticsClient = getSupabaseServerClient(),
 ): Promise<EpisodeAnalytics | null> {
-  const client = getSupabaseServerClient();
-
   // Get episode details
   const { data: episode, error: episodeError } = await client
     .from('episodes')
@@ -431,9 +432,8 @@ interface PlatformScopedRead {
 export async function getSeasonAnalytics(
   seasonId: string,
   options?: PlatformScopedRead,
+  client: AnalyticsClient = getSupabaseServerClient(),
 ): Promise<SeasonAnalytics | null> {
-  const client = getSupabaseServerClient();
-
   const { data: season, error: seasonError } = await client
     .from('seasons')
     .select('id, number, name')
@@ -712,9 +712,8 @@ export async function getSeasonAnalytics(
 export async function getProjectAnalytics(
   projectId: string,
   options?: PlatformScopedRead,
+  client: AnalyticsClient = getSupabaseServerClient(),
 ): Promise<ProjectAnalytics | null> {
-  const client = getSupabaseServerClient();
-
   // Membership, not row visibility: a public project's row is readable by
   // anyone signed in, and the platform breakdown below reads ClickHouse by
   // project id (FILM-1615 EDD, F-0).
@@ -763,7 +762,7 @@ export async function getProjectAnalytics(
   const seasonDenominators: RecordedRate['denominator'][] = [];
 
   for (const s of seasons || []) {
-    const analytics = await getSeasonAnalytics(s.id, options);
+    const analytics = await getSeasonAnalytics(s.id, options, client);
     if (analytics) {
       seasonScopes.push(analytics.viewsScope);
       seasonAnalyticsList.push({
@@ -866,12 +865,11 @@ export interface ProjectDailyMetric {
 export async function getProjectDailyMetrics(
   projectId: string,
   options?: PlatformScopedRead,
+  client: AnalyticsClient = getSupabaseServerClient(),
 ): Promise<ProjectDailyMetric[]> {
   // Verify membership before querying ClickHouse by project id. The row
   // alone is not enough: public projects are readable by any signed-in
   // user (FILM-1615 EDD, F-0).
-  const client = getSupabaseServerClient();
-
   if (!(await canAccessProject(client, projectId))) {
     return [];
   }
@@ -930,9 +928,8 @@ export interface DeviceTypeBreakdown {
 export async function getProjectAudienceData(
   projectId: string,
   options?: PlatformScopedRead,
+  client: AnalyticsClient = getSupabaseServerClient(),
 ): Promise<ProjectAudienceData | null> {
-  const client = getSupabaseServerClient();
-
   // Get all publishes for this project. Paged: audience percentages are
   // view-weighted by the per-video totals these ids fetch, so truncation
   // skews the demographic and geographic splits, not just the totals.
@@ -1129,9 +1126,8 @@ export interface ContentListItem {
 export async function getContentList(
   projectId: string,
   options?: PlatformScopedRead,
+  client: AnalyticsClient = getSupabaseServerClient(),
 ): Promise<ContentListItem[]> {
-  const client = getSupabaseServerClient();
-
   // Get all publishes for this project through episodes.project_id: an
   // episode need not be in a season (season_id is nullable, KB-48 R9).
   // Paged: the account dashboard reduces this list to a top-N, so a short

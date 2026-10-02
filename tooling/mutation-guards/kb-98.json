@@ -14,8 +14,8 @@
     {
       "name": "KB-98 setPublishTags clears tags before checking them",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/taxonomy-actions.ts",
-      "find": "    await assertTagsInPublishAccount(client, [publishId], tagIds);\n",
+      "file": "packages/features/content-analytics/src/server/taxonomy-service.ts",
+      "find": "  await assertTagsInPublishAccount(client, [publishId], tagIds);\n",
       "replace": "",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/tag-scope.test.ts",
@@ -24,8 +24,8 @@
     {
       "name": "KB-98 bulk tagging clears tags before checking them",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/taxonomy-actions.ts",
-      "find": "    await assertTagsInPublishAccount(client, publishIds, tagIds);\n",
+      "file": "packages/features/content-analytics/src/server/taxonomy-service.ts",
+      "find": "  await assertTagsInPublishAccount(client, publishIds, tagIds);\n",
       "replace": "",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/tag-scope.test.ts",

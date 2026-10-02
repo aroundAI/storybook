@@ -3,7 +3,7 @@
   "mutations": [
     {
       "name": "A1 link write errors ignored",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
       "find": "  if (result.error) {\n    throw new Error(`Failed to ${what}: ${result.error.message}`);\n  }",
       "replace": "  void result; void what;",
       "kind": "unit",
@@ -13,7 +13,7 @@
     },
     {
       "name": "A2 link read error ignored",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
       "find": "  if (error) {\n    throw new Error(`Failed to read linked videos: ${error.message}`);\n  }",
       "replace": "  void error;",
       "kind": "unit",
@@ -23,9 +23,9 @@
     },
     {
       "name": "A1b no cleanup after failed link",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
-      "find": "        const cleanup = await client\n          .from('analytics_experiments')\n          .delete()\n          .eq('id', experiment.id);",
-      "replace": "        const cleanup = { error: null as { message: string } | null };",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
+      "find": "    const cleanup = await client\n      .from('analytics_experiments')\n      .delete()\n      .eq('id', experiment.id);",
+      "replace": "    const cleanup = { error: null as { message: string } | null };",
       "kind": "unit",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-actions.test.ts",
@@ -61,8 +61,8 @@
     },
     {
       "name": "B2 restart allowed (action)",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
-      "find": "    assertCanStart(context.status);\n",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
+      "find": "  assertCanStart(context.status);\n",
       "replace": "",
       "kind": "unit",
       "cwd": "packages/features/content-analytics",
@@ -71,8 +71,8 @@
     },
     {
       "name": "B3 conclude rules removed",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
-      "find": "    assertCanConclude(context.status, context.started_at, ended);\n",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
+      "find": "  assertCanConclude(context.status, context.started_at, ended);\n",
       "replace": "",
       "kind": "unit",
       "cwd": "packages/features/content-analytics",
@@ -135,7 +135,7 @@
     },
     {
       "name": "Pinned totals reordered",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
       "find": "  const totals: ExperimentSnapshot['totals'] = {\n    views: 0,\n    likes: 0,",
       "replace": "  const totals: ExperimentSnapshot['totals'] = {\n    likes: 0,\n    views: 0,",
       "kind": "unit",
@@ -165,7 +165,7 @@
     },
     {
       "name": "D3 note join dropped",
-      "file": "packages/features/content-analytics/src/server/video-log-actions.ts",
+      "file": "packages/features/content-analytics/src/server/video-log-service.ts",
       "find": "analyticsNote: notesByPublish.get(row.videoId)?.note ?? null,",
       "replace": "analyticsNote: null,",
       "kind": "unit",
@@ -184,7 +184,7 @@
     },
     {
       "name": "E2 canEditNote constant",
-      "file": "packages/features/content-analytics/src/server/video-log-actions.ts",
+      "file": "packages/features/content-analytics/src/server/video-log-service.ts",
       "find": "canEdit: editableIds.has(row.id)",
       "replace": "canEdit: false",
       "kind": "unit",
@@ -194,9 +194,9 @@
     },
     {
       "name": "Note refusal reported as save",
-      "file": "packages/features/content-analytics/src/server/publish-notes-actions.ts",
-      "find": "      if (saved) {",
-      "replace": "      if (saved || true) {",
+      "file": "packages/features/content-analytics/src/server/publish-notes-service.ts",
+      "find": "  if (saved) {",
+      "replace": "  if (saved || true) {",
       "kind": "unit",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/publish-notes-actions.test.ts",
@@ -222,8 +222,8 @@
     },
     {
       "name": "R1 abandon a concluded experiment",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
-      "find": "    assertCanAbandon(context.status);\n",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
+      "find": "  assertCanAbandon(context.status);\n",
       "replace": "",
       "kind": "unit",
       "cwd": "packages/features/content-analytics",
@@ -232,7 +232,7 @@
     },
     {
       "name": "R2 write without status condition",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
       "find": "from.length === 1 ? query.eq('status', from[0]!) : query.in('status', from);",
       "replace": "query;",
       "kind": "unit",
@@ -242,7 +242,7 @@
     },
     {
       "name": "R3 delete-then-insert in the action",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
       "find": "      await client.rpc('replace_experiment_publishes', {",
       "replace": "      await client.from('experiment_publishes').delete().eq('experiment_id', experimentId) && await client.rpc('replace_experiment_publishes', {",
       "kind": "unit",
@@ -252,18 +252,18 @@
     },
     {
       "name": "R6 list unpaged",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
-      "find": "        .order('id', { ascending: true })\n        .range(from, to);\n    }, 'experiments');",
-      "replace": "        .order('id', { ascending: true })\n        .range(0, 999);\n    }, 'experiments');",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
+      "find": "      .order('id', { ascending: true })\n      .range(from, to);\n  }, 'experiments');",
+      "replace": "      .order('id', { ascending: true })\n      .range(0, 999);\n  }, 'experiments');",
       "kind": "unit",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-list-paging.test.ts"
     },
     {
       "name": "R7 failed cleanup swallowed",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
-      "find": "      if (cleanup.error) {",
-      "replace": "      if (false) {",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
+      "find": "    if (cleanup.error) {",
+      "replace": "    if (false) {",
       "kind": "unit",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-actions.test.ts",
@@ -332,15 +332,15 @@
     {
       "name": "R2e stale tab restart (both start guards)",
       "kind": "e2e",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
       "edits": [
         {
-          "find": "      assertCanStart(context.status);\n",
+          "find": "  assertCanStart(context.status);\n",
           "replace": ""
         },
         {
-          "find": "        experimentId,\n        ['planned'],",
-          "replace": "        experimentId,\n        ['planned', 'running'],"
+          "find": "    experimentId,\n    ['planned'],",
+          "replace": "    experimentId,\n    ['planned', 'running'],"
         }
       ],
       "spec": "tests/experiments/experiments-failures.spec.ts",
@@ -367,7 +367,7 @@
     {
       "name": "F4 abandon ends before its start",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
       "find": "context.started_at && requested < context.started_at",
       "replace": "false",
       "cwd": "packages/features/content-analytics",
@@ -377,7 +377,7 @@
     {
       "name": "F5 picker loads everything",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
       "find": ".limit(LINKABLE_PAGE_SIZE + 1);",
       "replace": ".limit(100_000);",
       "cwd": "packages/features/content-analytics",
@@ -465,8 +465,8 @@
     {
       "name": "G5 start write ignores a changed metric",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
-      "find": "          metric_watched: context.metric_watched,\n          review_window_days: context.review_window_days,\n",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
+      "find": "      metric_watched: context.metric_watched,\n      review_window_days: context.review_window_days,\n",
       "replace": "",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-actions.test.ts",
@@ -485,8 +485,8 @@
     {
       "name": "G6b start date not checked",
       "kind": "unit",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
-      "find": "      if (startedAt) assertCallerToday(startedAt);\n",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
+      "find": "  if (startedAt) assertCallerToday(startedAt);\n",
       "replace": "",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-actions.test.ts",
@@ -525,7 +525,7 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-actions.test.ts",
       "name": "H8 update that matched nothing reported as saved",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
       "find": "if (!updated || updated.length === 0) {",
       "replace": "if (updated === undefined) {",
       "pattern": "refuses an update that matched no row"
@@ -535,7 +535,7 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/experiment-actions.test.ts",
       "name": "H8b delete that removed nothing reported as done",
-      "file": "packages/features/content-analytics/src/server/experiment-actions.ts",
+      "file": "packages/features/content-analytics/src/server/experiment-service.ts",
       "find": "if (!deleted || deleted.length === 0) {",
       "replace": "if (deleted === undefined) {",
       "pattern": "refuses a delete that removed no row"

@@ -46,7 +46,7 @@ export const AUDIENCE_DIMENSION_READERS: Record<
   },
   follower_status: {
     status: 'read',
-    readBy: 'server/deep-dive-actions.ts',
+    readBy: 'server/deep-dive-service.ts',
     surface: 'Deep Dive › returning-viewer proxy',
   },
   city: {

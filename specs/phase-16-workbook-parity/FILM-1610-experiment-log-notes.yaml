@@ -124,13 +124,13 @@ acceptance_criteria:
     evidence: "apps/e2e/tests/experiments/experiments-manage.spec.ts:137, :227, :301, :365"
   - text: "A change is deleted only while planned or abandoned — by the table, the action and the page (KB-7, owner decision 2026-09-24)"
     met: true
-    evidence: "apps/web/supabase/tests/database/analytics-experiments-rls.test.sql:101; packages/features/content-analytics/src/server/experiment-actions.ts:832; apps/e2e/tests/experiments/experiments-manage.spec.ts:384"
+    evidence: "apps/web/supabase/tests/database/analytics-experiments-rls.test.sql:101; packages/features/content-analytics/src/server/experiment-actions.ts:120; apps/e2e/tests/experiments/experiments-manage.spec.ts:384"
   - text: "A refused edit or delete shows its own wording on a production build, and the dialog re-reads the change"
     met: true
     evidence: "apps/e2e/tests/experiments/experiments-manage.spec.ts:273, :427 (30 passed on a build:test server, 2026-09-24)"
   - text: "At conclusion the baseline window is measured again and kept beside the start's baseline; both are shown with their days of data and no comparison between them (KB-8, owner decision 2026-09-24)"
     met: true
-    evidence: "packages/features/content-analytics/src/server/experiment-actions.ts:579; apps/e2e/tests/experiments/experiments-manage-evidence.spec.ts:169 (6.0% on 2 of 30 days, then 4.5% on 3 of 30, against local ClickHouse)"
+    evidence: "packages/features/content-analytics/src/server/experiment-service.ts:582; apps/e2e/tests/experiments/experiments-manage-evidence.spec.ts:169 (6.0% on 2 of 30 days, then 4.5% on 3 of 30, against local ClickHouse)"
   - text: "Tags can be linked on create and edit; the second change logged links only its own tags (moved from FILM-1509)"
     met: true
     evidence: "apps/e2e/tests/experiments/experiments-manage.spec.ts:512, :138"

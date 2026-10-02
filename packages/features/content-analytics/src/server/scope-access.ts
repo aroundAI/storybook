@@ -3,7 +3,6 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { AnalyticsPlatform } from '@kit/clickhouse';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
  * Scope shared by the deep-dive and Video Log actions: project- or
@@ -36,12 +35,16 @@ export interface AnalyticsScope {
  * Returns the account the scope resolved to, which a project-scoped caller
  * would otherwise have to look up again. Callers that only need the check
  * ignore it.
+ *
+ * Takes the caller's client rather than building one (FILM-1906): the same
+ * check then answers for a cookie session and for an MCP principal's
+ * RLS-scoped client, and a service cannot be handed one client for its
+ * reads and have its access check quietly answer for another.
  */
 export async function assertScopeAccess(
+  client: Client,
   scope: AnalyticsScope,
 ): Promise<string | undefined> {
-  const client = getSupabaseServerClient();
-
   const scopeAccountId = scope.projectId
     ? await assertProjectAccess(client, scope.projectId)
     : await assertAccountAccess(client, scope.accountId!);

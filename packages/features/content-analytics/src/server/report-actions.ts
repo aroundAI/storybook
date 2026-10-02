@@ -24,11 +24,8 @@ import { calculateDateRange } from '../lib/report-date-range';
 import { calculateReportSummary } from '../lib/report-summary';
 import type {
   AnalyticsDataRow,
-  Branding,
   GeneratedReport,
-  GeneratedReportRecord,
   ReportMetric,
-  ReportPlatform,
   ScheduledReport,
 } from '../lib/report-types';
 import {
@@ -43,12 +40,16 @@ import {
 import {
   deleteGeneratedReportRow,
   findGeneratedReportPath,
-  listGeneratedReports,
   recordGeneratedReport,
 } from './report-history';
-import { removeReportFile, signReportUrl, storeReport } from './report-storage';
-
-const SIGNED_URL_EXPIRY_SECONDS = 3600;
+import {
+  SIGNED_URL_EXPIRY_SECONDS,
+  getGeneratedReportDownloadService,
+  getScheduledReportsService,
+  listGeneratedReportsService,
+  mapDbToScheduledReport,
+} from './report-service';
+import { removeReportFile, storeReport } from './report-storage';
 
 /** Retention curves fetched in parallel per batch. */
 const RETENTION_CONCURRENCY = 20;
@@ -386,17 +387,11 @@ const generateReport = enhanceAction(
 export const generateReportAction = returnRefusals(generateReport);
 
 /**
- * The account's generated reports, newest first, one page at a time
+ * The account's generated reports, newest first, one page at a time: the
+ * cookie-session wrapper over `listGeneratedReportsService` (FILM-1906).
  */
 const listGeneratedReportsForAccount = enhanceAction(
-  async function (
-    data,
-  ): Promise<{ reports: GeneratedReportRecord[]; hasMore: boolean }> {
-    return listGeneratedReports(getSupabaseServerClient(), data.accountId, {
-      limit: data.limit,
-      offset: data.offset,
-    });
-  },
+  async (data) => listGeneratedReportsService(getSupabaseServerClient(), data),
   {
     auth: true,
     schema: ListGeneratedReportsSchema,
@@ -408,25 +403,12 @@ export const listGeneratedReportsAction = returnRefusals(
 );
 
 /**
- * A fresh signed link for a report already generated
+ * A fresh signed link for a report already generated: the wrapper over
+ * `getGeneratedReportDownloadService` (FILM-1906).
  */
 const getGeneratedReportDownload = enhanceAction(
-  async function (data): Promise<{ downloadUrl: string; expiresAt: Date }> {
-    const client = getSupabaseServerClient();
-    const path = await findGeneratedReportPath(client, data.id);
-
-    if (!path) {
-      throw new ActionRefusal('That report is not in your history.');
-    }
-
-    const { url, expiresAt } = await signReportUrl(
-      client,
-      path,
-      SIGNED_URL_EXPIRY_SECONDS,
-    );
-
-    return { downloadUrl: url, expiresAt };
-  },
+  async (data) =>
+    getGeneratedReportDownloadService(getSupabaseServerClient(), data),
   {
     auth: true,
     schema: GeneratedReportIdSchema,
@@ -587,58 +569,13 @@ export const deleteScheduledReportAction = returnRefusals(
 );
 
 /**
- * Get all scheduled reports for an account
+ * Get all scheduled reports for an account: the cookie-session wrapper over
+ * `getScheduledReportsService` (FILM-1906).
  */
 export const getScheduledReportsAction = enhanceAction(
-  async function (data): Promise<ScheduledReport[]> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const client = getSupabaseServerClient() as SupabaseClient<any>;
-
-    const { data: reports, error } = await client
-      .from('scheduled_reports')
-      .select(
-        `
-        id, account_id, name, report_type, frequency, metrics, platforms,
-        project_ids, branding, recipients, next_run_at, last_run_at,
-        last_run_status, last_error, is_active, created_at, updated_at
-      `,
-      )
-      .eq('account_id', data.accountId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      throw new Error(`Failed to fetch scheduled reports: ${error.message}`);
-    }
-
-    return (reports || []).map(mapDbToScheduledReport);
-  },
+  async (data) => getScheduledReportsService(getSupabaseServerClient(), data),
   {
     auth: true,
     schema: GetScheduledReportsSchema,
   },
 );
-
-/**
- * Map database row to ScheduledReport type
- */
-function mapDbToScheduledReport(row: Record<string, unknown>): ScheduledReport {
-  return {
-    id: row.id as string,
-    accountId: row.account_id as string,
-    name: row.name as string,
-    reportType: row.report_type as 'pdf' | 'csv',
-    frequency: row.frequency as 'weekly' | 'monthly',
-    metrics: row.metrics as ReportMetric[],
-    platforms: row.platforms as ReportPlatform[],
-    projectIds: row.project_ids as string[] | null,
-    branding: row.branding as Branding | null,
-    recipients: row.recipients as string[],
-    nextRunAt: new Date(row.next_run_at as string),
-    lastRunAt: row.last_run_at ? new Date(row.last_run_at as string) : null,
-    lastRunStatus: row.last_run_status as string | null,
-    lastError: row.last_error as string | null,
-    isActive: row.is_active as boolean,
-    createdAt: new Date(row.created_at as string),
-    updatedAt: new Date(row.updated_at as string),
-  };
-}

@@ -50,10 +50,10 @@ acceptance_criteria:
     evidence: null
   - text: "`rpmCents` is pooled, and is absent rather than zero when revenue was not requested"
     met: true
-    evidence: "renamed `rpm`, one rate per currency, in ce1efe19 (KB-12); absent when not requested: `packages/features/content-analytics/src/server/segment-actions.ts:275`"
+    evidence: "renamed `rpm`, one rate per currency, in ce1efe19 (KB-12); absent when not requested: `packages/features/content-analytics/src/server/segment-service.ts:283`"
   - text: "Channel-level revenue is excluded from `rpmCents` and reported as `channelLevelRevenueCentsInWindow`, named for the bound it carries"
     met: true
-    evidence: "now `channelLevelRevenueInWindow`, per currency (ce1efe19): `packages/features/content-analytics/src/server/segment-actions.ts:127`"
+    evidence: "now `channelLevelRevenueInWindow`, per currency (ce1efe19): `packages/features/content-analytics/src/server/segment-service.ts:132`"
   - text: "Revenue is bounded to each video's own checkpoint window, so the rate's numerator and denominator cover the same span"
     met: true
     evidence: null
@@ -62,7 +62,7 @@ acceptance_criteria:
     evidence: "now `channelLevel` / `unattributed` per currency (ce1efe19); test `packages/features/content-analytics/__tests__/segment-revenue.test.ts:170`"
   - text: "A truncated membership suppresses `rpmCents` rather than understating it"
     met: true
-    evidence: "`packages/features/content-analytics/src/server/segment-actions.ts:316`"
+    evidence: "`packages/features/content-analytics/src/server/segment-service.ts:324`"
   - text: "An account with no revenue rows yields no rate, not `$0.00 RPM` on every segment"
     met: true
     evidence: null
@@ -92,7 +92,7 @@ acceptance_criteria:
     evidence: null
   - text: "`channelLevelRevenueCentsInWindow` is named for the bound it carries, and `measuredWindow` states that bound"
     met: true
-    evidence: "now `channelLevelRevenueInWindow` (ce1efe19): `packages/features/content-analytics/src/server/segment-actions.ts:127,142`"
+    evidence: "now `channelLevelRevenueInWindow` (ce1efe19): `packages/features/content-analytics/src/server/segment-service.ts:132,147`"
   - text: "Membership pages by keyset, so a page does not re-scan the metrics history"
     met: true
     evidence: null

@@ -2,22 +2,11 @@
 
 import 'server-only';
 
-import { recordViewsDenominator } from '@kit/clickhouse';
-import { queryTotalsByVideoIds } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
-import { fetchAllRows } from '@kit/shared/pagination';
 import { readFailed, whyNoRow } from '@kit/shared/rows';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import { addCalendarDays, callerTodayOr } from '../lib/caller-date';
-import {
-  createRevenueProjectionFold,
-  createRevenueSeriesFold,
-  createRevenueSummaryFold,
-  createTopContentFold,
-  inclusiveDayCount,
-} from '../lib/revenue-by-currency';
 import { REVENUE_SUMMARY_SCHEMA_VERSION } from '../lib/revenue-mix';
 import {
   AddManualRevenueSchema,
@@ -29,116 +18,20 @@ import {
   GetTopContentByRevenueSchema,
   SyncRevenueFromPlatformSchema,
 } from '../lib/schemas/revenue.schema';
-import type {
-  RevenueProjection,
-  RevenueRecord,
-  RevenueSeries,
-  RevenueSummary,
-  TopRevenueContentByCurrency,
-} from '../lib/types/revenue';
-import { viewsToAdd } from '../lib/views';
-import { forEachAccountRevenueRow } from './revenue-queries';
+import type { RevenueRecord } from '../lib/types/revenue';
+import {
+  getRevenueProjectionService,
+  getRevenueSummaryService,
+  getRevenueTimeSeriesService,
+  getTopContentByRevenueService,
+} from './revenue-service';
 
 /**
- * All published publish ids for an account. Used as the RPM denominator so
- * views from content that earned nothing still count — otherwise RPM is
- * computed only over revenue-bearing videos and reads far too high.
- */
-async function fetchAccountPublishes(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any,
-  accountId: string,
-): Promise<{ id: string; platform: string }[]> {
-  // Paged. This is the denominator itself, so a short read inflates every
-  // RPM figure — the precise defect this function was added to remove.
-  const rows = await fetchAllRows<{ id: string; platform: string }>(
-    (from, to) =>
-      client
-        .from('publishes')
-        .select('id, platform, episodes!inner(projects!inner(account_id))')
-        .eq('status', 'published')
-        .eq('episodes.projects.account_id', accountId)
-        .order('id')
-        .range(from, to),
-    'account publish ids',
-  );
-
-  return rows.map(({ id, platform }) => ({ id, platform }));
-}
-
-/**
- * The revenue summary, **one per currency** (KB-12), largest total first.
- *
- * `revenue_records.currency` is a column and there are no exchange rates,
- * so an account paid $12.00 and €5.00 has two totals, two mixes and two
- * RPMs — never 1700 cents of nothing in particular. The arithmetic lives in
- * `createRevenueSummaryFold`, where it is tested without a database. Empty
- * when nothing was recorded in this period or the one before.
+ * The revenue summary, **one per currency** (KB-12), largest total first:
+ * the cookie-session wrapper over `getRevenueSummaryService` (FILM-1906).
  */
 export const getRevenueSummaryAction = enhanceAction(
-  async function (data): Promise<RevenueSummary[]> {
-    const client = getSupabaseServerClient();
-    const { accountId, startDate, endDate } = data;
-
-    // Both publish-scoped and channel-scoped revenue, folded in a single
-    // pass and streamed so the window never has to be held in memory.
-    const fold = createRevenueSummaryFold();
-
-    await forEachAccountRevenueRow(
-      client,
-      accountId,
-      startDate,
-      endDate,
-      (row) => fold.add(row),
-    );
-
-    // RPM denominator is every published video's views in the window, not
-    // only the ones that earned — otherwise RPM is inflated by excluding
-    // content that produced views but no revenue row.
-    const denominatorPublishes = await fetchAccountPublishes(client, accountId);
-
-    let totalViews = 0;
-    const pooledPlatforms = new Set<string>();
-
-    if (denominatorPublishes.length > 0) {
-      const perVideoTotals = await queryTotalsByVideoIds(
-        denominatorPublishes.map(({ id }) => id),
-        { startDate, endDate },
-      );
-
-      for (const [, stats] of perVideoTotals) {
-        totalViews += viewsToAdd(stats.views);
-      }
-
-      for (const { id, platform } of denominatorPublishes) {
-        if (perVideoTotals.has(id)) pooledPlatforms.add(platform);
-      }
-    }
-
-    // Trend: the same number of days immediately before, streamed.
-    const previousStartDate = new Date(startDate);
-    previousStartDate.setDate(
-      previousStartDate.getDate() - inclusiveDayCount(startDate, endDate),
-    );
-
-    await forEachAccountRevenueRow(
-      client,
-      accountId,
-      previousStartDate.toISOString().split('T')[0]!,
-      startDate,
-      (row) => fold.addPrevious(row.amount),
-      { toExclusive: true },
-    );
-
-    return fold.result({
-      period: { start: startDate, end: endDate },
-      totalViews,
-      denominator: recordViewsDenominator({
-        platforms: pooledPlatforms,
-        window: { from: startDate, to: endDate },
-      }),
-    });
-  },
+  async (data) => getRevenueSummaryService(getSupabaseServerClient(), data),
   {
     auth: true,
     schema: GetRevenueSummarySchema,
@@ -479,35 +372,11 @@ export const deleteManualRevenueAction = enhanceAction(
 );
 
 /**
- * Get revenue projection based on historical data.
- * Calculates estimated monthly and yearly revenue with confidence levels.
+ * Revenue projection based on historical data: the wrapper over
+ * `getRevenueProjectionService` (FILM-1906).
  */
 const getRevenueProjection = enhanceAction(
-  async function (data): Promise<RevenueProjection[]> {
-    const client = getSupabaseServerClient();
-    const { accountId, asOf } = data;
-
-    // The window ends on the caller's own date (KB-24). A manual entry is
-    // dated in the browser's calendar; ending at the server's UTC date left
-    // a just-saved entry out of the projection from local midnight until
-    // UTC's — 00:00 to 05:30 in India. Calendar arithmetic throughout: the
-    // trend split used to be "now minus 15 days" as an instant, so which
-    // half a day fell in depended on the hour the server ran.
-    const end = callerTodayOr(asOf);
-
-    // One projection per currency (KB-12), streamed in a single pass.
-    const fold = createRevenueProjectionFold(addCalendarDays(end, -15));
-
-    await forEachAccountRevenueRow(
-      client,
-      accountId,
-      addCalendarDays(end, -30),
-      end,
-      (row) => fold.add(row),
-    );
-
-    return fold.result();
-  },
+  async (data) => getRevenueProjectionService(getSupabaseServerClient(), data),
   {
     auth: true,
     schema: GetRevenueProjectionSchema,
@@ -517,28 +386,11 @@ const getRevenueProjection = enhanceAction(
 export const getRevenueProjectionAction = returnRefusals(getRevenueProjection);
 
 /**
- * Get revenue time series data for charts.
+ * Revenue time series data for charts: the wrapper over
+ * `getRevenueTimeSeriesService` (FILM-1906).
  */
 export const getRevenueTimeSeriesAction = enhanceAction(
-  async function (data): Promise<RevenueSeries[]> {
-    const client = getSupabaseServerClient();
-    const { accountId, startDate, endDate } = data;
-
-    // One series per currency (KB-12): two currencies cannot share an axis
-    // without a rate. Streamed; the fold zero-fills the range in order,
-    // whatever order the rows arrive in.
-    const fold = createRevenueSeriesFold();
-
-    await forEachAccountRevenueRow(
-      client,
-      accountId,
-      startDate,
-      endDate,
-      (row) => fold.add(row),
-    );
-
-    return fold.result(startDate, endDate);
-  },
+  async (data) => getRevenueTimeSeriesService(getSupabaseServerClient(), data),
   {
     auth: true,
     schema: GetRevenueTimeSeriesSchema,
@@ -546,101 +398,12 @@ export const getRevenueTimeSeriesAction = enhanceAction(
 );
 
 /**
- * Get top content by revenue.
+ * Top content by revenue: the wrapper over `getTopContentByRevenueService`
+ * (FILM-1906).
  */
 export const getTopContentByRevenueAction = enhanceAction(
-  async function (data): Promise<TopRevenueContentByCurrency[]> {
-    const client = getSupabaseServerClient();
-    const { accountId, startDate, endDate, limit } = data;
-
-    // Paged. `limit` is applied after aggregation, so truncation here would
-    // not just shorten the list: a publish earning across many dates loses
-    // some of them, understating its total and reordering the ranking.
-    const records = await fetchAllRows<{
-      publish_id: string | null;
-      revenue_cents: number | null;
-      currency: string | null;
-      platform: string | null;
-      publishes?: {
-        episode_id?: string | null;
-        platform?: string | null;
-        thumbnail_url?: string | null;
-        episodes?: { title?: string | null } | null;
-      } | null;
-    }>(
-      (from, to) =>
-        client
-          .from('revenue_records')
-          .select(
-            `
-        publish_id,
-        revenue_cents,
-        currency,
-        platform,
-        publishes!inner (
-          id,
-          episode_id,
-          platform,
-          thumbnail_url,
-          episodes!inner (
-            id,
-            title,
-            project_id,
-            projects!inner (
-              account_id
-            )
-          )
-        )
-      `,
-          )
-          .gte('record_date', startDate)
-          .lte('record_date', endDate)
-          // Not measured is not revenue (FILM-1726).
-          .not('revenue_cents', 'is', null)
-          .eq('publishes.episodes.projects.account_id', accountId)
-          .order('id')
-          .range(from, to),
-      'top content by revenue',
-    );
-
-    // Aggregate by publish, within a currency (KB-12): a ranking across
-    // currencies orders nothing, so each currency ranks its own.
-    const fold = createTopContentFold();
-
-    for (const r of records) {
-      // Channel-level revenue has no publish to attribute to
-      if (!r.publish_id) continue;
-
-      fold.add(
-        {
-          publishId: r.publish_id,
-          episodeId: r.publishes?.episode_id ?? '',
-          title: r.publishes?.episodes?.title ?? 'Untitled',
-          platform: r.publishes?.platform ?? 'unknown',
-          thumbnailUrl: r.publishes?.thumbnail_url ?? undefined,
-        },
-        { currency: r.currency, cents: r.revenue_cents || 0 },
-      );
-    }
-
-    // Get views for RPM calculation from ClickHouse
-    const publishIds = fold.publishIds();
-    const viewsMap = new Map<string, number>();
-
-    if (publishIds.length > 0) {
-      const perVideoTotals = await queryTotalsByVideoIds(publishIds, {
-        startDate,
-        endDate,
-      });
-
-      // A Facebook video has no views to divide by: no RPM (KB-153).
-      for (const [videoId, stats] of perVideoTotals) {
-        if (stats.views !== null) viewsMap.set(videoId, stats.views);
-      }
-    }
-
-    return fold.result(viewsMap, limit, { from: startDate, to: endDate });
-  },
+  async (data) =>
+    getTopContentByRevenueService(getSupabaseServerClient(), data),
   {
     auth: true,
     schema: GetTopContentByRevenueSchema,
