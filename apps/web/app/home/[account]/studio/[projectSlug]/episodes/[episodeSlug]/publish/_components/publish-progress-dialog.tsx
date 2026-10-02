@@ -30,6 +30,7 @@ import {
 } from '@kit/ui/tooltip';
 
 import { PlatformIcon } from './platform-ui';
+import { PLATFORM_CONFIG } from './publish-types';
 import type {
   PlatformUploadStatus,
   PublishStage,
@@ -243,6 +244,8 @@ export function PublishProgressDialog({
                           <Check className="h-4 w-4 text-green-500" />
                           {s.url && (
                             <a
+                              data-test="publish-platform-link"
+                              aria-label={`View on ${PLATFORM_CONFIG[s.platform]?.name ?? s.platform}`}
                               href={s.url}
                               target="_blank"
                               rel="noopener noreferrer"

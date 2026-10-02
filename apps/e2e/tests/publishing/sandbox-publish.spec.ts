@@ -116,10 +116,11 @@ async function publishesOf(episodeId: string) {
     id: string;
     status: string;
     platform_content_id: string | null;
+    platform_url: string | null;
     metadata: { error?: string } | null;
   }>(
     'publishes',
-    `episode_id=eq.${episodeId}&order=created_at&select=id,status,platform_content_id,metadata`,
+    `episode_id=eq.${episodeId}&order=created_at&select=id,status,platform_content_id,platform_url,metadata`,
   );
 }
 
@@ -158,6 +159,19 @@ test.describe('Publishing to a sandbox channel (FILM-1804)', () => {
     expect(uploads.map((entry) => entry.object)).toContain(
       published!.platform_content_id,
     );
+
+    // KB-160: the dialog links to the video the sandbox created, the URL the
+    // publish row holds — the dialog used to read a field the action does
+    // not return, and showed no link.
+    const watchUrl = `https://www.youtube.com/watch?v=${published!.platform_content_id}`;
+    expect(published!.platform_url).toBe(watchUrl);
+    const link = byTest(page, 'publish-platform-link');
+    await expect(link).toHaveAttribute('href', watchUrl);
+    await expect(link).toHaveAccessibleName('View on YouTube');
+    if (shoot)
+      await byTest(page, 'publish-platform-status').screenshot({
+        path: `${OUT}/publish-1b-youtube-link.png`,
+      });
   });
 
   // YouTube answers a rate limit with 403 quotaExceeded, not 429, and the

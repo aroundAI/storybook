@@ -1,0 +1,26 @@
+{
+  "feature": "KB-160",
+  "mutations": [
+    {
+      "name": "L1 The publish dialog reads url, which the action does not return",
+      "kind": "unit",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/published-upload-status.ts",
+      "find": "  return { ...row, status: 'success', url: result.platformUrl };",
+      "replace": "  return {\n    ...row,\n    status: 'success',\n    url: (result as { url?: string }).url,\n  };",
+      "cwd": "apps/web",
+      "test": "app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/__tests__/published-upload-status.test.ts",
+      "pattern": "links the row"
+    },
+    {
+      "name": "L2 The publish screen casts the action's result and reads url",
+      "kind": "e2e",
+      "needs": "sandbox",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx",
+      "find": "              idx === i ? publishedUploadStatus(s, result) : s,",
+      "replace": "              idx === i\n                ? {\n                    ...s,\n                    status: 'success' as const,\n                    url: (result as { url?: string }).url,\n                  }\n                : s,",
+      "spec": "tests/publishing/sandbox-publish.spec.ts",
+      "grep": "Publish All uploads to YouTube",
+      "env": { "SANDBOX_E2E": "1" }
+    }
+  ]
+}
