@@ -145,16 +145,18 @@ curl -s http://localhost:3000/api/mcp \
 MCP Inspector: `npx @modelcontextprotocol/inspector`, transport Streamable
 HTTP, URL `http://localhost:3000/api/mcp`, header `Authorization: Bearer …`.
 The contract test (`__tests__/contract.test.ts`) does the same with the SDK
-client when `MCP_CONTRACT_URL` and `MCP_CONTRACT_TOKEN` are set.
-
-`__tests__/tools/read-author.integration.test.ts` (FILM-1905) seeds two
-teams and a token against a local Supabase and drives every read and author
-tool through the SDK client, in-process by default or against a running
-server with `MCP_INTEGRATION_URL`:
+client, then drives every read and author tool (FILM-1905). Two ways to run
+it: against a running server with a token you made
+(`MCP_CONTRACT_URL`, `MCP_CONTRACT_TOKEN`), or seeded
+(`MCP_CONTRACT_SEED=1`, `E2E_SUPABASE_URL`), which creates two teams and a
+token against a local Supabase and, without `MCP_CONTRACT_URL`, runs the
+route handlers in-process behind the client's `fetch`, so no server is
+needed. The checks that need a second team, a deleted episode, an admin read
+of `mcp_tool_calls` or a read-only token run only when seeding.
 
 ```bash
-MCP_INTEGRATION=1 E2E_SUPABASE_URL=http://127.0.0.1:55321 \
-  pnpm --filter @kit/studio-mcp test read-author.integration
+MCP_CONTRACT_SEED=1 E2E_SUPABASE_URL=http://127.0.0.1:55321 \
+  pnpm --filter @kit/studio-mcp test contract
 ```
 
 `packages/mcp-server` is a different thing: a stdio developer tool with SQL
