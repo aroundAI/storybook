@@ -64,7 +64,7 @@
     {
       "name": "NM8 The company dashboard re-inlines the engagement formula",
       "file": "packages/features/content-analytics/src/components/company-dashboard.tsx",
-      "find": "displayedEngagementRatePercent({ ...data.totals, views: data.totals.views })",
+      "find": "displayedEngagementRatePercent({ ...data.totals, views: data.totals.views, shares: data.totals.shares ?? 0 })",
       "replace": "(((data.totals.likes + data.totals.comments + data.totals.shares) / data.totals.views) * 100)",
       "kind": "unit",
       "cwd": "packages/clickhouse",

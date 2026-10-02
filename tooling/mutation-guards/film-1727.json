@@ -55,8 +55,8 @@
       "name": "X6 a platform breakdown reads X's NULL shares as 0",
       "kind": "unit",
       "file": "packages/clickhouse/src/queries.ts",
-      "find": "    // One platform's sum: NULL when none of its rows measured shares (X).\n    shares: nullableNumber(row.shares),",
-      "replace": "    shares: Number(row.shares),",
+      "find": "    // One platform's sum: null when none of its rows measured shares (X).\n    shares: measuredSum(row.shares, row.shares_measured),",
+      "replace": "    // One platform's sum: null when none of its rows measured shares (X).\n    shares: Number(row.shares),",
       "cwd": "packages/clickhouse",
       "test": "__tests__/clickhouse.test.ts",
       "pattern": "gives X null shares"
@@ -169,16 +169,6 @@
       "cwd": "packages/clickhouse",
       "test": "__tests__/totals-unmeasured.test.ts",
       "pattern": "gives an X-only scope null shares"
-    },
-    {
-      "name": "X18 X's platform row reads its unmeasured shares as 0",
-      "kind": "unit",
-      "file": "packages/clickhouse/src/queries.ts",
-      "find": "    // One platform's sum: null when none of its rows measured shares (X).\n    shares: measuredSum(row.shares, row.shares_measured),",
-      "replace": "    // One platform's sum: null when none of its rows measured shares (X).\n    shares: Number(row.shares),",
-      "cwd": "packages/clickhouse",
-      "test": "__tests__/clickhouse.test.ts",
-      "pattern": "gives X null shares"
     },
     {
       "name": "X19 the Shares card shows 0 for an X-only team",
