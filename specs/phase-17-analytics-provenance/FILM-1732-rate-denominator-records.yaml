@@ -117,8 +117,8 @@ notes: |
   | getEpisodeAnalytics | packages/features/content-analytics/src/server/aggregation-queries.ts:285 |
   | getSeasonAnalytics | aggregation-queries.ts:453 |
   | getContentList (per row) | aggregation-queries.ts:1003 |
-  | buildTopContent (account dashboard) | packages/features/content-analytics/src/server/account-dashboard-actions.ts:319 |
-  | getLanguagePerformance | packages/features/content-analytics/src/server/language-analytics.ts:334 |
+  | buildTopContent (account dashboard) | packages/features/content-analytics/src/server/account-dashboard-actions.ts:323 |
+  | getLanguagePerformance | packages/features/content-analytics/src/server/language-analytics.ts:338 |
   | getPlatformLanguageMatrix | language-analytics.ts:419 |
   | getContentTypeComparison | language-analytics.ts:518 |
   | the company dashboard's total, computed in the component | packages/features/content-analytics/src/components/company-dashboard.tsx:111 (X's unmeasured shares add none, FILM-1727) |

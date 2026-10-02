@@ -24,7 +24,7 @@ acceptance_criteria:
     evidence: "packages/clickhouse/src/lib/format-families.ts:32 — FormatFamily, from FORMAT_FAMILIES (packages/clickhouse/src/lib/format-families.ts:18); ContentType is its own union, read off publishes' CHECK (packages/clickhouse/__tests__/format-families.test.ts:42). #497"
   - text: "The mapping is explicit and exported, not inferred at call sites"
     met: true
-    evidence: "packages/clickhouse/src/lib/format-families.ts:88 FORMAT_BY_CONTENT_TYPE, a Record on content type x platform with no default, exported from @kit/clickhouse with resolveFormatFamily (packages/clickhouse/src/lib/format-families.ts:198); the one analytics call site that split short/long now resolves through it (packages/features/content-analytics/src/server/language-analytics.ts:487). #497"
+    evidence: "packages/clickhouse/src/lib/format-families.ts:88 FORMAT_BY_CONTENT_TYPE, a Record on content type x platform with no default, exported from @kit/clickhouse with resolveFormatFamily (packages/clickhouse/src/lib/format-families.ts:198); the one analytics call site that split short/long now resolves through it (packages/features/content-analytics/src/server/language-analytics.ts:491). #497"
   - text: "Every content_type present in video_dim has a mapping, asserted against the live table"
     met: true
     evidence: "packages/clickhouse/scripts/verify-queries.ts:3058 runs SELECT DISTINCT platform, content_type FROM video_dim FINAL and fails on any pair unmappedFormatPairs returns; 128/128 green against ClickHouse 24.8, and seen red (youtube/podcast added to the fixture: 127 passed, 1 failed). #497"
@@ -33,7 +33,7 @@ acceptance_criteria:
     evidence: "packages/clickhouse/__tests__/format-families.test.ts:42 reads publishes.content_type's CHECK out of the migration, seen red with 'podcast' added to it; resolveFormatFamily returns unmapped_content_type, never a family (packages/clickhouse/src/lib/format-families.ts:211, packages/clickhouse/__tests__/format-families.test.ts:115); and the live check above. Mutation guards FF3 (tooling/mutation-guards/film-1716.json). #497"
   - text: "teaser and trailer resolve to a family and are not dropped"
     met: true
-    evidence: "Their own families on every platform (packages/clickhouse/__tests__/format-families.test.ts:79, guard FF1); the Language tab's comparison keeps a trailer as a trailer (packages/features/content-analytics/__tests__/language-analytics.test.ts:330, guard FF8), where it used to fold it into long-form and teasers into shorts. #497"
+    evidence: "Their own families on every platform (packages/clickhouse/__tests__/format-families.test.ts:79, guard FF1); the Language tab's comparison keeps a trailer as a trailer (packages/features/content-analytics/__tests__/language-analytics.test.ts:356, guard FF8), where it used to fold it into long-form and teasers into shorts. #497"
   - text: "The same clip on two platforms can resolve to different families"
     met: true
     evidence: "short is short_vertical on YouTube, TikTok, Instagram and Facebook and clip on X and LinkedIn (packages/clickhouse/__tests__/format-families.test.ts:86, guard FF2); full is long_horizontal on YouTube and long_vertical on TikTok (packages/clickhouse/__tests__/format-families.test.ts:108). #497"

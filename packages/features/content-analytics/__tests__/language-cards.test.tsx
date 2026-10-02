@@ -109,6 +109,35 @@ const ROWS = [
 ];
 
 describe('LanguagePerformanceCard (FILM-1702)', () => {
+  // KB-167: with no previous period measured there is nothing to compare,
+  // so no arrow and no "0.0%" beside the views.
+  it('draws no change for a language with no previous period', () => {
+    renderWithCoverage(
+      <LanguagePerformanceCard
+        data={[{ ...row('en', 1000, 20), viewsChange: null }]}
+      />,
+    );
+
+    const english = byTest('language-row-en');
+
+    expect(english.querySelector('[data-test="language-row-change"]')).toBe(
+      null,
+    );
+    expect(english.textContent).toContain('No previous period to compare');
+  });
+
+  it('draws a measured change', () => {
+    renderWithCoverage(
+      <LanguagePerformanceCard
+        data={[{ ...row('en', 1000, 20), viewsChange: 25 }]}
+      />,
+    );
+
+    expect(
+      byTest('language-row-change', byTest('language-row-en')).textContent,
+    ).toBe('25.0%');
+  });
+
   it('names the unlabelled bucket, and not as a language', () => {
     renderWithCoverage(<LanguagePerformanceCard data={ROWS} />);
 

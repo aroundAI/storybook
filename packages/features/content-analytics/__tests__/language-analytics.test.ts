@@ -61,6 +61,8 @@ const state: {
   calls: Array<{ name: string; input: unknown }>;
   /** Replaces VIDEOS for one test. */
   videos?: unknown[];
+  /** The previous period's totals read no rows (KB-167). */
+  noPrevious?: boolean;
 } = { hasAccess: true, calls: [] };
 
 function builder(row: unknown, rows: unknown[] = []) {
@@ -109,6 +111,12 @@ vi.mock('@kit/clickhouse/server', async () => {
     },
     queryTotalsByVideoIds: async (ids: string[]) => {
       record('queryTotalsByVideoIds', ids);
+
+      // getLanguagePerformance reads the current period, then the previous.
+      const reads = state.calls.filter(
+        (call) => call.name === 'queryTotalsByVideoIds',
+      ).length;
+      if (state.noPrevious && reads === 2) return new Map();
 
       return new Map(
         ids
@@ -173,6 +181,7 @@ beforeEach(() => {
   state.hasAccess = true;
   state.calls = [];
   state.videos = undefined;
+  state.noPrevious = false;
 });
 
 describe('getLanguagePerformance', () => {
@@ -237,6 +246,23 @@ describe('getLanguagePerformance', () => {
       // No Hindi video has reached the checkpoint: absent, not zero.
       checkpoint: null,
     });
+  });
+
+  // KB-167: a previous period with nothing measured is no baseline, not
+  // a 0 to grow from — the "+100%" KB-16 removed from the metric cards.
+  it('gives no change against a previous period with no rows, not +100%', async () => {
+    state.noPrevious = true;
+
+    const rows = await getLanguagePerformance('project-1');
+
+    expect(rows.find((row) => row.language === 'en')?.viewsChange).toBeNull();
+    expect(rows.find((row) => row.language === 'hi')?.viewsChange).toBeNull();
+  });
+
+  it('gives a measured change against a measured previous period', async () => {
+    const rows = await getLanguagePerformance('project-1');
+
+    expect(rows.find((row) => row.language === 'en')?.viewsChange).toBe(0);
   });
 
   it('falls back to the content dimension for a value it does not know', async () => {

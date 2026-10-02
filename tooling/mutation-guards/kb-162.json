@@ -35,8 +35,8 @@
       "name": "KB-162 the chunked fold starts views from 0, turning Facebook-only null into 0",
       "kind": "unit",
       "file": "packages/clickhouse/src/queries.ts",
-      "find": "const CHUNK_SUM_IDENTITY: ScopeTotals = { ...NO_ROWS_TOTALS, views: null };",
-      "replace": "const CHUNK_SUM_IDENTITY: ScopeTotals = { ...NO_ROWS_TOTALS };",
+      "find": "const CHUNK_SUM_IDENTITY: ScopeTotals = NO_ROWS_TOTALS;",
+      "replace": "const CHUNK_SUM_IDENTITY: ScopeTotals = { ...NO_ROWS_TOTALS, views: 0 };",
       "cwd": "packages/clickhouse",
       "test": "__tests__/totals-unmeasured.test.ts",
       "pattern": "keeps Facebook-only views null across chunks"
@@ -55,8 +55,8 @@
       "name": "KB-162 an account with nothing published shows watch time 0m",
       "kind": "unit",
       "file": "packages/features/content-analytics/src/server/account-dashboard-actions.ts",
-      "find": "    totals: {\n      views: 0,\n      likes: 0,\n      comments: 0,\n      shares: 0,\n      // Nothing measured (KB-162).\n      watchTimeSeconds: null,",
-      "replace": "    totals: {\n      views: 0,\n      likes: 0,\n      comments: 0,\n      shares: 0,\n      // Nothing measured (KB-162).\n      watchTimeSeconds: 0,",
+      "find": "    totals: {\n      views: null,\n      likes: 0,\n      comments: 0,\n      shares: 0,\n      // Nothing measured (KB-162).\n      watchTimeSeconds: null,",
+      "replace": "    totals: {\n      views: null,\n      likes: 0,\n      comments: 0,\n      shares: 0,\n      // Nothing measured (KB-162).\n      watchTimeSeconds: 0,",
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/account-dashboard-unmeasured.test.ts",
       "pattern": "measures nothing for an account with no publishes"

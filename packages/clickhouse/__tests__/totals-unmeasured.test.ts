@@ -130,7 +130,8 @@ describe('queryTotals, for a figure no row measured (KB-162)', () => {
 
     const totals = await queryTotals(SCOPE);
 
-    expect(totals.views).toBe(0);
+    // No row is not "nobody watched": nothing was measured (KB-167).
+    expect(totals.views).toBeNull();
     expect(totals.watch_time_seconds).toBeNull();
   });
 
@@ -140,10 +141,25 @@ describe('queryTotals, for a figure no row measured (KB-162)', () => {
 
     const totals = await queryTotals(SCOPE);
 
+    expect(totals.views).toBeNull();
     expect(totals.watch_time_seconds).toBeNull();
     expect(totals.subscribers_gained).toBeNull();
     expect(totals.saves).toBeNull();
     expect(client.query).not.toHaveBeenCalled();
+  });
+
+  it('keeps a measured 0: rows that counted no views read 0, not null (KB-167)', async () => {
+    json.mockResolvedValue([{ ...tiktokRow, views: '0', row_count: '2' }]);
+    const { queryTotals } = await import('../src/queries');
+
+    expect((await queryTotals(SCOPE)).views).toBe(0);
+  });
+
+  it('gives null views when the server sends no row at all (KB-167)', async () => {
+    json.mockResolvedValue([]);
+    const { queryTotals } = await import('../src/queries');
+
+    expect((await queryTotals(SCOPE)).views).toBeNull();
   });
 
   it('adds measured chunks, and stays null when no chunk measured it', async () => {

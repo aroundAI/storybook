@@ -198,3 +198,16 @@ describe('episode analytics, why its views are null (KB-166)', () => {
     );
   });
 });
+
+/**
+ * KB-167: an episode with no publishes read 0 views and 0% engagement.
+ * Nothing was measured, so both are null.
+ */
+describe('episode analytics, with nothing published (KB-167)', () => {
+  it('gives no views and no engagement rate, not 0', async () => {
+    const analytics = await getEpisodeAnalytics('episode-1');
+
+    expect(analytics?.totalViews).toBeNull();
+    expect(analytics?.engagementRate).toBeNull();
+  });
+});

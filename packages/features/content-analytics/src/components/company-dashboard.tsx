@@ -332,12 +332,16 @@ const SummaryCard = React.memo(function SummaryCard({
   value: string;
 }) {
   return (
-    <Card>
+    <Card
+      data-test={`summary-card-${title.toLowerCase().replace(/\s+/g, '-')}`}
+    >
       <CardContent className="flex items-center gap-4 py-4">
         <div className="rounded-lg bg-primary/10 p-2 text-primary">{icon}</div>
         <div>
           <div className="text-xs text-muted-foreground">{title}</div>
-          <div className="text-2xl font-semibold">{value}</div>
+          <div className="text-2xl font-semibold" data-test="summary-value">
+            {value}
+          </div>
         </div>
       </CardContent>
     </Card>

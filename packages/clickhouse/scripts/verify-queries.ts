@@ -5273,7 +5273,7 @@ async function unmeasuredTotalsSteps() {
         [null, 660],
       );
 
-      // No rows in the window: nothing counted, nothing measured.
+      // No rows in the window: nothing measured, views included (KB-167).
       const empty = await queryTotals({
         projectId: project,
         startDate: '2027-01-01',
@@ -5281,7 +5281,7 @@ async function unmeasuredTotalsSteps() {
       expectEqual(
         'no-row totals',
         [empty.views, empty.watch_time_seconds, empty.saves],
-        [0, null, null],
+        [null, null, null],
       );
 
       // By day: 01-06 YouTube's 600; 01-07 TikTok and Instagram only, so
@@ -5739,6 +5739,76 @@ async function xSteps() {
   await step('clear: X rows', () => clearXRows());
 }
 
+const NO_ROWS_PROJECT = 'b1670000-0000-4000-8000-000000000167';
+
+/**
+ * KB-167: views over no rows came back 0, which the company dashboard drew
+ * as "Views 0" for a team whose publishes had no rows yet. No row is
+ * "not measured"; a row that counted 0 views is a measured 0.
+ *
+ * | video        | platform | date  | views | watch time | subs gained |
+ * |--------------|----------|-------|-------|------------|-------------|
+ * | kb167-yt-0   | youtube  | 01-06 |     0 | 0          | 0           |
+ * | kb167-absent | —        | —     | (no row at all)                  |
+ */
+async function noRowsViewsSteps() {
+  const project = NO_ROWS_PROJECT;
+
+  await step('seed: no-rows-views fixture (KB-167)', async () => {
+    await clearFixtureRows([project], []);
+    await insertVideoMetrics([
+      {
+        project_id: project,
+        video_id: 'kb167-yt-0',
+        platform: 'youtube',
+        metric_date: '2026-01-06',
+        views: 0,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        saves: null,
+        watch_time_seconds: 0,
+        revenue_cents: 0,
+        subscribers_gained: 0,
+        subscribers_lost: null,
+        metric_source: 'analytics_api',
+        extra_metrics: '{}',
+      },
+    ]);
+  });
+
+  await step(
+    'assert: views over no rows are null, a measured 0 is 0 (KB-167)',
+    async () => {
+      // The one row counted 0 views: a measured 0.
+      const measured = await queryTotals({ projectId: project });
+      // A window with no row: nothing measured.
+      const window = await queryTotals({
+        projectId: project,
+        startDate: '2027-01-01',
+      });
+      // A publish with no row ever, as on the company dashboard.
+      const absent = await queryTotals({ videoIds: ['kb167-absent'] });
+      // Two requests' worth of ids, none with a row: summed chunks stay null.
+      const chunked = await queryTotals({
+        videoIds: Array.from({ length: 1500 }, (_, i) => `kb167-absent-${i}`),
+      });
+
+      expectEqual(
+        'views: measured 0, empty window, absent publish, absent chunks',
+        [measured.views, window.views, absent.views, chunked.views],
+        [0, null, null, null],
+      );
+
+      return 'measured 0 · window null · absent null · chunked null';
+    },
+  );
+
+  await step('clear: no-rows-views fixture', () =>
+    clearFixtureRows([project], []),
+  );
+}
+
 async function main() {
   if (!isClickHouseEnabled()) {
     console.error(
@@ -5761,6 +5831,7 @@ async function main() {
   await fetchDatedSteps();
   await observedCoverageSteps();
   await unmeasuredTotalsSteps();
+  await noRowsViewsSteps();
   // Last: it fills a project with noise, and nothing above should see it.
   await scanScopeSteps();
 

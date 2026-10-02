@@ -1,0 +1,125 @@
+{
+  "feature": "KB-167",
+  "mutations": [
+    {
+      "name": "KB-167 views over no rows read 0",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "    views: Number(row.row_count) === 0 ? null : nullableNumber(row.views),",
+      "replace": "    views: Number(row.row_count) === 0 ? 0 : nullableNumber(row.views),",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/totals-unmeasured.test.ts",
+      "pattern": "gives null over no rows at all"
+    },
+    {
+      "name": "KB-167 a measured 0 views is taken for no rows",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "    views: Number(row.row_count) === 0 ? null : nullableNumber(row.views),",
+      "replace": "    views: Number(row.views) === 0 ? null : nullableNumber(row.views),",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/totals-unmeasured.test.ts",
+      "pattern": "keeps a measured 0: rows that counted no views"
+    },
+    {
+      "name": "KB-167 views with ClickHouse off read 0",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "const NO_ROWS_TOTALS: ScopeTotals = {\n  views: null,",
+      "replace": "const NO_ROWS_TOTALS: ScopeTotals = {\n  views: 0,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/totals-unmeasured.test.ts",
+      "pattern": "gives null with ClickHouse off"
+    },
+    {
+      "name": "KB-167 the empty company dashboard reads 0 views",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/account-dashboard-actions.ts",
+      "find": "function getEmptyDashboardData(): AccountDashboardData {\n  return {\n    totals: {\n      views: null,",
+      "replace": "function getEmptyDashboardData(): AccountDashboardData {\n  return {\n    totals: {\n      views: 0,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/account-dashboard-unmeasured.test.ts",
+      "pattern": "to an account with no projects"
+    },
+    {
+      "name": "KB-167 an episode with no publishes reads 0 views",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "    totalViews: null,\n    viewsScope: EMPTY_VIEWS_SCOPE,",
+      "replace": "    totalViews: 0,\n    viewsScope: EMPTY_VIEWS_SCOPE,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/episode-analytics-unmeasured.test.ts",
+      "pattern": "with nothing published"
+    },
+    {
+      "name": "KB-167 a season with no episodes reads 0 views",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "      totalViews: null,\n      viewsScope: EMPTY_VIEWS_SCOPE,\n      totalLikes: 0,\n      totalComments: 0,\n      totalShares: 0,\n      totalSaves: null,\n      totalRevenueCents: 0,\n      avgEngagementRate: 0,\n      episodeCount: 0,",
+      "replace": "      totalViews: 0,\n      viewsScope: EMPTY_VIEWS_SCOPE,\n      totalLikes: 0,\n      totalComments: 0,\n      totalShares: 0,\n      totalSaves: null,\n      totalRevenueCents: 0,\n      avgEngagementRate: 0,\n      episodeCount: 0,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/nothing-measured-views.test.ts",
+      "pattern": "a season with no episodes has no views"
+    },
+    {
+      "name": "KB-167 a season's unpublished episodes read 0 views",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "        views: null,\n        engagement: null,\n        revenue: 0,",
+      "replace": "        views: 0,\n        engagement: null,\n        revenue: 0,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/nothing-measured-views.test.ts",
+      "pattern": "a season with no publishes has no views"
+    },
+    {
+      "name": "KB-167 a content-list publish with no rows reads 0 views",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/aggregation-queries.ts",
+      "find": "    const stats: AggregatedTotals = latestAnalytics.get(publish.id) ?? {\n      views: null,",
+      "replace": "    const stats: AggregatedTotals = latestAnalytics.get(publish.id) ?? {\n      views: 0,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/nothing-measured-views.test.ts",
+      "pattern": "gives it no views and no engagement rate"
+    },
+    {
+      "name": "KB-167 a language with no previous period reads +100%",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/language-analytics.ts",
+      "find": "        ? ((stats.views - previousViews) / previousViews) * 100\n        : null;",
+      "replace": "        ? ((stats.views - previousViews) / previousViews) * 100\n        : stats.views > 0\n          ? 100\n          : 0;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/language-analytics.test.ts",
+      "pattern": "gives no change against a previous period with no rows"
+    },
+    {
+      "name": "KB-167 the language card draws a change with no previous period",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/language-analytics-cards.tsx",
+      "find": "  if (change === null) {\n    return <span className=\"sr-only\">No previous period to compare</span>;\n  }\n",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/language-cards.test.tsx",
+      "pattern": "draws no change for a language with no previous period"
+    },
+    {
+      "name": "KB-167 the company dashboard reads 0 views for a YouTube team with no rows",
+      "kind": "e2e",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "    views: Number(row.row_count) === 0 ? null : nullableNumber(row.views),",
+      "replace": "    views: Number(row.row_count) === 0 ? 0 : nullableNumber(row.views),",
+      "spec": "tests/analytics/company-dashboard-evidence.spec.ts",
+      "grep": "a YouTube-only team with no rows yet",
+      "env": { "CLICKHOUSE_EVIDENCE": "1" }
+    },
+    {
+      "name": "KB-167 the company dashboard reads a measured 0 as not measured",
+      "kind": "e2e",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "    views: Number(row.row_count) === 0 ? null : nullableNumber(row.views),",
+      "replace": "    views: Number(row.views) === 0 ? null : nullableNumber(row.views),",
+      "spec": "tests/analytics/company-dashboard-evidence.spec.ts",
+      "grep": "a measured 0 still reads 0",
+      "env": { "CLICKHOUSE_EVIDENCE": "1" }
+    }
+  ]
+}

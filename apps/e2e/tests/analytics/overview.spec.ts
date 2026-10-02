@@ -6,7 +6,7 @@ import { OverviewPageObject } from './overview.po';
 /**
  * The Overview tab shows only what was measured (KB-16).
  *
- * Seeded through the API; ClickHouse is not needed. Views are zero here,
+ * Seeded through the API; ClickHouse is not needed. No views are measured here,
  * which is exactly the account these figures were invented for: before the
  * fix it saw a share donut of 83/17, "Ad Revenue" and "Sponsorships" at
  * 70/30, "Projection: $10k by month end", three canned footers, and a
