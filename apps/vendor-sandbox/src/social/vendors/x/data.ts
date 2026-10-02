@@ -312,6 +312,15 @@ const createTweet: SocialRoute = ({
     sendJson(res, 400, invalidRequest('A post needs text or media'));
     return true;
   }
+  // FILM-1731: "made_with_ai boolean" (Create Post, read 2026-10-02); a
+  // value of another type is refused.
+  if (
+    params.made_with_ai !== undefined &&
+    typeof params.made_with_ai !== 'boolean'
+  ) {
+    sendJson(res, 400, invalidRequest('made_with_ai must be a boolean'));
+    return true;
+  }
   for (const id of ids) {
     const upload = uploads(social).find(
       (u) => u.id === id && u.accountId === token.accountId,
@@ -352,6 +361,7 @@ const createTweet: SocialRoute = ({
       ...(typeof params.reply_settings === 'string'
         ? { replySettings: params.reply_settings }
         : {}),
+      ...(params.made_with_ai === true ? { madeWithAi: true } : {}),
     },
   });
   about(object.id);

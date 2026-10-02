@@ -337,6 +337,22 @@ const videosInsert: SocialRoute = (ctx) => {
     );
     return true;
   }
+  // FILM-1731. "status.containsSyntheticMedia boolean" (Videos resource,
+  // read 2026-10-02); a value of another type is refused.
+  const synthetic = status.containsSyntheticMedia;
+  if (synthetic !== undefined && typeof synthetic !== 'boolean') {
+    sendJson(
+      res,
+      400,
+      googleError(
+        400,
+        "Invalid value for 'status.containsSyntheticMedia': expected a boolean.",
+        'invalidValue',
+        'INVALID_ARGUMENT',
+      ),
+    );
+    return true;
+  }
   const isShort = /#shorts\b/i.test(`${title} ${snippet.description ?? ''}`);
   const rng = social.rngFor(`upload-duration:${title}`);
 
@@ -353,6 +369,7 @@ const videosInsert: SocialRoute = (ctx) => {
         ? { tags: snippet.tags.map(String) }
         : {}),
       creatorContentType: isShort ? 'SHORTS' : 'VIDEO_ON_DEMAND',
+      ...(synthetic === true ? { containsSyntheticMedia: true } : {}),
     },
   });
   about(object.id);

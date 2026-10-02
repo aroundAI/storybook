@@ -213,6 +213,42 @@ describe('Meta sandbox: publishing a Reel through the app providers', () => {
     expect(insights.status).toBe(200);
   });
 
+  it('FILM-1731: a container declared AI-generated publishes a post kept as such; an undeclared one is not, and a non-boolean is refused', async () => {
+    const { InstagramProvider } = await import(
+      '@kit/publishing/providers/instagram'
+    );
+    const declared = await new InstagramProvider(pageToken, igId).uploadReel({
+      videoUrl: 'https://cdn.example.org/harbour-ai.mp4',
+      caption: 'The harbour, declared AI-generated',
+      shareToFeed: true,
+      aiGenerated: true,
+    });
+    expect(declared.status).toBe('FINISHED');
+    expect(
+      sandbox.social.object('instagram', declared.mediaId).details,
+    ).toMatchObject({ isAiGenerated: true });
+
+    // The post the test above published was not declared.
+    const undeclared = sandbox.social
+      .listObjects('instagram')
+      .filter((o) => o.caption === 'Lighthouse, second night');
+    expect(undeclared).toHaveLength(1);
+    expect(undeclared[0]!.details ?? {}).not.toHaveProperty('isAiGenerated');
+
+    const refused = await graph(
+      `/${igId}/media`,
+      {
+        media_type: 'REELS',
+        video_url: 'https://cdn.example.org/harbour.mp4',
+        is_ai_generated: 'yes',
+        access_token: pageToken,
+      },
+      { method: 'POST' },
+    );
+    expect(refused.status).toBe(400);
+    expect(refused.body).toMatchObject({ error: { code: 100 } });
+  });
+
   it("the app's FacebookProvider publishes a Reel: start → upload → finish → status", async () => {
     const { FacebookProvider } = await import(
       '@kit/publishing/providers/facebook'

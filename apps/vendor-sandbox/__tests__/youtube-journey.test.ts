@@ -262,3 +262,65 @@ describe('YouTube, end to end through the app’s own clients', () => {
     ).rejects.toThrow();
   });
 });
+
+/** FILM-1731, after the journey: its uploads would change the counts above. */
+describe('YouTube: the AI declaration on videos.insert', () => {
+  it('FILM-1731: a declared upload is kept as containing synthetic media, an undeclared one is not, and a non-boolean is refused', async () => {
+    const { YouTubeProvider } = await import(
+      '@kit/publishing/providers/youtube'
+    );
+    const tokens = await connectYouTube(sandbox);
+    const provider = new YouTubeProvider(tokens.access_token);
+    const upload = {
+      videoPath: videoFile,
+      description: '',
+      tags: [],
+      categoryId: '1',
+      privacy: 'public' as const,
+      madeForKids: false,
+    };
+    const declared = await provider.uploadVideo({
+      ...upload,
+      title: 'Declared AI-generated',
+      containsSyntheticMedia: true,
+    });
+    const plain = await provider.uploadVideo({ ...upload, title: 'Plain' });
+
+    expect(
+      sandbox.social.object('youtube', declared.videoId).details,
+    ).toMatchObject({ containsSyntheticMedia: true });
+    expect(
+      sandbox.social.object('youtube', plain.videoId).details,
+    ).not.toHaveProperty('containsSyntheticMedia');
+
+    const boundary = 'film1731';
+    const refused = await fetch(
+      `${sandbox.urls.google}/upload/youtube/v3/videos?uploadType=multipart&part=snippet,status`,
+      {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${tokens.access_token}`,
+          'content-type': `multipart/related; boundary=${boundary}`,
+        },
+        body: [
+          `--${boundary}`,
+          'Content-Type: application/json; charset=UTF-8',
+          '',
+          JSON.stringify({
+            snippet: { title: 'Malformed' },
+            status: { containsSyntheticMedia: 'yes' },
+          }),
+          `--${boundary}`,
+          'Content-Type: video/mp4',
+          '',
+          'not really a video',
+          `--${boundary}--`,
+        ].join('\r\n'),
+      },
+    );
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toMatchObject({
+      error: { errors: [{ reason: 'invalidValue' }] },
+    });
+  });
+});
