@@ -52,7 +52,7 @@ acceptance_criteria:
     evidence: null
   - text: "Stores daily snapshots - Upserts to `content_analytics` with `(publish_id, snapshot_date)` unique key"
     met: true
-    evidence: "now ClickHouse `video_snapshots` (`packages/features/content-analytics/src/server/analytics-sync-cron.ts:838`, row built by `buildSnapshotRow`); `content_analytics` was dropped in 947c7ae9"
+    evidence: "now ClickHouse `video_snapshots` (`packages/features/content-analytics/src/server/analytics-sync-cron.ts:811`, row built by `buildSnapshotRow`); `content_analytics` was dropped in 947c7ae9"
   - text: "Updates existing snapshots - Uses Supabase upsert with `onConflict`"
     met: true
     evidence: "now `ReplacingMergeTree(fetched_at)` ordered by `snapshot_date` (`packages/clickhouse/src/migrations/002_metrics_v2.ts:59`)"

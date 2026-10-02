@@ -18,7 +18,7 @@ summary: >
 acceptance_criteria:
   - text: "`video_dim` rows exist for all published publishes; publish-success keeps it fresh; nightly reconcile heals drift"
     met: false
-    reason: "owner check OC-6 (docs/OWNER-CHECKS.md) — no publish-success hook; each hourly sync upserts its batch, full reconcile at 02:00 UTC (`packages/features/content-analytics/src/server/analytics-sync-cron.ts:170`); coverage needs a live database"
+    reason: "owner check OC-6 (docs/OWNER-CHECKS.md) — no publish-success hook; each hourly sync upserts its batch, full reconcile at 02:00 UTC (`packages/features/content-analytics/src/server/analytics-sync-cron.ts:158`); coverage needs a live database"
   - text: "Median (both modes), rolling-90, traffic share, back-catalog, cohort and YPP queries return hand-verified values on fixtures"
     met: true
     evidence: "packages/clickhouse/scripts/verify-queries.ts:3147 (handComputedSteps: fixture table with the arithmetic in comments; median steps at :2958 and :2988, per-channel watch hours at :3292) run against a real ClickHouse by `./scripts/local-env.sh verify` (117 passed, 0 failed, 2026-09-30) over queryMedianViewsPerVideo (packages/clickhouse/src/queries-advanced.ts:452), queryRollingViews (:380), queryBackCatalogShare (:568), queryCohortMedians (:650), queryWatchWindowTotals (:785), queryChannelWatchWindow (:830) and traffic grouping. Red: a first run failed 'rolling-90 rows: expected 105, got 104' — a real bug, WITH FILL's TO bound is exclusive so a quiet final day was missing, fixed at queries-advanced.ts:416; a mutation run (median to avg, back-catalog age +50, fill fix reverted, cohort window +60, channel window -20 days) failed 5 assertions and passed again once restored"

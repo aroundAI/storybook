@@ -16,7 +16,7 @@ summary: >
 acceptance_criteria:
   - text: "One `syncSinglePublishById` run populates: extended `video_metrics` columns, `video_retention_curves`, `video_audience`"
     met: false
-    reason: "unverified — needs a live YouTube sync; writes at `packages/features/content-analytics/src/server/analytics-sync-cron.ts:769`–`:751`; this path fills only `avg_view_duration_seconds` of the three columns (`ingest.ts:138`), as §3 designs"
+    reason: "unverified — needs a live YouTube sync; writes at `packages/features/content-analytics/src/server/analytics-sync-cron.ts:742`–`:751`; this path fills only `avg_view_duration_seconds` of the three columns (`ingest.ts:138`), as §3 designs"
   - text: "`getProjectAudienceDataAction` returns real demographics/geography (Audience tab shows data)"
     met: true
     evidence: "`apps/e2e/tests/audience/audience-evidence.spec.ts:280`, `packages/features/content-analytics/__tests__/project-audience.test.ts:172`"
