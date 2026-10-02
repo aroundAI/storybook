@@ -329,7 +329,9 @@ test.describe('Six-tab adoption (FILM-1707)', () => {
     await switcher.click();
 
     // Every option is on screen and reachable once the page has settled:
-    // the headline cards above used to grow by a screen while it was open.
+    // the headline cards above load after the tab, and used to grow by a
+    // screen while the list was open.
+    await expect(byTest(page, 'metric-card-revenue')).toBeVisible(SLOW);
     await expect(
       byTest(page, 'deep-dive-platform-option-facebook'),
     ).toBeInViewport();
