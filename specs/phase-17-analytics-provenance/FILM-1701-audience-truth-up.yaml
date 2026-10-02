@@ -119,7 +119,7 @@ notes: |
   | Interests | no — no provider field, no `AudienceDimension` slot | no | **Delete.** |
   | Peak Activity | no — no provider field, no slot | no | **Delete.** |
 
-  `AudienceDimension` (`packages/clickhouse/src/types.ts:228-235`) is the closed
+  `AudienceDimension` (`packages/clickhouse/src/types.ts:239-246`) is the closed
   union `age_group | gender | country | city | device | os | follower_status`.
   `device` and `os` have had slots and writers since the dimension was
   introduced; nothing ever read them. `city` and `follower_status` are stranded
