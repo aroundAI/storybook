@@ -86,13 +86,16 @@ select throws_ok(
   'and cannot write one into it'
 );
 
--- FILM-808: no client role has a grant on the cache
+-- FILM-808: no client role writes the cache. FILM-1906 granted members
+-- SELECT so get_saved_insights can read it under RLS; the write grants stay
+-- with the service role (analytics-insights-cache-rls.test.sql has the rest).
 select is(
   (select count(*)::int from information_schema.role_table_grants
     where table_schema = 'public' and table_name = 'analytics_insights_cache'
-      and grantee in ('anon', 'authenticated')),
+      and grantee in ('anon', 'authenticated')
+      and privilege_type <> 'SELECT'),
   0,
-  'the insights cache is reachable by the service role only'
+  'the insights cache is written by the service role only'
 );
 
 -- FILM-1003
