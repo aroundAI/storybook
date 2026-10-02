@@ -57,7 +57,7 @@ remaining:
     reason: "Registry half only — viewDefinitionChangesBetween returns the boundaries; no chart calls it. Owner ruling 2026-09-22 (FILM-1722 section 12): displayed figures are held until FILM-1719; FILM-1719 now carries the criterion"
     closed_by: "FILM-1719"
   - criterion: "No rate is computed without recording which denominator definition it used"
-    reason: "Registry half only — the definition is available to stamp; the engagement-rate and RPM sites do not stamp it. Stamping changes no figure, so the 2026-09-22 ruling (which held changing figures until FILM-1719) does not hold it, but it changes the result type of those reads and every card that reads them. The owner accepted on 2026-10-02 that this gets its own spec: FILM-1732 (#TBD-REC). Cohort growth and cohort medians specifically stay FILM-1715's own criterion"
+    reason: "Registry half only — the definition is available to stamp; the engagement-rate and RPM sites do not stamp it. Stamping changes no figure, so the 2026-09-22 ruling (which held changing figures until FILM-1719) does not hold it, but it changes the result type of those reads and every card that reads them. The owner accepted on 2026-10-02 that this gets its own spec: FILM-1732 (#535). Cohort growth and cohort medians specifically stay FILM-1715's own criterion"
     closed_by: "FILM-1732"
 open_questions: []
 notes: |
