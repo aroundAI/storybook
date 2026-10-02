@@ -1,0 +1,266 @@
+spec_id: "FILM-1732"
+title: "Rate Denominator Records"
+phase: 17
+phase_name: "Analytics Provenance and Signal"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-1722"
+    note: "the registry: viewDefinitionAt, viewDefinitionChangesBetween, viewsDenominatorFor; its criterion is the one this spec closes"
+  - spec_id: "FILM-1713"
+    note: "displayedEngagementRatePercent (the one engagement-rate definition every site below calls) and DenominatorStamp, the stamp computeMeasure already carries"
+  - spec_id: "FILM-1719"
+    note: "DenominatorRecord and its sentence, on FILM-1719's branch (packages/features/content-analytics/src/lib/signal-surface.ts), not yet on main; reuse it once merged rather than adding a third shape"
+summary: >
+  No rate is computed without recording which denominator definition it
+  used. That rule began as a FILM-1722 criterion, passed to FILM-1719 under
+  the owner's 2026-09-22 ruling, and became FILM-1719's sixteenth criterion,
+  which FILM-1719 met on its own surfaces only. The rates already on screen
+  elsewhere, engagement rate and RPM, still divide by video_metrics.views
+  without saying which definition of a view that column held, and YouTube
+  changed it on 2026-08-27. The owner accepted on 2026-10-02 the
+  recommendation that this gets its own spec. It stamps those reads with the
+  view definitions they divided by, and the changes their window crosses,
+  and shows the stamp on every card that renders them. It changes no figure:
+  every rate keeps the value it shows today.
+acceptance_criteria:
+  - text: "Every read in the scope table (notes §2) returns each rate with a denominator record, in the result type, so a caller cannot take the number without it"
+    met: false
+    reason: "not yet implemented — DRAFT"
+  - text: "One record shape across the product: FILM-1719's DenominatorRecord or FILM-1713's DenominatorStamp, chosen and written here before code (notes §3), not a third"
+    met: false
+    reason: "not yet implemented — DRAFT"
+  - text: "No figure changes: each read returns the same value as before for the same fixture, over views, as the 2026-09-22 ruling holds"
+    met: false
+    reason: "not yet implemented — DRAFT"
+  - text: "The record names the column (views), each platform's definitions with their effectiveFrom, and every change the window crosses, taken from viewDefinitionChangesBetween"
+    met: false
+    reason: "not yet implemented — DRAFT"
+  - text: "A YouTube window spanning 2026-08-27 records both definitions and the change date; a window wholly after it records one"
+    met: false
+    reason: "not yet implemented — DRAFT"
+  - text: "A pooled read records each platform it pooled; Facebook, whose views are NULL (FILM-1720 option A), is recorded as not in the denominator rather than given a definition"
+    met: false
+    reason: "not yet implemented — DRAFT"
+  - text: "A read with no date filter states the window its record covers (earliest publish in the set to the read date), rather than recording none"
+    met: false
+    reason: "not yet implemented — DRAFT"
+  - text: "Every card in the scope table renders the record, reachable from the figure, with a data-test hook"
+    met: false
+    reason: "not yet implemented — DRAFT"
+  - text: "A repository scan fails a new rate over views computed outside the recording path, seen red with one planted"
+    met: false
+    reason: "not yet implemented — DRAFT"
+  - text: "Mutation guards in tooling/mutation-guards/film-1732.json, a unique find per rule, all RED"
+    met: false
+    reason: "not yet implemented — DRAFT"
+  - text: "FILM-1722's criterion \"No rate is computed without recording which denominator definition it used\" is ticked with this spec's evidence"
+    met: false
+    reason: "not yet implemented — DRAFT"
+test_plan:
+  unit:
+    - {text: "The record builder: one definition, a crossed change (YouTube 2026-08-27), Shorts across 2025-03-31, an undated definition (TikTok), Facebook not in the denominator, a pooled set of platforms", met: false, reason: "not yet implemented — DRAFT"}
+    - {text: "Each read in notes §2 against a fixture: the value equals today's, and the record is the one hand-computed for the fixture's window and platforms", met: false, reason: "not yet implemented — DRAFT"}
+    - {text: "The class scan (extending packages/clickhouse/__tests__/engagement-rate-one-definition.test.ts, or beside it), red with a planted bare division by views", met: false, reason: "not yet implemented — DRAFT"}
+  integration:
+    - {text: "Against local ClickHouse 24.8: seed YouTube rows either side of 2026-08-27, read the engagement rate and RPM through the real queries, and check value and record", met: false, reason: "not yet implemented — DRAFT"}
+  e2e:
+    - {text: "Playwright spec with seeded rows: each card shows its figure unchanged and its record; a window crossing 2026-08-27 shows both definitions; gated CAPTURE_EVIDENCE=1 screenshots of the before-and-after-the-change cases", met: false, reason: "not yet implemented — DRAFT"}
+open_questions:
+  - "When a figure's window crosses a definition change, does its card show a visible marker beside the figure, or only the record behind it? Stamping alone changes no figure; a visible marker changes what the card says, which the 2026-09-22 ruling may want the owner to see first"
+  - "Is the engagement-rate column of the content table (one rate per row) stamped per row, or once for the table with per-row records only where a row's window crosses a change?"
+notes: |
+  ## 1. Where this came from
+
+  - FILM-1722 shipped the registry and left two adoption criteria held under
+    the owner's ruling of 2026-09-22 (FILM-1722 §12): displayed figures do
+    not change until FILM-1719 can explain the switch. One of them is "No
+    rate is computed without recording which denominator definition it
+    used".
+  - FILM-1713 met its own half: `computeMeasure` returns a value stamped with
+    a `DenominatorStamp` (packages/clickhouse/src/lib/measures.ts:173):
+    column, preferred or fallback, the view definitions with `effectiveFrom`,
+    and `bridged` when engaged views carried it across a change. But the
+    surfaces were kept on `displayedEngagementRatePercent`, the one
+    definition over the stored `views` column, so the numbers stayed put
+    (FILM-1713, Implementation, 2026-09-25).
+  - FILM-1719, on its branch (not yet merged), stamps every per-view stage
+    rate with a `DenominatorRecord` and left its sixteenth criterion open:
+    "Not met for the rates already on screen elsewhere:
+    displayedEngagementRatePercent's sites (FILM-1713 §2) and RPM
+    (revenue-actions.ts, segment-stats.ts) still divide by views without
+    recording a definition. Code could close it — stamping changes no figure
+    — but it changes the result type of those reads and every card that
+    reads them … left for its own spec." This is that spec. The owner
+    accepted the recommendation on 2026-10-02.
+
+  Stamping is not held by the 2026-09-22 ruling. That ruling holds changing
+  the figures (switching YouTube to engaged views, suppressing a comparison).
+  This spec changes no figure; it records what each figure already is.
+  Switching the figures stays FILM-1719's (FILM-1713's held criterion,
+  "engagedViews backs any YouTube series crossing 2026-08-27").
+
+  ## 2. The reads that change
+
+  Swept on origin/main at 27ea4c9b2 (2026-10-02). FILM-1719 counted nine
+  reads; this sweep finds nine engagement-rate sites (eight through the
+  one definition, one not), three RPM sites and one revenue-per-view
+  figure. Re-sweep before building: the class scan
+  (§5) is what makes the list complete, not this table.
+
+  Engagement rate, (likes + comments + shares) / views, each through
+  `displayedEngagementRatePercent`:
+
+  | Read | Site |
+  |---|---|
+  | getEpisodeAnalytics | packages/features/content-analytics/src/server/aggregation-queries.ts:264 |
+  | getSeasonAnalytics | aggregation-queries.ts:453 |
+  | getContentList (per row) | aggregation-queries.ts:1003 |
+  | buildTopContent (account dashboard) | packages/features/content-analytics/src/server/account-dashboard-actions.ts:302 |
+  | getLanguagePerformance | packages/features/content-analytics/src/server/language-analytics.ts:320 |
+  | getPlatformLanguageMatrix | language-analytics.ts:419 |
+  | getContentTypeComparison | language-analytics.ts:518 |
+  | the company dashboard's total, computed in the component | packages/features/content-analytics/src/components/company-dashboard.tsx:109 |
+  | getShortsSourcePerformance (per short) — **not** through the one definition: (likes + comments) / views, without shares | language-analytics.ts:593 |
+
+  The last row escaped FILM-1713's class guard, presumably because its
+  formula omits shares. Whether it is a second engagement definition (a
+  FILM-1713 defect, to file as a KB) or a deliberately different figure
+  (then named as such on its card) is settled before it is stamped.
+
+  RPM, revenue per thousand views:
+
+  | Read | Site |
+  |---|---|
+  | getRevenueSummaryAction → createRevenueSummaryFold (all-in and ads RPM per currency) | packages/features/content-analytics/src/lib/revenue-by-currency.ts:137 |
+  | getTopContentByRevenueAction → createTopContentFold (per item) | revenue-by-currency.ts:418 |
+  | segment RPM: segment-actions.ts:375 → segmentRpm → pooledRpmCents | packages/features/content-analytics/src/lib/segment-revenue.ts:144, packages/clickhouse/src/lib/segment-stats.ts:69 |
+
+  Others over views:
+
+  | Figure | Site |
+  |---|---|
+  | Shorts ROI card's revenue per view, computed in the component from getContentTypeComparison | packages/features/content-analytics/src/components/analytics-enhancement-cards.tsx:231 |
+
+  Considered and out of scope, each for a stated reason:
+
+  - Shares of views (`viewsShare`, traffic-group shares in lib/traffic-groups.ts,
+    the back-catalog share in queries-advanced.ts): views over views, the
+    numerator and denominator counted under the same definition. Not a
+    per-view rate of another event. If review disagrees, they join the table;
+    the builder already covers them.
+  - View-weighted averages (queries-detail.ts:647, CTR, average view
+    duration and percentage weighted by views): views are the weights, not
+    the denominator of the figure.
+  - Cohort growth and cohort medians: FILM-1715's own criterion (FILM-1722
+    remaining).
+  - `computeMeasure` rates and FILM-1719's stage rates: already stamped.
+  - Velocity (FILM-1713): views per day of age, not a rate over views.
+
+  ## 3. The result type change
+
+  A rate stops being a bare `number` in each read's result. It becomes the
+  number and its record together, so a card cannot render one without
+  having the other:
+
+  ```ts
+  interface RecordedRate {
+    value: number;                 // exactly today's figure
+    denominator: DenominatorRecord;
+  }
+  ```
+
+  Choose the record shape before code, and write the choice here:
+
+  - If FILM-1719 has merged, use its `DenominatorRecord` (column, the
+    definitions with id, label and effectiveFrom, and a sentence: "Divided by
+    views, counted as: View (…), since 27 Aug 2026."). Extend it with what
+    this spec needs below rather than adding a sibling type.
+  - If not, extend FILM-1713's `DenominatorStamp` and let FILM-1719 adopt it
+    in its restack. Either way the product has one shape.
+
+  What the record must carry that neither has today:
+
+  - `platforms`: per pooled platform, the definitions in force over the
+    window. Facebook rows store NULL views (FILM-1720 option A), so a pooled
+    read that includes Facebook records it as `not_in_denominator`, not as a
+    definition.
+  - `window`: the from and to dates the record covers. A read with no date
+    filter (episode, season, content list, top content) covers its earliest
+    publish to the read date, because that is the span its lifetime totals
+    were counted over.
+  - `crosses`: the `ViewDefinitionChange`s inside the window, from
+    `viewDefinitionChangesBetween`. A crossing is recorded, not suppressed:
+    suppression changes the figure, which stays FILM-1719's.
+
+  Built in one place, from the registry, by a pure function beside
+  `viewsDenominatorFor` in packages/clickhouse/src/lib/view-definitions.ts
+  or in measures.ts, with no ClickHouse access. The reads call it; nothing
+  re-derives it.
+
+  For RPM per currency, one record covers the read: the denominator is the
+  same views total for every currency (revenue-by-currency.ts explains why).
+
+  ## 4. The cards affected
+
+  Found by grepping the components for the fields these reads return, on
+  27ea4c9b2. Each shows its figure unchanged and its record, reachable from
+  the figure (a disclosure or tooltip that a keyboard reaches, with the
+  record's sentence), with a `data-test` hook. Whether a crossing also gets a
+  visible marker is an open question for the owner.
+
+  | Card | File (packages/features/content-analytics/src/components/) | Figure |
+  |---|---|---|
+  | Episode analytics engagement tile | episode-analytics.tsx | engagement rate (its formula text at :145 is where the sentence belongs) |
+  | Season overview | season-overview.tsx | average engagement rate (:115) |
+  | Content table, content card, content grid | content-table.tsx, content/content-card.tsx, content/content-grid.tsx | engagement rate per row |
+  | Company dashboard | company-dashboard.tsx | total engagement rate |
+  | Overview top content | overview/top-content-card.tsx, overview/overview-grid.tsx | engagement rate |
+  | Language analytics cards | language-analytics-cards.tsx | engagement per language and per platform × language |
+  | Top shorts card | shorts-geography-cards.tsx | engagement per short (:124), from getShortsSourcePerformance |
+  | Analytics enhancement cards (Shorts ROI) | analytics-enhancement-cards.tsx | engagement difference, revenue per view |
+  | Revenue dashboard RPM tile | revenue-dashboard.tsx | RPM |
+  | Revenue top content | revenue-top-content.tsx | RPM per item |
+  | Tag medians card | taxonomy/tag-medians-card.tsx | segment RPM |
+
+  ## 5. Keeping it complete
+
+  FILM-1713's class guard (packages/clickhouse/__tests__/engagement-rate-one-definition.test.ts)
+  scans packages/ and apps/ for an engagement-rate formula outside the one
+  definition. This spec adds the same for any division by a views value
+  whose result is returned or rendered as a rate without passing through
+  the record builder, with an allow-list naming each out-of-scope site in §2
+  and its reason. A new rate over views then fails the build until it is
+  recorded or argued out.
+
+  ## 6. Out of scope
+
+  - Changing any figure: switching YouTube to engaged views, or suppressing
+    a comparison across a change (FILM-1719, FILM-1715).
+  - Chart boundary marks (FILM-1707, through FILM-1722's other criterion).
+  - Denominators other than views (reach for Instagram is computeMeasure's,
+    already stamped).
+
+  ## 7. Verification
+
+  ```bash
+  pnpm --filter @kit/clickhouse test
+  pnpm --filter @kit/content-analytics test
+  pnpm --filter @kit/clickhouse verify    # local ClickHouse 24.8
+  pnpm turbo typecheck --force && pnpm lint
+  ```
+
+  Seed ClickHouse rows with a hand-computed answer either side of
+  2026-08-27, and read the figure and the record off each card in the
+  Playwright spec, with CAPTURE_EVIDENCE=1 screenshots.
+feature:
+  database: null
+  queries: []
+  actions:
+    - name: "getRevenueSummaryAction"
+      file: "packages/features/content-analytics/src/server/revenue-actions.ts"
+    - name: "getTopContentByRevenueAction"
+      file: "packages/features/content-analytics/src/server/revenue-actions.ts"
+  ui: []
+  provider_integration: null

@@ -601,7 +601,7 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1707 | [six-tab-adoption](./phase-17-analytics-provenance/FILM-1707-six-tab-adoption.yaml) | DRAFT | L | FILM-1702, FILM-1705, FILM-1706 |
 | FILM-1708 | [traffic-drill-down-colour-ramp](./phase-17-analytics-provenance/FILM-1708-traffic-drill-down-colour-ramp.yaml) | ✅ DONE | M | FILM-1605, FILM-1706 |
 | FILM-1709 | [platform-filter-completion](./phase-17-analytics-provenance/FILM-1709-platform-filter-completion.yaml) | DRAFT | L | FILM-1704, FILM-1707 |
-| FILM-1710 | [asset-duration](./phase-17-analytics-provenance/FILM-1710-asset-duration.yaml) | 🟡 PARTIAL | M | FILM-1711 (TikTok leg only) |
+| FILM-1710 | [asset-duration](./phase-17-analytics-provenance/FILM-1710-asset-duration.yaml) | ✅ DONE | M | FILM-1711 (TikTok leg only) |
 | FILM-1711 | [analytics-authorisation](./phase-17-analytics-provenance/FILM-1711-analytics-authorisation.yaml) | 🟡 PARTIAL | L | FILM-1721 |
 | FILM-1712 | [metric-recovery](./phase-17-analytics-provenance/FILM-1712-metric-recovery.yaml) | ✅ DONE | L | FILM-1711, FILM-1721 |
 | FILM-1713 | [normalised-measures-velocity](./phase-17-analytics-provenance/FILM-1713-normalised-measures-velocity.yaml) | PARTIAL | M | FILM-1722 (registry, on main) |
@@ -621,8 +621,9 @@ Starts **after Phase 16 closes** — FILM-1706 makes a prop required on a card s
 | FILM-1727 | [x-analytics](./phase-17-analytics-provenance/FILM-1727-x-analytics.yaml) | DRAFT | L | FILM-1711, FILM-1714, FILM-1721, FILM-1723; FILM-1725 Check A for the Enterprise tier only |
 | FILM-1728 | [meta-graph-v26-upgrade](./phase-17-analytics-provenance/FILM-1728-meta-graph-v26-upgrade.yaml) | DONE | M | FILM-1723 merged + deployed; FILM-1712 if it lands first |
 | FILM-1729 | [x-media-write-scope](./phase-17-analytics-provenance/FILM-1729-x-media-write-scope.yaml) | PARTIAL | S | FILM-1723; X pay-per-use credentials (not held) |
-| FILM-1730 | [tiktok-business-api](./phase-17-analytics-provenance/FILM-1730-tiktok-business-api.yaml) | DRAFT | XL | FILM-1703, FILM-1711, FILM-1721; a TikTok Business developer app (not held) |
+| FILM-1730 | [tiktok-business-api](./phase-17-analytics-provenance/FILM-1730-tiktok-business-api.yaml) | ⏸️ DEFERRED | XL | FILM-1703, FILM-1711, FILM-1721; a TikTok Business developer app (not held); deferred by the owner 2026-10-02, TikTok not a first go-to-market platform |
 | FILM-1731 | [instagram-ai-label](./phase-17-analytics-provenance/FILM-1731-instagram-ai-label.yaml) | DRAFT | S | FILM-1728; an owner policy decision |
+| FILM-1732 | [rate-denominator-records](./phase-17-analytics-provenance/FILM-1732-rate-denominator-records.yaml) | DRAFT | M | FILM-1713, FILM-1722; FILM-1719 for the record shape |
 
 Three parts. **Provenance** (1701–1709) answers *where did this number come from*. **Signal** (1710–1720) answers *what is it telling me*, which differs per platform. **Reference** (1721–1723) is the researched vendor truth the other two are built on.
 

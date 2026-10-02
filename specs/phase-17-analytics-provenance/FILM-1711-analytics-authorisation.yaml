@@ -35,8 +35,8 @@ acceptance_criteria:
     met: true
     evidence: "Facebook Login, so the triple: instagram_basic + instagram_manage_insights + pages_read_engagement"
   - text: "Meta App Review and Business Verification are both submitted, and both statuses are tracked where a reader can find them"
-    met: false
-    reason: "tracked in docs/vendor-review-status.md, bound to the review field in code by a test; not submitted — submitting needs a person with access to the Meta developer console"
+    met: true
+    evidence: "Submitted, per the owner on 2026-10-02: \"Meta App Review and Business Verification submission — this is already done.\" Recorded in docs/vendor-review-status.md:15 and the two Meta rows (:44, :45: submitted, per owner; not yet approved; review stays required), which packages/features/publishing/__tests__/analytics-scopes.test.ts:358 binds to the review field in code. The owner's statement is the evidence: the repository holds no submission date or case ID, and none is invented. Approval is the remaining item below (#TBD-REC)"
   - text: "platform_connections.scopes is written at OAuth callback, so a gap is detectable before a sync fails"
     met: true
     evidence: "it was already written, with the wrong thing — every callback wrote the scopes it had requested rather than the scopes actually granted (TikTok and X fell back to the requested list when the vendor sent none); the callbacks now record the granted scopes (Google's and TikTok's scope field, Meta's /me/permissions) and nothing when the vendor says nothing — see the correction under 'Degrading honestly while unauthorised' in notes. LinkedIn's was missed and fixed in #508 (KB-145). Every writer now stores the grant — YouTube (callback and save-channel), Meta (Facebook and Instagram), TikTok, X, LinkedIn — and packages/features/publishing/__tests__/analytics-scopes.test.ts:234 finds the writers itself, as every caller of storePlatformConnections (the one way a connection is stored, KB-43), and checks every callback is one of them (:257). A new writer is checked without being listed (#521; guards D4, D8, KB-145 U2)"
@@ -87,7 +87,7 @@ remaining:
     reason: "Nothing here has touched a live vendor yet — FILM-1725 Check G after the deploy; Check H after each review passes"
     closed_by: "FILM-1725"
   - criterion: "Meta App Review, Business Verification and TikTok app review are submitted and approved, and `review` in code flipped with docs/vendor-review-status.md"
-    reason: "Need a person with each vendor's developer console; until they pass, review: 'required' keeps the reconnect prompt off for TikTok and Instagram, since a creator cannot grant a scope the vendor has not approved"
+    reason: "Meta App Review and Business Verification are submitted (owner, 2026-10-02) and not yet approved; TikTok app review is not submitted. Need a person with each vendor's developer console; until they pass, review: 'required' keeps the reconnect prompt off for TikTok and Instagram, since a creator cannot grant a scope the vendor has not approved"
     closed_by: "owner"
 open_questions: []
 feature:
@@ -330,6 +330,7 @@ notes: |
   PARTIAL, not DONE, for three reasons:
 
   1. Meta App Review, Business Verification and TikTok app review are not
+     approved; Meta's two are submitted (owner, 2026-10-02), TikTok's is not
      submitted. They need a person with each vendor's console. Until they
      pass, `review: 'required'` keeps the reconnect prompt off for TikTok
      and Instagram — a creator cannot grant a scope the vendor has not

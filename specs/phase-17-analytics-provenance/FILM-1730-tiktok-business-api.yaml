@@ -3,7 +3,7 @@ title: "TikTok Business API Integration"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: DRAFT
+status: DEFERRED
 effort: XL
 dependencies:
   - spec_id: "FILM-1703"
@@ -25,7 +25,9 @@ summary: >
   block it that no code can open: the developer app (not held) and the
   creator's account type, which the owner is treating as a 50-50 split
   between business and personal/creator TikTok channels — so the existing
-  Display API path stays first-class rather than a fallback.
+  Display API path stays first-class rather than a fallback. Deferred
+  as a future enhancement by the owner on 2026-10-02: TikTok is not the
+  product's first go-to-market platform (notes §0.0).
 acceptance_criteria:
   - text: "The four TikTok matrix entries name FILM-1730 in blockedBy (can land immediately, ahead of everything else)"
     met: true
@@ -68,7 +70,23 @@ acceptance_criteria:
     reason: "filed as a FILM-1725 check until it can run"
 open_questions: []
 notes: |
-  ## 0. Where this stands (2026-10-01)
+  ## 0. Where this stands (2026-10-02)
+
+  ### 0.0 Owner decision, 2026-10-02: deferred, a future enhancement
+
+  The owner, asked on 2026-10-02 whether to build this: "Skip / mark it as
+  future enhancement. TikTok is not our first GTM platform." So the status
+  is DEFERRED, not DRAFT: nothing here is scheduled, and §0.1's decision to
+  build it dark against the sandbox is set aside with it. Nothing is
+  dropped either. The criteria below stay as written, unmet, and the
+  findings in §0.2–§0.4 (the unreachable docs, the six pages needed, the
+  `surface` column) stand for whoever picks it up. The four TikTok
+  Business capability-matrix entries keep `blockedBy: 'FILM-1730'` and stay
+  `not_ingested`, which is what a deferred integration should look like
+  on a dashboard. TikTok's Display API path is unaffected (§7: it serves
+  every TikTok channel and stays first-class). Revisit when TikTok becomes a
+  go-to-market platform; the gates in §3 (a Business developer app, a
+  creator on a Business account) still apply then.
 
   ### 0.1 Owner decision, 2026-10-01
 

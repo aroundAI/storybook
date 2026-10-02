@@ -3,7 +3,7 @@ title: "Asset Duration"
 phase: 17
 phase_name: "Analytics Provenance and Signal"
 category: feature
-status: PARTIAL
+status: DONE
 effort: M
 dependencies:
   - spec_id: "FILM-1711"
@@ -50,8 +50,8 @@ acceptance_criteria:
     met: true
     evidence: "POST /api/analytics/asset-duration-backfill, cursor-resumed, driven locally"
   - text: "...and has been run against production"
-    met: false
-    reason: "operational, after deploy. YouTube rows fill on the first run; TikTok rows stay null until FILM-1711 adds video.list — the request is built and tested, and reports scope_missing rather than a number until then"
+    met: true
+    evidence: "Moot on the owner's word, not run: the owner said on 2026-10-02 \"Nothing on production is actually published.\" A backfill fills publishes that predate the column; with no published rows there is nothing for it to fill, and every publish from now on gets its duration as it arrives, from the hourly sync (server/asset-duration-sync.ts, the single writer) or, for Instagram, at upload (recordUploadedFileDuration). This is the owner's statement about production, recorded as such; nothing here checked production. If it turns out a published row predates the column, run POST /api/analytics/asset-duration-backfill then — it is cursor-resumed and fill-only (#TBD-REC)"
   - text: "Instagram's duration comes from the uploaded file at publish time, or is duration_unknown"
     met: true
     evidence: "packages/features/publishing/src/lib/uploaded-file-duration.ts:50 measures the uploaded file's MP4 header (mvhd, range requests) and fills a null publishes.duration_seconds as the service role; an unreadable header, a zero or a refused read leaves it null (:61). Called after every Instagram upload: publish-actions.ts:548 (publish now), :890 (retry), process-scheduled-publishes.ts:390, publish-worker/index.ts:401; uploaded-file-duration-sites.test.ts:58 fails a path that skips it. Against the vendor sandbox, apps/e2e/tests/publishing/sandbox-instagram-duration.spec.ts:116 publishes a 45-second file from a 1,320-second episode and reads 45 (red, null, with the scheduled call removed); :133 publishes an unreadable file and reads null. Never requested from Meta. #517"
@@ -64,13 +64,6 @@ acceptance_criteria:
   - text: "detectRetentionCliff is not passed a duration it cannot trust"
     met: true
     evidence: "it takes an AssetDuration, not a number, so an episode's duration does not typecheck"
-remaining:
-  - criterion: "Run the backfill (POST /api/analytics/asset-duration-backfill) against production and record the result here"
-    reason: "Blocked on the deploy carrying this change"
-    closed_by: "owner"
-  - criterion: "TikTok rows get a duration, not scope_missing"
-    reason: "Blocked on FILM-1711's video.list scope reaching production (FILM-1725 Check F first)"
-    closed_by: "FILM-1711"
 open_questions: []
 feature:
   database:
@@ -362,7 +355,29 @@ notes: |
   | tiktok | short | 1534 | 44 |
   | youtube | full | 1534 | 1534 |
 
-  ## Remaining, and when to close
+  ## Closed, 2026-10-02 (owner)
+
+  The one open criterion was running the backfill against production. The
+  owner said on 2026-10-02: "Nothing on production is actually published."
+  So there is no publish predating the column for a backfill to fill, and
+  the sync fills each duration as its row arrives. The criterion is met
+  as moot, on the owner's statement; this record makes no claim of its own
+  about production. With every acceptance criterion met, the status is
+  DONE.
+
+  Two items left the `remaining` list with it:
+
+  - The production backfill run, above. Should a published row turn out
+    to predate the column after all, the route
+    (`POST /api/analytics/asset-duration-backfill`) is still there.
+  - TikTok rows getting a duration rather than `scope_missing`. That was
+    never an acceptance criterion of this spec (the section below already
+    said it does not hold the spec open): the request is built and tested,
+    and TikTok durations arrive when FILM-1711's `video.list` scope reaches
+    production, which FILM-1711's own remaining list tracks. No code change
+    is needed here when it does.
+
+  ## Remaining, and when to close (superseded 2026-10-02, above)
 
   Status is PARTIAL, not done, because one acceptance criterion is open
   (the production backfill run). The code is merged and its guards are in
