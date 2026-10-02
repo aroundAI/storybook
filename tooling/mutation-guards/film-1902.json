@@ -32,14 +32,14 @@
       "pattern": "logs a failed call with the provider"
     },
     {
-      "name": "season-analysis stops naming the job's account on its model call",
+      "name": "the stage runtime stops naming the job's account on its model call",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/handlers/season-analysis.ts",
-      "find": "    accountId,\n    userId,\n    operationName: 'season-analysis',\n",
-      "replace": "    operationName: 'season-analysis',\n",
+      "file": "apps/web/lambda/llm-worker/utils/stage-runtime.ts",
+      "find": "      accountId: ctx.accountId,\n      userId: ctx.userId,\n",
+      "replace": "",
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/executor-usage.test.ts",
-      "pattern": "season-analysis.ts passes accountId"
+      "pattern": "stage-runtime.ts passes accountId"
     }
   ]
 }

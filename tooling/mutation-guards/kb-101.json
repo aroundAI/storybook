@@ -24,9 +24,9 @@
     {
       "name": "X1 The ideation premise reaches the model raw",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/handlers/story-ideation.ts",
-      "find": "      ? sanitizeForPrompt(data.premise)\n",
-      "replace": "      ? data.premise\n",
+      "file": "packages/features/generation/src/stages/ideation.ts",
+      "find": "      ? sanitizeForPrompt(target.premise)\n",
+      "replace": "      ? target.premise\n",
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
       "pattern": "story ideation"
@@ -34,9 +34,9 @@
     {
       "name": "X2 The story logline reaches the model raw",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/handlers/story-generation.ts",
-      "find": "        episodeLogline: sanitizeForPrompt(data.logline),\n",
-      "replace": "        episodeLogline: data.logline,\n",
+      "file": "packages/features/generation/src/stages/story.ts",
+      "find": "      episodeLogline: sanitizeForPrompt(target.logline),\n",
+      "replace": "      episodeLogline: target.logline,\n",
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
       "pattern": "story generation"
@@ -164,9 +164,9 @@
     {
       "name": "Y8 The roadmap reaches the season model raw",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/handlers/season-analysis.ts",
-      "find": "      roadmap: sanitizeForPrompt(roadmap),\n",
-      "replace": "      roadmap,\n",
+      "file": "packages/features/generation/src/stages/season-analysis.ts",
+      "find": "      roadmap: sanitizeForPrompt(target.roadmap),\n",
+      "replace": "      roadmap: target.roadmap,\n",
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
       "pattern": "season analysis"
@@ -174,9 +174,9 @@
     {
       "name": "Y9 The season premise reaches the outline model raw",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/handlers/season-outline.ts",
-      "find": "    seasonPremise: sanitizeForPrompt(data.seasonPremise),\n",
-      "replace": "    seasonPremise: data.seasonPremise,\n",
+      "file": "packages/features/generation/src/stages/season-outline.ts",
+      "find": "      seasonPremise: sanitizeForPrompt(target.seasonPremise),\n",
+      "replace": "      seasonPremise: target.seasonPremise,\n",
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
       "pattern": "season outline"
