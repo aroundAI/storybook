@@ -143,6 +143,7 @@ async function sendBoth(
         tags: [],
         privacy: 'public',
         platformSpecific: metadata,
+        aiGenerated: false,
       },
       channel,
     ),

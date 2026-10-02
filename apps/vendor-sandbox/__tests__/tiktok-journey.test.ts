@@ -145,6 +145,61 @@ describe('TikTok, end to end through the app’s own clients', () => {
     expect(result.publishId).toBeTruthy();
   });
 
+  it('FILM-1731: a declared post is kept as AI-generated content, an undeclared one is not, and a non-boolean is refused', async () => {
+    const { TikTokProvider } = await import('@kit/publishing/providers/tiktok');
+    const provider = new TikTokProvider(tokens.access_token);
+    const post = {
+      videoPath: videoFile,
+      privacy: 'PUBLIC' as const,
+      disableDuet: false,
+      disableStitch: false,
+      disableComment: false,
+    };
+    const declared = await provider.uploadVideo({
+      ...post,
+      caption: 'Declared AI-generated.',
+      isAigc: true,
+    });
+    const plain = await provider.uploadVideo({
+      ...post,
+      caption: 'Not declared.',
+    });
+
+    const publishes = sandbox.social.list<{ id: string; isAigc?: boolean }>(
+      'tiktok-publishes',
+    );
+    expect(publishes.find((p) => p.id === declared.publishId)).toMatchObject({
+      isAigc: true,
+    });
+    expect(publishes.find((p) => p.id === plain.publishId)).not.toHaveProperty(
+      'isAigc',
+    );
+
+    const { vendorUrl } = await import('@kit/shared/vendors');
+    const refused = await fetch(
+      `${vendorUrl('tiktok')}/v2/post/publish/video/init/`,
+      {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${tokens.access_token}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          post_info: {
+            title: 'Malformed.',
+            privacy_level: 'PUBLIC_TO_EVERYONE',
+            is_aigc: 'yes',
+          },
+          source_info: { source: 'PULL_FROM_URL', video_url: videoUrl },
+        }),
+      },
+    );
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toMatchObject({
+      error: { code: 'invalid_params' },
+    });
+  });
+
   it('publishes through the worker once video.publish is granted: init, status polling, then the post', async () => {
     const withPublish = await connectedTikTok(sandbox);
     expect(withPublish.scope).toContain('video.publish');

@@ -403,6 +403,10 @@ export default defineConfig({
         __dirname,
         '../../packages/features/publishing/src/providers/instagram/index.ts',
       ),
+      '@kit/publishing/lib/youtube-declaration': path.resolve(
+        __dirname,
+        '../../packages/features/publishing/src/lib/youtube-declaration.ts',
+      ),
       '@kit/publishing/oauth/tiktok': path.resolve(
         __dirname,
         '../../packages/features/publishing/src/oauth/tiktok/index.ts',

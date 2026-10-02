@@ -238,6 +238,8 @@ export function PublishScreen({
     description: episode.description || '',
     tags: '',
   });
+  // FILM-1731: the creator's AI declaration, off until they turn it on
+  const [aiGenerated, setAiGenerated] = useState(false);
 
   // Episode thumbnails (per language). One list for the video slots and the
   // thumbnails panel, so the two always agree on which is current (KB-89).
@@ -934,6 +936,7 @@ export function PublishScreen({
         publishToAllAction({
           episodeId: episode.id,
           platforms: platformConfigs,
+          aiGenerated,
         }),
       );
       toast.success(`Scheduled ${platformConfigs.length} uploads`);
@@ -1224,6 +1227,7 @@ export function PublishScreen({
           publishToAllAction({
             episodeId: episode.id,
             platforms: [config],
+            aiGenerated,
           }),
         );
 
@@ -1488,6 +1492,8 @@ export function PublishScreen({
               connectionsCount={connections?.length ?? 0}
               accountSlug={accountSlug}
               onRefreshConnections={() => refetchConnections()}
+              aiGenerated={aiGenerated}
+              onAiGeneratedChange={setAiGenerated}
             >
               {/* Schedule Release - rendered between Settings and Channels */}
               <ScheduleReleasePanel

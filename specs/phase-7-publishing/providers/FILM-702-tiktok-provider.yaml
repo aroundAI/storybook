@@ -41,7 +41,7 @@ provider:
 acceptance_criteria:
   - text: "Videos upload with chunked upload protocol"
     met: false
-    reason: "unverified — chunked flow built (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:59`), but its inbox-init + `video_upload_id` sequence (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:171`, `packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:275`) differs from the lambda's; no test"
+    reason: "unverified — chunked flow built (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:59`), but its inbox-init + `video_upload_id` sequence (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:171`, `packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:280`) differs from the lambda's; no test"
   - text: "Caption and privacy settings are applied"
     met: false
     reason: "unverified — sent (`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:180`) with privacy as `'PUBLIC'`, while the lambda sends `'PUBLIC_TO_EVERYONE'` (`apps/web/lambda/publish-worker/handlers/tiktok.ts:25`); no test"
@@ -56,10 +56,10 @@ acceptance_criteria:
     evidence: "`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:138`, `packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:162`"
   - text: "Post status can be polled"
     met: true
-    evidence: "`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:269`"
+    evidence: "`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:274`"
   - text: "User info can be retrieved"
     met: true
-    evidence: "`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:307`"
+    evidence: "`packages/features/publishing/src/providers/tiktok/tiktok-provider.ts:312`"
 test_plan:
   unit:
     - text: "Test chunk size calculation"

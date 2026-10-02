@@ -4043,6 +4043,7 @@ export type Database = {
       }
       publishes: {
         Row: {
+          ai_generated: boolean
           analytics_note: string | null
           analytics_note_updated_at: string | null
           analytics_note_updated_by: string | null
@@ -4067,6 +4068,7 @@ export type Database = {
           title: string | null
         }
         Insert: {
+          ai_generated?: boolean
           analytics_note?: string | null
           analytics_note_updated_at?: string | null
           analytics_note_updated_by?: string | null
@@ -4091,6 +4093,7 @@ export type Database = {
           title?: string | null
         }
         Update: {
+          ai_generated?: boolean
           analytics_note?: string | null
           analytics_note_updated_at?: string | null
           analytics_note_updated_by?: string | null

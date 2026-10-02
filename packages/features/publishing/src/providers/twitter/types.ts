@@ -11,6 +11,8 @@ export interface TwitterUploadInput {
   text: string;
   /** Optional reply settings */
   replySettings?: 'everyone' | 'mentionedUsers' | 'following';
+  /** The creator declared it AI-generated: X's made-with-AI disclosure (FILM-1731) */
+  madeWithAi?: boolean;
 }
 
 export interface TwitterUploadResult {

@@ -51,6 +51,8 @@ export async function uploadToYouTube(
         (job.metadata.privacy as 'private' | 'unlisted' | 'public') ?? 'public',
       madeForKids: declaration.madeForKids,
       selfDeclaredMadeForKids: declaration.madeForKids,
+      // FILM-1731: only a declared publish carries the field
+      ...(job.aiGenerated === true && { containsSyntheticMedia: true }),
     },
   };
 

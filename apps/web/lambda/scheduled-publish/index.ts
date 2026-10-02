@@ -72,6 +72,7 @@ interface ScheduledPublish {
   metadata: Record<string, unknown> | null;
   content_type: string | null;
   language: string | null; // Direct language field
+  ai_generated: boolean;
   episodes: {
     project_id: string;
     final_video_url: string | null;
@@ -146,6 +147,7 @@ export async function handler(): Promise<ScheduledPublishResult> {
       metadata,
       content_type,
       language,
+      ai_generated,
       episodes(
         project_id,
         final_video_url,
@@ -273,6 +275,7 @@ export async function handler(): Promise<ScheduledPublishResult> {
       thumbnailUrl:
         publish.thumbnail_url || publish.episodes?.thumbnail_url || undefined,
       metadata: publish.metadata || {},
+      aiGenerated: publish.ai_generated,
     };
 
     // Send to SQS

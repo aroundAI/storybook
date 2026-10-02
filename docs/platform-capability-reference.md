@@ -188,6 +188,10 @@ project's own Cloud Console. **The Reporting API has no meaningful quota** ("dat
 retrieved once"). For nightly multi-channel sync, Reporting is the spine and
 Analytics the gap-filler.
 
+Publishing: a declared AI-generated upload sends `status.containsSyntheticMedia`
+(see [AI-label fields](#ai-label-fields); this line added 2026-10-02 without
+re-verifying the rest of the section).
+
 _Verified: 2026-09-21_
 
 ---
@@ -263,6 +267,10 @@ point did come through a search index and is consistent with it: the **Research
 API's** Query Videos now returns `favorites_count` — Research API, not Display,
 exactly as recorded above. Treat this section as the oldest in the document and
 re-verify it first; FILM-1725's Check B is the live test.
+
+Publishing: a declared AI-generated post sends `post_info.is_aigc` on the
+direct-post init (see [AI-label fields](#ai-label-fields); this line added
+2026-10-02 without re-verifying the rest of the section).
 
 _Verified: 2026-09-14_
 
@@ -380,6 +388,10 @@ hours with no backfill.
 **Rate limit: `4800 × impressions` per 24h, per app-and-user pair.** The quota scales
 with the creator's reach, so a new or dormant creator has a near-zero budget and the
 long tail throttles first. **There is no documented way to raise it.**
+
+Publishing: a declared AI-generated Reel sends `is_ai_generated=true` on the
+container (see [AI-label fields](#ai-label-fields); this line added 2026-10-02
+without re-verifying the rest of the section).
 
 _Verified: 2026-09-21_
 
@@ -523,6 +535,11 @@ kind of view has its own column (migration 020).
 
 Rate limits: Page tokens use BUC `4800 × engaged users` per 24h; app/user tokens use
 `200 × users` per hour. The Page throttle error code is **80001**.
+
+Publishing: the Page video and Reels calls have **no AI-label field**, so a
+declared AI-generated video goes to a Page without one (see
+[AI-label fields](#ai-label-fields); this line added 2026-10-02 without
+re-verifying the rest of the section).
 
 _Verified: 2026-10-01_
 
@@ -708,6 +725,10 @@ Scopes: `tweet.read` for media analytics, `users.read` + `tweet.read` for post
 analytics. **There is no `media.read` scope.** **User context is required** — there is
 no app-only path (*inferred* from "owned posts only"; see the ledger), so only authorised accounts, never competitors'.
 
+Publishing: a declared AI-generated post sends `made_with_ai: true` on
+`POST /2/tweets` (see [AI-label fields](#ai-label-fields); this line added
+2026-10-02 without re-verifying the rest of the section).
+
 _Verified: 2026-09-14_
 
 ### Token refresh (KB-15)
@@ -757,6 +778,38 @@ not add scopes. Only X has had one added (`media.write`), and the publish
 action checks the stored grant before uploading (FILM-1729).
 
 _Verified: 2026-10-01_
+
+---
+
+## AI-label fields
+
+FILM-1731. The field each publishing call takes for the creator's own AI
+disclosure. The creator declares it once per publish on the publish screen
+(owner, 2026-10-02: "add an option to mark it as AI Labeled"); it is stored
+as `publishes.ai_generated` and sent on every platform below that has a
+field, **only when declared**: an undeclared publish sends no field at all,
+never `false`. `packages/features/publishing/src/lib/ai-label.ts` holds the
+map the publish screen and the code read. Policy sources (whether each
+platform requires the disclosure) are quoted in the FILM-1731 spec's notes.
+
+| Platform | Call | Field, as sent | Source (read 2026-10-02) |
+|---|---|---|---|
+| Instagram | `POST /{ig-user-id}/media` (the container) | `is_ai_generated=true`. "An optional parameter to provide a self-disclosure of AI usage in the post. Not available for carousel children." Readable back as `GET /{ig-media-id}?fields=is_ai_generated` (not read by us) | [IG User Media](https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/media/), [changelog 2026-06-22](https://developers.facebook.com/docs/instagram-platform/changelog/) |
+| YouTube | `videos.insert` | `status.containsSyntheticMedia: true`. "allows the channel owner to disclose that a video contains realistic Altered or Synthetic (A/S) content" | [Videos resource](https://developers.google.com/youtube/v3/docs/videos), [revision history 2024-10-30](https://developers.google.com/youtube/v3/revision_history) |
+| TikTok | `POST /v2/post/publish/video/init/` | `post_info.is_aigc: true`. "Set to true if the video is AI generated content"; not required | [Direct Post reference](https://developers.tiktok.com/doc/content-posting-api-reference-direct-post) — read as an Internet Archive capture of 2026-08-24; TikTok's hosts refused this network |
+| X | `POST /2/tweets` | `made_with_ai: true`. "Disclose that the tweet contains AI-generated media"; not required | [Create Post](https://docs.x.com/x-api/posts/create-post) |
+| Facebook | `POST /{page-id}/video_reels`, `/{page-id}/videos` | **none.** Searched for `is_ai_generated`, "AI info", `ai_generated`, synthetic; the positive control (`file_url`, `content_category`) was found. The publish screen says so beside the option | [Page Videos](https://developers.facebook.com/docs/graph-api/reference/page/videos/) |
+| LinkedIn | `POST /rest/posts`, Videos API | **none** found in the Posts or Videos API | [Post schema](https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/post-api-schema?view=li-lms-2026-09) |
+
+Where each is sent: the providers (`InstagramProvider`, `YouTubeProvider`,
+`TikTokProvider`, `TwitterProvider`) for publish-now, retry and the in-app
+cron; the publish worker's own YouTube, TikTok and X handlers (and
+`InstagramProvider`) for the scheduled-publish lambda, which carries the
+declaration on the job message. The vendor sandbox accepts each field,
+keeps it on the object it creates, and refuses a value that is not a
+boolean in the vendor's own error shape.
+
+_Verified: 2026-10-02_
 
 ---
 

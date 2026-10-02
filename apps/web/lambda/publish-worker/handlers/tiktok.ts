@@ -26,6 +26,8 @@ export async function uploadToTikTok(
           disable_duet: (job.metadata.disableDuet as boolean) ?? false,
           disable_stitch: (job.metadata.disableStitch as boolean) ?? false,
           disable_comment: (job.metadata.disableComments as boolean) ?? false,
+          // FILM-1731: only a declared publish carries the field
+          ...(job.aiGenerated === true && { is_aigc: true }),
         },
         source_info: {
           source: 'PULL_FROM_URL',

@@ -50,28 +50,28 @@ provider:
 acceptance_criteria:
   - text: "Videos upload successfully with progress reporting"
     met: true
-    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:77`; upload run through the real SDK against a local stand-in in `packages/features/publishing/__tests__/youtube-root-url.test.ts:88`"
+    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:79`; upload run through the real SDK against a local stand-in in `packages/features/publishing/__tests__/youtube-root-url.test.ts:88`"
   - text: "Metadata (title, description, tags) is set correctly"
     met: true
     evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:51`"
   - text: "Custom thumbnails can be uploaded"
     met: true
-    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:126`; asserted in `packages/features/publishing/__tests__/youtube-root-url.test.ts:88`"
+    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:128`; asserted in `packages/features/publishing/__tests__/youtube-root-url.test.ts:88`"
   - text: "Videos can be added to playlists"
     met: true
-    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:148`"
+    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:150`"
   - text: "Scheduled publishing works"
     met: false
     reason: "unverified — provider no longer sets `publishAt` (`packages/features/publishing/src/providers/youtube/youtube-provider.ts:60`); due rows go cron → `apps/web/lambda/scheduled-publish` → publish-worker; no test drives one"
   - text: "Channel info can be retrieved"
     met: true
-    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:166`"
+    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:168`"
   - text: "Playlists can be listed and created"
     met: true
-    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:236`, `packages/features/publishing/src/providers/youtube/youtube-provider.ts:253`"
+    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:238`, `packages/features/publishing/src/providers/youtube/youtube-provider.ts:255`"
   - text: "Categories can be fetched"
     met: true
-    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:276`"
+    evidence: "`packages/features/publishing/src/providers/youtube/youtube-provider.ts:278`"
 test_plan:
   unit:
     - text: "Test metadata formatting"

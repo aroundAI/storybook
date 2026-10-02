@@ -120,6 +120,43 @@ describe('X, end to end through the app’s own clients', () => {
     expect(sandbox.social.listObjects('x')).toHaveLength(1);
   });
 
+  it('FILM-1731: a declared post is kept as made with AI, an undeclared one is not, and a non-boolean is refused', async () => {
+    const { TwitterProvider } = await import(
+      '@kit/publishing/providers/twitter'
+    );
+    const provider = new TwitterProvider(tokens.access_token);
+    const declared = await provider.uploadVideo({
+      videoPath: videoFile,
+      text: 'Declared AI-generated.',
+      madeWithAi: true,
+    });
+    const plain = await provider.uploadVideo({
+      videoPath: videoFile,
+      text: 'Not declared.',
+    });
+
+    expect(sandbox.social.object('x', declared.tweetId).details).toMatchObject({
+      madeWithAi: true,
+    });
+    expect(
+      sandbox.social.object('x', plain.tweetId).details,
+    ).not.toHaveProperty('madeWithAi');
+
+    const { X_API_BASE } = await import('@kit/shared/vendors');
+    const refused = await fetch(`${X_API_BASE}/tweets`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${tokens.access_token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ text: 'Malformed.', made_with_ai: 'yes' }),
+    });
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toMatchObject({
+      errors: [{ message: 'made_with_ai must be a boolean' }],
+    });
+  });
+
   it('the post is there afterwards, with the metrics X gives its owner', async () => {
     const { X_API_BASE } = await import('@kit/shared/vendors');
     const response = await fetch(

@@ -162,6 +162,8 @@ export async function uploadToTwitter(
     body: JSON.stringify({
       text: `${job.title}\n\n${job.description}`,
       media: { media_ids: [mediaId] },
+      // FILM-1731: only a declared publish carries the field
+      ...(job.aiGenerated === true && { made_with_ai: true }),
     }),
   });
 

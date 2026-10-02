@@ -89,6 +89,8 @@ interface Publish {
   uploadedMs?: number;
   title: string;
   postId?: string;
+  /** `post_info.is_aigc: true` on the init (FILM-1731) */
+  isAigc?: boolean;
 }
 
 function objectAt(value: unknown): Json {
@@ -322,6 +324,10 @@ function initPublish(kind: Publish['kind']): SocialRoute {
         );
       if (String(post.title ?? '').length > 2200)
         return refuse('post_info.title is longer than 2200 characters.');
+      // FILM-1731: "is_aigc | bool" (Direct Post reference, capture
+      // 2026-08-24); a value of another type is refused.
+      if (post.is_aigc !== undefined && typeof post.is_aigc !== 'boolean')
+        return refuse('post_info.is_aigc must be a boolean.');
     }
 
     const sourceType = source.source;
@@ -358,6 +364,7 @@ function initPublish(kind: Publish['kind']): SocialRoute {
       uploadToken: social.recordId('tiktok-upload', 24),
       createdMs: social.now(),
       title: String(post.title ?? ''),
+      ...(post.is_aigc === true ? { isAigc: true } : {}),
     });
     about(record.id);
     sendJson(
@@ -510,6 +517,7 @@ const publishStatus: SocialRoute = ({
     const object = social.createObject('tiktok', token.accountId, {
       title: record.title,
       caption: record.title,
+      ...(record.isAigc ? { details: { isAigc: true } } : {}),
     });
     record.postId = object.id;
   }

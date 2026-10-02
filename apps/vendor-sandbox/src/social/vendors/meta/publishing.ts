@@ -41,6 +41,8 @@ interface Container {
   videoUrl: string;
   caption: string;
   publishedAs?: string;
+  /** `is_ai_generated=true` on the container request (FILM-1731) */
+  aiGenerated?: boolean;
 }
 
 interface FacebookReel {
@@ -116,12 +118,30 @@ const createContainer: SocialRoute = ({
     return true;
   }
 
+  // FILM-1731. "is_ai_generated <TRUE_OR_FALSE> An optional parameter to
+  // provide a self-disclosure of AI usage in the post" (IG User Media
+  // reference, read 2026-10-02). Anything but a boolean is refused as Graph
+  // refuses a malformed parameter.
+  const aiParam = params.is_ai_generated;
+  if (aiParam !== undefined && !['true', 'false'].includes(String(aiParam))) {
+    sendJson(
+      res,
+      400,
+      graphError(
+        100,
+        '(#100) Param is_ai_generated must be a boolean (true or false)',
+      ),
+    );
+    return true;
+  }
+
   const container = social.add<Container>('ig-container', {
     id: digitsId(social, 'ig-container'),
     igId: instagram.id,
     createdMs: social.now(),
     videoUrl: params.video_url,
     caption: params.caption ?? '',
+    ...(String(aiParam) === 'true' ? { aiGenerated: true } : {}),
   });
   sendJson(res, 200, { id: container.id });
   return true;
@@ -206,6 +226,7 @@ const mediaPublish: SocialRoute = ({
 
   const post = social.createObject('instagram', instagram.id, {
     caption: container.caption,
+    ...(container.aiGenerated ? { details: { isAiGenerated: true } } : {}),
   });
   container.publishedAs = post.id;
   about(post.id);

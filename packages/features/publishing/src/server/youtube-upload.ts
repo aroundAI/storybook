@@ -23,6 +23,8 @@ export async function uploadToYouTube(
     isShort?: boolean;
     privacy: 'private' | 'unlisted' | 'public';
     platformSpecific: Record<string, unknown>;
+    /** The publish's AI declaration (FILM-1731) */
+    aiGenerated: boolean;
   },
   channel: YouTubeChannelDeclaration | null,
 ): Promise<{ contentId: string; url: string }> {
@@ -55,6 +57,7 @@ export async function uploadToYouTube(
     madeForKids: declaration.madeForKids,
     thumbnailPath: options.thumbnailUrl ?? undefined,
     playlistIds: options.platformSpecific.playlistIds as string[] | undefined,
+    containsSyntheticMedia: options.aiGenerated,
   });
 
   return { contentId: result.videoId, url: result.videoUrl ?? '' };
