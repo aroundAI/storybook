@@ -19,7 +19,7 @@ import { vendorUrl } from './resolver';
  * made before that lacks it, and its upload is refused until it reconnects.
  */
 const X_API_HOST = vendorUrl('x-api');
-const X_API_VERSION = '2';
+export const X_API_VERSION = '2';
 const X_WEB_HOST = vendorUrl('x-oauth');
 
 export const X_API_BASE = `${X_API_HOST}/${X_API_VERSION}`;

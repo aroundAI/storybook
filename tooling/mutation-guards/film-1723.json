@@ -140,6 +140,36 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/platform-field-names.test.ts",
       "pattern": "video_views"
+    },
+    {
+      "name": "A pin past its end loses the known bug that owns the move",
+      "kind": "unit",
+      "file": "packages/shared/src/vendors/pins.ts",
+      "find": "    trackedBy: 'KB-164',",
+      "replace": "    trackedBy: null,",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "no pinned vendor version is within 120 days of its end"
+    },
+    {
+      "name": "The reference's pinned-versions table disagrees with the pin list",
+      "kind": "unit",
+      "file": "docs/platform-capability-reference.md",
+      "find": "| X | `v2` | none published |",
+      "replace": "| X | `v1` | none published |",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "every pinned version and its end are in the reference"
+    },
+    {
+      "name": "The reference's headline names a pin that is not the next end",
+      "kind": "unit",
+      "file": "docs/platform-capability-reference.md",
+      "find": "**Next end: LinkedIn `202401`, which",
+      "replace": "**Next end: Meta Graph `v26.0`, which",
+      "cwd": "packages/shared",
+      "test": "__tests__/vendor-api-versions.test.ts",
+      "pattern": "names the next end above the table"
     }
   ]
 }

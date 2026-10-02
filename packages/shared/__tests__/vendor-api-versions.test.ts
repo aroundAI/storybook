@@ -8,7 +8,9 @@ import {
   META_GRAPH_VERSION_EXPIRY_IS_FLOOR,
   META_GRAPH_VERSION_RELEASED,
   VENDORS,
+  VENDOR_API_PINS,
   type Vendor,
+  type VendorApiPin,
 } from '../src/vendors';
 
 /**
@@ -323,52 +325,71 @@ describe('the Graph pin carries the dates the reference documents', () => {
  * before a pinned version expires, which is what "not worrying for years"
  * means in practice — a reminder nobody had to set, four months ahead.
  *
- * One entry per vendor that publishes an end date. Today that is only Meta:
- * LinkedIn's monthly versions and X's unversioned v2 have no published one.
+ * FILM-1723: every pin in `VENDOR_API_PINS` with an end date, not only
+ * Meta's. A pin already inside the window stays green only while an open
+ * known bug named in its `trackedBy` owns the move (LinkedIn's 202401 is past
+ * sunset, and KB-164 is that bug), so deleting the date is not a way to
+ * silence the warning.
  */
 const WARN_DAYS = 120;
 const DAY_MS = 86_400_000;
 
-interface PinnedExpiry {
-  vendor: string;
-  version: string;
-  expires: string;
-  isFloor: boolean;
-}
+type PinnedExpiry = VendorApiPin & { ends: string };
 
-const EXPIRING_PINS: PinnedExpiry[] = [
-  {
-    vendor: 'Meta Graph',
-    version: META_GRAPH_VERSION,
-    expires: META_GRAPH_VERSION_EXPIRES,
-    isFloor: META_GRAPH_VERSION_EXPIRY_IS_FLOOR,
-  },
-];
+const EXPIRING_PINS = VENDOR_API_PINS.filter(
+  (pin): pin is PinnedExpiry => pin.ends !== null,
+);
+const META_PIN = EXPIRING_PINS.find((pin) => pin.declaredIn === META_FILE)!;
 
 /** Null while more than WARN_DAYS remain; otherwise what to do about it. */
 export function expiryProblem(pin: PinnedExpiry, today: Date) {
   const daysLeft = Math.floor(
-    (Date.parse(`${pin.expires}T00:00:00Z`) - today.getTime()) / DAY_MS,
+    (Date.parse(`${pin.ends}T00:00:00Z`) - today.getTime()) / DAY_MS,
   );
   if (daysLeft > WARN_DAYS) return null;
 
-  const files = `${META_FILE}, ${REFERENCE} (the "Pinned" line, the versions table and the findings table), and this test's expectations`;
+  const metaTables =
+    pin.declaredIn === META_FILE
+      ? ', the "Pinned" line, the versions table and the findings table'
+      : '';
+  const files = `${pin.declaredIn}, ${REFERENCE} ("Pinned vendor API versions"${metaTables}), and this test's expectations`;
+  const when =
+    daysLeft < 0
+      ? `ended on ${pin.ends}, ${-daysLeft} days ago`
+      : `expires on ${pin.ends}, in ${daysLeft} days`;
 
-  return pin.isFloor
-    ? `${pin.vendor} ${pin.version}: ${daysLeft} days to ${pin.expires}, which is only the guaranteed floor. Re-read Meta's changelog first: if the next version has shipped, ${pin.version}'s real end date is published and is probably later — enter it and clear the floor flag. Otherwise bump the pin. FILM-1728; files: ${files}.`
-    : `${pin.vendor} ${pin.version} expires on ${pin.expires}, in ${daysLeft} days. Bump the pin to a version with at least a year left, reading the changelog of every version crossed. FILM-1728; files: ${files}.`;
+  return pin.endsIsFloor
+    ? `${pin.vendor} ${pin.version}: ${daysLeft} days to ${pin.ends}, which is only the guaranteed floor. Re-read the vendor's changelog first (${pin.source}): if the next version has shipped, ${pin.version}'s real end date is published and is probably later — enter it and clear the floor flag. Otherwise bump the pin. FILM-1728; files: ${files}.`
+    : `${pin.vendor} ${pin.version} ${when}. Bump the pin to a version with at least a year left, reading the changelog of every version crossed (${pin.source}). FILM-1728; files: ${files}.`;
+}
+
+function knownBugIsOpen(id: string) {
+  const entry = readFileSync(join(REPO, `specs/known-bugs/${id}.md`), 'utf8');
+  const status = /^status: (\w+)$/m.exec(entry)?.[1];
+
+  return status === 'open' || status === 'partial';
 }
 
 describe('no pinned vendor version is within 120 days of its end (FILM-1728)', () => {
   it.each(EXPIRING_PINS.map((pin) => [pin.vendor, pin] as const))(
     '%s',
     (_vendor, pin) => {
-      expect(expiryProblem(pin, new Date())).toBeNull();
+      const problem = expiryProblem(pin, new Date());
+      if (problem === null) return;
+
+      expect(
+        pin.trackedBy,
+        `${problem} While the move waits, name the open known bug that owns it in trackedBy (${VENDORS_DIR}/pins.ts).`,
+      ).not.toBeNull();
+      expect(
+        knownBugIsOpen(pin.trackedBy!),
+        `${pin.trackedBy} is closed, but ${pin.vendor} ${pin.version} is still pinned. ${problem}`,
+      ).toBe(true);
     },
   );
 
   it('goes red at T-120 days, naming FILM-1728 and the files (fixture date)', () => {
-    const pin = { ...EXPIRING_PINS[0]!, expires: '2028-07-29', isFloor: false };
+    const pin = { ...META_PIN, ends: '2028-07-29', endsIsFloor: false };
     const at = (iso: string) => expiryProblem(pin, new Date(iso));
 
     expect(at('2028-03-29T12:00:00Z')).toBeNull();
@@ -376,18 +397,94 @@ describe('no pinned vendor version is within 120 days of its end (FILM-1728)', (
     expect(at('2028-03-30T12:00:00Z')).toContain('FILM-1728');
     expect(at('2028-03-30T12:00:00Z')).toContain(META_FILE);
     expect(at('2028-03-30T12:00:00Z')).not.toMatch(/floor/);
+    expect(at('2028-08-01T00:00:00Z')).toMatch(
+      /ended on 2028-07-29, 3 days ago/,
+    );
   });
 
   it('says to re-read the changelog first when the date is only a floor', () => {
-    const floor = {
-      ...EXPIRING_PINS[0]!,
-      expires: '2028-07-29',
-      isFloor: true,
-    };
+    const floor = { ...META_PIN, ends: '2028-07-29', endsIsFloor: true };
 
     expect(expiryProblem(floor, new Date('2028-03-30T12:00:00Z'))).toMatch(
-      /only the guaranteed floor\. Re-read Meta's changelog first/,
+      /only the guaranteed floor\. Re-read the vendor's changelog first/,
     );
+  });
+
+  it('accepts a known bug as owner of a pin past its end only while it is open', () => {
+    expect(knownBugIsOpen('KB-164')).toBe(true);
+    expect(knownBugIsOpen('KB-14')).toBe(false);
+  });
+});
+
+/**
+ * FILM-1723: "The next expected deprecation date is recorded somewhere a
+ * person will see it." That place is the first table of the capability
+ * reference: one row per `VENDOR_API_PINS` entry, with its end, its source
+ * and the day that was read, ordered by end so the top row is the next due.
+ */
+function pinRow(pin: VendorApiPin) {
+  const ends =
+    pin.ends === null
+      ? 'none published'
+      : `${pin.ends}${pin.endsIsFloor ? ' (floor)' : ''}`;
+  const source = `[${new URL(pin.source).host}](${pin.source}), read ${pin.read}`;
+
+  return `| ${pin.vendor} | \`${pin.version}\` | ${ends} | ${source} | \`${pin.declaredIn}\` |`;
+}
+
+describe('every pinned version and its end are in the reference (FILM-1723)', () => {
+  const doc = readFileSync(join(REPO, REFERENCE), 'utf8');
+  const section = doc
+    .split('\n## Pinned vendor API versions\n')[1]
+    ?.split('\n## ')[0];
+  const rows = (section ?? '')
+    .split('\n')
+    .filter(
+      (line) => line.startsWith('| ') && !/^\| (?:Vendor|---)/.test(line),
+    );
+
+  it('has the section', () => {
+    expect(
+      section,
+      `${REFERENCE} has no "## Pinned vendor API versions" section`,
+    ).toBeDefined();
+  });
+
+  it('has one row per pin, with its version, end, source and the day it was read', () => {
+    expect(rows).toHaveLength(VENDOR_API_PINS.length);
+    for (const pin of VENDOR_API_PINS) {
+      expect(
+        rows.some((row) => row.startsWith(pinRow(pin))),
+        `no row in ${REFERENCE} starts ${pinRow(pin)}`,
+      ).toBe(true);
+    }
+  });
+
+  it('lists the next end first', () => {
+    const due = (pin: VendorApiPin) => pin.ends ?? '9999-12-31';
+    const expected = [...VENDOR_API_PINS]
+      .sort((a, b) => due(a).localeCompare(due(b)))
+      .map((pin) => pin.vendor);
+
+    expect(rows.map((row) => row.split(' | ')[0]!.slice(2))).toEqual(expected);
+  });
+
+  it('names the next end above the table, where a reader starts', () => {
+    const next = [...EXPIRING_PINS].sort((a, b) =>
+      a.ends.localeCompare(b.ends),
+    )[0]!;
+
+    expect(section).toContain(
+      `**Next end: ${next.vendor} \`${next.version}\`, `,
+    );
+    expect(section?.split('\n| Vendor |')[0]).toContain(next.ends);
+  });
+
+  it('dates each read with a real day, not in the future', () => {
+    for (const pin of VENDOR_API_PINS) {
+      expect(pin.read).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(Date.parse(pin.read)).toBeLessThanOrEqual(Date.now());
+    }
   });
 });
 
