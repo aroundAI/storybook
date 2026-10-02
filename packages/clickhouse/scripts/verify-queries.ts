@@ -6425,6 +6425,50 @@ async function genomeSteps() {
     },
   );
 
+  await step(
+    'genome: a day without engaged views leaves no engaged rate (FILM-1717)',
+    async () => {
+      // gn-01 gains a later day with 40 shares on 1,000 views and no
+      // engaged views (a failed read, or a day before the backfill). Its
+      // 50 shares no longer divide by one day's 500: no rate, where the
+      // partial denominator would read 0.1.
+      await insertVideoMetrics([
+        {
+          project_id: GN_PROJECT,
+          video_id: 'gn-01',
+          platform: 'youtube',
+          metric_date: '2026-01-06',
+          views: 1000,
+          likes: 0,
+          comments: 0,
+          shares: 40,
+          saves: null,
+          watch_time_seconds: null,
+          subscribers_gained: null,
+          subscribers_lost: 0,
+          metric_source: 'analytics_api',
+          engaged_views: null,
+          extra_metrics: '{}',
+        },
+      ]);
+      const rows = await querySegmentVideoMeasures({
+        scope,
+        measure: 'share_rate',
+        checkpointDays: 30,
+        asOf,
+        viewsColumn: 'engaged_views',
+      });
+
+      expectEqual(
+        'share rate',
+        rows.slice(0, 2).map((row) => row.value),
+        [null, 0.08],
+      );
+
+      return 'gn-01 unmeasured on a partial series, gn-02 0.08';
+    },
+  );
+
   await step('genome: cleanup', () => clearGenomeFixture(channels));
 }
 

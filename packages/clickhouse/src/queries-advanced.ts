@@ -1600,17 +1600,21 @@ function segmentEligible(days: number): string {
  * The rates divide by the views series `viewsDenominatorFor` chose
  * (FILM-1722): `views`, or YouTube's engaged views across a change in what
  * a view is, so a cohort spanning 2026-08-27 is not read on two
- * denominators (FILM-1717). A video with no engaged-view day in its window
- * has no rate on that series, not a zero one.
+ * denominators (FILM-1717). A video missing engaged views on any day of
+ * its window has no rate on that series, not a zero or an inflated one.
  *
  * Closed and keyed by `SEGMENT_MEASURES`, because the expression is
  * interpolated into SQL.
  */
 const SEGMENT_DENOMINATORS = {
   views: { sum: 'v_views', measured: 'v_views > 0' },
+  // Every day the numerator reads must have its engaged views: a window
+  // whose shares cover days the engaged series lacks (before its backfill,
+  // or a failed read) would divide a whole window by part of one.
   engaged_views: {
     sum: 'v_engaged',
-    measured: 'v_engaged_days > 0 AND v_engaged > 0',
+    measured:
+      'v_metric_days > 0 AND v_engaged_days >= v_metric_days AND v_engaged > 0',
   },
 } as const satisfies Record<ViewsColumn, { sum: string; measured: string }>;
 
@@ -1730,7 +1734,8 @@ function segmentPerVideoSql(
         sumIf(m.comments, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_comments,
         sumIf(m.subscribers_gained, dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_subscribers,
         sumIf(ifNull(m.engaged_views, 0), dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_engaged,
-        countIf(m.is_reach = 2 AND m.engaged_views IS NOT NULL AND dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_engaged_days,
+        uniqExactIf(m.metric_date, m.is_reach = 2 AND m.engaged_views IS NOT NULL AND dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_engaged_days,
+        uniqExactIf(m.metric_date, m.is_reach = 0 AND dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_metric_days,
         countIf(m.is_reach = 1 AND dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_reach_days,
         countIf(m.is_reach = 0 AND m.watch_time_seconds IS NOT NULL AND dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_watch_days,
         countIf(m.is_reach = 0 AND m.subscribers_gained IS NOT NULL AND dateDiff('day', d.published_at, toDateTime(m.metric_date)) < ${days}) as v_subscriber_days
