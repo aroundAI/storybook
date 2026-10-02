@@ -1,5 +1,6 @@
 import { type Page, expect, test } from '@playwright/test';
 
+import { assertSandboxFresh } from '../utils/sandbox-freshness';
 import {
   insertRow,
   readRows,
@@ -58,6 +59,7 @@ test.describe('A full studio run through the local job queue (FILM-1806)', () =>
     !process.env.STUDIO_FLOW_EVIDENCE,
     'Set STUDIO_FLOW_EVIDENCE=1, with the sandbox, the local job queue and a local.env app running.',
   );
+  test.beforeAll(() => assertSandboxFresh(CONTROL));
 
   test.use({ actionTimeout: 30_000 });
 

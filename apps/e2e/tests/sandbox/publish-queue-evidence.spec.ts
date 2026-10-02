@@ -1,5 +1,6 @@
 import { Page, expect, test } from '@playwright/test';
 
+import { assertSandboxFresh } from '../utils/sandbox-freshness';
 import {
   insertRow,
   readRows,
@@ -61,6 +62,7 @@ test.describe('A scheduled publish through the local publish queue (FILM-1806)',
     !process.env.PUBLISH_QUEUE_EVIDENCE,
     'Set PUBLISH_QUEUE_EVIDENCE=1, with the sandbox, the local job queue and a local.env app running.',
   );
+  test.beforeAll(() => assertSandboxFresh(CONTROL));
 
   test('the cron queues it and the publish worker uploads it to YouTube', async ({
     page,

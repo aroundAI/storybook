@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
+import { assertSandboxFresh } from '../utils/sandbox-freshness';
 import {
   insertRow,
   seedProject,
@@ -76,6 +77,7 @@ test.describe('AI sandbox — inline flows (FILM-1803)', () => {
     !process.env.AI_SANDBOX_EVIDENCE,
     'Set AI_SANDBOX_EVIDENCE=1, with the sandbox and a sandbox-configured app running.',
   );
+  test.beforeAll(() => assertSandboxFresh(CONTROL));
 
   test('an ElevenLabs key is checked, saved, and used for a sound effect; music hits the undocumented path', async ({
     page,
