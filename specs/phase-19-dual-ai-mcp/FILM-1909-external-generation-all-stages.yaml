@@ -1,0 +1,64 @@
+spec_id: "FILM-1909"
+title: "External Generation for Every Stage, Targeted Edits and Renders"
+phase: 19
+phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
+category: feature
+status: DRAFT
+effort: L
+dependencies:
+  - spec_id: "FILM-1908"
+    note: "the generic generation tools, proved on story"
+summary: >
+  Extends FILM-1908 from story to every registered stage, so Claude can run
+  the whole workflow: season outline and analysis, ideation, story
+  refinement, screenplay (per scene) and its refinement, shots (reel scout plus
+  one part per scene), audio cues, dialogue translation, asset descriptions,
+  fact extraction, the episode summary and publish metadata. Adds targeted
+  edits (one scene, one shot, one dialogue line) and the vendor renders the
+  agent can start (ElevenLabs voice, music and SFX) plus the VEO prompt
+  manifest for external video tools. Design: the EDD's stage catalogue and
+  "3. MCP tool catalogue"
+  (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
+acceptance_criteria:
+  - text: "Every stage in FILM-1901's registry completes over MCP in external mode against a seeded episode, with the web page showing the result and its origin"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Shots: part 'reel_scout' first, then one part per scene ('scene:N'), then finalize; shots are numbered in order across scenes as the Shot Orchestrator numbers them; chained audio_cues opens as an external child run, never a queued job"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Screenplay: one part per scene, then finalize; dialogue_lines rebuilt as screenplay-conversion rebuilds them"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Edit tools (studio:write): edit_scene, edit_shot, edit_dialogue_line; each validated with the stage's schema and check(), versioned (target_version) and snapshotted, origin 'external'"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Render tools (studio:render): start_voice_render (queueVoiceJob[s]), start_audio_render (audio-file-generation), get_render_status; the existing budget and BYOK checks apply; no model call"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "get_veo_manifest (studio:read) returns the VEO prompts and frame descriptions the openclaw manifest builds today (packages/features/episodes/src/lib/openclaw-manifest.ts)"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "The FILM-1902 matrix test covers every stage in both modes and passes"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+test_plan:
+  unit: []
+  integration:
+    - {text: "A scripted MCP client drives ideation → story → screenplay → shots → audio cues for one episode, asserting zero llm_usage_analytics rows for its runs", met: false, reason: "not met — no test yet"}
+  e2e:
+    - {text: "Playwright reads each stage's result and origin badge off the studio pages after the scripted run; screenshots in the PR", met: false, reason: "not met — no test yet"}
+open_questions:
+  - "Store ideation output on episodes.metadata.ideas for both modes (recommended), or keep external ideation conversational in Claude?"
+notes: |
+  Order: the single-part stages first (story_refinement, screenplay_refinement,
+  asset_description, episode_summary, fact_extraction, publish_metadata,
+  season_analysis), then the multi-part ones (screenplay, shots, audio_cues,
+  dialogue_translation), then season_outline, whose commit creates episodes.
+  Publishing stays a web action in this phase.
+feature:
+  database: null
+  queries: []
+  actions: []
+  ui: []
+  provider_integration: null
+  tools: ["edit_scene", "edit_shot", "edit_dialogue_line", "start_voice_render", "start_audio_render", "get_render_status", "get_veo_manifest"]

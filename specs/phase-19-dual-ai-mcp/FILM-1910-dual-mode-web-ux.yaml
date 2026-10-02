@@ -1,0 +1,57 @@
+spec_id: "FILM-1910"
+title: "Dual-Mode Web UX: lease banners, origin badges, team AI settings"
+phase: 19
+phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
+category: feature
+status: DRAFT
+effort: M
+dependencies:
+  - spec_id: "FILM-1903"
+    note: "generation_runs, origin columns, account_ai_settings"
+  - spec_id: "FILM-1908"
+    note: "external runs to show"
+summary: >
+  Makes the two modes visible and safe in the web app. While Claude holds a
+  stage, the studio page says so, blocks a competing Gemini run on the same
+  target and offers cancel; content shows who wrote it (Gemini, Claude via
+  MCP, or edited by hand); pages refresh live on Realtime events from
+  generation_runs; and a team can choose which modes it allows. Design: the
+  EDD's "2. Generation runs and leases" and "7. Origin and provenance"
+  (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
+acceptance_criteria:
+  - text: "Story, screenplay, visual studio and audio studio pages show a banner while an external run is open on that stage ('Claude is working on this', client name, started at) with a Cancel button; the Generate button is disabled meanwhile"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "The pages refresh on Supabase Realtime events from generation_runs (commit, cancel, expire), falling back to use-active-generation-job polling"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "An origin badge on the story, screenplay, each shot and each dialogue line reads 'Gemini', 'Claude via MCP' or 'Edited', from generation_origin"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "A 'Restore previous version' action restores the last content_revisions snapshot for a stage"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Team settings → AI: allow server generation, allow external generation (MCP), default mode; owners edit, members read; openRun honours them"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "data-test attributes on the banner, cancel, badge and settings controls"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+test_plan:
+  unit: []
+  integration: []
+  e2e:
+    - {text: "Seed an open external run, open the story page: banner shown, Generate disabled; cancel; banner gone and Generate enabled (assert the second state too, per CLAUDE.md)", met: false, reason: "not met — no test yet"}
+    - {text: "Screenshots of the banner, badges, restore and settings in the PR", met: false, reason: "not met — no test yet"}
+open_questions:
+  - "May a team turn server generation off entirely (Claude-only teams), or only turn external generation on?"
+notes: |
+  The banner and badges are the user's answer to "was this Gemini or
+  Claude?"; the same answer is one query on generation_runs and
+  generation_origin for analytics (FILM-1912).
+feature:
+  database: null
+  queries: []
+  actions: [{name: "updateAccountAiSettingsAction", file: "apps/web/app/home/[account]/settings/ai/_lib/server/actions.ts"}, {name: "cancelGenerationRunAction", file: "packages/features/generation/src/server/run-actions.ts"}, {name: "restoreRevisionAction", file: "packages/features/generation/src/server/run-actions.ts"}]
+  ui: [{component: "ExternalRunBanner", file: "packages/features/episodes/src/components/external-run-banner.tsx"}, {component: "OriginBadge", file: "packages/features/episodes/src/components/origin-badge.tsx"}, {component: "AiSettingsPage", file: "apps/web/app/home/[account]/settings/ai/page.tsx"}]
+  provider_integration: null

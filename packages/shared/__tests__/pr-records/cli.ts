@@ -42,6 +42,7 @@ const AREAS: Record<string, string> = {
   'phase-16-workbook-parity': 'analytics',
   'phase-17-analytics-provenance': 'analytics',
   'phase-18-local-vendor-sandbox': 'vendor-sandbox',
+  'phase-19-dual-ai-mcp': 'dual-ai',
   'cross-cutting': 'cross-cutting',
   'design-system': 'design-system',
 };

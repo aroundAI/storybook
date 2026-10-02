@@ -1,0 +1,76 @@
+spec_id: "FILM-1907"
+title: "MCP OAuth 2.1 Authorization Server, Consent and Connected Apps"
+phase: 19
+phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
+category: feature
+status: DRAFT
+effort: L
+dependencies:
+  - spec_id: "FILM-1904"
+    note: "mcp_connections and mcp_tokens, and withMcpAuth's token resolution"
+summary: >
+  Lets a user add StoryBook to Claude by URL and sign in, without copying a
+  token: a minimal OAuth 2.1 authorization server (authorization code with
+  PKCE) that supports Claude's three registration routes (Claude's published
+  client identity via a client metadata document, Dynamic Client Registration,
+  and a pre-registered client). The user signs in with the normal StoryBook
+  login, whatever AUTH_PROVIDER is, picks a team and approves scopes on a
+  consent page. Connections are listed and revoked from account settings.
+  Design: the EDD's "5. Authentication and tenancy"
+  (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
+acceptance_criteria:
+  - text: "GET /.well-known/oauth-protected-resource names the MCP resource URL and the authorization server; GET /.well-known/oauth-authorization-server publishes the authorize, token, register and revoke endpoints, S256 as the only PKCE method, and the supported scopes"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "POST /oauth/register implements Dynamic Client Registration (RFC 7591) for public clients; a client metadata document URL is accepted as client_id; both are stored in mcp_oauth_clients"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "/oauth/authorize requires PKCE S256 and an exact redirect URI match, sends a signed-out user through the normal login and back, and shows a consent page: client name, team picker (teams the user belongs to), scopes"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Authorization codes are single-use, expire in 60 s and are stored hashed in mcp_authorization_codes"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "/oauth/token issues a 1-hour opaque access token and a 30-day rotating refresh token, audience-bound to the MCP resource URL (RFC 8707); reuse of a rotated refresh token revokes the connection"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "/oauth/revoke revokes a token; revoking from settings revokes every token of the connection"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Settings → Connected apps lists OAuth connections and personal access tokens with client name, team, scopes and last use, and revokes them"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+  - text: "Adding the connector by URL in Claude Desktop, signing in and calling whoami works end to end (recorded with screenshots)"
+    met: false
+    reason: "not met — drafted 2026-10-02, no code yet"
+test_plan:
+  unit:
+    - {text: "PKCE verification, redirect URI exact match, code reuse refused, refresh rotation and reuse detection", met: false, reason: "not met — no test yet"}
+  integration:
+    - {text: "The SDK's OAuth client completes discovery, registration, authorize and token against the local app", met: false, reason: "not met — no test yet"}
+  e2e:
+    - {text: "Playwright: the consent page for a seeded user with two teams, approve, then the Connected apps page shows and revokes the connection; screenshots in the PR", met: false, reason: "not met — no test yet"}
+open_questions:
+  - "Build our own minimal authorization server (recommended: works with any AUTH_PROVIDER, we control scopes and team binding) or use Supabase Auth's OAuth server feature to save effort but tie MCP to Supabase?"
+notes: |
+  Tables: mcp_oauth_clients (client_id, client_name, redirect_uris text[],
+  metadata_url, created_at) and mcp_authorization_codes (code_hash, client_id,
+  user_id, account_id, scopes, code_challenge, redirect_uri, expires_at,
+  used_at), both service role only; tokens and connections are FILM-1904's.
+
+  Scopes: studio:read (read and analytics tools), studio:write (author,
+  generation, edit and analytics write tools), studio:render (ElevenLabs
+  renders, which cost money).
+
+  Threats handled here: open redirect (exact match), code interception
+  (PKCE S256), token replay across teams (token bound to one user and team,
+  membership re-checked per call by FILM-1904).
+feature:
+  database:
+    tables: ["mcp_oauth_clients", "mcp_authorization_codes"]
+    columns_added: []
+  queries: []
+  actions: []
+  ui: [{component: "McpConsentPage", file: "apps/web/app/oauth/authorize/page.tsx"}, {component: "ConnectedAppsSettings", file: "apps/web/app/home/[account]/settings/connected-apps/page.tsx"}]
+  provider_integration: null
+  routes: ["apps/web/app/.well-known/oauth-protected-resource/route.ts", "apps/web/app/.well-known/oauth-authorization-server/route.ts", "apps/web/app/oauth/register/route.ts", "apps/web/app/oauth/token/route.ts", "apps/web/app/oauth/revoke/route.ts"]
