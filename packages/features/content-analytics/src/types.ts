@@ -8,7 +8,8 @@ export interface AnalyticsTotals {
   views: Views;
   likes: number;
   comments: number;
-  shares: number;
+  /** Null when no row measured it: X reports no shares (FILM-1727). */
+  shares: number | null;
   /** Saves (bookmarks) - primarily TikTok and Instagram */
   saves?: number;
   /**

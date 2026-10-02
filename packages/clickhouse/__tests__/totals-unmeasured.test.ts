@@ -32,6 +32,7 @@ const tiktokRow = {
   revenue_cents: '0',
   subscribers_gained: null,
   row_count: '2',
+  shares_measured: 1,
   saves_measured: 0,
   watch_time_seconds_measured: 0,
   subscribers_gained_measured: 0,
@@ -59,6 +60,17 @@ afterEach(() => {
 });
 
 describe('queryTotals, for a figure no row measured (KB-162)', () => {
+  it('gives an X-only scope null shares, not 0 (FILM-1727)', async () => {
+    // X reports no shares (migration 021): the sum reads 0, the flag 0.
+    json.mockResolvedValue([{ ...tiktokRow, shares: '0', shares_measured: 0 }]);
+    const { queryTotals } = await import('../src/queries');
+
+    const totals = await queryTotals(SCOPE);
+
+    expect(totals.shares).toBeNull();
+    expect(totals.likes).toBe(20);
+  });
+
   it('gives null watch time, follower gain and saves over TikTok rows, not 0', async () => {
     json.mockResolvedValue([tiktokRow]);
     const { queryTotals } = await import('../src/queries');

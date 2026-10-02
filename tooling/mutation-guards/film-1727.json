@@ -159,6 +159,36 @@
       "cwd": "packages/features/content-analytics",
       "test": "__tests__/sync-status.test.ts",
       "pattern": "records X’s refused read and rate limit"
+    },
+    {
+      "name": "X17 an X-only scope's totals read its unmeasured shares as 0",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "    comments: Number(row.comments),\n    shares: measuredSum(row.shares, row.shares_measured),\n    saves: measuredSum(row.saves, row.saves_measured),\n    watch_time_seconds",
+      "replace": "    comments: Number(row.comments),\n    shares: Number(row.shares),\n    saves: measuredSum(row.saves, row.saves_measured),\n    watch_time_seconds",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/totals-unmeasured.test.ts",
+      "pattern": "gives an X-only scope null shares"
+    },
+    {
+      "name": "X18 X's platform row reads its unmeasured shares as 0",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/queries.ts",
+      "find": "    // One platform's sum: null when none of its rows measured shares (X).\n    shares: measuredSum(row.shares, row.shares_measured),",
+      "replace": "    // One platform's sum: null when none of its rows measured shares (X).\n    shares: Number(row.shares),",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/clickhouse.test.ts",
+      "pattern": "gives X null shares"
+    },
+    {
+      "name": "X19 the Shares card shows 0 for an X-only team",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/components/metric-cards.tsx",
+      "find": "      value: data ? data.shares : null,",
+      "replace": "      value: data?.shares || 0,",
+      "cwd": "packages/features/content-analytics",
+      "test": "src/components/__tests__/metric-cards-views.test.tsx",
+      "pattern": "says Shares were not measured"
     }
   ]
 }

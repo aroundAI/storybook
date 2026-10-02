@@ -321,6 +321,7 @@ describe('@kit/clickhouse', () => {
             watch_time_seconds: '18000',
             revenue_cents: '1500',
             subscribers_gained: '15',
+            shares_measured: 1,
             saves_measured: 1,
             watch_time_seconds_measured: 1,
             subscribers_gained_measured: 1,
@@ -462,7 +463,7 @@ describe('@kit/clickhouse', () => {
       });
 
       it('gives X null shares, not a measured 0, and leaves the others as they were (migration 021)', async () => {
-        // A sum over only NULLs is NULL in ClickHouse; Number(null) is 0.
+        // KB-162's shape: an unmeasured sum reads 0, and the flag says so.
         mockQueryResult.json.mockResolvedValue([
           {
             platform: 'youtube',
@@ -470,7 +471,9 @@ describe('@kit/clickhouse', () => {
             likes: '150',
             comments: '30',
             shares: '20',
-            saves: null,
+            shares_measured: 1,
+            saves: '0',
+            saves_measured: 0,
             revenue_cents: '0',
           },
           {
@@ -478,8 +481,10 @@ describe('@kit/clickhouse', () => {
             views: '900',
             likes: '40',
             comments: '6',
-            shares: null,
+            shares: '0',
+            shares_measured: 0,
             saves: '3',
+            saves_measured: 1,
             revenue_cents: '0',
           },
         ]);
