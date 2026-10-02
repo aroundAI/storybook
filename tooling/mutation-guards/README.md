@@ -50,6 +50,22 @@ and the long ones hit the job timeout (#519, #521). Each guard's line ends
 with its seconds; refresh the file from recent green queue runs with
 `python3 tooling/mutation-guards/durations.py <run-id>…`.
 
+**The dev server is restarted between guards when it grows too big
+(KB-165).** In dev, Next's server keeps memory it never gives back: about
+32MB per spec run, held by React's dev-only async debug tracking. A shard's
+server grows by gigabytes. On the 7GB runner, the last guards then stalled,
+or Next restarted itself mid-guard at 80% of its heap. The job starts the
+server with `scripts/ci/next-dev-server.sh start` and sets
+`E2E_DEV_SERVER_CTL` to that script. Before each E2E guard, never during one,
+run.py prints `[dev server] RSS N MB, limit M MB`. When the RSS is over the
+limit, it runs `next-dev-server.sh restart` and waits for `/healthcheck`.
+The limit is `E2E_DEV_SERVER_MAX_RSS_MB`, or 45% of the machine's memory by
+default (about 3.2GB on the runner). The first baseline attempt on a
+restarted server compiles every route cold. If that attempt fails only on
+time, it is not counted, and the guard gets one more attempt. Without
+`E2E_DEV_SERVER_CTL`, nothing is read or restarted, so your own server is
+left alone.
+
 ## What each outcome means
 
 | Outcome | Meaning | What to do |

@@ -298,7 +298,73 @@ def failed_on_time(output):
     return bool(TEST_TIMEOUT.search(output)) or navigation_timeouts_only(output)
 
 
-def run_attempts(entry, cmd, cwd, env, pause_after_timeout=False):
+# The dev server the E2E guards share leaks: React's dev-only async debug
+# tracking keeps ~32MB per spec run (KB-165), so a shard's server grows by
+# gigabytes and the runner's last guards stall or meet Next's own mid-guard
+# restart. When E2E_DEV_SERVER_CTL names scripts/ci/next-dev-server.sh, the
+# runner reads the server's RSS before each E2E guard and restarts it there,
+# between guards, once it passes E2E_DEV_SERVER_MAX_RSS_MB.
+#
+# The default limit is 45% of the machine's memory: ~3.2GB on CI's 7GB
+# runner, and out of reach on a developer's machine. From the measurements:
+# - too late: Next's own restart, at 80% of the 4GB heap (~3.5GB of heap,
+#   so more RSS than that), fired mid-guard and failed the shard (run
+#   36936270679), and #533's run stalled before reaching it;
+# - the rest of the runner: Supabase ~1.2GB (docker stats, local),
+#   ClickHouse ~0.5GB fresh, Chromium ~0.5GB and the OS, which leaves the
+#   server ~4GB of the 7GB at most;
+# - too early: a freshly started server measured 1.6-3.0GB RSS locally
+#   (macOS, which counts more than Linux), so a limit far below 3GB would
+#   restart before every guard, and each restart costs a cold compile.
+# Every reading is logged before each guard, so CI's own numbers can retune
+# it through E2E_DEV_SERVER_MAX_RSS_MB.
+DEV_SERVER_MAX_RSS_SHARE = 0.45
+
+
+def default_rss_limit_mb():
+    total = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
+    return int(total * DEV_SERVER_MAX_RSS_SHARE / 2 ** 20)
+
+
+def dev_server_restart_due(rss_mb, limit_mb):
+    """Restart when the server's RSS is known and over the limit. An unread
+    RSS (None) never restarts: a guard run is not stopped for a reading."""
+    return rss_mb is not None and rss_mb > limit_mb
+
+
+def dev_server_rss(ctl):
+    try:
+        out = subprocess.run([ctl, 'rss'], capture_output=True, text=True,
+                             timeout=30).stdout.strip()
+        return int(out)
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return None
+
+
+def restart_dev_server_if_due(env):
+    """Before an E2E guard, never during one: restarts the dev server when
+    its RSS is over the limit. Returns True when it restarted. Does nothing
+    without E2E_DEV_SERVER_CTL (a developer's own server is theirs)."""
+    ctl = env.get('E2E_DEV_SERVER_CTL')
+    if not ctl:
+        return False
+    ctl = os.path.join(ROOT, ctl)
+    limit = int(env.get('E2E_DEV_SERVER_MAX_RSS_MB') or default_rss_limit_mb())
+    rss = dev_server_rss(ctl)
+    if not dev_server_restart_due(rss, limit):
+        print(f'  [dev server] RSS {rss if rss is not None else "unread"} MB, limit {limit} MB', flush=True)
+        return False
+    print(f'  [dev server] RSS {rss} MB is over the {limit} MB limit: restarting '
+          'it before the next guard', flush=True)
+    started = time.monotonic()
+    done = subprocess.run([ctl, 'restart'], capture_output=True, text=True)
+    print(f'  [dev server] restart exited {done.returncode} after '
+          f'{time.monotonic() - started:.0f}s; RSS now {dev_server_rss(ctl)} MB: '
+          f'{done.stdout.strip()[-300:]}', flush=True)
+    return True
+
+
+def run_attempts(entry, cmd, cwd, env, pause_after_timeout=False, after_restart=False):
     """Runs a guard: (exit code, output, attempts made). A unit guard runs
     once. An E2E guard makes up to E2E_ATTEMPTS attempts, each its own
     Playwright command with its own --global-timeout, and stops at the first
@@ -307,11 +373,17 @@ def run_attempts(entry, cmd, cwd, env, pause_after_timeout=False):
     attempt did. With `pause_after_timeout` (the baseline), an attempt that
     failed only on time is followed by a pause before the next.
 
+    With `after_restart` (the first baseline on a freshly restarted dev
+    server), a first attempt that failed only on time does not count: it paid
+    for compiling every route the guard visits, cold.
+
     An attempt Playwright or the kill limit ended raises GuardTimedOut, with
     the earlier attempts' output in front of its own."""
     attempts = E2E_ATTEMPTS if entry['kind'] == 'e2e' else 1
     printed = ''
-    for attempt in range(1, attempts + 1):
+    attempt = 0
+    while attempt < attempts:
+        attempt += 1
         started = time.monotonic()
         try:
             code, output = run(cmd, cwd, env, limit=kill_limit(entry))
@@ -326,12 +398,15 @@ def run_attempts(entry, cmd, cwd, env, pause_after_timeout=False):
         printed += output if printed == '' else '\n' + output
         if code == 0:
             return code, printed, attempt
+        if after_restart and attempt == 1 and attempts > 1 and failed_on_time(output):
+            attempts += 1
+            printed += '\n--- the attempt above compiled a restarted server cold; not counted ---'
         if pause_after_timeout and attempt < attempts and failed_on_time(output):
             time.sleep(BASELINE_RETRY_PAUSE)
     return code, printed, attempts
 
 
-def run_code_mutation(entry, base_env):
+def run_code_mutation(entry, base_env, after_restart=False):
     path = os.path.join(ROOT, entry['file'])
     source = open(path).read()
 
@@ -342,7 +417,8 @@ def run_code_mutation(entry, base_env):
     # Baseline: the guard must pass on the real code, or its failure under
     # the mutation would be counted as detection when it is not.
     cmd, cwd, env = guard_command(entry, base_env)
-    code, output, attempts = run_attempts(entry, cmd, cwd, env, pause_after_timeout=True)
+    code, output, attempts = run_attempts(entry, cmd, cwd, env, pause_after_timeout=True,
+                                          after_restart=after_restart)
     if code == 0 and attempts > 1:
         entry['baseline_attempts'] = attempts
     if code != 0:
@@ -478,15 +554,23 @@ def counts_as_failure(entry, status):
     return not (status == 'TIMED OUT' and entry.get('known_flake'))
 
 
-def run_entry(entry, base_env):
+def run_entry(entry, base_env, after_restart=False):
     # A hung guard is an outcome, not a crash: the mutation is restored by
     # the `finally` it passes through, and the run goes on to the next entry.
     try:
         if entry['kind'] == 'pgtap':
             return run_pgtap_mutation(entry)
-        return run_code_mutation(entry, base_env)
+        return run_code_mutation(entry, base_env, after_restart)
     except GuardTimedOut as timed_out:
         return 'TIMED OUT', f'{timed_out}\n{timed_out.output}'
+
+
+def run_guard(entry, base_env):
+    """One entry, as the run makes it: an E2E guard first gets a dev server
+    under its memory limit, restarted here if need be, and a cold first
+    attempt on a restarted server is not counted against it."""
+    restarted = entry['kind'] == 'e2e' and restart_dev_server_if_due(base_env)
+    return run_entry(entry, base_env, after_restart=restarted)
 
 
 def load_entries():
@@ -585,8 +669,12 @@ def self_test_steadiness(base_env, toothless):
               'ended': "echo 'Timed out waiting 300s for the test suite to run'; exit 1"}
     saved = guard_command, BASELINE_RETRY_PAUSE, E2E_WAITS, time.sleep
     pauses = []
-    BASELINE_RETRY_PAUSE, E2E_WAITS = 0.001, (0,)
-    time.sleep = lambda seconds: pauses.append(seconds) if seconds else None
+    BASELINE_RETRY_PAUSE, E2E_WAITS = 0.0123, (0,)
+    # Only the baseline's pauses are counted: subprocess also sleeps while it
+    # polls a command run with a timeout (the dev server's RSS reading).
+    real_sleep = time.sleep
+    time.sleep = lambda seconds: (pauses.append(seconds) if seconds == BASELINE_RETRY_PAUSE
+                                  else real_sleep(seconds))
     try:
         for label, outcomes, want in [
             ('every mutated attempt fails: RED after three',
@@ -601,6 +689,15 @@ def self_test_steadiness(base_env, toothless):
              ['timeout', 'goto', 'pass', 'fail', 'fail', 'fail'], ('RED', 3, 6, 2)),
             ('an attempt Playwright ended: TIMED OUT, never RED',
              ['pass', 'fail', 'ended'], ('TIMED OUT', None, 3, 0)),
+            # A restarted dev server compiles cold: its first baseline attempt
+            # failing on time is not counted, so a fourth may run (KB-165).
+            ('after a restart, three timeouts then a pass: the cold one is not counted',
+             ['timeout', 'timeout', 'timeout', 'pass', 'fail', 'fail', 'fail'],
+             ('RED', 4, 7, 3)),
+            ('without a restart, the same three timeouts: NOT GREEN',
+             ['timeout', 'timeout', 'timeout', 'pass'], ('NOT GREEN', None, 3, 2)),
+            ('after a restart, a failed assertion still counts',
+             ['assert', 'assert', 'assert', 'pass'], ('NOT GREEN', None, 3, 0)),
         ]:
             pauses.clear()
             with tempfile.TemporaryDirectory() as scratch:
@@ -610,7 +707,16 @@ def self_test_steadiness(base_env, toothless):
                            f'echo $n > {counter}; case $n in {cases} esac')
                 guard_command = lambda entry, env: (['sh', '-c', command], ROOT, env)
                 entry = dict(toothless, kind='e2e', name=f'self-test: {label}')
-                status, output = run_entry(entry, base_env)
+                # 'after a restart': a stand-in server control reports an RSS
+                # over the limit, so run_guard restarts it before the guard.
+                restarted = label.startswith('after a restart')
+                ctl = os.path.join(scratch, 'ctl')
+                with open(ctl, 'w') as handle:
+                    handle.write(f'#!/bin/sh\ncase "$1" in rss) echo '
+                                 f'{9999 if restarted else 100};; esac\n')
+                os.chmod(ctl, 0o755)
+                status, output = run_guard(entry, dict(base_env, E2E_DEV_SERVER_CTL=ctl,
+                                                       E2E_DEV_SERVER_MAX_RSS_MB='1000'))
                 runs = int(open(counter).read())
             got = (status, entry.get('baseline_attempts'), runs, len(pauses))
             if got != want:
@@ -622,6 +728,49 @@ def self_test_steadiness(base_env, toothless):
                 return 1
     finally:
         guard_command, BASELINE_RETRY_PAUSE, E2E_WAITS, time.sleep = saved
+
+    for label, rss, limit, want in [
+        ('under the limit', 2999, 3000, False),
+        ('at the limit', 3000, 3000, False),
+        ('over the limit', 3001, 3000, True),
+        ('an RSS that could not be read', None, 3000, False),
+    ]:
+        if dev_server_restart_due(rss, limit) != want:
+            print(f'SELF-TEST FAILED: dev_server_restart_due {label}: expected {want}')
+            return 1
+    # The restart end to end, against a stand-in for next-dev-server.sh that
+    # prints a scripted RSS and records each restart.
+    with tempfile.TemporaryDirectory() as scratch:
+        ctl, restarts = os.path.join(scratch, 'ctl'), os.path.join(scratch, 'restarts')
+        with open(ctl, 'w') as handle:
+            handle.write(f'#!/bin/sh\ncase "$1" in rss) echo "$FAKE_RSS";; '
+                         f'restart) echo restarted >> {restarts};; esac\n')
+        os.chmod(ctl, 0o755)
+        for label, env, want in [
+            ('over the default limit restarts',
+             {'E2E_DEV_SERVER_CTL': ctl, 'FAKE_RSS': str(default_rss_limit_mb() + 1)}, 1),
+            ('under the default limit does not',
+             {'E2E_DEV_SERVER_CTL': ctl, 'FAKE_RSS': str(default_rss_limit_mb() - 1)}, 0),
+            ('a configured limit is read',
+             {'E2E_DEV_SERVER_CTL': ctl, 'FAKE_RSS': '2500',
+              'E2E_DEV_SERVER_MAX_RSS_MB': '2000'}, 1),
+            ('an unreadable RSS does not', {'E2E_DEV_SERVER_CTL': ctl, 'FAKE_RSS': 'n/a'}, 0),
+            ('no server control, no restart', {'FAKE_RSS': '9999'}, 0),
+        ]:
+            if os.path.exists(restarts):
+                os.remove(restarts)
+            saved_environ = dict(os.environ)
+            os.environ.update(env)
+            try:
+                restarted = restart_dev_server_if_due(env)
+            finally:
+                os.environ.clear()
+                os.environ.update(saved_environ)
+            made = len(open(restarts).read().split()) if os.path.exists(restarts) else 0
+            if (restarted, made) != (bool(want), want):
+                print(f'SELF-TEST FAILED: restart_dev_server_if_due {label}: '
+                      f'returned {restarted} after {made} restart(s), expected {want}')
+                return 1
 
     for label, entry, want in [
         ('e2e default', {'kind': 'e2e'}, E2E_ATTEMPT_TIMEOUT + E2E_KILL_GRACE),
@@ -897,7 +1046,7 @@ def main():
     failures, excused = [], []
     for entry in entries:
         started = time.monotonic()
-        status, output = run_entry(entry, base_env)
+        status, output = run_guard(entry, base_env)
         # The seconds are what durations.py reads back to rebalance shards.
         retried = f' [baseline passed on attempt {entry["baseline_attempts"]}]' \
             if entry.get('baseline_attempts') else ''

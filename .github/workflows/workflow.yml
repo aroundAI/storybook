@@ -738,31 +738,22 @@ jobs:
 
       # A dev server, on purpose (see the job comment). apps/web/.env.development
       # points it at the local Supabase; the ClickHouse settings come from
-      # this job's env.
+      # this job's env. Started through next-dev-server.sh so the guards can
+      # restart it between guards: it keeps ~32MB per spec run it never
+      # gives back (KB-165), and a shard's last guards stalled on a runner
+      # out of memory. `start` returns once /healthcheck answers.
       - name: Run Next.js dev server
-        working-directory: apps/web
-        run: npx next dev --turbo -p 3100 > "$RUNNER_TEMP/next-dev.log" 2>&1 &
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096
-
-      - name: Wait for the server
-        run: |
-          for attempt in $(seq 1 90); do
-            if curl -sf http://localhost:3100/healthcheck > /dev/null; then
-              echo "server ready after ${attempt} attempt(s)"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "Next.js did not become ready in 180s"
-          tail -50 "$RUNNER_TEMP/next-dev.log"
-          exit 1
+        run: scripts/ci/next-dev-server.sh start
 
       # Each E2E guard breaks the code, lets the dev server recompile, and
       # requires its spec to fail; the unit and database guards run in their
       # own jobs.
       - name: Mutation guards - e2e
         run: python3 tooling/mutation-guards/run.py --kind e2e --shard ${{ matrix.shard }}/5
+        env:
+          # Read before each guard; over the limit, the server is restarted
+          # there, never inside a guard (KB-165). The default and why: run.py.
+          E2E_DEV_SERVER_CTL: scripts/ci/next-dev-server.sh
 
       - name: Upload server log
         uses: actions/upload-artifact@v4
