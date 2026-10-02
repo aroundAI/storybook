@@ -5021,6 +5021,151 @@ async function channelExperimentSteps() {
   });
 }
 
+const UNMEASURED_PROJECT = 'b1620000-0000-4000-8000-000000000162';
+
+/**
+ * KB-162: a scope's totals, daily series and platform split, over columns a
+ * platform does not report. Each NULL-only sum must come back null, never
+ * the 0 `Number(null)` makes of it.
+ *
+ * | video | platform  | date  | views | saves | watch time | subs gained |
+ * |-------|-----------|-------|-------|-------|------------|-------------|
+ * | tt-a  | tiktok    | 01-06 |   100 | NULL  | NULL       | NULL        |
+ * | tt-a  | tiktok    | 01-07 |    50 | NULL  | NULL       | NULL        |
+ * | tt-b  | tiktok    | 01-06 |    30 | NULL  | NULL       | NULL        |
+ * | ig-a  | instagram | 01-07 |    10 |     3 | NULL       | NULL        |
+ * | yt-a  | youtube   | 01-06 |   200 | NULL  | 600        | 4           |
+ * | yt-a  | youtube   | 01-08 |    20 | NULL  | 60         | 0           |
+ */
+async function unmeasuredTotalsSteps() {
+  const project = UNMEASURED_PROJECT;
+  const row = (
+    id: string,
+    platform: AnalyticsPlatform,
+    date: string,
+    views: number,
+    figures: {
+      saves?: number;
+      watch?: number;
+      subscribers?: number;
+    } = {},
+  ): VideoMetric => ({
+    project_id: project,
+    video_id: id,
+    platform,
+    metric_date: date,
+    views,
+    likes: 1,
+    comments: 0,
+    shares: 0,
+    saves: figures.saves ?? null,
+    watch_time_seconds: figures.watch ?? null,
+    revenue_cents: 0,
+    subscribers_gained: figures.subscribers ?? null,
+    subscribers_lost: null,
+    metric_source: platform === 'youtube' ? 'analytics_api' : 'snapshot_delta',
+    extra_metrics: '{}',
+  });
+
+  await step('seed: unmeasured-totals fixture (KB-162)', async () => {
+    await clearFixtureRows([project], []);
+    await insertVideoMetrics([
+      row('kb162-tt-a', 'tiktok', '2026-01-06', 100),
+      row('kb162-tt-a', 'tiktok', '2026-01-07', 50),
+      row('kb162-tt-b', 'tiktok', '2026-01-06', 30),
+      row('kb162-ig-a', 'instagram', '2026-01-07', 10, { saves: 3 }),
+      row('kb162-yt-a', 'youtube', '2026-01-06', 200, {
+        watch: 600,
+        subscribers: 4,
+      }),
+      row('kb162-yt-a', 'youtube', '2026-01-08', 20, {
+        watch: 60,
+        subscribers: 0,
+      }),
+    ]);
+  });
+
+  await step(
+    'assert: an unmeasured total is null, not 0, by hand (KB-162)',
+    async () => {
+      // TikTok alone: views 100 + 50 + 30 = 180; nothing else measured.
+      const tiktok = await queryTotals({
+        projectId: project,
+        platforms: ['tiktok'],
+      });
+      expectEqual(
+        'tiktok-only totals',
+        [
+          tiktok.views,
+          tiktok.watch_time_seconds,
+          tiktok.subscribers_gained,
+          tiktok.saves,
+        ],
+        [180, null, null, null],
+      );
+
+      // Every platform: views 180 + 10 + 220 = 410; saves only Instagram's
+      // 3; watch time YouTube's 600 + 60; follower gain 4 + a measured 0.
+      const all = await queryTotals({ projectId: project });
+      expectEqual(
+        'all-platform totals',
+        [all.views, all.saves, all.watch_time_seconds, all.subscribers_gained],
+        [410, 3, 660, 4],
+      );
+
+      // YouTube alone: saves are not a YouTube metric (KB-114).
+      const youtube = await queryTotals({ videoIds: ['kb162-yt-a'] });
+      expectEqual(
+        'youtube saves and watch time',
+        [youtube.saves, youtube.watch_time_seconds],
+        [null, 660],
+      );
+
+      // No rows in the window: nothing counted, nothing measured.
+      const empty = await queryTotals({
+        projectId: project,
+        startDate: '2027-01-01',
+      });
+      expectEqual(
+        'no-row totals',
+        [empty.views, empty.watch_time_seconds, empty.saves],
+        [0, null, null],
+      );
+
+      // By day: 01-06 YouTube's 600; 01-07 TikTok and Instagram only, so
+      // no watch time, saves 3; 01-08 YouTube's 60, no saves.
+      const daily = await queryDailyTimeSeries({ projectId: project });
+      expectEqual(
+        'daily watch time and saves',
+        daily.map((day) => [day.date, day.watch_time_seconds, day.saves]),
+        [
+          ['2026-01-06', 600, null],
+          ['2026-01-07', null, 3],
+          ['2026-01-08', 60, null],
+        ],
+      );
+
+      // By platform, largest first: YouTube 220, TikTok 180, Instagram 10.
+      const split = await queryPlatformBreakdown({ projectId: project });
+      expectEqual(
+        'platform saves',
+        split.map((p) => [p.platform, p.views, p.saves]),
+        [
+          ['youtube', 220, null],
+          ['tiktok', 180, null],
+          ['instagram', 10, 3],
+        ],
+      );
+
+      return 'tiktok watch/subs/saves null · all 410/3/660/4 · daily and split null where unmeasured';
+    },
+  );
+
+  await step('clear: unmeasured-totals fixture', () =>
+    clearFixtureRows([project], []),
+  );
+}
+
 async function main() {
   if (!isClickHouseEnabled()) {
     console.error(
@@ -5040,6 +5185,7 @@ async function main() {
   await channelExperimentSteps();
   await handComputedSteps();
   await observedCoverageSteps();
+  await unmeasuredTotalsSteps();
   // Last: it fills a project with noise, and nothing above should see it.
   await scanScopeSteps();
 

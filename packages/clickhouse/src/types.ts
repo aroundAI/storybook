@@ -479,6 +479,18 @@ export interface AggregatedTotals {
 }
 
 /**
+ * Totals over a whole scope — an account, a project. Where no row measured
+ * a column it is null, never 0 (KB-162): TikTok reports no watch time,
+ * follower gain or saves, so an all-TikTok scope has none of them.
+ */
+export interface ScopeTotals
+  extends Omit<AggregatedTotals, keyof MeasuredColumns> {
+  saves: number | null;
+  watch_time_seconds: number | null;
+  subscribers_gained: number | null;
+}
+
+/**
  * Daily time series data point
  */
 export interface DailyDataPoint {
@@ -488,8 +500,10 @@ export interface DailyDataPoint {
   likes: number;
   comments: number;
   shares: number;
-  saves: number;
-  watch_time_seconds: number;
+  /** Null on a day no row measured it (KB-162). */
+  saves: number | null;
+  /** Null on a day no row measured it (KB-162). */
+  watch_time_seconds: number | null;
   revenue_cents: number;
 }
 
@@ -503,7 +517,8 @@ export interface PlatformBreakdown {
   likes: number;
   comments: number;
   shares: number;
-  saves: number;
+  /** Null where none of the platform's rows measured it (KB-162). */
+  saves: number | null;
   revenue_cents: number;
 }
 

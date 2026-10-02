@@ -24,7 +24,7 @@ acceptance_criteria:
     evidence: "packages/clickhouse/src/lib/format-families.ts:32 — FormatFamily, from FORMAT_FAMILIES (packages/clickhouse/src/lib/format-families.ts:18); ContentType is its own union, read off publishes' CHECK (packages/clickhouse/__tests__/format-families.test.ts:42). #497"
   - text: "The mapping is explicit and exported, not inferred at call sites"
     met: true
-    evidence: "packages/clickhouse/src/lib/format-families.ts:88 FORMAT_BY_CONTENT_TYPE, a Record on content type x platform with no default, exported from @kit/clickhouse with resolveFormatFamily (packages/clickhouse/src/lib/format-families.ts:198); the one analytics call site that split short/long now resolves through it (packages/features/content-analytics/src/server/language-analytics.ts:463). #497"
+    evidence: "packages/clickhouse/src/lib/format-families.ts:88 FORMAT_BY_CONTENT_TYPE, a Record on content type x platform with no default, exported from @kit/clickhouse with resolveFormatFamily (packages/clickhouse/src/lib/format-families.ts:198); the one analytics call site that split short/long now resolves through it (packages/features/content-analytics/src/server/language-analytics.ts:465). #497"
   - text: "Every content_type present in video_dim has a mapping, asserted against the live table"
     met: true
     evidence: "packages/clickhouse/scripts/verify-queries.ts:2906 runs SELECT DISTINCT platform, content_type FROM video_dim FINAL and fails on any pair unmappedFormatPairs returns; 128/128 green against ClickHouse 24.8, and seen red (youtube/podcast added to the fixture: 127 passed, 1 failed). #497"

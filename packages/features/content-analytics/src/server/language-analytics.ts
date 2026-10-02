@@ -23,6 +23,7 @@ import {
 import { fetchAllByIds } from '@kit/shared/pagination';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { measuredFigure, sumMeasured } from '../lib/export-coverage';
 import type { LanguageDivergence } from '../lib/language-divergence';
 import { summariseLanguagePairs } from '../lib/language-divergence';
 import {
@@ -108,7 +109,8 @@ export interface FormatFamilyTotals {
   shares: number;
   engagement: number;
   revenueCents: number;
-  subscribersGained: number;
+  /** Null where no video measured it: only YouTube reports it (KB-162). */
+  subscribersGained: number | null;
   contentCount: number;
 }
 
@@ -497,7 +499,7 @@ export async function getContentTypeComparison(
       comments: 0,
       shares: 0,
       revenueCents: 0,
-      subscribersGained: 0,
+      subscribersGained: null,
       contentCount: 0,
     };
 
@@ -506,7 +508,11 @@ export async function getContentTypeComparison(
     target.comments += stats.comments;
     target.shares += stats.shares;
     target.revenueCents += stats.revenue_cents;
-    target.subscribersGained += stats.subscribers_gained;
+    // Only a measured gain adds; none measured stays null (KB-162).
+    target.subscribersGained = sumMeasured([
+      target.subscribersGained,
+      measuredFigure(stats, 'subscribers_gained'),
+    ]).value;
     target.contentCount++;
     totals.set(placed.family, target);
   }

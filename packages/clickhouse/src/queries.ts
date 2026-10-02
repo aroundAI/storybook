@@ -27,6 +27,7 @@ import type {
   PerVideoTotals,
   PlatformBreakdown,
   QueryFilters,
+  ScopeTotals,
   SnapshotTotals,
   VideoMetric,
   VideoReachDaily,
@@ -319,20 +320,45 @@ function buildWhereClause(filters: QueryFilters): {
 }
 
 /**
- * Query aggregated totals from video_daily_stats.
- * Returns summed views, likes, comments, shares, etc.
+ * Totals over no rows: nothing counted, so 0, and nothing measured, so the
+ * columns a platform may not report are null (KB-162).
  */
-/** Zero totals, also the identity when summing chunked partials. */
-const EMPTY_TOTALS: AggregatedTotals = {
+const NO_ROWS_TOTALS: ScopeTotals = {
   views: 0,
   likes: 0,
   comments: 0,
   shares: 0,
-  saves: 0,
-  watch_time_seconds: 0,
+  saves: null,
+  watch_time_seconds: null,
   revenue_cents: 0,
-  subscribers_gained: 0,
+  subscribers_gained: null,
 };
+
+/**
+ * The identity when summing chunked partials. Views too start null: a
+ * chunk's null takes the other side's figure, and a 0 here would turn an
+ * all-Facebook selection's null into 0 (KB-153).
+ */
+const CHUNK_SUM_IDENTITY: ScopeTotals = { ...NO_ROWS_TOTALS, views: null };
+
+/**
+ * The SQL for a nullable column's sum over the rows that measured it, and
+ * whether any did (KB-114's flag). Read back with `measuredSum`. Needs
+ * `prefer_column_name_to_alias`, so `count(col)` reads the column and not
+ * the `sumIf(…) as col` alias.
+ */
+function measuredSumSql(column: keyof MeasuredColumns): string {
+  return `sumIf(${column}, ${column} IS NOT NULL) as ${column},
+      count(${column}) > 0 as ${column}_measured`;
+}
+
+/** A nullable column's sum: null where no row measured it, never 0 (KB-162). */
+function measuredSum(
+  value: number | string | null,
+  measured: number | boolean,
+): number | null {
+  return Number(measured) ? Number(value) : null;
+}
 
 /**
  * Account/project totals.
@@ -345,7 +371,7 @@ export async function queryTotals(
   filters:
     | (QueryFilters & { projectId: string })
     | (QueryFilters & { videoIds: string[] }),
-): Promise<AggregatedTotals> {
+): Promise<ScopeTotals> {
   const videoIds = (filters as QueryFilters).videoIds;
 
   if (!videoIds || fitsOneChunk(videoIds)) return queryTotalsSingle(filters);
@@ -353,7 +379,7 @@ export async function queryTotals(
   return sumTotalsByChunk(
     videoIds,
     (chunk) => queryTotalsSingle({ ...filters, videoIds: chunk }),
-    EMPTY_TOTALS,
+    CHUNK_SUM_IDENTITY,
   );
 }
 
@@ -411,18 +437,8 @@ async function queryTotalsSingle(
   filters:
     | (QueryFilters & { projectId: string })
     | (QueryFilters & { videoIds: string[] }),
-): Promise<AggregatedTotals> {
-  if (!isClickHouseEnabled())
-    return {
-      views: 0,
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      saves: 0,
-      watch_time_seconds: 0,
-      revenue_cents: 0,
-      subscribers_gained: 0,
-    };
+): Promise<ScopeTotals> {
+  if (!isClickHouseEnabled()) return { ...NO_ROWS_TOTALS };
   const client = getClickHouseClient();
   assertScopedFilters(filters);
   const { clause, params } = buildWhereClause(filters);
@@ -433,10 +449,10 @@ async function queryTotalsSingle(
       sum(likes) as likes,
       sum(comments) as comments,
       sum(shares) as shares,
-      sum(saves) as saves,
-      sum(watch_time_seconds) as watch_time_seconds,
+      ${measuredSumSql('saves')},
+      ${measuredSumSql('watch_time_seconds')},
       sum(revenue_cents) as revenue_cents,
-      sum(subscribers_gained) as subscribers_gained,
+      ${measuredSumSql('subscribers_gained')},
       count() as row_count
     FROM video_daily_stats
     ${clause}
@@ -446,22 +462,14 @@ async function queryTotalsSingle(
     query,
     query_params: params,
     format: 'JSONEachRow',
+    clickhouse_settings: { prefer_column_name_to_alias: 1 },
   });
 
-  const rows = await result.json<AggregatedTotals & { row_count: number }>();
+  const rows = await result.json<
+    AggregatedTotals & { row_count: number } & MeasuredFlagsRow
+  >();
 
-  if (rows.length === 0) {
-    return {
-      views: 0,
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      saves: 0,
-      watch_time_seconds: 0,
-      revenue_cents: 0,
-      subscribers_gained: 0,
-    };
-  }
+  if (rows.length === 0) return { ...NO_ROWS_TOTALS };
 
   // ClickHouse returns numbers as strings, ensure they're numeric
   const row = rows[0]!;
@@ -472,10 +480,16 @@ async function queryTotalsSingle(
     likes: Number(row.likes),
     comments: Number(row.comments),
     shares: Number(row.shares),
-    saves: Number(row.saves),
-    watch_time_seconds: Number(row.watch_time_seconds),
+    saves: measuredSum(row.saves, row.saves_measured),
+    watch_time_seconds: measuredSum(
+      row.watch_time_seconds,
+      row.watch_time_seconds_measured,
+    ),
     revenue_cents: Number(row.revenue_cents),
-    subscribers_gained: Number(row.subscribers_gained),
+    subscribers_gained: measuredSum(
+      row.subscribers_gained,
+      row.subscribers_gained_measured,
+    ),
   };
 }
 
@@ -498,8 +512,8 @@ async function queryDailyTimeSeriesSingle(
       sum(likes) as likes,
       sum(comments) as comments,
       sum(shares) as shares,
-      sum(saves) as saves,
-      sum(watch_time_seconds) as watch_time_seconds,
+      ${measuredSumSql('saves')},
+      ${measuredSumSql('watch_time_seconds')},
       sum(revenue_cents) as revenue_cents
     FROM video_daily_stats
     ${clause}
@@ -511,9 +525,10 @@ async function queryDailyTimeSeriesSingle(
     query,
     query_params: params,
     format: 'JSONEachRow',
+    clickhouse_settings: { prefer_column_name_to_alias: 1 },
   });
 
-  const rows = await result.json<DailyDataPoint>();
+  const rows = await result.json<DailyDataPoint & MeasuredFlagsRow>();
 
   return rows.map((row) => ({
     date: row.date,
@@ -521,8 +536,11 @@ async function queryDailyTimeSeriesSingle(
     likes: Number(row.likes),
     comments: Number(row.comments),
     shares: Number(row.shares),
-    saves: Number(row.saves),
-    watch_time_seconds: Number(row.watch_time_seconds),
+    saves: measuredSum(row.saves, row.saves_measured),
+    watch_time_seconds: measuredSum(
+      row.watch_time_seconds,
+      row.watch_time_seconds_measured,
+    ),
     revenue_cents: Number(row.revenue_cents),
   }));
 }
@@ -546,21 +564,25 @@ async function queryPlatformBreakdownSingle(
       sum(likes) as likes,
       sum(comments) as comments,
       sum(shares) as shares,
-      sum(saves) as saves,
+      ${measuredSumSql('saves')},
       sum(revenue_cents) as revenue_cents
     FROM video_daily_stats
     ${clause}
     GROUP BY platform
-    ORDER BY views DESC
+    -- The sum, not \`views\`: prefer_column_name_to_alias reads the column.
+    ORDER BY sum(views) DESC
   `;
 
   const result = await client.query({
     query,
     query_params: params,
     format: 'JSONEachRow',
+    clickhouse_settings: { prefer_column_name_to_alias: 1 },
   });
 
-  const rows = await result.json<PlatformBreakdown>();
+  const rows = await result.json<
+    PlatformBreakdown & Pick<MeasuredFlagsRow, 'saves_measured'>
+  >();
 
   return rows.map((row) => ({
     platform: row.platform,
@@ -568,7 +590,7 @@ async function queryPlatformBreakdownSingle(
     likes: Number(row.likes),
     comments: Number(row.comments),
     shares: Number(row.shares),
-    saves: Number(row.saves),
+    saves: measuredSum(row.saves, row.saves_measured),
     revenue_cents: Number(row.revenue_cents),
   }));
 }

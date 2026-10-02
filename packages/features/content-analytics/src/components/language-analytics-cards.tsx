@@ -470,7 +470,9 @@ export function ContentTypeCard({ data, isLoading }: ContentTypeCardProps) {
                     {formatPercent(row.engagement)}
                   </td>
                   <td className="py-3 pl-3 text-right tabular-nums">
-                    {formatNumber(row.subscribersGained)}
+                    {row.subscribersGained === null
+                      ? 'Not measured'
+                      : formatNumber(row.subscribersGained)}
                   </td>
                 </tr>
               ))}

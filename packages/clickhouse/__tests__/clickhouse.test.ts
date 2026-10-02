@@ -292,6 +292,9 @@ describe('@kit/clickhouse', () => {
             watch_time_seconds: '18000',
             revenue_cents: '1500',
             subscribers_gained: '15',
+            saves_measured: 1,
+            watch_time_seconds_measured: 1,
+            subscribers_gained_measured: 1,
           },
         ]);
 

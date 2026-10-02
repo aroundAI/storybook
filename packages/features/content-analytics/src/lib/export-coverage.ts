@@ -13,6 +13,7 @@
  *
  * Pure and client-safe.
  */
+import type { AggregatedTotals, MeasuredColumns } from '@kit/clickhouse';
 
 /** What a blank CSV cell means, appended to that column's header. */
 export const NOT_MEASURED_CSV_NOTE = 'blank = not measured by the platform';
@@ -49,6 +50,19 @@ export function sumMeasured(values: Array<number | null>): MeasuredTotal {
     value: measured > 0 ? value : null,
     coverage: { measured, total: values.length },
   };
+}
+
+/**
+ * One video's figure for a column a platform may not measure: the sum where
+ * KB-114's flag says a row measured it, null otherwise — never the 0 that
+ * ClickHouse's unmeasured sum reads as. Totals without flags are not known
+ * to be measured. Add them up with `sumMeasured` (KB-162).
+ */
+export function measuredFigure(
+  totals: (AggregatedTotals & { measured?: MeasuredColumns }) | undefined,
+  column: keyof MeasuredColumns,
+): number | null {
+  return totals?.measured?.[column] ? totals[column] : null;
 }
 
 /** A weighted mean over the rows that measured the figure and have weight. */

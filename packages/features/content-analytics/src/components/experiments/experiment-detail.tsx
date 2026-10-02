@@ -30,7 +30,8 @@ export interface ExperimentMetricSnapshot {
     likes: number;
     comments: number;
     shares: number;
-    watchTimeSeconds: number;
+    /** Null where no video measured it (KB-162). */
+    watchTimeSeconds: number | null;
     revenueCents: number;
   };
   /** FILM-1610. Absent on snapshots written before it; null when unwatched. */
@@ -196,9 +197,24 @@ function DeltaRow({
   after,
 }: {
   label: string;
-  before: number;
-  after: number;
+  before: number | null;
+  after: number | null;
 }) {
+  if (before === null || after === null) {
+    // No change to compute from a figure nobody measured (KB-162).
+    return (
+      <div className={'flex items-center justify-between gap-2 text-sm'}>
+        <span className={'text-muted-foreground'}>{label}</span>
+        <span
+          className={'text-muted-foreground'}
+          data-test="experiment-delta-not-measured"
+        >
+          Not measured
+        </span>
+      </div>
+    );
+  }
+
   const delta = after - before;
   const pct = before > 0 ? (delta / before) * 100 : null;
   const Icon = delta > 0 ? ArrowUp : delta < 0 ? ArrowDown : ArrowRight;

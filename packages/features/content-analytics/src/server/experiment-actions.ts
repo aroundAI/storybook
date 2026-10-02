@@ -3,7 +3,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { queryTotalsByVideoIds } from '@kit/clickhouse/server';
-import type { AggregatedTotals } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
 import { requireRow } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
@@ -21,6 +20,7 @@ import {
   assertCanStart,
   assertEditable,
 } from '../lib/experiment-transitions';
+import { measuredFigure, sumMeasured } from '../lib/export-coverage';
 import {
   AbandonExperimentSchema,
   ConcludeExperimentSchema,
@@ -60,7 +60,8 @@ export interface ExperimentSnapshot {
     likes: number;
     comments: number;
     shares: number;
-    watchTimeSeconds: number;
+    /** Null where no video measured it: TikTok reports none (KB-162). */
+    watchTimeSeconds: number | null;
     revenueCents: number;
   };
   /**
@@ -127,24 +128,28 @@ async function captureSnapshot(
 ): Promise<ExperimentSnapshot> {
   const publishIds = linked.map((publish) => publish.id);
 
-  const totals = {
+  const totals: ExperimentSnapshot['totals'] = {
     views: 0,
     likes: 0,
     comments: 0,
     shares: 0,
-    watchTimeSeconds: 0,
+    watchTimeSeconds: null,
     revenueCents: 0,
   };
 
   if (publishIds.length > 0) {
     const perVideo = await queryTotalsByVideoIds(publishIds);
 
-    for (const stats of perVideo.values() as Iterable<AggregatedTotals>) {
+    for (const stats of perVideo.values()) {
       totals.views += viewsToAdd(stats.views);
       totals.likes += stats.likes;
       totals.comments += stats.comments;
       totals.shares += stats.shares;
-      totals.watchTimeSeconds += stats.watch_time_seconds;
+      // Only measured watch time adds; none measured stays null (KB-162).
+      totals.watchTimeSeconds = sumMeasured([
+        totals.watchTimeSeconds,
+        measuredFigure(stats, 'watch_time_seconds'),
+      ]).value;
       totals.revenueCents += stats.revenue_cents;
     }
   }
