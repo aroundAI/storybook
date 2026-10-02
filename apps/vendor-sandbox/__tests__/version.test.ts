@@ -28,7 +28,6 @@ const FREE_PORTS = {
   tiktok: 0,
   google: 0,
   x: 0,
-  linkedin: 0,
 };
 const EDITED = 'apps/vendor-sandbox/src/social/vendors/meta/insights.ts';
 

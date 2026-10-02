@@ -58,7 +58,7 @@ acceptance_criteria:
     evidence: "`hidden … lg:block` on the aside (screenplay/_components/continuity-sidebar.tsx:81); apps/e2e/tests/canon/continuity-sidebar.spec.ts:102 'is hidden below the lg breakpoint' (sidebar hidden at 800px; passed 2026-09-30, real browser, retries off)"
 remaining:
   - criterion: "Publish extracts and confirms canon changes"
-    reason: "Extract then commit is not driven in a browser: the commit needs a Playwright spec on the sandbox's Gemini stub (tests/sandbox). Extraction alone is driven (apps/e2e/tests/sandbox/ai-sandbox-evidence.spec.ts:278); the generator's commit is unit-tested only"
+    reason: "Extract then commit is not driven in a browser: the commit needs a Playwright spec on the sandbox's Gemini stub (tests/sandbox). Extraction alone is driven (apps/e2e/tests/sandbox/ai-sandbox-evidence.spec.ts:350); the generator's commit is unit-tested only"
     closed_by: "unassigned"
   - criterion: "All components work on desktop (1280px+)"
     reason: "unverified — visual; needs a browser check at 1280px, none recorded"
