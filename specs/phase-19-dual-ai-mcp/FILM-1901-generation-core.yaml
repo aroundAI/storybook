@@ -23,22 +23,22 @@ acceptance_criteria:
     evidence: "packages/features/generation/package.json and src/index.ts export StageKeySchema, GenerationModeSchema, GenerationOriginSchema, Brief, PartSpec, CheckError, Ctx, GenerationRun, StageDefinition, stageRegistry, registerStage, getStage, buildBrief, checkWithSchema, runStage. The package depends on @kit/prompt-engine, which itself depends on @kit/llm, so the criterion is met by subpath: it imports only `@kit/prompt-engine/render-template` and `@kit/prompt-engine/prompts/*` (JSON data), and `__tests__/import-boundary.test.ts` scans the source and refuses @kit/llm, @kit/agent, @kit/ai-gateway, @kit/episodes, `@kit/prompt-engine/server`, the root entry, @google/genai, openai, @anthropic-ai, voyageai, server-only and next; proven red with a planted `import '@kit/llm'` (2 findings) before going green (#557)"
   - text: "Every stage in the registry table below has a StageDefinition with parts(), prepare(), outputSchema (Zod), check() and commit()"
     met: false
-    reason: "2 of 14: story_refinement (src/stages/story-refinement.ts) and asset_description (src/stages/asset-description.ts), registered at load and checked by `stages.test.ts` (#557). The other 12 are the remaining slices of this spec"
+    reason: "6 of 14: story_refinement (src/stages/story-refinement.ts) and asset_description (src/stages/asset-description.ts), registered at load and checked by `stages.test.ts` (#557); screenplay, screenplay_refinement, dialogue_translation and publish_metadata (src/stages/{screenplay,screenplay-refinement,dialogue-translation,publish-metadata}.ts), each with parts(), prepare(), a Zod outputSchema, check() and commit(), checked by `stages-part-c.test.ts` (#TBD-1901c). The other 8 are the remaining slices of this spec"
   - text: "prepare() renders the stage's prompt JSON with the same renderTemplate the worker uses and returns a Brief: instructions (system layers + rendered user prompt), structured context, output JSON Schema generated from the Zod schema, example output, quality rubric from the matching quality-evaluation prompt, constraints, targetVersion, expiresAt"
     met: true
     evidence: "packages/features/generation/src/brief.ts: buildBrief renders with renderTemplate from `@kit/prompt-engine/render-template` (the worker's renderer), generates the JSON Schema with zod-to-json-schema, takes `example` from output.example_output, renders the stage's quality-evaluation prompt (story_refinement → story-quality.json) as a self-check with placeholders for the output, and sets expiresAt 30 minutes out (BRIEF_TTL_MS, FILM-1903's lease). Every stage's prepare goes through it; `__tests__/brief.test.ts` covers each field and `stages.test.ts` renders every registered stage's prompt with the context prepare builds (#557)"
   - text: "commit() owns every side effect the handler performs today: episodes JSONB columns and status, shots replacement, dialogue_lines rebuild, audio_cues, canon tables, asset auto-create, chained stages, generation_jobs bookkeeping; it runs in one transaction and snapshots what it replaces into content_revisions (FILM-1903)"
     met: false
-    reason: "For the two stages moved, commit owns what the handler did: story_refinement writes story_data, metadata.previous_story_data, metadata.refinement_history, updated_at and closes the generation_jobs row (processing/failed are runStage's); asset_description upserts the assets row on (project_id, type, name) with metadata.autoCreated, and the asset-creation job moves its 'asset_creation' generation_jobs row (KB-174, #553) through processing to completed or failed, which the old handler never did. The parity fixtures prove the content rows are the ones the handlers wrote (#557). Not met: content_revisions does not exist on main (FILM-1903 part A builds it); commit calls `ctx.revisions.snapshot()` when the capability is present and the worker passes none. One transaction needs a database function (PostgREST runs each statement on its own); the remaining 12 stages are not moved"
+    reason: "For the two stages moved, commit owns what the handler did: story_refinement writes story_data, metadata.previous_story_data, metadata.refinement_history, updated_at and closes the generation_jobs row (processing/failed are runStage's); asset_description upserts the assets row on (project_id, type, name) with metadata.autoCreated, and the asset-creation job moves its 'asset_creation' generation_jobs row (KB-174, #553) through processing to completed or failed, which the old handler never did. The parity fixtures prove the content rows are the ones the handlers wrote (#557). Part C: screenplay writes screenplay_data (scenes as returned, generatedBy, totals, metadata.characters/locations from the scenes), status storyboard and updated_at, rebuilds dialogue_lines (delete, then insert in scene order, speakers mapped to character_asset_id by the context builder's list) and closes the job; screenplay_refinement writes screenplay_data (scenes and metadata replaced, lastRefinedAt), metadata.previous_screenplay_data and refinement_history, rebuilds dialogue_lines and closes the job; dialogue_translation inserts the translated dialogue_lines, English for a line the writer left out, and refuses a set over half untranslated; publish_metadata writes no row, because no publish draft exists in the database (the draft is the publish screen's state and the result returns over WebSocket), and returns every item. `stage-parity.test.ts` proves the rows and the result are the ones the four handlers wrote (#TBD-1901c). Not met: content_revisions does not exist on main (FILM-1903 part A builds it); commit calls `ctx.revisions.snapshot()` when the capability is present and the worker passes none. One transaction needs a database function (PostgREST runs each statement on its own); the remaining 8 stages are not moved"
   - text: "check() runs the deterministic checks in both modes: schema validity, referential checks (characters and locations exist or are flagged for auto-create), count and duration bounds (SHOT_DURATION_LIMITS, calculateContentScaling), contiguous scene numbering, no empty dialogue, column length caps; errors are {path, code, message}"
     met: false
-    reason: "The shape and the schema check are in: checkWithSchema turns Zod issues into {path, code, message}, runStage runs it and then the stage's check(). story_refinement's check refuses blank text, a scene count below 1 and blank key events; asset_description's schema refuses a blank description and its target caps the name at 255 (the assets.name column). The referential, count, duration and scene-numbering checks belong to the story, screenplay and shots stages, not yet moved (#557)"
+    reason: "The shape and the schema check are in: checkWithSchema turns Zod issues into {path, code, message}, runStage runs it and then the stage's check(). story_refinement's check refuses blank text, a scene count below 1 and blank key events; asset_description's schema refuses a blank description and its target caps the name at 255 (the assets.name column). Part C adds the referential and structural checks for the screenplay stages (`shared/scene-checks.ts`): a speaker or location must be the episode's or declared new (the part's `newCharacters`/`newLocations`, or the refinement prompt's metadata lists; a declared one is auto-created by asset-creation as today), no empty speaker or dialogue text, scene numbers contiguous within a part from its own scene and 1..n across the parts at commit, text caps (heading 300, location 200, description 20 000, dialogue 4 000 characters; publishes.title 500); dialogue_translation refuses a translation for a line not in the part or translated twice; publish_metadata refuses an item nobody asked for or one translated twice. Scene and dialogue counts from calculateContentScaling (now `@kit/generation/duration-scaling`) are the brief's constraints and the planned part count, not refused: today's orchestrator saves an out-of-range screenplay, and refusing one is FILM-1909's decision. SHOT_DURATION_LIMITS belongs to the shots stage (part D) (#557, #TBD-1901c)"
   - text: "The worker enforces outputSchema on every model reply in server mode (today the prompt's output.schema is not enforced, apps/web/lambda/llm-worker/prompt-registry.ts)"
     met: false
-    reason: "Enforced for story-refinement (runStage: a reply the schema rejects throws StageOutputRejected, the generation_jobs row is marked failed with the {path, code} list, nothing is written; `stages.test.ts` 'runStage refuses') and for asset-creation (outputSchema.parse; a rejected reply falls back to the placeholder description as a failed call did before). The other 14 handlers still take the extracted JSON as it comes (#557)"
+    reason: "Enforced for story-refinement (runStage: a reply the schema rejects throws StageOutputRejected, the generation_jobs row is marked failed with the {path, code} list, nothing is written; `stages.test.ts` 'runStage refuses') and for asset-creation (outputSchema.parse; a rejected reply falls back to the placeholder description as a failed call did before). Part C enforces it for screenplay-conversion (every orchestrator scene parsed by the part schema: the prompt's time-of-day enum, numbers, dialogue shape; unknown keys kept), screenplay-refinement, translate-dialogue (one translation per source line, no blank text) and batch-translate-metadata (a rejected reply falls back to the untranslated items, as a failed call did before, so publishing never blocks on translation). The other 10 handlers still take the extracted JSON as it comes (#557, #TBD-1901c)"
   - text: "Each llm-worker handler is rewritten as prepare → orchestrator (run.write, FILM-1902) → commit, with no behaviour change visible in the web app"
     met: false
-    reason: "2 of 16: handlers/story-refinement.ts is runStage(storyRefinementStage, workerCtx, target, { generate: generateWithLambda }); handlers/asset-creation.ts keeps the job (names from the screenplay, skip existing, link to the episode) and runs the asset_description stage per asset. The model call is the caller-supplied `generate` seam, today `executeLLMForLambda` (utils/stage-runtime.ts); FILM-1902's run.write replaces it. No visible change: `__tests__/generation-parity.test.ts` compares the rows, filters, executor variables and the result sent over WebSocket with fixtures recorded against the old bodies (#557)"
+    reason: "6 of 16. Part A: handlers/story-refinement.ts is runStage(storyRefinementStage, workerCtx, target, { generate: generateWithLambda }); handlers/asset-creation.ts keeps the job (names from the screenplay, skip existing, link to the episode) and runs the asset_description stage per asset. The model call is the caller-supplied `generate` seam, today `executeLLMForLambda` (utils/stage-runtime.ts); FILM-1902's run.write replaces it. No visible change: `__tests__/generation-parity.test.ts` compares the rows, filters, executor variables and the result sent over WebSocket with fixtures recorded against the old bodies (#557). Part C: handlers/screenplay-conversion.ts runs the Screenplay Orchestrator once from the brief's context and lays its scenes across the stage's per-scene parts (`splitScreenplayIntoParts`), then the advisory continuity checkpoint and quality evaluation as before; screenplay-refinement.ts is runStage with generateWithLambda; translate-dialogue.ts runs the Translation Orchestrator once over every untranslated line and serves each scene part its lines; batch-translate-metadata.ts runs the stage with executeLLM and keeps the untranslated fallback. `stage-parity.test.ts` compares rows, filters and the WebSocket result with goldens recorded against the old bodies (commit before the deletion) (#TBD-1901c)"
   - text: "The two synchronous model paths become stages: extractCanonChangesAction (packages/features/episodes/src/server/canon-actions.ts:1479) as episode_summary, and describeAsset (packages/features/episodes/src/lib/server/mutations/asset-link-actions.ts:72) as asset_description"
     met: false
     reason: "describeAsset is done: it is the asset_description stage's parts, prepare and outputSchema around `executeLLM`, and batchCreateUnlinked creates each asset through the stage's commit (asset-link-actions.ts, #557). extractCanonChangesAction → episode_summary is a remaining slice"
@@ -47,16 +47,16 @@ acceptance_criteria:
     reason: "The story stage is not moved yet (remaining slice)"
 test_plan:
   unit:
-    - {text: "A parity test per stage: a fixture model output through the old handler and through the new commit produces identical rows (run before the old handler is deleted)", met: true, evidence: "apps/web/lambda/llm-worker/__tests__/generation-parity.test.ts with fixtures/parity/{story-refinement,asset-creation}.json: the writes (table, op, payload, filters), the executor variables and the handler result, recorded against the old handler bodies in the commit before they were deleted (RECORD_PARITY=1), compared against the new path in the same PR (#557)"}
-    - {text: "Each check() rejects a planted bad output with the expected {path, code}", met: true, evidence: "packages/features/generation/__tests__/stages.test.ts: story_refinement check → story.fullText/empty, story.estimatedSceneCount/too_small, story.keyEvents.1/empty; outputSchema → story.fullText/invalid_type; asset_description → description/invalid_type|too_small. Proven red by disabling check() (expected [] to equal 3 errors) and by loosening the schema (#557)"}
-    - {text: "Every prompt JSON referenced by a stage renders with the context prepare() builds (no missing variable)", met: true, evidence: "stages.test.ts 'every registered stage renders its prompt with the context prepare() builds' iterates registeredStageKeys() and asserts no `{{placeholder}}` survives; renderTemplate throws on an unfilled or undeclared one (#557)"}
+    - {text: "A parity test per stage: a fixture model output through the old handler and through the new commit produces identical rows (run before the old handler is deleted)", met: true, evidence: "apps/web/lambda/llm-worker/__tests__/generation-parity.test.ts with fixtures/parity/{story-refinement,asset-creation}.json: the writes (table, op, payload, filters), the executor variables and the handler result, recorded against the old handler bodies in the commit before they were deleted (RECORD_PARITY=1), compared against the new path in the same PR (#557); `stage-parity.test.ts` with fixtures/parity/{screenplay,screenplay-refinement,dialogue-translation,publish-metadata}.json does the same for part C, proven red with a planted status change (storyboard → story) (#TBD-1901c)"}
+    - {text: "Each check() rejects a planted bad output with the expected {path, code}", met: true, evidence: "packages/features/generation/__tests__/stages.test.ts: story_refinement check → story.fullText/empty, story.estimatedSceneCount/too_small, story.keyEvents.1/empty; outputSchema → story.fullText/invalid_type; asset_description → description/invalid_type|too_small. Proven red by disabling check() (expected [] to equal 3 errors) and by loosening the schema (#557). `stages-part-c.test.ts`: screenplay check → unknown_location, empty_dialogue, unknown_character, empty_speaker, too_long, scene_numbering; screenplay_refinement → unknown_character, scene_numbering; dialogue_translation → unknown_line, duplicate_line; publish_metadata → unknown_item, duplicate_item; schemas → invalid_enum_value (timeOfDay), invalid_string (blank translation), the title cap. Proven red by disabling each check (2 + 2 failures) (#TBD-1901c)"}
+    - {text: "Every prompt JSON referenced by a stage renders with the context prepare() builds (no missing variable)", met: true, evidence: "stages.test.ts 'every registered stage renders its prompt with the context prepare() builds' iterates registeredStageKeys() and asserts no `{{placeholder}}` survives; renderTemplate throws on an unfilled or undeclared one (#557); the loop covers the four part C stages with their fixture targets (#TBD-1901c)"}
   integration:
     - {text: "Against local Supabase: commit() for shots replaces the episode's shots in one transaction and writes a content_revisions snapshot", met: false, reason: "not met — the shots stage and content_revisions are not built"}
   e2e:
     - {text: "FILM-1804's studio flow (ideation → story → screenplay → shots → audio) still passes against the AI sandbox after the worker moves onto the core", met: false, reason: "not met — the orchestrated stages are not moved; part A changes two handlers the flow does not drive"}
 remaining:
-  - criterion: "StageDefinitions for season_outline, season_analysis, ideation, story, screenplay, screenplay_refinement, shots, audio_cues, dialogue_translation, fact_extraction, episode_summary and publish_metadata, each handler rewritten behind its parity test, and the story stage's canon step taking facts from the output"
-    reason: "Part A moved the two smallest stages (story_refinement, asset_description) and built the package they run on; the orchestrated stages come one per PR as the notes' order of work says"
+  - criterion: "StageDefinitions for season_outline, season_analysis, ideation, story, shots, audio_cues, fact_extraction and episode_summary, each handler rewritten behind its parity test, and the story stage's canon step taking facts from the output"
+    reason: "Part A moved the two smallest stages (story_refinement, asset_description) and built the package they run on; part C moved screenplay, screenplay_refinement, dialogue_translation and publish_metadata; the rest come one slice per PR as the notes' order of work says"
     closed_by: "FILM-1901"
   - criterion: "commit snapshots what it replaces into content_revisions, stamps generation_origin, and runs in one transaction"
     reason: "content_revisions and the origin columns are FILM-1903's migration (part A, in parallel). Ctx carries the seams: `revisions.snapshot()` is called when present, `originColumnsAvailable` gates the stamp; the worker passes neither. One transaction needs a database function the same spec adds"
@@ -86,7 +86,7 @@ notes: |
   | asset_description | asset | 1 | update assets.description / metadata |
   | fact_extraction | project + research upload | 1 | insert verified_facts |
   | episode_summary | episode | 1 | SCORE fields and canon changes, as extractCanonChangesAction writes today |
-  | publish_metadata | publish draft | 1 | titles, descriptions, tags per language |
+  | publish_metadata | publish draft | 1 | return titles and descriptions per language to the publish draft (no draft row exists; tags are not translated today) |
 
   analytics-insights and language-insights are not stages: in external mode
   the agent analyses the data itself through FILM-1906's tools; the web
@@ -155,6 +155,57 @@ notes: |
   - `@kit/generation/testing` exports the recording Supabase stand-in the
     parity and stage tests use (recordingClient, tableResponder, writesOf,
     flattenRows).
+
+  ## Part C (#TBD-1901c): screenplay, its refinement, dialogue translation, publish metadata
+
+  - **screenplay parts.** The story has no scenes yet, so the parts are the
+    planned ones: `story_data.estimatedSceneCount` held to the duration's
+    `calculateContentScaling` range (the midpoint when absent). A part's
+    output is `{ scenes, newCharacters?, newLocations? }`: one scene for an
+    external writer, while the server orchestrator, which writes the whole
+    screenplay in one pass, is laid across the parts (one scene each, the
+    remainder in the last, `splitScreenplayIntoParts`). Commit flattens the
+    parts in order and refuses a sequence that is not 1..n.
+  - **Unknown speakers are declared, not refused.** Today every speaker and
+    location the model invents is saved and auto-created by the
+    asset-creation job from `screenplay_data.metadata`. The check keeps that
+    path explicit: a name must be the episode's or declared in the part's
+    `newCharacters`/`newLocations` (the refinement prompt's own
+    `metadata.characters`/`metadata.locations`); the server writer declares
+    whatever the orchestrator used, an external writer must say so.
+  - **Scene schemas are `passthrough`.** The handlers stored scenes as the
+    model returned them (`action`, `audioCues`, anything else); the prompt's
+    `output.schema` is enforced (time-of-day enum, numbers, dialogue shape)
+    and the extra keys are kept.
+  - **Targets are slim**, as part A's: `{ episodeId, contentStyle?,
+    dialogueStyle? }`, `{ episodeId, feedback }`, `{ episodeId,
+    targetLanguage, preserveTiming }`, `{ items }`. The user and account are
+    `ctx`'s; the refinement history records `ctx.userId`, the same value the
+    payload carried. A scene-scoped `screenplay_refinement` target is
+    FILM-1909's: today's job refines the whole screenplay.
+  - **dialogue_translation output is keyed by `sourceDialogueId`**, one part
+    per scene with untranslated lines. The `dialogue-translation` prompt
+    returns numbered text; the worker's writer strips the numbering and
+    quotes and drops blank lines, and commit stores English for a line left
+    out and refuses a set over half untranslated, as the handler did. The
+    orchestrator still runs once over every line (one model pass, not one
+    per scene). No generation_jobs row, as today. The language names, codes
+    and style guides moved from the Translation skill into the stage; the
+    skill imports them.
+  - **publish_metadata writes nothing.** There is no publish-draft row: the
+    draft is `publish-screen.tsx` state and the result reaches it over the
+    WebSocket. Commit returns every requested item, an untranslated one with
+    its own text. The handler keeps today's fallback (originals for every
+    item) on a failed or rejected reply.
+  - **Moved into the core, one copy each:** `calculateContentScaling`
+    (`@kit/generation/duration-scaling`; the worker util and
+    `@kit/episodes/lib` re-export it), `mergeCharacterArcs` (the worker's
+    context builder re-exports it) and the screenplay-conversion prompt's
+    enrichment blocks (`screenplayPromptVariables`, which the Screenplay
+    Director skill now renders with). `EpisodeContextSnapshot` gained
+    optional `characterList`, `locationList` and `recurringElements`, so
+    commit maps speakers with the ids the context builder resolved
+    (the "All Characters" wildcard included).
 package:
   package_name: "@kit/generation"
   path: "packages/features/generation/"

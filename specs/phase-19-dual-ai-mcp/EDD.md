@@ -256,7 +256,7 @@ Each stage becomes a `StageDefinition` with a pure-ish `prepare`, a strict `outp
 | `asset_description` | asset | 1 | update `assets.description/metadata` |
 | `fact_extraction` | project + uploaded research | 1 | insert `verified_facts` |
 | `episode_summary` | episode | 1 | SCORE fields (summary, sentiment, key events) and canon changes, as `extractCanonChangesAction` writes today |
-| `publish_metadata` | publish draft | 1 | titles, descriptions, tags per language |
+| `publish_metadata` | publish draft | 1 | return titles and descriptions per language to the publish draft (no draft row exists; tags are not translated today) |
 
 **Brief contents.** `prepare` renders the stage's prompt JSON with the same `renderTemplate` the worker uses, but returns it as data rather than sending it to Gemini:
 
