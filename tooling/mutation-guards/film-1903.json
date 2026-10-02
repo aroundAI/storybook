@@ -1,0 +1,79 @@
+{
+  "feature": "FILM-1903 generation runs, part A: the database locks and the expiry cron",
+  "mutations": [
+    {
+      "name": "1903 DB L1 the LLM-job lock is dropped",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/generation-runs.test.sql",
+      "sql": "drop trigger generation_jobs_server_run_only on public.generation_jobs;"
+    },
+    {
+      "name": "1903 DB L1 the LLM-job lock accepts a closed run",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/generation-runs.test.sql",
+      "sql": "create or replace function public.assert_server_run() returns trigger language plpgsql set search_path = '' as $$ begin if not exists (select 1 from public.generation_runs r where r.id = new.run_id and r.mode = 'server') then raise exception 'refused: % row for run %: not an open server-mode run', tg_table_name, new.run_id; end if; return new; end $$;"
+    },
+    {
+      "name": "1903 DB L2 the usage-row lock is dropped",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/generation-runs.test.sql",
+      "sql": "drop trigger llm_usage_analytics_server_run_only on public.llm_usage_analytics;"
+    },
+    {
+      "name": "1903 DB L3 an MCP-connection run may be server mode",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/generation-runs.test.sql",
+      "sql": "alter table public.generation_runs drop constraint mcp_runs_are_external;"
+    },
+    {
+      "name": "1903 DB U1 two runs may be open on one target and stage",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/generation-runs.test.sql",
+      "sql": "drop index public.generation_runs_one_open;"
+    },
+    {
+      "name": "1903 DB X1 expiry stops freeing the target",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/generation-runs.test.sql",
+      "sql": "create or replace function public.expire_generation_runs() returns integer language sql set search_path = '' as $$ select 0 $$;"
+    },
+    {
+      "name": "1903 DB R1 any signed-in user reads every run",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/generation-runs.test.sql",
+      "sql": "drop policy generation_runs_read on public.generation_runs; create policy generation_runs_read on public.generation_runs for select to authenticated using (auth.uid() is not null);"
+    },
+    {
+      "name": "1903 DB S1 members write the team's AI settings",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/generation-runs.test.sql",
+      "sql": "drop policy account_ai_settings_insert on public.account_ai_settings; create policy account_ai_settings_insert on public.account_ai_settings for insert to authenticated with check (public.has_account_access(account_id));"
+    },
+    {
+      "name": "1903 DB V1 restore stops checking write permission",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/generation-runs.test.sql",
+      "sql": "create or replace function public.can_write_project(target_project_id uuid) returns boolean language sql stable security definer set search_path = '' as $$ select true $$;"
+    },
+    {
+      "name": "1903 cron expiry runs for any caller",
+      "kind": "unit",
+      "file": "apps/web/app/api/cron/expire-generation-runs/route.ts",
+      "find": "    if (authHeader !== `Bearer ${cronSecret}`) {",
+      "replace": "    if (authHeader === null && cronSecret === null) {",
+      "cwd": "apps/web",
+      "test": "app/api/cron/expire-generation-runs/__tests__/route.test.ts",
+      "pattern": "refuses a caller without the cron secret"
+    },
+    {
+      "name": "1903 cron a failed expiry reports success",
+      "kind": "unit",
+      "file": "apps/web/app/api/cron/expire-generation-runs/route.ts",
+      "find": "    if (error) {\n      logger.error({ ...ctx, error }, 'Generation run expiry failed');",
+      "replace": "    if (error && expired !== null) {\n      logger.error({ ...ctx, error }, 'Generation run expiry failed');",
+      "cwd": "apps/web",
+      "test": "app/api/cron/expire-generation-runs/__tests__/route.test.ts",
+      "pattern": "reports a failed expiry"
+    }
+  ]
+}
