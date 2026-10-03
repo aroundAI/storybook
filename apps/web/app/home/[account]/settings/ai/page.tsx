@@ -39,7 +39,7 @@ async function AiSettingsPage(props: PageProps) {
     client
       .from('account_ai_settings')
       .select(
-        'server_generation_enabled, external_generation_enabled, default_mode, performance_context_enabled',
+        'server_generation_enabled, external_generation_enabled, default_mode, performance_context_enabled, daily_llm_spend_cap_usd',
       )
       .eq('account_id', accountId)
       .maybeSingle(),
@@ -61,6 +61,7 @@ async function AiSettingsPage(props: PageProps) {
         externalGenerationEnabled: row.external_generation_enabled,
         defaultMode: row.default_mode,
         performanceContextEnabled: row.performance_context_enabled,
+        dailyLlmSpendCapUsd: row.daily_llm_spend_cap_usd,
       })
     : AI_SETTINGS_DEFAULTS;
 
