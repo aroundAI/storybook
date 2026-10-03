@@ -68,6 +68,7 @@ test.describe('Team settings → AI: the daily spend cap', () => {
 
     await page.reload();
     await expect(cap).toHaveValue('1250.00');
+    await cap.scrollIntoViewIfNeeded();
     await capture(page, 'spend-cap-01-saved');
 
     // Second save: the field and the row move together
@@ -82,6 +83,7 @@ test.describe('Team settings → AI: the daily spend cap', () => {
     await expect(byTest(page, 'ai-settings-spend-cap-error')).toHaveText(
       'A daily spend cap is an amount in US dollars above $0, such as 5 or 12.50. Leave it empty for no cap.',
     );
+    await cap.scrollIntoViewIfNeeded();
     await capture(page, 'spend-cap-02-zero-refused');
     expect(await readCap(team.accountId)).toBe(5);
 
@@ -111,6 +113,7 @@ test.describe('Team settings → AI: the daily spend cap', () => {
     await expect(cap).toHaveValue('12.50');
     await expect(cap).toBeDisabled();
     await expect(byTest(page, 'ai-settings-save')).toHaveCount(0);
+    await cap.scrollIntoViewIfNeeded();
     await capture(page, 'spend-cap-03-member-read-only');
   });
 });

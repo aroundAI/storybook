@@ -124,6 +124,33 @@
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/daily-llm-spend-cap.test.sql",
       "sql": "create or replace function public.llm_spend_since(p_account_id uuid, p_since timestamptz) returns table (spent_usd numeric, priced_calls integer, unpriced_calls integer) language sql stable security invoker set search_path = '' as $f$ select coalesce(sum(u.total_cost), 0), count(*)::integer, 0 from public.llm_usage_analytics u join public.generation_runs r on r.id = u.run_id and r.mode = 'server' where u.account_id = p_account_id and u.created_at >= p_since; $f$;"
+    },
+    {
+      "name": "CAP-E1 the settings action does not save the cap",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/settings/ai/_lib/server/actions.ts",
+      "find": "            daily_llm_spend_cap_usd: settings.dailyLlmSpendCapUsd,\n",
+      "replace": "",
+      "spec": "tests/generation/daily-spend-cap.spec.ts",
+      "grep": "an owner sets the cap"
+    },
+    {
+      "name": "CAP-E2 a pasted cap loses everything after its thousands separator",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/settings/ai/_lib/schemas/ai-settings.schema.ts",
+      "find": ".replace(/,/g, '')",
+      "replace": ".replace(/,.*$/, '')",
+      "spec": "tests/generation/daily-spend-cap.spec.ts",
+      "grep": "an owner sets the cap"
+    },
+    {
+      "name": "CAP-E3 a member can type in the cap field",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/settings/ai/_components/ai-settings-form.tsx",
+      "find": "                  disabled={disabled}\n                  data-test=\"ai-settings-spend-cap\"",
+      "replace": "                  data-test=\"ai-settings-spend-cap\"",
+      "spec": "tests/generation/daily-spend-cap.spec.ts",
+      "grep": "member sees the cap read-only"
     }
   ]
 }
