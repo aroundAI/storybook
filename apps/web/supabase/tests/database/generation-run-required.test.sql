@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(17);
+select plan(19);
 
 -- FILM-1903 part C: an LLM job and a model-usage row cannot exist without a
 -- run. Rows written before part C keep their null run and stay writable, and
@@ -192,6 +192,24 @@ select is(
   (select run_id from public.llm_usage_analytics where id = '19031000-0000-4000-8000-0000000000f1'),
   null,
   'C17 its usage row keeps the row with no run'
+);
+
+-- ------------------------------------------------------------------
+-- A call with no prompt (an embedding, #580) writes a null template_slug:
+-- the lock is the same
+-- ------------------------------------------------------------------
+select lives_ok(
+  $$ insert into public.llm_usage_analytics (account_id, template_slug, llm_provider, llm_model, status, run_id)
+     values (current_setting('rq.team')::uuid, null, 'voyage', 'voyage-3.5', 'success',
+             '19031000-0000-4000-8000-0000000000a1') $$,
+  'C18 an embedding''s usage row (no template) on an open server run is accepted'
+);
+
+select throws_like(
+  $$ insert into public.llm_usage_analytics (account_id, template_slug, llm_provider, llm_model, status)
+     values (current_setting('rq.team')::uuid, null, 'voyage', 'voyage-3.5', 'success') $$,
+  'refused: llm_usage_analytics row without a run%',
+  'C19 an embedding''s usage row with no run is refused'
 );
 
 select * from finish();
