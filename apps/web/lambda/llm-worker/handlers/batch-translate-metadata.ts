@@ -24,7 +24,7 @@ import {
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
-import { workerCtx } from '../utils/stage-runtime';
+import { stageRunDeps, workerCtx } from '../utils/stage-runtime';
 
 interface BatchTranslateResult {
   success: boolean;
@@ -34,7 +34,7 @@ interface BatchTranslateResult {
 }
 
 async function generateWithExecuteLLM(brief: Brief): Promise<GenerateResult> {
-  const { executeLLM } = await import('@kit/prompt-engine/server');
+  const { executeLLM } = await import('@kit/ai-gateway');
 
   const result = await executeLLM<unknown>({
     templateSlug: brief.prompt.slug,
@@ -65,7 +65,7 @@ export async function processBatchTranslateMetadata(
         userId: data.userId ?? 'system',
       }),
       { items: data.items },
-      { generate: generateWithExecuteLLM },
+      { ...stageRunDeps(), generate: generateWithExecuteLLM },
     );
 
     console.log(

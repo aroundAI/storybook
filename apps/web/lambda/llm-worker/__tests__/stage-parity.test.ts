@@ -2,12 +2,15 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { withRun } from '@kit/ai-gateway';
+
 import {
   type RecordedCall,
   flattenRows,
   recordingClient,
   tableResponder,
   writesOf,
+  fakeRunHandle,
 } from '@kit/generation/testing';
 
 // FILM-1901 part C: parity for screenplay, screenplay_refinement,
@@ -284,25 +287,41 @@ vi.mock('@kit/episodes/agent/translation-orchestrator', () => ({
   })),
 }));
 
-vi.mock('../llm-utils', () => ({
-  executeLLMForLambda: vi.fn(async (input: { templateSlug: string }) => {
-    if (input.templateSlug !== 'screenplay-refinement') {
-      throw new Error(`unexpected executeLLMForLambda ${input.templateSlug}`);
-    }
+/**
+ * The run the handlers write through (FILM-1902): its backend answers the
+ * screenplay-refinement brief the way the old Lambda executor stub did, and
+ * refuses any other prompt, so a handler reaching the model for something
+ * else fails here.
+ */
+function parityRun() {
+  return fakeRunHandle({
+    accountId: IDS.accountId,
+    projectId: IDS.projectId,
+    targetId: IDS.episodeId,
+    createdBy: IDS.userId,
+    backend: {
+      write: async (_run, brief) => {
+        if (brief.prompt.slug !== 'screenplay-refinement') {
+          throw new Error(`unexpected run.write ${brief.prompt.slug}`);
+        }
 
-    return {
-      data: { screenplay: REFINED_SCREENPLAY },
-      metadata: {
-        tokens: 1234,
-        latency: 10,
-        provider: 'gemini',
-        model: 'gemini-test',
+        return {
+          output: { screenplay: REFINED_SCREENPLAY },
+          usage: {
+            tokens: 1234,
+            latencyMs: 10,
+            provider: 'gemini',
+            model: 'gemini-test',
+          },
+        };
       },
-    };
-  }),
-}));
+      dispatch: async () => undefined,
+    },
+  }).run;
+}
 
-vi.mock('@kit/prompt-engine/server', () => ({
+vi.mock('@kit/ai-gateway', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kit/ai-gateway')>()),
   executeLLM: vi.fn(async (input: { templateSlug: string }) => {
     switch (input.templateSlug) {
       case 'batch-translate-metadata':
@@ -392,9 +411,11 @@ describe('stage parity: the rewritten handlers write what the old ones wrote (FI
     );
     const recording = recordingClient(responder());
 
-    const result = await processScreenplayConversion(
-      { ...IDS, contentStyle: 'dialogue-heavy' },
-      recording.client,
+    const result = await withRun(parityRun(), () =>
+      processScreenplayConversion(
+        { ...IDS, contentStyle: 'dialogue-heavy' },
+        recording.client,
+      ),
     );
 
     expectGolden('screenplay', {
@@ -409,9 +430,11 @@ describe('stage parity: the rewritten handlers write what the old ones wrote (FI
     );
     const recording = recordingClient(responder());
 
-    const result = await processScreenplayRefinement(
-      { ...IDS, feedback: 'Make Maya calmer in scene 1' },
-      recording.client,
+    const result = await withRun(parityRun(), () =>
+      processScreenplayRefinement(
+        { ...IDS, feedback: 'Make Maya calmer in scene 1' },
+        recording.client,
+      ),
     );
 
     expectGolden('screenplay-refinement', {
@@ -426,9 +449,11 @@ describe('stage parity: the rewritten handlers write what the old ones wrote (FI
     );
     const recording = recordingClient(responder());
 
-    const result = await processTranslateDialogue(
-      { ...IDS, targetLanguage: 'es', preserveTiming: true },
-      recording.client,
+    const result = await withRun(parityRun(), () =>
+      processTranslateDialogue(
+        { ...IDS, targetLanguage: 'es', preserveTiming: true },
+        recording.client,
+      ),
     );
 
     expectGolden('dialogue-translation', {
@@ -443,9 +468,11 @@ describe('stage parity: the rewritten handlers write what the old ones wrote (FI
     );
     const recording = recordingClient(responder());
 
-    const result = await processBatchTranslateMetadata(
-      { accountId: IDS.accountId, userId: IDS.userId, items: METADATA_ITEMS },
-      recording.client,
+    const result = await withRun(parityRun(), () =>
+      processBatchTranslateMetadata(
+        { accountId: IDS.accountId, userId: IDS.userId, items: METADATA_ITEMS },
+        recording.client,
+      ),
     );
 
     expectGolden('publish-metadata', {

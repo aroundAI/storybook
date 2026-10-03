@@ -25,7 +25,7 @@ import {
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
-import { workerCtx } from '../utils/stage-runtime';
+import { stageRunDeps, workerCtx } from '../utils/stage-runtime';
 
 interface ScreenplayConversionResult {
   success: boolean;
@@ -88,7 +88,9 @@ export async function processScreenplayConversion(
       contentStyle: data.contentStyle,
       dialogueStyle: data.dialogueStyle,
     },
-    { generate },
+    // The orchestrator writes; the run supplies the id, the TARGET_CHANGED
+    // check and the origin the commit stamps (FILM-1903)
+    { ...stageRunDeps(), generate },
   );
 
   const costCents = 0; // Agent orchestrator tracks cost internally
@@ -223,7 +225,7 @@ async function writeScreenplay(
 
   // SCREENPLAY quality evaluation (non-blocking, advisory)
   try {
-    const { executeLLM } = await import('@kit/prompt-engine/server');
+    const { executeLLM } = await import('@kit/ai-gateway');
 
     // Model output from this run, going back to a model
     const screenplayText = sanitizeStrings(scenes)

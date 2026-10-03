@@ -130,6 +130,12 @@ export interface GenerationRun {
   mode: GenerationMode;
   origin: GenerationOrigin;
   usage?: GenerationUsage;
+  /**
+   * Server-side figures the writer reports about itself (an orchestrator's
+   * step count, an evaluator's coverage), recorded on the job's output_data
+   * by a tracked stage's commit. Nothing in here is content.
+   */
+  diagnostics?: Record<string, unknown>;
 }
 
 /** Prompt-ready text about an episode's world, as the worker builds it today. */
@@ -275,6 +281,8 @@ export type AnyStageDefinition = StageDefinition<any, any, any>;
 export interface GenerateResult {
   output: unknown;
   usage?: GenerationUsage;
+  /** Merged into the run's `diagnostics` for commit to record */
+  diagnostics?: Record<string, unknown>;
 }
 
 export type GenerateFn = (brief: Brief) => Promise<GenerateResult>;

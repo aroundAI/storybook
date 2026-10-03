@@ -10,19 +10,31 @@
       "filters": [
         {
           "method": "eq",
-          "args": ["reference_type", "episode"]
+          "args": [
+            "reference_type",
+            "episode"
+          ]
         },
         {
           "method": "eq",
-          "args": ["reference_id", "55555555-5555-4555-8555-555555555555"]
+          "args": [
+            "reference_id",
+            "55555555-5555-4555-8555-555555555555"
+          ]
         },
         {
           "method": "eq",
-          "args": ["job_type", "screenplay"]
+          "args": [
+            "job_type",
+            "screenplay"
+          ]
         },
         {
           "method": "eq",
-          "args": ["status", "queued"]
+          "args": [
+            "status",
+            "queued"
+          ]
         }
       ]
     },
@@ -38,7 +50,6 @@
               "location": "Observation Deck",
               "timeOfDay": "day",
               "description": "Maya floats at the window. Warning lights flicker.",
-              "action": ["Maya taps the comm panel."],
               "dialogue": [
                 {
                   "character": "Maya",
@@ -50,9 +61,12 @@
                   "text": "[calmly] Relay One, we read you."
                 }
               ],
+              "estimatedDuration": 45,
+              "action": [
+                "Maya taps the comm panel."
+              ],
               "emotionalPeak": "Maya hears her own voice",
-              "hookOut": "What was she about to warn herself about?",
-              "estimatedDuration": 45
+              "hookOut": "What was she about to warn herself about?"
             },
             {
               "number": 2,
@@ -60,14 +74,14 @@
               "location": "Control Room",
               "timeOfDay": "night",
               "description": "Empty consoles. One screen still glows.",
-              "action": [],
               "dialogue": [
                 {
                   "character": "NARRATOR",
                   "text": "Three hours later."
                 }
               ],
-              "estimatedDuration": 30
+              "estimatedDuration": 30,
+              "action": []
             }
           ],
           "generatedAt": "2026-10-03T12:00:00.000Z",
@@ -80,23 +94,41 @@
           "estimatedDuration": 75,
           "approvedAt": null,
           "metadata": {
-            "locations": ["Observation Deck", "Control Room"],
-            "characters": ["Maya", "Houston", "NARRATOR"],
+            "locations": [
+              "Observation Deck",
+              "Control Room"
+            ],
+            "characters": [
+              "Maya",
+              "Houston",
+              "NARRATOR"
+            ],
             "totalScenes": 2,
             "estimatedDuration": 75
           }
         },
         "status": "storyboard",
-        "updated_at": "2026-10-03T12:00:00.000Z"
+        "updated_at": "2026-10-03T12:00:00.000Z",
+        "generation_origin": {
+          "kind": "server",
+          "runId": "19030000-0000-4000-8000-00000000aaaa",
+          "at": "2026-10-03T12:00:00.000Z"
+        }
       },
       "filters": [
         {
           "method": "eq",
-          "args": ["id", "55555555-5555-4555-8555-555555555555"]
+          "args": [
+            "id",
+            "55555555-5555-4555-8555-555555555555"
+          ]
         },
         {
           "method": "is",
-          "args": ["deleted_at", null]
+          "args": [
+            "deleted_at",
+            null
+          ]
         }
       ]
     },
@@ -106,7 +138,10 @@
       "filters": [
         {
           "method": "eq",
-          "args": ["episode_id", "55555555-5555-4555-8555-555555555555"]
+          "args": [
+            "episode_id",
+            "55555555-5555-4555-8555-555555555555"
+          ]
         }
       ]
     },
@@ -169,19 +204,34 @@
       "filters": [
         {
           "method": "eq",
-          "args": ["reference_type", "episode"]
+          "args": [
+            "reference_type",
+            "episode"
+          ]
         },
         {
           "method": "eq",
-          "args": ["reference_id", "55555555-5555-4555-8555-555555555555"]
+          "args": [
+            "reference_id",
+            "55555555-5555-4555-8555-555555555555"
+          ]
         },
         {
           "method": "eq",
-          "args": ["job_type", "screenplay"]
+          "args": [
+            "job_type",
+            "screenplay"
+          ]
         },
         {
           "method": "in",
-          "args": ["status", ["queued", "processing"]]
+          "args": [
+            "status",
+            [
+              "queued",
+              "processing"
+            ]
+          ]
         }
       ]
     }
@@ -198,7 +248,6 @@
             "location": "Observation Deck",
             "timeOfDay": "day",
             "description": "Maya floats at the window. Warning lights flicker.",
-            "action": ["Maya taps the comm panel."],
             "dialogue": [
               {
                 "character": "Maya",
@@ -210,9 +259,12 @@
                 "text": "[calmly] Relay One, we read you."
               }
             ],
+            "estimatedDuration": 45,
+            "action": [
+              "Maya taps the comm panel."
+            ],
             "emotionalPeak": "Maya hears her own voice",
-            "hookOut": "What was she about to warn herself about?",
-            "estimatedDuration": 45
+            "hookOut": "What was she about to warn herself about?"
           },
           {
             "number": 2,
@@ -220,14 +272,14 @@
             "location": "Control Room",
             "timeOfDay": "night",
             "description": "Empty consoles. One screen still glows.",
-            "action": [],
             "dialogue": [
               {
                 "character": "NARRATOR",
                 "text": "Three hours later."
               }
             ],
-            "estimatedDuration": 30
+            "estimatedDuration": 30,
+            "action": []
           }
         ],
         "totalDialogueLines": 3,
