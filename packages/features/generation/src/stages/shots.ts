@@ -652,7 +652,9 @@ export const shotsStage: StageDefinition<
         characters: context.charactersVeo || 'No characters defined.',
         locations: context.locationsVeo || 'No locations defined.',
         previous_scene_summary: '',
-        reel_note: '',
+        // No reel_note: the template declares it and never places it, so the
+        // Reel Scout's note has never reached the model (KB-178). Sending it
+        // would change nothing the model sees; placing it is the owner's call.
         recurring_element: context.recurringElements,
         shot_duration_min: target.shotDuration.min,
         shot_duration_max: target.shotDuration.max,

@@ -128,9 +128,10 @@ describe('shots stage', () => {
       total_scenes: 2,
       shot_duration_min: 4,
       shot_duration_max: 8,
-      reel_note: '',
       previous_scene_summary: '',
     });
+    // KB-178: the template never places reel_note, so the brief does not send it
+    expect(scene.prompt.variables).not.toHaveProperty('reel_note');
     expect(scene.outputSchema).toMatchObject({
       properties: {
         kind: { const: 'scene' },
