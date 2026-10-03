@@ -76,6 +76,10 @@ export default defineConfig({
         __dirname,
         '../../packages/shared/src/prompt-sanitiser/index.ts',
       ),
+      '@kit/shared/duration-scaling': path.resolve(
+        __dirname,
+        '../../packages/shared/src/duration-scaling/index.ts',
+      ),
       '@kit/generation/testing': path.resolve(
         __dirname,
         '../../packages/features/generation/src/testing/index.ts',
@@ -87,6 +91,10 @@ export default defineConfig({
       '@kit/prompt-engine/prompts': path.resolve(
         __dirname,
         '../../packages/features/prompt-engine/src/prompts',
+      ),
+      '@kit/prompt-engine/schemas': path.resolve(
+        __dirname,
+        '../../packages/features/prompt-engine/src/schemas/index.ts',
       ),
       '@kit/ui/navigation-schema': path.resolve(
         __dirname,

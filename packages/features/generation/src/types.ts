@@ -123,6 +123,12 @@ export interface GenerationRun {
   mode: GenerationMode;
   origin: GenerationOrigin;
   usage?: GenerationUsage;
+  /**
+   * Server-side figures the writer reports about itself (an orchestrator's
+   * step count, an evaluator's coverage), recorded on the job's output_data
+   * by a tracked stage's commit. Nothing in here is content.
+   */
+  diagnostics?: Record<string, unknown>;
 }
 
 /** Prompt-ready text about an episode's world, as the worker builds it today. */
@@ -136,6 +142,20 @@ export interface EpisodeContextSnapshot {
   locations: string;
   previousEpisodes: string;
   counts: { characters: number; locations: number };
+  /** The same characters and locations in the VEO 3.1 format shots use */
+  charactersVeo?: string;
+  locationsVeo?: string;
+  /** Recurring story elements, formatted for a prompt; '' when none */
+  recurringElements?: string;
+  /** The names, for referential checks */
+  characterNames?: string[];
+  locationNames?: string[];
+  /** The same assets with their ids, for a speaker → asset id map */
+  characterList?: Array<{ id: string; name: string }>;
+  locationList?: Array<{ id: string; name: string }>;
+  genre?: string;
+  targetAudience?: string;
+  visualStyle?: string;
 }
 
 export type EpisodeContextLoader = (
@@ -180,6 +200,12 @@ export interface CommitResult<TData = unknown> {
   /** Why nothing was written, when `skipped` */
   reason?: string;
   data: TData;
+  /**
+   * Stages to run next on the same content, in the run's mode (shots chains
+   * audio_cues). The caller opens them: the worker queues the job today,
+   * FILM-1903 opens child runs.
+   */
+  followOn?: Array<{ stage: StageKey; target: Record<string, unknown> }>;
 }
 
 /** The generation_jobs row a tracked stage updates as it runs. */
@@ -228,6 +254,8 @@ export type AnyStageDefinition = StageDefinition<any, any, any>;
 export interface GenerateResult {
   output: unknown;
   usage?: GenerationUsage;
+  /** Merged into the run's `diagnostics` for commit to record */
+  diagnostics?: Record<string, unknown>;
 }
 
 export type GenerateFn = (brief: Brief) => Promise<GenerateResult>;

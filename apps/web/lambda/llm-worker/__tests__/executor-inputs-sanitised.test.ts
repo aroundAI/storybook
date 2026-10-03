@@ -36,12 +36,22 @@ vi.mock('@kit/episodes/agent/shot-orchestrator', () => ({
 vi.mock('@kit/episodes/agent/screenplay-orchestrator', () => ({
   // Succeeds, echoing the payload as its scenes, so the quality evaluation
   // after it is reached too: model output is text on its way to a prompt.
+  // The scene is complete, as the screenplay stage's schema now requires.
   runScreenplayOrchestrator: vi.fn(async (input: unknown) => {
     seen['screenplay orchestrator'] = input;
     return {
       success: true,
       scenes: [
-        { number: 1, heading: P, description: P, action: [P], dialogue: [] },
+        {
+          number: 1,
+          heading: P,
+          location: P,
+          timeOfDay: 'day',
+          description: P,
+          action: [P],
+          dialogue: [],
+          estimatedDuration: 30,
+        },
       ],
     };
   }),

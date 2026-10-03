@@ -1,0 +1,25 @@
+{
+  "writes": [],
+  "result": {
+    "success": true,
+    "data": {
+      "items": [
+        {
+          "id": "full-video-hi",
+          "translatedTitle": "आखिरी सिग्नल",
+          "translatedDescription": "एक अंतरिक्ष यात्री अपनी ही आवाज़ सुनती है।",
+          "targetLanguage": "hi",
+          "contentType": "full-video"
+        },
+        {
+          "id": "group-g1-es",
+          "translatedTitle": "Signal shorts",
+          "translatedDescription": "Three clips.",
+          "targetLanguage": "es",
+          "contentType": "shorts-group",
+          "groupId": "g1"
+        }
+      ]
+    }
+  }
+}

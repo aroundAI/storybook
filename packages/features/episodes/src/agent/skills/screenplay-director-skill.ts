@@ -17,6 +17,7 @@ import { z } from 'zod';
 
 import type { Skill } from '@kit/agent';
 import { createTool, toolError, toolSuccess } from '@kit/agent';
+import { screenplayPromptVariables } from '@kit/generation';
 
 type ScreenplayResult = {
   screenplay: {
@@ -106,59 +107,26 @@ async function executeScreenplayGeneration(
       `avg ${avgSceneDuration}s/scene, ${minutesDuration} min target`,
   );
 
-  // Pre-compose enrichment blocks (prompt engine uses simple {{var}} replacement, no conditionals)
-  const toneBlock = enrichment.tone
-    ? `**Tone & Emotional Register**: ${enrichment.tone}\nAll dialogue, parentheticals, and audio cues must reflect this tone. The tone is the emotional contract with the audience — not optional.`
-    : '';
-
-  const actBlock = enrichment.actBreakdown.act1
-    ? `**Three-Act Structure** (distribute scenes proportionally):\n` +
-      `- Act 1 — Setup (~25% of scenes): ${enrichment.actBreakdown.act1}\n` +
-      `- Act 2 — Confrontation (~50% of scenes): ${enrichment.actBreakdown.act2}\n` +
-      `- Act 3 — Resolution (~25% of scenes): ${enrichment.actBreakdown.act3}\n\n` +
-      `Scene breaks MUST align with act transitions. The shift from Act 1→2 should be a clear inciting incident. The shift from Act 2→3 should be the climax or turning point.`
-    : '';
-
-  const themesBlock =
-    enrichment.themes.length > 0
-      ? `**Thematic Emphasis**: ${enrichment.themes.join(', ')}\n` +
-        `Reinforce these themes through dialogue subtext (characters talk AROUND the theme, not ABOUT it), visual action choices, and scene-level metaphor.`
-      : '';
-
-  const keyEventsBlock =
-    enrichment.keyEvents.length > 0
-      ? `**Mandatory Plot Beats** (these events MUST appear as scenes or within scenes):\n` +
-        enrichment.keyEvents.map((e) => `- ${e}`).join('\n') +
-        `\nDo not omit or significantly alter these events. They are structural anchors.`
-      : '';
-
+  // The same variables the screenplay stage renders into its brief
+  // (FILM-1901): one source for the prompt's enrichment blocks
   const result = await executeLLM<ScreenplayResult>({
     templateSlug: 'screenplay-conversion',
-    variables: {
-      story: storyText,
-      characters: characters || 'No characters defined.',
-      character_names: characterNames,
-      location_names: locationNames,
-      target_duration: targetDurationSeconds,
-      duration_description: `${minutesDuration} minutes`,
-      content_style: contentStyle,
-      scene_count_min: sceneCountMin,
-      scene_count_max: sceneCountMax,
-      avg_scene_duration: avgSceneDuration,
-      dialogue_lines_per_scene_min: dialogueLinesPerSceneMin,
-      dialogue_lines_per_scene_max: dialogueLinesPerSceneMax,
-      total_dialogue_lines_min: sceneCountMin * dialogueLinesPerSceneMin,
-      total_dialogue_lines_max: sceneCountMax * dialogueLinesPerSceneMax,
-      style: contentStyle === 'dialogue-heavy' ? 'natural' : 'visual',
-      genre: genre,
-      target_audience: targetAudience,
-      recurring_element: recurringElements ?? '',
-      // Enrichment variables (pre-composed text blocks)
-      tone: toneBlock,
-      act_breakdown: actBlock,
-      themes: themesBlock,
-      key_events: keyEventsBlock,
-    },
+    variables: screenplayPromptVariables({
+      storyText,
+      charactersContext: characters,
+      recurringElementsContext: recurringElements,
+      characterNames,
+      locationNames,
+      genre,
+      targetAudience,
+      targetDurationSeconds,
+      contentStyle,
+      sceneCountMin,
+      sceneCountMax,
+      dialogueLinesPerSceneMin,
+      dialogueLinesPerSceneMax,
+      enrichment,
+    }),
     context: {
       name: 'agent.screenplayDirector.generateScreenplay',
       accountId: '',

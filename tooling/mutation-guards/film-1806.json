@@ -24,7 +24,7 @@
     {
       "name": "KB-130 a fractional shot duration is stored as given",
       "kind": "unit",
-      "file": "packages/features/episodes/src/lib/schemas/shot-list.schema.ts",
+      "file": "packages/features/prompt-engine/src/lib/llm-job-payloads.ts",
       "find": "  return Math.max(1, Math.round(seconds));",
       "replace": "  return seconds;",
       "cwd": "packages/features/episodes",

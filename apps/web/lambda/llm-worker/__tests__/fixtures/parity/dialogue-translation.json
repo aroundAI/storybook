@@ -1,0 +1,67 @@
+{
+  "writes": [
+    {
+      "table": "dialogue_lines",
+      "op": "insert",
+      "payload": {
+        "episode_id": "55555555-5555-4555-8555-555555555555",
+        "character_asset_id": "c1",
+        "shot_id": null,
+        "text": "[urgently] Houston, aquí Relay One. Por favor responde.",
+        "sequence_number": 1,
+        "scene_number": 1,
+        "timeline_start_seconds": 0,
+        "estimated_duration_seconds": 2.5,
+        "language": "es",
+        "source_dialogue_id": "aaaaaaaa-0000-4000-8000-000000000001",
+        "status": "pending"
+      },
+      "filters": []
+    },
+    {
+      "table": "dialogue_lines",
+      "op": "insert",
+      "payload": {
+        "episode_id": "55555555-5555-4555-8555-555555555555",
+        "character_asset_id": "c2",
+        "shot_id": null,
+        "text": "[calmly] Relay One, te escuchamos.",
+        "sequence_number": 2,
+        "scene_number": 1,
+        "timeline_start_seconds": 3,
+        "estimated_duration_seconds": null,
+        "language": "es",
+        "source_dialogue_id": "aaaaaaaa-0000-4000-8000-000000000002",
+        "status": "pending"
+      },
+      "filters": []
+    },
+    {
+      "table": "dialogue_lines",
+      "op": "insert",
+      "payload": {
+        "episode_id": "55555555-5555-4555-8555-555555555555",
+        "character_asset_id": null,
+        "shot_id": null,
+        "text": "Three hours later.",
+        "sequence_number": 3,
+        "scene_number": 2,
+        "timeline_start_seconds": 6,
+        "estimated_duration_seconds": 1.5,
+        "language": "es",
+        "source_dialogue_id": "aaaaaaaa-0000-4000-8000-000000000003",
+        "status": "pending"
+      },
+      "filters": []
+    }
+  ],
+  "result": {
+    "success": true,
+    "data": {
+      "translatedCount": 3,
+      "orchestratorSteps": 3,
+      "verificationScore": 0.9,
+      "verdict": "pass"
+    }
+  }
+}

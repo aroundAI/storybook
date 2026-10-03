@@ -427,11 +427,8 @@ export interface BatchShotDefinition {
 }
 
 /**
- * `shots.duration_seconds` is an integer column, while a model's shot may
- * last 8.35 seconds (the prompt's schema allows it) and an edit may say 7.5.
- * Every write stores whole seconds, at least one, so neither fails the insert
- * (KB-130).
+ * Whole shot seconds (KB-130) live beside the shot-duration limits in
+ * `@kit/prompt-engine/llm-job-payloads`, where the shots stage's commit
+ * reads them too (FILM-1901).
  */
-export function wholeShotSeconds(seconds: number) {
-  return Math.max(1, Math.round(seconds));
-}
+export { wholeShotSeconds } from '@kit/prompt-engine/llm-job-payloads';

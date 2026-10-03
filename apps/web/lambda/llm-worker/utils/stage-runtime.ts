@@ -21,8 +21,11 @@ import { executeLLMForLambda } from '../llm-utils';
 import {
   buildEpisodeContext,
   formatCharactersForPrompt,
+  formatCharactersForVeoPrompt,
   formatLocationsForPrompt,
+  formatLocationsForVeoPrompt,
   formatPreviousEpisodesForPrompt,
+  formatRecurringElementsForPrompt,
 } from './context-builder';
 
 export function episodeContextLoader(
@@ -48,6 +51,20 @@ export function episodeContextLoader(
         characters: context.characters.length,
         locations: context.locations.length,
       },
+      // The VEO 3.1 form the shots stage prompts with, and the names its
+      // referential checks compare against
+      charactersVeo: formatCharactersForVeoPrompt(context.characters),
+      locationsVeo: formatLocationsForVeoPrompt(context.locations),
+      recurringElements: formatRecurringElementsForPrompt(
+        context.recurringElements,
+      ),
+      characterNames: context.characters.map((c) => c.name),
+      locationNames: context.locations.map((l) => l.name),
+      characterList: context.characters.map(({ id, name }) => ({ id, name })),
+      locationList: context.locations.map(({ id, name }) => ({ id, name })),
+      genre: context.genre,
+      targetAudience: context.targetAudience,
+      visualStyle: context.visualStyle,
     };
   };
 }

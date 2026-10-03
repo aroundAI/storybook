@@ -1,0 +1,251 @@
+{
+  "writes": [
+    {
+      "table": "generation_jobs",
+      "op": "update",
+      "payload": {
+        "status": "processing",
+        "started_at": "2026-10-03T12:00:00.000Z"
+      },
+      "filters": [
+        {
+          "method": "eq",
+          "args": ["reference_type", "episode"]
+        },
+        {
+          "method": "eq",
+          "args": ["reference_id", "55555555-5555-4555-8555-555555555555"]
+        },
+        {
+          "method": "eq",
+          "args": ["job_type", "screenplay"]
+        },
+        {
+          "method": "eq",
+          "args": ["status", "queued"]
+        }
+      ]
+    },
+    {
+      "table": "episodes",
+      "op": "update",
+      "payload": {
+        "screenplay_data": {
+          "scenes": [
+            {
+              "number": 1,
+              "heading": "INT. OBSERVATION DECK - DAY",
+              "location": "Observation Deck",
+              "timeOfDay": "day",
+              "description": "Maya floats at the window. Warning lights flicker.",
+              "action": ["Maya taps the comm panel."],
+              "dialogue": [
+                {
+                  "character": "Maya",
+                  "text": "[urgently] Houston, this is Relay One. Please respond.",
+                  "parenthetical": "into comm"
+                },
+                {
+                  "character": "Houston",
+                  "text": "[calmly] Relay One, we read you."
+                }
+              ],
+              "emotionalPeak": "Maya hears her own voice",
+              "hookOut": "What was she about to warn herself about?",
+              "estimatedDuration": 45
+            },
+            {
+              "number": 2,
+              "heading": "INT. CONTROL ROOM - NIGHT",
+              "location": "Control Room",
+              "timeOfDay": "night",
+              "description": "Empty consoles. One screen still glows.",
+              "action": [],
+              "dialogue": [
+                {
+                  "character": "NARRATOR",
+                  "text": "Three hours later."
+                }
+              ],
+              "estimatedDuration": 30
+            }
+          ],
+          "generatedAt": "2026-10-03T12:00:00.000Z",
+          "generatedBy": {
+            "model": "screenplay-orchestrator",
+            "provider": "multi-agent",
+            "costCents": 0
+          },
+          "totalDialogueLines": 3,
+          "estimatedDuration": 75,
+          "approvedAt": null,
+          "metadata": {
+            "locations": ["Observation Deck", "Control Room"],
+            "characters": ["Maya", "Houston", "NARRATOR"],
+            "totalScenes": 2,
+            "estimatedDuration": 75
+          }
+        },
+        "status": "storyboard",
+        "updated_at": "2026-10-03T12:00:00.000Z"
+      },
+      "filters": [
+        {
+          "method": "eq",
+          "args": ["id", "55555555-5555-4555-8555-555555555555"]
+        },
+        {
+          "method": "is",
+          "args": ["deleted_at", null]
+        }
+      ]
+    },
+    {
+      "table": "dialogue_lines",
+      "op": "delete",
+      "filters": [
+        {
+          "method": "eq",
+          "args": ["episode_id", "55555555-5555-4555-8555-555555555555"]
+        }
+      ]
+    },
+    {
+      "table": "dialogue_lines",
+      "op": "insert",
+      "payload": {
+        "episode_id": "55555555-5555-4555-8555-555555555555",
+        "character_asset_id": "c1",
+        "text": "[urgently] Houston, this is Relay One. Please respond.",
+        "sequence_number": 1,
+        "scene_number": 1,
+        "language": "en",
+        "status": "pending"
+      },
+      "filters": []
+    },
+    {
+      "table": "dialogue_lines",
+      "op": "insert",
+      "payload": {
+        "episode_id": "55555555-5555-4555-8555-555555555555",
+        "character_asset_id": "c2",
+        "text": "[calmly] Relay One, we read you.",
+        "sequence_number": 2,
+        "scene_number": 1,
+        "language": "en",
+        "status": "pending"
+      },
+      "filters": []
+    },
+    {
+      "table": "dialogue_lines",
+      "op": "insert",
+      "payload": {
+        "episode_id": "55555555-5555-4555-8555-555555555555",
+        "character_asset_id": null,
+        "text": "Three hours later.",
+        "sequence_number": 3,
+        "scene_number": 2,
+        "language": "en",
+        "status": "pending"
+      },
+      "filters": []
+    },
+    {
+      "table": "generation_jobs",
+      "op": "update",
+      "payload": {
+        "status": "completed",
+        "completed_at": "2026-10-03T12:00:00.000Z",
+        "output_data": {
+          "model": "screenplay-orchestrator",
+          "provider": "multi-agent",
+          "costCents": 0,
+          "scenesCreated": 2,
+          "dialogueLinesCreated": 3
+        }
+      },
+      "filters": [
+        {
+          "method": "eq",
+          "args": ["reference_type", "episode"]
+        },
+        {
+          "method": "eq",
+          "args": ["reference_id", "55555555-5555-4555-8555-555555555555"]
+        },
+        {
+          "method": "eq",
+          "args": ["job_type", "screenplay"]
+        },
+        {
+          "method": "in",
+          "args": ["status", ["queued", "processing"]]
+        }
+      ]
+    }
+  ],
+  "result": {
+    "success": true,
+    "data": {
+      "screenplay": {
+        "title": "The Last Signal",
+        "scenes": [
+          {
+            "number": 1,
+            "heading": "INT. OBSERVATION DECK - DAY",
+            "location": "Observation Deck",
+            "timeOfDay": "day",
+            "description": "Maya floats at the window. Warning lights flicker.",
+            "action": ["Maya taps the comm panel."],
+            "dialogue": [
+              {
+                "character": "Maya",
+                "text": "[urgently] Houston, this is Relay One. Please respond.",
+                "parenthetical": "into comm"
+              },
+              {
+                "character": "Houston",
+                "text": "[calmly] Relay One, we read you."
+              }
+            ],
+            "emotionalPeak": "Maya hears her own voice",
+            "hookOut": "What was she about to warn herself about?",
+            "estimatedDuration": 45
+          },
+          {
+            "number": 2,
+            "heading": "INT. CONTROL ROOM - NIGHT",
+            "location": "Control Room",
+            "timeOfDay": "night",
+            "description": "Empty consoles. One screen still glows.",
+            "action": [],
+            "dialogue": [
+              {
+                "character": "NARRATOR",
+                "text": "Three hours later."
+              }
+            ],
+            "estimatedDuration": 30
+          }
+        ],
+        "totalDialogueLines": 3,
+        "estimatedDuration": 75
+      },
+      "dialogueLinesCreated": 3,
+      "episode": {
+        "id": "55555555-5555-4555-8555-555555555555",
+        "status": "storyboard",
+        "version": 3
+      },
+      "metadata": {
+        "provider": "multi-agent",
+        "model": "screenplay-orchestrator",
+        "costCents": 0,
+        "tokensUsed": 0,
+        "generatedAt": "2026-10-03T12:00:00.000Z"
+      }
+    }
+  }
+}
