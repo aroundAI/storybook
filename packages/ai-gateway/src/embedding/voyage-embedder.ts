@@ -23,8 +23,22 @@ export interface Embedder {
 
 type Fetch = (input: string, init: RequestInit) => Promise<Response>;
 
+/** One request to Voyage, reported once, whether it worked or not. */
+export interface EmbeddingRequestReport {
+  status: 'success' | 'failure';
+  inputType: 'document' | 'query';
+  inputCount: number;
+  latencyMs: number;
+  /** `usage.total_tokens` from the response; null when it did not say */
+  totalTokens: number | null;
+  errorCode?: string;
+  errorMessage?: string;
+}
+
 export interface VoyageEmbedderOptions {
   apiKey: string | undefined;
+  /** Called once per request that was attempted; awaited, must not throw */
+  onRequest?: (report: EmbeddingRequestReport) => Promise<void> | void;
   model?: string;
   fetchImpl?: Fetch;
   timeoutMs?: number;
@@ -59,6 +73,47 @@ export function createVoyageEmbedder(
   ): Promise<number[][]> {
     if (texts.length === 0) return [];
 
+    const startedAt = Date.now();
+    let totalTokens: number | null = null;
+
+    try {
+      const vectors = await request(texts, inputType, (tokens) => {
+        totalTokens = tokens;
+      });
+
+      await options.onRequest?.({
+        status: 'success',
+        inputType,
+        inputCount: texts.length,
+        latencyMs: Date.now() - startedAt,
+        totalTokens,
+      });
+
+      return vectors;
+    } catch (error) {
+      await options.onRequest?.({
+        status: 'failure',
+        inputType,
+        inputCount: texts.length,
+        latencyMs: Date.now() - startedAt,
+        totalTokens,
+        errorCode:
+          error instanceof VoyageEmbeddingError && error.status
+            ? `HTTP_${error.status}`
+            : 'VOYAGE_EMBEDDING_ERROR',
+        errorMessage:
+          error instanceof Error ? error.message.substring(0, 1000) : 'unknown',
+      });
+
+      throw error;
+    }
+  }
+
+  async function request(
+    texts: string[],
+    inputType: 'document' | 'query',
+    onTokens: (tokens: number | null) => void,
+  ): Promise<number[][]> {
     let response: Response;
 
     try {
@@ -89,7 +144,9 @@ export function createVoyageEmbedder(
       );
     }
 
-    const vectors = parseEmbeddings(await response.json().catch(() => null));
+    const body: unknown = await response.json().catch(() => null);
+    onTokens(parseTotalTokens(body));
+    const vectors = parseEmbeddings(body);
 
     if (vectors.length !== texts.length) {
       throw new VoyageEmbeddingError(
@@ -108,6 +165,16 @@ export function createVoyageEmbedder(
       return vector!;
     },
   };
+}
+
+function parseTotalTokens(body: unknown): number | null {
+  const usage =
+    body && typeof body === 'object' && 'usage' in body
+      ? (body.usage as { total_tokens?: unknown } | null)
+      : null;
+  const tokens = usage?.total_tokens;
+
+  return typeof tokens === 'number' && Number.isFinite(tokens) ? tokens : null;
 }
 
 /**

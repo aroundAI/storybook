@@ -48,6 +48,14 @@ describe('logLLMUsage and run_id', () => {
     });
   });
 
+  it('inserts a null template_slug for a call with no prompt, such as an embedding', async () => {
+    const { templateSlug: _omitted, ...withoutPrompt } = event;
+
+    await logLLMUsage(client, withoutPrompt);
+
+    expect(insert.mock.calls[0]?.[0]).toMatchObject({ template_slug: null });
+  });
+
   it('leaves run_id out of the insert when the event has none', async () => {
     await logLLMUsage(client, event);
 

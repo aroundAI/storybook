@@ -9,9 +9,14 @@
  */
 import type { RunHandle } from '@kit/generation';
 
+import { recordUsage } from '../executors/usage';
 import { assertServerRunOpen } from '../guard';
 import { requireRun } from '../run-context';
-import { type Embedder, createVoyageEmbedder } from './voyage-embedder';
+import {
+  type Embedder,
+  VOYAGE_EMBEDDING_MODEL,
+  createVoyageEmbedder,
+} from './voyage-embedder';
 
 export interface EmbedOptions {
   /** The run this embedding is for; defaults to the run in scope */
@@ -29,6 +34,27 @@ export function serverEmbedder(options: EmbedOptions = {}): Embedder | null {
   const embedder = createVoyageEmbedder({
     apiKey: options.apiKey ?? process.env.VOYAGE_API_KEY,
     fetchImpl: options.fetchImpl,
+    // One usage row per request, with the run's id (FILM-1902). Voyage
+    // prices are not in @kit/llm's table, so the cost columns stay null:
+    // "cannot measure", never 0.
+    onRequest: (report) =>
+      recordUsage(run, {
+        operationName: 'embedding',
+        llmProvider: 'voyage',
+        llmModel: VOYAGE_EMBEDDING_MODEL,
+        promptTokens: report.totalTokens ?? 0,
+        completionTokens: 0,
+        totalTokens: report.totalTokens ?? 0,
+        latencyMs: report.latencyMs,
+        status: report.status,
+        errorCode: report.errorCode,
+        errorMessage: report.errorMessage,
+        requestConfig: {
+          inputType: report.inputType,
+          inputCount: report.inputCount,
+        },
+        responseMetadata: { tokensReported: report.totalTokens !== null },
+      }),
   });
 
   if (!embedder) return null;

@@ -28,7 +28,8 @@ export interface LLMUsageEvent {
   runId?: string;
 
   // Execution metadata
-  templateSlug: string;
+  /** The prompt template; absent for a call that has none, such as an embedding */
+  templateSlug?: string;
   operationName: string;
 
   // LLM configuration
@@ -104,7 +105,7 @@ export async function logLLMUsage(
     const { error } = await client.from('llm_usage_analytics').insert({
       account_id: accountId,
       user_id: userId,
-      template_slug: event.templateSlug,
+      template_slug: event.templateSlug ?? null,
       operation_name: event.operationName,
       llm_provider: event.llmProvider,
       llm_model: event.llmModel,

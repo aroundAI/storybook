@@ -114,6 +114,25 @@ describe('get_ai_usage', () => {
     ]);
   });
 
+  it('groups a call with no prompt template under its own label, never dropped', async () => {
+    db.llm_usage_analytics!.push(
+      usage('u5', { template_slug: null, operation_name: 'embedding' }),
+    );
+    const result = await tool(
+      db,
+      true,
+    )({ from: '2026-09-01', to: '2026-09-30' });
+    const content = result.structuredContent as {
+      totals: { calls: number };
+      byTemplate: Array<{ key: string; calls: number }>;
+    };
+
+    expect(content.totals.calls).toBe(4);
+    expect(content.byTemplate).toContainEqual(
+      expect.objectContaining({ key: 'no prompt (embedding)', calls: 1 }),
+    );
+  });
+
   it('splits by run mode when usage rows carry a run', async () => {
     const result = await tool(
       db,

@@ -19,7 +19,7 @@ interface UsageRow {
   created_at: string;
   llm_provider: string;
   llm_model: string;
-  template_slug: string;
+  template_slug: string | null;
   operation_name: string | null;
   status: string;
   prompt_tokens: number | null;
@@ -41,6 +41,9 @@ interface UsageBucket {
 
 const BASE_COLUMNS =
   'id, created_at, llm_provider, llm_model, template_slug, operation_name, status, prompt_tokens, completion_tokens, total_tokens, total_cost';
+
+// A call with no prompt template, such as an embedding, is its own group
+const NO_PROMPT = 'no prompt (embedding)';
 
 const BY_MODE_UNAVAILABLE =
   'Usage rows carry no run yet: FILM-1903 (#556) adds llm_usage_analytics.run_id, joined to generation_runs.mode. Until it lands the split by server/external mode cannot be read.';
@@ -103,7 +106,7 @@ export const getAiUsage = defineTool({
         totals: fold(rows),
         byStatus: group(rows, (row) => row.status),
         byModel: group(rows, (row) => `${row.llm_provider}/${row.llm_model}`),
-        byTemplate: group(rows, (row) => row.template_slug),
+        byTemplate: group(rows, (row) => row.template_slug ?? NO_PROMPT),
         byMode: byMode
           ? group(rows, (row) => row.generation_runs?.mode ?? 'unattributed')
           : null,
