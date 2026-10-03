@@ -283,7 +283,9 @@ with any file Prettier would change, so an unformatted push is a red build.
   🐘 Supabase DB) run once, when the PR is queued, on main + the PR, and
   nothing runs after the merge. ⚫️ Test, 🧬 E2E evidence and 🧬 E2E guards
   run only in the nightly full run and on dispatch, not in the queue (owner,
-  2026-10-02). The queue builds up to 10 entries at once. A stacked PR
+  2026-10-02). The queue also runs 🏗️ Next build (`pnpm --filter web build`),
+  scoped to changes that reach `web` (KB-180, owner, 2026-10-03). The queue
+  builds up to 10 entries at once. A stacked PR
   cannot share the queue with its parent: the parent's squash leaves the
   child UNMERGEABLE, so rebase the child onto main after the parent merges.
   The one required check is

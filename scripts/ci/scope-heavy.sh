@@ -14,6 +14,9 @@
 #   ⚫️ Test, 🧬 E2E evidence  web or web-e2e is in turbo's affected set
 #                             (`turbo ls --affected`: the dependency graph,
 #                             so any of web's @kit/* packages counts)
+#   🏗️ Next build             web is in turbo's affected set (`turbo ls
+#                             --affected`), as for ⚫️ Test, but not web-e2e:
+#                             a spec cannot break `next build`
 #   🐘 Supabase DB            SQL, the Supabase package, the generated types,
 #                             a file one of its steps reads, or a changed
 #                             pgTAP guard
@@ -25,9 +28,9 @@
 #                             scripts/ci/**; and an empty diff, a failed
 #                             turbo, or any count this script cannot read
 #
-# Verdict keys: full, reason, test, supabase, unit_guards, e2e_guards.
-# Effective keys, which the jobs gate on: enforced, skip_test, skip_supabase,
-# skip_unit_guards, skip_e2e_guards, unit_shards, e2e_shards. A job is
+# Verdict keys: full, reason, test, build, supabase, unit_guards, e2e_guards.
+# Effective keys, which the jobs gate on: enforced, skip_test, skip_build,
+# skip_supabase, skip_unit_guards, skip_e2e_guards, unit_shards, e2e_shards. A job is
 # skipped only when SCOPE_ENFORCE (vars.CI_SCOPE_HEAVY) is exactly `true` and
 # the verdict is not `full`; otherwise every skip_* is false and the shards
 # are the full set: report-only. Table test: scripts/ci/scope-heavy.test.sh.
@@ -45,8 +48,8 @@ shards() { # shards <count> <cap>: "[1,2,...]", at least [1]
 
 is_count() { [[ $1 =~ ^[0-9]+$ ]]; }
 
-emit() { # emit <full> <reason> <test> <supabase> <unit> <e2e>
-  local full=$1 reason=$2 test=$3 supabase=$4 unit=$5 e2e=$6
+emit() { # emit <full> <reason> <test> <supabase> <unit> <e2e> <build>
+  local full=$1 reason=$2 test=$3 supabase=$4 unit=$5 e2e=$6 build=$7
   local enforced=false
   if [ "${SCOPE_ENFORCE:-}" = true ] && [ "$full" = false ]; then
     enforced=true
@@ -54,12 +57,14 @@ emit() { # emit <full> <reason> <test> <supabase> <unit> <e2e>
   echo "full=$full"
   echo "reason=$reason"
   echo "test=$test"
+  echo "build=$build"
   echo "supabase=$supabase"
   echo "unit_guards=$unit"
   echo "e2e_guards=$e2e"
   echo "enforced=$enforced"
   if [ "$enforced" = true ]; then
     echo "skip_test=$([ "$test" = true ] && echo false || echo true)"
+    echo "skip_build=$([ "$build" = true ] && echo false || echo true)"
     echo "skip_supabase=$([ "$supabase" = true ] && echo false || echo true)"
     echo "skip_unit_guards=$([ "$unit" -gt 0 ] && echo false || echo true)"
     echo "skip_e2e_guards=$([ "$e2e" -gt 0 ] && echo false || echo true)"
@@ -67,6 +72,7 @@ emit() { # emit <full> <reason> <test> <supabase> <unit> <e2e>
     echo "e2e_shards=$(shards "$e2e" "$E2E_SHARDS")"
   else
     echo "skip_test=false"
+    echo "skip_build=false"
     echo "skip_supabase=false"
     echo "skip_unit_guards=false"
     echo "skip_e2e_guards=false"
@@ -75,10 +81,10 @@ emit() { # emit <full> <reason> <test> <supabase> <unit> <e2e>
   fi
 }
 
-everything() { emit true "$1" true true all all; }
+everything() { emit true "$1" true true all all true; }
 
 classify() {
-  local path count=0 root=() supabase=false test=false
+  local path count=0 root=() supabase=false test=false build=false
   while IFS= read -r path || [ -n "$path" ]; do
     [ -z "$path" ] && continue
     count=$((count + 1))
@@ -121,10 +127,11 @@ classify() {
   # Names, one per line (turbo's JSON gives lines; spaces are accepted too).
   affected=$(printf '%s\n' "$affected" | tr ' ' '\n' | grep . || true)
   if printf '%s\n' "$affected" | grep -qxE 'web|web-e2e'; then test=true; fi
+  if printf '%s\n' "$affected" | grep -qx 'web'; then build=true; fi
   if [ "$pgtap" -gt 0 ]; then supabase=true; fi
   local n
   n=$(printf '%s\n' "$affected" | grep -c . || true)
-  emit false "$count file(s); $n package(s) affected" "$test" "$supabase" "$unit" "$e2e"
+  emit false "$count file(s); $n package(s) affected" "$test" "$supabase" "$unit" "$e2e" "$build"
 }
 
 from_git() {
@@ -165,12 +172,13 @@ from_git() {
 }
 
 summary() {
-  local key value enforced='' reason='?' test=true supabase=true unit=all e2e=all
+  local key value enforced='' reason='?' test=true build=true supabase=true unit=all e2e=all
   while IFS='=' read -r key value; do
     case "$key" in
       enforced) enforced=$value ;;
       reason) reason=$value ;;
       test) test=$value ;;
+      build) build=$value ;;
       supabase) supabase=$value ;;
       unit_guards) unit=$value ;;
       e2e_guards) e2e=$value ;;
@@ -195,6 +203,7 @@ summary() {
   echo '| Job | Scope |'
   echo '|---|---|'
   echo "| ⚫️ Test, 🧬 E2E evidence | $(verdict "$test") |"
+  echo "| 🏗️ Next build | $(verdict "$build") |"
   echo "| 🐘 Supabase DB | $(verdict "$supabase") |"
   echo "| 🧪 Unit guards | $(guards "$unit") |"
   echo "| 🧬 E2E guards | $(guards "$e2e") |"
@@ -208,6 +217,7 @@ shadow() {
     | if ($o.scope_enforced // "") != "false" or ($o.scope_full // "") != "false" then empty
       else
         [ (if $o.scope_test == "false" then "test", "e2e-evidence" else empty end),
+          (if $o.scope_build == "false" then "next-build" else empty end),
           (if $o.scope_supabase == "false" then "supabase-db" else empty end),
           (if $o.scope_unit_guards == "0" then "unit-guards" else empty end),
           (if $o.scope_e2e_guards == "0" then "e2e-guards" else empty end) ][]
