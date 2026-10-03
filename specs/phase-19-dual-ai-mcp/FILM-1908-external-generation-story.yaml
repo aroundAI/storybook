@@ -57,16 +57,13 @@ test_plan:
   unit:
     - {text: "submit with a missing field returns rejected with that path; resubmit accepted", met: true, evidence: "packages/features/studio-mcp/__tests__/tools/generation-tools.test.ts:298, red with each rule removed (tooling/mutation-guards/film-1908.json U1-U5) (#573)"}
   integration:
-    - {text: "A scripted MCP SDK client against the local app drives start → submit → finalize for the story stage of a seeded episode", met: true, evidence: "packages/features/studio-mcp/__tests__/generation-story.contract.test.ts:146, green against a dev server (MCP_CONTRACT_SEED=1 MCP_CONTRACT_URL), but for :495, regenerating the story, which #574's world_states update refuses (see remaining); red, before #574, with the character states refused under the user's session (#573)"}
+    - {text: "A scripted MCP SDK client against the local app drives start → submit → finalize for the story stage of a seeded episode", met: true, evidence: "packages/features/studio-mcp/__tests__/generation-story.contract.test.ts:146, nine tests green against a dev server (MCP_CONTRACT_SEED=1 MCP_CONTRACT_URL), :495 regenerating the story with its generated canon replaced, not doubled, and its own content_revisions snapshot; red before #574 with the character states refused under the user's session, and on #574 before its world-state fix (#573)"}
   e2e:
     - {text: "After the scripted run, Playwright opens the story page and reads the story and its origin badge; screenshots in the PR", met: false, reason: "the story is read off the page before and after a reload, and the screenshots are in the PR (apps/e2e/tests/mcp/external-story.spec.ts:87, red with finalize-on-submit removed); the origin badge does not exist yet (FILM-1910), so the origin is read through get_episode"}
 remaining:
   - criterion: "the web story page shows a 'Claude via MCP' origin"
     reason: "the origin is stamped (episodes.generation_origin.story) and returned by get_episode; the badge component is FILM-1910's"
     closed_by: "FILM-1910"
-  - criterion: "regenerating a story replaces its generated canon (either mode)"
-    reason: "a second story commit on the same episode is rolled back: its plan updates the existing world_states row with episode_id and project_id among the values, which apply_generation_commit's allowlist refuses (COMMIT_FAILED, measured 2026-10-03 on #574 at 486c62bb4; generation-story.contract.test.ts:495). The cleanup of the last generation's character states and threads now runs inside the commit, so it is no longer refused under the user's session. Reported to the #574 author"
-    closed_by: "FILM-1903"
 open_questions:
   - "Is the agent's self-check against the quality rubric enough, or should commit refuse below a deterministic score (e.g. shots without a hook in the first 3 seconds)?"
 notes: |
