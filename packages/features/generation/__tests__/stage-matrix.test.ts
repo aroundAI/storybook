@@ -1,3 +1,5 @@
+import { writeFileSync } from 'node:fs';
+
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -713,6 +715,18 @@ describe('every registered stage runs in both modes (FILM-1902 criterion 10)', (
  * recording here, so the stage's own client shows what was written outside
  * it: only runStage's generation_jobs bookkeeping before the commit.
  */
+/**
+ * CAPTURE_COMMIT_PLANS=<file> writes every plan the cases below commit, for
+ * scripts/generation/commit-plans-pgtap.py to turn into the pgTAP file that
+ * applies each through apply_generation_commit (apply-generation-commit-stages).
+ */
+const capturedPlans: unknown[] = [];
+
+afterAll(() => {
+  const file = process.env.CAPTURE_COMMIT_PLANS;
+  if (file) writeFileSync(file, `${JSON.stringify(capturedPlans, null, 2)}\n`);
+});
+
 describe('every registered stage commits through one plan (FILM-1903)', () => {
   for (const key of registeredStageKeys()) {
     const fixture = FIXTURES[key];
@@ -769,6 +783,15 @@ describe('every registered stage commits through one plan (FILM-1903)', () => {
           expect(state.commits, key).toEqual([
             expect.objectContaining({ runId: run.id, finalize: true }),
           ]);
+        }
+
+        if (process.env.CAPTURE_COMMIT_PLANS) {
+          capturedPlans.push({
+            stage: key,
+            mode,
+            lock: fixture.lock,
+            plans: state.commits.map((commit) => commit.plan),
+          });
         }
 
         // The snapshot is the database's, inside the same call
