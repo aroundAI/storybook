@@ -116,7 +116,7 @@ create index idx_llm_usage_analytics_run on public.llm_usage_analytics (run_id) 
 -- The locks that keep Gemini out of external work
 -- ----------------------------------------------------------------------
 -- A new LLM job or usage row needs an open server-mode run (part C,
--- 20261002220033: required at insert by this trigger, not NOT NULL, so rows
+-- 20261003155443: required at insert by this trigger, not NOT NULL, so rows
 -- written before it keep their null and `on delete set null` still works).
 create or replace function public.assert_server_run()
 returns trigger
