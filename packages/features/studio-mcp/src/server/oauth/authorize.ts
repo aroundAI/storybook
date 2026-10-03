@@ -1,0 +1,256 @@
+import { randomBytes } from 'node:crypto';
+
+import { MCP_SCOPES, type McpScope, McpScopeSchema } from '../../scopes';
+import { hashToken } from '../token';
+import { resolveClient } from './clients';
+import { OAuthError } from './errors';
+import { isCodeChallengeShape } from './pkce';
+import { resourceMatches } from './resource';
+import type { OAuthClientRecord, OAuthStore } from './store';
+
+/** A code lives one minute: long enough for the redirect, no longer. */
+export const AUTHORIZATION_CODE_TTL_SECONDS = 60;
+
+/** What a client gets when it asks for no scope in particular. */
+export const DEFAULT_SCOPES: McpScope[] = ['studio:read', 'studio:write'];
+
+export interface AuthorizeRequest {
+  client: OAuthClientRecord;
+  redirectUri: string;
+  scopes: McpScope[];
+  codeChallenge: string;
+  state: string | null;
+  /** The MCP resource URL the grant is for, canonical. */
+  resource: string;
+}
+
+export type AuthorizeParse =
+  | { ok: true; request: AuthorizeRequest }
+  /**
+   * The client or its redirect URI could not be trusted, so the error is
+   * shown on our page and the user agent goes nowhere (RFC 6749 §4.1.2.1:
+   * never redirect to an unverified URI).
+   */
+  | { ok: false; kind: 'render'; error: OAuthError }
+  /** The client and URI are fine; the request is not. The client is told. */
+  | { ok: false; kind: 'redirect'; location: string; error: OAuthError };
+
+export interface AuthorizeDeps {
+  store: OAuthStore;
+  /** The configured MCP resource URL. */
+  resource: string;
+  fetchFn?: typeof fetch;
+}
+
+/**
+ * Validates the query of `GET /oauth/authorize` before anything is shown:
+ * a known client, an exactly registered redirect URI, `response_type=code`,
+ * PKCE with S256, scopes from the catalogue, and a `resource` (RFC 8707),
+ * when given, that is this deployment's MCP URL.
+ */
+export async function parseAuthorizeRequest(
+  params: URLSearchParams,
+  deps: AuthorizeDeps,
+): Promise<AuthorizeParse> {
+  const clientId = params.get('client_id');
+
+  if (!clientId) {
+    return render('invalid_request', 'client_id is required.');
+  }
+
+  const client = await resolveClient(deps.store, clientId, {
+    fetchFn: deps.fetchFn,
+  });
+
+  if (!client) {
+    return render(
+      'invalid_client',
+      'This client is not registered with StoryBook.',
+    );
+  }
+
+  const requestedRedirect = params.get('redirect_uri');
+  const redirectUri =
+    requestedRedirect ??
+    (client.redirectUris.length === 1 ? client.redirectUris[0]! : null);
+
+  if (!redirectUri || !client.redirectUris.includes(redirectUri)) {
+    return render(
+      'invalid_redirect_uri',
+      'The redirect URI is not one this client registered.',
+    );
+  }
+
+  const state = params.get('state');
+  const redirectWith = (error: OAuthError): AuthorizeParse => ({
+    ok: false,
+    kind: 'redirect',
+    location: errorLocation(redirectUri, error, state),
+    error,
+  });
+
+  if (params.get('response_type') !== 'code') {
+    return redirectWith(
+      new OAuthError(
+        'unsupported_response_type',
+        'response_type must be code.',
+      ),
+    );
+  }
+
+  const codeChallenge = params.get('code_challenge');
+
+  if (!codeChallenge || !isCodeChallengeShape(codeChallenge)) {
+    return redirectWith(
+      new OAuthError(
+        'invalid_request',
+        'code_challenge is required: 43 base64url characters (PKCE S256).',
+      ),
+    );
+  }
+
+  if (params.get('code_challenge_method') !== 'S256') {
+    return redirectWith(
+      new OAuthError(
+        'invalid_request',
+        'code_challenge_method must be S256; plain is not accepted.',
+      ),
+    );
+  }
+
+  const scopes = parseScopes(params.get('scope'));
+
+  if (!scopes) {
+    return redirectWith(
+      new OAuthError(
+        'invalid_scope',
+        `Unknown scope. Supported: ${MCP_SCOPES.join(', ')}.`,
+      ),
+    );
+  }
+
+  const requestedResource = params.get('resource');
+
+  if (requestedResource && !resourceMatches(requestedResource, deps.resource)) {
+    return redirectWith(
+      new OAuthError(
+        'invalid_target',
+        `This server issues tokens for ${deps.resource} only.`,
+      ),
+    );
+  }
+
+  return {
+    ok: true,
+    request: {
+      client,
+      redirectUri,
+      scopes,
+      codeChallenge,
+      state,
+      resource: deps.resource,
+    },
+  };
+}
+
+/** `null` for an unknown scope; the default set for no scope at all. */
+export function parseScopes(value: string | null): McpScope[] | null {
+  const parts = (value ?? '').split(/\s+/).filter(Boolean);
+
+  if (parts.length === 0) return [...DEFAULT_SCOPES];
+
+  const scopes: McpScope[] = [];
+
+  for (const part of parts) {
+    const parsed = McpScopeSchema.safeParse(part);
+
+    if (!parsed.success) return null;
+    if (!scopes.includes(parsed.data)) scopes.push(parsed.data);
+  }
+
+  return scopes;
+}
+
+/**
+ * The user approved: mint a code, store its hash with everything the token
+ * endpoint will check (client, user, team, scopes, PKCE challenge,
+ * redirect URI, resource, expiry), and build the redirect.
+ */
+export async function issueAuthorizationCode(
+  store: OAuthStore,
+  input: {
+    request: AuthorizeRequest;
+    userId: string;
+    accountId: string;
+    /** What the user granted: a non-empty subset of the request's scopes. */
+    scopes: McpScope[];
+    now?: Date;
+  },
+): Promise<{ code: string; location: string }> {
+  const now = input.now ?? new Date();
+  const granted = input.scopes.filter((scope) =>
+    input.request.scopes.includes(scope),
+  );
+
+  if (granted.length === 0) {
+    throw new OAuthError('invalid_scope', 'Grant at least one scope.');
+  }
+
+  const code = randomBytes(32).toString('base64url');
+
+  await store.saveCode({
+    codeHash: hashToken(code),
+    clientId: input.request.client.clientId,
+    userId: input.userId,
+    accountId: input.accountId,
+    scopes: granted,
+    codeChallenge: input.request.codeChallenge,
+    redirectUri: input.request.redirectUri,
+    resource: input.request.resource,
+    expiresAt: new Date(
+      now.getTime() + AUTHORIZATION_CODE_TTL_SECONDS * 1000,
+    ).toISOString(),
+    usedAt: null,
+  });
+
+  const location = new URL(input.request.redirectUri);
+  location.searchParams.set('code', code);
+
+  if (input.request.state !== null) {
+    location.searchParams.set('state', input.request.state);
+  }
+
+  return { code, location: location.toString() };
+}
+
+/** The user declined. */
+export function denialLocation(request: AuthorizeRequest) {
+  return errorLocation(
+    request.redirectUri,
+    new OAuthError('access_denied', 'The user declined the request.'),
+    request.state,
+  );
+}
+
+function errorLocation(
+  redirectUri: string,
+  error: OAuthError,
+  state: string | null,
+) {
+  const location = new URL(redirectUri);
+
+  location.searchParams.set('error', error.code);
+  location.searchParams.set('error_description', error.message);
+
+  if (state !== null) location.searchParams.set('state', state);
+
+  return location.toString();
+}
+
+function render(code: OAuthError['code'], description: string): AuthorizeParse {
+  return {
+    ok: false,
+    kind: 'render',
+    error: new OAuthError(code, description),
+  };
+}

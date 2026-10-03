@@ -1,5 +1,6 @@
 import type { McpConnectionSummary } from '@kit/studio-mcp';
 
+import { AddToClaudeCard } from './add-to-claude-card';
 import { CreatePersonalAccessTokenForm } from './create-personal-access-token-form';
 import { McpConnectionsList } from './mcp-connections-list';
 
@@ -18,6 +19,8 @@ export function ConnectedAppsSettings(props: {
         accountSlug={props.accountSlug}
         connections={props.connections}
       />
+
+      <AddToClaudeCard />
 
       <CreatePersonalAccessTokenForm accountSlug={props.accountSlug} />
     </div>

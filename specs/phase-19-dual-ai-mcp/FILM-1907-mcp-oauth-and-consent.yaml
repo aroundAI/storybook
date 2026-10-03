@@ -3,7 +3,7 @@ title: "MCP OAuth 2.1 Authorization Server, Consent and Connected Apps"
 phase: 19
 phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: L
 dependencies:
   - spec_id: "FILM-1904"
@@ -26,53 +26,57 @@ summary: >
   (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
 acceptance_criteria:
   - text: "GET /.well-known/oauth-protected-resource names the MCP resource URL and the authorization server; GET /.well-known/oauth-authorization-server publishes the authorize, token, register and revoke endpoints, S256 as the only PKCE method, and the supported scopes"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "apps/web/app/.well-known/oauth-protected-resource/[[...resource]]/route.ts (root and the path-aware URL the SDK tries first), apps/web/app/.well-known/oauth-authorization-server/route.ts; packages/features/studio-mcp/src/server/oauth/metadata.ts:10,30; __tests__/oauth/clients-and-metadata.test.ts 'discovery metadata'; apps/e2e/tests/mcp/oauth-consent.spec.ts 'the two well-known documents' reads both off the running app (#563)"
   - text: "POST /oauth/register implements Dynamic Client Registration (RFC 7591) for public clients; a client metadata document URL is accepted as client_id; both are stored in mcp_oauth_clients"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "apps/web/app/oauth/register/route.ts (rate-limited per address with the cache's incr); packages/features/studio-mcp/src/server/oauth/clients.ts registerClient:170, resolveClient:214 (fetches an https document on a public host once, requires client_id to equal its URL, caches it with metadata_url); migration 20261002202731_film-1907-oauth-clients-and-codes.sql:34; __tests__/oauth/clients-and-metadata.test.ts (DCR, documents, SSRF refusals); guards OAUTH U11, U12"
   - text: "/oauth/authorize requires PKCE S256 and an exact redirect URI match, sends a signed-out user through the normal login and back, and shows a consent page: client name, team picker (teams the user belongs to), scopes"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/oauth/authorize.ts parseAuthorizeRequest:48 (exact includes() on redirect_uris; an unknown client or URI renders, never redirects; S256 only); apps/web/app/oauth/authorize/page.tsx (requireUser with next=, user_accounts as the team list), _components/consent-form.tsx; oauth-consent.spec.ts 'a signed-out user signs in, comes back…' and 'an unregistered redirect URI… never a redirect'; guards OAUTH U2, E1"
   - text: "Authorization codes are single-use, expire in 60 s and are stored hashed in mcp_authorization_codes"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "authorize.ts:19 (60 s), issueAuthorizationCode:179 (hashToken, expires_at); supabase-store.ts consumeCode (one UPDATE guarded by used_at is null); token.ts:86 refuses a used code; __tests__/oauth/authorize-and-token.test.ts 'authorization codes', 'refuses the same code twice', 'refuses a code older than 60 seconds'; guards OAUTH U3, U6; oauth-consent.spec.ts exchanges the same code twice against the app"
   - text: "/oauth/token issues a 1-hour opaque access token and a 30-day rotating refresh token, audience-bound to the MCP resource URL (RFC 8707); reuse of a rotated refresh token revokes the connection"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/oauth/token.ts:11-12 (TTLs), issuePair (sbk_at_/sbk_rt_, hashed, audience = resource), refreshTokens:148 (revoked or rotated-from → revokeConnection); migration adds mcp_tokens.audience; own-verifier.ts refuses another audience; __tests__/oauth/authorize-and-token.test.ts '/oauth/token refresh_token'; oauth-consent.spec.ts 'the refresh token rotates, and reuse… revokes the whole connection' (whoami 401 reason revoked after reuse); guards OAUTH U1, U4, U5, U8"
   - text: "/oauth/revoke revokes a token; revoking from settings revokes every token of the connection"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "apps/web/app/oauth/revoke/route.ts, packages/features/studio-mcp/src/server/oauth/revoke.ts (access token alone; refresh token with its connection); migration trigger on_mcp_connection_revoked sets revoked_at on every token when a connection's revoked_at is set, from any door; pgTAP 'revoking the connection revoked its token, which bob himself may not touch'; oauth-consent.spec.ts: after the settings revoke, whoami is 401 and the refresh is invalid_grant; guards OAUTH DB2, E2"
   - text: "Settings → Connected apps lists OAuth connections and personal access tokens with client name, team, scopes and last use, and revokes them"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "apps/web/app/home/[account]/settings/connected-apps/_components/mcp-connections-list.tsx (FILM-1904) lists both kinds with name, type, scopes, last use and status on the team's page; add-to-claude-card.tsx names the connector URL; oauth-consent.spec.ts asserts the OAuth row on the team chosen at consent and its absence on the other team, then the Revoked state after reload"
   - text: "Supabase sign-in: with AUTH_PROVIDER=supabase, /oauth/authorize reads the user from the existing Supabase session cookie (the same requireUser the web uses), and a signed-out user goes through /auth/sign-in, including MFA, and returns to the consent page with the request intact"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "apps/web/app/oauth/authorize/page.tsx:45 requireUser(client, { next }) from @kit/supabase/require-user (verifyMfa on: an aal1 session with a factor is sent to /auth/verify?next=…); oauth-consent.spec.ts measures the round trip: /auth/sign-in?next=/oauth/authorize?client_id=…, sign in, back with the same state. MFA path by construction of requireUser (no TOTP user in this spec)"
   - text: "Supabase identity: grants, codes and connections store auth.users.id as user_id with a foreign key to auth.users (on delete cascade), so deleting a Supabase user revokes their connections"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "migration 20261002202731:52 (codes user_id references auth.users on delete cascade), FILM-1904's mcp_connections.user_id likewise; pgTAP 'deleting the user deletes their authorization codes / connections / tokens through the connection'"
   - text: "Supabase sessions stay separate: the OAuth server never hands out a Supabase access or refresh token; MCP tokens are its own, and a Supabase sign-out or password change does not silently keep an MCP grant alive past its own revocation rules (password change revokes the user's connections)"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "token.ts issues only sbk_at_/sbk_rt_ (no Supabase session is created or returned anywhere under src/server/oauth); migration trigger on_auth_user_password_changed (kit.revoke_mcp_grants_on_password_change, fires on a changed encrypted_password only); pgTAP 'a password change revokes every connection of that user' and 'an email change… revokes nothing'; guard OAUTH DB1"
   - text: "RLS signing works with both Supabase key setups: FILM-1904's 5-minute JWT is signed with the legacy JWT secret or with a private key imported into the project's JWT signing keys (selected by env, with the kid set), and a pgTAP or integration test proves auth.uid() and RLS see the minted user in each"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "Both signers behind McpJwtSigner (jwt.ts: createHs256Signer; createAsymmetricSigner ES256/RS256 with kid; createMcpJwtSigner selects by MCP_JWT_PRIVATE_KEY + MCP_JWT_KID + MCP_JWT_ALG); __tests__/jwt-signers.test.ts (verifies against the public key, kid in the header; guard OAUTH U10). Live, __tests__/integration/rls-jwt.integration.test.ts against lane B's Supabase (CLI 2.117.0 runs GoTrue with a generated ES256 key in GOTRUE_JWT_KEYS and PostgREST with the same JWKS, beside the HS256 secret): the HS256-minted token and an ES256 token minted with that key and its kid each run as the user (has_role_on_account true for their team, false for another's; user_accounts shows theirs only; create_mcp_personal_access_token binds the row to auth.uid()); an ES256 token for a key outside the set is refused PGRST301. Importing a key into a hosted project is the deployment step in notes (#563)"
   - text: "Swappable verifier: withMcpAuth resolves tokens only through an McpTokenVerifier interface; 'own' (default, MCP_AUTH_SERVER=own) checks hashed opaque tokens in mcp_tokens, and the interface admits a 'supabase' verifier for Supabase OAuth server JWTs (issuer, audience, aud = MCP resource URL, client_id claim) mapped to the same McpPrincipal; the protected-resource metadata names whichever authorization server is configured"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/oauth/config.ts (MCP_AUTH_SERVER selects createOwnTokenVerifier or createSupabaseTokenVerifier; authorizationServerFromEnv feeds the metadata), route-handler.ts defaultAuthDeps uses it; supabase-verifier.ts (jose jwtVerify on issuer, aud = resource, client_id → mcp_connections by user and client); __tests__/verifier-contract.test.ts runs one contract over both: same McpConnectionRecord, expired/revoked/wrong-audience/malformed refused; guards OAUTH U7, U8, U9"
   - text: "Adding the connector by URL in Claude Desktop, signing in and calling whoami works end to end (recorded with screenshots)"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "Needs a public URL and the owner's Claude. The SDK's own OAuth client (what Claude runs) completes discovery, registration, authorization and the exchange against the local server in apps/e2e/tests/mcp/oauth-sdk-client.spec.ts; the owner's steps are in notes"
 test_plan:
   unit:
-    - {text: "PKCE verification, redirect URI exact match, code reuse refused, refresh rotation and reuse detection", met: false, reason: "not met — no test yet"}
-    - {text: "McpTokenVerifier contract test run against the 'own' verifier and a stub 'supabase' verifier: both yield the same McpPrincipal for the same user, team and scopes, and both refuse expired, wrong-audience and revoked tokens", met: false, reason: "not met — no test yet"}
+    - {text: "PKCE verification, redirect URI exact match, code reuse refused, refresh rotation and reuse detection", met: true, evidence: "packages/features/studio-mcp/__tests__/oauth/authorize-and-token.test.ts (19 cases) and clients-and-metadata.test.ts (10); red first: both files failed with 'Cannot find module' before src/server/oauth existed; 12 unit guards in tooling/mutation-guards/film-1907.json each go red"}
+    - {text: "McpTokenVerifier contract test run against the 'own' verifier and a stub 'supabase' verifier: both yield the same McpPrincipal for the same user, team and scopes, and both refuse expired, wrong-audience and revoked tokens", met: true, evidence: "packages/features/studio-mcp/__tests__/verifier-contract.test.ts (describe.each over own and supabase, 14 cases); red first: 'Cannot find module supabase-verifier'"}
   integration:
-    - {text: "The SDK's OAuth client completes discovery, registration, authorize and token against the local app with local Supabase Auth as the login", met: false, reason: "not met — no test yet"}
-    - {text: "Minted JWT under both key setups: a tool call reads only the signed-in team's rows (RLS), against local Supabase", met: false, reason: "not met — no test yet"}
+    - {text: "The SDK's OAuth client completes discovery, registration, authorize and token against the local app with local Supabase Auth as the login", met: true, evidence: "apps/e2e/tests/mcp/oauth-sdk-client.spec.ts: @modelcontextprotocol/sdk auth() → REDIRECT after DCR, the consent click in the browser, auth() with the code → AUTHORIZED, then StreamableHTTPClientTransport with the provider calls whoami (#563)"}
+    - {text: "Minted JWT under both key setups: a tool call reads only the signed-in team's rows (RLS), against local Supabase", met: true, evidence: "packages/features/studio-mcp/__tests__/integration/rls-jwt.integration.test.ts, 3 cases against lane B (MCP_INTEGRATION_SUPABASE_URL, MCP_INTEGRATION_SIGNING_JWK from the stack's GOTRUE_JWT_KEYS): HS256 and the stack's ES256 key each see only the user's team; a foreign ES256 key is refused (#563)"}
   e2e:
-    - {text: "Playwright: the consent page for a seeded user with two teams, approve, then the Connected apps page shows and revokes the connection; screenshots in the PR", met: false, reason: "not met — no test yet"}
+    - {text: "Playwright: the consent page for a seeded user with two teams, approve, then the Connected apps page shows and revokes the connection; screenshots in the PR", met: true, evidence: "apps/e2e/tests/mcp/oauth-consent.spec.ts (4 tests) and oauth-consent-evidence.spec.ts behind CAPTURE_EVIDENCE=1; screenshots in #563"}
+remaining:
+  - criterion: "Adding the connector by URL in Claude Desktop, signing in and calling whoami works end to end (recorded with screenshots)"
+    reason: "Needs a public URL and the owner's Claude account"
+    closed_by: "owner"
 open_questions: []
 notes: |
   Decided 2026-10-02 by the owner: our own small authorization server,
@@ -85,22 +89,101 @@ notes: |
 
   Tables: mcp_oauth_clients (client_id, client_name, redirect_uris text[],
   metadata_url, created_at) and mcp_authorization_codes (code_hash, client_id,
-  user_id, account_id, scopes, code_challenge, redirect_uri, expires_at,
-  used_at), both service role only; tokens and connections are FILM-1904's.
+  user_id, account_id, scopes, code_challenge, redirect_uri, resource,
+  expires_at, used_at), both service role only; tokens and connections are
+  FILM-1904's. #563 adds mcp_tokens.audience (the resource a token was
+  issued for), the FK mcp_connections.client_id → mcp_oauth_clients, a CHECK
+  that a consent connection names its client, and two triggers:
+  on_mcp_connection_revoked (revoking a connection revokes its tokens) and
+  on_auth_user_password_changed (a password change revokes the user's
+  connections).
 
   Scopes: studio:read (read and analytics tools), studio:write (author,
   generation, edit and analytics write tools), studio:render (ElevenLabs
-  renders, which cost money).
+  renders, which cost money). A client that asks for no scope gets
+  studio:read and studio:write offered; the user may untick scopes on the
+  consent page and the token response's `scope` says what was granted.
 
-  Threats handled here: open redirect (exact match), code interception
-  (PKCE S256), token replay across teams (token bound to one user and team,
-  membership re-checked per call by FILM-1904).
+  Threats handled here: open redirect (exact match; an unregistered URI or
+  unknown client is shown on our page and never redirected to), code
+  interception (PKCE S256), token replay across teams (token bound to one
+  user and team, membership re-checked per call by FILM-1904), token replay
+  across deployments (RFC 8707 audience stored with the token and checked
+  by the verifier), refresh-token theft (rotation; reuse revokes the
+  connection), client metadata document fetches (https only, public host
+  names only, 64 KB, 5 s, client_id must equal the URL), registration abuse
+  (per-address hourly limit).
+
+  ## Environment (#563)
+
+  - MCP_AUTH_SERVER=own|supabase (default own): which verifier withMcpAuth
+    runs with and which authorization server the protected-resource
+    metadata names.
+  - MCP_RESOURCE_URL: overrides `<NEXT_PUBLIC_SITE_URL>/api/mcp` as the
+    resource every token is bound to.
+  - MCP_SUPABASE_OAUTH_ISSUER: with `supabase`, the JWT issuer (default
+    `<NEXT_PUBLIC_SUPABASE_URL>/auth/v1`); its JWKS is read from
+    `<issuer>/.well-known/jwks.json`.
+  - MCP_JWT_PRIVATE_KEY (PKCS#8 PEM, `\n` escaped is fine), MCP_JWT_KID,
+    MCP_JWT_ALG (ES256 default, or RS256): the imported-key signer for the
+    RLS JWT. Without them SUPABASE_JWT_SECRET signs HS256, as FILM-1904.
+  - MCP_OAUTH_REGISTRATIONS_PER_HOUR (default 20): /oauth/register per
+    address.
+
+  Routes: /.well-known/oauth-protected-resource (also
+  /.well-known/oauth-protected-resource/api/mcp),
+  /.well-known/oauth-authorization-server, POST /oauth/register,
+  GET /oauth/authorize (page), POST /oauth/token, POST /oauth/revoke. The
+  three POST endpoints and the discovery documents are outside the CSRF
+  middleware's matcher (apps/web/middleware.ts): no browser session reaches
+  them.
+
+  ## Deploying with an imported signing key (criterion 11, the hosted step)
+
+  1. Supabase dashboard → Project → Authentication → JWT Signing Keys →
+     Import an asymmetric key (ES256 recommended). Note the key id shown.
+  2. Set MCP_JWT_PRIVATE_KEY to the PKCS#8 private key, MCP_JWT_KID to that
+     id (MCP_JWT_ALG=RS256 if an RSA key was imported) on the deployment;
+     leave SUPABASE_JWT_SECRET for the rest of the app.
+  3. Call whoami with a PAT against the deployment: a 200 under the
+     asymmetric signer is the proof (the same check the integration test
+     makes locally with the stack's own key).
+
+  ## Owner steps for the open item
+
+  Claude Desktop by URL (criterion 13):
+  1. Deploy the branch to a public URL (NEXT_PUBLIC_SITE_URL set to it).
+  2. In Claude: Settings → Connectors → Add custom connector → paste
+     `<site>/api/mcp`. Claude reads the two discovery documents, registers
+     (DCR) or presents its client metadata document, and opens
+     `<site>/oauth/authorize`.
+  3. Sign in with the StoryBook account (MFA if enabled), choose the team,
+     untick studio:render if renders should need a token of their own,
+     click Allow. Claude lands on its callback and exchanges the code.
+  4. In Claude, call whoami. Screenshot: the consent page, Claude's
+     connector listed as connected, the whoami answer, and Settings →
+     Connected apps showing the OAuth app row. Attach to this spec's PR
+     with `gh pr comment --attach`.
+
+  ## Why some things are the way they are (#563)
+
+  - The consent form returns the redirect and the browser navigates: a
+    server action's redirect() cannot reach a custom scheme or another
+    origin, and Claude's callback is another origin.
+  - A refresh token presented as a bearer token is `malformed` to the
+    verifier even though its hash is stored: the shape check admits
+    sbk_pat_ and sbk_at_ only.
+  - /oauth/revoke of an access token revokes that token; of a refresh token,
+    the whole connection (RFC 7009 allows both; the grant is what a client
+    gives up).
+  - Refresh is sliding: a rotation issues a new 30-day refresh token.
 feature:
   database:
     tables: ["mcp_oauth_clients", "mcp_authorization_codes"]
-    columns_added: []
+    columns_added: ["mcp_tokens.audience"]
   queries: []
-  actions: []
-  ui: [{component: "McpConsentPage", file: "apps/web/app/oauth/authorize/page.tsx"}, {component: "ConnectedAppsSettings", file: "apps/web/app/home/[account]/settings/connected-apps/page.tsx"}]
+  actions: [{name: "approveConsentAction", file: "apps/web/app/oauth/authorize/_lib/server/consent-actions.ts"}, {name: "denyConsentAction", file: "apps/web/app/oauth/authorize/_lib/server/consent-actions.ts"}]
+  ui: [{component: "McpConsentPage", file: "apps/web/app/oauth/authorize/page.tsx"}, {component: "ConsentForm", file: "apps/web/app/oauth/authorize/_components/consent-form.tsx"}, {component: "AddToClaudeCard", file: "apps/web/app/home/[account]/settings/connected-apps/_components/add-to-claude-card.tsx"}, {component: "ConnectedAppsSettings", file: "apps/web/app/home/[account]/settings/connected-apps/page.tsx"}]
   provider_integration: null
-  routes: ["apps/web/app/.well-known/oauth-protected-resource/route.ts", "apps/web/app/.well-known/oauth-authorization-server/route.ts", "apps/web/app/oauth/register/route.ts", "apps/web/app/oauth/token/route.ts", "apps/web/app/oauth/revoke/route.ts"]
+  routes: ["apps/web/app/.well-known/oauth-protected-resource/[[...resource]]/route.ts", "apps/web/app/.well-known/oauth-authorization-server/route.ts", "apps/web/app/oauth/register/route.ts", "apps/web/app/oauth/token/route.ts", "apps/web/app/oauth/revoke/route.ts"]
+  package_paths: ["packages/features/studio-mcp/src/server/oauth/", "packages/features/studio-mcp/src/server/supabase-verifier.ts", "packages/features/studio-mcp/src/server/jwt.ts"]

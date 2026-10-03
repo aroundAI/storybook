@@ -1120,3 +1120,38 @@ export async function seedScreenplayWithDialogue(episodeId: string) {
     );
   }
 }
+
+/**
+ * A second team owned by an already seeded user, through the same
+ * `create_team_account` the product calls. The OAuth consent page offers
+ * every team the user belongs to (FILM-1907), so its spec needs a user
+ * with a choice to make.
+ */
+export async function seedTeamForUser(
+  user: { email: string; password: string },
+  name: string,
+): Promise<{ slug: string; accountId: string; name: string }> {
+  const session = await post('/auth/v1/token?grant_type=password', ANON_KEY, {
+    email: user.email,
+    password: user.password,
+  });
+
+  const account = await post(
+    '/rest/v1/rpc/create_team_account',
+    ANON_KEY,
+    { account_name: name },
+    session.access_token as string,
+  );
+
+  if (!account?.slug) {
+    throw new Error(
+      `create_team_account returned no slug: ${JSON.stringify(account)}`,
+    );
+  }
+
+  return {
+    slug: account.slug as string,
+    accountId: account.id as string,
+    name,
+  };
+}

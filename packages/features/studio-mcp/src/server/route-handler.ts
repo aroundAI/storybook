@@ -11,7 +11,7 @@ import { describeRequestForLog, recordToolCall } from './audit';
 import { type ToolRuntime, buildMcpServer } from './build-server';
 import { createMcpJwtSigner } from './jwt';
 import { collectNodeResponse, toNodeRequest } from './node-adapter';
-import { createOwnTokenVerifier } from './own-verifier';
+import { createMcpTokenVerifierFromEnv } from './oauth/config';
 import type { McpPromptDefinition } from './prompts';
 import { rateLimitsFromEnv } from './rate-limit';
 import { defaultTools } from './tools';
@@ -203,7 +203,9 @@ function defaultAuthDeps(): McpAuthDeps {
   const admin = getSupabaseServerAdminClient();
 
   return {
-    verifier: createOwnTokenVerifier(admin),
+    // `MCP_AUTH_SERVER` picks the verifier: our opaque tokens, or Supabase
+    // Auth's OAuth JWTs (FILM-1907)
+    verifier: createMcpTokenVerifierFromEnv(admin),
     signer: createMcpJwtSigner(),
     createUserClient: createUserScopedClient,
     async touchConnection(connectionId) {

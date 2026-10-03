@@ -3545,6 +3545,84 @@ export type Database = {
           },
         ]
       }
+      mcp_authorization_codes: {
+        Row: {
+          account_id: string
+          client_id: string
+          code_challenge: string
+          code_hash: string
+          created_at: string
+          expires_at: string
+          redirect_uri: string
+          resource: string
+          scopes: string[]
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          client_id: string
+          code_challenge: string
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          redirect_uri: string
+          resource: string
+          scopes: string[]
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          client_id?: string
+          code_challenge?: string
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          redirect_uri?: string
+          resource?: string
+          scopes?: string[]
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_authorization_codes_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_authorization_codes_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "public_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_authorization_codes_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_authorization_codes_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_authorization_codes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "mcp_oauth_clients"
+            referencedColumns: ["client_id"]
+          },
+        ]
+      }
       mcp_connections: {
         Row: {
           account_id: string
@@ -3611,10 +3689,42 @@ export type Database = {
             referencedRelation: "user_accounts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "mcp_connections_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "mcp_oauth_clients"
+            referencedColumns: ["client_id"]
+          },
         ]
+      }
+      mcp_oauth_clients: {
+        Row: {
+          client_id: string
+          client_name: string
+          created_at: string
+          metadata_url: string | null
+          redirect_uris: string[]
+        }
+        Insert: {
+          client_id: string
+          client_name: string
+          created_at?: string
+          metadata_url?: string | null
+          redirect_uris: string[]
+        }
+        Update: {
+          client_id?: string
+          client_name?: string
+          created_at?: string
+          metadata_url?: string | null
+          redirect_uris?: string[]
+        }
+        Relationships: []
       }
       mcp_tokens: {
         Row: {
+          audience: string | null
           connection_id: string
           created_at: string
           expires_at: string | null
@@ -3624,6 +3734,7 @@ export type Database = {
           token_hash: string
         }
         Insert: {
+          audience?: string | null
           connection_id: string
           created_at?: string
           expires_at?: string | null
@@ -3633,6 +3744,7 @@ export type Database = {
           token_hash: string
         }
         Update: {
+          audience?: string | null
           connection_id?: string
           created_at?: string
           expires_at?: string | null

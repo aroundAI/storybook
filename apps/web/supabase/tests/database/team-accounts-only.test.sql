@@ -66,8 +66,8 @@ select is(
     where t.tgname = 'require_team_account'
       and t.tgfoid::regprocedure::text = 'kit.require_team_account()'
       and pg_get_triggerdef(t.oid) ~ 'BEFORE INSERT OR UPDATE OF account_id ON public\.\w+ FOR EACH ROW'),
-  27,
-  'the guard is a row trigger before insert, and before any update of account_id, on 27 tables (FILM-1903 added generation_runs, content_revisions and account_ai_settings; FILM-1904 mcp_connections and mcp_tool_calls)'
+  28,
+  'the guard is a row trigger before insert, and before any update of account_id, on 28 tables (FILM-1903 added generation_runs, content_revisions and account_ai_settings; FILM-1904 mcp_connections and mcp_tool_calls; FILM-1907 mcp_authorization_codes)'
 );
 
 select is_empty(
