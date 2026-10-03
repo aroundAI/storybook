@@ -82,9 +82,46 @@ export const CanonExtractionSchema = z.object({
   worldState: ExtractedWorldStateSchema.optional(),
 });
 
+/**
+ * The `canonFacts` block of the story stage (FILM-1901): the same reply,
+ * read more strictly where the story commit writes it as it is, because the
+ * block is stored without an extraction step in between. Built from the
+ * fields above, so the prompt's shape lives once. It differs from the full
+ * schema in exactly these places: no `immutableEvents` (the story commit
+ * writes its own from the story's key events); a thread name is not empty;
+ * the summary and score are required, the score within 0 to 1 (nothing is
+ * defaulted); the lists are optional; a state change carries only the
+ * character and the two states; a world state names its location.
+ */
+export const StoryCanonFactsSchema = CanonExtractionSchema.omit({
+  immutableEvents: true,
+}).extend({
+  threadUpdates: z
+    .array(
+      ExtractedThreadUpdateSchema.omit({ threadId: true }).extend({
+        threadName: z.string().min(1),
+      }),
+    )
+    .default([]),
+  episodeSummary: z.string(),
+  sentimentScore: z.number().min(0).max(1),
+  keyEvents: z.array(z.string()).optional(),
+  characterStateChanges: z
+    .array(
+      ExtractedCharacterStateChangeSchema.pick({
+        characterName: true,
+        fromState: true,
+        toState: true,
+      }),
+    )
+    .optional(),
+  worldState: ExtractedWorldStateSchema.required({ location: true }).optional(),
+});
+
 export const CanonExtractionOutputSchema = z.object({
   extraction: CanonExtractionSchema,
 });
 
 export type CanonExtraction = z.infer<typeof CanonExtractionSchema>;
+export type StoryCanonFacts = z.infer<typeof StoryCanonFactsSchema>;
 export type CanonExtractionOutput = z.infer<typeof CanonExtractionOutputSchema>;
