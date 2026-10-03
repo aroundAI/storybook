@@ -120,6 +120,35 @@
       "cwd": "packages/features/studio-mcp",
       "test": "__tests__/tools/edit-tools.test.ts",
       "pattern": "writes the columns the shots commit writes"
+    },
+    {
+      "name": "FILM-1909 A1 the allowlist takes no shot update",
+      "kind": "unit",
+      "file": "apps/web/supabase/migrations/20261003163615_film-1909-edit-commit-allowlist.sql",
+      "find": "    \"shots\": {\"scope\": \"episode\", \"ops\": [\"insert\", \"delete\", \"update\"],",
+      "replace": "    \"shots\": {\"scope\": \"episode\", \"ops\": [\"insert\", \"delete\"],",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/edit-tools.test.ts",
+      "pattern": "writes only allowlisted"
+    },
+    {
+      "name": "FILM-1909 P1 publish_metadata cannot be started over MCP",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/generation/target.ts",
+      "find": "  publish: 'episodeId',\n",
+      "replace": "",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/publish-target.test.ts",
+      "pattern": "locks the episode"
+    },
+    {
+      "name": "FILM-1909 X1 the ideation page forgets the stored ideas",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/ideation-screen.tsx",
+      "find": "useState<StoryIdea[]>(storedIdeas)",
+      "replace": "useState<StoryIdea[]>([])",
+      "spec": "tests/mcp/external-all-stages.spec.ts",
+      "grep": "land on the studio pages"
     }
   ]
 }

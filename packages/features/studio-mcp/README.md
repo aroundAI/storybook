@@ -56,6 +56,7 @@ route serves by default.
 | `start_voice_render` | render | ElevenLabs voice for one line or the whole episode, through the web's own render start (FILM-1909) |
 | `start_audio_render` | render | music, SFX or ambience for one audio cue (`audio-file-generation`), through the web's own render start |
 | `get_render_status` | render | lines and cues by status, what is still rendering or failed, and the voice batch |
+| `edit_scene`, `edit_shot`, `edit_dialogue_line` | write | one scene, shot or English line, checked as its stage checks it, versioned and snapshotted (FILM-1909) |
 | `get_veo_manifest` | read | the visual studio's OpenClaw export: VEO prompts, frame descriptions, transitions and reference images per shot, paged by scene |
 
 Every list and long-content tool pages with `cursor` and `limit` (max 50);
@@ -113,9 +114,18 @@ ElasticMQ (`MCP_CONTRACT_SEED=1 RENDER_CONTRACT_SQS=http://127.0.0.1:4120`).
 
 `edit_scene`, `edit_shot` and `edit_dialogue_line` (`src/server/tools/edit/`)
 validate an edit with the stage's own output schema and `check()` and map it
-to the commit plan FILM-1903's `apply_generation_commit` applies. They are
-not in `defaultTools` yet: their writer, which opens the run and applies the
-plan in one transaction, needs the run layer on main.
+to a commit plan. `runLayerEditWriter` opens an external run for the edit's
+stage on the episode at the caller's version and applies the plan through
+`apply_generation_commit`: one transaction, the version re-checked under a
+lock (TARGET_CHANGED), what it replaces snapshotted into content_revisions.
+The allowlist takes an update on a shot's or a line's content columns only
+(migration `*_film-1909-edit-commit-allowlist.sql`).
+
+`__tests__/generation-all-stages.contract.test.ts` drives every registered
+stage over MCP with the scripted client in `__tests__/helpers/all-stages-script.ts`
+(`MCP_CONTRACT_SEED=1`, in process or against `MCP_CONTRACT_URL`), then the
+three edits; `apps/e2e/tests/mcp/external-all-stages.spec.ts` runs the same
+script and reads the results off the studio pages.
 
 ## Analytics tools (FILM-1906)
 
