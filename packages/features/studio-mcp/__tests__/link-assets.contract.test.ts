@@ -96,13 +96,19 @@ describe.skipIf(!(SEED && URL_))(
           })) as Array<{ id: string }>
         ).map((row) => row.id);
 
-      [mayaId, deckId] = await ids(team, [
+      const created = await ids(team, [
         { type: 'character', name: 'Maya Chen', description: 'Commander.' },
         { type: 'location', name: 'Observation Deck', description: 'Glass.' },
       ]);
-      [foreignId] = await ids(other, [
+      const foreign = await ids(other, [
         { type: 'character', name: 'Their Hero', description: 'Elsewhere.' },
       ]);
+
+      if (!created[0] || !created[1] || !foreign[0]) {
+        throw new Error('The seeded assets were not returned');
+      }
+
+      [mayaId, deckId, foreignId] = [created[0], created[1], foreign[0]];
 
       const token = await mintPat(team, ['studio:read', 'studio:write']);
       client = new Client({ name: 'Claude', version: '0' });
