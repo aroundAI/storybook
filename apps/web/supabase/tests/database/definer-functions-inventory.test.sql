@@ -31,6 +31,14 @@ select results_eq(
   $$ select fn from (values
        -- returns the project id of a storage path; ids only (KB-28)
        ('kit.get_project_id_from_path'),
+       -- is_super_admin() (aal2 + super-admin role), via admin_mcp_check_window; aggregates only (FILM-1911)
+       ('public.admin_expired_leases_per_day'),
+       -- is_super_admin() (aal2 + super-admin role), via admin_mcp_check_window; aggregates only (FILM-1911)
+       ('public.admin_generation_run_stats'),
+       -- is_super_admin() (aal2 + super-admin role), via admin_mcp_check_window; aggregates only (FILM-1911)
+       ('public.admin_mcp_error_codes'),
+       -- is_super_admin() (aal2 + super-admin role), via admin_mcp_check_window; aggregates only (FILM-1911)
+       ('public.admin_mcp_tool_stats'),
        -- can_drive_generation_run of the run; open, TARGET_CHANGED; every write on kit.generation_commit_allowlist() and inside the run's project (FILM-1901, FILM-1903)
        ('public.apply_generation_commit'),
        -- project_members owner/admin/member of the episode's project
