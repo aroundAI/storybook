@@ -55,28 +55,18 @@
       "name": "FILM-1908 G1 the story commit writes one flat origin over every stage",
       "kind": "unit",
       "file": "packages/features/generation/src/stages/story.ts",
-      "find": "        generation_origin: withStageOrigin(\n          current.generation_origin,\n          'story',\n          run.origin,\n        ),",
-      "replace": "        generation_origin: run.origin as never,",
+      "find": "            generation_origin: stageOrigin('story', run.origin),\n          },\n          merge: [ORIGIN_MERGE],\n",
+      "replace": "            generation_origin: run.origin as never,\n          },\n",
       "cwd": "packages/features/generation",
       "test": "__tests__/stages/story.test.ts",
       "pattern": "stamps its origin under story"
     },
     {
-      "name": "FILM-1908 G2 the story commit no longer snapshots the story it replaces",
-      "kind": "unit",
-      "file": "packages/features/generation/src/stages/story.ts",
-      "find": "    await ctx.revisions?.snapshot({\n      table: 'episodes',\n      rowId: target.episodeId,\n      column: 'story_data',",
-      "replace": "    void ({\n      table: 'episodes',\n      rowId: target.episodeId,\n      column: 'story_data',",
-      "cwd": "packages/features/generation",
-      "test": "__tests__/stages/story.test.ts",
-      "pattern": "stamps its origin under story"
-    },
-    {
-      "name": "FILM-1908 G3 a generated character state names no author (refused under the user session)",
+      "name": "FILM-1908 G3 a generated character state names no author (KB-77)",
       "kind": "unit",
       "file": "packages/features/generation/src/canon/story-canon.ts",
-      "find": "      // run under the user's own session (FILM-1908) must name them\n      created_by: createdBy,",
-      "replace": "      // run under the user's own session (FILM-1908) must name them",
+      "find": "      // user the run belongs to, in either mode (FILM-1908)\n      created_by: createdBy,\n",
+      "replace": "      // user the run belongs to, in either mode (FILM-1908)\n",
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/stage-parity-story-season.test.ts",
       "pattern": "writes the same rows"

@@ -155,8 +155,8 @@
       "name": "1903 B the story stage stops stamping who wrote it",
       "kind": "unit",
       "file": "packages/features/generation/src/stages/story.ts",
-      "find": "        generation_origin: withStageOrigin(\n          current.generation_origin,\n          'story',\n          run.origin,\n        ),\n",
-      "replace": "",
+      "find": "            generation_origin: stageOrigin('story', run.origin),\n          },\n          merge: [ORIGIN_MERGE],\n",
+      "replace": "          },\n",
       "cwd": "packages/features/generation",
       "test": "__tests__/stage-matrix.test.ts",
       "pattern": "story in server mode"

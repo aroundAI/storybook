@@ -4,6 +4,7 @@ import type {
   EpisodeContextSnapshot,
   StageKey,
 } from '@kit/generation';
+import { recordCommits } from '@kit/generation/testing';
 
 import type {
   McpRunCtx,
@@ -183,8 +184,10 @@ export function createFakeRunApi(
       api.finalized.push({ runId: run.id, parts });
 
       const stage = api.stage(run.stage);
+      // finalizeRun's stageCtx gives the commit its run's applier; here the
+      // plan is replayed through the caller's client, as generation's tests do
       const commit = await stage.commit(
-        ctx,
+        { ...ctx, commits: recordCommits(ctx.client).apply },
         {
           id: run.id,
           mode: run.mode,
