@@ -31,13 +31,13 @@ acceptance_criteria:
     evidence: null
   - text: "Scene navigation sidebar works"
     met: false
-    reason: "unverified — clicks scroll to the scene (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/screenplay/_components/screenplay-screen.tsx:137`); no test drives it (package tests cover the unused `ScreenplayViewer`)"
+    reason: "unverified — clicks scroll to the scene (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/screenplay/_components/screenplay-screen.tsx:139`); no test drives it (package tests cover the unused `ScreenplayViewer`)"
   - text: "Active scene highlights on click"
     met: false
     reason: "unverified — highlight follows `activeSceneNumber` (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/screenplay/_components/scene-index-sidebar.tsx:32`); no test drives it"
   - text: "Approve button advances pipeline"
     met: false
-    reason: "unverified — \"Approve & Generate Shots\" calls `generateShotListAction` (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/screenplay/_components/screenplay-screen.tsx:180`); no test drives it"
+    reason: "unverified — \"Approve & Generate Shots\" calls `generateShotListAction` (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/screenplay/_components/screenplay-screen.tsx:182`); no test drives it"
   - text: "Regenerate button triggers conversion"
     met: false
     reason: "retired — no Regenerate on the screenplay screen; regeneration is Reset to stage (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/quick-actions-menu.tsx:295`)"
@@ -46,7 +46,7 @@ acceptance_criteria:
     evidence: null
   - text: "Responsive on mobile (sidebar collapses)"
     met: false
-    reason: "unverified — visual; the sidebar collapses by a toggle (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/screenplay/_components/screenplay-screen.tsx:308`), untested at phone width"
+    reason: "unverified — visual; the sidebar collapses by a toggle (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/screenplay/_components/screenplay-screen.tsx:311`), untested at phone width"
 open_questions: []
 notes: |
   ## Source header

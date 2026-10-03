@@ -57,13 +57,13 @@ acceptance_criteria:
     evidence: "`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/audio-studio-screen.tsx:132`"
   - text: "Settings tab displays configuration options"
     met: false
-    reason: "retired — the tabs are Dialogue, Music and SFX (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/audio-studio-header.tsx:21`); audio settings moved to project settings (`apps/web/app/home/[account]/studio/[projectSlug]/settings/_components/audio-settings-form.tsx`)"
+    reason: "retired — the tabs are Dialogue, Music and SFX (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/audio-studio-header.tsx:22`); audio settings moved to project settings (`apps/web/app/home/[account]/studio/[projectSlug]/settings/_components/audio-settings-form.tsx`)"
   - text: "Tab navigation works correctly"
     met: false
-    reason: "unverified — no test switches tabs; the buttons are at `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/audio-studio-header.tsx:106`"
+    reason: "unverified — no test switches tabs; the buttons are at `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/audio-studio-header.tsx:108`"
   - text: "Audio player appears when audio selected"
     met: false
-    reason: "retired — the timeline redesign (`e737c138`) plays a clip from its block's popover (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:376`); there is no player panel"
+    reason: "retired — the timeline redesign (`e737c138`) plays a clip from its block's popover (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:377`); there is no player panel"
   - text: "Play/pause controls work"
     met: false
     reason: "unverified — no test; music and SFX blocks toggle play and pause (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/music-timeline.tsx:659`), dialogue blocks only play"
@@ -99,7 +99,7 @@ acceptance_criteria:
     reason: "unverified — visual"
   - text: "Accessible (keyboard navigation, ARIA labels)"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:565-591 (blocks are role=button with roving tabIndex, aria-label and aria-pressed; the block list has an aria-label naming its keys), :659-687 (role=menu and menuitem), :328 handleBlocksKeyDown backed by apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-keyboard.ts; apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/audio-studio-header.tsx:180-201 (zoom and fit aria-labels); unit test apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/__tests__/dialogue-keyboard.test.ts; e2e apps/e2e/tests/studio/dialogue-keyboard.spec.ts:92 'arrows move focus, Enter opens the menu, Escape returns focus' and :128 'typing e in the edit textarea does not trigger shortcuts' (passed 2026-09-30, real browser, retries off)"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-timeline.tsx:566-592 (blocks are role=button with roving tabIndex, aria-label and aria-pressed; the block list has an aria-label naming its keys), :659-687 (role=menu and menuitem), :328 handleBlocksKeyDown backed by apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/dialogue-keyboard.ts; apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/audio-studio-header.tsx:182-203 (zoom and fit aria-labels); unit test apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/__tests__/dialogue-keyboard.test.ts; e2e apps/e2e/tests/studio/dialogue-keyboard.spec.ts:92 'arrows move focus, Enter opens the menu, Escape returns focus' and :128 'typing e in the edit textarea does not trigger shortcuts' (passed 2026-09-30, real browser, retries off)"
   - text: "TypeScript compiles without errors"
     met: true
     evidence: "CI run 35779959194 (`main` at `6dfa35a4`): `web:typecheck` executed clean; these files are unchanged since"
