@@ -2,19 +2,21 @@ import 'server-only';
 
 import { z } from 'zod';
 
-import * as generation from '@kit/generation';
-import { CheckErrorSchema, type StageKey } from '@kit/generation';
+import {
+  ALL_STAGES,
+  CheckErrorSchema,
+  type StageKey,
+  StageKeySchema,
+} from '@kit/generation';
 
 /**
- * Every registered stage, read from the registry when the tools load.
- * `@kit/generation` is `sideEffects: false`, and a stage registers itself
- * when its module runs; naming the whole namespace keeps a bundler from
- * dropping the stage modules no export of which this file uses.
+ * Every registered stage, in the order StageKeySchema lists them. Read
+ * from ALL_STAGES rather than the registry: using the list is what makes a
+ * bundler load the stage modules, which register themselves (FILM-1908).
  */
 export function registeredStages(): [StageKey, ...StageKey[]] {
-  const keys = generation.StageKeySchema.options.filter((key) =>
-    generation.stageRegistry.has(key),
-  );
+  const registered = new Set(ALL_STAGES.map((stage) => stage.key));
+  const keys = StageKeySchema.options.filter((key) => registered.has(key));
 
   if (keys.length === 0) {
     throw new Error('No generation stage is registered');
