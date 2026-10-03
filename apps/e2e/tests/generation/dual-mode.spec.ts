@@ -513,6 +513,56 @@ test.describe('Team settings → AI (FILM-1910)', () => {
     });
   });
 
+  // FILM-1912: whether briefs carry past-episode performance
+  async function readPerformanceSetting(accountId: string) {
+    const [row] = await readRows<{ performance_context_enabled: boolean }>(
+      'account_ai_settings',
+      `account_id=eq.${accountId}&select=performance_context_enabled`,
+    );
+    return row?.performance_context_enabled ?? null;
+  }
+
+  test('an owner turns past-performance context on and off again, each saved', async ({
+    page,
+  }) => {
+    const team = await seedTeamAccount({ emailPrefix: 'film1912-toggle' });
+
+    await signInAs(page, team);
+    await page.goto(`/home/${team.slug}/settings/ai`);
+
+    const toggle = byTest(page, 'ai-settings-performance-context');
+    const save = byTest(page, 'ai-settings-save');
+
+    // Off by default, with no settings row
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    expect(await readPerformanceSetting(team.accountId)).toBeNull();
+    await capture(page, '20-ai-settings-performance-context-off');
+
+    // First save: on
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+    await save.click();
+    await expect(page.getByText('AI settings saved')).toBeVisible();
+    await expect.poll(() => readPerformanceSetting(team.accountId)).toBe(true);
+
+    await page.reload();
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+    await capture(page, '21-ai-settings-performance-context-on');
+
+    // Second save: off again, and the modes are untouched
+    await toggle.click();
+    await save.click();
+    await expect.poll(() => readPerformanceSetting(team.accountId)).toBe(false);
+    expect(await readSettings(team.accountId)).toEqual({
+      server_generation_enabled: true,
+      external_generation_enabled: true,
+      default_mode: 'server',
+    });
+
+    await page.reload();
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+  });
+
   test('a member sees the settings read-only', async ({ page }) => {
     const team = await seedTeamAccount({ emailPrefix: 'film1910-team' });
     const member = await seedUser('film1910-member');
@@ -525,6 +575,9 @@ test.describe('Team settings → AI (FILM-1910)', () => {
     await expect(byTest(page, 'ai-settings-server')).toBeDisabled();
     await expect(byTest(page, 'ai-settings-external')).toBeDisabled();
     await expect(byTest(page, 'ai-settings-default-server')).toBeDisabled();
+    await expect(
+      byTest(page, 'ai-settings-performance-context'),
+    ).toBeDisabled();
     await expect(byTest(page, 'ai-settings-save')).toHaveCount(0);
     await capture(page, '13-ai-settings-member-read-only');
   });

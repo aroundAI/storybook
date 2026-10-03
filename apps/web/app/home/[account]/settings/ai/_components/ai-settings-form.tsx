@@ -194,6 +194,35 @@ export function AiSettingsForm({
           )}
         />
 
+        <FormField
+          control={form.control}
+          name="performanceContextEnabled"
+          render={({ field }) => (
+            <FormItem className="rounded-lg border p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <FormLabel className="text-base">
+                    Use past episode performance in briefs
+                  </FormLabel>
+                  <FormDescription>
+                    Ideation, story and shot briefs include what worked in this
+                    project&apos;s earlier episodes, labelled with sample size.
+                    Off by default.
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    disabled={disabled}
+                    data-test="ai-settings-performance-context"
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </div>
+            </FormItem>
+          )}
+        />
+
         {canEdit && (
           <Button
             type="submit"

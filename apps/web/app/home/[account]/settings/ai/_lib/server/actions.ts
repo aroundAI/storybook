@@ -52,11 +52,12 @@ export const updateAccountAiSettingsAction = returnRefusals(
             server_generation_enabled: settings.serverGenerationEnabled,
             external_generation_enabled: settings.externalGenerationEnabled,
             default_mode: settings.defaultMode,
+            performance_context_enabled: settings.performanceContextEnabled,
           },
           { onConflict: 'account_id' },
         )
         .select(
-          'server_generation_enabled, external_generation_enabled, default_mode',
+          'server_generation_enabled, external_generation_enabled, default_mode, performance_context_enabled',
         )
         .maybeSingle();
 
@@ -84,6 +85,7 @@ export const updateAccountAiSettingsAction = returnRefusals(
         serverGenerationEnabled: data.server_generation_enabled,
         externalGenerationEnabled: data.external_generation_enabled,
         defaultMode: data.default_mode,
+        performanceContextEnabled: data.performance_context_enabled,
       });
     },
     { schema: UpdateAccountAiSettingsSchema, auth: true },
