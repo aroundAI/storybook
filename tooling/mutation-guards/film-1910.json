@@ -1,0 +1,96 @@
+{
+  "feature": "FILM-1910 dual-mode web UX: lease banner, origin badges, team AI settings",
+  "mutations": [
+    {
+      "name": "FILM-1910 U1 the settings rule lets both modes off",
+      "kind": "unit",
+      "file": "apps/web/app/home/[account]/settings/ai/_lib/schemas/ai-settings.schema.ts",
+      "find": "    !settings.serverGenerationEnabled &&\n    !settings.externalGenerationEnabled\n",
+      "replace": "    !settings.serverGenerationEnabled &&\n    !settings.externalGenerationEnabled &&\n    false\n",
+      "cwd": "apps/web",
+      "test": "app/home/[account]/settings/ai/_lib/__tests__/ai-settings.schema.test.ts",
+      "pattern": "refuses both modes off"
+    },
+    {
+      "name": "FILM-1910 U2 a flat episode origin is read as every stage's",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/generation-origin.ts",
+      "find": "    .map((stage) => parseGenerationOrigin(byStage[stage]))",
+      "replace": "    .map((stage) => parseGenerationOrigin(byStage[stage] ?? episodeOrigin))",
+      "cwd": "packages/features/episodes",
+      "test": "src/lib/__tests__/generation-origin.test.ts",
+      "pattern": "reads only stage keys"
+    },
+    {
+      "name": "FILM-1910 DB1 a team may turn both modes off",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/account-ai-settings-modes.test.sql",
+      "sql": "alter table public.account_ai_settings drop constraint account_ai_settings_a_mode_allowed;"
+    },
+    {
+      "name": "FILM-1910 E1 the runs channel joins without the user's token",
+      "kind": "e2e",
+      "file": "packages/features/episodes/src/hooks/use-open-external-runs.ts",
+      "find": "    const unsubscribe = subscribeWithAuth(",
+      "replace": "    const unsubscribe = ((c: typeof client, build: (c: typeof client) => ReturnType<typeof client.channel>, onStatus: (s: string) => void) => {\n      const ch = build(c).subscribe(onStatus);\n      return () => void c.removeChannel(ch);\n    })(",
+      "spec": "tests/generation/dual-mode.spec.ts",
+      "grep": "pauses Generate, until it ends"
+    },
+    {
+      "name": "FILM-1910 E2 Convert to Screenplay stays enabled while Claude holds the stage",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/story-screen.tsx",
+      "find": "disabled={isPending || llmStatus === 'pending' || runLocked}",
+      "replace": "disabled={isPending || llmStatus === 'pending'}",
+      "spec": "tests/generation/dual-mode.spec.ts",
+      "grep": "pauses Generate, until it ends"
+    },
+    {
+      "name": "FILM-1910 E3 Cancel in the banner does not cancel the run",
+      "kind": "e2e",
+      "file": "packages/features/episodes/src/server/run-actions.ts",
+      "find": "        await run.cancel('cancelled from the studio');",
+      "replace": "        void run;",
+      "spec": "tests/generation/dual-mode.spec.ts",
+      "grep": "pauses Generate, until it ends"
+    },
+    {
+      "name": "FILM-1910 E4 Cancel stops checking who may drive the run",
+      "kind": "e2e",
+      "file": "packages/features/episodes/src/server/run-actions.ts",
+      "find": "        if (!canDrive) throw new ActionRefusal(CANCEL_NEEDS_WRITE);",
+      "replace": "        void canDrive;",
+      "spec": "tests/generation/dual-mode.spec.ts",
+      "grep": "is refused Cancel"
+    },
+    {
+      "name": "FILM-1910 U3 a web Generate takes the team default mode again",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/jobs.ts",
+      "find": "    { ...ctx, runMode: ctx.runMode ?? (() => 'server') },",
+      "replace": "    ctx,",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/open-run-for-job-mode.test.ts",
+      "pattern": "opens server mode even when the team default is external"
+    },
+    {
+      "name": "FILM-1910 U4 server generation off is not worded for the page",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/jobs.ts",
+      "find": "  if (isRunError(error, 'SERVER_GENERATION_DISABLED')) {",
+      "replace": "  if (isRunError(error, 'SERVER_GENERATION_DISABLED') && false) {",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/open-run-for-job-mode.test.ts",
+      "pattern": "refuses, in words the page shows"
+    },
+    {
+      "name": "FILM-1910 E5 Convert to Screenplay throws the server-off refusal instead of returning it",
+      "kind": "e2e",
+      "file": "packages/features/episodes/src/server/screenplay-actions.ts",
+      "find": ".catch(refuseRunError)",
+      "replace": "",
+      "spec": "tests/generation/dual-mode.spec.ts",
+      "grep": "refused in words, twice"
+    }
+  ]
+}

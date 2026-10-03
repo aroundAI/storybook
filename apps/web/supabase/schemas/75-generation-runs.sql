@@ -106,7 +106,15 @@ create table public.account_ai_settings (
   external_generation_enabled boolean not null default true,
   default_mode text not null default 'server' check (default_mode in ('server', 'external')),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  -- FILM-1910: never both off, and the default is an allowed mode
+  constraint account_ai_settings_a_mode_allowed
+    check (server_generation_enabled or external_generation_enabled),
+  constraint account_ai_settings_default_mode_allowed
+    check (
+      (default_mode = 'server' and server_generation_enabled)
+      or (default_mode = 'external' and external_generation_enabled)
+    )
 );
 
 create index idx_generation_jobs_run on public.generation_jobs (run_id) where run_id is not null;

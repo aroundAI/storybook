@@ -12,6 +12,7 @@ import {
   Users,
 } from 'lucide-react';
 
+import { OriginBadge } from '@kit/episodes/components/origin-badge';
 import type { Shot, ShotStatus } from '@kit/episodes/types';
 import {
   Tooltip,
@@ -285,6 +286,7 @@ const ShotCardInner = ({
           <span className="text-sm text-gray-500 dark:text-gray-400">
             Shot {shot.sceneNumber}.{shot.shotNumber}
           </span>
+          <OriginBadge origin={shot.generationOrigin} />
           {characters.length > 0 && (
             <span className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400">
               <Users className="h-3 w-3" />

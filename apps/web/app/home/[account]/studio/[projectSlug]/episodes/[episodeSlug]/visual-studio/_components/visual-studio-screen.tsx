@@ -18,6 +18,7 @@ import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 
+import { useStageRunLock } from '../../_components/stage-run-bar';
 import { FilterBar } from './filter-bar';
 import { ShortsPanel } from './shorts-panel';
 import type { ShortsCandidateScene } from './shorts-panel';
@@ -67,6 +68,7 @@ export function VisualStudioScreen({
   refetchEpisode,
 }: VisualStudioScreenProps) {
   const [_isPending, _startTransition] = useTransition();
+  const { locked: runLocked } = useStageRunLock();
   const [filter, setFilter] = useState<ShotFilter>({});
   const [selection, setSelection] = useState(EMPTY_SELECTION);
   const [showShortsOnly, setShowShortsOnly] = useState(false);
@@ -805,7 +807,8 @@ export function VisualStudioScreen({
 
             <Button
               onClick={handleGenerateAll}
-              disabled={stats.pending === 0}
+              disabled={stats.pending === 0 || runLocked}
+              data-test="generate-all-shots"
               className="btn-cinema-primary gap-2"
             >
               <Play className="h-4 w-4" />

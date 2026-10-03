@@ -147,6 +147,7 @@ interface DialogueLineRow {
   generation_metadata: Record<string, unknown> | null;
   language: string;
   source_dialogue_id: string | null;
+  generation_origin: unknown;
   created_at: string;
 }
 
@@ -192,6 +193,7 @@ function transformDialogueLine(row: DialogueLineRow): DialogueLine {
       : null,
     language: (row.language || 'en') as SupportedLanguage,
     sourceDialogueId: row.source_dialogue_id,
+    generationOrigin: row.generation_origin,
     createdAt: row.created_at,
   };
 }
@@ -242,6 +244,7 @@ export const getDialogueLinesAction = enhanceAction(
         generation_metadata,
         language,
         source_dialogue_id,
+        generation_origin,
         created_at
       `,
       )

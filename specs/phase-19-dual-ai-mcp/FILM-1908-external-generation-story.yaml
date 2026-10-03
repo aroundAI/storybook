@@ -3,7 +3,7 @@ title: "External Generation Tools and the Story Stage from Claude"
 phase: 19
 phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
 category: feature
-status: PARTIAL
+status: DONE
 effort: M
 dependencies:
   - spec_id: "FILM-1901"
@@ -45,8 +45,8 @@ acceptance_criteria:
     met: true
     evidence: "packages/features/studio-mcp/src/server/tools/generation/limits.ts:10-11: a submission over 100 KB is VALIDATION_FAILED with code too_large before anything is read; a brief over 60 KB sheds its example, then its rubric, and says so (packages/features/studio-mcp/src/server/tools/generation/service.ts:82). Measured live, the story brief is 23,380 bytes (instructions 9,670, schema 3,610, rubric 5,203, example 2,427) and start_generation answered in 66 ms. Parts come from the stage's parts() (#573)"
   - text: "Story, end to end: an MCP client creates an episode, generates its story through the tools, and the web story page shows it with a 'Claude via MCP' origin; canon tables and auto-created assets match what server mode writes for the same output"
-    met: false
-    reason: "all but the badge. The SDK client creates the episode, starts the story, has a submission refused and the next committed; the story row, immutable_events, character_states, narrative_threads (opened and progressed), episode_summaries, world_states and the two auto-created assets equal what the story parity fixture recorded server mode writing for the same model output (generation-story.contract.test.ts:259, :313); the story page shows the story (external-story.spec.ts:87, screenshots in the PR), and get_episode returns origin.perStage.story kind external with the client name. Not met: no origin badge exists on the page; the badge is FILM-1910's."
+    met: true
+    evidence: "The SDK client creates the episode, starts the story, has a submission refused and the next committed; the story row, immutable_events, character_states, narrative_threads (opened and progressed), episode_summaries, world_states and the two auto-created assets equal what the story parity fixture recorded server mode writing for the same model output (generation-story.contract.test.ts:259, :313); the story page shows the story (external-story.spec.ts:87, screenshots in the PR) (#573). The commit stamps episodes.generation_origin.story {kind: external, clientName, model}, and the story page shows it as 'Written by Claude via MCP · reported: <model>' (OriginBadge from that stage key, apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/stage-run-bar.tsx:79), read off the page in apps/e2e/tests/generation/dual-mode.spec.ts:290 (#581)"
   - text: "For that run, llm_usage_analytics has zero rows and the gateway records no server-writer call"
     met: true
     evidence: "generation-story.contract.test.ts:440: no llm_usage_analytics row for the run or the account since the test began, and no generation_jobs row for the episode; the run is opened without a gateway backend, so write() refuses with AWAITING_SUBMISSION and dispatch() with RUN_NOT_SERVER (packages/features/studio-mcp/src/server/tools/generation/index.ts). The MCP route's episode context has the similar-episode recall off, an embedding call (apps/web/app/api/mcp/route.ts:21) (#573)"
@@ -59,11 +59,7 @@ test_plan:
   integration:
     - {text: "A scripted MCP SDK client against the local app drives start → submit → finalize for the story stage of a seeded episode", met: true, evidence: "packages/features/studio-mcp/__tests__/generation-story.contract.test.ts:146, nine tests green against a dev server (MCP_CONTRACT_SEED=1 MCP_CONTRACT_URL), :495 regenerating the story with its generated canon replaced, not doubled, and its own content_revisions snapshot; red before #574 with the character states refused under the user's session, and on #574 before its world-state fix (#573)"}
   e2e:
-    - {text: "After the scripted run, Playwright opens the story page and reads the story and its origin badge; screenshots in the PR", met: false, reason: "the story is read off the page before and after a reload, and the screenshots are in the PR (apps/e2e/tests/mcp/external-story.spec.ts:87, red with finalize-on-submit removed); the origin badge does not exist yet (FILM-1910), so the origin is read through get_episode"}
-remaining:
-  - criterion: "the web story page shows a 'Claude via MCP' origin"
-    reason: "the origin is stamped (episodes.generation_origin.story) and returned by get_episode; the badge component is FILM-1910's"
-    closed_by: "FILM-1910"
+    - {text: "After the scripted run, Playwright opens the story page and reads the story and its origin badge; screenshots in the PR", met: true, evidence: "the story is read off the page before and after a reload, screenshots in #573 (apps/e2e/tests/mcp/external-story.spec.ts:87, red with finalize-on-submit removed); the badge for an external story origin is read off the page, with its screenshot in #581 (apps/e2e/tests/generation/dual-mode.spec.ts:290)"}
 open_questions:
   - "Is the agent's self-check against the quality rubric enough, or should commit refuse below a deterministic score (e.g. shots without a hook in the first 3 seconds)?"
 notes: |

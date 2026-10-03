@@ -11,6 +11,7 @@ import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { ConvertToScreenplaySchema } from '../lib/schemas';
+import { refuseRunError } from '../lib/server/refusing-run-errors';
 import type { StoryData } from '../lib/types';
 
 /**
@@ -242,7 +243,7 @@ const convertToScreenplay = enhanceAction(
         name: 'episodes.convertToScreenplay',
       },
       { client: client, accountId: target.accountId, userId: user.id },
-    );
+    ).catch(refuseRunError);
 
     // Create generation job entry for tracking
     const jobData = {

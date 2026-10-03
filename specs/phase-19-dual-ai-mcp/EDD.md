@@ -789,6 +789,6 @@ Once both modes are stable, briefs gain an optional `performance_context` block 
 1. ~~**Authorization server.**~~ Decided 2026-10-02: our own small OAuth 2.1 server, compatible with Supabase (see section 5 and FILM-1907).
 2. **Self-check in external mode.** Is the agent's self-check against the quality rubric enough, or should commit refuse below some deterministic score (e.g. shots without a hook in the first 3 seconds)?
 3. **Ideation storage.** Ideas are returned and not stored today. Store them on `episodes.metadata.ideas` for both modes (recommended), or keep external ideation conversational in Claude?
-4. **Team policy.** Should a team be able to turn server generation off entirely (Claude-only teams), or only turn external generation on?
+4. ~~**Team policy.**~~ Decided 2026-10-03 (lead; the owner may revise): a team may turn either mode off, never both, and its default is a mode it allows (FILM-1910; CHECK constraints on `account_ai_settings`). A web Generate always asks for server mode and MCP is always external, so `default_mode` governs nothing today; it is reserved for a future web "Generate with Claude" flow (lead decision 2026-10-03).
 5. **Hosting the endpoint.** Inside the Next.js app (recommended) or as its own Lambda for independent scaling and timeouts?
 6. **Other clients.** Is ChatGPT's connector support in scope for GA, or Claude first and others as they come?

@@ -19,7 +19,7 @@ summary: >
 acceptance_criteria:
   - text: "All interactive elements are keyboard accessible (useRovingTabIndex hook)"
     met: false
-    reason: "part — shot cards are focusable options with a roving tabindex and arrow-key movement (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:100`, FILM-410); the \"Add New Shot\" tile is still a non-focusable `role=\"presentation\"` div (`shot-grid.tsx:110`); useRovingTabIndex was never mounted, deleted 5f44d0e1"
+    reason: "part — shot cards are focusable options with a roving tabindex and arrow-key movement (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:101`, FILM-410); the \"Add New Shot\" tile is still a non-focusable `role=\"presentation\"` div (`shot-grid.tsx:110`); useRovingTabIndex was never mounted, deleted 5f44d0e1"
   - text: "Focus is never lost during navigation (useFocusTrap hook)"
     met: false
     reason: "no longer true — the hand-rolled modal cited here, the Edit Suite export dialog, unmounted with focus inside and restored nothing; it was retired with the Edit Suite (FILM-607), other hand-rolled modals not re-checked; useFocusTrap deleted unused in 5f44d0e1"

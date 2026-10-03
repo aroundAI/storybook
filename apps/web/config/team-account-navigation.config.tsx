@@ -8,6 +8,7 @@ import {
   Plug,
   Settings,
   Share2,
+  Sparkles,
   Split,
   Tags,
   Target,
@@ -96,6 +97,11 @@ const getRoutes = (account: string) => [
         label: 'common:routes.connectedApps',
         path: `/home/${account}/settings/connected-apps`,
         Icon: <Plug className={iconClasses} />,
+      },
+      {
+        label: 'common:routes.aiSettings',
+        path: `/home/${account}/settings/ai`,
+        Icon: <Sparkles className={iconClasses} />,
       },
       featureFlagsConfig.enableTeamAccountBilling
         ? {

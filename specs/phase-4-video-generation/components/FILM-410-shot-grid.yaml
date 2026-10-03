@@ -29,13 +29,13 @@ acceptance_criteria:
     reason: "retired — owner decision 2026-09-30: drag-and-drop reorder is dropped from scope; reorderShotsAction (packages/features/episodes/src/lib/server/mutations/shot-actions.ts:186) stays without a caller (see FILM-303)"
   - text: "Status overlays display correctly"
     met: true
-    evidence: "badge with per-status icon, incl. failed (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:166`), play overlay for completed (line 242); progress bar and Generate button went with generation (5b88db3a)"
+    evidence: "badge with per-status icon, incl. failed (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:167`), play overlay for completed (line 242); progress bar and Generate button went with generation (5b88db3a)"
   - text: "Video/thumbnail previews work"
     met: true
-    evidence: "video → thumbnail → first/last frame → placeholder, `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:132`"
+    evidence: "video → thumbnail → first/last frame → placeholder, `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:133`"
   - text: "Keyboard navigation supported"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:100-115 (role=option, roving tabIndex, Enter and Space), apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx:50-92 (listbox per scene, arrows, Home, End, Escape), apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-selection.ts:116 (nextFocusIndex); tests shot-selection.test.ts and shot-grid.test.tsx. Limit: row movement is index-based, so up and down are approximate on a scene's first card, which spans two columns"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:101-116 (role=option, roving tabIndex, Enter and Space), apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx:50-92 (listbox per scene, arrows, Home, End, Escape), apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-selection.ts:116 (nextFocusIndex); tests shot-selection.test.ts and shot-grid.test.tsx. Limit: row movement is index-based, so up and down are approximate on a scene's first card, which spans two columns"
   - text: "Component is accessible (ARIA)"
     met: false
     reason: "partial — the grid is a listbox per scene with aria-multiselectable and aria-label, and each card has role=option, aria-selected and aria-label (apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx:90-92, shot-card.tsx:100-102); screen-reader announcements of status changes are not built or verified"

@@ -40,3 +40,7 @@ export { RefinementChat } from './refinement-chat';
 
 // Sidebar Asset List (linked/unlinked indicators + create from sidebar)
 export { SidebarAssetList } from './sidebar-asset-list';
+
+// Dual-mode web UX (FILM-1910)
+export { OriginBadge } from './origin-badge';
+export { ExternalRunBanner } from './external-run-banner';

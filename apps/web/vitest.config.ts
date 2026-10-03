@@ -303,6 +303,10 @@ export default defineConfig({
         __dirname,
         '../../packages/features/episodes/src/lib/canon/continuity-validator.ts',
       ),
+      '@kit/episodes/components/origin-badge': path.resolve(
+        __dirname,
+        '../../packages/features/episodes/src/components/origin-badge.tsx',
+      ),
       '@kit/episodes/server': path.resolve(
         __dirname,
         '../../packages/features/episodes/src/server/index.ts',

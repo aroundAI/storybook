@@ -17,16 +17,16 @@ summary: >
 acceptance_criteria:
   - text: "Component displays all shots in grid"
     met: true
-    evidence: "`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:841` (filters default to none, line 69)"
+    evidence: "`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:844` (filters default to none, line 69)"
   - text: "Component supports shot selection"
     met: true
-    evidence: "`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:71` (the selection model; click, Cmd/Ctrl-click and Shift-click select one, several or a range, tested in `shot-selection.test.ts` and `shot-grid.test.tsx`; the selection bar is at :859)"
+    evidence: "`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:73` (the selection model; click, Cmd/Ctrl-click and Shift-click select one, several or a range, tested in `shot-selection.test.ts` and `shot-grid.test.tsx`; the selection bar is at :859)"
   - text: "Component triggers video generation"
     met: false
     reason: "retired — in-app generation removed in 5b88db3a; video is uploaded per shot (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-details-sidebar.tsx:869`)"
   - text: "Component shows real-time status updates"
     met: false
-    reason: "retired — shot status came from video generation (5b88db3a); only the shot-list job result arrives live (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:83`)"
+    reason: "retired — shot status came from video generation (5b88db3a); only the shot-list job result arrives live (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:85`)"
   - text: "Component displays progress for generating shots"
     met: false
     reason: "retired — `GenerationProgress` removed with video generation in 5b88db3a"
@@ -35,17 +35,17 @@ acceptance_criteria:
     evidence: "every server call is caught and toasted, e.g. `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-details-sidebar.tsx:379`, `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/frame-uploader.tsx:84`"
   - text: "Component is keyboard accessible"
     met: false
-    reason: "no longer true — shot cards are `<div onClick>` with no tabIndex or key handler, so a shot cannot be opened from the keyboard (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:99`); the labelled component went in 5b88db3a"
+    reason: "no longer true — shot cards are `<div onClick>` with no tabIndex or key handler, so a shot cannot be opened from the keyboard (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:100`); the labelled component went in 5b88db3a"
   - text: "Component works on mobile (responsive)"
     met: false
-    reason: "unverified — needs a phone-width screenshot: the header row has no breakpoints or wrap (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:750`) and the details sidebar is a fixed `w-96`"
+    reason: "unverified — needs a phone-width screenshot: the header row has no breakpoints or wrap (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/visual-studio-screen.tsx:752`) and the details sidebar is a fixed `w-96`"
 test_plan:
   unit: []
   integration: []
   e2e: []
 remaining:
   - criterion: "Component is keyboard accessible"
-    reason: "Shot cards are `<div onClick>` with no tabIndex or key handler (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:99`), so a shot's details cannot be opened from the keyboard; no Visual Studio component carries an `aria-*` attribute"
+    reason: "Shot cards are `<div onClick>` with no tabIndex or key handler (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:100`), so a shot's details cannot be opened from the keyboard; no Visual Studio component carries an `aria-*` attribute"
     closed_by: "unassigned"
 open_questions: []
 component:

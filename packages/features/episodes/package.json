@@ -41,7 +41,11 @@
     "./lib/fcpxml-generator": "./src/lib/fcpxml-generator.ts",
     "./server/transition-analyzer": "./src/server/transition-analyzer.ts",
     "./lib/server/pdf-extractor": "./src/lib/server/pdf-extractor.ts",
-    "./lib/server/project-write-access": "./src/lib/server/project-write-access.ts"
+    "./lib/server/project-write-access": "./src/lib/server/project-write-access.ts",
+    "./lib/generation-origin": "./src/lib/generation-origin.ts",
+    "./lib/stage-runs": "./src/lib/stage-runs.ts",
+    "./server/run-actions": "./src/server/run-actions.ts",
+    "./components/origin-badge": "./src/components/origin-badge.tsx"
   },
   "dependencies": {
     "@kit/agent": "workspace:*",

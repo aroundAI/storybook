@@ -18,7 +18,7 @@ summary: >
 acceptance_criteria:
   - text: "Shot grid supports keyboard navigation"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx:90-91 (role=listbox, aria-multiselectable, arrows, Home, End, Escape), apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:100 (role=option, roving tabIndex, Enter and Space), apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-selection.ts nextFocusIndex; tests apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/__tests__/shot-selection.test.ts and shot-grid.test.tsx (FILM-410)"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-grid.tsx:90-91 (role=listbox, aria-multiselectable, arrows, Home, End, Escape), apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-card.tsx:101 (role=option, roving tabIndex, Enter and Space), apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/shot-selection.ts nextFocusIndex; tests apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/visual-studio/_components/__tests__/shot-selection.test.ts and shot-grid.test.tsx (FILM-410)"
   - text: "Timeline supports keyboard shortcuts for playback"
     met: false
     reason: "retired — the timeline this meant is FILM-601's TimelineEditor, retired with the Edit Suite (FILM-607); the audio-studio cue timelines were never in its scope"

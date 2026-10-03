@@ -40,7 +40,7 @@ acceptance_criteria:
     evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/page.tsx:166 mounts MemoryContextPreview when canon is enabled and the episode has a project (component at ideation/_components/memory-context-preview.tsx:124). No E2E drives it"
   - text: "Inline warnings display on Story generation"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/story-screen.tsx:262"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/story-screen.tsx:264"
   - text: "Continuity Sidebar shows scene constraints"
     met: true
     evidence: "screenplay/_components/continuity-sidebar.tsx, mounted at screenplay-screen.tsx:298 for the active scene when canon is enabled; view model tests screenplay/_components/__tests__/continuity-view.test.ts (8). Browser (passed 2026-09-30, real browser, retries off): apps/e2e/tests/canon/continuity-sidebar.spec.ts:21 'shows what the scene must not contradict, the open threads and the characters' (the event, the open thread and Mara's 'emotional: calm' state) and :40 'flags the dead character shown alive in the scene being read' (CANON_001 violation flag on scene 2); continuity-sidebar-evidence.spec.ts:25 captures scene 1, scene 2 with a violation, and the narrow viewport"

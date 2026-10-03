@@ -3,7 +3,7 @@ title: "Dual-Mode Web UX: lease banners, origin badges, team AI settings"
 phase: 19
 phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
 category: feature
-status: DRAFT
+status: DONE
 effort: M
 dependencies:
   - spec_id: "FILM-1903"
@@ -20,38 +20,74 @@ summary: >
   (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
 acceptance_criteria:
   - text: "Story, screenplay, visual studio and audio studio pages show a banner while an external run is open on that stage ('Claude is working on this', client name, started at) with a Cancel button; the Generate button is disabled meanwhile"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/episodes/src/components/external-run-banner.tsx:38 (banner) and :70 (Cancel), under the tabs on all four pages (apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/layout.tsx:309), for runs on the page's stages or the stage its Generate button starts. Every Generate button on those pages is disabled meanwhile (useStageRunLock; e.g. story-screen.tsx:303). Cancel calls cancelGenerationRunAction (packages/features/episodes/src/server/run-actions.ts:104), which checks can_drive_generation_run (:123) and moves the run with RunHandle.cancel (:145), #567's transition_generation_run (#581)"
   - text: "The pages refresh on Supabase Realtime events from generation_runs (commit, cancel, expire), falling back to use-active-generation-job polling"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/episodes/src/hooks/use-open-external-runs.ts:72 — one channel per episode on generation_runs (:75), joined through subscribeWithAuth (KB-181) so the socket carries the user's token: joined as anon, Realtime's RLS check dropped every event while reporting SUBSCRIBED, which the E2E caught red. Any event re-reads the open runs, a run leaving an open status re-reads the episode, and the runs are re-read as the channel comes up (:101), so a change made before the join is not lost. While the channel is not subscribed the runs are polled every 10s, and every 60s while it is (:60). Server-mode jobs keep useActiveGenerationJob and the job WebSocket unchanged (#581)"
   - text: "An origin badge on the story, screenplay, each shot and each dialogue line reads 'Gemini', 'Claude via MCP' or 'Edited', from generation_origin"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/episodes/src/components/origin-badge.tsx:49, labels in packages/features/episodes/src/lib/generation-origin.ts:56 (an external model shown as 'reported: …'; a non-Claude MCP client named as itself). Story and screenplay: 'Written by' in stage-run-bar.tsx:79, from the stage keys of episodes.generation_origin (latestStageOrigin, generation-origin.ts:28); shots: shot-card.tsx:289; dialogue lines: dialogue-timeline.tsx:635. Content with no origin shows none (#581)"
   - text: "A 'Restore previous version' action restores the last content_revisions snapshot for a stage"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/episodes/src/server/run-actions.ts:47 — restoreRevisionAction takes the page, reads the newest content_revisions row of its stages under RLS and calls restore_content_revision (:68), which saves what it replaces first, so a second restore undoes the first; refused as a value while an external run holds those stages (#581)"
   - text: "Team settings → AI: allow server generation, allow external generation (MCP), default mode; owners edit, members read; openRun honours them"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "apps/web/app/home/[account]/settings/ai/page.tsx:47 (owner check with the policies' own has_role_on_account) and updateAccountAiSettingsAction (settings/ai/_lib/server/actions.ts:28): owners edit, members read. Both modes off and a disallowed default are refused by the action and by CHECK constraints (apps/web/supabase/migrations/20261003133938_film-1910-ai-settings-allow-a-mode.sql:20). openRun applies them (packages/features/generation/src/runs/open-run.ts:19, #567); a web Generate asks for server mode (packages/ai-gateway/src/jobs.ts:143), so a team with server generation off is refused in words (runRefusalMessage, :116) instead of getting an external run that the job trigger and dispatch() refused with a 500 (#581)"
   - text: "data-test attributes on the banner, cancel, badge and settings controls"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "external-run-banner.tsx:38 and :70, origin-badge.tsx:49, apps/web/app/home/[account]/settings/ai/_components/ai-settings-form.tsx:127 (each toggle), :185 (default mode), :201 (save); driven through byTest() in apps/e2e/tests/generation/dual-mode.spec.ts (#581)"
 test_plan:
-  unit: []
-  integration: []
+  unit:
+    - {text: "Badge text, stage-keyed origins and the studio page of a route", met: true, evidence: "packages/features/episodes/src/lib/__tests__/generation-origin.test.ts — red with a flat origin read as every stage's"}
+    - {text: "The settings rule: either mode alone, never both off, default allowed", met: true, evidence: "apps/web/app/home/[account]/settings/ai/_lib/__tests__/ai-settings.schema.test.ts — red with the both-off check removed"}
+    - {text: "A web Generate opens a server run whatever the default, and server-off and a held stage are worded refusals", met: true, evidence: "packages/ai-gateway/__tests__/open-run-for-job-mode.test.ts — red with the team default restored, and with the server-off wording removed"}
+  integration:
+    - {text: "The table refuses both modes off and a disallowed default", met: true, evidence: "apps/web/supabase/tests/database/account-ai-settings-modes.test.sql — 3 of 7 red without the migration"}
+    - {text: "A team with server generation off gets a refusal from the Generate button", met: true, evidence: "apps/e2e/tests/generation/dual-mode.spec.ts:390 — Convert to Screenplay pressed twice with server off: both presses refused in words, no generation_runs row; red without the server-mode request (an external run blocks the stage) and without refuseRunError (no words)"}
   e2e:
-    - {text: "Seed an open external run, open the story page: banner shown, Generate disabled; cancel; banner gone and Generate enabled (assert the second state too, per CLAUDE.md)", met: false, reason: "not met — no test yet"}
-    - {text: "Screenshots of the banner, badges, restore and settings in the PR", met: false, reason: "not met — no test yet"}
-open_questions:
-  - "May a team turn server generation off entirely (Claude-only teams), or only turn external generation on?"
+    - {text: "Seed an open external run, open the story page: banner shown, Generate disabled; cancel; banner gone and Generate enabled (assert the second state too, per CLAUDE.md)", met: true, evidence: "apps/e2e/tests/generation/dual-mode.spec.ts:117 — the first run expires (the lease cron's write) and the banner clears without a reload; a second run brings it back and Cancel from the banner clears it again, Generate enabled, row cancelled. Red without the Realtime token, without the disabled button and without the cancel call. :170 — a member who cannot write the project is refused Cancel and the run stays open"}
+    - {text: "Screenshots of the banner, badges, restore and settings in the PR", met: true, evidence: "#581 — 14 states captured by dual-mode.spec.ts under CAPTURE_EVIDENCE=1"}
+open_questions: []
 notes: |
+  Decided (lead, 2026-10-03; README open question 4, the owner may revise):
+  a team may turn either mode off, never both, and its default is a mode it
+  allows. The page refuses both off; account_ai_settings' CHECK
+  constraints refuse it for every other writer, since owners write the
+  table directly under RLS.
+
+  A web Generate button always asks for server mode (lead decision
+  2026-10-03; the owner may revise): every caller dispatches
+  to the worker, and #567's fallback to
+  the team default opened an external run nobody would write, which the
+  job trigger and dispatch() then refused with a 500. So default_mode only
+  governs a generation that does not choose a mode. The control stays
+  visible with help text saying so (lead decision 2026-10-03); the column
+  is reserved for a future web "Generate with Claude" flow.
+
+  Only five web call sites word the server-off and stage-held refusals
+  (screenplay, shot list, both refinements, audio cues); eighteen others
+  still throw them, so production shows a generic sentence there, though
+  no run is left behind. Filed as KB-182, open.
+
+  The restore and cancel actions live in @kit/episodes
+  (packages/features/episodes/src/server/run-actions.ts), not
+  packages/features/generation/src/server as first drafted: @kit/generation
+  is bundled into the LLM worker and its import-boundary test forbids
+  server-only and Next there.
+
+  episodes.generation_origin is keyed by stage, but the screenplay and
+  screenplay_refinement commits write one flat origin over the whole column
+  (packages/features/generation/src/stages/screenplay.ts, reported to the
+  lead 2026-10-03). The badge reads only stage keys, so such an episode
+  shows no badge rather than a wrong one.
+
   The banner and badges are the user's answer to "was this Gemini or
   Claude?"; the same answer is one query on generation_runs and
   generation_origin for analytics (FILM-1912).
 feature:
   database: null
   queries: []
-  actions: [{name: "updateAccountAiSettingsAction", file: "apps/web/app/home/[account]/settings/ai/_lib/server/actions.ts"}, {name: "cancelGenerationRunAction", file: "packages/features/generation/src/server/run-actions.ts"}, {name: "restoreRevisionAction", file: "packages/features/generation/src/server/run-actions.ts"}]
-  ui: [{component: "ExternalRunBanner", file: "packages/features/episodes/src/components/external-run-banner.tsx"}, {component: "OriginBadge", file: "packages/features/episodes/src/components/origin-badge.tsx"}, {component: "AiSettingsPage", file: "apps/web/app/home/[account]/settings/ai/page.tsx"}]
+  actions: [{name: "updateAccountAiSettingsAction", file: "apps/web/app/home/[account]/settings/ai/_lib/server/actions.ts"}, {name: "cancelGenerationRunAction", file: "packages/features/episodes/src/server/run-actions.ts"}, {name: "restoreRevisionAction", file: "packages/features/episodes/src/server/run-actions.ts"}]
+  ui: [{component: "StageRunBar", file: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/stage-run-bar.tsx"}, {component: "ExternalRunBanner", file: "packages/features/episodes/src/components/external-run-banner.tsx"}, {component: "OriginBadge", file: "packages/features/episodes/src/components/origin-badge.tsx"}, {component: "AiSettingsPage", file: "apps/web/app/home/[account]/settings/ai/page.tsx"}]
   provider_integration: null

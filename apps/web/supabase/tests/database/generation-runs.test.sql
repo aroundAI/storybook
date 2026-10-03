@@ -389,7 +389,7 @@ select lives_ok(
 );
 
 select is(
-  pg_temp.affected($$ update public.account_ai_settings set external_generation_enabled = false
+  pg_temp.affected($$ update public.account_ai_settings set server_generation_enabled = false
                        where account_id = current_setting('gr.team')::uuid $$),
   1,
   'S1 an owner updates them'

@@ -139,7 +139,11 @@ step stays a web action.
    (recommended), or keep external ideation conversational?~~ Decided
    2026-10-03 (lead): stored on `episodes.metadata.ideas` for both modes; the
    `ideation` stage's commit writes it (FILM-1901 part B).
-4. FILM-1910: may a team turn server generation off entirely?
+4. ~~FILM-1910: may a team turn server generation off entirely?~~ Decided
+   2026-10-03 (lead; the owner may revise): yes, either mode may be off,
+   never both, and the default is an allowed mode. The settings page
+   refuses both off, and CHECK constraints on `account_ai_settings` refuse
+   it for every writer.
 5. ~~FILM-1904: endpoint inside the Next.js app (recommended) or its own
    Lambda?~~ Built inside the app (#558, 2026-10-03): `/api/mcp` is a
    Next route over `@kit/studio-mcp`, reusing the Supabase clients and the

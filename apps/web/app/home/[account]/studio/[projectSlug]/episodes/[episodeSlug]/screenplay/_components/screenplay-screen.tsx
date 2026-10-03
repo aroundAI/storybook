@@ -25,6 +25,7 @@ import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
 import { useEpisodeContext } from '../../_components/episode-context-provider';
+import { useStageRunLock } from '../../_components/stage-run-bar';
 import { ContinuitySidebar } from './continuity-sidebar';
 import { SceneIndexSidebar } from './scene-index-sidebar';
 import { ScreenplayPaper } from './screenplay-paper';
@@ -75,6 +76,7 @@ export function ScreenplayScreen({
   canonEnabled = false,
 }: ScreenplayScreenProps) {
   const { setIsGenerating } = useEpisodeContext();
+  const { locked: runLocked } = useStageRunLock();
   const [isPending, _startTransition] = useTransition();
   const [activeSceneNumber, setActiveSceneNumber] = useState(1);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
@@ -255,7 +257,8 @@ export function ScreenplayScreen({
           ) : (
             <Button
               onClick={handleGenerateShotList}
-              disabled={isPending || llmStatus === 'pending'}
+              disabled={isPending || llmStatus === 'pending' || runLocked}
+              data-test="generate-shot-list"
               className="btn-cinema-primary gap-2"
             >
               {isPending || llmStatus === 'pending' ? (
@@ -430,6 +433,7 @@ export function ScreenplayScreen({
                     episodeId={episode.id}
                     projectId={episode.projectId}
                     onRefinementComplete={refetchEpisode}
+                    paused={runLocked}
                   />
                 </div>
               )}
