@@ -59,7 +59,7 @@ acceptance_criteria:
     evidence: null
   - text: "All actions respect RLS policies"
     met: true
-    evidence: "KB-31, #315: both story actions queue their LLM job only after `authorizeEpisodeTarget` (`packages/features/episodes/src/server/story-actions.ts:80`, `:156`), which asks `can_write_project` on the episode's project as the caller (`packages/features/prompt-engine/src/lib/server/llm-job-target.ts:85`); `openRunForJob` requires that target and stores only its ids on the run (`packages/ai-gateway/src/jobs.ts:79`, `:81`); the queue message is the run id (FILM-1903). Red on the old code: `packages/features/episodes/__tests__/llm-job-authorization.test.ts` (27 tests, green on main)"
+    evidence: "KB-31, #315: both story actions queue their LLM job only after `authorizeEpisodeTarget` (`packages/features/episodes/src/server/story-actions.ts:80`, `:156`), which asks `can_write_project` on the episode's project as the caller (`packages/features/prompt-engine/src/lib/server/llm-job-target.ts:85`); `openRunForJob` requires that target and stores only its ids on the run (`packages/ai-gateway/src/jobs.ts:80`, `:81`); the queue message is the run id (FILM-1903). Red on the old code: `packages/features/episodes/__tests__/llm-job-authorization.test.ts` (27 tests, green on main)"
   - text: "Supports Claude, GPT-4, and Gemini providers"
     met: true
     evidence: null
