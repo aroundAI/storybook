@@ -179,10 +179,14 @@ select lives_ok(
   'an audit entry for a person''s own account is allowed'
 );
 
-select lives_ok(
+-- FILM-1903 part C: a usage row needs an open server run, and runs belong to
+-- teams, so a new row cannot land on a person's own account any more; older
+-- rows there stay readable (llm-usage-analytics-rls.test.sql)
+select throws_like(
   $$ insert into public.llm_usage_analytics (account_id, user_id, template_slug, llm_provider, llm_model, status)
      values (tests.get_supabase_uid('kb99_p'), tests.get_supabase_uid('kb99_p'), 'kb99-no-tenant', 'openai', 'gpt-4o-mini', 'success') $$,
-  'usage of an LLM call that reads no workspace is still recorded on the caller''s account'
+  'refused: llm_usage_analytics row without a run%',
+  'usage on a person''s own account is refused: a model call belongs to a run, and a run to a team'
 );
 
 -- ==================================

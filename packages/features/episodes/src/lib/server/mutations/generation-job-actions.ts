@@ -2,7 +2,6 @@
 
 import 'server-only';
 
-import crypto from 'crypto';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
@@ -16,79 +15,6 @@ export type GenerationJobStatus =
   | 'processing'
   | 'completed'
   | 'failed';
-
-/**
- * Generate idempotency key for deduplication
- */
-function generateIdempotencyKey(
-  referenceType: string,
-  referenceId: string,
-  jobType: string,
-): string {
-  const key = `${referenceType}:${referenceId}:${jobType}:${Date.now()}`;
-  return crypto.createHash('md5').update(key).digest('hex');
-}
-
-/**
- * Create a new generation job
- * Uses remote schema: reference_type, reference_id, input_data, account_id, project_id
- */
-export const createGenerationJobAction = enhanceAction(
-  async (data) => {
-    const client = getSupabaseServerClient();
-
-    const idempotencyKey = generateIdempotencyKey(
-      'episode',
-      data.episodeId,
-      data.jobType,
-    );
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: job, error } = await (client as any)
-      .from('generation_jobs')
-      .insert({
-        idempotency_key: idempotencyKey,
-        account_id: data.accountId,
-        project_id: data.projectId,
-        job_type: data.jobType,
-        reference_type: 'episode',
-        reference_id: data.episodeId,
-        status: 'queued',
-        input_data: data.metadata ?? {},
-      })
-      .select('id')
-      .single();
-
-    if (error) {
-      logger.error(
-        { error, episodeId: data.episodeId, jobType: data.jobType },
-        'Failed to create generation job',
-      );
-      throw new Error(`Failed to create job: ${error.message}`);
-    }
-
-    logger.info(
-      { jobId: job.id, episodeId: data.episodeId, jobType: data.jobType },
-      'Generation job created',
-    );
-
-    return { success: true, jobId: job.id };
-  },
-  {
-    schema: z.object({
-      episodeId: z.string().uuid(),
-      accountId: z.string().uuid(),
-      projectId: z.string().uuid(),
-      jobType: z.enum([
-        'story',
-        'screenplay',
-        'shot_list',
-        'translate-dialogue',
-      ]),
-      metadata: z.record(z.unknown()).optional(),
-    }),
-  },
-);
 
 /**
  * Get active generation jobs for an episode

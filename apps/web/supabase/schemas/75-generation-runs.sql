@@ -115,14 +115,27 @@ create index idx_llm_usage_analytics_run on public.llm_usage_analytics (run_id) 
 -- ----------------------------------------------------------------------
 -- The locks that keep Gemini out of external work
 -- ----------------------------------------------------------------------
--- Part A fires them for every row that carries a run id; part C adds NOT
--- NULL on generation_jobs.run_id (LLM job types) and llm_usage_analytics.run_id.
+-- A new LLM job or usage row needs an open server-mode run (part C,
+-- 20261003155443: required at insert by this trigger, not NOT NULL, so rows
+-- written before it keep their null and `on delete set null` still works).
 create or replace function public.assert_server_run()
 returns trigger
 language plpgsql
 set search_path = ''
 as $$
 begin
+  if new.run_id is null then
+    -- pg_trigger_depth() > 1: the run was deleted and the foreign key's
+    -- on delete set null is clearing the column. Anything else is a row
+    -- trying to exist without a run.
+    if tg_op = 'INSERT' or pg_trigger_depth() = 1 then
+      raise exception 'refused: % row without a run: every LLM job and model call belongs to an open server-mode run',
+        tg_table_name;
+    end if;
+
+    return new;
+  end if;
+
   if not exists (
     select 1
     from public.generation_runs r
@@ -138,26 +151,17 @@ begin
 end;
 $$;
 
--- the LLM job types of generation_jobs_job_type_check plus 'asset_creation'
--- (KB-174, #553); renders (video, voice, music, sfx) may belong to an
--- external run
+-- every job type but the vendor renders (video, voice, music, sfx), which
+-- may belong to an external run; a type added later is locked by default
 create trigger generation_jobs_server_run_only
-  before insert or update of run_id on public.generation_jobs
+  before insert or update of run_id, job_type on public.generation_jobs
   for each row
-  when (
-    new.run_id is not null
-    and new.job_type in (
-      'story', 'screenplay', 'shot_list', 'translate-dialogue',
-      'audio_cue_generation', 'story-refinement', 'screenplay-refinement',
-      'asset_creation'
-    )
-  )
+  when (new.job_type not in ('video', 'voice', 'music', 'sfx'))
   execute function public.assert_server_run();
 
 create trigger llm_usage_analytics_server_run_only
   before insert or update of run_id on public.llm_usage_analytics
   for each row
-  when (new.run_id is not null)
   execute function public.assert_server_run();
 
 -- ----------------------------------------------------------------------

@@ -33,17 +33,26 @@ insert into public.episodes (id, project_id, number, title, status)
   values ('6c6c6c6c-0000-4000-8000-000000000002',
           '6c6c6c6c-0000-4000-8000-000000000001', 1, 'E1', 'draft');
 
+-- FILM-1903 part C: a job of any type but the renders needs an open server
+-- run, so every row below carries one; the bogus row too, so it is the CHECK
+-- that refuses it
+insert into public.generation_runs (id, account_id, project_id, target_type, target_id, stage, mode, created_by)
+  values ('6c6c6c6c-0000-4000-8000-0000000000a1', current_setting('gj.account')::uuid,
+          '6c6c6c6c-0000-4000-8000-000000000001', 'episode',
+          '6c6c6c6c-0000-4000-8000-000000000002', 'asset_description', 'server',
+          tests.get_supabase_uid('primary_owner'));
+
 -- Every job type some producer inserts today, plus the four provider types
 -- the table was created with: each can be recorded.
 select lives_ok(
   format(
     $$ insert into public.generation_jobs
          (reference_type, reference_id, job_type, status, account_id, project_id,
-          idempotency_key, input_data)
+          idempotency_key, input_data, run_id)
        values ('episode', '6c6c6c6c-0000-4000-8000-000000000002', %L,
                'queued', current_setting('gj.account')::uuid,
                '6c6c6c6c-0000-4000-8000-000000000001',
-               %L, '{}') $$,
+               %L, '{}', '6c6c6c6c-0000-4000-8000-0000000000a1') $$,
     t.job_type, 'kb174-' || t.job_type
   ),
   format('a %s job can be recorded', t.job_type)
@@ -73,11 +82,11 @@ select is(
 select throws_ok(
   $$ insert into public.generation_jobs
        (reference_type, reference_id, job_type, status, account_id, project_id,
-        idempotency_key, input_data)
+        idempotency_key, input_data, run_id)
      values ('episode', '6c6c6c6c-0000-4000-8000-000000000002', 'asset-creation',
              'queued', current_setting('gj.account')::uuid,
              '6c6c6c6c-0000-4000-8000-000000000001',
-             'kb174-bogus', '{}') $$,
+             'kb174-bogus', '{}', '6c6c6c6c-0000-4000-8000-0000000000a1') $$,
   '23514',
   null,
   'the SQS spelling, and any other unknown job type, is refused'

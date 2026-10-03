@@ -478,11 +478,11 @@ Nine new tables and a few additive columns, all in hand-written migrations under
 
 - `generation_origin jsonb` on `shots`, `dialogue_lines`, `audio_cues` and `assets`.
 - `episodes.generation_origin jsonb`, keyed by stage (`{ "story": {...}, "screenplay": {...} }`), because story and screenplay live in JSONB columns on `episodes`.
-- `generation_jobs.run_id uuid references generation_runs(id)`, required for LLM job types, so no Gemini job exists without a server run.
+- `generation_jobs.run_id uuid references generation_runs(id)`, required for LLM job types, so no Gemini job exists without a server run. Required on insert by the lock trigger (FILM-1903 part C), not NOT NULL: rows written before it keep a null run, and `on delete set null` still works.
 - `generation_runs.input jsonb` (FILM-1903 part B): what the run was asked to do, `{kind: 'stage', target}` for a registered stage or `{kind: 'job', jobType, payload}` for a worker job not yet on the core, since the worker loads only a run id.
 
 * `generation_runs.parent_run_id`, so chained stages inherit their parent's mode.
-* `llm_usage_analytics.run_id`, required, so every model call is attributable to a run.
+* `llm_usage_analytics.run_id`, required on insert (the same trigger), so every model call is attributable to a run.
 
 **Constraints in the house style** (TEXT with CHECK rather than Postgres enums, matching `generation_jobs`):
 

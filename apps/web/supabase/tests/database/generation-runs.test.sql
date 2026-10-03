@@ -141,12 +141,21 @@ select lives_ok(
   'L1 a voice render on an external run is accepted: the lock covers LLM job types only'
 );
 
-select lives_ok(
-  $$ insert into public.generation_jobs (id, idempotency_key, account_id, project_id, job_type, input_data)
-     values ('19030000-0000-4000-8000-0000000000d2', 'gr-job-norun', current_setting('gr.team')::uuid,
+select throws_like(
+  $$ insert into public.generation_jobs (idempotency_key, account_id, project_id, job_type, input_data)
+     values ('gr-job-norun', current_setting('gr.team')::uuid,
              '19030000-0000-4000-8000-000000000001', 'story', '{}'::jsonb) $$,
-  'L1 part A: a story job with no run is still accepted (NOT NULL is part C)'
+  'refused: generation_jobs row without a run%',
+  'L1 a story job with no run is refused (part C)'
 );
+
+-- A job written before part C, with no run (replica skips the trigger, as
+-- its absence did then)
+set local session_replication_role = replica;
+insert into public.generation_jobs (id, idempotency_key, account_id, project_id, job_type, input_data)
+values ('19030000-0000-4000-8000-0000000000d2', 'gr-job-historic', current_setting('gr.team')::uuid,
+        '19030000-0000-4000-8000-000000000001', 'story', '{}'::jsonb);
+set local session_replication_role = origin;
 
 select throws_like(
   $$ update public.generation_jobs set run_id = '19030000-0000-4000-8000-0000000000e1'
@@ -173,10 +182,11 @@ select lives_ok(
   'L2 a usage row for an open server run is accepted'
 );
 
-select lives_ok(
+select throws_like(
   $$ insert into public.llm_usage_analytics (account_id, template_slug, llm_provider, llm_model, status)
      values (current_setting('gr.team')::uuid, 'story-generation', 'gemini', 'gemini-2.5-pro', 'success') $$,
-  'L2 part A: a usage row with no run is still accepted (NOT NULL is part C)'
+  'refused: llm_usage_analytics row without a run%',
+  'L2 a usage row with no run is refused (part C)'
 );
 
 select lives_ok(

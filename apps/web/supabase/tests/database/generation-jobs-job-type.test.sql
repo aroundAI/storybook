@@ -29,25 +29,35 @@ insert into public.episodes (id, project_id, number, title, status)
   values ('6b6b6b6b-0000-4000-8000-000000000002',
           '6b6b6b6b-0000-4000-8000-000000000001', 1, 'E1', 'draft');
 
+-- FILM-1903 part C: an LLM job needs an open server run, so every row below
+-- carries one; the bogus row too, so it is the CHECK that refuses it
+insert into public.generation_runs (id, account_id, project_id, target_type, target_id, stage, mode, created_by)
+  values ('6b6b6b6b-0000-4000-8000-0000000000a1', current_setting('gj.account')::uuid,
+          '6b6b6b6b-0000-4000-8000-000000000001', 'episode',
+          '6b6b6b6b-0000-4000-8000-000000000002', 'story', 'server',
+          tests.get_supabase_uid('primary_owner'));
+
 select lives_ok(
   $$ insert into public.generation_jobs
        (reference_type, reference_id, job_type, status, account_id, project_id,
-        idempotency_key, input_data)
+        idempotency_key, input_data, run_id)
      values ('episode', '6b6b6b6b-0000-4000-8000-000000000002', 'story-refinement',
              'queued', current_setting('gj.account')::uuid,
              '6b6b6b6b-0000-4000-8000-000000000001',
-             'story-refinement-kb14-1', '{"feedback": "tighter"}') $$,
+             'story-refinement-kb14-1', '{"feedback": "tighter"}',
+             '6b6b6b6b-0000-4000-8000-0000000000a1') $$,
   'a story refinement can be recorded'
 );
 
 select lives_ok(
   $$ insert into public.generation_jobs
        (reference_type, reference_id, job_type, status, account_id, project_id,
-        idempotency_key, input_data)
+        idempotency_key, input_data, run_id)
      values ('episode', '6b6b6b6b-0000-4000-8000-000000000002', 'screenplay-refinement',
              'queued', current_setting('gj.account')::uuid,
              '6b6b6b6b-0000-4000-8000-000000000001',
-             'screenplay-refinement-kb14-1', '{"feedback": "tighter"}') $$,
+             'screenplay-refinement-kb14-1', '{"feedback": "tighter"}',
+             '6b6b6b6b-0000-4000-8000-0000000000a1') $$,
   'a screenplay refinement can be recorded'
 );
 
@@ -68,22 +78,24 @@ select is(
 select lives_ok(
   $$ insert into public.generation_jobs
        (reference_type, reference_id, job_type, status, account_id, project_id,
-        idempotency_key, input_data)
+        idempotency_key, input_data, run_id)
      values ('episode', '6b6b6b6b-0000-4000-8000-000000000002', 'story',
              'queued', current_setting('gj.account')::uuid,
              '6b6b6b6b-0000-4000-8000-000000000001',
-             'story-kb14-1', '{}') $$,
+             'story-kb14-1', '{}',
+             '6b6b6b6b-0000-4000-8000-0000000000a1') $$,
   'existing job types are still allowed'
 );
 
 select throws_ok(
   $$ insert into public.generation_jobs
        (reference_type, reference_id, job_type, status, account_id, project_id,
-        idempotency_key, input_data)
+        idempotency_key, input_data, run_id)
      values ('episode', '6b6b6b6b-0000-4000-8000-000000000002', 'bogus',
              'queued', current_setting('gj.account')::uuid,
              '6b6b6b6b-0000-4000-8000-000000000001',
-             'bogus-kb14-1', '{}') $$,
+             'bogus-kb14-1', '{}',
+             '6b6b6b6b-0000-4000-8000-0000000000a1') $$,
   '23514',
   null,
   'an unknown job type is still refused'

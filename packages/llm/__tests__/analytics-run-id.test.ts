@@ -6,9 +6,8 @@ import { logLLMUsage } from '../src/analytics';
 
 /**
  * FILM-1902 / FILM-1903: a usage row names the generation run it belongs to.
- * The `run_id` column lands with FILM-1903 part A; until a caller has a run
- * id, the insert must not mention the column at all, or every row would be
- * refused on a schema that lacks it.
+ * Since FILM-1903 part C the database refuses a row without one, so the
+ * event type requires it rather than letting a caller find out at runtime.
  */
 
 const insert = vi.fn(async (_row: Record<string, unknown>) => ({
@@ -51,15 +50,18 @@ describe('logLLMUsage and run_id', () => {
   it('inserts a null template_slug for a call with no prompt, such as an embedding', async () => {
     const { templateSlug: _omitted, ...withoutPrompt } = event;
 
-    await logLLMUsage(client, withoutPrompt);
+    await logLLMUsage(client, {
+      ...withoutPrompt,
+      runId: '33333333-3333-4333-8333-333333333333',
+    });
 
     expect(insert.mock.calls[0]?.[0]).toMatchObject({ template_slug: null });
   });
 
-  it('leaves run_id out of the insert when the event has none', async () => {
-    await logLLMUsage(client, event);
+  it('an event without a runId does not type-check', () => {
+    // @ts-expect-error runId is required: a usage row without a run is refused
+    const withoutRun: Parameters<typeof logLLMUsage>[1] = event;
 
-    expect(insert).toHaveBeenCalledTimes(1);
-    expect(insert.mock.calls[0]?.[0]).not.toHaveProperty('run_id');
+    expect(withoutRun).not.toHaveProperty('runId');
   });
 });

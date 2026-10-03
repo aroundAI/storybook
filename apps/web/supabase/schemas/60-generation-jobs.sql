@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS public.generation_jobs (
     created_at TIMESTAMPTZ DEFAULT now(),
     started_at TIMESTAMPTZ,
     completed_at TIMESTAMPTZ,
-    -- FILM-1903: the server-mode run this job executes; NOT NULL for LLM job types is part C
+    -- FILM-1903: the server-mode run this job executes; required on insert for all but renders since part C
     run_id UUID REFERENCES public.generation_runs(id) ON DELETE SET NULL
 );
 

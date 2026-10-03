@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS public.llm_usage_analytics (
   request_config jsonb,
   response_metadata jsonb,
   executed_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
-  -- FILM-1903: the run this model call was made for (75-generation-runs.sql guards it); NOT NULL is part C
+  -- FILM-1903: the run this model call was made for (75-generation-runs.sql guards it); required on insert since part C (null only on older rows)
   run_id uuid REFERENCES public.generation_runs(id) ON DELETE SET NULL,
   PRIMARY KEY (id)
 );
