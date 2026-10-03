@@ -706,3 +706,77 @@ describe('every registered stage runs in both modes (FILM-1902 criterion 10)', (
     });
   }
 });
+
+/**
+ * FILM-1901 criterion 4, FILM-1903: a stage's side effects are one plan the
+ * run applies in one transaction. The plan is replayed through a second
+ * recording here, so the stage's own client shows what was written outside
+ * it: only runStage's generation_jobs bookkeeping before the commit.
+ */
+describe('every registered stage commits through one plan (FILM-1903)', () => {
+  for (const key of registeredStageKeys()) {
+    const fixture = FIXTURES[key];
+    if (!fixture) continue;
+
+    for (const mode of ['server', 'external'] as const) {
+      it(`${key} in ${mode} mode writes only through apply_generation_commit, once, closing the run`, async () => {
+        const write = vi.fn(async (_run, brief) => ({
+          output: fixture.output(brief.part),
+        }));
+        const { ctx, state, recording } = harness(fixture, mode, {
+          write,
+          dispatch: vi.fn(),
+        });
+        const replay = recordingClient(fixture.respond);
+        state.client = replay.client;
+
+        const run = await openRun(
+          key,
+          runTarget(fixture),
+          { kind: mode === 'server' ? 'web' : 'mcp', name: 'matrix' },
+          ctx,
+        );
+
+        if (mode === 'server') {
+          await executeServerRun(run, ctx);
+        } else {
+          const parts = await stageRegistry
+            .get(key)!
+            .parts(ctx, fixture.target);
+          await finalizeRun(
+            run,
+            ctx,
+            parts.map((part) => ({
+              key: part.key,
+              output: fixture.output(part),
+            })),
+          );
+        }
+
+        const outside = recording
+          .writes()
+          .filter(
+            (w) =>
+              !(
+                w.table === 'generation_jobs' &&
+                (w.payload as { status?: string }).status === 'processing'
+              ),
+          );
+        expect(outside, `${key} writes outside its plan`).toEqual([]);
+        expect(state.commits.length, key).toBeLessThanOrEqual(1);
+
+        if (replay.writes().length > 0) {
+          expect(state.commits, key).toEqual([
+            expect.objectContaining({ runId: run.id, finalize: true }),
+          ]);
+        }
+
+        // The snapshot is the database's, inside the same call
+        expect(
+          state.rpcs.filter((rpc) => rpc.fn === 'record_content_revision'),
+        ).toEqual([]);
+        expect(state.rows.get(run.id)?.status).toBe('committed');
+      });
+    }
+  }
+});
