@@ -113,10 +113,11 @@ const TARGET_ARG: Partial<Record<TargetType, string>> = {
  */
 export async function resolveStageTarget(
   client: Client,
-  accountId: string,
+  caller: { accountId: string; userId: string },
   stage: AnyStageDefinition,
   input: StartTargetInput,
 ): Promise<{ target: unknown; runTarget: OpenRunTarget }> {
+  const { accountId } = caller;
   const argName = TARGET_ARG[stage.targetType as TargetType];
 
   if (!argName) {
@@ -211,9 +212,13 @@ export async function resolveStageTarget(
     );
   }
 
+  // Who the work is for is the caller, never an option: a stage that names
+  // its account or user (shots, audio_cues) gets the MCP principal's
   const parsed = stage.targetSchema.safeParse({
     ...candidate,
     ...(input.options ?? {}),
+    accountId,
+    userId: caller.userId,
   });
 
   if (!parsed.success) {

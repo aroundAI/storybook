@@ -346,16 +346,7 @@ export class GenerationService {
     part: PartSpec,
     earlier: unknown[] = [],
   ): Promise<Brief> {
-    // `earlier` is KB-178's (#570) fourth argument; typed here so this
-    // compiles against the three-argument signature it extends
-    const prepare = stage.prepare as (
-      ctx: McpRunCtx,
-      target: unknown,
-      part: PartSpec,
-      earlier?: readonly unknown[],
-    ) => Promise<Brief>;
-
-    return prepare.call(stage, this.ctx, target, part, earlier);
+    return stage.prepare(this.ctx, target, part, earlier);
   }
 
   private async brief(
@@ -378,7 +369,10 @@ export class GenerationService {
     const stage = this.stage(input.stage);
     const { target, runTarget } = await resolveStageTarget(
       this.client,
-      this.context.accountId,
+      {
+        accountId: this.context.accountId,
+        userId: this.context.principal.userId,
+      },
       stage,
       input,
     );

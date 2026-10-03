@@ -45,11 +45,31 @@
       "name": "FILM-1908 U5 a brief no longer carries the parts the run accepted (KB-178 reel note)",
       "kind": "unit",
       "file": "packages/features/studio-mcp/src/server/tools/generation/service.ts",
-      "find": "return prepare.call(stage, this.ctx, target, part, earlier);",
-      "replace": "return prepare.call(stage, this.ctx, target, part, []);",
+      "find": "return stage.prepare(this.ctx, target, part, earlier);",
+      "replace": "return stage.prepare(this.ctx, target, part, []);",
       "cwd": "packages/features/studio-mcp",
       "test": "__tests__/tools/generation-tools.test.ts",
       "pattern": "carries the parts the run has accepted"
+    },
+    {
+      "name": "FILM-1908 U6 a stage target no longer names the MCP caller's account and user (shots refused over MCP)",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/generation/target.ts",
+      "find": "    accountId,\n    userId: caller.userId,\n",
+      "replace": "",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/generation-shots-reel-note.test.ts",
+      "pattern": "flagged scene"
+    },
+    {
+      "name": "FILM-1908 U7 an external shots scene brief loses the Reel Scout note (KB-178)",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/generation/service.ts",
+      "find": "return stage.prepare(this.ctx, target, part, earlier);",
+      "replace": "return stage.prepare(this.ctx, target, part, []);",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/generation-shots-reel-note.test.ts",
+      "pattern": "flagged scene"
     },
     {
       "name": "FILM-1908 G1 the story commit writes one flat origin over every stage",
