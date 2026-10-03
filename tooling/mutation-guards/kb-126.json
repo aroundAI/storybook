@@ -54,9 +54,9 @@
     {
       "name": "PV6 one asset's description misses the instructions its template requires",
       "kind": "unit",
-      "file": "packages/features/episodes/src/lib/server/mutations/asset-link-actions.ts",
-      "find": "      type_instructions:\n        item.type === 'character'\n",
-      "replace": "      type_instruction:\n        item.type === 'character'\n",
+      "file": "packages/features/generation/src/stages/asset-description.ts",
+      "find": "      type_instructions:\n        asset.type === 'character'\n",
+      "replace": "      type_instruction:\n        asset.type === 'character'\n",
       "cwd": "packages/features/episodes",
       "test": "__tests__/prompt-variables-callers.test.ts",
       "pattern": "sidebar gets a description"

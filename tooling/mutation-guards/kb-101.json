@@ -14,7 +14,7 @@
     {
       "name": "W5 Chat-template tokens pass the sanitiser",
       "kind": "unit",
-      "file": "packages/features/episodes/src/lib/sanitize-for-prompt.ts",
+      "file": "packages/shared/src/prompt-sanitiser/index.ts",
       "find": "|\\[\\/?INST\\]|<<\\/?SYS>>|<\\|im_(?:start|end)\\|>/gi;",
       "replace": "/gi;",
       "cwd": "packages/features/episodes",
@@ -44,9 +44,9 @@
     {
       "name": "X3 Refinement feedback reaches the model raw",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/handlers/story-refinement.ts",
-      "find": "        feedback: sanitizeForPrompt(data.feedback),\n        season_context:",
-      "replace": "        feedback: data.feedback,\n        season_context:",
+      "file": "packages/features/generation/src/stages/story-refinement.ts",
+      "find": "      feedback: sanitizeForPrompt(target.feedback),\n      season_context:",
+      "replace": "      feedback: target.feedback,\n      season_context:",
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
       "pattern": "story refinement"
@@ -134,9 +134,9 @@
     {
       "name": "Y5 The screenplay reaches the asset-description model raw",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/handlers/asset-creation.ts",
-      "find": "buildScreenplayContext(sanitizeStrings(scenes))",
-      "replace": "buildScreenplayContext(scenes)",
+      "file": "packages/features/generation/src/stages/asset-description.ts",
+      "find": "  const storyContext = sanitizeForPrompt(target.storyContext).slice(",
+      "replace": "  const storyContext = target.storyContext.slice(",
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
       "pattern": "asset creation"
