@@ -23,6 +23,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { z } from 'zod';
 
+import {
+  type StoryCanonFacts,
+  StoryCanonFactsSchema,
+} from '@kit/prompt-engine/schemas';
 import type { Database } from '@kit/supabase/database';
 
 import {
@@ -38,55 +42,21 @@ import { planEpisodeMemory } from './store-episode-memory';
 
 type Client = SupabaseClient<Database>;
 
-export const ThreadTypeSchema = z.enum([
-  'plot',
-  'character',
-  'mystery',
-  'romantic',
-  'conflict',
-  'thematic',
-]);
-
-export const ThreadUpdateSchema = z.object({
-  threadName: z.string().min(1),
-  threadType: ThreadTypeSchema.optional(),
-  action: z.enum(['open', 'progress', 'resolve']),
-  description: z.string(),
-  promises: z.array(z.string()).optional(),
-});
+export const ThreadUpdateSchema =
+  StoryCanonFactsSchema.shape.threadUpdates.removeDefault().element;
 
 export type ThreadUpdate = z.infer<typeof ThreadUpdateSchema>;
 
 /**
- * What the `canon-extraction` prompt returns (`extraction` key). The story
- * stage's output carries it as `canonFacts`; the `immutableEvents` the
- * prompt also returns are not stored by this commit, as before.
+ * What the `canon-extraction` prompt returns (`extraction` key), read as the
+ * story commit needs it: `StoryCanonFactsSchema` in `@kit/prompt-engine`,
+ * which the episode_summary stage's full schema shares its fields with.
+ * The story stage's output carries it as `canonFacts`; the `immutableEvents`
+ * the prompt also returns are not stored by this commit, as before.
  */
-export const CanonExtractionSchema = z.object({
-  threadUpdates: z.array(ThreadUpdateSchema).default([]),
-  episodeSummary: z.string(),
-  sentimentScore: z.number().min(0).max(1),
-  keyEvents: z.array(z.string()).optional(),
-  characterStateChanges: z
-    .array(
-      z.object({
-        characterName: z.string(),
-        fromState: z.string(),
-        toState: z.string(),
-      }),
-    )
-    .optional(),
-  worldState: z
-    .object({
-      location: z.string(),
-      timePeriod: z.string().optional(),
-      atmosphere: z.string().optional(),
-      activeConflicts: z.array(z.string()).optional(),
-    })
-    .optional(),
-});
+export const CanonExtractionSchema = StoryCanonFactsSchema;
 
-export type CanonExtraction = z.infer<typeof CanonExtractionSchema>;
+export type CanonExtraction = StoryCanonFacts;
 
 export interface CommitStoryCanonInput {
   projectId: string;
