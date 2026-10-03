@@ -120,6 +120,16 @@
       "cwd": "packages/agent",
       "test": "__tests__/runner.test.ts",
       "pattern": "fails before any model call when the context has no write function"
+    },
+    {
+      "name": "1902 the Lambda registry has no fact-extraction prompt",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/prompts/lambda-registry.ts",
+      "find": "  'fact-extraction': factExtraction as LambdaPromptTemplate,\n",
+      "replace": "",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/stage-prompts-registered.test.ts",
+      "pattern": "registers each prompt a stage imports"
     }
   ]
 }

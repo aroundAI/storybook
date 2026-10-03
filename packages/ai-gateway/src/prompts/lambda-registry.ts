@@ -8,8 +8,11 @@
 import insightsGeneration from '@kit/prompt-engine/prompts/analytics/insights-generation.json';
 import languageInsights from '@kit/prompt-engine/prompts/analytics/language-insights.json';
 import dialogueTranslation from '@kit/prompt-engine/prompts/audio-generation/dialogue-translation.json';
+import sceneAudioRefinement from '@kit/prompt-engine/prompts/audio-generation/scene-audio-refinement.json';
 import canonExtraction from '@kit/prompt-engine/prompts/canon-roles/canon-extraction.json';
+import factExtraction from '@kit/prompt-engine/prompts/documentary/fact-extraction.json';
 import batchTranslateMetadata from '@kit/prompt-engine/prompts/publishing/batch-translate-metadata.json';
+import reelScout from '@kit/prompt-engine/prompts/quality-evaluation/reel-scout.json';
 import extractAssetDescription from '@kit/prompt-engine/prompts/story-generation/extract-asset-description.json';
 import sceneShot from '@kit/prompt-engine/prompts/story-generation/scene-shot-generation.json';
 import screenplay from '@kit/prompt-engine/prompts/story-generation/screenplay-conversion.json';
@@ -91,6 +94,10 @@ export const PROMPT_REGISTRY: Record<string, LambdaPromptTemplate> = {
     extractAssetDescription as LambdaPromptTemplate,
 
   'story-generation/scene-shot-generation': sceneShot as LambdaPromptTemplate,
+  // The shots stage's reel-scout part (FILM-1901 part D). Its file declares
+  // no output.type; the executor reads a missing one as 'object'
+  'reel-scout': reelScout as unknown as LambdaPromptTemplate,
+  'quality-evaluation/reel-scout': reelScout as unknown as LambdaPromptTemplate,
   // Analytics
   'insights-generation': insightsGeneration as LambdaPromptTemplate,
   'analytics-insights': insightsGeneration as LambdaPromptTemplate, // alias
@@ -106,6 +113,13 @@ export const PROMPT_REGISTRY: Record<string, LambdaPromptTemplate> = {
   'translate-dialogue': dialogueTranslation as LambdaPromptTemplate, // alias
   'audio-generation/dialogue-translation':
     dialogueTranslation as LambdaPromptTemplate,
+  // The audio_cues stage's scene parts (FILM-1901 part D)
+  'scene-audio-refinement': sceneAudioRefinement as LambdaPromptTemplate,
+  'audio-generation/scene-audio-refinement':
+    sceneAudioRefinement as LambdaPromptTemplate,
+  // Documentary (FILM-1901 part D: the fact_extraction stage)
+  'fact-extraction': factExtraction as LambdaPromptTemplate,
+  'documentary/fact-extraction': factExtraction as LambdaPromptTemplate,
   // Canon Roles (FILM-1101)
   'canon-extraction': canonExtraction as LambdaPromptTemplate,
   'canon-roles/canon-extraction': canonExtraction as LambdaPromptTemplate,
