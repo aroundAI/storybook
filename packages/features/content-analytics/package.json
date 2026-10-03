@@ -56,6 +56,8 @@
     "./server/sync-service": "./src/server/sync-service.ts",
     "./server/segment-service": "./src/server/segment-service.ts",
     "./server/genome-service": "./src/server/genome-service.ts",
+    "./server/performance-reader": "./src/server/performance-reader.ts",
+    "./server/origin-split-service": "./src/server/origin-split-service.ts",
     "./server/coverage-service": "./src/server/coverage-service.ts",
     "./server/channels-service": "./src/server/channels-service.ts",
     "./server/report-service": "./src/server/report-service.ts",

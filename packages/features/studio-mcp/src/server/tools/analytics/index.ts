@@ -14,6 +14,7 @@ import { getExperiment, listExperiments } from './experiments';
 import { getVideoFunnel } from './funnel';
 import { getGenomeFindings } from './genome';
 import { getLanguageAnalytics } from './language';
+import { getPerformanceByOrigin } from './origin-split';
 import { getProjectAnalytics } from './project-analytics';
 import { getReachOverview } from './reach';
 import { getReportDownload, listReports } from './reports';
@@ -61,6 +62,7 @@ export const analyticsReadTools = [
   getAnalyticsSettings,
   getSavedInsights,
   getAiUsage,
+  getPerformanceByOrigin,
 ].map((tool) => tool as unknown as McpToolDefinition);
 
 export const analyticsWriteTools = [

@@ -142,6 +142,7 @@ const ASKS: Array<[string, Record<string, unknown>]> = [
   ['list_channels', { projectId: PROJECT_B }],
   ['get_report_download', { reportId: REPORT_B }],
   ['get_saved_insights', { projectId: PROJECT_B }],
+  ['get_performance_by_origin', { projectId: PROJECT_B }],
   [
     'update_publish_note',
     { publishId: PUBLISH_B, note: 'x', expectedUpdatedAt: null },
