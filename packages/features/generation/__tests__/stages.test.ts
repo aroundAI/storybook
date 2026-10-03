@@ -287,7 +287,7 @@ describe('every registered stage renders its prompt with the context prepare() b
 
   it('checked every registered stage, and there are stages to check', () => {
     // A positive control: an empty registry would pass every test above
-    expect(stageRegistry.size).toBeGreaterThanOrEqual(10);
+    expect(stageRegistry.size).toBeGreaterThanOrEqual(14);
     expect([...checkedStages].sort()).toEqual(registeredStageKeys().sort());
   });
 });
