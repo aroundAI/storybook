@@ -1,28 +1,21 @@
 /**
- * FILM-1004: the worker's canon commit writes the episode summary and world
- * state, through the same function the publish commit uses.
+ * FILM-1004: the story stage's canon commit writes the episode summary and
+ * world state, through the same function the publish commit uses. FILM-1901:
+ * it stores the canon facts it is given and makes no model call; without
+ * them it writes neither row.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { commitStoryCanon } from '../utils/commit-story-canon';
+import { type CanonExtraction, commitStoryCanon } from '../src/canon';
 
 const EPISODE = '33333333-3333-4333-8333-333333333333';
 const PROJECT = '22222222-2222-4222-8222-222222222222';
 
 type Write = { table: string; op: string; row: Record<string, unknown> };
 
-const extraction = vi.hoisted(() => ({
-  current: null as Record<string, unknown> | null,
-}));
-
-vi.mock('@kit/prompt-engine/server', () => ({
-  executeLLM: async () => {
-    if (!extraction.current) throw new Error('LLM down');
-    return { data: { extraction: extraction.current } };
-  },
-}));
+const extraction = { current: null as CanonExtraction | null };
 
 function recordingClient(writes: Write[]) {
   const builder = (table: string) => {
@@ -48,18 +41,15 @@ function recordingClient(writes: Write[]) {
   return { from: builder } as unknown as SupabaseClient;
 }
 
-const STORY = 'A long story. '.repeat(20);
-
 function commit(writes: Write[], overrides: { episodeSummary?: string } = {}) {
   return commitStoryCanon({
     projectId: PROJECT,
-    accountId: '11111111-1111-4111-8111-111111111111',
     episodeId: EPISODE,
     episodeNumber: 2,
     season: 1,
     keyEvents: [],
     characters: [],
-    storyContent: STORY,
+    extraction: extraction.current,
     createdBy: '77777777-7777-4777-8777-777777777777',
     supabase: recordingClient(writes),
     ...overrides,
@@ -123,7 +113,7 @@ describe('commitStoryCanon episode memory (FILM-1004)', () => {
   });
 
   it('writes no world state when the extraction names no location', async () => {
-    extraction.current = { ...extraction.current, worldState: undefined };
+    extraction.current = { ...extraction.current!, worldState: undefined };
     const writes: Write[] = [];
     await commit(writes);
 
@@ -131,7 +121,7 @@ describe('commitStoryCanon episode memory (FILM-1004)', () => {
     expect(writes.some((w) => w.table === 'episode_summaries')).toBe(true);
   });
 
-  it('writes nothing when the extraction failed, and does not throw', async () => {
+  it('writes nothing when the story came with no canon facts, and does not throw', async () => {
     extraction.current = null;
     const writes: Write[] = [];
 

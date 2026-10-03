@@ -72,11 +72,11 @@
       "pattern": "travel with the queued job"
     },
     {
-      "name": "NE3 the season-outline handler does not pass them on",
+      "name": "NE3 the season_outline stage does not pass them on",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/handlers/season-outline.ts",
-      "find": "    neighbouringEpisodes:\n",
-      "replace": "    ignoredNeighbouringEpisodes:\n",
+      "file": "packages/features/generation/src/stages/season-outline.ts",
+      "find": "      neighbouringEpisodes:\n",
+      "replace": "      ignoredNeighbouringEpisodes:\n",
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/season-outline-facts.test.ts",
       "pattern": "neighbouring outlines and the writer"

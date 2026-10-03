@@ -5,14 +5,14 @@
  * The fake below evaluates the delete's filters over in-memory rows, the way
  * PostgREST would (`col=eq.value`, including `metadata->>key`), so these
  * tests assert which rows survive rather than which calls were made. The
- * same rule is exercised against the real database in
+ * same rule is exercised against the real database in the LLM worker's
  * `commit-story-canon.local-stack.test.ts`.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { cleanupEpisodeCanon } from '../utils/commit-story-canon';
+import { cleanupEpisodeCanon } from '../src/canon';
 
 type Row = Record<string, unknown>;
 type Tables = Record<string, Row[]>;

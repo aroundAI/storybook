@@ -16,9 +16,15 @@
   "prettier": "@kit/prettier-config",
   "exports": {
     ".": "./src/index.ts",
-    "./testing": "./src/testing/index.ts"
+    "./testing": "./src/testing/index.ts",
+    "./canon": "./src/canon/index.ts",
+    "./episode-rows": "./src/episode-rows.ts",
+    "./formatters": "./src/formatters.ts",
+    "./project-type": "./src/project-type.ts",
+    "./slug": "./src/slug.ts"
   },
   "dependencies": {
+    "@kit/film-studio-schemas": "workspace:*",
     "@kit/prompt-engine": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",

@@ -1,0 +1,51 @@
+{
+  "executorInput": {
+    "episodeId": "55555555-5555-4555-8555-555555555555",
+    "premise": "A signal from nowhere.",
+    "numberOfIdeas": 2,
+    "genre": "sci-fi",
+    "targetAudience": "adults",
+    "accountId": "11111111-1111-4111-8111-111111111111",
+    "contentType": "series",
+    "charactersContext": "⚠️ CHARACTER IDENTITIES ARE NON-NEGOTIABLE. Use EXACTLY the characters below with EXACTLY the gender, age, and personality described. Do NOT invent attributes, rename, or rewrite any character.\n\nCHARACTER 1 — LOCKED IDENTITY (do NOT change gender, age, or personality):\n  Name: Maya Chen\n  Role: protagonist\n  Description: Commander of the relay mission.\n  Personality: Methodical, lonely, dry humour\n  Identity (immutable): Gender: female, Age: 38\n  Clothing: grey flight suit\n\nCHARACTER 2 — LOCKED IDENTITY (do NOT change gender, age, or personality):\n  Name: Director Williams\n  Role: supporting\n  Description: Mission director back on Earth.",
+    "locationsContext": "**Locations**:\n- **Observation Deck** (spacecraft interior): A glass-walled deck facing Earth.\n  Atmosphere: silent, blue-lit",
+    "seasonContext": "This is Episode 2 of Season 1. Season Premise: Humanity builds its first deep-space relay.\n\n## SEASON CREATIVE DIRECTION (apply to this episode):\nKeep every episode under ten minutes.",
+    "previousEpisodesContext": "Previous episodes in this season: Ep1: \"Launch Day\"",
+    "visualStyle": "cinematic",
+    "recurringElementsContext": "---\n## RECURRING STORY ELEMENTS — ALL REQUIRED\n\n### Element 1: \"Log entry\" (Placement: end)\n\nThis element MUST appear as the FINAL moment of the episode — nothing follows it.\n\n**What must happen**: Maya records a log entry\n\n---"
+  },
+  "writes": [],
+  "result": {
+    "success": true,
+    "data": {
+      "ideas": [
+        {
+          "title": "The Last Signal",
+          "logline": "An astronaut hears her own voice from the future.",
+          "hook": "The voice is hers.",
+          "conflict": "Obey the mission or act on the warning.",
+          "themes": ["isolation", "time"],
+          "visualPotential": "Space against a single lit console.",
+          "qualityScore": 0.8
+        },
+        {
+          "title": "Static",
+          "logline": "The signal leaks and the world splits over it.",
+          "hook": "Someone knew for decades.",
+          "conflict": "Truth against stability.",
+          "themes": ["trust"],
+          "visualPotential": "Crowds, screens, one quiet lab.",
+          "qualityScore": 0.6
+        }
+      ],
+      "metadata": {
+        "provider": "orchestrator",
+        "model": "multi-agent",
+        "costCents": 0,
+        "tokensUsed": 0,
+        "generatedAt": "2026-10-03T12:00:00.000Z",
+        "orchestratorSteps": 3
+      }
+    }
+  }
+}

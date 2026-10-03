@@ -156,6 +156,15 @@ export interface EpisodeContextSnapshot {
   genre?: string;
   targetAudience?: string;
   visualStyle?: string;
+  /** The episode's premise (story_data.premise, else its description) */
+  premise?: string;
+  projectType?: string;
+  /** Facts linked to the episode, formatted; '' when there are none */
+  episodeFacts?: string;
+  /** The project's verified facts, formatted; undefined when none */
+  verifiedFacts?: string;
+  /** The previous episodes by number and title, for a one-line listing */
+  previousEpisodeTitles?: Array<{ number: number; title: string }>;
 }
 
 export type EpisodeContextLoader = (

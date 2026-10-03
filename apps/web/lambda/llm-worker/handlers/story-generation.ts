@@ -1,182 +1,23 @@
 /**
- * Story Generation Handler — Stage 1
+ * Story Generation Handler — Stage 1, on the generation core (FILM-1901).
  *
- * Stage 1 of the 3-stage agentic content pipeline.
- * Runs the Story Orchestrator: Story Director → Viral Analyst → Continuity Guardian.
- * The orchestrator handles the story quality revision loop and stops once
- * story quality is acceptable.
- *
- * After this handler:
- *   - story_data + viral_quality written to DB
- *   - episode status → 'story'
- *   - Stage 2 (screenplay-conversion) triggered by user action on the Story tab
+ * prepare (the `story` stage) builds the brief; generate runs the Story
+ * Orchestrator (Story Director → Viral Analyst → Continuity Guardian) and
+ * then extracts the canon facts with `canon-extraction`; the stage's output
+ * schema is enforced; commit writes story_data, status 'story', the canon
+ * tables and the invented assets. Stage 2 (screenplay-conversion) is
+ * triggered by user action on the Story tab.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { sanitizeForPrompt, sanitizeStrings } from '@kit/episodes/lib';
+import type { EpisodeViralQuality } from '@kit/episodes/lib';
+import { runStage, storyOrchestratorInput, storyStage } from '@kit/generation';
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
-import type { Database, Json } from '@kit/supabase/database';
+import { calculateContentScaling } from '@kit/shared/duration-scaling';
+import type { Database } from '@kit/supabase/database';
 
-import { commitStoryCanon } from '../utils/commit-story-canon';
-import {
-  buildEpisodeContext,
-  formatCharactersForPrompt,
-  formatFactsForPrompt,
-  formatLocationsForPrompt,
-  formatPreviousEpisodesForPrompt,
-  formatRecurringElementsForPrompt,
-} from '../utils/context-builder';
-import {
-  type ContentStyle,
-  calculateContentScaling,
-} from '../utils/duration-scaling';
-import {
-  markJobCompleted,
-  markJobFailed,
-  markJobProcessing,
-} from '../utils/job-tracking';
-
-interface NewCharacter {
-  name: string;
-  role: string;
-  arc?: string;
-  description: string;
-  physicalDescription: string;
-  clothingStyle?: string;
-  mannerisms?: string;
-}
-
-interface NewLocation {
-  name: string;
-  setting?: string;
-  description: string;
-  visualDescription?: string;
-}
-
-/**
- * Auto-create character and location assets from LLM-invented entities.
- * Uses upsert semantics (ON CONFLICT DO NOTHING) to avoid duplicates.
- * Tags newly created asset IDs onto the episode's metadata.
- */
-async function autoCreateNewAssets(
-  supabase: SupabaseClient<Database>,
-  projectId: string,
-  episodeId: string,
-  newCharacters: NewCharacter[],
-  newLocations: NewLocation[],
-): Promise<void> {
-  if (newCharacters.length === 0 && newLocations.length === 0) return;
-
-  const createdIds: string[] = [];
-
-  // Create character assets
-  if (newCharacters.length > 0) {
-    const charRows = newCharacters.map((char) => ({
-      project_id: projectId,
-      type: 'character' as const,
-      name: char.name,
-      description: char.description,
-      metadata: {
-        role: char.role,
-        personality: char.description,
-        physicalAttributes: char.physicalDescription
-          ? { rawDescription: char.physicalDescription }
-          : undefined,
-        clothingStyle: char.clothingStyle
-          ? { rawDescription: char.clothingStyle }
-          : undefined,
-        mannerisms: char.mannerisms,
-        autoCreated: true,
-      },
-    }));
-
-    const { data: inserted } = await supabase
-      .from('assets')
-      .upsert(charRows, {
-        onConflict: 'project_id,type,name',
-        ignoreDuplicates: true,
-      })
-      .select('id');
-
-    if (inserted) {
-      createdIds.push(...inserted.map((r: { id: string }) => r.id));
-      console.log(
-        `[Story Generation] Auto-created ${inserted.length} character assets`,
-      );
-    }
-  }
-
-  // Create location assets
-  if (newLocations.length > 0) {
-    const locRows = newLocations.map((loc) => ({
-      project_id: projectId,
-      type: 'location' as const,
-      name: loc.name,
-      description: loc.description,
-      metadata: {
-        setting: loc.setting,
-        visualDescription: loc.visualDescription,
-        autoCreated: true,
-      },
-    }));
-
-    const { data: inserted } = await supabase
-      .from('assets')
-      .upsert(locRows, {
-        onConflict: 'project_id,type,name',
-        ignoreDuplicates: true,
-      })
-      .select('id');
-
-    if (inserted) {
-      createdIds.push(...inserted.map((r: { id: string }) => r.id));
-      console.log(
-        `[Story Generation] Auto-created ${inserted.length} location assets`,
-      );
-    }
-  }
-
-  // Tag new asset IDs onto episode metadata
-  if (createdIds.length > 0) {
-    const { data: episode } = await supabase
-      .from('episodes')
-      .select('metadata')
-      .eq('id', episodeId)
-      .single();
-
-    if (episode) {
-      const metadata = (episode.metadata ?? {}) as Record<string, unknown>;
-      const existingCharIds = (metadata.character_ids ?? []) as string[];
-      const existingLocIds = (metadata.location_ids ?? []) as string[];
-
-      // Merge without duplicates
-      const allIds = [
-        ...new Set([...existingCharIds, ...existingLocIds, ...createdIds]),
-      ];
-
-      await supabase
-        .from('episodes')
-        .update({
-          metadata: {
-            ...metadata,
-            character_ids: allIds.filter((id) =>
-              [
-                ...existingCharIds,
-                ...createdIds.slice(0, newCharacters.length),
-              ].includes(id),
-            ),
-            location_ids: allIds.filter((id) =>
-              [
-                ...existingLocIds,
-                ...createdIds.slice(newCharacters.length),
-              ].includes(id),
-            ),
-          },
-        })
-        .eq('id', episodeId);
-    }
-  }
-}
+import { extractCanonFacts } from '../utils/commit-story-canon';
+import { workerCtx } from '../utils/stage-runtime';
 
 interface StoryOutput {
   fullText: string;
@@ -221,342 +62,160 @@ export async function processStoryGeneration(
     `[Story Generation] Starting AGENTIC pipeline for episode ${data.episodeId}`,
   );
 
-  // Mark job as processing
-  await markJobProcessing(supabase, data.episodeId, 'story');
+  const ctx = workerCtx(supabase, data);
+  const target = storyStage.targetSchema.parse(data);
 
-  try {
-    // 1. Build rich context using shared context-builder
-    const episodeContext = await buildEpisodeContext(data.episodeId, supabase, {
-      semanticContext: true,
-      semanticQuery: [data.title, data.logline].filter(Boolean).join('\n'),
-    });
+  let characterNames: string[] = [];
+  let viralQuality: EpisodeViralQuality | undefined;
+  let orchestratorSteps: number | undefined;
 
-    const contentStyle = (data.contentStyle ??
-      'dialogue-heavy') as ContentStyle;
-    const scaling = calculateContentScaling({
-      targetDurationSeconds: data.targetDuration,
-      contentStyle,
-    });
+  const { commit } = await runStage(storyStage, ctx, target, {
+    generate: async (brief) => {
+      const input = storyOrchestratorInput(brief);
+      const episode = brief.context.episode as { characterNames: string[] };
+      characterNames = episode.characterNames;
 
-    // 2. Pre-format Stage 1 context blocks (story/viral/continuity only)
-    const charactersContext = formatCharactersForPrompt(
-      episodeContext.characters,
-    );
-    const locationsContext = formatLocationsForPrompt(episodeContext.locations);
-    const previousEpisodesContext = formatPreviousEpisodesForPrompt(
-      episodeContext.previousEpisodes,
-    );
-    const seasonContext = episodeContext.seasonPremise
-      ? `This is Episode ${episodeContext.episodeNumber}${episodeContext.seasonNumber ? ` of Season ${episodeContext.seasonNumber}` : ''}. Season Premise: ${episodeContext.seasonPremise}`
-      : '';
-    const directionNotes = episodeContext.seasonDirectionNotes
-      ? `\n\n## SEASON CREATIVE DIRECTION (apply to this episode):\n${episodeContext.seasonDirectionNotes}`
-      : '';
-    // Recurring elements — supports multiple recurring story elements
-    const recurringElementContext = episodeContext.recurringElements
-      ? formatRecurringElementsForPrompt(episodeContext.recurringElements)
-      : undefined;
-
-    // Format linked verified facts for fact-driven content
-    const factsContext = formatFactsForPrompt(episodeContext.episodeFacts);
-
-    console.log(
-      `[Story Generation] Context built: ${episodeContext.characters.length} characters, ${episodeContext.locations.length} locations` +
-        (recurringElementContext ? ', recurring element: yes' : '') +
-        (episodeContext.projectType
-          ? `, type: ${episodeContext.projectType}`
-          : '') +
-        (factsContext
-          ? `, episode facts: ${episodeContext.episodeFacts.length}`
-          : '') +
-        (episodeContext.verifiedFacts.length > 0
-          ? `, verified facts: ${episodeContext.verifiedFacts.length}`
-          : ''),
-    );
-
-    // 3. Run the Stage 1 Story Orchestrator
-    const { runStoryOrchestrator } = await import(
-      '@kit/episodes/agent/story-orchestrator'
-    );
-
-    // Format thread candidates for the orchestrator
-    const threadCandidatesContext = data.threadCandidates?.length
-      ? data.threadCandidates
-          .map(
-            (t) =>
-              `- ${t.action.toUpperCase()}: "${sanitizeForPrompt(t.threadName)}"`,
-          )
-          .join('\n')
-      : undefined;
-
-    const orchestratorResult = await runStoryOrchestrator(
-      {
-        episodeId: data.episodeId,
-        // Payload text is the user's: defused before the model sees it (KB-101)
-        episodeTitle: sanitizeForPrompt(data.title),
-        episodeLogline: sanitizeForPrompt(data.logline),
-        genre: episodeContext.genre ?? 'general',
-        targetAudience: episodeContext.targetAudience ?? 'general',
-        targetDurationSeconds: data.targetDuration,
-        contentStyle,
-        projectId: data.projectId,
-        episodeNumber: episodeContext.episodeNumber ?? 1,
-        accountId: data.accountId,
-        contentType: episodeContext.projectType,
-        charactersContext,
-        locationsContext,
-        seasonContext: seasonContext + directionNotes,
-        previousEpisodesContext,
-        visualStyle: episodeContext.visualStyle,
-        verifiedFacts: factsContext || undefined,
-        recurringElementsContext: recurringElementContext,
-        threadCandidatesContext,
-        ...sanitizeStrings({
-          ideationThemes: data.themes,
-          ideationHook: data.hook,
-          visualDirection: data.visualDirection,
-        }),
-      },
-      supabase,
-    );
-
-    if (!orchestratorResult.success) {
-      throw new Error(
-        `Story Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
+      console.log(
+        `[Story Generation] Context built: ${characterNames.length} characters` +
+          (input.recurringElementsContext ? ', recurring element: yes' : '') +
+          (input.contentType ? `, type: ${input.contentType}` : '') +
+          (input.verifiedFacts ? ', episode facts: yes' : ''),
       );
-    }
 
-    console.log(
-      `[Story Generation] Stage 1 complete. Steps: ${orchestratorResult.orchestratorSteps}, Viral score: ${orchestratorResult.viralQuality?.overallScore?.toFixed(2) ?? 'N/A'}`,
-    );
-
-    const generatedAt = new Date().toISOString();
-    const storyText = orchestratorResult.storyText ?? '';
-
-    // 4. Build story_data for DB write (Orchestrator handles screenplay_data and shots)
-    const storyData = {
-      premise: data.logline,
-      fullStory: storyText,
-      generatedAt,
-      generatedBy: {
-        mode: 'agentic',
-        orchestratorSteps: orchestratorResult.orchestratorSteps,
-        viralScore: orchestratorResult.viralQuality?.overallScore,
-      },
-      title: data.title,
-      targetDuration: data.targetDuration,
-      contentStyle,
-      genre: episodeContext.genre,
-      targetAudience: episodeContext.targetAudience,
-      videoStyle: episodeContext.visualStyle,
-      // Structured story metadata (for Story Info sidebar)
-      actBreakdown: orchestratorResult.actBreakdown,
-      characters: orchestratorResult.storyCharacters,
-      themes: orchestratorResult.themes,
-      tone: orchestratorResult.tone,
-      estimatedSceneCount: orchestratorResult.estimatedSceneCount,
-      episodeSummary: orchestratorResult.episodeSummary,
-      sentimentScore: orchestratorResult.sentimentScore,
-      keyEvents: orchestratorResult.keyEvents,
-      viralStructure: orchestratorResult.viralStructure,
-      // Viral quality inline for quick access
-      viralQuality: orchestratorResult.viralQuality,
-    };
-
-    // 5. Guard: Skip write if episode was deleted or job was cancelled
-    const { data: currentEpisode } = await supabase
-      .from('episodes')
-      .select('status, deleted_at')
-      .eq('id', data.episodeId)
-      .single();
-
-    if (!currentEpisode || currentEpisode.deleted_at) {
-      console.warn(
-        '[Story Generation] Episode was deleted during generation. Skipping write.',
+      const { runStoryOrchestrator } = await import(
+        '@kit/episodes/agent/story-orchestrator'
       );
-      await markJobCompleted(supabase, data.episodeId, 'story', {
-        skipped: true,
-        reason: 'episode-deleted',
-      });
 
-      return {
-        success: false,
-        data: {
-          story: {
-            fullText: '',
-            title: data.title,
-            actBreakdown: [],
-            characters: [],
-            themes: [],
-            tone: '',
-            estimatedSceneCount: 0,
-          },
-          episode: { id: data.episodeId, status: 'draft', version: 0 },
-          metadata: {
-            provider: 'skipped',
-            model: 'skipped',
-            costCents: 0,
-            tokensUsed: 0,
-            generatedAt: new Date().toISOString(),
-          },
+      const orchestratorResult = await runStoryOrchestrator(
+        {
+          ...input,
+          episodeId: target.episodeId,
+          projectId: target.projectId,
+          accountId: data.accountId,
         },
-      };
-    }
-
-    // Also check if the generation job was explicitly cancelled by the user
-    const { data: activeJob } = await supabase
-      .from('generation_jobs')
-      .select('status')
-      .eq('reference_type', 'episode')
-      .eq('reference_id', data.episodeId)
-      .eq('job_type', 'story')
-      .in('status', ['queued', 'processing'])
-      .limit(1)
-      .maybeSingle();
-
-    if (!activeJob) {
-      console.warn(
-        '[Story Generation] No active generation job found (may have been cancelled). Skipping write.',
+        supabase,
       );
-      return {
-        success: false,
-        data: {
-          story: {
-            fullText: '',
-            title: data.title,
-            actBreakdown: [],
-            characters: [],
-            themes: [],
-            tone: '',
-            estimatedSceneCount: 0,
-          },
-          episode: { id: data.episodeId, status: 'draft', version: 0 },
-          metadata: {
-            provider: 'skipped',
-            model: 'skipped',
-            costCents: 0,
-            tokensUsed: 0,
-            generatedAt: new Date().toISOString(),
-          },
-        },
-      };
-    }
 
-    // 6. UPDATE DATABASE: episode.story_data + status → 'story'
-    const { data: updatedEpisode, error: updateError } = await supabase
-      .from('episodes')
-      .update({
-        story_data: storyData as Json,
-        status: 'story',
-        target_duration_seconds: data.targetDuration,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', data.episodeId)
-      // NOTE: No .eq('version', ...) — the orchestrator writes viral_quality
-      // mid-run which bumps the version via DB trigger (see: f64c9648)
-      .is('deleted_at', null)
-      .select()
-      .single();
+      if (!orchestratorResult.success) {
+        throw new Error(
+          `Story Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
+        );
+      }
 
-    if (updateError) {
-      throw new Error(`Failed to update episode: ${updateError.message}`);
-    }
+      console.log(
+        `[Story Generation] Stage 1 complete. Steps: ${orchestratorResult.orchestratorSteps}, Viral score: ${orchestratorResult.viralQuality?.overallScore?.toFixed(2) ?? 'N/A'}`,
+      );
 
-    if (!updatedEpisode) {
-      throw new Error('Episode not found or was deleted');
-    }
+      viralQuality = orchestratorResult.viralQuality ?? undefined;
+      orchestratorSteps = orchestratorResult.orchestratorSteps;
 
-    console.log(
-      `[Story Generation] Stage 1 complete. Status: story. ` +
-        `Viral score: ${orchestratorResult.viralQuality?.overallScore?.toFixed(2) ?? 'N/A'}. ` +
-        `Stage 2 (Screenplay) will run on user action.`,
-    );
+      const storyText = orchestratorResult.storyText ?? '';
 
-    // Mark job as completed
-    await markJobCompleted(supabase, data.episodeId, 'story', {
-      mode: 'agentic-stage1',
-      orchestratorSteps: orchestratorResult.orchestratorSteps,
-      viralScore: orchestratorResult.viralQuality?.overallScore,
-    });
-
-    // 6. Commit story outputs to Canon tables (non-fatal)
-    try {
-      await commitStoryCanon({
-        projectId: data.projectId,
+      // The second model call of this stage: the canon facts commit stores
+      // (criterion 9). An external agent submits these with the story.
+      const canonFacts = await extractCanonFacts({
+        projectId: target.projectId,
         accountId: data.accountId,
-        episodeId: data.episodeId,
-        episodeNumber: episodeContext.episodeNumber ?? 1,
-        season: episodeContext.seasonNumber ?? 1,
-        keyEvents: orchestratorResult.keyEvents ?? [],
-        characters: orchestratorResult.storyCharacters ?? [],
-        episodeSummary: orchestratorResult.episodeSummary,
-        themes: orchestratorResult.themes,
         storyContent: storyText,
-        createdBy: data.userId,
         supabase,
       });
-    } catch (canonError) {
-      console.warn(
-        '[Story Generation] Canon commit failed (non-fatal):',
-        canonError,
-      );
-    }
 
-    // 7. Auto-create assets for LLM-invented characters and locations (non-fatal)
-    try {
-      await autoCreateNewAssets(
-        supabase,
-        data.projectId,
-        data.episodeId,
-        orchestratorResult.newCharacters ?? [],
-        orchestratorResult.newLocations ?? [],
-      );
-    } catch (assetError) {
-      console.warn(
-        '[Story Generation] Auto-create assets failed (non-fatal):',
-        assetError,
-      );
-    }
-
-    // Synthesize a StoryOutput for the return value
-    const story: StoryOutput = {
-      fullText: storyText,
-      title: data.title,
-      actBreakdown: [],
-      characters: episodeContext.characters.map((c) => c.name),
-      themes: [],
-      tone: contentStyle,
-      estimatedSceneCount: scaling.screenplay.sceneCountMin,
-      episodeSummary: orchestratorResult.viralQuality?.whyThisWorks,
-      sentimentScore: orchestratorResult.viralQuality?.overallScore,
-    };
-
-    return {
-      success: true,
-      data: {
-        story,
-        episode: {
-          id: updatedEpisode.id,
-          status: updatedEpisode.status,
-          version: updatedEpisode.version,
+      return {
+        output: {
+          story: {
+            title: orchestratorResult.storyTitle ?? target.title,
+            fullText: storyText,
+            actBreakdown: orchestratorResult.actBreakdown,
+            characters: orchestratorResult.storyCharacters,
+            themes: orchestratorResult.themes,
+            tone: orchestratorResult.tone,
+            estimatedSceneCount: orchestratorResult.estimatedSceneCount,
+            episodeSummary: orchestratorResult.episodeSummary,
+            sentimentScore: orchestratorResult.sentimentScore,
+            keyEvents: orchestratorResult.keyEvents,
+            viralStructure: orchestratorResult.viralStructure,
+          },
+          newCharacters: orchestratorResult.newCharacters ?? [],
+          newLocations: orchestratorResult.newLocations ?? [],
+          canonFacts: canonFacts ?? undefined,
+          evaluation: {
+            viralQuality: viralQuality ? { ...viralQuality } : undefined,
+            orchestratorSteps,
+          },
         },
-        metadata: {
+        usage: {
           provider: 'orchestrator',
           model: 'multi-agent',
-          costCents: 0, // Orchestrator tracks cost internally
+          tokens: 0,
+        },
+      };
+    },
+  });
+
+  if (commit.status === 'skipped') {
+    console.warn(`[Story Generation] Skipping write: ${commit.reason}`);
+
+    return {
+      success: false,
+      data: {
+        story: {
+          fullText: '',
+          title: data.title,
+          actBreakdown: [],
+          characters: [],
+          themes: [],
+          tone: '',
+          estimatedSceneCount: 0,
+        },
+        episode: { id: data.episodeId, status: 'draft', version: 0 },
+        metadata: {
+          provider: 'skipped',
+          model: 'skipped',
+          costCents: 0,
           tokensUsed: 0,
-          generatedAt,
-          orchestratorSteps: orchestratorResult.orchestratorSteps,
+          generatedAt: new Date().toISOString(),
         },
       },
     };
-  } catch (error) {
-    await markJobFailed(
-      supabase,
-      data.episodeId,
-      'story',
-      error instanceof Error ? error.message : 'Unknown error',
-    );
-    throw error;
   }
+
+  console.log(
+    `[Story Generation] Stage 1 complete. Status: story. ` +
+      `Viral score: ${viralQuality?.overallScore?.toFixed(2) ?? 'N/A'}. ` +
+      `Stage 2 (Screenplay) will run on user action.`,
+  );
+
+  const scaling = calculateContentScaling({
+    targetDurationSeconds: target.targetDuration,
+    contentStyle: target.contentStyle,
+  });
+
+  // Synthesize a StoryOutput for the return value
+  const story: StoryOutput = {
+    fullText: commit.data.storyData.fullStory as string,
+    title: data.title,
+    actBreakdown: [],
+    characters: characterNames,
+    themes: [],
+    tone: target.contentStyle,
+    estimatedSceneCount: scaling.screenplay.sceneCountMin,
+    episodeSummary: viralQuality?.whyThisWorks,
+    sentimentScore: viralQuality?.overallScore,
+  };
+
+  return {
+    success: true,
+    data: {
+      story,
+      episode: commit.data.episode,
+      metadata: {
+        provider: 'orchestrator',
+        model: 'multi-agent',
+        costCents: 0, // Orchestrator tracks cost internally
+        tokensUsed: 0,
+        generatedAt: commit.data.generatedAt,
+        orchestratorSteps,
+      },
+    },
+  };
 }

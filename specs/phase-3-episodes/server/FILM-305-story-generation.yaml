@@ -32,13 +32,13 @@ acceptance_criteria:
     evidence: null
   - text: "`generateStoryIdeasAction` calculates cost accurately"
     met: false
-    reason: "no longer true — the ideation result reports `costCents: 0` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:128`); only per-call analytics carry cost"
+    reason: "no longer true — the ideation result reports `costCents: 0` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:108`); only per-call analytics carry cost"
   - text: "`generateStoryIdeasAction` completes within 15 seconds"
     met: false
     reason: "owner check OC-10 (docs/OWNER-CHECKS.md) — runtime timing of an async agent job; needs a timed run"
   - text: "`generateFullStoryAction` generates 500-1000 word story"
     met: false
-    reason: "retired — length now scales with target duration (`apps/web/lambda/llm-worker/handlers/story-generation.ts:236`)"
+    reason: "retired — length now scales with target duration (`packages/features/generation/src/stages/story.ts:202`, the story stage's prepare since FILM-1901)"
   - text: "`generateFullStoryAction` updates episode.story_data"
     met: true
     evidence: null
@@ -87,10 +87,10 @@ test_plan:
   e2e: []
 remaining:
   - criterion: "`generateStoryIdeasAction` calculates cost accurately"
-    reason: "the ideation result hardcodes `costCents: 0` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:128`)"
+    reason: "the ideation result hardcodes `costCents: 0` (`apps/web/lambda/llm-worker/handlers/story-ideation.ts:108`)"
     closed_by: "unassigned"
   - criterion: "`generateFullStoryAction` handles optimistic locking"
-    reason: "the version guard was dropped from the worker's write (f64c9648, 669b66e3) because the orchestrator bumps `version` mid-run (`apps/web/lambda/llm-worker/handlers/story-generation.ts:455`)"
+    reason: "the version guard was dropped from the worker's write (f64c9648, 669b66e3) because the orchestrator bumps `version` mid-run (`packages/features/generation/src/stages/story.ts:449`, the story stage's commit since FILM-1901)"
     closed_by: "owner"
 open_questions: []
 notes: |

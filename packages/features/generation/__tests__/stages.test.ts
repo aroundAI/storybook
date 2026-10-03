@@ -138,19 +138,23 @@ afterAll(() => {
   vi.useRealTimers();
 });
 
-describe('the registry holds the part A and part C stages', () => {
-  it('registers story_refinement, asset_description and the four part C stages', () => {
+describe('the registry holds the part A, B and C stages', () => {
+  it('registers every stage of parts A, B and C', () => {
     expect(registeredStageKeys().sort()).toEqual([
       'asset_description',
       'dialogue_translation',
+      'ideation',
       'publish_metadata',
       'screenplay',
       'screenplay_refinement',
+      'season_analysis',
+      'season_outline',
+      'story',
       'story_refinement',
     ]);
     expect(getStage('story_refinement')).toBe(storyRefinementStage);
     expect(getStage('asset_description')).toBe(assetDescriptionStage);
-    expect(stageRegistry.size).toBe(6);
+    expect(stageRegistry.size).toBe(10);
   });
 });
 
@@ -179,6 +183,26 @@ describe('every registered stage renders its prompt with the context prepare() b
           targetLanguage: 'hi',
         },
       ],
+    },
+    // Part B (the stage tests under __tests__/stages/ cover each in depth)
+    story: {
+      episodeId: EPISODE_ID,
+      projectId: PROJECT_ID,
+      title: 'The Last Signal',
+      logline: 'A lonely astronaut hears a signal.',
+      targetDuration: 300,
+      contentStyle: 'dialogue-heavy' as const,
+    },
+    ideation: { episodeId: EPISODE_ID, numberOfIdeas: 3 },
+    season_outline: {
+      projectId: PROJECT_ID,
+      seasonPremise: 'Humanity listens for an answer',
+      episodeCount: 2,
+      startingNumber: 1,
+    },
+    season_analysis: {
+      projectId: PROJECT_ID,
+      roadmap: '* **The Mystery:** Something is missing',
     },
   };
 

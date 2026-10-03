@@ -135,8 +135,10 @@ step stays a web action.
    in behind `McpTokenVerifier`).
 2. FILM-1908: is the agent's self-check against the quality rubric enough, or
    should commit refuse below a deterministic score?
-3. FILM-1909: store ideation output on `episodes.metadata.ideas` for both modes
-   (recommended), or keep external ideation conversational?
+3. ~~FILM-1909: store ideation output on `episodes.metadata.ideas` for both modes
+   (recommended), or keep external ideation conversational?~~ Decided
+   2026-10-03 (lead): stored on `episodes.metadata.ideas` for both modes; the
+   `ideation` stage's commit writes it (FILM-1901 part B).
 4. FILM-1910: may a team turn server generation off entirely?
 5. FILM-1904: endpoint inside the Next.js app (recommended) or its own Lambda?
 6. FILM-1911: is ChatGPT's connector support in scope for GA?

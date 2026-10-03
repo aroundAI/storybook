@@ -23,16 +23,13 @@
 import { type SupabaseClient, createClient } from '@supabase/supabase-js';
 
 import { request } from 'node:http';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
+  type CanonExtraction,
   cleanupEpisodeCanon,
   commitStoryCanon,
-} from '../utils/commit-story-canon';
-
-const { executeLLM } = vi.hoisted(() => ({ executeLLM: vi.fn() }));
-
-vi.mock('@kit/prompt-engine/server', () => ({ executeLLM }));
+} from '@kit/generation/canon';
 
 const TAG = `kb78-${Date.now()}`;
 const LOCAL_STACK_URL = process.env.CANON_LOCAL_STACK_URL;
@@ -245,33 +242,30 @@ describe.skipIf(!LOCAL_STACK_URL || !LOCAL_STACK_KEY)(
     });
 
     it('marks the threads it generates, and replaces only those on the next regeneration', async () => {
-      executeLLM.mockResolvedValue({
-        data: {
-          extraction: {
-            threadUpdates: [
-              {
-                threadName: `${TAG} generated thread`,
-                threadType: 'mystery',
-                action: 'open',
-                description: 'Who poisoned the well?',
-              },
-            ],
-            episodeSummary: '',
-            sentimentScore: 0.5,
+      // The canon facts the story came with (FILM-1901: the worker's generate
+      // step extracts them; here they are given directly)
+      const extraction: CanonExtraction = {
+        threadUpdates: [
+          {
+            threadName: `${TAG} generated thread`,
+            threadType: 'mystery',
+            action: 'open',
+            description: 'Who poisoned the well?',
           },
-        },
-      });
+        ],
+        episodeSummary: '',
+        sentimentScore: 0.5,
+      };
 
       const regenerate = () =>
         commitStoryCanon({
           projectId,
-          accountId: userId,
           episodeId,
           episodeNumber: 1,
           season: 1,
           keyEvents: [`${TAG} the well is poisoned`],
           characters: [{ name: `${TAG} Mara`, role: 'lead', arc: 'revenge' }],
-          storyContent: 'Mara finds the village well poisoned. '.repeat(5),
+          extraction,
           createdBy: userId,
           supabase,
         });

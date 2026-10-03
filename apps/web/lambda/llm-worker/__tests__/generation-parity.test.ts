@@ -118,6 +118,9 @@ vi.mock('../utils/context-builder', async (importOriginal) => {
           relation: 'recent' as const,
         },
       ],
+      // The loader formats these too (part B); the builder always returns them
+      episodeFacts: [],
+      verifiedFacts: [],
     })),
   };
 });

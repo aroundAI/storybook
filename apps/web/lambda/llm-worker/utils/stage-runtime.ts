@@ -22,10 +22,12 @@ import {
   buildEpisodeContext,
   formatCharactersForPrompt,
   formatCharactersForVeoPrompt,
+  formatFactsForPrompt,
   formatLocationsForPrompt,
   formatLocationsForVeoPrompt,
   formatPreviousEpisodesForPrompt,
   formatRecurringElementsForPrompt,
+  formatVerifiedFactsForPrompt,
 } from './context-builder';
 
 export function episodeContextLoader(
@@ -42,11 +44,25 @@ export function episodeContextLoader(
       seasonNumber: context.seasonNumber,
       seasonPremise: context.seasonPremise,
       seasonDirectionNotes: context.seasonDirectionNotes,
+      premise: context.premise,
+      genre: context.genre,
+      targetAudience: context.targetAudience,
+      visualStyle: context.visualStyle,
+      projectType: context.projectType,
       characters: formatCharactersForPrompt(context.characters),
       locations: formatLocationsForPrompt(context.locations),
       previousEpisodes: formatPreviousEpisodesForPrompt(
         context.previousEpisodes,
       ),
+      previousEpisodeTitles: context.previousEpisodes.map((ep) => ({
+        number: ep.number,
+        title: ep.title,
+      })),
+      episodeFacts: formatFactsForPrompt(context.episodeFacts),
+      verifiedFacts:
+        context.verifiedFacts.length > 0
+          ? formatVerifiedFactsForPrompt(context.verifiedFacts)
+          : undefined,
       counts: {
         characters: context.characters.length,
         locations: context.locations.length,
@@ -62,9 +78,6 @@ export function episodeContextLoader(
       locationNames: context.locations.map((l) => l.name),
       characterList: context.characters.map(({ id, name }) => ({ id, name })),
       locationList: context.locations.map(({ id, name }) => ({ id, name })),
-      genre: context.genre,
-      targetAudience: context.targetAudience,
-      visualStyle: context.visualStyle,
     };
   };
 }
