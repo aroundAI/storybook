@@ -1,0 +1,53 @@
+{
+  "feature": "KB-177",
+  "mutations": [
+    {
+      "name": "SV1 a stage sends its prompt a key the template never reads",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/story-refinement.ts",
+      "find": "      previous_episodes: world.previousEpisodes,\n    },\n",
+      "replace": "      previous_episodes: world.previousEpisodes,\n      season_premise: world.seasonPremise,\n    },\n",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stages.test.ts",
+      "pattern": "story_refinement: fills every placeholder"
+    },
+    {
+      "name": "SV2 a stage's template places a placeholder prepare() does not fill",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/prompts/story-generation/story-refinement.json",
+      "edits": [
+        {
+          "find": "{{previous_episodes}}\\n\\n**USER FEEDBACK**",
+          "replace": "{{previous_episodes}}\\n\\n{{tone_notes}}\\n\\n**USER FEEDBACK**"
+        },
+        {
+          "find": "      \"description\": \"Summaries of previous episodes for continuity.\"\n    }\n",
+          "replace": "      \"description\": \"Summaries of previous episodes for continuity.\"\n    },\n    \"tone_notes\": {\n      \"type\": \"text\",\n      \"required\": false,\n      \"description\": \"Tone notes.\"\n    }\n"
+        }
+      ],
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stages.test.ts",
+      "pattern": "story_refinement: fills every placeholder"
+    },
+    {
+      "name": "SV3 a stage sends its quality rubric a key the rubric never reads",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/story-refinement.ts",
+      "find": "    rubricVariables: { title: episode.title },\n",
+      "replace": "    rubricVariables: { title: episode.title, feedback: target.feedback },\n",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stages.test.ts",
+      "pattern": "story_refinement: fills every placeholder"
+    },
+    {
+      "name": "SV4 a registered stage goes unchecked",
+      "kind": "unit",
+      "file": "packages/features/generation/__tests__/stages.test.ts",
+      "find": "      checkedStages.add(key);\n",
+      "replace": "      if (key !== 'publish_metadata') checkedStages.add(key);\n",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stages.test.ts",
+      "pattern": "every registered stage renders its prompt"
+    }
+  ]
+}
