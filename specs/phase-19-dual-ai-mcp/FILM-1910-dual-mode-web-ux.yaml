@@ -56,8 +56,10 @@ notes: |
   constraints refuse it for every other writer, since owners write the
   table directly under RLS.
 
-  A web Generate button always asks for server mode (lead, 2026-10-03,
-  option A): every caller dispatches to the worker, and #567's fallback to
+  A web Generate button always asks for server mode (2026-10-03, built to
+  the lead's brief that a team with server generation off gets a refusal
+  from the Generate button; the lead may revise): every caller dispatches
+  to the worker, and #567's fallback to
   the team default opened an external run nobody would write, which the
   job trigger and dispatch() then refused with a 500. So default_mode only
   governs a generation that does not choose a mode; the settings page
