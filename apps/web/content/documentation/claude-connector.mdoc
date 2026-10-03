@@ -119,6 +119,7 @@ Revoking takes effect on Claude's next call. Revoked connections stay in the lis
 
 - **Rate limits.** Each connection may make 120 calls a minute, and 20 of those may be writes. Past that, Claude is told to wait and try again shortly.
 - **Runs expire.** A generation that has been idle for 30 minutes expires. Nothing is saved from it, and the stage is free to start again. Any call Claude makes on the run keeps it alive.
+- **No spend cap on Claude's work.** A team's daily Gemini spend cap (Team settings → AI) limits only Generate in StoryBook. Claude writing through the connector makes no model call from StoryBook and is never capped. ElevenLabs renders are not capped either, so watch `studio:render`.
 - **One run per stage.** A second generation on the same stage of the same episode is refused until the first one finishes, expires or is cancelled.
 - **Publishing stays in the web app.** Claude cannot publish an episode. It can read the results afterwards.
 - **No video rendering.** StoryBook does not render video. Claude can read the video prompts for each shot to use in an outside video tool.
