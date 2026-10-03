@@ -241,7 +241,8 @@ create trigger account_ai_settings_set_timestamps
 -- Part B (20261002205007): the lifecycle functions a run is driven through,
 -- all SECURITY DEFINER and gated on can_drive_generation_run(account,
 -- project): the service role, or can_write_project of the run's project, or
--- the caller's own account when the run names no project.
+-- the caller's team membership when the run names no project; a personal
+-- account is refused (KB-99).
 --
 -- can_drive_generation_run(p_account_id uuid, p_project_id uuid) returns boolean
 -- open_generation_run(p_account_id, p_target_type, p_target_id, p_stage,

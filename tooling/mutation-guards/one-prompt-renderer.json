@@ -34,7 +34,7 @@
     {
       "name": "RT4 the worker joins system prompts in file order again",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/llm-utils.ts",
+      "file": "packages/ai-gateway/src/prompts/lambda-registry.ts",
       "find": "    template.slug || template.name || 'unknown',\n    template,\n    variables,\n",
       "replace": "    template.slug || template.name || 'unknown',\n    {\n      ...template,\n      system_prompts: undefined,\n      system_prompt: (template.system_prompts ?? []).map((part) => part.content).join('\\n\\n'),\n    },\n    variables,\n",
       "cwd": "apps/web",

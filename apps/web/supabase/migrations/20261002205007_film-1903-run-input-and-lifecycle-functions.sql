@@ -16,15 +16,17 @@
 --    ElevenLabs render job, which rides the same queue and so needs a run to
 --    be loaded by. A render's target is a cue, and the season and analytics
 --    jobs' target is the project.
--- 3. `project_id` nullable: publish_metadata translates the caller's own
---    text and names no project (noTenantLlmJobTarget, KB-31).
+-- 3. `project_id` nullable: a run on the team's own work may name no
+--    project row; its account is still the team's (KB-99).
 -- 4. Lifecycle functions. authenticated has no write privilege on
 --    generation_runs (part A), and the MCP path never uses the service role
 --    on behalf of a user (phase 19 README), so openRun, renewLease, the
 --    status transitions and the revision snapshot are SECURITY DEFINER
 --    functions gated on can_write_project of the run's project (KB-28), or
---    on the account being the caller's own when there is no project. The
---    service role (the worker) passes the gate; a stranger does not.
+--    on the caller's membership of the team when the run names no project.
+--    A personal account is refused outright: the product is team accounts
+--    only (KB-99; a solo user is a team of one). The service role (the
+--    worker) passes the gate; a stranger does not.
 --
 -- Tests: tests/database/generation-run-lifecycle.test.sql.
 
@@ -40,7 +42,7 @@ comment on column public.generation_runs.input is
 alter table public.generation_runs alter column project_id drop not null;
 
 comment on column public.generation_runs.project_id is
-  'Null for a run on the caller''s own text (publish_metadata), whose account is the caller''s personal account';
+  'Null for a run on the team''s own work with no project row; the account is always a team (KB-99)';
 
 alter table public.generation_runs drop constraint generation_runs_target_type_check;
 alter table public.generation_runs add constraint generation_runs_target_type_check
@@ -69,7 +71,7 @@ comment on column public.generation_runs.stage is
 -- Who may drive a run
 -- ----------------------------------------------------------------------
 -- The worker is the service role; a user may drive a run on a project they
--- can write to, or on their own account when the run names no project.
+-- can write to, or on a team they belong to when the run names no project.
 create or replace function public.can_drive_generation_run(
   p_account_id uuid,
   p_project_id uuid
@@ -86,7 +88,7 @@ begin
   end if;
 
   if p_project_id is null then
-    return auth.uid() is not null and p_account_id = auth.uid();
+    return auth.uid() is not null and public.has_role_on_account(p_account_id);
   end if;
 
   return public.can_write_project(p_project_id);
@@ -132,6 +134,16 @@ declare
   v_holder public.generation_runs;
   v_created_by uuid;
 begin
+  -- Team accounts only (KB-99): kit.require_team_account would refuse the
+  -- insert anyway; this says why before anything else is checked
+  if exists (
+    select 1 from public.accounts a
+    where a.id = p_account_id and a.is_personal_account
+  ) then
+    raise exception 'refused: generation runs belong to a team account (a solo user is a team of one); % is a personal account', p_account_id
+      using errcode = 'check_violation';
+  end if;
+
   if not public.can_drive_generation_run(p_account_id, p_project_id) then
     raise exception 'refused: no write access to open a % run on this target', p_stage
       using errcode = 'insufficient_privilege';

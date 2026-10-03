@@ -35,7 +35,7 @@ select results_eq(
        ('public.batch_create_shots'),
        -- every episode in p_account_id and can_write_project(its project) (KB-27)
        ('public.bulk_reset_episodes_to_stage'),
-       -- predicate about the caller: service role, or can_write_project of the run's project, or the caller's own account when it has none (FILM-1903)
+       -- predicate about the caller: service role, or can_write_project of the run's project, or the caller's team membership when it has none; a personal account refused (FILM-1903, KB-99)
        ('public.can_drive_generation_run'),
        -- predicate about the caller
        ('public.can_edit_project'),

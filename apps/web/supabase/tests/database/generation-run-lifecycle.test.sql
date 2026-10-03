@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(32);
+select plan(33);
 
 -- FILM-1903 part B: the lifecycle functions a run is driven through, with
 -- real roles. openRun, renewLease, the status transitions and the revision
@@ -135,31 +135,47 @@ select is(
   'O4 audio_render on a cue target opens'
 );
 
--- a run on the caller's own text: no project, the caller's own account
+-- a run with no project: the team's, by a member of the team; never a
+-- personal account (KB-99), never another team
 select is(
   (public.open_generation_run(
-    p_account_id := current_setting('lc.owner')::uuid,
+    p_account_id := current_setting('lc.team')::uuid,
     p_project_id := null,
     p_target_type := 'publish', p_target_id := '19031000-0000-4000-8000-0000000000bb',
     p_stage := 'publish_metadata', p_mode := 'server',
     p_input := '{}'::jsonb,
     p_origin := '{}'::jsonb
   ) ->> 'ok')::boolean, true,
-  'O5 a run with no project opens on the caller''s own account'
+  'O5 a run with no project opens on a team the caller belongs to'
 );
+
+select throws_like(
+  $$ select public.open_generation_run(
+       p_account_id := current_setting('lc.owner')::uuid,
+       p_project_id := null,
+       p_target_type := 'publish', p_target_id := '19031000-0000-4000-8000-0000000000bd',
+       p_stage := 'publish_metadata', p_mode := 'server',
+       p_input := '{}'::jsonb,
+       p_origin := '{}'::jsonb) $$,
+  '%belong to a team account%',
+  'O5 a run on a personal account is refused, saying why (KB-99)'
+);
+
+select makerkit.authenticate_as('lc_out');
 
 select throws_like(
   $$ select public.open_generation_run(
        p_account_id := current_setting('lc.team')::uuid,
        p_project_id := null,
-       p_target_type := 'publish', p_target_id := '19031000-0000-4000-8000-0000000000bd',
+       p_target_type := 'publish', p_target_id := '19031000-0000-4000-8000-0000000000be',
        p_stage := 'publish_metadata', p_mode := 'server',
        p_input := '{}'::jsonb,
-       p_origin := '{}'::jsonb
-     ) $$,
-  '%refused%',
-  'O5 a run with no project on another account is refused'
+       p_origin := '{}'::jsonb) $$,
+  '%refused: no write access%',
+  'O5 a run with no project on a team the caller is not in is refused'
 );
+
+select makerkit.authenticate_as('owner');
 
 -- an account member who is not on the project may not open a run on it
 select makerkit.authenticate_as('member');

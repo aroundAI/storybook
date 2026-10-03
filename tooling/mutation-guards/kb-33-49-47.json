@@ -2,13 +2,13 @@
   "feature": "KB-33, KB-49, KB-47 (publishing), KB-109",
   "mutations": [
     {
-      "name": "WA1 queueLlmJob sends a payload without parsing it",
+      "name": "WA1 openRunForJob stores a payload without parsing it",
       "kind": "unit",
-      "file": "packages/features/prompt-engine/src/lib/server/sqs-helper.ts",
-      "find": "  const payload = parseLlmJobPayload(params.jobType, {\n    ...payloadForTarget(params.target, params.payload),\n    userId: params.userId,\n  });",
-      "replace": "  const payload = {\n    ...payloadForTarget(params.target, params.payload),\n    userId: params.userId,\n  };",
-      "cwd": "packages/features/prompt-engine",
-      "test": "__tests__/llm-job-payloads.test.ts",
+      "file": "packages/ai-gateway/src/jobs.ts",
+      "find": "  const payload = parseLlmJobPayload(params.jobType, {\n    ...payloadForTarget(\n      params.target,\n      params.payload as Record<string, unknown>,\n    ),\n    userId: params.userId,\n  }) as Record<string, unknown>;",
+      "replace": "  const payload = {\n    ...payloadForTarget(\n      params.target,\n      params.payload as Record<string, unknown>,\n    ),\n    userId: params.userId,\n  } as Record<string, unknown>;",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/dispatch-and-jobs.test.ts",
       "pattern": "refuses a payload its handler would refuse"
     },
     {

@@ -3,7 +3,8 @@
  * DEFINER function (migration 20261002205007): authenticated holds no write
  * privilege on the table, and the MCP path never uses the service role for
  * a user, so the function checks can_write_project of the run's project (or
- * the caller's own account when it names none) and the service role passes.
+ * the caller's team membership when it names none; a personal account is
+ * refused, KB-99) and the service role passes.
  * Reads use the caller's client under RLS.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';

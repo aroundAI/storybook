@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
-import { noTenantLlmJobTarget } from '@kit/prompt-engine/llm-job-target';
+import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { episodeVideoSaveRefusal } from '@kit/storage/episode-video';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -165,6 +165,8 @@ const TranslationItemSchema = z.object({
 });
 
 const BatchTranslateSchema = z.object({
+  /** The episode being published: the run belongs to its team (KB-99) */
+  episodeId: z.string().uuid(),
   items: z.array(TranslationItemSchema),
 });
 
@@ -177,6 +179,7 @@ export type TranslationItem = z.infer<typeof TranslationItemSchema>;
  */
 export const batchTranslateMetadataAction = enhanceAction(
   async ({
+    episodeId,
     items,
   }): Promise<{
     success: boolean;
@@ -199,27 +202,32 @@ export const batchTranslateMetadataAction = enhanceAction(
     // Queue batch job to Lambda
     const { openRunForJob } = await import('@kit/ai-gateway');
 
-    // Get actual userId from session for WebSocket delivery
     const client = getSupabaseServerClient();
     const {
       data: { user },
     } = await client.auth.getUser();
-    const userId = user?.id || 'system';
 
-    // The caller's own text: no tenant rows are read or written (KB-31)
+    if (!user) {
+      throw new Error('Authentication required');
+    }
+
+    // The titles are the caller's own text, but the run belongs to the
+    // episode's team (KB-99, KB-31): the caller must be able to write it
+    const target = await authorizeEpisodeTarget(client, episodeId);
+
+    if (!target) {
+      throw new Error('Episode not found or access denied');
+    }
+
     const run = await openRunForJob(
       {
         jobType: 'batch-translate-metadata',
-        userId,
-        target: noTenantLlmJobTarget(userId),
+        userId: user.id,
+        target,
         payload: { items: itemsToTranslate },
         name: 'publish.batchTranslateMetadata',
       },
-      {
-        client: client,
-        accountId: noTenantLlmJobTarget(userId).accountId,
-        userId: userId,
-      },
+      { client, accountId: target.accountId, userId: user.id },
     );
     await run.dispatch();
 

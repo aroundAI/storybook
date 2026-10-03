@@ -73,7 +73,8 @@ function targetOf(
 
   if (target.projectId) return { type: 'project', id: target.projectId };
 
-  // The caller's own text (publish_metadata): the batch is the target
+  // No row to lock (a target with neither episode nor project): the batch
+  // itself is the target; the account is still a team's (KB-99)
   return { type: 'publish', id: crypto.randomUUID() };
 }
 
