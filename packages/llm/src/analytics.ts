@@ -21,11 +21,10 @@ export interface LLMUsageEvent {
   accountId: string;
   userId?: string;
   /**
-   * The generation run this call belongs to (FILM-1903). The column lands
-   * with FILM-1903 part A; until a caller has a run, the key is absent from
-   * the insert, so a schema without the column still accepts the row.
+   * The generation run this call belongs to (FILM-1903). Required: the
+   * database refuses a usage row without an open server run (part C).
    */
-  runId?: string;
+  runId: string;
 
   // Execution metadata
   /** The prompt template; absent for a call that has none, such as an embedding */
@@ -121,7 +120,7 @@ export async function logLLMUsage(
       error_message: event.errorMessage,
       request_config: event.requestConfig,
       response_metadata: event.responseMetadata,
-      ...(event.runId !== undefined ? { run_id: event.runId } : {}),
+      run_id: event.runId,
     });
 
     if (error) {
