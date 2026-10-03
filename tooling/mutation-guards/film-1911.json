@@ -1,0 +1,53 @@
+{
+  "feature": "FILM-1911 MCP connector GA: the super-admin panels, the guard-failure alert",
+  "mutations": [
+    {
+      "name": "1911 DB P3 a team owner reads the cross-team panels",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/mcp-monitoring.test.sql",
+      "sql": "create or replace function public.admin_mcp_check_window(p_days integer) returns timestamptz language plpgsql stable set search_path = '' as $$ begin if p_days is null or p_days < 1 or p_days > 90 then raise exception 'the window must be 1 to 90 days, not %', p_days using errcode = 'invalid_parameter_value'; end if; return now() - make_interval(days => p_days); end $$;"
+    },
+    {
+      "name": "1911 DB G4 the guard check misses a model call on an external run",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/mcp-monitoring.test.sql",
+      "sql": "create or replace function public.external_run_model_calls(p_limit integer default 20) returns table (usage_id uuid, run_id uuid, account_id uuid, created_at timestamptz, total bigint) language sql stable set search_path = '' as $$ select u.id, u.run_id, r.account_id, u.created_at, count(*) over () from public.llm_usage_analytics u join public.generation_runs r on r.id = u.run_id where r.mode = 'server' limit greatest(p_limit, 1) $$;"
+    },
+    {
+      "name": "1911 DB G1 any signed-in user runs the guard check",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/mcp-monitoring.test.sql",
+      "sql": "grant execute on function public.external_run_model_calls(integer) to authenticated;"
+    },
+    {
+      "name": "1911 cron a guard failure raises no alert",
+      "kind": "unit",
+      "file": "apps/web/app/api/cron/external-run-model-calls/route.ts",
+      "find": "    if (violations > 0) {",
+      "replace": "    if (violations > 2) {",
+      "cwd": "apps/web",
+      "test": "app/api/cron/external-run-model-calls/__tests__/route.test.ts",
+      "pattern": "raises an alert with the ids"
+    },
+    {
+      "name": "1911 cron a check that could not run passes",
+      "kind": "unit",
+      "file": "apps/web/app/api/cron/external-run-model-calls/route.ts",
+      "find": "    if (error) {\n      const message = `MCP guard check could not run",
+      "replace": "    if (error && data !== null) {\n      const message = `MCP guard check could not run",
+      "cwd": "apps/web",
+      "test": "app/api/cron/external-run-model-calls/__tests__/route.test.ts",
+      "pattern": "reports a check that could not run"
+    },
+    {
+      "name": "1911 lambda a guard failure leaves the alarm quiet",
+      "kind": "unit",
+      "file": "apps/web/lambda/external-run-model-calls/index.ts",
+      "find": "  if (result.violations > 0) {",
+      "replace": "  if (result.violations > 2) {",
+      "cwd": "apps/web",
+      "test": "lambda/external-run-model-calls/__tests__/index.test.ts",
+      "pattern": "fails when the check finds model calls"
+    }
+  ]
+}
