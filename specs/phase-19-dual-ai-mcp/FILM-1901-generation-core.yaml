@@ -322,6 +322,9 @@ notes: |
     scene and mark the job completed).
   - The audio_cues stage reads the shot list paged (`fetchAllRows`); the
     handler read it with the 1000-row cap.
+  - The shots prompt now carries the Reel Scout's note for a flagged scene
+    (owner, 2026-10-03; KB-178, #570): `prepare()` takes the parts the
+    run has accepted (`earlier`), so a scene part reads the reel_scout part.
 package:
   package_name: "@kit/generation"
   path: "packages/features/generation/"
