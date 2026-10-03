@@ -1,0 +1,125 @@
+{
+  "feature": "FILM-1909 external generation for every stage, edits and renders",
+  "mutations": [
+    {
+      "name": "FILM-1909 R1 a voice render starts for a line of another episode",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/render/starts.ts",
+      "find": "    .eq('id', id)\n    .eq('episode_id', episodeId)\n    .maybeSingle();",
+      "replace": "    .eq('id', id)\n    .maybeSingle();",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/render-tools.test.ts",
+      "pattern": "a line of another episode"
+    },
+    {
+      "name": "FILM-1909 R2 a core's refusal reads as a fault",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/render/starts.ts",
+      "find": "  if (REFUSALS.has(message) || message.startsWith('Cannot generate audio')) {",
+      "replace": "  if (false) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/render-tools.test.ts",
+      "pattern": "turns the core"
+    },
+    {
+      "name": "FILM-1909 R3 the render tools start a copy, not the web's cores",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/render/starts.ts",
+      "find": "export const webRenderStarts: RenderStartDeps = {\n  startDialogueVoiceRender,",
+      "replace": "export const webRenderStarts: RenderStartDeps = {\n  startDialogueVoiceRender: async () => ({ success: true, status: 'queued' }),",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/render-tools.test.ts",
+      "pattern": "not a copy of them"
+    },
+    {
+      "name": "FILM-1909 R4 the VEO manifest carries deleted shots",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/render/veo-manifest.ts",
+      "find": "            .eq('episode_id', episode.id)\n            .is('deleted_at', null)\n            .order('sequence_number', { ascending: true })",
+      "replace": "            .eq('episode_id', episode.id)\n            .order('sequence_number', { ascending: true })",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/render-tools.test.ts",
+      "pattern": "is the manifest the visual studio exports"
+    },
+    {
+      "name": "FILM-1909 R5 a cue of another episode is rendered",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/render/starts.ts",
+      "find": "      await requireRowOfEpisode(\n        client,\n        'audio_cues',",
+      "replace": "      if (Date.now() < 0) await requireRowOfEpisode(\n        client,\n        'audio_cues',",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/render-tools.test.ts",
+      "pattern": "refuses a cue of another episode"
+    },
+    {
+      "name": "FILM-1909 E1 an edit applies at a stale version",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/edit/tools.ts",
+      "find": "  if (episode.version !== version) {",
+      "replace": "  if (false) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/edit-tools.test.ts",
+      "pattern": "refuses a stale version"
+    },
+    {
+      "name": "FILM-1909 E2 a scene the screenplay check refuses is written",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/edit/tools.ts",
+      "find": "  if (errors.length > 0) throw rejected(errors);\n\n  return parsed.data;",
+      "replace": "  return parsed.data;",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/edit-tools.test.ts",
+      "pattern": "refuses a speaker the episode does not have"
+    },
+    {
+      "name": "FILM-1909 E3 a voiced line keeps its status after its text changes",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/edit/plan.ts",
+      "find": "  if (edit.row.audio_url) values.status = 'pending';",
+      "replace": "",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/edit-tools.test.ts",
+      "pattern": "edits changed lines in place"
+    },
+    {
+      "name": "FILM-1909 E4 a scene that gains a line is edited in place",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/edit/plan.ts",
+      "find": "  const inPlace =\n    before.length === after.length &&",
+      "replace": "  const inPlace =\n    true &&",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/edit-tools.test.ts",
+      "pattern": "rebuilds the episode lines"
+    },
+    {
+      "name": "FILM-1909 E5 a shot the shots check refuses is written",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/edit/tools.ts",
+      "find": "      if (errors.length > 0) throw rejected(errors);\n\n      const origin = editOrigin(context, now);",
+      "replace": "      const origin = editOrigin(context, now);",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/edit-tools.test.ts",
+      "pattern": "refuses a duration outside"
+    },
+    {
+      "name": "FILM-1909 E6 a shot edit leaves the episode version alone",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/edit/plan.ts",
+      "find": "      episodeUpdate(input.episodeId, { updated_at: input.editedAt }),\n",
+      "replace": "",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/edit-tools.test.ts",
+      "pattern": "updates the shot's row in place"
+    },
+    {
+      "name": "FILM-1909 E7 an edited shot's columns drift from the shots commit",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/edit/plan.ts",
+      "find": "    duration_seconds: wholeShotSeconds(shot.duration),",
+      "replace": "    duration_seconds: shot.duration,",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/edit-tools.test.ts",
+      "pattern": "writes the columns the shots commit writes"
+    }
+  ]
+}

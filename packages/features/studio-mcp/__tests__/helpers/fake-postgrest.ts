@@ -122,17 +122,23 @@ export function fakeClient(db: FakeDb, options: FakeClientOptions = {}) {
         return chain;
       },
       maybeSingle: async () => ({ data: rows[0] ?? null, error }),
-      single: async () =>
-        rows[0]
-          ? { data: rows[0], error: null }
-          : {
-              data: null,
-              error: {
-                message:
-                  'JSON object requested, multiple (or no) rows returned',
-                code: 'PGRST116',
+      single: () => {
+        const result = Promise.resolve(
+          rows[0]
+            ? { data: rows[0], error: null }
+            : {
+                data: null,
+                error: {
+                  message:
+                    'JSON object requested, multiple (or no) rows returned',
+                  code: 'PGRST116',
+                },
               },
-            },
+        );
+
+        // PostgREST's type-only cast: `.single().overrideTypes<…>()`
+        return Object.assign(result, { overrideTypes: () => result });
+      },
       then: <R>(
         onfulfilled: (value: ReturnType<typeof resolve>) => R,
         onrejected?: (reason: unknown) => R,
