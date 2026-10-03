@@ -71,7 +71,7 @@ describe('Realtime subscriptions join with the user token (KB-181)', () => {
 
     expect(source.indexOf('realtime.setAuth')).toBeGreaterThan(-1);
     expect(source.indexOf('realtime.setAuth')).toBeLessThan(
-      source.indexOf('.subscribe()'),
+      source.indexOf('.subscribe('),
     );
   });
 });

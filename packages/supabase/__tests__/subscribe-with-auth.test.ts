@@ -10,10 +10,12 @@ function fakeClient(session: { access_token: string } | null) {
   const calls: string[] = [];
   let authListener: ((event: string, session: unknown) => void) | undefined;
   const unsubscribeAuth = vi.fn();
+  let statusCallback: ((status: string, err?: Error) => void) | undefined;
 
   const channel = {
-    subscribe: vi.fn(() => {
+    subscribe: vi.fn((onStatus?: (status: string, err?: Error) => void) => {
       calls.push('subscribe');
+      statusCallback = onStatus;
 
       return channel;
     }),
@@ -41,6 +43,7 @@ function fakeClient(session: { access_token: string } | null) {
     channel,
     calls,
     unsubscribeAuth,
+    emitStatus: (status: string, err?: Error) => statusCallback?.(status, err),
     emitAuth: (next: { access_token: string } | null) =>
       authListener?.('TOKEN_REFRESHED', next),
   };
@@ -93,5 +96,27 @@ describe('subscribeWithAuth', () => {
     cleanup();
 
     expect(fake.client.removeChannel).toHaveBeenCalledWith(fake.channel);
+  });
+
+  it('passes channel status changes to onStatus', async () => {
+    const fake = fakeClient({ access_token: 'jwt-1' });
+    const onStatus = vi.fn();
+    const error = new Error('down');
+
+    subscribeWithAuth(
+      fake.client as never,
+      () => fake.channel as never,
+      onStatus,
+    );
+    await flush();
+    fake.emitStatus('SUBSCRIBED');
+    fake.emitStatus('CHANNEL_ERROR', error);
+    fake.emitStatus('CLOSED');
+
+    expect(onStatus.mock.calls).toEqual([
+      ['SUBSCRIBED', undefined],
+      ['CHANNEL_ERROR', error],
+      ['CLOSED', undefined],
+    ]);
   });
 });

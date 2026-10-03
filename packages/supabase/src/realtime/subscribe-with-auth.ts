@@ -1,4 +1,8 @@
-import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
+import type {
+  REALTIME_SUBSCRIBE_STATES,
+  RealtimeChannel,
+  SupabaseClient,
+} from '@supabase/supabase-js';
 
 /**
  * Joins a Realtime channel as the signed-in user.
@@ -9,11 +13,15 @@ import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
  * `SUBSCRIBED` (KB-181). The token is set first, and again whenever the
  * session changes.
  *
+ * `onStatus` receives every channel status change (SUBSCRIBED,
+ * CHANNEL_ERROR, TIMED_OUT, CLOSED), for callers that fall back to polling.
+ *
  * Returns the cleanup that removes the channel.
  */
 export function subscribeWithAuth<Db>(
   client: SupabaseClient<Db>,
   buildChannel: (client: SupabaseClient<Db>) => RealtimeChannel,
+  onStatus?: (status: `${REALTIME_SUBSCRIBE_STATES}`, err?: Error) => void,
 ): () => void {
   let channel: RealtimeChannel | undefined;
   let cancelled = false;
@@ -35,7 +43,7 @@ export function subscribeWithAuth<Db>(
       return;
     }
 
-    channel = buildChannel(client).subscribe();
+    channel = buildChannel(client).subscribe(onStatus);
   });
 
   return () => {
