@@ -46,7 +46,7 @@ export const WORKFLOW_GUIDE_TEXT = [
   '',
   '`edit_scene`, `edit_shot` and `edit_dialogue_line` change one scene, shot or English line without a new run of the stage. Pass the version from `get_episode`; the edit is checked as the stage checks its output, committed in one transaction with a snapshot to restore from, and fails with TARGET_CHANGED if the episode moved.',
   '',
-  'Media stays vendor-rendered: voice, music and SFX are started with the render tools (studio:render). Video is not rendered in the app; `get_veo_manifest` returns the prompts for an external video tool. Publishing is a web action in this phase.',
+  'Media stays vendor-rendered: voice, music and SFX are started with `start_voice_render` and `start_audio_render` (studio:render), and `get_render_progress` says where they stand. Video is not rendered in the app; `get_veo_manifest` returns the prompts for an external video tool. Publishing is a web action in this phase.',
   '',
   '## Errors',
   '',
