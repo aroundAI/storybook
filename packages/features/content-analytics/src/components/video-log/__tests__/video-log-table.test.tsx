@@ -4,7 +4,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { VideoLogRow } from '../../../server/video-log-actions';
+import type { VideoLogRow } from '../../../server/video-log-service';
 import { VideoLogTable } from '../video-log-table';
 
 vi.mock('lucide-react', () => ({

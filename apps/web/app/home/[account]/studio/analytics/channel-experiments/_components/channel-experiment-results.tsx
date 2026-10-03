@@ -7,7 +7,7 @@ import type {
   StyleSummary,
 } from '@kit/clickhouse';
 import { EXPERIMENT_MEASURE_DEFINITIONS } from '@kit/clickhouse';
-import type { ResultsState } from '@kit/content-analytics/server/channel-experiment-actions';
+import type { ResultsState } from '@kit/content-analytics/server/channel-experiment-service';
 import { Badge } from '@kit/ui/badge';
 import {
   Table,

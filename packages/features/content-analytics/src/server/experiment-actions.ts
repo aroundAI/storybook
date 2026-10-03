@@ -29,8 +29,6 @@ import {
 } from './experiment-service';
 import { withRefusals } from './with-refusals';
 
-export type { ExperimentSnapshot } from './experiment-service';
-
 /**
  * The Change Log's actions (FILM-1610): each is the cookie-session wrapper
  * over its service in `experiment-service.ts` (FILM-1906), which holds the

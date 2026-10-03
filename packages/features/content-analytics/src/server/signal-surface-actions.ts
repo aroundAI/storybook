@@ -8,8 +8,6 @@ import {
   getSignalSurfaceService,
 } from './signal-surface-service';
 
-export type { SignalSurfaceResult } from './signal-surface-service';
-
 /**
  * One video's funnel at one checkpoint (FILM-1719): the cookie-session
  * wrapper over `getSignalSurfaceService` (FILM-1906).

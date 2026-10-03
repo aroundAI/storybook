@@ -10,8 +10,8 @@ import { useForm } from 'react-hook-form';
 import { buildChannelSettingsFormSchema } from '@kit/content-analytics/lib/schemas/settings';
 import type { OverriddenTarget } from '@kit/content-analytics/lib/ypp-targets';
 import { overriddenChannelTargets } from '@kit/content-analytics/lib/ypp-targets';
-import type { ChannelSettingsEntry } from '@kit/content-analytics/server/settings-actions';
 import { updateChannelAnalyticsSettingsAction } from '@kit/content-analytics/server/settings-actions';
+import type { ChannelSettingsEntry } from '@kit/content-analytics/server/settings-service';
 import { Button } from '@kit/ui/button';
 import {
   Card,

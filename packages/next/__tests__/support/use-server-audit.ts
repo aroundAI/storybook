@@ -83,6 +83,16 @@ export const NEVER_REGISTERED = new Set([
   'processScheduledPublishes',
 ]);
 
+/**
+ * KB-179: `export type { X } from './service'` in a `'use server'` module
+ * makes Turbopack fail with "Only async functions are allowed to be exported"
+ * and show a Build Error overlay on every page that reaches the module. An
+ * inline `export type X = …` compiles; the re-export does not. Importers take
+ * the type from the service module.
+ */
+const TYPE_EXPORT =
+  "type re-export from a 'use server' module (Turbopack refuses it; import the type from its own module)";
+
 export interface ExportVerdict {
   /** Repo-relative path, `/`-separated. */
   file: string;
@@ -213,11 +223,13 @@ export function classifyModule(file: string, text: string): ExportVerdict[] {
           problem: verdict(name, declaration.initializer),
         });
       }
-    } else if (ts.isExportDeclaration(statement) && !statement.isTypeOnly) {
+    } else if (ts.isExportDeclaration(statement)) {
       verdicts.push({
         file,
         name: statement.getText(source).replace(/\s+/g, ' '),
-        problem: "re-export from a 'use server' module",
+        problem: statement.isTypeOnly
+          ? TYPE_EXPORT
+          : "re-export from a 'use server' module",
       });
     } else if (ts.isExportAssignment(statement)) {
       verdicts.push({
