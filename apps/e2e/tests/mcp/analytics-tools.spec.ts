@@ -11,11 +11,13 @@ import {
   mintPersonalAccessToken,
 } from '../utils/mcp';
 import {
+  insertRow,
   seedProject,
   seedPublishedEpisode,
   seedSeason,
   seedTeamAccount,
   seedYouTubeConnection,
+  serviceRoleAuth,
 } from '../utils/seed';
 
 /**
@@ -54,6 +56,7 @@ async function seedTeamWithProject(prefix: string) {
     connectionId,
     projectId: project.id,
     publishIds: [first.publishId, second.publishId] as const,
+    episodeIds: [first.episodeId, second.episodeId] as const,
   };
 }
 
@@ -241,5 +244,75 @@ test.describe('MCP analytics tools', () => {
         median: buckets[0],
       }),
     );
+  });
+
+  /**
+   * Criterion 7: usage rows read under their policy and split by the run's
+   * mode through `llm_usage_analytics.run_id` (FILM-1903). Three rows are
+   * written as the worker would: two with no run, one on an open
+   * server-mode run (the table's trigger refuses a usage row on an external
+   * run, so that is the only mode a row can carry). Cost is summed where
+   * measured and null where no row measured it.
+   */
+  test('get_ai_usage splits the team’s usage by run mode through generation_runs', async () => {
+    const a = await seedTeamWithProject('mcp-usage');
+    const token = await mintPersonalAccessToken(a.team, {
+      scopes: ['studio:read'],
+    });
+    const auth = serviceRoleAuth();
+
+    const run = await insertRow<{ id: string }>(
+      'generation_runs',
+      {
+        account_id: a.team.accountId,
+        project_id: a.projectId,
+        target_type: 'episode',
+        target_id: a.episodeIds[0],
+        stage: 'story',
+        mode: 'server',
+        created_by: a.team.userId,
+      },
+      auth,
+    );
+
+    const usage = (extra: Record<string, unknown>) => ({
+      account_id: a.team.accountId,
+      user_id: a.team.userId,
+      llm_provider: 'google',
+      llm_model: 'gemini-2.5-pro',
+      template_slug: 'story-generation',
+      status: 'success',
+      prompt_tokens: 1000,
+      completion_tokens: 500,
+      total_tokens: 1500,
+      ...extra,
+    });
+
+    await insertRow('llm_usage_analytics', usage({ total_cost: 0.02 }), auth);
+    await insertRow('llm_usage_analytics', usage({ total_cost: null }), auth);
+    await insertRow(
+      'llm_usage_analytics',
+      usage({ total_cost: 0.03, run_id: run.id }),
+      auth,
+    );
+
+    const result = await callMcpTool(token, 'get_ai_usage', {});
+    expect(result.isError).toBe(false);
+
+    const content = result.structuredContent as {
+      totals: { calls: number; totalTokens: number; totalCost: number | null };
+      byMode: Array<{ key: string; calls: number; totalCost: number | null }>;
+      notes: { byModeReason: string | null };
+    };
+
+    expect(content.totals).toMatchObject({ calls: 3, totalTokens: 4500 });
+    expect(content.totals.totalCost).toBeCloseTo(0.05);
+    expect(content.byMode).toEqual([
+      expect.objectContaining({ key: 'unattributed', calls: 2 }),
+      expect.objectContaining({ key: 'server', calls: 1, totalCost: 0.03 }),
+    ]);
+    expect(content.notes.byModeReason).toBeNull();
+
+    console.log('MCP_AI_USAGE', JSON.stringify(content));
   });
 });

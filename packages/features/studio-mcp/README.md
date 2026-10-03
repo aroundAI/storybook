@@ -128,7 +128,7 @@ report of another team is `FORBIDDEN` even when the user is a member there
 | `list_reports`, `get_report_download` | | — |
 | `get_analytics_settings` | | — |
 | `get_saved_insights` | | — (the `analytics_insights_cache_read` policy) |
-| `get_ai_usage` | | `byMode: null` until FILM-1903's `run_id` lands |
+| `get_ai_usage` | | split by `generation_runs.mode` through `run_id` (FILM-1903); `byMode: null` with the reason on a database without the column |
 
 Writes (`studio:write`): `update_publish_note`, `assign_publish_tags`,
 `create_experiment`, `start_experiment`, `conclude_experiment`,
