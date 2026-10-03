@@ -30,16 +30,34 @@ select set_config('kb52.team', makerkit.get_account_id_by_slug('storybook')::tex
 -- A personal account's id is its owner's user id.
 select set_config('kb52.solo', tests.get_supabase_uid('kb52_solo')::text, true);
 
--- Rows are written as postgres, the way the service role writes them.
+-- Rows are written as postgres, the way the service role writes them. Each
+-- model call belongs to an open server run (FILM-1903 part C).
+insert into public.generation_runs (id, account_id, target_type, target_id, stage, mode, created_by)
+values
+  ('52000000-0000-4000-8000-0000000000a1', current_setting('kb52.team')::uuid, 'project',
+   '52000000-0000-4000-8000-0000000000b1', 'analytics_insights', 'server', tests.get_supabase_uid('member')),
+  ('52000000-0000-4000-8000-0000000000a2', current_setting('kb52.solo')::uuid, 'project',
+   '52000000-0000-4000-8000-0000000000b2', 'analytics_insights', 'server', tests.get_supabase_uid('kb52_solo'));
+
+insert into public.llm_usage_analytics
+  (id, account_id, user_id, template_slug, llm_provider, llm_model, status, error_message, run_id)
+values
+  ('52000000-0000-4000-8000-000000000001', current_setting('kb52.team')::uuid,
+   tests.get_supabase_uid('member'), 'kb52-team', 'openai', 'gpt-4o-mini', 'failure', 'team secret',
+   '52000000-0000-4000-8000-0000000000a1'),
+  ('52000000-0000-4000-8000-000000000002', current_setting('kb52.solo')::uuid,
+   tests.get_supabase_uid('kb52_solo'), 'kb52-solo', 'openai', 'gpt-4o-mini', 'success', null,
+   '52000000-0000-4000-8000-0000000000a2');
+
+-- A row with no account can only be one written before part C (a run always
+-- names its account); replica skips the trigger, as its absence did then.
+set local session_replication_role = replica;
 insert into public.llm_usage_analytics
   (id, account_id, user_id, template_slug, llm_provider, llm_model, status, error_message)
 values
-  ('52000000-0000-4000-8000-000000000001', current_setting('kb52.team')::uuid,
-   tests.get_supabase_uid('member'), 'kb52-team', 'openai', 'gpt-4o-mini', 'failure', 'team secret'),
-  ('52000000-0000-4000-8000-000000000002', current_setting('kb52.solo')::uuid,
-   tests.get_supabase_uid('kb52_solo'), 'kb52-solo', 'openai', 'gpt-4o-mini', 'success', null),
   ('52000000-0000-4000-8000-000000000003', null,
    null, 'kb52-orphan', 'openai', 'gpt-4o-mini', 'success', null);
+set local session_replication_role = origin;
 
 -- ==================================
 -- Shape: one read policy, to authenticated, and no write privilege

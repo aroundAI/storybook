@@ -202,7 +202,7 @@ create table if not exists public.generation_jobs (
   started_at timestamp with time zone,
   completed_at timestamp with time zone,
   created_at timestamp with time zone default now() not null,
-  -- FILM-1903: the server-mode run this job executes (75-generation-runs.sql guards it); NOT NULL for LLM job types is part C
+  -- FILM-1903: the server-mode run this job executes (75-generation-runs.sql guards it); required on insert for all but renders since part C
   run_id uuid references public.generation_runs(id) on delete set null,
   -- Mirrors migrations/*_kb174-asset-creation-job-type.sql; held to
   -- GENERATION_JOB_TYPES by prompt-engine's generation-job-types.test.ts
