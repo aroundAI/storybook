@@ -313,13 +313,59 @@ export class GenerationService {
     return part;
   }
 
+  /**
+   * The outputs this run has accepted, in part order and parsed as the
+   * stage reads them, leaving out the part being briefed: what `prepare`
+   * takes as `earlier` (KB-178: a shots scene reads the reel_scout part).
+   */
+  private earlier(
+    stage: AnyStageDefinition,
+    parts: PartSpec[],
+    accepted: Map<string, unknown>,
+    current: PartSpec,
+  ): unknown[] {
+    return parts
+      .filter((part) => part.key !== current.key && accepted.has(part.key))
+      .map((part) =>
+        checkWithSchema(stage.outputSchema, accepted.get(part.key)),
+      )
+      .flatMap((checked) => (checked.ok ? [checked.value] : []));
+  }
+
+  private async acceptedOutputs(runId: string) {
+    const stored = (await readParts(this.client, [runId])).get(runId) ?? [];
+
+    return new Map(
+      acceptedParts(stored).map((part) => [part.partKey, part.output]),
+    );
+  }
+
+  private prepare(
+    stage: AnyStageDefinition,
+    target: unknown,
+    part: PartSpec,
+    earlier: unknown[] = [],
+  ): Promise<Brief> {
+    // `earlier` is KB-178's (#570) fourth argument; typed here so this
+    // compiles against the three-argument signature it extends
+    const prepare = stage.prepare as (
+      ctx: McpRunCtx,
+      target: unknown,
+      part: PartSpec,
+      earlier?: readonly unknown[],
+    ) => Promise<Brief>;
+
+    return prepare.call(stage, this.ctx, target, part, earlier);
+  }
+
   private async brief(
     run: RunLike,
     stage: AnyStageDefinition,
     target: unknown,
     part: PartSpec,
+    earlier: unknown[] = [],
   ) {
-    const brief: Brief = await stage.prepare(this.ctx, target, part);
+    const brief = await this.prepare(stage, target, part, earlier);
 
     return fitBrief({
       ...brief,
@@ -347,7 +393,7 @@ export class GenerationService {
       );
     }
 
-    const brief: Brief = await stage.prepare(this.ctx, target, first);
+    const brief = await this.prepare(stage, target, first);
 
     let run: RunLike;
 
@@ -396,8 +442,17 @@ export class GenerationService {
     const target = this.stageTarget(run, stage);
     const parts = await this.partsOf(stage, target);
     const part = this.requirePart(parts, partKey);
+    const accepted = await this.acceptedOutputs(run.id);
 
-    return { brief: await this.brief(run, stage, target, part) };
+    return {
+      brief: await this.brief(
+        run,
+        stage,
+        target,
+        part,
+        this.earlier(stage, parts, accepted, part),
+      ),
+    };
   }
 
   async submit(input: {
@@ -472,9 +527,8 @@ export class GenerationService {
       return rejected;
     }
 
-    const stored = (await readParts(this.client, [run.id])).get(run.id) ?? [];
-    const accepted = new Set(acceptedParts(stored).map((p) => p.partKey));
-    accepted.add(part.key);
+    const accepted = await this.acceptedOutputs(run.id);
+    accepted.set(part.key, input.output);
 
     const pending = parts.filter((candidate) => !accepted.has(candidate.key));
     const next = pending[0] ?? null;
@@ -505,7 +559,13 @@ export class GenerationService {
     if (next) {
       return {
         ...result,
-        nextBrief: await this.brief(run, stage, target, next),
+        nextBrief: await this.brief(
+          run,
+          stage,
+          target,
+          next,
+          this.earlier(stage, parts, accepted, next),
+        ),
       };
     }
 

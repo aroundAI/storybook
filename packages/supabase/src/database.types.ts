@@ -7091,6 +7091,17 @@ export type Database = {
         Returns: Database["public"]["Enums"]["verification_status_enum"]
       }
       soft_delete_episode: { Args: { p_episode_id: string }; Returns: boolean }
+      submit_generation_run_part: {
+        Args: {
+          p_accepted: boolean
+          p_model?: string
+          p_output: Json
+          p_part_key: string
+          p_run_id: string
+          p_validation: Json
+        }
+        Returns: Json
+      }
       tag_in_account: {
         Args: { account_id: string; tag_id: string }
         Returns: boolean

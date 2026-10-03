@@ -108,6 +108,8 @@ select results_eq(
        ('public.set_fact_verification'),
        -- project_members owner/admin
        ('public.soft_delete_episode'),
+       -- can_drive_generation_run of the run, and only its opener; an open external run only (FILM-1908)
+       ('public.submit_generation_run_part'),
        -- no caller check: answers only whether the tag id belongs to the
        -- account id, both supplied by the caller — an oracle to someone who
        -- already holds both UUIDs, and no row data (KB-98)

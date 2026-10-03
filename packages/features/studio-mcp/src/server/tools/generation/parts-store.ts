@@ -3,6 +3,7 @@ import 'server-only';
 import { z } from 'zod';
 
 import type { CheckError } from '@kit/generation';
+import type { Json } from '@kit/supabase/database';
 
 import { McpToolError } from '../../../errors';
 import type { McpPrincipal } from '../../../principal';
@@ -115,31 +116,17 @@ const SubmitResponseSchema = z.discriminatedUnion('ok', [
 interface SubmitRpcArgs {
   p_run_id: string;
   p_part_key: string;
-  p_output: unknown;
-  p_validation: Record<string, unknown>;
+  p_output: Json;
+  p_validation: Json;
   p_accepted: boolean;
   p_model?: string;
 }
-
-/** The parts of `client.rpc` this module calls. */
-type RpcClient = {
-  rpc(
-    fn: 'submit_generation_run_part',
-    args: SubmitRpcArgs,
-  ): PromiseLike<{
-    data: unknown;
-    error: { message: string; code?: string } | null;
-  }>;
-};
 
 async function callSubmit(
   client: Client,
   args: SubmitRpcArgs,
 ): Promise<SubmitOutcome> {
-  const { data, error } = await (client as unknown as RpcClient).rpc(
-    'submit_generation_run_part',
-    args,
-  );
+  const { data, error } = await client.rpc('submit_generation_run_part', args);
 
   if (error) {
     if (error.code === '42501') {
@@ -173,12 +160,12 @@ export function storeAcceptedPart(
   return callSubmit(client, {
     p_run_id: input.runId,
     p_part_key: input.partKey,
-    p_output: input.output,
+    p_output: input.output as Json,
     p_validation: {
       hash: input.hash,
       ...(input.model ? { model: input.model } : {}),
       result: input.result,
-    },
+    } as Json,
     p_accepted: true,
     ...(input.model ? { p_model: input.model } : {}),
   });
@@ -198,8 +185,8 @@ export function storeRejectedPart(
     p_run_id: input.runId,
     p_part_key: input.partKey,
     // A missing output is still a rejection worth recording
-    p_output: input.output ?? {},
-    p_validation: { hash: input.hash, errors: input.errors },
+    p_output: (input.output ?? {}) as Json,
+    p_validation: { hash: input.hash, errors: input.errors } as Json,
     p_accepted: false,
   });
 }

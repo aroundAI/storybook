@@ -12,7 +12,6 @@ import { requireRun } from '@kit/ai-gateway';
 import {
   type Brief,
   type Ctx,
-  type EpisodeContextLoader,
   type GenerateResult,
   type RunHandle,
   type RunStageDeps,
@@ -20,69 +19,9 @@ import {
 } from '@kit/generation';
 import type { Database } from '@kit/supabase/database';
 
-import {
-  buildEpisodeContext,
-  formatCharactersForPrompt,
-  formatCharactersForVeoPrompt,
-  formatFactsForPrompt,
-  formatLocationsForPrompt,
-  formatLocationsForVeoPrompt,
-  formatPreviousEpisodesForPrompt,
-  formatRecurringElementsForPrompt,
-  formatVerifiedFactsForPrompt,
-} from './context-builder';
+import { episodeContextLoader } from './episode-context-loader';
 
-export function episodeContextLoader(
-  supabase: SupabaseClient<Database>,
-): EpisodeContextLoader {
-  return async (episodeId, options) => {
-    const context = await buildEpisodeContext(episodeId, supabase, {
-      semanticContext: options.semanticQuery !== undefined,
-      semanticQuery: options.semanticQuery,
-    });
-
-    return {
-      episodeNumber: context.episodeNumber,
-      seasonNumber: context.seasonNumber,
-      seasonPremise: context.seasonPremise,
-      seasonDirectionNotes: context.seasonDirectionNotes,
-      premise: context.premise,
-      genre: context.genre,
-      targetAudience: context.targetAudience,
-      visualStyle: context.visualStyle,
-      projectType: context.projectType,
-      characters: formatCharactersForPrompt(context.characters),
-      locations: formatLocationsForPrompt(context.locations),
-      previousEpisodes: formatPreviousEpisodesForPrompt(
-        context.previousEpisodes,
-      ),
-      previousEpisodeTitles: context.previousEpisodes.map((ep) => ({
-        number: ep.number,
-        title: ep.title,
-      })),
-      episodeFacts: formatFactsForPrompt(context.episodeFacts),
-      verifiedFacts:
-        context.verifiedFacts.length > 0
-          ? formatVerifiedFactsForPrompt(context.verifiedFacts)
-          : undefined,
-      counts: {
-        characters: context.characters.length,
-        locations: context.locations.length,
-      },
-      // The VEO 3.1 form the shots stage prompts with, and the names its
-      // referential checks compare against
-      charactersVeo: formatCharactersForVeoPrompt(context.characters),
-      locationsVeo: formatLocationsForVeoPrompt(context.locations),
-      recurringElements: formatRecurringElementsForPrompt(
-        context.recurringElements,
-      ),
-      characterNames: context.characters.map((c) => c.name),
-      locationNames: context.locations.map((l) => l.name),
-      characterList: context.characters.map(({ id, name }) => ({ id, name })),
-      locationList: context.locations.map(({ id, name }) => ({ id, name })),
-    };
-  };
-}
+export { episodeContextLoader };
 
 /**
  * The stage context for the job's run: the worker's client and identity,

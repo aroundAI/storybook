@@ -1,24 +1,29 @@
 import 'server-only';
 
-import { getStage } from '@kit/generation';
+import { finalizeRun, getStage, loadRun, openRun } from '@kit/generation';
 
-import { McpToolError } from '../../../errors';
 import type { RunApi } from './run-api';
 import type { GenerationToolDeps } from './service';
 import { createGenerationTools } from './tools';
 
-function runLayerMissing(): never {
-  throw new McpToolError(
-    'INTERNAL',
-    'Generation runs are not available on this server yet.',
-  );
-}
+/**
+ * FILM-1903's run layer, called directly rather than through
+ * `@kit/ai-gateway`: an external run neither writes through a model nor
+ * dispatches, so it is opened without a backend, and any attempt to do
+ * either refuses (NO_RUN_BACKEND, AWAITING_SUBMISSION).
+ */
+const runLayer: RunApi = {
+  open: (stage, target, origin, ctx) => openRun(stage, target, origin, ctx),
+  load: (runId, ctx) => loadRun(runId, ctx),
+  finalize: async (run, ctx, parts) => {
+    const { commit, children } = await finalizeRun(
+      run as Parameters<typeof finalizeRun>[0],
+      ctx,
+      parts,
+    );
 
-/** Replaced by FILM-1903's run layer once it is on main (#567). */
-const pendingRunApi: RunApi = {
-  open: async () => runLayerMissing(),
-  load: async () => runLayerMissing(),
-  finalize: async () => runLayerMissing(),
+    return { commit, children };
+  },
   stage: getStage,
 };
 
@@ -34,7 +39,7 @@ export function configureGenerationTools(deps: Partial<GenerationToolDeps>) {
 }
 
 export const generationTools = createGenerationTools(() => ({
-  runs: pendingRunApi,
+  runs: runLayer,
   ...configured,
 }));
 

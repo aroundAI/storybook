@@ -101,13 +101,14 @@ const twoPartStage = {
     _ctx: unknown,
     _target: unknown,
     part: PartSpec,
+    earlier?: readonly unknown[],
   ): Promise<Brief> {
     return {
       stage: 'screenplay',
       part,
       prompt: { slug: 'scene', version: 1, variables: {} },
       instructions: `Write ${part.label}.`,
-      context: {},
+      context: { earlier: earlier ?? null },
       outputSchema: {},
       constraints: {},
       targetVersion: 3,
@@ -481,6 +482,43 @@ describe('generation tools (FILM-1908)', () => {
       alreadyCommitted: true,
     });
     expect(runs.finalized).toHaveLength(1);
+  });
+
+  it('a brief carries the parts the run has accepted as earlier, parsed and in part order (KB-178)', async () => {
+    const { call } = setup();
+    const started = (await call('start_generation', {
+      stage: 'screenplay',
+      episodeId: EPISODE_ID,
+      options: { language: 'en' },
+    })) as {
+      structuredContent: { run: { runId: string }; brief: Brief };
+    };
+    const runId = started.structuredContent.run.runId;
+    expect(started.structuredContent.brief.context.earlier).toEqual([]);
+
+    const first = (await call('submit_generation', {
+      runId,
+      partKey: 'scene:1',
+      output: { lines: ['one'], ignored: true },
+    })) as { structuredContent: { nextBrief: Brief } };
+    expect(first.structuredContent.nextBrief.context.earlier).toEqual([
+      { lines: ['one'] },
+    ]);
+
+    const brief = (await call('get_brief', {
+      runId,
+      partKey: 'scene:2',
+    })) as { structuredContent: { brief: Brief } };
+    expect(brief.structuredContent.brief.context.earlier).toEqual([
+      { lines: ['one'] },
+    ]);
+
+    // the part being briefed is never its own earlier
+    const own = (await call('get_brief', {
+      runId,
+      partKey: 'scene:1',
+    })) as { structuredContent: { brief: Brief } };
+    expect(own.structuredContent.brief.context.earlier).toEqual([]);
   });
 
   it('an unknown part is refused with the run’s part keys', async () => {
