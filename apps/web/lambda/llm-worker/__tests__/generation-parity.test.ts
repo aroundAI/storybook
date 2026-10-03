@@ -279,17 +279,19 @@ describe('story refinement writes what it did before the core (FILM-1901)', () =
     );
     const recording = storyRefinementClient();
 
-    const result = await withRun(parityRun(recording.client as SupabaseClient<Database>), () =>
-      processStoryRefinement(
-        {
-          accountId: ACCOUNT_ID,
-          projectId: PROJECT_ID,
-          episodeId: EPISODE_ID,
-          userId: USER_ID,
-          feedback: 'Make the ending darker',
-        },
-        recording.client as SupabaseClient<Database>,
-      ),
+    const result = await withRun(
+      parityRun(recording.client as SupabaseClient<Database>),
+      () =>
+        processStoryRefinement(
+          {
+            accountId: ACCOUNT_ID,
+            projectId: PROJECT_ID,
+            episodeId: EPISODE_ID,
+            userId: USER_ID,
+            feedback: 'Make the ending darker',
+          },
+          recording.client as SupabaseClient<Database>,
+        ),
     );
 
     snapshot('story-refinement', {
@@ -312,16 +314,18 @@ describe('asset creation writes what it did before the core (FILM-1901)', () => 
     const { processAssetCreation } = await import('../handlers/asset-creation');
     const recording = assetCreationClient();
 
-    const result = await withRun(parityRun(recording.client as SupabaseClient<Database>), () =>
-      processAssetCreation(
-        {
-          accountId: ACCOUNT_ID,
-          projectId: PROJECT_ID,
-          episodeId: EPISODE_ID,
-          userId: USER_ID,
-        },
-        recording.client as SupabaseClient<Database>,
-      ),
+    const result = await withRun(
+      parityRun(recording.client as SupabaseClient<Database>),
+      () =>
+        processAssetCreation(
+          {
+            accountId: ACCOUNT_ID,
+            projectId: PROJECT_ID,
+            episodeId: EPISODE_ID,
+            userId: USER_ID,
+          },
+          recording.client as SupabaseClient<Database>,
+        ),
     );
 
     // The generation_jobs writes are new on purpose (KB-174: the bulk action

@@ -442,7 +442,9 @@ async function threadSteps({
 
     const { data } = await supabase
       .from('narrative_threads')
-      .select('id, episodes_touched, payoffs, version, opened_at, auto_generated')
+      .select(
+        'id, episodes_touched, payoffs, version, opened_at, auto_generated',
+      )
       .eq('project_id', projectId)
       .eq('thread_name', name)
       .in('status', ['open', 'progressed'])
@@ -555,4 +557,3 @@ async function threadSteps({
 
   return steps;
 }
-

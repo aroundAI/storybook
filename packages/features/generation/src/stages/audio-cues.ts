@@ -365,7 +365,13 @@ export const audioCuesStage: StageDefinition<
     await applyCommit(ctx, {
       ops: [
         ...(rows.length > 0
-          ? [{ op: 'insert' as const, table: 'audio_cues' as const, rows: stamped }]
+          ? [
+              {
+                op: 'insert' as const,
+                table: 'audio_cues' as const,
+                rows: stamped,
+              },
+            ]
           : []),
         jobCompletedWrite(target.episodeId, 'audio_cue_generation', {
           cuesCreated: rows.length,

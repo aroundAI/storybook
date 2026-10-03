@@ -21,12 +21,7 @@ import {
 import type { Json } from '@kit/supabase/database';
 
 import { type PromptFile, buildBrief, singlePart } from '../brief';
-import {
-  type CommitWrite,
-  applyCommit,
-  eq,
-  resultRows,
-} from '../commit-plan';
+import { type CommitWrite, applyCommit, eq, resultRows } from '../commit-plan';
 import {
   episodeRowFromOutline,
   episodeRowUpdateFromOutline,

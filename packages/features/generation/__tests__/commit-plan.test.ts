@@ -8,11 +8,7 @@ import {
   eq,
   ref,
 } from '../src';
-import {
-  fakeRunHandle,
-  recordingClient,
-  tableResponder,
-} from '../src/testing';
+import { fakeRunHandle, recordingClient, tableResponder } from '../src/testing';
 
 const EPISODE = '55555555-5555-4555-8555-555555555555';
 
@@ -99,7 +95,9 @@ describe('applyPlanThroughClient: the run-less applier and the tests’ recorder
           op: 'update',
           table: 'episodes',
           values: {
-            metadata: { character_ids: { $union: [['x', 'asset-0'], ref('chars', 'id')] } },
+            metadata: {
+              character_ids: { $union: [['x', 'asset-0'], ref('chars', 'id')] },
+            },
           },
           merge: ['metadata'],
           match: [eq('id', EPISODE)],
@@ -107,7 +105,10 @@ describe('applyPlanThroughClient: the run-less applier and the tests’ recorder
       ],
     });
 
-    expect(applied.results.chars).toEqual([{ id: 'asset-0' }, { id: 'asset-1' }]);
+    expect(applied.results.chars).toEqual([
+      { id: 'asset-0' },
+      { id: 'asset-1' },
+    ]);
 
     const writes = recording.writes();
     expect(writes[0]?.options).toEqual({
@@ -200,7 +201,10 @@ describe('applyPlanThroughClient: the run-less applier and the tests’ recorder
     });
 
     expect(applied.skipped).toEqual([
-      expect.objectContaining({ key: 'canon', error: expect.stringMatching(/down/) }),
+      expect.objectContaining({
+        key: 'canon',
+        error: expect.stringMatching(/down/),
+      }),
     ]);
     expect(recording.writes().map((w) => w.table)).toEqual([
       'immutable_events',
@@ -272,7 +276,9 @@ describe('RunHandle.applyCommit: apply_generation_commit’s answers', () => {
       run.applyCommit(twoWrites, { finalize: true }),
     ).rejects.toMatchObject({
       code: 'COMMIT_FAILED',
-      message: expect.stringMatching(/rolled back: .*violates check constraint/),
+      message: expect.stringMatching(
+        /rolled back: .*violates check constraint/,
+      ),
     });
   });
 });

@@ -50,8 +50,7 @@ export async function storeEpisodeMemory(
   try {
     const steps = await planEpisodeMemory(client, data);
     const applied = await applyPlanThroughClient(client, { ops: steps });
-    const planned = (key: string) =>
-      steps.some((step) => step.key === key);
+    const planned = (key: string) => steps.some((step) => step.key === key);
 
     return {
       episodeSummary: planned(SUMMARY) && !wasSkipped(applied, SUMMARY),
@@ -149,9 +148,7 @@ export async function planEpisodeMemory(
         episode_id: data.episodeId,
         entity_type: 'world',
         entity_id: existing ? existing.id : ref(WORLD, 'id', { one: true }),
-        before_state: (existing
-          ? worldStateSnapshot(existing)
-          : null) as Json,
+        before_state: (existing ? worldStateSnapshot(existing) : null) as Json,
         after_state: worldStateSnapshot(worldRow) as Json,
         change_reason: existing ? 'World state replaced' : 'World state set',
       },

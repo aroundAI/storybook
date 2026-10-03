@@ -1,5 +1,4 @@
 import { writeFileSync } from 'node:fs';
-
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {

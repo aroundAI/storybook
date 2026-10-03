@@ -45,8 +45,8 @@ import type {
 import { mergeCharacterArcs } from './shared/character-arcs';
 import {
   characterIdMap,
-  dialogueRowsFromScenes,
   dialogueRebuildSteps,
+  dialogueRowsFromScenes,
 } from './shared/dialogue-lines';
 import { memoised } from './shared/memo';
 import { checkSceneNumbering, checkScenes } from './shared/scene-checks';

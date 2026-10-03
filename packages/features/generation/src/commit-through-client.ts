@@ -159,9 +159,7 @@ async function applyWrite(
         );
 
         if (error) {
-          throw new Error(
-            `reading ${write.table} to merge: ${error.message}`,
-          );
+          throw new Error(`reading ${write.table} to merge: ${error.message}`);
         }
 
         const current = rowsOf(data)[0] ?? {};
