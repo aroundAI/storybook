@@ -14,7 +14,6 @@ import {
 } from '@kit/next/refusals';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
-import { readFailed, whyNoRow } from '@kit/shared/rows';
 import { getStorageAdapter, writeProjectObject } from '@kit/storage';
 import { dialogueAudioPath, voicePreviewPath } from '@kit/storage/upload-paths';
 import { requireUser } from '@kit/supabase/require-user';
@@ -38,6 +37,7 @@ import {
   getAccountElevenLabsApiKey,
   getProjectTTSModel,
 } from './project-audio-settings';
+import { startDialogueVoiceRender } from './render-starts';
 import { getVoiceIdForCharacter, getVoiceSettings } from './voice-queries';
 
 // Note: These actions use type assertions because the film studio tables
@@ -453,158 +453,7 @@ const generateDialogueVoiceAsync = enhanceAction(
       };
     }
 
-    // 1. Fetch dialogue line with episode and account context
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: dialogueLine, error: fetchError } = await (client as any)
-      .from('dialogue_lines')
-      .select(
-        `
-        id,
-        episode_id,
-        text,
-        character_asset_id,
-        audio_url,
-        status,
-        episodes!inner(
-          id,
-          project_id,
-          projects!inner(
-            id,
-            account_id
-          )
-        )
-      `,
-      )
-      .eq('id', data.dialogueLineId)
-      .single();
-
-    if (readFailed(fetchError)) {
-      throw new Error(whyNoRow(fetchError, 'Dialogue line not found'));
-    }
-
-    if (fetchError || !dialogueLine) {
-      return {
-        success: false,
-        status: 'failed',
-        error: 'Dialogue line not found',
-      };
-    }
-
-    const dialogueData = dialogueLine as DialogueLineResponse;
-    const episodeId = dialogueData.episode_id;
-
-    // The voice worker spends the target account's key and writes the line
-    // with the service role, so a reader must not queue it (KB-46, KB-47)
-    const target = await authorizeEpisodeTarget(client, episodeId);
-
-    if (!target?.projectId) {
-      logger.warn(
-        { ...ctx, userId: user.id, reason: 'not_writable' },
-        'Voice generation refused',
-      );
-      return {
-        success: false,
-        status: 'failed',
-        error: 'Dialogue line not found',
-      };
-    }
-
-    const projectId = target.projectId;
-
-    // Validate text is not empty
-    const dialogueText = dialogueData.text?.trim();
-    if (!dialogueText) {
-      return {
-        success: false,
-        status: 'failed',
-        error: 'Dialogue text is empty',
-      };
-    }
-
-    // 2. Get voice ID from params or character's voice profile
-    const voiceId =
-      data.voiceId ??
-      (await getVoiceIdForCharacter(client, dialogueData.character_asset_id));
-
-    if (!voiceId) {
-      return {
-        success: false,
-        status: 'failed',
-        error:
-          'No voice ID provided and character has no voice profile configured',
-      };
-    }
-
-    // 3. Get voice settings from profile or use defaults
-    const voiceSettings =
-      data.settings ??
-      (await getVoiceSettings(client, dialogueData.character_asset_id));
-
-    // 4. Get TTS model for project
-    const ttsModel = await getProjectTTSModel(projectId);
-
-    try {
-      // 5. Update status to 'generating' (queued for background)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: generating, error: generatingError } = await (client as any)
-        .from('dialogue_lines')
-        .update({ status: 'generating' })
-        .eq('id', data.dialogueLineId)
-        .select('id');
-
-      if (generatingError) {
-        throw new Error(
-          `Failed to update dialogue_lines: ${generatingError.message}`,
-        );
-      }
-
-      requireAffectedRows(
-        generating,
-        "You can't generate audio for this dialogue line.",
-      );
-
-      // 6. Enqueue voice job for background processing via dedicated voice queue
-      const { queueVoiceJob } = await import(
-        '@kit/audio-generation/server/voice-queue-helper'
-      );
-
-      await queueVoiceJob(target, {
-        dialogueLineId: data.dialogueLineId,
-        batchJobId: null, // single-line generation, no batch tracking
-        episodeId,
-        voiceId,
-        ttsModel,
-        voiceSettings: {
-          stability: voiceSettings.stability ?? 0.5,
-          similarityBoost: voiceSettings.similarityBoost ?? 0.75,
-          style: voiceSettings.style,
-          speed: voiceSettings.speed,
-        },
-        text: dialogueText,
-        characterAssetId: dialogueData.character_asset_id ?? undefined,
-        userId: user.id,
-        overwriteExisting: data.overwriteExisting ?? false,
-      });
-
-      logger.info(ctx, 'Dialogue voice generation job queued successfully');
-
-      return { success: true, status: 'queued' };
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      logger.error(
-        { ...ctx, error },
-        'Failed to queue dialogue voice generation',
-      );
-
-      // Revert status to pending
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (client as any)
-        .from('dialogue_lines')
-        .update({ status: 'pending' })
-        .eq('id', data.dialogueLineId);
-
-      return { success: false, status: 'failed', error: errorMsg };
-    }
+    return startDialogueVoiceRender(client, user.id, data);
   },
   {
     schema: GenerateDialogueVoiceSchema,

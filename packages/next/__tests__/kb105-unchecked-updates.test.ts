@@ -62,15 +62,19 @@ const KNOWN: Record<string, [number, string]> = {
   'packages/features/audio-generation/src/server/audio-asset-actions.ts | audio_assets | update':
     [1, BOOKKEEPING],
   'packages/features/audio-generation/src/server/audio-cue-actions.ts | audio_cues | update':
-    [3, `${FAILURE_MARK} + ${JUST_INSERTED}`],
+    [2, `${FAILURE_MARK} + ${JUST_INSERTED}`],
   'packages/features/audio-generation/src/server/batch-actions.ts | batch_generation_jobs | update':
     [1, CLEANUP],
   'packages/features/audio-generation/src/server/core/audio-asset-core.ts | audio_assets | update':
     [1, BOOKKEEPING],
   'packages/features/audio-generation/src/server/voice-actions.ts | dialogue_lines | update':
-    [4, `${FAILURE_MARK} + ${RECORDS_RESULT}`],
+    [3, `${FAILURE_MARK} + ${RECORDS_RESULT}`],
   'packages/features/audio-generation/src/server/voice-actions.ts | generation_jobs | update':
     [4, `${FAILURE_MARK} + ${RECORDS_RESULT}`],
+  'packages/features/audio-generation/src/server/render-starts.ts | audio_cues | update':
+    [1, FAILURE_MARK],
+  'packages/features/audio-generation/src/server/render-starts.ts | dialogue_lines | update':
+    [1, FAILURE_MARK],
   'packages/features/audio-generation/src/server/voice-clone-actions.ts | voice_profiles | update':
     [2, `${FAILURE_MARK} + ${RECORDS_RESULT}`],
   'packages/features/content-analytics/src/server/analytics-sync-cron.ts | platform_connections | update':

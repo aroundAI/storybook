@@ -10,12 +10,11 @@ import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
 import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
-import { AudioCueTypeSchema } from '@kit/prompt-engine/llm-job-payloads';
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
-import { readFailed, whyNoRow } from '@kit/shared/rows';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { startCueAudioRender } from './render-starts';
 import { generateSfxAction } from './sfx-actions';
 
 // =============================================================================
@@ -237,114 +236,7 @@ const generateAudioForCue = enhanceAction(
       };
     }
 
-    // Get cue details
-    const { data: cue, error: cueError } = await client
-      .from('audio_cues')
-      .select(
-        `
-                id, episode_id, scene_number, cue_type, prompt,
-                start_offset_seconds, duration_seconds, is_loopable, status,
-                audio_asset_id, audio_track_id, created_at,
-                episodes!inner(project_id)
-            `,
-      )
-      .eq('id', data.cueId)
-      .single();
-
-    if (readFailed(cueError)) {
-      throw new Error(whyNoRow(cueError, 'Cue not found'));
-    }
-
-    if (cueError || !cue) {
-      return {
-        success: false,
-        status: 'failed',
-        error: cueError?.message ?? 'Cue not found',
-      };
-    }
-
-    // The worker spends the project's ElevenLabs key and writes the cue on
-    // the service-role key, so the caller must be able to write to the
-    // cue's project (KB-31) — before the cue is marked generating
-    const target = await authorizeEpisodeTarget(client, cue.episode_id);
-
-    if (!target?.projectId) {
-      return {
-        success: false,
-        status: 'failed',
-        error: 'Cue not found',
-      };
-    }
-
-    const { projectId } = target;
-
-    // The worker generates only these; any other type would be refused
-    // there, after the cue was marked generating (KB-33)
-    const cueType = AudioCueTypeSchema.safeParse(cue.cue_type);
-
-    if (!cueType.success) {
-      return {
-        success: false,
-        status: 'failed',
-        error: `Cannot generate audio for a ${cue.cue_type} cue`,
-      };
-    }
-
-    try {
-      // 1. Update cue status to 'generating'
-      const { data: generating, error: generatingError } = await client
-        .from('audio_cues')
-        .update({ status: 'generating' })
-        .eq('id', data.cueId)
-        .select('id');
-
-      if (generatingError) {
-        throw new Error(
-          `Failed to update audio_cues: ${generatingError.message}`,
-        );
-      }
-
-      requireAffectedRows(generating, "You can't generate audio for this cue.");
-
-      // 2. Enqueue LLM job for background processing
-      const { openRunForJob } = await import('@kit/ai-gateway');
-
-      const run = await openRunForJob(
-        {
-          jobType: 'audio-file-generation',
-          userId: user.id,
-          target,
-          payload: {
-            cueId: data.cueId,
-            projectId,
-            episodeId: cue.episode_id,
-            cueType: cueType.data,
-            prompt: cue.prompt,
-            durationSeconds: cue.duration_seconds ?? 60,
-            startOffsetSeconds: cue.start_offset_seconds ?? 0,
-          },
-          name: 'audio.generateAudioFile',
-        },
-        { client: client, accountId: target.accountId, userId: user.id },
-      );
-      await run.dispatch();
-
-      // 3. Return immediately - result comes via WebSocket
-      return { success: true, status: 'queued' };
-    } catch (error) {
-      // Revert status on enqueue failure
-      await client
-        .from('audio_cues')
-        .update({ status: 'pending' })
-        .eq('id', data.cueId);
-
-      return {
-        success: false,
-        status: 'failed',
-        error:
-          error instanceof Error ? error.message : 'Failed to queue generation',
-      };
-    }
+    return startCueAudioRender(client, user.id, data.cueId);
   },
   {
     schema: z.object({

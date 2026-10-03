@@ -67,9 +67,8 @@ export async function getProjectElevenLabsApiKey(
  */
 export async function getProjectAudioSettings(
   projectId: string,
+  client = getSupabaseServerClient(),
 ): Promise<ProjectAudioSettings | null> {
-  const client = getSupabaseServerClient();
-
   const { data, error } = await client
     .from('projects')
     .select('audio_settings')
@@ -86,9 +85,15 @@ export async function getProjectAudioSettings(
 /**
  * Get the ElevenLabs TTS model for a project
  * Throws if no model is configured - requires explicit configuration
+ *
+ * `client` is the caller's: the cookie session by default, the MCP
+ * principal's RLS client for a render started over MCP (FILM-1909).
  */
-export async function getProjectTTSModel(projectId: string): Promise<string> {
-  const settings = await getProjectAudioSettings(projectId);
+export async function getProjectTTSModel(
+  projectId: string,
+  client = getSupabaseServerClient(),
+): Promise<string> {
+  const settings = await getProjectAudioSettings(projectId, client);
   const model = settings?.elevenlabs?.tts_model;
 
   if (!model) {

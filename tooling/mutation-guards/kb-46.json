@@ -24,9 +24,9 @@
     {
       "name": "V3 one-line voice (queue) authorised by a readable line",
       "kind": "unit",
-      "file": "packages/features/audio-generation/src/server/voice-actions.ts",
-      "find": "a reader must not queue it (KB-46, KB-47)\n    const target = await authorizeEpisodeTarget(client, episodeId);",
-      "replace": "a reader must not queue it (KB-46, KB-47)\n    const target = await authorizeEpisodeTarget({ from: client.from.bind(client), rpc: async () => ({ data: true, error: null }) }, episodeId);",
+      "file": "packages/features/audio-generation/src/server/render-starts.ts",
+      "find": "a reader must not queue it (KB-46, KB-47)\n  const target = await authorizeEpisodeTarget(client, episodeId);",
+      "replace": "a reader must not queue it (KB-46, KB-47)\n  const target = await authorizeEpisodeTarget({ from: client.from.bind(client), rpc: async () => ({ data: true, error: null }) }, episodeId);",
       "cwd": "packages/features/audio-generation",
       "test": "__tests__/voice-authorization.test.ts",
       "pattern": "readable line the caller cannot write to, and queues nothing"
@@ -34,7 +34,7 @@
     {
       "name": "V4 batch voice authorised by a readable episode",
       "kind": "unit",
-      "file": "packages/features/audio-generation/src/server/batch-actions.ts",
+      "file": "packages/features/audio-generation/src/server/render-starts.ts",
       "find": "const target = await authorizeEpisodeTarget(client, data.episodeId);",
       "replace": "const target = await authorizeEpisodeTarget({ from: client.from.bind(client), rpc: async () => ({ data: true, error: null }) }, data.episodeId);",
       "cwd": "packages/features/audio-generation",
