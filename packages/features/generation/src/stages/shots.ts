@@ -23,6 +23,7 @@ import {
   ReelScoutOutputSchema,
   type SceneShot,
   SceneShotGenerationOutputSchema,
+  reelNoteFor,
 } from '@kit/prompt-engine/schemas';
 import {
   type ContentStyle,
@@ -592,7 +593,7 @@ export const shotsStage: StageDefinition<
     return partsFor(episode.scenes);
   },
 
-  async prepare(ctx, target, part) {
+  async prepare(ctx, target, part, earlier) {
     const episode = await loadShotsEpisode(ctx, target);
     const context = shotsContext(episode, target);
     const sceneNumbers = episode.scenes.map((s) => s.number);
@@ -627,6 +628,17 @@ export const shotsStage: StageDefinition<
       throw new Error(`Part ${part.key} names no scene of this episode`);
     }
 
+    // The Reel Scout's priority reaches the model for the scenes it flagged
+    // (KB-178, owner 2026-10-03): the reel_scout part runs first, so a scene
+    // part reads its accepted output from `earlier`
+    const reelScout = earlier?.find(
+      (out): out is ReelScoutPartOutput => out.kind === 'reel_scout',
+    );
+    const reelNote = reelNoteFor(
+      scene.number,
+      reelScout?.topReelCandidates ?? [],
+    );
+
     return buildBrief({
       stage: 'shots',
       part,
@@ -653,14 +665,12 @@ export const shotsStage: StageDefinition<
         characters: context.charactersVeo || 'No characters defined.',
         locations: context.locationsVeo || 'No locations defined.',
         previous_scene_summary: '',
-        // No reel_note: the template declares it and never places it, so the
-        // Reel Scout's note has never reached the model (KB-178). Sending it
-        // would change nothing the model sees; placing it is the owner's call.
+        reel_note: reelNote,
         recurring_element: context.recurringElements,
         shot_duration_min: target.shotDuration.min,
         shot_duration_max: target.shotDuration.max,
       },
-      context: { ...context, scene },
+      context: { ...context, scene, reelNote },
       outputSchema: SceneShotsPartOutputSchema,
       constraints: {
         kind: 'scene',

@@ -57,7 +57,7 @@ export async function runStage<TTarget, TOut, TData>(
     let diagnostics: Record<string, unknown> | undefined;
 
     for (const part of parts) {
-      const brief = await stage.prepare(ctx, target, part);
+      const brief = await stage.prepare(ctx, target, part, outputs);
       brief.runId = deps.runId;
       lastBrief = brief;
 

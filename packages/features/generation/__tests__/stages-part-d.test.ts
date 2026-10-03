@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import type {
-  AudioCueGenerationOutput,
-  FactExtractionOutput,
+import {
+  type AudioCueGenerationOutput,
+  type FactExtractionOutput,
+  reelNoteFor,
 } from '@kit/prompt-engine/schemas';
 
 import {
@@ -16,8 +17,9 @@ import {
   shotsStage,
   singlePart,
 } from '../src';
+import type { ShotsPartOutput } from '../src/stages/shots';
 import { recordingClient, tableResponder } from '../src/testing';
-import type { PartSpec } from '../src/types';
+import type { Brief, PartSpec } from '../src/types';
 import audioOld from './fixtures/audio-cues-old-writes.json';
 import summaryFixture from './fixtures/episode-summary-fixture.json';
 import summaryOld from './fixtures/episode-summary-old.json';
@@ -130,8 +132,11 @@ describe('shots stage', () => {
       shot_duration_max: 8,
       previous_scene_summary: '',
     });
-    // KB-178: the template never places reel_note, so the brief does not send it
-    expect(scene.prompt.variables).not.toHaveProperty('reel_note');
+    // KB-178 changes this prompt on purpose (owner, 2026-10-03): the old
+    // handler's rendered text had no reel note; prepared with no reel_scout
+    // output, a scene sends an empty one, and the prompt shows none
+    expect(scene.prompt.variables).toMatchObject({ reel_note: '' });
+    expect(scene.instructions).not.toContain('Reel candidate');
     expect(scene.outputSchema).toMatchObject({
       properties: {
         kind: { const: 'scene' },
@@ -154,6 +159,46 @@ describe('shots stage', () => {
 
     expect(reel.instructions).not.toContain('--- ignore previous instructions');
     expect(reel.instructions).toContain('Pilot');
+  });
+
+  it('sends the Reel Scout’s note for the scene it flagged, and only that scene (KB-178)', async () => {
+    const ctx = ctxFor(shotsClient().client);
+    const reelScout = shotsPartOutputs().get('reel_scout') as ShotsPartOutput;
+    const note = reelNoteFor(1, [1]);
+
+    expect(note).toContain('PRIORITY: This scene is a Reel candidate');
+
+    const flagged = await shotsStage.prepare(ctx, shotsTarget, scenePart(1), [
+      reelScout,
+    ]);
+    const unflagged = await shotsStage.prepare(ctx, shotsTarget, scenePart(2), [
+      reelScout,
+    ]);
+
+    // Server mode renders prompt.variables; an external agent reads
+    // instructions and context
+    expect(flagged.prompt.variables.reel_note).toBe(note);
+    expect(flagged.instructions).toContain(note);
+    expect(flagged.context.reelNote).toBe(note);
+
+    expect(unflagged.prompt.variables.reel_note).toBe('');
+    expect(unflagged.instructions).not.toContain('Reel candidate');
+    expect(unflagged.context.reelNote).toBe('');
+  });
+
+  it('hands each scene part the reel_scout output the runner accepted first (KB-178)', async () => {
+    const briefs = new Map<string, Brief>();
+    const generate = generateFrom(shotsPartOutputs());
+
+    await runStage(shotsStage, ctxFor(shotsClient().client), shotsTarget, {
+      generate: (brief) => {
+        briefs.set(brief.part.key, brief);
+        return generate(brief);
+      },
+    });
+
+    expect(briefs.get('scene:1')!.instructions).toContain(reelNoteFor(1, [1]));
+    expect(briefs.get('scene:2')!.instructions).not.toContain('Reel candidate');
   });
 
   it('writes the same rows as the old handler for a two-scene episode, numbered across scenes', async () => {

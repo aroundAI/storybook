@@ -1,0 +1,55 @@
+{
+  "feature": "KB-178",
+  "mutations": [
+    {
+      "name": "RN1 scene-shot-generation stops placing the reel note",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/prompts/story-generation/scene-shot-generation.json",
+      "find": "{{scene_content}}\\n\\n{{reel_note}}\\n\\n{{recurring_element}}",
+      "replace": "{{scene_content}}\\n\\n{{recurring_element}}",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/scene-shot-reel-note.test.ts",
+      "pattern": "sends a Reel candidate"
+    },
+    {
+      "name": "RN2 the shots stage sends an empty note for a flagged scene",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/shots.ts",
+      "find": "        reel_note: reelNote,\n",
+      "replace": "        reel_note: '',\n",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stages-part-d.test.ts",
+      "pattern": "for the scene it flagged"
+    },
+    {
+      "name": "RN3 runStage stops handing prepare() the parts it accepted",
+      "kind": "unit",
+      "file": "packages/features/generation/src/run-stage.ts",
+      "find": "stage.prepare(ctx, target, part, outputs)",
+      "replace": "stage.prepare(ctx, target, part)",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stages-part-d.test.ts",
+      "pattern": "hands each scene part the reel_scout output"
+    },
+    {
+      "name": "RN4 the Shot Director stops sending the reel note",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/shot-director-skill.ts",
+      "find": "              const reelNote = reelNoteFor(scene.number, reelCandidateScenes);\n",
+      "replace": "              const reelNote = '';\n",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/shot-duration.test.ts",
+      "pattern": "sends the priority note for a Reel candidate"
+    },
+    {
+      "name": "RN5 a template may declare a variable it never places",
+      "kind": "unit",
+      "file": "packages/features/prompt-engine/src/prompts/story-generation/scene-shot-generation.json",
+      "find": "{{scene_content}}\\n\\n{{reel_note}}\\n\\n{{recurring_element}}",
+      "replace": "{{scene_content}}\\n\\n{{recurring_element}}",
+      "cwd": "packages/features/prompt-engine",
+      "test": "__tests__/prompt-variables.test.ts",
+      "pattern": "every template places every variable it declares"
+    }
+  ]
+}
