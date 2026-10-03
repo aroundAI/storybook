@@ -227,8 +227,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-turbo-
 
+      # --concurrency=2: a change reaching most packages (#567, #575) made turbo
+      # start ~50 tsc processes at once, each allowed 4 GB (NODE_OPTIONS); a
+      # task exited 1 with no diagnostic and the runner cancelled the step.
+      # (Lint is not capped here: its script passes trailing args to eslint.)
       - name: Typecheck
-        run: pnpm run typecheck
+        run: pnpm run typecheck --concurrency=2
 
       - name: Lint
         run: pnpm run lint
