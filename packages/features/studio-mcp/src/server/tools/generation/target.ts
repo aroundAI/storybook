@@ -244,7 +244,9 @@ export async function resolveStageTarget(
     target: parsed.data,
     runTarget: {
       type:
-        stage.targetType === 'publish' ? 'episode' : (stage.targetType as TargetType),
+        stage.targetType === 'publish'
+          ? 'episode'
+          : (stage.targetType as TargetType),
       id: targetId,
       accountId,
       projectId: projectId ?? null,

@@ -118,7 +118,9 @@ function structured<T = Record<string, unknown>>(
   what: string,
 ): T {
   if (result.isError) {
-    throw new Error(`${what} failed: ${JSON.stringify(result.structuredContent)}`);
+    throw new Error(
+      `${what} failed: ${JSON.stringify(result.structuredContent)}`,
+    );
   }
 
   return result.structuredContent as T;
@@ -194,13 +196,7 @@ export async function runStage(
     `${start.stage} start`,
   );
 
-  return drive(
-    call,
-    start.stage,
-    started.run.runId,
-    started.brief,
-    outputFor,
-  );
+  return drive(call, start.stage, started.run.runId, started.brief, outputFor);
 }
 
 /** A child run a commit opened (shots → audio_cues): its first pending part. */
@@ -272,7 +268,10 @@ export const outputs = {
           description: `Scene ${number}: Maya listens at the console.`,
           dialogue: [
             { character: MAYA, text: `Signal ${number}. It is my voice.` },
-            { character: WILLIAMS, text: `Log it, Commander. Scene ${number}.` },
+            {
+              character: WILLIAMS,
+              text: `Log it, Commander. Scene ${number}.`,
+            },
           ],
           estimatedDuration: 30,
         },
@@ -488,9 +487,15 @@ export async function driveEpisode(call: Call, ids: WorkflowIds) {
       outputs.ideation,
     ),
   );
-  runs.push(await runStage(call, { stage: 'story', ...episode }, outputs.story));
   runs.push(
-    await runStage(call, { stage: 'screenplay', ...episode }, outputs.screenplay),
+    await runStage(call, { stage: 'story', ...episode }, outputs.story),
+  );
+  runs.push(
+    await runStage(
+      call,
+      { stage: 'screenplay', ...episode },
+      outputs.screenplay,
+    ),
   );
 
   const shots = await runStage(
@@ -513,7 +518,9 @@ export async function driveEpisode(call: Call, ids: WorkflowIds) {
     );
   }
 
-  runs.push(await driveChild(call, 'audio_cues', audio.runId, outputs.audioCues));
+  runs.push(
+    await driveChild(call, 'audio_cues', audio.runId, outputs.audioCues),
+  );
 
   return { runs, audioChild: audio };
 }

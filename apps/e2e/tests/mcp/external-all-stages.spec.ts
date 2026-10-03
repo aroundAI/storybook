@@ -215,13 +215,17 @@ test.describe('Claude takes an episode through every stage over MCP (FILM-1909)'
       await page.goto(`${base}/screenplay`);
       if (reload) await page.reload();
       await expect(byTest(page, 'scene-index-item-1')).toBeVisible();
-      await expect(page.getByText('Signal 1. It is my voice.').first()).toBeVisible();
+      await expect(
+        page.getByText('Signal 1. It is my voice.').first(),
+      ).toBeVisible();
       await capture(page, `03-screenplay${suffix}`);
 
       await page.goto(`${base}/visual-studio`);
       if (reload) await page.reload();
       await expect(byTest(page, 'shot-card').first()).toBeVisible();
-      await expect(byTest(page, 'shot-card')).toHaveCount(sceneCount * SHOTS_PER_SCENE);
+      await expect(byTest(page, 'shot-card')).toHaveCount(
+        sceneCount * SHOTS_PER_SCENE,
+      );
       await capture(page, `04-shots${suffix}`);
 
       await page.goto(`${base}/audio-studio`);

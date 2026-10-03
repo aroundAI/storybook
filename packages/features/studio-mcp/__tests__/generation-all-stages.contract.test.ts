@@ -10,9 +10,9 @@ import {
   type ToolResult,
   WORLD,
   driveEpisode,
+  driveRemainingStages,
   linkedCast,
   patient,
-  driveRemainingStages,
 } from './helpers/all-stages-script';
 import {
   ANON_KEY,
@@ -174,43 +174,45 @@ describe.skipIf(!SEED)(
 
     const ids = () => ({ projectId: team.projectId, episodeId });
 
-    it('ideation → story → screenplay → shots → audio cues, each committed in external mode',
+    it(
+      'ideation → story → screenplay → shots → audio cues, each committed in external mode',
       { timeout: 300_000 },
       async () => {
-      const episode = await driveEpisode(call, ids());
-      runs.push(...episode.runs);
-      audioChild = episode.audioChild;
+        const episode = await driveEpisode(call, ids());
+        runs.push(...episode.runs);
+        audioChild = episode.audioChild;
 
-      expect(runs.map((run) => run.stage)).toEqual([
-        'ideation',
-        'story',
-        'screenplay',
-        'shots',
-        'audio_cues',
-      ]);
+        expect(runs.map((run) => run.stage)).toEqual([
+          'ideation',
+          'story',
+          'screenplay',
+          'shots',
+          'audio_cues',
+        ]);
 
-      const [row] = await admin(
-        `/rest/v1/episodes?id=eq.${episodeId}&select=status,metadata,story_data,screenplay_data,shot_list,generation_origin`,
-      );
-      const metadata = row!.metadata as { ideas?: unknown[] };
-      const screenplay = row!.screenplay_data as { scenes: unknown[] };
-      const origin = row!.generation_origin as Record<string, Row>;
+        const [row] = await admin(
+          `/rest/v1/episodes?id=eq.${episodeId}&select=status,metadata,story_data,screenplay_data,shot_list,generation_origin`,
+        );
+        const metadata = row!.metadata as { ideas?: unknown[] };
+        const screenplay = row!.screenplay_data as { scenes: unknown[] };
+        const origin = row!.generation_origin as Record<string, Row>;
 
-      expect(metadata.ideas).toHaveLength(2);
-      expect((row!.story_data as Row).fullStory).toContain('Maya Chen');
-      expect(row!.status).toBe('storyboard');
-      expect(origin.story).toMatchObject({
-        kind: 'external',
-        clientName: 'contract test',
-      });
-      expect(origin.screenplay).toMatchObject({ kind: 'external' });
+        expect(metadata.ideas).toHaveLength(2);
+        expect((row!.story_data as Row).fullStory).toContain('Maya Chen');
+        expect(row!.status).toBe('storyboard');
+        expect(origin.story).toMatchObject({
+          kind: 'external',
+          clientName: 'contract test',
+        });
+        expect(origin.screenplay).toMatchObject({ kind: 'external' });
 
-      const screenplayRun = runs.find((r) => r.stage === 'screenplay')!;
-      expect(screenplay.scenes).toHaveLength(screenplayRun.parts.length);
-      expect(screenplayRun.parts).toEqual(
-        screenplay.scenes.map((_, i) => `scene-${i + 1}`),
-      );
-    });
+        const screenplayRun = runs.find((r) => r.stage === 'screenplay')!;
+        expect(screenplay.scenes).toHaveLength(screenplayRun.parts.length);
+        expect(screenplayRun.parts).toEqual(
+          screenplay.scenes.map((_, i) => `scene-${i + 1}`),
+        );
+      },
+    );
 
     it('screenplay: dialogue_lines are rebuilt from the scenes, numbered across them', async () => {
       const lines = await admin(
@@ -244,13 +246,15 @@ describe.skipIf(!SEED)(
       const perScene = shots.length / scenes;
 
       expect(Number.isInteger(perScene)).toBe(true);
-      expect(shots.map((s) => s.shot_number)).toEqual(shots.map((_, i) => i + 1));
+      expect(shots.map((s) => s.shot_number)).toEqual(
+        shots.map((_, i) => i + 1),
+      );
       expect(shots.map((s) => s.scene_number)).toEqual(
         shots.map((_, i) => Math.floor(i / perScene) + 1),
       );
-      expect(shots.filter((s) => s.shorts_candidate).map((s) => s.scene_number)).toEqual(
-        Array(perScene).fill(1),
-      );
+      expect(
+        shots.filter((s) => s.shorts_candidate).map((s) => s.scene_number),
+      ).toEqual(Array(perScene).fill(1));
       expect(shots[0]!.generation_origin).toMatchObject({
         kind: 'external',
         runId: shotsRun.runId,
@@ -283,29 +287,31 @@ describe.skipIf(!SEED)(
       expect(cues[0]!.generation_origin).toMatchObject({ kind: 'external' });
     });
 
-    it('every other registered stage completes too, season_outline last',
+    it(
+      'every other registered stage completes too, season_outline last',
       { timeout: 300_000 },
       async () => {
-      runs.push(
-        ...(await driveRemainingStages(call, { ...ids(), assetId: mayaId })),
-      );
+        runs.push(
+          ...(await driveRemainingStages(call, { ...ids(), assetId: mayaId })),
+        );
 
-      const driven = new Set(runs.map((run) => run.stage));
-      expect([...driven].sort()).toEqual(
-        ALL_STAGES.map((stage) => stage.key).sort(),
-      );
+        const driven = new Set(runs.map((run) => run.stage));
+        expect([...driven].sort()).toEqual(
+          ALL_STAGES.map((stage) => stage.key).sort(),
+        );
 
-      const committed = await admin(
-        `/rest/v1/generation_runs?id=in.(${runs.map((r) => r.runId).join(',')})&select=stage,mode,status`,
-      );
-      expect(committed).toHaveLength(runs.length);
-      for (const run of committed) {
-        expect(run, String(run.stage)).toMatchObject({
-          mode: 'external',
-          status: 'committed',
-        });
-      }
-    });
+        const committed = await admin(
+          `/rest/v1/generation_runs?id=in.(${runs.map((r) => r.runId).join(',')})&select=stage,mode,status`,
+        );
+        expect(committed).toHaveLength(runs.length);
+        for (const run of committed) {
+          expect(run, String(run.stage)).toMatchObject({
+            mode: 'external',
+            status: 'committed',
+          });
+        }
+      },
+    );
 
     it('their results are where the web reads them', async () => {
       const [episode] = await admin(
@@ -331,9 +337,7 @@ describe.skipIf(!SEED)(
       const [project] = await admin(
         `/rest/v1/projects?id=eq.${team.projectId}&select=metadata`,
       );
-      expect(
-        (project!.metadata as Row).latestSeasonAnalysis,
-      ).toBeTruthy();
+      expect((project!.metadata as Row).latestSeasonAnalysis).toBeTruthy();
 
       const translated = await admin(
         `/rest/v1/dialogue_lines?episode_id=eq.${episodeId}&language=eq.es&select=text`,
@@ -363,105 +367,121 @@ describe.skipIf(!SEED)(
       expect(rows).toEqual([]);
     });
 
-    it('edit_scene, edit_shot and edit_dialogue_line commit through the run layer: versioned, snapshotted, stamped external',
+    it(
+      'edit_scene, edit_shot and edit_dialogue_line commit through the run layer: versioned, snapshotted, stamped external',
       { timeout: 300_000 },
       async () => {
-      const version = async () =>
-        Number(
-          (await admin(`/rest/v1/episodes?id=eq.${episodeId}&select=version`))[0]!
-            .version,
+        const version = async () =>
+          Number(
+            (
+              await admin(`/rest/v1/episodes?id=eq.${episodeId}&select=version`)
+            )[0]!.version,
+          );
+
+        const scene = await call('edit_scene', {
+          episodeId,
+          version: await version(),
+          sceneNumber: 2,
+          heading: 'INT. OBSERVATION DECK - DAWN',
+          timeOfDay: 'dawn',
+        });
+        expect(
+          scene.isError,
+          JSON.stringify(scene.structuredContent),
+        ).toBeFalsy();
+        const sceneRunId = scene.structuredContent!.runId as string;
+
+        const [shot] = await admin(
+          `/rest/v1/shots?episode_id=eq.${episodeId}&scene_number=eq.1&select=id,prompt&order=sequence_number&limit=1`,
+        );
+        const edited = await call('edit_shot', {
+          episodeId,
+          version: await version(),
+          shotId: shot!.id,
+          durationSeconds: 6,
+          veoPrompt: {
+            fullPrompt: 'Close on Maya at the console, dawn light.',
+          },
+        });
+        expect(
+          edited.isError,
+          JSON.stringify(edited.structuredContent),
+        ).toBeFalsy();
+
+        const [line] = await admin(
+          `/rest/v1/dialogue_lines?episode_id=eq.${episodeId}&language=eq.en&sequence_number=eq.1&select=id`,
+        );
+        const lineEdit = await call('edit_dialogue_line', {
+          episodeId,
+          version: await version(),
+          dialogueLineId: line!.id,
+          text: 'It is my voice. It is me.',
+        });
+        expect(
+          lineEdit.isError,
+          JSON.stringify(lineEdit.structuredContent),
+        ).toBeFalsy();
+
+        const stale = await call('edit_dialogue_line', {
+          episodeId,
+          version: (await version()) - 1,
+          dialogueLineId: line!.id,
+          text: 'too late',
+        });
+        expect(stale.structuredContent).toMatchObject({
+          code: 'TARGET_CHANGED',
+        });
+
+        const [episode] = await admin(
+          `/rest/v1/episodes?id=eq.${episodeId}&select=screenplay_data`,
+        );
+        const scenes = (episode!.screenplay_data as { scenes: Row[] }).scenes;
+        expect(scenes[1]).toMatchObject({
+          heading: 'INT. OBSERVATION DECK - DAWN',
+          timeOfDay: 'dawn',
+          generationOrigin: { kind: 'external', runId: sceneRunId },
+        });
+        expect((scenes[0]!.dialogue as Row[])[0]!.text).toBe(
+          'It is my voice. It is me.',
         );
 
-      const scene = await call('edit_scene', {
-        episodeId,
-        version: await version(),
-        sceneNumber: 2,
-        heading: 'INT. OBSERVATION DECK - DAWN',
-        timeOfDay: 'dawn',
-      });
-      expect(scene.isError, JSON.stringify(scene.structuredContent)).toBeFalsy();
-      const sceneRunId = scene.structuredContent!.runId as string;
+        const [shotAfter] = await admin(
+          `/rest/v1/shots?id=eq.${shot!.id}&select=prompt,duration_seconds,generation_origin`,
+        );
+        expect(shotAfter).toMatchObject({
+          prompt: 'Close on Maya at the console, dawn light.',
+          duration_seconds: 6,
+          generation_origin: { kind: 'external' },
+        });
 
-      const [shot] = await admin(
-        `/rest/v1/shots?episode_id=eq.${episodeId}&scene_number=eq.1&select=id,prompt&order=sequence_number&limit=1`,
-      );
-      const edited = await call('edit_shot', {
-        episodeId,
-        version: await version(),
-        shotId: shot!.id,
-        durationSeconds: 6,
-        veoPrompt: { fullPrompt: 'Close on Maya at the console, dawn light.' },
-      });
-      expect(edited.isError, JSON.stringify(edited.structuredContent)).toBeFalsy();
+        const [lineAfter] = await admin(
+          `/rest/v1/dialogue_lines?id=eq.${line!.id}&select=text,sequence_number`,
+        );
+        expect(lineAfter).toMatchObject({
+          text: 'It is my voice. It is me.',
+          sequence_number: 1,
+        });
 
-      const [line] = await admin(
-        `/rest/v1/dialogue_lines?episode_id=eq.${episodeId}&language=eq.en&sequence_number=eq.1&select=id`,
-      );
-      const lineEdit = await call('edit_dialogue_line', {
-        episodeId,
-        version: await version(),
-        dialogueLineId: line!.id,
-        text: 'It is my voice. It is me.',
-      });
-      expect(lineEdit.isError, JSON.stringify(lineEdit.structuredContent)).toBeFalsy();
+        const editRuns = await admin(
+          `/rest/v1/generation_runs?id=in.(${[sceneRunId, edited.structuredContent!.runId, lineEdit.structuredContent!.runId].join(',')})&select=stage,mode,status,origin`,
+        );
+        expect(editRuns.map((r) => [r.stage, r.mode, r.status]).sort()).toEqual(
+          [
+            ['screenplay_refinement', 'external', 'committed'],
+            ['screenplay_refinement', 'external', 'committed'],
+            ['shots', 'external', 'committed'],
+          ].sort(),
+        );
 
-      const stale = await call('edit_dialogue_line', {
-        episodeId,
-        version: (await version()) - 1,
-        dialogueLineId: line!.id,
-        text: 'too late',
-      });
-      expect(stale.structuredContent).toMatchObject({ code: 'TARGET_CHANGED' });
-
-      const [episode] = await admin(
-        `/rest/v1/episodes?id=eq.${episodeId}&select=screenplay_data`,
-      );
-      const scenes = (episode!.screenplay_data as { scenes: Row[] }).scenes;
-      expect(scenes[1]).toMatchObject({
-        heading: 'INT. OBSERVATION DECK - DAWN',
-        timeOfDay: 'dawn',
-        generationOrigin: { kind: 'external', runId: sceneRunId },
-      });
-      expect((scenes[0]!.dialogue as Row[])[0]!.text).toBe(
-        'It is my voice. It is me.',
-      );
-
-      const [shotAfter] = await admin(
-        `/rest/v1/shots?id=eq.${shot!.id}&select=prompt,duration_seconds,generation_origin`,
-      );
-      expect(shotAfter).toMatchObject({
-        prompt: 'Close on Maya at the console, dawn light.',
-        duration_seconds: 6,
-        generation_origin: { kind: 'external' },
-      });
-
-      const [lineAfter] = await admin(
-        `/rest/v1/dialogue_lines?id=eq.${line!.id}&select=text,sequence_number`,
-      );
-      expect(lineAfter).toMatchObject({
-        text: 'It is my voice. It is me.',
-        sequence_number: 1,
-      });
-
-      const editRuns = await admin(
-        `/rest/v1/generation_runs?id=in.(${[sceneRunId, edited.structuredContent!.runId, lineEdit.structuredContent!.runId].join(',')})&select=stage,mode,status,origin`,
-      );
-      expect(editRuns.map((r) => [r.stage, r.mode, r.status]).sort()).toEqual(
-        [
-          ['screenplay_refinement', 'external', 'committed'],
-          ['screenplay_refinement', 'external', 'committed'],
-          ['shots', 'external', 'committed'],
-        ].sort(),
-      );
-
-      const revisions = await admin(
-        `/rest/v1/content_revisions?run_id=eq.${edited.structuredContent!.runId}&select=snapshot`,
-      );
-      expect(
-        ((revisions[0]!.snapshot as { shots: Row[] }).shots).find(
-          (s) => s.id === shot!.id,
-        )!.prompt,
-      ).toBe(shot!.prompt);
-    });
+        const revisions = await admin(
+          `/rest/v1/content_revisions?run_id=eq.${edited.structuredContent!.runId}&select=snapshot`,
+        );
+        expect(
+          (revisions[0]!.snapshot as { shots: Row[] }).shots.find(
+            (s) => s.id === shot!.id,
+          )!.prompt,
+        ).toBe(shot!.prompt);
+      },
+    );
   },
 );

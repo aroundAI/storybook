@@ -736,7 +736,9 @@ function allowlist(): Record<
     .sort()
     .reverse()
     .map((file) => readFileSync(path.join(dir, file), 'utf8'))
-    .find((text) => text.includes('function kit.generation_commit_allowlist()'))!;
+    .find((text) =>
+      text.includes('function kit.generation_commit_allowlist()'),
+    )!;
 
   return JSON.parse(
     sql.slice(

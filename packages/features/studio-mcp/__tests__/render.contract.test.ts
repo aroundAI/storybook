@@ -332,26 +332,37 @@ describe.skipIf(!SEED || !SQS)(
       });
     });
 
-    it('start_audio_render queues the audio-file-generation job for the cue and marks it generating', async () => {
+    it('start_audio_render opens and dispatches the audio-file-generation run for the cue and marks it generating', async () => {
       const result = await call(client, 'start_audio_render', {
         episodeId: team.episodeId,
         cueId,
       });
 
       expect(result.isError).toBeFalsy();
+      // The queue carries the run (FILM-1903); the worker reads the job from it
       const [message, ...rest_] = await drain(llmQueue);
       expect(rest_).toEqual([]);
-      expect(message).toMatchObject({
-        jobType: 'audio-file-generation',
-        userId: team.userId,
-        payload: {
-          cueId,
-          episodeId: team.episodeId,
-          projectId: team.projectId,
-          accountId: team.accountId,
-          cueType: 'music',
-          prompt: 'A slow piano under the hall.',
-          durationSeconds: 12,
+      expect(message).toEqual({ runId: expect.any(String) });
+
+      const [run] = await rest(
+        `/rest/v1/generation_runs?id=eq.${String(message!.runId)}&select=mode,status,created_by,input`,
+        { method: 'GET', token: SERVICE_ROLE_KEY },
+      );
+      expect(run).toMatchObject({
+        mode: 'server',
+        created_by: team.userId,
+        input: {
+          kind: 'job',
+          jobType: 'audio-file-generation',
+          payload: {
+            cueId,
+            episodeId: team.episodeId,
+            projectId: team.projectId,
+            accountId: team.accountId,
+            cueType: 'music',
+            prompt: 'A slow piano under the hall.',
+            durationSeconds: 12,
+          },
         },
       });
 
