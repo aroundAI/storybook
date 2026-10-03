@@ -499,7 +499,7 @@ create table public.generation_runs (
     'asset_description','publish_metadata','season_analysis','fact_extraction','episode_summary',
     -- server-only keys (FILM-1903 part B): model calls with no content stage, and the audio
     -- render job, which rides the same queue; no StageDefinition serves them
-    'analytics_insights','language_insights','audio_render')),
+    'analytics_insights','language_insights','fact_check','audio_render')),
   mode text not null check (mode in ('server','external')),
   status text not null default 'briefed'
     check (status in ('briefed','in_progress','committed','failed','cancelled','expired')),
