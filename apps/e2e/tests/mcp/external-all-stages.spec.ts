@@ -100,7 +100,7 @@ async function mintToken(accountId: string, accessToken: string) {
 /** FILM-1910's origin badge, inside the first element with this hook. */
 async function expectWrittenByClaude(page: Page, within: string) {
   await expect(
-    byTest(page, within).first().locator('[data-test="origin-badge"]').first(),
+    byTest(byTest(page, within).first(), 'origin-badge').first(),
   ).toContainText('Claude via MCP');
 }
 
