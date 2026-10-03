@@ -22,7 +22,7 @@ summary: >
 acceptance_criteria:
   - text: "A user docs page (apps/web/content/documentation) explains adding the connector in Claude, signing in, the scopes, the workflow and revoking access, with screenshots taken from a real run"
     met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    reason: "not met — page drafted in #578 (apps/web/content/documentation/claude-connector.mdoc); screenshots pending a real run, and the banner, badge, restore and AI-settings labels wait for FILM-1910. Open placeholders are the TODO lines in the page's frontmatter"
   - text: "Monitoring panels: calls per tool, error rate by code, p95 by tool, runs by mode and status, expired leases per day"
     met: false
     reason: "not met — drafted 2026-10-02, no code yet"
