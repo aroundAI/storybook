@@ -13,6 +13,7 @@ import {
 
 import { Button } from '@kit/ui/button';
 
+import { useStageRunLock } from '../../_components/stage-run-bar';
 import type { LanguageTabBarProps } from './language-tab-bar';
 import { LanguageTabBar } from './language-tab-bar';
 import type { MusicTimelineStats } from './music-timeline';
@@ -91,6 +92,7 @@ export function AudioStudioHeader({
   sfxPendingCount,
   onExport,
 }: AudioStudioHeaderProps) {
+  const { locked: runLocked } = useStageRunLock();
   const stats =
     activeTab === 'dialogue'
       ? dialogueStats
@@ -242,6 +244,7 @@ export function AudioStudioHeader({
               onClick={onGenerateAll}
               disabled={
                 isPending ||
+                runLocked ||
                 dialogueStats.pending +
                   dialogueStats.generating +
                   dialogueStats.failed ===
@@ -261,7 +264,8 @@ export function AudioStudioHeader({
             {hasNoCues && (
               <Button
                 onClick={onGenerateAudioCues}
-                disabled={isPending || isGeneratingCues}
+                disabled={isPending || isGeneratingCues || runLocked}
+                data-test="generate-audio-cues"
                 size="sm"
                 className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-sm hover:from-violet-700 hover:to-purple-700"
               >
@@ -280,7 +284,7 @@ export function AudioStudioHeader({
             )}
             <Button
               onClick={onGenerateAllMusic}
-              disabled={musicPendingCount === 0}
+              disabled={musicPendingCount === 0 || runLocked}
               size="sm"
               className="gap-2 bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
             >
@@ -295,7 +299,8 @@ export function AudioStudioHeader({
             {hasNoCues && (
               <Button
                 onClick={onGenerateAudioCues}
-                disabled={isPending || isGeneratingCues}
+                disabled={isPending || isGeneratingCues || runLocked}
+                data-test="generate-audio-cues"
                 size="sm"
                 className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-sm hover:from-violet-700 hover:to-purple-700"
               >
@@ -314,7 +319,7 @@ export function AudioStudioHeader({
             )}
             <Button
               onClick={onGenerateAllSfx}
-              disabled={sfxPendingCount === 0}
+              disabled={sfxPendingCount === 0 || runLocked}
               size="sm"
               className="gap-2 bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
             >

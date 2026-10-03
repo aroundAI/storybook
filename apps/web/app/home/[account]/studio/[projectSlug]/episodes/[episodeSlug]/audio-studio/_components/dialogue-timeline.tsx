@@ -10,6 +10,7 @@ import {
   generateDialogueVoiceAsyncAction,
   updateDialogueTextAction,
 } from '@kit/audio-generation/server';
+import { OriginBadge } from '@kit/episodes/components/origin-badge';
 import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
@@ -621,7 +622,7 @@ export function DialogueTimeline({
                     >
                       {dialogue.text ?? 'No text'}
                     </p>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <div className={cn('h-2 w-2 rounded-full', colors.dot)} />
                       <span
                         className={cn(
@@ -631,6 +632,10 @@ export function DialogueTimeline({
                       >
                         {dialogue.characterName}
                       </span>
+                      <OriginBadge
+                        origin={dialogue.generationOrigin}
+                        className="shrink-0"
+                      />
                     </div>
                   </div>
                 </div>

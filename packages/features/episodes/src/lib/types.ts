@@ -372,6 +372,8 @@ export interface Episode {
   metadata: EpisodeMetadata | null;
   /** Orchestrator agent's viral quality analysis */
   viralQuality?: EpisodeViralQuality | null;
+  /** Raw `episodes.generation_origin`, keyed by stage (FILM-1903); read with latestStageOrigin */
+  generationOrigin?: unknown;
   version: number;
   createdAt: string;
   updatedAt: string;
@@ -577,6 +579,8 @@ export interface Shot {
   primarySubject?: PrimarySubject | null;
   /** How to compose the first frame */
   frameStrategy?: FrameStrategy | null;
+  /** Raw `shots.generation_origin` (FILM-1903); read with parseGenerationOrigin */
+  generationOrigin?: unknown;
 
   createdAt: string;
   updatedAt: string;

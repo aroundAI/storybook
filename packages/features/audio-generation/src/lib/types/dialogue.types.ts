@@ -94,6 +94,8 @@ export interface DialogueLine {
   language: SupportedLanguage;
   /** Reference to source dialogue line if this is a translation */
   sourceDialogueId: string | null;
+  /** Raw `dialogue_lines.generation_origin` (FILM-1903); OriginBadge reads it */
+  generationOrigin?: unknown;
   /** Creation timestamp */
   createdAt?: string;
 }

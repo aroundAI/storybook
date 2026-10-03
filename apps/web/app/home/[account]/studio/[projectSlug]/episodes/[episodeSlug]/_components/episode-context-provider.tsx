@@ -20,7 +20,9 @@ import { useRouter } from 'next/navigation';
 import {
   type GenerationJobType,
   useActiveGenerationJob,
+  useOpenExternalRuns,
 } from '@kit/episodes/hooks';
+import type { OpenExternalRun } from '@kit/episodes/lib/stage-runs';
 import type { EpisodeWithShots } from '@kit/episodes/types';
 
 interface EpisodeContextValue {
@@ -37,6 +39,8 @@ interface EpisodeContextValue {
   setIsGenerating: (value: boolean) => void;
   refetchEpisode: () => void;
   isRefetching: boolean;
+  /** Open external (MCP) runs on this episode, kept live (FILM-1910) */
+  externalRuns: OpenExternalRun[];
 }
 
 const EpisodeContext = createContext<EpisodeContextValue | null>(null);
@@ -61,6 +65,7 @@ interface EpisodeContextProviderProps {
   projectName: string;
   projectMetadata: Record<string, unknown> | null;
   canTakeDown: boolean;
+  initialExternalRuns: OpenExternalRun[];
 }
 
 export function EpisodeContextProvider({
@@ -73,6 +78,7 @@ export function EpisodeContextProvider({
   projectName,
   projectMetadata,
   canTakeDown,
+  initialExternalRuns,
 }: EpisodeContextProviderProps) {
   const router = useRouter();
   const [isRefetching, startRefetchTransition] = useTransition();
@@ -90,6 +96,12 @@ export function EpisodeContextProvider({
     });
   }, [router]);
 
+  const { runs: externalRuns } = useOpenExternalRuns({
+    episodeId: initialEpisode.id,
+    initialRuns: initialExternalRuns,
+    onRunFinished: refetchEpisode,
+  });
+
   return (
     <EpisodeContext.Provider
       value={{
@@ -105,6 +117,7 @@ export function EpisodeContextProvider({
         setIsGenerating,
         refetchEpisode,
         isRefetching,
+        externalRuns,
       }}
     >
       {children}

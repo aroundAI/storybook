@@ -23,6 +23,7 @@ import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
 import { useEpisodeContext } from '../../_components/episode-context-provider';
+import { useStageRunLock } from '../../_components/stage-run-bar';
 import { ActDivider } from './act-divider';
 import { CanonDashboard } from './canon-dashboard';
 import { InlineViolationWarning } from './inline-violation-warning';
@@ -41,6 +42,7 @@ export function StoryScreen({
   canonEnabled = false,
 }: StoryScreenProps) {
   const { setIsGenerating } = useEpisodeContext(); // Add context hook
+  const { locked: runLocked } = useStageRunLock();
   const [isPending, _startTransition] = useTransition();
   const [isReadingMode, setIsReadingMode] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
@@ -298,7 +300,8 @@ export function StoryScreen({
               {!hasScreenplay && (
                 <Button
                   onClick={handleConvertToScreenplay}
-                  disabled={isPending || llmStatus === 'pending'}
+                  disabled={isPending || llmStatus === 'pending' || runLocked}
+                  data-test="convert-to-screenplay"
                   className="btn-cinema-primary gap-2"
                 >
                   {isPending || llmStatus === 'pending' ? (
@@ -632,6 +635,7 @@ export function StoryScreen({
                     episodeId={episode.id}
                     projectId={episode.projectId}
                     onRefinementComplete={refetchEpisode}
+                    paused={runLocked}
                   />
                 </div>
               ) : null}

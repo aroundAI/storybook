@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { AssetRow, mapRowToAsset } from '@kit/assets';
+import { listOpenExternalRuns } from '@kit/episodes/lib/stage-runs';
 import { PrimarySubjectSchema } from '@kit/episodes/schemas/shot-list';
 import type {
   EpisodeMetadata,
@@ -28,6 +29,7 @@ import { withI18n } from '~/lib/i18n/with-i18n';
 import { EpisodeContextProvider } from './_components/episode-context-provider';
 import { EpisodeWorkspaceHeader } from './_components/episode-workspace-header';
 import { EpisodeWorkspaceTabs } from './_components/episode-workspace-tabs';
+import { StageRunBar } from './_components/stage-run-bar';
 
 const getProjectBySlug = cache(async (slug: string) => {
   const client = getSupabaseServerClient();
@@ -139,7 +141,7 @@ async function EpisodeWorkspaceLayout({
         status, duration_seconds, thumbnail_url, final_video_url,
         localized_videos, shorts_groups, story_data, screenplay_data, shot_list,
         metadata, version, created_at, updated_at, deleted_at,
-        master_video_asset_id,
+        master_video_asset_id, generation_origin,
         season:seasons(id, name, number),
         master_video:assets!episodes_master_video_asset_id_fkey(*),
         title_cards:assets!assets_episode_id_fkey(*)
@@ -167,7 +169,7 @@ async function EpisodeWorkspaceLayout({
       transition_type, continuation_from_shot_id, inherit_last_frame,
       first_frame_description, last_frame_description, first_frame_source,
       location_area, location_environment_description,
-      primary_subject, frame_strategy,
+      primary_subject, frame_strategy, generation_origin,
       created_at, updated_at, deleted_at
     `,
     )
@@ -203,6 +205,7 @@ async function EpisodeWorkspaceLayout({
     screenplayData: episodeData.screenplay_data as ScreenplayData | null,
     shotList: episodeData.shot_list as ShotListData | null,
     metadata: episodeData.metadata as EpisodeMetadata | null,
+    generationOrigin: episodeData.generation_origin,
     version: episodeData.version,
     createdAt: episodeData.created_at,
     updatedAt: episodeData.updated_at,
@@ -259,6 +262,7 @@ async function EpisodeWorkspaceLayout({
         primarySubject:
           PrimarySubjectSchema.nullish().parse(shot.primary_subject) ?? null,
         frameStrategy: (shot.frame_strategy as FrameStrategy | null) ?? null,
+        generationOrigin: shot.generation_origin,
         createdAt: shot.created_at,
         updatedAt: shot.updated_at,
         deletedAt: shot.deleted_at,
@@ -281,6 +285,12 @@ async function EpisodeWorkspaceLayout({
     ? await projectRoleOf(client, project.id, user.id)
     : null;
 
+  // Open external runs for the lease banner (FILM-1910); the page keeps
+  // them live over Realtime, so a failed read here only delays the banner
+  const externalRuns = await listOpenExternalRuns(client, episode.id).catch(
+    () => [],
+  );
+
   return (
     <EpisodeContextProvider
       episode={episode}
@@ -291,10 +301,12 @@ async function EpisodeWorkspaceLayout({
       projectName={project.name ?? 'Project'}
       projectMetadata={project.metadata as Record<string, unknown> | null}
       canTakeDown={canTakeDown(takedownRole)}
+      initialExternalRuns={externalRuns}
     >
       <div className="flex h-full flex-col bg-[#F5F5F7] dark:bg-[#0A0A0A]">
         <EpisodeWorkspaceHeader />
         <EpisodeWorkspaceTabs />
+        <StageRunBar />
         <div className="flex-1 overflow-y-auto">{children}</div>
       </div>
     </EpisodeContextProvider>

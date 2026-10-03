@@ -40,6 +40,8 @@ interface RefinementChatProps {
   episodeId: string;
   projectId: string;
   onRefinementComplete?: () => void;
+  /** An external run holds this stage (FILM-1910): no new refinement */
+  paused?: boolean;
 }
 
 const STATUS_CONFIG: Record<
@@ -78,6 +80,7 @@ export function RefinementChat({
   episodeId,
   projectId,
   onRefinementComplete,
+  paused = false,
 }: RefinementChatProps) {
   const [messages, setMessages] = useState<RefinementMessage[]>([]);
   const [input, setInput] = useState('');
@@ -330,15 +333,20 @@ export function RefinementChat({
                 ? 'Waiting for refinement to complete...'
                 : `Describe changes to the ${mode}...`
             }
-            disabled={isRefining || isSubmitting}
+            disabled={isRefining || isSubmitting || paused}
             className="max-h-[120px] min-h-[60px] resize-none border-gray-200 bg-white text-sm dark:border-gray-700 dark:bg-gray-800"
             rows={2}
           />
           <Button
             onClick={handleSubmit}
             disabled={
-              !input.trim() || isRefining || isSubmitting || isOverLimit
+              !input.trim() ||
+              isRefining ||
+              isSubmitting ||
+              isOverLimit ||
+              paused
             }
+            data-test="refinement-submit"
             size="icon"
             className="h-[60px] w-10 shrink-0 bg-indigo-600 hover:bg-indigo-700"
           >
