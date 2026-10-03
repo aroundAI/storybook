@@ -190,113 +190,167 @@ export async function readProjectVideoPerformance(
   };
 }
 
+/**
+ * The genome's findings for the project's active channels (at most two) in
+ * the two families StoryBook makes, at one funnel stage. A refusal is
+ * passed on by its kind, never scored instead.
+ */
+export async function readGenomeNotes(
+  client: AnalyticsClient,
+  projectId: string,
+  funnelStage: 'hook' | 'attention',
+) {
+  const accountId = await assertScopeAccess(client, { projectId });
+  const channels = (await listProjectChannels(projectId, client))
+    .filter(
+      (channel) => channel.isActive && isAnalyticsPlatform(channel.platform),
+    )
+    .slice(0, GENOME_CHANNELS);
+
+  const results = await Promise.all(
+    channels.flatMap((channel) =>
+      GENOME_FAMILIES.map(async (formatFamily) => ({
+        channel,
+        formatFamily,
+        result: await getGenomeFindingsService(client, {
+          accountId: accountId!,
+          connectionId: channel.connectionId,
+          formatFamily,
+          stage: funnelStage,
+          checkpointDays: 30,
+          control: 'controlled',
+        }),
+      })),
+    ),
+  );
+
+  return {
+    findings: results.flatMap(({ channel, formatFamily, result }) =>
+      result.status === 'analysed'
+        ? result.recommendations.map((recommendation) => ({
+            platform: channel.platform,
+            formatFamily,
+            sentence: recommendation.sentence,
+          }))
+        : [],
+    ),
+    refused: results.flatMap(({ channel, formatFamily, result }) =>
+      result.status === 'refused'
+        ? [`${channel.platform} ${formatFamily}: ${result.refusal.kind}`]
+        : [],
+    ),
+  };
+}
+
+/**
+ * Concluded Change Log entries for the project (FILM-1610) and concluded
+ * channel experiments on its channels (FILM-1724), newest first.
+ */
+export async function readConcludedExperiments(
+  client: AnalyticsClient,
+  projectId: string,
+) {
+  const accountId = (await assertScopeAccess(client, { projectId }))!;
+  const channelIds = new Set(
+    (await listProjectChannels(projectId, client)).map(
+      (channel) => channel.connectionId,
+    ),
+  );
+
+  const [changeLog, channelList] = await Promise.all([
+    listExperimentsService(client, {
+      accountId,
+      projectId,
+      status: 'concluded',
+    }),
+    listChannelExperimentsService(client, { accountId }),
+  ]);
+
+  const channelExperiments = await Promise.all(
+    channelList
+      .filter(
+        (row) =>
+          row.status === 'concluded' && channelIds.has(row.connection_id),
+      )
+      .sort((a, b) => (b.ended_at ?? '').localeCompare(a.ended_at ?? ''))
+      .slice(0, EXPERIMENTS)
+      .map((row) =>
+        getChannelExperimentService(client, { experimentId: row.id }),
+      ),
+  );
+
+  return [
+    ...changeLog.map((row) => ({
+      kind: 'change_log' as const,
+      title: row.title,
+      hypothesis: row.hypothesis,
+      outcome: row.outcome_status,
+      endedAt: row.ended_at,
+    })),
+    ...channelExperiments.map(({ experiment }) => ({
+      kind: 'channel_experiment' as const,
+      title: experiment.title,
+      hypothesis: experiment.hypothesis,
+      outcome: experiment.outcome_status,
+      endedAt: experiment.ended_at,
+    })),
+  ]
+    .sort((a, b) => (b.endedAt ?? '').localeCompare(a.endedAt ?? ''))
+    .slice(0, EXPERIMENTS);
+}
+
+/**
+ * Runs one read for the generation context, where a failure must not stop
+ * a run from opening: past performance is optional, so a read that throws
+ * (a refusal, a failed query) becomes its reading's stated reason.
+ *
+ * It takes the function and its arguments rather than a closure, so this
+ * catch is where the KB-6 refusal scan (packages/next) sees the services
+ * behind it end: a refusal raised there is caught here, never thrown from
+ * the web action that opened the run.
+ */
+async function guarded<A extends unknown[], R>(
+  fallback: (reason: string) => R,
+  read: (...args: A) => Promise<R>,
+  ...args: A
+): Promise<R> {
+  try {
+    return await read(...args);
+  } catch (error) {
+    return fallback(error instanceof Error ? error.message : String(error));
+  }
+}
+
+const unreadable = (reason: string) =>
+  `Past performance could not be read: ${reason}`;
+
+/**
+ * The reader a caller hands to `openRun` (FILM-1912). Every method answers
+ * rather than throws; what it could not read it says so.
+ */
 export function createPerformanceReader(client: AnalyticsClient) {
   return {
     videos: (projectId: string) =>
-      readProjectVideoPerformance(client, projectId),
-
-    /**
-     * The genome's findings for the project's active channels (at most
-     * two) in the two families StoryBook makes, at one funnel stage. A
-     * refusal is passed on by its kind, never scored instead.
-     */
-    async genome(projectId: string, funnelStage: 'hook' | 'attention') {
-      const accountId = await assertScopeAccess(client, { projectId });
-      const channels = (await listProjectChannels(projectId, client))
-        .filter(
-          (channel) =>
-            channel.isActive && isAnalyticsPlatform(channel.platform),
-        )
-        .slice(0, GENOME_CHANNELS);
-
-      const results = await Promise.all(
-        channels.flatMap((channel) =>
-          GENOME_FAMILIES.map(async (formatFamily) => ({
-            channel,
-            formatFamily,
-            result: await getGenomeFindingsService(client, {
-              accountId: accountId!,
-              connectionId: channel.connectionId,
-              formatFamily,
-              stage: funnelStage,
-              checkpointDays: 30,
-              control: 'controlled',
-            }),
-          })),
-        ),
-      );
-
-      return {
-        findings: results.flatMap(({ channel, formatFamily, result }) =>
-          result.status === 'analysed'
-            ? result.recommendations.map((recommendation) => ({
-                platform: channel.platform,
-                formatFamily,
-                sentence: recommendation.sentence,
-              }))
-            : [],
-        ),
-        refused: results.flatMap(({ channel, formatFamily, result }) =>
-          result.status === 'refused'
-            ? [`${channel.platform} ${formatFamily}: ${result.refusal.kind}`]
-            : [],
-        ),
-      };
-    },
-
-    /**
-     * Concluded Change Log entries for the project (FILM-1610) and
-     * concluded channel experiments on its channels (FILM-1724), newest
-     * first.
-     */
-    async concludedExperiments(projectId: string) {
-      const accountId = (await assertScopeAccess(client, { projectId }))!;
-      const channelIds = new Set(
-        (await listProjectChannels(projectId, client)).map(
-          (channel) => channel.connectionId,
-        ),
-      );
-
-      const [changeLog, channelList] = await Promise.all([
-        listExperimentsService(client, {
-          accountId,
-          projectId,
-          status: 'concluded',
+      guarded(
+        (reason): VideoPerformanceReading => ({
+          status: 'unmeasured',
+          reason: unreadable(reason),
         }),
-        listChannelExperimentsService(client, { accountId }),
-      ]);
+        readProjectVideoPerformance,
+        client,
+        projectId,
+      ),
 
-      const channelExperiments = await Promise.all(
-        channelList
-          .filter(
-            (row) =>
-              row.status === 'concluded' && channelIds.has(row.connection_id),
-          )
-          .sort((a, b) => (b.ended_at ?? '').localeCompare(a.ended_at ?? ''))
-          .slice(0, EXPERIMENTS)
-          .map((row) =>
-            getChannelExperimentService(client, { experimentId: row.id }),
-          ),
-      );
+    genome: (projectId: string, funnelStage: 'hook' | 'attention') =>
+      guarded(
+        (reason) => ({ findings: [], refused: [unreadable(reason)] }),
+        readGenomeNotes,
+        client,
+        projectId,
+        funnelStage,
+      ),
 
-      return [
-        ...changeLog.map((row) => ({
-          kind: 'change_log' as const,
-          title: row.title,
-          hypothesis: row.hypothesis,
-          outcome: row.outcome_status,
-          endedAt: row.ended_at,
-        })),
-        ...channelExperiments.map(({ experiment }) => ({
-          kind: 'channel_experiment' as const,
-          title: experiment.title,
-          hypothesis: experiment.hypothesis,
-          outcome: experiment.outcome_status,
-          endedAt: experiment.ended_at,
-        })),
-      ]
-        .sort((a, b) => (b.endedAt ?? '').localeCompare(a.endedAt ?? ''))
-        .slice(0, EXPERIMENTS);
-    },
+    concludedExperiments: (projectId: string) =>
+      guarded(() => [], readConcludedExperiments, client, projectId),
   };
 }

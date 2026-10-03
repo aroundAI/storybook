@@ -35,6 +35,7 @@ import {
   UpdateEpisodeStatusSchema,
 } from '../lib/schemas';
 import { CreateEpisodeWithContextSchema } from '../lib/schemas/create-episode-wizard.schema';
+import { webRunCtx } from '../lib/server/web-run-ctx';
 import {
   InvalidStatusTransitionError,
   OptimisticLockError,
@@ -317,7 +318,7 @@ const createEpisodeWithContext = enhanceAction(
             },
             name: 'episodes.createEpisode',
           },
-          { client: client, accountId: target.accountId, userId: user.id },
+          await webRunCtx(client, target.accountId, user.id),
         );
 
         // Create generation job entry

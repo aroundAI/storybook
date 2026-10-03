@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { createPerformanceReader } from '@kit/content-analytics/server/performance-reader';
 import {
   type AnyStageDefinition,
   type Brief,
@@ -7,8 +8,11 @@ import {
   type CommitResult,
   type EpisodeContextLoader,
   type PartSpec,
+  type PerformanceContext,
+  type PerformanceReader,
   type StageKey,
   checkWithSchema,
+  performanceContextForRun,
 } from '@kit/generation';
 
 import { McpToolError } from '../../../errors';
@@ -43,6 +47,11 @@ export interface GenerationToolDeps {
    * semantic recall, which is an embedding model call (FR-20).
    */
   episodeContext?: (client: Client) => EpisodeContextLoader;
+  /**
+   * FILM-1912's past-performance reader on the principal's client; the
+   * FILM-1906 services by default, a fake in tests.
+   */
+  performance?: (client: Client) => PerformanceReader;
 }
 
 export function mcpRunCtx(
@@ -194,6 +203,10 @@ export class GenerationService {
     return this.context.principal.supabase;
   }
 
+  private performanceReader(): PerformanceReader {
+    return (this.deps.performance ?? createPerformanceReader)(this.client);
+  }
+
   private stage(key: StageKey): AnyStageDefinition {
     try {
       return this.deps.runs.stage(key);
@@ -340,13 +353,23 @@ export class GenerationService {
     );
   }
 
+  /**
+   * `prepare` with the run's performance block (FILM-1912): the block the
+   * run was opened with, so every brief of a run reads the same one.
+   */
   private prepare(
     stage: AnyStageDefinition,
     target: unknown,
     part: PartSpec,
     earlier: unknown[] = [],
+    performanceContext?: PerformanceContext,
   ): Promise<Brief> {
-    return stage.prepare(this.ctx, target, part, earlier);
+    return stage.prepare(
+      { ...this.ctx, performanceContext },
+      target,
+      part,
+      earlier,
+    );
   }
 
   private async brief(
@@ -356,7 +379,13 @@ export class GenerationService {
     part: PartSpec,
     earlier: unknown[] = [],
   ) {
-    const brief = await this.prepare(stage, target, part, earlier);
+    const brief = await this.prepare(
+      stage,
+      target,
+      part,
+      earlier,
+      run.input.performanceContext,
+    );
 
     return fitBrief({
       ...brief,
@@ -387,7 +416,21 @@ export class GenerationService {
       );
     }
 
-    const brief = await this.prepare(stage, target, first);
+    // FILM-1912: built once, before the first brief, and stored on the run
+    // below, so later briefs read it from the run rather than again
+    const performanceContext = await performanceContextForRun(
+      this.ctx,
+      this.performanceReader(),
+      { stage: stage.key, projectId: runTarget.projectId },
+    );
+
+    const brief = await this.prepare(
+      stage,
+      target,
+      first,
+      [],
+      performanceContext,
+    );
 
     let run: RunLike;
 
@@ -396,6 +439,9 @@ export class GenerationService {
         stage.key,
         {
           ...runTarget,
+          input: performanceContext
+            ? { ...runTarget.input, performanceContext }
+            : runTarget.input,
           targetVersion: brief.targetVersion ?? runTarget.targetVersion,
           prompt: { slug: brief.prompt.slug, version: brief.prompt.version },
         },

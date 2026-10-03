@@ -9,6 +9,8 @@ import type { Database } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { webRunCtx } from '../lib/server/web-run-ctx';
+
 /**
  * Shared response type for all batch generation actions.
  * Queued = successfully enqueued to SQS.
@@ -172,7 +174,7 @@ export const batchGenerateIdeasAction = enhanceAction(
             },
             name: 'episodes.bulkGenerateIdeas',
           },
-          { client: client, accountId: target.accountId, userId: user.id },
+          await webRunCtx(client, target.accountId, user.id),
         );
         await run.dispatch();
         queued++;
@@ -290,7 +292,7 @@ export const batchGenerateStoriesAction = enhanceAction(
             },
             name: 'episodes.bulkGenerateStories',
           },
-          { client: client, accountId: target.accountId, userId: user.id },
+          await webRunCtx(client, target.accountId, user.id),
         );
       } catch (err) {
         failed.push({
@@ -424,7 +426,7 @@ export const batchConvertScreenplaysAction = enhanceAction(
             },
             name: 'episodes.bulkConvertScreenplays',
           },
-          { client: client, accountId: target.accountId, userId: user.id },
+          await webRunCtx(client, target.accountId, user.id),
         );
       } catch (err) {
         failed.push({
@@ -549,7 +551,7 @@ export const batchGenerateShotsAction = enhanceAction(
             },
             name: 'episodes.bulkGenerateShotLists',
           },
-          { client: client, accountId: target.accountId, userId: user.id },
+          await webRunCtx(client, target.accountId, user.id),
         );
       } catch (err) {
         failed.push({
@@ -695,7 +697,7 @@ export const batchCreateAssetsAction = enhanceAction(
             },
             name: 'episodes.bulkCreateAssets',
           },
-          { client: client, accountId: target.accountId, userId: user.id },
+          await webRunCtx(client, target.accountId, user.id),
         );
       } catch (err) {
         failed.push({

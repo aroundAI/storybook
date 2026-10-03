@@ -299,3 +299,23 @@ describe('getPerformanceByOriginService (FILM-1912)', () => {
     expect(client.reads).toEqual([]);
   });
 });
+
+describe('createPerformanceReader (FILM-1912)', () => {
+  it('answers a refused or failed read with its reason instead of throwing', async () => {
+    const { createPerformanceReader } = await import(
+      '../src/server/performance-reader'
+    );
+    const { ActionRefusal } = await import('../src/lib/action-result');
+    mocks.coverage.mockRejectedValue(
+      new ActionRefusal('This project is not in your team.'),
+    );
+
+    const reader = createPerformanceReader(fakeClient({}) as never);
+
+    await expect(reader.videos(PROJECT)).resolves.toEqual({
+      status: 'unmeasured',
+      reason:
+        'Past performance could not be read: This project is not in your team.',
+    });
+  });
+});

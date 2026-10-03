@@ -5,6 +5,7 @@ import type {
   CommitResult,
   Ctx,
   GenerationMode,
+  PerformanceContext,
   StageKey,
   TargetType,
 } from '@kit/generation';
@@ -25,7 +26,11 @@ export interface RunLike {
   readonly targetType: TargetType;
   readonly targetId: string;
   readonly targetVersion: number | null;
-  readonly input: { kind: string; target?: unknown };
+  readonly input: {
+    kind: string;
+    target?: unknown;
+    performanceContext?: PerformanceContext;
+  };
   readonly origin: {
     kind: string;
     name: string;
@@ -48,7 +53,11 @@ export interface OpenRunTarget {
   id: string;
   accountId: string;
   projectId: string | null;
-  input: { kind: 'stage'; target: unknown };
+  input: {
+    kind: 'stage';
+    target: unknown;
+    performanceContext?: PerformanceContext;
+  };
   targetVersion: number | null;
   prompt?: { slug: string; version: number };
 }
