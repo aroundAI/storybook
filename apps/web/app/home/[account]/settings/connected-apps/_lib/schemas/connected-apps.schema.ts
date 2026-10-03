@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { McpScopesSchema } from '@kit/studio-mcp';
+import { McpScopesSchema } from '@kit/studio-mcp/scopes';
 
 export const TOKEN_NAME_MAX = 100;
 

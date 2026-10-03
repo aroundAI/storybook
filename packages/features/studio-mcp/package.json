@@ -16,6 +16,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./request-context": "./src/request-context.ts",
+    "./scopes": "./src/scopes.ts",
     "./server": "./src/server/index.ts"
   },
   "dependencies": {

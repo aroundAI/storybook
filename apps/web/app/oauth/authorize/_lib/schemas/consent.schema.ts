@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { McpScopesSchema } from '@kit/studio-mcp';
+import { McpScopesSchema } from '@kit/studio-mcp/scopes';
 
 /**
  * What the consent form posts back (FILM-1907). `query` is the authorize
