@@ -1,0 +1,119 @@
+{
+  "feature": "FILM-1908 external generation tools and the story stage from Claude",
+  "mutations": [
+    {
+      "name": "FILM-1908 U1 an identical retry is validated and stored again instead of returning the first result",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/generation/service.ts",
+      "find": "      previous?.validation.status === 'accepted' &&",
+      "replace": "      false &&\n      previous?.validation.status === 'accepted' &&",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/generation-tools.test.ts",
+      "pattern": "an identical retried submit"
+    },
+    {
+      "name": "FILM-1908 U2 finalize hands the run layer a run with parts missing",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/generation/service.ts",
+      "find": "    if (missing.length > 0) {",
+      "replace": "    if (missing.length < 0) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/generation-tools.test.ts",
+      "pattern": "finalize refuses missing parts"
+    },
+    {
+      "name": "FILM-1908 U3 a single-part stage waits for finalize_generation after its part is accepted",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/generation/service.ts",
+      "find": "    // Single-part stages finalize on submit (EDD \"2. Generation runs\")\n    if (singlePart) {",
+      "replace": "    // Single-part stages finalize on submit (EDD \"2. Generation runs\")\n    if (singlePart && Date.now() < 0) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/generation-tools.test.ts",
+      "pattern": "single-part, committed"
+    },
+    {
+      "name": "FILM-1908 U4 a submission over 100 KB is read and validated",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/generation/limits.ts",
+      "find": "  if (bytes > SUBMISSION_MAX_BYTES) {",
+      "replace": "  if (bytes < 0) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/generation-tools.test.ts",
+      "pattern": "over about 100 KB"
+    },
+    {
+      "name": "FILM-1908 U5 a brief no longer carries the parts the run accepted (KB-178 reel note)",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/generation/service.ts",
+      "find": "return prepare.call(stage, this.ctx, target, part, earlier);",
+      "replace": "return prepare.call(stage, this.ctx, target, part, []);",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/generation-tools.test.ts",
+      "pattern": "carries the parts the run has accepted"
+    },
+    {
+      "name": "FILM-1908 G1 the story commit writes one flat origin over every stage",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/story.ts",
+      "find": "        generation_origin: withStageOrigin(\n          current.generation_origin,\n          'story',\n          run.origin,\n        ),",
+      "replace": "        generation_origin: run.origin as never,",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stages/story.test.ts",
+      "pattern": "stamps its origin under story"
+    },
+    {
+      "name": "FILM-1908 G2 the story commit no longer snapshots the story it replaces",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/story.ts",
+      "find": "    await ctx.revisions?.snapshot({\n      table: 'episodes',\n      rowId: target.episodeId,\n      column: 'story_data',",
+      "replace": "    void ({\n      table: 'episodes',\n      rowId: target.episodeId,\n      column: 'story_data',",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stages/story.test.ts",
+      "pattern": "stamps its origin under story"
+    },
+    {
+      "name": "FILM-1908 G3 a generated character state names no author (refused under the user session)",
+      "kind": "unit",
+      "file": "packages/features/generation/src/canon/story-canon.ts",
+      "find": "      // run under the user's own session (FILM-1908) must name them\n      created_by: createdBy,",
+      "replace": "      // run under the user's own session (FILM-1908) must name them",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/stage-parity-story-season.test.ts",
+      "pattern": "writes the same rows"
+    },
+    {
+      "name": "FILM-1908 G4 a registered stage is left out of ALL_STAGES",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/index.ts",
+      "find": "  storyStage,\n  storyRefinementStage,\n];",
+      "replace": "  storyRefinementStage,\n];",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stages/registry.test.ts",
+      "pattern": "ALL_STAGES"
+    },
+    {
+      "name": "FILM-1908 DB1 any project writer submits to a run another user opened",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/generation-run-parts.test.sql",
+      "sql": "create or replace function public.submit_generation_run_part(\n  p_run_id uuid,\n  p_part_key text,\n  p_output jsonb,\n  p_validation jsonb,\n  p_accepted boolean,\n  p_model text default null\n)\nreturns jsonb\nlanguage plpgsql\nsecurity definer\nset search_path = ''\nas $$\ndeclare\n  v_run public.generation_runs;\n  v_part public.generation_run_parts;\n  v_failures jsonb;\n  v_is_service boolean :=\n    coalesce(auth.role(), current_setting('role', true)) = 'service_role';\nbegin\n  select * into v_run from public.generation_runs where id = p_run_id for update;\n\n  if not found then\n    return jsonb_build_object('ok', false, 'code', 'RUN_NOT_FOUND');\n  end if;\n\n  if not public.can_drive_generation_run(v_run.account_id, v_run.project_id) then\n    raise exception 'refused: no write access to run %', p_run_id\n      using errcode = 'insufficient_privilege';\n  end if;\n\n  if false then\n    raise exception 'refused: only the user who opened run % submits to it', p_run_id\n      using errcode = 'insufficient_privilege';\n  end if;\n\n  if v_run.mode <> 'external' then\n    raise exception 'refused: run % is %; only an external run takes a submitted part', p_run_id, v_run.mode\n      using errcode = 'check_violation';\n  end if;\n\n  if p_part_key is null or char_length(p_part_key) not between 1 and 100 then\n    raise exception 'a part key is 1 to 100 characters'\n      using errcode = 'check_violation';\n  end if;\n\n  if p_output is null or octet_length(p_output::text) > 262144 then\n    raise exception 'a part is at most 256 KB'\n      using errcode = 'check_violation';\n  end if;\n\n  if v_run.status not in ('briefed', 'in_progress')\n     or (v_run.lease_expires_at is not null and v_run.lease_expires_at < now()) then\n    return jsonb_build_object('ok', false, 'code', 'RUN_NOT_OPEN', 'run', to_jsonb(v_run));\n  end if;\n\n  select * into v_part\n  from public.generation_run_parts\n  where run_id = p_run_id and part_key = p_part_key\n  for update;\n\n  v_failures := coalesce(v_part.validation -> 'failures', '[]'::jsonb);\n\n  if p_accepted then\n    insert into public.generation_run_parts (run_id, part_key, output, validation, submitted_at)\n    values (\n      p_run_id, p_part_key, p_output,\n      coalesce(p_validation, '{}'::jsonb)\n        || jsonb_build_object('status', 'accepted', 'failures', v_failures),\n      now()\n    )\n    on conflict (run_id, part_key) do update\n      set output = excluded.output,\n          validation = excluded.validation,\n          submitted_at = excluded.submitted_at\n    returning * into v_part;\n  else\n    -- the newest 20 failures, oldest first\n    select coalesce(jsonb_agg(f.value order by f.ord), '[]'::jsonb) into v_failures\n    from (\n      select value, ord\n      from jsonb_array_elements(\n        v_failures || jsonb_build_array(\n          jsonb_build_object(\n            'at', now(),\n            'hash', p_validation -> 'hash',\n            'errors', coalesce(p_validation -> 'errors', '[]'::jsonb)\n          )\n        )\n      ) with ordinality as e(value, ord)\n      order by ord desc\n      limit 20\n    ) f;\n\n    if v_part.run_id is null then\n      insert into public.generation_run_parts (run_id, part_key, output, validation, submitted_at)\n      values (\n        p_run_id, p_part_key, p_output,\n        jsonb_build_object('status', 'rejected', 'failures', v_failures),\n        now()\n      )\n      returning * into v_part;\n    else\n      update public.generation_run_parts\n      set validation = coalesce(validation, '{}'::jsonb)\n            || jsonb_build_object('failures', v_failures)\n      where run_id = p_run_id and part_key = p_part_key\n      returning * into v_part;\n    end if;\n  end if;\n\n  update public.generation_runs\n  set status = case when status = 'briefed' then 'in_progress' else status end,\n      lease_expires_at = now() + interval '30 minutes',\n      origin = case\n        when p_model is null or char_length(p_model) = 0 then origin\n        else origin || jsonb_build_object('model', left(p_model, 100), 'modelReportedBy', 'client')\n      end\n  where id = p_run_id\n  returning * into v_run;\n\n  return jsonb_build_object('ok', true, 'run', to_jsonb(v_run), 'part', to_jsonb(v_part));\nend;\n$$;"
+    },
+    {
+      "name": "FILM-1908 DB2 a server run takes a submitted part",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/generation-run-parts.test.sql",
+      "sql": "create or replace function public.submit_generation_run_part(\n  p_run_id uuid,\n  p_part_key text,\n  p_output jsonb,\n  p_validation jsonb,\n  p_accepted boolean,\n  p_model text default null\n)\nreturns jsonb\nlanguage plpgsql\nsecurity definer\nset search_path = ''\nas $$\ndeclare\n  v_run public.generation_runs;\n  v_part public.generation_run_parts;\n  v_failures jsonb;\n  v_is_service boolean :=\n    coalesce(auth.role(), current_setting('role', true)) = 'service_role';\nbegin\n  select * into v_run from public.generation_runs where id = p_run_id for update;\n\n  if not found then\n    return jsonb_build_object('ok', false, 'code', 'RUN_NOT_FOUND');\n  end if;\n\n  if not public.can_drive_generation_run(v_run.account_id, v_run.project_id) then\n    raise exception 'refused: no write access to run %', p_run_id\n      using errcode = 'insufficient_privilege';\n  end if;\n\n  if not v_is_service and v_run.created_by is distinct from auth.uid() then\n    raise exception 'refused: only the user who opened run % submits to it', p_run_id\n      using errcode = 'insufficient_privilege';\n  end if;\n\n  if false then\n    raise exception 'refused: run % is %; only an external run takes a submitted part', p_run_id, v_run.mode\n      using errcode = 'check_violation';\n  end if;\n\n  if p_part_key is null or char_length(p_part_key) not between 1 and 100 then\n    raise exception 'a part key is 1 to 100 characters'\n      using errcode = 'check_violation';\n  end if;\n\n  if p_output is null or octet_length(p_output::text) > 262144 then\n    raise exception 'a part is at most 256 KB'\n      using errcode = 'check_violation';\n  end if;\n\n  if v_run.status not in ('briefed', 'in_progress')\n     or (v_run.lease_expires_at is not null and v_run.lease_expires_at < now()) then\n    return jsonb_build_object('ok', false, 'code', 'RUN_NOT_OPEN', 'run', to_jsonb(v_run));\n  end if;\n\n  select * into v_part\n  from public.generation_run_parts\n  where run_id = p_run_id and part_key = p_part_key\n  for update;\n\n  v_failures := coalesce(v_part.validation -> 'failures', '[]'::jsonb);\n\n  if p_accepted then\n    insert into public.generation_run_parts (run_id, part_key, output, validation, submitted_at)\n    values (\n      p_run_id, p_part_key, p_output,\n      coalesce(p_validation, '{}'::jsonb)\n        || jsonb_build_object('status', 'accepted', 'failures', v_failures),\n      now()\n    )\n    on conflict (run_id, part_key) do update\n      set output = excluded.output,\n          validation = excluded.validation,\n          submitted_at = excluded.submitted_at\n    returning * into v_part;\n  else\n    -- the newest 20 failures, oldest first\n    select coalesce(jsonb_agg(f.value order by f.ord), '[]'::jsonb) into v_failures\n    from (\n      select value, ord\n      from jsonb_array_elements(\n        v_failures || jsonb_build_array(\n          jsonb_build_object(\n            'at', now(),\n            'hash', p_validation -> 'hash',\n            'errors', coalesce(p_validation -> 'errors', '[]'::jsonb)\n          )\n        )\n      ) with ordinality as e(value, ord)\n      order by ord desc\n      limit 20\n    ) f;\n\n    if v_part.run_id is null then\n      insert into public.generation_run_parts (run_id, part_key, output, validation, submitted_at)\n      values (\n        p_run_id, p_part_key, p_output,\n        jsonb_build_object('status', 'rejected', 'failures', v_failures),\n        now()\n      )\n      returning * into v_part;\n    else\n      update public.generation_run_parts\n      set validation = coalesce(validation, '{}'::jsonb)\n            || jsonb_build_object('failures', v_failures)\n      where run_id = p_run_id and part_key = p_part_key\n      returning * into v_part;\n    end if;\n  end if;\n\n  update public.generation_runs\n  set status = case when status = 'briefed' then 'in_progress' else status end,\n      lease_expires_at = now() + interval '30 minutes',\n      origin = case\n        when p_model is null or char_length(p_model) = 0 then origin\n        else origin || jsonb_build_object('model', left(p_model, 100), 'modelReportedBy', 'client')\n      end\n  where id = p_run_id\n  returning * into v_run;\n\n  return jsonb_build_object('ok', true, 'run', to_jsonb(v_run), 'part', to_jsonb(v_part));\nend;\n$$;"
+    },
+    {
+      "name": "FILM-1908 DB3 a rejected submission replaces the accepted output",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/generation-run-parts.test.sql",
+      "sql": "create or replace function public.submit_generation_run_part(\n  p_run_id uuid,\n  p_part_key text,\n  p_output jsonb,\n  p_validation jsonb,\n  p_accepted boolean,\n  p_model text default null\n)\nreturns jsonb\nlanguage plpgsql\nsecurity definer\nset search_path = ''\nas $$\ndeclare\n  v_run public.generation_runs;\n  v_part public.generation_run_parts;\n  v_failures jsonb;\n  v_is_service boolean :=\n    coalesce(auth.role(), current_setting('role', true)) = 'service_role';\nbegin\n  select * into v_run from public.generation_runs where id = p_run_id for update;\n\n  if not found then\n    return jsonb_build_object('ok', false, 'code', 'RUN_NOT_FOUND');\n  end if;\n\n  if not public.can_drive_generation_run(v_run.account_id, v_run.project_id) then\n    raise exception 'refused: no write access to run %', p_run_id\n      using errcode = 'insufficient_privilege';\n  end if;\n\n  if not v_is_service and v_run.created_by is distinct from auth.uid() then\n    raise exception 'refused: only the user who opened run % submits to it', p_run_id\n      using errcode = 'insufficient_privilege';\n  end if;\n\n  if v_run.mode <> 'external' then\n    raise exception 'refused: run % is %; only an external run takes a submitted part', p_run_id, v_run.mode\n      using errcode = 'check_violation';\n  end if;\n\n  if p_part_key is null or char_length(p_part_key) not between 1 and 100 then\n    raise exception 'a part key is 1 to 100 characters'\n      using errcode = 'check_violation';\n  end if;\n\n  if p_output is null or octet_length(p_output::text) > 262144 then\n    raise exception 'a part is at most 256 KB'\n      using errcode = 'check_violation';\n  end if;\n\n  if v_run.status not in ('briefed', 'in_progress')\n     or (v_run.lease_expires_at is not null and v_run.lease_expires_at < now()) then\n    return jsonb_build_object('ok', false, 'code', 'RUN_NOT_OPEN', 'run', to_jsonb(v_run));\n  end if;\n\n  select * into v_part\n  from public.generation_run_parts\n  where run_id = p_run_id and part_key = p_part_key\n  for update;\n\n  v_failures := coalesce(v_part.validation -> 'failures', '[]'::jsonb);\n\n  if p_accepted then\n    insert into public.generation_run_parts (run_id, part_key, output, validation, submitted_at)\n    values (\n      p_run_id, p_part_key, p_output,\n      coalesce(p_validation, '{}'::jsonb)\n        || jsonb_build_object('status', 'accepted', 'failures', v_failures),\n      now()\n    )\n    on conflict (run_id, part_key) do update\n      set output = excluded.output,\n          validation = excluded.validation,\n          submitted_at = excluded.submitted_at\n    returning * into v_part;\n  else\n    -- the newest 20 failures, oldest first\n    select coalesce(jsonb_agg(f.value order by f.ord), '[]'::jsonb) into v_failures\n    from (\n      select value, ord\n      from jsonb_array_elements(\n        v_failures || jsonb_build_array(\n          jsonb_build_object(\n            'at', now(),\n            'hash', p_validation -> 'hash',\n            'errors', coalesce(p_validation -> 'errors', '[]'::jsonb)\n          )\n        )\n      ) with ordinality as e(value, ord)\n      order by ord desc\n      limit 20\n    ) f;\n\n    if true then\n      delete from public.generation_run_parts where run_id = p_run_id and part_key = p_part_key;\n      insert into public.generation_run_parts (run_id, part_key, output, validation, submitted_at)\n      values (\n        p_run_id, p_part_key, p_output,\n        jsonb_build_object('status', 'rejected', 'failures', v_failures),\n        now()\n      )\n      returning * into v_part;\n    else\n      update public.generation_run_parts\n      set validation = coalesce(validation, '{}'::jsonb)\n            || jsonb_build_object('failures', v_failures)\n      where run_id = p_run_id and part_key = p_part_key\n      returning * into v_part;\n    end if;\n  end if;\n\n  update public.generation_runs\n  set status = case when status = 'briefed' then 'in_progress' else status end,\n      lease_expires_at = now() + interval '30 minutes',\n      origin = case\n        when p_model is null or char_length(p_model) = 0 then origin\n        else origin || jsonb_build_object('model', left(p_model, 100), 'modelReportedBy', 'client')\n      end\n  where id = p_run_id\n  returning * into v_run;\n\n  return jsonb_build_object('ok', true, 'run', to_jsonb(v_run), 'part', to_jsonb(v_part));\nend;\n$$;"
+    },
+    {
+      "name": "FILM-1908 DB4 a closed run still takes a part",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/generation-run-parts.test.sql",
+      "sql": "create or replace function public.submit_generation_run_part(\n  p_run_id uuid,\n  p_part_key text,\n  p_output jsonb,\n  p_validation jsonb,\n  p_accepted boolean,\n  p_model text default null\n)\nreturns jsonb\nlanguage plpgsql\nsecurity definer\nset search_path = ''\nas $$\ndeclare\n  v_run public.generation_runs;\n  v_part public.generation_run_parts;\n  v_failures jsonb;\n  v_is_service boolean :=\n    coalesce(auth.role(), current_setting('role', true)) = 'service_role';\nbegin\n  select * into v_run from public.generation_runs where id = p_run_id for update;\n\n  if not found then\n    return jsonb_build_object('ok', false, 'code', 'RUN_NOT_FOUND');\n  end if;\n\n  if not public.can_drive_generation_run(v_run.account_id, v_run.project_id) then\n    raise exception 'refused: no write access to run %', p_run_id\n      using errcode = 'insufficient_privilege';\n  end if;\n\n  if not v_is_service and v_run.created_by is distinct from auth.uid() then\n    raise exception 'refused: only the user who opened run % submits to it', p_run_id\n      using errcode = 'insufficient_privilege';\n  end if;\n\n  if v_run.mode <> 'external' then\n    raise exception 'refused: run % is %; only an external run takes a submitted part', p_run_id, v_run.mode\n      using errcode = 'check_violation';\n  end if;\n\n  if p_part_key is null or char_length(p_part_key) not between 1 and 100 then\n    raise exception 'a part key is 1 to 100 characters'\n      using errcode = 'check_violation';\n  end if;\n\n  if p_output is null or octet_length(p_output::text) > 262144 then\n    raise exception 'a part is at most 256 KB'\n      using errcode = 'check_violation';\n  end if;\n\n  if false and v_run.status not in ('briefed', 'in_progress')\n     or (v_run.lease_expires_at is not null and v_run.lease_expires_at < now()) then\n    return jsonb_build_object('ok', false, 'code', 'RUN_NOT_OPEN', 'run', to_jsonb(v_run));\n  end if;\n\n  select * into v_part\n  from public.generation_run_parts\n  where run_id = p_run_id and part_key = p_part_key\n  for update;\n\n  v_failures := coalesce(v_part.validation -> 'failures', '[]'::jsonb);\n\n  if p_accepted then\n    insert into public.generation_run_parts (run_id, part_key, output, validation, submitted_at)\n    values (\n      p_run_id, p_part_key, p_output,\n      coalesce(p_validation, '{}'::jsonb)\n        || jsonb_build_object('status', 'accepted', 'failures', v_failures),\n      now()\n    )\n    on conflict (run_id, part_key) do update\n      set output = excluded.output,\n          validation = excluded.validation,\n          submitted_at = excluded.submitted_at\n    returning * into v_part;\n  else\n    -- the newest 20 failures, oldest first\n    select coalesce(jsonb_agg(f.value order by f.ord), '[]'::jsonb) into v_failures\n    from (\n      select value, ord\n      from jsonb_array_elements(\n        v_failures || jsonb_build_array(\n          jsonb_build_object(\n            'at', now(),\n            'hash', p_validation -> 'hash',\n            'errors', coalesce(p_validation -> 'errors', '[]'::jsonb)\n          )\n        )\n      ) with ordinality as e(value, ord)\n      order by ord desc\n      limit 20\n    ) f;\n\n    if v_part.run_id is null then\n      insert into public.generation_run_parts (run_id, part_key, output, validation, submitted_at)\n      values (\n        p_run_id, p_part_key, p_output,\n        jsonb_build_object('status', 'rejected', 'failures', v_failures),\n        now()\n      )\n      returning * into v_part;\n    else\n      update public.generation_run_parts\n      set validation = coalesce(validation, '{}'::jsonb)\n            || jsonb_build_object('failures', v_failures)\n      where run_id = p_run_id and part_key = p_part_key\n      returning * into v_part;\n    end if;\n  end if;\n\n  update public.generation_runs\n  set status = case when status = 'briefed' then 'in_progress' else status end,\n      lease_expires_at = now() + interval '30 minutes',\n      origin = case\n        when p_model is null or char_length(p_model) = 0 then origin\n        else origin || jsonb_build_object('model', left(p_model, 100), 'modelReportedBy', 'client')\n      end\n  where id = p_run_id\n  returning * into v_run;\n\n  return jsonb_build_object('ok', true, 'run', to_jsonb(v_run), 'part', to_jsonb(v_part));\nend;\n$$;"
+    }
+  ]
+}
