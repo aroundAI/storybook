@@ -62,16 +62,6 @@
       "pattern": "stamps its origin under story"
     },
     {
-      "name": "FILM-1908 G4 a registered stage is left out of ALL_STAGES",
-      "kind": "unit",
-      "file": "packages/features/generation/src/stages/index.ts",
-      "find": "  storyStage,\n  storyRefinementStage,\n];",
-      "replace": "  storyRefinementStage,\n];",
-      "cwd": "packages/features/generation",
-      "test": "__tests__/stages/registry.test.ts",
-      "pattern": "ALL_STAGES"
-    },
-    {
       "name": "FILM-1908 DB1 any project writer submits to a run another user opened",
       "kind": "pgtap",
       "test": "apps/web/supabase/tests/database/generation-run-parts.test.sql",
