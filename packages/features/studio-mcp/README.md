@@ -11,6 +11,7 @@ request from the tool registry here.
 | --- | --- | --- |
 | `@kit/studio-mcp` | `McpToolError` and the nine codes, `McpScopeSchema`, `McpPrincipal`, `defineTool`, `McpTokenVerifier`, the request context | no |
 | `@kit/studio-mcp/request-context` | `getMcpRequestContext()` alone, for packages the Lambda worker bundles | no |
+| `@kit/studio-mcp/scopes` | `MCP_SCOPES`, `McpScopeSchema`, `McpScopesSchema`, `hasScope`: the only entry a `'use client'` file may import values from (the root pulls in `node:async_hooks`) | no |
 | `@kit/studio-mcp/server` | `createMcpRouteHandlers`, `withMcpAuth`, verifiers, signer, rate limits, audit, personal access tokens, `defaultTools` | yes |
 
 ## Adding a tool

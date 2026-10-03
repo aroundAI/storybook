@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 
 import { refusalMessage, unwrap } from '@kit/next/action-result';
-import { MCP_SCOPES, type McpScope } from '@kit/studio-mcp';
+import { MCP_SCOPES, type McpScope } from '@kit/studio-mcp/scopes';
 import { Button } from '@kit/ui/button';
 import {
   Card,
