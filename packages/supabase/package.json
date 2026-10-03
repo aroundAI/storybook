@@ -24,6 +24,7 @@
     "./external-api-keys": "./src/external-api-keys.ts",
     "./get-supabase-client-keys": "./src/get-supabase-client-keys.ts",
     "./hooks/*": "./src/hooks/*.ts",
+    "./realtime/*": "./src/realtime/*.ts",
     "./database": "./src/database.types.ts",
     "./auth": "./src/auth.ts",
     "./types": "./src/types.ts"

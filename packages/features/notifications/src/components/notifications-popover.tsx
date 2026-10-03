@@ -115,10 +115,12 @@ export function NotificationsPopover(params: {
           className={'relative h-9 w-9'}
           variant={'ghost'}
           aria-label={t('common:notifications')}
+          data-test={'notifications-bell'}
         >
           <Bell className={'min-h-4 min-w-4'} aria-hidden="true" />
 
           <span
+            data-test={'notifications-count'}
             className={cn(
               `absolute top-1 right-1 mt-0 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-700 text-[0.65rem] text-white animate-in fade-in zoom-in`,
               {
@@ -179,6 +181,7 @@ export function NotificationsPopover(params: {
             return (
               <div
                 key={notification.id.toString()}
+                data-test={'notification-item'}
                 className={cn(
                   'flex min-h-18 flex-col items-start justify-center gap-y-1 px-3 py-2',
                 )}
