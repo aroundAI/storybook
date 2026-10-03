@@ -20,6 +20,7 @@
     "./canon": "./src/canon/index.ts",
     "./episode-rows": "./src/episode-rows.ts",
     "./formatters": "./src/formatters.ts",
+    "./performance-context": "./src/performance-context.ts",
     "./project-type": "./src/project-type.ts",
     "./slug": "./src/slug.ts"
   },

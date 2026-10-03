@@ -84,6 +84,7 @@ export * from './slug';
 export * from './project-type';
 export * from './formatters';
 export * from './episode-rows';
+export * from './performance-context';
 export * from './canon';
 export * from './runs';
 export * from './stages';
