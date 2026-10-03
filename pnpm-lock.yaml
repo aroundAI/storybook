@@ -2242,6 +2242,9 @@ importers:
       '@kit/episodes':
         specifier: workspace:*
         version: link:../episodes
+      '@kit/generation':
+        specifier: workspace:*
+        version: link:../generation
       '@kit/projects':
         specifier: workspace:*
         version: link:../projects

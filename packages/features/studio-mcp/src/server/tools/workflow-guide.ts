@@ -38,7 +38,7 @@ export const WORKFLOW_GUIDE_TEXT = [
   '',
   '1. `start_generation(stage, episodeId)` opens a run in external mode and returns the brief: instructions, context (project settings, characters, locations, the earlier stages), the output JSON Schema, constraints and the quality rubric. The run holds a lease on the episode; a second run on the same target is refused with RUN_IN_PROGRESS.',
   '2. Write the content from the brief. For long stages the brief is split into parts (for shots, one per scene); `get_brief(runId, partKey)` returns one part.',
-  '3. `submit_generation(runId, partKey, output)` validates one part against the schema and stores it in the run, not in the episode. A rejection lists the errors field by field; fix and resubmit the same part. Acceptance names the next part to do.',
+  '3. `submit_generation(runId, partKey, output)` validates one part against the schema and stores it in the run, not in the episode. A rejection lists the errors field by field; fix and resubmit the same part. Acceptance names the next part to do and returns its brief; a single-part stage (story) is committed on acceptance, so there is nothing to finalize.',
   '4. `finalize_generation(runId)` commits every part in one transaction with the same commit the server mode uses, stamps the origin on what it wrote, and opens any chained run (shots chain audio cues) in the same mode.',
   '5. If you stop, the lease expires, the run is marked expired and nothing half-written reaches the episode. `get_run` inspects a run; `cancel_generation` releases it.',
   '',

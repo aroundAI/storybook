@@ -1,0 +1,137 @@
+import 'server-only';
+
+import { z } from 'zod';
+
+import * as generation from '@kit/generation';
+import { CheckErrorSchema, type StageKey } from '@kit/generation';
+
+/**
+ * Every registered stage, read from the registry when the tools load.
+ * `@kit/generation` is `sideEffects: false`, and a stage registers itself
+ * when its module runs; naming the whole namespace keeps a bundler from
+ * dropping the stage modules no export of which this file uses.
+ */
+export function registeredStages(): [StageKey, ...StageKey[]] {
+  const keys = generation.StageKeySchema.options.filter((key) =>
+    generation.stageRegistry.has(key),
+  );
+
+  if (keys.length === 0) {
+    throw new Error('No generation stage is registered');
+  }
+
+  return keys as [StageKey, ...StageKey[]];
+}
+
+export const StageArg = z
+  .enum(registeredStages())
+  .describe(
+    'The generation stage, from the stage registry. get_workflow_guide says what each needs and the order they run in.',
+  );
+
+const uuid = z.string().uuid();
+
+/** EDD "MCP tool contracts": flat, with the stage's own inputs in options. */
+export const StartGenerationInput = {
+  stage: StageArg,
+  episodeId: uuid
+    .optional()
+    .describe('The episode, for an episode stage (story, screenplay, shots).'),
+  projectId: uuid
+    .optional()
+    .describe(
+      'The project, for a project stage; taken from the episode when an episode is given.',
+    ),
+  assetId: uuid.optional().describe('The asset, for asset_description.'),
+  sceneNumber: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe('One scene, for a stage that works on a single scene.'),
+  options: z
+    .record(z.unknown())
+    .optional()
+    .describe(
+      "The stage's own inputs beyond the target (a refinement's feedback, a language). Fields the episode already holds (title, logline, target duration, content style) are read from it; a value given here overrides it.",
+    ),
+};
+
+export const BriefRefSchema = z.object({
+  partKey: z.string(),
+  label: z.string(),
+  index: z.number().int(),
+  total: z.number().int(),
+});
+export type BriefRef = z.infer<typeof BriefRefSchema>;
+
+export const GetBriefInput = {
+  runId: uuid.describe('The run start_generation returned.'),
+  partKey: z
+    .string()
+    .min(1)
+    .max(100)
+    .describe(
+      "The part, as the run lists it: 'story', 'reel_scout', 'scene:4'.",
+    ),
+};
+
+export const SubmitGenerationInput = {
+  runId: uuid.describe('The run start_generation returned.'),
+  partKey: z
+    .string()
+    .min(1)
+    .max(100)
+    .describe('The part this output answers, as its brief named it.'),
+  output: z
+    .unknown()
+    .describe(
+      "The part's output, matching the brief's outputSchema. Up to about 100 KB; a larger stage is split into parts.",
+    ),
+  model: z
+    .string()
+    .max(100)
+    .optional()
+    .describe(
+      'The model you wrote this with. Stored as self-reported, beside the client name.',
+    ),
+};
+
+export const RunIdInput = {
+  runId: uuid.describe('The run start_generation returned.'),
+};
+
+export const SubmitGenerationResultSchema = z.discriminatedUnion('status', [
+  z.object({
+    status: z.literal('accepted'),
+    partKey: z.string(),
+    next: BriefRefSchema.nullable(),
+    remaining: z.number().int().nonnegative(),
+  }),
+  z.object({
+    status: z.literal('rejected'),
+    partKey: z.string(),
+    errors: z.array(CheckErrorSchema),
+  }),
+]);
+export type SubmitGenerationResult = z.infer<
+  typeof SubmitGenerationResultSchema
+>;
+
+/** What `generation_run_parts.validation` holds, written by this module only. */
+export const PartValidationSchema = z.object({
+  status: z.enum(['accepted', 'rejected']).optional(),
+  hash: z.string().optional(),
+  model: z.string().optional(),
+  result: SubmitGenerationResultSchema.optional(),
+  failures: z
+    .array(
+      z.object({
+        at: z.string(),
+        hash: z.string().optional(),
+        errors: z.array(CheckErrorSchema),
+      }),
+    )
+    .default([]),
+});
+export type PartValidation = z.infer<typeof PartValidationSchema>;

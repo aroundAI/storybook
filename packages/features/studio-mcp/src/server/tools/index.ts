@@ -3,6 +3,7 @@ import 'server-only';
 import type { McpToolDefinition } from '../../registry';
 import { analyticsTools } from './analytics';
 import { authorTools } from './author';
+import { generationTools } from './generation';
 import { readTools } from './read';
 import { whoamiTool } from './whoami';
 import { getWorkflowGuideTool } from './workflow-guide';
@@ -18,6 +19,13 @@ export const defaultTools: McpToolDefinition[] = [
   ...readTools,
   ...authorTools,
   ...analyticsTools,
+  ...generationTools,
 ];
 
-export { whoamiTool, getWorkflowGuideTool, readTools, authorTools };
+export {
+  whoamiTool,
+  getWorkflowGuideTool,
+  readTools,
+  authorTools,
+  generationTools,
+};

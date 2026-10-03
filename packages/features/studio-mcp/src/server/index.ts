@@ -70,6 +70,12 @@ export {
 export { WORKFLOW_GUIDE_TEXT } from './tools/workflow-guide';
 export { analyticsTools } from './tools/analytics';
 export {
+  configureGenerationTools,
+  createGenerationTools,
+  generationTools,
+  type GenerationToolDeps,
+} from './tools/generation';
+export {
   defaultPrompts,
   workflowGuidePrompt,
   type McpPromptDefinition,
