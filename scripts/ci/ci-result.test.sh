@@ -40,12 +40,12 @@ check() {
 }
 
 FAST=(typescript=success format=success clickhouse-sql=success unit-test=success)
-SKIPPED_HEAVY=(supabase-db=skipped unit-guards=skipped unit-guards-result=success
+SKIPPED_HEAVY=(next-build=skipped supabase-db=skipped unit-guards=skipped unit-guards-result=success
   docs-checks=skipped e2e-guards=skipped e2e-evidence=skipped test=skipped)
-FULL=(supabase-db=success unit-guards=success unit-guards-result=success
+FULL=(next-build=success supabase-db=success unit-guards=success unit-guards-result=success
   docs-checks=skipped e2e-guards=success e2e-evidence=success test=success)
 DOCS=(typescript=skipped format=skipped clickhouse-sql=skipped unit-test=skipped
-  supabase-db=skipped unit-guards=skipped unit-guards-result=success
+  next-build=skipped supabase-db=skipped unit-guards=skipped unit-guards-result=success
   e2e-guards=skipped e2e-evidence=skipped test=skipped)
 
 check pass 'PR fast lane green, heavy jobs skipped' true false "${FAST[@]}" "${SKIPPED_HEAVY[@]}"
@@ -59,6 +59,10 @@ check pass 'queue run, E2E switched off' true true "${FAST[@]}" "${FULL[@]}" e2e
 check fail 'queue run, ⚫️ Test failed' true true "${FAST[@]}" "${FULL[@]}" test=failure
 check fail 'queue run, E2E guards cancelled' true true "${FAST[@]}" "${FULL[@]}" e2e-guards=cancelled
 check fail 'queue run, Supabase DB skipped' true true "${FAST[@]}" "${FULL[@]}" supabase-db=skipped
+check fail 'queue run, Next build failed' true true "${FAST[@]}" "${FULL[@]}" next-build=failure
+check fail 'queue run, Next build cancelled' true true "${FAST[@]}" "${FULL[@]}" next-build=cancelled
+check fail 'queue run, Next build skipped without a scope' true true "${FAST[@]}" "${FULL[@]}" next-build=skipped
+check fail 'queue run, Next build missing from needs' true true "${FAST[@]}" "${FULL[@]}" next-build=missing
 check fail 'queue run, unit guards skipped' true true "${FAST[@]}" "${FULL[@]}" unit-guards=skipped
 check fail 'queue run, unit guards result failed' true true "${FAST[@]}" "${FULL[@]}" unit-guards-result=failure
 check pass 'docs-only queue run' false true "${DOCS[@]}" docs-checks=success
@@ -68,7 +72,13 @@ check fail 'Changes succeeded with no classification, all skipped' '' '' \
   typescript=skipped format=skipped clickhouse-sql=skipped unit-test=skipped \
   docs-checks=skipped supabase-db=skipped unit-guards=skipped
 
-# Phase 2: an enforced scope may skip 🐘 Supabase DB and 🧪 Unit guards.
+# Phase 2: an enforced scope may skip 🏗️ Next build, 🐘 Supabase DB and 🧪 Unit guards.
+SCOPE='{"skip_build": "true"}' check pass 'scoped queue run, Next build scoped out' true true \
+  "${FAST[@]}" "${FULL[@]}" next-build=skipped
+SCOPE='{"skip_build": "true"}' check fail 'scoped out, but the build ran and failed' true true \
+  "${FAST[@]}" "${FULL[@]}" next-build=failure
+SCOPE='{"skip_build": "false"}' check fail 'build scoped in, but skipped' true true \
+  "${FAST[@]}" "${FULL[@]}" next-build=skipped
 SCOPED='{"skip_supabase": "true", "skip_unit_guards": "true"}'
 SCOPE=$SCOPED check pass 'scoped queue run, DB and unit guards scoped out' true true \
   "${FAST[@]}" "${FULL[@]}" supabase-db=skipped unit-guards=skipped e2e-guards=skipped

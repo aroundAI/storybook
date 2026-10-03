@@ -28,8 +28,8 @@ check() {
 # Defaults for every case: enforcing, nothing affected, no guard selected.
 export SCOPE_ENFORCE=true SCOPE_AFFECTED='' SCOPE_UNIT_GUARDS=0 SCOPE_E2E_GUARDS=0 SCOPE_PGTAP_GUARDS=0
 
-SKIP_ALL='full=false test=false supabase=false skip_test=true skip_supabase=true skip_unit_guards=true skip_e2e_guards=true enforced=true'
-RUN_ALL='full=true skip_test=false skip_supabase=false skip_unit_guards=false skip_e2e_guards=false enforced=false unit_shards=[1,2,3,4,5,6] e2e_shards=[1,2,3,4,5]'
+SKIP_ALL='full=false test=false build=false supabase=false skip_test=true skip_build=true skip_supabase=true skip_unit_guards=true skip_e2e_guards=true enforced=true'
+RUN_ALL='full=true build=true skip_test=false skip_build=false skip_supabase=false skip_unit_guards=false skip_e2e_guards=false enforced=false unit_shards=[1,2,3,4,5,6] e2e_shards=[1,2,3,4,5]'
 
 # --- what nothing reaches is skipped
 check 'specs and a script outside scripts/ci' "$SKIP_ALL" specs/INDEX.md scripts/local-ci/stop.sh
@@ -43,6 +43,13 @@ SCOPE_AFFECTED=$'@kit/shared\nweb' check 'a package web depends on' 'test=true s
 SCOPE_AFFECTED='@kit/shared web' check 'names separated by spaces' 'test=true' packages/shared/src/a.ts
 SCOPE_AFFECTED='web-e2e' check 'an E2E spec only' 'test=true skip_test=false' apps/e2e/tests/x.spec.ts
 SCOPE_AFFECTED='webby web-e2ee' check 'names must match whole' 'test=false skip_test=true' packages/x/a.ts
+
+# --- Next build follows web, not an E2E spec
+SCOPE_AFFECTED=$'@kit/shared\nweb' check 'a package web depends on builds' 'build=true skip_build=false' packages/shared/src/a.ts
+SCOPE_AFFECTED='web-e2e' check 'an E2E spec only does not build' 'test=true build=false skip_build=true' apps/e2e/tests/x.spec.ts
+SCOPE_AFFECTED='webby' check 'build names must match whole' 'build=false skip_build=true' packages/x/a.ts
+SCOPE_AFFECTED='web' check 'report-only never skips the build' 'build=true skip_build=false' packages/x/a.ts
+SCOPE_ENFORCE=false SCOPE_AFFECTED='' check 'report-only still prints the verdict, skips nothing' 'build=false skip_build=false' specs/INDEX.md
 
 # --- Supabase DB follows SQL and what its steps read
 SCOPE_AFFECTED=web check 'a migration' 'supabase=true skip_supabase=false test=true' apps/web/supabase/migrations/20261001000000_x.sql
@@ -101,6 +108,7 @@ verdict=$(echo specs/INDEX.md | SCOPE_ENFORCE=false SCOPE_UNIT_GUARDS=2 bash ./s
 summary=$(printf '%s\n' "$verdict" | bash ./scope-heavy.sh --summary)
 if printf '%s' "$summary" | grep -q 'report-only' \
   && printf '%s' "$summary" | grep -q '| ⚫️ Test, 🧬 E2E evidence | \*\*would skip\*\* |' \
+  && printf '%s' "$summary" | grep -q '| 🏗️ Next build | \*\*would skip\*\* |' \
   && printf '%s' "$summary" | grep -q '| 🧪 Unit guards | 2 changed |'; then
   echo "ok    report-only summary names what it would skip"
 else
@@ -108,7 +116,8 @@ else
   failures=$((failures + 1))
 fi
 summary=$(printf '%s\n' "$SKIP_ALL" | tr ' ' '\n' | bash ./scope-heavy.sh --summary)
-if printf '%s' "$summary" | grep -q 'enforced' && printf '%s' "$summary" | grep -q '| 🐘 Supabase DB | \*\*skipped\*\* |'; then
+if printf '%s' "$summary" | grep -q 'enforced' && printf '%s' "$summary" | grep -q '| 🏗️ Next build | \*\*skipped\*\* |' \
+  && printf '%s' "$summary" | grep -q '| 🐘 Supabase DB | \*\*skipped\*\* |'; then
   echo "ok    enforced summary names what it skipped"
 else
   echo "FAIL  enforced summary: $summary"
@@ -117,10 +126,10 @@ fi
 
 # --- the shadow check: a job scoping would have skipped, that failed
 shadow() {
-  jq -n --arg enforced "$1" --arg test "$2" --arg unit "$3" --arg result "$4" \
+  jq -n --arg enforced "$1" --arg test "$2" --arg unit "$3" --arg result "$4" --arg build "${5:-true}" \
     '{changes: {result: "success", outputs: {scope_enforced: $enforced, scope_full: "false",
-       scope_test: $test, scope_supabase: "true", scope_unit_guards: $unit, scope_e2e_guards: "1"}},
-      test: {result: $result}, "e2e-evidence": {result: "success"}, "supabase-db": {result: "success"},
+       scope_test: $test, scope_build: $build, scope_supabase: "true", scope_unit_guards: $unit, scope_e2e_guards: "1"}},
+      test: {result: $result}, "e2e-evidence": {result: "success"}, "supabase-db": {result: "success"}, "next-build": {result: (if $build == "false" then $result else "success" end)},
       "unit-guards": {result: $result}, "e2e-guards": {result: "success"}}' \
     | bash ./scope-heavy.sh --shadow
 }
@@ -141,6 +150,7 @@ check_shadow 'a would-skip job failed' missed false false 0 failure
 check_shadow 'a would-skip job passed' clean false false 0 success
 check_shadow 'a job scoping keeps failed' clean false true 3 failure
 check_shadow 'enforced: skipped jobs did not run' clean true false 0 failure
+check_shadow 'a would-skip build failed' missed false true 3 failure false
 check_shadow 'no scope computed' clean '' '' '' failure
 
 if [ "$failures" -ne 0 ]; then

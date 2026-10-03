@@ -56,7 +56,7 @@ jobs:
     # resolves a conflict in a shared spec file. See the "Reuse" step below.
     #
     # `heavy` decides the heavy jobs (🧪 Unit guards, 🐘 Supabase DB,
-    # 🧬 E2E evidence, ⚫️ Test, 🧬 E2E guards): false on a pull request (the
+    # 🧬 E2E evidence, ⚫️ Test, 🧬 E2E guards, 🏗️ Next build): false on a pull request (the
     # fast lane), true in the merge queue, on a manual dispatch and nightly.
     #
     # The scope_* and skip_* outputs are Phase 2's: set in the merge queue
@@ -74,10 +74,12 @@ jobs:
       scope_full: ${{ steps.scope.outputs.full }}
       scope_enforced: ${{ steps.scope.outputs.enforced }}
       scope_test: ${{ steps.scope.outputs.test }}
+      scope_build: ${{ steps.scope.outputs.build }}
       scope_supabase: ${{ steps.scope.outputs.supabase }}
       scope_unit_guards: ${{ steps.scope.outputs.unit_guards }}
       scope_e2e_guards: ${{ steps.scope.outputs.e2e_guards }}
       skip_test: ${{ steps.scope.outputs.skip_test }}
+      skip_build: ${{ steps.scope.outputs.skip_build }}
       skip_supabase: ${{ steps.scope.outputs.skip_supabase }}
       skip_unit_guards: ${{ steps.scope.outputs.skip_unit_guards }}
       skip_e2e_guards: ${{ steps.scope.outputs.skip_e2e_guards }}
@@ -338,6 +340,55 @@ jobs:
 
       - name: Execute every query and insert
         run: pnpm --filter @kit/clickhouse verify
+
+  next-build:
+    name: 🏗️ Next build
+    # KB-180: a client file imported a server-only package, `next build` failed
+    # on main for hours, and every job stayed green because nothing here ran a
+    # full Next build (owner, 2026-10-03). Merge queue, dispatch and nightly
+    # only: `heavy`, like the other heavy jobs, so a pull request still runs
+    # the fast lane. Scoped to a change that reaches `web` (skip_build).
+    #
+    # Measured: `pnpm --filter web build` takes ~1 minute on a warm laptop
+    # (64 s, 2026-10-03); a cold runner adds the install and the first
+    # compile of every package, so 20 minutes is headroom, not an estimate.
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.heavy == 'true' && needs.changes.outputs.skip_build != 'true' }}
+    env:
+      DO_NOT_TRACK: 1
+      # Placeholders only, no secret: the build needs the public values that
+      # apps/web/.env.production leaves out. NODE_ENV stays `production`
+      # (sourcing a local env file sets it to development and breaks
+      # prerender). 4096 as in ⚫️ Test: the ceiling is per build worker.
+      NEXT_PUBLIC_SITE_URL: https://example.com
+      NODE_OPTIONS: --max-old-space-size=4096
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: ${{ runner.os }}-turbo-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-turbo-
+
+      - name: Next production build
+        run: pnpm --filter web build
 
   supabase-db:
     name: 🐘 Supabase DB
@@ -1238,6 +1289,7 @@ jobs:
       - typescript
       - format
       - clickhouse-sql
+      - next-build
       - supabase-db
       - unit-test
       - unit-guards
