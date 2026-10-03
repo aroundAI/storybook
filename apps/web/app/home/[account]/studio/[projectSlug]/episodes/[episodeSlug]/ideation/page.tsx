@@ -11,6 +11,7 @@ import {
   getActiveThreadsAction,
 } from '@kit/episodes/server';
 import { unwrap } from '@kit/next/action-result';
+import type { StoryIdea } from '@kit/prompt-engine/schemas';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 
@@ -136,6 +137,11 @@ export default function IdeationPage() {
   // Extract character and location IDs from episode metadata
   const characterIds = (episode.metadata?.character_ids as string[]) ?? [];
   const locationIds = (episode.metadata?.location_ids as string[]) ?? [];
+  // The ideation stage's commit stores its ideas here, in either mode
+  // (FILM-1901 part B), so they survive a reload or come from Claude
+  const storedIdeas = Array.isArray(episode.metadata?.ideas)
+    ? (episode.metadata.ideas as StoryIdea[])
+    : [];
 
   // Get initial premise from episode story data or description
   const initialPremise =
@@ -151,6 +157,7 @@ export default function IdeationPage() {
         locationIds={locationIds}
         defaultDuration={defaultDuration}
         defaultContentStyle={defaultContentStyle}
+        storedIdeas={storedIdeas}
       />
 
       {/* Thread Candidates — below the ideation form */}

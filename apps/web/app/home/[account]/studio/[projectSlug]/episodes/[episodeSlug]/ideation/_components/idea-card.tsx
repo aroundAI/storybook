@@ -15,6 +15,7 @@ export function IdeaCard({ idea, index, onSelect }: IdeaCardProps) {
   return (
     <div
       onClick={onSelect}
+      data-test="idea-card"
       className={cn(
         'group relative cursor-pointer rounded-xl border p-6 backdrop-blur-sm transition-all duration-200',
         'border-white/[0.08] bg-[#1A1A1A] hover:border-[#3B82F6]/30 hover:bg-[#1A1A1A] hover:shadow-[0_0_20px_rgba(59,130,246,0.08)]',
