@@ -492,5 +492,58 @@ describe.skipIf(!(SEED && URL_))(
         '"kind":"external"',
       );
     });
+    it('regenerating the story over MCP replaces its generated canon instead of adding to it', async () => {
+      const canonCounts = async () => {
+        const [events, states, threads] = await Promise.all([
+          admin(
+            `/rest/v1/immutable_events?established_in=eq.${episodeId}&select=id`,
+          ),
+          admin(
+            `/rest/v1/character_states?episode_id=eq.${episodeId}&select=id`,
+          ),
+          admin(
+            `/rest/v1/narrative_threads?opened_at=eq.${episodeId}&auto_generated=eq.true&select=id`,
+          ),
+        ]);
+
+        return {
+          events: events.length,
+          states: states.length,
+          threads: threads.length,
+        };
+      };
+
+      const before = await canonCounts();
+      expect(before).toEqual({ events: 2, states: 2, threads: 1 });
+
+      const started = await call('start_generation', {
+        stage: 'story',
+        episodeId,
+      });
+      expect(started.isError).toBeFalsy();
+      const secondRun = (started.structuredContent!.run as { runId: string })
+        .runId;
+
+      const accepted = await call('submit_generation', {
+        runId: secondRun,
+        partKey: 'story',
+        output: SUBMISSION,
+      });
+      expect(accepted.structuredContent).toMatchObject({
+        finalized: { status: 'committed' },
+      });
+
+      // the last generation's canon is cleared in the same commit, under the
+      // user's session, so nothing is doubled
+      expect(await canonCounts()).toEqual(before);
+
+      const revisions = await admin(
+        `/rest/v1/content_revisions?run_id=eq.${secondRun}&select=snapshot`,
+      );
+      expect(revisions).toHaveLength(1);
+      expect(JSON.stringify(revisions[0].snapshot)).toContain(
+        'Commander Maya Chen',
+      );
+    });
   },
 );
