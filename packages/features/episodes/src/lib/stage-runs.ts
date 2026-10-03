@@ -67,6 +67,11 @@ export const RESTORE_WHILE_RUN_OPEN =
 export const RESTORE_NEEDS_WRITE =
   'You need write access to this project to restore a version.';
 
+export const CANCEL_NEEDS_WRITE =
+  'You need write access to this project to cancel the run.';
+export const RUN_ALREADY_FINISHED =
+  'That run has already finished, so there is nothing to cancel.';
+
 export const OPEN_RUN_STATUSES = ['briefed', 'in_progress'] as const;
 
 export interface OpenExternalRun {

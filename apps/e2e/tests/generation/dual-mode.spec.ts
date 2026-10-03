@@ -21,10 +21,11 @@ import { byTest } from '../utils/visible';
  * wrote each piece; a team chooses which AI modes it allows.
  *
  * Fixtures are seeded through the API. An external run is a
- * `generation_runs` row; it ends here by being marked expired, which is
- * what the lease cron does (cancel arrives with FILM-1903 part B), and the
- * page has to notice on its own: over Realtime, or by polling if that is
- * down. Screenshots are written only under CAPTURE_EVIDENCE=1.
+ * `generation_runs` row. One ends by being marked expired, the lease
+ * cron's write, which the page must notice on its own, over Realtime or by
+ * polling if that is down. Another ends through the banner's Cancel, which
+ * goes through the run layer. Screenshots are written only under
+ * CAPTURE_EVIDENCE=1.
  */
 const EVIDENCE = process.env.CAPTURE_EVIDENCE
   ? (process.env.EVIDENCE_DIR ?? 'evidence')
@@ -138,12 +139,57 @@ test.describe('Dual-mode studio (FILM-1910)', () => {
     await capture(page, '02-story-after-run-ends');
 
     // A second run on the same stage brings the banner back
-    await seedExternalRun(studio);
+    const second = await seedExternalRun(studio);
 
     await expect(banner).toContainText('Claude is working on this', {
       timeout: 20_000,
     });
     await expect(convert).toBeDisabled();
+    await capture(page, '03-story-second-run-cancel');
+
+    // Cancel from the banner ends it through the run layer
+    await byTest(banner, 'external-run-cancel').click();
+
+    await expect(banner).toHaveCount(0, { timeout: 20_000 });
+    await expect(convert).toBeEnabled();
+    await expect
+      .poll(async () => {
+        const [row] = await readRows<{ status: string }>(
+          'generation_runs',
+          `id=eq.${second.id}&select=status`,
+        );
+        return row?.status;
+      })
+      .toBe('cancelled');
+    await capture(page, '04-story-after-cancel');
+  });
+
+  test('a member who cannot write the project is refused Cancel', async ({
+    page,
+  }) => {
+    const studio = await seedStudio('film1910-cancel-member');
+    const run = await seedExternalRun(studio);
+    const member = await seedUser('film1910-cancel-member');
+    await seedMembership(member.userId, studio.team.accountId, 'member');
+
+    await signInAs(page, member);
+    await page.goto(`${studio.base}/story`);
+
+    const banner = byTest(page, 'external-run-banner');
+    await byTest(banner, 'external-run-cancel').click();
+
+    await expect(
+      page.getByText(
+        'You need write access to this project to cancel the run.',
+      ),
+    ).toBeVisible();
+    await expect(banner).toContainText('Claude is working on this');
+
+    const [row] = await readRows<{ status: string }>(
+      'generation_runs',
+      `id=eq.${run.id}&select=status`,
+    );
+    expect(row?.status).toBe('in_progress');
   });
 
   test('a run on the stage Generate would start also pauses it', async ({
@@ -241,7 +287,7 @@ test.describe('Dual-mode studio (FILM-1910)', () => {
     await expect(storyBadge).toContainText('Claude via MCP');
     await expect(storyBadge).toContainText('reported: claude-opus-5-5');
     await expect(storyBadge).toHaveAttribute('data-origin-kind', 'external');
-    await capture(page, '03-story-origin-badge');
+    await capture(page, '05-story-origin-badge');
 
     await page.goto(`${studio.base}/visual-studio`);
     const shotCards = byTest(page, 'shot-card');
@@ -255,7 +301,7 @@ test.describe('Dual-mode studio (FILM-1910)', () => {
     );
     // A shot written before FILM-1903 has no origin, and no badge
     await expect(byTest(shotCards.nth(1), 'origin-badge')).toHaveCount(0);
-    await capture(page, '04-shot-origin-badges');
+    await capture(page, '06-shot-origin-badges');
 
     await page.goto(`${studio.base}/audio-studio`);
     const line = byTest(page, 'dialogue-block-0');
@@ -264,7 +310,7 @@ test.describe('Dual-mode studio (FILM-1910)', () => {
       'external',
     );
     await expect(byTest(line, 'origin-badge')).toContainText('Claude via MCP');
-    await capture(page, '05-dialogue-origin-badge');
+    await capture(page, '07-dialogue-origin-badge');
   });
 
   test('restore puts the previous story back, and restoring again undoes it', async ({
@@ -292,12 +338,12 @@ test.describe('Dual-mode studio (FILM-1910)', () => {
     await expect(storyText(page, NEW_STORY)).toBeVisible();
 
     await byTest(page, 'restore-previous-version').click();
-    await capture(page, '06-restore-confirm');
+    await capture(page, '08-restore-confirm');
     await byTest(page, 'restore-previous-version-confirm').click();
 
     await expect(storyText(page, OLD_STORY)).toBeVisible();
     await expect(storyText(page, NEW_STORY)).toHaveCount(0);
-    await capture(page, '07-story-restored');
+    await capture(page, '09-story-restored');
 
     const [stored] = await readRows<{ story_data: { fullStory: string } }>(
       'episodes',
@@ -367,7 +413,7 @@ test.describe('Team settings → AI (FILM-1910)', () => {
     await expect(server).toHaveAttribute('aria-checked', 'true');
     await expect(external).toHaveAttribute('aria-checked', 'true');
     await expect(byTest(page, 'ai-settings-default-server')).toBeChecked();
-    await capture(page, '08-ai-settings-defaults');
+    await capture(page, '10-ai-settings-defaults');
 
     // First save: Gemini only. The toggle moving proves the form hydrated.
     await external.click();
@@ -385,7 +431,7 @@ test.describe('Team settings → AI (FILM-1910)', () => {
     await page.reload();
     await expect(server).toHaveAttribute('aria-checked', 'true');
     await expect(external).toHaveAttribute('aria-checked', 'false');
-    await capture(page, '09-ai-settings-after-save');
+    await capture(page, '11-ai-settings-after-save');
 
     // Second save: Claude only; turning server off moves the default
     await external.click();
@@ -411,7 +457,7 @@ test.describe('Team settings → AI (FILM-1910)', () => {
     await expect(byTest(page, 'ai-settings-external-error')).toHaveText(
       'Keep at least one way to generate. Allow server generation, external generation, or both.',
     );
-    await capture(page, '10-ai-settings-both-off-refused');
+    await capture(page, '12-ai-settings-both-off-refused');
 
     await page.reload();
     await expect(external).toHaveAttribute('aria-checked', 'true');
@@ -435,6 +481,6 @@ test.describe('Team settings → AI (FILM-1910)', () => {
     await expect(byTest(page, 'ai-settings-external')).toBeDisabled();
     await expect(byTest(page, 'ai-settings-default-server')).toBeDisabled();
     await expect(byTest(page, 'ai-settings-save')).toHaveCount(0);
-    await capture(page, '11-ai-settings-member-read-only');
+    await capture(page, '13-ai-settings-member-read-only');
   });
 });

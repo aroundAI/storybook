@@ -44,6 +44,24 @@
       "replace": "disabled={isPending || llmStatus === 'pending'}",
       "spec": "tests/generation/dual-mode.spec.ts",
       "grep": "pauses Generate, until it ends"
+    },
+    {
+      "name": "FILM-1910 E3 Cancel in the banner does not cancel the run",
+      "kind": "e2e",
+      "file": "packages/features/episodes/src/server/run-actions.ts",
+      "find": "        await run.cancel('cancelled from the studio');",
+      "replace": "        void run;",
+      "spec": "tests/generation/dual-mode.spec.ts",
+      "grep": "pauses Generate, until it ends"
+    },
+    {
+      "name": "FILM-1910 E4 Cancel stops checking who may drive the run",
+      "kind": "e2e",
+      "file": "packages/features/episodes/src/server/run-actions.ts",
+      "find": "        if (!canDrive) throw new ActionRefusal(CANCEL_NEEDS_WRITE);",
+      "replace": "        void canDrive;",
+      "spec": "tests/generation/dual-mode.spec.ts",
+      "grep": "is refused Cancel"
     }
   ]
 }

@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 
 import { usePathname } from 'next/navigation';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { History, Loader2 } from 'lucide-react';
 
 import { ExternalRunBanner, OriginBadge } from '@kit/episodes/components';
@@ -15,7 +15,10 @@ import {
   latestStageRevision,
   studioPageFromPath,
 } from '@kit/episodes/lib/stage-runs';
-import { restoreRevisionAction } from '@kit/episodes/server/run-actions';
+import {
+  cancelGenerationRunAction,
+  restoreRevisionAction,
+} from '@kit/episodes/server/run-actions';
 import { refusalMessage, unwrap } from '@kit/next/action-result';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import {
@@ -68,7 +71,7 @@ export function StageRunBar() {
 
   return (
     <div data-test="stage-run-bar">
-      <ExternalRunBanner runs={runs} />
+      <CancellableRunBanner runs={runs} />
       <div className="flex min-h-0 items-center gap-3 px-6 empty:hidden">
         {origin && (
           <span className="flex items-center gap-2 py-2 text-xs text-gray-500 dark:text-gray-400">
@@ -79,6 +82,42 @@ export function StageRunBar() {
         <RestorePreviousVersion page={page} disabled={locked} />
       </div>
     </div>
+  );
+}
+
+/** The banner, with Cancel going through the run layer. */
+function CancellableRunBanner({
+  runs,
+}: {
+  runs: ReturnType<typeof useStageRunLock>['runs'];
+}) {
+  const { episode } = useEpisodeContext();
+  const queryClient = useQueryClient();
+  const [cancellingRunId, setCancellingRunId] = useState<string | null>(null);
+
+  const cancel = async (runId: string) => {
+    setCancellingRunId(runId);
+
+    try {
+      await unwrap(cancelGenerationRunAction({ runId }));
+      toast.success('Cancelled. Generating here is available again.');
+    } catch (error) {
+      toast.error(refusalMessage(error, 'Could not cancel the run'));
+    } finally {
+      setCancellingRunId(null);
+      // Realtime carries the change too; this covers a channel that is down
+      void queryClient.invalidateQueries({
+        queryKey: ['open-external-runs', episode.id],
+      });
+    }
+  };
+
+  return (
+    <ExternalRunBanner
+      runs={runs}
+      onCancel={cancel}
+      cancellingRunId={cancellingRunId}
+    />
   );
 }
 
