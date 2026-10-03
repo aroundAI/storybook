@@ -74,9 +74,9 @@
     {
       "name": "X6 Stored screenplay scenes reach the shot model raw",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/handlers/shot-generation.ts",
-      "find": "      scenes: sanitizeStrings(scenes).map((s, idx) => {\n",
-      "replace": "      scenes: scenes.map((s, idx) => {\n",
+      "file": "packages/features/generation/src/stages/shots.ts",
+      "find": "    const scenes = sanitizeStrings(screenplay.scenes).map(\n",
+      "replace": "    const scenes = screenplay.scenes.map(\n",
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
       "pattern": "shot generation"
@@ -94,9 +94,9 @@
     {
       "name": "Y1 An uploaded document reaches the fact-extraction model raw",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/handlers/fact-extraction.ts",
-      "find": "    variables: sanitizeStrings({\n      content: data.content,",
-      "replace": "    variables: ({\n      content: data.content,",
+      "file": "packages/features/generation/src/stages/fact-extraction.ts",
+      "find": "      variables: sanitizeStrings({\n        content: target.content,",
+      "replace": "      variables: ({\n        content: target.content,",
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
       "pattern": "fact extraction"
@@ -144,9 +144,9 @@
     {
       "name": "Y6 Stored shots reach the audio cue model raw",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/handlers/audio-cue-generation.ts",
-      "find": "    const shotsJson = sanitizeStrings(\n",
-      "replace": "    const shotsJson = (\n",
+      "file": "packages/features/generation/src/stages/audio-cues.ts",
+      "find": "    const summaries = sanitizeStrings(shots.map(summarise));\n",
+      "replace": "    const summaries = shots.map(summarise);\n",
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/executor-inputs-sanitised.test.ts",
       "pattern": "audio cues"

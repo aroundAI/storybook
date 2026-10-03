@@ -285,7 +285,9 @@ never has to fit in one prompt. The path, as it runs today:
    └─ Shot Quality   evaluateShotQuality  → post-generation quality gate
         │
         ▼
- the handler replaces the episode's rows in the shots table
+ the shots stage's commit (packages/features/generation/src/stages/shots.ts)
+ replaces the episode's rows in the shots table and names the audio_cues
+ stage as its follow-on; the handler queues that job (FILM-1901)
 ```
 
 Every scene prompt carries the episode's **full** character and location
@@ -904,12 +906,13 @@ SCORE (Series Continuity and Recall Engine) maintains narrative consistency acro
 |-----------|---------------|
 | Shot List Generation | `packages/features/episodes/src/lib/server/mutations/shot-list-actions.ts` |
 | Shot Generation Job | `apps/web/lambda/llm-worker/handlers/shot-generation.ts` |
+| Shots Stage (prepare, check, commit) | `packages/features/generation/src/stages/shots.ts` |
 | Shot Orchestrator | `packages/features/episodes/src/agent/shot-orchestrator.ts` |
 | Shot Director (per-scene) | `packages/features/episodes/src/agent/skills/shot-director-skill.ts` |
 | Context Builder | `apps/web/lambda/llm-worker/utils/context-builder.ts` |
 | Shot Schemas | `packages/features/episodes/src/lib/schemas/shot-list.schema.ts` |
 | Types | `packages/features/episodes/src/lib/types.ts` |
-| Duration Scaling | `packages/features/episodes/src/lib/duration-scaling.ts` |
+| Duration Scaling | `packages/shared/src/duration-scaling/index.ts` |
 | Scene Shot Prompt | `packages/features/prompt-engine/src/prompts/story-generation/scene-shot-generation.json` |
 | Story Generation Prompt | `packages/features/prompt-engine/src/prompts/story-generation/story-generation.json` |
 

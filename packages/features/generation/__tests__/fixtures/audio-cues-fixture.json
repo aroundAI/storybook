@@ -1,0 +1,85 @@
+{
+  "ids": {
+    "accountId": "11111111-1111-4111-8111-111111111111",
+    "projectId": "22222222-2222-4222-8222-222222222222",
+    "episodeId": "33333333-3333-4333-8333-333333333333",
+    "userId": "44444444-4444-4444-8444-444444444444"
+  },
+  "now": "2026-10-03T12:00:00.000Z",
+  "shots": [
+    {
+      "sequence_number": 1,
+      "scene_number": 1,
+      "duration_seconds": 6,
+      "scene_description": "Maya's hand freezes on the folder",
+      "prompt": "p1",
+      "generation_metadata": {
+        "veoPrompt": { "audio": "Office hum, the folder closing" },
+        "action": "Her hand stops above the folder"
+      }
+    },
+    {
+      "sequence_number": 2,
+      "scene_number": 1,
+      "duration_seconds": 5,
+      "scene_description": "Dev and Maya across the desk",
+      "prompt": "p2",
+      "generation_metadata": { "veoPrompt": { "audio": "Office hum, a chair creaking" } }
+    },
+    {
+      "sequence_number": 3,
+      "scene_number": 2,
+      "duration_seconds": 8,
+      "scene_description": "Maya crosses the empty car park",
+      "prompt": "p3",
+      "generation_metadata": null
+    },
+    {
+      "sequence_number": 4,
+      "scene_number": null,
+      "duration_seconds": 4,
+      "scene_description": "Insert: the phone screen",
+      "prompt": "p4",
+      "generation_metadata": { "action": "The phone lights up" }
+    }
+  ],
+  "cues": [
+    {
+      "type": "ambient",
+      "prompt": "Quiet office atmosphere, air conditioning hum",
+      "startShotSequence": 1,
+      "startOffsetInShot": 0,
+      "durationSeconds": 11,
+      "reasoning": "Covers scene 1"
+    },
+    {
+      "type": "music",
+      "prompt": "Cinematic strings, suspenseful, 70 BPM, in D minor",
+      "startShotSequence": 1,
+      "startOffsetInShot": 2,
+      "durationSeconds": 17
+    },
+    {
+      "type": "sfx",
+      "prompt": "Footsteps echoing in a concrete car park",
+      "startShotSequence": 3,
+      "startOffsetInShot": 1.5,
+      "durationSeconds": 3
+    },
+    {
+      "type": "sfx",
+      "prompt": "Phone screen chime",
+      "startShotSequence": 4,
+      "startOffsetInShot": 0,
+      "durationSeconds": 1
+    },
+    {
+      "type": "sfx",
+      "prompt": "A cue on a shot that does not exist",
+      "startShotSequence": 9,
+      "startOffsetInShot": 0,
+      "durationSeconds": 1
+    }
+  ],
+  "orchestrator": { "orchestratorSteps": 3, "coveragePercent": 92 }
+}

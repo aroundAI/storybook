@@ -149,7 +149,17 @@ const generateShotsTool = createTool({
         locationEnvironmentDescription?: string | null;
       };
 
+      /** What the prompt says about the scene as a whole (FILM-1901) */
+      type SceneResult = {
+        sceneNumber: number;
+        sceneSummary?: string;
+        sceneViralScore?: number;
+        sceneHookType?: string | null;
+        sceneStandaloneSummary?: string | null;
+      };
+
       const allShots: ShotResult[] = [];
+      const sceneResults: SceneResult[] = [];
       let failedScenes = 0;
 
       for (let i = 0; i < mergedScenes.length; i += CONCURRENCY) {
@@ -165,103 +175,121 @@ const generateShotsTool = createTool({
         // Use Promise.allSettled for per-scene resilience —
         // one failed scene should NOT kill the entire batch
         const batchSettled = await Promise.allSettled(
-          batch.map(async (scene): Promise<ShotResult[]> => {
-            const isReelCandidate = reelCandidateScenes.includes(scene.number);
+          batch.map(
+            async (
+              scene,
+            ): Promise<{ shots: ShotResult[]; scene: SceneResult }> => {
+              const isReelCandidate = reelCandidateScenes.includes(
+                scene.number,
+              );
 
-            console.log(
-              `[Shot Director] Generating shots for scene ${scene.number}` +
-                (isReelCandidate ? ' [REEL PRIORITY]' : ''),
-            );
+              console.log(
+                `[Shot Director] Generating shots for scene ${scene.number}` +
+                  (isReelCandidate ? ' [REEL PRIORITY]' : ''),
+              );
 
-            const sceneContent = JSON.stringify({
-              number: scene.number,
-              heading: scene.heading,
-              location: scene.location,
-              timeOfDay: scene.timeOfDay,
-              description: scene.description,
-              action: scene.action,
-              dialogue: scene.dialogue,
-            });
+              const sceneContent = JSON.stringify({
+                number: scene.number,
+                heading: scene.heading,
+                location: scene.location,
+                timeOfDay: scene.timeOfDay,
+                description: scene.description,
+                action: scene.action,
+                dialogue: scene.dialogue,
+              });
 
-            const episodeMetadata = JSON.stringify({
-              title: episodeTitle,
-              genre,
-              targetAudience,
-              visualStyle,
-              tone,
-            });
+              const episodeMetadata = JSON.stringify({
+                title: episodeTitle,
+                genre,
+                targetAudience,
+                visualStyle,
+                tone,
+              });
 
-            const reelNote = isReelCandidate
-              ? `PRIORITY: This scene is a Reel candidate. Lead with a high-impact visual hook in Shot 1. Use close-ups for emotional beats. Make the first 3 seconds grabby.`
-              : '';
+              const reelNote = isReelCandidate
+                ? `PRIORITY: This scene is a Reel candidate. Lead with a high-impact visual hook in Shot 1. Use close-ups for emotional beats. Make the first 3 seconds grabby.`
+                : '';
 
-            const result = await executeLLM<{
-              shots: Array<{
-                shotNumber: number;
-                shotType: string;
-                cameraDirection: string;
-                description: string;
-                duration: number;
-                characters: string[];
-                veoPrompt: {
-                  shotLine: string;
-                  audio: string;
-                  style: string;
-                  avoid: string;
-                  fullPrompt: string;
-                };
-                metadata: {
-                  location: string;
-                  timeOfDay: string;
-                  mood?: string;
-                  lighting?: string;
-                };
-                transitionType?: string;
-                frameStrategy?: string;
-                primarySubject?: { type: string; name: string };
-                firstFrameDescription?: string | null;
-                lastFrameDescription?: string | null;
-                locationArea?: string | null;
-                locationEnvironmentDescription?: string | null;
-              }>;
-              sceneSummary: string;
-            }>({
-              templateSlug: 'scene-shot-generation',
-              variables: {
-                scene_number: scene.number,
-                total_scenes: scenes.length,
-                scene_content: sceneContent,
-                episode_metadata: episodeMetadata,
-                characters,
-                locations,
-                previous_scene_summary: '',
-                reel_note: reelNote,
-                recurring_element: recurringElements ?? '',
-                shot_duration_min: shotDuration.min,
-                shot_duration_max: shotDuration.max,
-              },
-              context: {
-                name: 'agent.shotDirector.generateShots',
-                accountId: '',
-              },
-            });
+              const result = await executeLLM<{
+                shots: Array<{
+                  shotNumber: number;
+                  shotType: string;
+                  cameraDirection: string;
+                  description: string;
+                  duration: number;
+                  characters: string[];
+                  veoPrompt: {
+                    shotLine: string;
+                    audio: string;
+                    style: string;
+                    avoid: string;
+                    fullPrompt: string;
+                  };
+                  metadata: {
+                    location: string;
+                    timeOfDay: string;
+                    mood?: string;
+                    lighting?: string;
+                  };
+                  transitionType?: string;
+                  frameStrategy?: string;
+                  primarySubject?: { type: string; name: string };
+                  firstFrameDescription?: string | null;
+                  lastFrameDescription?: string | null;
+                  locationArea?: string | null;
+                  locationEnvironmentDescription?: string | null;
+                }>;
+                sceneSummary: string;
+                sceneViralScore?: number;
+                sceneHookType?: string | null;
+                sceneStandaloneSummary?: string | null;
+              }>({
+                templateSlug: 'scene-shot-generation',
+                variables: {
+                  scene_number: scene.number,
+                  total_scenes: scenes.length,
+                  scene_content: sceneContent,
+                  episode_metadata: episodeMetadata,
+                  characters,
+                  locations,
+                  previous_scene_summary: '',
+                  reel_note: reelNote,
+                  recurring_element: recurringElements ?? '',
+                  shot_duration_min: shotDuration.min,
+                  shot_duration_max: shotDuration.max,
+                },
+                context: {
+                  name: 'agent.shotDirector.generateShots',
+                  accountId: '',
+                },
+              });
 
-            // Normalize enum fields: LLM often outputs kebab-case (e.g. "two-shot")
-            // but the Zod schema expects snake_case (e.g. "two_shot")
-            const normalizedShots = result.data.shots.map((shot) => ({
-              ...shot,
-              duration: clampShotDuration(shot.duration, shotDuration),
-              sceneNumber: scene.number,
-              frameStrategy: shot.frameStrategy?.replace(/-/g, '_'),
-              transitionType: shot.transitionType?.replace(/-/g, '_'),
-            }));
+              // Normalize enum fields: LLM often outputs kebab-case (e.g. "two-shot")
+              // but the Zod schema expects snake_case (e.g. "two_shot")
+              const normalizedShots = result.data.shots.map((shot) => ({
+                ...shot,
+                duration: clampShotDuration(shot.duration, shotDuration),
+                sceneNumber: scene.number,
+                frameStrategy: shot.frameStrategy?.replace(/-/g, '_'),
+                transitionType: shot.transitionType?.replace(/-/g, '_'),
+              }));
 
-            console.log(
-              `[Shot Director] Scene ${scene.number} complete — ${normalizedShots.length} shots generated`,
-            );
+              console.log(
+                `[Shot Director] Scene ${scene.number} complete — ${normalizedShots.length} shots generated`,
+              );
 
-            return normalizedShots;
-          }),
+              return {
+                shots: normalizedShots,
+                scene: {
+                  sceneNumber: scene.number,
+                  sceneSummary: result.data.sceneSummary,
+                  sceneViralScore: result.data.sceneViralScore,
+                  sceneHookType: result.data.sceneHookType,
+                  sceneStandaloneSummary: result.data.sceneStandaloneSummary,
+                },
+              };
+            },
+          ),
         );
 
         // Collect successful results, log failures
@@ -270,7 +298,8 @@ const generateShotsTool = createTool({
           const scene = batch[j]!;
 
           if (result.status === 'fulfilled') {
-            allShots.push(...result.value);
+            allShots.push(...result.value.shots);
+            sceneResults.push(result.value.scene);
           } else {
             failedScenes++;
             console.error(
@@ -304,6 +333,7 @@ const generateShotsTool = createTool({
 
       return toolSuccess({
         shots: shotsWithSequence,
+        sceneResults,
         totalShots: shotsWithSequence.length,
         scenesProcessed: scenes.length,
         reelCandidatesOptimized: reelCandidateScenes.length,

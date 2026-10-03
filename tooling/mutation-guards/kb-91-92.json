@@ -14,22 +14,22 @@
     {
       "name": "KB-92 a cue on a sceneless shot given a made-up scene 0",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/handlers/audio-cue-generation.ts",
-      "find": "          scene_number: sceneNum,\n",
-      "replace": "          scene_number: sceneNum ?? 0,\n",
+      "file": "packages/features/generation/src/stages/audio-cues.ts",
+      "find": "      scene_number: episode.sceneOf.get(cue.startShotSequence) ?? null,\n",
+      "replace": "      scene_number: episode.sceneOf.get(cue.startShotSequence) ?? 0,\n",
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/audio-cue-generation.test.ts",
-      "pattern": "saves a cue on a sceneless shot"
+      "pattern": "sceneless cue with no scene"
     },
     {
       "name": "KB-92 a cue on a sceneless shot dropped",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/handlers/audio-cue-generation.ts",
-      "find": "        if (sceneNum === undefined) {",
-      "replace": "        if (sceneNum === undefined || sceneNum === null) {",
+      "file": "packages/features/generation/src/stages/audio-cues.ts",
+      "find": "    if (shotStart === undefined) {\n",
+      "replace": "    if (\n      shotStart === undefined ||\n      episode.sceneOf.get(cue.startShotSequence) === null\n    ) {\n",
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/audio-cue-generation.test.ts",
-      "pattern": "saves a cue on a sceneless shot"
+      "pattern": "sceneless cue with no scene"
     },
     {
       "name": "KB-92 audio_cues.scene_number NOT NULL again",

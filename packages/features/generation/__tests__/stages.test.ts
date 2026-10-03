@@ -21,6 +21,13 @@ import {
   tableResponder,
   writesOf,
 } from '../src/testing';
+import {
+  audioFixture,
+  episodeFixture,
+  factFixture,
+  pagedResponder,
+  summaryFixture,
+} from './helpers/part-d';
 import { promptVariableProblems } from './helpers/prompt-variables';
 
 // Every buildBrief input, so the registry test below can hold what each
@@ -157,23 +164,27 @@ afterAll(() => {
   vi.useRealTimers();
 });
 
-describe('the registry holds the part A, B and C stages', () => {
-  it('registers every stage of parts A, B and C', () => {
+describe('the registry holds the part A, B, C and D stages', () => {
+  it('registers every stage of parts A to D', () => {
     expect(registeredStageKeys().sort()).toEqual([
       'asset_description',
+      'audio_cues',
       'dialogue_translation',
+      'episode_summary',
+      'fact_extraction',
       'ideation',
       'publish_metadata',
       'screenplay',
       'screenplay_refinement',
       'season_analysis',
       'season_outline',
+      'shots',
       'story',
       'story_refinement',
     ]);
     expect(getStage('story_refinement')).toBe(storyRefinementStage);
     expect(getStage('asset_description')).toBe(assetDescriptionStage);
-    expect(stageRegistry.size).toBe(10);
+    expect(stageRegistry.size).toBe(14);
   });
 });
 
@@ -223,6 +234,23 @@ describe('every registered stage renders its prompt with the context prepare() b
       projectId: PROJECT_ID,
       roadmap: '* **The Mystery:** Something is missing',
     },
+    shots: { ...episodeFixture.ids, shotDuration: episodeFixture.shotDuration },
+    audio_cues: audioFixture.ids,
+    fact_extraction: factFixture.payload,
+    episode_summary: summaryFixture.input,
+  };
+
+  // The rows each stage reads; the part A episode row for the rest
+  const clients: Partial<Record<keyof typeof targets, () => Ctx['client']>> = {
+    shots: () =>
+      recordingClient(
+        tableResponder({
+          episodes: episodeFixture.episode,
+          shots: episodeFixture.existingShots,
+        }),
+      ).client,
+    audio_cues: () =>
+      recordingClient(pagedResponder({ shots: audioFixture.shots })).client,
   };
 
   for (const key of registeredStageKeys()) {
@@ -231,7 +259,8 @@ describe('every registered stage renders its prompt with the context prepare() b
       const target = targets[key as keyof typeof targets];
       expect(target, `add a fixture target for ${key}`).toBeDefined();
 
-      const ctx = ctxFor(episodeClient().client);
+      const client = clients[key as keyof typeof targets];
+      const ctx = ctxFor(client ? client() : episodeClient().client);
       const parts = await stage.parts(ctx, target);
       expect(parts.length).toBeGreaterThan(0);
 
@@ -258,7 +287,7 @@ describe('every registered stage renders its prompt with the context prepare() b
 
   it('checked every registered stage, and there are stages to check', () => {
     // A positive control: an empty registry would pass every test above
-    expect(stageRegistry.size).toBeGreaterThanOrEqual(10);
+    expect(stageRegistry.size).toBeGreaterThanOrEqual(14);
     expect([...checkedStages].sort()).toEqual(registeredStageKeys().sort());
   });
 });

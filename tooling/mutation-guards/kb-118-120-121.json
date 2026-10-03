@@ -45,10 +45,10 @@
       "name": "SD4 the shot handler does not pass the range on",
       "kind": "unit",
       "file": "apps/web/lambda/llm-worker/handlers/shot-generation.ts",
-      "find": "      shotDuration: {\n        min: data.shotDurationMin,\n        max: data.shotDurationMax,\n      },\n",
+      "find": "    shotDuration: { min: data.shotDurationMin, max: data.shotDurationMax },\n",
       "replace": "",
       "cwd": "apps/web",
-      "test": "lambda/llm-worker/__tests__/shot-duration-handler.test.ts",
+      "test": "lambda/llm-worker/__tests__/shot-generation-handler.test.ts",
       "pattern": "shot-length range"
     },
     {

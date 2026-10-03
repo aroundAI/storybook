@@ -10,6 +10,7 @@ import { revalidatePath } from 'next/cache';
 
 import { z } from 'zod';
 
+import { episodeSummaryStage, runStage } from '@kit/generation';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
 import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { readFailed, whyNoRow } from '@kit/shared/rows';
@@ -31,10 +32,7 @@ import {
   MIN_MEMORY_HORIZON,
   effectiveMemoryHorizon,
 } from '../lib/canon/memory-horizon';
-import {
-  type ExtractedWorldState,
-  describeStateChange,
-} from '../lib/canon/memory-rows';
+import type { ExtractedWorldState } from '../lib/canon/memory-rows';
 import { storeEpisodeMemory } from '../lib/canon/store-episode-memory';
 import {
   isThreadStale,
@@ -1401,6 +1399,11 @@ export interface CanonExtractionResult {
 
 /**
  * Extracts canon changes from episode content for review before publish.
+ *
+ * The `episode_summary` stage (FILM-1901) prepares the brief, the model
+ * writes, the stage enforces the prompt's output schema and maps the
+ * extraction for review. Nothing is written here: `commitCanonChangesAction`
+ * writes the canon tables once the user approves.
  */
 export const extractCanonChangesAction = enhanceAction(
   async (data: {
@@ -1409,25 +1412,6 @@ export const extractCanonChangesAction = enhanceAction(
     storyContent: string;
   }): Promise<CanonExtractionResult> => {
     try {
-      // FILM-1103: Use LLM for intelligent canon extraction
-      const { executeLLM } = await import('@kit/prompt-engine/server');
-
-      // Sanitize user-provided content to prevent prompt injection
-      const sanitizedContent = data.storyContent
-        .replace(/\b(system|assistant)\s*:\s*/gi, '')
-        .replace(
-          /\bignore\s+(all\s+)?(previous|above|prior)\s+(instructions?|prompts?|rules?)\b/gi,
-          '',
-        )
-        .replace(/\byou\s+are\s+now\b/gi, '')
-        .replace(
-          /\bforget\s+(all\s+)?(previous|your)\s+(instructions?|rules?|context)\b/gi,
-          '',
-        )
-        .substring(0, 50_000)
-        .trim();
-
-      // Fetch active threads for LLM context
       const client = getSupabaseServerClient();
 
       // Rate limit LLM-based extraction
@@ -1441,107 +1425,47 @@ export const extractCanonChangesAction = enhanceAction(
         });
       }
 
-      const { data: activeThreads } = await client
-        .from('narrative_threads')
-        .select('thread_name, thread_type, status, description, promises')
-        .eq('project_id', data.projectId)
-        .in('status', ['open', 'progressed']);
+      const { data: project, error: projectError } = await client
+        .from('projects')
+        .select('account_id')
+        .eq('id', data.projectId)
+        .single();
 
-      const threadsContext = activeThreads?.length
-        ? activeThreads
-            .map(
-              (t: {
-                thread_name: string;
-                thread_type: string | null;
-                status: string | null;
-                description: string | null;
-                promises: string[] | null;
-              }) =>
-                `- "${t.thread_name}" (${t.thread_type ?? 'plot'}, ${t.status ?? 'open'}): ${t.description ?? ''}. Promises: ${(t.promises ?? []).join(', ') || 'none'}`,
-            )
-            .join('\n')
-        : 'No active threads';
+      if (projectError || !project) {
+        throw new Error(whyNoRow(projectError, 'Project not found'));
+      }
 
-      // Fetch project characters for LLM context
-      const { data: projectCharacters } = await client
-        .from('assets')
-        .select('name, type')
-        .eq('project_id', data.projectId)
-        .eq('type', 'character')
-        .limit(30);
+      const { executeLLM } = await import('@kit/prompt-engine/server');
 
-      const charsContext = projectCharacters?.length
-        ? projectCharacters
-            .map((c: { name: string }) => `- ${c.name}`)
-            .join('\n')
-        : 'No characters defined';
+      const { commit } = await runStage(
+        episodeSummaryStage,
+        { client, accountId: project.account_id, userId: user?.id ?? '' },
+        data,
+        {
+          generate: async (brief) => {
+            const result = await executeLLM<unknown>({
+              templateSlug: brief.prompt.slug,
+              variables: brief.prompt.variables,
+              context: {
+                name: 'canon-extraction',
+                accountId: data.projectId, // Project-level context
+              },
+            });
 
-      const result = await executeLLM<{
-        extraction: {
-          immutableEvents: ExtractedCanonChange[];
-          characterStateChanges: Array<{
-            characterName: string;
-            stateType: ExtractedStateChange['stateType'];
-            fromState: string;
-            toState: string;
-            triggerEvent: string;
-          }>;
-          threadUpdates: ExtractedThreadUpdate[];
-          episodeSummary: string;
-          sentimentScore: number;
-          keyEvents: string[];
-          worldState?: ExtractedWorldState;
-        };
-      }>({
-        templateSlug: 'canon-extraction',
-        variables: {
-          story_content: sanitizedContent,
-          existing_characters: charsContext,
-          existing_threads: threadsContext,
+            return {
+              output: result.data,
+              usage: {
+                provider: String(result.metadata.provider),
+                model: result.metadata.model,
+                tokens: result.metadata.tokens,
+                latencyMs: result.metadata.latency,
+              },
+            };
+          },
         },
-        context: {
-          name: 'canon-extraction',
-          accountId: data.projectId, // Project-level context
-        },
-      });
+      );
 
-      const extraction = result.data.extraction;
-
-      // Map LLM output to CanonExtractionResult interface
-      return {
-        immutableEvents: (extraction.immutableEvents ?? []).map((e) => ({
-          type: e.type,
-          eventKey: e.eventKey,
-          description: e.description,
-          confidence: e.confidence ?? 'medium',
-        })),
-        threadUpdates: (extraction.threadUpdates ?? []).map((t) => ({
-          threadName: t.threadName,
-          threadType: t.threadType,
-          action: t.action,
-          description: t.description,
-          promises: t.promises,
-        })),
-        stateChanges: (extraction.characterStateChanges ?? []).map((s) => ({
-          characterName: s.characterName,
-          stateType: s.stateType,
-          fromState: s.fromState,
-          toState: s.toState,
-          triggerEvent: s.triggerEvent,
-        })),
-        episodeSummary: extraction.episodeSummary ?? '',
-        sentimentScore: Math.max(
-          0,
-          Math.min(1, extraction.sentimentScore ?? 0.5),
-        ),
-        keyEvents: extraction.keyEvents ?? [],
-        characterChanges: (extraction.characterStateChanges ?? []).map(
-          describeStateChange,
-        ),
-        worldState: extraction.worldState?.location
-          ? extraction.worldState
-          : undefined,
-      };
+      return commit.data;
     } catch (err) {
       console.warn(
         '[Canon Extraction] LLM extraction failed, falling back to basic:',

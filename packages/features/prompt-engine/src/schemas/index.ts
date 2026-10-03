@@ -51,6 +51,18 @@ export {
   type ShotListMetadata,
   type ShotList,
   type ShotListGenerationOutput,
+  // Scene Shot Generation (VEO 3.1 timestamp format)
+  TimelineEventTypeSchema,
+  TimelineEventSchema,
+  VeoPromptV2Schema,
+  SceneShotSchema,
+  SceneHookTypeSchema,
+  SceneShotGenerationOutputSchema,
+  type TimelineEventType,
+  type TimelineEvent,
+  type VeoPromptV2,
+  type SceneShot,
+  type SceneShotGenerationOutput,
   // Season Outline Generation (FILM-314)
   ArcPositionSchema,
   EpisodeOutlineSchema,
@@ -59,3 +71,7 @@ export {
   type EpisodeOutline,
   type SeasonOutlineOutput,
 } from './story-generation-schemas';
+export * from './reel-scout-schemas';
+export * from './audio-cue-schemas';
+export * from './fact-extraction-schemas';
+export * from './canon-extraction-schemas';

@@ -25,13 +25,13 @@ acceptance_criteria:
     evidence: null
   - text: "LLM extracts facts with entities"
     met: false
-    reason: "no longer true — prompt and handler return claim, category, confidence only (`apps/web/lambda/llm-worker/handlers/fact-extraction.ts:13`); no entities"
+    reason: "no longer true — prompt and stage return claim, category, confidence and source context only (`packages/features/prompt-engine/src/schemas/fact-extraction-schemas.ts:23`); no entities"
   - text: "Progress shown during extraction"
     met: false
     reason: "no longer true — extraction is queued; the dialog reports done with 0 facts (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/upload-source-dialog.tsx:247`); `ExtractionStatusBanner` is never rendered"
   - text: "Extracted facts appear in Facts list"
     met: false
-    reason: "owner check OC-7 (docs/OWNER-CHECKS.md) — worker inserts into `verified_facts` (`apps/web/lambda/llm-worker/handlers/fact-extraction.ts:92`); needs a queued job run end to end"
+    reason: "owner check OC-7 (docs/OWNER-CHECKS.md) — the fact_extraction stage's commit inserts into `verified_facts` (`packages/features/generation/src/stages/fact-extraction.ts:152`); needs a queued job run end to end"
   - text: "Source credibility tier is stored"
     met: true
     evidence: null
@@ -42,8 +42,8 @@ remaining:
   - criterion: "LLM extracts facts with entities"
     reason: >
       `documentary/fact-extraction.json` asks for claim, category, confidence
-      and source context, and the worker's `ExtractedFact` has only those
-      (`apps/web/lambda/llm-worker/handlers/fact-extraction.ts:13`); no
+      and source context, and `ExtractedFactSchema` has only those
+      (`packages/features/prompt-engine/src/schemas/fact-extraction-schemas.ts:23`); no
       people/places/dates/organizations are extracted or stored
     closed_by: "unassigned"
   - criterion: "Progress shown during extraction"

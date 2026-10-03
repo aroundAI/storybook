@@ -28,11 +28,15 @@ const KNOWN: Record<string, [number, string]> = {
   // the worker's service role; was the two screenplay handlers' delete
   'packages/features/generation/src/stages/shared/dialogue-lines.ts | dialogue_lines | delete':
     [1, ADMIN],
-  'apps/web/lambda/llm-worker/handlers/shot-generation.ts | audio_cues | delete':
-    [1, ADMIN],
-  'apps/web/lambda/llm-worker/handlers/shot-generation.ts | audio_tracks | delete':
-    [1, ADMIN],
-  'apps/web/lambda/llm-worker/handlers/shot-generation.ts | shots | delete': [
+  'packages/features/generation/src/stages/shots.ts | audio_cues | delete': [
+    1,
+    ADMIN,
+  ],
+  'packages/features/generation/src/stages/shots.ts | audio_tracks | delete': [
+    1,
+    ADMIN,
+  ],
+  'packages/features/generation/src/stages/shots.ts | shots | delete': [
     1,
     ADMIN,
   ],

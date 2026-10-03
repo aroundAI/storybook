@@ -34,3 +34,7 @@ export * from './story';
 export * from './ideation';
 export * from './season-outline';
 export * from './season-analysis';
+export * from './shots';
+export * from './audio-cues';
+export * from './fact-extraction';
+export * from './episode-summary';
