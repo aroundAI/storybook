@@ -35,26 +35,24 @@ select set_config('kb52.solo', tests.get_supabase_uid('kb52_solo')::text, true);
 insert into public.generation_runs (id, account_id, target_type, target_id, stage, mode, created_by)
 values
   ('52000000-0000-4000-8000-0000000000a1', current_setting('kb52.team')::uuid, 'project',
-   '52000000-0000-4000-8000-0000000000b1', 'analytics_insights', 'server', tests.get_supabase_uid('member')),
-  ('52000000-0000-4000-8000-0000000000a2', current_setting('kb52.solo')::uuid, 'project',
-   '52000000-0000-4000-8000-0000000000b2', 'analytics_insights', 'server', tests.get_supabase_uid('kb52_solo'));
+   '52000000-0000-4000-8000-0000000000b1', 'analytics_insights', 'server', tests.get_supabase_uid('member'));
 
 insert into public.llm_usage_analytics
   (id, account_id, user_id, template_slug, llm_provider, llm_model, status, error_message, run_id)
 values
   ('52000000-0000-4000-8000-000000000001', current_setting('kb52.team')::uuid,
    tests.get_supabase_uid('member'), 'kb52-team', 'openai', 'gpt-4o-mini', 'failure', 'team secret',
-   '52000000-0000-4000-8000-0000000000a1'),
-  ('52000000-0000-4000-8000-000000000002', current_setting('kb52.solo')::uuid,
-   tests.get_supabase_uid('kb52_solo'), 'kb52-solo', 'openai', 'gpt-4o-mini', 'success', null,
-   '52000000-0000-4000-8000-0000000000a2');
+   '52000000-0000-4000-8000-0000000000a1');
 
--- A row with no account can only be one written before part C (a run always
--- names its account); replica skips the trigger, as its absence did then.
+-- A row on a personal account, or with no account, can only be one written
+-- before part C (a run names its account, and runs belong to teams); replica
+-- skips the trigger, as its absence did then.
 set local session_replication_role = replica;
 insert into public.llm_usage_analytics
   (id, account_id, user_id, template_slug, llm_provider, llm_model, status, error_message)
 values
+  ('52000000-0000-4000-8000-000000000002', current_setting('kb52.solo')::uuid,
+   tests.get_supabase_uid('kb52_solo'), 'kb52-solo', 'openai', 'gpt-4o-mini', 'success', null),
   ('52000000-0000-4000-8000-000000000003', null,
    null, 'kb52-orphan', 'openai', 'gpt-4o-mini', 'success', null);
 set local session_replication_role = origin;
