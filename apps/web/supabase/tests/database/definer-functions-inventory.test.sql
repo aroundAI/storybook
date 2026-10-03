@@ -51,6 +51,9 @@ select results_eq(
        ('public.connection_in_account'),
        -- project_members owner/admin/member
        ('public.create_character_with_details'),
+       -- signed in and has_role_on_account of the team the token is bound to;
+       -- inserts the caller's own connection and a hash it supplied (FILM-1904)
+       ('public.create_mcp_personal_access_token'),
        -- no caller check: answers only whether the episode id belongs to the
        -- account id, both supplied by the caller — an oracle to someone who
        -- already holds both UUIDs, and no row data (KB-113)

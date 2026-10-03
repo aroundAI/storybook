@@ -113,6 +113,10 @@ const KNOWN: Record<string, [number, string]> = {
     [1, BOOKKEEPING],
   'packages/features/publishing/src/server/publish-actions.ts | publishes | update':
     [6, `${FAILURE_MARK} + ${JUST_INSERTED} + ${RECORDS_RESULT}`],
+  // FILM-1904: withMcpAuth stamps the connection after a verified call; the
+  // revoke in personal-access-tokens.ts selects its rows and is not listed.
+  'packages/features/studio-mcp/src/server/route-handler.ts | mcp_connections | update':
+    [1, `${ADMIN} + ${LAST_USED}`],
   'packages/features/team-accounts/src/server/services/account-members.service.ts | accounts_memberships | update':
     [1, ADMIN],
   'packages/supabase/src/external-api-keys.ts | external_api_keys | update': [

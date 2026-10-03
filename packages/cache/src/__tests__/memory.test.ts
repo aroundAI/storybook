@@ -98,6 +98,34 @@ describe('MemoryCache', () => {
     });
   });
 
+  describe('Counters (FILM-1904)', () => {
+    it('incr starts at 1 and counts up', async () => {
+      expect(await cache.incr('rl:a', 60)).toBe(1);
+      expect(await cache.incr('rl:a', 60)).toBe(2);
+      expect(await cache.incr('rl:a', 60)).toBe(3);
+      expect(await cache.incr('rl:b', 60)).toBe(1);
+    });
+
+    it('concurrent increments never share a value', async () => {
+      const values = await Promise.all(
+        Array.from({ length: 50 }, () => cache.incr('rl:burst', 60)),
+      );
+
+      expect([...values].sort((a, b) => a - b)).toEqual(
+        Array.from({ length: 50 }, (_, i) => i + 1),
+      );
+    });
+
+    it('a counter restarts at 1 once its TTL has passed', async () => {
+      await cache.incr('rl:short', 1);
+      await cache.incr('rl:short', 1);
+
+      await new Promise((resolve) => setTimeout(resolve, 1100));
+
+      expect(await cache.incr('rl:short', 1)).toBe(1);
+    });
+  });
+
   describe('TTL and Expiration', () => {
     it('should respect default TTL', async () => {
       const shortCache = new MemoryCache({ maxAge: 1 }); // 1 second default TTL

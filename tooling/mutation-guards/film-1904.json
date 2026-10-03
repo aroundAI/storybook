@@ -1,0 +1,151 @@
+{
+  "feature": "FILM-1904 MCP endpoint, personal access tokens and request auth",
+  "mutations": [
+    {
+      "name": "MCP U1 membership is no longer re-checked per call",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/with-mcp-auth.ts",
+      "find": "  if (!(await checkMembership(supabase, connection.accountId))) {",
+      "replace": "  if (!(await checkMembership(supabase, connection.accountId)) && false) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/with-mcp-auth.test.ts",
+      "pattern": "no longer in the team"
+    },
+    {
+      "name": "MCP U2 a revoked token verifies",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/own-verifier.ts",
+      "find": "      if (data.revoked_at || connection.revoked_at) {",
+      "replace": "      if (false && (data.revoked_at || connection.revoked_at)) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/own-verifier.test.ts",
+      "pattern": "revoked"
+    },
+    {
+      "name": "MCP U3 the rate limit decision is ignored",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/build-server.ts",
+      "find": "    if (!decision.allowed) {",
+      "replace": "    if (!decision.allowed && false) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/build-server.test.ts",
+      "pattern": "RATE_LIMITED"
+    },
+    {
+      "name": "MCP U4 a tool runs without its scope",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/build-server.ts",
+      "find": "    if (tool.scope && !hasScope(principal.scopes, tool.scope)) {",
+      "replace": "    if (tool.scope && !hasScope(principal.scopes, tool.scope) && false) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/build-server.test.ts",
+      "pattern": "lacks the scope"
+    },
+    {
+      "name": "MCP U5 another team's slug is accepted",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/build-server.ts",
+      "find": "  if (slug !== undefined && slug !== data.slug) {",
+      "replace": "  if (slug !== undefined && slug !== data.slug && false) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/build-server.test.ts",
+      "pattern": "bound to one team"
+    },
+    {
+      "name": "MCP U6 a crash's message reaches the client",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/errors.ts",
+      "find": "  return new McpToolError(\n    'INTERNAL',\n    'The tool failed unexpectedly. Try again; if it keeps failing, report the request id.',\n  );",
+      "replace": "  return new McpToolError('INTERNAL', String(error));",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/build-server.test.ts",
+      "pattern": "a crash is INTERNAL without them"
+    },
+    {
+      "name": "MCP U7 the Authorization header is logged as sent",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/audit.ts",
+      "find": "      return [name, SECRET_HEADERS.has(name) ? '[redacted]' : value];",
+      "replace": "      return [name, value];",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/audit-and-rate-limit.test.ts",
+      "pattern": "replaces every credential header"
+    },
+    {
+      "name": "MCP U8 the caller can choose the generation mode",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/request-context.ts",
+      "find": "  return storage.run({ ...context, mode: 'external' }, fn);",
+      "replace": "  return storage.run({ mode: 'external', ...context } as McpRequestContext, fn);",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/errors-and-context.test.ts",
+      "pattern": "mode cannot be supplied"
+    },
+    {
+      "name": "MCP U9 the web app imports the developer MCP server",
+      "kind": "unit",
+      "file": "apps/web/app/api/mcp/route.ts",
+      "find": "import { createMcpRouteHandlers } from '@kit/studio-mcp/server';",
+      "replace": "import { createMcpRouteHandlers } from '@kit/studio-mcp/server';\nimport '@kit/mcp-server';",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/boundaries.test.ts",
+      "pattern": "finds no such import"
+    },
+    {
+      "name": "MCP U10 a tool handler reaches for the service role",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/whoami.ts",
+      "find": "import { McpToolError } from '../../errors';",
+      "replace": "import { McpToolError } from '../../errors';\nimport { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/boundaries.test.ts",
+      "pattern": "finds none under src/server/tools"
+    },
+    {
+      "name": "MCP U11 incr is no longer atomic on redis",
+      "kind": "unit",
+      "file": "packages/cache/src/providers/redis.ts",
+      "find": "    const result = await this.client.eval(\n      INCR_WITH_TTL,\n      1,\n      key,\n      String(ttlSeconds),\n    );\n\n    return Number(result);",
+      "replace": "    const current = Number((await this.client.get(key)) ?? '0') + 1;\n    await this.client.setex(key, ttlSeconds, String(current));\n    return current;",
+      "cwd": "packages/cache",
+      "test": "src/__tests__/redis.test.ts",
+      "pattern": "INCR and EXPIRE as one script"
+    },
+    {
+      "name": "MCP DB1 every signed-in user reads every connection",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/mcp-connections-rls.test.sql",
+      "sql": "drop policy mcp_connections_read on public.mcp_connections; create policy mcp_connections_read on public.mcp_connections for select to authenticated using (true);"
+    },
+    {
+      "name": "MCP DB2 a user may rewrite a connection's name and scopes",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/mcp-connections-rls.test.sql",
+      "sql": "grant update on public.mcp_connections to authenticated;"
+    },
+    {
+      "name": "MCP DB3 token hashes are readable by signed-in users",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/mcp-connections-rls.test.sql",
+      "sql": "grant select on public.mcp_tokens to authenticated;"
+    },
+    {
+      "name": "MCP DB4 every member reads the team's tool calls",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/mcp-connections-rls.test.sql",
+      "sql": "drop policy mcp_tool_calls_read on public.mcp_tool_calls; create policy mcp_tool_calls_read on public.mcp_tool_calls for select to authenticated using (public.has_role_on_account(account_id));"
+    },
+    {
+      "name": "MCP DB6 a connection is bound to a personal account",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/mcp-connections-rls.test.sql",
+      "sql": "drop trigger require_team_account on public.mcp_connections; drop trigger require_team_account on public.mcp_tool_calls;"
+    },
+    {
+      "name": "MCP DB5 a token for another team is created",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/mcp-connections-rls.test.sql",
+      "sql": "create or replace function public.create_mcp_personal_access_token(p_account_id uuid, p_name text, p_scopes text[], p_token_hash text) returns public.mcp_connections language plpgsql security definer set search_path = '' as $$ declare v public.mcp_connections; begin insert into public.mcp_connections (user_id, account_id, kind, name, scopes) values ((select auth.uid()), p_account_id, 'pat', p_name, p_scopes) returning * into v; insert into public.mcp_tokens (token_hash, connection_id, kind) values (p_token_hash, v.id, 'pat'); return v; end $$;"
+    }
+  ]
+}

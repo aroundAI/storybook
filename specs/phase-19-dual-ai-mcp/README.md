@@ -140,5 +140,9 @@ step stays a web action.
    2026-10-03 (lead): stored on `episodes.metadata.ideas` for both modes; the
    `ideation` stage's commit writes it (FILM-1901 part B).
 4. FILM-1910: may a team turn server generation off entirely?
-5. FILM-1904: endpoint inside the Next.js app (recommended) or its own Lambda?
+5. ~~FILM-1904: endpoint inside the Next.js app (recommended) or its own
+   Lambda?~~ Built inside the app (#558, 2026-10-03): `/api/mcp` is a
+   Next route over `@kit/studio-mcp`, reusing the Supabase clients and the
+   feature services; its own Lambda stays an option if timeouts or scaling
+   ever ask for it.
 6. FILM-1911: is ChatGPT's connector support in scope for GA?

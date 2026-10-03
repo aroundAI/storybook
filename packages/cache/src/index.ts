@@ -75,6 +75,17 @@ export interface CacheClient {
   mdel(keys: string[]): Promise<void>;
 
   /**
+   * Atomically add one to a counter and return the new value. A counter
+   * that does not exist (or has expired) starts at 1 and lives for
+   * `ttlSeconds`; later increments keep the original expiry. The unit of a
+   * fixed-window rate limit (FILM-1904): two concurrent calls can never
+   * both read 119 and both write 120.
+   * @param key - Counter key
+   * @param ttlSeconds - Lifetime set when the counter is created
+   */
+  incr(key: string, ttlSeconds: number): Promise<number>;
+
+  /**
    * Clear all cache entries
    */
   clear(): Promise<void>;

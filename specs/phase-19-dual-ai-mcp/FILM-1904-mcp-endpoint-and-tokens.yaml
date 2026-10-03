@@ -3,7 +3,8 @@ title: "MCP Endpoint, Personal Access Tokens and Request Auth"
 phase: 19
 phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
 category: feature
-status: DRAFT
+status: PARTIAL
+audited: "2026-10-03"
 effort: M
 dependencies: []
 summary: >
@@ -19,54 +20,82 @@ summary: >
   and is never exposed. Design: the EDD's "4. Transport and endpoint" and
   "5. Authentication and tenancy"
   (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
+  Built in #558 (2026-10-03).
 acceptance_criteria:
   - text: "apps/web/app/api/mcp/route.ts serves POST with StreamableHTTPServerTransport from @modelcontextprotocol/sdk in stateless mode (no session id, JSON responses); GET and DELETE answer 405"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "apps/web/app/api/mcp/route.ts:12; packages/features/studio-mcp/src/server/route-handler.ts:122 (sessionIdGenerator undefined, enableJsonResponse true), :158 (GET/DELETE 405); contract.test.ts 'GET and DELETE are 405' (#558)"
   - text: "A fresh McpServer is built per request from @kit/studio-mcp's registry; nothing is held in memory between calls; it runs on both Vercel and Lambda via OpenNext"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/build-server.ts:52 (new McpServer per request), route-handler.ts:114-154 (built, connected, closed inside one POST). The SDK's Node transport is bridged to the Web Request/Response a Next route has (node-adapter.ts), which is what both hosts run; verified on Vercel/Lambda only by construction, no deploy in #558"
   - text: "withMcpAuth: a request without a valid bearer token gets 401 with WWW-Authenticate pointing at the protected-resource metadata (FILM-1907 serves it); a valid one yields McpPrincipal {userId, accountId, connectionId, scopes, clientName, supabase}"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/with-mcp-auth.ts:56-113; route-handler.ts:75 (WWW-Authenticate); principal.ts:14; __tests__/with-mcp-auth.test.ts (10 cases), apps/e2e/tests/mcp/connected-apps.spec.ts (401 header measured against the running app)"
   - text: "The principal's Supabase client carries a 5-minute JWT (sub = user, role = authenticated) signed with the project JWT secret or an imported signing key (FILM-1907); no tool handler can obtain a service-role client"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/jwt.ts:6 (300 s), :51 (role authenticated), :59-62 (sub, exp), SUPABASE_JWT_SECRET; user-client.ts; the McpJwtSigner interface is FILM-1907's seam. Handlers get only principal.supabase; __tests__/boundaries.test.ts 'tool handlers cannot obtain a service-role client' scans src/server/tools/ (guard MCP U10)"
   - text: "Tool handlers run inside the MCP request context, which fixes run mode 'external' for openRun (FILM-1903); the mode is not a tool argument"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/src/request-context.ts:20,34 (mode fixed at run time, not an input); build-server.ts:130-132 (handler runs inside it); __tests__/errors-and-context.test.ts 'mode cannot be supplied by the caller' (guard MCP U8)"
   - text: "Personal access tokens: created in account settings (shown once, sbk_pat_ prefix), stored as SHA-256 hashes, bound to one user and one team, with chosen scopes (studio:read, studio:write, studio:render), revocable; revocation takes effect on the next call"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "apps/web/app/home/[account]/settings/connected-apps/ (page, _lib/server/actions.ts:41,77, _components/new-token-reveal.tsx:42 shows it once); packages/features/studio-mcp/src/server/token.ts:11,21 (prefix, sha256); migration 20261002200731_film-1904-mcp-connections.sql:22-69 (user_id + account_id, scopes CHECK, the KB-99 require_team_account trigger), :139 (create_mcp_personal_access_token); own-verifier.ts refuses revoked_at on the next lookup; connected-apps.spec.ts calls whoami before and after revoking"
   - text: "Team membership is re-checked on every call; tools accept an optional account slug, checked against membership"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/with-mcp-auth.ts:86,115 (has_role_on_account as the user, every request); build-server.ts:118,174-192 (team read as the user per call; another team's slug is FORBIDDEN, a token being bound to one team); guards MCP U1, U5"
   - text: "Rate limits per connection and per team (default 120 calls/min, 20 writes/min) in the cache layer; over the limit returns RATE_LIMITED with retry_after_s"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/rate-limit.ts:11-12 (defaults), build-server.ts:96-102 (RATE_LIMITED, details.retry_after_s); packages/cache/src/index.ts incr() on MemoryCache and RedisCache (Lua INCR+EXPIRE), tests in packages/cache/src/__tests__; guard MCP U3, U11"
   - text: "Every call writes an mcp_tool_calls row (tool, status, error_code, duration_ms, run_id) without the payload; Authorization headers are never logged"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/build-server.ts:155 (finally: every call), audit.ts recordToolCall (no argument or result field), redactHeaders + describeRequestForLog used by the route's one log line; __tests__/audit-and-rate-limit.test.ts; guard MCP U7"
   - text: "Tool errors return isError with structuredContent {code, message, retryable, details}; codes: UNAUTHORIZED, FORBIDDEN, NOT_FOUND, VALIDATION_FAILED, RUN_IN_PROGRESS, TARGET_CHANGED, RUN_EXPIRED, RATE_LIMITED, INTERNAL"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/src/errors.ts:7-17 (codes), :67 (toCallToolResult); __tests__/build-server.test.ts drives them through the SDK client over an in-memory transport; guard MCP U6"
   - text: "Tools carry readOnlyHint, destructiveHint and idempotentHint annotations; whoami returns user, team, scopes and mode defaults"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/src/registry.ts McpToolAnnotations (all three required); server/tools/whoami.ts:19 and its handler (user, team, connection.scopes, mode.generation external + canRead/canWrite/canRender); build-server.test.ts 'whoami answers user, team, scopes and the external mode'"
   - text: "A test asserts no route or package reachable from apps/web imports packages/mcp-server"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/__tests__/boundaries.test.ts:72 scans apps/web and packages for `from`, bare, dynamic and require imports (red-proven with a planted import, guard MCP U9)"
 test_plan:
   unit:
-    - {text: "withMcpAuth: missing, malformed, expired, revoked and wrong-team tokens each refused with the right code", met: false, reason: "not met — no test yet"}
+    - {text: "withMcpAuth: missing, malformed, expired, revoked and wrong-team tokens each refused with the right code", met: true, evidence: "packages/features/studio-mcp/__tests__/with-mcp-auth.test.ts:74 (it.each malformed/unknown/expired/revoked → UNAUTHORIZED), :95 (wrong team → FORBIDDEN); build-server.test.ts 'an account slug for another team is FORBIDDEN'"}
   integration:
-    - {text: "MCP Inspector (or the SDK client) against http://localhost:3000/api/mcp lists tools and calls whoami with a PAT; a contract test runs in CI", met: false, reason: "not met — no test yet"}
-    - {text: "pgTAP: a user reads and revokes only their own mcp_connections", met: false, reason: "not met — no test yet"}
+    - {text: "MCP Inspector (or the SDK client) against http://localhost:3000/api/mcp lists tools and calls whoami with a PAT; a contract test runs in CI", met: true, evidence: "packages/features/studio-mcp/__tests__/contract.test.ts (SDK client, MCP_CONTRACT_URL/TOKEN); in CI the same calls run inside apps/e2e/tests/mcp/connected-apps.spec.ts against the app under test, with a token the spec creates"}
+    - {text: "pgTAP: a user reads and revokes only their own mcp_connections", met: true, evidence: "apps/web/supabase/tests/database/mcp-connections-rls.test.sql (27 cases; red with the migration skipped); guards MCP DB1-DB5 each go red"}
   e2e:
-    - {text: "Settings page: create a PAT, see it once, revoke it; screenshots in the PR (CLAUDE.md)", met: false, reason: "not met — no test yet"}
-open_questions:
-  - "Endpoint inside the Next.js app (recommended: reuses auth, Supabase clients and feature services) or its own Lambda for independent scaling and timeouts?"
+    - {text: "Settings page: create a PAT, see it once, revoke it; screenshots in the PR (CLAUDE.md)", met: true, evidence: "apps/e2e/tests/mcp/connected-apps.spec.ts (two tokens, revoke, reload; whoami over HTTP before and after); connected-apps-evidence.spec.ts behind CAPTURE_EVIDENCE=1; screenshots in #558"}
+remaining:
+  - criterion: "mcp_tool_calls rows older than 90 days are trimmed by the cron (notes: 'Team owners read; 90-day retention by cron')"
+    reason: "The table and its index exist; no scheduled job deletes old rows yet. The EDD's one cron (expired runs, used codes and tokens, old tool calls) belongs with FILM-1903's leases and FILM-1907's codes"
+    closed_by: "unassigned"
+open_questions: []
 notes: |
+  ## Decisions made while building (#558)
+
+  - Endpoint inside the Next.js app (README open question 5): implemented
+    as recommended. The SDK 1.18.0 transport speaks Node's http types, so
+    `src/server/node-adapter.ts` bridges the route's Web Request/Response;
+    SSE is not enabled, which is what keeps the adapter small.
+  - A token is bound to one team. The optional `account` slug every tool
+    accepts is checked against that team, not against the user's other
+    memberships: another team's slug is FORBIDDEN even if the user belongs to
+    it. A second team means a second token.
+  - Creating a token does not use the service role: `create_mcp_personal_access_token`
+    (SECURITY DEFINER, inventoried) checks `has_role_on_account` and writes the
+    connection and the hash together. The service role appears only in the
+    auth wrapper (reading mcp_tokens, touching last_used_at) and the audit
+    writer, never in a handler.
+  - Argument-shape errors are the SDK's own (`isError` with its text); the
+    contract's VALIDATION_FAILED is for semantic validation a handler does.
+  - The user JWT is HS256 with `SUPABASE_JWT_SECRET`; `McpJwtSigner` is the
+    seam for FILM-1907's imported signing key (`MCP_JWT_PRIVATE_KEY` is
+    reserved and refused until then).
+  - `@kit/cache` gained `incr(key, ttlSeconds)` (memory and redis); the memory
+    cache counts per instance, so production rate limits need
+    `CACHE_PROVIDER=redis` to be one shared count.
+
   ## Tables
 
   mcp_connections: id, user_id, account_id, client_id (FILM-1907), kind

@@ -4,6 +4,14 @@ import type { CacheClient, CacheMetrics } from '../index';
 import type { MetricsStore } from '../metrics/storage';
 import { NoOpMetricsStore } from '../metrics/storage';
 
+const INCR_WITH_TTL = `
+local count = redis.call('INCR', KEYS[1])
+if count == 1 then
+  redis.call('EXPIRE', KEYS[1], tonumber(ARGV[1]))
+end
+return count
+`;
+
 /**
  * Redis cache client
  *
@@ -293,6 +301,24 @@ export class RedisCache implements CacheClient {
       console.error('[RedisCache] Mdel error:', error);
       // Fail gracefully - don't throw
     }
+  }
+
+  /**
+   * INCR, and EXPIRE only on the increment that created the key: one Lua
+   * script, so the two happen atomically and a crash between them cannot
+   * leave a counter that never expires. Unlike the other operations this
+   * throws on a Redis failure: a rate limiter that silently counted zero
+   * would be a rate limiter that is off.
+   */
+  async incr(key: string, ttlSeconds: number): Promise<number> {
+    const result = await this.client.eval(
+      INCR_WITH_TTL,
+      1,
+      key,
+      String(ttlSeconds),
+    );
+
+    return Number(result);
   }
 
   /**
