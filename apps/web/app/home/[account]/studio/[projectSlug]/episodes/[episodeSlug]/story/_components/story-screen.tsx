@@ -329,7 +329,10 @@ export function StoryScreen({
 
           {/* Story Content */}
           <div className="p-8">
-            <div className="prose prose-gray dark:prose-invert max-w-none">
+            <div
+              className="prose prose-gray dark:prose-invert max-w-none"
+              data-test="story-content"
+            >
               {formatStoryContent(storyData.fullStory)}
             </div>
           </div>
