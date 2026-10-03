@@ -8,6 +8,10 @@ import { z } from 'zod';
 import type { LlmJobType } from '@kit/prompt-engine/llm-job-payloads';
 
 import type {
+  PerformanceContext,
+  PerformanceReader,
+} from '../performance-context';
+import type {
   Brief,
   Ctx,
   GenerateResult,
@@ -41,17 +45,36 @@ export const LEASE_MS = 30 * 60 * 1000;
  * generation core carries the LLM job the worker runs for it.
  */
 export const RunInputSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('stage'), target: z.unknown() }),
+  z.object({
+    kind: z.literal('stage'),
+    target: z.unknown(),
+    performanceContext: z.record(z.unknown()).optional(),
+  }),
   z.object({
     kind: z.literal('job'),
     jobType: z.string(),
     payload: z.record(z.unknown()),
+    performanceContext: z.record(z.unknown()).optional(),
   }),
 ]);
 
+/**
+ * `performanceContext` is FILM-1912's block, built once when the run was
+ * opened (`performanceContextForRun`) and read by `stageCtx`; absent when
+ * the stage takes none or the team has it off.
+ */
 export type RunInput =
-  | { kind: 'stage'; target: unknown }
-  | { kind: 'job'; jobType: LlmJobType; payload: Record<string, unknown> };
+  | {
+      kind: 'stage';
+      target: unknown;
+      performanceContext?: PerformanceContext;
+    }
+  | {
+      kind: 'job';
+      jobType: LlmJobType;
+      payload: Record<string, unknown>;
+      performanceContext?: PerformanceContext;
+    };
 
 /** Where a run was opened from, stored in `generation_runs.origin`. */
 export interface RunOrigin {
@@ -119,6 +142,12 @@ export interface RunBackend {
  * forces external.
  */
 export interface RunCtx extends Ctx {
+  /**
+   * Past-performance analytics on the opener's client (FILM-1912), read by
+   * `openRun` only, to store the block on the run. Web actions and the MCP
+   * tools pass one; the worker never does.
+   */
+  performance?: PerformanceReader;
   runMode?: () => GenerationMode | undefined;
   connectionId?: string;
   clientName?: string;

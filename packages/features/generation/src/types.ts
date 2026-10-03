@@ -15,6 +15,7 @@ import type { GenerationJobType } from '@kit/prompt-engine/generation-job-types'
 import type { Database } from '@kit/supabase/database';
 
 import type { CommitApplier } from './commit-plan';
+import type { PerformanceContext } from './performance-context';
 
 export const GenerationModeSchema = z.enum(['server', 'external']);
 export type GenerationMode = z.infer<typeof GenerationModeSchema>;
@@ -205,6 +206,9 @@ export interface RevisionSnapshot {
  *   applied, through `client`.
  * - `originColumnsAvailable`: `generation_origin` columns arrive with
  *   FILM-1903; until then commit stamps no origin.
+ * - `performanceContext`: past-episode performance (FILM-1912), built when
+ *   the run was opened and stored on it; `stageCtx` sets it from the run.
+ *   Data only: nothing a stage runs with reads analytics.
  */
 export interface Ctx {
   client: SupabaseClient<Database>;
@@ -213,6 +217,7 @@ export interface Ctx {
   episodeContext?: EpisodeContextLoader;
   commits?: CommitApplier;
   originColumnsAvailable?: boolean;
+  performanceContext?: PerformanceContext;
   log?: (message: string) => void;
 }
 

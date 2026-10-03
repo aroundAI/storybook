@@ -39,6 +39,7 @@ import type { Json } from '@kit/supabase/database';
 import { type PromptFile, buildBrief } from '../brief';
 import { applyCommit, eq, is } from '../commit-plan';
 import { jobCompletedWrite } from '../jobs';
+import { renderPerformanceContext } from '../performance-context';
 import { registerStage } from '../registry';
 import type {
   CheckError,
@@ -670,8 +671,16 @@ export const shotsStage: StageDefinition<
         recurring_element: context.recurringElements,
         shot_duration_min: target.shotDuration.min,
         shot_duration_max: target.shotDuration.max,
+        performance_context: renderPerformanceContext(ctx.performanceContext),
       },
-      context: { ...context, scene, reelNote },
+      context: {
+        ...context,
+        scene,
+        reelNote,
+        ...(ctx.performanceContext
+          ? { performanceContext: ctx.performanceContext }
+          : {}),
+      },
       outputSchema: SceneShotsPartOutputSchema,
       constraints: {
         kind: 'scene',

@@ -18,6 +18,7 @@ import type { Json } from '@kit/supabase/database';
 import { type PromptFile, buildBrief, singlePart } from '../brief';
 import { applyCommit, eq, is } from '../commit-plan';
 import { premiseDepthInstructions } from '../formatters';
+import { renderPerformanceContext } from '../performance-context';
 import { registerStage } from '../registry';
 import type { Brief, CheckError, StageDefinition } from '../types';
 import {
@@ -76,6 +77,8 @@ export const IdeationBriefContextSchema = z.object({
   previousEpisodesContext: z.string().optional(),
   visualStyle: z.string().optional(),
   recurringElementsContext: z.string(),
+  /** FILM-1912: the run's past-performance block as prompt text */
+  performanceContext: z.string().optional(),
 });
 
 export type IdeationBriefContext = z.infer<typeof IdeationBriefContextSchema>;
@@ -122,6 +125,8 @@ export const ideationStage: StageDefinition<
     const genre = snapshot.genre ?? 'general';
     const targetAudience = snapshot.targetAudience ?? 'general';
 
+    const performanceText = renderPerformanceContext(ctx.performanceContext);
+
     const orchestrator: IdeationBriefContext = {
       premise,
       numberOfIdeas: target.numberOfIdeas,
@@ -135,6 +140,7 @@ export const ideationStage: StageDefinition<
       previousEpisodesContext,
       visualStyle: snapshot.visualStyle,
       recurringElementsContext: snapshot.recurringElements ?? '',
+      performanceContext: performanceText || undefined,
     };
 
     // The variables the Ideation Director renders for its first call
@@ -151,6 +157,7 @@ export const ideationStage: StageDefinition<
       recurring_element: snapshot.recurringElements ?? '',
       premise_depth_instructions: premiseDepthInstructions(premise),
       weak_indices: '',
+      performance_context: performanceText,
     };
 
     return buildBrief({
@@ -161,6 +168,9 @@ export const ideationStage: StageDefinition<
       context: {
         orchestrator,
         episode: { id: target.episodeId, number: snapshot.episodeNumber },
+        ...(ctx.performanceContext
+          ? { performanceContext: ctx.performanceContext }
+          : {}),
       },
       outputSchema: IdeationStageOutputSchema,
       constraints: {

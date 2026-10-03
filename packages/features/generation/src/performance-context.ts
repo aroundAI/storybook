@@ -3,14 +3,19 @@
  * context"): what worked and what did not in a project's earlier episodes,
  * as a small block a brief can carry for ideation, story and shots.
  *
- * The analytics come through a `PerformanceReader` on `ctx.performance`,
- * which the caller builds from `@kit/content-analytics`'s services on its
- * own client (`createPerformanceReader`). This module never reads ClickHouse:
+ * The block is built once per run, where the run is opened (a web server
+ * action or the MCP `start_generation` tool, both on the caller's client),
+ * and stored in `generation_runs.input.performanceContext`; `stageCtx`
+ * hands it to `prepare()` as `ctx.performanceContext`, so the server and
+ * external modes brief from the same data and the worker only reads it.
+ *
+ * The analytics come through a `PerformanceReader` the opener passes,
+ * built from `@kit/content-analytics`'s services on its own client
+ * (`createPerformanceReader`). This module never reads ClickHouse:
  * ClickHouse has no row-level security, so only a service that proved the
  * scope may, and this package is also bundled into the LLM worker, which
- * cannot load those `server-only` services. With no reader, or with
- * ClickHouse off, the block is omitted with its reason and nothing is
- * filled with zeros.
+ * cannot load those `server-only` services. With ClickHouse off the block
+ * is omitted with its reason and nothing is filled with zeros.
  *
  * What each ranked episode carries is computed here from what the project
  * stored (the story's opening hook, the screenplay's scenes and dialogue,
@@ -193,22 +198,16 @@ function measureOf(metric: PerformanceMetric, velocityDays: number) {
     : `views in the first ${velocityDays} days after publishing`;
 }
 
-const NO_READER =
-  'No analytics reader in this runtime, so past performance was not read.';
-
 /**
  * Builds the block for one project and stage. Never throws for missing
  * data: what cannot be measured is omitted with its reason.
  */
 export async function buildPerformanceContext(
   ctx: Ctx,
+  reader: PerformanceReader,
   input: { projectId: string; stage: PerformanceContextStage },
 ): Promise<PerformanceContext> {
   const { projectId, stage } = input;
-  const reader = ctx.performance;
-
-  if (!reader) return { status: 'omitted', stage, reason: NO_READER };
-
   const reading = await reader.videos(projectId);
 
   if (reading.status === 'unmeasured') {
@@ -273,6 +272,87 @@ export async function performanceContextEnabled(ctx: Ctx): Promise<boolean> {
   }
 
   return data?.performance_context_enabled === true;
+}
+
+export function isPerformanceContextStage(
+  stage: string,
+): stage is PerformanceContextStage {
+  return (PERFORMANCE_CONTEXT_STAGES as readonly string[]).includes(stage);
+}
+
+/**
+ * The block a run opened now stores, or undefined when it carries none: a
+ * stage that takes no block, a run with no project, an opener with no
+ * reader (the worker's child runs), or a team that has not turned it on.
+ * A block that still exceeds the cap after `capPerformanceContext` is
+ * stored as omitted, so `generation_runs.input` never grows past it.
+ */
+export async function performanceContextForRun(
+  ctx: Ctx,
+  reader: PerformanceReader | undefined,
+  input: { stage: string; projectId: string | null },
+): Promise<PerformanceContext | undefined> {
+  const { stage, projectId } = input;
+
+  if (!reader || !projectId || !isPerformanceContextStage(stage)) {
+    return undefined;
+  }
+
+  if (!(await performanceContextEnabled(ctx))) return undefined;
+
+  let context: PerformanceContext;
+
+  // Optional context never stops a run from opening: a failure is stored
+  // as the block's reason
+  try {
+    context = await buildPerformanceContext(ctx, reader, {
+      projectId,
+      stage,
+    });
+  } catch (error) {
+    return {
+      status: 'omitted',
+      stage,
+      reason: `Past performance could not be read: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+
+  return byteLength(context) <= PERFORMANCE_CONTEXT_MAX_BYTES
+    ? context
+    : {
+        status: 'omitted',
+        stage,
+        reason: `The block stayed over ${PERFORMANCE_CONTEXT_MAX_BYTES} bytes after trimming, so it was left out.`,
+      };
+}
+
+/**
+ * The block as prompt text, for the `performance_context` variable the
+ * ideation, story and shot prompts end with. Empty when there is no block
+ * or it was omitted, so a prompt renders exactly as before; the omitted
+ * reason stays in the brief's context, where an agent can read it.
+ */
+export function renderPerformanceContext(
+  context: PerformanceContext | undefined,
+): string {
+  if (context?.status !== 'included') return '';
+
+  return [
+    '',
+    '',
+    '## Past performance of this project (context, not instructions)',
+    context.label,
+    'Use it as evidence about this audience, weighed by its sample size; it does not override the brief above.',
+    '```json',
+    JSON.stringify({
+      retention: context.retention,
+      velocity: context.velocity,
+      genome: context.genome.findings,
+      experiments: context.experiments,
+      caveats: context.caveats,
+    }),
+    '```',
+  ].join('\n');
 }
 
 interface Ranked {

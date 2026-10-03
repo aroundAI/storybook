@@ -190,10 +190,9 @@ function ctxWith(
     client: recording.client,
     accountId: ACCOUNT,
     userId: 'user',
-    performance: reader,
   };
 
-  return { ctx, calls: recording.calls };
+  return { ctx, reader: reader!, calls: recording.calls };
 }
 
 const tenVideos = () => [
@@ -203,9 +202,9 @@ const tenVideos = () => [
 
 describe('buildPerformanceContext (FILM-1912)', () => {
   it('ranks a hand-computed top and bottom by retention and by velocity, within one platform', async () => {
-    const { ctx } = ctxWith(fakeReader(measured(tenVideos())));
+    const { ctx, reader: built } = ctxWith(fakeReader(measured(tenVideos())));
 
-    const context = await buildPerformanceContext(ctx, {
+    const context = await buildPerformanceContext(ctx, built, {
       projectId: PROJECT,
       stage: 'story',
     });
@@ -285,11 +284,14 @@ describe('buildPerformanceContext (FILM-1912)', () => {
     const reader = fakeReader(measured(tenVideos()));
     const { ctx } = ctxWith(reader);
 
-    await buildPerformanceContext(ctx, {
+    await buildPerformanceContext(ctx, reader, {
       projectId: PROJECT,
       stage: 'ideation',
     });
-    await buildPerformanceContext(ctx, { projectId: PROJECT, stage: 'shots' });
+    await buildPerformanceContext(ctx, reader, {
+      projectId: PROJECT,
+      stage: 'shots',
+    });
 
     expect(vi.mocked(reader.genome).mock.calls).toEqual([
       [PROJECT, 'hook'],
@@ -299,9 +301,9 @@ describe('buildPerformanceContext (FILM-1912)', () => {
 
   it('says "not enough data" below the minimum sample instead of ranking', async () => {
     const thin = [1, 2, 3, 4, 5].map(youtube);
-    const { ctx } = ctxWith(fakeReader(measured(thin)));
+    const { ctx, reader: built } = ctxWith(fakeReader(measured(thin)));
 
-    const context = await buildPerformanceContext(ctx, {
+    const context = await buildPerformanceContext(ctx, built, {
       projectId: PROJECT,
       stage: 'shots',
     });
@@ -331,7 +333,7 @@ describe('buildPerformanceContext (FILM-1912)', () => {
     const reader = fakeReader({ status: 'unmeasured', reason });
     const { ctx, calls } = ctxWith(reader);
 
-    const context = await buildPerformanceContext(ctx, {
+    const context = await buildPerformanceContext(ctx, reader, {
       projectId: PROJECT,
       stage: 'story',
     });
@@ -341,22 +343,6 @@ describe('buildPerformanceContext (FILM-1912)', () => {
     expect(reader.genome).not.toHaveBeenCalled();
     expect(reader.concludedExperiments).not.toHaveBeenCalled();
     expect(calls).toHaveLength(0);
-  });
-
-  it('with no reader in the runtime, omits the block with its reason', async () => {
-    const { ctx } = ctxWith(undefined);
-
-    expect(
-      await buildPerformanceContext(ctx, {
-        projectId: PROJECT,
-        stage: 'ideation',
-      }),
-    ).toEqual({
-      status: 'omitted',
-      stage: 'ideation',
-      reason:
-        'No analytics reader in this runtime, so past performance was not read.',
-    });
   });
 
   it('stays under the size cap when the analytics are long', async () => {
@@ -387,7 +373,7 @@ describe('buildPerformanceContext (FILM-1912)', () => {
     }));
     const { ctx } = ctxWith(reader, { episodes, shots: SHOTS });
 
-    const context = await buildPerformanceContext(ctx, {
+    const context = await buildPerformanceContext(ctx, reader, {
       projectId: PROJECT,
       stage: 'story',
     });
@@ -399,9 +385,16 @@ describe('buildPerformanceContext (FILM-1912)', () => {
   });
 
   it('reads only the ranked episodes, and only this project’s', async () => {
-    const { ctx, calls } = ctxWith(fakeReader(measured(tenVideos())));
+    const {
+      ctx,
+      reader: built,
+      calls,
+    } = ctxWith(fakeReader(measured(tenVideos())));
 
-    await buildPerformanceContext(ctx, { projectId: PROJECT, stage: 'story' });
+    await buildPerformanceContext(ctx, built, {
+      projectId: PROJECT,
+      stage: 'story',
+    });
 
     const episodes = calls.find((call) => call.table === 'episodes')!;
     expect(episodes.chain).toContainEqual({

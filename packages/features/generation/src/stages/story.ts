@@ -38,6 +38,7 @@ import {
   resultRows,
 } from '../commit-plan';
 import { jobCompletedWrite } from '../jobs';
+import { renderPerformanceContext } from '../performance-context';
 import { registerStage } from '../registry';
 import type {
   Brief,
@@ -161,6 +162,8 @@ export const StoryBriefContextSchema = z.object({
   visualStyle: z.string().optional(),
   verifiedFacts: z.string().optional(),
   recurringElementsContext: z.string().optional(),
+  /** FILM-1912: the run's past-performance block as prompt text */
+  performanceContext: z.string().optional(),
   threadCandidatesContext: z.string().optional(),
   ideationThemes: z.array(z.string()).optional(),
   ideationHook: z.string().optional(),
@@ -229,6 +232,8 @@ export const storyStage: StageDefinition<
     const targetAudience = snapshot.targetAudience ?? 'general';
 
     // Payload text is the user's: defused before the model sees it (KB-101)
+    const performanceText = renderPerformanceContext(ctx.performanceContext);
+
     const orchestrator: StoryBriefContext = {
       episodeTitle: sanitizeForPrompt(target.title),
       episodeLogline: sanitizeForPrompt(target.logline),
@@ -245,6 +250,7 @@ export const storyStage: StageDefinition<
       visualStyle: snapshot.visualStyle,
       verifiedFacts: snapshot.episodeFacts || undefined,
       recurringElementsContext: snapshot.recurringElements,
+      performanceContext: performanceText || undefined,
       threadCandidatesContext,
       ...sanitizeStrings({
         ideationThemes: target.themes,
@@ -280,6 +286,7 @@ export const storyStage: StageDefinition<
       visual_direction: orchestrator.visualDirection ?? '',
       viral_goals: '',
       verified_facts: snapshot.episodeFacts ?? '',
+      performance_context: performanceText,
     };
 
     return buildBrief({
@@ -296,6 +303,9 @@ export const storyStage: StageDefinition<
           locationNames: snapshot.locationNames ?? [],
         },
         project: { id: target.projectId },
+        ...(ctx.performanceContext
+          ? { performanceContext: ctx.performanceContext }
+          : {}),
       },
       outputSchema: StoryStageOutputSchema,
       constraints: {
