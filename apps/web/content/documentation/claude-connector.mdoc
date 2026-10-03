@@ -1,0 +1,109 @@
+---
+title: "Connect Claude"
+description: "Let Claude write your ideas, story, screenplay and shots, while StoryBook keeps, checks and analyses them."
+publishedAt: 2026-10-03
+order: 5
+status: "published"
+# Markdoc has no comments, so these notes live in the frontmatter, where nothing renders.
+# TODO(screenshot): an episode in the studio with content written by Claude, from a real run
+# TODO(screenshot): the consent page ("wants to connect to StoryBook") with the team list and the three scopes
+# TODO(screenshot): Settings → Connected apps showing the token form and the "Copy your token" dialog
+# TODO(label): FILM-1910 is not built yet. Confirm the exact banner text, the cancel button label, and where Generate is held, then update this section
+# TODO(screenshot): the "Claude is working on this" banner on a stage page, from a real run
+# TODO(label): confirm the badge wording once FILM-1910 ships
+# TODO(screenshot): a screenplay with origin badges, mixing Claude and edited lines
+# TODO(label): confirm the restore action and its location once FILM-1910 ships
+# TODO(screenshot): the restore action and the stage after restoring
+# TODO(label): confirm the settings location and labels once FILM-1910 ships
+# TODO(screenshot): the team AI settings page
+# TODO(screenshot): the Your connections list with one active and one revoked connection, and the revoke confirmation
+---
+
+## What the connector does
+
+The connector lets Claude work inside your StoryBook team. Claude writes the ideas, story, screenplay, shots and dialogue. StoryBook checks what Claude writes, stores it, and analyses how your episodes perform.
+
+- **StoryBook makes no AI call of its own** for work Claude does. Nothing from a Claude session is sent to Gemini.
+- **The web app is unchanged.** The Generate buttons still use Gemini exactly as before. You can use either one, or both, on the same episode.
+- **Claude acts as you.** It sees only the team you pick, and only what you allow.
+
+## Add the connector in Claude
+
+1. In Claude, open **Settings → Connectors → Add custom connector**.
+2. Paste the connector URL: `https://<your StoryBook domain>/api/mcp`. The same URL is shown in StoryBook under **Settings → Connected apps → Add StoryBook to Claude**.
+3. Claude sends you to StoryBook. Sign in with your usual StoryBook account.
+4. The page reads "Claude wants to connect to StoryBook". Pick the team Claude may work in.
+5. Under **Allow it to**, tick what Claude may do (see the scopes below), then click **Allow**. **Deny** cancels the connection.
+
+A connection belongs to one team. To let Claude work in a second team, add the connector again and pick the other team.
+
+### Without sign-in: a personal access token
+
+Some tools cannot sign in through a browser. For those, create a token yourself.
+
+1. Open **Settings → Connected apps** in your team.
+2. Under **New personal access token**, give the token a name, such as the device that will use it.
+3. Choose its scopes and click **Create token**.
+4. Copy the token when it appears. **It is shown once.** StoryBook keeps only a fingerprint, so a lost token cannot be shown again. Create a new one instead.
+5. Give the token to your tool as a bearer token in the `Authorization` header.
+
+A token works for one team and one person, and can be revoked at any time.
+
+## What each scope allows
+
+You choose the scopes when you approve the connection or create the token. Pick the least Claude needs.
+
+| Scope | Shown as | Allows |
+|---|---|---|
+| `studio:read` | Read your studio | Read projects, episodes, stage content, assets and analytics. |
+| `studio:write` | Write to your studio | Create and edit the inputs you would type yourself, generate stages, and add notes, tags and experiments. |
+| `studio:render` | Start renders | Start ElevenLabs voice, music and sound-effect renders. **These cost money.** |
+
+Publishing is not on the list. Publishing to a platform always stays a button in the web app.
+
+## The workflow
+
+Claude follows the same stage order as the web studio: **ideation, story, screenplay, shots, audio cues**. A stage opens when the one before it has content. Claude can read a short guide to this order from the connector itself, so you can simply ask it to "work on episode 3".
+
+Each generated stage goes through the same four steps.
+
+1. **Start.** Claude starts a generation for one stage of one episode. StoryBook answers with the brief: your project settings, the characters and locations, the earlier stages, the shape the answer must take, and a quality checklist.
+2. **Write and submit.** Claude writes the content from the brief and submits it part by part. For shots, a part is one scene.
+3. **Corrections.** If a part does not fit the required shape, StoryBook sends back the errors field by field. Claude fixes the part and submits it again. Nothing is saved to your episode yet.
+4. **Finalize.** When every part is accepted, Claude finalizes. StoryBook saves the whole stage in one step, the same way it saves a Gemini result. Shots then continue into audio cues.
+
+If Claude stops half way, nothing half-written reaches your episode.
+
+### While Claude is working
+
+The studio page for that stage shows that **Claude is working on this**. While it does, the Generate button for that stage is held, so the web app and Claude cannot overwrite each other. You can cancel the run from the same place.
+
+### Who wrote what
+
+Each story, screenplay, shot and dialogue line carries an origin badge: **Gemini**, **Claude via MCP**, or **Edited** once you change it by hand.
+
+### Going back
+
+Every time a stage is written, StoryBook keeps the version it replaced. If you prefer what was there before, use **Restore previous version** on that stage.
+
+### Team AI settings
+
+Team owners can choose whether the team allows Gemini generation in the web app, Claude generation over the connector, or both, and which one is the default. Members can see the choice but not change it.
+
+## Revoke access
+
+1. Open **Settings → Connected apps** in the team.
+2. Under **Your connections**, find the connection. It shows its scopes, when it was last used, and whether it is active.
+3. Click **Revoke**, then confirm.
+
+Revoking takes effect on Claude's next call. Revoked connections stay in the list, marked **Revoked**, so you have a record.
+
+**Changing your password revokes every connection you have**, in every team. Add the connector again afterwards.
+
+## Limits
+
+- **Rate limits.** Each connection may make 120 calls a minute, and 20 of those may be writes. Past that, Claude is told to wait and try again shortly.
+- **Runs expire.** A generation that has been idle for 30 minutes expires. Nothing is saved from it, and the stage is free to start again. Any call Claude makes on the run keeps it alive.
+- **One run per stage.** A second generation on the same stage of the same episode is refused until the first one finishes, expires or is cancelled.
+- **Publishing stays in the web app.** Claude cannot publish an episode. It can read the results afterwards.
+- **No video rendering.** StoryBook does not render video. Claude can read the video prompts for each shot to use in an outside video tool.
