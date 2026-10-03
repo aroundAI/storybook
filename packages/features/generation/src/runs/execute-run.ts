@@ -8,6 +8,7 @@
 import { StageOutputRejected, checkWithSchema } from '../checks';
 import { getStage } from '../registry';
 import { type RunStageResult, runStage } from '../run-stage';
+import { ALL_STAGES } from '../stages';
 import type {
   AnyStageDefinition,
   CommitResult,
@@ -30,6 +31,20 @@ export function stageCtx(run: RunHandle, ctx: RunCtx): Ctx {
     revisions: { snapshot: async (input) => void (await run.snapshot(input)) },
     originColumnsAvailable: true,
   };
+}
+
+/**
+ * The run's stage. Read through `ALL_STAGES` so a bundle that runs a stage
+ * carries every stage module: the registry alone is filled only by modules
+ * the bundler kept (`sideEffects: false`), and a Next.js bundle of
+ * extractCanonChangesAction kept none.
+ */
+function stageOf(run: RunHandle): AnyStageDefinition {
+  return (
+    (ALL_STAGES as readonly AnyStageDefinition[]).find(
+      (stage) => stage.key === run.stage,
+    ) ?? getStage(run.stage)
+  );
 }
 
 function stageTarget(run: RunHandle, stage: AnyStageDefinition): unknown {
@@ -98,7 +113,7 @@ export async function executeServerRun<TData = unknown>(
     );
   }
 
-  const stage = getStage(run.stage);
+  const stage = stageOf(run);
   const target = stageTarget(run, stage);
   const stageContext = stageCtx(run, ctx);
 
@@ -133,7 +148,7 @@ export async function finalizeRun<TData = unknown>(
   parts: Array<{ key: string; output: unknown }>,
   usage?: GenerationUsage,
 ): Promise<ExecuteRunResult<TData>> {
-  const stage = getStage(run.stage);
+  const stage = stageOf(run);
   const target = stageTarget(run, stage);
   const stageContext = stageCtx(run, ctx);
 

@@ -190,6 +190,16 @@
       "cwd": "packages/features/generation",
       "test": "__tests__/stage-matrix.test.ts",
       "pattern": "fact_extraction in server mode"
+    },
+    {
+      "name": "1903 B the run layer finds its stage through the registry alone",
+      "kind": "unit",
+      "file": "packages/features/generation/src/runs/execute-run.ts",
+      "find": "  const stage = stageOf(run);\n  const target = stageTarget(run, stage);\n  const stageContext = stageCtx(run, ctx);\n\n  try {",
+      "replace": "  const stage = getStage(run.stage);\n  const target = stageTarget(run, stage);\n  const stageContext = stageCtx(run, ctx);\n\n  try {",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/stage-registry-bundle.test.ts",
+      "pattern": "registers every stage"
     }
   ]
 }

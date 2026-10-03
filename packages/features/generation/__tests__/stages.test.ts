@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  ALL_STAGES,
   type Brief,
   type Ctx,
   type EpisodeContextSnapshot,
@@ -185,6 +186,15 @@ describe('the registry holds the part A, B, C and D stages', () => {
     expect(getStage('story_refinement')).toBe(storyRefinementStage);
     expect(getStage('asset_description')).toBe(assetDescriptionStage);
     expect(stageRegistry.size).toBe(14);
+  });
+
+  it('lists every registered stage in ALL_STAGES, the list a bundle keeps', () => {
+    expect(ALL_STAGES.map((stage) => stage.key).sort()).toEqual(
+      registeredStageKeys().sort(),
+    );
+    for (const stage of ALL_STAGES) {
+      expect(getStage(stage.key)).toBe(stage);
+    }
   });
 });
 

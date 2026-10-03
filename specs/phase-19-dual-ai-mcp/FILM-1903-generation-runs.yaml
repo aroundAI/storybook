@@ -106,6 +106,12 @@ notes: |
   registered stage under a server run (prepare, run.write, check,
   TARGET_CHANGED, commit, follow-on children, committed); `finalizeRun` is the
   same tail for the parts an external agent submitted (FILM-1908 calls it).
+  Both read the run's stage through `ALL_STAGES` (src/stages/index.ts), not
+  the registry alone: `@kit/generation` is `sideEffects: false`, so a bundle
+  that imports only the run layer dropped every stage module and its
+  registration (0 of 14 in an esbuild bundle of `executeServerRun`, which is
+  what extractCanonChangesAction loads). Pinned by
+  `apps/web/lambda/llm-worker/__tests__/stage-registry-bundle.test.ts`.
 
   What part B found the row needed (migration 20261002205007): `input jsonb`
   (what the run was asked to do: a stage target, or the worker job for a
