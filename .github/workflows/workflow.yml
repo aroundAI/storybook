@@ -341,7 +341,9 @@ jobs:
 
   supabase-db:
     name: 🐘 Supabase DB
-    timeout-minutes: 20
+    # 35, not 20: Phase 19 grew the database mutation guards to 228; #584's
+    # queue run finished all of them at 19m39s and was cancelled at 20m.
+    timeout-minutes: 35
     runs-on: ubuntu-latest
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.code != 'false' && needs.changes.outputs.heavy == 'true' && needs.changes.outputs.skip_supabase != 'true' }}
