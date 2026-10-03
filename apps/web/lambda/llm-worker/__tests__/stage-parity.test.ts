@@ -3,14 +3,13 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { withRun } from '@kit/ai-gateway';
-
 import {
   type RecordedCall,
+  fakeRunHandle,
   flattenRows,
   recordingClient,
   tableResponder,
   writesOf,
-  fakeRunHandle,
 } from '@kit/generation/testing';
 
 // FILM-1901 part C: parity for screenplay, screenplay_refinement,

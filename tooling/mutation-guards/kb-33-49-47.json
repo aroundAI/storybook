@@ -25,11 +25,21 @@
       "name": "WA3 the LLM worker runs a job without its access check",
       "kind": "unit",
       "file": "apps/web/lambda/llm-worker/job-boundary.ts",
-      "find": "    await assertQueuedJobAccess(deps.supabase, {",
-      "replace": "    await Promise.resolve({",
+      "find": "    await assertQueuedJobAccess(deps.supabase, {\n      userId: run.createdBy,",
+      "replace": "    await Promise.resolve({\n      userId: run.createdBy,",
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/job-boundary.test.ts",
-      "pattern": "can no longer write the project"
+      "pattern": "can no longer write the project, and fails the run"
+    },
+    {
+      "name": "WA3b the LLM worker runs a legacy-message job without its access check",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/job-boundary.ts",
+      "find": "    await assertQueuedJobAccess(deps.supabase, {\n      userId: job.userId,",
+      "replace": "    await Promise.resolve({\n      userId: job.userId,",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/job-boundary.test.ts",
+      "pattern": "legacy.*can no longer write the project"
     },
     {
       "name": "WA4 the worker's access check ignores the write rule",

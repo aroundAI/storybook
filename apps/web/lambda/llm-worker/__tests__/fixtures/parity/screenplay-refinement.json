@@ -10,31 +10,19 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "reference_type",
-            "episode"
-          ]
+          "args": ["reference_type", "episode"]
         },
         {
           "method": "eq",
-          "args": [
-            "reference_id",
-            "55555555-5555-4555-8555-555555555555"
-          ]
+          "args": ["reference_id", "55555555-5555-4555-8555-555555555555"]
         },
         {
           "method": "eq",
-          "args": [
-            "job_type",
-            "screenplay-refinement"
-          ]
+          "args": ["job_type", "screenplay-refinement"]
         },
         {
           "method": "eq",
-          "args": [
-            "status",
-            "queued"
-          ]
+          "args": ["status", "queued"]
         }
       ]
     },
@@ -64,9 +52,7 @@
               "estimatedDuration": 45,
               "emotionalPeak": "Maya hears her own voice",
               "hookOut": "What was she about to warn herself about?",
-              "action": [
-                "Maya taps the comm panel."
-              ]
+              "action": ["Maya taps the comm panel."]
             },
             {
               "number": 2,
@@ -95,27 +81,15 @@
           "metadata": {
             "totalScenes": 2,
             "estimatedDuration": 75,
-            "locations": [
-              "Observation Deck",
-              "Control Room"
-            ],
-            "characters": [
-              "Maya",
-              "Houston",
-              "NARRATOR"
-            ],
+            "locations": ["Observation Deck", "Control Room"],
+            "characters": ["Maya", "Houston", "NARRATOR"],
             "totalDialogueLines": 3
           },
           "lastRefinedAt": "2026-10-03T12:00:00.000Z"
         },
         "metadata": {
-          "character_ids": [
-            "c1",
-            "c2"
-          ],
-          "location_ids": [
-            "l1"
-          ],
+          "character_ids": ["c1", "c2"],
+          "location_ids": ["l1"],
           "target_audience": "kids 6-12",
           "refinement_history": [
             {
@@ -139,9 +113,7 @@
                 "location": "Observation Deck",
                 "timeOfDay": "day",
                 "description": "Maya floats at the window. Warning lights flicker.",
-                "action": [
-                  "Maya taps the comm panel."
-                ],
+                "action": ["Maya taps the comm panel."],
                 "dialogue": [
                   {
                     "character": "Maya",
@@ -182,15 +154,8 @@
             "estimatedDuration": 75,
             "approvedAt": null,
             "metadata": {
-              "locations": [
-                "Observation Deck",
-                "Control Room"
-              ],
-              "characters": [
-                "Maya",
-                "Houston",
-                "NARRATOR"
-              ],
+              "locations": ["Observation Deck", "Control Room"],
+              "characters": ["Maya", "Houston", "NARRATOR"],
               "totalScenes": 2,
               "estimatedDuration": 75
             }
@@ -207,17 +172,11 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "id",
-            "55555555-5555-4555-8555-555555555555"
-          ]
+          "args": ["id", "55555555-5555-4555-8555-555555555555"]
         },
         {
           "method": "is",
-          "args": [
-            "deleted_at",
-            null
-          ]
+          "args": ["deleted_at", null]
         }
       ]
     },
@@ -227,10 +186,7 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "episode_id",
-            "55555555-5555-4555-8555-555555555555"
-          ]
+          "args": ["episode_id", "55555555-5555-4555-8555-555555555555"]
         }
       ]
     },
@@ -294,34 +250,19 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "reference_type",
-            "episode"
-          ]
+          "args": ["reference_type", "episode"]
         },
         {
           "method": "eq",
-          "args": [
-            "reference_id",
-            "55555555-5555-4555-8555-555555555555"
-          ]
+          "args": ["reference_id", "55555555-5555-4555-8555-555555555555"]
         },
         {
           "method": "eq",
-          "args": [
-            "job_type",
-            "screenplay-refinement"
-          ]
+          "args": ["job_type", "screenplay-refinement"]
         },
         {
           "method": "in",
-          "args": [
-            "status",
-            [
-              "queued",
-              "processing"
-            ]
-          ]
+          "args": ["status", ["queued", "processing"]]
         }
       ]
     }
@@ -351,9 +292,7 @@
             "estimatedDuration": 45,
             "emotionalPeak": "Maya hears her own voice",
             "hookOut": "What was she about to warn herself about?",
-            "action": [
-              "Maya taps the comm panel."
-            ]
+            "action": ["Maya taps the comm panel."]
           },
           {
             "number": 2,
@@ -382,15 +321,8 @@
         "metadata": {
           "totalScenes": 2,
           "estimatedDuration": 75,
-          "locations": [
-            "Observation Deck",
-            "Control Room"
-          ],
-          "characters": [
-            "Maya",
-            "Houston",
-            "NARRATOR"
-          ],
+          "locations": ["Observation Deck", "Control Room"],
+          "characters": ["Maya", "Houston", "NARRATOR"],
           "totalDialogueLines": 3
         },
         "lastRefinedAt": "2026-10-03T12:00:00.000Z"
