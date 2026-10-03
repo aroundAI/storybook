@@ -83,7 +83,7 @@ is `NOT_FOUND`, never `FORBIDDEN`.
 What the registry does around every handler, so a tool does not:
 
 1. Counts the call against the connection's and the team's limits (120 calls
-   and 20 writes a minute by default; `MCP_RATE_LIMIT_CALLS_PER_MIN`,
+   and 60 writes a minute by default; `MCP_RATE_LIMIT_CALLS_PER_MIN`,
    `MCP_RATE_LIMIT_WRITES_PER_MIN`). Over: `RATE_LIMITED` with
    `details.retry_after_s`.
 2. Checks the tool's `scope` against the connection's.
@@ -204,7 +204,7 @@ revocation in settings refuses the next call.
 | --- | --- | --- |
 | `SUPABASE_JWT_SECRET` | signs the minted user JWT | required |
 | `MCP_AUTH_SERVER` | which verifier (`own`) | `own` |
-| `MCP_RATE_LIMIT_CALLS_PER_MIN` / `MCP_RATE_LIMIT_WRITES_PER_MIN` | limits | 120 / 20 |
+| `MCP_RATE_LIMIT_CALLS_PER_MIN` / `MCP_RATE_LIMIT_WRITES_PER_MIN` | limits | 120 / 60 |
 | `MCP_ALLOWED_ORIGINS` | CORS origins, comma-separated | `https://claude.ai` |
 | `CACHE_PROVIDER`, `REDIS_URL` | where the counters live (`@kit/cache`) | memory |
 

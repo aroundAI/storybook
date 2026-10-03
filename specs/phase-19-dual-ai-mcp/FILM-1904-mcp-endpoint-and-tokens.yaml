@@ -43,7 +43,7 @@ acceptance_criteria:
   - text: "Team membership is re-checked on every call; tools accept an optional account slug, checked against membership"
     met: true
     evidence: "packages/features/studio-mcp/src/server/with-mcp-auth.ts:86,115 (has_role_on_account as the user, every request); build-server.ts:118,174-192 (team read as the user per call; another team's slug is FORBIDDEN, a token being bound to one team); guards MCP U1, U5"
-  - text: "Rate limits per connection and per team (default 120 calls/min, 20 writes/min) in the cache layer; over the limit returns RATE_LIMITED with retry_after_s"
+  - text: "Rate limits per connection and per team (default 120 calls/min, 60 writes/min) in the cache layer; over the limit returns RATE_LIMITED with retry_after_s"
     met: true
     evidence: "packages/features/studio-mcp/src/server/rate-limit.ts:11-12 (defaults), build-server.ts:96-102 (RATE_LIMITED, details.retry_after_s); packages/cache/src/index.ts incr() on MemoryCache and RedisCache (Lua INCR+EXPIRE), tests in packages/cache/src/__tests__; guard MCP U3, U11"
   - text: "Every call writes an mcp_tool_calls row (tool, status, error_code, duration_ms, run_id) without the payload; Authorization headers are never logged"

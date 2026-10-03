@@ -9,7 +9,7 @@ export interface RateLimits {
 
 export const DEFAULT_RATE_LIMITS: RateLimits = {
   callsPerMinute: 120,
-  writesPerMinute: 20,
+  writesPerMinute: 60,
 };
 
 export type RateLimitName =
