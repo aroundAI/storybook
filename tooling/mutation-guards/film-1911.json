@@ -55,8 +55,8 @@
       "test": "__tests__/model-not-configured.test.ts",
       "name": "1911 gateway openRun opens a server run with no model",
       "file": "packages/ai-gateway/src/backend.ts",
-      "find": "    !serverModelConfigured() &&\n    (await resolveRunMode(",
-      "replace": "    serverModelConfigured() &&\n    (await resolveRunMode(",
+      "find": "      if (!serverModelConfigured()) throw modelNotConfigured();",
+      "replace": "      if (serverModelConfigured()) throw modelNotConfigured();",
       "pattern": "refuses a server run with the message"
     },
     {
