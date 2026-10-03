@@ -761,9 +761,9 @@ flowchart LR
 
 ### M4 Remaining stages, edits and renders (L)
 
-- [ ] Ideation, screenplay (per scene), screenplay refinement, shots (reel scout plus per scene), audio cues, translation, publish metadata
-- [ ] `edit_scene`, `edit_shot`, `edit_dialogue_line` (FR-15)
-- [ ] `start_voice_render`, `start_audio_render`, `get_render_status`, `get_veo_manifest` (FR-16)
+- [x] Ideation, screenplay (per scene), screenplay refinement, shots (reel scout plus per scene), audio cues, translation, publish metadata (FILM-1909)
+- [x] `edit_scene`, `edit_shot`, `edit_dialogue_line` (FR-15; FILM-1909, through `apply_generation_commit`)
+- [x] `start_voice_render`, `start_audio_render`, `get_render_status`, `get_veo_manifest` (FR-16; FILM-1909)
 - [ ] Replace the in-app LLM side calls (`asset-link-actions.ts`, `agent-story-generation.ts`, canon at publish) with guard-aware paths
 - [ ] Lease banners and origin badges on screenplay, visual studio and audio studio pages
 
