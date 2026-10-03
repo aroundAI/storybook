@@ -140,7 +140,7 @@ export interface ShotLocalPaths {
  * with ZIP-relative paths so OpenClaw can work entirely offline.
  */
 export function buildOpenClawManifest(
-  episode: EpisodeWithShots,
+  episode: Pick<EpisodeWithShots, 'id' | 'title' | 'projectId' | 'shots'>,
   projectCharacters: Asset[],
   projectLocations: Asset[],
   localPathsMap?: Map<string, ShotLocalPaths>,

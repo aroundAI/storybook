@@ -6,7 +6,7 @@
  * apply the plans the matrix's fixtures produce; a regenerated story,
  * which updates an existing world state, was not one of them.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -19,9 +19,23 @@ import {
 } from '../src';
 import { recordingClient, tableResponder } from '../src/testing';
 
-const MIGRATION = path.resolve(
+const MIGRATIONS = path.resolve(
   __dirname,
-  '../../../../apps/web/supabase/migrations/20261003125108_film-1903-apply-generation-commit.sql',
+  '../../../../apps/web/supabase/migrations',
+);
+
+/** The newest migration that (re)defines the allowlist: the one in force. */
+const MIGRATION = path.join(
+  MIGRATIONS,
+  readdirSync(MIGRATIONS)
+    .filter((file) => file.endsWith('.sql'))
+    .sort()
+    .reverse()
+    .find((file) =>
+      readFileSync(path.join(MIGRATIONS, file), 'utf8').includes(
+        'function kit.generation_commit_allowlist()',
+      ),
+    )!,
 );
 
 interface Rule {

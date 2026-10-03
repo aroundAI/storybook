@@ -58,7 +58,7 @@ describe('get_workflow_guide', () => {
 });
 
 describe('the default tool list', () => {
-  it('holds whoami, the guide, the eight read tools, the five author tools, the analytics tools and the seven generation tools, each name once', () => {
+  it('holds whoami, the guide, the eight read tools, the five author tools, the analytics tools, the seven generation tools, the four render tools and the three edit tools, each name once', () => {
     const names = defaultTools.map((tool) => tool.name);
 
     expect(new Set(names).size).toBe(names.length);
@@ -79,6 +79,15 @@ describe('the default tool list', () => {
         'create_episode',
         'update_episode',
         'upsert_asset',
+        // FILM-1909's render tools
+        'start_voice_render',
+        'start_audio_render',
+        'get_render_progress',
+        'get_veo_manifest',
+        // FILM-1909's edit tools
+        'edit_scene',
+        'edit_shot',
+        'edit_dialogue_line',
         // FILM-1906's list, pinned by name in analytics-catalogue.test.ts.
         ...analyticsTools.map((tool) => tool.name),
         'start_generation',

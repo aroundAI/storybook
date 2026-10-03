@@ -54,7 +54,7 @@ acceptance_criteria:
     evidence: null
   - text: "`batchGenerateDialogueAction` uses voice profiles when available"
     met: false
-    reason: "retired — `voice_profiles` was dropped in `05ec0ae9`; voices come from `character_details.elevenlabs_voice_id` (`packages/features/audio-generation/src/server/batch-actions.ts:104`)"
+    reason: "retired — `voice_profiles` was dropped in `05ec0ae9`; voices come from `character_details.elevenlabs_voice_id` (`packages/features/audio-generation/src/server/render-starts.ts:90`)"
   - text: "`batchGenerateDialogueAction` supports manual voice assignments"
     met: true
     evidence: null
@@ -102,7 +102,7 @@ acceptance_criteria:
     evidence: "one `UPDATE … RETURNING` per line (`apps/web/supabase/migrations/20260527094643_increment_batch_progress_rpc.sql:24`)"
   - text: "Batch job is resumable after server restart (deferred - requires queue system)"
     met: true
-    evidence: "lines are SQS messages processed by `apps/web/lambda/voice-worker` (`packages/features/audio-generation/src/server/batch-actions.ts:316`); the studio resumes polling an active batch on load (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/use-batch-generation.ts:113`)"
+    evidence: "lines are SQS messages processed by `apps/web/lambda/voice-worker` (`packages/features/audio-generation/src/server/render-starts.ts:441`); the studio resumes polling an active batch on load (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/audio-studio/_components/use-batch-generation.ts:113`)"
   - text: "All errors logged with context"
     met: true
     evidence: null

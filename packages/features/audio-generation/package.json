@@ -16,6 +16,7 @@
     "./components": "./src/components/index.ts",
     "./server": "./src/server/index.ts",
     "./server/voice-queue-helper": "./src/server/voice-queue-helper.ts",
+    "./server/render-starts": "./src/server/render-starts.ts",
     "./server-core": "./src/server/core/index.ts",
     "./providers": "./src/providers/index.ts",
     "./lib": "./src/lib/index.ts",

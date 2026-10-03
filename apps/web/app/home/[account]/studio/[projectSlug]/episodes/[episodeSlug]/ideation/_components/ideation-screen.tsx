@@ -52,6 +52,8 @@ interface IdeationScreenProps {
   locationIds?: string[];
   defaultDuration?: number;
   defaultContentStyle?: ContentStyle;
+  /** The ideas last generated for the episode, in either mode (episodes.metadata.ideas) */
+  storedIdeas?: StoryIdea[];
 }
 
 export function IdeationScreen({
@@ -62,10 +64,11 @@ export function IdeationScreen({
   locationIds = [],
   defaultDuration = 300,
   defaultContentStyle = 'dialogue-heavy',
+  storedIdeas = [],
 }: IdeationScreenProps) {
   const { isGenerating, setIsGenerating } = useEpisodeContext();
   const [isPending, _startTransition] = useTransition();
-  const [ideas, setIdeas] = useState<StoryIdea[]>([]);
+  const [ideas, setIdeas] = useState<StoryIdea[]>(storedIdeas);
   const [_hasGenerated, setHasGenerated] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 

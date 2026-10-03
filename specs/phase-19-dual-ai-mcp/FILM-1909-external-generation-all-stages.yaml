@@ -3,7 +3,7 @@ title: "External Generation for Every Stage, Targeted Edits and Renders"
 phase: 19
 phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
 category: feature
-status: DRAFT
+status: DONE
 effort: L
 dependencies:
   - spec_id: "FILM-1908"
@@ -21,44 +21,78 @@ summary: >
   (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
 acceptance_criteria:
   - text: "Every stage in FILM-1901's registry completes over MCP in external mode against a seeded episode, with the web page showing the result and its origin"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "the scripted SDK client (packages/features/studio-mcp/__tests__/helpers/all-stages-script.ts) drives all fourteen registered stages through FILM-1908's tools against a seeded episode, and every run is external and committed (packages/features/studio-mcp/__tests__/generation-all-stages.contract.test.ts:177, :290; ALL_STAGES compared). The results are where the web reads them (packages/features/studio-mcp/__tests__/generation-all-stages.contract.test.ts:316), and the studio pages show ideation, story, screenplay, shots and audio cues before and after a reload (apps/e2e/tests/mcp/external-all-stages.spec.ts:107, screenshots in the PR). Two gaps found on the way and fixed here: publish_metadata could not be started (its 'publish' target now locks the item's episode, as the web's run does, packages/features/studio-mcp/src/server/tools/generation/target.ts:96; packages/features/studio-mcp/__tests__/tools/publish-target.test.ts; red without it, guard P1), and the ideation page never showed stored ideas (apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/ideation-screen.tsx:71; the e2e spec red without it, guard X1). The pages show the origin as FILM-1910's \"Claude via MCP\" badge on the story, the screenplay and every shot card (apps/e2e/tests/mcp/external-all-stages.spec.ts:107). An existing cast cannot be linked over MCP (KB-183, filed); the tests link it through the API as the web header does (#584)"
   - text: "Shots: part 'reel_scout' first, then one part per scene ('scene:N'), then finalize; shots are numbered in order across scenes as the Shot Orchestrator numbers them; chained audio_cues opens as an external child run, never a queued job"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/__tests__/generation-all-stages.contract.test.ts:234: the run's parts are reel_scout then scene:1..N, shot_number runs 1..n across scenes in scene order (buildShotRows, packages/features/generation/src/stages/shots.ts:504), the Reel Scout's flagged scene is the shorts candidate; packages/features/studio-mcp/__tests__/generation-all-stages.contract.test.ts:264: the commit opened an audio_cues run with parent_run_id the shots run, mode external, committed by the client's submissions, and no generation_jobs row exists for the episode (#584)"
   - text: "Screenplay: one part per scene, then finalize; dialogue_lines rebuilt as screenplay-conversion rebuilds them"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/__tests__/generation-all-stages.contract.test.ts:177 (parts scene-1..N, one scene each, finalize) and :217: the English dialogue_lines are the screenplay's lines in scene order, numbered from 1, speakers mapped to their assets (the commit's rebuild, packages/features/generation/src/stages/screenplay.ts:651) (#584)"
   - text: "Edit tools (studio:write): edit_scene, edit_shot, edit_dialogue_line; each validated with the stage's schema and check(), versioned (target_version) and snapshotted, origin 'external'"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
-  - text: "Render tools (studio:render): start_voice_render (queueVoiceJob[s]), start_audio_render (audio-file-generation), get_render_status; the existing budget and BYOK checks apply; no model call"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/tools/edit/tools.ts:295, :504, :386 validate the merged scene, shot or line with the stage's own output schema and check(); packages/features/studio-mcp/src/server/tools/edit/writer.ts:38 opens an external run for the stage at the caller's version and applies the plan through apply_generation_commit (one transaction, version re-checked under a lock, content_revisions snapshot). The allowlist gains an update on a shot's and a line's content columns only (apps/web/supabase/migrations/20261003163615_film-1909-edit-commit-allowlist.sql; apps/web/supabase/tests/database/apply-generation-commit-edits.test.sql, 18 assertions, red without the migration). Live: the three edits commit as external runs with a snapshot, and a stale version is TARGET_CHANGED (packages/features/studio-mcp/__tests__/generation-all-stages.contract.test.ts:370); unit: packages/features/studio-mcp/__tests__/tools/edit-tools.test.ts:247-752, every plan allowlisted (:752); guards E1-E7, A1 (#584)"
+  - text: "Render tools (studio:render): start_voice_render (queueVoiceJob[s]), start_audio_render (audio-file-generation), get_render_progress; the existing budget and BYOK checks apply; no model call"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/tools/render/starts.ts:129 (start_voice_render), :242 (start_audio_render), status.ts:80 (get_render_progress); the starts are the web's own, moved out of the actions into packages/features/audio-generation/src/server/render-starts.ts:114, :284, :466 and called by the actions and the tools alike with the caller's client (packages/features/studio-mcp/__tests__/tools/render-tools.test.ts:110 pins the identity). The checks are the web's: authorizeEpisodeTarget (KB-31, KB-46, KB-47; guards V3 and V4 re-pointed and red), voice assignment, the estimated cost recorded on batch_generation_jobs, and the account's own ElevenLabs key read by the worker that renders (apps/web/lambda/voice-worker/voice-generation.ts:100, apps/web/lambda/llm-worker/handlers/audio-file-generation.ts:100). The web has no spend budget on these paths today, so none applies over MCP either. No model is called: against a local Supabase and ElasticMQ the SDK client's voice render queues the messages the web queues and the cue render opens and dispatches the same server run, with no llm_usage_analytics row (packages/features/studio-mcp/__tests__/render.contract.test.ts:294, :335, :397); a token without studio:render is FORBIDDEN (:380, red with the scope lowered) (#584)"
   - text: "get_veo_manifest (studio:read) returns the VEO prompts and frame descriptions the openclaw manifest builds today (packages/features/episodes/src/lib/openclaw-manifest.ts)"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/tools/render/veo-manifest.ts:38 builds the manifest with buildOpenClawManifest from the shot mapping the episode workspace uses, now one function (packages/features/episodes/src/lib/shot-row.ts:70, which the layout calls); paged by scene, summary over every shot. Equal to the web's manifest for the same rows (packages/features/studio-mcp/__tests__/tools/render-tools.test.ts:448, guard R4); live through the SDK client with VEO prompts, frame descriptions, transitions and reference images (packages/features/studio-mcp/__tests__/render.contract.test.ts:253) (#584)"
   - text: "The FILM-1902 matrix test covers every stage in both modes and passes"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "packages/features/generation/__tests__/stage-matrix.test.ts:582 and :615: every registered stage, fourteen, runs in server mode through the stubbed writer and in external mode from a submitted fixture, the writer never reached and no llm_usage_analytics write; a stage without a fixture fails the suite. 75 tests pass with the allowlist test, which now reads the newest definition of the allowlist (packages/features/generation/__tests__/commit-allowlist.test.ts) (#584)"
 test_plan:
-  unit: []
+  unit:
+    - {text: "Each render and edit tool: scope, team and episode scoping, the web's cores called, refusals mapped to the contract, edits validated by the stage's schema and check() and mapped to an allowlisted commit plan", met: true, evidence: "packages/features/studio-mcp/__tests__/tools/render-tools.test.ts:98-521, packages/features/studio-mcp/__tests__/tools/edit-tools.test.ts:247-752, packages/features/studio-mcp/__tests__/tools/publish-target.test.ts; tooling/mutation-guards/film-1909.json, 14 unit entries red (#584)"}
   integration:
-    - {text: "A scripted MCP client drives ideation → story → screenplay → shots → audio cues for one episode, asserting zero llm_usage_analytics rows for its runs", met: false, reason: "not met — no test yet"}
+    - {text: "A scripted MCP client drives ideation → story → screenplay → shots → audio cues for one episode, asserting zero llm_usage_analytics rows for its runs", met: true, evidence: "packages/features/studio-mcp/__tests__/generation-all-stages.contract.test.ts:177 then every other stage at :290, and :362: no llm_usage_analytics row for the team since the run began; green in process and against a dev server (MCP_CONTRACT_URL) (#584)"}
   e2e:
-    - {text: "Playwright reads each stage's result and origin badge off the studio pages after the scripted run; screenshots in the PR", met: false, reason: "not met — no test yet"}
-open_questions:
-  - "Store ideation output on episodes.metadata.ideas for both modes (recommended), or keep external ideation conversational in Claude?"
+    - {text: "Playwright reads each stage's result and origin badge off the studio pages after the scripted run; screenshots in the PR", met: true, evidence: "apps/e2e/tests/mcp/external-all-stages.spec.ts:107: the pages show the ideas, story, screenplay, shots and cues before and after a reload, red with the stored ideas dropped; the \"Claude via MCP\" badge (FILM-1910, #581) is read on the story, the screenplay and the shot cards; screenshots in the PR (#584)"}
+open_questions: []
 notes: |
   Order: the single-part stages first (story_refinement, screenplay_refinement,
   asset_description, episode_summary, fact_extraction, publish_metadata,
   season_analysis), then the multi-part ones (screenplay, shots, audio_cues,
   dialogue_translation), then season_outline, whose commit creates episodes.
   Publishing stays a web action in this phase.
+
+  Ideation storage, decided 2026-10-03 (lead): ideas are stored on
+  episodes.metadata.ideas in both modes; the ideation stage's commit writes
+  them (packages/features/generation/src/stages/ideation.ts:210, FILM-1901
+  part B). The open question is closed.
+
+  Decided here, as FILM-1901 part D left it to this spec: the external-mode
+  persistence of the episode summary. An external episode_summary run commits as server mode
+  does, a review stage that writes nothing; the extraction comes back in the
+  finalize reply for the agent to show, and canon changes are written only
+  when the user approves them on the web (commitCanonChangesAction).
+
+  A whole episode is more writes than a connection's default minute (20):
+  the scripted client waits out RATE_LIMITED with retry_after_s, as an
+  agent should.
+
+  The EDD's get_render_status is served as get_render_progress:
+  render_status was a column of the retired Edit Suite, and FILM-607's scan
+  (apps/web/test/film-607-edit-suite-retired.test.ts) keeps that name out of
+  the code.
+
+  ## Part 1 (on main, 2026-10-03)
+
+  - Render tools (studio:render): start_voice_render, start_audio_render,
+    get_render_progress; get_veo_manifest (studio:read). The web's render
+    starts moved into packages/features/audio-generation/src/server/render-starts.ts
+    so the actions and the tools run the same lines; getProjectTTSModel takes
+    the caller's client.
+  - Edit tools: built against an injected writer, then served once the run
+    layer landed (#567, #574) with runLayerEditWriter and the allowlist's
+    update columns on shots and dialogue_lines.
+  - A scene edit that changes its line count rebuilds the episode's dialogue
+    rows as the screenplay commit does, dropping their voice renders and
+    translations; the tool says how many.
 feature:
   database: null
   queries: []
   actions: []
   ui: []
   provider_integration: null
-  tools: ["edit_scene", "edit_shot", "edit_dialogue_line", "start_voice_render", "start_audio_render", "get_render_status", "get_veo_manifest"]
+  tools: ["edit_scene", "edit_shot", "edit_dialogue_line", "start_voice_render", "start_audio_render", "get_render_progress", "get_veo_manifest"]

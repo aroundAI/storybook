@@ -132,6 +132,8 @@ export interface EpisodeMetadata {
   character_names?: string[]; // Character names for immediate display in header
   location_names?: string[]; // Location names for immediate display in header
   season_premise?: string; // Season-level premise for context
+  /** The ideation stage's ideas, in either mode (FILM-1901 part B); shape: StoryIdea */
+  ideas?: unknown[];
 }
 
 /**

@@ -347,7 +347,7 @@ Tools are the primary surface because every client supports them. Names are verb
 | Generate | `finalize_generation` | write | commit all parts atomically |
 | Generate | `get_run`, `cancel_generation` | write | inspect or release a run |
 | Edit | `edit_scene`, `edit_shot`, `edit_dialogue_line` | write | targeted edits, each validated and versioned |
-| Render | `start_voice_render`, `start_audio_render`, `get_render_status` | render | queue ElevenLabs voice, music and SFX; cost-checked |
+| Render | `start_voice_render`, `start_audio_render`, `get_render_progress` | render | queue ElevenLabs voice, music and SFX; cost-checked |
 | Render | `get_veo_manifest` | read | VEO prompts and frame descriptions ready for external video tools |
 | Analyze | about 20 read tools, one per dashboard area | read | everything the analytics pages show, listed in section 3a |
 | Analyze | `list_experiments`, `get_experiment` | read | experiments and their results |
@@ -761,9 +761,9 @@ flowchart LR
 
 ### M4 Remaining stages, edits and renders (L)
 
-- [ ] Ideation, screenplay (per scene), screenplay refinement, shots (reel scout plus per scene), audio cues, translation, publish metadata
-- [ ] `edit_scene`, `edit_shot`, `edit_dialogue_line` (FR-15)
-- [ ] `start_voice_render`, `start_audio_render`, `get_render_status`, `get_veo_manifest` (FR-16)
+- [x] Ideation, screenplay (per scene), screenplay refinement, shots (reel scout plus per scene), audio cues, translation, publish metadata (FILM-1909)
+- [x] `edit_scene`, `edit_shot`, `edit_dialogue_line` (FR-15; FILM-1909, through `apply_generation_commit`)
+- [x] `start_voice_render`, `start_audio_render`, `get_render_progress`, `get_veo_manifest` (FR-16; FILM-1909)
 - [ ] Replace the in-app LLM side calls (`asset-link-actions.ts`, `agent-story-generation.ts`, canon at publish) with guard-aware paths
 - [ ] Lease banners and origin badges on screenplay, visual studio and audio studio pages
 
@@ -788,7 +788,7 @@ Once both modes are stable, briefs gain an optional `performance_context` block 
 
 1. ~~**Authorization server.**~~ Decided 2026-10-02: our own small OAuth 2.1 server, compatible with Supabase (see section 5 and FILM-1907).
 2. **Self-check in external mode.** Is the agent's self-check against the quality rubric enough, or should commit refuse below some deterministic score (e.g. shots without a hook in the first 3 seconds)?
-3. **Ideation storage.** Ideas are returned and not stored today. Store them on `episodes.metadata.ideas` for both modes (recommended), or keep external ideation conversational in Claude?
+3. ~~**Ideation storage.**~~ Decided 2026-10-03 (lead): stored on `episodes.metadata.ideas` for both modes; the `ideation` stage's commit writes it (FILM-1901 part B).
 4. ~~**Team policy.**~~ Decided 2026-10-03 (lead; the owner may revise): a team may turn either mode off, never both, and its default is a mode it allows (FILM-1910; CHECK constraints on `account_ai_settings`). A web Generate always asks for server mode and MCP is always external, so `default_mode` governs nothing today; it is reserved for a future web "Generate with Claude" flow (lead decision 2026-10-03).
 5. **Hosting the endpoint.** Inside the Next.js app (recommended) or as its own Lambda for independent scaling and timeouts?
 6. **Other clients.** Is ChatGPT's connector support in scope for GA, or Claude first and others as they come?
