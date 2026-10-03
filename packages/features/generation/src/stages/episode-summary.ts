@@ -22,6 +22,7 @@ import {
 } from '@kit/prompt-engine/schemas';
 
 import { type PromptFile, buildBrief, singlePart } from '../brief';
+import { describeStateChange } from '../canon/memory-rows';
 import { registerStage } from '../registry';
 import type { CheckError, StageDefinition } from '../types';
 
@@ -72,15 +73,6 @@ export function sanitizeStoryContent(storyContent: string): string {
     )
     .substring(0, STORY_CONTENT_MAX_CHARS)
     .trim();
-}
-
-/** One line per character state change, as the memory context stores it. */
-export function describeStateChange(change: {
-  characterName: string;
-  fromState: string;
-  toState: string;
-}): string {
-  return `${change.characterName}: ${change.fromState} -> ${change.toState}`;
 }
 
 export function toEpisodeSummaryResult(

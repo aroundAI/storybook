@@ -58,20 +58,23 @@ vi.mock('@kit/episodes/agent/shot-orchestrator', () => ({
   },
 }));
 
-vi.mock('../utils/context-builder', () => ({
+vi.mock('../utils/context-builder', async (importOriginal) => ({
+  // The real formatters, over a fixture episode; the VEO ones return the
+  // fixture text the recordings were made with
+  ...(await importOriginal<typeof import('../utils/context-builder')>()),
   buildEpisodeContext: async () => ({
+    premise: 'Maya confronts Dev.',
     characters: episodeFixture.context.characters,
     locations: episodeFixture.context.locations,
     recurringElements: episodeFixture.context.recurringElements,
     previousEpisodes: [],
+    episodeFacts: [],
+    verifiedFacts: [],
     episodeNumber: 1,
     genre: episodeFixture.context.genre,
     targetAudience: episodeFixture.context.targetAudience,
     visualStyle: episodeFixture.context.visualStyle,
   }),
-  formatCharactersForPrompt: () => '',
-  formatLocationsForPrompt: () => '',
-  formatPreviousEpisodesForPrompt: () => '',
   formatCharactersForVeoPrompt: () => episodeFixture.context.charactersVeo,
   formatLocationsForVeoPrompt: () => episodeFixture.context.locationsVeo,
   formatRecurringElementsForPrompt: () =>
