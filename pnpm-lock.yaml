@@ -643,6 +643,9 @@ importers:
       '@kit/llm':
         specifier: workspace:*
         version: link:../llm
+      '@kit/next':
+        specifier: workspace:*
+        version: link:../next
       '@kit/prompt-engine':
         specifier: workspace:*
         version: link:../features/prompt-engine

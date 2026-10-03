@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
+import { refuseRunError } from '@kit/ai-gateway/refuse-run-error';
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import {
   episodeRowFromOutline,
@@ -97,7 +98,7 @@ const generateSeasonOutlineHandler = enhanceAction(
         name: 'episodes.generateSeasonOutline',
       },
       { client: client, accountId: target.accountId, userId: user.id },
-    );
+    ).catch(refuseRunError);
     await run.dispatch();
 
     logger.info(ctx, 'Season outline job queued');
@@ -459,7 +460,7 @@ const regenerateEpisodeOutline = enhanceAction(
         name: 'episodes.regenerateEpisodeOutline',
       },
       { client: client, accountId: target.accountId, userId: user.id },
-    );
+    ).catch(refuseRunError);
     await run.dispatch();
 
     logger.info(ctx, 'Episode regeneration job queued');

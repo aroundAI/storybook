@@ -169,6 +169,14 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('[Research Upload] Error:', error);
 
+    // Server generation turned off, or the stage already held (KB-182)
+    const { runRefusalMessage } = await import('@kit/ai-gateway');
+    const refusal = runRefusalMessage(error);
+
+    if (refusal) {
+      return NextResponse.json({ error: refusal }, { status: 409 });
+    }
+
     return NextResponse.json(
       {
         error:

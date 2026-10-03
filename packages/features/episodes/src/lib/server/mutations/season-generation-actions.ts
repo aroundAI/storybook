@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
+import { refuseRunError } from '@kit/ai-gateway/refuse-run-error';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { returnRefusals } from '@kit/next/refusals';
@@ -100,7 +101,7 @@ const analyzeSeasonRoadmap = enhanceAction(
         name: 'episodes.analyzeSeasonRoadmap',
       },
       { client: client, accountId: target.accountId, userId: user.id },
-    );
+    ).catch(refuseRunError);
     await run.dispatch();
 
     logger.info(ctx, 'Job queued successfully');

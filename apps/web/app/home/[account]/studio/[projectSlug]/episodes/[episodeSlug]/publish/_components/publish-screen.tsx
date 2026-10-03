@@ -224,7 +224,14 @@ export function PublishScreen({
     }
 
     if (items.length > 0) {
-      await batchTranslateMetadataAction({ episodeId: episode.id, items });
+      try {
+        await unwrap(
+          batchTranslateMetadataAction({ episodeId: episode.id, items }),
+        );
+      } catch (error) {
+        setIsScheduleTranslating(false);
+        toast.error(refusalMessage(error, 'Failed to start translation'));
+      }
     } else {
       // All English, no translation needed
       setIsScheduleTranslating(false);
@@ -1067,14 +1074,18 @@ export function PublishScreen({
 
     // Queue batch translation job - results come via WebSocket
     try {
-      await batchTranslateMetadataAction({
-        episodeId: episode.id,
-        items: batchItems,
-      });
+      await unwrap(
+        batchTranslateMetadataAction({
+          episodeId: episode.id,
+          items: batchItems,
+        }),
+      );
       // The useEffect for batchLlmStatus will handle the result and call buildPlatformConfigs
     } catch (error) {
       console.error('Batch translation failed:', error);
-      setPublishError('Failed to start translation. Please try again.');
+      setPublishError(
+        refusalMessage(error, 'Failed to start translation. Please try again.'),
+      );
       setPublishStage('error');
     }
   };

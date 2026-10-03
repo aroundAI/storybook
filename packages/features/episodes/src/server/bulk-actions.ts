@@ -144,7 +144,9 @@ export const batchGenerateIdeasAction = enhanceAction(
       data.episodes.map((ep) => ep.episodeId),
     );
 
-    const { openRunForJob } = await import('@kit/ai-gateway');
+    const { openRunForJob, runRefusalMessage } = await import(
+      '@kit/ai-gateway'
+    );
     const failed: BatchQueueResult['failed'] = [];
     let queued = 0;
 
@@ -181,7 +183,9 @@ export const batchGenerateIdeasAction = enhanceAction(
       } catch (err) {
         failed.push({
           episodeId: ep.episodeId,
-          error: err instanceof Error ? err.message : 'Queue failed',
+          error:
+            runRefusalMessage(err) ??
+            (err instanceof Error ? err.message : 'Queue failed'),
         });
       }
     }
@@ -235,7 +239,9 @@ export const batchGenerateStoriesAction = enhanceAction(
       (episodes ?? []).map((ep: { id: string }) => [ep.id, ep]),
     );
 
-    const { openRunForJob } = await import('@kit/ai-gateway');
+    const { openRunForJob, runRefusalMessage } = await import(
+      '@kit/ai-gateway'
+    );
     const failed: BatchQueueResult['failed'] = [];
     const jobEntries: Array<Record<string, unknown>> = [];
     const pending: PendingJob[] = [];
@@ -297,7 +303,9 @@ export const batchGenerateStoriesAction = enhanceAction(
       } catch (err) {
         failed.push({
           episodeId: ep.episodeId,
-          error: err instanceof Error ? err.message : 'Queue failed',
+          error:
+            runRefusalMessage(err) ??
+            (err instanceof Error ? err.message : 'Queue failed'),
         });
         continue;
       }
@@ -368,7 +376,9 @@ export const batchConvertScreenplaysAction = enhanceAction(
       (episodes ?? []).map((ep: { id: string }) => [ep.id, ep]),
     );
 
-    const { openRunForJob } = await import('@kit/ai-gateway');
+    const { openRunForJob, runRefusalMessage } = await import(
+      '@kit/ai-gateway'
+    );
     const failed: BatchQueueResult['failed'] = [];
     const jobEntries: Array<Record<string, unknown>> = [];
     const pending: PendingJob[] = [];
@@ -431,7 +441,9 @@ export const batchConvertScreenplaysAction = enhanceAction(
       } catch (err) {
         failed.push({
           episodeId: ep.episodeId,
-          error: err instanceof Error ? err.message : 'Queue failed',
+          error:
+            runRefusalMessage(err) ??
+            (err instanceof Error ? err.message : 'Queue failed'),
         });
         continue;
       }
@@ -506,7 +518,9 @@ export const batchGenerateShotsAction = enhanceAction(
       (episodes ?? []).map((ep: { id: string }) => [ep.id, ep]),
     );
 
-    const { openRunForJob } = await import('@kit/ai-gateway');
+    const { openRunForJob, runRefusalMessage } = await import(
+      '@kit/ai-gateway'
+    );
     const failed: BatchQueueResult['failed'] = [];
     const jobEntries: Array<Record<string, unknown>> = [];
     const pending: PendingJob[] = [];
@@ -556,7 +570,9 @@ export const batchGenerateShotsAction = enhanceAction(
       } catch (err) {
         failed.push({
           episodeId: ep.episodeId,
-          error: err instanceof Error ? err.message : 'Queue failed',
+          error:
+            runRefusalMessage(err) ??
+            (err instanceof Error ? err.message : 'Queue failed'),
         });
         continue;
       }
@@ -642,7 +658,9 @@ export const batchCreateAssetsAction = enhanceAction(
       (episodes ?? []).map((ep: { id: string }) => [ep.id, ep]),
     );
 
-    const { openRunForJob } = await import('@kit/ai-gateway');
+    const { openRunForJob, runRefusalMessage } = await import(
+      '@kit/ai-gateway'
+    );
     const failed: BatchQueueResult['failed'] = [];
     const jobEntries: Array<Record<string, unknown>> = [];
     const pending: PendingJob[] = [];
@@ -702,7 +720,9 @@ export const batchCreateAssetsAction = enhanceAction(
       } catch (err) {
         failed.push({
           episodeId: ep.episodeId,
-          error: err instanceof Error ? err.message : 'Queue failed',
+          error:
+            runRefusalMessage(err) ??
+            (err instanceof Error ? err.message : 'Queue failed'),
         });
         continue;
       }

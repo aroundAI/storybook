@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 
 import { z } from 'zod';
 
+import { refuseRunError } from '@kit/ai-gateway/refuse-run-error';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
@@ -177,7 +178,7 @@ export type TranslationItem = z.infer<typeof TranslationItemSchema>;
  * More cost-effective than individual translations.
  * Results delivered via WebSocket.
  */
-export const batchTranslateMetadataAction = enhanceAction(
+const batchTranslateMetadata = enhanceAction(
   async ({
     episodeId,
     items,
@@ -228,7 +229,7 @@ export const batchTranslateMetadataAction = enhanceAction(
         name: 'publish.batchTranslateMetadata',
       },
       { client, accountId: target.accountId, userId: user.id },
-    );
+    ).catch(refuseRunError);
     await run.dispatch();
 
     return {
@@ -238,4 +239,8 @@ export const batchTranslateMetadataAction = enhanceAction(
     };
   },
   { schema: BatchTranslateSchema },
+);
+
+export const batchTranslateMetadataAction = returnRefusals(
+  batchTranslateMetadata,
 );

@@ -89,7 +89,7 @@ remaining:
     closed_by: "FILM-1904"
 open_questions: []
 notes: |
-  Closed 2026-10-03: "ctx.runMode wired from the MCP request context; the web shows an external run instead of failing dispatch" — the MCP side is wired (packages/features/studio-mcp/src/server/tools/generation/service.ts:62, #573). The web side was resolved the other way (#581, lead decision): a web Generate asks for server mode (packages/ai-gateway/src/jobs.ts:143), so it never opens an external run, and a team with server generation off is refused in words instead (KB-182 tracks the call sites that still throw that refusal).
+  Closed 2026-10-03: "ctx.runMode wired from the MCP request context; the web shows an external run instead of failing dispatch" — the MCP side is wired (packages/features/studio-mcp/src/server/tools/generation/service.ts:62, #573). The web side was resolved the other way (#581, lead decision): a web Generate asks for server mode (packages/ai-gateway/src/jobs.ts:143), so it never opens an external run, and a team with server generation off is refused in words instead (KB-182, fixed in #590, worded the call sites that threw that refusal).
 
   ## Part C (#571, 2026-10-03): a run is required
 
