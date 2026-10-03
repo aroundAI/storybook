@@ -227,8 +227,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-turbo-
 
+      # --concurrency=2: on a change reaching most packages (#567, #575: ~50
+      # typecheck tasks, turbo's default runs 10 at once) the 4-vCPU runner
+      # stalled ~2 min with no task finishing, then cancelled the step with no
+      # TypeScript error. Locally two at a time is also faster (75 s vs 95 s).
+      # (Lint is not capped here: its script passes trailing args to eslint.)
       - name: Typecheck
-        run: pnpm run typecheck
+        run: pnpm run typecheck --concurrency=2
 
       - name: Lint
         run: pnpm run lint
