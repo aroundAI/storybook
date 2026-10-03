@@ -117,6 +117,14 @@ const KNOWN: Record<string, [number, string]> = {
   // revoke in personal-access-tokens.ts selects its rows and is not listed.
   'packages/features/studio-mcp/src/server/route-handler.ts | mcp_connections | update':
     [1, `${ADMIN} + ${LAST_USED}`],
+  // FILM-1907: the OAuth store's revocations run with the service role on
+  // rows it has just read; a revoke answers 200 whether or not a row
+  // changed (RFC 7009), and refresh-token reuse answers invalid_grant
+  // either way. consumeCode selects its row and is not listed.
+  'packages/features/studio-mcp/src/server/oauth/supabase-store.ts | mcp_connections | update':
+    [1, ADMIN],
+  'packages/features/studio-mcp/src/server/oauth/supabase-store.ts | mcp_tokens | update':
+    [2, ADMIN],
   'packages/features/team-accounts/src/server/services/account-members.service.ts | accounts_memberships | update':
     [1, ADMIN],
   'packages/supabase/src/external-api-keys.ts | external_api_keys | update': [
