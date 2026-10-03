@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { defaultPrompts } from '../../src/server/prompts';
+import { analyticsTools } from '../../src/server/tools/analytics';
 import { defaultTools } from '../../src/server/tools/index';
 import {
   WORKFLOW_GUIDE_TEXT,
@@ -57,7 +58,7 @@ describe('get_workflow_guide', () => {
 });
 
 describe('the default tool list', () => {
-  it('holds whoami, the guide, the eight read tools and the five author tools, each name once', () => {
+  it('holds whoami, the guide, the eight read tools, the five author tools and the analytics tools, each name once', () => {
     const names = defaultTools.map((tool) => tool.name);
 
     expect(new Set(names).size).toBe(names.length);
@@ -78,6 +79,8 @@ describe('the default tool list', () => {
         'create_episode',
         'update_episode',
         'upsert_asset',
+        // FILM-1906's list, pinned by name in analytics-catalogue.test.ts.
+        ...analyticsTools.map((tool) => tool.name),
       ].sort(),
     );
   });
