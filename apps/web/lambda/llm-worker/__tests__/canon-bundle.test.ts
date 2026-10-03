@@ -27,7 +27,9 @@ import { afterAll, describe, expect, it } from 'vitest';
  */
 interface Esbuild {
   build(options: {
-    entryPoints: string[];
+    entryPoints?: string[];
+    /** An in-memory entry, resolved from `resolveDir` */
+    stdin?: { contents: string; resolveDir: string; loader: 'ts' };
     bundle: boolean;
     platform: 'node';
     format: 'esm';
@@ -146,7 +148,15 @@ describe('canon memory in the LLM Lambda bundle (FILM-1110)', () => {
  * (a dynamic import, so a module that cannot load in plain Node fails only
  * when the handler runs). Runs the bundled handler for a documentary until it
  * has read its facts; the orchestrator after that needs an LLM and may fail.
+ * The handler runs under a generation run (FILM-1903), so the bundle carries
+ * the gateway's run scope and a fake run handle beside it.
  */
+const OUTLINE_ENTRY = `
+export { processSeasonOutline } from './handlers/season-outline';
+export { withRun } from '@kit/ai-gateway';
+export { fakeRunHandle } from '@kit/generation/testing';
+`;
+
 const OUTLINE_RUNNER = `
 const tables = [];
 console.warn = console.error = console.info = console.log = () => {};
@@ -164,11 +174,12 @@ const client = { from: (table) => { tables.push(table); return query; } };
 
 let error;
 try {
-  const { processSeasonOutline } = await import('./season-outline.mjs');
-  await processSeasonOutline(
+  const { processSeasonOutline, withRun, fakeRunHandle } = await import('./season-outline.mjs');
+  const run = fakeRunHandle({ targetType: 'season', projectId: '44444444-4444-4444-8444-444444444444' }).run;
+  await withRun(run, () => processSeasonOutline(
     { projectId: '44444444-4444-4444-8444-444444444444', seasonPremise: 'x', episodeCount: 1, startingNumber: 1, accountId: '11111111-1111-4111-8111-111111111111', userId: '77777777-7777-4777-8777-777777777777' },
     client,
-  );
+  ));
 } catch (e) {
   error = String(e?.message ?? e).split('\\n')[0];
 }
@@ -178,7 +189,7 @@ process.stdout.write(JSON.stringify({ tables, error }));
 describe('season outline in the LLM Lambda bundle (KB-71)', () => {
   it("loads the project type helpers and reads a documentary project's facts", async () => {
     await esbuild.build({
-      entryPoints: [path.join(LLM_WORKER, 'handlers/season-outline.ts')],
+      stdin: { contents: OUTLINE_ENTRY, resolveDir: LLM_WORKER, loader: 'ts' },
       bundle: true,
       platform: 'node',
       format: 'esm',

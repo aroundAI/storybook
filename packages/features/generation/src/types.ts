@@ -222,6 +222,13 @@ export interface CommitResult<TData = unknown> {
    * external one waits for the agent (FILM-1903).
    */
   followOns?: CommitFollowOn[];
+  /**
+   * The story stage's form of the same idea (#562): a description per
+   * asset it invented, as `{ stage, target: { assetId } }`. Not a runnable
+   * target yet: `asset_description` takes the asset's name and type, so the
+   * run layer leaves these to the handler until FILM-1908 opens them.
+   */
+  followOn?: Array<{ stage: StageKey; target: Record<string, unknown> }>;
 }
 
 export interface CommitFollowOn {

@@ -76,7 +76,7 @@ acceptance_criteria:
     evidence: "packages/features/episodes/src/server/actions.ts:915"
   - text: "`updateEpisodeAction` validates version for optimistic locking"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:910"
+    evidence: "packages/features/episodes/src/server/episode.service.ts:205"
   - text: "`deleteEpisodeAction` soft deletes episode and all shots"
     met: true
     evidence: "packages/features/episodes/src/server/actions.ts:1067-1072 (shots get deleted_at set, filtered on deleted_at is null); test packages/features/episodes/__tests__/episode-season-and-shot-delete.test.ts:128; the shot read also filters deleted rows at packages/features/episodes/src/server/actions.ts:590 (test :116)"
