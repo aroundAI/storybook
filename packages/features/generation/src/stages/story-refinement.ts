@@ -30,6 +30,7 @@ import type {
   PartSpec,
   StageDefinition,
 } from '../types';
+import { ORIGIN_MERGE, stageOrigin } from './shared';
 
 const PROMPT = storyRefinementPrompt as PromptFile;
 
@@ -274,7 +275,7 @@ async function commit(
   // Re-read at commit time: the brief may be old, and the episode may be gone
   const { data: current } = await ctx.client
     .from('episodes')
-    .select('story_data, metadata, status, deleted_at, generation_origin')
+    .select('story_data, metadata, status, deleted_at')
     .eq('id', target.episodeId)
     .single();
 
@@ -341,12 +342,12 @@ async function commit(
   // part A, so `originColumnsAvailable` is the caller's say
   const origin = ctx.originColumnsAvailable
     ? {
-        generation_origin: {
-          ...((current.generation_origin as Record<string, unknown>) ?? {}),
-          story_refinement: run.origin,
-        } as unknown as Json,
+        values: {
+          generation_origin: stageOrigin('story_refinement', run.origin),
+        },
+        merge: [ORIGIN_MERGE],
       }
-    : {};
+    : { values: {}, merge: [] };
 
   // One transaction under a run: the story (its content_revisions snapshot
   // with it) and the job's completion. requireRows: the episode was deleted
@@ -360,8 +361,9 @@ async function commit(
           story_data: updatedStoryData as unknown as Json,
           metadata: updatedMetadata as unknown as Json,
           updated_at: generatedAt,
-          ...origin,
+          ...origin.values,
         },
+        merge: origin.merge,
         match: [eq('id', target.episodeId), is('deleted_at', null)],
         requireRows: true,
         returning: ['id', 'status'],

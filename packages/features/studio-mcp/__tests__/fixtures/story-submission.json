@@ -1,0 +1,102 @@
+{
+  "_comment": "FILM-1908: the story stage's model output in stage-parity.ts (STORY_ORCHESTRATOR_RESULT as the worker maps it, plus CANON_EXTRACTION), as an external agent submits it. The writes server mode made for it are fixtures/story-parity.json in apps/web/lambda/llm-worker/__tests__.",
+  "output": {
+    "story": {
+      "title": "The Last Signal",
+      "fullText": "Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. Commander Maya Chen floats in the silence of the observation deck. ",
+      "actBreakdown": {
+        "act1": "Maya hears the signal.",
+        "act2": "Maya decodes it.",
+        "act3": "Maya sends it."
+      },
+      "characters": [
+        {
+          "name": "Maya Chen",
+          "role": "protagonist",
+          "arc": "From routine to purpose."
+        },
+        {
+          "name": "Director Williams",
+          "role": "supporting",
+          "arc": "From control to trust."
+        }
+      ],
+      "themes": [
+        "isolation",
+        "purpose"
+      ],
+      "tone": "contemplative",
+      "estimatedSceneCount": 6,
+      "episodeSummary": "Maya hears, decodes and finally sends the signal herself.",
+      "sentimentScore": 0.6,
+      "keyEvents": [
+        "Maya hears the signal",
+        "Maya sends the warning"
+      ],
+      "viralStructure": {
+        "openingHook": "An alarm from coordinates that do not exist.",
+        "curiosityGap": "Who sent the signal?",
+        "emotionalArc": [
+          "unease",
+          "dread",
+          "awe"
+        ],
+        "setupPayoffPair": {
+          "setup": "A recurring dream",
+          "payoff": "Her own voice"
+        },
+        "loopBeat": "Maya alone at the console, now sending.",
+        "memorableScene": "Maya hears her own voice describe the present."
+      }
+    },
+    "newCharacters": [
+      {
+        "name": "Kai",
+        "role": "supporting",
+        "description": "A voice on the relay.",
+        "physicalDescription": "Unseen; a warm baritone."
+      }
+    ],
+    "newLocations": [
+      {
+        "name": "The Relay Core",
+        "setting": "machine room",
+        "description": "The humming heart of the station."
+      }
+    ],
+    "canonFacts": {
+      "threadUpdates": [
+        {
+          "threadName": "The signal",
+          "threadType": "mystery",
+          "action": "open",
+          "description": "Where the signal comes from.",
+          "promises": [
+            "Reveal the sender"
+          ]
+        },
+        {
+          "threadName": "The missing memo",
+          "action": "progress",
+          "description": "Williams admits the memo exists."
+        }
+      ],
+      "episodeSummary": "Maya receives a signal carrying her own voice.",
+      "sentimentScore": 0.4,
+      "keyEvents": [
+        "Maya hears the signal"
+      ],
+      "characterStateChanges": [
+        {
+          "characterName": "Maya Chen",
+          "fromState": "bored",
+          "toState": "alert"
+        }
+      ],
+      "worldState": {
+        "location": "The relay station",
+        "timePeriod": "Month three"
+      }
+    }
+  }
+}

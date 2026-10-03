@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { checkWithSchema } from '../../src/checks';
+import { planWrites } from '../../src/commit-plan';
 import { getStage } from '../../src/registry';
 import {
   type StoryStageOutput,
@@ -8,6 +9,7 @@ import {
   storyOrchestratorInput,
   storyStage,
 } from '../../src/stages/story';
+import { recordCommits } from '../../src/testing';
 import {
   IDS,
   SNAPSHOT,
@@ -452,6 +454,50 @@ describe('story stage (FILM-1901)', () => {
       expect(result.data.storyData).toMatchObject({
         generatedBy: { mode: 'external' },
       });
+    });
+
+    it('stamps its origin under story and keeps the other stages, as a merge the database applies in place (FILM-1908)', async () => {
+      const screenplayOrigin = {
+        kind: 'human',
+        at: '2026-10-01T00:00:00.000Z',
+      };
+      const { ctx, db } = makeCtx(
+        responder({
+          ...TABLES,
+          generation_jobs: [],
+          episodes: {
+            ...(TABLES.episodes as object),
+            generation_origin: { screenplay: screenplayOrigin },
+          },
+        }),
+      );
+      const commits = recordCommits(db.client);
+      ctx.commits = commits.apply;
+
+      const run = externalRun();
+      await storyStage.commit(ctx, run, TARGET, [parsed(output())]);
+
+      // the plan: only the story key, merged into the column
+      const episodeWrite = planWrites(commits.plans[0]!).find(
+        (write) => write.table === 'episodes' && write.op === 'update',
+      );
+      expect(episodeWrite).toMatchObject({
+        values: { generation_origin: { story: run.origin } },
+        merge: expect.arrayContaining(['generation_origin']),
+      });
+
+      // replayed through the client: the screenplay's origin is still there
+      const update = db
+        .writes()
+        .find(
+          (w) =>
+            w.table === 'episodes' &&
+            w.op === 'update' &&
+            'generation_origin' in (w.payload as object),
+        );
+      expect(
+        (update?.payload as { generation_origin: unknown }).generation_origin,
+      ).toEqual({ screenplay: screenplayOrigin, story: run.origin });
     });
   });
 });

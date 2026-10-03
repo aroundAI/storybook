@@ -42,6 +42,7 @@ import type {
   PartSpec,
   StageDefinition,
 } from '../types';
+import { ORIGIN_MERGE, stageOrigin } from './shared';
 import { mergeCharacterArcs } from './shared/character-arcs';
 import {
   characterIdMap,
@@ -644,7 +645,7 @@ async function commitScreenplay(
   };
 
   if (ctx.originColumnsAvailable) {
-    update.generation_origin = run.origin;
+    update.generation_origin = stageOrigin('screenplay', run.origin);
   }
 
   const dialogueLines = dialogueRowsFromScenes(
@@ -662,6 +663,7 @@ async function commitScreenplay(
         op: 'update',
         table: 'episodes',
         values: update,
+        ...(ctx.originColumnsAvailable ? { merge: [ORIGIN_MERGE] } : {}),
         // NOTE: No version filter — version may drift during orchestrator mid-run writes
         match: [eq('id', episodeId), is('deleted_at', null)],
         requireRows: true,

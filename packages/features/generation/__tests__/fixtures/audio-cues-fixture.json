@@ -24,7 +24,9 @@
       "duration_seconds": 5,
       "scene_description": "Dev and Maya across the desk",
       "prompt": "p2",
-      "generation_metadata": { "veoPrompt": { "audio": "Office hum, a chair creaking" } }
+      "generation_metadata": {
+        "veoPrompt": { "audio": "Office hum, a chair creaking" }
+      }
     },
     {
       "sequence_number": 3,

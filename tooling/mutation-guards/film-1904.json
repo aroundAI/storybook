@@ -85,8 +85,8 @@
       "name": "MCP U9 the web app imports the developer MCP server",
       "kind": "unit",
       "file": "apps/web/app/api/mcp/route.ts",
-      "find": "import { createMcpRouteHandlers } from '@kit/studio-mcp/server';",
-      "replace": "import { createMcpRouteHandlers } from '@kit/studio-mcp/server';\nimport '@kit/mcp-server';",
+      "find": "} from '@kit/studio-mcp/server';\n",
+      "replace": "} from '@kit/studio-mcp/server';\nimport '@kit/mcp-server';\n",
       "cwd": "packages/features/studio-mcp",
       "test": "__tests__/boundaries.test.ts",
       "pattern": "finds no such import"

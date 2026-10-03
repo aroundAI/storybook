@@ -10,31 +10,19 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "reference_type",
-            "episode"
-          ]
+          "args": ["reference_type", "episode"]
         },
         {
           "method": "eq",
-          "args": [
-            "reference_id",
-            "33333333-3333-4333-8333-333333333333"
-          ]
+          "args": ["reference_id", "33333333-3333-4333-8333-333333333333"]
         },
         {
           "method": "eq",
-          "args": [
-            "job_type",
-            "shot_list"
-          ]
+          "args": ["job_type", "shot_list"]
         },
         {
           "method": "eq",
-          "args": [
-            "status",
-            "queued"
-          ]
+          "args": ["status", "queued"]
         }
       ]
     },
@@ -44,10 +32,7 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "episode_id",
-            "33333333-3333-4333-8333-333333333333"
-          ]
+          "args": ["episode_id", "33333333-3333-4333-8333-333333333333"]
         }
       ]
     },
@@ -57,10 +42,7 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "episode_id",
-            "33333333-3333-4333-8333-333333333333"
-          ]
+          "args": ["episode_id", "33333333-3333-4333-8333-333333333333"]
         }
       ]
     },
@@ -70,10 +52,7 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "episode_id",
-            "33333333-3333-4333-8333-333333333333"
-          ]
+          "args": ["episode_id", "33333333-3333-4333-8333-333333333333"]
         }
       ]
     },
@@ -108,9 +87,7 @@
             "location": "The Office",
             "timeOfDay": "morning",
             "mood": "tense",
-            "characters": [
-              "Maya Chen"
-            ],
+            "characters": ["Maya Chen"],
             "veoPrompt": {
               "shotLine": "SHOT: Close-up, slow push in (thats where the camera is)",
               "timeline": [
@@ -176,10 +153,7 @@
             "location": "The Office",
             "timeOfDay": "morning",
             "mood": "tense",
-            "characters": [
-              "Maya Chen",
-              "Dev Patel"
-            ],
+            "characters": ["Maya Chen", "Dev Patel"],
             "veoPrompt": {
               "shotLine": "SHOT: Medium two-shot, static (thats where the camera is)",
               "timeline": [
@@ -244,9 +218,7 @@
             "location": "The Car Park",
             "timeOfDay": "night",
             "mood": "lonely",
-            "characters": [
-              "Maya Chen"
-            ],
+            "characters": ["Maya Chen"],
             "veoPrompt": {
               "shotLine": "SHOT: Wide establishing, static (thats where the camera is)",
               "timeline": [
@@ -303,9 +275,7 @@
             "location": "The Car Park",
             "timeOfDay": "night",
             "mood": "lonely",
-            "characters": [
-              "Maya Chen"
-            ],
+            "characters": ["Maya Chen"],
             "veoPrompt": {
               "shotLine": "SHOT: Medium close-up, handheld (thats where the camera is)",
               "timeline": [
@@ -360,17 +330,11 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "id",
-            "33333333-3333-4333-8333-333333333333"
-          ]
+          "args": ["id", "33333333-3333-4333-8333-333333333333"]
         },
         {
           "method": "is",
-          "args": [
-            "deleted_at",
-            null
-          ]
+          "args": ["deleted_at", null]
         }
       ]
     },
@@ -406,34 +370,19 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "reference_type",
-            "episode"
-          ]
+          "args": ["reference_type", "episode"]
         },
         {
           "method": "eq",
-          "args": [
-            "reference_id",
-            "33333333-3333-4333-8333-333333333333"
-          ]
+          "args": ["reference_id", "33333333-3333-4333-8333-333333333333"]
         },
         {
           "method": "eq",
-          "args": [
-            "job_type",
-            "shot_list"
-          ]
+          "args": ["job_type", "shot_list"]
         },
         {
           "method": "in",
-          "args": [
-            "status",
-            [
-              "queued",
-              "processing"
-            ]
-          ]
+          "args": ["status", ["queued", "processing"]]
         }
       ]
     }

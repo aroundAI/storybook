@@ -52,7 +52,7 @@ acceptance_criteria:
     reason: "unverified — visual; needs a browser check at 1280px, none recorded"
   - text: "Collapsible panels for mobile"
     met: true
-    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/story-screen.tsx:339"
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/story-screen.tsx:342"
   - text: "Sidebar hides on narrow screens"
     met: true
     evidence: "`hidden … lg:block` on the aside (screenplay/_components/continuity-sidebar.tsx:81); apps/e2e/tests/canon/continuity-sidebar.spec.ts:102 'is hidden below the lg breakpoint' (sidebar hidden at 800px; passed 2026-09-30, real browser, retries off)"

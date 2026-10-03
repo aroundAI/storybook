@@ -260,6 +260,15 @@ create trigger account_ai_settings_set_timestamps
 --   keeps p_error); a terminal run never moves again (RUN_NOT_OPEN).
 -- record_content_revision(p_run_id uuid, p_snapshot jsonb) returns uuid
 --   files the snapshot under the run's own account, target and stage.
+-- submit_generation_run_part(p_run_id uuid, p_part_key text, p_output jsonb,
+--   p_validation jsonb, p_accepted boolean, p_model text) returns jsonb
+--   (FILM-1908, migrations/20261003121205): stores a part an external agent
+--   submitted; only the opener of an open external run, 1-100 character key,
+--   at most 256 KB. Accepted replaces the output and keeps the failures; a
+--   rejection is appended to validation.failures (newest 20) and never
+--   replaces an accepted output. Renews the lease, moves briefed to
+--   in_progress, merges a reported model into origin. {ok: true, run, part}
+--   or {ok: false, code: 'RUN_NOT_OPEN' | 'RUN_NOT_FOUND'}.
 
 -- Realtime: the studio pages show the lease banner and refresh on commit
 alter publication supabase_realtime add table public.generation_runs;

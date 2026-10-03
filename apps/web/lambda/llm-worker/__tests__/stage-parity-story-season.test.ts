@@ -219,7 +219,8 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
                   ...write,
                   payload: {
                     ...(write.payload as object),
-                    generation_origin: SERVER_ORIGIN,
+                    // under its own stage key (FILM-1908)
+                    generation_origin: { story: SERVER_ORIGIN },
                   },
                 }
               : write.table === 'character_states' && write.op === 'insert'
@@ -308,7 +309,7 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
               ideas: IDEATION_ORCHESTRATOR_RESULT.ideas,
               ideas_generated_at: NOW.toISOString(),
             },
-            generation_origin: SERVER_ORIGIN,
+            generation_origin: { ideation: SERVER_ORIGIN },
           },
           filters: [
             { method: 'eq', args: ['id', IDS.episodeId] },
@@ -372,7 +373,10 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
           }),
       );
       expect(writes[0]!.payload).toEqual(
-        rows.map((row) => ({ ...row, generation_origin: SERVER_ORIGIN })),
+        rows.map((row) => ({
+          ...row,
+          generation_origin: { season_outline: SERVER_ORIGIN },
+        })),
       );
       expect(rows[0]).toMatchObject({
         number: 3,

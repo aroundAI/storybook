@@ -407,7 +407,7 @@ describe('screenplay', () => {
     expect(writes[0]?.payload).toMatchObject({
       status: 'storyboard',
       updated_at: NOW.toISOString(),
-      generation_origin: run.origin,
+      generation_origin: { screenplay: run.origin },
       screenplay_data: {
         totalDialogueLines: 3,
         estimatedDuration: 60,

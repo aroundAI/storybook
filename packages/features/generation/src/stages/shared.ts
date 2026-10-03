@@ -11,9 +11,15 @@ import {
   type ProjectType,
   ProjectTypeSchema,
 } from '@kit/film-studio-schemas/project';
-import type { Database } from '@kit/supabase/database';
+import type { Database, Json } from '@kit/supabase/database';
 
-import type { CheckError, Ctx, EpisodeContextSnapshot } from '../types';
+import type {
+  CheckError,
+  Ctx,
+  EpisodeContextSnapshot,
+  GenerationOrigin,
+  StageKey,
+} from '../types';
 
 export const uuid = z.string().uuid();
 
@@ -113,3 +119,17 @@ export function projectMetadataOf(
 
 export const ASSET_NAME_MAX = 255;
 export const EPISODE_TITLE_MAX = 255;
+
+/**
+ * `episodes.generation_origin` is keyed by stage (EDD "Additive columns";
+ * get_episode reads it per stage): a commit writes its own stage's key and
+ * keeps every other one. On an update, list the column in the write's
+ * `merge` so the database applies `generation_origin || patch` in place;
+ * an insert takes the object as it is (FILM-1908).
+ */
+export function stageOrigin(stage: StageKey, origin: GenerationOrigin): Json {
+  return { [stage]: origin } as unknown as Json;
+}
+
+/** The `merge` entry an episode update that stamps its stage's origin lists. */
+export const ORIGIN_MERGE = 'generation_origin';
