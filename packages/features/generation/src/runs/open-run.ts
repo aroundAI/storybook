@@ -52,6 +52,24 @@ function applySettings(
 }
 
 /**
+ * The mode for a new run, with the team settings it was decided from (null
+ * for a render stage, which reads none). The gateway reads the daily spend
+ * cap from the same row.
+ */
+export async function resolveRunPolicy(
+  stage: StageKey,
+  accountId: string,
+  ctx: RunCtx,
+): Promise<{ mode: GenerationMode; settings: AiSettings | null }> {
+  if (RENDER_STAGES.has(stage)) return { mode: 'server', settings: null };
+
+  const requested = ctx.connectionId ? 'external' : ctx.runMode?.();
+  const settings = await readAiSettings(ctx.client, accountId);
+
+  return { mode: applySettings(requested, settings), settings };
+}
+
+/**
  * The mode for a new run. Exported for the tests; callers go through
  * `openRun`.
  */
@@ -60,12 +78,7 @@ export async function resolveRunMode(
   accountId: string,
   ctx: RunCtx,
 ): Promise<GenerationMode> {
-  if (RENDER_STAGES.has(stage)) return 'server';
-
-  const requested = ctx.connectionId ? 'external' : ctx.runMode?.();
-  const settings = await readAiSettings(ctx.client, accountId);
-
-  return applySettings(requested, settings);
+  return (await resolveRunPolicy(stage, accountId, ctx)).mode;
 }
 
 /**

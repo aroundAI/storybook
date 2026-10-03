@@ -38,6 +38,7 @@ export type Database = {
         Row: {
           account_id: string
           created_at: string
+          daily_llm_spend_cap_usd: number | null
           default_mode: string
           external_generation_enabled: boolean
           performance_context_enabled: boolean
@@ -47,6 +48,7 @@ export type Database = {
         Insert: {
           account_id: string
           created_at?: string
+          daily_llm_spend_cap_usd?: number | null
           default_mode?: string
           external_generation_enabled?: boolean
           performance_context_enabled?: boolean
@@ -56,6 +58,7 @@ export type Database = {
         Update: {
           account_id?: string
           created_at?: string
+          daily_llm_spend_cap_usd?: number | null
           default_mode?: string
           external_generation_enabled?: boolean
           performance_context_enabled?: boolean
@@ -7017,6 +7020,14 @@ export type Database = {
       is_team_member: {
         Args: { account_id: string; user_id: string }
         Returns: boolean
+      }
+      llm_spend_since: {
+        Args: { p_account_id: string; p_since: string }
+        Returns: {
+          priced_calls: number
+          spent_usd: number
+          unpriced_calls: number
+        }[]
       }
       match_audio_assets: {
         Args: {
