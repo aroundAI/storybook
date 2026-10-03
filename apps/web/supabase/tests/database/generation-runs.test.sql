@@ -3,7 +3,7 @@ create extension "basejump-supabase_test_helpers" version '0.0.6';
 
 -- A fixed count, so a run that aborts early fails as a plan mismatch rather
 -- than reading like a nearly-passing suite (revenue-records-rls.test.sql).
-select plan(46);
+select plan(47);
 
 -- FILM-1903 part A: the database half of generation runs. Every lock, the
 -- one-open-run index, the read policies, the owner-only settings write and
@@ -177,6 +177,13 @@ select lives_ok(
   $$ insert into public.llm_usage_analytics (account_id, template_slug, llm_provider, llm_model, status)
      values (current_setting('gr.team')::uuid, 'story-generation', 'gemini', 'gemini-2.5-pro', 'success') $$,
   'L2 part A: a usage row with no run is still accepted (NOT NULL is part C)'
+);
+
+select lives_ok(
+  $$ insert into public.llm_usage_analytics (account_id, template_slug, operation_name, llm_provider, llm_model, status, run_id)
+     values (current_setting('gr.team')::uuid, null, 'embedding', 'voyage', 'voyage-3-large', 'success',
+             '19030000-0000-4000-8000-0000000000a1') $$,
+  'L2 FILM-1902: an embedding has no prompt template, so a usage row with a null template_slug is accepted'
 );
 
 -- ------------------------------------------------------------------

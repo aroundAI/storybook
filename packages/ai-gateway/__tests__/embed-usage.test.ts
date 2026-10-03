@@ -83,6 +83,8 @@ describe('the embedder writes a usage row with its run (FILM-1902)', () => {
       requestConfig: { inputType: 'document', inputCount: 2 },
     });
     expect(row).toHaveProperty('latencyMs');
+    // An embedding has no prompt template: null in the table, not a sentinel
+    expect(row.templateSlug).toBeUndefined();
     // No Voyage price is known: absent, never 0
     expect(row.totalCost).toBeUndefined();
   });

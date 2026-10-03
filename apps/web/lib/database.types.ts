@@ -3356,7 +3356,7 @@ export type Database = {
           response_metadata: Json | null
           run_id: string | null
           status: string
-          template_slug: string
+          template_slug: string | null
           total_cost: number | null
           total_tokens: number | null
           user_id: string | null
@@ -3379,7 +3379,7 @@ export type Database = {
           response_metadata?: Json | null
           run_id?: string | null
           status: string
-          template_slug: string
+          template_slug?: string | null
           total_cost?: number | null
           total_tokens?: number | null
           user_id?: string | null
@@ -3402,7 +3402,7 @@ export type Database = {
           response_metadata?: Json | null
           run_id?: string | null
           status?: string
-          template_slug?: string
+          template_slug?: string | null
           total_cost?: number | null
           total_tokens?: number | null
           user_id?: string | null

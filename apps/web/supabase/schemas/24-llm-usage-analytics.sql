@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS public.llm_usage_analytics (
   id uuid UNIQUE NOT NULL DEFAULT extensions.uuid_generate_v4(),
   account_id uuid REFERENCES public.accounts(id) ON DELETE CASCADE NOT NULL,
   user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-  template_slug text NOT NULL,
+  template_slug text,
   operation_name text NOT NULL,
   llm_provider text NOT NULL,
   llm_model text NOT NULL,
