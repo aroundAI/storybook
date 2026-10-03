@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(33);
+select plan(34);
 
 -- FILM-1903 part B: the lifecycle functions a run is driven through, with
 -- real roles. openRun, renewLease, the status transitions and the revision
@@ -121,6 +121,19 @@ select is(
     p_origin := '{}'::jsonb
   ) ->> 'ok')::boolean, true,
   'O4 analytics_insights on a project target opens'
+);
+
+-- the story page's documentary fact check (FILM-1902): a server-only key
+select is(
+  (public.open_generation_run(
+    p_account_id := current_setting('lc.team')::uuid,
+    p_project_id := '19031000-0000-4000-8000-000000000001',
+    p_target_type := 'project', p_target_id := '19031000-0000-4000-8000-000000000001',
+    p_stage := 'fact_check', p_mode := 'server',
+    p_input := '{}'::jsonb,
+    p_origin := '{}'::jsonb
+  ) ->> 'ok')::boolean, true,
+  'O4 fact_check on a project target opens'
 );
 
 select is(
