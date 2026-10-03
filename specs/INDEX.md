@@ -666,7 +666,7 @@ The web app keeps generating with Gemini on Vertex AI; the app also serves a rem
 | FILM-1909 | [external-generation-all-stages](./phase-19-dual-ai-mcp/FILM-1909-external-generation-all-stages.yaml) | DRAFT | L | FILM-1908 |
 | FILM-1910 | [dual-mode-web-ux](./phase-19-dual-ai-mcp/FILM-1910-dual-mode-web-ux.yaml) | DONE | M | FILM-1903, FILM-1908 |
 | FILM-1911 | [dual-ai-general-availability](./phase-19-dual-ai-mcp/FILM-1911-dual-ai-general-availability.yaml) | PARTIAL | S | FILM-1907, FILM-1909, FILM-1910 |
-| FILM-1912 | [performance-context](./phase-19-dual-ai-mcp/FILM-1912-performance-context.yaml) | DRAFT | M | FILM-1911, FILM-1732, FILM-1906 |
+| FILM-1912 | [performance-context](./phase-19-dual-ai-mcp/FILM-1912-performance-context.yaml) | PARTIAL | M | FILM-1911, FILM-1732, FILM-1906 |
 
 ### Spikes
 
