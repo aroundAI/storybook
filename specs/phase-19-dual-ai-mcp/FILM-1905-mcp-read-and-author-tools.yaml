@@ -3,7 +3,7 @@ title: "MCP Read and Author Tools for Studio Content"
 phase: 19
 phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
 category: feature
-status: PARTIAL
+status: DONE
 effort: M
 dependencies:
   - spec_id: "FILM-1904"
@@ -23,8 +23,8 @@ acceptance_criteria:
     met: true
     evidence: "packages/features/studio-mcp/src/server/tools/read/index.ts:14 (the eight tools, all studio:read and readOnlyHint); every handler returns text and structuredContent, asserted per tool in packages/features/studio-mcp/__tests__/tools/read-tools.test.ts:31 and over the wire with the SDK client in packages/features/studio-mcp/__tests__/contract.test.ts:185 (#564)"
   - text: "get_episode returns the stage status the studio pages derive (draft → story → storyboard → …, episodes.status), the story, a screenplay summary, counts, and the origin of each stage (FILM-1903)"
-    met: false
-    reason: "in part — status, the six stages as locked/available/done (the workspace tabs' rule, packages/features/studio-mcp/src/server/tools/read/stage-status.ts:79), the story, a screenplay summary and counts of scenes, shots, dialogue lines and assets are returned (packages/features/studio-mcp/src/server/tools/read/episodes.ts:175; packages/features/studio-mcp/__tests__/contract.test.ts:475). The origin per stage is read from episodes.generation_origin when the column exists (packages/features/studio-mcp/src/server/tools/read/episodes.ts:223); FILM-1903 adds it on a parallel branch, so today every stage reports origin null with a note saying so"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/tools/read/episodes.ts:176 (get_episode: status, the six stages as locked/available/done by the workspace tabs' rule in packages/features/studio-mcp/src/server/tools/read/stage-status.ts:79, the story, a screenplay summary, counts of scenes, shots, dialogue lines and assets, and origin.perStage read from episodes.generation_origin, FILM-1903's column keyed by stage, mapped onto the studio stages in stage-status.ts:112 so a refinement counts as its stage); a seeded episode whose story was stamped external reports that origin on the story stage and null on the hand-written screenplay in packages/features/studio-mcp/__tests__/contract.test.ts:475 (#564)"
   - text: "Lists and long content page with cursor and limit (max 50, scenes as the unit for screenplay, shots and dialogue), and each tool description says so"
     met: true
     evidence: "packages/features/studio-mcp/src/server/tools/pagination.ts:10 (PAGE_LIMIT_MAX 50), :13 (the note every paged description carries), :77 (sceneWindow: whole scenes per page); packages/features/studio-mcp/__tests__/tools/read-tools.test.ts:59 (cursor and limit on every paged tool, 51 refused, descriptions name cursor, limit and 50); get_screenplay paged 2+2+1 over the wire in packages/features/studio-mcp/__tests__/contract.test.ts:475 (#564)"
@@ -46,10 +46,6 @@ test_plan:
   integration:
     - {text: "With a seeded team and a PAT: list_projects returns only that team's projects; a second team's episode id returns NOT_FOUND", met: true, evidence: "packages/features/studio-mcp/__tests__/contract.test.ts:431 and :340 — FILM-1904's contract test extended with the tools (MCP_CONTRACT_SEED=1 seeds two teams and mints the token through create_mcp_personal_access_token; the SDK client over Streamable HTTP); run 2026-10-03 on lane B both in-process (the route handlers behind the client's fetch) and against next dev on :3212, 12/12 each. NOT_FOUND, not FORBIDDEN: the tools scope every read to the bound team on top of RLS"}
   e2e: []
-remaining:
-  - criterion: "get_episode returns the origin of each stage"
-    reason: "episodes.generation_origin does not exist yet; the tool reads it when present and returns origin null with a note until then"
-    closed_by: "FILM-1903"
 open_questions: []
 notes: |
   Studio stage data lives as JSONB on episodes (story_data, screenplay_data,
@@ -77,6 +73,13 @@ notes: |
     @kit/assets/schemas/location.
   - Every read is scoped to the bound team (`project.account_id`) on top of
     RLS, so a row of another team the user also belongs to is NOT_FOUND.
+  - The per-stage origin is `episodes.generation_origin` (FILM-1903's
+    migration 20261002201011, keyed by the generation stage keys: story,
+    screenplay, story_refinement, …); get_episode maps those keys onto the six
+    studio stages and reports null for a stage no run has committed. The
+    first draft of this spec expected the column to land later; it was on
+    main by the time #564 rebased, so the criterion is met rather than
+    deferred.
   - Two kinds of refusal reach a client: the SDK validates inputSchema before
     the handler and answers JSON-RPC -32602 (the SDK client throws); a refusal
     the handler or the database makes (slug taken, episode number taken,

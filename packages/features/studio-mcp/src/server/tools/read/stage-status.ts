@@ -55,7 +55,7 @@ export interface StageStatus {
   key: StageKey;
   label: string;
   state: StageState;
-  /** From episodes.generation_origin[key] once FILM-1903 adds the column; null until then. */
+  /** From episodes.generation_origin, keyed by FILM-1903's stage keys; null until a commit stamps the stage. */
   origin: Record<string, unknown> | null;
 }
 
@@ -104,13 +104,31 @@ export function deriveStages(input: StageInputs): StageStatus[] {
   }));
 }
 
+/**
+ * `episodes.generation_origin` is keyed by FILM-1903's stage keys
+ * (`StageKeySchema` in @kit/generation); the studio stage reads the first
+ * key present, a refinement counting as the stage it refined.
+ */
+const ORIGIN_KEYS: Record<StageKey, readonly string[]> = {
+  ideation: ['ideation'],
+  story: ['story', 'story_refinement'],
+  screenplay: ['screenplay', 'screenplay_refinement'],
+  shots: ['shots'],
+  audio: ['audio_cues'],
+  publish: ['publish_metadata'],
+};
+
 function originOf(
   origin: Record<string, unknown> | null,
   key: StageKey,
 ): Record<string, unknown> | null {
-  const value = origin?.[key];
+  for (const originKey of ORIGIN_KEYS[key]) {
+    const value = origin?.[originKey];
 
-  return value && typeof value === 'object'
-    ? (value as Record<string, unknown>)
-    : null;
+    if (value && typeof value === 'object') {
+      return value as Record<string, unknown>;
+    }
+  }
+
+  return null;
 }

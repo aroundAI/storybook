@@ -167,10 +167,11 @@ type EpisodeDetailRow = EpisodeRowLike &
     story_data: unknown;
     screenplay_data: unknown;
     shot_list: unknown;
+    generation_origin: unknown;
     final_video_url: string | null;
   };
 
-const EPISODE_DETAIL_COLUMNS = `${EPISODE_LIST_COLUMNS}, story_data, screenplay_data, shot_list`;
+const EPISODE_DETAIL_COLUMNS = `${EPISODE_LIST_COLUMNS}, story_data, screenplay_data, shot_list, generation_origin`;
 
 export const getEpisodeTool = defineTool({
   name: 'get_episode',
@@ -200,35 +201,26 @@ export const getEpisodeTool = defineTool({
       ...((metadata.location_ids as string[] | undefined) ?? []),
     ];
 
-    const [shots, dialogue, audioCues, attachedAssets, originProbe] =
-      await Promise.all([
-        client
-          .from('shots')
-          .select('id', { count: 'exact', head: true })
-          .eq('episode_id', episode.id)
-          .is('deleted_at', null),
-        client
-          .from('dialogue_lines')
-          .select('id', { count: 'exact', head: true })
-          .eq('episode_id', episode.id),
-        client
-          .from('audio_cues')
-          .select('id', { count: 'exact', head: true })
-          .eq('episode_id', episode.id),
-        client
-          .from('assets')
-          .select('id', { count: 'exact', head: true })
-          .eq('episode_id', episode.id)
-          .is('deleted_at', null),
-        // FILM-1903 adds episodes.generation_origin on a parallel branch; until
-        // it lands the column does not exist and this select fails, which is
-        // reported as "not recorded" rather than as an error.
-        client
-          .from('episodes')
-          .select('generation_origin' as 'id')
-          .eq('id', episode.id)
-          .maybeSingle(),
-      ]);
+    const [shots, dialogue, audioCues, attachedAssets] = await Promise.all([
+      client
+        .from('shots')
+        .select('id', { count: 'exact', head: true })
+        .eq('episode_id', episode.id)
+        .is('deleted_at', null),
+      client
+        .from('dialogue_lines')
+        .select('id', { count: 'exact', head: true })
+        .eq('episode_id', episode.id),
+      client
+        .from('audio_cues')
+        .select('id', { count: 'exact', head: true })
+        .eq('episode_id', episode.id),
+      client
+        .from('assets')
+        .select('id', { count: 'exact', head: true })
+        .eq('episode_id', episode.id)
+        .is('deleted_at', null),
+    ]);
 
     if (
       shots.error ||
@@ -242,20 +234,12 @@ export const getEpisodeTool = defineTool({
       );
     }
 
-    const originRow = originProbe.data as {
-      generation_origin?: unknown;
-    } | null;
-    const originAvailable =
-      !originProbe.error &&
-      originRow !== null &&
-      originRow !== undefined &&
-      'generation_origin' in originRow;
+    // episodes.generation_origin (FILM-1903) is keyed by stage and stamped by
+    // every commit; `{}` means no generated stage has been committed yet.
     const origin =
-      originAvailable &&
-      originRow?.generation_origin &&
-      typeof originRow.generation_origin === 'object'
-        ? (originRow.generation_origin as Record<string, unknown>)
-        : null;
+      episode.generation_origin && typeof episode.generation_origin === 'object'
+        ? (episode.generation_origin as Record<string, unknown>)
+        : {};
 
     const screenplay =
       (episode.screenplay_data as ScreenplayLike | null) ?? null;
@@ -318,11 +302,11 @@ export const getEpisodeTool = defineTool({
         screenplaySummary,
         counts,
         origin: {
-          available: originAvailable,
           perStage: origin,
-          note: originAvailable
-            ? 'From episodes.generation_origin, stamped by each stage commit (FILM-1903).'
-            : 'Not recorded yet: episodes.generation_origin arrives with FILM-1903; until then every stage reports origin null.',
+          note:
+            Object.keys(origin).length > 0
+              ? 'From episodes.generation_origin, stamped by each stage commit (FILM-1903): kind server, external or human, with the run, model and client.'
+              : 'No stage of this episode has been committed by a generation run yet; a hand-written story or screenplay carries no origin.',
         },
       },
     };

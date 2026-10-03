@@ -481,7 +481,7 @@ describe.skipIf(!(URL_ && TOKEN_ENV) && !SEED)(
               stages: Array<{ key: string; state: string; origin: unknown }>;
               counts: Record<string, number>;
               screenplaySummary: { scenes: number };
-              origin: { available: boolean };
+              origin: { perStage: Record<string, unknown> };
             };
 
             expect(content.episode.status).toBe('story');
@@ -499,9 +499,26 @@ describe.skipIf(!(URL_ && TOKEN_ENV) && !SEED)(
               'audio:locked',
               'publish:locked',
             ]);
-            // FILM-1903 adds episodes.generation_origin on a parallel branch.
-            expect(content.origin.available).toBe(false);
-            expect(content.stages.every((s) => s.origin === null)).toBe(true);
+            // The origin comes from episodes.generation_origin (FILM-1903),
+            // keyed by stage: the seeded story was stamped external, the
+            // screenplay carries no key, so it reads as written by hand.
+            expect(
+              content.stages.find((s) => s.key === 'story')?.origin,
+            ).toEqual({
+              kind: 'external',
+              clientName: 'contract test',
+              model: 'self',
+            });
+            expect(
+              content.stages.find((s) => s.key === 'screenplay')?.origin,
+            ).toBeNull();
+            expect(content.origin.perStage).toEqual({
+              story: {
+                kind: 'external',
+                clientName: 'contract test',
+                model: 'self',
+              },
+            });
 
             const page1 = await call('get_screenplay', {
               episodeId: teamA!.episodeId,

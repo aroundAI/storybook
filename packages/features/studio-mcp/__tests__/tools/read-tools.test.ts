@@ -223,7 +223,7 @@ describe('list_episodes and get_episode', () => {
     ).toBe(true);
   });
 
-  it('get_episode reports stages, counts and a null origin until FILM-1903 lands', async () => {
+  it('get_episode reports stages, counts and the per-stage origin from episodes.generation_origin', async () => {
     const episode = {
       id: EPISODE_ID,
       project_id: PROJECT_ID,
@@ -248,6 +248,9 @@ describe('list_episodes and get_episode', () => {
         metadata: { totalScenes: 2, estimatedDuration: 120 },
       },
       shot_list: null,
+      generation_origin: {
+        story: { kind: 'external', clientName: 'Claude', runId: 'r1' },
+      },
       deleted_at: null,
       created_at: '2026-10-03T00:00:00Z',
       updated_at: '2026-10-03T00:00:00Z',
@@ -272,7 +275,7 @@ describe('list_episodes and get_episode', () => {
       counts: Record<string, number>;
       stages: Array<{ key: string; state: string; origin: unknown }>;
       screenplaySummary: { scenes: number; headings: string[] } | null;
-      origin: { available: boolean };
+      origin: { perStage: Record<string, unknown> };
     };
 
     expect(content.episode.id).toBe(EPISODE_ID);
@@ -300,8 +303,17 @@ describe('list_episodes and get_episode', () => {
     expect(content.stages.find((s) => s.key === 'audio')?.state).toBe(
       'available',
     );
-    expect(content.stages.every((s) => s.origin === null)).toBe(true);
-    expect(content.origin.available).toBe(false);
+    expect(content.stages.find((s) => s.key === 'story')?.origin).toEqual({
+      kind: 'external',
+      clientName: 'Claude',
+      runId: 'r1',
+    });
+    expect(
+      content.stages
+        .filter((s) => s.key !== 'story')
+        .every((s) => s.origin === null),
+    ).toBe(true);
+    expect(content.origin.perStage).toEqual(episode.generation_origin);
     expect(result.text).toMatch(/Two/);
   });
 });
@@ -340,14 +352,25 @@ describe('deriveStages', () => {
       shotCount: 3,
       dialogueLineCount: 0,
       audioCueCount: 1,
-      origin: { story: { kind: 'external', client_name: 'Claude' } },
+      origin: {
+        story: { kind: 'external', client_name: 'Claude' },
+        screenplay_refinement: { kind: 'server', model: 'gemini' },
+        audio_cues: { kind: 'server' },
+      },
     });
 
     expect(stages.find((s) => s.key === 'story')?.origin).toEqual({
       kind: 'external',
       client_name: 'Claude',
     });
-    expect(stages.find((s) => s.key === 'screenplay')?.origin).toBeNull();
+    expect(stages.find((s) => s.key === 'screenplay')?.origin).toEqual({
+      kind: 'server',
+      model: 'gemini',
+    });
+    expect(stages.find((s) => s.key === 'audio')?.origin).toEqual({
+      kind: 'server',
+    });
+    expect(stages.find((s) => s.key === 'shots')?.origin).toBeNull();
     expect(stages.find((s) => s.key === 'audio')?.state).toBe('done');
   });
 });

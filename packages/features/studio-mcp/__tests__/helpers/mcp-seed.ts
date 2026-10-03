@@ -122,6 +122,11 @@ export async function seedTeam(label: string): Promise<SeededTeam> {
         logline: `The ${label} pilot`,
         fullStory: 'Once upon a time.',
       },
+      // What a FILM-1903 commit stamps: the story came from an external run,
+      // the screenplay was written by hand (no key).
+      generation_origin: {
+        story: { kind: 'external', clientName: 'contract test', model: 'self' },
+      },
       screenplay_data: {
         scenes: [
           scene(1, 'INT. HALL - DAY', 'Hall', 'day', [
