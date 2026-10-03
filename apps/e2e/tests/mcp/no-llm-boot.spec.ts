@@ -1,11 +1,21 @@
-import { expect, test } from '@playwright/test';
+import { type Page, expect, test } from '@playwright/test';
+import { mkdirSync } from 'node:fs';
 
 import {
   callMcpTool,
   listMcpTools,
   mintPersonalAccessToken,
 } from '../utils/mcp';
-import { seedProject, seedTeamAccount } from '../utils/seed';
+import {
+  insertRow,
+  readRows,
+  seedProject,
+  seedTeamAccount,
+  serviceRoleAuth,
+  uniqueStamp,
+} from '../utils/seed';
+import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 /**
  * FILM-1911, criterion 4: a deployment that holds no key to any model still
@@ -21,10 +31,25 @@ import { seedProject, seedTeamAccount } from '../utils/seed';
  *   PLAYWRIGHT_SERVER_COMMAND="node scripts/ci/no-llm-server.mjs 3001" \
  *   npx playwright test mcp/no-llm-boot --project=chromium
  *
+ * Server-mode generation is refused before a run is opened, with words
+ * the page shows (LLM_NOT_CONFIGURED, @kit/ai-gateway), on the same button
+ * FILM-1910 checks for a team that turned server mode off.
+ *
  * Every listed tool is called once with no arguments: a tool whose module or
  * handler needed a model key would answer INTERNAL (or fail the request),
  * while a working one answers, or refuses its input with a typed code.
  */
+
+async function capture(page: Page, name: string) {
+  if (!process.env.CAPTURE_EVIDENCE) return;
+
+  const dir = process.env.EVIDENCE_DIR ?? 'evidence';
+  mkdirSync(dir, { recursive: true });
+  await page.screenshot({
+    path: `${dir}/film-1911-${name}.png`,
+    fullPage: true,
+  });
+}
 
 test.describe('the app with no model variables', () => {
   test.skip(
@@ -80,7 +105,64 @@ test.describe('the app with no model variables', () => {
 
     expect(failed, 'tools that failed without model keys').toEqual([]);
   });
+
+  test('refuses server-mode generation in words, twice, and opens no run', async ({
+    page,
+  }) => {
+    const team = await seedTeamAccount({ emailPrefix: 'no-llm-generate' });
+    const project = await seedProject(team);
+    const slug = `no-llm-${uniqueStamp().slice(0, 8)}`;
+    const episode = await insertRow<{ id: string }>(
+      'episodes',
+      {
+        project_id: project.id,
+        number: 1,
+        title: 'The Lighthouse',
+        slug,
+        status: 'story',
+        story_data: {
+          title: 'The Lighthouse',
+          fullStory: 'A keeper finds a letter in the lamp room.',
+        },
+      },
+      serviceRoleAuth(),
+    );
+
+    await signInAs(page, team);
+    await page.goto(
+      `/home/${team.slug}/studio/${project.slug}/episodes/${slug}/story`,
+    );
+
+    const convert = byTest(page, 'convert-to-screenplay');
+    const refusal = page.getByText(NO_MODEL_REFUSAL, { exact: true });
+
+    await convert.click();
+    await expect(refusal.first()).toBeVisible();
+    await refusal
+      .first()
+      .evaluate((element) =>
+        Promise.all(
+          element.ownerDocument
+            .getAnimations()
+            .map((animation) => animation.finished),
+        ),
+      );
+    await capture(page, '03-no-model-refused');
+
+    // No run was left holding the stage, so the second press is refused
+    // for the same reason, not as "already being generated"
+    await expect(convert).toBeEnabled();
+    await convert.click();
+    await expect(refusal).toHaveCount(2);
+
+    expect(
+      await readRows('generation_runs', `target_id=eq.${episode.id}&select=id`),
+    ).toEqual([]);
+  });
 });
+
+const NO_MODEL_REFUSAL =
+  'This deployment has no AI model configured, so server generation is off. Use Claude through the MCP connector instead.';
 
 const INVALID_PARAMS = -32602;
 
