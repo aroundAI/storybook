@@ -31,12 +31,6 @@ import {
 } from './channel-experiment-service';
 import { withRefusals } from './with-refusals';
 
-export type {
-  AssignedVideo,
-  ChannelExperimentRow,
-  ResultsState,
-} from './channel-experiment-service';
-
 /**
  * Channel experiments (FILM-1724): each action is the cookie-session wrapper
  * over its service in `channel-experiment-service.ts` (FILM-1906), which

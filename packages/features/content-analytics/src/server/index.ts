@@ -68,8 +68,8 @@ export {
 export type {
   AnalyticsSettingsView,
   ChannelSettingsEntry,
-  UpdateAnalyticsSettingsResult,
-} from './settings-actions';
+} from './settings-service';
+export type { UpdateAnalyticsSettingsResult } from './settings-actions';
 
 // Experiment log actions (FILM-1509)
 export {
@@ -82,7 +82,7 @@ export {
   startExperimentAction,
   updateExperimentAction,
 } from './experiment-actions';
-export type { ExperimentSnapshot } from './experiment-actions';
+export type { ExperimentSnapshot } from './experiment-service';
 
 // Revenue alerts (FILM-1508)
 export { evaluateRevenueAlerts } from './revenue-alerts';
@@ -201,17 +201,17 @@ export {
 } from './report-actions';
 
 export { getVideoLogAction } from './video-log-actions';
-export type { VideoLogRow } from './video-log-actions';
+export type { VideoLogRow } from './video-log-service';
 
 export { getSegmentPerformanceAction } from './segment-actions';
 export type {
   RevenueStatus,
   SegmentPerformanceEntry,
   SegmentPerformanceResult,
-} from './segment-actions';
+} from './segment-service';
 
 export { getGenomeFindingsAction } from './genome-actions';
-export type { GenomeFindingsResult, GenomeRefusal } from './genome-actions';
+export type { GenomeFindingsResult, GenomeRefusal } from './genome-service';
 
 export { captureSubscriberSnapshots } from './subscriber-snapshot';
 export { captureChannelReachWindows } from './channel-reach-windows';

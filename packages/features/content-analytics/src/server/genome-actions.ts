@@ -8,8 +8,6 @@ import {
   getGenomeFindingsService,
 } from './genome-service';
 
-export type { GenomeFindingsResult, GenomeRefusal } from './genome-service';
-
 /**
  * Which creative mechanisms separate one channel's winners from its
  * comparable losers at one funnel stage (FILM-1717): the cookie-session

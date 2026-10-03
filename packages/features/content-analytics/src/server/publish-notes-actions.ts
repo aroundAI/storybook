@@ -7,8 +7,6 @@ import { UpdatePublishNoteSchema } from '../lib/schemas/publish-note.schema';
 import { updatePublishNoteService } from './publish-notes-service';
 import { withRefusals } from './with-refusals';
 
-export type { PublishNoteSaveResult } from './publish-notes-service';
-
 /**
  * Writes a video's analytics note: the cookie-session wrapper over
  * `updatePublishNoteService` (FILM-1906), which holds the compare-and-save

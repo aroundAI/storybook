@@ -8,12 +8,6 @@ import {
   getSegmentPerformanceService,
 } from './segment-service';
 
-export type {
-  RevenueStatus,
-  SegmentPerformanceEntry,
-  SegmentPerformanceResult,
-} from './segment-service';
-
 /**
  * Per-segment view distribution at a checkpoint age, optionally with a
  * pooled revenue rate: the cookie-session wrapper over

@@ -13,11 +13,6 @@ import {
 } from '../lib/schemas/settings.schema';
 import { getAnalyticsSettingsService } from './settings-service';
 
-export type {
-  AnalyticsSettingsView,
-  ChannelSettingsEntry,
-} from './settings-service';
-
 /**
  * The first writer `analytics_settings` has ever had (FILM-1608).
  *

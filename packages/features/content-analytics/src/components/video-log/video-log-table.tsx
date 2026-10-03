@@ -24,7 +24,7 @@ import type {
   VideoLogSortColumn,
   VideoLogView,
 } from '../../lib/video-log-paging';
-import type { VideoLogRow } from '../../server/video-log-actions';
+import type { VideoLogRow } from '../../server/video-log-service';
 import { SyncProblemBadge } from '../sync-status/sync-status';
 import {
   CheckpointCell,

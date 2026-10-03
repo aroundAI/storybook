@@ -80,7 +80,7 @@ describe('classifyModule', () => {
     expect(problems(text, listed)).toEqual([['sendContactEmail', null]]);
   });
 
-  it('refuses re-exports and default exports, and ignores types', () => {
+  it('refuses re-exports and default exports, including type re-exports, and ignores inline types', () => {
     const text = `${US}
       export type { Foo } from './foo';
       export interface Bar { x: number }
@@ -89,6 +89,7 @@ describe('classifyModule', () => {
     `;
 
     expect(problems(text).map(([, problem]) => problem)).toEqual([
+      expect.stringContaining('type re-export'),
       "re-export from a 'use server' module",
       'plain exported function',
     ]);

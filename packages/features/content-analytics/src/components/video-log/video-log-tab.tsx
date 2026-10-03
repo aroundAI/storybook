@@ -22,10 +22,8 @@ import {
   videoLogRangeLabel,
   videoLogRequest,
 } from '../../lib/video-log-paging';
-import {
-  type VideoLogRow,
-  getVideoLogAction,
-} from '../../server/video-log-actions';
+import { getVideoLogAction } from '../../server/video-log-actions';
+import type { VideoLogRow } from '../../server/video-log-service';
 import { ChannelFilter } from '../deep-dive/channel-filter';
 import { AnalyticsCard } from '../overview/analytics-card';
 import { SignalSurface } from '../signal-surface';

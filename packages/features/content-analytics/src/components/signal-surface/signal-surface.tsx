@@ -9,10 +9,8 @@ import { Button } from '@kit/ui/button';
 import { Skeleton } from '@kit/ui/skeleton';
 
 import { publishedDay } from '../../lib/signal-surface';
-import {
-  type SignalSurfaceResult,
-  getSignalSurfaceAction,
-} from '../../server/signal-surface-actions';
+import { getSignalSurfaceAction } from '../../server/signal-surface-actions';
+import type { SignalSurfaceResult } from '../../server/signal-surface-service';
 import { GenomeFindings } from './genome-findings';
 import { StageDetail } from './stage-detail';
 import { StageStrip } from './stage-strip';
