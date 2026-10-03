@@ -140,6 +140,26 @@
       "cwd": "packages/ai-gateway",
       "test": "__tests__/stage-prompts-registered.test.ts",
       "pattern": "registers each prompt a stage imports"
+    },
+    {
+      "name": "1902 the embedder stops writing its usage row",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/embedding/embed-for-server-run.ts",
+      "find": "    onRequest: (report) =>\n      recordUsage(run, {",
+      "replace": "    onRequest: (report) =>\n      void report && ((_event: unknown) => undefined)({",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/embed-usage.test.ts",
+      "pattern": "one request, one row"
+    },
+    {
+      "name": "1902 a failed embedding request writes no usage row",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/embedding/voyage-embedder.ts",
+      "find": "      await options.onRequest?.({\n        status: 'failure',",
+      "replace": "      void ({\n        status: 'failure',",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/embed-usage.test.ts",
+      "pattern": "a failed request writes a failure row"
     }
   ]
 }
