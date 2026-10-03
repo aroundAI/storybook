@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
+import { subscribeWithAuth } from '@kit/supabase/realtime/subscribe-with-auth';
 
 import {
   OPEN_RUN_STATUSES,
@@ -63,15 +64,15 @@ export function useOpenExternalRuns({
 
   const runs = query.data;
 
-  // Realtime: one channel per episode, filtered server-side to its runs
+  // Realtime: one channel per episode, filtered server-side to its runs.
+  // subscribeWithAuth gives the socket the user's token before the channel
+  // joins (KB-181): joined as `anon`, Realtime checks generation_runs_read
+  // with no user and drops every event while still reporting SUBSCRIBED.
   useEffect(() => {
-    let cancelled = false;
-    let channel: ReturnType<typeof client.channel> | null = null;
-
-    const subscribe = () =>
-      client
-        .channel(`generation-runs:${episodeId}`)
-        .on(
+    const unsubscribe = subscribeWithAuth(
+      client,
+      (authed) =>
+        authed.channel(`generation-runs:${episodeId}`).on(
           'postgres_changes',
           {
             event: '*',
@@ -90,27 +91,24 @@ export function useOpenExternalRuns({
               onFinishedRef.current();
             }
           },
-        )
-        .subscribe((status) => setIsLive(status === 'SUBSCRIBED'));
+        ),
+      (status) => {
+        const live = status === 'SUBSCRIBED';
+        setIsLive(live);
 
-    // The socket must carry the user's token before the channel joins.
-    // Joined first, it joins as `anon`; Realtime then checks
-    // generation_runs_read (has_account_access) with no user and drops
-    // every event while still reporting SUBSCRIBED.
-    void client.auth.getSession().then(async ({ data }) => {
-      if (cancelled) return;
-
-      await client.realtime.setAuth(data.session?.access_token ?? null);
-
-      if (cancelled) return;
-
-      channel = subscribe();
-    });
+        // A change between the page's read and the join was never sent:
+        // read once more as the channel comes up
+        if (live) {
+          void queryClient.invalidateQueries({
+            queryKey: ['open-external-runs', episodeId],
+          });
+        }
+      },
+    );
 
     return () => {
-      cancelled = true;
       setIsLive(false);
-      if (channel) void client.removeChannel(channel);
+      unsubscribe();
     };
   }, [client, queryClient, episodeId]);
 

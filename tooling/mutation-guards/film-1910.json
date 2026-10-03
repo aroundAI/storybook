@@ -28,11 +28,11 @@
       "sql": "alter table public.account_ai_settings drop constraint account_ai_settings_a_mode_allowed;"
     },
     {
-      "name": "FILM-1910 E1 the runs channel joins before it has the user's token",
+      "name": "FILM-1910 E1 the runs channel joins without the user's token",
       "kind": "e2e",
       "file": "packages/features/episodes/src/hooks/use-open-external-runs.ts",
-      "find": "      await client.realtime.setAuth(data.session?.access_token ?? null);",
-      "replace": "      void data;",
+      "find": "    const unsubscribe = subscribeWithAuth(",
+      "replace": "    const unsubscribe = ((c: typeof client, build: (c: typeof client) => ReturnType<typeof client.channel>, onStatus: (s: string) => void) => {\n      const ch = build(c).subscribe(onStatus);\n      return () => void c.removeChannel(ch);\n    })(",
       "spec": "tests/generation/dual-mode.spec.ts",
       "grep": "pauses Generate, until it ends"
     },
