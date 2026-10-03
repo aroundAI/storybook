@@ -4,7 +4,7 @@ import {
   VOYAGE_EMBEDDING_DIMENSIONS,
   VoyageEmbeddingError,
   createVoyageEmbedder,
-} from '../utils/voyage-embedder';
+} from '../src/embedding/voyage-embedder';
 
 // KB-35: every request here goes to a fake fetch. No test reaches Voyage and
 // no real key exists in this file.

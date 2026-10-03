@@ -51,11 +51,17 @@ vi.mock('@kit/supabase/require-user', () => ({
   requireUser: async () => ({ data: { id: CALLER }, error: null }),
 }));
 
-vi.mock('@kit/prompt-engine/server', () => ({
-  queueLlmJob: async (job: { jobType: string; payload: Row }) => {
-    state.sequence.push('send');
-    state.sent.push({ jobType: job.jobType, payload: job.payload });
-  },
+// The action opens a run for the job (FILM-1903), records the row with its
+// id, then dispatches: 'send' is the dispatch, after the row
+vi.mock('@kit/ai-gateway', () => ({
+  openRunForJob: async (job: { jobType: string; payload: Row }) => ({
+    id: 'run-under-test',
+    mode: 'server',
+    dispatch: async () => {
+      state.sequence.push('send');
+      state.sent.push({ jobType: job.jobType, payload: job.payload });
+    },
+  }),
 }));
 
 function query(table: string) {

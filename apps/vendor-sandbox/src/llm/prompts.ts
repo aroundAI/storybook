@@ -8,8 +8,8 @@ import type { PromptTemplate } from '@kit/prompt-engine/types';
 /**
  * The prompts the app sends. Two registries read the same files: the
  * package's (`@kit/prompt-engine/prompt-registry`, used by `executeLLM`) and
- * the llm-worker Lambda's own (`apps/web/lambda/llm-worker/prompt-registry.ts`),
- * which also carries the two refinement prompts. So the catalog is the
+ * the gateway's Lambda registry (`packages/ai-gateway/src/prompts/lambda-registry.ts`,
+ * used by `executeLLMForLambda`), which also carries the two refinement prompts. So the catalog is the
  * package registry plus every prompt file on disk it does not hold, keyed as
  * the Lambda keys them (their `slug`). Nothing is restated.
  */

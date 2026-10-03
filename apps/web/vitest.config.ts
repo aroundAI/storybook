@@ -80,6 +80,32 @@ export default defineConfig({
         __dirname,
         '../../packages/shared/src/duration-scaling/index.ts',
       ),
+      // The gateway (FILM-1902) and what it imports from prompt-engine
+      '@kit/ai-gateway/lambda-prompts': path.resolve(
+        __dirname,
+        '../../packages/ai-gateway/src/prompts/lambda-registry.ts',
+      ),
+      '@kit/ai-gateway': path.resolve(
+        __dirname,
+        '../../packages/ai-gateway/src/index.ts',
+      ),
+      '@kit/prompt-engine/normalize-llm-output': path.resolve(
+        __dirname,
+        '../../packages/features/prompt-engine/src/lib/normalize-llm-output.ts',
+      ),
+      '@kit/prompt-engine/types': path.resolve(
+        __dirname,
+        '../../packages/features/prompt-engine/src/lib/types.ts',
+      ),
+      '@kit/prompt-engine/prompt-registry': path.resolve(
+        __dirname,
+        '../../packages/features/prompt-engine/src/lib/server/prompt-registry.ts',
+      ),
+      '@kit/agent': path.resolve(
+        __dirname,
+        '../../packages/agent/src/index.ts',
+      ),
+      '@kit/llm': path.resolve(__dirname, '../../packages/llm/src/index.ts'),
       '@kit/generation/testing': path.resolve(
         __dirname,
         '../../packages/features/generation/src/testing/index.ts',

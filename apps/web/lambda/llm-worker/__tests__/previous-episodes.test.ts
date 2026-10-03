@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { withRun } from '@kit/ai-gateway';
+import { fakeRunHandle } from '@kit/generation/testing';
+
 import {
   buildEpisodeContext,
   formatPreviousEpisodesForPrompt,
@@ -207,7 +210,11 @@ function run(
     semanticQuery: 'The Keeper Returns\nThe lighthouse keeper comes home',
   },
 ) {
-  return buildEpisodeContext('e40', supabase.client, options);
+  // Semantic recall embeds through the gateway for the server run in scope
+  // (FILM-1902); the worker puts one there before any handler runs
+  return withRun(fakeRunHandle().run, () =>
+    buildEpisodeContext('e40', supabase.client, options),
+  );
 }
 
 function windowQuery(supabase: ReturnType<typeof fakeSupabase>) {

@@ -6,20 +6,56 @@
  */
 import type { z } from 'zod';
 
-import type { ChatMessage, LLMProvider, LLMUsageEvent } from '@kit/llm';
+// =============================================================================
+// MODEL ACCESS (FILM-1902)
+// =============================================================================
+
+export type AgentMessageRole = 'system' | 'user' | 'assistant';
+
+/** A conversation message; the shape the gateway's client speaks. */
+export interface AgentMessage {
+  role: AgentMessageRole;
+  content: string;
+  name?: string;
+}
+
+/** One agent step's model request: the conversation so far and the limits. */
+export interface AgentStepRequest {
+  agentName: string;
+  step: number;
+  messages: AgentMessage[];
+  temperature: number;
+  maxTokens: number;
+  provider?: string;
+  model?: string;
+}
+
+export interface AgentStepResponse {
+  content: string;
+  provider: string;
+  model: string;
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  cost?: { prompt?: number; completion?: number; total: number };
+  finishReason?: string;
+}
+
+/**
+ * How the runner reaches a model: a function the generation run supplies
+ * (`@kit/ai-gateway`'s `agentStepWriter(run)`), never a provider of its
+ * own (FILM-1902 criterion 5). The gateway checks the run before each call
+ * and writes llm_usage_analytics with the run id.
+ */
+export type AgentStepWriter = (
+  request: AgentStepRequest,
+) => Promise<AgentStepResponse>;
 
 // =============================================================================
 // TOOL TYPES
 // =============================================================================
-
-/**
- * Receives one llm_usage_analytics event per model call the runner makes
- * (FILM-1902). This package has no database client, so the host wires it:
- * the LLM worker passes the event to `logLLMUsage` with its service-role
- * client. It is awaited inside a try/catch — a logger that throws is
- * reported and the run goes on.
- */
-export type AgentUsageLogger = (event: LLMUsageEvent) => Promise<void> | void;
 
 /**
  * Execution context provided to tools during an agent run.
@@ -28,10 +64,14 @@ export type AgentUsageLogger = (event: LLMUsageEvent) => Promise<void> | void;
 export interface AgentRunContext {
   accountId: string;
   userId?: string;
-  /** The generation run (FILM-1903) stamped on every usage row of this run */
+  /** The generation run (FILM-1903) this agent works for */
   runId?: string;
-  /** Overrides the process-wide logger set with `setAgentUsageLogger` */
-  logUsage?: AgentUsageLogger;
+  /**
+   * The run's write function. Overrides the process-wide default a host
+   * installs with `setAgentStepWriter`; with neither, the run fails before
+   * any model call.
+   */
+  write?: AgentStepWriter;
   /** Allows passing arbitrary extra data to tools (e.g. _scenesContext) */
   [key: string]: unknown;
 }
@@ -164,7 +204,7 @@ export interface AgentConfig {
   /** Budget limits for cost/token/time control */
   budgetLimits: BudgetLimits;
   /** LLM provider override (defaults to env config) */
-  provider?: LLMProvider | string;
+  provider?: string;
   /** LLM model override (defaults to env config) */
   model?: string;
   /** Temperature override for the agent's LLM calls */
@@ -228,8 +268,3 @@ export type ParsedAgentResponse =
       type: 'final_answer';
       result: unknown;
     };
-
-/**
- * Conversation message used internally by the runner.
- */
-export type AgentMessage = ChatMessage;

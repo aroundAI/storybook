@@ -113,7 +113,7 @@ export async function POST(request: Request) {
     let factExtractionJobId: string | undefined;
 
     if (extractFacts) {
-      const { queueLlmJob } = await import('@kit/prompt-engine/server');
+      const { openRunForJob } = await import('@kit/ai-gateway');
 
       // KB-31: queueLlmJob needs a target; the access gate above is KB-26's
       const target = await authorizeProjectTarget(client, projectId);
@@ -127,18 +127,23 @@ export async function POST(request: Request) {
 
       // Queue fact extraction for each chunk
       for (const chunk of chunks) {
-        await queueLlmJob({
-          jobType: 'fact-extraction',
-          userId: user.id,
-          target,
-          payload: {
-            content: chunk,
-            projectId,
-            sourceTitle: file.name,
-            sourceCitation: file.name,
+        const run = await openRunForJob(
+          {
+            jobType: 'fact-extraction',
             userId: user.id,
+            target,
+            payload: {
+              content: chunk,
+              projectId,
+              sourceTitle: file.name,
+              sourceCitation: file.name,
+              userId: user.id,
+            },
+            name: 'research.upload',
           },
-        });
+          { client: client, accountId: target.accountId, userId: user.id },
+        );
+        await run.dispatch();
       }
 
       factExtractionJobId = `batch-${crypto.randomUUID()}`;

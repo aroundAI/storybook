@@ -6,12 +6,47 @@ import { runFactCheck } from '../documentary/fact-checker';
 // the content to the fact-checker role and returns a validated result. The
 // LLM and the database are fakes; what is checked is what the function does
 // with them.
+//
+// FILM-1902: the gateway's executeLLM refuses without a run (LLM_NO_RUN),
+// so the fake keeps that rule, and the action opens a `fact_check` run on
+// the project, writes through it and closes it.
 
 const executeLLM = vi.fn();
+const runs = vi.hoisted(
+  () =>
+    [] as Array<{
+      stage: string;
+      target: Record<string, unknown>;
+      ctx: Record<string, unknown>;
+      run: import('@kit/generation').RunHandle;
+    }>,
+);
 
-vi.mock('@kit/prompt-engine/server', () => ({
-  executeLLM: (...args: unknown[]) => executeLLM(...args),
-}));
+vi.mock('@kit/ai-gateway', async (importOriginal) => {
+  const gateway = await importOriginal<typeof import('@kit/ai-gateway')>();
+  const { fakeRunHandle } = await import('@kit/generation/testing');
+
+  return {
+    executeLLM: (config: { templateSlug: string; run?: never }) => {
+      gateway.requireRun(`executeLLM(${config.templateSlug})`, config.run);
+      return executeLLM(config);
+    },
+    openRun: async (
+      stage: string,
+      target: Record<string, unknown>,
+      _origin: unknown,
+      ctx: Record<string, unknown>,
+    ) => {
+      // The fake store's ids are its own UUIDs; `target` is what was asked
+      const { run } = fakeRunHandle({
+        stage: stage as never,
+        targetType: 'project',
+      });
+      runs.push({ stage, target, ctx, run });
+      return run;
+    },
+  };
+});
 
 const factsQuery = vi.fn();
 
@@ -61,6 +96,7 @@ function llmReturns(factCheck: Record<string, unknown>) {
 describe('runFactCheck (FILM-1123)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    runs.length = 0;
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     factsQuery.mockReturnValue({ data: [FACT], error: null });
   });
@@ -83,6 +119,31 @@ describe('runFactCheck (FILM-1123)', () => {
       accountId: 'account-1',
       userId: 'user-1',
     });
+  });
+
+  it('writes through a fact_check run on the project, and closes it (FILM-1902)', async () => {
+    llmReturns({});
+
+    await runFactCheck('project-1', 'The dam opened in 1936.');
+
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({
+      stage: 'fact_check',
+      target: { type: 'project', id: 'project-1', accountId: 'account-1' },
+      ctx: { accountId: 'account-1', userId: 'user-1' },
+    });
+    expect(executeLLM.mock.calls[0]![0].run).toBe(runs[0]!.run);
+    expect(runs[0]!.run.status).toBe('committed');
+  });
+
+  it('marks the run failed when the model call fails', async () => {
+    executeLLM.mockRejectedValue(new Error('model down'));
+
+    await expect(runFactCheck('project-1', 'text')).rejects.toThrow(
+      'model down',
+    );
+
+    expect(runs[0]!.run.status).toBe('failed');
   });
 
   it('maps a passing check', async () => {
@@ -166,6 +227,7 @@ describe('runFactCheck (FILM-1123)', () => {
     const result = await runFactCheck('project-1', 'text', ['A claim']);
 
     expect(executeLLM).not.toHaveBeenCalled();
+    expect(runs).toEqual([]);
     expect(result).toMatchObject({
       overallVerdict: 'fail',
       citationsValid: false,

@@ -26,7 +26,7 @@ import {
 import type { AudioCueGenerationOutput } from '@kit/prompt-engine/schemas';
 import type { Database } from '@kit/supabase/database';
 
-import { workerCtx } from '../utils/stage-runtime';
+import { stageRunDeps, workerCtx } from '../utils/stage-runtime';
 
 /**
  * Above this many shots the orchestrator runs once per scene: its 40K token
@@ -59,7 +59,7 @@ export async function processAudioCueGeneration(
         userId: data.userId ?? '',
       }),
       target,
-      { generate: orchestratedAudioCues(data) },
+      { ...stageRunDeps(), generate: orchestratedAudioCues(data) },
     );
 
     return { success: true, cuesCreated: commit.data.cuesCreated };

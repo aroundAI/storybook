@@ -22,44 +22,124 @@
       "pattern": "reaches no model host outside the gateway allowlist"
     },
     {
-      "name": "the agent runner stops logging its model calls",
+      "name": "1902 a feature package imports the model client package",
       "kind": "unit",
-      "file": "packages/agent/src/runner.ts",
-      "find": "  const logUsage = runContext.logUsage ?? defaultUsageLogger;",
-      "replace": "  const logUsage: AgentUsageLogger | undefined = undefined;",
-      "cwd": "packages/agent",
-      "test": "__tests__/runner-usage.test.ts",
-      "pattern": "logs a successful call"
+      "file": "packages/features/episodes/src/server/story-actions.ts",
+      "find": "import { ActionRefusal } from '@kit/next/action-result';\n",
+      "replace": "import { ActionRefusal } from '@kit/next/action-result';\nimport { createLLMClient } from '@kit/llm';\nexport const plantedClient = createLLMClient;\n",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/model-boundary.test.ts",
+      "pattern": "no source file outside the gateway imports"
     },
     {
-      "name": "the Lambda executor stops writing the usage row",
+      "name": "1902 the guard lets an external run reach a model",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/llm-utils.ts",
-      "find": "    await logLLMUsage(client, event);",
-      "replace": "    void [client, event];",
-      "cwd": "apps/web",
-      "test": "lambda/llm-worker/__tests__/executor-usage.test.ts",
+      "file": "packages/ai-gateway/src/guard.ts",
+      "find": "  if (run.mode !== 'server') {",
+      "replace": "  if (false) {",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/writers.test.ts",
+      "pattern": "the guard refuses a run that is external with"
+    },
+    {
+      "name": "1902 the guard lets a closed run reach a model",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/guard.ts",
+      "find": "  if (!run.isOpen()) {",
+      "replace": "  if (false) {",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/writers.test.ts",
+      "pattern": "the guard refuses a run that is cancelled with"
+    },
+    {
+      "name": "1902 run.write reaches the writer for an external run",
+      "kind": "unit",
+      "file": "packages/features/generation/src/runs/run-handle.ts",
+      "find": "    if (this.row.mode === 'external') {\n      throw new RunError(\n        'AWAITING_SUBMISSION',",
+      "replace": "    if (false) {\n      throw new RunError(\n        'AWAITING_SUBMISSION',",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/writers.test.ts",
+      "pattern": "an external run never reaches the server writer"
+    },
+    {
+      "name": "1902 the usage row loses its run id",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/executors/usage.ts",
+      "find": "      runId: run.id,\n    });",
+      "replace": "      runId: undefined,\n    });",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/execute-llm-lambda-usage.test.ts",
+      "pattern": "logs a successful call through the service-role client with the run"
+    },
+    {
+      "name": "1902 the Lambda executor stops writing the usage row",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/executors/usage.ts",
+      "find": "    await logLLMUsage(client, {\n      ...event,\n      accountId: run.accountId,\n      userId: event.userId ?? run.createdBy,\n      runId: run.id,\n    });",
+      "replace": "    void [client, event, run];",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/execute-llm-lambda-usage.test.ts",
       "pattern": "logs a successful call through the service-role"
     },
     {
-      "name": "the Lambda executor logs nothing when the call fails",
+      "name": "1902 the Lambda executor logs nothing when the call fails",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/llm-utils.ts",
-      "find": "    // Log the call (failure), then let the job fail as before\n    await recordUsage({",
+      "file": "packages/ai-gateway/src/executors/execute-llm-lambda.ts",
+      "find": "    // Log the call (failure), then let the job fail as before\n    await recordUsage(run, {",
       "replace": "    await Promise.resolve({",
-      "cwd": "apps/web",
-      "test": "lambda/llm-worker/__tests__/executor-usage.test.ts",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/execute-llm-lambda-usage.test.ts",
       "pattern": "logs a failed call with the provider"
     },
     {
-      "name": "the stage runtime stops naming the job's account on its model call",
+      "name": "1902 the usage row stops naming the run's account",
       "kind": "unit",
-      "file": "apps/web/lambda/llm-worker/utils/stage-runtime.ts",
-      "find": "      accountId: ctx.accountId,\n      userId: ctx.userId,\n",
+      "file": "packages/ai-gateway/src/executors/usage.ts",
+      "find": "      accountId: run.accountId,\n",
+      "replace": "      accountId: '00000000-0000-4000-8000-000000000000',\n",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/execute-llm-lambda-usage.test.ts",
+      "pattern": "with the run’s identity"
+    },
+    {
+      "name": "1902 the agent writer stops logging its steps",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/agent-writer.ts",
+      "find": "      await recordUsage(run, {\n        ...usageBase,\n        promptTokens: response.usage.promptTokens,",
+      "replace": "      void ({\n        ...usageBase,\n        promptTokens: response.usage.promptTokens,",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/agent-writer.test.ts",
+      "pattern": "logs each step with the run id"
+    },
+    {
+      "name": "1902 the agent runner builds its own writer",
+      "kind": "unit",
+      "file": "packages/agent/src/runner.ts",
+      "find": "  const write = runContext.write ?? defaultStepWriter;",
+      "replace": "  const write = runContext.write ?? defaultStepWriter ?? (async () => ({ content: '{\"action\":\"final_answer\",\"result\":\"leaked\"}', provider: 'x', model: 'x', usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 } }));",
+      "cwd": "packages/agent",
+      "test": "__tests__/runner.test.ts",
+      "pattern": "fails before any model call when the context has no write function"
+    },
+    {
+      "name": "1902 the documentary fact check calls the model with no run",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/documentary/fact-checker.ts",
+      "find": "      run,\n      templateSlug: 'documentary/fact-checker-role',",
+      "replace": "      templateSlug: 'documentary/fact-checker-role',",
+      "cwd": "packages/features/episodes",
+      "test": "src/lib/__tests__/fact-checker-run.test.ts",
+      "pattern": "writes through a fact_check run"
+    },
+    {
+      "name": "1902 the Lambda registry has no fact-extraction prompt",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/prompts/lambda-registry.ts",
+      "find": "  'fact-extraction': factExtraction as LambdaPromptTemplate,\n",
       "replace": "",
-      "cwd": "apps/web",
-      "test": "lambda/llm-worker/__tests__/executor-usage.test.ts",
-      "pattern": "stage-runtime.ts passes accountId"
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/stage-prompts-registered.test.ts",
+      "pattern": "registers each prompt a stage imports"
     }
   ]
 }

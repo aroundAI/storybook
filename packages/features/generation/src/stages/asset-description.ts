@@ -14,6 +14,7 @@ import { z } from 'zod';
 
 import extractAssetDescriptionPrompt from '@kit/prompt-engine/prompts/story-generation/extract-asset-description.json';
 import { sanitizeForPrompt } from '@kit/shared/prompt-sanitiser';
+import type { Json } from '@kit/supabase/database';
 
 import { type PromptFile, buildBrief, singlePart } from '../brief';
 import { registerStage } from '../registry';
@@ -133,7 +134,7 @@ async function check(
 
 async function commit(
   ctx: Ctx,
-  _run: GenerationRun,
+  run: GenerationRun,
   target: AssetDescriptionTarget,
   outputs: AssetDescriptionOutput[],
 ): Promise<CommitResult<AssetDescriptionData>> {
@@ -159,6 +160,11 @@ async function commit(
           ? { role: asset.role, autoCreated: true }
           : { autoCreated: true },
         deleted_at: null,
+        // Who wrote the description (FILM-1903); the column exists since
+        // part A, so `originColumnsAvailable` is the caller's say
+        ...(ctx.originColumnsAvailable
+          ? { generation_origin: run.origin as unknown as Json }
+          : {}),
       },
       { onConflict: 'project_id,type,name', ignoreDuplicates: false },
     )

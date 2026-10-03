@@ -307,22 +307,27 @@ const generateAudioForCue = enhanceAction(
       requireAffectedRows(generating, "You can't generate audio for this cue.");
 
       // 2. Enqueue LLM job for background processing
-      const { queueLlmJob } = await import('@kit/prompt-engine/server');
+      const { openRunForJob } = await import('@kit/ai-gateway');
 
-      await queueLlmJob({
-        jobType: 'audio-file-generation',
-        userId: user.id,
-        target,
-        payload: {
-          cueId: data.cueId,
-          projectId,
-          episodeId: cue.episode_id,
-          cueType: cueType.data,
-          prompt: cue.prompt,
-          durationSeconds: cue.duration_seconds ?? 60,
-          startOffsetSeconds: cue.start_offset_seconds ?? 0,
+      const run = await openRunForJob(
+        {
+          jobType: 'audio-file-generation',
+          userId: user.id,
+          target,
+          payload: {
+            cueId: data.cueId,
+            projectId,
+            episodeId: cue.episode_id,
+            cueType: cueType.data,
+            prompt: cue.prompt,
+            durationSeconds: cue.duration_seconds ?? 60,
+            startOffsetSeconds: cue.start_offset_seconds ?? 0,
+          },
+          name: 'audio.generateAudioFile',
         },
-      });
+        { client: client, accountId: target.accountId, userId: user.id },
+      );
+      await run.dispatch();
 
       // 3. Return immediately - result comes via WebSocket
       return { success: true, status: 'queued' };
@@ -500,7 +505,21 @@ export const generateAudioCuesAction = enhanceAction(
     }
 
     try {
-      const { queueLlmJob } = await import('@kit/prompt-engine/server');
+      const { openRunForJob } = await import('@kit/ai-gateway');
+
+      const run = await openRunForJob(
+        {
+          jobType: 'audio-cue-generation',
+          userId: user.id,
+          target,
+          payload: {
+            episodeId: data.episodeId,
+            projectId,
+          },
+          name: 'audio.generateAudioCues',
+        },
+        { client: client, accountId: target.accountId, userId: user.id },
+      );
 
       // Create generation job entry for tracking
       const { error: jobError } = await client.from('generation_jobs').insert({
@@ -512,6 +531,7 @@ export const generateAudioCuesAction = enhanceAction(
         project_id: projectId,
         idempotency_key: `audio-cues-${data.episodeId}-${Date.now()}`,
         input_data: { episodeId: data.episodeId },
+        run_id: run.id,
       });
 
       if (jobError) {
@@ -521,15 +541,7 @@ export const generateAudioCuesAction = enhanceAction(
         );
       }
 
-      await queueLlmJob({
-        jobType: 'audio-cue-generation',
-        userId: user.id,
-        target,
-        payload: {
-          episodeId: data.episodeId,
-          projectId,
-        },
-      });
+      await run.dispatch();
 
       return { success: true, queued: true };
     } catch (error) {

@@ -2,6 +2,7 @@ import eslint from '@eslint/js';
 import turboConfig from 'eslint-config-turbo/flat';
 import tsEsLint from 'typescript-eslint';
 
+import { restrictedImports } from './model-boundary.js';
 import nextConfig from './nextjs.js';
 
 export default tsEsLint.config(
@@ -47,18 +48,9 @@ export default tsEsLint.config(
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: 'react-i18next',
-              importNames: ['Trans'],
-              message: 'Please use `@kit/ui/trans` instead',
-            },
-          ],
-        },
-      ],
+      // The Trans rule, and the model-import boundary (FILM-1902): see
+      // model-boundary.js; apps.js carries the same for app/**
+      'no-restricted-imports': restrictedImports(),
     },
   },
   {

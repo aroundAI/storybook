@@ -49,7 +49,7 @@ const evaluateSeasonArcTool = createTool({
 
   execute: async ({ episodes, genre, seasonPremise }, context) => {
     try {
-      const { executeLLM } = await import('@kit/prompt-engine/server');
+      const { executeLLM } = await import('@kit/ai-gateway');
 
       const result = await executeLLM<ArcEvaluation>({
         templateSlug: 'quality-evaluation/season-arc',

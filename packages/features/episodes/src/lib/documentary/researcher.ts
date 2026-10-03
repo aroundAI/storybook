@@ -68,7 +68,7 @@ export async function runResearchPhase(
   premise?: string,
   targetClaims?: string[],
 ): Promise<ResearchResult> {
-  const { executeLLM } = await import('@kit/prompt-engine/server');
+  const { executeLLM } = await import('@kit/ai-gateway');
   const { accountId, userId, supabase } = await getProjectContext(projectId);
 
   // Fetch verified facts for this project

@@ -1,6 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { recordingClient, tableResponder } from '@kit/generation/testing';
+import { withRun } from '@kit/ai-gateway';
+import {
+  fakeRunHandle,
+  recordingClient,
+  tableResponder,
+} from '@kit/generation/testing';
 
 import fixture from '../../../../../packages/features/generation/__tests__/fixtures/audio-cues-fixture.json';
 import audioOld from '../../../../../packages/features/generation/__tests__/fixtures/audio-cues-old-writes.json';
@@ -16,7 +21,9 @@ const cues = fixture.cues as Cue[];
  * The audio-cue handler on the `audio_cues` stage (FILM-1901): one
  * orchestrator run, its cues split by the scene of their first shot, then
  * the stage's check and commit. The writes are the ones the old handler made
- * for the same fixture (recorded before its body was deleted).
+ * for the same fixture (recorded before its body was deleted), plus who
+ * wrote the cues: the handler runs under the audio_cues run the job boundary
+ * put in scope (FILM-1903), whose origin each cue carries.
  *
  * KB-92: a cue takes its scene from the shot it starts on, and a shot's
  * scene is optional. A cue on a sceneless shot is saved with no scene,
@@ -49,6 +56,23 @@ function pagedShots(shots: unknown[]) {
   });
 }
 
+/** The audio_cues run in scope; the orchestrator writes, so its writer is never reached. */
+function audioRun() {
+  return fakeRunHandle({
+    stage: 'audio_cues',
+    accountId: fixture.ids.accountId,
+    projectId: fixture.ids.projectId,
+    targetId: fixture.ids.episodeId,
+    createdBy: fixture.ids.userId,
+    backend: {
+      write: async () => {
+        throw new Error('the audio_cues run writes through its orchestrator');
+      },
+      dispatch: async () => undefined,
+    },
+  }).run;
+}
+
 describe('processAudioCueGeneration', () => {
   beforeAll(() => {
     vi.useFakeTimers({ toFake: ['Date'] });
@@ -60,9 +84,9 @@ describe('processAudioCueGeneration', () => {
   it('writes the rows the old handler wrote: a sceneless cue with no scene (KB-92), the cue on a missing shot dropped', async () => {
     const recording = pagedShots(fixture.shots);
 
-    const result = await processAudioCueGeneration(
-      fixture.ids,
-      recording.client,
+    const run = audioRun();
+    const result = await withRun(run, () =>
+      processAudioCueGeneration(fixture.ids, recording.client),
     );
 
     expect(result).toEqual({ success: true, cuesCreated: 4 });
@@ -74,7 +98,19 @@ describe('processAudioCueGeneration', () => {
         .map((w) => JSON.parse(JSON.stringify(w)) as unknown)
         .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
 
-    expect(sorted(recording.writes())).toEqual(sorted(audioOld.writes));
+    const origin = { kind: 'server', runId: run.id, at: fixture.now };
+    const expected = audioOld.writes.map((write) =>
+      write.table === 'audio_cues' && write.op === 'insert'
+        ? {
+            ...write,
+            payload: (write.payload as Array<Record<string, unknown>>).map(
+              (row) => ({ ...row, generation_origin: origin }),
+            ),
+          }
+        : write,
+    );
+
+    expect(sorted(recording.writes())).toEqual(sorted(expected));
 
     const inserted = recording.writes().find((w) => w.table === 'audio_cues')!
       .payload as Array<Record<string, unknown>>;
@@ -101,7 +137,9 @@ describe('processAudioCueGeneration', () => {
       });
 
     await expect(
-      processAudioCueGeneration(fixture.ids, recording.client),
+      withRun(audioRun(), () =>
+        processAudioCueGeneration(fixture.ids, recording.client),
+      ),
     ).rejects.toThrow(
       /audio_cues output for part scene:1 rejected: cues\.0\.type invalid_enum_value/,
     );

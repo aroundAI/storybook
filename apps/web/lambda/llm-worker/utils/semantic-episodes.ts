@@ -8,7 +8,7 @@
  */
 import { createHash } from 'node:crypto';
 
-import type { Embedder } from './voyage-embedder';
+import type { Embedder } from '@kit/ai-gateway';
 
 /** Voyage truncates long inputs itself; this keeps requests small. */
 export const MAX_DOCUMENT_CHARS = 4_000;

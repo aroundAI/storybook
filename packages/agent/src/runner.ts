@@ -1,19 +1,17 @@
 /**
  * Agent Runner
  *
- * The core agent execution loop. Uses `createLLMClient` from @kit/llm
- * to implement a tool-calling loop where:
+ * The core agent execution loop: a tool-calling loop where
  *
  * 1. Tool definitions are injected into the system prompt
- * 2. LLM responds with structured JSON (tool_call or final_answer)
+ * 2. The model responds with structured JSON (tool_call or final_answer)
  * 3. Runner parses, dispatches tools, feeds results back
  * 4. Loop continues until final_answer or budget/step limit hit
  *
- * This is vendor-independent — works with any LLM provider supported by @kit/llm.
+ * The runner never reaches a model itself (FILM-1902): each step goes
+ * through the `write` function the generation run supplies, which the
+ * gateway checks against the run and logs with its id.
  */
-import { LLMError, createLLMClient, forcedLocalConfig } from '@kit/llm';
-import type { LLMProvider, LLMUsageEvent } from '@kit/llm';
-
 import { BudgetExceededError, createBudgetTracker } from './budget';
 import { applySkills } from './skills';
 import type {
@@ -22,39 +20,35 @@ import type {
   AgentRunContext,
   AgentRunResult,
   AgentStep,
+  AgentStepWriter,
   AgentTool,
-  AgentUsageLogger,
   ParsedAgentResponse,
 } from './types';
 
 // =============================================================================
-// USAGE LOGGING (FILM-1902)
+// MODEL ACCESS (FILM-1902)
 // =============================================================================
 
-let defaultUsageLogger: AgentUsageLogger | undefined;
+let defaultStepWriter: AgentStepWriter | undefined;
 
 /**
- * Installs the process-wide usage logger every run without its own
- * `runContext.logUsage` reports to. The LLM worker calls this once at
- * start-up with `logLLMUsage` bound to its service-role client; tests and
- * hosts that never call it get a runner that logs nothing.
+ * Installs the process-wide write function every run without its own
+ * `runContext.write` uses. The LLM worker calls this once at start-up with
+ * the gateway's writer for the run in scope; tests and hosts that never
+ * call it get a runner that refuses before any model call.
  */
-export function setAgentUsageLogger(logger: AgentUsageLogger | undefined) {
-  defaultUsageLogger = logger;
+export function setAgentStepWriter(writer: AgentStepWriter | undefined) {
+  defaultStepWriter = writer;
 }
 
-async function reportUsage(
-  logger: AgentUsageLogger | undefined,
-  agentName: string,
-  event: LLMUsageEvent,
-) {
-  if (!logger) return;
+/** Thrown when a run has no write function: nothing outside a run reaches a model. */
+export class AgentNoWriterError extends Error {
+  override readonly name = 'AgentNoWriterError';
+  readonly code = 'LLM_NO_RUN';
 
-  try {
-    await logger(event);
-  } catch (error) {
-    console.error(
-      `[Agent:${agentName}] Failed to log LLM usage: ${(error as Error).message}`,
+  constructor(agentName: string) {
+    super(
+      `[Agent:${agentName}] no write function: pass runContext.write from the generation run, or install one with setAgentStepWriter (FILM-1902)`,
     );
   }
 }
@@ -256,30 +250,6 @@ export class AgentParseError extends Error {
 }
 
 // =============================================================================
-// API KEY RESOLUTION
-// =============================================================================
-
-/**
- * Resolves API key for the given provider from environment variables.
- */
-function getApiKeyForProvider(provider: string): string {
-  switch (provider) {
-    case 'openai':
-      return process.env.OPENAI_API_KEY ?? '';
-    case 'anthropic':
-      return process.env.ANTHROPIC_API_KEY ?? '';
-    case 'gemini':
-      return process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY ?? '';
-    case 'deepseek':
-      return process.env.DEEPSEEK_API_KEY ?? '';
-    case 'local':
-      return 'not-needed';
-    default:
-      return '';
-  }
-}
-
-// =============================================================================
 // RETRY HELPER
 // =============================================================================
 
@@ -393,57 +363,34 @@ export async function runAgent<T = unknown>(
     resolved.tools,
   );
 
-  // Create LLM client
-  const forcedLocal = forcedLocalConfig();
-  const provider = (forcedLocal?.provider ??
-    resolved.provider ??
-    'gemini') as LLMProvider;
-  const model = forcedLocal?.model ?? resolved.model ?? 'gemini-3.1-flash-lite';
+  const write = runContext.write ?? defaultStepWriter;
+
+  if (!write) {
+    const error = new AgentNoWriterError(config.name);
+    console.error(error.message);
+
+    return {
+      success: false,
+      error: error.message,
+      budget: budget.getState(),
+      steps,
+    };
+  }
+
+  const temperature = resolved.temperature ?? 0.3;
+  const maxTokensPerStep = resolved.maxTokensPerStep ?? 4000;
 
   console.log(
-    `[Agent:${config.name}] Starting. Provider: ${provider}, Model: ${model}, ` +
+    `[Agent:${config.name}] Starting. ` +
       `MaxSteps: ${resolved.maxSteps}, Tools: [${resolved.tools.map((t) => t.name).join(', ')}], ` +
       `SystemPrompt: ${systemPrompt.length} chars, UserPrompt: ${input.userPrompt.length} chars`,
   );
-
-  const llm = createLLMClient(
-    forcedLocal ?? {
-      provider,
-      model,
-      apiKey: getApiKeyForProvider(provider),
-      baseUrl: provider === 'local' ? process.env.LOCAL_API_URL : undefined,
-      vertexai: provider === 'gemini' && process.env.GEMINI_VERTEXAI === 'true',
-      project: process.env.GOOGLE_CLOUD_PROJECT,
-      location: process.env.GOOGLE_CLOUD_LOCATION,
-    },
-  );
-
-  const logUsage = runContext.logUsage ?? defaultUsageLogger;
-  const temperature = resolved.temperature ?? 0.3;
-  const maxTokensPerStep = resolved.maxTokensPerStep ?? 4000;
-  const usageBase = {
-    accountId: runContext.accountId,
-    userId: runContext.userId,
-    runId: runContext.runId,
-    templateSlug: `agent/${config.name}`,
-    operationName: config.name,
-    llmProvider: provider,
-    llmModel: model,
-  } satisfies Partial<LLMUsageEvent>;
 
   // Start conversation
   conversationHistory.push({ role: 'user', content: input.userPrompt });
 
   for (let stepIdx = 0; stepIdx < resolved.maxSteps; stepIdx++) {
     const stepStartTime = Date.now();
-    const requestConfig = {
-      step: stepIdx + 1,
-      temperature,
-      maxTokens: maxTokensPerStep,
-    };
-    // One row per model call: the catch below logs a failure only when the
-    // call itself failed, not when a tool threw after a logged success
-    let usageReported = false;
 
     // OPT-4: Pre-step budget check — estimate if the next step would
     // exceed the token budget. Uses a rough estimate based on current
@@ -493,18 +440,21 @@ export async function runAgent<T = unknown>(
     );
 
     try {
-      // 1. Call LLM with retry for transient capacity errors (503, 429)
-      // Matches the retry behavior in executeLLM (prompt-engine) which
-      // successfully handles 503 spikes for skill/tool LLM calls.
+      // 1. Ask the run for this step, with retry for transient capacity
+      // errors (503, 429), as executeLLM does for skill and tool calls.
       const response = await executeWithRetry(
         () =>
-          llm.createChatCompletion({
+          write({
+            agentName: config.name,
+            step: stepIdx + 1,
             messages: [
               { role: 'system', content: systemPrompt },
               ...conversationHistory,
             ],
             temperature,
             maxTokens: maxTokensPerStep,
+            provider: resolved.provider,
+            model: resolved.model,
           }),
         config.name,
         stepIdx + 1,
@@ -518,21 +468,6 @@ export async function runAgent<T = unknown>(
         `[Agent:${config.name}] Step ${stepIdx + 1} — LLM responded in ${stepLatency}ms, ` +
           `tokens: ${tokens}, cost: $${cost.toFixed(4)}`,
       );
-
-      usageReported = true;
-      await reportUsage(logUsage, config.name, {
-        ...usageBase,
-        promptTokens: response.usage.promptTokens,
-        completionTokens: response.usage.completionTokens,
-        totalTokens: tokens,
-        promptCost: response.cost?.prompt,
-        completionCost: response.cost?.completion,
-        totalCost: response.cost?.total,
-        latencyMs: stepLatency,
-        status: 'success',
-        requestConfig,
-        responseMetadata: { finishReason: response.finishReason },
-      });
 
       // 2. Track budget
       budget.record(tokens, cost, stepLatency);
@@ -552,7 +487,7 @@ export async function runAgent<T = unknown>(
       }
 
       // 4. Parse response
-      const responseContent = response.message.content ?? '';
+      const responseContent = response.content ?? '';
 
       // Log a preview of the raw LLM response (first 500 chars)
       console.log(
@@ -723,26 +658,6 @@ export async function runAgent<T = unknown>(
       console.error(
         `[Agent:${config.name}] Step ${stepIdx + 1} — LLM CALL FAILED: ${(error as Error).message}`,
       );
-
-      if (!usageReported) {
-        await reportUsage(logUsage, config.name, {
-          ...usageBase,
-          promptTokens: 0,
-          completionTokens: 0,
-          totalTokens: 0,
-          latencyMs: Date.now() - stepStartTime,
-          status: 'failure',
-          errorCode:
-            error instanceof LLMError
-              ? (error.code ?? 'UNKNOWN_ERROR')
-              : 'UNKNOWN_ERROR',
-          errorMessage: ((error as Error).message ?? String(error)).substring(
-            0,
-            1000,
-          ),
-          requestConfig,
-        });
-      }
 
       steps.push({
         type: 'tool_call',

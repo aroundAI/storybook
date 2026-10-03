@@ -52,7 +52,7 @@ const identifyResearchNeedsTool = createTool({
   }),
   execute: async ({ topic, premise, existingFacts, targetClaims }, context) => {
     try {
-      const { executeLLM } = await import('@kit/prompt-engine/server');
+      const { executeLLM } = await import('@kit/ai-gateway');
 
       const result = await executeLLM<ResearchResult>({
         templateSlug: 'documentary/researcher-role',

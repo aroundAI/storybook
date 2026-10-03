@@ -16,7 +16,7 @@ import {
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
-import { generateWithLambda, workerCtx } from '../utils/stage-runtime';
+import { stageRunDeps, workerCtx } from '../utils/stage-runtime';
 
 export async function processSeasonAnalysis(
   payload: Record<string, unknown>,
@@ -34,9 +34,12 @@ export async function processSeasonAnalysis(
   });
   const target = seasonAnalysisStage.targetSchema.parse(data);
 
-  const { commit } = await runStage(seasonAnalysisStage, ctx, target, {
-    generate: generateWithLambda(ctx, 'season-analysis'),
-  });
+  const { commit } = await runStage(
+    seasonAnalysisStage,
+    ctx,
+    target,
+    stageRunDeps(),
+  );
 
   const result = commit.data.analysis;
 

@@ -1,6 +1,7 @@
 import Ajv from 'ajv';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { fakeRunHandle } from '@kit/generation/testing';
 import { PROMPT_REGISTRY } from '@kit/prompt-engine/prompt-registry';
 
 import { TEMPLATE_SCHEMAS } from '../src/llm/generate/templates';
@@ -24,10 +25,13 @@ import {
  * parse the reply exactly as they do in production. Only usage logging -
  * a Supabase write - is stubbed. Two executors exist and both are run:
  *
- * - `executeLLM` (`@kit/prompt-engine`), for the 29 prompts in its registry;
- * - `executeLLMForLambda` (the llm-worker), where every studio stage runs.
- *   It never validates against a prompt's Zod schema, so this test does,
- *   with the executor's own compile.
+ * - `executeLLM` (`@kit/ai-gateway`), for the 29 prompts in its registry;
+ * - `executeLLMForLambda` (the gateway's Lambda executor), where every
+ *   studio stage runs. It never validates against a prompt's Zod schema, so
+ *   this test does, with the executor's own compile.
+ *
+ * Both need a generation run (FILM-1902): a fake open server run stands in,
+ * so the guard passes and the usage row names it.
  */
 
 vi.mock('@kit/supabase/lambda-admin-client', () => ({
@@ -100,8 +104,8 @@ describe('the catalog', () => {
   });
 });
 
-describe('through executeLLM (@kit/prompt-engine)', async () => {
-  const { executeLLM } = await import('@kit/prompt-engine/server');
+describe('through executeLLM (@kit/ai-gateway)', async () => {
+  const { executeLLM } = await import('@kit/ai-gateway');
   const registered = catalog.filter((p) => p.key in PROMPT_REGISTRY);
 
   it('covers the whole package registry', () => {
@@ -114,6 +118,7 @@ describe('through executeLLM (@kit/prompt-engine)', async () => {
     '%s',
     async (key, prompt) => {
       const run = executeLLM({
+        run: fakeRunHandle().run,
         templateSlug: key,
         variables: variablesFor(variableNames(prompt)),
         context: {
@@ -146,12 +151,10 @@ describe('through executeLLM (@kit/prompt-engine)', async () => {
   );
 });
 
-describe('through executeLLMForLambda (the llm-worker)', async () => {
-  const { executeLLMForLambda } = await import(
-    '../../web/lambda/llm-worker/llm-utils'
-  );
+describe('through executeLLMForLambda (the gateway’s Lambda executor)', async () => {
+  const { executeLLMForLambda } = await import('@kit/ai-gateway');
   const { PROMPT_REGISTRY: LAMBDA_REGISTRY } = await import(
-    '../../web/lambda/llm-worker/prompt-registry'
+    '@kit/ai-gateway/lambda-prompts'
   );
 
   // One run per distinct prompt, under the first key that names it.
@@ -171,6 +174,7 @@ describe('through executeLLMForLambda (the llm-worker)', async () => {
     expect(prompt, `${key} is not in the sandbox catalog`).toBeDefined();
 
     const result = await executeLLMForLambda({
+      run: fakeRunHandle().run,
       templateSlug: key,
       variables: variablesFor(Object.keys(template.variables ?? {})),
     });

@@ -45,6 +45,7 @@
   },
   "dependencies": {
     "@kit/agent": "workspace:*",
+    "@kit/ai-gateway": "workspace:*",
     "@kit/assets": "workspace:*",
     "@kit/cache": "workspace:*",
     "@kit/film-studio-schemas": "workspace:*",

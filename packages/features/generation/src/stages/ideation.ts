@@ -185,7 +185,7 @@ export const ideationStage: StageDefinition<
     return errors;
   },
 
-  async commit(ctx, _run, target, outputs) {
+  async commit(ctx, run, target, outputs) {
     const out = outputs[0]!;
     const generatedAt = new Date().toISOString();
     const episode = await readEpisode(ctx.client, target.episodeId);
@@ -212,6 +212,8 @@ export const ideationStage: StageDefinition<
           ideas: out.ideas,
           ideas_generated_at: generatedAt,
         } as Json,
+        // Who wrote it: the run's origin (FILM-1903)
+        generation_origin: run.origin as unknown as Json,
       })
       .eq('id', target.episodeId)
       .is('deleted_at', null)

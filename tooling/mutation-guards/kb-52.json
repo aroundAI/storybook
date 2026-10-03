@@ -40,31 +40,31 @@
     {
       "name": "KB-52 the executor logs a successful call through the caller's client again",
       "kind": "unit",
-      "file": "packages/features/prompt-engine/src/lib/server/llm-executor.ts",
-      "find": "    // missing env vars or import errors never crash the LLM result.\n    try {\n      await recordUsage({",
-      "replace": "    // missing env vars or import errors never crash the LLM result.\n    try {\n      const injected = (config as { supabaseClient?: unknown }).supabaseClient;\n      await (injected\n        ? (e: LLMUsageEvent) => logLLMUsage(injected as never, e)\n        : recordUsage)({",
-      "cwd": "packages/features/prompt-engine",
-      "test": "__tests__/llm-executor-usage-client.test.ts",
+      "file": "packages/ai-gateway/src/executors/usage.ts",
+      "find": "    await logLLMUsage(client, {\n      ...event,",
+      "replace": "    await logLLMUsage(run.ctx.client as never, {\n      ...event,",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/execute-llm-usage-client.test.ts",
       "pattern": "logs a successful call"
     },
     {
       "name": "KB-52 the executor logs a failed call through the caller's client again",
       "kind": "unit",
-      "file": "packages/features/prompt-engine/src/lib/server/llm-executor.ts",
-      "find": "    // Log analytics (failure) - also inside try/catch (same reason as above)\n    try {\n      await recordUsage({",
-      "replace": "    // Log analytics (failure) - also inside try/catch (same reason as above)\n    try {\n      const injected = (config as { supabaseClient?: unknown }).supabaseClient;\n      await (injected\n        ? (e: LLMUsageEvent) => logLLMUsage(injected as never, e)\n        : recordUsage)({",
-      "cwd": "packages/features/prompt-engine",
-      "test": "__tests__/llm-executor-usage-client.test.ts",
+      "file": "packages/ai-gateway/src/executors/usage.ts",
+      "find": "    await logLLMUsage(client, {\n      ...event,",
+      "replace": "    await logLLMUsage(run.ctx.client as never, {\n      ...event,",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/execute-llm-usage-client.test.ts",
       "pattern": "logs a failed call"
     },
     {
       "name": "KB-52 a missing service-role client is passed on as undefined again",
       "kind": "unit",
-      "file": "packages/features/prompt-engine/src/lib/server/llm-executor.ts",
-      "find": "  if (!client) {\n    throw new Error('Service-role client unavailable: LLM usage not logged');\n  }\n\n  await logLLMUsage(client, event);",
-      "replace": "  await logLLMUsage(client ?? (undefined as never), event);",
-      "cwd": "packages/features/prompt-engine",
-      "test": "__tests__/llm-executor-usage-client.test.ts",
+      "file": "packages/ai-gateway/src/executors/usage.ts",
+      "find": "    if (!client) {\n      throw new Error('Service-role client unavailable: LLM usage not logged');\n    }\n\n    await logLLMUsage(client, {",
+      "replace": "    await logLLMUsage(client as never, {",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/execute-llm-usage-client.test.ts",
       "pattern": "no service-role client"
     }
   ]

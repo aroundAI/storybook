@@ -246,7 +246,7 @@ const extractFactsFromContent = enhanceAction(
       const { chunkTextForExtraction } = await import(
         '../lib/server/pdf-extractor'
       );
-      const { queueLlmJob } = await import('@kit/prompt-engine/server');
+      const { openRunForJob } = await import('@kit/ai-gateway');
 
       const chunks = chunkTextForExtraction(data.content);
 
@@ -258,18 +258,23 @@ const extractFactsFromContent = enhanceAction(
       }
 
       for (const chunk of chunks) {
-        await queueLlmJob({
-          jobType: 'fact-extraction',
-          userId: user.id,
-          target,
-          payload: {
-            content: chunk,
-            projectId: data.projectId,
-            sourceTitle: data.sourceTitle,
-            sourceCitation: data.sourceCitation ?? data.sourceTitle,
+        const run = await openRunForJob(
+          {
+            jobType: 'fact-extraction',
             userId: user.id,
+            target,
+            payload: {
+              content: chunk,
+              projectId: data.projectId,
+              sourceTitle: data.sourceTitle,
+              sourceCitation: data.sourceCitation ?? data.sourceTitle,
+              userId: user.id,
+            },
+            name: 'episodes.uploadSource',
           },
-        });
+          { client: supabase, accountId: target.accountId, userId: user.id },
+        );
+        await run.dispatch();
       }
 
       return {

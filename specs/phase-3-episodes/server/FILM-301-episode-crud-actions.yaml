@@ -49,49 +49,49 @@ acceptance_criteria:
     evidence: "apps/web/supabase/tests/database/create-policies-refuse-outsiders.test.sql:82"
   - text: "`getEpisodeWithShotsAction` returns episode with all related shots"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:575"
+    evidence: "packages/features/episodes/src/server/actions.ts:481"
   - text: "`getEpisodeWithShotsAction` includes season information"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:668 (`episode.season ?? null`, the embed is an object; same fix in packages/features/episodes/src/server/queries.ts:170, packages/features/episodes/src/hooks/use-episode-query.ts:129 and apps/web/lambda/llm-worker/utils/queries.ts:213); test packages/features/episodes/__tests__/episode-season-and-shot-delete.test.ts:110"
+    evidence: "packages/features/episodes/src/server/actions.ts:574 (`episode.season ?? null`, the embed is an object; same fix in packages/features/episodes/src/server/queries.ts:170, packages/features/episodes/src/hooks/use-episode-query.ts:129 and apps/web/lambda/llm-worker/utils/queries.ts:213); test packages/features/episodes/__tests__/episode-season-and-shot-delete.test.ts:110"
   - text: "`updateEpisodeStatusAction` enforces valid status transitions"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:729"
+    evidence: "packages/features/episodes/src/server/actions.ts:635"
   - text: "`updateEpisodeStatusAction` throws error on version mismatch"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:723"
+    evidence: "packages/features/episodes/src/server/actions.ts:629"
   - text: "`updateEpisodeStatusAction` increments version on success"
     met: true
     evidence: "apps/web/supabase/migrations/20251205125737_film-studio-tables.sql:113"
   - text: "`listProjectEpisodesAction` returns all non-deleted episodes"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:832"
+    evidence: "packages/features/episodes/src/server/actions.ts:738"
   - text: "`listProjectEpisodesAction` filters by season and status"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:837"
+    evidence: "packages/features/episodes/src/server/actions.ts:743"
   - text: "`listProjectEpisodesAction` respects pagination"
     met: true
-    evidence: "`packages/features/episodes/src/server/actions.ts:834`, `packages/features/episodes/src/lib/schemas.ts:93`"
+    evidence: "`packages/features/episodes/src/server/actions.ts:740`, `packages/features/episodes/src/lib/schemas.ts:93`"
   - text: "`updateEpisodeAction` updates only provided fields"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:915"
+    evidence: "packages/features/episodes/src/server/actions.ts:803"
   - text: "`updateEpisodeAction` validates version for optimistic locking"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:910"
+    evidence: "packages/features/episodes/src/server/episode.service.ts:205"
   - text: "`deleteEpisodeAction` soft deletes episode and all shots"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:1067-1072 (shots get deleted_at set, filtered on deleted_at is null); test packages/features/episodes/__tests__/episode-season-and-shot-delete.test.ts:128; the shot read also filters deleted rows at packages/features/episodes/src/server/actions.ts:590 (test :116)"
+    evidence: "packages/features/episodes/src/server/actions.ts:1067-1072 (shots get deleted_at set, filtered on deleted_at is null); test packages/features/episodes/__tests__/episode-season-and-shot-delete.test.ts:128; the shot read also filters deleted rows at packages/features/episodes/src/server/actions.ts:496 (test :116)"
   - text: "All actions enforce authentication"
     met: true
-    evidence: "`packages/features/episodes/src/server/actions.ts:66`, `packages/next/src/actions/index.ts:43`"
+    evidence: "`packages/features/episodes/src/server/actions.ts:65`, `packages/next/src/actions/index.ts:43`"
   - text: "All actions complete within 3 seconds"
     met: false
     reason: "part: the database work behind the create and read actions is timed against the 3-second budget (apps/e2e/tests/performance/performance.spec.ts, a few milliseconds); the server action's own overhead is not, because a server action cannot be called without its build-specific id"
   - text: "All inputs validated with Zod schemas"
     met: true
-    evidence: "`packages/features/episodes/src/server/actions.ts:189` (a `schema` on every action)"
+    evidence: "`packages/features/episodes/src/server/actions.ts:129` (a `schema` on every action)"
   - text: "All database errors properly caught and thrown"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:759"
+    evidence: "packages/features/episodes/src/server/actions.ts:665"
   - text: "TypeScript compiles without errors"
     met: true
     evidence: "`tsc --noEmit` in `packages/features/episodes` at 3017b6f9: no errors in the package"

@@ -68,13 +68,16 @@ vi.mock('@kit/audit-logs/server', () => ({
 
 vi.mock('next/cache', () => ({ revalidatePath: () => undefined }));
 
-vi.mock('@kit/prompt-engine/server', async () => {
+// The actions open a run for the job (FILM-1903) where they used to queue it;
+// the run's input is what would have reached SQS: the real stamping and
+// cross-check, so a red run fails on the assertion, not on this mock
+vi.mock('@kit/ai-gateway', async () => {
   const { payloadForTarget } = await vi.importActual<
     typeof import('../../prompt-engine/src/lib/server/sqs-helper')
   >('../../prompt-engine/src/lib/server/sqs-helper');
 
   return {
-    queueLlmJob: async (job: {
+    openRunForJob: async (job: {
       jobType: string;
       userId: string;
       target: Parameters<typeof payloadForTarget>[0];
@@ -90,6 +93,12 @@ vi.mock('@kit/prompt-engine/server', async () => {
           ? payloadForTarget(job.target, job.payload)
           : job.payload,
       });
+
+      return {
+        id: 'run-under-test',
+        mode: 'server',
+        dispatch: async () => undefined,
+      };
     },
   };
 });

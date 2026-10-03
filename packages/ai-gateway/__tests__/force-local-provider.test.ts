@@ -1,12 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { fakeRunHandle } from '@kit/generation/testing';
 import { createLLMClient } from '@kit/llm';
 
-import { executeLLMForLambda } from '../llm-utils';
-import { PROMPT_REGISTRY } from '../prompt-registry';
+import { executeLLMForLambda } from '../src';
+import { PROMPT_REGISTRY } from '../src/prompts/lambda-registry';
 
-// FILM-1805 Half B: the Lambda copy of the executor follows the same
-// LLM_FORCE_PROVIDER=local switch, under the same gate, as prompt-engine's.
+// FILM-1805 Half B: the Lambda executor follows the LLM_FORCE_PROVIDER=local
+// switch, under the same gate, as the prompt-engine one. Both live in the
+// gateway now (FILM-1902) and build their client in one place.
 
 vi.mock('@kit/llm', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@kit/llm')>()),
@@ -30,7 +32,9 @@ const variables = Object.fromEntries(
 );
 
 const clientConfig = async () => {
-  await executeLLMForLambda({ templateSlug: slug, variables });
+  const { run } = fakeRunHandle();
+
+  await executeLLMForLambda({ run, templateSlug: slug, variables });
 
   return vi.mocked(createLLMClient).mock.calls[0]![0];
 };

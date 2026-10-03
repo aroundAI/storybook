@@ -105,7 +105,7 @@ const generateShotsTool = createTool({
     );
 
     try {
-      const { executeLLM } = await import('@kit/prompt-engine/server');
+      const { executeLLM } = await import('@kit/ai-gateway');
 
       // The job's shot length, not the LLM's choice of tool arguments (KB-120)
       const shotDuration = shotDurationFrom(context?._shotDuration);

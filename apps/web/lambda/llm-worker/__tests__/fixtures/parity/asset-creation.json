@@ -11,7 +11,13 @@
         "metadata": {
           "autoCreated": true
         },
-        "deleted_at": null
+        "deleted_at": null,
+        "generation_origin": {
+          "kind": "server",
+          "runId": "19030000-0000-4000-8000-00000000aaaa",
+          "model": "gemini-3.5-flash",
+          "at": "2026-10-03T12:00:00.000Z"
+        }
       },
       "options": {
         "onConflict": "project_id,type,name",
@@ -30,7 +36,13 @@
         "metadata": {
           "autoCreated": true
         },
-        "deleted_at": null
+        "deleted_at": null,
+        "generation_origin": {
+          "kind": "server",
+          "runId": "19030000-0000-4000-8000-00000000aaaa",
+          "model": "gemini-3.5-flash",
+          "at": "2026-10-03T12:00:00.000Z"
+        }
       },
       "options": {
         "onConflict": "project_id,type,name",

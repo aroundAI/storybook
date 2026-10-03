@@ -31,22 +31,22 @@ acceptance_criteria:
     reason: "no longer true — handler checkpoint removed in d5f6dbdc; replaced by the story agent's optional `checkContinuity` tool (`packages/features/episodes/src/agent/skills/continuity-skill.ts:180`)"
   - text: "Screenplay conversion runs checkpoint 2 when canon enabled"
     met: false
-    reason: "unverified — called at `apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:240`, but its imports reach `server-only`, which throws outside Next; likely always skipped"
+    reason: "unverified — called at `apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:203`, but its imports reach `server-only`, which throws outside Next; likely always skipped"
   - text: "Shot generation runs checkpoint 3 when canon enabled"
     met: false
     reason: "no longer true — never wired: b3eaabe2 added story and screenplay checkpoints only; no shot handler calls `runValidationCheckpoint`"
   - text: "CRITICAL violations always block generation"
     met: false
-    reason: "no longer true — screenplay runs `flexible` (`apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:243`), which passes everything; no CRITICAL severity exists"
+    reason: "no longer true — screenplay runs `flexible` (`apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:206`), which passes everything; no CRITICAL severity exists"
   - text: "HARD_FAIL violations block in strict mode only"
     met: false
-    reason: "no longer true — no caller passes `strict`, and the only caller swallows the throw (`apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:258`)"
+    reason: "no longer true — no caller passes `strict`, and the only caller swallows the throw (`apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:221`)"
   - text: "SOFT_FAIL violations logged as warnings"
     met: false
-    reason: "unverified — logged at `apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:253` only if the checkpoint loads; see the import note above"
+    reason: "unverified — logged at `apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:216` only if the checkpoint loads; see the import note above"
   - text: "Validation failure updates job status correctly"
     met: false
-    reason: "no longer true — nothing updates job status on a violation: screenplay swallows it (`apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:258`); story checkpoint removed in d5f6dbdc"
+    reason: "no longer true — nothing updates job status on a violation: screenplay swallows it (`apps/web/lambda/llm-worker/handlers/screenplay-conversion.ts:221`); story checkpoint removed in d5f6dbdc"
   - text: "Validation latency < 200ms per checkpoint"
     met: false
     reason: "unverified — no timing test or measurement exists"

@@ -128,7 +128,7 @@ const generateStoryTool = createTool({
     context,
   ) => {
     try {
-      const { executeLLM } = await import('@kit/prompt-engine/server');
+      const { executeLLM } = await import('@kit/ai-gateway');
 
       // Build the full prompt variables, injecting revision context if provided
       const promptContext = revisionInstructions

@@ -2,6 +2,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { withRun } from '@kit/ai-gateway';
+import { fakeRunHandle } from '@kit/generation/testing';
+
 import { processSeasonOutline } from '../handlers/season-outline';
 
 /**
@@ -104,23 +107,30 @@ function fact(id: string, status: string, claim = `Claim ${id}`): Row {
 }
 
 async function outline(metadata: Row, facts: Row[]) {
-  await processSeasonOutline(
-    {
-      projectId: PROJECT,
-      seasonPremise: 'A season',
-      episodeCount: 3,
-      startingNumber: 1,
-      accountId: '11111111-1111-4111-8111-111111111111',
-      userId: '77777777-7777-4777-8777-777777777777',
-    },
-    fakeClient({
-      projects: [{ id: PROJECT, name: 'P', metadata }],
-      assets: [],
-      verified_facts: facts,
-    }),
+  await withRun(seasonRun(), () =>
+    processSeasonOutline(
+      {
+        projectId: PROJECT,
+        seasonPremise: 'A season',
+        episodeCount: 3,
+        startingNumber: 1,
+        accountId: '11111111-1111-4111-8111-111111111111',
+        userId: '77777777-7777-4777-8777-777777777777',
+      },
+      fakeClient({
+        projects: [{ id: PROJECT, name: 'P', metadata }],
+        assets: [],
+        verified_facts: facts,
+      }),
+    ),
   );
 
   return orchestratorInputs.at(-1)?.verifiedFacts;
+}
+
+/** The run the handler runs under (FILM-1903); the orchestrator above is its model. */
+function seasonRun() {
+  return fakeRunHandle({ targetType: 'season', projectId: PROJECT }).run;
 }
 
 beforeEach(() => {
@@ -211,29 +221,31 @@ describe('season outline facts (KB-71)', () => {
 
 describe('single-episode regeneration (KB-121)', () => {
   it('hands the orchestrator the neighbouring outlines and the writer’s note', async () => {
-    await processSeasonOutline(
-      {
-        projectId: PROJECT,
-        seasonPremise: 'A season',
-        episodeCount: 1,
-        startingNumber: 3,
-        accountId: '11111111-1111-4111-8111-111111111111',
-        userId: '77777777-7777-4777-8777-777777777777',
-        surroundingEpisodes: [
-          {
-            number: 2,
-            title: 'The Leak',
-            premise: 'Maya finds the memo.',
-            mainPlot: 'She tells the wrong person.',
-            arcPosition: 'rising',
-          },
-        ],
-        additionalContext: 'Keep Maya sympathetic.',
-      },
-      fakeClient({
-        projects: [{ id: PROJECT, name: 'P', metadata: {} }],
-        assets: [],
-      }),
+    await withRun(seasonRun(), () =>
+      processSeasonOutline(
+        {
+          projectId: PROJECT,
+          seasonPremise: 'A season',
+          episodeCount: 1,
+          startingNumber: 3,
+          accountId: '11111111-1111-4111-8111-111111111111',
+          userId: '77777777-7777-4777-8777-777777777777',
+          surroundingEpisodes: [
+            {
+              number: 2,
+              title: 'The Leak',
+              premise: 'Maya finds the memo.',
+              mainPlot: 'She tells the wrong person.',
+              arcPosition: 'rising',
+            },
+          ],
+          additionalContext: 'Keep Maya sympathetic.',
+        },
+        fakeClient({
+          projects: [{ id: PROJECT, name: 'P', metadata: {} }],
+          assets: [],
+        }),
+      ),
     );
 
     const neighbours = orchestratorInputs.at(-1)?.neighbouringEpisodes;

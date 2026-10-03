@@ -52,7 +52,7 @@ const factCheckContentTool = createTool({
   }),
   execute: async ({ content, verifiedFacts, requiredClaims }, context) => {
     try {
-      const { executeLLM } = await import('@kit/prompt-engine/server');
+      const { executeLLM } = await import('@kit/ai-gateway');
 
       const result = await executeLLM<FactCheckResult>({
         templateSlug: 'documentary/fact-checker-role',

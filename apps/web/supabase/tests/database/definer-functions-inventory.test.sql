@@ -35,6 +35,8 @@ select results_eq(
        ('public.batch_create_shots'),
        -- every episode in p_account_id and can_write_project(its project) (KB-27)
        ('public.bulk_reset_episodes_to_stage'),
+       -- predicate about the caller: service role, or can_write_project of the run's project, or the caller's team membership when it has none; a personal account refused (FILM-1903, KB-99)
+       ('public.can_drive_generation_run'),
        -- predicate about the caller
        ('public.can_edit_project'),
        -- the file name's account is the caller, or has_permission settings.manage on it (KB-53)
@@ -84,6 +86,8 @@ select results_eq(
        ('public.is_project_owner'),
        -- requires the caller's own membership of the account
        ('public.is_team_member'),
+       -- can_drive_generation_run of the arguments; created_by is the caller unless the service role names the user (FILM-1903)
+       ('public.open_generation_run'),
        -- no caller check: answers only whether the project id belongs to the
        -- account id, both supplied by the caller — an oracle to someone who
        -- already holds both UUIDs, and no row data (KB-113)
@@ -92,6 +96,10 @@ select results_eq(
        -- account id, both supplied by the caller — an oracle to someone who
        -- already holds both UUIDs, and no row data (KB-113)
        ('public.publish_in_account'),
+       -- can_drive_generation_run of the run; files the revision under the run's own target (FILM-1903)
+       ('public.record_content_revision'),
+       -- can_drive_generation_run of the run (FILM-1903)
+       ('public.renew_generation_run_lease'),
        -- can_write_project of the revision target's project; writes the replaced content as a new revision first (FILM-1903)
        ('public.restore_content_revision'),
        -- can_edit_project (project owner/admin) of the fact's project (KB-18)
@@ -102,6 +110,8 @@ select results_eq(
        -- account id, both supplied by the caller — an oracle to someone who
        -- already holds both UUIDs, and no row data (KB-98)
        ('public.tag_in_account'),
+       -- can_drive_generation_run of the run; a terminal run never moves again (FILM-1903)
+       ('public.transition_generation_run'),
        -- can_write_project of the character's project; a missing character is refused the same way (FILM-202)
        ('public.update_character_with_details'),
        -- project_members owner/admin/member

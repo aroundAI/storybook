@@ -15,6 +15,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { Embedder } from '@kit/ai-gateway';
 import type { ProjectType } from '@kit/film-studio-schemas/project';
 import type { Database } from '@kit/supabase/database';
 
@@ -24,7 +25,6 @@ import {
   episodesNeedingEmbedding,
   withSequentialFallback,
 } from './semantic-episodes';
-import type { Embedder } from './voyage-embedder';
 
 export const RECENT_EPISODES = 3;
 export const RELATED_EPISODES = 3;

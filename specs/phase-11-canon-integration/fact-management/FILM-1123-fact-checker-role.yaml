@@ -24,7 +24,7 @@ acceptance_criteria:
     evidence: null
   - text: "`runFactCheck` function validates content correctly"
     met: true
-    evidence: "packages/features/episodes/src/server/fact-check-actions.ts:40 (factCheckContentAction, enhanceAction with rate limit and withRefusals) calls runFactCheck and shouldBlockContent (:29-35) and returns { result, blocked }; read-only, it never changes a fact status (KB-18 human review intact). Tests packages/features/episodes/src/lib/__tests__/fact-checker-run.test.ts:61 and packages/features/episodes/__tests__/fact-check-actions.test.ts:44. Run from the Facts tab (story/_components/fact-check-section.tsx), not from the agent skill or the worker, because runFactCheck uses the request-scoped Supabase client"
+    evidence: "packages/features/episodes/src/server/fact-check-actions.ts:40 (factCheckContentAction, enhanceAction with rate limit and withRefusals) calls runFactCheck and shouldBlockContent (:29-35) and returns { result, blocked }; read-only, it never changes a fact status (KB-18 human review intact). Tests packages/features/episodes/src/lib/__tests__/fact-checker-run.test.ts:96 and packages/features/episodes/__tests__/fact-check-actions.test.ts:44. Run from the Facts tab (story/_components/fact-check-section.tsx), not from the agent skill or the worker, because runFactCheck uses the request-scoped Supabase client"
   - text: "Critical issues are properly identified"
     met: false
     reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM judgement in the live skill (`packages/features/episodes/src/agent/skills/fact-checker-skill.ts:72`); no test or eval; read-only audit, not run"

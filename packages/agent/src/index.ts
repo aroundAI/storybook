@@ -31,7 +31,7 @@
  */
 
 // Runner
-export { runAgent, setAgentUsageLogger } from './runner';
+export { runAgent, setAgentStepWriter, AgentNoWriterError } from './runner';
 export { AgentParseError } from './runner';
 
 // Budget
@@ -55,7 +55,10 @@ export type {
   BudgetCheckResult,
   AgentConfig,
   AgentRunContext,
-  AgentUsageLogger,
+  AgentStepWriter,
+  AgentStepRequest,
+  AgentStepResponse,
+  AgentMessageRole,
   AgentStep,
   AgentRunResult,
   ParsedAgentResponse,

@@ -55,7 +55,7 @@ const evaluateIdeasTool = createTool({
 
   execute: async ({ ideas, genre, targetAudience }, context) => {
     try {
-      const { executeLLM } = await import('@kit/prompt-engine/server');
+      const { executeLLM } = await import('@kit/ai-gateway');
 
       const result = await executeLLM<IdeaEvaluation>({
         templateSlug: 'quality-evaluation/idea-quality',

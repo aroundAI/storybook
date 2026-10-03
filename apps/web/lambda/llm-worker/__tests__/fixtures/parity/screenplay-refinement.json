@@ -38,7 +38,6 @@
               "location": "Observation Deck",
               "timeOfDay": "day",
               "description": "Maya floats at the window, calmer now.",
-              "action": ["Maya taps the comm panel."],
               "dialogue": [
                 {
                   "character": "Maya",
@@ -50,9 +49,10 @@
                   "text": "[calmly] We read you, Maya."
                 }
               ],
+              "estimatedDuration": 45,
               "emotionalPeak": "Maya hears her own voice",
               "hookOut": "What was she about to warn herself about?",
-              "estimatedDuration": 45
+              "action": ["Maya taps the comm panel."]
             },
             {
               "number": 2,
@@ -60,14 +60,14 @@
               "location": "Control Room",
               "timeOfDay": "night",
               "description": "Empty consoles. One screen still glows.",
-              "action": [],
               "dialogue": [
                 {
                   "character": "NARRATOR",
                   "text": "Three hours later."
                 }
               ],
-              "estimatedDuration": 30
+              "estimatedDuration": 30,
+              "action": []
             }
           ],
           "generatedAt": "2026-10-01T00:00:00.000Z",
@@ -81,9 +81,9 @@
           "metadata": {
             "totalScenes": 2,
             "estimatedDuration": 75,
-            "totalDialogueLines": 3,
             "locations": ["Observation Deck", "Control Room"],
-            "characters": ["Maya", "Houston", "NARRATOR"]
+            "characters": ["Maya", "Houston", "NARRATOR"],
+            "totalDialogueLines": 3
           },
           "lastRefinedAt": "2026-10-03T12:00:00.000Z"
         },
@@ -161,7 +161,13 @@
             }
           }
         },
-        "updated_at": "2026-10-03T12:00:00.000Z"
+        "updated_at": "2026-10-03T12:00:00.000Z",
+        "generation_origin": {
+          "kind": "server",
+          "runId": "19030000-0000-4000-8000-00000000aaaa",
+          "model": "gemini-test",
+          "at": "2026-10-03T12:00:00.000Z"
+        }
       },
       "filters": [
         {
@@ -272,7 +278,6 @@
             "location": "Observation Deck",
             "timeOfDay": "day",
             "description": "Maya floats at the window, calmer now.",
-            "action": ["Maya taps the comm panel."],
             "dialogue": [
               {
                 "character": "Maya",
@@ -284,9 +289,10 @@
                 "text": "[calmly] We read you, Maya."
               }
             ],
+            "estimatedDuration": 45,
             "emotionalPeak": "Maya hears her own voice",
             "hookOut": "What was she about to warn herself about?",
-            "estimatedDuration": 45
+            "action": ["Maya taps the comm panel."]
           },
           {
             "number": 2,
@@ -294,14 +300,14 @@
             "location": "Control Room",
             "timeOfDay": "night",
             "description": "Empty consoles. One screen still glows.",
-            "action": [],
             "dialogue": [
               {
                 "character": "NARRATOR",
                 "text": "Three hours later."
               }
             ],
-            "estimatedDuration": 30
+            "estimatedDuration": 30,
+            "action": []
           }
         ],
         "generatedAt": "2026-10-01T00:00:00.000Z",
@@ -315,9 +321,9 @@
         "metadata": {
           "totalScenes": 2,
           "estimatedDuration": 75,
-          "totalDialogueLines": 3,
           "locations": ["Observation Deck", "Control Room"],
-          "characters": ["Maya", "Houston", "NARRATOR"]
+          "characters": ["Maya", "Houston", "NARRATOR"],
+          "totalDialogueLines": 3
         },
         "lastRefinedAt": "2026-10-03T12:00:00.000Z"
       },

@@ -31,7 +31,7 @@ acceptance_criteria:
     reason: "no longer true — extraction is queued; the dialog reports done with 0 facts (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/upload-source-dialog.tsx:247`); `ExtractionStatusBanner` is never rendered"
   - text: "Extracted facts appear in Facts list"
     met: false
-    reason: "owner check OC-7 (docs/OWNER-CHECKS.md) — the fact_extraction stage's commit inserts into `verified_facts` (`packages/features/generation/src/stages/fact-extraction.ts:152`); needs a queued job run end to end"
+    reason: "owner check OC-7 (docs/OWNER-CHECKS.md) — the fact_extraction stage's commit inserts into `verified_facts` (`packages/features/generation/src/stages/fact-extraction.ts:149`); needs a queued job run end to end"
   - text: "Source credibility tier is stored"
     met: true
     evidence: null
@@ -62,7 +62,7 @@ remaining:
       Upload and queueing errors are caught and toasted
       (`upload-source-dialog.tsx:253`), but a job that fails in the worker
       leaves no trace the user can see; SQS jobs are not recorded anywhere
-      (`packages/features/prompt-engine/src/lib/server/sqs-helper.ts:73`)
+      (`packages/ai-gateway/src/dispatch.ts:51`: the queue message is the run id, and the run row is the record)
     closed_by: "unassigned"
 open_questions: []
 component:

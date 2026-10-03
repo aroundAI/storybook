@@ -223,13 +223,33 @@ const convertToScreenplay = enhanceAction(
     }
 
     // Always queue to Lambda for processing
-    const { queueLlmJob } = await import('@kit/prompt-engine/server');
+    const { openRunForJob } = await import('@kit/ai-gateway');
+
+    const run = await openRunForJob(
+      {
+        jobType: 'screenplay-conversion',
+        userId: user.id,
+        target,
+        payload: {
+          episodeId: data.episodeId,
+          dialogueStyle: data.dialogueStyle,
+          contentStyle: data.contentStyle,
+          version: episode.version,
+          accountId,
+          userId: user.id,
+          projectId: episode.project_id,
+        },
+        name: 'episodes.convertToScreenplay',
+      },
+      { client: client, accountId: target.accountId, userId: user.id },
+    );
 
     // Create generation job entry for tracking
     const jobData = {
       reference_type: 'episode',
       reference_id: data.episodeId,
       job_type: 'screenplay',
+      run_id: run.id,
       status: 'queued',
       account_id: accountId,
       project_id: episode.project_id,
@@ -254,20 +274,7 @@ const convertToScreenplay = enhanceAction(
       console.log('[screenplay-actions] SUCCESS:', insertedJob);
     }
 
-    await queueLlmJob({
-      jobType: 'screenplay-conversion',
-      userId: user.id,
-      target,
-      payload: {
-        episodeId: data.episodeId,
-        dialogueStyle: data.dialogueStyle,
-        contentStyle: data.contentStyle,
-        version: episode.version,
-        accountId,
-        userId: user.id,
-        projectId: episode.project_id,
-      },
-    });
+    await run.dispatch();
 
     logger.info(ctx, 'Screenplay conversion job queued');
     return { success: true, queued: true };

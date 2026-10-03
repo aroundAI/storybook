@@ -18,7 +18,6 @@
         "./skills": "./src/skills/index.ts"
     },
     "dependencies": {
-        "@kit/llm": "workspace:*",
         "@kit/prompt-engine": "workspace:*",
         "@kit/shared": "workspace:*",
         "zod": "^3.25.74"

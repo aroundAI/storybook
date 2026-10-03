@@ -448,6 +448,8 @@ export const storyStage: StageDefinition<
         status: 'story',
         target_duration_seconds: target.targetDuration,
         updated_at: generatedAt,
+        // Who wrote it: the run's origin (FILM-1903)
+        generation_origin: run.origin as unknown as Json,
       })
       .eq('id', target.episodeId)
       // No .eq('version', ...): the orchestrator writes viral_quality mid-run,

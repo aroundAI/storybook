@@ -68,7 +68,7 @@ component:
 acceptance_criteria:
   - text: "Shows all connected platforms with toggle"
     met: false
-    reason: "retired — replaced by language routing: each video goes to every connected channel of its language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1101`)"
+    reason: "retired — replaced by language routing: each video goes to every connected channel of its language (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1104`)"
   - text: "Unconnected platforms show \"Connect\" action"
     met: false
     reason: "retired — connecting moved to Settings › Platforms, linked from the screen (`apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-settings-sidebar.tsx:143`, `:160`)"

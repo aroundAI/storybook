@@ -14,9 +14,9 @@
     {
       "name": "Q2 an SQS client is built without awsClientOptions",
       "kind": "unit",
-      "file": "packages/features/prompt-engine/src/lib/server/sqs-helper.ts",
-      "find": "const sqs = new SQSClient(awsClientOptions('sqs'));",
-      "replace": "const sqs = new SQSClient({});",
+      "file": "packages/ai-gateway/src/dispatch.ts",
+      "find": "  sqs ??= new SQSClient(awsClientOptions('sqs'));",
+      "replace": "  sqs ??= new SQSClient({});",
       "cwd": "packages/shared",
       "test": "__tests__/aws-client-guard.test.ts",
       "pattern": "builds every SQS, DynamoDB and API Gateway client"

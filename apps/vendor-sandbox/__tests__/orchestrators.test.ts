@@ -1,12 +1,15 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { runAudioCueOrchestrator } from '@kit/episodes/agent/audio-cue-orchestrator';
-import { runIdeationOrchestrator } from '@kit/episodes/agent/ideation-orchestrator';
-import { runScreenplayOrchestrator } from '@kit/episodes/agent/screenplay-orchestrator';
-import { runSeasonOrchestrator } from '@kit/episodes/agent/season-orchestrator';
-import { runShotOrchestrator } from '@kit/episodes/agent/shot-orchestrator';
-import { runStoryOrchestrator } from '@kit/episodes/agent/story-orchestrator';
-import { runTranslationOrchestrator } from '@kit/episodes/agent/translation-orchestrator';
+import { setAgentStepWriter } from '@kit/agent';
+import { agentStepWriterForCurrentRun, withRun } from '@kit/ai-gateway';
+import { runAudioCueOrchestrator as audioCueOrchestrator } from '@kit/episodes/agent/audio-cue-orchestrator';
+import { runIdeationOrchestrator as ideationOrchestrator } from '@kit/episodes/agent/ideation-orchestrator';
+import { runScreenplayOrchestrator as screenplayOrchestrator } from '@kit/episodes/agent/screenplay-orchestrator';
+import { runSeasonOrchestrator as seasonOrchestrator } from '@kit/episodes/agent/season-orchestrator';
+import { runShotOrchestrator as shotOrchestrator } from '@kit/episodes/agent/shot-orchestrator';
+import { runStoryOrchestrator as storyOrchestrator } from '@kit/episodes/agent/story-orchestrator';
+import { runTranslationOrchestrator as translationOrchestrator } from '@kit/episodes/agent/translation-orchestrator';
+import { fakeRunHandle } from '@kit/generation/testing';
 
 import { ORCHESTRATOR_SCRIPTS } from '../src/llm/agents/scripts';
 import { type Sandbox, guardEgress, startSandbox } from './helpers';
@@ -29,6 +32,26 @@ vi.mock('@kit/supabase/lambda-admin-client', () => ({
     from: () => ({ insert: async () => ({ data: null, error: null }) }),
   }),
 }));
+
+/**
+ * Every model call goes through a generation run (FILM-1902): the agent
+ * loop through the gateway's step writer, the skills through its executor.
+ * A fake open server run stands in for the worker's, so the sandbox sees the
+ * same requests the worker would send.
+ */
+setAgentStepWriter(agentStepWriterForCurrentRun);
+
+function underRun<A extends unknown[], R>(fn: (...args: A) => Promise<R>) {
+  return (...args: A) => withRun(fakeRunHandle().run, () => fn(...args));
+}
+
+const runAudioCueOrchestrator = underRun(audioCueOrchestrator);
+const runIdeationOrchestrator = underRun(ideationOrchestrator);
+const runScreenplayOrchestrator = underRun(screenplayOrchestrator);
+const runSeasonOrchestrator = underRun(seasonOrchestrator);
+const runShotOrchestrator = underRun(shotOrchestrator);
+const runStoryOrchestrator = underRun(storyOrchestrator);
+const runTranslationOrchestrator = underRun(translationOrchestrator);
 
 type QueryResult = { data: unknown; error: null; count: number };
 

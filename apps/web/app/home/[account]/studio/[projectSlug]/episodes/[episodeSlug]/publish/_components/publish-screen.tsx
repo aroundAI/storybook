@@ -224,7 +224,7 @@ export function PublishScreen({
     }
 
     if (items.length > 0) {
-      await batchTranslateMetadataAction({ items });
+      await batchTranslateMetadataAction({ episodeId: episode.id, items });
     } else {
       // All English, no translation needed
       setIsScheduleTranslating(false);
@@ -1067,7 +1067,10 @@ export function PublishScreen({
 
     // Queue batch translation job - results come via WebSocket
     try {
-      await batchTranslateMetadataAction({ items: batchItems });
+      await batchTranslateMetadataAction({
+        episodeId: episode.id,
+        items: batchItems,
+      });
       // The useEffect for batchLlmStatus will handle the result and call buildPlatformConfigs
     } catch (error) {
       console.error('Batch translation failed:', error);

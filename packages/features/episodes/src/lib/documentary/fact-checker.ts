@@ -69,7 +69,7 @@ export async function runFactCheck(
   content: string,
   requiredClaims?: string[],
 ): Promise<FactCheckResult> {
-  const { executeLLM } = await import('@kit/prompt-engine/server');
+  const { executeLLM, openRun } = await import('@kit/ai-gateway');
   const { accountId, userId, supabase } = await getProjectContext(projectId);
 
   // Fetch all verified facts for this project
@@ -129,16 +129,40 @@ export async function runFactCheck(
     )
     .join('\n\n');
 
-  // Run fact-checker LLM
-  const result = await executeLLM<FactCheckLLMResponse>({
-    templateSlug: 'documentary/fact-checker-role',
-    variables: {
-      content: sanitizeForPrompt(content),
-      verified_facts: sanitizeForPrompt(verifiedFactsText),
-      required_claims: sanitizeForPrompt(requiredClaims?.join('\n') ?? ''),
+  // The model is reached through a run (FILM-1902): a server-only
+  // fact_check run on the project, opened as the caller, in the team's mode
+  const run = await openRun(
+    'fact_check',
+    {
+      type: 'project',
+      id: projectId,
+      accountId,
+      projectId,
+      // No StageDefinition serves fact_check: the input is the call's target
+      input: { kind: 'stage', target: { projectId } },
     },
-    context: { name: 'fact-checker-role', accountId, userId },
-  });
+    { kind: 'web', name: 'documentary.factCheck' },
+    { client: supabase, accountId, userId },
+  );
+
+  let result: Awaited<ReturnType<typeof executeLLM<FactCheckLLMResponse>>>;
+
+  try {
+    result = await executeLLM<FactCheckLLMResponse>({
+      run,
+      templateSlug: 'documentary/fact-checker-role',
+      variables: {
+        content: sanitizeForPrompt(content),
+        verified_facts: sanitizeForPrompt(verifiedFactsText),
+        required_claims: sanitizeForPrompt(requiredClaims?.join('\n') ?? ''),
+      },
+      context: { name: 'fact-checker-role', accountId, userId },
+    });
+    await run.complete();
+  } catch (error) {
+    await run.fail(error).catch(() => undefined);
+    throw error;
+  }
 
   const check = result.data.fact_check;
 

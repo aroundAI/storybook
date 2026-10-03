@@ -32,6 +32,13 @@ export const StageKeySchema = z.enum([
   'season_analysis',
   'fact_extraction',
   'episode_summary',
+  // Server-only keys (FILM-1903 part B): model calls with no content stage,
+  // and the worker's audio render job. They have a run, never a brief, and
+  // no StageDefinition serves them.
+  'analytics_insights',
+  'language_insights',
+  'fact_check',
+  'audio_render',
 ]);
 export type StageKey = z.infer<typeof StageKeySchema>;
 
@@ -42,6 +49,7 @@ export const TargetTypeSchema = z.enum([
   'season',
   'project',
   'publish',
+  'audio_cue',
 ]);
 export type TargetType = z.infer<typeof TargetTypeSchema>;
 
@@ -210,11 +218,29 @@ export interface CommitResult<TData = unknown> {
   reason?: string;
   data: TData;
   /**
-   * Stages to run next on the same content, in the run's mode (shots chains
-   * audio_cues). The caller opens them: the worker queues the job today,
-   * FILM-1903 opens child runs.
+   * Stages this commit chains (shots -> audio_cues). The run layer opens
+   * each as a child run in the parent's mode; a server child is queued, an
+   * external one waits for the agent (FILM-1903).
+   */
+  followOns?: CommitFollowOn[];
+  /**
+   * The story stage's form of the same idea (#562): a description per
+   * asset it invented, as `{ stage, target: { assetId } }`. Not a runnable
+   * target yet: `asset_description` takes the asset's name and type, so the
+   * run layer leaves these to the handler until FILM-1908 opens them.
    */
   followOn?: Array<{ stage: StageKey; target: Record<string, unknown> }>;
+}
+
+export interface CommitFollowOn {
+  stage: StageKey;
+  target: {
+    type: TargetType;
+    id: string;
+    projectId: string | null;
+    input: { kind: 'stage'; target: unknown };
+    targetVersion?: number | null;
+  };
 }
 
 /** The generation_jobs row a tracked stage updates as it runs. */

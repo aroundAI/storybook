@@ -77,23 +77,28 @@ const generateSeasonOutlineHandler = enhanceAction(
     }
 
     // Always queue to Lambda for processing
-    const { queueLlmJob } = await import('@kit/prompt-engine/server');
+    const { openRunForJob } = await import('@kit/ai-gateway');
 
-    await queueLlmJob({
-      jobType: 'season-outline',
-      userId: user.id,
-      target,
-      payload: {
-        projectId: data.projectId,
-        seasonId: data.seasonId,
-        seasonPremise: data.seasonPremise,
-        episodeCount: data.episodeCount,
-        startingNumber: data.startingNumber,
-        genre: data.genre,
-        style: data.style,
+    const run = await openRunForJob(
+      {
+        jobType: 'season-outline',
         userId: user.id,
+        target,
+        payload: {
+          projectId: data.projectId,
+          seasonId: data.seasonId,
+          seasonPremise: data.seasonPremise,
+          episodeCount: data.episodeCount,
+          startingNumber: data.startingNumber,
+          genre: data.genre,
+          style: data.style,
+          userId: user.id,
+        },
+        name: 'episodes.generateSeasonOutline',
       },
-    });
+      { client: client, accountId: target.accountId, userId: user.id },
+    );
+    await run.dispatch();
 
     logger.info(ctx, 'Season outline job queued');
     return { success: true, queued: true };
@@ -431,26 +436,31 @@ const regenerateEpisodeOutline = enhanceAction(
     }
 
     // Always queue to Lambda for processing
-    const { queueLlmJob } = await import('@kit/prompt-engine/server');
+    const { openRunForJob } = await import('@kit/ai-gateway');
 
-    await queueLlmJob({
-      jobType: 'season-outline', // Reuses season-outline handler for single episode
-      userId: user.id,
-      target,
-      payload: {
-        projectId: data.projectId,
-        // The regenerated outline replaces the row the first outline made
-        // for this number, in this season (FILM-1901)
-        seasonId: data.seasonId,
-        seasonPremise: data.seasonPremise,
-        episodeCount: 1,
-        startingNumber: data.episodeNumber,
-        // The episode is written to fit between these (KB-121)
-        surroundingEpisodes: data.surroundingEpisodes,
-        additionalContext: data.additionalContext,
+    const run = await openRunForJob(
+      {
+        jobType: 'season-outline', // Reuses season-outline handler for single episode
         userId: user.id,
+        target,
+        payload: {
+          projectId: data.projectId,
+          // The regenerated outline replaces the row the first outline made
+          // for this number, in this season (FILM-1901)
+          seasonId: data.seasonId,
+          seasonPremise: data.seasonPremise,
+          episodeCount: 1,
+          startingNumber: data.episodeNumber,
+          // The episode is written to fit between these (KB-121)
+          surroundingEpisodes: data.surroundingEpisodes,
+          additionalContext: data.additionalContext,
+          userId: user.id,
+        },
+        name: 'episodes.regenerateEpisodeOutline',
       },
-    });
+      { client: client, accountId: target.accountId, userId: user.id },
+    );
+    await run.dispatch();
 
     logger.info(ctx, 'Episode regeneration job queued');
     return { success: true, queued: true };

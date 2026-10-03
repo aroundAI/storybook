@@ -46,7 +46,7 @@ const translateDialogueTool = createTool({
     context,
   ) => {
     try {
-      const { executeLLM } = await import('@kit/prompt-engine/server');
+      const { executeLLM } = await import('@kit/ai-gateway');
 
       // Look up language-specific style guide
       const langCode = LANGUAGE_CODE_MAP[targetLanguage.toLowerCase()] ?? '';

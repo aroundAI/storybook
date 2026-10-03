@@ -55,10 +55,10 @@ acceptance_criteria:
     reason: "owner check OC-2 (docs/OWNER-CHECKS.md) — needs a run on each vendor, which the audit rules forbid; all four templates pin Gemini"
   - text: "Generated outputs are parseable JSON"
     met: false
-    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM output; the executor retries truncated JSON (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:438`), but no run measures the rate"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM output; the executor retries truncated JSON (`packages/ai-gateway/src/executors/execute-llm.ts:343`), but no run measures the rate"
   - text: "Prompts produce deterministic structured output"
     met: false
-    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM behaviour at temperature 0.4–0.8; structure is enforced by Zod (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:637`)"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM behaviour at temperature 0.4–0.8; structure is enforced by Zod (`packages/ai-gateway/src/executors/execute-llm.ts:423`)"
   - text: "Templates are human-readable and editable"
     met: true
     evidence: "JSON files in `packages/features/prompt-engine/src/prompts/story-generation/`, loaded at runtime"
@@ -67,7 +67,7 @@ acceptance_criteria:
     evidence: "e.g. `premise`, `target_duration`, `scene_count_min`; `packages/features/prompt-engine/__tests__/story-generation-templates.test.ts:32`"
   - text: "Prompts produce consistent output format"
     met: false
-    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM behaviour; off-schema output is rejected (`packages/features/prompt-engine/src/lib/server/llm-executor.ts:637`), but no run measures how often"
+    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM behaviour; off-schema output is rejected (`packages/ai-gateway/src/executors/execute-llm.ts:423`), but no run measures how often"
   - text: "JSON files are properly formatted"
     met: true
     evidence: "`packages/features/prompt-engine/__tests__/prompt-format.test.ts:108` (valid JSON, trailing newline)"

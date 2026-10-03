@@ -117,9 +117,14 @@ vi.mock('@kit/supabase/server-admin-client', () => ({
   }),
 }));
 
-vi.mock('@kit/prompt-engine/server', () => ({
-  queueLlmJob: async (job: unknown) => {
+vi.mock('@kit/ai-gateway', () => ({
+  openRunForJob: async (job: unknown) => {
     state.queued.push(job);
+    return {
+      id: 'run-under-test',
+      mode: 'server',
+      dispatch: async () => undefined,
+    };
   },
 }));
 

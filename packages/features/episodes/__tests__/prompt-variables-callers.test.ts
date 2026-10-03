@@ -14,9 +14,8 @@ const calls = vi.hoisted(
     [] as Array<{ templateSlug: string; variables: Record<string, unknown> }>,
 );
 
-vi.mock('@kit/prompt-engine/server', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@kit/prompt-engine/server')>();
+vi.mock('@kit/ai-gateway', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@kit/ai-gateway')>();
   return {
     ...actual,
     executeLLM: async (config: {
@@ -26,6 +25,27 @@ vi.mock('@kit/prompt-engine/server', async (importOriginal) => {
       calls.push(config);
       return { data: { description: 'A tall detective.', episodes: [] } };
     },
+    // The sidebar's description is written through a run (FILM-1902): the
+    // fake run records the brief's prompt the way the executor stub does
+    openRun: async () => ({
+      id: 'run-under-test',
+      mode: 'server',
+      write: async (brief: {
+        prompt: { slug: string; variables: Record<string, unknown> };
+      }) => {
+        calls.push({
+          templateSlug: brief.prompt.slug,
+          variables: brief.prompt.variables,
+        });
+        return { output: { description: 'A tall detective.' } };
+      },
+      complete: async () => undefined,
+      fail: async () => undefined,
+      toGenerationRun: () => ({
+        mode: 'server',
+        origin: { kind: 'server', at: new Date().toISOString() },
+      }),
+    }),
   };
 });
 

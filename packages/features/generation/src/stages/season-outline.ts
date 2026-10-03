@@ -18,6 +18,7 @@ import {
   sanitizeForPrompt,
   sanitizeStrings,
 } from '@kit/shared/prompt-sanitiser';
+import type { Json } from '@kit/supabase/database';
 
 import { type PromptFile, buildBrief, singlePart } from '../brief';
 import {
@@ -373,7 +374,7 @@ export const seasonOutlineStage: StageDefinition<
     return errors;
   },
 
-  async commit(ctx, _run, target, outputs) {
+  async commit(ctx, run, target, outputs) {
     const out = outputs[0]!;
     const client = ctx.client;
     const generatedAt = new Date().toISOString();
@@ -440,7 +441,10 @@ export const seasonOutlineStage: StageDefinition<
     for (const update of toUpdate) {
       const { data: replaced, error } = await client
         .from('episodes')
-        .update(episodeRowUpdateFromOutline(update.outline))
+        .update({
+          ...episodeRowUpdateFromOutline(update.outline),
+          generation_origin: run.origin as unknown as Json,
+        })
         .eq('id', update.id)
         .eq('project_id', target.projectId)
         .select('id');
@@ -464,7 +468,13 @@ export const seasonOutlineStage: StageDefinition<
     if (toInsert.length > 0) {
       const { data: insertedRows, error: insertError } = await client
         .from('episodes')
-        .insert(toInsert.map(({ row }) => row))
+        // Every row carries who wrote it: the run's origin (FILM-1903)
+        .insert(
+          toInsert.map(({ row }) => ({
+            ...row,
+            generation_origin: run.origin as unknown as Json,
+          })),
+        )
         .select('id, number, title, status');
 
       if (insertError) {

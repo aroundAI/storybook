@@ -263,9 +263,10 @@ describe('every templateSlug names a registered prompt', () => {
     'coverage',
     '__tests__',
   ]);
+  // The llm-worker's registry lives in the gateway (FILM-1902 part B)
   const LAMBDA_REGISTRY = path.join(
     REPO,
-    'apps/web/lambda/llm-worker/prompt-registry.ts',
+    'packages/ai-gateway/src/prompts/lambda-registry.ts',
   );
 
   function sources(dir: string): string[] {
@@ -293,7 +294,9 @@ describe('every templateSlug names a registered prompt', () => {
     (file) => {
       const source = fs.readFileSync(file, 'utf-8');
       const lambda = source.includes('executeLLMForLambda');
-      const pkg = /\bexecuteLLM\b/.test(source);
+      // run.write() renders the brief's prompt with the Lambda registry
+      const pkg =
+        /\bexecuteLLM\b/.test(source) || /\brun\.write\(/.test(source);
       // Comment lines hold examples (`@example … templateSlug: '…'`), not calls.
       const code = source
         .split('\n')
@@ -386,7 +389,11 @@ describe('every caller reads the shape its prompt returns', () => {
   ]);
   const LAMBDA_REGISTRY_FILE = path.join(
     REPO,
-    'apps/web/lambda/llm-worker/prompt-registry.ts',
+    'packages/ai-gateway/src/prompts/lambda-registry.ts',
+  );
+  const PROMPTS_DIR = path.join(
+    REPO,
+    'packages/features/prompt-engine/src/prompts',
   );
 
   function sources(dir: string): string[] {
@@ -419,7 +426,11 @@ describe('every caller reads the shape its prompt returns', () => {
           m[1]!,
           JSON.parse(
             fs.readFileSync(
-              path.resolve(path.dirname(LAMBDA_REGISTRY_FILE), file),
+              // imported as @kit/prompt-engine/prompts/<path>
+              path.join(
+                PROMPTS_DIR,
+                file.replace(/^@kit\/prompt-engine\/prompts\//, ''),
+              ),
               'utf-8',
             ),
           ) as PromptTemplate,

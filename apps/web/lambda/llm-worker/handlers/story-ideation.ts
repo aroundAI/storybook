@@ -17,7 +17,7 @@ import {
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
-import { workerCtx } from '../utils/stage-runtime';
+import { stageRunDeps, workerCtx } from '../utils/stage-runtime';
 
 interface StoryIdea {
   title: string;
@@ -64,6 +64,7 @@ export async function processStoryIdeation(
   let orchestratorSteps: number | undefined;
 
   const { commit } = await runStage(ideationStage, ctx, target, {
+    ...stageRunDeps(),
     generate: async (brief) => {
       const { runIdeationOrchestrator } = await import(
         '@kit/episodes/agent/ideation-orchestrator'

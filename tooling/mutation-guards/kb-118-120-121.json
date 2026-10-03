@@ -35,7 +35,7 @@
       "name": "SD3 the shot-list action drops the range",
       "kind": "unit",
       "file": "packages/features/episodes/src/lib/server/mutations/shot-list-actions.ts",
-      "find": "        shotDurationMin: data.shotDurationMin,\n        shotDurationMax: data.shotDurationMax,\n",
+      "find": "          shotDurationMin: data.shotDurationMin,\n          shotDurationMax: data.shotDurationMax,\n",
       "replace": "",
       "cwd": "packages/features/episodes",
       "test": "__tests__/llm-job-authorization.test.ts",

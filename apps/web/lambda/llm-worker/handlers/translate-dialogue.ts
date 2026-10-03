@@ -23,7 +23,7 @@ import {
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
-import { workerCtx } from '../utils/stage-runtime';
+import { stageRunDeps, workerCtx } from '../utils/stage-runtime';
 
 interface TranslateDialogueResult {
   success: boolean;
@@ -83,6 +83,7 @@ export async function processTranslateDialogue(
   };
 
   const { commit } = await runStage(dialogueTranslationStage, ctx, target, {
+    ...stageRunDeps(),
     generate,
   });
 

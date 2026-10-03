@@ -14,7 +14,7 @@ import { formatNeighbouringEpisodes } from '../src/lib/neighbouring-episodes';
 
 const variables = vi.hoisted(() => [] as Array<Record<string, unknown>>);
 
-vi.mock('@kit/prompt-engine/server', () => ({
+vi.mock('@kit/ai-gateway', () => ({
   executeLLM: async (config: { variables: Record<string, unknown> }) => {
     variables.push(config.variables);
     return { data: { episodes: [] } };

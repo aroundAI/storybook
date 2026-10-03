@@ -33,21 +33,48 @@ vi.mock('@kit/next/actions', () => ({
 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 
-vi.mock('@kit/prompt-engine/server', () => ({
-  executeLLM: async (config: { variables: unknown }) => {
-    calls.push(config);
-    return {
-      data: replies.shift(),
-      metadata: {
-        latency: 1,
-        tokens: 1,
-        cost: 0,
-        provider: 'gemini',
-        model: 'm',
+/**
+ * The action opens an `episode_summary` run through the gateway (FILM-1902)
+ * and the run writes the stage's brief: here a fake run whose writer answers
+ * from `replies`, so the brief's variables are what reached the model.
+ */
+vi.mock('@kit/ai-gateway', async () => {
+  const { fakeRunHandle } = await import('@kit/generation/testing');
+
+  return {
+    openRun: async (
+      stage: 'episode_summary',
+      target: {
+        id: string;
+        accountId: string;
+        projectId: string | null;
+        input: never;
       },
-    };
-  },
-}));
+    ) =>
+      fakeRunHandle({
+        stage,
+        targetId: target.id,
+        accountId: target.accountId,
+        projectId: target.projectId,
+        input: target.input,
+        backend: {
+          write: async (_run, brief) => {
+            calls.push({ variables: brief.prompt.variables });
+            return {
+              output: replies.shift(),
+              usage: {
+                latencyMs: 1,
+                tokens: 1,
+                provider: 'gemini',
+                model: 'm',
+              },
+            };
+          },
+          dispatch: async () => undefined,
+        },
+      }).run,
+  };
+});
 
 function clientWithFixtures() {
   const recording = recordingClient(

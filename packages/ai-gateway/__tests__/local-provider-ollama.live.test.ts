@@ -2,7 +2,8 @@ import http from 'node:http';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
-import { PROMPT_REGISTRY } from '../src/lib/server/prompt-registry';
+import { fakeRunHandle } from '@kit/generation/testing';
+import { PROMPT_REGISTRY } from '@kit/prompt-engine/prompt-registry';
 
 // FILM-1805 Half B, the live run. The real story-ideation prompt through the
 // real executeLLM and LocalClient against a running Ollama, with §4.4's
@@ -28,7 +29,7 @@ vi.mock('@kit/supabase/lambda-admin-client', () => ({
   createLambdaAdminClient: () => null,
 }));
 
-const { executeLLM } = await import('../src/lib/server/llm-executor');
+const { executeLLM } = await import('../src/executors/execute-llm');
 
 const model = process.env.OLLAMA_MODEL ?? 'llama3.1';
 const ideation = PROMPT_REGISTRY['story-ideation']!;
@@ -85,6 +86,7 @@ describe.skipIf(process.env.OLLAMA_LIVE !== '1')(
       expect(ideation.llm.provider).toBe('gemini');
 
       const result = await executeLLM<{ ideas: unknown[] }>({
+        run: fakeRunHandle().run,
         templateSlug: 'story-ideation',
         variables: {
           ...Object.fromEntries(

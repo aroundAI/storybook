@@ -12,7 +12,11 @@ import { generateLanguageInsightsAction } from '../src/server/language-insights-
  * upper-cases `language` and would throw on it.
  */
 const mocks = vi.hoisted(() => ({
-  queueLlmJob: vi.fn(async (_job: { payload: Record<string, unknown> }) => {}),
+  openRunForJob: vi.fn(async (_job: { payload: Record<string, unknown> }) => ({
+    id: 'run-under-test',
+    mode: 'server',
+    dispatch: async () => undefined,
+  })),
   performance: [] as Array<{ language: string | null; views: number }>,
 }));
 
@@ -45,8 +49,8 @@ vi.mock('@kit/supabase/require-user', () => ({
   requireUser: async () => ({ data: { id: 'user-1' }, error: null }),
 }));
 
-vi.mock('@kit/prompt-engine/server', () => ({
-  queueLlmJob: mocks.queueLlmJob,
+vi.mock('@kit/ai-gateway', () => ({
+  openRunForJob: mocks.openRunForJob,
 }));
 
 vi.mock('../src/server/language-analytics', () => ({
@@ -74,7 +78,7 @@ const run = () =>
   );
 
 beforeEach(() => {
-  mocks.queueLlmJob.mockClear();
+  mocks.openRunForJob.mockClear();
   mocks.performance = [
     { language: null, views: 5000 },
     { language: 'es', views: 300 },
@@ -85,7 +89,7 @@ describe('generateLanguageInsightsAction', () => {
   it('sends the model only languages somebody set', async () => {
     await run();
 
-    const payload = mocks.queueLlmJob.mock.calls[0]?.[0].payload;
+    const payload = mocks.openRunForJob.mock.calls[0]?.[0].payload;
 
     expect(payload?.languagePerformance).toEqual([
       { language: 'es', views: 300 },
@@ -102,7 +106,7 @@ describe('generateLanguageInsightsAction', () => {
 
     const result = await run();
 
-    expect(mocks.queueLlmJob).not.toHaveBeenCalled();
+    expect(mocks.openRunForJob).not.toHaveBeenCalled();
     // It used to answer 'en' here: a language, for a project with none.
     expect(result.topLanguage).toBeNull();
   });

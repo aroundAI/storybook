@@ -65,7 +65,7 @@ const analyzeScenesTool = createTool({
   }),
   execute: async ({ episodeTitle, genre, scenes }, context) => {
     try {
-      const { executeLLM } = await import('@kit/prompt-engine/server');
+      const { executeLLM } = await import('@kit/ai-gateway');
 
       // Merge LLM-provided sparse scenes with full context data
       const fullScenes = context?._scenesContext ?? scenes;
