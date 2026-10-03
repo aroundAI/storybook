@@ -100,7 +100,15 @@ describe('the daily spend cap (owner decision 2026-10-03)', () => {
   });
 
   it('refuses zero, a negative, more than two decimals, too much and words', () => {
-    for (const text of ['0', '0.00', '-5', '1.234', '100000.01', 'five', '1.2.3']) {
+    for (const text of [
+      '0',
+      '0.00',
+      '-5',
+      '1.234',
+      '100000.01',
+      'five',
+      '1.2.3',
+    ]) {
       expect(parseSpendCap(text), text).toBeUndefined();
     }
   });

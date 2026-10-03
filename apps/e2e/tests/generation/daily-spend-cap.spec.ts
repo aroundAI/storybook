@@ -177,7 +177,12 @@ test.describe('Generate past the daily spend cap', () => {
     ]) {
       await insertRow(
         'llm_usage_analytics',
-        { ...row, account_id: team.accountId, status: 'success', run_id: run.id },
+        {
+          ...row,
+          account_id: team.accountId,
+          status: 'success',
+          run_id: run.id,
+        },
         serviceRoleAuth(),
       );
     }

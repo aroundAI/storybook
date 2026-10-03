@@ -18,13 +18,13 @@ import {
   FormLabel,
   FormMessage,
 } from '@kit/ui/form';
+import { Input } from '@kit/ui/input';
 import {
   RadioGroup,
   RadioGroupItem,
   RadioGroupItemLabel,
 } from '@kit/ui/radio-group';
 import { toast } from '@kit/ui/sonner';
-import { Input } from '@kit/ui/input';
 import { Switch } from '@kit/ui/switch';
 
 import {
@@ -240,13 +240,13 @@ export function AiSettingsForm({
               </FormLabel>
               <FormDescription>
                 When the team&apos;s Gemini spend in StoryBook today reaches
-                this, Generate is refused until 00:00 UTC. Leave it empty for
-                no cap. A generation already running finishes, so a day can
-                end a little over.
+                this, Generate is refused until 00:00 UTC. Leave it empty for no
+                cap. A generation already running finishes, so a day can end a
+                little over.
               </FormDescription>
               <FormDescription data-test="ai-settings-spend-cap-scope">
-                Work Claude does through the MCP connector is never capped,
-                and neither are ElevenLabs renders.
+                Work Claude does through the MCP connector is never capped, and
+                neither are ElevenLabs renders.
               </FormDescription>
               <FormControl>
                 <Input
