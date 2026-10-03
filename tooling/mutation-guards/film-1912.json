@@ -120,6 +120,126 @@
       "cwd": "packages/features/studio-mcp",
       "test": "__tests__/analytics-forbidden.test.ts",
       "pattern": "as a member of both teams, get_performance_by_origin"
+    },
+    {
+      "name": "P2-1 openRun stores no block",
+      "kind": "unit",
+      "file": "packages/features/generation/src/runs/open-run.ts",
+      "find": "  const input = await withPerformanceContext(stage, target, ctx);",
+      "replace": "  const input = target.input;",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/performance-context-run.test.ts",
+      "pattern": "builds it once"
+    },
+    {
+      "name": "P2-2 the team setting is ignored at open",
+      "kind": "unit",
+      "file": "packages/features/generation/src/performance-context.ts",
+      "find": "  if (!(await performanceContextEnabled(ctx))) return undefined;\n",
+      "replace": "",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/performance-context-run.test.ts",
+      "pattern": "team has it off"
+    },
+    {
+      "name": "P2-3 stageCtx does not hand the block over",
+      "kind": "unit",
+      "file": "packages/features/generation/src/runs/execute-run.ts",
+      "find": "    performanceContext: run.input.performanceContext,\n",
+      "replace": "",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/performance-context-run.test.ts",
+      "pattern": "sets ctx.performanceContext from the run"
+    },
+    {
+      "name": "P2-4 a stored block is dropped when the run is read",
+      "kind": "unit",
+      "file": "packages/features/generation/src/runs/types.ts",
+      "find": "    payload: z.record(z.unknown()),\n    performanceContext: z.record(z.unknown()).optional(),",
+      "replace": "    payload: z.record(z.unknown()),",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/performance-context-run.test.ts",
+      "pattern": "builds it once"
+    },
+    {
+      "name": "P2-5 ideation prepare leaves the block out of the prompt",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/ideation.ts",
+      "find": "      performance_context: performanceText,",
+      "replace": "      performance_context: '',",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stages.test.ts",
+      "pattern": "ideation: a run's performance block"
+    },
+    {
+      "name": "P2-6 story prepare leaves the block out of the prompt",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/story.ts",
+      "find": "      performance_context: performanceText,",
+      "replace": "      performance_context: '',",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stages.test.ts",
+      "pattern": "story: a run's performance block"
+    },
+    {
+      "name": "P2-7 shots prepare leaves the block out of the prompt",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/shots.ts",
+      "find": "        performance_context: renderPerformanceContext(ctx.performanceContext),",
+      "replace": "        performance_context: '',",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stages.test.ts",
+      "pattern": "shots: a run's performance block"
+    },
+    {
+      "name": "P2-8 start_generation does not store the block on the run",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/generation/service.ts",
+      "find": "          input: performanceContext\n            ? { ...runTarget.input, performanceContext }\n            : runTarget.input,",
+      "replace": "          input: runTarget.input,",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/generation-performance-context.test.ts",
+      "pattern": "stores the block on the run"
+    },
+    {
+      "name": "P2-9 get_brief ignores the run’s block",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/generation/service.ts",
+      "find": "      earlier,\n      run.input.performanceContext,\n    );",
+      "replace": "      earlier,\n      undefined,\n    );",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/generation-performance-context.test.ts",
+      "pattern": "stores the block on the run"
+    },
+    {
+      "name": "P2-10 the ideation director drops the block",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/skills/ideation-director-skill.ts",
+      "find": "              ? context._performanceContext\n              : '',\n          premise_depth_instructions",
+      "replace": "              ? ''\n              : '',\n          premise_depth_instructions",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/performance-context-agents.test.ts",
+      "pattern": "each send it as performance_context"
+    },
+    {
+      "name": "P2-11 the story orchestrator does not pass the block",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/story-orchestrator.ts",
+      "find": "        _performanceContext: input.performanceContext ?? '',",
+      "replace": "        _performanceContext: '',",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/performance-context-agents.test.ts",
+      "pattern": "put it in the agent run context"
+    },
+    {
+      "name": "P2-12 web actions open runs with no reader",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/server/web-run-ctx.ts",
+      "find": "    performance: createPerformanceReader(client),\n",
+      "replace": "",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/web-run-ctx.test.ts",
+      "pattern": "a reader on that same client"
     }
   ]
 }
