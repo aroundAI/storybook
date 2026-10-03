@@ -36,6 +36,7 @@ import type {
   StageDefinition,
 } from '../types';
 import { ScreenplayAudioCueSchema } from './screenplay';
+import { ORIGIN_MERGE, stageOrigin } from './shared';
 import {
   characterIdMap,
   dialogueRebuildSteps,
@@ -327,7 +328,10 @@ export const screenplayRefinementStage: StageDefinition<
     };
 
     if (ctx.originColumnsAvailable) {
-      update.generation_origin = run.origin;
+      update.generation_origin = stageOrigin(
+        'screenplay_refinement',
+        run.origin,
+      );
     }
 
     const dialogueLines = dialogueRowsFromScenes(
@@ -345,6 +349,7 @@ export const screenplayRefinementStage: StageDefinition<
           op: 'update',
           table: 'episodes',
           values: update,
+          ...(ctx.originColumnsAvailable ? { merge: [ORIGIN_MERGE] } : {}),
           match: [eq('id', episodeId), is('deleted_at', null)],
           requireRows: true,
           returning: ['id', 'status'],

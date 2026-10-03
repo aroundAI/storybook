@@ -66,7 +66,11 @@
       ],
       "episodeSummary": "Maya confronts Dev, who admits he hid the report. She leaves alone and calls Priya.",
       "sentimentScore": 1.4,
-      "keyEvents": ["Maya confronts Dev", "Dev admits hiding the report", "Maya calls Priya"],
+      "keyEvents": [
+        "Maya confronts Dev",
+        "Dev admits hiding the report",
+        "Maya calls Priya"
+      ],
       "worldState": {
         "location": "The Car Park",
         "timePeriod": "night",

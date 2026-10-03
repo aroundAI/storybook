@@ -18,7 +18,6 @@ import {
   sanitizeForPrompt,
   sanitizeStrings,
 } from '@kit/shared/prompt-sanitiser';
-import type { Json } from '@kit/supabase/database';
 
 import { type PromptFile, buildBrief, singlePart } from '../brief';
 import { type CommitWrite, applyCommit, eq, resultRows } from '../commit-plan';
@@ -37,8 +36,10 @@ import { registerStage } from '../registry';
 import type { Brief, CheckError, Ctx, StageDefinition } from '../types';
 import {
   EPISODE_TITLE_MAX,
+  ORIGIN_MERGE,
   checkError,
   projectMetadataOf,
+  stageOrigin,
   uuid,
 } from './shared';
 
@@ -449,8 +450,9 @@ export const seasonOutlineStage: StageDefinition<
             table: 'episodes',
             values: {
               ...episodeRowUpdateFromOutline(update.outline),
-              generation_origin: run.origin as unknown as Json,
+              generation_origin: stageOrigin('season_outline', run.origin),
             },
+            merge: [ORIGIN_MERGE],
             match: [eq('id', update.id), eq('project_id', target.projectId)],
             requireRows: true,
           }),
@@ -464,7 +466,7 @@ export const seasonOutlineStage: StageDefinition<
                 // Every row carries who wrote it: the run's origin (FILM-1903)
                 rows: toInsert.map(({ row }) => ({
                   ...row,
-                  generation_origin: run.origin as unknown as Json,
+                  generation_origin: stageOrigin('season_outline', run.origin),
                 })),
                 returning: ['id', 'number', 'title', 'status'],
               } satisfies CommitWrite,

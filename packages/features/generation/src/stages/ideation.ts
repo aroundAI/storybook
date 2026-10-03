@@ -21,12 +21,14 @@ import { premiseDepthInstructions } from '../formatters';
 import { registerStage } from '../registry';
 import type { Brief, CheckError, StageDefinition } from '../types';
 import {
+  ORIGIN_MERGE,
   checkError,
   directionNotes,
   loadEpisodeContext,
   projectTypeOf,
   readEpisode,
   seasonLine,
+  stageOrigin,
   uuid,
 } from './shared';
 
@@ -218,9 +220,10 @@ export const ideationStage: StageDefinition<
               ideas: out.ideas,
               ideas_generated_at: generatedAt,
             } as Json,
-            // Who wrote it: the run's origin (FILM-1903)
-            generation_origin: run.origin as unknown as Json,
+            // Who wrote it, under its own stage key (FILM-1903, FILM-1908)
+            generation_origin: stageOrigin('ideation', run.origin),
           },
+          merge: [ORIGIN_MERGE],
           match: [eq('id', target.episodeId), is('deleted_at', null)],
           requireRows: true,
         },

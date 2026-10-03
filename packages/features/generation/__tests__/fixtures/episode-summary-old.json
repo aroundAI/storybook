@@ -38,9 +38,7 @@
         "threadType": "character",
         "action": "open",
         "description": "Why Maya calls Priya first",
-        "promises": [
-          "Priya is not surprised"
-        ]
+        "promises": ["Priya is not surprised"]
       }
     ],
     "stateChanges": [
@@ -59,9 +57,7 @@
       "Dev admits hiding the report",
       "Maya calls Priya"
     ],
-    "characterChanges": [
-      "Maya Chen: suspects Dev -> knows Dev hid the report"
-    ],
+    "characterChanges": ["Maya Chen: suspects Dev -> knows Dev hid the report"],
     "worldState": {
       "location": "The Car Park",
       "timePeriod": "night",

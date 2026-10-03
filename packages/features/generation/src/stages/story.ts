@@ -48,6 +48,7 @@ import type {
 } from '../types';
 import {
   ASSET_NAME_MAX,
+  ORIGIN_MERGE,
   checkError,
   directionNotes,
   loadEpisodeContext,
@@ -55,6 +56,7 @@ import {
   projectTypeOf,
   readEpisode,
   seasonLine,
+  stageOrigin,
   uuid,
 } from './shared';
 
@@ -498,9 +500,10 @@ export const storyStage: StageDefinition<
             status: 'story',
             target_duration_seconds: target.targetDuration,
             updated_at: generatedAt,
-            // Who wrote it: the run's origin (FILM-1903)
-            generation_origin: run.origin as unknown as Json,
+            // Who wrote it, under its own stage key (FILM-1903, FILM-1908)
+            generation_origin: stageOrigin('story', run.origin),
           },
+          merge: [ORIGIN_MERGE],
           // No version filter: the orchestrator writes viral_quality mid-run,
           // which bumps the version through the trigger (see f64c9648)
           match: [eq('id', target.episodeId), is('deleted_at', null)],

@@ -242,8 +242,10 @@ describe('season_outline stage (FILM-1901)', () => {
               seasonId: IDS.seasonId,
               number: 3 + index,
             }),
-            // Who wrote it (FILM-1903)
-            generation_origin: expect.objectContaining({ kind: 'server' }),
+            // Who wrote it, under its own stage key (FILM-1903, FILM-1908)
+            generation_origin: {
+              season_outline: expect.objectContaining({ kind: 'server' }),
+            },
           })),
         }),
       ]);
@@ -282,7 +284,9 @@ describe('season_outline stage (FILM-1901)', () => {
             title: 'The First Light',
             description: OUTLINES[0]!.premise,
             story_data: expect.objectContaining({ generatedFromBatch: true }),
-            generation_origin: expect.objectContaining({ kind: 'server' }),
+            generation_origin: {
+              season_outline: expect.objectContaining({ kind: 'server' }),
+            },
           },
           filters: [
             { method: 'eq', args: ['id', 'ep-3'] },

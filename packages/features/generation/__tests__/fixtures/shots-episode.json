@@ -42,7 +42,10 @@
           "description": "Maya crosses the empty car park and makes a call.",
           "action": ["Maya crosses the car park.", "She dials."],
           "dialogue": [
-            { "character": "Maya Chen", "text": "It's me. We need to talk about Dev." }
+            {
+              "character": "Maya Chen",
+              "text": "It's me. We need to talk about Dev."
+            }
           ],
           "estimatedDuration": 60
         }
@@ -60,12 +63,32 @@
     "targetAudience": "adults",
     "visualStyle": "cinematic",
     "characters": [
-      { "id": "c1", "name": "Maya Chen", "role": "lead", "description": "Investigator" },
-      { "id": "c2", "name": "Dev Patel", "role": "support", "description": "Colleague" }
+      {
+        "id": "c1",
+        "name": "Maya Chen",
+        "role": "lead",
+        "description": "Investigator"
+      },
+      {
+        "id": "c2",
+        "name": "Dev Patel",
+        "role": "support",
+        "description": "Colleague"
+      }
     ],
     "locations": [
-      { "id": "l1", "name": "The Office", "setting": "interior", "description": "Open plan" },
-      { "id": "l2", "name": "The Car Park", "setting": "exterior", "description": "Concrete" }
+      {
+        "id": "l1",
+        "name": "The Office",
+        "setting": "interior",
+        "description": "Open plan"
+      },
+      {
+        "id": "l2",
+        "name": "The Car Park",
+        "setting": "exterior",
+        "description": "Concrete"
+      }
     ],
     "recurringElements": [],
     "charactersVeo": "Maya Chen: 34, East Asian, black bob, brown eyes, slim\nDev Patel: 40, South Asian, short grey hair, stocky",

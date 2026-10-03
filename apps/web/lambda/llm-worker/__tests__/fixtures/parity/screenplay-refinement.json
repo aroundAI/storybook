@@ -163,10 +163,12 @@
         },
         "updated_at": "2026-10-03T12:00:00.000Z",
         "generation_origin": {
-          "kind": "server",
-          "runId": "19030000-0000-4000-8000-00000000aaaa",
-          "model": "gemini-test",
-          "at": "2026-10-03T12:00:00.000Z"
+          "screenplay_refinement": {
+            "kind": "server",
+            "runId": "19030000-0000-4000-8000-00000000aaaa",
+            "model": "gemini-test",
+            "at": "2026-10-03T12:00:00.000Z"
+          }
         }
       },
       "filters": [

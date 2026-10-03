@@ -10,31 +10,19 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "reference_type",
-            "episode"
-          ]
+          "args": ["reference_type", "episode"]
         },
         {
           "method": "eq",
-          "args": [
-            "reference_id",
-            "33333333-3333-4333-8333-333333333333"
-          ]
+          "args": ["reference_id", "33333333-3333-4333-8333-333333333333"]
         },
         {
           "method": "eq",
-          "args": [
-            "job_type",
-            "audio_cue_generation"
-          ]
+          "args": ["job_type", "audio_cue_generation"]
         },
         {
           "method": "eq",
-          "args": [
-            "status",
-            "queued"
-          ]
+          "args": ["status", "queued"]
         }
       ]
     },
@@ -102,34 +90,19 @@
       "filters": [
         {
           "method": "eq",
-          "args": [
-            "reference_type",
-            "episode"
-          ]
+          "args": ["reference_type", "episode"]
         },
         {
           "method": "eq",
-          "args": [
-            "reference_id",
-            "33333333-3333-4333-8333-333333333333"
-          ]
+          "args": ["reference_id", "33333333-3333-4333-8333-333333333333"]
         },
         {
           "method": "eq",
-          "args": [
-            "job_type",
-            "audio_cue_generation"
-          ]
+          "args": ["job_type", "audio_cue_generation"]
         },
         {
           "method": "in",
-          "args": [
-            "status",
-            [
-              "queued",
-              "processing"
-            ]
-          ]
+          "args": ["status", ["queued", "processing"]]
         }
       ]
     }
