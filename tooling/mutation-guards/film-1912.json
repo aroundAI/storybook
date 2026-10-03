@@ -1,0 +1,125 @@
+{
+  "feature": "FILM-1912 performance context: past episodes inform briefs, analytics split by origin",
+  "mutations": [
+    {
+      "name": "PC1 ranking mixes platforms and content types",
+      "kind": "unit",
+      "file": "packages/features/generation/src/performance-context.ts",
+      "find": "    const key = `${video.platform}\\u0000${video.contentType}`;\n    groups.set(key, [...(groups.get(key) ?? []), video]);",
+      "replace": "    const key = `all\\u0000all`;\n    groups.set(key, [...(groups.get(key) ?? []), video]);",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/performance-context.test.ts",
+      "pattern": "ranks a hand-computed top and bottom"
+    },
+    {
+      "name": "PC2 a thin sample is ranked anyway",
+      "kind": "unit",
+      "file": "packages/features/generation/src/performance-context.ts",
+      "find": "  if (!group || members.length < MIN_RANKED_SAMPLE) {",
+      "replace": "  if (!group) {",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/performance-context.test.ts",
+      "pattern": "not enough data"
+    },
+    {
+      "name": "PC3 an unmeasured reading is not omitted",
+      "kind": "unit",
+      "file": "packages/features/generation/src/performance-context.ts",
+      "find": "  if (reading.status === 'unmeasured') {\n    return { status: 'omitted', stage, reason: reading.reason };",
+      "replace": "  if (reading.status === 'unmeasured' && false) {\n    return { status: 'omitted', stage, reason: reading.reason };",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/performance-context.test.ts",
+      "pattern": "ClickHouse off"
+    },
+    {
+      "name": "PC4 the block is not capped",
+      "kind": "unit",
+      "file": "packages/features/generation/src/performance-context.ts",
+      "find": "  return capPerformanceContext(context);\n}",
+      "replace": "  return context;\n}",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/performance-context.test.ts",
+      "pattern": "size cap"
+    },
+    {
+      "name": "PC5 dialogue density ignores the finished duration",
+      "kind": "unit",
+      "file": "packages/features/generation/src/performance-context.ts",
+      "find": "    episode.duration_seconds && episode.duration_seconds > 0\n      ? episode.duration_seconds",
+      "replace": "    false && episode.duration_seconds > 0\n      ? episode.duration_seconds",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/performance-context.test.ts",
+      "pattern": "ranks a hand-computed top and bottom"
+    },
+    {
+      "name": "PC6 episode traits are read outside the project",
+      "kind": "unit",
+      "file": "packages/features/generation/src/performance-context.ts",
+      "find": "          .eq('project_id', projectId)\n          .in('id', chunk)",
+      "replace": "          .in('id', chunk)",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/performance-context.test.ts",
+      "pattern": "only this project"
+    },
+    {
+      "name": "PC7 the team setting is on without a row",
+      "kind": "unit",
+      "file": "packages/features/generation/src/performance-context.ts",
+      "find": "  return data?.performance_context_enabled === true;",
+      "replace": "  return data?.performance_context_enabled !== false;",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/performance-context.test.ts",
+      "pattern": "is off for a team with no settings row"
+    },
+    {
+      "name": "RD1 a velocity not yet knowable is read as a figure",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/performance-reader.ts",
+      "find": "        row.matureAt[VELOCITY_DAYS] && !row.predatesIngestAt[VELOCITY_DAYS]",
+      "replace": "        true",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/performance-by-origin.test.ts",
+      "pattern": "not yet knowable"
+    },
+    {
+      "name": "RD2 the reader reads videos with ClickHouse off",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/performance-reader.ts",
+      "find": "  if (!coverage.observed) {\n    return { status: 'unmeasured', reason: NOT_MEASURED_REASON };",
+      "replace": "  if (false) {\n    return { status: 'unmeasured', reason: NOT_MEASURED_REASON };",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/performance-by-origin.test.ts",
+      "pattern": "says so and reads no videos"
+    },
+    {
+      "name": "OS1 an unstamped episode is counted as server-written",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/origin-split-service.ts",
+      "find": "    ? kind\n    : 'unrecorded';",
+      "replace": "    ? kind\n    : 'server';",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/performance-by-origin.test.ts",
+      "pattern": "splits a hand-computed project"
+    },
+    {
+      "name": "OS2 the origin split mixes platforms and content types",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/origin-split-service.ts",
+      "find": "    const key = `${video.platform}\\u0000${video.contentType}`;\n    const origin",
+      "replace": "    const key = `all\\u0000all`;\n    const origin",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/performance-by-origin.test.ts",
+      "pattern": "splits a hand-computed project"
+    },
+    {
+      "name": "OS3 the origin tool skips the team check",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/analytics/origin-split.ts",
+      "find": "    await requireTeamScope(context, { projectId: input.projectId });\n",
+      "replace": "",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/analytics-forbidden.test.ts",
+      "pattern": "as a member of both teams, get_performance_by_origin"
+    }
+  ]
+}
