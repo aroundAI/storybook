@@ -5,6 +5,7 @@
  * the team's default from account_ai_settings; a render stage is always
  * server work; a child run inherits its parent's mode.
  */
+import { performanceContextForRun } from '../performance-context';
 import type { GenerationMode, StageKey } from '../types';
 import { RunError } from './errors';
 import { RunHandle } from './run-handle';
@@ -12,6 +13,7 @@ import { type AiSettings, insertRun, readAiSettings, selectRun } from './store';
 import {
   RENDER_STAGES,
   type RunCtx,
+  type RunInput,
   type RunOrigin,
   type RunTarget,
 } from './types';
@@ -66,6 +68,30 @@ export async function resolveRunMode(
   return applySettings(requested, settings);
 }
 
+/**
+ * The run's input with FILM-1912's block, built here once for the run when
+ * the opener passed a reader and the opener did not build it already (MCP
+ * `start_generation` builds it before its first brief). Opened with the
+ * caller's client, so the analytics are read under its scope.
+ */
+async function withPerformanceContext(
+  stage: StageKey,
+  target: RunTarget,
+  ctx: RunCtx,
+): Promise<RunInput> {
+  if (target.input.performanceContext) return target.input;
+
+  const performanceContext = await performanceContextForRun(
+    ctx,
+    ctx.performance,
+    { stage, projectId: target.projectId },
+  );
+
+  return performanceContext
+    ? { ...target.input, performanceContext }
+    : target.input;
+}
+
 export async function openRun(
   stage: StageKey,
   target: RunTarget,
@@ -73,6 +99,7 @@ export async function openRun(
   ctx: RunCtx,
 ): Promise<RunHandle> {
   const mode = await resolveRunMode(stage, target.accountId, ctx);
+  const input = await withPerformanceContext(stage, target, ctx);
 
   const row = await insertRun(ctx.client, {
     accountId: target.accountId,
@@ -81,7 +108,7 @@ export async function openRun(
     targetId: target.id,
     stage,
     mode,
-    input: target.input,
+    input,
     origin: {
       ...origin,
       ...(ctx.clientName && !origin.clientName

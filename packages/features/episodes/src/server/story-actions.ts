@@ -18,6 +18,7 @@ import {
   GenerateStoryIdeasSchema,
   type GenerationMetadata,
 } from '../lib/schemas/story.schema';
+import { webRunCtx } from '../lib/server/web-run-ctx';
 import { OptimisticLockError } from '../lib/status-workflow';
 import type { EpisodeStatus } from '../lib/types';
 
@@ -103,7 +104,7 @@ const generateStoryIdeasHandler = enhanceAction(
         },
         name: 'episodes.generateStoryIdeas',
       },
-      { client: client, accountId: target.accountId, userId: user.id },
+      await webRunCtx(client, target.accountId, user.id),
     );
     await run.dispatch();
 
@@ -230,7 +231,7 @@ const generateFullStory = enhanceAction(
         },
         name: 'episodes.generateStory',
       },
-      { client: client, accountId: target.accountId, userId: user.id },
+      await webRunCtx(client, target.accountId, user.id),
     );
 
     // Create generation job entry for tracking

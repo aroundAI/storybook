@@ -1675,6 +1675,9 @@ importers:
       '@kit/cache':
         specifier: workspace:*
         version: link:../../cache
+      '@kit/content-analytics':
+        specifier: workspace:*
+        version: link:../content-analytics
       '@kit/film-studio-schemas':
         specifier: workspace:*
         version: link:../film-studio-schemas

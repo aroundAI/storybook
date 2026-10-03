@@ -105,6 +105,8 @@ create table public.account_ai_settings (
   server_generation_enabled boolean not null default true,
   external_generation_enabled boolean not null default true,
   default_mode text not null default 'server' check (default_mode in ('server', 'external')),
+  -- FILM-1912: briefs carry past-episode performance; off by default
+  performance_context_enabled boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   -- FILM-1910: never both off, and the default is an allowed mode

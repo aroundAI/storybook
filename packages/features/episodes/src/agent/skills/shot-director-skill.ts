@@ -254,6 +254,11 @@ const generateShotsTool = createTool({
                   previous_scene_summary: '',
                   reel_note: reelNote,
                   recurring_element: recurringElements ?? '',
+                  // FILM-1912: the run's block, from the orchestrator
+                  performance_context:
+                    typeof context?._performanceContext === 'string'
+                      ? context._performanceContext
+                      : '',
                   shot_duration_min: shotDuration.min,
                   shot_duration_max: shotDuration.max,
                 },

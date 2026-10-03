@@ -39,7 +39,7 @@ async function AiSettingsPage(props: PageProps) {
     client
       .from('account_ai_settings')
       .select(
-        'server_generation_enabled, external_generation_enabled, default_mode',
+        'server_generation_enabled, external_generation_enabled, default_mode, performance_context_enabled',
       )
       .eq('account_id', accountId)
       .maybeSingle(),
@@ -60,6 +60,7 @@ async function AiSettingsPage(props: PageProps) {
         serverGenerationEnabled: row.server_generation_enabled,
         externalGenerationEnabled: row.external_generation_enabled,
         defaultMode: row.default_mode,
+        performanceContextEnabled: row.performance_context_enabled,
       })
     : AI_SETTINGS_DEFAULTS;
 

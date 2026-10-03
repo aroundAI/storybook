@@ -3,7 +3,7 @@ title: "Performance Context: past episodes inform new briefs"
 phase: 19
 phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
 category: feature
-status: DRAFT
+status: DONE
 effort: M
 dependencies:
   - spec_id: "FILM-1911"
@@ -22,29 +22,41 @@ summary: >
   context" (https://claude.ai/code/artifact/ecf5b05b-019e-4512-abfc-9d6523f0a242).
 acceptance_criteria:
   - text: "buildPerformanceContext(projectId, stage) in @kit/generation returns, for the same project or channel, the top and bottom episodes by retention and velocity with their hooks, scene counts, shot pacing and dialogue density, plus relevant genome findings (getGenomeFindingsAction) and concluded experiments"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "Met (#585): packages/features/generation/src/performance-context.ts:203 buildPerformanceContext(ctx, {projectId, stage}). rankVideos (:306) ranks the top and bottom 3 episodes by retention (lifetime average percentage viewed) and by velocity (views at ages 0-6 days), each within one platform and content type; episodeTraits (:501) gives each the story's opening hook, scene count, shot pacing (shots, mean seconds) and dialogue density (lines, per minute over the finished or shot runtime, null without one). Genome findings come through getGenomeFindingsService at the stage's funnel stage (ideation: hook; story, shots: attention), concluded experiments through listExperimentsService and the channel experiment services (packages/features/content-analytics/src/server/performance-reader.ts:193). Same project; a channel scope is not offered. Test: __tests__/performance-context.test.ts, a hand-computed ten-episode project; guards PC1, PC5, PC6"
   - text: "The block is capped (a few KB) and labelled with sample size and data freshness; below a minimum sample it says so instead of ranking"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "Met (#585): capPerformanceContext (performance-context.ts:607) holds the serialised block under 4,096 bytes, dropping experiments and genome findings first, then shortening hooks, then one episode per end. The block carries a label with the sample size, how many recent publishes were read and each platform's latest metric day and stale flag, and caveats (a view-definition change the velocity window crosses, a truncated read). Below 8 comparable videos a ranking is { status: 'not_enough_data', sample, minimum, label } with no top or bottom. Tests: 'says \"not enough data\"', 'stays under the size cap'; guards PC2, PC4"
   - text: "It reads through the FILM-1906 service functions under the caller's scope, never @kit/clickhouse directly"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "Met (#585): @kit/generation takes analytics only from ctx.performance, a PerformanceReader the caller builds with createPerformanceReader(client) over getCoverageMatrixService, getVideoLogService, getGenomeFindingsService and the experiment services on its own client. @kit/clickhouse and @kit/content-analytics imports fail generation's lint (eslint.config.mjs) and its source scan (__tests__/import-boundary.test.ts:35), both seen red with a planted import. With ClickHouse off (coverage.observed false) the block is omitted with the reason and nothing else is read (guards PC3, RD2)"
   - text: "It is included in briefs for ideation, story and shots in both modes, behind a team setting"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "Met (#585): built once per run where the run opens, on the opener's client, only with account_ai_settings.performance_context_enabled on (packages/features/generation/src/performance-context.ts:290 performanceContextForRun; packages/features/generation/src/runs/open-run.ts:102), stored in generation_runs.input.performanceContext and handed to prepare() by stageCtx (packages/features/generation/src/runs/execute-run.ts:44). Web actions open runs with webRunCtx (packages/features/episodes/src/lib/server/web-run-ctx.ts:11); MCP start_generation builds it before its first brief and get_brief reads it from the run (packages/features/studio-mcp/src/server/tools/generation/service.ts:421, :387). Ideation, story and shots scene briefs carry it in context and in the performance_context prompt variable (stages/ideation.ts:160, story.ts:289, shots.ts:674); in server mode the orchestrators pass it to their directors through the agent run context (packages/features/episodes/src/agent/story-orchestrator.ts:159). A failed analytics read becomes the block's reason and never stops a run opening. Owners turn it on under Team settings → AI (apps/web/app/home/[account]/settings/ai/_components/ai-settings-form.tsx, data-test ai-settings-performance-context; apps/e2e/tests/generation/dual-mode.spec.ts: off by default, saved on, then off, each read back from the row; red with the action not saving it). A story brief with the block at its 4 KB cap stays under 60 KB with nothing dropped. Tests: performance-context-run.test.ts, stages.test.ts, generation-performance-context.test.ts, performance-context-agents.test.ts, web-run-ctx.test.ts; E2E apps/e2e/tests/mcp/performance-context.spec.ts; guards P2-1 to P2-12"
   - text: "Analytics can split episode performance by generation origin (Gemini vs Claude via MCP)"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "Met (#585): getPerformanceByOriginService (packages/features/content-analytics/src/server/origin-split-service.ts:71) and the MCP read tool get_performance_by_origin (packages/features/studio-mcp/src/server/tools/analytics/origin-split.ts:27) group a project's episodes by episodes.generation_origin[stage].kind (server, external, human; unrecorded when unstamped), within one platform and content type, as medians with their counts, with the coverage notes; unmeasured with its reason when ClickHouse is off. No web page shows it yet. Evidence: apps/e2e/tests/mcp/performance-by-origin.spec.ts against lane B's ClickHouse 24.8, server 50% / 275 and external 60% / 400 as hand-computed; red with the origin read from the screenplay stamp. Guards OS1-OS3"
 test_plan:
   unit:
-    - {text: "Context for a seeded project ranks a hand-computed top and bottom episode correctly; a thin sample produces the 'not enough data' label", met: false, reason: "not met — no test yet"}
-  integration: []
+    - {text: "Context for a seeded project ranks a hand-computed top and bottom episode correctly; a thin sample produces the 'not enough data' label", met: true, evidence: "packages/features/generation/__tests__/performance-context.test.ts (#585)"}
+  integration:
+    - {text: "The origin split reads seeded ClickHouse rows through the MCP endpoint and returns hand-computed medians", met: true, evidence: "apps/e2e/tests/mcp/performance-by-origin.spec.ts (CLICKHOUSE_EVIDENCE=1) (#585)"}
+    - {text: "The team setting defaults off, owners change it, members read it, strangers see nothing", met: true, evidence: "apps/web/supabase/tests/database/performance-context-setting.test.sql (#585)"}
   e2e: []
 open_questions: []
 notes: |
   With CLICKHOUSE_ENABLED=false (production's current state) the context is
   omitted with its reason, never filled with zeros.
+
+  The block is built once per run where the run is opened (owner decision
+  via the lead, 2026-10-03): web actions and MCP start_generation, on the
+  caller's client. It is stored in generation_runs.input.performanceContext,
+  so the worker only reads it and never loads the server-only analytics
+  services, and the run row records what the model was shown. A child run
+  the worker opens (a follow-on) carries no block. Server mode runs
+  orchestrators rather than rendering the brief, so the block reaches their
+  director prompts through the agent run context, the way verified facts
+  already do.
 feature:
   database: null
   queries: []

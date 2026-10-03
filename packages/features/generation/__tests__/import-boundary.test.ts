@@ -31,6 +31,14 @@ const FORBIDDEN: Array<{ pattern: RegExp; why: string }> = [
   { pattern: /^voyageai(?:\/|$)/, why: 'an embedding SDK' },
   { pattern: /^server-only$/, why: 'the worker bundle has no Next runtime' },
   { pattern: /^next(?:\/|$)/, why: 'the worker bundle has no Next runtime' },
+  {
+    pattern: /^@kit\/clickhouse(?:\/|$)/,
+    why: 'ClickHouse has no RLS; analytics come through ctx.performance (FILM-1912)',
+  },
+  {
+    pattern: /^@kit\/content-analytics(?:\/|$)/,
+    why: 'server-only services; the caller puts a reader on ctx.performance (FILM-1912)',
+  },
 ];
 
 const IMPORT =
@@ -79,6 +87,8 @@ describe('@kit/generation reaches no model (FILM-1901)', () => {
       `import 'server-only';`,
       `import { GoogleGenAI } from '@google/genai';`,
       `import { revalidatePath } from 'next/cache';`,
+      `import { queryVideoViewsAtAge } from '@kit/clickhouse/server';`,
+      `import { getVideoLogService } from '@kit/content-analytics/server/video-log-service';`,
     ];
 
     for (const line of planted) {

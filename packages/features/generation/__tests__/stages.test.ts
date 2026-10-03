@@ -5,6 +5,7 @@ import {
   type Brief,
   type Ctx,
   type EpisodeContextSnapshot,
+  type PerformanceContext,
   StageOutputRejected,
   assetDescriptionStage,
   checkWithSchema,
@@ -295,6 +296,76 @@ describe('every registered stage renders its prompt with the context prepare() b
       }
 
       checkedStages.add(key);
+    });
+  }
+
+  // FILM-1912: the block the run was opened with, as stageCtx hands it over
+  const BLOCK: PerformanceContext = {
+    status: 'included',
+    stage: 'story',
+    projectId: '22222222-2222-4222-8222-222222222222',
+    label: 'Past performance of this project: a test label.',
+    sample: { videos: 3, mostRecent: 500, truncated: false },
+    freshness: [],
+    retention: {
+      status: 'not_enough_data',
+      metric: 'retention',
+      measure: 'retention',
+      group: null,
+      sample: 0,
+      minimum: 8,
+      label: 'Not enough data to rank by retention.',
+    },
+    velocity: {
+      status: 'not_enough_data',
+      metric: 'velocity',
+      measure: 'velocity',
+      group: null,
+      sample: 0,
+      minimum: 8,
+      label: 'Not enough data to rank by velocity.',
+    },
+    genome: { findings: [], refused: [] },
+    experiments: [],
+    caveats: [],
+  };
+  const HEADING = '## Past performance of this project';
+
+  for (const key of ['ideation', 'story', 'shots'] as const) {
+    it(`${key}: a run's performance block reaches the prompt, the instructions and the context`, async () => {
+      const stage = getStage(key);
+      const target = targets[key];
+      const client = clients[key as keyof typeof targets];
+      const ctx = ctxFor(client ? client() : episodeClient().client, {
+        performanceContext: BLOCK,
+      });
+      const parts = (await stage.parts(ctx, target)).filter(
+        (part) => part.key !== 'reel_scout',
+      );
+
+      for (const part of parts) {
+        const seen = briefInputs.length;
+        const brief: Brief = await stage.prepare(ctx, target, part);
+
+        expect(brief.prompt.variables.performance_context).toContain(HEADING);
+        expect(brief.instructions).toContain(HEADING);
+        expect(brief.context.performanceContext).toEqual(BLOCK);
+        expect(
+          (briefInputs.slice(seen) as BuildBriefInput[]).flatMap(
+            promptVariableProblems,
+          ),
+        ).toEqual([]);
+      }
+
+      // Without one, the prompt is as it was
+      const plain = await stage.prepare(
+        ctxFor(client ? client() : episodeClient().client),
+        target,
+        parts[0]!,
+      );
+      expect(plain.prompt.variables.performance_context).toBe('');
+      expect(plain.instructions).not.toContain(HEADING);
+      expect(plain.context).not.toHaveProperty('performanceContext');
     });
   }
 

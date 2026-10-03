@@ -192,6 +192,11 @@ const generateStoryTool = createTool({
           previous_episodes: previousEpisodes ?? '',
           visual_style: visualStyle ?? '',
           recurring_element: recurringElements ?? '',
+          // FILM-1912: the run's block, from the orchestrator, not the model
+          performance_context:
+            typeof context?._performanceContext === 'string'
+              ? context._performanceContext
+              : '',
           canon_context: '',
           plot_beats: '',
           ideation_themes: ideationThemes ?? '',

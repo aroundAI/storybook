@@ -7,6 +7,8 @@ export const AiSettingsSchema = z.object({
   serverGenerationEnabled: z.boolean(),
   externalGenerationEnabled: z.boolean(),
   defaultMode: z.enum(GENERATION_MODES),
+  /** FILM-1912: briefs carry past-episode performance; off by default */
+  performanceContextEnabled: z.boolean(),
 });
 
 export type AiSettings = z.infer<typeof AiSettingsSchema>;
@@ -15,6 +17,7 @@ export const AI_SETTINGS_DEFAULTS: AiSettings = {
   serverGenerationEnabled: true,
   externalGenerationEnabled: true,
   defaultMode: 'server',
+  performanceContextEnabled: false,
 };
 
 export const BOTH_MODES_OFF_REFUSAL =

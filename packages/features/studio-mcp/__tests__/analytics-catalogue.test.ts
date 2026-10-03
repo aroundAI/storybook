@@ -39,6 +39,7 @@ const READ_TOOLS = [
   'get_analytics_settings',
   'get_saved_insights',
   'get_ai_usage',
+  'get_performance_by_origin',
 ];
 
 const WRITE_TOOLS = [

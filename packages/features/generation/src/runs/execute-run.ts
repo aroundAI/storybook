@@ -24,7 +24,8 @@ import type { RunCtx } from './types';
  * The `Ctx` a stage runs with under a run: the caller's, plus the run's
  * commit applier (the plan, the content_revisions snapshot of what it
  * replaces and, with `finalize`, the move to committed, in one transaction)
- * and the origin columns, which exist since FILM-1903 part A.
+ * and the origin columns, which exist since FILM-1903 part A, and the
+ * performance block the run was opened with (FILM-1912).
  *
  * `finalize` defaults to true: the commit is the run's last act. A worker
  * job handler passes false, because it works on after its commit (a quality
@@ -40,6 +41,7 @@ export function stageCtx(
     ...ctx,
     commits: run.commitApplier({ finalize: options.finalize ?? true }),
     originColumnsAvailable: true,
+    performanceContext: run.input.performanceContext,
   };
 }
 

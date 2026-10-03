@@ -36,6 +36,8 @@ export interface IdeationOrchestratorInput {
   previousEpisodesContext?: string;
   visualStyle?: string;
   recurringElementsContext?: string;
+  /** FILM-1912: past performance as prompt text, for the director's prompt */
+  performanceContext?: string;
 }
 
 export interface IdeationOrchestratorResult {
@@ -105,7 +107,11 @@ export async function runIdeationOrchestrator(
       {
         userPrompt: buildIdeationPrompt(input),
       },
-      { accountId: input.accountId },
+      {
+        accountId: input.accountId,
+        // The director's template reads it itself, never copied by the model
+        _performanceContext: input.performanceContext ?? '',
+      },
     );
 
   if (!result.success || !result.data) {

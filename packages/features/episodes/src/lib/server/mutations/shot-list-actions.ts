@@ -21,6 +21,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { GenerateShotListSchema } from '../../schemas/shot-list.schema';
 import type { GenerateShotListResponse, ScreenplayData } from '../../types';
 import { refuseRunError } from '../refusing-run-errors';
+import { webRunCtx } from '../web-run-ctx';
 
 /**
  * Generates a shot list from an episode's screenplay.
@@ -103,7 +104,7 @@ const generateShotList = enhanceAction(
         },
         name: 'episodes.generateShotList',
       },
-      { client: client, accountId: target.accountId, userId: user.id },
+      await webRunCtx(client, target.accountId, user.id),
     ).catch(refuseRunError);
 
     // Create generation job entry for tracking

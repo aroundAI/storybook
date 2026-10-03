@@ -54,6 +54,8 @@ export interface ShotOrchestratorInput {
   recurringElementsContext?: string;
   /** How long each shot may run, in seconds (KB-120) */
   shotDuration?: { min: number; max: number };
+  /** FILM-1912: past performance as prompt text, for each scene's prompt */
+  performanceContext?: string;
 }
 
 export interface GeneratedShotResult {
@@ -189,6 +191,7 @@ export async function runShotOrchestrator(
         accountId: input.accountId,
         _scenesContext: input.scenes,
         _shotDuration: input.shotDuration,
+        _performanceContext: input.performanceContext ?? '',
       },
     );
 

@@ -40,6 +40,7 @@ export type Database = {
           created_at: string
           default_mode: string
           external_generation_enabled: boolean
+          performance_context_enabled: boolean
           server_generation_enabled: boolean
           updated_at: string
         }
@@ -48,6 +49,7 @@ export type Database = {
           created_at?: string
           default_mode?: string
           external_generation_enabled?: boolean
+          performance_context_enabled?: boolean
           server_generation_enabled?: boolean
           updated_at?: string
         }
@@ -56,6 +58,7 @@ export type Database = {
           created_at?: string
           default_mode?: string
           external_generation_enabled?: boolean
+          performance_context_enabled?: boolean
           server_generation_enabled?: boolean
           updated_at?: string
         }
