@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
+import { subscribeWithAuth } from '@kit/supabase/realtime/subscribe-with-auth';
 
 import { Notification } from '../types';
 
@@ -20,10 +21,8 @@ export function useNotificationsStream({
       return;
     }
 
-    const channel = client.channel('notifications-channel');
-
-    const subscription = channel
-      .on(
+    return subscribeWithAuth(client, (authed) =>
+      authed.channel('notifications-channel').on(
         'postgres_changes',
         {
           event: 'INSERT',
@@ -34,11 +33,7 @@ export function useNotificationsStream({
         (payload) => {
           onNotifications([payload.new as Notification]);
         },
-      )
-      .subscribe();
-
-    return () => {
-      void subscription?.unsubscribe();
-    };
+      ),
+    );
   }, [client, onNotifications, accountIds, enabled]);
 }
