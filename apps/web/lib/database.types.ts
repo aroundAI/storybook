@@ -6345,6 +6345,40 @@ export type Database = {
         }
         Returns: Database["public"]["Tables"]["invitations"]["Row"][]
       }
+      admin_expired_leases_per_day: {
+        Args: { p_days?: number }
+        Returns: {
+          day: string
+          expired: number
+        }[]
+      }
+      admin_generation_run_stats: {
+        Args: { p_days?: number }
+        Returns: {
+          mode: string
+          runs: number
+          status: string
+        }[]
+      }
+      admin_mcp_check_window: { Args: { p_days: number }; Returns: string }
+      admin_mcp_error_codes: {
+        Args: { p_days?: number }
+        Returns: {
+          calls: number
+          error_code: string
+          rate: number
+          total_calls: number
+        }[]
+      }
+      admin_mcp_tool_stats: {
+        Args: { p_days?: number }
+        Returns: {
+          calls: number
+          errors: number
+          p95_ms: number
+          tool: string
+        }[]
+      }
       apply_generation_commit: {
         Args: { p_finalize?: boolean; p_plan: Json; p_run_id: string }
         Returns: Json
@@ -6557,6 +6591,16 @@ export type Database = {
         Returns: boolean
       }
       expire_generation_runs: { Args: never; Returns: number }
+      external_run_model_calls: {
+        Args: { p_limit?: number }
+        Returns: {
+          account_id: string
+          created_at: string
+          run_id: string
+          total: number
+          usage_id: string
+        }[]
+      }
       get_account_invitations: {
         Args: { account_slug: string }
         Returns: {

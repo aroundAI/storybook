@@ -434,9 +434,7 @@ export default $config({
       },
     });
 
-    console.log(
-      `✓ Voice queue configured with 5-minute visibility timeout`,
-    );
+    console.log(`✓ Voice queue configured with 5-minute visibility timeout`);
 
     // DynamoDB table for WebSocket connection tracking
     const connectionsTable = new sst.aws.Dynamo(
@@ -1227,31 +1225,34 @@ export default $config({
 
     // Scheduled Reports Cron - Generates and emails due analytics reports
     // Uses EventBridge to trigger a Lambda that calls the reports API endpoint
-    const scheduledReportsCron = new sst.aws.Cron('StorybookScheduledReportsCron', {
-      job: {
-        handler: 'apps/web/lambda/scheduled-reports/index.handler',
-        timeout: '5 minutes',
-        memory: '512 MB',
-        architecture: 'arm64',
-        link: [web],
-        environment: {
-          API_URL: web.url,
-          CRON_SECRET: process.env.CRON_SECRET || '',
-        },
-        transform: {
-          function: {
-            kmsKeyArn: kmsKey.arn,
+    const scheduledReportsCron = new sst.aws.Cron(
+      'StorybookScheduledReportsCron',
+      {
+        job: {
+          handler: 'apps/web/lambda/scheduled-reports/index.handler',
+          timeout: '5 minutes',
+          memory: '512 MB',
+          architecture: 'arm64',
+          link: [web],
+          environment: {
+            API_URL: web.url,
+            CRON_SECRET: process.env.CRON_SECRET || '',
           },
-        },
-        permissions: [
-          {
-            actions: ['kms:Decrypt'],
-            resources: [kmsKey.arn],
+          transform: {
+            function: {
+              kmsKeyArn: kmsKey.arn,
+            },
           },
-        ],
+          permissions: [
+            {
+              actions: ['kms:Decrypt'],
+              resources: [kmsKey.arn],
+            },
+          ],
+        },
+        schedule: 'rate(1 hour)',
       },
-      schedule: 'rate(1 hour)',
-    });
+    );
 
     console.log(`✓ Scheduled reports cron configured (hourly)`);
 
@@ -1455,6 +1456,42 @@ export default $config({
 
     console.log(`✓ Generation run expiry cron configured (hourly)`);
 
+    // MCP Guard Check Cron (FILM-1911) - alerts if a model-usage row ever
+    // belongs to an external (MCP) run, which would mean the FILM-1903 lock
+    // failed. The route raises it through the monitoring service and an
+    // error log tagged mcp.guard.external_run_model_call; the Lambda then
+    // fails, which McpGuardFailedAlarm below turns into an SNS alarm.
+    const externalRunModelCallsCron = new sst.aws.Cron(
+      'StorybookExternalRunModelCallsCron',
+      {
+        job: {
+          handler: 'apps/web/lambda/external-run-model-calls/index.handler',
+          timeout: '2 minutes',
+          memory: '256 MB',
+          architecture: 'arm64',
+          link: [web],
+          environment: {
+            API_URL: web.url,
+            CRON_SECRET: process.env.CRON_SECRET || '',
+          },
+          transform: {
+            function: {
+              kmsKeyArn: kmsKey.arn,
+            },
+          },
+          permissions: [
+            {
+              actions: ['kms:Decrypt'],
+              resources: [kmsKey.arn],
+            },
+          ],
+        },
+        schedule: 'rate(1 hour)',
+      },
+    );
+
+    console.log(`✓ MCP guard check cron configured (hourly)`);
+
     // Scheduled Publish Cron - Queries for due publishes and queues them
     // Runs every 5 minutes, sends each publish job to SQS for processing
     const scheduledPublishCron = new sst.aws.Cron(
@@ -1610,6 +1647,28 @@ export default $config({
       dimensions: {
         BucketName: buckets.get('storage')?.name || 'storybook-storage',
         StorageType: 'StandardStorage',
+      },
+      treatMissingData: 'notBreaching',
+      ...(alarmTopic && { alarmActions: [alarmTopic.arn] }),
+    });
+
+    // 5. MCP Guard Alarm (FILM-1911) - the hourly guard Lambda fails when a
+    // model-usage row belongs to an external run, or when the check cannot
+    // run; one failure is the alert.
+    new aws.cloudwatch.MetricAlarm('McpGuardFailedAlarm', {
+      comparisonOperator: 'GreaterThanOrEqualToThreshold',
+      evaluationPeriods: 1,
+      metricName: 'Errors',
+      namespace: 'AWS/Lambda',
+      period: 3600, // the check runs hourly
+      statistic: 'Sum',
+      threshold: 1,
+      alarmDescription: `A model call was recorded for an external (MCP) run, or the guard check could not run, for ${stage}. See the mcp.guard.external_run_model_call log lines.`,
+      alarmName: `${stage}-mcp-guard-failed-alarm`,
+      dimensions: {
+        FunctionName: externalRunModelCallsCron.nodes.function.apply(
+          (fn) => fn.name,
+        ),
       },
       treatMissingData: 'notBreaching',
       ...(alarmTopic && { alarmActions: [alarmTopic.arn] }),

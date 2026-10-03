@@ -24,6 +24,10 @@ export function AdminMobileNavigation() {
         <DropdownMenuItem>
           <Link href={'/admin/accounts'}>Accounts</Link>
         </DropdownMenuItem>
+
+        <DropdownMenuItem>
+          <Link href={'/admin/mcp'}>MCP Connector</Link>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

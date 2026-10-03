@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { LayoutDashboard, Link2, Users } from 'lucide-react';
+import { Activity, LayoutDashboard, Link2, Users } from 'lucide-react';
 
 import {
   Sidebar,
@@ -65,6 +65,17 @@ export function AdminSidebar() {
                 >
                   <Link2 className={'h-4'} />
                   <span>Platforms</span>
+                </Link>
+              </SidebarMenuButton>
+
+              <SidebarMenuButton isActive={path.includes('/admin/mcp')} asChild>
+                <Link
+                  className={'flex size-full gap-2.5'}
+                  href={'/admin/mcp'}
+                  data-test="admin-nav-mcp"
+                >
+                  <Activity className={'h-4'} />
+                  <span>MCP Connector</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenu>

@@ -3,7 +3,7 @@ title: "Dual AI General Availability: docs, dashboards, alerts, no-LLM boot"
 phase: 19
 phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: S
 dependencies:
   - spec_id: "FILM-1907"
@@ -24,22 +24,29 @@ acceptance_criteria:
     met: false
     reason: "not met — page drafted in #578 (apps/web/content/documentation/claude-connector.mdoc); screenshots pending a real run, and the banner, badge, restore and AI-settings labels wait for FILM-1910. Open placeholders are the TODO lines in the page's frontmatter"
   - text: "Monitoring panels: calls per tool, error rate by code, p95 by tool, runs by mode and status, expired leases per day"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "apps/web/app/admin/mcp/page.tsx:41 is the super admin's MCP Connector page (sidebar link, windows of 24 hours, 7 and 30 days) with the five panels and a guard card, read through four SECURITY DEFINER functions that refuse anyone but is_super_admin() at aal2 and return aggregates only (apps/web/supabase/migrations/20261003141814_film-1911-mcp-monitoring.sql:46): admin_mcp_tool_stats (calls, errors, p95 per tool), admin_mcp_error_codes (each code over every call), admin_generation_run_stats (mode, status), admin_expired_leases_per_day (every UTC day of the window, a day with none a measured 0). tests/database/mcp-monitoring.test.sql checks the refusals and every figure against hand-computed values, red with the migration skipped and under three mutations (tooling/mutation-guards/film-1911.json); the four are pinned in definer-functions-inventory.test.sql. apps/e2e/tests/admin/mcp-monitoring.spec.ts:81 reads the figures off the page after seeding (7 calls, 1 error, p95 82 ms over 7 days; 6, 1 and 85 ms over 24 hours; runs and expired leases moving by the 2 it adds), red with a median planted for the p95 (#582)"
   - text: "An alert fires if llm_usage_analytics ever has a row whose run is external (the FILM-1903 trigger should make this impossible; the alert proves it stays so)"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "public.external_run_model_calls() (apps/web/supabase/migrations/20261003141814_film-1911-mcp-monitoring.sql:163, service role only) joins llm_usage_analytics to generation_runs on run_id where the run is external. apps/web/app/api/cron/external-run-model-calls/route.ts:23 runs it hourly behind CRON_SECRET (Lambda apps/web/lambda/external-run-model-calls, StorybookExternalRunModelCallsCron in sst.config.ts); a finding, or a check that could not run, goes to getServerMonitoringService().captureException (Sentry when MONITORING_PROVIDER is set, the console otherwise) and an error log tagged mcp.guard.external_run_model_call, and the Lambda then fails, which McpGuardFailedAlarm (AWS/Lambda Errors >= 1 on that function) sends to the existing AlarmNotifications SNS topic when ALARM_EMAIL is set. pgTAP G2-G4 prove the lock refuses the row and that, with the trigger disabled, the check reports the planted row and only it; route and Lambda unit tests were red before the code and under mutation (#582)"
   - text: "Boot test: the app with no LLM_* / GEMINI_* / GOOGLE_* model variables starts, serves every MCP tool, and refuses server-mode generation with a clear message"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "Starts and serves every tool: scripts/ci/no-llm-server.mjs starts the test build with every LLM_, GEMINI_, GOOGLE_, VOYAGE_, OPENAI_ and ANTHROPIC_ variable removed, refusing to start if an env file Next.js loads would put one back (red with GEMINI_API_KEY planted in .env.test), and apps/e2e/tests/mcp/no-llm-boot.spec.ts:60 lists the tools, calls whoami and list_projects, then calls every listed tool and fails on any INTERNAL or non-200 answer (red with a model-key requirement planted in get_ai_usage). Refuses server mode with a clear message: the gateway's openRun (packages/ai-gateway/src/backend.ts:76) resolves the mode when no model key or forced local model exists and refuses a server run with LLM_NOT_CONFIGURED before the row is written (vendor renders and external runs pass); dispatch and write refuse too and fail the run; runRefusalMessage (packages/ai-gateway/src/jobs.ts:126) words it for the page, so the Generate actions on FILM-1910's refuseRunError return it as a value. __tests__/model-not-configured.test.ts was red before the code and four mutation guards go red; no-llm-boot.spec.ts:109 clicks Convert to Screenplay twice and reads the message both times with no generation run written, red against the same build started with a key. Generate actions not yet on refuseRunError still throw it, so production shows them a generic sentence (no run is left): an unassigned follow-up from FILM-1910 (#582)"
   - text: "The MCP connector feature flag is removed; team AI settings (FILM-1910) are the control"
-    met: false
-    reason: "not met — drafted 2026-10-02, no code yet"
+    met: true
+    evidence: "No MCP connector flag was ever built: FILM-1904 shipped /api/mcp ungated (apps/web/app/api/mcp/route.ts:12 exports the handlers unconditionally), apps/web/config/feature-flags.config.ts and the env files carry none, and a repo search for an MCP enable/flag variable finds nothing outside this spec (positive control: the same search finds createMcpRouteHandlers). The control is the team's account_ai_settings row (apps/web/supabase/migrations/20261002201011_film-1903-generation-runs.sql:133: server_generation_enabled, external_generation_enabled, default_mode), which openRun reads and FILM-1910's settings page edits (#582)"
 test_plan:
   unit: []
   integration:
-    - {text: "The boot test runs in CI with model variables unset", met: false, reason: "not met — no test yet"}
+    - {text: "The boot test runs in CI with model variables unset", met: false, reason: "Wired as a step of 🧬 E2E evidence (.github/workflows/workflow.yml), which runs nightly and on dispatch, on that job's build and Supabase; not yet seen passing in a CI run (#582)"}
   e2e: []
+remaining:
+  - criterion: "A user docs page (apps/web/content/documentation) explains adding the connector in Claude, signing in, the scopes, the workflow and revoking access, with screenshots taken from a real run"
+    reason: "The page is drafted (#578); its screenshots need a real run, and FILM-1910's labels fill its TODO lines"
+    closed_by: "FILM-1911"
+  - criterion: "The boot test runs in CI with model variables unset"
+    reason: "Runs in the nightly 🧬 E2E evidence job; ticked once a run shows it green"
+    closed_by: "FILM-1911"
 open_questions:
   - "Is ChatGPT's connector support in scope for GA, or Claude first and other clients as they come?"
 notes: |

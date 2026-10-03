@@ -26,6 +26,8 @@ import type { LlmJobTarget } from '@kit/prompt-engine/llm-job-target';
 import { payloadForTarget } from '@kit/prompt-engine/server';
 
 import { openRun } from './backend';
+import { isGatewayError } from './errors';
+import { LLM_NOT_CONFIGURED_MESSAGE } from './model-availability';
 
 /** The stage each worker job is an execution of. */
 export const STAGE_OF_JOB: Record<LlmJobType, StageKey> = {
@@ -119,6 +121,11 @@ export function runRefusalMessage(error: unknown): string | null {
   }
 
   if (isRunError(error, 'RUN_IN_PROGRESS')) return STAGE_IN_PROGRESS_REFUSAL;
+
+  // No model key on this deployment (FILM-1911): the gateway's own words
+  if (isGatewayError(error, 'LLM_NOT_CONFIGURED')) {
+    return LLM_NOT_CONFIGURED_MESSAGE;
+  }
 
   return null;
 }

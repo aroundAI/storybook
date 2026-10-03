@@ -1025,6 +1025,18 @@ jobs:
         working-directory: apps/e2e
         run: npx playwright test evidence --project=chromium --workers=1 --retries=2
 
+      # FILM-1911: the same build, started a second time on 3001 with every
+      # LLM_/GEMINI_/GOOGLE_/VOYAGE_/OPENAI_/ANTHROPIC_ variable removed,
+      # must start and answer every MCP tool. Reuses this job's build and
+      # Supabase rather than paying for a job of its own.
+      - name: The app boots and serves MCP with no model keys (FILM-1911)
+        working-directory: apps/e2e
+        env:
+          NO_LLM_BOOT: '1'
+          PLAYWRIGHT_BASE_URL: http://localhost:3001
+          PLAYWRIGHT_SERVER_COMMAND: node scripts/ci/no-llm-server.mjs 3001
+        run: npx playwright test mcp/no-llm-boot --project=chromium --workers=1
+
       - name: Upload evidence screenshots
         uses: actions/upload-artifact@v4
         if: always()
