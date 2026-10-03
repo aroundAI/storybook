@@ -22,9 +22,9 @@ import { MCP_URL } from './oauth-client';
  * and StoryBook makes no model call. The scripted client (the one the
  * contract test runs) drives ideation → story → screenplay → shots → audio
  * cues; the studio pages then show each stage's result, read from the rows
- * the commits wrote, before and after a reload. The origin badges are
- * FILM-1910's (#581, not merged): the stamped origin is read through
- * get_episode.
+ * the commits wrote, before and after a reload, each with FILM-1910's
+ * "Claude via MCP" badge where the page shows one (the story and the
+ * screenplay in the stage bar, every shot card).
  *
  * Screenshots for the PR are written only when CAPTURE_EVIDENCE is set.
  */
@@ -95,6 +95,13 @@ async function mintToken(accountId: string, accessToken: string) {
   expect(response.ok).toBe(true);
 
   return token;
+}
+
+/** FILM-1910's origin badge, inside the first element with this hook. */
+async function expectWrittenByClaude(page: Page, within: string) {
+  await expect(
+    byTest(page, within).first().locator('[data-test="origin-badge"]').first(),
+  ).toContainText('Claude via MCP');
 }
 
 async function capture(page: Page, name: string) {
@@ -180,12 +187,6 @@ test.describe('Claude takes an episode through every stage over MCP (FILM-1909)'
         'audio_cues',
       ]);
       sceneCount = runs.find((run) => run.stage === 'shots')!.parts.length - 1;
-
-      const read = await call('get_episode', { episodeId: episode.id });
-      const origin = JSON.stringify(read.structuredContent);
-      expect(origin).toMatch(/"story":\{[^}]*"kind":"external"/);
-      expect(origin).toMatch(/"screenplay":\{[^}]*"kind":"external"/);
-      expect(origin).toContain('"clientName":"Claude Desktop"');
     } finally {
       await client.close();
     }
@@ -210,6 +211,7 @@ test.describe('Claude takes an episode through every stage over MCP (FILM-1909)'
       await expect(byTest(page, 'story-content')).toContainText(
         'Commander Maya Chen',
       );
+      await expectWrittenByClaude(page, 'stage-run-bar');
       await capture(page, `02-story${suffix}`);
 
       await page.goto(`${base}/screenplay`);
@@ -218,6 +220,7 @@ test.describe('Claude takes an episode through every stage over MCP (FILM-1909)'
       await expect(
         page.getByText('Signal 1. It is my voice.').first(),
       ).toBeVisible();
+      await expectWrittenByClaude(page, 'stage-run-bar');
       await capture(page, `03-screenplay${suffix}`);
 
       await page.goto(`${base}/visual-studio`);
@@ -226,6 +229,7 @@ test.describe('Claude takes an episode through every stage over MCP (FILM-1909)'
       await expect(byTest(page, 'shot-card')).toHaveCount(
         sceneCount * SHOTS_PER_SCENE,
       );
+      await expectWrittenByClaude(page, 'shot-card');
       await capture(page, `04-shots${suffix}`);
 
       await page.goto(`${base}/audio-studio`);
