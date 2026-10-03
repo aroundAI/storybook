@@ -150,6 +150,16 @@
       "cwd": "packages/features/generation",
       "test": "__tests__/runs.test.ts",
       "pattern": "a child run takes its parent"
+    },
+    {
+      "name": "1903 B the story stage stops stamping who wrote it",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/story.ts",
+      "find": "        generation_origin: run.origin as unknown as Json,\n",
+      "replace": "",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stage-matrix.test.ts",
+      "pattern": "story in server mode"
     }
   ]
 }

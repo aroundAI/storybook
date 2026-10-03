@@ -18,7 +18,7 @@ import {
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
-import { workerCtx } from '../utils/stage-runtime';
+import { stageRunDeps, workerCtx } from '../utils/stage-runtime';
 
 interface EpisodeOutline {
   id: string;
@@ -68,6 +68,7 @@ export async function processSeasonOutline(
   } = {};
 
   const { commit } = await runStage(seasonOutlineStage, ctx, target, {
+    ...stageRunDeps(),
     generate: async (brief) => {
       const { runSeasonOrchestrator } = await import(
         '@kit/episodes/agent/season-orchestrator'

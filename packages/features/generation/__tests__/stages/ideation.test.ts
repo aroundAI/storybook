@@ -171,6 +171,8 @@ describe('ideation stage (FILM-1901)', () => {
             ideas: IDEAS,
             ideas_generated_at: result.data.generatedAt,
           },
+          // Who wrote it (FILM-1903)
+          generation_origin: expect.objectContaining({ kind: 'server' }),
         },
       }),
     ]);

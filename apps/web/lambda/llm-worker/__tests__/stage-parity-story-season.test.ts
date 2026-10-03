@@ -18,8 +18,13 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { withRun } from '@kit/ai-gateway';
 import { episodeRowFromOutline } from '@kit/generation/episode-rows';
-import { type RecordedWrite, recordingClient } from '@kit/generation/testing';
+import {
+  type RecordedWrite,
+  fakeRunHandle,
+  recordingClient,
+} from '@kit/generation/testing';
 
 import {
   CANON_EXTRACTION,
@@ -62,21 +67,48 @@ vi.mock('@kit/episodes/agent/season-orchestrator', () => ({
     return SEASON_OUTLINE_ORCHESTRATOR_RESULT;
   }),
 }));
-vi.mock('@kit/prompt-engine/server', () => ({
+vi.mock('@kit/ai-gateway', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kit/ai-gateway')>()),
   executeLLM: vi.fn(async (input: unknown) => {
     seen['canon-extraction'] = input;
     return { data: { extraction: CANON_EXTRACTION } };
   }),
 }));
-vi.mock('../llm-utils', () => ({
-  executeLLMForLambda: vi.fn(async (input: unknown) => {
-    seen.season_analysis = input;
-    return {
-      data: SEASON_ANALYSIS_RESULT,
-      metadata: { tokens: 10, latency: 5, provider: 'gemini', model: 'g' },
-    };
-  }),
-}));
+
+/**
+ * The run the handlers run under (FILM-1902, FILM-1903): the one model door
+ * is `run.write(brief)`, so a direct model call is what the season analysis
+ * handler used to make and now cannot.
+ */
+function parityRun() {
+  return fakeRunHandle({
+    accountId: IDS.accountId,
+    projectId: IDS.projectId,
+    targetId: IDS.episodeId,
+    createdBy: IDS.userId,
+    backend: {
+      write: async (_run, brief) => {
+        if (brief.prompt.slug !== 'season-generation') {
+          throw new Error(`unexpected run.write ${brief.prompt.slug}`);
+        }
+
+        seen.season_analysis = brief;
+        return {
+          output: SEASON_ANALYSIS_RESULT,
+          usage: { tokens: 10, latencyMs: 5, provider: 'gemini', model: 'g' },
+        };
+      },
+      dispatch: async () => undefined,
+    },
+  }).run;
+}
+
+/** The origin the run stamps on the rows it writes (the model is the orchestrator's). */
+const SERVER_ORIGIN = expect.objectContaining({
+  kind: 'server',
+  runId: '19030000-0000-4000-8000-00000000aaaa',
+  at: NOW.toISOString(),
+});
 
 interface Fixture {
   executorInput: unknown;
@@ -119,11 +151,26 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
       );
       const db = recordingClient(parityResponder());
 
-      const result = await processStoryGeneration(STORY_PAYLOAD, db.client);
+      const result = await withRun(parityRun(), () =>
+        processStoryGeneration(STORY_PAYLOAD, db.client),
+      );
 
       expect(json(seen.story)).toEqual(old.executorInput);
       expect(json(seen['canon-extraction'])).toEqual(old.canonExtractionInput);
-      expect(json(db.writes())).toEqual(old.writes);
+      // The same writes, plus who wrote the story (FILM-1903)
+      expect(json(db.writes())).toEqual(
+        old.writes.map((write, index) =>
+          index === 1
+            ? {
+                ...write,
+                payload: {
+                  ...(write.payload as object),
+                  generation_origin: SERVER_ORIGIN,
+                },
+              }
+            : write,
+        ),
+      );
       expect(json(result)).toEqual(old.result);
     });
 
@@ -133,7 +180,9 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
       );
       const db = recordingClient(parityResponder());
 
-      await processStoryGeneration(STORY_PAYLOAD, db.client);
+      await withRun(parityRun(), () =>
+        processStoryGeneration(STORY_PAYLOAD, db.client),
+      );
 
       expect(db.writes().map((w) => `${w.table}:${w.op}`)).toEqual([
         'generation_jobs:update',
@@ -164,7 +213,9 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
       );
       const db = recordingClient(parityResponder());
 
-      const result = await processStoryIdeation(IDEATION_PAYLOAD, db.client);
+      const result = await withRun(parityRun(), () =>
+        processStoryIdeation(IDEATION_PAYLOAD, db.client),
+      );
 
       expect(json(seen.ideation)).toEqual(old.executorInput);
       expect(json(result)).toEqual(old.result);
@@ -179,7 +230,9 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
       );
       const db = recordingClient(parityResponder());
 
-      await processStoryIdeation(IDEATION_PAYLOAD, db.client);
+      await withRun(parityRun(), () =>
+        processStoryIdeation(IDEATION_PAYLOAD, db.client),
+      );
 
       expect(db.writes()).toEqual([
         expect.objectContaining({
@@ -191,6 +244,7 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
               ideas: IDEATION_ORCHESTRATOR_RESULT.ideas,
               ideas_generated_at: NOW.toISOString(),
             },
+            generation_origin: SERVER_ORIGIN,
           },
           filters: [
             { method: 'eq', args: ['id', IDS.episodeId] },
@@ -209,9 +263,8 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
       );
       const db = recordingClient(parityResponder());
 
-      const result = await processSeasonOutline(
-        SEASON_OUTLINE_PAYLOAD,
-        db.client,
+      const result = await withRun(parityRun(), () =>
+        processSeasonOutline(SEASON_OUTLINE_PAYLOAD, db.client),
       );
 
       expect(json(seen.season_outline)).toEqual(old.executorInput);
@@ -237,7 +290,9 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
       );
       const db = recordingClient(parityResponder());
 
-      await processSeasonOutline(SEASON_OUTLINE_PAYLOAD, db.client);
+      await withRun(parityRun(), () =>
+        processSeasonOutline(SEASON_OUTLINE_PAYLOAD, db.client),
+      );
 
       const writes = db.writes();
       expect(writes.map((w) => `${w.table}:${w.op}`)).toEqual([
@@ -252,7 +307,9 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
             number: SEASON_OUTLINE_PAYLOAD.startingNumber + index,
           }),
       );
-      expect(writes[0]!.payload).toEqual(rows);
+      expect(writes[0]!.payload).toEqual(
+        rows.map((row) => ({ ...row, generation_origin: SERVER_ORIGIN })),
+      );
       expect(rows[0]).toMatchObject({
         number: 3,
         slug: 'episode-3-the-first-light',
@@ -271,21 +328,22 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
       );
       const db = recordingClient(parityResponder());
 
-      const result = await processSeasonAnalysis(
-        SEASON_ANALYSIS_PAYLOAD,
-        db.client,
+      const result = await withRun(parityRun(), () =>
+        processSeasonAnalysis(SEASON_ANALYSIS_PAYLOAD, db.client),
       );
 
-      // The same prompt and variables; since #555 the executor is also told
-      // whose job it is (through generateWithLambda), which the old handler
-      // recorded here did not pass
-      expect(json(seen.season_analysis)).toMatchObject(
-        old.executorInput as object,
-      );
-      expect(seen.season_analysis).toMatchObject({
-        accountId: IDS.accountId,
-        userId: IDS.userId,
-        operationName: 'season-analysis',
+      // The same prompt and variables, now carried by the brief the run
+      // writes (FILM-1902); the run, not the call, names whose job it is
+      const executorInput = old.executorInput as {
+        templateSlug: string;
+        variables: Record<string, unknown>;
+      };
+      expect(json(seen.season_analysis)).toMatchObject({
+        stage: 'season_analysis',
+        prompt: {
+          slug: executorInput.templateSlug,
+          variables: executorInput.variables,
+        },
       });
       expect(json(result)).toEqual(old.result);
     });
@@ -299,7 +357,9 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
       );
       const db = recordingClient(parityResponder());
 
-      await processSeasonAnalysis(SEASON_ANALYSIS_PAYLOAD, db.client);
+      await withRun(parityRun(), () =>
+        processSeasonAnalysis(SEASON_ANALYSIS_PAYLOAD, db.client),
+      );
 
       expect(db.writes()).toEqual([
         expect.objectContaining({

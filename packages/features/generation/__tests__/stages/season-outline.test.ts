@@ -236,13 +236,15 @@ describe('season_outline stage (FILM-1901)', () => {
         expect.objectContaining({
           table: 'episodes',
           op: 'insert',
-          payload: OUTLINES.map((outline, index) =>
-            episodeRowFromOutline(outline, {
+          payload: OUTLINES.map((outline, index) => ({
+            ...episodeRowFromOutline(outline, {
               projectId: IDS.projectId,
               seasonId: IDS.seasonId,
               number: 3 + index,
             }),
-          ),
+            // Who wrote it (FILM-1903)
+            generation_origin: expect.objectContaining({ kind: 'server' }),
+          })),
         }),
       ]);
       expect(result.data.episodes.map((e) => [e.number, e.id])).toEqual([
@@ -280,6 +282,7 @@ describe('season_outline stage (FILM-1901)', () => {
             title: 'The First Light',
             description: OUTLINES[0]!.premise,
             story_data: expect.objectContaining({ generatedFromBatch: true }),
+            generation_origin: expect.objectContaining({ kind: 'server' }),
           },
           filters: [
             { method: 'eq', args: ['id', 'ep-3'] },

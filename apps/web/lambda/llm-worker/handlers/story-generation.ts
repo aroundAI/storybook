@@ -17,7 +17,7 @@ import { calculateContentScaling } from '@kit/shared/duration-scaling';
 import type { Database } from '@kit/supabase/database';
 
 import { extractCanonFacts } from '../utils/commit-story-canon';
-import { workerCtx } from '../utils/stage-runtime';
+import { stageRunDeps, workerCtx } from '../utils/stage-runtime';
 
 interface StoryOutput {
   fullText: string;
@@ -70,6 +70,7 @@ export async function processStoryGeneration(
   let orchestratorSteps: number | undefined;
 
   const { commit } = await runStage(storyStage, ctx, target, {
+    ...stageRunDeps(),
     generate: async (brief) => {
       const input = storyOrchestratorInput(brief);
       const episode = brief.context.episode as { characterNames: string[] };

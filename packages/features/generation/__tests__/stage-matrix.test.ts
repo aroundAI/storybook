@@ -24,6 +24,12 @@ import {
   tableResponder,
   writesOf,
 } from '../src/testing';
+import {
+  IDS,
+  SNAPSHOT,
+  TABLES,
+  responder as worldRows,
+} from './stages/helpers';
 
 /**
  * FILM-1902 criteria 9 and 10. Every registered stage runs in both modes
@@ -49,6 +55,8 @@ interface StageFixture {
   output: (part: PartSpec) => unknown;
   /** The rows the stage reads */
   respond: Responder;
+  /** The episode context the stage's prepare() loads; WORLD unless given */
+  snapshot?: EpisodeContextSnapshot;
 }
 
 const WORLD: EpisodeContextSnapshot = {
@@ -182,7 +190,158 @@ const TRANSLATIONS: Record<
   'scene-2': [{ sourceDialogueId: LINE_3, text: 'Tres horas después.' }],
 };
 
+const STORY_TEXT =
+  'Maya floats in the silence of the observation deck. '.repeat(40);
+
 const FIXTURES: Partial<Record<StageKey, StageFixture>> = {
+  story: {
+    target: {
+      episodeId: TEST_IDS.episode,
+      projectId: TEST_IDS.project,
+      title: 'The Last Signal',
+      logline: 'A lonely astronaut hears a signal that carries her own voice.',
+      targetDuration: 300,
+      contentStyle: 'dialogue-heavy',
+      themes: ['isolation'],
+      hook: 'The signal is her own voice.',
+    },
+    lock: episodeLock,
+    output: () => ({
+      story: {
+        title: 'The Last Signal',
+        fullText: STORY_TEXT,
+        actBreakdown: { act1: 'Hears.', act2: 'Decodes.', act3: 'Sends.' },
+        characters: [
+          {
+            name: 'Maya Chen',
+            role: 'protagonist',
+            arc: 'Routine to purpose.',
+          },
+        ],
+        themes: ['isolation'],
+        tone: 'contemplative',
+        estimatedSceneCount: 6,
+        episodeSummary: 'Maya hears and sends the signal.',
+        sentimentScore: 0.6,
+        keyEvents: ['Maya hears the signal'],
+      },
+    }),
+    respond: worldRows(),
+    snapshot: SNAPSHOT,
+  },
+  ideation: {
+    target: {
+      episodeId: TEST_IDS.episode,
+      premise: 'A signal from nowhere.',
+      numberOfIdeas: 2,
+    },
+    lock: episodeLock,
+    output: () => ({
+      ideas: [
+        {
+          title: 'The Last Signal',
+          logline: 'An astronaut hears her own voice from the future.',
+          hook: 'The voice is hers.',
+          conflict: 'Obey or act.',
+          themes: ['isolation'],
+          visualPotential: 'One lit console.',
+          qualityScore: 0.8,
+        },
+        {
+          title: 'Static',
+          logline: 'The signal leaks.',
+          hook: 'Someone knew.',
+          themes: ['trust'],
+          visualPotential: 'Crowds and screens.',
+        },
+      ],
+    }),
+    respond: worldRows(),
+    snapshot: SNAPSHOT,
+  },
+  season_outline: {
+    target: {
+      projectId: TEST_IDS.project,
+      seasonId: IDS.seasonId,
+      seasonPremise: 'Humanity builds its first deep-space relay.',
+      episodeCount: 2,
+      startingNumber: 3,
+      genre: 'sci-fi',
+      style: 'cinematic',
+    },
+    lock: { type: 'season', id: IDS.seasonId, projectId: TEST_IDS.project },
+    output: () => ({
+      episodes: [
+        {
+          number: 3,
+          title: 'The First Light',
+          premise: 'A mysterious signal from deep space awakens humanity.',
+          mainPlot:
+            'Dr. Sarah Chen discovers a pattern in cosmic background radiation that defies natural explanation.',
+          characterFocus: ['Maya Chen'],
+          arcPosition: 'setup',
+        },
+        {
+          number: 4,
+          title: 'Static',
+          premise: 'As the world learns about the signal, factions emerge.',
+          mainPlot:
+            'The discovery leaks to the press, sparking global chaos while Marcus uncovers evidence.',
+          arcPosition: 'rising',
+        },
+      ],
+    }),
+    respond: worldRows(TABLES),
+  },
+  season_analysis: {
+    target: {
+      projectId: TEST_IDS.project,
+      roadmap:
+        '* **Creature:** The Dragon\n* **The Mystery:** Something is missing',
+      externalFacts: [
+        {
+          id: 'f1',
+          claim: 'Dragons hoard gold.',
+          source_citation: 'Lore, p.3',
+        },
+      ],
+    },
+    lock: {
+      type: 'project',
+      id: TEST_IDS.project,
+      projectId: TEST_IDS.project,
+    },
+    output: () => ({
+      premise: 'A detective and a dragon solve small mysteries.',
+      tone: 'comedic',
+      target_audience: 'kids 4-8',
+      characters: [
+        {
+          name: 'Dante',
+          role: 'protagonist',
+          description: 'A patient detective.',
+        },
+      ],
+      locations: [
+        { name: 'The Market', description: 'A busy square.', setting: 'town' },
+      ],
+      episodes: [
+        {
+          number: 1,
+          title: 'The Missing Weight',
+          synopsis: 'Something goes missing.',
+          beats: [{ label: 'The Mystery', content: 'Something is missing' }],
+          moral: 'Be kind.',
+          signature_line: null,
+          character_names: ['Dante'],
+          location_names: ['The Market'],
+          tags: ['comedy'],
+          fact_ids: ['f1'],
+        },
+      ],
+    }),
+    respond: worldRows(),
+  },
   story_refinement: {
     target: { episodeId: TEST_IDS.episode, feedback: 'darker' },
     lock: episodeLock,
@@ -277,7 +436,7 @@ function harness(
     userId: TEST_IDS.user,
     backend,
     runMode: mode === 'external' ? () => 'external' : undefined,
-    episodeContext: async () => WORLD,
+    episodeContext: async () => fixture.snapshot ?? WORLD,
   };
 
   return { state, recording, ctx };
