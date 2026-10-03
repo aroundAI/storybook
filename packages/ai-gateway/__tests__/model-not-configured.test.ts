@@ -8,6 +8,7 @@ import {
   gatewayBackend,
   isGatewayError,
   openRun,
+  runRefusalMessage,
   serverModelConfigured,
 } from '../src';
 
@@ -136,5 +137,17 @@ describe('a server run that exists anyway', () => {
 
     expect(isGatewayError(error, 'LLM_NOT_CONFIGURED')).toBe(true);
     expect(run.status).toBe('failed');
+  });
+});
+
+describe('what a Generate action shows', () => {
+  it('words the refusal for the page, as it does a team that turned server mode off', async () => {
+    const { ctx } = fakeRunHandle();
+
+    const error = await openRun('story', target, origin, ctx).catch(
+      (thrown: unknown) => thrown,
+    );
+
+    expect(runRefusalMessage(error)).toBe(LLM_NOT_CONFIGURED_MESSAGE);
   });
 });

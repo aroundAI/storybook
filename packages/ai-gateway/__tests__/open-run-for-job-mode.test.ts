@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { RunCtx } from '@kit/generation';
 import {
@@ -66,6 +66,10 @@ const params = {
 };
 
 describe('a web Generate opens a server run (FILM-1910)', () => {
+  // A deployment with a model; with none, FILM-1911 refuses first
+  beforeEach(() => vi.stubEnv('GEMINI_API_KEY', 'a-key'));
+  afterEach(() => vi.unstubAllEnvs());
+
   it('opens server mode even when the team default is external', async () => {
     const run = await openRunForJob(
       params,
