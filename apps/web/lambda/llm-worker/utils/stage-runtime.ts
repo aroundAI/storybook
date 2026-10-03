@@ -86,21 +86,28 @@ export function episodeContextLoader(
 
 /**
  * The stage context for the job's run: the worker's client and identity,
- * plus the revision snapshot and origin stamping the run layer adds
- * (FILM-1903). The run is the one in scope unless given.
+ * plus the run's commit applier (one transaction, the content_revisions
+ * snapshot included) and origin stamping (FILM-1903). The run is the one in
+ * scope unless given. The commit leaves the run open: a handler works on
+ * after it (a quality pass, the chained audio job, the episode link) or
+ * commits once per asset, and the job boundary completes the run.
  */
 export function workerCtx(
   supabase: SupabaseClient<Database>,
   job: { accountId: string; userId: string },
   run: RunHandle = requireRun('the worker stage context'),
 ): Ctx {
-  return stageCtx(run, {
-    client: supabase,
-    accountId: job.accountId,
-    userId: job.userId,
-    episodeContext: episodeContextLoader(supabase),
-    log: (message) => console.log(message),
-  });
+  return stageCtx(
+    run,
+    {
+      client: supabase,
+      accountId: job.accountId,
+      userId: job.userId,
+      episodeContext: episodeContextLoader(supabase),
+      log: (message) => console.log(message),
+    },
+    { finalize: false },
+  );
 }
 
 /** The server writer, through the run in scope: `run.write(brief)`. */

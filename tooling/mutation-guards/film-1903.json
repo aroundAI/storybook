@@ -185,8 +185,8 @@
       "name": "1903 B fact extraction stamps verified_facts, which has no origin column",
       "kind": "unit",
       "file": "packages/features/generation/src/stages/fact-extraction.ts",
-      "find": "    const { error } = await ctx.client.from('verified_facts').insert(rows);",
-      "replace": "    const { error } = await ctx.client\n      .from('verified_facts')\n      .insert(rows.map((row) => ({ ...row, generation_origin: _run.origin })));",
+      "find": "      ops: [{ op: 'insert', table: 'verified_facts', rows }],",
+      "replace": "      ops: [\n        {\n          op: 'insert',\n          table: 'verified_facts',\n          rows: rows.map((row) => ({ ...row, generation_origin: _run.origin })),\n        },\n      ],",
       "cwd": "packages/features/generation",
       "test": "__tests__/stage-matrix.test.ts",
       "pattern": "fact_extraction in server mode"

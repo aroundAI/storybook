@@ -135,9 +135,9 @@ describe('cleanupEpisodeCanon', () => {
       cleanupEpisodeCanon(EPISODE, fakeClient(tables, ['character_states'])),
     ).resolves.toBeUndefined();
 
+    // A skipped step of the cleanup's plan names its table and the error
     expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining('character_states'),
-      'character_states is down',
+      expect.stringMatching(/character_states.*character_states is down/),
     );
     expect(ids(tables.immutable_events)).not.toContain('generated');
   });

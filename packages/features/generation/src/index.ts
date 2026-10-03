@@ -50,6 +50,29 @@ export {
   issueToCheckError,
 } from './checks';
 export {
+  applyCommit,
+  eq,
+  inList,
+  is,
+  planWrites,
+  ref,
+  resultRows,
+  wasSkipped,
+  type AppliedCommit,
+  type CommitApplier,
+  type CommitFilter,
+  type CommitGroup,
+  type CommitPlan,
+  type CommitRef,
+  type CommitRow,
+  type CommitStep,
+  type CommitTable,
+  type CommitWrite,
+  type SkippedStep,
+} from './commit-plan';
+export { applyPlanThroughClient } from './commit-through-client';
+export {
+  jobCompletedWrite,
   markJobCompleted,
   markJobFailed,
   markJobProcessing,

@@ -75,13 +75,19 @@ vi.mock('@kit/ai-gateway', async (importOriginal) => ({
   }),
 }));
 
+/** The client a commit's plan is replayed through: the handler's recording. */
+type RunClient = NonNullable<
+  Parameters<typeof fakeRunHandle>[0]
+>['commitsThrough'];
+
 /**
  * The run the handlers run under (FILM-1902, FILM-1903): the one model door
  * is `run.write(brief)`, so a direct model call is what the season analysis
  * handler used to make and now cannot.
  */
-function parityRun() {
+function parityRun(commitsThrough?: RunClient) {
   return fakeRunHandle({
+    commitsThrough,
     accountId: IDS.accountId,
     projectId: IDS.projectId,
     targetId: IDS.episodeId,
@@ -131,6 +137,51 @@ function json<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+/**
+ * The old body wrote the world state's delta whenever its insert returned
+ * the new row's id, which a database always does. This harness echoes that
+ * insert without an id (the old body read it with maybeSingle() from the
+ * echo's array), so the recording has no delta. The commit's plan writes
+ * it whenever the world state was written, its entity_id that row's id
+ * (no id in this echo, so none in the row here).
+ */
+function withWorldStateDelta(writes: RecordedWrite[]): RecordedWrite[] {
+  const at = writes.findIndex(
+    (w) => w.table === 'world_states' && w.op === 'insert',
+  );
+  if (at < 0) return writes;
+
+  const world = writes[at]!.payload as {
+    episode_id: string;
+    location: string;
+    time_period?: string | null;
+    atmosphere?: string | null;
+    active_conflicts?: string[] | null;
+  };
+
+  return [
+    ...writes.slice(0, at + 1),
+    {
+      table: 'state_deltas',
+      op: 'insert',
+      payload: {
+        episode_id: world.episode_id,
+        entity_type: 'world',
+        before_state: null,
+        after_state: {
+          location: world.location,
+          timePeriod: world.time_period ?? null,
+          atmosphere: world.atmosphere ?? null,
+          activeConflicts: world.active_conflicts ?? [],
+        },
+        change_reason: 'World state set',
+      },
+      filters: [],
+    },
+    ...writes.slice(at + 1),
+  ];
+}
+
 describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
   beforeEach(() => {
     for (const key of Object.keys(seen)) delete seen[key];
@@ -151,24 +202,36 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
       );
       const db = recordingClient(parityResponder());
 
-      const result = await withRun(parityRun(), () =>
+      const result = await withRun(parityRun(db.client), () =>
         processStoryGeneration(STORY_PAYLOAD, db.client),
       );
 
       expect(json(seen.story)).toEqual(old.executorInput);
       expect(json(seen['canon-extraction'])).toEqual(old.canonExtractionInput);
-      // The same writes, plus who wrote the story (FILM-1903)
+      // The same writes, plus who wrote the story (FILM-1903), the world
+      // state's delta (withWorldStateDelta) and the author on each character
+      // state, which the old handler left out (KB-77 pins it)
       expect(json(db.writes())).toEqual(
-        old.writes.map((write, index) =>
-          index === 1
-            ? {
-                ...write,
-                payload: {
-                  ...(write.payload as object),
-                  generation_origin: SERVER_ORIGIN,
-                },
-              }
-            : write,
+        withWorldStateDelta(
+          old.writes.map((write, index) =>
+            index === 1
+              ? {
+                  ...write,
+                  payload: {
+                    ...(write.payload as object),
+                    generation_origin: SERVER_ORIGIN,
+                  },
+                }
+              : write.table === 'character_states' && write.op === 'insert'
+                ? {
+                    ...write,
+                    payload: (write.payload as object[]).map((row) => ({
+                      ...row,
+                      created_by: STORY_PAYLOAD.userId,
+                    })),
+                  }
+                : write,
+          ),
         ),
       );
       expect(json(result)).toEqual(old.result);
@@ -180,7 +243,7 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
       );
       const db = recordingClient(parityResponder());
 
-      await withRun(parityRun(), () =>
+      await withRun(parityRun(db.client), () =>
         processStoryGeneration(STORY_PAYLOAD, db.client),
       );
 
@@ -198,6 +261,7 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
         'narrative_threads:update',
         'episode_summaries:upsert',
         'world_states:insert',
+        'state_deltas:insert',
         'assets:upsert',
         'assets:upsert',
         'episodes:update',
@@ -213,7 +277,7 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
       );
       const db = recordingClient(parityResponder());
 
-      const result = await withRun(parityRun(), () =>
+      const result = await withRun(parityRun(db.client), () =>
         processStoryIdeation(IDEATION_PAYLOAD, db.client),
       );
 
@@ -230,7 +294,7 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
       );
       const db = recordingClient(parityResponder());
 
-      await withRun(parityRun(), () =>
+      await withRun(parityRun(db.client), () =>
         processStoryIdeation(IDEATION_PAYLOAD, db.client),
       );
 
@@ -263,7 +327,7 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
       );
       const db = recordingClient(parityResponder());
 
-      const result = await withRun(parityRun(), () =>
+      const result = await withRun(parityRun(db.client), () =>
         processSeasonOutline(SEASON_OUTLINE_PAYLOAD, db.client),
       );
 
@@ -290,7 +354,7 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
       );
       const db = recordingClient(parityResponder());
 
-      await withRun(parityRun(), () =>
+      await withRun(parityRun(db.client), () =>
         processSeasonOutline(SEASON_OUTLINE_PAYLOAD, db.client),
       );
 
@@ -328,7 +392,7 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
       );
       const db = recordingClient(parityResponder());
 
-      const result = await withRun(parityRun(), () =>
+      const result = await withRun(parityRun(db.client), () =>
         processSeasonAnalysis(SEASON_ANALYSIS_PAYLOAD, db.client),
       );
 
@@ -357,7 +421,7 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
       );
       const db = recordingClient(parityResponder());
 
-      await withRun(parityRun(), () =>
+      await withRun(parityRun(db.client), () =>
         processSeasonAnalysis(SEASON_ANALYSIS_PAYLOAD, db.client),
       );
 

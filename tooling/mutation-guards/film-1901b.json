@@ -25,8 +25,8 @@
       "name": "The story commit stops closing the generation_jobs row the handler closed",
       "kind": "unit",
       "file": "packages/features/generation/src/stages/story.ts",
-      "find": "    if (isServer) {\n      await markJobCompleted(client, target.episodeId, 'story', {\n        mode: 'agentic-stage1',",
-      "replace": "    if (isServer && false) {\n      await markJobCompleted(client, target.episodeId, 'story', {\n        mode: 'agentic-stage1',",
+      "find": "        ...(isServer\n          ? [\n              jobCompletedWrite(target.episodeId, 'story', {\n                mode: 'agentic-stage1',",
+      "replace": "        ...(isServer && false\n          ? [\n              jobCompletedWrite(target.episodeId, 'story', {\n                mode: 'agentic-stage1',",
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/stage-parity-story-season.test.ts",
       "pattern": "writes the same rows and returns the same result"
@@ -45,8 +45,8 @@
       "name": "The ideation commit stops storing the ideas on the episode",
       "kind": "unit",
       "file": "packages/features/generation/src/stages/ideation.ts",
-      "find": "          ideas: out.ideas,\n          ideas_generated_at: generatedAt,",
-      "replace": "          ideas_generated_at: generatedAt,",
+      "find": "              ideas: out.ideas,\n              ideas_generated_at: generatedAt,",
+      "replace": "              ideas_generated_at: generatedAt,",
       "cwd": "apps/web",
       "test": "lambda/llm-worker/__tests__/stage-parity-story-season.test.ts",
       "pattern": "stores the ideas on episodes.metadata.ideas"
@@ -55,8 +55,8 @@
       "name": "The season analysis commit stops storing the analysis on the project",
       "kind": "unit",
       "file": "packages/features/generation/src/stages/season-analysis.ts",
-      "find": "          latestSeasonAnalysis: {\n            generatedAt,\n            mode: run.mode,\n            analysis,\n          },",
-      "replace": "          latestSeasonAnalysis: null,",
+      "find": "              latestSeasonAnalysis: {\n                generatedAt,\n                mode: run.mode,\n                analysis,\n              },",
+      "replace": "              latestSeasonAnalysis: null,",
       "cwd": "packages/features/generation",
       "test": "__tests__/stages/season-analysis.test.ts",
       "pattern": "stores the analysis on projects.metadata.latestSeasonAnalysis"

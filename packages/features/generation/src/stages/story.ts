@@ -27,8 +27,17 @@ import {
 import type { Json } from '@kit/supabase/database';
 
 import { type PromptFile, buildBrief, singlePart } from '../brief';
-import { CanonExtractionSchema, commitStoryCanon } from '../canon';
-import { markJobCompleted } from '../jobs';
+import { CanonExtractionSchema, planStoryCanon } from '../canon';
+import {
+  type CommitStep,
+  type CommitWrite,
+  applyCommit,
+  eq,
+  is,
+  ref,
+  resultRows,
+} from '../commit-plan';
+import { jobCompletedWrite } from '../jobs';
 import { registerStage } from '../registry';
 import type {
   Brief,
@@ -375,9 +384,13 @@ export const storyStage: StageDefinition<
       );
 
       if (isServer) {
-        await markJobCompleted(client, target.episodeId, 'story', {
-          skipped: true,
-          reason: 'episode-deleted',
+        await applyCommit(ctx, {
+          ops: [
+            jobCompletedWrite(target.episodeId, 'story', {
+              skipped: true,
+              reason: 'episode-deleted',
+            }),
+          ],
         });
       }
 
@@ -441,42 +454,10 @@ export const storyStage: StageDefinition<
       viralQuality,
     };
 
-    const { data: updatedEpisode, error: updateError } = await client
-      .from('episodes')
-      .update({
-        story_data: storyData as Json,
-        status: 'story',
-        target_duration_seconds: target.targetDuration,
-        updated_at: generatedAt,
-        // Who wrote it: the run's origin (FILM-1903)
-        generation_origin: run.origin as unknown as Json,
-      })
-      .eq('id', target.episodeId)
-      // No .eq('version', ...): the orchestrator writes viral_quality mid-run,
-      // which bumps the version through the trigger (see f64c9648)
-      .is('deleted_at', null)
-      .select()
-      .single();
-
-    if (updateError) {
-      throw new Error(`Failed to update episode: ${updateError.message}`);
-    }
-
-    if (!updatedEpisode) {
-      throw new Error('Episode not found or was deleted');
-    }
-
-    if (isServer) {
-      await markJobCompleted(client, target.episodeId, 'story', {
-        mode: 'agentic-stage1',
-        orchestratorSteps: out.evaluation?.orchestratorSteps,
-        viralScore,
-      });
-    }
-
-    // Canon tables (non-fatal)
+    // Canon tables (non-fatal steps), read before anything is written
+    let canonSteps: CommitStep[] = [];
     try {
-      await commitStoryCanon({
+      canonSteps = await planStoryCanon({
         projectId: target.projectId,
         episodeId: target.episodeId,
         episodeNumber: snapshot.episodeNumber ?? 1,
@@ -494,13 +475,66 @@ export const storyStage: StageDefinition<
     }
 
     // Assets for the characters and locations the story invented (non-fatal)
-    let createdAssetIds: string[] = [];
+    let assetSteps: CommitWrite[] = [];
     try {
-      createdAssetIds = await autoCreateNewAssets(ctx, target, out);
+      assetSteps = await newAssetSteps(ctx, target, out);
     } catch (assetError) {
       console.warn(
         '[story] Auto-create assets failed (non-fatal):',
         assetError,
+      );
+    }
+
+    // One transaction under a run: the story (its content_revisions snapshot
+    // with it), the job, the canon and the assets
+    const applied = await applyCommit(ctx, {
+      ops: [
+        {
+          key: 'episode',
+          op: 'update',
+          table: 'episodes',
+          values: {
+            story_data: storyData as Json,
+            status: 'story',
+            target_duration_seconds: target.targetDuration,
+            updated_at: generatedAt,
+            // Who wrote it: the run's origin (FILM-1903)
+            generation_origin: run.origin as unknown as Json,
+          },
+          // No version filter: the orchestrator writes viral_quality mid-run,
+          // which bumps the version through the trigger (see f64c9648)
+          match: [eq('id', target.episodeId), is('deleted_at', null)],
+          requireRows: true,
+          returning: ['id', 'status', 'version'],
+        },
+        ...(isServer
+          ? [
+              jobCompletedWrite(target.episodeId, 'story', {
+                mode: 'agentic-stage1',
+                orchestratorSteps: out.evaluation?.orchestratorSteps,
+                viralScore,
+              }),
+            ]
+          : []),
+        ...canonSteps,
+        ...assetSteps,
+      ],
+    });
+
+    const updatedEpisode = applied.results.episode![0] as {
+      id: string;
+      status: string;
+      version: number;
+    };
+
+    const createdAssetIds = [
+      ...resultRows(applied, NEW_CHARACTERS),
+      ...resultRows(applied, NEW_LOCATIONS),
+    ].map((row) => row.id as string);
+
+    if (createdAssetIds.length > 0) {
+      console.log(
+        `[story] Auto-created ${createdAssetIds.length} character and location assets`,
       );
     }
 
@@ -540,130 +574,118 @@ function skipped(
   };
 }
 
+const NEW_CHARACTERS = 'story.newCharacters';
+const NEW_LOCATIONS = 'story.newLocations';
+
 /**
- * Auto-create character and location assets from LLM-invented entities.
- * Uses upsert semantics (ON CONFLICT DO NOTHING) to avoid duplicates.
- * Tags newly created asset IDs onto the episode's metadata.
+ * Auto-create character and location assets from LLM-invented entities,
+ * as steps of the story's plan. Upsert semantics (ON CONFLICT DO NOTHING)
+ * avoid duplicates; the ids of the rows actually inserted come back in the
+ * results and are tagged onto the episode's metadata by the last step,
+ * merged into what is there.
  */
-async function autoCreateNewAssets(
+async function newAssetSteps(
   ctx: Ctx,
   target: StoryTarget,
   out: StoryStageOutput,
-): Promise<string[]> {
+): Promise<CommitWrite[]> {
   const { newCharacters, newLocations } = out;
-  const client = ctx.client;
 
   if (newCharacters.length === 0 && newLocations.length === 0) return [];
 
-  const createdIds: string[] = [];
+  const steps: CommitWrite[] = [];
 
   if (newCharacters.length > 0) {
-    const charRows = newCharacters.map((char) => ({
-      project_id: target.projectId,
-      type: 'character' as const,
-      name: char.name,
-      description: char.description,
-      metadata: {
-        role: char.role,
-        personality: char.description,
-        physicalAttributes: char.physicalDescription
-          ? { rawDescription: char.physicalDescription }
-          : undefined,
-        clothingStyle: char.clothingStyle
-          ? { rawDescription: char.clothingStyle }
-          : undefined,
-        mannerisms: char.mannerisms,
-        autoCreated: true,
-      },
-    }));
-
-    const { data: inserted } = await client
-      .from('assets')
-      .upsert(charRows, {
-        onConflict: 'project_id,type,name',
-        ignoreDuplicates: true,
-      })
-      .select('id');
-
-    if (inserted) {
-      createdIds.push(...inserted.map((r: { id: string }) => r.id));
-      console.log(`[story] Auto-created ${inserted.length} character assets`);
-    }
+    steps.push({
+      key: NEW_CHARACTERS,
+      op: 'upsert',
+      table: 'assets',
+      rows: newCharacters.map((char) => ({
+        project_id: target.projectId,
+        type: 'character' as const,
+        name: char.name,
+        description: char.description,
+        metadata: {
+          role: char.role,
+          personality: char.description,
+          physicalAttributes: char.physicalDescription
+            ? { rawDescription: char.physicalDescription }
+            : undefined,
+          clothingStyle: char.clothingStyle
+            ? { rawDescription: char.clothingStyle }
+            : undefined,
+          mannerisms: char.mannerisms,
+          autoCreated: true,
+        },
+      })),
+      onConflict: 'project_id,type,name',
+      ignoreDuplicates: true,
+      returning: ['id'],
+      onError: 'skip',
+    });
   }
 
   if (newLocations.length > 0) {
-    const locRows = newLocations.map((loc) => ({
-      project_id: target.projectId,
-      type: 'location' as const,
-      name: loc.name,
-      description: loc.description,
+    steps.push({
+      key: NEW_LOCATIONS,
+      op: 'upsert',
+      table: 'assets',
+      rows: newLocations.map((loc) => ({
+        project_id: target.projectId,
+        type: 'location' as const,
+        name: loc.name,
+        description: loc.description,
+        metadata: {
+          setting: loc.setting,
+          visualDescription: loc.visualDescription,
+          autoCreated: true,
+        },
+      })),
+      onConflict: 'project_id,type,name',
+      ignoreDuplicates: true,
+      returning: ['id'],
+      onError: 'skip',
+    });
+  }
+
+  const { data: episode } = await ctx.client
+    .from('episodes')
+    .select('metadata')
+    .eq('id', target.episodeId)
+    .single();
+
+  if (!episode) return steps;
+
+  const metadata = (episode.metadata ?? {}) as Record<string, unknown>;
+  const created = (key: string) =>
+    steps.some((step) => step.key === key) ? [ref(key, 'id')] : [];
+
+  steps.push({
+    op: 'update',
+    table: 'episodes',
+    values: {
       metadata: {
-        setting: loc.setting,
-        visualDescription: loc.visualDescription,
-        autoCreated: true,
+        character_ids: {
+          $union: [
+            (metadata.character_ids ?? []) as string[],
+            ...created(NEW_CHARACTERS),
+          ],
+        },
+        location_ids: {
+          $union: [
+            (metadata.location_ids ?? []) as string[],
+            ...created(NEW_LOCATIONS),
+          ],
+        },
       },
-    }));
+    },
+    merge: ['metadata'],
+    match: [eq('id', target.episodeId)],
+    onlyIfRows: steps.flatMap((step) => (step.key ? [step.key] : [])),
+    onError: 'skip',
+  });
 
-    const { data: inserted } = await client
-      .from('assets')
-      .upsert(locRows, {
-        onConflict: 'project_id,type,name',
-        ignoreDuplicates: true,
-      })
-      .select('id');
-
-    if (inserted) {
-      createdIds.push(...inserted.map((r: { id: string }) => r.id));
-      console.log(`[story] Auto-created ${inserted.length} location assets`);
-    }
-  }
-
-  if (createdIds.length > 0) {
-    const { data: episode } = await client
-      .from('episodes')
-      .select('metadata')
-      .eq('id', target.episodeId)
-      .single();
-
-    if (episode) {
-      const metadata = (episode.metadata ?? {}) as Record<string, unknown>;
-      const existingCharIds = (metadata.character_ids ?? []) as string[];
-      const existingLocIds = (metadata.location_ids ?? []) as string[];
-
-      const allIds = [
-        ...new Set([...existingCharIds, ...existingLocIds, ...createdIds]),
-      ];
-
-      const { data: tagged } = await client
-        .from('episodes')
-        .update({
-          metadata: {
-            ...metadata,
-            character_ids: allIds.filter((id) =>
-              [
-                ...existingCharIds,
-                ...createdIds.slice(0, newCharacters.length),
-              ].includes(id),
-            ),
-            location_ids: allIds.filter((id) =>
-              [
-                ...existingLocIds,
-                ...createdIds.slice(newCharacters.length),
-              ].includes(id),
-            ),
-          },
-        })
-        .eq('id', target.episodeId)
-        .select('id');
-
-      // RLS filters a refused update to no rows, without an error (KB-105)
-      if (!tagged?.length) {
-        console.warn('[story] The new assets were not tagged on the episode');
-      }
-    }
-  }
-
-  return createdIds;
+  return steps;
 }
 
 registerStage(storyStage);

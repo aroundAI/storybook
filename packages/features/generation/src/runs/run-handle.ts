@@ -6,6 +6,7 @@
  * reaches the gateway's writer; an external run never does. Every call
  * renews the 30-minute lease.
  */
+import type { AppliedCommit, CommitApplier, CommitPlan } from '../commit-plan';
 import type {
   Brief,
   GenerateResult,
@@ -16,6 +17,7 @@ import type {
 import { RunError } from './errors';
 import { toRevisionSnapshot } from './revisions';
 import {
+  applyGenerationCommit,
   readEpisodeVersion,
   recordRevision,
   renewLease,
@@ -184,8 +186,39 @@ export class RunHandle {
     this.row = await transitionRun(this.ctx.client, this.row.id, 'in_progress');
   }
 
+  /** Moves the run to committed; a no-op when its commit already did. */
   async complete(): Promise<void> {
+    if (this.row.status === 'committed') return;
+
     this.row = await transitionRun(this.ctx.client, this.row.id, 'committed');
+  }
+
+  /**
+   * Applies a stage's commit plan in one transaction (FILM-1903): the run
+   * checks, the content_revisions snapshot, every write and, with
+   * `finalize`, the move to committed. A job whose handler commits more
+   * than once, or works on after its commit, passes `finalize: false` and
+   * completes the run itself.
+   */
+  async applyCommit(
+    plan: CommitPlan,
+    options: { finalize: boolean },
+  ): Promise<AppliedCommit> {
+    const { run, applied } = await applyGenerationCommit(
+      this.ctx.client,
+      this.row.id,
+      plan,
+      options.finalize,
+    );
+
+    this.row = run;
+
+    return applied;
+  }
+
+  /** The applier a stage's `Ctx.commits` takes under this run. */
+  commitApplier(options: { finalize: boolean }): CommitApplier {
+    return (plan) => this.applyCommit(plan, options);
   }
 
   async fail(error: unknown): Promise<void> {

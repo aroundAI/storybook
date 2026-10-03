@@ -5,9 +5,7 @@
  * name (case-insensitive); an unknown speaker keeps a null id, as the
  * handlers always did.
  */
-import type { SupabaseClient } from '@supabase/supabase-js';
-
-import type { Database } from '@kit/supabase/database';
+import { type CommitGroup, eq } from '../../commit-plan';
 
 export interface DialogueLineRow {
   episode_id: string;
@@ -62,35 +60,30 @@ export function dialogueRowsFromScenes(
 }
 
 /**
- * Deletes the episode's existing lines and inserts `rows`, when there are
- * any. A failed insert is logged, not thrown: the screenplay itself has
- * already been saved.
+ * The rebuild as one step of a commit's plan: the episode's existing lines
+ * are deleted and `rows` inserted, together or not at all. Skippable, as
+ * the handlers always treated it: the screenplay itself is saved either
+ * way. No step when there are no rows (the old lines stay).
  */
-export async function rebuildDialogueLines(
-  client: SupabaseClient<Database>,
+export function dialogueRebuildSteps(
   episodeId: string,
   rows: DialogueLineRow[],
-  label: string,
-): Promise<void> {
-  if (rows.length === 0) return;
+): CommitGroup[] {
+  if (rows.length === 0) return [];
 
-  const { error: deleteError } = await client
-    .from('dialogue_lines')
-    .delete()
-    .eq('episode_id', episodeId);
-
-  if (deleteError) {
-    console.warn(
-      `[${label}] Failed to delete old dialogue lines:`,
-      deleteError,
-    );
-  }
-
-  const { error: insertError } = await client
-    .from('dialogue_lines')
-    .insert(rows);
-
-  if (insertError) {
-    console.error(`[${label}] Failed to insert dialogue:`, insertError);
-  }
+  return [
+    {
+      key: 'dialogue_lines',
+      op: 'group',
+      onError: 'skip',
+      ops: [
+        {
+          op: 'delete',
+          table: 'dialogue_lines',
+          match: [eq('episode_id', episodeId)],
+        },
+        { op: 'insert', table: 'dialogue_lines', rows: [...rows] },
+      ],
+    },
+  ];
 }

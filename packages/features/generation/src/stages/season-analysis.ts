@@ -19,6 +19,7 @@ import { whyNoRow } from '@kit/shared/rows';
 import type { Json } from '@kit/supabase/database';
 
 import { type PromptFile, buildBrief, singlePart } from '../brief';
+import { applyCommit, eq } from '../commit-plan';
 import {
   formatFactsForSeasonPrompt,
   formatRecurringElementsForPrompt,
@@ -198,31 +199,28 @@ export const seasonAnalysisStage: StageDefinition<
 
     const metadata = projectMetadataOf(project);
 
-    const { data: updated, error } = await ctx.client
-      .from('projects')
-      .update({
-        metadata: {
-          ...metadata,
-          latestSeasonAnalysis: {
-            generatedAt,
-            mode: run.mode,
-            analysis,
+    // requireRows: RLS filters a refused update to no rows, without an
+    // error (KB-105)
+    await applyCommit(ctx, {
+      ops: [
+        {
+          op: 'update',
+          table: 'projects',
+          values: {
+            metadata: {
+              ...metadata,
+              latestSeasonAnalysis: {
+                generatedAt,
+                mode: run.mode,
+                analysis,
+              },
+            } as Json,
           },
-        } as Json,
-      })
-      .eq('id', target.projectId)
-      .select('id');
-
-    if (error) {
-      throw new Error(`Failed to store the analysis: ${error.message}`);
-    }
-
-    // RLS filters a refused update to no rows, without an error (KB-105)
-    if (!updated?.length) {
-      throw new Error(
-        'Failed to store the analysis: the project was not updated',
-      );
-    }
+          match: [eq('id', target.projectId)],
+          requireRows: true,
+        },
+      ],
+    });
 
     return { status: 'committed', data: { analysis, generatedAt } };
   },

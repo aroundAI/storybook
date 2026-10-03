@@ -4,7 +4,11 @@
  * ids the stages are run against.
  */
 import type { RecordedCall, Responder } from '../../src/testing';
-import { recordingClient, tableResponder } from '../../src/testing';
+import {
+  recordCommits,
+  recordingClient,
+  tableResponder,
+} from '../../src/testing';
 import type {
   Ctx,
   EpisodeContextSnapshot,
@@ -136,6 +140,7 @@ export function makeCtx(
 
   const ctx: Ctx = {
     client: db.client,
+    commits: recordCommits(db.client).apply,
     accountId: IDS.accountId,
     userId: IDS.userId,
     episodeContext: async (episodeId, options) => {

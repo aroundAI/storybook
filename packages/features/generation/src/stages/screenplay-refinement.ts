@@ -25,7 +25,8 @@ import { whyNoRow } from '@kit/shared/rows';
 import type { Json } from '@kit/supabase/database';
 
 import { type PromptFile, buildBrief, singlePart } from '../brief';
-import { markJobCompleted } from '../jobs';
+import { applyCommit, eq, is } from '../commit-plan';
+import { jobCompletedWrite } from '../jobs';
 import { registerStage } from '../registry';
 import type {
   Brief,
@@ -37,8 +38,8 @@ import type {
 import { ScreenplayAudioCueSchema } from './screenplay';
 import {
   characterIdMap,
+  dialogueRebuildSteps,
   dialogueRowsFromScenes,
-  rebuildDialogueLines,
 } from './shared/dialogue-lines';
 import { memoised } from './shared/memo';
 import { checkSceneNumbering, checkScenes } from './shared/scene-checks';
@@ -274,9 +275,13 @@ export const screenplayRefinementStage: StageDefinition<
       console.warn(
         `${LOG} Episode was deleted during refinement. Skipping write.`,
       );
-      await markJobCompleted(ctx.client, episodeId, 'screenplay-refinement', {
-        skipped: true,
-        reason: 'episode-deleted',
+      await applyCommit(ctx, {
+        ops: [
+          jobCompletedWrite(episodeId, 'screenplay-refinement', {
+            skipped: true,
+            reason: 'episode-deleted',
+          }),
+        ],
       });
 
       return {
@@ -315,15 +320,6 @@ export const screenplayRefinementStage: StageDefinition<
       refinement_history: refinementHistory,
     };
 
-    await ctx.revisions?.snapshot({
-      table: 'episodes',
-      rowId: episodeId,
-      column: 'screenplay_data',
-      before: inputs.screenplayData,
-      stage: 'screenplay_refinement',
-      runId: run.id,
-    });
-
     const update: Record<string, unknown> = {
       screenplay_data: updatedScreenplayData as Json,
       metadata: updatedMetadata as unknown as Json,
@@ -334,47 +330,45 @@ export const screenplayRefinementStage: StageDefinition<
       update.generation_origin = run.origin;
     }
 
-    const { data: updatedEpisode, error: updateError } = await ctx.client
-      .from('episodes')
-      .update(update)
-      .eq('id', episodeId)
-      .is('deleted_at', null)
-      .select('id, status')
-      .single();
-
-    if (updateError) {
-      throw new Error(`Failed to update episode: ${updateError.message}`);
-    }
-
-    if (!updatedEpisode) {
-      throw new Error('Episode not found or was deleted');
-    }
-
     const dialogueLines = dialogueRowsFromScenes(
       episodeId,
       refined.scenes,
       characterIdMap(inputs.characters),
     );
 
-    await rebuildDialogueLines(
-      ctx.client,
-      episodeId,
-      dialogueLines,
-      'Screenplay Refinement',
-    );
+    // One transaction under a run: the screenplay (its content_revisions
+    // snapshot with it), the dialogue rebuild and the job's completion
+    const applied = await applyCommit(ctx, {
+      ops: [
+        {
+          key: 'episode',
+          op: 'update',
+          table: 'episodes',
+          values: update,
+          match: [eq('id', episodeId), is('deleted_at', null)],
+          requireRows: true,
+          returning: ['id', 'status'],
+        },
+        ...dialogueRebuildSteps(episodeId, dialogueLines),
+        jobCompletedWrite(episodeId, 'screenplay-refinement', {
+          provider: run.usage?.provider,
+          model: run.usage?.model,
+          tokensUsed: run.usage?.tokens,
+          scenesCount: refined.scenes.length,
+          dialogueLinesCount: dialogueLines.length,
+          feedback: target.feedback.substring(0, 200),
+        }),
+      ],
+    });
+
+    const updatedEpisode = applied.results.episode![0] as {
+      id: string;
+      status: string;
+    };
 
     console.log(
       `${LOG} Screenplay refined successfully. ${refined.scenes.length} scenes, ${dialogueLines.length} dialogue lines`,
     );
-
-    await markJobCompleted(ctx.client, episodeId, 'screenplay-refinement', {
-      provider: run.usage?.provider,
-      model: run.usage?.model,
-      tokensUsed: run.usage?.tokens,
-      scenesCount: refined.scenes.length,
-      dialogueLinesCount: dialogueLines.length,
-      feedback: target.feedback.substring(0, 200),
-    });
 
     return {
       status: 'committed',

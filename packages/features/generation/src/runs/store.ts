@@ -13,6 +13,7 @@ import { z } from 'zod';
 
 import type { Database, Json } from '@kit/supabase/database';
 
+import type { AppliedCommit, CommitPlan } from '../commit-plan';
 import {
   type GenerationMode,
   GenerationModeSchema,
@@ -279,6 +280,89 @@ export async function recordRevision(
   if (error) throw storeError('recording the revision', error, runId);
 
   return z.string().uuid().parse(data);
+}
+
+const CommitResultSchema = z.discriminatedUnion('ok', [
+  z.object({
+    ok: z.literal(true),
+    run: RunRowSchema,
+    results: z.record(z.array(z.record(z.unknown()))),
+    skipped: z.array(
+      z.object({
+        key: z.string().nullable().optional(),
+        table: z.string().nullable().optional(),
+        error: z.string(),
+      }),
+    ),
+    revision_id: z.string().uuid().nullable(),
+  }),
+  z.object({
+    ok: z.literal(false),
+    code: z.enum(['RUN_NOT_FOUND', 'RUN_NOT_OPEN', 'TARGET_CHANGED']),
+    run: RunRowSchema.optional(),
+    current_version: z.number().int().nullable().optional(),
+  }),
+]);
+
+/**
+ * `apply_generation_commit` (migration 20261003125108): the plan's writes,
+ * the content_revisions snapshot and, with `finalize`, the move to
+ * committed, in one transaction. A refusal before anything is written
+ * comes back as RUN_NOT_OPEN, RUN_NOT_FOUND or TARGET_CHANGED; a write that
+ * fails rolls everything back and surfaces as COMMIT_FAILED with the
+ * database's message.
+ */
+export async function applyGenerationCommit(
+  client: Client,
+  runId: string,
+  plan: CommitPlan,
+  finalize: boolean,
+): Promise<{ run: RunRow; applied: AppliedCommit }> {
+  const { data, error } = await client.rpc('apply_generation_commit', {
+    p_run_id: runId,
+    p_plan: plan as unknown as Json,
+    p_finalize: finalize,
+  });
+
+  if (error) {
+    throw new RunError(
+      'COMMIT_FAILED',
+      `The commit of run ${runId} was rolled back: ${error.message}`,
+      { runId },
+    );
+  }
+
+  const result = CommitResultSchema.parse(data);
+
+  if (!result.ok) {
+    if (result.code === 'TARGET_CHANGED') {
+      throw new RunError(
+        'TARGET_CHANGED',
+        `The episode is at version ${result.current_version ?? 'unknown'}; run ${runId} was briefed on another, so nothing was committed`,
+        { runId },
+      );
+    }
+
+    throw new RunError(
+      result.code,
+      result.code === 'RUN_NOT_FOUND'
+        ? `Run ${runId} does not exist`
+        : `Run ${runId} is ${result.run?.status ?? 'closed'}; it cannot commit`,
+      { runId },
+    );
+  }
+
+  const run = toRunRow(result.run);
+
+  return {
+    run,
+    applied: {
+      results: result.results,
+      skipped: result.skipped,
+      revisionId: result.revision_id,
+      finalized: run.status === 'committed',
+    },
+  };
 }
 
 const SettingsSchema = z.object({

@@ -17,7 +17,8 @@ import { fetchAllRows } from '@kit/shared/pagination';
 import { sanitizeStrings } from '@kit/shared/prompt-sanitiser';
 
 import { type PromptFile, buildBrief } from '../brief';
-import { markJobCompleted } from '../jobs';
+import { applyCommit } from '../commit-plan';
+import { jobCompletedWrite } from '../jobs';
 import { registerStage } from '../registry';
 import type { CheckError, Ctx, PartSpec, StageDefinition } from '../types';
 import { logTo, memoPerCtx } from './memo';
@@ -355,30 +356,30 @@ export const audioCuesStage: StageDefinition<
       log,
     );
 
-    if (rows.length > 0) {
-      const stamped = ctx.originColumnsAvailable
-        ? rows.map(
-            (row) => ({ ...row, generation_origin: run.origin }) as AudioCueRow,
-          )
-        : rows;
+    const stamped = ctx.originColumnsAvailable
+      ? rows.map(
+          (row) => ({ ...row, generation_origin: run.origin }) as AudioCueRow,
+        )
+      : rows;
 
-      const { error } = await ctx.client.from('audio_cues').insert(stamped);
-
-      if (error) {
-        throw new Error(`Failed to insert audio cues: ${error.message}`);
-      }
-    }
-
-    await markJobCompleted(
-      ctx.client,
-      target.episodeId,
-      'audio_cue_generation',
-      {
-        cuesCreated: rows.length,
-        mode: 'agentic',
-        ...run.diagnostics,
-      },
-    );
+    await applyCommit(ctx, {
+      ops: [
+        ...(rows.length > 0
+          ? [
+              {
+                op: 'insert' as const,
+                table: 'audio_cues' as const,
+                rows: stamped,
+              },
+            ]
+          : []),
+        jobCompletedWrite(target.episodeId, 'audio_cue_generation', {
+          cuesCreated: rows.length,
+          mode: 'agentic',
+          ...run.diagnostics,
+        }),
+      ],
+    });
 
     return { status: 'committed', data: { cuesCreated: rows.length } };
   },

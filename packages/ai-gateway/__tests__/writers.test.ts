@@ -9,6 +9,7 @@ import {
 } from '@kit/generation';
 import {
   fakeRunHandle,
+  recordCommits,
   recordingClient,
   tableResponder,
 } from '@kit/generation/testing';
@@ -179,6 +180,7 @@ describe('run.write() through the gateway backend', () => {
       storyRefinementStage,
       {
         client: client.client,
+        commits: recordCommits(client.client).apply,
         accountId: run.accountId,
         userId: run.createdBy,
         episodeContext: async () => ({

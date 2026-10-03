@@ -7,6 +7,7 @@ export {
 } from './memory-rows';
 export {
   type StoredEpisodeMemory,
+  planEpisodeMemory,
   storeEpisodeMemory,
 } from './store-episode-memory';
 export {
@@ -16,5 +17,7 @@ export {
   type ThreadUpdate,
   ThreadUpdateSchema,
   cleanupEpisodeCanon,
+  cleanupSteps,
   commitStoryCanon,
+  planStoryCanon,
 } from './story-canon';

@@ -21,14 +21,24 @@ import type { RunHandle } from './run-handle';
 import type { RunCtx } from './types';
 
 /**
- * The `Ctx` a stage runs with under a run: the caller's, plus the revision
- * seam (every commit snapshots what it replaces into content_revisions)
+ * The `Ctx` a stage runs with under a run: the caller's, plus the run's
+ * commit applier (the plan, the content_revisions snapshot of what it
+ * replaces and, with `finalize`, the move to committed, in one transaction)
  * and the origin columns, which exist since FILM-1903 part A.
+ *
+ * `finalize` defaults to true: the commit is the run's last act. A worker
+ * job handler passes false, because it works on after its commit (a quality
+ * pass, a chained job, an episode link) or commits more than once, and the
+ * job boundary completes the run.
  */
-export function stageCtx(run: RunHandle, ctx: RunCtx): Ctx {
+export function stageCtx(
+  run: RunHandle,
+  ctx: RunCtx,
+  options: { finalize?: boolean } = {},
+): Ctx {
   return {
     ...ctx,
-    revisions: { snapshot: async (input) => void (await run.snapshot(input)) },
+    commits: run.commitApplier({ finalize: options.finalize ?? true }),
     originColumnsAvailable: true,
   };
 }

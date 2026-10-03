@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -544,6 +545,9 @@ function harness(
 ) {
   const state = runStoreState();
   const recording = recordingClient(runStoreResponder(state, fixture.respond));
+  // The commit's plan is replayed through the same recording (one call per
+  // write), so the matrix sees the rows apply_generation_commit would write
+  state.client = recording.client;
   const ctx: RunCtx = {
     client: recording.client,
     accountId: TEST_IDS.account,
@@ -701,5 +705,100 @@ describe('every registered stage runs in both modes (FILM-1902 criterion 10)', (
         ).toBe(true);
       }
     });
+  }
+});
+
+/**
+ * FILM-1901 criterion 4, FILM-1903: a stage's side effects are one plan the
+ * run applies in one transaction. The plan is replayed through a second
+ * recording here, so the stage's own client shows what was written outside
+ * it: only runStage's generation_jobs bookkeeping before the commit.
+ */
+/**
+ * CAPTURE_COMMIT_PLANS=<file> writes every plan the cases below commit, for
+ * scripts/generation/commit-plans-pgtap.py to turn into the pgTAP file that
+ * applies each through apply_generation_commit (apply-generation-commit-stages).
+ */
+const capturedPlans: unknown[] = [];
+
+afterAll(() => {
+  const file = process.env.CAPTURE_COMMIT_PLANS;
+  if (file) writeFileSync(file, `${JSON.stringify(capturedPlans, null, 2)}\n`);
+});
+
+describe('every registered stage commits through one plan (FILM-1903)', () => {
+  for (const key of registeredStageKeys()) {
+    const fixture = FIXTURES[key];
+    if (!fixture) continue;
+
+    for (const mode of ['server', 'external'] as const) {
+      it(`${key} in ${mode} mode writes only through apply_generation_commit, once, closing the run`, async () => {
+        const write = vi.fn(async (_run, brief) => ({
+          output: fixture.output(brief.part),
+        }));
+        const { ctx, state, recording } = harness(fixture, mode, {
+          write,
+          dispatch: vi.fn(),
+        });
+        const replay = recordingClient(fixture.respond);
+        state.client = replay.client;
+
+        const run = await openRun(
+          key,
+          runTarget(fixture),
+          { kind: mode === 'server' ? 'web' : 'mcp', name: 'matrix' },
+          ctx,
+        );
+
+        if (mode === 'server') {
+          await executeServerRun(run, ctx);
+        } else {
+          const parts = await stageRegistry
+            .get(key)!
+            .parts(ctx, fixture.target);
+          await finalizeRun(
+            run,
+            ctx,
+            parts.map((part) => ({
+              key: part.key,
+              output: fixture.output(part),
+            })),
+          );
+        }
+
+        const outside = recording
+          .writes()
+          .filter(
+            (w) =>
+              !(
+                w.table === 'generation_jobs' &&
+                (w.payload as { status?: string }).status === 'processing'
+              ),
+          );
+        expect(outside, `${key} writes outside its plan`).toEqual([]);
+        expect(state.commits.length, key).toBeLessThanOrEqual(1);
+
+        if (replay.writes().length > 0) {
+          expect(state.commits, key).toEqual([
+            expect.objectContaining({ runId: run.id, finalize: true }),
+          ]);
+        }
+
+        if (process.env.CAPTURE_COMMIT_PLANS) {
+          capturedPlans.push({
+            stage: key,
+            mode,
+            lock: fixture.lock,
+            plans: state.commits.map((commit) => commit.plan),
+          });
+        }
+
+        // The snapshot is the database's, inside the same call
+        expect(
+          state.rpcs.filter((rpc) => rpc.fn === 'record_content_revision'),
+        ).toEqual([]);
+        expect(state.rows.get(run.id)?.status).toBe('committed');
+      });
+    }
   }
 });

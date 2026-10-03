@@ -15,6 +15,7 @@ import {
 import { sanitizeStrings } from '@kit/shared/prompt-sanitiser';
 
 import { type PromptFile, buildBrief, singlePart } from '../brief';
+import { applyCommit } from '../commit-plan';
 import { registerStage } from '../registry';
 import type { CheckError, StageDefinition } from '../types';
 
@@ -146,11 +147,9 @@ export const factExtractionStage: StageDefinition<
     // shots, dialogue_lines, audio_cues, assets and episodes only
     const rows = buildVerifiedFactRows(target, facts);
 
-    const { error } = await ctx.client.from('verified_facts').insert(rows);
-
-    if (error) {
-      throw new Error(`Failed to insert facts: ${error.message}`);
-    }
+    await applyCommit(ctx, {
+      ops: [{ op: 'insert', table: 'verified_facts', rows }],
+    });
 
     return { status: 'committed', data };
   },

@@ -10,6 +10,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { Database } from '@kit/supabase/database';
 
+import type { AppliedCommit, CommitPlan } from '../commit-plan';
+import { applyPlanThroughClient } from '../commit-through-client';
+
 export interface RecordedStep {
   method: string;
   args: unknown[];
@@ -27,6 +30,11 @@ export interface ScriptedResponse {
 }
 
 export type Responder = (call: RecordedCall) => ScriptedResponse | undefined;
+
+/** A responder that may answer later: the fake run store applying a plan. */
+export type AsyncResponder = (
+  call: RecordedCall,
+) => ScriptedResponse | undefined | Promise<ScriptedResponse | undefined>;
 
 const WRITE_METHODS = new Set(['insert', 'update', 'upsert', 'delete']);
 
@@ -98,7 +106,9 @@ export function flattenRows(writes: RecordedWrite[]): RecordedWrite[] {
   );
 }
 
-export function recordingClient(respond: Responder = () => undefined) {
+export function recordingClient(
+  respond: Responder | AsyncResponder = () => undefined,
+) {
   const calls: RecordedCall[] = [];
 
   function chainFor(call: RecordedCall): unknown {
@@ -112,13 +122,19 @@ export function recordingClient(respond: Responder = () => undefined) {
               reject: (reason: unknown) => void,
             ) => {
               try {
-                const response = respond(call) ?? {};
+                const answer = respond(call);
+                const settle = (response: ScriptedResponse | undefined) =>
+                  resolve({
+                    data: response?.data ?? null,
+                    error: response?.error ?? null,
+                    count: response?.count ?? null,
+                  });
 
-                resolve({
-                  data: response.data ?? null,
-                  error: response.error ?? null,
-                  count: response.count ?? null,
-                });
+                if (answer instanceof Promise) {
+                  answer.then(settle, reject);
+                } else {
+                  settle(answer);
+                }
               } catch (error) {
                 reject(error);
               }
@@ -205,6 +221,24 @@ export function tableResponder(fixtures: Record<string, unknown>): Responder {
     }
 
     return { data: null };
+  };
+}
+
+/**
+ * A `Ctx.commits` for a test without a run: every plan is kept and replayed
+ * through `client`, one PostgREST call per write, so a test asserts both
+ * the plan and the rows it writes. Under a run the database function
+ * applies it instead (its behaviour is apply-generation-commit.test.sql's).
+ */
+export function recordCommits(client: SupabaseClient<Database>) {
+  const plans: CommitPlan[] = [];
+
+  return {
+    plans,
+    apply: async (plan: CommitPlan): Promise<AppliedCommit> => {
+      plans.push(plan);
+      return applyPlanThroughClient(client, plan);
+    },
   };
 }
 
