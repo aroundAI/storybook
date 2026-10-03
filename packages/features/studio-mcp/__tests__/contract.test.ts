@@ -3,6 +3,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { analyticsTools } from '../src/server/tools/analytics';
 import {
   ANON_KEY,
   JWT_SECRET,
@@ -182,7 +183,7 @@ describe.skipIf(!(URL_ && TOKEN_ENV) && !SEED)(
         'list_assets',
       ];
 
-      it('lists the fifteen tools and offers the workflow guide as a prompt too', async () => {
+      it('lists every tool (orientation, read, author, analytics, generation) and offers the workflow guide as a prompt too', async () => {
         const { tools } = await client.listTools();
         const names = tools.map((tool) => tool.name);
 
@@ -203,6 +204,15 @@ describe.skipIf(!(URL_ && TOKEN_ENV) && !SEED)(
             'create_episode',
             'update_episode',
             'upsert_asset',
+            // FILM-1906's list, pinned by name in analytics-catalogue.test.ts
+            ...analyticsTools.map((tool) => tool.name),
+            'start_generation',
+            'get_brief',
+            'submit_generation',
+            'finalize_generation',
+            'get_run',
+            'cancel_generation',
+            'get_generation_history',
           ].sort(),
         );
 

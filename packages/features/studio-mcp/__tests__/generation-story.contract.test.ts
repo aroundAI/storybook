@@ -116,15 +116,18 @@ describe.skipIf(!(SEED && URL_))(
         ],
       });
 
+      // threads are written by the canon tools, not directly by a member
       await rest('/rest/v1/narrative_threads', {
-        token: team.token,
+        token: SERVICE_ROLE_KEY,
         body: {
           project_id: team.projectId,
           thread_name: 'The missing memo',
           thread_type: 'mystery',
           description: 'A memo nobody admits to.',
           status: 'open',
-          episodes_touched: [],
+          // opened in the seeded pilot, as the fixture's episode 1
+          opened_at: team.episodeId,
+          episodes_touched: [team.episodeId],
         },
       });
 

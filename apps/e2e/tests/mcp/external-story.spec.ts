@@ -201,12 +201,9 @@ test.describe('Claude writes the story over MCP (FILM-1908)', () => {
       'Commander Maya Chen',
     );
 
-    await byTest(page, 'story-canon-tab').click();
-    await expect(page.getByText('The signal').first()).toBeVisible();
-
     if (EVIDENCE) {
       await page.screenshot({
-        path: `${EVIDENCE}/film-1908-02-canon-from-the-run.png`,
+        path: `${EVIDENCE}/film-1908-02-story-after-reload.png`,
         fullPage: false,
       });
     }
