@@ -1,5 +1,5 @@
 {
-  "feature": "FILM-1911 MCP connector GA: the super-admin panels, the guard-failure alert",
+  "feature": "FILM-1911 MCP connector GA: the super-admin panels, the guard-failure alert, the no-model refusal",
   "mutations": [
     {
       "name": "1911 DB P3 a team owner reads the cross-team panels",
@@ -48,6 +48,46 @@
       "cwd": "apps/web",
       "test": "lambda/external-run-model-calls/__tests__/index.test.ts",
       "pattern": "fails when the check finds model calls"
+    },
+    {
+      "kind": "unit",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/model-not-configured.test.ts",
+      "name": "1911 gateway openRun opens a server run with no model",
+      "file": "packages/ai-gateway/src/backend.ts",
+      "find": "    !serverModelConfigured() &&\n    (await resolveRunMode(",
+      "replace": "    serverModelConfigured() &&\n    (await resolveRunMode(",
+      "pattern": "refuses a server run with the message"
+    },
+    {
+      "kind": "unit",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/model-not-configured.test.ts",
+      "name": "1911 gateway dispatch sends a server run with no model",
+      "file": "packages/ai-gateway/src/backend.ts",
+      "find": "  dispatch: async (run) => {\n    await refuseWithoutModel(run);\n",
+      "replace": "  dispatch: async (run) => {\n",
+      "pattern": "is not dispatched"
+    },
+    {
+      "kind": "unit",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/model-not-configured.test.ts",
+      "name": "1911 gateway a refused run keeps its target",
+      "file": "packages/ai-gateway/src/backend.ts",
+      "find": "  await run.fail(error).catch(() => undefined);\n",
+      "replace": "",
+      "pattern": "a server run that exists anyway"
+    },
+    {
+      "kind": "unit",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/model-not-configured.test.ts",
+      "name": "1911 gateway any key counts as a model",
+      "file": "packages/ai-gateway/src/model-availability.ts",
+      "find": "PROVIDERS.some((provider) => getApiKeyForProvider(provider) !== '')",
+      "replace": "PROVIDERS.some((provider) => getApiKeyForProvider(provider) !== undefined)",
+      "pattern": "cannot with no key at all"
     }
   ]
 }

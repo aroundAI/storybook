@@ -2,7 +2,9 @@ export type GatewayErrorCode =
   /** A model call for a run that is not an open server-mode run */
   | 'LLM_FORBIDDEN_EXTERNAL_RUN'
   /** A model call with no run at all: nothing outside a run reaches a model */
-  | 'LLM_NO_RUN';
+  | 'LLM_NO_RUN'
+  /** Server mode on a deployment that holds no key to any model (FILM-1911) */
+  | 'LLM_NOT_CONFIGURED';
 
 /**
  * The gateway's refusal, thrown before any model call. `code` is what the

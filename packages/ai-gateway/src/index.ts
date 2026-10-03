@@ -13,6 +13,10 @@ export { GatewayError, isGatewayError, type GatewayErrorCode } from './errors';
 export { currentRun, requireRun, withRun } from './run-context';
 export { assertServerRunOpen } from './guard';
 export { gatewayBackend, openRun, withGateway } from './backend';
+export {
+  LLM_NOT_CONFIGURED_MESSAGE,
+  serverModelConfigured,
+} from './model-availability';
 export { isLambdaEnvironment, type RunMessage } from './dispatch';
 export {
   createServerWriter,
