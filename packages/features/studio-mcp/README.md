@@ -53,6 +53,10 @@ route serves by default.
 | `create_project`, `update_project` | write | name, description, slug, status, and the studio settings page's series settings |
 | `create_episode`, `update_episode` | write | title, description (logline), target duration, content style, visual tone, tone notes; `update_episode` is optimistic-locked (`TARGET_CHANGED`) |
 | `upsert_asset` | write | a character or a location, by `assetId` or by type and name |
+| `start_voice_render` | render | ElevenLabs voice for one line or the whole episode, through the web's own render start (FILM-1909) |
+| `start_audio_render` | render | music, SFX or ambience for one audio cue (`audio-file-generation`), through the web's own render start |
+| `get_render_status` | render | lines and cues by status, what is still rendering or failed, and the voice batch |
+| `get_veo_manifest` | read | the visual studio's OpenClaw export: VEO prompts, frame descriptions, transitions and reference images per shot, paged by scene |
 
 Every list and long-content tool pages with `cursor` and `limit` (max 50);
 screenplay, shots and dialogue page by whole scenes
@@ -96,6 +100,22 @@ What the registry does around every handler, so a tool does not:
 The handler's only database client is `principal.supabase`, minted for the
 user; `__tests__/boundaries.test.ts` fails the build if anything under
 `src/server/tools/` imports a service-role client.
+
+## Render and edit tools (FILM-1909)
+
+The render tools call the functions the audio studio's actions call
+(`@kit/audio-generation/server/render-starts`), with the principal's
+client: the same write check (`authorizeEpisodeTarget`), voice assignment,
+estimated cost on `batch_generation_jobs`, and the team's own ElevenLabs key
+in the worker that renders. No language model is called;
+`__tests__/render.contract.test.ts` proves it against a local Supabase and
+ElasticMQ (`MCP_CONTRACT_SEED=1 RENDER_CONTRACT_SQS=http://127.0.0.1:4120`).
+
+`edit_scene`, `edit_shot` and `edit_dialogue_line` (`src/server/tools/edit/`)
+validate an edit with the stage's own output schema and `check()` and map it
+to the commit plan FILM-1903's `apply_generation_commit` applies. They are
+not in `defaultTools` yet: their writer, which opens the run and applies the
+plan in one transaction, needs the run layer on main.
 
 ## Analytics tools (FILM-1906)
 

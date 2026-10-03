@@ -2233,6 +2233,9 @@ importers:
       '@kit/assets':
         specifier: workspace:*
         version: link:../assets
+      '@kit/audio-generation':
+        specifier: workspace:*
+        version: link:../audio-generation
       '@kit/cache':
         specifier: workspace:*
         version: link:../../cache
@@ -2248,6 +2251,9 @@ importers:
       '@kit/projects':
         specifier: workspace:*
         version: link:../projects
+      '@kit/prompt-engine':
+        specifier: workspace:*
+        version: link:../prompt-engine
       '@kit/shared':
         specifier: workspace:*
         version: link:../../shared
