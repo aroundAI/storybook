@@ -117,6 +117,11 @@ const generateIdeasTool = createTool({
           previous_episodes: previousEpisodes ?? '',
           visual_style: visualStyle ?? '',
           recurring_element: recurringElements ?? '',
+          // FILM-1912: the run's block, from the orchestrator, not the model
+          performance_context:
+            typeof context?._performanceContext === 'string'
+              ? context._performanceContext
+              : '',
           premise_depth_instructions: depthInstructions,
           // Partial regeneration: which ideas to replace (KB-126 — the prompt
           // never read this, so a "regenerate the weak ones" call rewrote all)

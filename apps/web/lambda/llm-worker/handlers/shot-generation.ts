@@ -20,6 +20,7 @@ import {
   type ShotsCommitData,
   type ShotsPartOutput,
   type ShotsTarget,
+  renderPerformanceContext,
   runStage,
   scenePartKey,
   shotsStage,
@@ -57,12 +58,16 @@ export async function processShotGeneration(
     shotDuration: { min: data.shotDurationMin, max: data.shotDurationMax },
   };
 
-  const { commit } = await runStage(
-    shotsStage,
-    workerCtx(supabase, data),
-    target,
-    { ...stageRunDeps(), generate: orchestratedShots(data) },
-  );
+  const ctx = workerCtx(supabase, data);
+
+  const { commit } = await runStage(shotsStage, ctx, target, {
+    ...stageRunDeps(),
+    // FILM-1912: the block the run was opened with, for every scene prompt
+    generate: orchestratedShots(
+      data,
+      renderPerformanceContext(ctx.performanceContext),
+    ),
+  });
 
   if (commit.status === 'committed') {
     await openFollowOn(supabase, data, commit);
@@ -82,11 +87,14 @@ export async function processShotGeneration(
  * The server writer: the orchestrator produces every part in one run, on
  * the first brief it is asked for; later briefs are answered from it.
  */
-function orchestratedShots(data: LlmJobPayload<'shot-generation'>): GenerateFn {
+function orchestratedShots(
+  data: LlmJobPayload<'shot-generation'>,
+  performanceContext: string,
+): GenerateFn {
   let outputs: Map<string, ShotsPartOutput> | undefined;
 
   return async (brief) => {
-    outputs ??= await runOrchestratorForParts(brief, data);
+    outputs ??= await runOrchestratorForParts(brief, data, performanceContext);
 
     const output = outputs.get(brief.part.key);
 
@@ -103,6 +111,7 @@ function orchestratedShots(data: LlmJobPayload<'shot-generation'>): GenerateFn {
 async function runOrchestratorForParts(
   brief: Brief,
   data: LlmJobPayload<'shot-generation'>,
+  performanceContext: string,
 ): Promise<Map<string, ShotsPartOutput>> {
   const context = brief.context as unknown as ShotsBriefContext;
   const { runShotOrchestrator } = await import(
@@ -125,6 +134,7 @@ async function runOrchestratorForParts(
     locationsVeoContext: context.locationsVeo || 'No locations defined.',
     recurringElementsContext: context.recurringElements,
     shotDuration: context.shotDuration,
+    performanceContext,
   });
 
   console.log(

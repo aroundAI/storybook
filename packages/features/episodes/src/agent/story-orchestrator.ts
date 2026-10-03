@@ -59,6 +59,8 @@ export interface StoryOrchestratorInput {
   visualStyle?: string;
   // Recurring elements from project settings (e.g. episode ending pattern)
   recurringElementsContext?: string;
+  /** FILM-1912: past performance as prompt text, for the director's prompt */
+  performanceContext?: string;
   // Narrative threads to progress/resolve in this episode
   threadCandidatesContext?: string;
   // Ideation refinement fields from Select & Refine
@@ -153,6 +155,8 @@ export async function runStoryOrchestrator(
         accountId: input.accountId,
         // The director's template reads the facts itself (KB-126)
         _verifiedFacts: input.verifiedFacts,
+        // FILM-1912: likewise past performance, never copied by the model
+        _performanceContext: input.performanceContext ?? '',
       },
     );
 
