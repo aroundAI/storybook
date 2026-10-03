@@ -49,17 +49,23 @@ type Client = McpToolContext['principal']['supabase'];
  * TARGET_CHANGED when the episode moved.
  */
 export interface EditWriter {
-  commit(request: EditCommitRequest): Promise<EditCommitResult>;
+  commit(
+    request: EditCommitRequest,
+    context: McpToolContext,
+  ): Promise<EditCommitResult>;
 }
 
 export interface EditCommitRequest {
   stage: EditStage;
+  /** The tool, recorded as the run's origin name */
+  tool: 'edit_scene' | 'edit_shot' | 'edit_dialogue_line';
   accountId: string;
   projectId: string;
   episodeId: string;
   targetVersion: number;
-  plan: EditPlan;
   origin: GenerationOrigin;
+  /** The writes, given the origin they stamp (with the run's id once open) */
+  plan(origin: GenerationOrigin): EditPlan;
 }
 
 export interface EditCommitResult {
@@ -336,26 +342,32 @@ export function createEditTools(resolveDeps: () => EditToolDeps) {
       const lines = changes.dialogue
         ? await readLines(ctx.client, episodeId)
         : [];
-      const { plan, dialogue } = planSceneEdit({
-        episodeId,
-        screenplay: episode.screenplay_data ?? {},
-        before,
-        after,
-        lines,
-        characters: inputs.characters,
-        origin,
-        editedAt: now.toISOString(),
-      });
+      const sceneEdit = (stamp: GenerationOrigin) =>
+        planSceneEdit({
+          episodeId,
+          screenplay: episode.screenplay_data ?? {},
+          before,
+          after: { ...after, generationOrigin: stamp },
+          lines,
+          characters: inputs.characters,
+          origin: stamp,
+          editedAt: now.toISOString(),
+        });
+      const { dialogue } = sceneEdit(origin);
 
-      const result = await deps.writer.commit({
-        stage: 'screenplay_refinement',
-        accountId: context.accountId,
-        projectId: episode.project.id,
-        episodeId,
-        targetVersion: version,
-        plan,
-        origin,
-      });
+      const result = await deps.writer.commit(
+        {
+          stage: 'screenplay_refinement',
+          tool: 'edit_scene',
+          accountId: context.accountId,
+          projectId: episode.project.id,
+          episodeId,
+          targetVersion: version,
+          origin,
+          plan: (stamp) => sceneEdit(stamp).plan,
+        },
+        context,
+      );
 
       return {
         text: `Scene ${sceneNumber} updated; the episode is at version ${result.version}.${dialogue.mode === 'rebuilt' ? ` Dialogue rebuilt: ${dialogue.linesWritten} lines, ${dialogue.voiceRendersInvalidated} voice renders and ${dialogue.translationsRemoved} translated lines dropped.` : ''}`,
@@ -450,24 +462,29 @@ export function createEditTools(resolveDeps: () => EditToolDeps) {
         episodeId: input.episodeId,
       });
 
-      const result = await deps.writer.commit({
-        stage: 'screenplay_refinement',
-        accountId: context.accountId,
-        projectId: episode.project.id,
-        episodeId: input.episodeId,
-        targetVersion: input.version,
-        plan: planLineEdit({
+      const result = await deps.writer.commit(
+        {
+          stage: 'screenplay_refinement',
+          tool: 'edit_dialogue_line',
+          accountId: context.accountId,
+          projectId: episode.project.id,
           episodeId: input.episodeId,
-          screenplay: episode.screenplay_data ?? {},
-          scene: after,
-          row,
-          line: { character: line.character, text: line.text },
-          characters: inputs.characters,
+          targetVersion: input.version,
           origin,
-          editedAt: now.toISOString(),
-        }),
-        origin,
-      });
+          plan: (stamp) =>
+            planLineEdit({
+              episodeId: input.episodeId,
+              screenplay: episode.screenplay_data ?? {},
+              scene: { ...after, generationOrigin: stamp },
+              row,
+              line: { character: line.character, text: line.text },
+              characters: inputs.characters,
+              origin: stamp,
+              editedAt: now.toISOString(),
+            }),
+        },
+        context,
+      );
 
       return {
         text: `Line ${row.sequence_number} (scene ${sceneNumber}) updated${row.audio_url ? '; its voice render is pending again' : ''}. The episode is at version ${result.version}.`,
@@ -592,22 +609,27 @@ export function createEditTools(resolveDeps: () => EditToolDeps) {
       if (errors.length > 0) throw rejected(errors);
 
       const origin = editOrigin(context, now);
-      const result = await deps.writer.commit({
-        stage: 'shots',
-        accountId: context.accountId,
-        projectId: episode.project.id,
-        episodeId: input.episodeId,
-        targetVersion: input.version,
-        plan: planShotEdit({
+      const result = await deps.writer.commit(
+        {
+          stage: 'shots',
+          tool: 'edit_shot',
+          accountId: context.accountId,
+          projectId: episode.project.id,
           episodeId: input.episodeId,
-          shotId: input.shotId,
-          shot,
-          storedMetadata: stored.generation_metadata ?? {},
+          targetVersion: input.version,
           origin,
-          editedAt: now.toISOString(),
-        }),
-        origin,
-      });
+          plan: (stamp) =>
+            planShotEdit({
+              episodeId: input.episodeId,
+              shotId: input.shotId,
+              shot,
+              storedMetadata: stored.generation_metadata ?? {},
+              origin: stamp,
+              editedAt: now.toISOString(),
+            }),
+        },
+        context,
+      );
 
       return {
         text: `Shot ${stored.shot_number ?? stored.sequence_number} (scene ${sceneNumber}) updated; the episode is at version ${result.version}.`,

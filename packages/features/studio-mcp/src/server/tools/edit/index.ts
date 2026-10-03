@@ -1,12 +1,30 @@
 import 'server-only';
 
+import type { McpToolDefinition } from '../../../registry';
+import { configuredGenerationDeps } from '../generation';
+import { createEditTools } from './tools';
+import { runLayerEditWriter } from './writer';
+
 /**
- * FILM-1909's edit tools: one scene, one shot, one dialogue line. Not in
- * `defaultTools` yet: an edit writes several rows, which must apply in one
- * transaction under a run, and that writer (FILM-1903's run layer and
- * `apply_generation_commit`, #567 and #574) is not on main. Until then the
- * tools are built and tested against an injected writer.
+ * FILM-1909's edit tools: one scene, one shot, one dialogue line, each a
+ * stage commit under an external run (`runLayerEditWriter`). The episode
+ * context their checks read is the one the route configured for the
+ * generation tools.
  */
+const { editSceneTool, editShotTool, editDialogueLineTool } = createEditTools(
+  () => ({
+    writer: runLayerEditWriter,
+    episodeContext: configuredGenerationDeps().episodeContext,
+  }),
+);
+
+export const editTools: McpToolDefinition[] = [
+  editSceneTool,
+  editShotTool,
+  editDialogueLineTool,
+].map((tool) => tool as unknown as McpToolDefinition);
+
+export { runLayerEditWriter };
 export {
   createEditTools,
   targetChanged,

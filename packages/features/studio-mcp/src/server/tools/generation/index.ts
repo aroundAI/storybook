@@ -38,6 +38,11 @@ export function configureGenerationTools(deps: Partial<GenerationToolDeps>) {
   configured = { ...configured, ...deps };
 }
 
+/** What the route configured: the edit tools (FILM-1909) read the same episode context. */
+export function configuredGenerationDeps(): Partial<GenerationToolDeps> {
+  return configured;
+}
+
 export const generationTools = createGenerationTools(() => ({
   runs: runLayer,
   ...configured,

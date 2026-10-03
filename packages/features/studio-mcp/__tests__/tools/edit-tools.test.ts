@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -9,6 +11,7 @@ import {
 import { McpToolError } from '../../src/errors';
 import {
   type EditCommitRequest,
+  type EditPlan,
   type EditToolDeps,
   type EditWrite,
   createEditTools,
@@ -176,11 +179,15 @@ function harness(options: { version?: number; lines?: unknown[] } = {}) {
     })),
     shots: [{ ...shotRow(), episode_id: EPISODE, deleted_at: null }],
   });
-  const commits: EditCommitRequest[] = [];
+  const commits: Array<Omit<EditCommitRequest, 'plan'> & { plan: EditPlan }> =
+    [];
   const deps: EditToolDeps = {
     writer: {
       async commit(request) {
-        commits.push(request);
+        commits.push({
+          ...request,
+          plan: request.plan({ ...request.origin, runId: 'run-1' }),
+        });
         return {
           version: request.targetVersion + 1,
           runId: 'run-1',
@@ -712,5 +719,94 @@ describe('the edit tools are write tools', () => {
       expect(tool.scope).toBe('studio:write');
       expect(tool.annotations.readOnlyHint).toBe(false);
     }
+  });
+});
+
+/** The allowlist in force: the newest migration that defines it. */
+function allowlist(): Record<
+  string,
+  { ops: string[]; insert: string[]; update: string[] }
+> {
+  const dir = path.resolve(
+    __dirname,
+    '../../../../../apps/web/supabase/migrations',
+  );
+  const sql = readdirSync(dir)
+    .filter((file) => file.endsWith('.sql'))
+    .sort()
+    .reverse()
+    .map((file) => readFileSync(path.join(dir, file), 'utf8'))
+    .find((text) => text.includes('function kit.generation_commit_allowlist()'))!;
+
+  return JSON.parse(
+    sql.slice(
+      sql.indexOf('select $json$') + 'select $json$'.length,
+      sql.indexOf('$json$::jsonb'),
+    ),
+  );
+}
+
+describe('every edit plan is one apply_generation_commit accepts', () => {
+  it('writes only allowlisted tables, operations and columns', async () => {
+    const { tools, commits, context } = harness();
+
+    await tools.editSceneTool.handler(
+      {
+        episodeId: EPISODE,
+        version: 7,
+        sceneNumber: 1,
+        dialogue: [
+          { character: 'Mara', text: 'Not AGAIN.' },
+          { character: 'Jon', text: 'Again.' },
+        ],
+      },
+      context,
+    );
+    await tools.editSceneTool.handler(
+      {
+        episodeId: EPISODE,
+        version: 7,
+        sceneNumber: 1,
+        dialogue: [{ character: 'Mara', text: 'Only me.' }],
+      },
+      context,
+    );
+    await tools.editDialogueLineTool.handler(
+      { episodeId: EPISODE, version: 7, dialogueLineId: LINE(2), text: 'Yes.' },
+      context,
+    );
+    await tools.editShotTool.handler(
+      { episodeId: EPISODE, version: 7, shotId: SHOT, durationSeconds: 6 },
+      context,
+    );
+
+    const rules = allowlist();
+    const refused: string[] = [];
+
+    for (const op of commits.flatMap((commit) => commit.plan.ops)) {
+      const rule = rules[op.table];
+
+      if (!rule?.ops.includes(op.op)) {
+        refused.push(`${op.op} ${op.table}`);
+        continue;
+      }
+
+      const columns =
+        op.op === 'update'
+          ? Object.keys(op.values)
+          : op.op === 'insert'
+            ? op.rows.flatMap((row) => Object.keys(row))
+            : [];
+      const allowed = op.op === 'update' ? rule.update : rule.insert;
+
+      refused.push(
+        ...columns
+          .filter((column) => !allowed.includes(column))
+          .map((column) => `${op.table}.${column} (${op.op})`),
+      );
+    }
+
+    expect(commits).toHaveLength(4);
+    expect(refused).toEqual([]);
   });
 });
