@@ -25,7 +25,7 @@ acceptance_criteria:
     evidence: null
   - text: "Creates shot records via batchCreateShotsAction"
     met: false
-    reason: "retired — the shots stage's commit inserts shots directly (`packages/features/generation/src/stages/shots.ts:843`); `batchCreateShotsAction` has no callers"
+    reason: "retired — the shots stage's commit inserts shots directly (`packages/features/generation/src/stages/shots.ts:804`); `batchCreateShotsAction` has no callers"
   - text: "Updates episode.shot_list with metadata"
     met: true
     evidence: null
