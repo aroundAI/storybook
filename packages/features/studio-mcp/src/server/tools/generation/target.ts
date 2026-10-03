@@ -91,6 +91,10 @@ function targetIdFor(
       return ids.projectId;
     case 'asset':
       return ids.assetId;
+    // The titles are the caller's own text; the run locks their episode, as
+    // the web's server-mode run does (FILM-1909)
+    case 'publish':
+      return ids.episodeId;
     default:
       return undefined;
   }
@@ -102,6 +106,7 @@ const TARGET_ARG: Partial<Record<TargetType, string>> = {
   project: 'projectId',
   season: 'projectId',
   asset: 'assetId',
+  publish: 'episodeId',
 };
 
 /**
@@ -238,7 +243,8 @@ export async function resolveStageTarget(
   return {
     target: parsed.data,
     runTarget: {
-      type: stage.targetType as TargetType,
+      type:
+        stage.targetType === 'publish' ? 'episode' : (stage.targetType as TargetType),
       id: targetId,
       accountId,
       projectId: projectId ?? null,
