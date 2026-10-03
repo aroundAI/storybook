@@ -156,6 +156,7 @@ export async function planStoryCanon(
       projectId,
       episodeId,
       characters,
+      createdBy,
       supabase,
     })),
     ...themeSteps({ episodeId, themes }),
@@ -327,11 +328,13 @@ async function characterStateSteps({
   projectId,
   episodeId,
   characters,
+  createdBy,
   supabase,
 }: {
   projectId: string;
   episodeId: string;
   characters: Array<{ name: string; role: string; arc: string }>;
+  createdBy: string;
   supabase: Client;
 }): Promise<CommitWrite[]> {
   if (!characters.length) return [];
@@ -366,6 +369,8 @@ async function characterStateSteps({
       state_type: 'goal',
       state_value: { arc: c.arc, role: c.role },
       trigger_event: STORY_GENERATION,
+      // The author is the run's user, not whoever applies it (KB-77)
+      created_by: createdBy,
     }));
 
   if (!rows.length) return [];

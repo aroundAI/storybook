@@ -208,8 +208,9 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
 
       expect(json(seen.story)).toEqual(old.executorInput);
       expect(json(seen['canon-extraction'])).toEqual(old.canonExtractionInput);
-      // The same writes, plus who wrote the story (FILM-1903) and the world
-      // state's delta (withWorldStateDelta)
+      // The same writes, plus who wrote the story (FILM-1903), the world
+      // state's delta (withWorldStateDelta) and the author on each character
+      // state, which the old handler left out (KB-77 pins it)
       expect(json(db.writes())).toEqual(
         withWorldStateDelta(
           old.writes.map((write, index) =>
@@ -221,7 +222,15 @@ describe('the rewritten handlers do what the old ones did (FILM-1901)', () => {
                     generation_origin: SERVER_ORIGIN,
                   },
                 }
-              : write,
+              : write.table === 'character_states' && write.op === 'insert'
+                ? {
+                    ...write,
+                    payload: (write.payload as object[]).map((row) => ({
+                      ...row,
+                      created_by: STORY_PAYLOAD.userId,
+                    })),
+                  }
+                : write,
           ),
         ),
       );
