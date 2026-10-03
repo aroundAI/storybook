@@ -28,7 +28,7 @@
       "find": "    if (isServer) {\n      await markJobCompleted(client, target.episodeId, 'story', {\n        mode: 'agentic-stage1',",
       "replace": "    if (isServer && false) {\n      await markJobCompleted(client, target.episodeId, 'story', {\n        mode: 'agentic-stage1',",
       "cwd": "apps/web",
-      "test": "lambda/llm-worker/__tests__/stage-parity.test.ts",
+      "test": "lambda/llm-worker/__tests__/stage-parity-story-season.test.ts",
       "pattern": "writes the same rows and returns the same result"
     },
     {
@@ -48,7 +48,7 @@
       "find": "          ideas: out.ideas,\n          ideas_generated_at: generatedAt,",
       "replace": "          ideas_generated_at: generatedAt,",
       "cwd": "apps/web",
-      "test": "lambda/llm-worker/__tests__/stage-parity.test.ts",
+      "test": "lambda/llm-worker/__tests__/stage-parity-story-season.test.ts",
       "pattern": "stores the ideas on episodes.metadata.ideas"
     },
     {

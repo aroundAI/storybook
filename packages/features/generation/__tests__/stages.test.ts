@@ -183,6 +183,7 @@ describe('every registered stage renders its prompt with the context prepare() b
           targetLanguage: 'hi',
         },
       ],
+    },
     // Part B (the stage tests under __tests__/stages/ cover each in depth)
     story: {
       episodeId: EPISODE_ID,

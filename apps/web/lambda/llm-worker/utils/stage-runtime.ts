@@ -58,18 +58,11 @@ export function episodeContextLoader(
         number: ep.number,
         title: ep.title,
       })),
-      // undefined when the project has none, '' never: the story stage
-      // passes it on as the handler did (recurring element: yes / no)
-      recurringElements: context.recurringElements
-        ? formatRecurringElementsForPrompt(context.recurringElements)
-        : undefined,
       episodeFacts: formatFactsForPrompt(context.episodeFacts),
       verifiedFacts:
         context.verifiedFacts.length > 0
           ? formatVerifiedFactsForPrompt(context.verifiedFacts)
           : undefined,
-      characterNames: context.characters.map((c) => c.name),
-      locationNames: context.locations.map((l) => l.name),
       counts: {
         characters: context.characters.length,
         locations: context.locations.length,
@@ -85,9 +78,6 @@ export function episodeContextLoader(
       locationNames: context.locations.map((l) => l.name),
       characterList: context.characters.map(({ id, name }) => ({ id, name })),
       locationList: context.locations.map(({ id, name }) => ({ id, name })),
-      genre: context.genre,
-      targetAudience: context.targetAudience,
-      visualStyle: context.visualStyle,
     };
   };
 }
