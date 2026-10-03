@@ -1,7 +1,7 @@
 begin;
 create extension "basejump-supabase_test_helpers" version '0.0.6';
 
-select plan(43);
+select plan(45);
 
 -- FILM-1901 criterion 4, FILM-1903: a stage's commit applies in one
 -- transaction. apply_generation_commit(run, plan) takes the ordered writes a
@@ -419,6 +419,39 @@ select is(
   public.apply_generation_commit(current_setting('ac.audio')::uuid, '{"ops": []}'::jsonb, p_finalize := false) -> 'run' ->> 'status',
   'briefed',
   'A9 p_finalize := false applies and leaves the run open'
+);
+
+-- ------------------------------------------------------------------
+-- A11: a regenerated story updates its world state by id, setting only
+-- what changed (the planner once sent project_id and episode_id too, which
+-- the allowlist refuses: every second story generation was rolled back)
+-- ------------------------------------------------------------------
+set local role postgres;
+insert into public.world_states (id, project_id, episode_id, location) values
+  ('19033000-0000-4000-8000-000000000041', '19033000-0000-4000-8000-000000000001', '19033000-0000-4000-8000-000000000011', 'The old gate');
+select makerkit.authenticate_as('owner');
+select set_config('ac.memory', pg_temp.open_run('story')::text, true);
+
+select is(
+  public.apply_generation_commit(current_setting('ac.memory')::uuid, $p$ {"ops": [
+    {"key": "memory.world", "op": "update", "table": "world_states", "requireRows": true, "returning": ["id"],
+     "values": {"location": "The north gate", "time_period": null, "atmosphere": "smoke", "active_conflicts": [], "updated_at": "2026-10-03T12:00:00Z"},
+     "match": [{"column": "id", "op": "eq", "value": "19033000-0000-4000-8000-000000000041"}]},
+    {"op": "insert", "table": "state_deltas", "onlyIfRows": ["memory.world"], "rows": [
+      {"episode_id": "19033000-0000-4000-8000-000000000011", "entity_type": "world",
+       "entity_id": {"$ref": "memory.world", "column": "id", "one": true},
+       "before_state": {"location": "The old gate"}, "after_state": {"location": "The north gate"},
+       "change_reason": "World state replaced"}]}
+  ]} $p$::jsonb) ->> 'ok',
+  'true',
+  'A11 the world-state update by id applies'
+);
+
+select is(
+  (select location || ' / ' || (select count(*) from public.state_deltas d where d.entity_id = w.id)::text
+   from public.world_states w where w.id = '19033000-0000-4000-8000-000000000041'),
+  'The north gate / 1',
+  'A11 the row is updated and its delta names it'
 );
 
 -- ------------------------------------------------------------------

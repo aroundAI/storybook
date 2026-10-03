@@ -113,15 +113,24 @@ export async function planEpisodeMemory(
     return steps;
   }
 
-  // requireRows on the update: RLS filters a refused update to no rows,
-  // without an error (KB-105)
+  // An update sets what changed, not the columns that place the row: the
+  // row is matched by its id, and a commit may not update project_id or
+  // episode_id (the plan would be refused, so a regenerated story failed).
+  // requireRows: RLS filters a refused update to no rows, without an error
+  // (KB-105)
+  const {
+    project_id: _project,
+    episode_id: _episode,
+    ...worldChanges
+  } = worldRow;
+
   steps.push(
     existing
       ? {
           key: WORLD,
           op: 'update',
           table: 'world_states',
-          values: worldRow,
+          values: worldChanges,
           match: [eq('id', existing.id)],
           requireRows: true,
           returning: ['id'],

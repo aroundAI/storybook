@@ -52,6 +52,16 @@
       "cwd": "packages/features/generation",
       "test": "__tests__/stage-matrix.test.ts",
       "pattern": "commits through one plan"
+    },
+    {
+      "name": "1903 txn a regenerated story's world-state update sets the row's project and episode",
+      "kind": "unit",
+      "file": "packages/features/generation/src/canon/store-episode-memory.ts",
+      "find": "          values: worldChanges,",
+      "replace": "          values: worldRow,",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/commit-allowlist.test.ts",
+      "pattern": "the existing world state is updated"
     }
   ]
 }
