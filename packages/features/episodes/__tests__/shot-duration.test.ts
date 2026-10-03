@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
+import { reelNoteFor } from '@kit/prompt-engine/schemas';
 
 import { shotDirectorSkill } from '../src/agent/skills/shot-director-skill';
 
@@ -116,5 +117,19 @@ describe('shot length (KB-120)', () => {
         shotDurationMax: 5,
       }),
     ).toThrow(/shotDurationMax: must not be less than shotDurationMin/);
+  });
+});
+
+describe('the Reel Scout note (KB-178)', () => {
+  it('sends the priority note for a Reel candidate, and an empty one otherwise', async () => {
+    const tool = shotDirectorSkill.tools[0]!;
+    const context = { accountId: '11111111-1111-4111-8111-111111111111' };
+
+    await tool.execute({ ...params, reelCandidateScenes: [1] }, context);
+    await tool.execute(params, context);
+
+    expect(calls[0]!.reel_note).toBe(reelNoteFor(1, [1]));
+    expect(calls[0]!.reel_note).toContain('PRIORITY: This scene is a Reel');
+    expect(calls[1]!.reel_note).toBe('');
   });
 });

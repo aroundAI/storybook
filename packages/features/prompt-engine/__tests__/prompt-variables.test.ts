@@ -245,6 +245,24 @@ describe('prompt variables (KB-126)', () => {
     expect([...new Set(undeclared)]).toEqual([]);
   });
 
+  // KB-178: scene-shot-generation declared reel_note and never placed it, so
+  // the Reel Scout's note was sent to nowhere and every caller check passed
+  it('every template places every variable it declares', () => {
+    const unplaced = jsonFiles(PROMPTS).flatMap((path) => {
+      const template = JSON.parse(readFileSync(path, 'utf8')) as Template;
+
+      if (!template.user_prompt || !template.variables) return [];
+
+      const placed = new Set(placeholdersIn(templateText(template)));
+
+      return Object.keys(template.variables)
+        .filter((name) => !placed.has(name))
+        .map((name) => `${relative(PROMPTS, path)}: ${name}`);
+    });
+
+    expect(unplaced).toEqual([]);
+  });
+
   it.each(calls.map((call) => [call.where, call] as const))(
     '%s fills every placeholder of its template, and sends nothing it does not read',
     (_where, call) => {

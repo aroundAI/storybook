@@ -271,7 +271,18 @@ export interface StageDefinition<TTarget, TOut, TData = unknown> {
   outputSchema: z.ZodType<TOut, z.ZodTypeDef, unknown>;
   jobTracking?: JobTracking<TTarget>;
   parts(ctx: Ctx, target: TTarget): Promise<PartSpec[]>;
-  prepare(ctx: Ctx, target: TTarget, part: PartSpec): Promise<Brief>;
+  /**
+   * `earlier` holds the outputs this run has already accepted, in part
+   * order: runStage passes what it has checked so far, and the MCP tools
+   * pass the run's stored `generation_run_parts`. A part that builds on
+   * another (a shots scene on the reel_scout part, KB-178) reads it here.
+   */
+  prepare(
+    ctx: Ctx,
+    target: TTarget,
+    part: PartSpec,
+    earlier?: readonly TOut[],
+  ): Promise<Brief>;
   check(
     ctx: Ctx,
     target: TTarget,

@@ -608,7 +608,9 @@ export interface StageDefinition<TOut> {
   key: StageKey;
   targetType: 'episode' | 'scene' | 'asset' | 'season' | 'publish';
   parts(ctx: Ctx, target: Target): Promise<PartSpec[]>;
-  prepare(ctx: Ctx, target: Target, part: PartSpec): Promise<Brief>;
+  // earlier: the parts this run has accepted, in order (KB-178: a shots
+  // scene reads the reel_scout part); the MCP tools pass generation_run_parts
+  prepare(ctx: Ctx, target: Target, part: PartSpec, earlier?: TOut[]): Promise<Brief>;
   outputSchema: z.ZodType<TOut>;         // per part
   check(ctx: Ctx, target: Target, out: TOut): Promise<CheckError[]>;
   commit(ctx: Ctx, run: GenerationRun, parts: TOut[]): Promise<CommitResult>;

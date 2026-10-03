@@ -42,3 +42,18 @@ export const ReelScoutOutputSchema = z.object({
 });
 
 export type ReelScoutOutput = z.infer<typeof ReelScoutOutputSchema>;
+
+/**
+ * The `reel_note` scene-shot-generation places after a scene's content
+ * (KB-178): the Reel Scout's priority for a scene it listed in
+ * `topReelCandidates`, and '' for any other. The Shot Director and the
+ * shots stage both send this, so the two modes steer the model alike.
+ */
+export function reelNoteFor(
+  sceneNumber: number,
+  topReelCandidates: readonly number[],
+): string {
+  return topReelCandidates.includes(sceneNumber)
+    ? 'PRIORITY: This scene is a Reel candidate. Lead with a high-impact visual hook in Shot 1. Use close-ups for emotional beats. Make the first 3 seconds grabby.'
+    : '';
+}

@@ -22,6 +22,7 @@ import {
   DEFAULT_SHOT_DURATION,
   clampShotDuration,
 } from '@kit/prompt-engine/llm-job-payloads';
+import { reelNoteFor } from '@kit/prompt-engine/schemas';
 
 const ShotDurationContextSchema = z.object({
   min: z.number(),
@@ -206,9 +207,7 @@ const generateShotsTool = createTool({
                 tone,
               });
 
-              const reelNote = isReelCandidate
-                ? `PRIORITY: This scene is a Reel candidate. Lead with a high-impact visual hook in Shot 1. Use close-ups for emotional beats. Make the first 3 seconds grabby.`
-                : '';
+              const reelNote = reelNoteFor(scene.number, reelCandidateScenes);
 
               const result = await executeLLM<{
                 shots: Array<{
