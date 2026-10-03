@@ -11,11 +11,13 @@ import {
   assetDescriptionStage,
   fallbackDescription,
 } from '@kit/generation';
+import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
-import { whyNoRow } from '@kit/shared/rows';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+import { linkAssetsToEpisode } from '../../../server/episode.service';
 
 /**
  * Schema for extracting a description from story text via LLM
@@ -34,8 +36,6 @@ const ExtractDescriptionSchema = z.object({
 const LinkAssetToEpisodeSchema = z.object({
   episodeId: z.string().uuid(),
   assetId: z.string().uuid(),
-  assetName: z.string().min(1),
-  assetType: z.enum(['character', 'location']),
 });
 
 /**
@@ -153,9 +153,9 @@ export const extractDescriptionAction = enhanceAction(
 );
 
 /**
- * Links an existing asset to an episode by adding its ID and name
- * to the episode's metadata (character_ids/location_ids arrays).
- * Deduplicates by ID and case-insensitive name.
+ * Links an existing asset to an episode (the MCP tool calls the same
+ * `linkAssetsToEpisode`; KB-183). The asset's name and type come from its
+ * row, and it must belong to the episode's project.
  */
 const linkAssetToEpisode = enhanceAction(
   async (data) => {
@@ -166,51 +166,14 @@ const linkAssetToEpisode = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Fetch current episode metadata
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: episode, error: fetchError } = await (client as any)
-      .from('episodes')
-      .select('metadata')
-      .eq('id', data.episodeId)
-      .single();
+    const result = await linkAssetsToEpisode(client, {
+      episodeId: data.episodeId,
+      assetIds: [data.assetId],
+    });
 
-    if (fetchError || !episode) {
-      throw new Error(whyNoRow(fetchError, 'Episode not found'));
+    if (!result.ok) {
+      throw new ActionRefusal(result.message);
     }
-
-    const metadata = (episode.metadata ?? {}) as Record<string, unknown>;
-    const idsKey =
-      data.assetType === 'character' ? 'character_ids' : 'location_ids';
-    const namesKey =
-      data.assetType === 'character' ? 'character_names' : 'location_names';
-
-    const existingIds = (metadata[idsKey] as string[] | undefined) ?? [];
-    const existingNames = (metadata[namesKey] as string[] | undefined) ?? [];
-
-    // Dedupe
-    const newIds = existingIds.includes(data.assetId)
-      ? existingIds
-      : [...existingIds, data.assetId];
-    const newNames = existingNames.some(
-      (n) => n.toLowerCase() === data.assetName.toLowerCase(),
-    )
-      ? existingNames
-      : [...existingNames, data.assetName];
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: updated, error: updateError } = await (client as any)
-      .from('episodes')
-      .update({
-        metadata: { ...metadata, [idsKey]: newIds, [namesKey]: newNames },
-      })
-      .eq('id', data.episodeId)
-      .select('id');
-
-    if (updateError) {
-      throw new Error('Failed to link asset to episode');
-    }
-
-    requireAffectedRows(updated, "You can't change this episode's assets.");
 
     return { success: true as const, data: { linked: true } };
   },

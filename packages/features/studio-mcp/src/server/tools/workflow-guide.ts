@@ -21,7 +21,7 @@ export const WORKFLOW_GUIDE_TEXT = [
   '',
   '## Authoring (studio:write)',
   '',
-  'What a person writes by hand: `create_project` and `update_project` (name, description, slug, status, series settings), `create_episode` and `update_episode` (title, logline as description, target duration, content style, visual tone, tone notes; `update_episode` needs the version from `get_episode`), `upsert_asset` (characters and locations with their details). These never write a story, screenplay, shots, dialogue or audio cues.',
+  'What a person writes by hand: `create_project` and `update_project` (name, description, slug, status, series settings), `create_episode` and `update_episode` (title, logline as description, target duration, content style, visual tone, tone notes; `update_episode` needs the version from `get_episode`), `upsert_asset` (characters and locations with their details), `link_assets_to_episode` (the characters and locations an episode uses). The screenplay, shots and audio stages read their cast from those links: link every existing character who speaks and every location a scene uses before you start the screenplay, or the check refuses them as unknown. These never write a story, screenplay, shots, dialogue or audio cues.',
   '',
   '## Stages, in order',
   '',
@@ -81,6 +81,7 @@ export const getWorkflowGuideTool = defineTool({
           'create_episode',
           'update_episode',
           'upsert_asset',
+          'link_assets_to_episode',
         ],
         generationTools: [
           'start_generation',

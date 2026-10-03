@@ -275,3 +275,141 @@ export async function updateEpisodeRow(
     data: episode,
   };
 }
+
+export interface LinkedAsset {
+  id: string;
+  name: string;
+  type: 'character' | 'location';
+}
+
+export type LinkAssetsResult =
+  | { ok: true; data: { linked: LinkedAsset[] } }
+  | {
+      ok: false;
+      code: 'episode_not_found' | 'asset_not_in_project' | 'not_permitted';
+      message: string;
+    };
+
+/**
+ * Links existing characters and locations to an episode by adding their ids
+ * and names to `episodes.metadata` (`character_ids` / `location_ids` and the
+ * `_names` beside them), which is what every stage after the story reads
+ * its cast from. Deduplicates by id and by case-insensitive name. The web's
+ * episode sidebar and the MCP `link_assets_to_episode` tool both call this.
+ *
+ * Each asset must be a live character or location of the episode's own
+ * project; RLS hides other teams' rows, and a row of another project of the
+ * same team is refused here. Nothing is written when any asset is refused.
+ * The metadata write is filtered on the version that was read, and re-read
+ * and retried when another write moved it.
+ */
+export async function linkAssetsToEpisode(
+  client: Client,
+  input: { episodeId: string; assetIds: string[] },
+): Promise<LinkAssetsResult> {
+  const assetIds = [...new Set(input.assetIds)];
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    const { data: episode, error: episodeError } = await client
+      .from('episodes')
+      .select('id, project_id, version, metadata')
+      .eq('id', input.episodeId)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    if (episodeError || !episode) {
+      return {
+        ok: false,
+        code: 'episode_not_found',
+        message: whyNoRow(episodeError, 'Episode not found'),
+      };
+    }
+
+    const { data: assets, error: assetsError } = await client
+      .from('assets')
+      .select('id, name, type, project_id')
+      .in('id', assetIds)
+      .is('deleted_at', null);
+
+    if (assetsError) {
+      throw new Error(`Failed to read assets: ${assetsError.message}`);
+    }
+
+    const found = new Map((assets ?? []).map((asset) => [asset.id, asset]));
+    const refused = assetIds.filter((id) => {
+      const asset = found.get(id);
+
+      return (
+        !asset ||
+        asset.project_id !== episode.project_id ||
+        (asset.type !== 'character' && asset.type !== 'location')
+      );
+    });
+
+    if (refused.length > 0) {
+      return {
+        ok: false,
+        code: 'asset_not_in_project',
+        message: `Not a character or location of this episode's project: ${refused.join(', ')}`,
+      };
+    }
+
+    const metadata = (episode.metadata ?? {}) as Record<string, unknown>;
+    const next: Record<string, unknown> = { ...metadata };
+    const linked: LinkedAsset[] = [];
+
+    for (const id of assetIds) {
+      const asset = found.get(id)!;
+      const type = asset.type as LinkedAsset['type'];
+      const idsKey = type === 'character' ? 'character_ids' : 'location_ids';
+      const namesKey =
+        type === 'character' ? 'character_names' : 'location_names';
+      const ids = (next[idsKey] as string[] | undefined) ?? [];
+      const names = (next[namesKey] as string[] | undefined) ?? [];
+
+      next[idsKey] = ids.includes(id) ? ids : [...ids, id];
+      next[namesKey] = names.some(
+        (name) => name.toLowerCase() === asset.name.toLowerCase(),
+      )
+        ? names
+        : [...names, asset.name];
+      linked.push({ id, name: asset.name, type });
+    }
+
+    const { data: updated, error: updateError } = await client
+      .from('episodes')
+      .update({ metadata: next as Json })
+      .eq('id', input.episodeId)
+      .eq('version', episode.version)
+      .is('deleted_at', null)
+      .select('id');
+
+    if (updateError) {
+      throw new Error(
+        `Failed to link assets to episode: ${updateError.message}`,
+      );
+    }
+
+    if (updated && updated.length > 0) {
+      return { ok: true, data: { linked } };
+    }
+
+    // No row changed: either the version moved (read again) or RLS filtered
+    // the write out, which looks the same. Read the version to tell which.
+    const { data: now } = await client
+      .from('episodes')
+      .select('version')
+      .eq('id', input.episodeId)
+      .maybeSingle();
+
+    if (!now || now.version === episode.version) {
+      return {
+        ok: false,
+        code: 'not_permitted',
+        message: "You can't change this episode's assets.",
+      };
+    }
+  }
+
+  throw new OptimisticLockError('episode');
+}
