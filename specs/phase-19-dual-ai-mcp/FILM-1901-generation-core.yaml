@@ -61,11 +61,10 @@ remaining:
   - criterion: "The model call between prepare and commit is run.write()"
     reason: "Until the gateway exists the caller supplies `generate: (brief) => Promise<{output, usage}>`; the worker passes executeLLMForLambda (apps/web/lambda/llm-worker/utils/stage-runtime.ts) and the episodes actions pass executeLLM"
     closed_by: "FILM-1902"
-  - criterion: "The episode context loader is reachable from the Next.js app"
-    reason: "story_refinement's prepare takes `ctx.episodeContext`, which the worker builds from its utils/context-builder.ts (it reaches the Voyage embedder, so the core does not import it). The MCP route (FILM-1908) needs the same loader built where it can import it"
-    closed_by: "FILM-1908"
 open_questions: []
 notes: |
+  Closed 2026-10-03 (#573): "The episode context loader is reachable from the Next.js app" — the MCP route builds it with episodeContextLoader from the worker's utils (apps/web/app/api/mcp/route.ts:21), semantic recall off.
+
   ## Stage registry
 
   | Stage key | Target | Parts | Commit does (moved out of today's handler) |

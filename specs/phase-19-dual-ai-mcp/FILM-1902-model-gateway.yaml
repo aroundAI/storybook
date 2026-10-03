@@ -66,11 +66,10 @@ remaining:
   - criterion: "No model call outside a registered stage, and the matrix's server leg against the FILM-1803 sandbox"
     reason: "every stage-shaped handler is on the core and in the matrix (14 stages). What still calls an executor outside a stage's part, always inside a run: the analytics and language insights handlers (not stages), the screenplay handler's advisory quality evaluation, the story stage's server-mode canon extraction, and the documentary fact check (a fact_check run). The matrix's server leg runs against a stubbed writer (the sandbox suite covers the executors and orchestrators under a run)"
     closed_by: "FILM-1901"
-  - criterion: "The MCP request context wires ctx.runMode so an MCP-opened run is external"
-    reason: "the seam exists (RunCtx.runMode, packages/features/generation/src/runs/types.ts) and is tested; @kit/studio-mcp wires it from getMcpRequestContext()"
-    closed_by: "FILM-1908"
 open_questions: []
 notes: |
+  Closed 2026-10-03 (#573): "The MCP request context wires ctx.runMode so an MCP-opened run is external" — packages/features/studio-mcp/src/server/tools/generation/service.ts:62, with the connection id making it so in the database too.
+
   ## Part B (#567, 2026-10-03): the gateway, the run handle and the worker
 
   Built together with FILM-1903 part B. `@kit/ai-gateway` (packages/ai-gateway)

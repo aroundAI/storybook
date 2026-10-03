@@ -662,7 +662,7 @@ The web app keeps generating with Gemini on Vertex AI; the app also serves a rem
 
 | FILM-1906 | [mcp-analytics-tools](./phase-19-dual-ai-mcp/FILM-1906-mcp-analytics-tools.yaml) | DONE | L | FILM-1904 |
 | FILM-1907 | [mcp-oauth-and-consent](./phase-19-dual-ai-mcp/FILM-1907-mcp-oauth-and-consent.yaml) | PARTIAL | L | FILM-1904 |
-| FILM-1908 | [external-generation-story](./phase-19-dual-ai-mcp/FILM-1908-external-generation-story.yaml) | PARTIAL | M | FILM-1901, FILM-1903, FILM-1904 |
+| FILM-1908 | [external-generation-story](./phase-19-dual-ai-mcp/FILM-1908-external-generation-story.yaml) | DONE | M | FILM-1901, FILM-1903, FILM-1904 |
 | FILM-1909 | [external-generation-all-stages](./phase-19-dual-ai-mcp/FILM-1909-external-generation-all-stages.yaml) | DRAFT | L | FILM-1908 |
 | FILM-1910 | [dual-mode-web-ux](./phase-19-dual-ai-mcp/FILM-1910-dual-mode-web-ux.yaml) | DONE | M | FILM-1903, FILM-1908 |
 | FILM-1911 | [dual-ai-general-availability](./phase-19-dual-ai-mcp/FILM-1911-dual-ai-general-availability.yaml) | DRAFT | S | FILM-1907, FILM-1909, FILM-1910 |
