@@ -6,7 +6,6 @@ import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
-import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -28,24 +27,14 @@ import type {
 } from '../types';
 import { mapRowToAsset } from '../types';
 import { checkAssetHashQuery, getAsset, isAssetInUse } from './asset.queries';
+import { insertAsset, updateAssetRow } from './asset.service';
 
 /**
- * Create a new asset for a project
+ * Create a new asset for a project. The write and its refusals live in
+ * asset.service.ts, shared with the MCP upsert_asset tool (FILM-1905).
  *
  * @throws {Error} If user lacks project access or validation fails
  */
-/**
- * `unique(project_id, type, name)` on assets: the one insert/update failure
- * a user causes, worded for them (KB-6). Postgres `unique_violation`.
- */
-function nameTaken(error: { code?: string }, type: string, name: string) {
-  return error.code === '23505'
-    ? new ActionRefusal(
-        `Another ${type} in this project is already named "${name}". Choose a different name.`,
-      )
-    : null;
-}
-
 const createAsset = enhanceAction(
   async (data) => {
     const logger = await getLogger();
@@ -60,71 +49,25 @@ const createAsset = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Security: Verify episodeId belongs to the same project if provided
-    if (data.episodeId) {
-      const { data: episodeCheck, error: episodeError } = await client
-        .from('episodes')
-        .select('id, project_id')
-        .eq('id', data.episodeId)
-        .single();
+    const inserted = await insertAsset(client, data).catch((error) => {
+      logger.error({ ...ctx, error }, 'Failed to create asset');
+      throw error;
+    });
 
-      if (episodeError || !episodeCheck) {
-        throw new Error('Failed to verify episode access');
-      }
-
-      if (episodeCheck.project_id !== data.projectId) {
-        throw new ActionRefusal('Episode does not belong to this project');
-      }
+    if (!inserted.ok) {
+      throw new ActionRefusal(inserted.refusal);
     }
 
-    // Insert asset (RLS will enforce project access)
-    try {
-      logger.info({ ...ctx, data }, 'Attempting to create asset');
+    logger.info(
+      { ...ctx, assetId: inserted.data.id },
+      'Asset created successfully',
+    );
 
-      const { data: asset, error } = await client
-        .from('assets')
-        .insert({
-          project_id: data.projectId,
-          episode_id: data.episodeId ?? null,
-          type: data.type,
-          name: data.name,
-          description: data.description ?? null,
-          file_url: data.fileUrl ?? null,
-          thumbnail_url: data.thumbnailUrl ?? null,
-          metadata: (data.metadata as Json) ?? ({} as Json),
-          file_hash: data.fileHash ?? null,
-          file_size_bytes: data.fileSizeBytes ?? null,
-          content_type: data.contentType ?? null,
-        })
-        .select()
-        .single();
+    // Revalidate asset pages
+    revalidatePath('/home/[account]/studio/[projectSlug]/assets', 'page');
+    revalidatePath('/home/[account]/studio/[projectSlug]', 'page');
 
-      if (error) {
-        const taken = nameTaken(error, data.type, data.name);
-        if (taken) throw taken;
-
-        logger.error(
-          { ...ctx, error, data },
-          'Failed to create asset - DB Error',
-        );
-        throw new Error(`Failed to create asset: ${error.message}`);
-      }
-
-      logger.info({ ...ctx, assetId: asset.id }, 'Asset created successfully');
-
-      // Revalidate asset pages
-      revalidatePath('/home/[account]/studio/[projectSlug]/assets', 'page');
-      revalidatePath('/home/[account]/studio/[projectSlug]', 'page');
-
-      return { success: true, data: mapRowToAsset(asset as AssetRow) };
-    } catch (error) {
-      if (error instanceof ActionRefusal) throw error;
-
-      logger.error({ ...ctx, error }, 'Failed to create asset - Exception');
-      throw new Error(
-        `Failed to create asset: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
+    return { success: true, data: inserted.data };
   },
   {
     schema: CreateAssetSchema,
@@ -262,36 +205,13 @@ const updateAsset = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Build update object (only include provided fields)
-    const updates: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    };
-
-    if (data.name !== undefined) updates.name = data.name;
-    if (data.description !== undefined) updates.description = data.description;
-    if (data.fileUrl !== undefined) updates.file_url = data.fileUrl;
-    if (data.thumbnailUrl !== undefined)
-      updates.thumbnail_url = data.thumbnailUrl;
-    if (data.metadata !== undefined) updates.metadata = data.metadata as Json;
-
-    const { data: asset, error } = await client
-      .from('assets')
-      .update(updates)
-      .eq('id', data.id)
-      .is('deleted_at', null)
-      .select()
-      .single();
-
-    if (error) {
-      // The update does not read the row's type back, so the wording
-      // names the rule rather than the kind of asset.
-      const taken =
-        data.name !== undefined &&
-        nameTaken(error, 'asset of the same type', data.name);
-      if (taken) throw taken;
-
+    const updated = await updateAssetRow(client, data).catch((error) => {
       logger.error({ ...ctx, error }, 'Failed to update asset');
-      throw new Error(`Failed to update asset: ${error.message}`);
+      throw error;
+    });
+
+    if (!updated.ok) {
+      throw new ActionRefusal(updated.refusal);
     }
 
     logger.info(ctx, 'Asset updated successfully');
@@ -300,7 +220,7 @@ const updateAsset = enhanceAction(
     revalidatePath('/home/[account]/studio/[projectSlug]/assets', 'page');
     revalidatePath('/home/[account]/studio/[projectSlug]', 'page');
 
-    return { success: true, data: mapRowToAsset(asset as AssetRow) };
+    return { success: true, data: updated.data };
   },
   {
     schema: UpdateAssetSchema,

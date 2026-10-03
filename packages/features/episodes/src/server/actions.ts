@@ -17,7 +17,6 @@ import {
 import { authorizeEpisodeTarget } from '@kit/prompt-engine/llm-job-target';
 import { getLogger } from '@kit/shared/logger';
 import { readFailed, whyNoRow } from '@kit/shared/rows';
-import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -36,7 +35,6 @@ import {
   UpdateEpisodeStatusSchema,
 } from '../lib/schemas';
 import { CreateEpisodeWithContextSchema } from '../lib/schemas/create-episode-wizard.schema';
-import { generateEpisodeSlug } from '../lib/slug-utils';
 import {
   InvalidStatusTransitionError,
   OptimisticLockError,
@@ -48,6 +46,7 @@ import type {
   EpisodeWithShots,
   ListEpisodesResponse,
 } from '../lib/types';
+import { insertEpisode, updateEpisodeRow } from './episode.service';
 
 /**
  * Create a new episode
@@ -70,87 +69,28 @@ const createEpisode = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Auto-assign episode number with retry logic for race conditions
-    // The database has a unique constraint (unique_episode_number_per_project)
-    // so we retry if there's a conflict
-    const MAX_RETRIES = 3;
-    let episode;
-    let lastError;
+    // The numbering, slug, retry and refusal rules live in episode.service.ts,
+    // shared with the MCP create_episode tool (FILM-1905)
+    const inserted = await insertEpisode(
+      client,
+      {
+        projectId: data.projectId,
+        seasonId: data.seasonId ?? null,
+        number: data.number,
+        title: data.title,
+        description: data.description ?? null,
+      },
+      { warn: (detail, msg) => logger.warn({ ...ctx, detail }, msg) },
+    ).catch((error) => {
+      logger.error({ ...ctx, error }, 'Failed to create episode');
+      throw error;
+    });
 
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      let episodeNumber: number;
-      if (data.number) {
-        episodeNumber = data.number;
-      } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: existingEpisodes } = await (client as any)
-          .from('episodes')
-          .select('number')
-          .eq('project_id', data.projectId)
-          .is('deleted_at', null)
-          .order('number', { ascending: false })
-          .limit(1);
-
-        episodeNumber = (existingEpisodes?.[0]?.number ?? 0) + 1;
-      }
-
-      // Generate slug from episode number and title
-      const slug = generateEpisodeSlug(episodeNumber, data.title);
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: insertedEpisode, error } = await (client as any)
-        .from('episodes')
-        .insert({
-          project_id: data.projectId,
-          season_id: data.seasonId ?? null,
-          number: episodeNumber,
-          title: data.title,
-          slug,
-          description: data.description ?? null,
-          status: 'draft',
-          metadata: {},
-          version: 1,
-        })
-        .select()
-        .single();
-
-      if (!error) {
-        episode = insertedEpisode;
-        break;
-      }
-
-      // Check if it's a unique constraint violation (race condition)
-      const isUniqueViolation =
-        error.code === '23505' || error.message?.includes('unique');
-
-      if (isUniqueViolation && !data.number && attempt < MAX_RETRIES - 1) {
-        // Retry with a new auto-assigned number
-        logger.warn(
-          { ...ctx, attempt, error },
-          'Episode number conflict, retrying',
-        );
-        continue;
-      }
-
-      lastError = error;
-      break;
+    if (!inserted.ok) {
+      throw new ActionRefusal(inserted.refusal);
     }
 
-    if (!episode) {
-      // A number chosen by the caller is never retried, so a clash on it is
-      // theirs to resolve. An auto-assigned number that still clashes after
-      // every retry is a failure, and stays thrown.
-      if (data.number && lastError?.code === '23505') {
-        throw new ActionRefusal(
-          `Episode ${data.number} already exists in this project. Choose a different number.`,
-        );
-      }
-
-      logger.error({ ...ctx, error: lastError }, 'Failed to create episode');
-      throw new Error(
-        `Failed to create episode: ${lastError?.message ?? 'Unknown error'}`,
-      );
-    }
+    const episode = inserted.data;
 
     // Get project for audit log scope
     const { data: project } = await client
@@ -183,7 +123,7 @@ const createEpisode = enhanceAction(
     logger.info({ ...ctx, episodeId: episode.id }, 'Episode created');
     revalidatePath('/home/[account]/projects/[id]', 'page');
 
-    return { success: true, data: episode as Episode };
+    return { success: true, data: episode as unknown as Episode };
   },
   {
     schema: CreateEpisodeSchema,
@@ -260,84 +200,43 @@ const createEpisodeWithContext = enhanceAction(
       logger.info({ ...ctx, seasonId }, 'Created new season inline');
     }
 
-    // 3. Auto-assign episode number
-    const MAX_RETRIES = 3;
-    let episode;
-    let lastError;
-
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: existingEpisodes } = await (client as any)
-        .from('episodes')
-        .select('number')
-        .eq('project_id', data.projectId)
-        .is('deleted_at', null)
-        .order('number', { ascending: false })
-        .limit(1);
-
-      const episodeNumber = (existingEpisodes?.[0]?.number ?? 0) + 1;
-      const slug = generateEpisodeSlug(episodeNumber, data.title);
-
-      // Build story_data with creative direction
-      const storyData: Record<string, unknown> = {};
-      if (data.hook) {
-        storyData.premise = data.hook;
-        storyData.logline = data.hook;
-      }
-
-      // Build metadata with creative direction
-      const metadata: Record<string, unknown> = {};
-      if (data.visualTone) metadata.visual_tone = data.visualTone;
-      if (data.toneNotes) metadata.tone_notes = data.toneNotes;
-      if (data.contentStyle) metadata.content_style = data.contentStyle;
-      if (data.targetDuration) metadata.target_duration = data.targetDuration;
-      if (data.factIds?.length) metadata.source_fact_ids = data.factIds;
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: insertedEpisode, error } = await (client as any)
-        .from('episodes')
-        .insert({
-          project_id: data.projectId,
-          season_id: seasonId,
-          number: episodeNumber,
-          title: data.title,
-          slug,
-          description: data.description ?? null,
-          status: 'draft',
-          story_data: Object.keys(storyData).length > 0 ? storyData : null,
-          metadata,
-          version: 1,
-          target_duration_seconds: data.targetDuration ?? null,
-        })
-        .select()
-        .single();
-
-      if (!error) {
-        episode = insertedEpisode;
-        break;
-      }
-
-      const isUniqueViolation =
-        error.code === '23505' || error.message?.includes('unique');
-
-      if (isUniqueViolation && attempt < MAX_RETRIES - 1) {
-        logger.warn(
-          { ...ctx, attempt, error },
-          'Episode number conflict, retrying',
-        );
-        continue;
-      }
-
-      lastError = error;
-      break;
+    // 3. Build the creative direction the wizard seeds the episode with
+    const storyData: Record<string, unknown> = {};
+    if (data.hook) {
+      storyData.premise = data.hook;
+      storyData.logline = data.hook;
     }
 
-    if (!episode) {
-      logger.error({ ...ctx, error: lastError }, 'Failed to create episode');
-      throw new Error(
-        `Failed to create episode: ${lastError?.message ?? 'Unknown error'}`,
-      );
+    const metadata: Record<string, unknown> = {};
+    if (data.visualTone) metadata.visual_tone = data.visualTone;
+    if (data.toneNotes) metadata.tone_notes = data.toneNotes;
+    if (data.contentStyle) metadata.content_style = data.contentStyle;
+    if (data.targetDuration) metadata.target_duration = data.targetDuration;
+    if (data.factIds?.length) metadata.source_fact_ids = data.factIds;
+
+    // The numbering, slug and retry rules live in episode.service.ts
+    const inserted = await insertEpisode(
+      client,
+      {
+        projectId: data.projectId,
+        seasonId,
+        title: data.title,
+        description: data.description ?? null,
+        metadata,
+        targetDurationSeconds: data.targetDuration ?? null,
+        storyData: Object.keys(storyData).length > 0 ? storyData : null,
+      },
+      { warn: (detail, msg) => logger.warn({ ...ctx, detail }, msg) },
+    ).catch((error) => {
+      logger.error({ ...ctx, error }, 'Failed to create episode');
+      throw error;
+    });
+
+    if (!inserted.ok) {
+      throw new ActionRefusal(inserted.refusal);
     }
+
+    const episode = inserted.data;
 
     // 4. Link facts via episode_facts junction table
     if (data.factIds && data.factIds.length > 0) {
@@ -450,7 +349,7 @@ const createEpisodeWithContext = enhanceAction(
 
     return {
       success: true,
-      data: episode as Episode,
+      data: episode as unknown as Episode,
       seasonId,
       autoGenerateQueued: data.autoGenerateStory === true && !!data.hook,
     };
@@ -889,84 +788,20 @@ export const updateEpisodeAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Fetch current episode for audit log and version check
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: currentEpisode, error: fetchError } = await (client as any)
-      .from('episodes')
-      .select(
-        `
-        id, project_id, season_id, number, slug, title, description, status, version,
-        duration_seconds, thumbnail_url, final_video_url, target_duration_seconds,
-        created_at, updated_at, deleted_at,
-        project:projects(account_id)
-      `,
-      )
-      .eq('id', data.episodeId)
-      .is('deleted_at', null)
-      .single();
-
-    if (fetchError || !currentEpisode) {
-      throw new Error(whyNoRow(fetchError, 'Episode not found'));
-    }
-
-    // Check version for optimistic locking
-    if (currentEpisode.version !== data.version) {
-      throw new OptimisticLockError('episode');
-    }
-
-    // Build update object (only include provided fields)
-    const updates: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    };
-
-    if (data.title !== undefined) updates.title = data.title;
-    if (data.description !== undefined) updates.description = data.description;
-    if (data.storyData !== undefined)
-      updates.story_data = data.storyData as Json;
-    if (data.screenplayData !== undefined)
-      updates.screenplay_data = data.screenplayData as Json;
-    if (data.shotList !== undefined) updates.shot_list = data.shotList as Json;
-    if (data.metadata !== undefined) updates.metadata = data.metadata as Json;
-
-    // Security: Verify masterVideoAssetId belongs to the same project
-    if (data.masterVideoAssetId !== undefined) {
-      if (data.masterVideoAssetId !== null) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: assetCheck, error: assetError } = await (client as any)
-          .from('assets')
-          .select('id, project_id')
-          .eq('id', data.masterVideoAssetId)
-          .single();
-
-        if (assetError || !assetCheck) {
-          throw new Error('Failed to verify asset access');
-        }
-
-        if (assetCheck.project_id !== currentEpisode.project_id) {
-          throw new Error('Asset does not belong to this project');
-        }
+    // The read, version check and write live in episode.service.ts, shared
+    // with the MCP update_episode tool (FILM-1905)
+    const updated = await updateEpisodeRow(client, data).catch((error) => {
+      if (!(error instanceof OptimisticLockError)) {
+        logger.error({ ...ctx, error }, 'Failed to update episode');
       }
-      updates.master_video_asset_id = data.masterVideoAssetId;
+      throw error;
+    });
+
+    if (!updated.ok) {
+      throw new Error(updated.message);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: episode, error: updateError } = await (client as any)
-      .from('episodes')
-      .update(updates)
-      .eq('id', data.episodeId)
-      .eq('version', data.version)
-      .is('deleted_at', null)
-      .select()
-      .single();
-
-    if (updateError) {
-      logger.error({ ...ctx, error: updateError }, 'Failed to update episode');
-      throw new Error('Failed to update episode');
-    }
-
-    if (!episode) {
-      throw new OptimisticLockError('episode');
-    }
+    const { before: currentEpisode, data: episode } = updated;
 
     // Create audit log
     const accountId = currentEpisode.project?.account_id;
@@ -994,7 +829,7 @@ export const updateEpisodeAction = enhanceAction(
     logger.info(ctx, 'Episode updated');
     revalidatePath('/home/[account]/projects/[id]', 'page');
 
-    return { success: true, data: episode as Episode };
+    return { success: true, data: episode as unknown as Episode };
   },
   {
     schema: UpdateEpisodeSchema,

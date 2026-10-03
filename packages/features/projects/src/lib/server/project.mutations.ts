@@ -29,7 +29,6 @@ import {
   UpdateProjectMemberSchema,
   UpdateProjectSchema,
 } from '../schemas/project.schema';
-import { TEAM_ONLY, TEAM_ONLY_CODE } from '../team-only';
 import type {
   AddProjectMemberParams,
   CreateProjectParams,
@@ -42,12 +41,11 @@ import {
   invalidateProjectCache,
   invalidateProjectMembersCache,
 } from './cache-invalidation';
-
-/** Postgres `unique_violation`: the one insert/update failure a user causes. */
-const UNIQUE_VIOLATION = '23505';
-
-const SLUG_TAKEN =
-  'A project with this slug already exists in this workspace. Choose a different slug.';
+import {
+  UNIQUE_VIOLATION,
+  insertProject,
+  updateProjectRow,
+} from './project.service';
 
 /**
  * Create a new project
@@ -66,32 +64,18 @@ const createProject = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Insert project
-    const { data: project, error: projectError } = await client
-      .from('projects')
-      .insert({
-        account_id: data.account_id,
-        name: data.name,
-        description: data.description,
-        slug: data.slug,
-        metadata: (data.metadata as Json) || ({} as Json),
-      })
-      .select()
-      .single();
+    // Insert project (the write and its refusals live in project.service.ts,
+    // shared with the MCP author tools)
+    const inserted = await insertProject(client, data).catch((error) => {
+      logger.error({ ...ctx, error }, 'Failed to create project');
+      throw error;
+    });
 
-    if (projectError) {
-      if (projectError.code === UNIQUE_VIOLATION) {
-        throw new ActionRefusal(SLUG_TAKEN);
-      }
-
-      // A personal account (KB-99): the database refuses it, and says why.
-      if (projectError.code === TEAM_ONLY_CODE) {
-        throw new ActionRefusal(TEAM_ONLY);
-      }
-
-      logger.error({ ...ctx, error: projectError }, 'Failed to create project');
-      throw new Error(`Failed to create project: ${projectError.message}`);
+    if (!inserted.ok) {
+      throw new ActionRefusal(inserted.refusal);
     }
+
+    const project = inserted.data;
 
     // Note: Project creator is automatically added as owner via database trigger
     logger.info(
@@ -163,30 +147,16 @@ const updateProject = enhanceAction(
       .eq('id', data.id)
       .single();
 
-    const updateData: Record<string, unknown> = {};
-    if (data.name !== undefined) updateData.name = data.name;
-    if (data.description !== undefined)
-      updateData.description = data.description;
-    if (data.slug !== undefined) updateData.slug = data.slug;
-    if (data.status !== undefined) updateData.status = data.status;
-    if (data.metadata !== undefined)
-      updateData.metadata = data.metadata as Json;
-
-    const { data: project, error } = await client
-      .from('projects')
-      .update(updateData)
-      .eq('id', data.id)
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === UNIQUE_VIOLATION) {
-        throw new ActionRefusal(SLUG_TAKEN);
-      }
-
+    const updated = await updateProjectRow(client, data).catch((error) => {
       logger.error({ ...ctx, error }, 'Failed to update project');
-      throw new Error(`Failed to update project: ${error.message}`);
+      throw error;
+    });
+
+    if (!updated.ok) {
+      throw new ActionRefusal(updated.refusal);
     }
+
+    const project = updated.data;
 
     logger.info(ctx, 'Project updated successfully');
 

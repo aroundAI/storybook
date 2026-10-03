@@ -19,9 +19,11 @@
     "./components/add-project-member-form": "./src/components/add-project-member-form.tsx",
     "./hooks/*": "./src/hooks/*.ts",
     "./schemas": "./src/lib/schemas/project.schema.ts",
+    "./schemas/studio-settings": "./src/lib/schemas/studio-settings.schema.ts",
     "./types": "./src/lib/types.ts",
     "./mutations": "./src/lib/server/project.mutations.ts",
-    "./queries": "./src/lib/server/project.queries.ts"
+    "./queries": "./src/lib/server/project.queries.ts",
+    "./service": "./src/lib/server/project.service.ts"
   },
   "devDependencies": {
     "@hookform/resolvers": "^4.1.3",

@@ -12,7 +12,6 @@ import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
 import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { getLogger } from '@kit/shared/logger';
-import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -27,6 +26,10 @@ import {
 import type { CharacterRow, CharacterWithDetails } from '../types';
 import { mapRowToCharacterWithDetails } from '../types';
 import { isAssetInUse } from './asset.queries';
+import {
+  createCharacterWithDetails,
+  updateCharacterWithDetails,
+} from './character.service';
 
 /**
  * Create a new character: an asset plus its details, made by one call to
@@ -46,81 +49,19 @@ const createCharacter = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // One call, one transaction: the function inserts the asset and its
-    // details and undoes both if the second fails. Deleting the asset here
-    // afterwards could not: assets_delete admits only project owners and
-    // admins, so a member's failed create left the asset behind (FILM-202).
-    const physicalAttributesJson = {
-      physicalAttributes: data.physicalAttributes ?? null,
-      personalityTraits: data.personalityTraits ?? null,
-      clothingStyle: data.clothingStyle ?? null,
-      backstory: data.backstory ?? null,
-    };
-
-    const { data: assetId, error: createError } = await client.rpc(
-      'create_character_with_details',
-      {
-        p_project_id: data.projectId,
-        p_name: data.name,
-        p_description: data.description ?? undefined,
-        p_physical_attributes: physicalAttributesJson as Json,
-        p_personality: data.personality ?? undefined,
-        p_element_prompt: data.elementPrompt ?? undefined,
-        p_reference_images: data.referenceImages ?? undefined,
-        p_elevenlabs_voice_id: data.voiceAssetId ?? undefined,
-        p_file_url: data.fileUrl || undefined,
-        p_thumbnail_url: data.thumbnailUrl || undefined,
+    const created = await createCharacterWithDetails(client, data).catch(
+      (error) => {
+        logger.error({ ...ctx, error }, 'Failed to create character');
+        throw error;
       },
     );
 
-    if (createError || !assetId) {
-      if (createError?.message.includes('duplicate key value')) {
-        throw new ActionRefusal(
-          `A character named "${data.name}" already exists in this project. Choose a different name.`,
-        );
-      }
-
-      logger.error(
-        { ...ctx, error: createError },
-        'Failed to create character',
-      );
-      throw new Error(
-        `Failed to create character: ${createError?.message ?? 'no id returned'}`,
-      );
-    }
-
-    const asset = { id: assetId };
-
-    // Fetch the complete character with joined details
-    const { data: character, error: fetchError } = await client
-      .from('assets')
-      .select(
-        `
-        *,
-        character_details!asset_id (
-          physical_attributes,
-          personality,
-          element_prompt,
-          reference_images,
-          elevenlabs_voice_id
-        )
-      `,
-      )
-      .eq('id', asset.id)
-      .single();
-
-    if (fetchError) {
-      logger.error(
-        { ...ctx, error: fetchError },
-        'Failed to fetch created character',
-      );
-      throw new Error(
-        `Failed to fetch created character: ${fetchError.message}`,
-      );
+    if (!created.ok) {
+      throw new ActionRefusal(created.refusal);
     }
 
     logger.info(
-      { ...ctx, assetId: asset.id },
+      { ...ctx, assetId: created.data.id },
       'Character created successfully',
     );
 
@@ -128,10 +69,7 @@ const createCharacter = enhanceAction(
     revalidatePath('/home/[account]/projects/[id]', 'page');
     revalidatePath('/home/(user)/projects/[id]', 'page');
 
-    return {
-      success: true,
-      data: mapRowToCharacterWithDetails(character as CharacterRow),
-    };
+    return { success: true, data: created.data };
   },
   {
     schema: CreateCharacterSchema,
@@ -230,93 +168,15 @@ const updateCharacter = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    const assetPatch: Record<string, Json> = {};
-
-    if (data.name !== undefined) assetPatch.name = data.name;
-    if (data.description !== undefined)
-      assetPatch.description = data.description;
-    if (data.fileUrl !== undefined) assetPatch.file_url = data.fileUrl || null;
-    if (data.thumbnailUrl !== undefined)
-      assetPatch.thumbnail_url = data.thumbnailUrl || null;
-
-    const attributesPatch: Record<string, Json> = {};
-
-    if (data.physicalAttributes !== undefined)
-      attributesPatch.physicalAttributes = data.physicalAttributes;
-    if (data.personalityTraits !== undefined)
-      attributesPatch.personalityTraits = data.personalityTraits;
-    if (data.clothingStyle !== undefined)
-      attributesPatch.clothingStyle = data.clothingStyle;
-    if (data.backstory !== undefined)
-      attributesPatch.backstory = data.backstory;
-
-    const detailsPatch: Record<string, Json> = {};
-
-    if (data.personality !== undefined)
-      detailsPatch.personality = data.personality;
-    if (data.elementPrompt !== undefined)
-      detailsPatch.element_prompt = data.elementPrompt;
-    if (data.referenceImages !== undefined)
-      detailsPatch.reference_images = data.referenceImages;
-    if (data.voiceAssetId !== undefined)
-      detailsPatch.elevenlabs_voice_id = data.voiceAssetId;
-
-    // One call, one transaction: a failed details write no longer leaves the
-    // asset change applied (FILM-202).
-    const { error: updateError } = await client.rpc(
-      'update_character_with_details',
-      {
-        p_asset_id: data.assetId,
-        p_asset_patch: assetPatch,
-        p_details_patch: detailsPatch,
-        p_attributes_patch: attributesPatch,
+    const updated = await updateCharacterWithDetails(client, data).catch(
+      (error) => {
+        logger.error({ ...ctx, error }, 'Failed to update character');
+        throw error;
       },
     );
 
-    if (updateError) {
-      if (updateError.code === '42501') {
-        throw new ActionRefusal("You can't change this character.");
-      }
-
-      if (updateError.code === '23505' && data.name !== undefined) {
-        throw new ActionRefusal(
-          `A character named "${data.name}" already exists in this project. Choose a different name.`,
-        );
-      }
-
-      logger.error(
-        { ...ctx, error: updateError },
-        'Failed to update character',
-      );
-      throw new Error(`Failed to update character: ${updateError.message}`);
-    }
-
-    // Fetch updated character
-    const { data: character, error: fetchError } = await client
-      .from('assets')
-      .select(
-        `
-        *,
-        character_details!asset_id (
-          physical_attributes,
-          personality,
-          element_prompt,
-          reference_images,
-          elevenlabs_voice_id
-        )
-      `,
-      )
-      .eq('id', data.assetId)
-      .single();
-
-    if (fetchError) {
-      logger.error(
-        { ...ctx, error: fetchError },
-        'Failed to fetch updated character',
-      );
-      throw new Error(
-        `Failed to fetch updated character: ${fetchError.message}`,
-      );
+    if (!updated.ok) {
+      throw new ActionRefusal(updated.refusal);
     }
 
     logger.info(ctx, 'Character updated successfully');
@@ -328,10 +188,7 @@ const updateCharacter = enhanceAction(
     revalidatePath('/home/[account]/projects/[id]', 'page');
     revalidatePath('/home/(user)/projects/[id]', 'page');
 
-    return {
-      success: true,
-      data: mapRowToCharacterWithDetails(character as CharacterRow),
-    };
+    return { success: true, data: updated.data };
   },
   {
     schema: UpdateCharacterSchema,

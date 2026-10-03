@@ -40,10 +40,10 @@ server_action:
 acceptance_criteria:
   - text: "`createEpisodeAction` successfully creates episode with valid data"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:101"
+    evidence: "packages/features/episodes/src/server/episode.service.ts:94 (insertEpisode, called by createEpisodeAction and the MCP create_episode tool since FILM-1905)"
   - text: "`createEpisodeAction` auto-assigns episode number if not provided"
     met: true
-    evidence: "packages/features/episodes/src/server/actions.ts:94"
+    evidence: "packages/features/episodes/src/server/episode.service.ts:69"
   - text: "`createEpisodeAction` respects RLS (cannot create for inaccessible project)"
     met: true
     evidence: "apps/web/supabase/tests/database/create-policies-refuse-outsiders.test.sql:82"

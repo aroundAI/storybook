@@ -68,8 +68,8 @@
     {
       "name": "U4 KB-99 createProject throws the check violation instead of returning it",
       "kind": "unit",
-      "file": "packages/features/projects/src/lib/server/project.mutations.ts",
-      "find": "      if (projectError.code === TEAM_ONLY_CODE) {\n        throw new ActionRefusal(TEAM_ONLY);\n      }\n",
+      "file": "packages/features/projects/src/lib/server/project.service.ts",
+      "find": "    if (error.code === TEAM_ONLY_CODE) {\n      return { ok: false, refusal: TEAM_ONLY, field: 'account' };\n    }\n",
       "replace": "",
       "cwd": "packages/features/projects",
       "test": "__tests__/project-mutations.test.ts",

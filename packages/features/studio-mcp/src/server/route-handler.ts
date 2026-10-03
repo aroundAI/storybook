@@ -12,6 +12,7 @@ import { type ToolRuntime, buildMcpServer } from './build-server';
 import { createMcpJwtSigner } from './jwt';
 import { collectNodeResponse, toNodeRequest } from './node-adapter';
 import { createOwnTokenVerifier } from './own-verifier';
+import type { McpPromptDefinition } from './prompts';
 import { rateLimitsFromEnv } from './rate-limit';
 import { defaultTools } from './tools';
 import { createUserScopedClient } from './user-client';
@@ -19,6 +20,8 @@ import { type McpAuthDeps, withMcpAuth } from './with-mcp-auth';
 
 export interface McpRouteOptions {
   tools?: McpToolDefinition[];
+  /** Prompts beside the tools; defaults to the workflow guide. */
+  prompts?: McpPromptDefinition[];
   auth?: () => McpAuthDeps;
   runtime?: () => ToolRuntime;
   /** Origins allowed to call from a browser; defaults to MCP_ALLOWED_ORIGINS or https://claude.ai. */
@@ -116,6 +119,7 @@ export function createMcpRouteHandlers(options: McpRouteOptions = {}) {
       tools,
       (options.runtime ?? defaultRuntime)(),
       requestId,
+      options.prompts,
     );
 
     const transport = new StreamableHTTPServerTransport({

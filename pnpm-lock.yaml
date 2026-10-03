@@ -2175,9 +2175,18 @@ importers:
 
   packages/features/studio-mcp:
     dependencies:
+      '@kit/assets':
+        specifier: workspace:*
+        version: link:../assets
       '@kit/cache':
         specifier: workspace:*
         version: link:../../cache
+      '@kit/episodes':
+        specifier: workspace:*
+        version: link:../episodes
+      '@kit/projects':
+        specifier: workspace:*
+        version: link:../projects
       '@kit/shared':
         specifier: workspace:*
         version: link:../../shared

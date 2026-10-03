@@ -1,4 +1,5 @@
 export * from './asset.schema';
+export * from './location.schema';
 
 // Character schemas - explicitly re-export to avoid conflicts with asset.schema.ts
 export {

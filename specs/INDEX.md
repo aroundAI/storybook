@@ -658,7 +658,7 @@ The web app keeps generating with Gemini on Vertex AI; the app also serves a rem
 | FILM-1902 | [model-gateway](./phase-19-dual-ai-mcp/FILM-1902-model-gateway.yaml) | PARTIAL | L | FILM-1901, FILM-1903 (built together) |
 | FILM-1903 | [generation-runs](./phase-19-dual-ai-mcp/FILM-1903-generation-runs.yaml) | PARTIAL | L | FILM-1901, FILM-1902 |
 | FILM-1904 | [mcp-endpoint-and-tokens](./phase-19-dual-ai-mcp/FILM-1904-mcp-endpoint-and-tokens.yaml) | PARTIAL | M | - |
-| FILM-1905 | [mcp-read-and-author-tools](./phase-19-dual-ai-mcp/FILM-1905-mcp-read-and-author-tools.yaml) | DRAFT | M | FILM-1904 |
+| FILM-1905 | [mcp-read-and-author-tools](./phase-19-dual-ai-mcp/FILM-1905-mcp-read-and-author-tools.yaml) | DONE | M | FILM-1904 |
 | FILM-1906 | [mcp-analytics-tools](./phase-19-dual-ai-mcp/FILM-1906-mcp-analytics-tools.yaml) | PARTIAL | L | FILM-1904 |
 | FILM-1907 | [mcp-oauth-and-consent](./phase-19-dual-ai-mcp/FILM-1907-mcp-oauth-and-consent.yaml) | DRAFT | L | FILM-1904 |
 | FILM-1908 | [external-generation-story](./phase-19-dual-ai-mcp/FILM-1908-external-generation-story.yaml) | DRAFT | M | FILM-1901, FILM-1903, FILM-1904 |

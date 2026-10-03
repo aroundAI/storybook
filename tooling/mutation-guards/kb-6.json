@@ -54,9 +54,9 @@
     {
       "name": "A taken project slug is thrown with its constraint name",
       "kind": "unit",
-      "file": "packages/features/projects/src/lib/server/project.mutations.ts",
-      "find": "      if (projectError.code === UNIQUE_VIOLATION) {\n        throw new ActionRefusal(SLUG_TAKEN);\n      }\n",
-      "replace": "",
+      "file": "packages/features/projects/src/lib/server/project.service.ts",
+      "find": "    if (error.code === UNIQUE_VIOLATION) {\n      return { ok: false, refusal: SLUG_TAKEN, field: 'slug' };\n    }\n\n    // A personal account (KB-99)",
+      "replace": "    // A personal account (KB-99)",
       "cwd": "packages/features/projects",
       "test": "__tests__/project-mutations.test.ts",
       "pattern": "returns a taken slug as a refusal"

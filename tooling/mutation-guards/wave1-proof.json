@@ -112,7 +112,7 @@
     {
       "name": "WAVE1 U7 a created character loses its image URL",
       "kind": "unit",
-      "file": "packages/features/assets/src/lib/server/character.mutations.ts",
+      "file": "packages/features/assets/src/lib/server/character.service.ts",
       "find": "p_file_url: data.fileUrl || undefined,",
       "replace": "p_file_url: undefined,",
       "cwd": "packages/features/assets",

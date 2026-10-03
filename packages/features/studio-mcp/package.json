@@ -19,7 +19,10 @@
     "./server": "./src/server/index.ts"
   },
   "dependencies": {
+    "@kit/assets": "workspace:*",
     "@kit/cache": "workspace:*",
+    "@kit/episodes": "workspace:*",
+    "@kit/projects": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",
     "@modelcontextprotocol/sdk": "1.18.0",
