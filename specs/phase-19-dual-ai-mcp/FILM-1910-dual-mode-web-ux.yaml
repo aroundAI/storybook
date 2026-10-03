@@ -48,10 +48,6 @@ test_plan:
   e2e:
     - {text: "Seed an open external run, open the story page: banner shown, Generate disabled; cancel; banner gone and Generate enabled (assert the second state too, per CLAUDE.md)", met: true, evidence: "apps/e2e/tests/generation/dual-mode.spec.ts:117 — the first run expires (the lease cron's write) and the banner clears without a reload; a second run brings it back and Cancel from the banner clears it again, Generate enabled, row cancelled. Red without the Realtime token, without the disabled button and without the cancel call. :170 — a member who cannot write the project is refused Cancel and the run stays open"}
     - {text: "Screenshots of the banner, badges, restore and settings in the PR", met: true, evidence: "#581 — 14 states captured by dual-mode.spec.ts under CAPTURE_EVIDENCE=1"}
-remaining:
-  - criterion: "Every web Generate shows the server-off and stage-held refusals in words"
-    reason: "openRunForJob asks for server mode for every caller, so none leaves a run behind, but only screenplay-actions.ts, shot-list-actions.ts, refinement-actions.ts (both) and generateAudioCuesAction word the refusal. These still throw it, so production shows a generic sentence: research/upload/route.ts, generateAudioForCue, translate-dialogue-action.ts, insights-actions.ts, language-insights-actions.ts, publish-actions.ts, season-generation-actions.ts, createEpisodeWithContext (actions.ts), batch-episode-actions.ts (2), bulk-actions.ts (5), source-upload-actions.ts, story-actions.ts (2)"
-    closed_by: "unassigned"
 open_questions: []
 notes: |
   Decided (lead, 2026-10-03; README open question 4, the owner may revise):
@@ -68,6 +64,11 @@ notes: |
   governs a generation that does not choose a mode. The control stays
   visible with help text saying so (lead decision 2026-10-03); the column
   is reserved for a future web "Generate with Claude" flow.
+
+  Only five web call sites word the server-off and stage-held refusals
+  (screenplay, shot list, both refinements, audio cues); eighteen others
+  still throw them, so production shows a generic sentence there, though
+  no run is left behind. Filed as KB-182, open.
 
   The restore and cancel actions live in @kit/episodes
   (packages/features/episodes/src/server/run-actions.ts), not
