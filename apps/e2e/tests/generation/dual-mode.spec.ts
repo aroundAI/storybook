@@ -37,6 +37,9 @@ async function capture(page: Page, name: string) {
   }
 }
 
+const SERVER_OFF =
+  'This team has server generation turned off. Ask Claude to write it through the MCP connector, or turn server generation on in Team settings under AI.';
+
 const NEW_STORY =
   'Mara climbs the lighthouse as the storm reaches the harbour.';
 const OLD_STORY = 'Mara waits on the quay for a boat that never comes.';
@@ -380,6 +383,48 @@ test.describe('Dual-mode studio (FILM-1910)', () => {
     await page.goto(`${studio.base}/story`);
 
     await expect(byTest(page, 'restore-previous-version')).toBeDisabled();
+  });
+});
+
+test.describe('Generate when server generation is off (FILM-1910)', () => {
+  test('Convert to Screenplay is refused in words, twice, and opens no run', async ({
+    page,
+  }) => {
+    const studio = await seedStudio('film1910-server-off');
+    await insertRow(
+      'account_ai_settings',
+      {
+        account_id: studio.team.accountId,
+        server_generation_enabled: false,
+        external_generation_enabled: true,
+        default_mode: 'external',
+      },
+      serviceRoleAuth(),
+    );
+
+    await signInAs(page, studio.team);
+    await page.goto(`${studio.base}/story`);
+
+    const convert = byTest(page, 'convert-to-screenplay');
+    const refusal = page.getByText(SERVER_OFF, { exact: true });
+
+    await convert.click();
+    await expect(refusal.first()).toBeVisible();
+    await capture(page, '14-server-off-refused');
+
+    // The second press is refused the same way: no run was left holding
+    // the stage, so it is not "already being generated"
+    await expect(convert).toBeEnabled();
+    await convert.click();
+    await expect(refusal).toHaveCount(2);
+
+    expect(
+      await readRows(
+        'generation_runs',
+        `target_id=eq.${studio.episodeId}&select=id`,
+      ),
+    ).toEqual([]);
+    await expect(byTest(page, 'external-run-banner')).toHaveCount(0);
   });
 });
 

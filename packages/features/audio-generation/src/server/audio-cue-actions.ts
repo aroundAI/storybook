@@ -545,13 +545,17 @@ export const generateAudioCuesAction = enhanceAction(
 
       return { success: true, queued: true };
     } catch (error) {
+      // Server generation turned off, or the stage already held (FILM-1910)
+      const { runRefusalMessage } = await import('@kit/ai-gateway');
+
       return {
         success: false,
         queued: false,
         error:
-          error instanceof Error
+          runRefusalMessage(error) ??
+          (error instanceof Error
             ? error.message
-            : 'Failed to queue audio cue generation',
+            : 'Failed to queue audio cue generation'),
       };
     }
   },

@@ -164,7 +164,9 @@ export function AiSettingsForm({
             <FormItem>
               <FormLabel>Default mode</FormLabel>
               <FormDescription>
-                Which mode a new generation uses when the team allows both.
+                The mode for a generation that does not choose one. Generate
+                buttons in StoryBook always use Gemini, and a connected app
+                always writes as itself.
               </FormDescription>
               <FormControl>
                 <RadioGroup

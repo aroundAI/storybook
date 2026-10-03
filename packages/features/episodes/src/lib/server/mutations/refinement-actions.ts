@@ -14,6 +14,8 @@ import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { refuseRunError } from '../refusing-run-errors';
+
 const RefineStorySchema = z.object({
   episodeId: z.string().uuid(),
   projectId: z.string().uuid(),
@@ -96,7 +98,7 @@ const refineStoryHandler = enhanceAction(
         name: 'episodes.refineStory',
       },
       { client: client, accountId: target.accountId, userId: user.id },
-    );
+    ).catch(refuseRunError);
 
     // Create generation job for tracking
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -204,7 +206,7 @@ const refineScreenplayHandler = enhanceAction(
         name: 'episodes.refineScreenplay',
       },
       { client: client, accountId: target.accountId, userId: user.id },
-    );
+    ).catch(refuseRunError);
 
     // Create generation job for tracking
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

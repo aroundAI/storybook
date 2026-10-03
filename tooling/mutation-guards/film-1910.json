@@ -62,6 +62,35 @@
       "replace": "        void canDrive;",
       "spec": "tests/generation/dual-mode.spec.ts",
       "grep": "is refused Cancel"
+    },
+    {
+      "name": "FILM-1910 U3 a web Generate takes the team default mode again",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/jobs.ts",
+      "find": "      { ...ctx, runMode: ctx.runMode ?? (() => 'server') },",
+      "replace": "      ctx,",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/open-run-for-job-mode.test.ts",
+      "pattern": "opens server mode even when the team default is external"
+    },
+    {
+      "name": "FILM-1910 U4 server generation off is not worded for the page",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/jobs.ts",
+      "find": "  if (isRunError(error, 'SERVER_GENERATION_DISABLED')) {",
+      "replace": "  if (isRunError(error, 'SERVER_GENERATION_DISABLED') && false) {",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/open-run-for-job-mode.test.ts",
+      "pattern": "refuses, in words the page shows"
+    },
+    {
+      "name": "FILM-1910 E5 Convert to Screenplay throws the server-off refusal instead of returning it",
+      "kind": "e2e",
+      "file": "packages/features/episodes/src/server/screenplay-actions.ts",
+      "find": ".catch(refuseRunError)",
+      "replace": "",
+      "spec": "tests/generation/dual-mode.spec.ts",
+      "grep": "refused in words, twice"
     }
   ]
 }

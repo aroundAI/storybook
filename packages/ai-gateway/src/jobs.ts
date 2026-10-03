@@ -15,6 +15,7 @@ import {
   type RunTarget,
   type StageKey,
   type TargetType,
+  isRunError,
 } from '@kit/generation';
 import {
   type LlmJobPayloadInput,
@@ -101,10 +102,35 @@ export function jobRunTarget<T extends LlmJobType>(
   };
 }
 
+export const SERVER_GENERATION_OFF_REFUSAL =
+  'This team has server generation turned off. Ask Claude to write it through the MCP connector, or turn server generation on in Team settings under AI.';
+export const STAGE_IN_PROGRESS_REFUSAL =
+  'This stage is already being generated. Wait for it to finish, or cancel it from the banner.';
+
 /**
- * `openRun` for a worker job: the stage is the job's, the mode the caller's
- * context's, the input the parsed payload. The caller then `dispatch()`es
- * it (a server run) or reports it (an external one, FILM-1910).
+ * What to tell the user when opening a job's run was refused for a reason
+ * they can act on (FILM-1910), or null. A message, not an error: a server
+ * action that is wrapped in `returnRefusals` throws it as an
+ * `ActionRefusal`; one that returns its errors as values returns it.
+ */
+export function runRefusalMessage(error: unknown): string | null {
+  if (isRunError(error, 'SERVER_GENERATION_DISABLED')) {
+    return SERVER_GENERATION_OFF_REFUSAL;
+  }
+
+  if (isRunError(error, 'RUN_IN_PROGRESS')) return STAGE_IN_PROGRESS_REFUSAL;
+
+  return null;
+}
+
+/**
+ * `openRun` for a worker job: the stage is the job's, the input the parsed
+ * payload, and the mode server, since every caller dispatches the run to
+ * the worker (FILM-1910). Left to the team's default, a team with server
+ * generation off got an external run here, which the job row's
+ * assert_server_run and dispatch() then refused with a 500, leaving the
+ * run open on the stage. A caller that means otherwise passes `runMode`.
+ * A refusal is a RunError; `runRefusalMessage` words it for the page.
  */
 export function openRunForJob<T extends LlmJobType>(
   params: JobRunParams<T>,
@@ -114,6 +140,6 @@ export function openRunForJob<T extends LlmJobType>(
     STAGE_OF_JOB[params.jobType],
     jobRunTarget(params),
     { kind: 'web', name: params.name },
-    ctx,
+    { ...ctx, runMode: ctx.runMode ?? (() => 'server') },
   );
 }
