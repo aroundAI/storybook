@@ -68,7 +68,9 @@ retirement:
     formatCharactersForVeoPrompt and the Shot Director passes them to every per-scene
     scene-shot-generation call (packages/features/episodes/src/agent/skills/shot-director-skill.ts).
     (An earlier version of this entry cited buildGlobalShotContext, a leftover with no caller,
-    deleted in KB-122.) Kept as a record; not outstanding work.
+    deleted in KB-122.) FILM-1902 (#554) deleted generate-element-prompt.ts and
+    llm-generator.ts as uncalled model call sites; the template generator, validator and
+    cache stay. Kept as a record; not outstanding work.
   replacement: "apps/web/lambda/llm-worker/handlers/shot-generation.ts (formatCharactersForVeoPrompt → runShotOrchestrator → Shot Director)"
 open_questions: []
 notes: |

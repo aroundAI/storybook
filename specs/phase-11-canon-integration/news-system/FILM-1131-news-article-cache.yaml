@@ -39,8 +39,9 @@ remaining:
       `semantic-scholar-provider.ts:109`, `archive-org-provider.ts:91`), and
       the cache writes what they return
       (`packages/features/episodes/src/lib/server/services/context-aggregator.ts:374`).
-      `extractEntitiesFromArticle` runs only in memory for clustering
-      (`news-story-service.ts:184`); nothing persists its result
+      `extractEntitiesFromArticle` ran only in memory for clustering, in the
+      `news-story-service.ts` FILM-1902 deleted (#554); nothing persists
+      entities
     closed_by: "unassigned"
 open_questions: []
 feature:

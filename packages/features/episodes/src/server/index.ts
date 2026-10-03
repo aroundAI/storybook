@@ -1,5 +1,4 @@
 export * from './actions';
-export * from './continuity-actions';
 export * from './story-actions';
 export * from './screenplay-actions';
 export * from './batch-episode-actions';
@@ -42,8 +41,6 @@ export * from './canon-actions';
 export * from './external-context-actions';
 export * from './source-upload-actions';
 export * from './episode-fact-actions';
-// News System (Phase 11: FILM-1130/1131/1132)
-export * from './news-actions';
 
 // Fact Management (Phase 11: FILM-1121)
 export * from './fact-actions';

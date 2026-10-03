@@ -12,16 +12,6 @@
       "pattern": "OpenAI chat"
     },
     {
-      "name": "Whisper reads OPENAI_BASE_URL again",
-      "kind": "unit",
-      "file": "packages/llm/src/transcription.ts",
-      "find": "      apiKey,\n      baseURL: `${vendorUrl('openai')}/v1`,\n",
-      "replace": "      apiKey,\n",
-      "cwd": "packages/llm",
-      "test": "__tests__/sdk-base-urls.test.ts",
-      "pattern": "Whisper transcription"
-    },
-    {
       "name": "Anthropic reads ANTHROPIC_BASE_URL again",
       "kind": "unit",
       "file": "packages/llm/src/providers/anthropic.ts",

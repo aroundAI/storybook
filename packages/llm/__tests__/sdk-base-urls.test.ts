@@ -14,7 +14,6 @@ import {
 import { AnthropicClient } from '../src/providers/anthropic';
 import { GeminiClient } from '../src/providers/gemini';
 import { OpenAIClient } from '../src/providers/openai';
-import { WhisperTranscriptionService } from '../src/transcription';
 
 /**
  * FILM-1805 Half A. The openai, @anthropic-ai/sdk and @google/genai SDKs
@@ -156,20 +155,6 @@ const CASES: Case[] = [
         model: 'gpt-4o-mini',
         apiKey: 'probe',
       }).createChatCompletion({ messages }),
-  },
-  {
-    name: 'Whisper transcription',
-    sdkVariable: 'OPENAI_BASE_URL',
-    sdkValue: () => `${origin}/v1`,
-    override: 'VENDOR_URL_OPENAI',
-    overrideValue: () => origin,
-    vendorHost: 'api.openai.com',
-    call: () =>
-      new WhisperTranscriptionService({ apiKey: 'probe' }).transcribe(
-        new File([new Uint8Array([0xff, 0xfb, 0x90, 0x00])], 'probe.mp3', {
-          type: 'audio/mpeg',
-        }),
-      ),
   },
   {
     name: 'Anthropic messages',

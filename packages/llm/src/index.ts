@@ -75,15 +75,3 @@ export { LocalClient } from './providers/local';
 // Analytics (for usage tracking)
 export type { LLMUsageEvent } from './analytics';
 export { logLLMUsage } from './analytics';
-
-// Transcription (Whisper)
-export type {
-  TranscriptionWord,
-  TranscriptionSegment,
-  TranscriptionResult,
-  TranscriptionConfig,
-} from './transcription';
-export {
-  WhisperTranscriptionService,
-  createTranscriptionService,
-} from './transcription';

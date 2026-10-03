@@ -223,8 +223,12 @@ function placeholdersIn(text: string): string[] {
 
 describe('prompt variables (KB-126)', () => {
   it('finds the calls it checks', () => {
-    // A positive control: a scanner that matched nothing would pass everything
-    expect(calls.length).toBeGreaterThan(25);
+    // A positive control: a scanner that matched nothing would pass everything.
+    // 23 on 2026-10-03: #554 deleted six uncalled callers (the news services,
+    // act-context-bridge, agent-story-generation) and #557/#560 moved five
+    // into @kit/generation's stages, which import their prompt JSON and pass
+    // `variables` to buildBrief, a shape this scan does not read.
+    expect(calls.length).toBeGreaterThan(20);
   });
 
   it('every template declares every placeholder it uses', () => {

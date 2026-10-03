@@ -150,7 +150,13 @@ const actContext = z.object({
   }),
 });
 
-/** `news-generation/anchor-role` → `lib/server/services/anchor-service.ts` (AnchorScript). */
+/**
+ * The four `news-generation` prompts stay registered although their callers
+ * (the news services) were deleted in FILM-1902; the shapes below are what
+ * those callers read.
+ *
+ * `news-generation/anchor-role` (AnchorScript).
+ */
 const anchor = z.object({
   script: z.array(
     z.object({
@@ -163,7 +169,7 @@ const anchor = z.object({
   sourcesUsed: z.array(z.string()),
 });
 
-/** `news-generation/entity-extraction` → `lib/server/services/entity-extractor.ts`. */
+/** `news-generation/entity-extraction`. */
 const entities = z.object({
   people: z.array(z.object({ name: z.string(), role: z.string().optional() })),
   organizations: z.array(
@@ -176,7 +182,7 @@ const entities = z.object({
   events: z.array(z.object({ name: z.string(), date: z.string().optional() })),
 });
 
-/** `news-generation/producer-role` → `lib/server/services/producer-service.ts` (EpisodeRundown). */
+/** `news-generation/producer-role` (EpisodeRundown). */
 const producer = z.object({
   rundown: z.array(
     z.object({
@@ -191,7 +197,7 @@ const producer = z.object({
   totalRuntime: z.number().int().min(60).max(900),
 });
 
-/** `news-generation/topic-summary` → `lib/server/services/news-story-service.ts` reads `data.summary`. */
+/** `news-generation/topic-summary`: the caller read `data.summary`. */
 const topicSummary = z.object({ summary: z.string() });
 
 /** The template-generated prompts, by registry key, with the shape each emits. */

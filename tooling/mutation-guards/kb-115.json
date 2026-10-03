@@ -30,16 +30,6 @@
       "cwd": "apps/vendor-sandbox",
       "test": "__tests__/orchestrators.test.ts",
       "pattern": "a run whose outliner step fails"
-    },
-    {
-      "name": "another caller reads a field its prompt does not return",
-      "kind": "unit",
-      "file": "packages/features/episodes/src/lib/server/services/producer-service.ts",
-      "find": "    const rundown = result.data.rundown ?? [];",
-      "replace": "    const rundown = result.data.segments ?? [];",
-      "cwd": "packages/features/prompt-engine",
-      "test": "__tests__/prompt-format.test.ts",
-      "pattern": "reads nothing the prompt does not return"
     }
   ]
 }

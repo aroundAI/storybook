@@ -431,5 +431,4 @@ See `packages/features/prompt-engine/CLAUDE.md` for prompt template documentatio
 ## Related Packages
 
 - `@kit/prompt-engine` - JSON-based LLM prompt management
-- `@kit/llm` - LLM provider abstraction
 - `@kit/audio-generation` - TTS and music generation

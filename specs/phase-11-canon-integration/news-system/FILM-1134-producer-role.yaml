@@ -3,8 +3,8 @@ title: "Producer LLM Role Prompt"
 phase: 11
 phase_name: "Canon Integration & Content Types"
 category: feature
-status: PARTIAL
-audited: "2026-10-01"
+status: RETIRED
+audited: "2026-10-03"
 effort: M
 dependencies:
   - spec_id: "FILM-1133"
@@ -17,27 +17,26 @@ summary: >
   across the broadcast.
 acceptance_criteria:
   - text: "Producer role plans valid episode rundowns"
-    met: false
-    reason: "owner check OC-1 (docs/OWNER-CHECKS.md) — LLM output used unvalidated (`packages/features/episodes/src/lib/server/services/producer-service.ts:147`, the rundown is read straight from `result.data`; break positions are validated, the rest is not); no test or eval"
   - text: "Segments are ordered by priority"
-    met: true
-    evidence: "packages/features/episodes/src/lib/server/services/producer-service.ts:353 (normalizeRundown: high, medium, low; stable within a priority; renumbered 1..n; an old-to-new number map so the proposed breaks follow their segments), called from planEpisodeRundown at :153; tests packages/features/episodes/__tests__/producer-rundown.test.ts (17); giving every priority the same rank turned 5 red"
   - text: "Break positions are calculated correctly"
-    met: true
-    evidence: "packages/features/episodes/src/lib/server/services/producer-service.ts:37 (EpisodeRundown.breakPositions), :319 breakCountFor (one per full 5 minutes, at most segments-1), :339 resolveBreakPositions (uses the LLM's list only if it has the right count, distinct, existing, not last; otherwise :373 computeBreakPositions spaces breaks by running time, nearest boundary, earlier on a tie, no reuse), :310 single-segment fallback has none; the producer prompt v2 asks for breakPositions; tests packages/features/episodes/__tests__/producer-breaks.test.ts (25). The apps/vendor-sandbox producer template does not emit breakPositions, so it exercises the deterministic fallback"
   - text: "Orchestrator generates all segments"
-    met: true
-    evidence: "packages/features/episodes/src/lib/server/services/producer-service.ts:201"
   - text: "Total runtime matches target duration"
-    met: true
-    evidence: "packages/features/episodes/src/lib/server/services/producer-service.ts:389 (fitDurations scales the segment durations to the target in whole seconds, largest remainder, the earlier segment winning a tie; an equal split if a duration is not positive; untouched with no usable target); totalRuntime is the sum of the segments, not the model's figure, and an empty model rundown falls back to a single segment; tests packages/features/episodes/__tests__/producer-rundown.test.ts (17); forcing the target to 0 turned 10 red"
   - text: "Server actions are authenticated"
-    met: true
-    evidence: "packages/features/episodes/src/server/news-actions.ts:140, :159"
-remaining:
-  - criterion: "Producer role plans valid episode rundowns"
-    reason: "Owner check OC-1 (docs/OWNER-CHECKS.md): LLM output used unvalidated, no test or eval"
-    closed_by: "owner"
+retirement:
+  commit: null
+  date: "2026-10-03"
+  what_happened: >
+    The producer service (`producer-service.ts`: rundown planning, break
+    positions, duration fitting, the episode orchestrator), the news server
+    actions (`news-actions.ts`) and the tests `producer-rundown`,
+    `producer-breaks` and `infer-category` had no caller from any page, route
+    or job, and FILM-1902 (#554) deleted them with the other uncalled
+    model call sites. Before that, five of the six criteria were met and the
+    rundown-validity criterion was an owner check never run (OC-1). The
+    `news-generation/producer-role` prompt stays registered in the prompt
+    engine and served by the vendor sandbox; reviving the feature means
+    registering a stage (FILM-1901).
+  replacement: null
 open_questions: []
 feature:
   database:

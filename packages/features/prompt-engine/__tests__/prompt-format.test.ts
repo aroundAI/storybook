@@ -570,7 +570,10 @@ describe('every caller reads the shape its prompt returns', () => {
   }
 
   it('finds the callers and knows what each prompt returns', () => {
-    expect(calls.length).toBeGreaterThan(25);
+    // 24 on 2026-10-03: #554 deleted the uncalled news-service and
+    // act-context-bridge callers; #557/#560 moved five into @kit/generation's
+    // stages, which render through buildBrief rather than executeLLM.
+    expect(calls.length).toBeGreaterThan(20);
     expect(
       calls
         .filter((c) => c.returned.kind === 'unknown')

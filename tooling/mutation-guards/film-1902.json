@@ -2,6 +2,26 @@
   "feature": "FILM-1902",
   "mutations": [
     {
+      "name": "a feature package asks the resolver for a model host",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/story-orchestrator.ts",
+      "find": "import { runAgent } from '@kit/agent';\n",
+      "replace": "import { runAgent } from '@kit/agent';\nimport { vendorUrl } from '@kit/shared/vendors';\nexport const plantedModelHost = `${vendorUrl('openai')}/v1/chat/completions`;\n",
+      "cwd": "packages/llm",
+      "test": "__tests__/model-host-guard.test.ts",
+      "pattern": "reaches no model host outside the gateway allowlist"
+    },
+    {
+      "name": "a feature package writes a model host out",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/agent/story-orchestrator.ts",
+      "find": "import type { AgentRunResult, Skill } from '@kit/agent';\n",
+      "replace": "import type { AgentRunResult, Skill } from '@kit/agent';\nexport const plantedModelHost = 'https://generativelanguage.googleapis.com/v1beta';\n",
+      "cwd": "packages/llm",
+      "test": "__tests__/model-host-guard.test.ts",
+      "pattern": "reaches no model host outside the gateway allowlist"
+    },
+    {
       "name": "the agent runner stops logging its model calls",
       "kind": "unit",
       "file": "packages/agent/src/runner.ts",

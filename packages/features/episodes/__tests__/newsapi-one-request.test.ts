@@ -176,7 +176,9 @@ describe('a live news search over the NewsAPI built-ins', () => {
     });
   });
 
-  it('carries each source’s bias label onto its articles, so the balance check sees it (FILM-1133)', async () => {
+  // The anchor service's balance check that read this label was deleted in
+  // FILM-1902 (#554); the label itself is still what the provider sets.
+  it('carries each source’s bias label onto its articles', async () => {
     const result = await search();
 
     const bias = Object.fromEntries(
@@ -185,14 +187,6 @@ describe('a live news search over the NewsAPI built-ins', () => {
     expect(bias).toEqual({
       'https://example.test/r1': 'center',
       'https://example.test/b1': 'center_left',
-    });
-
-    const { checkSourceBalance } = await import(
-      '../src/lib/server/services/anchor-service'
-    );
-    expect(checkSourceBalance(result.content).biasDistribution).toEqual({
-      center: 1,
-      center_left: 1,
     });
   });
 });
