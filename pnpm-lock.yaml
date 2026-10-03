@@ -2184,6 +2184,9 @@ importers:
       '@kit/cache':
         specifier: workspace:*
         version: link:../../cache
+      '@kit/content-analytics':
+        specifier: workspace:*
+        version: link:../content-analytics
       '@kit/episodes':
         specifier: workspace:*
         version: link:../episodes

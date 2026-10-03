@@ -96,6 +96,53 @@ The handler's only database client is `principal.supabase`, minted for the
 user; `__tests__/boundaries.test.ts` fails the build if anything under
 `src/server/tools/` imports a service-role client.
 
+## Analytics tools (FILM-1906)
+
+`src/server/tools/analytics/` holds one read tool per dashboard area and the
+six analytics writes, all in `defaultTools`. Each is a thin adapter over the
+service FILM-1906 part A split out of the page's action
+(`@kit/content-analytics/server/*-service`): the tool parses with the
+service's exported schema, calls the service on `principal.supabase`, and
+returns `{ view?, data, notes }`. No tool takes an account id: the scope is
+the connection's team, and a project, channel, video, episode, experiment or
+report of another team is `FORBIDDEN` even when the user is a member there
+(`shared.ts`, `requireTeamScope` and the `requireOwned*` helpers).
+
+| Tool | `view` | ClickHouse-off state it passes through |
+| --- | --- | --- |
+| `get_account_overview` | | null totals, `notes.measured: false` |
+| `get_project_analytics` | overview, content, daily, audience | null views, empty series |
+| `get_deep_dive` | median, rolling_views, traffic, back_catalog, cohorts, ypp_progress, returning_viewers, weekly_diagnostics, subscribers | empty series |
+| `get_retention_curve` | | empty `points` |
+| `get_video_log` | | no rows; `freshness` from the sync records |
+| `get_language_analytics` | performance, platform_matrix, content_type, shorts_source, geography, trend, divergence | empty |
+| `get_episode_analytics` | | null views; `freshness` is the page's "last refreshed" line |
+| `get_video_funnel` | | `{ status: 'analytics_off' }` |
+| `get_revenue` | summary, timeseries, top_content, projection, by_currency | with `revenueAccess`, the web's check, first |
+| `get_reach_overview` | | `Measured` values that say why |
+| `list_experiments`, `get_experiment` | | stored snapshots, nulls kept |
+| `list_channel_experiments`, `get_channel_experiment` | | `results.kind: 'analytics_off'` |
+| `get_tag_performance` | tags, median_by_tag, segments | empty rows |
+| `get_genome_findings` | | `{ status: 'refused', refusal: { kind: 'analytics_off' } }` |
+| `get_data_coverage`, `list_channels` | | `observed: false` |
+| `list_reports`, `get_report_download` | | — |
+| `get_analytics_settings` | | — |
+| `get_saved_insights` | | — (the `analytics_insights_cache_read` policy) |
+| `get_ai_usage` | | split by `generation_runs.mode` through `run_id` (FILM-1903); `byMode: null` with the reason on a database without the column |
+
+Writes (`studio:write`): `update_publish_note`, `assign_publish_tags`,
+`create_experiment`, `start_experiment`, `conclude_experiment`,
+`abandon_experiment`. Not exposed, by test: ingest and sync, cron, manual
+revenue, platform revenue sync, report schedules, super-admin.
+
+`notes` is the coverage strip's answer for the same scope and window plus
+`measured` and, when ClickHouse is off (production's state), the reason the
+figures are null or empty rather than zero. A service's `ActionRefusal` is
+returned as `isError` with its own words (`shared.ts`, `callService`).
+
+This package must not import `@kit/clickhouse` (no RLS there): the package's
+`eslint.config.mjs` forbids it and `__tests__/boundaries.test.ts` scans for it.
+
 ## Authentication
 
 `withMcpAuth` resolves `Authorization: Bearer …` through an `McpTokenVerifier`:

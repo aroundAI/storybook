@@ -21,6 +21,7 @@
   "dependencies": {
     "@kit/assets": "workspace:*",
     "@kit/cache": "workspace:*",
+    "@kit/content-analytics": "workspace:*",
     "@kit/episodes": "workspace:*",
     "@kit/projects": "workspace:*",
     "@kit/shared": "workspace:*",
