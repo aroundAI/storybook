@@ -13,7 +13,7 @@ export const linkAssetsToEpisodeTool = defineTool({
   name: 'link_assets_to_episode',
   title: "Link a team's characters and locations to an episode",
   description:
-    "Links existing characters and locations (ids from list_assets) to an episode, as the episode header's asset sidebar does. The screenplay, shots and audio stages read their cast and places from these links, so link the characters who speak and the locations a scene is set in before starting those stages; a speaker or location that is not linked is refused unless the submission declares it as new. Assets must belong to the episode's own project. Linking an asset twice changes nothing.",
+    "Links existing characters and locations (ids from list_assets) to an episode, as the episode header's asset sidebar does. The screenplay, shots and audio stages read their cast and places from these links, so link the characters who speak and the locations a scene is set in before starting those stages; a speaker or location that is not linked is refused unless the submission declares it as new. Assets must belong to the episode's own project. Linking an asset twice changes nothing. Linking changes the episode, so a generation run opened before it is closed with TARGET_CHANGED: link first, then call start_generation.",
   inputSchema: {
     episodeId: z
       .string()
