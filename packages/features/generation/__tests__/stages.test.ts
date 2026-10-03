@@ -13,6 +13,7 @@ import {
   stageRegistry,
   storyRefinementStage,
 } from '../src';
+import type { BuildBriefInput } from '../src/brief';
 import {
   type RecordedCall,
   flattenRows,
@@ -20,6 +21,24 @@ import {
   tableResponder,
   writesOf,
 } from '../src/testing';
+import { promptVariableProblems } from './helpers/prompt-variables';
+
+// Every buildBrief input, so the registry test below can hold what each
+// stage's prepare() passed against its template (KB-177)
+const briefInputs = vi.hoisted(() => [] as unknown[]);
+const checkedStages = new Set<string>();
+
+vi.mock('../src/brief', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../src/brief')>();
+
+  return {
+    ...original,
+    buildBrief: (input: Parameters<typeof original.buildBrief>[0]) => {
+      briefInputs.push(input);
+      return original.buildBrief(input);
+    },
+  };
+});
 
 const EPISODE_ID = '55555555-5555-4555-8555-555555555555';
 const PROJECT_ID = '22222222-2222-4222-8222-222222222222';
@@ -207,7 +226,7 @@ describe('every registered stage renders its prompt with the context prepare() b
   };
 
   for (const key of registeredStageKeys()) {
-    it(`${key}: no unfilled or undeclared placeholder`, async () => {
+    it(`${key}: fills every placeholder, and sends nothing its prompts do not read`, async () => {
       const stage = getStage(key);
       const target = targets[key as keyof typeof targets];
       expect(target, `add a fixture target for ${key}`).toBeDefined();
@@ -217,7 +236,9 @@ describe('every registered stage renders its prompt with the context prepare() b
       expect(parts.length).toBeGreaterThan(0);
 
       for (const part of parts) {
+        const seen = briefInputs.length;
         const brief: Brief = await stage.prepare(ctx, target, part);
+        const inputs = briefInputs.slice(seen) as BuildBriefInput[];
 
         expect(brief.stage).toBe(key);
         expect(brief.instructions).not.toMatch(/\{\{\s*\w+\s*\}\}/);
@@ -225,9 +246,21 @@ describe('every registered stage renders its prompt with the context prepare() b
         expect(brief.expiresAt).toBe(
           new Date(NOW.getTime() + 30 * 60 * 1000).toISOString(),
         );
+
+        // KB-177: what prepare() passed, against the template it rendered
+        expect(inputs.length, `${key} built no brief`).toBeGreaterThan(0);
+        expect(inputs.flatMap(promptVariableProblems)).toEqual([]);
       }
+
+      checkedStages.add(key);
     });
   }
+
+  it('checked every registered stage, and there are stages to check', () => {
+    // A positive control: an empty registry would pass every test above
+    expect(stageRegistry.size).toBeGreaterThanOrEqual(6);
+    expect([...checkedStages].sort()).toEqual(registeredStageKeys().sort());
+  });
 });
 
 describe('story_refinement', () => {
