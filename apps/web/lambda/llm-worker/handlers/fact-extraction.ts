@@ -15,7 +15,7 @@ import {
 import { parseLlmJobPayload } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
-import { workerCtx } from '../utils/stage-runtime';
+import { stageRunDeps, workerCtx } from '../utils/stage-runtime';
 
 interface FactExtractionResult {
   success: boolean;
@@ -34,31 +34,13 @@ export async function processFactExtraction(
 
   const ctx = workerCtx(supabase, data);
 
-  const { commit } = await runStage(factExtractionStage, ctx, data, {
-    generate: async (brief) => {
-      const { executeLLM } = await import('@kit/prompt-engine/server');
-
-      const result = await executeLLM<unknown>({
-        templateSlug: 'documentary/fact-extraction',
-        variables: brief.prompt.variables,
-        context: {
-          name: 'fact-extraction',
-          accountId: data.accountId,
-          userId: data.userId,
-        },
-      });
-
-      return {
-        output: result.data,
-        usage: {
-          provider: String(result.metadata.provider),
-          model: result.metadata.model,
-          tokens: result.metadata.tokens,
-          latencyMs: result.metadata.latency,
-        },
-      };
-    },
-  });
+  // The run writes the brief (FILM-1902): the one model door
+  const { commit } = await runStage(
+    factExtractionStage,
+    ctx,
+    data,
+    stageRunDeps(),
+  );
 
   console.log(
     commit.status === 'committed'

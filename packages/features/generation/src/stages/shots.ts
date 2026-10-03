@@ -46,6 +46,7 @@ import type {
   PartSpec,
   StageDefinition,
 } from '../types';
+import type { AudioCuesTarget } from './audio-cues';
 import { logTo, memoPerCtx, nameMatches } from './memo';
 
 const shotSeconds = z
@@ -900,15 +901,24 @@ export const shotsStage: StageDefinition<
         },
         reelCandidateScenes,
       },
-      // The dedicated audio pass follows every shot list, in the run's mode
-      followOn: [
+      // The dedicated audio pass follows every shot list, as a child run in
+      // the run's mode (FILM-1903)
+      followOns: [
         {
           stage: 'audio_cues',
           target: {
-            episodeId: target.episodeId,
+            type: 'episode',
+            id: target.episodeId,
             projectId: target.projectId,
-            accountId: target.accountId,
-            userId: target.userId,
+            input: {
+              kind: 'stage',
+              target: {
+                episodeId: target.episodeId,
+                projectId: target.projectId,
+                accountId: target.accountId,
+                userId: target.userId,
+              } satisfies AudioCuesTarget,
+            },
           },
         },
       ],

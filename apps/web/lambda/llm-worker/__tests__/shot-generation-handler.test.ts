@@ -1,6 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { recordingClient, tableResponder } from '@kit/generation/testing';
+import { withRun } from '@kit/ai-gateway';
+import {
+  fakeRunHandle,
+  recordingClient,
+  tableResponder,
+} from '@kit/generation/testing';
 
 import episodeFixture from '../../../../../packages/features/generation/__tests__/fixtures/shots-episode.json';
 import shotsOutput from '../../../../../packages/features/generation/__tests__/fixtures/shots-model-output.json';
@@ -13,9 +18,11 @@ import {
 /**
  * The shot-generation handler on the `shots` stage (FILM-1901): one Shot
  * Orchestrator run split into the reel-scout part and one part per scene,
- * the stage's check and commit, then the chained audio-cue job. For the
- * fixture the old handler was recorded with, the writes and the queued job
- * are the same.
+ * the stage's check and commit, then the chained audio pass. For the
+ * fixture the old handler was recorded with, the writes are the same, plus
+ * who wrote the shots and the audio pass's run on its job row (FILM-1903);
+ * the job the old handler queued is now a child run of the shots run,
+ * carrying the same payload, and dispatched.
  *
  * KB-120: the job carries a shot-length range; the orchestrator receives it
  * and its Shot Director holds every shot to it
@@ -25,7 +32,6 @@ import {
 const orchestratorInputs = vi.hoisted(
   () => [] as Array<Record<string, unknown>>,
 );
-const queued = vi.hoisted(() => [] as unknown[]);
 
 function orchestratorResult() {
   let shotNumber = 0;
@@ -81,13 +87,31 @@ vi.mock('../utils/context-builder', async (importOriginal) => ({
     episodeFixture.context.recurringElementsFormatted,
 }));
 
-vi.mock('@kit/prompt-engine/server', () => ({
-  queueLlmJob: async (job: unknown) => {
-    queued.push(job);
-    return { messageId: 'm1' };
-  },
-  chainedLlmJobTarget: (target: unknown) => target,
-}));
+/** The shots run the job boundary put in scope; the orchestrator writes, so the run's writer is never reached. */
+function shotsRun() {
+  const dispatched: string[] = [];
+  const fake = fakeRunHandle({
+    stage: 'shots',
+    accountId: episodeFixture.ids.accountId,
+    projectId: episodeFixture.ids.projectId,
+    targetId: episodeFixture.ids.episodeId,
+    createdBy: episodeFixture.ids.userId,
+    backend: {
+      write: async () => {
+        throw new Error('the shots run writes through its orchestrator');
+      },
+      dispatch: async (run) => void dispatched.push(run.id),
+    },
+  });
+
+  return { ...fake, dispatched };
+}
+
+function childRuns(state: ReturnType<typeof shotsRun>['state']) {
+  return state.rpcs
+    .filter((rpc) => rpc.fn === 'open_generation_run')
+    .map((rpc) => rpc.args as Record<string, unknown>);
+}
 
 const payload = {
   ...episodeFixture.ids,
@@ -118,18 +142,65 @@ describe('processShotGeneration', () => {
 
   afterAll(() => vi.useRealTimers());
 
-  it('writes what the old handler wrote, including the chained audio-cue job, and queues it', async () => {
+  it('writes what the old handler wrote, and opens the audio pass as a dispatched child run with the job it queued', async () => {
     const recording = client();
+    const { run, state, dispatched } = shotsRun();
 
-    const result = await processShotGeneration(payload, recording.client);
+    const result = await withRun(run, () =>
+      processShotGeneration(payload, recording.client),
+    );
+
+    const [child] = childRuns(state);
+    const [old] = shotsOld.queued;
+    const childId = [...state.rows.keys()].find((id) => id !== run.id);
 
     expect(result).toEqual(shotsOld.result);
-    expect(sorted(recording.writes())).toEqual(sorted(shotsOld.writes));
-    expect(queued).toEqual(shotsOld.queued);
+    expect(childRuns(state)).toHaveLength(1);
+    expect(child).toMatchObject({
+      p_stage: 'audio_cues',
+      p_mode: 'server',
+      p_parent_run_id: run.id,
+      p_account_id: old!.target.accountId,
+      p_target_type: 'episode',
+      p_target_id: old!.target.episodeId,
+      p_input: {
+        kind: 'job',
+        jobType: old!.jobType,
+        payload: { ...old!.payload, userId: old!.userId },
+      },
+    });
+    expect(dispatched).toEqual([childId]);
+
+    const origin = {
+      kind: 'server',
+      runId: run.id,
+      at: new Date(episodeFixture.now).toISOString(),
+    };
+    const expected = shotsOld.writes.map((write) => {
+      if (write.table === 'shots' && write.op === 'insert') {
+        return {
+          ...write,
+          payload: (write.payload as Array<Record<string, unknown>>).map(
+            (row) => ({ ...row, generation_origin: origin }),
+          ),
+        };
+      }
+      if (write.table === 'generation_jobs' && write.op === 'insert') {
+        return {
+          ...write,
+          payload: { ...(write.payload as object), run_id: childId },
+        };
+      }
+      return write;
+    });
+
+    expect(sorted(recording.writes())).toEqual(sorted(expected));
   });
 
   it('hands the orchestrator the job’s shot-length range and the prepared context (KB-120)', async () => {
-    await processShotGeneration(payload, client().client);
+    await withRun(shotsRun().run, () =>
+      processShotGeneration(payload, client().client),
+    );
 
     const input = orchestratorInputs.at(-1);
 
@@ -143,23 +214,24 @@ describe('processShotGeneration', () => {
     expect(input!.scenes).toHaveLength(2);
   });
 
-  it('queues no audio pass when the stage refuses the output', async () => {
+  it('opens no audio pass when the stage refuses the output', async () => {
     const recording = client();
+    const { run, state, dispatched } = shotsRun();
     const orchestrator = await import('@kit/episodes/agent/shot-orchestrator');
     const broken = orchestratorResult();
     broken.shots[0]!.veoPrompt = { ...broken.shots[0]!.veoPrompt, avoid: '' };
     const spy = vi
       .spyOn(orchestrator, 'runShotOrchestrator')
       .mockResolvedValueOnce(broken as never);
-    const queuedBefore = queued.length;
 
     await expect(
-      processShotGeneration(payload, recording.client),
+      withRun(run, () => processShotGeneration(payload, recording.client)),
     ).rejects.toThrow(
       /shots output for part scene:1 rejected: shots\.0\.veoPrompt\.avoid missing_negative_prompt/,
     );
 
-    expect(queued).toHaveLength(queuedBefore);
+    expect(childRuns(state)).toEqual([]);
+    expect(dispatched).toEqual([]);
     expect(recording.writes().filter((w) => w.table === 'shots')).toEqual([]);
 
     spy.mockRestore();

@@ -127,7 +127,7 @@ export const factExtractionStage: StageDefinition<
     return errors;
   },
 
-  async commit(ctx, run, target, outputs) {
+  async commit(ctx, _run, target, outputs) {
     const facts = outputs.flatMap((out) => out.facts);
     const data: FactExtractionData = {
       extractedCount: facts.length,
@@ -142,15 +142,11 @@ export const factExtractionStage: StageDefinition<
       return { status: 'skipped', reason: 'no facts extracted', data };
     }
 
+    // verified_facts has no generation_origin column: FILM-1903 stamps
+    // shots, dialogue_lines, audio_cues, assets and episodes only
     const rows = buildVerifiedFactRows(target, facts);
-    const stamped = ctx.originColumnsAvailable
-      ? rows.map(
-          (row) =>
-            ({ ...row, generation_origin: run.origin }) as VerifiedFactRow,
-        )
-      : rows;
 
-    const { error } = await ctx.client.from('verified_facts').insert(stamped);
+    const { error } = await ctx.client.from('verified_facts').insert(rows);
 
     if (error) {
       throw new Error(`Failed to insert facts: ${error.message}`);

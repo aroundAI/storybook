@@ -160,6 +160,36 @@
       "cwd": "packages/features/generation",
       "test": "__tests__/stage-matrix.test.ts",
       "pattern": "story in server mode"
+    },
+    {
+      "name": "1903 B shots names no audio_cues follow-on",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/shots.ts",
+      "find": "      followOns: [\n        {\n          stage: 'audio_cues',",
+      "replace": "      followOnsDropped: [\n        {\n          stage: 'audio_cues',",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stage-matrix.test.ts",
+      "pattern": "shots in server mode"
+    },
+    {
+      "name": "1903 B the shots handler opens the audio child but never dispatches it",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/shot-generation.ts",
+      "find": "  if (audioRun.mode === 'server') {\n    await audioRun.dispatch();\n  }",
+      "replace": "",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/shot-generation-handler.test.ts",
+      "pattern": "opens the audio pass as a dispatched child run"
+    },
+    {
+      "name": "1903 B fact extraction stamps verified_facts, which has no origin column",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/fact-extraction.ts",
+      "find": "    const { error } = await ctx.client.from('verified_facts').insert(rows);",
+      "replace": "    const { error } = await ctx.client\n      .from('verified_facts')\n      .insert(rows.map((row) => ({ ...row, generation_origin: _run.origin })));",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stage-matrix.test.ts",
+      "pattern": "fact_extraction in server mode"
     }
   ]
 }

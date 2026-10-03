@@ -2,6 +2,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { withRun } from '@kit/ai-gateway';
+import { fakeRunHandle } from '@kit/generation/testing';
+
 import { processAnalyticsInsights } from '../handlers/analytics-insights';
 import { processFactExtraction } from '../handlers/fact-extraction';
 import { processLanguageInsights } from '../handlers/language-insights';
@@ -23,7 +26,8 @@ const USER = '77777777-7777-4777-8777-777777777777';
 
 const contexts = vi.hoisted(() => [] as Array<{ accountId: string }>);
 
-vi.mock('@kit/ai-gateway', () => ({
+vi.mock('@kit/ai-gateway', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@kit/ai-gateway')>()),
   executeLLM: async (config: { context: { accountId: string } }) => {
     contexts.push(config.context);
     return { data: {} };
@@ -85,18 +89,39 @@ describe('LLM usage attribution in the worker', () => {
   });
 
   it('fact extraction: the project’s account, not the project', async () => {
-    await processFactExtraction(
-      {
-        projectId: PROJECT,
-        accountId: ACCOUNT,
-        userId: USER,
-        content: 'Some source text.',
-        sourceTitle: 'Source',
+    // On the generation core the run writes the brief (FILM-1902), and the
+    // usage row is the run's: its account is the one the job was opened on
+    const writers: string[] = [];
+    const { run } = fakeRunHandle({
+      stage: 'fact_extraction',
+      targetType: 'project',
+      targetId: PROJECT,
+      accountId: ACCOUNT,
+      projectId: PROJECT,
+      createdBy: USER,
+      backend: {
+        write: async (writer) => {
+          writers.push(writer.accountId);
+          return { output: { facts: [] } };
+        },
+        dispatch: async () => undefined,
       },
-      supabase,
+    });
+
+    await withRun(run, () =>
+      processFactExtraction(
+        {
+          projectId: PROJECT,
+          accountId: ACCOUNT,
+          userId: USER,
+          content: 'Some source text.',
+          sourceTitle: 'Source',
+        },
+        supabase,
+      ),
     ).catch(() => undefined);
 
-    expect(contexts[0]?.accountId).toBe(ACCOUNT);
+    expect(writers).toEqual([ACCOUNT]);
   });
 
   it('canon extraction (KB-129): the job’s account, not the project', async () => {

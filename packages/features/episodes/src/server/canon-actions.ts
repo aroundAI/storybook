@@ -10,7 +10,6 @@ import { revalidatePath } from 'next/cache';
 
 import { z } from 'zod';
 
-import { episodeSummaryStage, runStage } from '@kit/generation';
 import { checkRateLimit, enhanceAction } from '@kit/next/actions';
 import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
 import { readFailed, whyNoRow } from '@kit/shared/rows';
@@ -1435,34 +1434,33 @@ export const extractCanonChangesAction = enhanceAction(
         throw new Error(whyNoRow(projectError, 'Project not found'));
       }
 
-      const { executeLLM } = await import('@kit/prompt-engine/server');
+      if (!user) {
+        throw new Error('Authentication required');
+      }
 
-      const { commit } = await runStage(
-        episodeSummaryStage,
-        { client, accountId: project.account_id, userId: user?.id ?? '' },
-        data,
+      // The model is reached through a run (FILM-1902): an episode_summary
+      // run on this episode, opened as the caller, in the team's mode; the
+      // run writes the stage's brief and commits (FILM-1903)
+      const { openRun } = await import('@kit/ai-gateway');
+      const { executeServerRun } = await import('@kit/generation');
+      const runCtx = { client, accountId: project.account_id, userId: user.id };
+
+      const run = await openRun(
+        'episode_summary',
         {
-          generate: async (brief) => {
-            const result = await executeLLM<unknown>({
-              templateSlug: brief.prompt.slug,
-              variables: brief.prompt.variables,
-              context: {
-                name: 'canon-extraction',
-                accountId: data.projectId, // Project-level context
-              },
-            });
-
-            return {
-              output: result.data,
-              usage: {
-                provider: String(result.metadata.provider),
-                model: result.metadata.model,
-                tokens: result.metadata.tokens,
-                latencyMs: result.metadata.latency,
-              },
-            };
-          },
+          type: 'episode',
+          id: data.episodeId,
+          accountId: project.account_id,
+          projectId: data.projectId,
+          input: { kind: 'stage', target: data },
         },
+        { kind: 'web', name: 'episodes.extractCanonChanges' },
+        runCtx,
+      );
+
+      const { commit } = await executeServerRun<CanonExtractionResult>(
+        run,
+        runCtx,
       );
 
       return commit.data;

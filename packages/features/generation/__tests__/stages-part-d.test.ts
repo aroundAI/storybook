@@ -169,8 +169,16 @@ describe('shots stage', () => {
     expect(commit.status).toBe('committed');
     expect(commit.data.totalShots).toBe(4);
     expect(commit.data.reelCandidateScenes).toEqual([1]);
-    expect(commit.followOn).toEqual([
-      { stage: 'audio_cues', target: episodeFixture.ids },
+    expect(commit.followOns).toEqual([
+      {
+        stage: 'audio_cues',
+        target: {
+          type: 'episode',
+          id: episodeFixture.ids.episodeId,
+          projectId: episodeFixture.ids.projectId,
+          input: { kind: 'stage', target: episodeFixture.ids },
+        },
+      },
     ]);
 
     // The old handler queued the audio job itself; that row is the chain,
@@ -215,7 +223,7 @@ describe('shots stage', () => {
     );
 
     expect(commit.status).toBe('skipped');
-    expect(commit.followOn).toBeUndefined();
+    expect(commit.followOns).toBeUndefined();
     expect(recording.writes().map((w) => [w.table, w.op])).toEqual([
       ['generation_jobs', 'update'],
       ['generation_jobs', 'update'],

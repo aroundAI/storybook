@@ -1,10 +1,12 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  type EpisodeContextLoader,
   type EpisodeContextSnapshot,
   type PartSpec,
   type RunBackend,
   type RunCtx,
+  type RunHandle,
   type ScreenplayScene,
   type StageKey,
   type TargetType,
@@ -16,6 +18,7 @@ import {
 } from '../src';
 import {
   type RecordedCall,
+  type RecordedWrite,
   type Responder,
   TEST_IDS,
   recordingClient,
@@ -24,6 +27,16 @@ import {
   tableResponder,
   writesOf,
 } from '../src/testing';
+import {
+  audioFixture,
+  audioPartOutputs,
+  episodeFixture,
+  factFixture,
+  fixtureEpisodeContext,
+  pagedResponder,
+  shotsPartOutputs,
+  summaryFixture,
+} from './helpers/part-d';
 import {
   IDS,
   SNAPSHOT,
@@ -56,7 +69,7 @@ interface StageFixture {
   /** The rows the stage reads */
   respond: Responder;
   /** The episode context the stage's prepare() loads; WORLD unless given */
-  snapshot?: EpisodeContextSnapshot;
+  context?: EpisodeContextLoader;
 }
 
 const WORLD: EpisodeContextSnapshot = {
@@ -193,7 +206,52 @@ const TRANSLATIONS: Record<
 const STORY_TEXT =
   'Maya floats in the silence of the observation deck. '.repeat(40);
 
+/** Part D's fixtures (#561) share one episode and project; their ids differ from TEST_IDS. */
+const partDEpisodeLock = {
+  type: 'episode' as const,
+  id: episodeFixture.ids.episodeId,
+  projectId: episodeFixture.ids.projectId,
+};
+
 const FIXTURES: Partial<Record<StageKey, StageFixture>> = {
+  shots: {
+    target: {
+      ...episodeFixture.ids,
+      shotDuration: episodeFixture.shotDuration,
+    },
+    lock: partDEpisodeLock,
+    output: (part) => shotsPartOutputs().get(part.key),
+    respond: tableResponder({
+      episodes: episodeFixture.episode,
+      shots: episodeFixture.existingShots,
+    }),
+    context: fixtureEpisodeContext,
+  },
+  audio_cues: {
+    target: audioFixture.ids,
+    lock: partDEpisodeLock,
+    output: (part) => audioPartOutputs().get(part.key),
+    respond: pagedResponder({ shots: audioFixture.shots }),
+  },
+  fact_extraction: {
+    target: factFixture.payload,
+    lock: {
+      type: 'project',
+      id: episodeFixture.ids.projectId,
+      projectId: episodeFixture.ids.projectId,
+    },
+    output: () => factFixture.modelOutput,
+    respond: tableResponder({}),
+  },
+  episode_summary: {
+    target: summaryFixture.input,
+    lock: partDEpisodeLock,
+    output: () => summaryFixture.modelOutput,
+    respond: tableResponder({
+      narrative_threads: summaryFixture.threads,
+      assets: summaryFixture.characters,
+    }),
+  },
   story: {
     target: {
       episodeId: TEST_IDS.episode,
@@ -227,7 +285,7 @@ const FIXTURES: Partial<Record<StageKey, StageFixture>> = {
       },
     }),
     respond: worldRows(),
-    snapshot: SNAPSHOT,
+    context: async () => SNAPSHOT,
   },
   ideation: {
     target: {
@@ -257,7 +315,7 @@ const FIXTURES: Partial<Record<StageKey, StageFixture>> = {
       ],
     }),
     respond: worldRows(),
-    snapshot: SNAPSHOT,
+    context: async () => SNAPSHOT,
   },
   season_outline: {
     target: {
@@ -421,7 +479,63 @@ const FIXTURES: Partial<Record<StageKey, StageFixture>> = {
 };
 
 /** The tables whose rows carry generation_origin and whose stages stamp it today. */
-const STAMPED_TABLES = new Set(['episodes', 'assets']);
+const STAMPED_TABLES = new Set(['episodes', 'assets', 'shots', 'audio_cues']);
+
+/**
+ * The tables FILM-1903's migration gave a generation_origin column. A write
+ * stamping any other table fails in Postgres (verified_facts has none).
+ */
+const ORIGIN_COLUMN_TABLES = new Set([...STAMPED_TABLES, 'dialogue_lines']);
+
+/** The child runs a stage's commit opens (FILM-1903): shots chains its audio pass. */
+const FOLLOW_ONS: Partial<Record<StageKey, StageKey[]>> = {
+  shots: ['audio_cues'],
+};
+
+/** Each follow-on is a child of the run, in its mode; a server child is dispatched, an external one is not. */
+function expectChildren(
+  key: StageKey,
+  children: RunHandle[],
+  parentId: string,
+  mode: 'server' | 'external',
+) {
+  expect(
+    children.map((child) => [child.stage, child.mode, child.parentRunId]),
+    key,
+  ).toEqual((FOLLOW_ONS[key] ?? []).map((stage) => [stage, mode, parentId]));
+}
+
+/** Stages whose commit hands its result to the user for review and writes nothing. */
+const REVIEW_STAGES = new Set<StageKey>(['episode_summary']);
+
+/** The stage's own outcome: a review stage's commit is a `skipped` that says why. */
+function expectCommitted(key: StageKey, commit: { status: string }) {
+  expect(commit.status, key).toBe(
+    REVIEW_STAGES.has(key) ? 'skipped' : 'committed',
+  );
+}
+
+function payloadsOf(writes: RecordedWrite[]) {
+  return writes.map((w) => JSON.stringify(w.payload ?? null));
+}
+
+/** Every write that stamps generation_origin goes to a table that has the column. */
+function expectOriginOnlyWhereColumnsExist(
+  key: StageKey,
+  writes: RecordedWrite[],
+) {
+  const misplaced = writes
+    .filter((w) =>
+      JSON.stringify(w.payload ?? null).includes('generation_origin'),
+    )
+    .map((w) => w.table)
+    .filter((table) => !ORIGIN_COLUMN_TABLES.has(table));
+
+  expect(
+    misplaced,
+    `${key} stamps a table with no generation_origin column`,
+  ).toEqual([]);
+}
 
 function harness(
   fixture: StageFixture,
@@ -436,7 +550,7 @@ function harness(
     userId: TEST_IDS.user,
     backend,
     runMode: mode === 'external' ? () => 'external' : undefined,
-    episodeContext: async () => fixture.snapshot ?? WORLD,
+    episodeContext: fixture.context ?? (async () => WORLD),
   };
 
   return { state, recording, ctx };
@@ -522,18 +636,20 @@ describe('every registered stage runs in both modes (FILM-1902 criterion 10)', (
 
       const result = await executeServerRun(run, ctx);
 
-      expect(result.commit.status).toBe('committed');
+      expectCommitted(key, result.commit);
       expect(run.mode).toBe('server');
       expect(state.rows.get(run.id)?.status).toBe('committed');
       expect(write).toHaveBeenCalled();
+      expectOriginOnlyWhereColumnsExist(key, recording.writes());
+      expectChildren(key, result.children, run.id, 'server');
 
       const stampable = recording
         .writes()
         .filter((w) => STAMPED_TABLES.has(w.table));
       if (stampable.length > 0) {
-        const stamped = stampable
-          .map((w) => JSON.stringify(w.payload))
-          .some((p) => p.includes('"kind":"server"') && p.includes(run.id));
+        const stamped = payloadsOf(stampable).some(
+          (p) => p.includes('"kind":"server"') && p.includes(run.id),
+        );
         expect(stamped, `${key} stamps generation_origin`).toBe(true);
       }
     });
@@ -561,9 +677,11 @@ describe('every registered stage runs in both modes (FILM-1902 criterion 10)', (
         parts.map((part) => ({ key: part.key, output: fixture.output(part) })),
       );
 
-      expect(result.commit.status).toBe('committed');
+      expectCommitted(key, result.commit);
       expect(write).not.toHaveBeenCalled();
       expect(dispatch).not.toHaveBeenCalled();
+      expectOriginOnlyWhereColumnsExist(key, recording.writes());
+      expectChildren(key, result.children, run.id, 'external');
       // Zero llm_usage_analytics rows: no insert into the table was issued
       expect(
         recording.writes().filter((w) => w.table === 'llm_usage_analytics'),
@@ -574,11 +692,9 @@ describe('every registered stage runs in both modes (FILM-1902 criterion 10)', (
         .writes()
         .filter((w) => STAMPED_TABLES.has(w.table));
       if (stampable.length > 0) {
-        const stamped = stampable
-          .map((w) => JSON.stringify(w.payload))
-          .some(
-            (p) => p.includes('"kind":"external"') && p.includes('test-client'),
-          );
+        const stamped = payloadsOf(stampable).some(
+          (p) => p.includes('"kind":"external"') && p.includes('test-client'),
+        );
         expect(
           stamped,
           `${key} stamps an external origin with the client`,

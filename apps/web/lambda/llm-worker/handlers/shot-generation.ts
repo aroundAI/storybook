@@ -5,7 +5,8 @@
  * Orchestrator (Reel Scout → Shot Director per scene → Shot Quality) →
  * outputSchema and check per part → commit. Commit replaces the episode's
  * shots and its `shot_list`, clears stale cues and tracks, and names the
- * chained `audio_cues` stage, which this handler queues as a job.
+ * chained `audio_cues` stage, which this handler opens as a child run of
+ * the run it is executing (FILM-1903).
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -29,7 +30,7 @@ import {
 } from '@kit/prompt-engine/llm-job-payloads';
 import type { Database } from '@kit/supabase/database';
 
-import { workerCtx } from '../utils/stage-runtime';
+import { stageRunDeps, workerCtx } from '../utils/stage-runtime';
 
 interface ShotGenerationResult {
   success: boolean;
@@ -60,11 +61,11 @@ export async function processShotGeneration(
     shotsStage,
     workerCtx(supabase, data),
     target,
-    { generate: orchestratedShots(data) },
+    { ...stageRunDeps(), generate: orchestratedShots(data) },
   );
 
   if (commit.status === 'committed') {
-    await queueFollowOn(supabase, data, commit);
+    await openFollowOn(supabase, data, commit);
   }
 
   return {
@@ -185,23 +186,49 @@ export function partOutputsFrom(
 }
 
 /**
- * The dedicated audio pass follows every shot list. Commit names it; the
- * worker queues it as a job here. FILM-1903 replaces this with a child run
- * opened in the parent's mode.
+ * The dedicated audio pass follows every shot list. Commit names it; this
+ * opens it as a child run of the run in scope (FILM-1903): the parent's
+ * mode, user and account, with `parent_run_id` set. The worker runs server
+ * runs only, so the child is a server run whose input is the audio-cue job,
+ * which runs the Audio Cue Orchestrator; an external shots run's child is
+ * opened by `finalizeRun` from the same follow-on and waits for the agent.
  */
-async function queueFollowOn(
+async function openFollowOn(
   supabase: SupabaseClient<Database>,
   data: LlmJobPayload<'shot-generation'>,
   commit: CommitResult<ShotsCommitData>,
 ) {
-  const audio = commit.followOn?.find((next) => next.stage === 'audio_cues');
+  const audio = commit.followOns?.find((next) => next.stage === 'audio_cues');
 
   if (!audio) return;
 
-  console.log('[Shot Generation] Queuing audio refinement job');
+  console.log('[Shot Generation] Opening the audio refinement run');
 
-  const { chainedLlmJobTarget, queueLlmJob } = await import(
-    '@kit/prompt-engine/server'
+  const { jobRunTarget, requireRun } = await import('@kit/ai-gateway');
+  const { openChildRun } = await import('@kit/generation');
+  const { chainedLlmJobTarget } = await import('@kit/prompt-engine/server');
+  const parent = requireRun('chaining audio cues');
+
+  const audioRun = await openChildRun(
+    parent,
+    'audio_cues',
+    jobRunTarget({
+      jobType: 'audio-cue-generation',
+      userId: data.userId,
+      // The same episode this job's producer authorised (KB-31)
+      target: chainedLlmJobTarget({
+        accountId: data.accountId,
+        projectId: data.projectId,
+        episodeId: data.episodeId,
+      }),
+      payload: {
+        episodeId: data.episodeId,
+        projectId: data.projectId,
+        accountId: data.accountId,
+      },
+    }),
+    { kind: 'worker', name: 'shot-generation -> audio-cue-generation' },
+    parent.ctx,
   );
 
   const { error } = await supabase.from('generation_jobs').insert({
@@ -213,25 +240,14 @@ async function queueFollowOn(
     project_id: data.projectId,
     idempotency_key: `audio-cues-${data.episodeId}-${Date.now()}`,
     input_data: { episodeId: data.episodeId },
+    run_id: audioRun.id,
   });
 
   if (error) {
     console.error('[Shot Generation] Failed to create audio cue job:', error);
   }
 
-  await queueLlmJob({
-    jobType: 'audio-cue-generation',
-    userId: data.userId,
-    // The same episode this job's producer authorised (KB-31)
-    target: chainedLlmJobTarget({
-      accountId: data.accountId,
-      projectId: data.projectId,
-      episodeId: data.episodeId,
-    }),
-    payload: {
-      episodeId: data.episodeId,
-      projectId: data.projectId,
-      accountId: data.accountId,
-    },
-  });
+  if (audioRun.mode === 'server') {
+    await audioRun.dispatch();
+  }
 }

@@ -219,10 +219,8 @@ describe('executor inputs carry no raw project text (KB-101)', () => {
       ),
     );
 
-    expectSanitised(
-      seen['documentary/fact-extraction'],
-      'documentary/fact-extraction',
-    );
+    // The run writes the stage's brief, which carries the prompt file's slug
+    expectSanitised(seen['fact-extraction'], 'fact-extraction');
   });
 
   it('analytics insights: content titles and platforms in the payload', async () => {
