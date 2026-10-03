@@ -10,8 +10,9 @@
 --    on the generation core, the LLM job it runs ({kind: 'job', jobType,
 --    payload}). The worker loads only a run id from SQS, so the run itself
 --    must say what to run.
--- 2. Three more stages and two more target types. analytics_insights and
---    language_insights are model calls with no content stage (the spec's
+-- 2. Four more stages and two more target types. analytics_insights,
+--    language_insights and fact_check (the story page's documentary fact
+--    check) are model calls with no content stage (the spec's
 --    "server only, through the gateway"); audio_render is the worker's
 --    ElevenLabs render job, which rides the same queue and so needs a run to
 --    be loaded by. A render's target is a cue, and the season and analytics
@@ -61,11 +62,11 @@ alter table public.generation_runs add constraint generation_runs_stage_check
     'fact_extraction', 'episode_summary', 'publish_metadata',
     -- server-only model calls with no content stage, and the audio render
     -- job: they have a run so the worker can load them, never a brief
-    'analytics_insights', 'language_insights', 'audio_render'
+    'analytics_insights', 'language_insights', 'fact_check', 'audio_render'
   ));
 
 comment on column public.generation_runs.stage is
-  'The FILM-1901 registry key, or one of the server-only keys analytics_insights, language_insights and audio_render, which no StageDefinition serves';
+  'The FILM-1901 registry key, or one of the server-only keys analytics_insights, language_insights, fact_check and audio_render, which no StageDefinition serves';
 
 -- ----------------------------------------------------------------------
 -- Who may drive a run

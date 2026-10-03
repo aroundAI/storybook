@@ -122,6 +122,16 @@
       "pattern": "fails before any model call when the context has no write function"
     },
     {
+      "name": "1902 the documentary fact check calls the model with no run",
+      "kind": "unit",
+      "file": "packages/features/episodes/src/lib/documentary/fact-checker.ts",
+      "find": "      run,\n      templateSlug: 'documentary/fact-checker-role',",
+      "replace": "      templateSlug: 'documentary/fact-checker-role',",
+      "cwd": "packages/features/episodes",
+      "test": "src/lib/__tests__/fact-checker-run.test.ts",
+      "pattern": "writes through a fact_check run"
+    },
+    {
       "name": "1902 the Lambda registry has no fact-extraction prompt",
       "kind": "unit",
       "file": "packages/ai-gateway/src/prompts/lambda-registry.ts",

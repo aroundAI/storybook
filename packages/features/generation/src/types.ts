@@ -37,6 +37,7 @@ export const StageKeySchema = z.enum([
   // no StageDefinition serves them.
   'analytics_insights',
   'language_insights',
+  'fact_check',
   'audio_render',
 ]);
 export type StageKey = z.infer<typeof StageKeySchema>;
