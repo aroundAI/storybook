@@ -6345,6 +6345,10 @@ export type Database = {
         }
         Returns: Database["public"]["Tables"]["invitations"]["Row"][]
       }
+      apply_generation_commit: {
+        Args: { p_finalize?: boolean; p_plan: Json; p_run_id: string }
+        Returns: Json
+      }
       batch_create_shots: {
         Args: { p_episode_id: string; p_shots: Json }
         Returns: string[]
