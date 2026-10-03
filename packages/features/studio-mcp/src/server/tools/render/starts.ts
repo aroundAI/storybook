@@ -129,7 +129,7 @@ export function createRenderStartTools(deps: RenderStartDeps) {
     name: 'start_voice_render',
     title: 'Start voice render',
     description:
-      "Queues ElevenLabs voice for an episode's dialogue, as the audio studio's Generate buttons do: one line (dialogueLineId) or every line that has no audio yet (omit it; overwriteExisting re-renders every line). Speakers need a voice: the character's profile voice, or voiceAssignments by character asset id. Renders bill the team's own ElevenLabs key and run in the background; poll get_render_status. No language model is called.",
+      "Queues ElevenLabs voice for an episode's dialogue, as the audio studio's Generate buttons do: one line (dialogueLineId) or every line that has no audio yet (omit it; overwriteExisting re-renders every line). Speakers need a voice: the character's profile voice, or voiceAssignments by character asset id. Renders bill the team's own ElevenLabs key and run in the background; poll get_render_progress. No language model is called.",
     inputSchema: {
       episodeId: z.string().uuid().describe('The episode id.'),
       dialogueLineId: z
@@ -196,7 +196,7 @@ export function createRenderStartTools(deps: RenderStartDeps) {
         startResult(start, 'voice render', input.dialogueLineId);
 
         return {
-          text: `Voice render queued for line ${input.dialogueLineId}. Poll get_render_status for the result.`,
+          text: `Voice render queued for line ${input.dialogueLineId}. Poll get_render_progress for the result.`,
           structuredContent: {
             status: 'queued',
             scope: 'line',
@@ -224,7 +224,7 @@ export function createRenderStartTools(deps: RenderStartDeps) {
         });
 
       return {
-        text: `Voice render queued for ${batch.totalLines} lines (batch ${batch.batchJobId}, estimated cost ${batch.estimatedCost}). Poll get_render_status with the batch id.`,
+        text: `Voice render queued for ${batch.totalLines} lines (batch ${batch.batchJobId}, estimated cost ${batch.estimatedCost}). Poll get_render_progress with the batch id.`,
         structuredContent: {
           status: 'queued',
           scope: 'episode',
@@ -242,7 +242,7 @@ export function createRenderStartTools(deps: RenderStartDeps) {
     name: 'start_audio_render',
     title: 'Start music or SFX render',
     description:
-      "Queues the audio for one audio cue (music, SFX or ambience) from its stored prompt, as the audio studio's Generate button on a cue does. The cue must belong to the episode. Renders bill the team's own ElevenLabs key and run in the background; poll get_render_status. No language model is called.",
+      "Queues the audio for one audio cue (music, SFX or ambience) from its stored prompt, as the audio studio's Generate button on a cue does. The cue must belong to the episode. Renders bill the team's own ElevenLabs key and run in the background; poll get_render_progress. No language model is called.",
     inputSchema: {
       episodeId: z.string().uuid().describe('The episode id.'),
       cueId: z.string().uuid().describe('The audio cue id.'),
@@ -274,7 +274,7 @@ export function createRenderStartTools(deps: RenderStartDeps) {
       startResult(start, 'audio render', input.cueId);
 
       return {
-        text: `Audio render queued for cue ${input.cueId}. Poll get_render_status for the result.`,
+        text: `Audio render queued for cue ${input.cueId}. Poll get_render_progress for the result.`,
         structuredContent: {
           status: 'queued',
           episodeId: input.episodeId,

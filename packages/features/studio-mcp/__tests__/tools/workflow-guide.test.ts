@@ -82,7 +82,7 @@ describe('the default tool list', () => {
         // FILM-1909's render tools
         'start_voice_render',
         'start_audio_render',
-        'get_render_status',
+        'get_render_progress',
         'get_veo_manifest',
         // FILM-1909's edit tools
         'edit_scene',

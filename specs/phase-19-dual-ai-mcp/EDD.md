@@ -347,7 +347,7 @@ Tools are the primary surface because every client supports them. Names are verb
 | Generate | `finalize_generation` | write | commit all parts atomically |
 | Generate | `get_run`, `cancel_generation` | write | inspect or release a run |
 | Edit | `edit_scene`, `edit_shot`, `edit_dialogue_line` | write | targeted edits, each validated and versioned |
-| Render | `start_voice_render`, `start_audio_render`, `get_render_status` | render | queue ElevenLabs voice, music and SFX; cost-checked |
+| Render | `start_voice_render`, `start_audio_render`, `get_render_progress` | render | queue ElevenLabs voice, music and SFX; cost-checked |
 | Render | `get_veo_manifest` | read | VEO prompts and frame descriptions ready for external video tools |
 | Analyze | about 20 read tools, one per dashboard area | read | everything the analytics pages show, listed in section 3a |
 | Analyze | `list_experiments`, `get_experiment` | read | experiments and their results |
@@ -763,7 +763,7 @@ flowchart LR
 
 - [x] Ideation, screenplay (per scene), screenplay refinement, shots (reel scout plus per scene), audio cues, translation, publish metadata (FILM-1909)
 - [x] `edit_scene`, `edit_shot`, `edit_dialogue_line` (FR-15; FILM-1909, through `apply_generation_commit`)
-- [x] `start_voice_render`, `start_audio_render`, `get_render_status`, `get_veo_manifest` (FR-16; FILM-1909)
+- [x] `start_voice_render`, `start_audio_render`, `get_render_progress`, `get_veo_manifest` (FR-16; FILM-1909)
 - [ ] Replace the in-app LLM side calls (`asset-link-actions.ts`, `agent-story-generation.ts`, canon at publish) with guard-aware paths
 - [ ] Lease banners and origin badges on screenplay, visual studio and audio studio pages
 

@@ -77,7 +77,7 @@ function batchSummary(row: BatchRow) {
 }
 
 export const getRenderStatusTool = defineTool({
-  name: 'get_render_status',
+  name: 'get_render_progress',
   title: 'Get render status',
   description:
     "Where an episode's vendor renders stand: dialogue lines by voice status (with the ids of lines still rendering or failed), audio cues by status, and the voice batch (the given batchJobId, else the newest). Read it after start_voice_render or start_audio_render; renders finish in the background.",

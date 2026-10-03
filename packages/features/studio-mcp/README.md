@@ -55,7 +55,7 @@ route serves by default.
 | `upsert_asset` | write | a character or a location, by `assetId` or by type and name |
 | `start_voice_render` | render | ElevenLabs voice for one line or the whole episode, through the web's own render start (FILM-1909) |
 | `start_audio_render` | render | music, SFX or ambience for one audio cue (`audio-file-generation`), through the web's own render start |
-| `get_render_status` | render | lines and cues by status, what is still rendering or failed, and the voice batch |
+| `get_render_progress` | render | lines and cues by status, what is still rendering or failed, and the voice batch |
 | `edit_scene`, `edit_shot`, `edit_dialogue_line` | write | one scene, shot or English line, checked as its stage checks it, versioned and snapshotted (FILM-1909) |
 | `get_veo_manifest` | read | the visual studio's OpenClaw export: VEO prompts, frame descriptions, transitions and reference images per shot, paged by scene |
 

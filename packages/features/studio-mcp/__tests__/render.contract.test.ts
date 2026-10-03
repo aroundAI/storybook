@@ -317,7 +317,7 @@ describe.skipIf(!SEED || !SQS)(
         });
       }
 
-      const status = await call(client, 'get_render_status', {
+      const status = await call(client, 'get_render_progress', {
         episodeId: team.episodeId,
       });
       expect(status.structuredContent).toMatchObject({
@@ -366,7 +366,7 @@ describe.skipIf(!SEED || !SQS)(
         },
       });
 
-      const status = await call(client, 'get_render_status', {
+      const status = await call(client, 'get_render_progress', {
         episodeId: team.episodeId,
       });
       expect(status.structuredContent).toMatchObject({

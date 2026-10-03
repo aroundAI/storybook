@@ -19,7 +19,7 @@ import { type FakeDb, contextFor, fakeClient } from '../helpers/fake-postgrest';
 /**
  * FILM-1909's render tools: start_voice_render and start_audio_render call
  * the web's own render starts with the principal's client, scoped to the
- * bound team and to the episode named; get_render_status reads where the
+ * bound team and to the episode named; get_render_progress reads where the
  * renders stand; get_veo_manifest returns the visual studio's export.
  */
 const TEAM = { id: '22222222-2222-4222-8222-222222222222', slug: 'team-a' };
@@ -98,7 +98,7 @@ describe('the render tools in the default list', () => {
   it.each([
     ['start_voice_render', 'studio:render', false],
     ['start_audio_render', 'studio:render', false],
-    ['get_render_status', 'studio:render', true],
+    ['get_render_progress', 'studio:render', true],
     ['get_veo_manifest', 'studio:read', true],
   ] as const)('%s needs %s (read-only %s)', (name, scope, readOnly) => {
     const tool = byName.get(name) as McpToolDefinition;
@@ -279,7 +279,7 @@ describe('start_audio_render', () => {
   });
 });
 
-describe('get_render_status', () => {
+describe('get_render_progress', () => {
   it('counts lines and cues by status and lists the ones still rendering or failed', async () => {
     const client = fakeClient(
       db({
