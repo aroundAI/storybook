@@ -34,6 +34,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_ai_settings: {
+        Row: {
+          account_id: string
+          created_at: string
+          default_mode: string
+          external_generation_enabled: boolean
+          server_generation_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          default_mode?: string
+          external_generation_enabled?: boolean
+          server_generation_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          default_mode?: string
+          external_generation_enabled?: boolean
+          server_generation_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_ai_settings_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: true
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_ai_settings_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: true
+            referencedRelation: "public_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_ai_settings_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: true
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_ai_settings_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: true
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       account_oauth_apps: {
         Row: {
           account_id: string
@@ -476,6 +532,7 @@ export type Database = {
           file_hash: string | null
           file_size_bytes: number | null
           file_url: string | null
+          generation_origin: Json | null
           id: string
           metadata: Json
           name: string
@@ -493,6 +550,7 @@ export type Database = {
           file_hash?: string | null
           file_size_bytes?: number | null
           file_url?: string | null
+          generation_origin?: Json | null
           id?: string
           metadata?: Json
           name: string
@@ -510,6 +568,7 @@ export type Database = {
           file_hash?: string | null
           file_size_bytes?: number | null
           file_url?: string | null
+          generation_origin?: Json | null
           id?: string
           metadata?: Json
           name?: string
@@ -639,6 +698,7 @@ export type Database = {
           cue_type: string
           duration_seconds: number | null
           episode_id: string
+          generation_origin: Json | null
           id: string
           is_loopable: boolean | null
           prompt: string
@@ -653,6 +713,7 @@ export type Database = {
           cue_type: string
           duration_seconds?: number | null
           episode_id: string
+          generation_origin?: Json | null
           id?: string
           is_loopable?: boolean | null
           prompt: string
@@ -667,6 +728,7 @@ export type Database = {
           cue_type?: string
           duration_seconds?: number | null
           episode_id?: string
+          generation_origin?: Json | null
           id?: string
           is_loopable?: boolean | null
           prompt?: string
@@ -1700,6 +1762,75 @@ export type Database = {
         }
         Relationships: []
       }
+      content_revisions: {
+        Row: {
+          account_id: string
+          created_at: string
+          id: string
+          run_id: string | null
+          snapshot: Json
+          stage: string
+          target_id: string
+          target_type: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          id?: string
+          run_id?: string | null
+          snapshot: Json
+          stage: string
+          target_id: string
+          target_type: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          id?: string
+          run_id?: string | null
+          snapshot?: Json
+          stage?: string
+          target_id?: string
+          target_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_revisions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_revisions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "public_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_revisions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_revisions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_revisions_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "generation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_tags: {
         Row: {
           account_id: string
@@ -1769,6 +1900,7 @@ export type Database = {
           episode_id: string
           estimated_duration_seconds: number | null
           generation_metadata: Json | null
+          generation_origin: Json | null
           id: string
           language: string
           scene_number: number | null
@@ -1788,6 +1920,7 @@ export type Database = {
           episode_id: string
           estimated_duration_seconds?: number | null
           generation_metadata?: Json | null
+          generation_origin?: Json | null
           id?: string
           language?: string
           scene_number?: number | null
@@ -1807,6 +1940,7 @@ export type Database = {
           episode_id?: string
           estimated_duration_seconds?: number | null
           generation_metadata?: Json | null
+          generation_origin?: Json | null
           id?: string
           language?: string
           scene_number?: number | null
@@ -2220,6 +2354,7 @@ export type Database = {
           description: string | null
           duration_seconds: number | null
           final_video_url: string | null
+          generation_origin: Json
           id: string
           localized_videos: Json | null
           master_video_asset_id: string | null
@@ -2249,6 +2384,7 @@ export type Database = {
           description?: string | null
           duration_seconds?: number | null
           final_video_url?: string | null
+          generation_origin?: Json
           id?: string
           localized_videos?: Json | null
           master_video_asset_id?: string | null
@@ -2278,6 +2414,7 @@ export type Database = {
           description?: string | null
           duration_seconds?: number | null
           final_video_url?: string | null
+          generation_origin?: Json
           id?: string
           localized_videos?: Json | null
           master_video_asset_id?: string | null
@@ -2807,6 +2944,7 @@ export type Database = {
           reference_id: string | null
           reference_type: string | null
           retry_count: number
+          run_id: string | null
           started_at: string | null
           status: string
           timeout_seconds: number
@@ -2833,6 +2971,7 @@ export type Database = {
           reference_id?: string | null
           reference_type?: string | null
           retry_count?: number
+          run_id?: string | null
           started_at?: string | null
           status?: string
           timeout_seconds?: number
@@ -2859,6 +2998,7 @@ export type Database = {
           reference_id?: string | null
           reference_type?: string | null
           retry_count?: number
+          run_id?: string | null
           started_at?: string | null
           status?: string
           timeout_seconds?: number
@@ -2894,6 +3034,167 @@ export type Database = {
           },
           {
             foreignKeyName: "generation_jobs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generation_jobs_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "generation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      generation_run_parts: {
+        Row: {
+          output: Json
+          part_key: string
+          run_id: string
+          submitted_at: string
+          validation: Json | null
+        }
+        Insert: {
+          output: Json
+          part_key: string
+          run_id: string
+          submitted_at?: string
+          validation?: Json | null
+        }
+        Update: {
+          output?: Json
+          part_key?: string
+          run_id?: string
+          submitted_at?: string
+          validation?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generation_run_parts_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "generation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      generation_runs: {
+        Row: {
+          account_id: string
+          brief_hash: string | null
+          connection_id: string | null
+          created_at: string
+          created_by: string
+          error: Json | null
+          finalized_at: string | null
+          id: string
+          job_id: string | null
+          lease_expires_at: string | null
+          mode: string
+          origin: Json
+          parent_run_id: string | null
+          project_id: string
+          prompt_slug: string | null
+          prompt_version: number | null
+          stage: string
+          status: string
+          target_id: string
+          target_type: string
+          target_version: number | null
+        }
+        Insert: {
+          account_id: string
+          brief_hash?: string | null
+          connection_id?: string | null
+          created_at?: string
+          created_by: string
+          error?: Json | null
+          finalized_at?: string | null
+          id?: string
+          job_id?: string | null
+          lease_expires_at?: string | null
+          mode: string
+          origin?: Json
+          parent_run_id?: string | null
+          project_id: string
+          prompt_slug?: string | null
+          prompt_version?: number | null
+          stage: string
+          status?: string
+          target_id: string
+          target_type: string
+          target_version?: number | null
+        }
+        Update: {
+          account_id?: string
+          brief_hash?: string | null
+          connection_id?: string | null
+          created_at?: string
+          created_by?: string
+          error?: Json | null
+          finalized_at?: string | null
+          id?: string
+          job_id?: string | null
+          lease_expires_at?: string | null
+          mode?: string
+          origin?: Json
+          parent_run_id?: string | null
+          project_id?: string
+          prompt_slug?: string | null
+          prompt_version?: number | null
+          stage?: string
+          status?: string
+          target_id?: string
+          target_type?: string
+          target_version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generation_runs_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generation_runs_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "public_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generation_runs_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generation_runs_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generation_runs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "generation_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generation_runs_parent_run_id_fkey"
+            columns: ["parent_run_id"]
+            isOneToOne: false
+            referencedRelation: "generation_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generation_runs_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -3050,6 +3351,7 @@ export type Database = {
           prompt_tokens: number | null
           request_config: Json | null
           response_metadata: Json | null
+          run_id: string | null
           status: string
           template_slug: string
           total_cost: number | null
@@ -3072,6 +3374,7 @@ export type Database = {
           prompt_tokens?: number | null
           request_config?: Json | null
           response_metadata?: Json | null
+          run_id?: string | null
           status: string
           template_slug: string
           total_cost?: number | null
@@ -3094,6 +3397,7 @@ export type Database = {
           prompt_tokens?: number | null
           request_config?: Json | null
           response_metadata?: Json | null
+          run_id?: string | null
           status?: string
           template_slug?: string
           total_cost?: number | null
@@ -3127,6 +3431,13 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "llm_usage_analytics_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "generation_runs"
             referencedColumns: ["id"]
           },
         ]
@@ -4916,6 +5227,7 @@ export type Database = {
           frame_strategy: string | null
           generation_job_id: string | null
           generation_metadata: Json | null
+          generation_origin: Json | null
           id: string
           inherit_last_frame: boolean | null
           last_frame_description: string | null
@@ -4954,6 +5266,7 @@ export type Database = {
           frame_strategy?: string | null
           generation_job_id?: string | null
           generation_metadata?: Json | null
+          generation_origin?: Json | null
           id?: string
           inherit_last_frame?: boolean | null
           last_frame_description?: string | null
@@ -4992,6 +5305,7 @@ export type Database = {
           frame_strategy?: string | null
           generation_job_id?: string | null
           generation_metadata?: Json | null
+          generation_origin?: Json | null
           id?: string
           inherit_last_frame?: boolean | null
           last_frame_description?: string | null
@@ -5905,6 +6219,7 @@ export type Database = {
         Args: { p_from: string; p_to: string }
         Returns: boolean
       }
+      expire_generation_runs: { Args: never; Returns: number }
       get_account_invitations: {
         Args: { account_slug: string }
         Returns: {
@@ -6374,6 +6689,10 @@ export type Database = {
       replace_experiment_tags: {
         Args: { p_experiment_id: string; p_tag_ids: string[] }
         Returns: undefined
+      }
+      restore_content_revision: {
+        Args: { p_revision_id: string }
+        Returns: string
       }
       revenue_cents_by_publish: {
         Args: { p_publish_ids: string[] }

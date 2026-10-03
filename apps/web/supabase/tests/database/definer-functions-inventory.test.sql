@@ -89,6 +89,8 @@ select results_eq(
        -- account id, both supplied by the caller — an oracle to someone who
        -- already holds both UUIDs, and no row data (KB-113)
        ('public.publish_in_account'),
+       -- can_write_project of the revision target's project; writes the replaced content as a new revision first (FILM-1903)
+       ('public.restore_content_revision'),
        -- can_edit_project (project owner/admin) of the fact's project (KB-18)
        ('public.set_fact_verification'),
        -- project_members owner/admin
