@@ -14,6 +14,8 @@ import { z } from 'zod';
 import type { GenerationJobType } from '@kit/prompt-engine/generation-job-types';
 import type { Database } from '@kit/supabase/database';
 
+import type { CommitApplier } from './commit-plan';
+
 export const GenerationModeSchema = z.enum(['server', 'external']);
 export type GenerationMode = z.infer<typeof GenerationModeSchema>;
 
@@ -197,8 +199,10 @@ export interface RevisionSnapshot {
  *
  * - `episodeContext`: the worker's context builder reaches an embedding
  *   model for semantic recall (KB-35), which this package never imports.
- * - `revisions`: `content_revisions` arrives with FILM-1903; commit calls
- *   `snapshot` when it is present.
+ * - `commits`: what applies a commit's plan. Under a run it is the run's
+ *   `apply_generation_commit` (one transaction, the content_revisions
+ *   snapshot included, FILM-1903); without one only a single-write plan is
+ *   applied, through `client`.
  * - `originColumnsAvailable`: `generation_origin` columns arrive with
  *   FILM-1903; until then commit stamps no origin.
  */
@@ -207,7 +211,7 @@ export interface Ctx {
   accountId: string;
   userId: string;
   episodeContext?: EpisodeContextLoader;
-  revisions?: { snapshot(input: RevisionSnapshot): Promise<void> };
+  commits?: CommitApplier;
   originColumnsAvailable?: boolean;
   log?: (message: string) => void;
 }

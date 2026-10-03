@@ -17,6 +17,7 @@ import { sanitizeForPrompt } from '@kit/shared/prompt-sanitiser';
 import type { Json } from '@kit/supabase/database';
 
 import { type PromptFile, buildBrief, singlePart } from '../brief';
+import { applyCommit, resultRows } from '../commit-plan';
 import { registerStage } from '../registry';
 import type {
   CheckError,
@@ -148,31 +149,50 @@ async function commit(
 
   const { asset } = target;
 
-  const { data, error } = await ctx.client
-    .from('assets')
-    .upsert(
-      {
-        project_id: target.projectId,
-        type: asset.type,
-        name: asset.name,
-        description: output.description,
-        metadata: asset.role
-          ? { role: asset.role, autoCreated: true }
-          : { autoCreated: true },
-        deleted_at: null,
-        // Who wrote the description (FILM-1903); the column exists since
-        // part A, so `originColumnsAvailable` is the caller's say
-        ...(ctx.originColumnsAvailable
-          ? { generation_origin: run.origin as unknown as Json }
-          : {}),
-      },
-      { onConflict: 'project_id,type,name', ignoreDuplicates: false },
-    )
-    .select('id, name, type')
-    .single();
+  let data: AssetDescriptionData['asset'] | undefined;
 
-  if (error || !data) {
-    ctx.log?.(`[Asset Description] Upsert failed: ${error?.message}`);
+  try {
+    const applied = await applyCommit(ctx, {
+      ops: [
+        {
+          key: 'asset',
+          op: 'upsert',
+          table: 'assets',
+          asObject: true,
+          rows: [
+            {
+              project_id: target.projectId,
+              type: asset.type,
+              name: asset.name,
+              description: output.description,
+              metadata: asset.role
+                ? { role: asset.role, autoCreated: true }
+                : { autoCreated: true },
+              deleted_at: null,
+              // Who wrote the description (FILM-1903); the column exists
+              // since part A, so `originColumnsAvailable` is the caller's say
+              ...(ctx.originColumnsAvailable
+                ? { generation_origin: run.origin as unknown as Json }
+                : {}),
+            },
+          ],
+          onConflict: 'project_id,type,name',
+          ignoreDuplicates: false,
+          returning: ['id', 'name', 'type'],
+        },
+      ],
+    });
+
+    data = resultRows(applied, 'asset')[0] as typeof data;
+  } catch (error) {
+    ctx.log?.(
+      `[Asset Description] Upsert failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    throw new Error('Failed to create assets');
+  }
+
+  if (!data) {
+    ctx.log?.('[Asset Description] Upsert failed: no row returned');
     throw new Error('Failed to create assets');
   }
 

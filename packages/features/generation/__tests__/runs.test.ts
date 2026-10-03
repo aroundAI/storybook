@@ -12,6 +12,7 @@ import {
   openRun,
   resolveRunMode,
   storyRefinementStage,
+  planWrites,
 } from '../src';
 import {
   type RunStoreState,
@@ -65,6 +66,7 @@ function harness(
       tableResponder({ episodes: EPISODE, generation_jobs: null }),
     ),
   );
+  state.client = recording.client;
 
   const ctx: RunCtx = {
     client: recording.client,
@@ -411,12 +413,24 @@ describe('executeServerRun', () => {
     expect(write).toHaveBeenCalledTimes(1);
     expect(result.commit.status).toBe('committed');
     expect(run.status).toBe('committed');
-    expect(state.revisions).toEqual([
-      {
-        runId: run.id,
-        snapshot: { episode: { story_data: EPISODE.story_data } },
-      },
+
+    // The commit is one apply_generation_commit that also closes the run;
+    // the database snapshots story_data from its plan (pgTAP A2), so no
+    // separate revision call and no separate move to committed
+    expect(state.commits).toEqual([
+      expect.objectContaining({ runId: run.id, finalize: true }),
     ]);
+    expect(
+      planWrites(state.commits[0]!.plan).map((w) => `${w.table}:${w.op}`),
+    ).toEqual(['episodes:update', 'generation_jobs:update']);
+    expect(state.revisions).toEqual([]);
+    expect(
+      state.rpcs.filter(
+        (rpc) =>
+          rpc.fn === 'transition_generation_run' &&
+          (rpc.args as { p_status: string }).p_status === 'committed',
+      ),
+    ).toEqual([]);
 
     const episodeUpdate = recording
       .writes()
@@ -446,7 +460,7 @@ describe('executeServerRun', () => {
     });
 
     expect(run.status).toBe('failed');
-    expect(state.revisions).toEqual([]);
+    expect(state.commits).toEqual([]);
     expect(
       recording
         .writes()

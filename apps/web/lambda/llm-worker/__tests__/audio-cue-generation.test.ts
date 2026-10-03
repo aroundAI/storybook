@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { withRun } from '@kit/ai-gateway';
 import {
+  type RecordingClient,
   fakeRunHandle,
   recordingClient,
   tableResponder,
@@ -57,8 +58,10 @@ function pagedShots(shots: unknown[]) {
 }
 
 /** The audio_cues run in scope; the orchestrator writes, so its writer is never reached. */
-function audioRun() {
+/** commitsThrough: the handler's recording, where the commit's rows land. */
+function audioRun(commitsThrough?: RecordingClient['client']) {
   return fakeRunHandle({
+    commitsThrough,
     stage: 'audio_cues',
     accountId: fixture.ids.accountId,
     projectId: fixture.ids.projectId,
@@ -84,7 +87,7 @@ describe('processAudioCueGeneration', () => {
   it('writes the rows the old handler wrote: a sceneless cue with no scene (KB-92), the cue on a missing shot dropped', async () => {
     const recording = pagedShots(fixture.shots);
 
-    const run = audioRun();
+    const run = audioRun(recording.client);
     const result = await withRun(run, () =>
       processAudioCueGeneration(fixture.ids, recording.client),
     );
@@ -137,7 +140,7 @@ describe('processAudioCueGeneration', () => {
       });
 
     await expect(
-      withRun(audioRun(), () =>
+      withRun(audioRun(recording.client), () =>
         processAudioCueGeneration(fixture.ids, recording.client),
       ),
     ).rejects.toThrow(

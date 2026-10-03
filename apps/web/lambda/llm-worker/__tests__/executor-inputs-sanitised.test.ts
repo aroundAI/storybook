@@ -101,6 +101,8 @@ const IDS = {
 
 const recordingRun = () =>
   fakeRunHandle({
+    // A commit reached on the way is replayed through the same fake rows
+    commitsThrough: fakeClient() as never,
     accountId: IDS.accountId,
     projectId: IDS.projectId,
     targetId: IDS.episodeId,

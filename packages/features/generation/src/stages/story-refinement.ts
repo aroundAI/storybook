@@ -19,7 +19,8 @@ import { whyNoRow } from '@kit/shared/rows';
 import type { Json } from '@kit/supabase/database';
 
 import { type PromptFile, buildBrief, singlePart } from '../brief';
-import { markJobCompleted } from '../jobs';
+import { applyCommit, eq, is } from '../commit-plan';
+import { jobCompletedWrite } from '../jobs';
 import { registerStage } from '../registry';
 import type {
   CheckError,
@@ -281,9 +282,13 @@ async function commit(
     ctx.log?.(
       '[Story Refinement] Episode was deleted during refinement. Skipping write.',
     );
-    await markJobCompleted(ctx.client, target.episodeId, JOB_TYPE, {
-      skipped: true,
-      reason: 'episode-deleted',
+    await applyCommit(ctx, {
+      ops: [
+        jobCompletedWrite(target.episodeId, JOB_TYPE, {
+          skipped: true,
+          reason: 'episode-deleted',
+        }),
+      ],
     });
 
     return {
@@ -332,15 +337,6 @@ async function commit(
     refinement_history: refinementHistory,
   };
 
-  await ctx.revisions?.snapshot({
-    table: 'episodes',
-    rowId: target.episodeId,
-    column: 'story_data',
-    before: storyData,
-    stage: 'story_refinement',
-    runId: run.id,
-  });
-
   // Who wrote this story, per stage (FILM-1903); the column exists since
   // part A, so `originColumnsAvailable` is the caller's say
   const origin = ctx.originColumnsAvailable
@@ -352,37 +348,41 @@ async function commit(
       }
     : {};
 
-  const { data: updatedEpisode, error: updateError } = await ctx.client
-    .from('episodes')
-    .update({
-      story_data: updatedStoryData as unknown as Json,
-      metadata: updatedMetadata as unknown as Json,
-      updated_at: generatedAt,
-      ...origin,
-    })
-    .eq('id', target.episodeId)
-    .is('deleted_at', null)
-    .select('id, status')
-    .single();
+  // One transaction under a run: the story (its content_revisions snapshot
+  // with it) and the job's completion. requireRows: the episode was deleted
+  const applied = await applyCommit(ctx, {
+    ops: [
+      {
+        key: 'episode',
+        op: 'update',
+        table: 'episodes',
+        values: {
+          story_data: updatedStoryData as unknown as Json,
+          metadata: updatedMetadata as unknown as Json,
+          updated_at: generatedAt,
+          ...origin,
+        },
+        match: [eq('id', target.episodeId), is('deleted_at', null)],
+        requireRows: true,
+        returning: ['id', 'status'],
+      },
+      jobCompletedWrite(target.episodeId, JOB_TYPE, {
+        provider: run.usage?.provider ?? run.origin.kind,
+        model: run.usage?.model ?? run.origin.model ?? 'unknown',
+        tokensUsed: run.usage?.tokens ?? 0,
+        feedback: target.feedback.substring(0, 200),
+      }),
+    ],
+  });
 
-  if (updateError) {
-    throw new Error(`Failed to update episode: ${updateError.message}`);
-  }
-
-  if (!updatedEpisode) {
-    throw new Error('Episode not found or was deleted');
-  }
+  const updatedEpisode = applied.results.episode![0] as {
+    id: string;
+    status: string;
+  };
 
   ctx.log?.(
     `[Story Refinement] Story refined successfully for episode ${target.episodeId}`,
   );
-
-  await markJobCompleted(ctx.client, target.episodeId, JOB_TYPE, {
-    provider: run.usage?.provider ?? run.origin.kind,
-    model: run.usage?.model ?? run.origin.model ?? 'unknown',
-    tokensUsed: run.usage?.tokens ?? 0,
-    feedback: target.feedback.substring(0, 200),
-  });
 
   return {
     status: 'committed',

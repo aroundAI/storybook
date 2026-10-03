@@ -66,8 +66,9 @@ const MODEL_OUTPUT: Record<string, unknown> = {
  * brief from MODEL_OUTPUT and records what the stage asked for, where the
  * old test stubbed the Lambda executor.
  */
-function parityRun() {
+function parityRun(commitsThrough?: SupabaseClient<Database>) {
   return fakeRunHandle({
+    commitsThrough,
     accountId: ACCOUNT_ID,
     projectId: PROJECT_ID,
     targetId: EPISODE_ID,
@@ -278,7 +279,7 @@ describe('story refinement writes what it did before the core (FILM-1901)', () =
     );
     const recording = storyRefinementClient();
 
-    const result = await withRun(parityRun(), () =>
+    const result = await withRun(parityRun(recording.client as SupabaseClient<Database>), () =>
       processStoryRefinement(
         {
           accountId: ACCOUNT_ID,
@@ -311,7 +312,7 @@ describe('asset creation writes what it did before the core (FILM-1901)', () => 
     const { processAssetCreation } = await import('../handlers/asset-creation');
     const recording = assetCreationClient();
 
-    const result = await withRun(parityRun(), () =>
+    const result = await withRun(parityRun(recording.client as SupabaseClient<Database>), () =>
       processAssetCreation(
         {
           accountId: ACCOUNT_ID,

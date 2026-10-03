@@ -17,7 +17,9 @@ export type RunErrorCode =
   | 'SERVER_GENERATION_DISABLED'
   | 'EXTERNAL_GENERATION_DISABLED'
   /** The database refused the write (RLS, a CHECK, a missing grant) */
-  | 'RUN_STORE_ERROR';
+  | 'RUN_STORE_ERROR'
+  /** A commit's transaction failed and was rolled back: nothing was written */
+  | 'COMMIT_FAILED';
 
 export interface RunHolder {
   id: string;

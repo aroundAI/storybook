@@ -36,7 +36,8 @@ import { whyNoRow } from '@kit/shared/rows';
 import type { Json } from '@kit/supabase/database';
 
 import { type PromptFile, buildBrief } from '../brief';
-import { markJobCompleted } from '../jobs';
+import { applyCommit, eq, is } from '../commit-plan';
+import { jobCompletedWrite } from '../jobs';
 import { registerStage } from '../registry';
 import type {
   CheckError,
@@ -744,9 +745,13 @@ export const shotsStage: StageDefinition<
       log(
         '[Shot Generation] Episode was deleted during generation. Skipping write.',
       );
-      await markJobCompleted(ctx.client, target.episodeId, 'shot_list', {
-        skipped: true,
-        reason: 'episode-deleted',
+      await applyCommit(ctx, {
+        ops: [
+          jobCompletedWrite(target.episodeId, 'shot_list', {
+            skipped: true,
+            reason: 'episode-deleted',
+          }),
+        ],
       });
 
       return {
@@ -795,63 +800,11 @@ export const shotsStage: StageDefinition<
       );
     }
 
-    await ctx.revisions?.snapshot({
-      table: 'episodes',
-      rowId: target.episodeId,
-      column: 'shot_list',
-      before: episode.shotList,
-      stage: 'shots',
-      runId: run.id,
-    });
-
-    // Clear, then insert, so a re-run does not stack duplicate shots. Cues
-    // and tracks were cut for the old shots and go with them.
-    const { error: clearCuesError } = await ctx.client
-      .from('audio_cues')
-      .delete()
-      .eq('episode_id', target.episodeId);
-
-    if (clearCuesError) {
-      log(
-        `[Shot Generation] Failed to clear existing audio cues: ${clearCuesError.message}`,
-      );
-    }
-
-    const { error: clearTracksError } = await ctx.client
-      .from('audio_tracks')
-      .delete()
-      .eq('episode_id', target.episodeId);
-
-    if (clearTracksError) {
-      log(
-        `[Shot Generation] Failed to clear existing audio tracks: ${clearTracksError.message}`,
-      );
-    }
-
-    const { error: clearShotsError } = await ctx.client
-      .from('shots')
-      .delete()
-      .eq('episode_id', target.episodeId);
-
-    if (clearShotsError) {
-      log(
-        `[Shot Generation] Failed to clear existing shots: ${clearShotsError.message}`,
-      );
-    }
-
     const stamped = ctx.originColumnsAvailable
       ? rows.map(
           (row) => ({ ...row, generation_origin: run.origin }) as ShotRow,
         )
       : rows;
-
-    const { error: insertError } = await ctx.client
-      .from('shots')
-      .insert(stamped);
-
-    if (insertError) {
-      throw new Error(`Failed to insert shots: ${insertError.message}`);
-    }
 
     const shotList = {
       generatedAt: new Date().toISOString(),
@@ -862,19 +815,46 @@ export const shotsStage: StageDefinition<
       processingMethod: 'shot-orchestrator',
     };
 
-    const { error: updateError } = await ctx.client
-      .from('episodes')
-      .update({
-        shot_list: shotList,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', target.episodeId)
-      // No version check: the version may move while the orchestrator runs
-      .is('deleted_at', null);
-
-    if (updateError) {
-      log(`[Shot Generation] Failed to update episode: ${updateError.message}`);
-    }
+    // One transaction under a run, with the content_revisions snapshot of
+    // the shot list, shots and cues it replaces. Clear, then insert, so a
+    // re-run does not stack duplicate shots; cues and tracks were cut for
+    // the old shots and go with them. A failed clear now fails the commit
+    // instead of leaving the old shots beside the new ones.
+    await applyCommit(ctx, {
+      ops: [
+        {
+          op: 'delete',
+          table: 'audio_cues',
+          match: [eq('episode_id', target.episodeId)],
+        },
+        {
+          op: 'delete',
+          table: 'audio_tracks',
+          match: [eq('episode_id', target.episodeId)],
+        },
+        {
+          op: 'delete',
+          table: 'shots',
+          match: [eq('episode_id', target.episodeId)],
+        },
+        { op: 'insert', table: 'shots', rows: stamped },
+        {
+          op: 'update',
+          table: 'episodes',
+          values: {
+            shot_list: shotList,
+            updated_at: new Date().toISOString(),
+          },
+          // No version check: the version may move while the orchestrator runs
+          match: [eq('id', target.episodeId), is('deleted_at', null)],
+        },
+        jobCompletedWrite(target.episodeId, 'shot_list', {
+          totalShots: rows.length,
+          scenesProcessed: episode.scenes.length,
+          totalDuration,
+        }),
+      ],
+    });
 
     const reelCandidateScenes = reelScout?.topReelCandidates ?? [];
 
@@ -882,12 +862,6 @@ export const shotsStage: StageDefinition<
       `[Shot Generation] ${rows.length} shots across ${episode.scenes.length} scenes. ` +
         `Reel candidates: ${reelCandidateScenes.join(', ') || 'none'}`,
     );
-
-    await markJobCompleted(ctx.client, target.episodeId, 'shot_list', {
-      totalShots: rows.length,
-      scenesProcessed: episode.scenes.length,
-      totalDuration,
-    });
 
     const result: CommitResult<ShotsCommitData> = {
       status: 'committed',

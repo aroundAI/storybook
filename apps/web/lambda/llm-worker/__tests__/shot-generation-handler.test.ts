@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { withRun } from '@kit/ai-gateway';
 import {
+  type RecordingClient,
   fakeRunHandle,
   recordingClient,
   tableResponder,
@@ -88,9 +89,10 @@ vi.mock('../utils/context-builder', async (importOriginal) => ({
 }));
 
 /** The shots run the job boundary put in scope; the orchestrator writes, so the run's writer is never reached. */
-function shotsRun() {
+function shotsRun(commitsThrough?: RecordingClient['client']) {
   const dispatched: string[] = [];
   const fake = fakeRunHandle({
+    commitsThrough,
     stage: 'shots',
     accountId: episodeFixture.ids.accountId,
     projectId: episodeFixture.ids.projectId,
@@ -144,7 +146,7 @@ describe('processShotGeneration', () => {
 
   it('writes what the old handler wrote, and opens the audio pass as a dispatched child run with the job it queued', async () => {
     const recording = client();
-    const { run, state, dispatched } = shotsRun();
+    const { run, state, dispatched } = shotsRun(recording.client);
 
     const result = await withRun(run, () =>
       processShotGeneration(payload, recording.client),
@@ -216,7 +218,7 @@ describe('processShotGeneration', () => {
 
   it('opens no audio pass when the stage refuses the output', async () => {
     const recording = client();
-    const { run, state, dispatched } = shotsRun();
+    const { run, state, dispatched } = shotsRun(recording.client);
     const orchestrator = await import('@kit/episodes/agent/shot-orchestrator');
     const broken = orchestratorResult();
     broken.shots[0]!.veoPrompt = { ...broken.shots[0]!.veoPrompt, avoid: '' };

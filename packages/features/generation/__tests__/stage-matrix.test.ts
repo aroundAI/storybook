@@ -544,6 +544,9 @@ function harness(
 ) {
   const state = runStoreState();
   const recording = recordingClient(runStoreResponder(state, fixture.respond));
+  // The commit's plan is replayed through the same recording (one call per
+  // write), so the matrix sees the rows apply_generation_commit would write
+  state.client = recording.client;
   const ctx: RunCtx = {
     client: recording.client,
     accountId: TEST_IDS.account,

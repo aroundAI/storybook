@@ -12,9 +12,11 @@ import {
   screenplayRefinementStage,
   screenplayStage,
   splitScreenplayIntoParts,
+  planWrites,
 } from '../src';
 import {
   type RecordedCall,
+  recordCommits,
   recordingClient,
   tableResponder,
   writesOf,
@@ -162,6 +164,7 @@ function ctxFor(supabase: Ctx['client'], extra: Partial<Ctx> = {}): Ctx {
     accountId: ACCOUNT_ID,
     userId: USER_ID,
     episodeContext: async () => WORLD,
+    commits: recordCommits(supabase).apply,
     ...extra,
   };
 }
@@ -369,14 +372,10 @@ describe('screenplay', () => {
 
   it('commit flattens the parts, writes screenplay_data and storyboard, rebuilds the lines and closes the job', async () => {
     const recording = client();
-    const snapshots: unknown[] = [];
+    const commits = recordCommits(recording.client);
     const ctx = ctxFor(recording.client, {
       originColumnsAvailable: true,
-      revisions: {
-        snapshot: async (input) => {
-          snapshots.push(input);
-        },
-      },
+      commits: commits.apply,
     });
 
     const result = await screenplayStage.commit(ctx, run, target, [
@@ -441,12 +440,20 @@ describe('screenplay', () => {
       status: 'completed',
       output_data: { scenesCreated: 2, dialogueLinesCreated: 3 },
     });
-    expect(snapshots).toEqual([
-      expect.objectContaining({
-        table: 'episodes',
-        column: 'screenplay_data',
-        stage: 'screenplay',
-      }),
+    // One plan: the screenplay, the dialogue rebuild (one skippable group)
+    // and the job. Under a run the database snapshots screenplay_data,
+    // status and the dialogue lines from it before writing
+    expect(commits.plans).toHaveLength(1);
+    expect(commits.plans[0]!.ops.map((step) => step.op)).toEqual([
+      'update',
+      'group',
+      'update',
+    ]);
+    expect(planWrites(commits.plans[0]!).map((w) => w.table)).toEqual([
+      'episodes',
+      'dialogue_lines',
+      'dialogue_lines',
+      'generation_jobs',
     ]);
   });
 

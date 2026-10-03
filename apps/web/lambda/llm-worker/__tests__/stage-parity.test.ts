@@ -286,14 +286,20 @@ vi.mock('@kit/episodes/agent/translation-orchestrator', () => ({
   })),
 }));
 
+/** The client a commit's plan is replayed through: the handler's recording. */
+type RunClient = NonNullable<
+  Parameters<typeof fakeRunHandle>[0]
+>['commitsThrough'];
+
 /**
  * The run the handlers write through (FILM-1902): its backend answers the
  * screenplay-refinement brief the way the old Lambda executor stub did, and
  * refuses any other prompt, so a handler reaching the model for something
  * else fails here.
  */
-function parityRun() {
+function parityRun(commitsThrough?: RunClient) {
   return fakeRunHandle({
+    commitsThrough,
     accountId: IDS.accountId,
     projectId: IDS.projectId,
     targetId: IDS.episodeId,
@@ -410,7 +416,7 @@ describe('stage parity: the rewritten handlers write what the old ones wrote (FI
     );
     const recording = recordingClient(responder());
 
-    const result = await withRun(parityRun(), () =>
+    const result = await withRun(parityRun(recording.client), () =>
       processScreenplayConversion(
         { ...IDS, contentStyle: 'dialogue-heavy' },
         recording.client,
@@ -429,7 +435,7 @@ describe('stage parity: the rewritten handlers write what the old ones wrote (FI
     );
     const recording = recordingClient(responder());
 
-    const result = await withRun(parityRun(), () =>
+    const result = await withRun(parityRun(recording.client), () =>
       processScreenplayRefinement(
         { ...IDS, feedback: 'Make Maya calmer in scene 1' },
         recording.client,
@@ -448,7 +454,7 @@ describe('stage parity: the rewritten handlers write what the old ones wrote (FI
     );
     const recording = recordingClient(responder());
 
-    const result = await withRun(parityRun(), () =>
+    const result = await withRun(parityRun(recording.client), () =>
       processTranslateDialogue(
         { ...IDS, targetLanguage: 'es', preserveTiming: true },
         recording.client,
@@ -467,7 +473,7 @@ describe('stage parity: the rewritten handlers write what the old ones wrote (FI
     );
     const recording = recordingClient(responder());
 
-    const result = await withRun(parityRun(), () =>
+    const result = await withRun(parityRun(recording.client), () =>
       processBatchTranslateMetadata(
         { accountId: IDS.accountId, userId: IDS.userId, items: METADATA_ITEMS },
         recording.client,

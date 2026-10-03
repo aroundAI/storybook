@@ -1,6 +1,7 @@
 import {
   type RecordedWrite,
   type Responder,
+  recordCommits,
   tableResponder,
 } from '../../src/testing';
 import type { Ctx, EpisodeContextLoader, GenerateFn } from '../../src/types';
@@ -118,6 +119,7 @@ export function ctxFor(
     userId: episodeFixture.ids.userId,
     episodeContext: fixtureEpisodeContext,
     log: () => undefined,
+    commits: recordCommits(client).apply,
     ...overrides,
   };
 }

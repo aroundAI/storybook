@@ -22,6 +22,12 @@ import type { Json } from '@kit/supabase/database';
 
 import { type PromptFile, buildBrief, singlePart } from '../brief';
 import {
+  type CommitWrite,
+  applyCommit,
+  eq,
+  resultRows,
+} from '../commit-plan';
+import {
   episodeRowFromOutline,
   episodeRowUpdateFromOutline,
 } from '../episode-rows';
@@ -438,62 +444,56 @@ export const seasonOutlineStage: StageDefinition<
       });
     });
 
+    // One transaction: the drafts this outline replaces and the new rows.
+    // requireRows: RLS filters a refused update to no rows (KB-105)
+    const applied = await applyCommit(ctx, {
+      ops: [
+        ...toUpdate.map(
+          (update): CommitWrite => ({
+            op: 'update',
+            table: 'episodes',
+            values: {
+              ...episodeRowUpdateFromOutline(update.outline),
+              generation_origin: run.origin as unknown as Json,
+            },
+            match: [eq('id', update.id), eq('project_id', target.projectId)],
+            requireRows: true,
+          }),
+        ),
+        ...(toInsert.length > 0
+          ? [
+              {
+                key: 'episodes',
+                op: 'insert',
+                table: 'episodes',
+                // Every row carries who wrote it: the run's origin (FILM-1903)
+                rows: toInsert.map(({ row }) => ({
+                  ...row,
+                  generation_origin: run.origin as unknown as Json,
+                })),
+                returning: ['id', 'number', 'title', 'status'],
+              } satisfies CommitWrite,
+            ]
+          : []),
+      ],
+    });
+
     for (const update of toUpdate) {
-      const { data: replaced, error } = await client
-        .from('episodes')
-        .update({
-          ...episodeRowUpdateFromOutline(update.outline),
-          generation_origin: run.origin as unknown as Json,
-        })
-        .eq('id', update.id)
-        .eq('project_id', target.projectId)
-        .select('id');
-
-      if (error) {
-        throw new Error(
-          `Failed to replace episode ${update.number}: ${error.message}`,
-        );
-      }
-
-      // RLS filters a refused update to no rows, without an error (KB-105)
-      if (!replaced?.length) {
-        throw new Error(
-          `Failed to replace episode ${update.number}: no row was updated`,
-        );
-      }
-
       created.push({ ...update.outline, number: update.number, id: update.id });
     }
 
-    if (toInsert.length > 0) {
-      const { data: insertedRows, error: insertError } = await client
-        .from('episodes')
-        // Every row carries who wrote it: the run's origin (FILM-1903)
-        .insert(
-          toInsert.map(({ row }) => ({
-            ...row,
-            generation_origin: run.origin as unknown as Json,
-          })),
-        )
-        .select('id, number, title, status');
+    const inserted = resultRows(applied, 'episodes') as Array<{
+      id: string;
+      number: number;
+    }>;
 
-      if (insertError) {
-        throw new Error(`Failed to create episodes: ${insertError.message}`);
-      }
-
-      const inserted = (insertedRows ?? []) as Array<{
-        id: string;
-        number: number;
-      }>;
-
-      toInsert.forEach(({ row, outline }, index) => {
-        const id =
-          inserted.find((r) => r.number === row.number)?.id ??
-          inserted[index]?.id ??
-          '';
-        created.push({ ...outline, number: row.number, id });
-      });
-    }
+    toInsert.forEach(({ row, outline }, index) => {
+      const id =
+        inserted.find((r) => r.number === row.number)?.id ??
+        inserted[index]?.id ??
+        '';
+      created.push({ ...outline, number: row.number, id });
+    });
 
     created.sort((a, b) => a.number - b.number);
 

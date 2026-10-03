@@ -29,7 +29,8 @@ import type { Json } from '@kit/supabase/database';
 
 import { type PromptFile, buildBrief } from '../brief';
 import { StageOutputRejected } from '../checks';
-import { markJobCompleted } from '../jobs';
+import { applyCommit, eq, is } from '../commit-plan';
+import { jobCompletedWrite } from '../jobs';
 import { registerStage } from '../registry';
 import type {
   Brief,
@@ -45,7 +46,7 @@ import { mergeCharacterArcs } from './shared/character-arcs';
 import {
   characterIdMap,
   dialogueRowsFromScenes,
-  rebuildDialogueLines,
+  dialogueRebuildSteps,
 } from './shared/dialogue-lines';
 import { memoised } from './shared/memo';
 import { checkSceneNumbering, checkScenes } from './shared/scene-checks';
@@ -611,9 +612,13 @@ async function commitScreenplay(
     console.warn(
       `${LOG} Episode was deleted during generation. Skipping write.`,
     );
-    await markJobCompleted(ctx.client, episodeId, 'screenplay', {
-      skipped: true,
-      reason: 'episode-deleted',
+    await applyCommit(ctx, {
+      ops: [
+        jobCompletedWrite(episodeId, 'screenplay', {
+          skipped: true,
+          reason: 'episode-deleted',
+        }),
+      ],
     });
 
     return {
@@ -632,15 +637,6 @@ async function commitScreenplay(
     };
   }
 
-  await ctx.revisions?.snapshot({
-    table: 'episodes',
-    rowId: episodeId,
-    column: 'screenplay_data',
-    before: currentEpisode.screenplay_data,
-    stage: 'screenplay',
-    runId: run.id,
-  });
-
   const update: Record<string, unknown> = {
     screenplay_data: screenplayData as unknown as Json,
     status: 'storyboard',
@@ -651,47 +647,46 @@ async function commitScreenplay(
     update.generation_origin = run.origin;
   }
 
-  const { data: updatedEpisode, error: updateError } = await ctx.client
-    .from('episodes')
-    .update(update)
-    .eq('id', episodeId)
-    // NOTE: No .eq('version', ...) — version may drift during orchestrator mid-run writes
-    .is('deleted_at', null)
-    .select()
-    .single();
-
-  if (updateError) {
-    throw new Error(`Failed to update episode: ${updateError.message}`);
-  }
-
-  if (!updatedEpisode) {
-    throw new Error('Episode not found or was deleted');
-  }
-
   const dialogueLines = dialogueRowsFromScenes(
     episodeId,
     scenes,
     characterIdMap(inputs.characters),
   );
 
-  await rebuildDialogueLines(
-    ctx.client,
-    episodeId,
-    dialogueLines,
-    'Screenplay Conversion',
-  );
+  // One transaction under a run: the screenplay (its content_revisions
+  // snapshot with it), the dialogue rebuild and the job's completion
+  const applied = await applyCommit(ctx, {
+    ops: [
+      {
+        key: 'episode',
+        op: 'update',
+        table: 'episodes',
+        values: update,
+        // NOTE: No version filter — version may drift during orchestrator mid-run writes
+        match: [eq('id', episodeId), is('deleted_at', null)],
+        requireRows: true,
+        returning: ['id', 'status', 'version'],
+      },
+      ...dialogueRebuildSteps(episodeId, dialogueLines),
+      jobCompletedWrite(episodeId, 'screenplay', {
+        model: 'screenplay-orchestrator',
+        provider: 'multi-agent',
+        costCents,
+        scenesCreated: scenes.length,
+        dialogueLinesCreated: dialogueLines.length,
+      }),
+    ],
+  });
+
+  const updatedEpisode = applied.results.episode![0] as {
+    id: string;
+    status: string;
+    version: number;
+  };
 
   console.log(
     `${LOG} Created ${scenes.length} scenes, ${dialogueLines.length} dialogue lines`,
   );
-
-  await markJobCompleted(ctx.client, episodeId, 'screenplay', {
-    model: 'screenplay-orchestrator',
-    provider: 'multi-agent',
-    costCents,
-    scenesCreated: scenes.length,
-    dialogueLinesCreated: dialogueLines.length,
-  });
 
   return {
     status: 'committed',

@@ -34,7 +34,7 @@ acceptance_criteria:
     evidence: null
   - text: "Handles optimistic locking"
     met: false
-    reason: "no longer true — the shots stage's write drops the version guard (`packages/features/generation/src/stages/shots.ts:865`, 669b66e3)"
+    reason: "no longer true — the shots stage's write drops the version guard (`packages/features/generation/src/stages/shots.ts:849`, 669b66e3)"
   - text: "Completes within 40 seconds"
     met: false
     reason: "owner check OC-10 (docs/OWNER-CHECKS.md) — runtime timing of an async agent job; needs a timed run"
@@ -46,7 +46,7 @@ acceptance_criteria:
     reason: "retired — eb3b01f0 moved to per-scene processing, which needs a screenplay (`packages/features/episodes/src/lib/server/mutations/shot-list-actions.ts:78`)"
 remaining:
   - criterion: "Handles optimistic locking"
-    reason: "no version guard on the shots stage's write since 669b66e3 (`packages/features/generation/src/stages/shots.ts:865`)"
+    reason: "no version guard on the shots stage's write since 669b66e3 (`packages/features/generation/src/stages/shots.ts:849`)"
     closed_by: "owner"
 open_questions: []
 notes: |

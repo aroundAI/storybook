@@ -3,6 +3,12 @@
  * answer from an in-memory row, so `renewLease`, the status transitions and
  * `snapshot` behave as the database would without one. Test-only.
  */
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+import type { Database } from '@kit/supabase/database';
+
+import type { CommitPlan } from '../commit-plan';
+import { applyPlanThroughClient } from '../commit-through-client';
 import { RunHandle } from '../runs/run-handle';
 import type {
   RunBackend,
@@ -12,7 +18,12 @@ import type {
   RunRow,
 } from '../runs/types';
 import type { GenerationMode, StageKey, TargetType } from '../types';
-import { type RecordedCall, type Responder, recordingClient } from './index';
+import {
+  type AsyncResponder,
+  type RecordedCall,
+  type Responder,
+  recordingClient,
+} from './index';
 
 export const TEST_IDS = {
   run: '19030000-0000-4000-8000-00000000aaaa',
@@ -111,6 +122,14 @@ export interface RunStoreState {
   settings: Map<string, Record<string, unknown>>;
   /** `episodes.version` by episode id, for TARGET_CHANGED */
   episodeVersions: Map<string, number>;
+  /** Every `apply_generation_commit`, in order */
+  commits: Array<{ runId: string; plan: CommitPlan; finalize: boolean }>;
+  /**
+   * The client a commit's plan is replayed through, one PostgREST call per
+   * write, so a test records the rows the database function would write.
+   * `fakeRunHandle` sets it; a test that builds its own recording sets it.
+   */
+  client?: SupabaseClient<Database>;
 }
 
 function isOpen(row: RunRow, now = new Date()) {
@@ -127,7 +146,7 @@ function isOpen(row: RunRow, now = new Date()) {
 export function runStoreResponder(
   state: RunStoreState,
   fallback: Responder = () => undefined,
-): Responder {
+): AsyncResponder {
   let nextId = 1;
 
   return (call: RecordedCall) => {
@@ -212,6 +231,71 @@ export function runStoreResponder(
           }
           return { data: { ok: true, run: toSnakeRow(row) } };
         }
+        case 'apply_generation_commit': {
+          const row = state.rows.get(args.p_run_id as string);
+          if (!row) return { data: { ok: false, code: 'RUN_NOT_FOUND' } };
+          if (!isOpen(row)) {
+            return {
+              data: { ok: false, code: 'RUN_NOT_OPEN', run: toSnakeRow(row) },
+            };
+          }
+
+          const version =
+            row.targetType === 'episode'
+              ? state.episodeVersions.get(row.targetId)
+              : undefined;
+
+          if (
+            row.targetVersion !== null &&
+            version !== undefined &&
+            version !== row.targetVersion
+          ) {
+            return {
+              data: {
+                ok: false,
+                code: 'TARGET_CHANGED',
+                current_version: version,
+                run: toSnakeRow(row),
+              },
+            };
+          }
+
+          const plan = args.p_plan as CommitPlan;
+          const finalize = args.p_finalize !== false;
+          state.commits.push({ runId: row.id, plan, finalize });
+
+          if (!state.client) {
+            throw new Error(
+              'fake run store: set state.client to replay a commit plan',
+            );
+          }
+
+          // A failed write comes back as the database's error, as PostgREST
+          // reports a function that raised
+          return applyPlanThroughClient(state.client, plan).then(
+            (applied) => {
+              if (finalize) {
+                row.status = 'committed';
+                row.finalizedAt = new Date().toISOString();
+              }
+
+              return {
+                data: {
+                  ok: true,
+                  run: toSnakeRow(row),
+                  results: applied.results,
+                  skipped: applied.skipped,
+                  revision_id: null,
+                },
+              };
+            },
+            (error: unknown) => ({
+              error: {
+                message: error instanceof Error ? error.message : String(error),
+              },
+            }),
+          );
+        }
         case 'record_content_revision': {
           state.revisions.push({
             runId: args.p_run_id as string,
@@ -262,6 +346,7 @@ export function runStoreState(rows: RunRow[] = []): RunStoreState {
     revisions: [],
     settings: new Map(),
     episodeVersions: new Map(),
+    commits: [],
   };
 }
 
@@ -281,11 +366,18 @@ export function fakeRunHandle(
     backend?: RunBackend;
     ctx?: Partial<RunCtx>;
     fallback?: Responder;
+    /**
+     * The client a commit's plan is replayed through: a handler test's own
+     * recording, so the rows the commit writes land beside the handler's
+     * other calls. Defaults to the run's recording.
+     */
+    commitsThrough?: SupabaseClient<Database>;
   } = {},
 ): FakeRun {
   const row = fakeRunRow(options);
   const state = runStoreState([row]);
   const recording = recordingClient(runStoreResponder(state, options.fallback));
+  state.client = options.commitsThrough ?? recording.client;
   const ctx: RunCtx = {
     client: recording.client,
     accountId: row.accountId,

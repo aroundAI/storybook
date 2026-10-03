@@ -10,6 +10,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { Database } from '@kit/supabase/database';
 
+import { type CommitWrite, eq, inList } from './commit-plan';
 import type { GenerationJobType } from './types';
 
 export type { GenerationJobType } from './types';
@@ -46,6 +47,34 @@ export async function markJobProcessing(
       `[Job Tracking] Marked ${jobType} as processing for episode ${episodeId}`,
     );
   }
+}
+
+/**
+ * markJobCompleted as a write in a commit's plan: the same row and values,
+ * applied in the commit's transaction. Skippable, as the bookkeeping always
+ * was: a failure is logged, not fatal.
+ */
+export function jobCompletedWrite(
+  episodeId: string,
+  jobType: GenerationJobType,
+  metadata?: Record<string, unknown>,
+): CommitWrite {
+  return {
+    op: 'update',
+    table: 'generation_jobs',
+    values: {
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      ...(metadata ? { output_data: metadata } : {}),
+    },
+    match: [
+      eq('reference_type', 'episode'),
+      eq('reference_id', episodeId),
+      eq('job_type', jobType),
+      inList('status', ['queued', 'processing']),
+    ],
+    onError: 'skip',
+  };
 }
 
 export async function markJobCompleted(

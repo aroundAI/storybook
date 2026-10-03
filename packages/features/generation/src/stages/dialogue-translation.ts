@@ -15,6 +15,7 @@ import dialogueTranslation from '@kit/prompt-engine/prompts/audio-generation/dia
 import { sanitizeForPrompt } from '@kit/shared/prompt-sanitiser';
 
 import { type PromptFile, buildBrief } from '../brief';
+import { applyCommit } from '../commit-plan';
 import { registerStage } from '../registry';
 import type {
   Brief,
@@ -469,13 +470,9 @@ export const dialogueTranslationStage: StageDefinition<
       status: 'pending',
     }));
 
-    const { error: insertError } = await ctx.client
-      .from('dialogue_lines')
-      .insert(newLines);
-
-    if (insertError) {
-      throw new Error(`Failed to insert translations: ${insertError.message}`);
-    }
+    await applyCommit(ctx, {
+      ops: [{ op: 'insert', table: 'dialogue_lines', rows: newLines }],
+    });
 
     return {
       status: 'committed',

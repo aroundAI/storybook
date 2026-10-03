@@ -31,7 +31,7 @@ acceptance_criteria:
     reason: "no longer true — extraction is queued; the dialog reports done with 0 facts (`apps/web/app/home/[account]/studio/[projectSlug]/research/_components/upload-source-dialog.tsx:247`); `ExtractionStatusBanner` is never rendered"
   - text: "Extracted facts appear in Facts list"
     met: false
-    reason: "owner check OC-7 (docs/OWNER-CHECKS.md) — the fact_extraction stage's commit inserts into `verified_facts` (`packages/features/generation/src/stages/fact-extraction.ts:149`); needs a queued job run end to end"
+    reason: "owner check OC-7 (docs/OWNER-CHECKS.md) — the fact_extraction stage's commit inserts into `verified_facts` (`packages/features/generation/src/stages/fact-extraction.ts:151`); needs a queued job run end to end"
   - text: "Source credibility tier is stored"
     met: true
     evidence: null

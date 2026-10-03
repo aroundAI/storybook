@@ -16,6 +16,7 @@ import { sanitizeForPrompt } from '@kit/shared/prompt-sanitiser';
 import type { Json } from '@kit/supabase/database';
 
 import { type PromptFile, buildBrief, singlePart } from '../brief';
+import { applyCommit, eq, is } from '../commit-plan';
 import { premiseDepthInstructions } from '../formatters';
 import { registerStage } from '../registry';
 import type { Brief, CheckError, StageDefinition } from '../types';
@@ -204,29 +205,27 @@ export const ideationStage: StageDefinition<
 
     const metadata = (episode.metadata as Record<string, unknown>) ?? {};
 
-    const { data: updated, error } = await ctx.client
-      .from('episodes')
-      .update({
-        metadata: {
-          ...metadata,
-          ideas: out.ideas,
-          ideas_generated_at: generatedAt,
-        } as Json,
-        // Who wrote it: the run's origin (FILM-1903)
-        generation_origin: run.origin as unknown as Json,
-      })
-      .eq('id', target.episodeId)
-      .is('deleted_at', null)
-      .select('id');
-
-    if (error) {
-      throw new Error(`Failed to store the ideas: ${error.message}`);
-    }
-
-    // RLS filters a refused update to no rows, without an error (KB-105)
-    if (!updated?.length) {
-      throw new Error('Failed to store the ideas: the episode was not updated');
-    }
+    // One write; requireRows: RLS filters a refused update to no rows,
+    // without an error (KB-105)
+    await applyCommit(ctx, {
+      ops: [
+        {
+          op: 'update',
+          table: 'episodes',
+          values: {
+            metadata: {
+              ...metadata,
+              ideas: out.ideas,
+              ideas_generated_at: generatedAt,
+            } as Json,
+            // Who wrote it: the run's origin (FILM-1903)
+            generation_origin: run.origin as unknown as Json,
+          },
+          match: [eq('id', target.episodeId), is('deleted_at', null)],
+          requireRows: true,
+        },
+      ],
+    });
 
     return { status: 'committed', data: { ideas: out.ideas, generatedAt } };
   },

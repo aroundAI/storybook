@@ -13,11 +13,13 @@ import {
   runStage,
   stageRegistry,
   storyRefinementStage,
+  planWrites,
 } from '../src';
 import type { BuildBriefInput } from '../src/brief';
 import {
   type RecordedCall,
   flattenRows,
+  recordCommits,
   recordingClient,
   tableResponder,
   writesOf,
@@ -144,6 +146,7 @@ function ctxFor(client: Ctx['client'], extra: Partial<Ctx> = {}): Ctx {
     accountId: ACCOUNT_ID,
     userId: USER_ID,
     episodeContext: async () => WORLD,
+    commits: recordCommits(client).apply,
     ...extra,
   };
 }
@@ -421,14 +424,8 @@ describe('story_refinement', () => {
 
   it('commit merges the refined fields over the stored story, keeps the undo copy and the history, and closes the job', async () => {
     const recording = episodeClient();
-    const snapshots: unknown[] = [];
-    const ctx = ctxFor(recording.client, {
-      revisions: {
-        snapshot: async (input) => {
-          snapshots.push(input);
-        },
-      },
-    });
+    const commits = recordCommits(recording.client);
+    const ctx = ctxFor(recording.client, { commits: commits.apply });
 
     const result = await storyRefinementStage.commit(
       ctx,
@@ -496,16 +493,18 @@ describe('story_refinement', () => {
       args: ['job_type', 'story-refinement'],
     });
 
-    expect(snapshots).toEqual([
-      {
-        table: 'episodes',
-        rowId: EPISODE_ID,
-        column: 'story_data',
-        before: STORY,
-        stage: 'story_refinement',
-        runId: undefined,
-      },
+    // One plan: the story and the job together. Under a run the database
+    // snapshots story_data (and metadata) from it before writing
+    expect(commits.plans).toHaveLength(1);
+    expect(planWrites(commits.plans[0]!).map((w) => w.table)).toEqual([
+      'episodes',
+      'generation_jobs',
     ]);
+    expect(planWrites(commits.plans[0]!)[0]).toMatchObject({
+      op: 'update',
+      values: { story_data: expect.any(Object), metadata: expect.any(Object) },
+      requireRows: true,
+    });
   });
 
   it('commit skips a deleted episode and still closes the job', async () => {
