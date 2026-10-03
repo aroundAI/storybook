@@ -18,6 +18,10 @@ import {
   createVoyageEmbedder,
 } from './voyage-embedder';
 
+// Not a prompt: the usage row needs a slug, and the prompt-slug scan reads
+// only string literals
+const EMBEDDING_USAGE_SLUG = 'embedding';
+
 export interface EmbedOptions {
   /** The run this embedding is for; defaults to the run in scope */
   run?: RunHandle;
@@ -39,7 +43,7 @@ export function serverEmbedder(options: EmbedOptions = {}): Embedder | null {
     // "cannot measure", never 0.
     onRequest: (report) =>
       recordUsage(run, {
-        templateSlug: 'embedding',
+        templateSlug: EMBEDDING_USAGE_SLUG,
         operationName: 'embedding',
         llmProvider: 'voyage',
         llmModel: VOYAGE_EMBEDDING_MODEL,

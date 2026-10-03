@@ -165,6 +165,13 @@ function fakeVoyage(options: { status?: number } = {}) {
   const requests: Array<{ input: string[]; input_type: string }> = [];
 
   const fetchMock = vi.fn(async (url: string, init: RequestInit) => {
+    // The gateway also writes the embedding's usage row (FILM-1902) through
+    // the service-role client; that is the only other request allowed
+    if (!url.startsWith('https://api.voyageai.com/')) {
+      expect(url).toContain('/rest/v1/llm_usage_analytics');
+      return new Response(null, { status: 201 });
+    }
+
     expect(url).toBe('https://api.voyageai.com/v1/embeddings');
     const body = JSON.parse(init.body as string);
     requests.push(body);
