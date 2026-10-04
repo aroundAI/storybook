@@ -450,6 +450,7 @@ export {
   CLOSED_TAG_VALUES,
   DURATION_BANDS,
   DURATION_DIMENSION,
+  EDIT_STYLE_DIMENSIONS,
   GENOME_DIMENSION_STAGE,
   GENOME_OBSERVABLE_DIMENSIONS,
   GENOME_SEMANTIC_DIMENSIONS,
@@ -458,11 +459,15 @@ export {
   closedValuesFor,
   durationAttribute,
   durationBandOf,
+  editStyleAttributes,
   parseVideoTag,
   splitVideoTags,
+  withEditStyle,
 } from './lib/genome-attributes';
 export type {
   DurationBand,
+  EditStyleDimension,
+  EditStyleFigures,
   GenomeAttribute,
   GenomeDimension,
   GenomeObservableDimension,

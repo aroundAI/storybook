@@ -17,6 +17,7 @@ import {
 } from '@kit/clickhouse';
 import {
   isClickHouseEnabled,
+  queryEditStyleForVideos,
   querySegmentVideoMeasures,
 } from '@kit/clickhouse/server';
 
@@ -170,11 +171,15 @@ export async function getGenomeFindingsService(
       ? onViews
       : await read(viewsDenominator);
 
-  const tests = await loadLinkedTests(
-    client,
-    input.accountId,
-    input.connectionId,
-  );
+  const [tests, editStyles] = await Promise.all([
+    loadLinkedTests(client, input.accountId, input.connectionId),
+    // Optional dimensions (FILM-2006): how each video's episode was cut in
+    // StorybookStudio, for the videos whose episode was delivered from it.
+    queryEditStyleForVideos({
+      videoIds: rows.map((row) => row.videoId),
+      accountId: input.accountId,
+    }),
+  ]);
 
   return {
     status: 'analysed',
@@ -192,6 +197,7 @@ export async function getGenomeFindingsService(
       checkpointDays: input.checkpointDays,
       control: input.control,
       tests,
+      editStyles,
     }),
   };
 }

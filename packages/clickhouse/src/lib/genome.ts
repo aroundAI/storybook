@@ -28,7 +28,9 @@ import {
   durationAttribute,
   durationBandOf,
   splitVideoTags,
+  withEditStyle,
 } from './genome-attributes';
+import type { EditStyleFigures } from './genome-attributes';
 import type {
   ClaimStrength,
   ComparableDefinition,
@@ -64,6 +66,11 @@ export interface GenomeVideo {
   tags: readonly string[];
   /** The stage measure; null when the platform did not report it for this video. */
   value: number | null;
+  /**
+   * Its episode's latest delivered StorybookStudio edit (FILM-2006); absent
+   * or null when it was never edited there, which adds no attribute.
+   */
+  editStyle?: EditStyleFigures | null;
 }
 
 /**
@@ -151,11 +158,12 @@ function measured(video: GenomeVideo): MeasuredVideo | null {
 
   const { taxonomy, genome } = splitVideoTags(video.tags);
   const duration = durationAttribute(video.assetDurationSeconds);
+  const attributes = withEditStyle(genome, video.editStyle);
 
   return {
     videoId: video.videoId,
     value: video.value,
-    attributes: duration ? [...genome, duration] : genome,
+    attributes: duration ? [...attributes, duration] : attributes,
     topics: taxonomy
       .filter((tag) => tag.dimension === 'topic')
       .map((tag) => tag.value)

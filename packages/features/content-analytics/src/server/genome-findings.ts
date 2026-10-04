@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   AnalyticsPlatform,
   CreativeTemplate,
+  EditStyleFigures,
   FormatFamily,
   FunnelStage,
   GenomeAnalysis,
@@ -148,6 +149,12 @@ export function genomeFindingsFrom(input: {
   checkpointDays: number;
   control: 'observed' | 'controlled';
   tests: readonly LinkedTest[];
+  /**
+   * Each video's edit style from a delivered StorybookStudio session
+   * (FILM-2006), keyed by video id; a video absent from it gains no
+   * edit-style attribute.
+   */
+  editStyles?: ReadonlyMap<string, EditStyleFigures>;
 }): GenomeFindings {
   const analysis = analyseGenome({
     videos: input.rows.flatMap((row) =>
@@ -161,6 +168,7 @@ export function genomeFindingsFrom(input: {
               assetDurationSeconds: row.assetDurationSeconds,
               tags: row.tags,
               value: row.value,
+              editStyle: input.editStyles?.get(row.videoId) ?? null,
             },
           ]
         : [],

@@ -31,6 +31,9 @@ const state: {
   /** Filters the experiments reads received, as [method, column, value]. */
   filters: Array<[string, string, unknown]>;
   channelFilters: Array<[string, string, unknown]>;
+  /** edit_sessions_fact per video (FILM-2006), and what it was asked. */
+  editStyles: Map<string, Record<string, unknown>>;
+  editStyleCalls: Array<{ videoIds: string[]; accountId: string }>;
 } = {
   calls: [],
   platform: 'youtube',
@@ -42,6 +45,8 @@ const state: {
   channelTests: [],
   filters: [],
   channelFilters: [],
+  editStyles: new Map(),
+  editStyleCalls: [],
 };
 
 vi.mock('@kit/next/actions', () => ({
@@ -108,6 +113,13 @@ vi.mock('@kit/clickhouse/server', () => ({
       ? state.engagedRows
       : state.rows;
   },
+  queryEditStyleForVideos: async (input: {
+    videoIds: string[];
+    accountId: string;
+  }) => {
+    state.editStyleCalls.push(input);
+    return state.editStyles;
+  },
 }));
 
 function row(id: string, value: number | null, tags: string[]) {
@@ -142,6 +154,8 @@ beforeEach(() => {
   state.channelTests = [];
   state.filters = [];
   state.channelFilters = [];
+  state.editStyles = new Map();
+  state.editStyleCalls = [];
   state.rows = Array.from({ length: 10 }, (_, index) => {
     const value = (index + 1) / 100;
     return row(`v${index + 1}`, value, [
@@ -182,6 +196,51 @@ describe('getGenomeFindingsAction', () => {
       result.analysis.findings.length,
     );
     expect(result.recommendations[0]?.evidence).toBeDefined();
+  });
+
+  it('adds edit style as an optional dimension for videos delivered from the Studio (FILM-2006)', async () => {
+    // v8..v10 are the winners above; cut fast in the Studio. v1..v3 cut
+    // slowly; v4..v7 were never edited there and gain nothing.
+    const style = (cutsPerMinute: number) => ({
+      cutsPerMinute,
+      avgShotLength: null,
+      hookType: null,
+      aiShare: null,
+    });
+    state.editStyles = new Map([
+      ['v1', style(3)],
+      ['v2', style(3)],
+      ['v3', style(3)],
+      ['v8', style(20)],
+      ['v9', style(20)],
+      ['v10', style(20)],
+    ]);
+
+    const result = await getGenomeFindingsAction(input);
+    if (result.status !== 'analysed') throw new Error(result.status);
+
+    expect(state.editStyleCalls).toEqual([
+      {
+        videoIds: state.rows.map((entry) => entry.videoId),
+        accountId: ACCOUNT,
+      },
+    ]);
+
+    const finding = result.analysis.findings.find(
+      (entry) => entry.attribute.tag === 'cuts_per_minute:15-to-30',
+    );
+    expect(finding?.attribute.source).toBe('edit_sessions_fact');
+  });
+
+  it('with no delivered edits, no edit-style dimension appears', async () => {
+    const result = await getGenomeFindingsAction(input);
+    if (result.status !== 'analysed') throw new Error(result.status);
+
+    const dimensions = result.analysis.findings.map(
+      (entry) => entry.attribute.dimension,
+    );
+    expect(dimensions).not.toContain('cuts_per_minute');
+    expect(dimensions).not.toContain('ai_share');
   });
 
   it('refuses a stage the platform cannot fill, by name, without reading ClickHouse', async () => {
