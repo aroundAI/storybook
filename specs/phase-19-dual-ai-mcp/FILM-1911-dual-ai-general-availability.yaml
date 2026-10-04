@@ -3,11 +3,11 @@ title: "Dual AI General Availability: docs, dashboards, alerts, no-LLM boot"
 phase: 19
 phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
 category: feature
-status: DONE
+status: PARTIAL
 effort: S
 dependencies:
   - spec_id: "FILM-1907"
-    note: "OAuth sign-in from Claude"
+    note: "OAuth sign-in from Claude and ChatGPT"
   - spec_id: "FILM-1909"
     note: "every stage available externally"
   - spec_id: "FILM-1910"
@@ -22,7 +22,7 @@ summary: >
 acceptance_criteria:
   - text: "A user docs page (apps/web/content/documentation) explains adding the connector in Claude, signing in, the scopes, the workflow and revoking access, with screenshots taken from a real run"
     met: true
-    evidence: "apps/web/content/documentation/claude-connector.mdoc embeds ten screenshots (apps/web/public/images/docs/claude-connector/) from one real run: the consent page, the token shown once, a story written by Claude with its badge, the Claude is working on this banner, the shot list with Edited and Claude via MCP badges, the restore confirmation and the story after restoring, Settings → AI, the revoke confirmation and Your connections with one active and one revoked connection. Every UI label in the page was read off those screens and the four label TODOs are resolved. apps/e2e/tests/mcp/connector-guide-evidence.spec.ts regenerates them (CAPTURE_EVIDENCE=1): a seeded team, the scripted MCP client over a personal access token made on the page, an OAuth grant through the consent page, every stage written over MCP, a second story write for the restore, a run held open for the banner. One value is staged: the Edited badge (one shot's generation_origin set to human, as a hand edit writes it) (#591)"
+    evidence: "apps/web/content/documentation/ai-connector.mdoc (renamed from claude-connector.mdoc and widened to Claude and ChatGPT in #TBD-1911, with Claude's current Customize → Connectors path and the Team/Enterprise owner steps) embeds ten screenshots (apps/web/public/images/docs/claude-connector/) from one real run: the consent page, the token shown once, a story written by Claude with its badge, the Claude is working on this banner, the shot list with Edited and Claude via MCP badges, the restore confirmation and the story after restoring, Settings → AI, the revoke confirmation and Your connections with one active and one revoked connection. Every UI label in the page was read off those screens and the four label TODOs are resolved. apps/e2e/tests/mcp/connector-guide-evidence.spec.ts regenerates them (CAPTURE_EVIDENCE=1): a seeded team, the scripted MCP client over a personal access token made on the page, an OAuth grant through the consent page, every stage written over MCP, a second story write for the restore, a run held open for the banner. One value is staged: the Edited badge (one shot's generation_origin set to human, as a hand edit writes it) (#591)"
   - text: "Monitoring panels: calls per tool, error rate by code, p95 by tool, runs by mode and status, expired leases per day"
     met: true
     evidence: "apps/web/app/admin/mcp/page.tsx:41 is the super admin's MCP Connector page (sidebar link, windows of 24 hours, 7 and 30 days) with the five panels and a guard card, read through four SECURITY DEFINER functions that refuse anyone but is_super_admin() at aal2 and return aggregates only (apps/web/supabase/migrations/20261003141814_film-1911-mcp-monitoring.sql:46): admin_mcp_tool_stats (calls, errors, p95 per tool), admin_mcp_error_codes (each code over every call), admin_generation_run_stats (mode, status), admin_expired_leases_per_day (every UTC day of the window, a day with none a measured 0). tests/database/mcp-monitoring.test.sql checks the refusals and every figure against hand-computed values, red with the migration skipped and under three mutations (tooling/mutation-guards/film-1911.json); the four are pinned in definer-functions-inventory.test.sql. apps/e2e/tests/admin/mcp-monitoring.spec.ts:81 reads the figures off the page after seeding (7 calls, 1 error, p95 82 ms over 7 days; 6, 1 and 85 ms over 24 hours; runs and expired leases moving by the 2 it adds), red with a median planted for the p95 (#582)"
@@ -35,14 +35,78 @@ acceptance_criteria:
   - text: "The MCP connector feature flag is removed; team AI settings (FILM-1910) are the control"
     met: true
     evidence: "No MCP connector flag was ever built: FILM-1904 shipped /api/mcp ungated (apps/web/app/api/mcp/route.ts:12 exports the handlers unconditionally), apps/web/config/feature-flags.config.ts and the env files carry none, and a repo search for an MCP enable/flag variable finds nothing outside this spec (positive control: the same search finds createMcpRouteHandlers). The control is the team's account_ai_settings row (apps/web/supabase/migrations/20261002201011_film-1903-generation-runs.sql:133: server_generation_enabled, external_generation_enabled, default_mode), which openRun reads and FILM-1910's settings page edits (#582)"
+  - text: "The OAuth server accepts the client identities Claude and ChatGPT publish: each one's live client metadata document resolves, the authorization response carries iss (RFC 9207), and every tool declares readOnlyHint, destructiveHint, idempotentHint and openWorldHint"
+    met: true
+    evidence: "Before #TBD-1911 both clients' default sign-in failed with 'This client is not registered with StoryBook': Claude's document (https://claude.ai/oauth/mcp-oauth-client-metadata) lists a JWT-bearer grant and ChatGPT's (https://chatgpt.com/oauth/client.json) prefers private_key_jwt, and validateClientMetadata refused both. packages/features/studio-mcp/src/server/oauth/clients.ts canActAsPublicClient and issuedGrantTypes now register any client that can act as public (token_endpoint_auth_method none, or none among token_endpoint_auth_methods_supported) with the grants we issue, and still refuse a key- or secret-only client and one without authorization_code; authorize.ts sets iss on every redirect and metadata.ts advertises authorization_response_iss_parameter_supported. __tests__/oauth/client-compatibility.test.ts holds both documents verbatim; apps/e2e/tests/mcp/published-clients.spec.ts signs in with each live client id, reads iss on the callback and calls whoami as 'Claude' and 'ChatGPT', red against main's clients.ts (the not-registered page); __tests__/tool-annotations.test.ts checks the four hints on every tool. Eight guards in tooling/mutation-guards/film-1911.json (1911 CONN U1-U7, E1) go red"
+  - text: "A ChatGPT connector connects, signs in and calls whoami"
+    met: false
+    reason: "Needs a public HTTPS URL and the owner's ChatGPT account (Plus or higher, developer mode). The server side is proven against ChatGPT's live client document in apps/e2e/tests/mcp/published-clients.spec.ts; the owner checks it by hand with FILM-1907's Claude Desktop check, steps in notes"
 test_plan:
   unit: []
   integration:
+    - {text: "Claude's and ChatGPT's published client ids sign in through the consent page, get iss on the callback and call whoami", met: true, evidence: "apps/e2e/tests/mcp/published-clients.spec.ts (the server fetches both live documents), 2 passed against a local server, red against main's clients.ts (#TBD-1911)"}
     - {text: "The boot test runs in CI with model variables unset", met: true, evidence: "Nightly full run 37173852658 on main 7d0a7dbdc (2026-10-04), job 🧬 E2E evidence: scripts/ci/no-llm-server.mjs started the build with no model variable set, and npx playwright test mcp/no-llm-boot reported 2 passed"}
   e2e: []
-open_questions:
-  - "Is ChatGPT's connector support in scope for GA, or Claude first and other clients as they come?"
+remaining:
+  - criterion: "A ChatGPT connector connects, signs in and calls whoami"
+    reason: "Needs a public HTTPS URL and the owner's ChatGPT account"
+    closed_by: "owner"
+open_questions: []
 notes: |
+  Decided 2026-10-04 by the owner: ChatGPT's connector support is in scope
+  for GA; both ChatGPT and Claude must be able to connect (was this spec's
+  open question, "Claude first and other clients as they come?"). Nothing
+  client-specific is built: both use the same URL, the same OAuth server
+  and the same tools (#TBD-1911).
+
+  ## Claude and ChatGPT compatibility (checked 2026-10-04)
+
+  Sources, read 2026-10-04: developers.openai.com/apps-sdk/build/auth,
+  developers.openai.com/api/docs/guides/developer-mode,
+  developers.openai.com/api/docs/mcp, developers.openai.com/plugins/deploy/connect-chatgpt,
+  claude.com/docs/connectors/custom/remote-mcp,
+  claude.com/docs/connectors/building/authentication, and the two client
+  documents themselves.
+
+  | Requirement | Claude | ChatGPT | Our server | Gap |
+  |---|---|---|---|---|
+  | Transport | Streamable HTTP (SSE deprecated) | Streamable HTTP or SSE | Stateless Streamable HTTP, JSON responses, GET 405 | none |
+  | Client registration | CIMD when AS advertises it with `none`, else DCR | CIMD preferred, DCR, or a predefined client | Both | Both clients' real documents were refused; fixed |
+  | Client auth | Public (`none`) | `none` or `private_key_jwt`; document prefers the key | `none` only | Accept a client that lists `none`; no key or secret accepted |
+  | PKCE | S256 on every request | S256 required in metadata | S256 only | none |
+  | Redirect URI | https://claude.ai/api/mcp/auth_callback | https://chatgpt.com/connector_platform_oauth_redirect with RFC 9207, else https://chatgpt.com/connector/oauth/{id} | https anywhere, exact match | none |
+  | RFC 9207 iss | not required | Stable redirect only when advertised and returned | absent | Added |
+  | resource (RFC 8707) | PRM resource must equal the entered URL | Sent on authorize and token | Checked, token audience-bound | none |
+  | Scopes | WWW-Authenticate scope, else PRM scopes_supported; offline_access only if listed | OIDC scopes only if listed; else not documented | studio:* in PRM and AS | none |
+  | Refresh tokens | Rotated; invalid_grant on expiry | Expected (document's grant_types) | Rotated, reuse revokes | none |
+  | 401 with resource_metadata | Required | Required | Sent | none |
+  | Tools | Any | Developer mode: any, writes confirmed; search/fetch only for deep research and company knowledge | Full tool set, no search/fetch | search/fetch not built: deep research over StoryBook is not a use the owner named |
+  | Annotations | title + hints decide auto-permission | No readOnlyHint = write, confirmed; openWorldHint expected for apps | Three hints, openWorldHint missing (MCP reads that as true) | Added openWorldHint |
+  | Origin / CORS | Calls from Anthropic's cloud | Calls from OpenAI's servers (mTLS client cert offered) | CORS only for allowed origins | Default origins now claude.ai and chatgpt.com |
+  | Plans | Free (one connector), Pro, Max, Team, Enterprise | Plus, Pro, Business, Enterprise, Edu, developer mode on the web | n/a | ChatGPT Free cannot connect |
+  | Public URL | Required | Required (or OpenAI's tunnel) | n/a | the owner's deployment |
+
+  Claude Code's own document (https://claude.ai/oauth/claude-code-client-metadata)
+  registers http://localhost/callback without a port and relies on
+  RFC 8252's any-port loopback match, which /oauth/authorize does not do;
+  Claude Code was not in scope here, and it can use DCR instead.
+
+  ## Owner steps for the ChatGPT check
+
+  1. Deploy to a public HTTPS URL (NEXT_PUBLIC_SITE_URL set to it).
+  2. In ChatGPT on the web (Plus, Pro, Business, Enterprise or Edu; on a
+     workspace plan an admin may first have to allow developer mode):
+     Settings → Security and login → Developer mode on.
+  3. Apps (ChatGPT Plugins in OpenAI's docs) → + → a remote MCP server:
+     name StoryBook, the URL `<site>/api/mcp`, authentication OAuth.
+  4. ChatGPT opens `<site>/oauth/authorize`: sign in, check the page reads
+     "ChatGPT wants to connect to StoryBook", pick the team, Allow. ChatGPT
+     lists the tools.
+  5. New chat → + → Developer mode → StoryBook; ask it to call whoami.
+     Screenshots for apps/web/content/documentation/ai-connector.mdoc's
+     three placeholders: the create dialog, the consent page, the whoami
+     answer.
+
   Rollout, each step reversible by its flag: core refactor dark (FILM-1901,
   FILM-1902, FILM-1903); read-only connector with PATs for the owner's team
   (FILM-1904 to FILM-1906); OAuth (FILM-1907); external generation stage by
