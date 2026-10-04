@@ -1,0 +1,35 @@
+{
+  "feature": "KB-186, KB-188",
+  "mutations": [
+    {
+      "name": "KB-186 the ideation commit returns no episode version",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/ideation.ts",
+      "find": "          returning: ['id', 'version'],\n",
+      "replace": "",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stages/ideation.test.ts",
+      "pattern": "stores the ideas on episodes.metadata.ideas"
+    },
+    {
+      "name": "KB-186 the ideation reply drops the version the ideas were stored at",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/story-ideation.ts",
+      "find": "      episode: commit.data.episode,\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/stage-parity-story-season.test.ts",
+      "pattern": "hands the Ideation Orchestrator the same input"
+    },
+    {
+      "name": "KB-188 the story commit leaves the viral score out",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/story.ts",
+      "find": "            ...(viralQuality && { viral_quality: viralQuality as Json }),\n",
+      "replace": "",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/stage-parity-story-season.test.ts",
+      "pattern": "hands the Story Orchestrator the same input"
+    }
+  ]
+}
