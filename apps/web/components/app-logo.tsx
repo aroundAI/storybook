@@ -27,6 +27,7 @@ function LogoContent({ className }: { className?: string }) {
           width={width}
           height={height}
           className={cn('dark:hidden', className)}
+          data-test="app-logo-light"
           priority
         />
         <Image
@@ -35,6 +36,7 @@ function LogoContent({ className }: { className?: string }) {
           width={width}
           height={height}
           className={cn('hidden dark:block', className)}
+          data-test="app-logo-dark"
           priority
         />
       </>
