@@ -16,7 +16,7 @@ summary: >
   protocol serves any path despite a comment claiming a restriction
   (electron/main.js ~3509), checkpoints live only in memory
   (MCP_PROJECT_CHECKPOINTS), and nothing stores secrets. This spec also
-  writes docs/AI_EDITOR_CONTRACT.md and the capability matrix mapping all 129
+  writes docs/AI_EDITOR_CONTRACT.md and the capability matrix mapping all 130
   existing MCP tools to the contract's verbs. Design: PRD-EDD.md Part 2 "Fork
   strategy" and "Security hardening of the fork".
 acceptance_criteria:
@@ -24,40 +24,40 @@ acceptance_criteria:
     met: true
     evidence: "https://github.com/aroundAI/storybookstudio, commit 233f35f 'Add StorybookStudio PRD and EDD' (docs/STORYBOOKSTUDIO_PRD_EDD.md, docs/images/); transferred from XuryaX 2026-10-04"
   - text: "User-facing name is StorybookStudio (package.json productName, window titles, about dialog, MCP server name); internal identifiers comfystudio (file extension, protocol scheme, package name, bridge ids) are unchanged, as Velorn's AGENTS.md prescribes for legacy names"
-    met: false
-    reason: "not built — fork created, renaming not done"
+    met: true
+    evidence: "aroundAI/storybookstudio#1 (storybookstudio@c1c4be6 package.json:141 productName StorybookStudio; electron/mcpServer.js:10713 serverInfo.name); the internal ids (comfystudio scheme and extension, package name velorn) are unchanged, as docs/UPSTREAM.md, section What we keep apart from upstream lists"
   - text: "docs/AI_EDITOR_CONTRACT.md defines inputs, perception, editing primitives, editing intents, validation and lifecycle; docs/CAPABILITY_MATRIX.md lists every tool in electron/mcpServer.js with one of exists / adapter / build against the contract's verbs"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#2 (storybookstudio@c1c4be6 docs/AI_EDITOR_CONTRACT.md, docs/CAPABILITY_MATRIX.md, 130 tools: exists 112, adapter 18, build 21; scripts/capability-matrix.mjs --check; tests/studio/capabilityMatrix.test.mjs)"
   - text: "MCP server auth: on first run a 32-byte secret is generated into userData/mcp-secret and every request to 127.0.0.1:19790 must carry Authorization: Bearer <secret>; a request whose Origin or Host is not loopback is rejected 403; Settings shows the secret once with a ready-made `claude mcp add --transport http storybookstudio http://127.0.0.1:19790/mcp --header \"Authorization: Bearer …\"` command"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#3 (storybookstudio@c1c4be6 electron/studio/mcpAuth.js:49 bearer 401, non-loopback Host or Origin 403; electron/mcpServer.js:10619 applies it; electron/studio/mcpSecret.js:18 32-byte secret in userData/mcp-secret; electron/studio/studioMain.js:27 studio:getMcpConnectCommand feeds src/studio/McpConnectCommands.jsx in Settings; curl transcripts in the PR body). Deviation: Settings shows the connect command whenever Settings is open, not once"
   - text: "comfystudio:// resolves only paths under the open project folder, userData and the caches directory; any other path returns 403; the misleading comment is corrected; a test drives a traversal attempt"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#3 (storybookstudio@c1c4be6 electron/studio/protocolAllowlist.js:42 resolveAllowedPath; electron/main.js:3522 the handler answers 403; tests/studio/protocolAllowlist.test.mjs:34,39 /etc/passwd and ../ traversal refused)"
   - text: "create_project_checkpoint and restore_project_checkpoint persist under <project>/edits/checkpoints/ and survive an app restart; the in-memory map becomes a cache"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#3 (storybookstudio@c1c4be6 src/studio/checkpointStore.js:6 edits/checkpoints/; src/services/mcpActions.js:72 the map is the cache; tests/studio/checkpoints.test.mjs:66 create, new process, restore equals snapshot; restart probe in the PR body)"
   - text: "A secrets module in the main process wraps Electron safeStorage; nothing in the renderer, the MCP snapshot or logs can read a stored secret (a test greps the snapshot and log output for a planted value)"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#3 (storybookstudio@c1c4be6 electron/studio/secrets.js:33 safeStorage, refuses with SecretsUnavailableError when encryption is unavailable; tests/studio/secrets.test.mjs:118 greps the file, snapshot, responses and logs for a planted value)"
   - text: "An upstream merge playbook (docs/UPSTREAM.md) describes the monthly merge, the registration-point files that may conflict (main.js, preload.js, mcpServer.js, App.jsx, package.json), and the two patches offered upstream (MCP auth, protocol allowlist)"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#1 (storybookstudio@c1c4be6 docs/UPSTREAM.md last merged head fdd8255, the section Patches we offer upstream, the merge log)"
   - text: "CI on the fork runs Velorn's existing tests plus tests/studio/*; the package builds for macOS arm64 (the first target) with protocols: [{name: StorybookStudio, schemes: [velorn]}] in electron-builder config"
     met: false
-    reason: "not built"
+    reason: "half met. aroundAI/storybookstudio#1 (storybookstudio@c1c4be6 .github/workflows/ci.yml) runs on macos-14 the four upstream scripts (test:media-preparation, check:media-preparation, test:export-scheduler, test:rife-hardening) plus test:studio and npm run build, which is vite build only; nightly.yml runs npm test. package.json:227 declares protocols velorn and :235 the mac dmg arm64 target, but only release.yml:410 runs electron-builder --mac, on release, so no CI run on a pull request packages the app"
 test_plan:
   unit:
-    - {text: "MCP auth: missing, wrong and right bearer; non-loopback Origin refused", met: false, reason: "not built"}
-    - {text: "Protocol allowlist: project path allowed, /etc/passwd and ../ traversal refused", met: false, reason: "not built"}
-    - {text: "Checkpoints: create, restart (new process), restore equals snapshot", met: false, reason: "not built"}
+    - {text: "MCP auth: missing, wrong and right bearer; non-loopback Origin refused", met: true, evidence: "aroundAI/storybookstudio#3 (storybookstudio@c1c4be6 tests/studio/mcpAuth.test.mjs)"}
+    - {text: "Protocol allowlist: project path allowed, /etc/passwd and ../ traversal refused", met: true, evidence: "aroundAI/storybookstudio#3 (storybookstudio@c1c4be6 tests/studio/protocolAllowlist.test.mjs:34,39)"}
+    - {text: "Checkpoints: create, restart (new process), restore equals snapshot", met: true, evidence: "aroundAI/storybookstudio#3 (storybookstudio@c1c4be6 tests/studio/checkpoints.test.mjs:66)"}
   integration:
-    - {text: "Velorn's existing export regression runner still passes on the fork", met: false, reason: "not built"}
+    - {text: "Velorn's existing export regression runner still passes on the fork", met: true, evidence: "aroundAI/storybookstudio#1 (storybookstudio@c1c4be6 .github/workflows/ci.yml runs test:export-scheduler and test:rife-hardening, green on the PR and on main)"}
   e2e: []
 remaining:
-  - criterion: "Renaming, contract, security fixes, CI"
-    reason: "only the fork and the design document exist"
+  - criterion: "CI packages the app for macOS arm64 on a pull request"
+    reason: "ci.yml stops at vite build; electron-builder runs only in release.yml on a release"
     closed_by: "unassigned"
 open_questions:
   - "Windows at launch (README open question 4) decides whether NVENC and the Windows protocol registration are in this spec's CI matrix."
@@ -67,7 +67,11 @@ notes: >
   Velorn's own AGENTS.md rules carry over: preserve simple guided workflows,
   keep project files portable, keep generation and editing separate layers,
   and have agent write actions inspect, preview and use the existing
-  undo/checkpoint paths.
+  undo/checkpoint paths. Lead decisions (TEAM_BRIEF_v5): CI is the four upstream
+  test scripts plus test:studio; the upstream CLA workflow was removed from the
+  fork. Fork PRs aroundAI/storybookstudio#1 (part C), #2 (part B) and #3
+  (part A) merged 2026-10-04; the pin follows them in #615. The matrix counts
+  130 tools, not 129 (exists 112, adapter 18, build 21).
 feature:
   database: {tables: [], columns_added: []}
   queries: []
@@ -75,4 +79,4 @@ feature:
   ui: []
   provider_integration: null
   repo: "aroundAI/storybookstudio"
-  files_changed: ["electron/main.js", "electron/preload.js", "electron/mcpServer.js", "electron/studio/secrets.js (new)", "package.json", "docs/AI_EDITOR_CONTRACT.md (new)", "docs/CAPABILITY_MATRIX.md (new)", "docs/UPSTREAM.md (new)", "tests/studio/ (new)"]
+  files_changed: ["electron/main.js", "electron/preload.js", "electron/mcpServer.js", "electron/studio/secrets.js (new)", "src/studio/ (new)", "src/services/mcpActions.js", "scripts/capability-matrix.mjs (new)", "package.json", "docs/AI_EDITOR_CONTRACT.md (new)", "docs/CAPABILITY_MATRIX.md (new)", "docs/UPSTREAM.md (new)", "tests/studio/ (new)"]

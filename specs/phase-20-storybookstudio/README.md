@@ -2,7 +2,7 @@
 
 StoryBook gets its post-production half. **StorybookStudio** is a fork of
 [Velorn](https://github.com/VelornLabs/velorn) (an Electron video editor with
-a 129-tool MCP server) that runs on the creator's own computer, pulls a planned
+a 130-tool MCP server) that runs on the creator's own computer, pulls a planned
 episode from StoryBook, assembles a rough cut, lets an AI cut it with preview,
 undo and an explain-why report, checks its own renders, and sends a
 publish-ready delivery package back. StoryBook stays the content source of
@@ -34,7 +34,7 @@ Measured 2026-10-04 on `main` at `2d99b8334`:
 | What MCP exposes | 60 tools: read, author, generation, analytics, three renders, `get_veo_manifest` | No tool hands over an episode's media for editing, and none accepts a finished video back |
 | Media URLs | R2 with public read URLs (`R2_PUBLIC_URL/...`); presigned PUT for uploads (`/api/storage/presign`) | A desktop download must use signed GETs; the adapter has none yet |
 | Final video | `episodes.final_video_url`, `master_video_asset_id`, set by a manual upload | No record of renders per preset or language, no QA, no edit history |
-| Velorn as shipped (v0.3.36) | 129 MCP tools with `previewOnly`, undo and action plans; local whisper captions; hardware export; **no auth on its MCP server**, an unrestricted `comfystudio://` file protocol, in-memory checkpoints, no deep links, no package import | The editor exists; the connection to a cloud and the AI-native layer do not |
+| Velorn as shipped (v0.3.36) | 130 MCP tools with `previewOnly`, undo and action plans; local whisper captions; hardware export; **no auth on its MCP server**, an unrestricted `comfystudio://` file protocol, in-memory checkpoints, no deep links, no package import | The editor exists; the connection to a cloud and the AI-native layer do not |
 
 ## Specs and dependency order
 
@@ -66,7 +66,7 @@ SPIKE-06 (continuity scoring, 2D puppets) — time-boxed, no dependents
 | [FILM-2010](./FILM-2010-fork-and-security-baseline.yaml) | Studio | M0 | M | The fork, naming, upstream remote, `AI_EDITOR_CONTRACT.md`, MCP bearer secret and Origin check, `comfystudio://` allowlist, persisted checkpoints |
 | [FILM-2011](./FILM-2011-cloud-client.yaml) | Studio | M1 | L | Main-process MCP client to StoryBook: token vault (PAT and PKCE), pull job with resume and sha256, re-sync, `velorn://` protocol |
 | [FILM-2012](./FILM-2012-editgraph-and-rough-cut.yaml) | Studio | M1 | L | EditGraph v1 (additive fields on `project.comfystudio`), the project builder's rough-cut rules, the operation log, versions, reports |
-| [FILM-2013](./FILM-2013-agent-capability-tools.yaml) | Studio | M2 | XL | The `agent` MCP profile: 16 capability tools, intent compilers to action plans over the 129 primitives, the edit policy, the in-app agent on the same profile |
+| [FILM-2013](./FILM-2013-agent-capability-tools.yaml) | Studio | M2 | XL | The `agent` MCP profile: 16 capability tools, intent compilers to action plans over the 130 primitives, the edit policy, the in-app agent on the same profile |
 | [FILM-2014](./FILM-2014-render-qa-critic.yaml) | Studio | M2 | L | Preview render tiers, deterministic QA (FFmpeg), the critic, the apply → QA → repair loop |
 | [FILM-2015](./FILM-2015-studio-ui.yaml) | Studio | M1–M3 | L | Welcome, episode picker, AI panel, scene strip, review screen, deliver screen |
 | [FILM-2016](./FILM-2016-audio-buses-and-captions.yaml) | Studio | M2 | M | Audio buses with sidechain ducking and stems; brand caption styling and safe areas |
@@ -155,7 +155,7 @@ version; every operation is logged with a reason; delivery always needs a
 confirmation that names the episode, the files and the destination. The AI
 never overwrites a hand edit silently.
 
-**Sixteen capability tools over 129 primitives.** The model sees the `agent`
+**Sixteen capability tools over 130 primitives.** The model sees the `agent`
 profile; the `expert` profile keeps every Velorn tool. Intent compilers are
 plain functions from context, scope, params and policy to an action plan with
 reasons; the plan runs through the primitives' own preview path.
