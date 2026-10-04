@@ -125,6 +125,11 @@ const KNOWN: Record<string, [number, string]> = {
     [1, ADMIN],
   'packages/features/studio-mcp/src/server/oauth/supabase-store.ts | mcp_tokens | update':
     [2, ADMIN],
+  // FILM-2003: failRender marks a render failed, then the tool returns
+  // VALIDATION_FAILED or rethrows either way; finalize's ready update
+  // selects its row and is not listed.
+  'packages/features/studio-mcp/src/server/tools/studio/renders.ts | episode_renders | update':
+    [1, FAILURE_MARK],
   'packages/features/team-accounts/src/server/services/account-members.service.ts | accounts_memberships | update':
     [1, ADMIN],
   'packages/supabase/src/external-api-keys.ts | external_api_keys | update': [
