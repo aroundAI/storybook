@@ -365,7 +365,10 @@ export async function getEpisodeRetentionCurveService(
     asOf: fetched.asOf,
     durationSeconds: curve.duration.known ? curve.duration.seconds : null,
     points: curve.points,
+  };
+}
 
+/**
  * The episode's latest delivered StorybookStudio edit, as the Edit style
  * card shows it (FILM-2006). Read on the caller's client, so RLS decides
  * whether they may see the session. `none` is "never delivered from the
