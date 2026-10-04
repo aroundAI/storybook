@@ -106,7 +106,7 @@ notes: |
   status, error_code, duration_ms, created_at. Team owners read; 90-day
   retention by cron: the hourly expire-generation-runs route calls
   trim_mcp_tool_calls() (migration film-1903-run-connection-fk-and-tool-call-trim,
-  with a created_at index), closed 2026-10-04 (#TBD-left).
+  with a created_at index), closed 2026-10-04 (#592).
 
   ## Why the route sits outside enhanceRouteHandler
 
