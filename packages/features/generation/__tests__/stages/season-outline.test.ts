@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { checkWithSchema } from '../../src/checks';
+import type { CommitPlan } from '../../src/commit-plan';
 import { episodeRowFromOutline } from '../../src/episode-rows';
 import { getStage } from '../../src/registry';
+import { RunError } from '../../src/runs/errors';
 import {
   type Outline,
   type SeasonOutlineTarget,
@@ -321,6 +323,83 @@ describe('season_outline stage (FILM-1901)', () => {
       const inserted = db.writes()[0]!.payload as Array<{ number: number }>;
       expect(inserted.map((row) => row.number)).toEqual([8, 4]);
       expect(result.data.episodes.map((e) => e.number)).toEqual([4, 8]);
+    });
+
+    /** The run's apply_generation_commit refusing the insert on the unique index (KB-175). */
+    const uniqueViolation = () =>
+      new RunError('COMMIT_FAILED', 'The commit was rolled back', {
+        cause: {
+          code: '23505',
+          message:
+            'duplicate key value violates unique constraint "episodes_project_number_unique"',
+        },
+      });
+
+    const insertedNumbers = (plan: CommitPlan) =>
+      plan.ops.flatMap((op) =>
+        'rows' in op && op.table === 'episodes'
+          ? (op.rows as Array<{ number: number }>).map((row) => row.number)
+          : [],
+      );
+
+    it('picks its numbers again when a concurrent create took one (23505), and commits', async () => {
+      const episodesList: unknown[] = [];
+      const { ctx, db } = makeCtx(responder(tables(), { episodesList }));
+      const apply = ctx.commits!;
+      const plans: CommitPlan[] = [];
+      ctx.commits = async (plan) => {
+        plans.push(plan);
+        if (plans.length === 1) {
+          // Someone made episode 3 while this commit was planned
+          episodesList.push({
+            id: 'raced',
+            number: 3,
+            status: 'draft',
+            story_data: null,
+          });
+          throw uniqueViolation();
+        }
+        return apply(plan);
+      };
+
+      const result = await seasonOutlineStage.commit(ctx, serverRun(), TARGET, [
+        parsed(OUTLINES),
+      ]);
+
+      expect(plans.map(insertedNumbers)).toEqual([
+        [3, 4],
+        [4, 5],
+      ]);
+      expect(db.writes()).toHaveLength(1);
+      expect(result.data.episodes.map((e) => e.number)).toEqual([4, 5]);
+    });
+
+    it('does not retry another failure, and gives up after three unique violations', async () => {
+      const other = makeCtx(responder(tables()));
+      let otherCalls = 0;
+      other.ctx.commits = async () => {
+        otherCalls++;
+        throw new RunError('COMMIT_FAILED', 'violates check constraint');
+      };
+      await expect(
+        seasonOutlineStage.commit(other.ctx, serverRun(), TARGET, [
+          parsed(OUTLINES),
+        ]),
+      ).rejects.toThrow('violates check constraint');
+      expect(otherCalls).toBe(1);
+
+      const raced = makeCtx(responder(tables()));
+      let racedCalls = 0;
+      raced.ctx.commits = async () => {
+        racedCalls++;
+        throw uniqueViolation();
+      };
+      await expect(
+        seasonOutlineStage.commit(raced.ctx, serverRun(), TARGET, [
+          parsed(OUTLINES),
+        ]),
+      ).rejects.toBeInstanceOf(RunError);
+      expect(racedCalls).toBe(3);
     });
   });
 });

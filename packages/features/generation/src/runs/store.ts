@@ -328,7 +328,7 @@ export async function applyGenerationCommit(
     throw new RunError(
       'COMMIT_FAILED',
       `The commit of run ${runId} was rolled back: ${error.message}`,
-      { runId },
+      { runId, cause: error },
     );
   }
 

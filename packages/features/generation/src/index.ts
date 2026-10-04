@@ -70,6 +70,7 @@ export {
   type CommitTable,
   type CommitWrite,
   type SkippedStep,
+  isUniqueViolation,
 } from './commit-plan';
 export { applyPlanThroughClient } from './commit-through-client';
 export {

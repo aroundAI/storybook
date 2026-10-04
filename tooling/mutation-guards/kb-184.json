@@ -1,0 +1,65 @@
+{
+  "feature": "KB-184",
+  "mutations": [
+    {
+      "name": "KB-184 the server writer runs a stage writer outside its run",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/writers/server-writer.ts",
+      "find": "if (stageWrite) return withRun(run, () => stageWrite(brief));",
+      "replace": "if (stageWrite) return stageWrite(brief);",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/stage-writers.test.ts",
+      "pattern": "opens the installed writer once per run"
+    },
+    {
+      "name": "KB-184 an orchestrated stage with no writer falls back to its prompt",
+      "kind": "unit",
+      "file": "packages/ai-gateway/src/writers/stage-writers.ts",
+      "find": "    if (!isOrchestrated(brief.stage)) return null;\n",
+      "replace": "    return null;\n",
+      "cwd": "packages/ai-gateway",
+      "test": "__tests__/stage-writers.test.ts",
+      "pattern": "refuses an orchestrated stage with no stage writer"
+    },
+    {
+      "name": "KB-184 the shots stage loses its orchestrated flag",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/shots.ts",
+      "find": "  orchestrated: true,\n",
+      "replace": "",
+      "cwd": "packages/features/episodes",
+      "test": "__tests__/stage-writers.test.ts",
+      "pattern": "one writer per orchestrated stage"
+    },
+    {
+      "name": "KB-184 the worker stage context installs no stage writer",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/utils/stage-runtime.ts",
+      "find": "  installWorkerStageWriters();\n\n  return stageCtx(",
+      "replace": "  return stageCtx(",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/shot-generation-handler.test.ts",
+      "pattern": "writes what the old handler wrote"
+    },
+    {
+      "name": "KB-184 batch-translate-metadata calls executeLLM itself again",
+      "kind": "unit",
+      "file": "apps/web/lambda/llm-worker/handlers/batch-translate-metadata.ts",
+      "find": "      stageRunDeps(),\n",
+      "replace": "      {\n        ...stageRunDeps(),\n        generate: async (brief) => {\n          const { executeLLM } = await import('@kit/ai-gateway');\n          const result = await executeLLM<unknown>({\n            templateSlug: brief.prompt.slug,\n            variables: brief.prompt.variables,\n            context: { name: 'batch-translate-metadata', accountId: 'system' },\n          });\n          return { output: result.data };\n        },\n      },\n",
+      "cwd": "apps/web",
+      "test": "lambda/llm-worker/__tests__/stage-door.test.ts",
+      "pattern": "batch-translate-metadata reaches run.write"
+    },
+    {
+      "name": "KB-184 the season outline commit stops at the first unique violation",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/season-outline.ts",
+      "find": "if (attempt >= OUTLINE_COMMIT_ATTEMPTS || !isUniqueViolation(error)) {",
+      "replace": "if (attempt >= 1 || !isUniqueViolation(error)) {",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/stages/season-outline.test.ts",
+      "pattern": "picks its numbers again"
+    }
+  ]
+}

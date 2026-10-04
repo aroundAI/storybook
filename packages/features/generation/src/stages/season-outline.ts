@@ -20,7 +20,15 @@ import {
 } from '@kit/shared/prompt-sanitiser';
 
 import { type PromptFile, buildBrief, singlePart } from '../brief';
-import { type CommitWrite, applyCommit, eq, resultRows } from '../commit-plan';
+import {
+  type AppliedCommit,
+  type CommitPlan,
+  type CommitWrite,
+  applyCommit,
+  eq,
+  isUniqueViolation,
+  resultRows,
+} from '../commit-plan';
 import {
   episodeRowFromOutline,
   episodeRowUpdateFromOutline,
@@ -33,7 +41,13 @@ import {
 } from '../formatters';
 import { requiresVerifiedFacts, resolveProjectType } from '../project-type';
 import { registerStage } from '../registry';
-import type { Brief, CheckError, Ctx, StageDefinition } from '../types';
+import type {
+  Brief,
+  CheckError,
+  Ctx,
+  GenerationRun,
+  StageDefinition,
+} from '../types';
 import {
   EPISODE_TITLE_MAX,
   ORIGIN_MERGE,
@@ -379,102 +393,35 @@ export const seasonOutlineStage: StageDefinition<
 
   async commit(ctx, run, target, outputs) {
     const out = outputs[0]!;
-    const client = ctx.client;
     const generatedAt = new Date().toISOString();
-    const seasonId = target.seasonId ?? null;
 
-    // The project's numbers in use, and which of them are generated drafts
-    // this commit may replace (a regenerated outline, KB-121)
-    const { data: existingRows, error: readError } = await client
-      .from('episodes')
-      .select('id, number, status, story_data, season_id')
-      .eq('project_id', target.projectId)
-      .is('deleted_at', null)
-      .order('number', { ascending: true });
+    // A concurrent create can take a number this commit picked: the unique
+    // index on (project_id, number) refuses the insert and rolls the
+    // transaction back, so the numbers are read and picked again (KB-175)
+    let attempt = 1;
+    let picked: PickedNumbers;
+    let applied: AppliedCommit;
 
-    if (readError) {
-      throw new Error(
-        `Failed to read the project's episodes: ${readError.message}`,
-      );
+    for (;;) {
+      picked = await pickNumbers(ctx, target, out);
+
+      try {
+        applied = await applyCommit(ctx, outlinePlan(run, target, picked));
+        break;
+      } catch (error) {
+        if (attempt >= OUTLINE_COMMIT_ATTEMPTS || !isUniqueViolation(error)) {
+          throw error;
+        }
+
+        attempt++;
+        ctx.log?.(
+          `[season_outline] An episode number was taken meanwhile; picking again (attempt ${attempt})`,
+        );
+      }
     }
 
-    const existing = (existingRows ?? []) as Array<{
-      id: string;
-      number: number;
-      status: string;
-      story_data: unknown;
-    }>;
-    const byNumber = new Map(existing.map((row) => [row.number, row]));
-    let nextFree = Math.max(0, ...existing.map((row) => row.number)) + 1;
-
+    const { toUpdate, toInsert } = picked;
     const created: CreatedOutline[] = [];
-    const toUpdate: Array<{ id: string; number: number; outline: Outline }> =
-      [];
-    const toInsert: Array<{
-      row: ReturnType<typeof episodeRowFromOutline>;
-      outline: Outline;
-    }> = [];
-
-    out.episodes.forEach((outline, index) => {
-      const preferred = target.startingNumber + index;
-      const occupant = byNumber.get(preferred);
-
-      if (occupant && isGeneratedDraft(occupant)) {
-        toUpdate.push({ id: occupant.id, number: preferred, outline });
-        return;
-      }
-
-      const number = occupant ? nextFree++ : preferred;
-      byNumber.set(number, {
-        id: '',
-        number,
-        status: 'draft',
-        story_data: null,
-      });
-      toInsert.push({
-        row: episodeRowFromOutline(outline, {
-          projectId: target.projectId,
-          seasonId,
-          number,
-        }),
-        outline,
-      });
-    });
-
-    // One transaction: the drafts this outline replaces and the new rows.
-    // requireRows: RLS filters a refused update to no rows (KB-105)
-    const applied = await applyCommit(ctx, {
-      ops: [
-        ...toUpdate.map(
-          (update): CommitWrite => ({
-            op: 'update',
-            table: 'episodes',
-            values: {
-              ...episodeRowUpdateFromOutline(update.outline),
-              generation_origin: stageOrigin('season_outline', run.origin),
-            },
-            merge: [ORIGIN_MERGE],
-            match: [eq('id', update.id), eq('project_id', target.projectId)],
-            requireRows: true,
-          }),
-        ),
-        ...(toInsert.length > 0
-          ? [
-              {
-                key: 'episodes',
-                op: 'insert',
-                table: 'episodes',
-                // Every row carries who wrote it: the run's origin (FILM-1903)
-                rows: toInsert.map(({ row }) => ({
-                  ...row,
-                  generation_origin: stageOrigin('season_outline', run.origin),
-                })),
-                returning: ['id', 'number', 'title', 'status'],
-              } satisfies CommitWrite,
-            ]
-          : []),
-      ],
-    });
 
     for (const update of toUpdate) {
       created.push({ ...update.outline, number: update.number, id: update.id });
@@ -498,6 +445,129 @@ export const seasonOutlineStage: StageDefinition<
     return { status: 'committed', data: { episodes: created, generatedAt } };
   },
 };
+
+/** How often a commit picks its numbers again after a unique violation. */
+const OUTLINE_COMMIT_ATTEMPTS = 3;
+
+interface PickedNumbers {
+  toUpdate: Array<{ id: string; number: number; outline: Outline }>;
+  toInsert: Array<{
+    row: ReturnType<typeof episodeRowFromOutline>;
+    outline: Outline;
+  }>;
+}
+
+/**
+ * Each outline's number: the preferred one, or the draft there it replaces,
+ * or the next free number after the project's highest.
+ */
+async function pickNumbers(
+  ctx: Ctx,
+  target: SeasonOutlineTarget,
+  out: SeasonOutlineStageOutput,
+): Promise<PickedNumbers> {
+  const client = ctx.client;
+  const seasonId = target.seasonId ?? null;
+
+  // The project's numbers in use, and which of them are generated drafts
+  // this commit may replace (a regenerated outline, KB-121)
+  const { data: existingRows, error: readError } = await client
+    .from('episodes')
+    .select('id, number, status, story_data, season_id')
+    .eq('project_id', target.projectId)
+    .is('deleted_at', null)
+    .order('number', { ascending: true });
+
+  if (readError) {
+    throw new Error(
+      `Failed to read the project's episodes: ${readError.message}`,
+    );
+  }
+
+  const existing = (existingRows ?? []) as Array<{
+    id: string;
+    number: number;
+    status: string;
+    story_data: unknown;
+  }>;
+  const byNumber = new Map(existing.map((row) => [row.number, row]));
+  let nextFree = Math.max(0, ...existing.map((row) => row.number)) + 1;
+
+  const toUpdate: Array<{ id: string; number: number; outline: Outline }> = [];
+  const toInsert: Array<{
+    row: ReturnType<typeof episodeRowFromOutline>;
+    outline: Outline;
+  }> = [];
+
+  out.episodes.forEach((outline, index) => {
+    const preferred = target.startingNumber + index;
+    const occupant = byNumber.get(preferred);
+
+    if (occupant && isGeneratedDraft(occupant)) {
+      toUpdate.push({ id: occupant.id, number: preferred, outline });
+      return;
+    }
+
+    const number = occupant ? nextFree++ : preferred;
+    byNumber.set(number, {
+      id: '',
+      number,
+      status: 'draft',
+      story_data: null,
+    });
+    toInsert.push({
+      row: episodeRowFromOutline(outline, {
+        projectId: target.projectId,
+        seasonId,
+        number,
+      }),
+      outline,
+    });
+  });
+
+  return { toUpdate, toInsert };
+}
+
+function outlinePlan(
+  run: GenerationRun,
+  target: SeasonOutlineTarget,
+  { toUpdate, toInsert }: PickedNumbers,
+): CommitPlan {
+  // One transaction: the drafts this outline replaces and the new rows.
+  // requireRows: RLS filters a refused update to no rows (KB-105)
+  return {
+    ops: [
+      ...toUpdate.map(
+        (update): CommitWrite => ({
+          op: 'update',
+          table: 'episodes',
+          values: {
+            ...episodeRowUpdateFromOutline(update.outline),
+            generation_origin: stageOrigin('season_outline', run.origin),
+          },
+          merge: [ORIGIN_MERGE],
+          match: [eq('id', update.id), eq('project_id', target.projectId)],
+          requireRows: true,
+        }),
+      ),
+      ...(toInsert.length > 0
+        ? [
+            {
+              key: 'episodes',
+              op: 'insert',
+              table: 'episodes',
+              // Every row carries who wrote it: the run's origin (FILM-1903)
+              rows: toInsert.map(({ row }) => ({
+                ...row,
+                generation_origin: stageOrigin('season_outline', run.origin),
+              })),
+              returning: ['id', 'number', 'title', 'status'],
+            } satisfies CommitWrite,
+          ]
+        : []),
+    ],
+  };
+}
 
 /** A row an earlier outline commit made, which a regenerated outline replaces. */
 function isGeneratedDraft(row: { status: string; story_data: unknown }) {
