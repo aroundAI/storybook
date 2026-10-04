@@ -1,0 +1,77 @@
+{
+  "feature": "FILM-2006",
+  "mutations": [
+    {
+      "name": "FILM-2006 U1 the cut count is the shot count",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/edit-style.ts",
+      "find": "  const cutCount = shotCount === null ? null : shotCount - 1;",
+      "replace": "  const cutCount = shotCount;",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/edit-style.test.ts",
+      "pattern": "derives cut count, shot length, cut density, hook and AI share from the report"
+    },
+    {
+      "name": "FILM-2006 U2 no operations reads as a 0% AI share",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/lib/edit-style.ts",
+      "find": "    aiShare: operations > 0 ? round(aiOps / operations) : null,",
+      "replace": "    aiShare: operations > 0 ? round(aiOps / operations) : 0,",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/edit-style.test.ts",
+      "pattern": "no operations at all is an unknown AI share"
+    },
+    {
+      "name": "FILM-2006 U3 a hand cut-density band survives beside the measured one",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome-attributes.ts",
+      "find": "    ...tagged.filter((attribute) => !measured.has(attribute.dimension)),",
+      "replace": "    ...tagged,",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome-edit-style.test.ts",
+      "pattern": "a measured cut density replaces a hand-recorded band"
+    },
+    {
+      "name": "FILM-2006 U4 an unrecorded figure becomes the lowest band",
+      "kind": "unit",
+      "file": "packages/clickhouse/src/lib/genome-attributes.ts",
+      "find": "  if (value === null || !Number.isFinite(value) || value < 0) return null;",
+      "replace": "  if (value === null) return bands[0]!.slug;\n  if (!Number.isFinite(value) || value < 0) return null;",
+      "cwd": "packages/clickhouse",
+      "test": "__tests__/genome-edit-style.test.ts",
+      "pattern": "a figure not recorded gives no attribute"
+    },
+    {
+      "name": "FILM-2006 U5 the genome ignores edit style",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/genome-service.ts",
+      "find": "      tests,\n      editStyles,\n",
+      "replace": "      tests,\n",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/genome-actions.test.ts",
+      "pattern": "adds edit style as an optional dimension"
+    },
+    {
+      "name": "FILM-2006 U6 the TARGET_CHANGED alert counts every error",
+      "kind": "unit",
+      "file": "apps/web/app/api/cron/expire-generation-runs/studio-delivery-alerts.ts",
+      "find": "    .eq('error_code', 'TARGET_CHANGED')",
+      "replace": "    .eq('status', 'error')",
+      "cwd": "apps/web",
+      "test": "app/api/cron/expire-generation-runs/__tests__/studio-delivery-alerts.test.ts",
+      "pattern": "raises nothing when no render expired"
+    },
+    {
+      "name": "FILM-2006 DB1 any signed-in user reads a session's device",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/edit-record.test.sql",
+      "sql": "create or replace function public.edit_session_device(p_session_id uuid) returns text language sql stable security definer set search_path = '' as $$ select c.name from public.edit_sessions s join public.mcp_connections c on c.id = s.connection_id where s.id = p_session_id $$;"
+    },
+    {
+      "name": "FILM-2006 DB2 the delivery panel answers a team owner",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/edit-record.test.sql",
+      "sql": "create or replace function public.admin_studio_delivery_stats(p_days integer default 7) returns table (get_edit_package_calls bigint, deliver_edit_calls bigint, target_changed_refusals bigint, uploading_over_24h bigint, expired_uploads bigint) language plpgsql stable security definer set search_path = '' as $$ begin return query select 0::bigint, 0::bigint, 0::bigint, 0::bigint, 0::bigint; end; $$;"
+    }
+  ]
+}
