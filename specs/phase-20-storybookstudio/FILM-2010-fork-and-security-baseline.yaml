@@ -58,7 +58,7 @@ test_plan:
 remaining:
   - criterion: "CI packages the app for macOS arm64 on a pull request"
     reason: "ci.yml stops at vite build; electron-builder runs only in release.yml on a release"
-    closed_by: "unassigned"
+    closed_by: "FILM-2015"
 open_questions:
   - "Windows at launch (README open question 4) decides whether NVENC and the Windows protocol registration are in this spec's CI matrix."
 notes: >
@@ -75,7 +75,7 @@ notes: >
   thumbnails of closed projects); embedded and sign-in pages still get 403
   (lead accepted). "Caches directory" means Velorn's temp folders
   comfystudio-shot-audio and comfystudio-caption-audio. docs/MCP.md and
-  .mcp.json carry the bearer through ${STORYBOOKSTUDIO_MCP_TOKEN}. The matrix counts
+  .mcp.json carry the bearer through ${STORYBOOKSTUDIO_MCP_TOKEN}. Fork docs follow-up: docs/UPSTREAM.md says the MCP patch generates a per-launch token, but the code persists the secret in userData/mcp-secret. The matrix counts
   130 tools, not 129 (exists 112, adapter 18, build 21).
 feature:
   database: {tables: [], columns_added: []}
