@@ -13,7 +13,12 @@ import {
 } from '@kit/generation';
 import { ActionRefusal } from '@kit/next/action-result';
 import { enhanceAction } from '@kit/next/actions';
-import { requireAffectedRows, returnRefusals } from '@kit/next/refusals';
+import {
+  requireAffectedRows,
+  requireRow,
+  returnRefusals,
+} from '@kit/next/refusals';
+import type { Database } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -23,6 +28,7 @@ import { linkAssetsToEpisode } from '../../../server/episode.service';
  * Schema for extracting a description from story text via LLM
  */
 const ExtractDescriptionSchema = z.object({
+  projectId: z.string().uuid(),
   name: z.string().min(1).max(255),
   type: z.enum(['character', 'location']),
   role: z.string().optional(),
@@ -105,12 +111,37 @@ async function describeAsset(
   }
 }
 
+const DESCRIPTION_FAILED =
+  'The description could not be generated. Write one yourself, or try again.';
+const DEFAULT_DESCRIPTION_USED =
+  'No description could be generated, so a default was used. Edit it from the library.';
+
+/**
+ * The team account that owns the project: generation runs belong to a team
+ * account, never to the user's personal one (KB-187).
+ */
+async function projectAccountId(
+  client: ReturnType<typeof getSupabaseServerClient<Database>>,
+  projectId: string,
+): Promise<string> {
+  const project = requireRow(
+    await client
+      .from('projects')
+      .select('account_id')
+      .eq('id', projectId)
+      .single(),
+    'Project not found',
+  );
+
+  return project.account_id;
+}
+
 /**
  * Extracts a concise description for a character or location from story text.
  * Uses LLM (extract-asset-description template) — gracefully returns empty
  * description on failure.
  */
-export const extractDescriptionAction = enhanceAction(
+const extractDescription = enhanceAction(
   async (data) => {
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
@@ -119,9 +150,11 @@ export const extractDescriptionAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
+    const accountId = await projectAccountId(client, data.projectId);
+
     try {
       const { description, run } = await describeAsset(
-        { client, accountId: user.id, userId: user.id },
+        { client, accountId, userId: user.id },
         {
           asset: {
             name: data.name,
@@ -131,7 +164,7 @@ export const extractDescriptionAction = enhanceAction(
           },
           storyContext: data.storyContext,
         },
-        { name: 'extract-asset-description', accountId: user.id },
+        { name: 'extract-asset-description', accountId },
       );
 
       // Nothing is saved from the sidebar's extract: the run is complete
@@ -144,20 +177,24 @@ export const extractDescriptionAction = enhanceAction(
     } catch (err) {
       console.error('[extractDescription] LLM extraction failed:', err);
 
-      // A refusal is worded for the page; a model failure stays quiet (KB-182)
+      // The sidebar still opens with an empty description to write by hand,
+      // and says why: a refusal in the gateway's words, anything else as a
+      // failure, never as silence (KB-182, KB-187)
       const { runRefusalMessage } = await import('@kit/ai-gateway');
 
       return {
         success: true as const,
         data: {
           description: '',
-          refusal: runRefusalMessage(err) ?? undefined,
+          notice: runRefusalMessage(err) ?? DESCRIPTION_FAILED,
         },
       };
     }
   },
   { schema: ExtractDescriptionSchema },
 );
+
+export const extractDescriptionAction = returnRefusals(extractDescription);
 
 /**
  * Links an existing asset to an episode (the MCP tool calls the same
@@ -233,10 +270,11 @@ const batchCreateUnlinked = enhanceAction(
     );
 
     const newAssets: Array<{ id: string; name: string; type: string }> = [];
-    let refusal: string | undefined;
+    let notice: string | undefined;
 
     if (itemsToCreate.length > 0) {
-      const ctx: Ctx = { client, accountId: user.id, userId: user.id };
+      const accountId = await projectAccountId(client, data.projectId);
+      const ctx: Ctx = { client, accountId, userId: user.id };
       const stage = assetDescriptionStage;
       const targets: AssetDescriptionTarget[] = itemsToCreate.map((item) => ({
         projectId: data.projectId,
@@ -252,7 +290,7 @@ const batchCreateUnlinked = enhanceAction(
           try {
             return await describeAsset(ctx, target, {
               name: 'batch-extract-description',
-              accountId: user.id,
+              accountId,
             });
           } catch (err) {
             console.error(
@@ -263,7 +301,7 @@ const batchCreateUnlinked = enhanceAction(
             return {
               description: fallbackDescription(target.asset.type),
               run: null,
-              refusal: runRefusalMessage(err) ?? undefined,
+              notice: runRefusalMessage(err) ?? DEFAULT_DESCRIPTION_USED,
             };
           }
         }),
@@ -272,8 +310,8 @@ const batchCreateUnlinked = enhanceAction(
       // The assets are still created with a default description; the user
       // is told why no model wrote them (KB-182)
       for (const item of described) {
-        if ('refusal' in item && item.refusal) {
-          refusal = item.refusal;
+        if ('notice' in item && item.notice) {
+          notice = item.notice;
           break;
         }
       }
@@ -378,7 +416,7 @@ const batchCreateUnlinked = enhanceAction(
         created: newAssets.length,
         linked: existingMap.size,
         failed: data.items.length - newAssets.length - existingMap.size,
-        refusal,
+        notice,
       },
     };
   },

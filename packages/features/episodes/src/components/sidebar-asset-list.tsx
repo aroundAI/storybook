@@ -129,8 +129,8 @@ export function SidebarAssetList({
           toast.success(
             parts.length > 0 ? parts.join(', ') : 'All assets are up to date',
           );
-          const refusal = (result.data as { refusal?: string }).refusal;
-          if (refusal) toast.warning(refusal);
+          const notice = (result.data as { notice?: string }).notice;
+          if (notice) toast.warning(notice);
           refetch();
           onAssetCreated?.();
         }
@@ -369,7 +369,7 @@ function CreateAssetDialog({
   const [isExtracting, setIsExtracting] = useState(false);
   const [isCreating, startCreating] = useTransition();
   const [hasExtracted, setHasExtracted] = useState(false);
-  const [refusal, setRefusal] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   // Radix calls onOpenChange only for the dialog's own interactions, never
   // when the parent sets `open`, so the extraction on open has to follow the
@@ -383,31 +383,37 @@ function CreateAssetDialog({
     if (!nextOpen) {
       setDescription('');
       setHasExtracted(false);
-      setRefusal(null);
+      setNotice(null);
     }
     onOpenChange(nextOpen);
   };
 
   const extractDescription = async () => {
     setIsExtracting(true);
-    setRefusal(null);
+    setNotice(null);
     try {
-      const result = await extractDescriptionAction({
-        name,
-        type,
-        role,
-        arc,
-        storyContext,
-      });
+      const result = await unwrap(
+        extractDescriptionAction({
+          projectId,
+          name,
+          type,
+          role,
+          arc,
+          storyContext,
+        }),
+      );
       if (result.success && result.data.description) {
         setDescription(result.data.description);
       }
-      if (result.success && result.data.refusal) {
-        setRefusal(result.data.refusal);
+      if (result.success && result.data.notice) {
+        setNotice(result.data.notice);
       }
       setHasExtracted(true);
-    } catch {
-      // LLM failed — leave textarea empty for manual input
+    } catch (error) {
+      // Leave the textarea empty for manual input, and say why
+      setNotice(
+        refusalMessage(error, 'The description could not be generated.'),
+      );
     } finally {
       setIsExtracting(false);
     }
@@ -489,12 +495,12 @@ function CreateAssetDialog({
                 className="resize-none text-xs"
               />
             )}
-            {refusal && !isExtracting && (
+            {notice && !isExtracting && (
               <p
                 className="mt-1 text-xs text-destructive"
-                data-test="asset-description-refusal"
+                data-test="asset-description-notice"
               >
-                {refusal}
+                {notice}
               </p>
             )}
           </div>
