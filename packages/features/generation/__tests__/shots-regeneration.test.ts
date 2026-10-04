@@ -206,12 +206,18 @@ describe('shots stage, regeneration (FILM-2007)', () => {
     expect(commit.data.regeneratedShotIds).toEqual([SHOT_A]);
     expect(commit.followOns).toBeUndefined();
 
-    const ops = plans[0]!.ops as Array<Record<string, unknown>>;
+    const ops = plans[0]!.ops as unknown as Array<Record<string, unknown>>;
 
     expect(ops.map((op) => [op.table, op.op])).toEqual([
       ['shots', 'update'],
       ['episodes', 'update'],
     ]);
+    // Any update of the episode moves its version (its trigger), and so the
+    // Studio's package etag
+    expect(ops[1]).toMatchObject({
+      values: { updated_at: expect.any(String) },
+      requireRows: true,
+    });
     expect(ops[0]).toMatchObject({
       merge: ['generation_metadata'],
       requireRows: true,

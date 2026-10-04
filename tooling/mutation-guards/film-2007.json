@@ -1,0 +1,111 @@
+{
+  "feature": "FILM-2007",
+  "mutations": [
+    {
+      "name": "R1 regenerate_shots takes more than 20 shots",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/studio/jobs.ts",
+      "find": "      if (ids.length > SHOT_REGENERATION_MAX) {",
+      "replace": "      if (ids.length > 100) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/studio-jobs.test.ts",
+      "pattern": "refuses more than 20 shots"
+    },
+    {
+      "name": "R2 a generating shot is re-planned under its render",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/studio/jobs.ts",
+      "find": "      const generating = shots.filter((shot) => shot.status === 'generating');",
+      "replace": "      const generating = shots.filter((shot) => shot.status === 'never');",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/studio-jobs.test.ts",
+      "pattern": "refuses a shot that is generating"
+    },
+    {
+      "name": "R3 the regeneration target takes more than 20 shots",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/shots.ts",
+      "find": "    .max(SHOT_REGENERATION_MAX)",
+      "replace": "    .max(100)",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/shots-regeneration.test.ts",
+      "pattern": "caps a re-plan at 20 shots"
+    },
+    {
+      "name": "R4 a regeneration briefs every scene, not only the listed shots",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/shots.ts",
+      "find": "      return regenerationParts(await loadRegeneratingShots(ctx, target));",
+      "replace": "      return partsFor((await loadShotsEpisode(ctx, target)).scenes);",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/shots-regeneration.test.ts",
+      "pattern": "has one part per listed shot"
+    },
+    {
+      "name": "R5 a regeneration commit leaves the episode version where it was",
+      "kind": "unit",
+      "file": "packages/features/generation/src/stages/shots.ts",
+      "find": "        values: { updated_at: now },",
+      "replace": "        values: {},",
+      "cwd": "packages/features/generation",
+      "test": "__tests__/shots-regeneration.test.ts",
+      "pattern": "commits the shots in place"
+    },
+    {
+      "name": "L1 a finished dub leaves the episode version where it was",
+      "kind": "unit",
+      "file": "apps/web/lambda/voice-worker/dub-episode.ts",
+      "find": "      .update({ updated_at: now().toISOString() })",
+      "replace": "      .select('id')",
+      "cwd": "apps/web",
+      "test": "lambda/voice-worker/__tests__/dub-episode.test.ts",
+      "pattern": "voices every translated line"
+    },
+    {
+      "name": "L2 a dubbed line loses its place on the timeline",
+      "kind": "unit",
+      "file": "apps/web/lambda/voice-worker/dub-episode.ts",
+      "find": "      timeline_start_seconds: line.timeline_start_seconds,",
+      "replace": "      timeline_start_seconds: null,",
+      "cwd": "apps/web",
+      "test": "lambda/voice-worker/__tests__/dub-episode.test.ts",
+      "pattern": "voices every translated line"
+    },
+    {
+      "name": "L3 a dub voices before its translation arrives",
+      "kind": "unit",
+      "file": "apps/web/lambda/voice-worker/dub-episode.ts",
+      "find": "    if (runStatus && OPEN_RUN.has(runStatus)) {",
+      "replace": "    if (false) {",
+      "cwd": "apps/web",
+      "test": "lambda/voice-worker/__tests__/dub-episode.test.ts",
+      "pattern": "waits for an open translation run"
+    },
+    {
+      "name": "L4 any language code is accepted",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/lib/dub-episode.ts",
+      "find": "  if (LANGUAGE_SET.has(code)) return null;",
+      "replace": "  return null;",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/localize-starts.test.ts",
+      "pattern": "takes the primary subtags"
+    },
+    {
+      "name": "L5 a language already being dubbed is started again",
+      "kind": "unit",
+      "file": "packages/features/audio-generation/src/server/localize-starts.ts",
+      "find": "  if (busy.length > 0) {",
+      "replace": "  if (false) {",
+      "cwd": "packages/features/audio-generation",
+      "test": "__tests__/localize-starts.test.ts",
+      "pattern": "refuses a language already being dubbed"
+    },
+    {
+      "name": "L6 a dubbed line may start before the timeline",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/film-2007-regenerate-and-localize.test.sql",
+      "sql": "alter table public.dubbed_dialogue_lines drop constraint dubbed_dialogue_lines_timeline_start_nonnegative;"
+    }
+  ]
+}
