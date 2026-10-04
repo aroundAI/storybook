@@ -101,10 +101,10 @@ notes: |
   test needs a server with a model key, E2E_SERVER_HAS_MODEL_KEY=1, since
   with none LLM_NOT_CONFIGURED is the refusal, as it should be).
 
-  Owner-approved fix 2026-10-04 (#TBD-badge): on a narrow shot card the
+  Owner-approved fix 2026-10-04 (#598): on a narrow shot card the
   caption row (Shot n.m, badge, characters) did not wrap, so the "Claude
   via MCP" badge ran past the card and was clipped. The row now wraps
-  (shot-card.tsx:287). Guarded by
+  (shot-card.tsx:285). Guarded by
   apps/e2e/tests/studio/origin-badge-fits.spec.ts, which measures each
   badge against its card at 1280, 1024, 768 and 390px; the dialogue lines
   and the stage bar already wrapped or had room.
