@@ -26,7 +26,7 @@ import { updateProjectAction } from '../lib/server/project.mutations';
 import type { Project } from '../lib/types';
 
 interface UpdateProjectFormProps {
-  project: Project;
+  project: Pick<Project, 'id' | 'name' | 'description' | 'slug'>;
   onSuccess?: () => void;
 }
 

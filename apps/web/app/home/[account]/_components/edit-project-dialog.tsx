@@ -18,7 +18,7 @@ import {
 import { Trans } from '@kit/ui/trans';
 
 interface EditProjectDialogProps {
-  project: Project;
+  project: Pick<Project, 'id' | 'name' | 'description' | 'slug'>;
 }
 
 export function EditProjectDialog({ project }: EditProjectDialogProps) {

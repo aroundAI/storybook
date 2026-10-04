@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { z } from 'zod';
 
+import type { Brand, EditPolicy } from '@kit/desktop-integration';
 import type { Database, Json } from '@kit/supabase/database';
 
 import type {
@@ -66,9 +67,20 @@ export async function insertProject(
   return { ok: true, data: project };
 }
 
+/**
+ * FILM-2004: brand and edit_policy are written whole, already validated by
+ * their schemas. They are not in UpdateProjectSchema, so the edit-project
+ * form's action cannot write them; their own settings pages and
+ * update_project over MCP pass them here.
+ */
+type ProjectRowUpdate = z.infer<typeof UpdateProjectSchema> & {
+  brand?: Brand;
+  edit_policy?: EditPolicy;
+};
+
 export async function updateProjectRow(
   client: SupabaseClient<Database>,
-  data: z.infer<typeof UpdateProjectSchema>,
+  data: ProjectRowUpdate,
 ): Promise<ProjectWriteResult> {
   const updateData: Record<string, unknown> = {};
   if (data.name !== undefined) updateData.name = data.name;
@@ -76,6 +88,8 @@ export async function updateProjectRow(
   if (data.slug !== undefined) updateData.slug = data.slug;
   if (data.status !== undefined) updateData.status = data.status;
   if (data.metadata !== undefined) updateData.metadata = data.metadata as Json;
+  if (data.brand !== undefined) updateData.brand = data.brand;
+  if (data.edit_policy !== undefined) updateData.edit_policy = data.edit_policy;
 
   const { data: project, error } = await client
     .from('projects')

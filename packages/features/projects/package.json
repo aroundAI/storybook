@@ -29,6 +29,7 @@
     "@hookform/resolvers": "^4.1.3",
     "@kit/audit-logs": "workspace:*",
     "@kit/cache": "workspace:*",
+    "@kit/desktop-integration": "workspace:*",
     "@kit/eslint-config": "workspace:*",
     "@kit/film-studio-schemas": "workspace:*",
     "@kit/monitoring": "workspace:*",

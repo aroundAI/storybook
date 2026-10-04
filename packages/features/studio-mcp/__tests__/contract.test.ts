@@ -271,6 +271,28 @@ describe.skipIf(!(URL_ && TOKEN_ENV) && !SEED)(
             .settings,
         ).toMatchObject({ genre: 'comedy', defaultEpisodeDuration: 240 });
 
+        // FILM-2004: brand and edit policy, partial in, defaults out
+        const branded = await call('update_project', {
+          projectId: project.id,
+          brand: { colors: { captionText: '#FF0000' } },
+          editPolicy: { maxShotLength: 4 },
+        });
+        expect(branded.isError).toBeFalsy();
+        const read = await call('get_project', { projectId: project.id });
+        expect(read.structuredContent).toMatchObject({
+          brand: {
+            colors: { captionText: '#FF0000', primary: '#2563EB' },
+            transitionStyle: 'cut',
+          },
+          editPolicy: { minShotLength: 1.2, maxShotLength: 4 },
+        });
+        const crossed = await call('update_project', {
+          projectId: project.id,
+          editPolicy: { minShotLength: 5 },
+        });
+        expect(crossed.isError).toBe(true);
+        expect(crossed.structuredContent?.code).toBe('VALIDATION_FAILED');
+
         const listed = await call('list_projects');
         expect(
           (listed.structuredContent?.projects as Array<{ id: string }>).map(

@@ -3,7 +3,7 @@ title: "Project Brand and Edit Policy"
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: DRAFT
+status: DONE
 effort: M
 dependencies: []
 summary: >
@@ -19,35 +19,50 @@ summary: >
   compositions" (caption style).
 acceptance_criteria:
   - text: "Migration adds projects.brand jsonb not null default '{}' and projects.edit_policy jsonb not null default '{}'; BrandSchema and EditPolicySchema (zod) in @kit/desktop-integration define every field with a default, and a parse of '{}' yields the full default object"
-    met: false
-    reason: "not built — spec drafted 2026-10-04"
+    met: true
+    evidence: "#617: apps/web/supabase/migrations/20261004160115_film-2004-project-brand-and-edit-policy.sql:15 (both columns, plus a CHECK that each is a JSON object); packages/features/desktop-integration/src/brand.schema.ts:81 and src/edit-policy.schema.ts:88 parse {} to BRAND_DEFAULTS / EDIT_POLICY_DEFAULTS, asserted field by field in __tests__/brand-and-edit-policy.test.ts:17 and :90; pgTAP apps/web/supabase/tests/database/project-brand-and-edit-policy.test.sql:39 (C1-C7, 14/14, red without the migration)"
   - text: "BrandSchema: fonts {heading, body}, colors {primary, secondary, background, captionText, captionBackground}, captionStyle {fontSize, position top|center|bottom, maxCharsPerLine, background none|box|outline, emphasis none|color|scale}, logo {assetId, position, opacity}, introAssetId, outroAssetId, transitionStyle cut|dissolve|dip, musicStyle tags[]"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "#617: packages/features/desktop-integration/src/brand.schema.ts:64; colours are #RRGGBB or #RRGGBBAA, fontSize 12-200 px at 1080p, maxCharsPerLine 10-80, logo.position a corner, opacity 0-1, asset ids uuid or null, musicStyle up to 20 tags"
   - text: "EditPolicySchema: targetDurationSeconds default from episode target, minShotLength 1.2, maxShotLength 6, transitions {preferred [cut, dissolve], maxDuration 0.4}, music {enabled true, duckUnderDialogue true, duckDb -8}, captions {enabled true, style 'brand'}, visual {avoidRepeatedShots true, avoidExtremeZoom true}, loudnessTargetLufs -14"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "#617: packages/features/desktop-integration/src/edit-policy.schema.ts:56-88. targetDurationSeconds defaults to null, meaning the episode's own target (episodes.target_duration_seconds, else metadata.defaultEpisodeDuration); set, it is 60-7200 like the episode column. Shot lengths 0.5-30 s with min <= max (:77); captions.style is brand | plain"
   - text: "Project settings gains Brand and Edit policy tabs (enhanceAction updates with the schemas, settings.manage permission); the Brand tab renders a caption preview from the current values; logo, intro and outro pick from the project's assets"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "#617: sub-routes apps/web/app/home/[account]/studio/[projectSlug]/settings/brand/page.tsx and edit-policy/page.tsx, linked from settings/page.tsx:431 (lead decision 5); actions brand/_lib/server/actions.ts and edit-policy/_lib/server/actions.ts validate with _lib/schemas and write through _lib/server/write-project-json-setting.ts:59 (settings.manage via has_permission, refusals returned as values); live preview brand/_components/brand-settings-form.tsx:188 (CaptionPreview, useWatch); logo/intro/outro pickers :329/:351/:359 list the project's live assets, and the action refuses any other id. Screenshots on #617"
   - text: "Updating brand or edit_policy bumps the edit package etag (FILM-2001) so an open Studio sees 'brand changed' on re-sync"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "#617, this spec's side: a write replaces the column and projects_set_timestamps bumps projects.updated_at (pgTAP project-brand-and-edit-policy.test.sql E1). The etag itself is FILM-2001's, whose AC names projects.brand and projects.edit_policy among its inputs"
   - text: "get_project and update_project (FILM-1905) expose and accept brand and editPolicy, validated by the same schemas, so an MCP client can set them"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "#617: get_project packages/features/studio-mcp/src/server/tools/read/projects.ts:212 returns both with defaults applied; update_project author/projects.ts:158-161 takes BrandPatchSchema / EditPolicyPatchSchema, merges group by group onto the stored object and validates the result with BrandSchema / EditPolicySchema, refusing foreign asset ids. Driven with the SDK client against /api/mcp on a dev server (lane B, port 3301): __tests__/contract.test.ts:274 passed (MCP_CONTRACT_SEED=1 MCP_CONTRACT_URL=http://localhost:3301/api/mcp)"
 test_plan:
   unit:
-    - {text: "Schemas: defaults, invalid colours, out-of-range shot lengths, unknown transition refused", met: false, reason: "not built"}
+    - {text: "Schemas: defaults, invalid colours, out-of-range shot lengths, unknown transition refused", met: true, evidence: "#617: packages/features/desktop-integration/__tests__/brand-and-edit-policy.test.ts:53, :109, :116 (26 tests; red with the hex rule and the min/max rule removed: 10 failed); guards BRAND1, BRAND2 in tooling/mutation-guards/film-2004.json"}
   integration:
-    - {text: "Server action updates and reads back; a member without settings.manage is refused", met: false, reason: "not built"}
+    - {text: "Server action updates and reads back; a member without settings.manage is refused", met: true, evidence: "#617: apps/web/app/home/[account]/studio/[projectSlug]/settings/brand/__tests__/brand-and-edit-policy.actions.test.ts:97, :117, :189 (8 tests; red without the settings.manage and asset checks: 3 failed); guards BRAND3, BRAND4"}
   e2e:
-    - {text: "Playwright: edit the caption colour, see the preview change, save, reload", met: false, reason: "not built"}
+    - {text: "Playwright: edit the caption colour, see the preview change, save, reload", met: true, evidence: "#617: apps/e2e/tests/projects/brand-and-edit-policy.spec.ts:78 (4 tests passed on lane B against port 3301; also asserts the second save after a reload, the refused colour and min > max, and read-only pages for a project admin without settings.manage; red with the preview ignoring the colour); guard BRAND E1"}
 open_questions: []
 notes: >
   The schemas are the second shared contract with the fork (after the edit
   package): storybookstudio/src/studio/contracts/brand.schema.ts and
   policy.schema.ts are copies checked by the same drift test as FILM-2001.
+  The two schema files import only zod so they copy as they are; the copy
+  script (scripts/sync-studio-contracts.mjs) and the drift tests are left to
+  FILM-2001, because the fork is plain JS without zod and needs both a
+  transform and a test of its own.
+
+  Corrections (2026-10-04, #617). Layout: the tabs are sub-routes
+  settings/brand and settings/edit-policy, linked from the settings page,
+  which keeps its sections (lead decision 5, .local-ci/TEAM_BRIEF_v5.md).
+  targetDurationSeconds is null by default, read as the episode's own
+  target; captions.style is brand | plain. settings.manage is checked by
+  the pages' actions; RLS on projects (projects_update) knows only project
+  roles, so update_project over MCP, like every other projects column,
+  needs a project owner or admin but not the team permission. Saving a
+  brand also refuses a logo, intro or outro that is not a live asset of
+  the project, on both paths.
 feature:
   database:
     tables: []

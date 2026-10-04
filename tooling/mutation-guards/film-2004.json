@@ -1,0 +1,80 @@
+{
+  "feature": "FILM-2004 project brand and edit policy: schemas, the settings.manage and asset checks, MCP exposure, the live caption preview",
+  "mutations": [
+    {
+      "name": "BRAND1 any string passes as a colour",
+      "kind": "unit",
+      "file": "packages/features/desktop-integration/src/brand.schema.ts",
+      "find": "const HEX_COLOR = /^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;",
+      "replace": "const HEX_COLOR = /.*/;",
+      "cwd": "packages/features/desktop-integration",
+      "test": "__tests__/brand-and-edit-policy.test.ts",
+      "pattern": "refuses the colour"
+    },
+    {
+      "name": "BRAND2 a shortest shot longer than the longest passes",
+      "kind": "unit",
+      "file": "packages/features/desktop-integration/src/edit-policy.schema.ts",
+      "find": "  (policy) => policy.minShotLength <= policy.maxShotLength,",
+      "replace": "  (policy) => policy.minShotLength >= 0,",
+      "cwd": "packages/features/desktop-integration",
+      "test": "__tests__/brand-and-edit-policy.test.ts",
+      "pattern": "out-of-range shot lengths"
+    },
+    {
+      "name": "BRAND3 the settings pages skip settings.manage",
+      "kind": "unit",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/settings/_lib/server/write-project-json-setting.ts",
+      "find": "  if (!allowed) {",
+      "replace": "  if (allowed === 'never') {",
+      "cwd": "apps/web",
+      "test": "app/home/[account]/studio/[projectSlug]/settings/brand/__tests__/brand-and-edit-policy.actions.test.ts",
+      "pattern": "without settings.manage"
+    },
+    {
+      "name": "BRAND4 the Brand page saves another project's asset",
+      "kind": "unit",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/settings/brand/_lib/server/actions.ts",
+      "find": "        if (foreign.length > 0) {",
+      "replace": "        if (foreign.length < 0) {",
+      "cwd": "apps/web",
+      "test": "app/home/[account]/studio/[projectSlug]/settings/brand/__tests__/brand-and-edit-policy.actions.test.ts",
+      "pattern": "not one of the project's assets"
+    },
+    {
+      "name": "BRAND5 update_project saves another project's asset",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/author/projects.ts",
+      "find": "      if (foreign.length > 0) {",
+      "replace": "      if (foreign.length < 0) {",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/project-brand-policy.test.ts",
+      "pattern": "not one of the project's assets"
+    },
+    {
+      "name": "BRAND6 get_project leaves out the brand and policy",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/read/projects.ts",
+      "find": "        ...brandAndEditPolicy(project),\n",
+      "replace": "",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/project-brand-policy.test.ts",
+      "pattern": "get_project"
+    },
+    {
+      "name": "BRAND DB1 a brand that is not an object is stored",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/project-brand-and-edit-policy.test.sql",
+      "sql": "alter table public.projects drop constraint projects_brand_is_object;"
+    },
+    {
+      "name": "BRAND E1 the caption preview ignores the caption colour",
+      "kind": "e2e",
+      "file": "apps/web/app/home/[account]/studio/[projectSlug]/settings/brand/_components/caption-preview.tsx",
+      "find": "    color: captionText,\n",
+      "replace": "    color: defaults.colors.captionText,\n",
+      "spec": "tests/projects/brand-and-edit-policy.spec.ts",
+      "grep": "caption preview follows the form"
+    }
+  ]
+}
