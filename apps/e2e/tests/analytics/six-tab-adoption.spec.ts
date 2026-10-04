@@ -345,6 +345,21 @@ test.describe('Six-tab adoption (FILM-1707)', () => {
     await byTest(page, 'deep-dive-platform-option-tiktok').click();
     await expect(switcher).toHaveText('TikTok');
 
+    // The headline cards the tab cannot cover keep their reason to three
+    // lines: a sentence per platform made each one several screens tall.
+    const reasons = byTest(page, 'metric-dimmed-reason');
+
+    await expect(reasons.first()).toBeVisible(SLOW);
+
+    for (const box of await reasons.evaluateAll((els) =>
+      els.map((el) => ({
+        height: el.getBoundingClientRect().height,
+        line: parseFloat(getComputedStyle(el).lineHeight),
+      })),
+    )) {
+      expect(box.height).toBeLessThanOrEqual(box.line * 3 + 1);
+    }
+
     for (const card of DATE_AXIS_CARDS) {
       const shell = byTest(page, card);
 
