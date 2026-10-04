@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 import { seedTeamAccount } from '../utils/seed';
 import { signInAs } from '../utils/session';
+import { byTest } from '../utils/visible';
 
 // KB-176: auth-js on the browser client read `error_description` in any page
 // URL as a failed login and cleared the session cookie.
@@ -56,8 +57,6 @@ test.describe('error_description in a page URL', () => {
     );
 
     await expect(page).toHaveURL(/\/auth\/callback\/error/);
-    await expect(
-      page.locator('[data-test="auth-callback-error"]'),
-    ).toBeVisible();
+    await expect(byTest(page, 'auth-callback-error')).toBeVisible();
   });
 });
