@@ -76,7 +76,11 @@ notes: >
   {userId, name}, the name copied at open so the badge shows it to every
   member. Opening and closing each bump episodes.version (the existing
   trigger); open_edit_session returns episodeVersion after the bump, which
-  is what FILM-2003's deliver_edit should compare. FILM-2003's seam is
+  is what FILM-2003's deliver_edit compares, never the etag. So the
+  package_etag a session records is the etag from before the open, and the
+  Studio's order is get_edit_package, then open_edit_session, then
+  get_edit_package again for the content it edits (found live by FILM-2011
+  against the integration server). FILM-2003's seam is
   kit.end_edit_session(session, 'delivered', summary, 'delivered'), which
   leaves the status to the caller. Open question (admin force-close): lead
   default, owner may change: close_edit_session(id, summary, 'admin')
