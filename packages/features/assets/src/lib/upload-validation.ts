@@ -45,6 +45,15 @@ export const UPLOAD_CONSTRAINTS = {
       'audio/ogg': [0x4f, 0x67, 0x67, 0x53],
     } as Record<string, number[]>,
   },
+  /** A render's sidecar captions from StorybookStudio (FILM-2003) */
+  captions: {
+    maxSize: 2 * 1024 * 1024, // 2MB
+    allowedTypes: ['text/vtt'] as const,
+    allowedExtensions: ['.vtt'] as const,
+    magicBytes: {
+      'text/vtt': [0x57, 0x45, 0x42, 0x56, 0x54, 0x54], // WEBVTT
+    } as Record<string, number[]>,
+  },
 } as const;
 
 export type UploadCategory = keyof typeof UPLOAD_CONSTRAINTS;
@@ -58,6 +67,7 @@ export const ALLOWED_PROJECT_ASSET_TYPES: readonly string[] = [
   ...UPLOAD_CONSTRAINTS.image.allowedTypes,
   ...UPLOAD_CONSTRAINTS.video.allowedTypes,
   ...UPLOAD_CONSTRAINTS.audio.allowedTypes,
+  ...UPLOAD_CONSTRAINTS.captions.allowedTypes,
 ];
 
 /**

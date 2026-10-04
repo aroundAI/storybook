@@ -678,7 +678,7 @@ StoryBook gets its post-production half: a fork of Velorn, [aroundAI/storybookst
 |---------|------|--------|--------|--------------|
 | FILM-2001 | [edit-package-tool](./phase-20-storybookstudio/FILM-2001-edit-package-tool.yaml) | DRAFT | L | FILM-1904, FILM-1905, FILM-2004 |
 | FILM-2002 | [edit-sessions-and-events](./phase-20-storybookstudio/FILM-2002-edit-sessions-and-events.yaml) | DONE | M | FILM-1904 |
-| FILM-2003 | [renders-and-delivery](./phase-20-storybookstudio/FILM-2003-renders-and-delivery.yaml) | DRAFT | L | FILM-2002, FILM-1904 |
+| FILM-2003 | [renders-and-delivery](./phase-20-storybookstudio/FILM-2003-renders-and-delivery.yaml) | DONE | L | FILM-2002, FILM-1904 |
 | FILM-2004 | [brand-and-edit-policy](./phase-20-storybookstudio/FILM-2004-brand-and-edit-policy.yaml) | DONE | M | - |
 | FILM-2005 | [studio-oauth-client-and-open-in-studio](./phase-20-storybookstudio/FILM-2005-studio-oauth-client-and-open-in-studio.yaml) | DRAFT | M | FILM-1907, FILM-2002 |
 | FILM-2006 | [edit-record-and-analytics](./phase-20-storybookstudio/FILM-2006-edit-record-and-analytics.yaml) | DRAFT | M | FILM-2002, FILM-2003 |

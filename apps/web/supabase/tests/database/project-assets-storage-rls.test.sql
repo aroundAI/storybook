@@ -336,7 +336,7 @@ select is(
 );
 select is(
   (select allowed_mime_types from storage.buckets where id = 'project-assets'),
-  array['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/webm','video/quicktime','audio/mpeg','audio/wav','audio/ogg','audio/mp4'],
+  array['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/webm','video/quicktime','audio/mpeg','audio/wav','audio/ogg','audio/mp4','text/vtt'],
   'project-assets accepts only the UPLOAD_CONSTRAINTS types'
 );
 

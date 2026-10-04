@@ -8,6 +8,7 @@ import { generationTools } from './generation';
 import { readTools } from './read';
 import { renderTools } from './render';
 import { studioTools } from './studio';
+import { studioRenderTools } from './studio/renders';
 import { whoamiTool } from './whoami';
 import { getWorkflowGuideTool } from './workflow-guide';
 
@@ -27,6 +28,7 @@ export const defaultTools: McpToolDefinition[] = [
   ...renderTools,
   ...editTools,
   ...studioTools,
+  ...studioRenderTools,
 ];
 
 export {

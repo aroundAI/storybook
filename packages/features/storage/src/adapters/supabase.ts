@@ -12,6 +12,7 @@ import type {
   SignedUploadRequest,
   SignedUploadResult,
   StorageAdapter,
+  StoredObjectInfo,
   UploadOptions,
   UploadResult,
 } from '../types';
@@ -128,6 +129,49 @@ export class SupabaseStorageAdapter implements StorageAdapter {
     // Convert Blob to Buffer
     const arrayBuffer = await data.arrayBuffer();
     return Buffer.from(arrayBuffer);
+  }
+
+  /**
+   * Signed by Supabase Storage as the client's role: with a user's client,
+   * the bucket's read policy decides whether a URL is issued at all.
+   */
+  async getSignedReadUrl(
+    bucket: string,
+    path: string,
+    expiresIn: number,
+  ): Promise<string> {
+    const { data, error } = await this.client.storage
+      .from(bucket)
+      .createSignedUrl(path, expiresIn);
+
+    if (error || !data) {
+      throw new Error(`Failed to create signed read URL: ${error?.message}`);
+    }
+
+    return data.signedUrl;
+  }
+
+  async stat(bucket: string, path: string): Promise<StoredObjectInfo | null> {
+    const { data, error } = await this.client.storage.from(bucket).info(path);
+
+    if (error) {
+      const status = Number(
+        (error as { status?: number; statusCode?: string | number }).status ??
+          (error as { statusCode?: string | number }).statusCode,
+      );
+
+      if (status === 404 || /not found/i.test(error.message)) return null;
+
+      throw new Error(`Storage stat failed: ${error.message}`);
+    }
+
+    return {
+      bytes: Number(data.size ?? data.metadata?.size ?? 0),
+      contentType:
+        data.contentType ??
+        (data.metadata?.mimetype as string | undefined) ??
+        null,
+    };
   }
 }
 

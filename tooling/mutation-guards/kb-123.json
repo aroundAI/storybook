@@ -5,7 +5,7 @@
       "name": "KB-123 save rule accepts any new video",
       "kind": "unit",
       "file": "packages/features/storage/src/episode-video.ts",
-      "find": "      !ownedEpisodeVideoUpload(url, episodeId, env),",
+      "find": "      !ownedEpisodeVideoUpload(url, episodeId, env, projectId),",
       "replace": "      false,",
       "cwd": "packages/features/storage",
       "test": "__tests__/episode-video.test.ts",

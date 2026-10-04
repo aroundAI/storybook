@@ -5,6 +5,8 @@ import { enhanceRouteHandler } from '@kit/next/routes';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
+import { expireStaleRenderUploads } from './expire-render-uploads';
+
 /**
  * Hourly generation-run expiry (FILM-1903).
  *
@@ -22,6 +24,9 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
  * (FILM-2002), which puts each episode's previous status back; the Studio
  * opens a new session the next time. A failure there is logged and
  * reported, and does not stop the trim.
+ *
+ * And it fails StorybookStudio renders left uploading for 24 hours
+ * (FILM-2003, `expire-render-uploads.ts`), likewise logged and reported.
  *
  * Security: `auth: false` plus an explicit bearer check, as the sibling cron
  * routes do: `auth: true` would redirect a session-less caller, and the
@@ -119,9 +124,35 @@ export const GET = enhanceRouteHandler(
       logger.info({ ...ctx, trimmed }, 'Trimmed MCP tool calls past 90 days');
     }
 
+    const renders = await expireStaleRenderUploads(admin);
+
+    if (!renders.ok) {
+      logger.error(
+        { ...ctx, error: renders.error },
+        'Render upload expiry failed',
+      );
+    } else if (renders.failed > 0) {
+      logger.info(
+        { ...ctx, failedRenders: renders.failed },
+        'Failed render uploads left unfinalized for 24 hours',
+      );
+    }
+
     if (!staleEditSessions) {
       return NextResponse.json(
         { error: 'Closing stale edit sessions failed', expired, trimmed },
+        { status: 500 },
+      );
+    }
+
+    if (!renders.ok) {
+      return NextResponse.json(
+        {
+          error: 'Render upload expiry failed',
+          expired,
+          trimmed,
+          staleEditSessions,
+        },
         { status: 500 },
       );
     }

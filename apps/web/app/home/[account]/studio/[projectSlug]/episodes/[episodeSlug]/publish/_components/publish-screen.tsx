@@ -32,6 +32,7 @@ import {
 import {
   LANG_INFO,
   type SupportedLanguage,
+  getLangDisplay,
   parseTags,
 } from '@kit/publishing/lib/constants';
 import { takesVideo } from '@kit/publishing/lib/constants';
@@ -77,6 +78,7 @@ import type {
 } from './publish-types';
 import { PublishedContentSection } from './published-content-section';
 import { publishedUploadStatus } from './published-upload-status';
+import { PublishRenderPicker } from './render-picker';
 import { ShortsSection } from './shorts-section';
 import { UnpublishDialog } from './unpublish-dialog';
 import { UploadVideoDialog } from './upload-video-dialog';
@@ -822,6 +824,59 @@ export function PublishScreen({
     }
   };
 
+  // A Studio render as a language's full video (FILM-2003)
+  const handleUseRenderAsFullVideo = (language: string, url: string) => {
+    startTransition(async () => {
+      try {
+        await unwrap(
+          updatePublishedVideoAction({
+            episodeId: episode.id,
+            language,
+            videoUrl: url,
+          }),
+        );
+        toast.success(
+          `Render set as the ${getLangDisplay(language).name} video`,
+        );
+        refetchEpisode();
+      } catch (error) {
+        toast.error(refusalMessage(error, 'Failed to use the render'));
+      }
+    });
+  };
+
+  // A vertical Studio render as a new Shorts group (FILM-2003)
+  const handleAddRenderAsShort = (
+    language: string,
+    url: string,
+    label: string,
+  ) => {
+    const group: ShortsGroup = {
+      id: `group-${Date.now()}`,
+      name: label,
+      title: '',
+      description: '',
+      tags: [],
+      videos: { [language]: url },
+    };
+    const updatedGroups = [...shortsGroups, group];
+
+    startTransition(async () => {
+      try {
+        await unwrap(
+          updateShortsGroupsAction({
+            episodeId: episode.id,
+            shortsGroups: updatedGroups,
+          }),
+        );
+        setShortsGroups(updatedGroups);
+        toast.success('Render added as a Short');
+      } catch (error) {
+        toast.error(refusalMessage(error, 'Failed to add the Short'));
+      }
+    });
+  };
+
   // Remove a full video (shorts use deleteVideoFromGroup instead)
   const handleRemoveVideo = (lang: SupportedLanguage) => {
     startTransition(async () => {
@@ -1445,6 +1500,17 @@ export function PublishScreen({
               episodeNumber={episode.number}
               season={episode.season?.number}
               storyContent={episode.storyData?.fullStory || ''}
+            />
+
+            {/* StorybookStudio renders (FILM-2003) */}
+            <PublishRenderPicker
+              episodeId={episode.id}
+              finalVideoUrl={episode.finalVideoUrl}
+              localizedVideos={localizedVideos}
+              shortsGroups={shortsGroups}
+              isPending={isPending}
+              onUseAsFullVideo={handleUseRenderAsFullVideo}
+              onAddAsShort={handleAddRenderAsShort}
             />
 
             {/* Full Videos Section */}

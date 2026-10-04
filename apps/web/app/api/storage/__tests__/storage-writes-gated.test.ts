@@ -43,6 +43,10 @@ const ALLOWED: Record<string, { why: string; mustCall?: string }> = {
     why: 'signs a user-chosen key once the gate has checked it',
     mustCall: 'canWrite: canWriteProjectKey,',
   },
+  'packages/features/studio-mcp/src/server/tools/studio/renders.ts': {
+    why: 'signs a StorybookStudio render key once the gate has checked it, as the presign route does (FILM-2003)',
+    mustCall: 'await canWriteProjectKey(client, key)',
+  },
   'packages/features/content-analytics/src/server/report-storage.ts': {
     why: 'reports never go to R2: the private Supabase bucket, behind RLS (KB-55 D2)',
   },

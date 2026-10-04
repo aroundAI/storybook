@@ -30,6 +30,7 @@
     "@kit/projects": "workspace:*",
     "@kit/prompt-engine": "workspace:*",
     "@kit/shared": "workspace:*",
+    "@kit/storage": "workspace:*",
     "@kit/supabase": "workspace:*",
     "@modelcontextprotocol/sdk": "1.18.0",
     "@supabase/supabase-js": "2.57.4",

@@ -68,6 +68,8 @@ select results_eq(
        -- signed in and has_role_on_account of the team the token is bound to;
        -- inserts the caller's own connection and a hash it supplied (FILM-1904)
        ('public.create_mcp_personal_access_token'),
+       -- the session's user, project owner/admin/member (viewer FORBIDDEN), owner/admin only on a published episode; TARGET_CHANGED on episodes.version; only the caller's ready renders of the episode (FILM-2003)
+       ('public.deliver_edit'),
        -- no caller check: answers only whether the episode id belongs to the
        -- account id, both supplied by the caller — an oracle to someone who
        -- already holds both UUIDs, and no row data (KB-113)

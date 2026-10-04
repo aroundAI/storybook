@@ -93,6 +93,10 @@ describe('the default tool list', () => {
         'open_edit_session',
         'record_edit_events',
         'close_edit_session',
+        // FILM-2003's StorybookStudio delivery tools
+        'request_render_upload',
+        'finalize_render',
+        'deliver_edit',
         // FILM-1906's list, pinned by name in analytics-catalogue.test.ts.
         ...analyticsTools.map((tool) => tool.name),
         'start_generation',

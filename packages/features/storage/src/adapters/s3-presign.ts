@@ -16,6 +16,8 @@
 import 'server-only';
 
 import {
+  GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
   type S3ClientConfig,
@@ -55,4 +57,51 @@ export async function presignPut(
     uploadUrl,
     headers: { 'Content-Type': request.contentType },
   };
+}
+
+/**
+ * A presigned GET (FILM-2001): the URL binds the host, the key and the
+ * expiry, and nothing a downloader must send, so a plain GET (with or
+ * without a Range header) reads the object until `expiresIn` runs out.
+ */
+export async function presignGet(
+  client: S3Client,
+  request: { bucket: string; key: string; expiresIn: number },
+) {
+  return getSignedUrl(
+    client,
+    new GetObjectCommand({ Bucket: request.bucket, Key: request.key }),
+    { expiresIn: request.expiresIn },
+  );
+}
+
+/**
+ * HEAD one object: its size and type, or null when the store says it is not
+ * there. Any other failure throws, so a broken connection is never read as
+ * a missing file.
+ */
+export async function headObject(
+  client: S3Client,
+  request: { bucket: string; key: string },
+) {
+  try {
+    const head = await client.send(
+      new HeadObjectCommand({ Bucket: request.bucket, Key: request.key }),
+    );
+
+    return {
+      bytes: head.ContentLength ?? 0,
+      contentType: head.ContentType ?? null,
+    };
+  } catch (error) {
+    const status = (error as { $metadata?: { httpStatusCode?: number } })
+      .$metadata?.httpStatusCode;
+    const name = (error as { name?: string }).name;
+
+    if (status === 404 || name === 'NotFound' || name === 'NoSuchKey') {
+      return null;
+    }
+
+    throw error;
+  }
 }

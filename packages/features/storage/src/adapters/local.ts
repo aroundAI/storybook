@@ -10,6 +10,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  statSync,
   unlinkSync,
   writeFileSync,
 } from 'fs';
@@ -19,6 +20,7 @@ import type {
   SignedUploadRequest,
   SignedUploadResult,
   StorageAdapter,
+  StoredObjectInfo,
   UploadOptions,
   UploadResult,
 } from '../types';
@@ -123,6 +125,19 @@ export class LocalStorageAdapter implements StorageAdapter {
     }
 
     return readFileSync(fullPath);
+  }
+
+  /** No signing on a local disk: the files are served by the app's own route. */
+  async getSignedReadUrl(bucket: string, path: string): Promise<string> {
+    return this.getPublicUrl(bucket, path);
+  }
+
+  async stat(bucket: string, path: string): Promise<StoredObjectInfo | null> {
+    const fullPath = this.getFilePath(bucket, path);
+
+    if (!existsSync(fullPath)) return null;
+
+    return { bytes: statSync(fullPath).size, contentType: null };
   }
 
   /**

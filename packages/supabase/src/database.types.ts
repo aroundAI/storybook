@@ -2348,6 +2348,81 @@ export type Database = {
           },
         ]
       }
+      episode_renders: {
+        Row: {
+          aspect: string
+          captions_url: string | null
+          created_at: string
+          created_by: string | null
+          duration_seconds: number | null
+          edit_session_id: string | null
+          episode_id: string
+          failure_reason: string | null
+          file_path: string
+          file_size_bytes: number | null
+          file_url: string | null
+          id: string
+          language: string
+          preset: string
+          qa: Json
+          status: string
+          thumbnail_url: string | null
+        }
+        Insert: {
+          aspect: string
+          captions_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration_seconds?: number | null
+          edit_session_id?: string | null
+          episode_id: string
+          failure_reason?: string | null
+          file_path: string
+          file_size_bytes?: number | null
+          file_url?: string | null
+          id?: string
+          language?: string
+          preset: string
+          qa?: Json
+          status?: string
+          thumbnail_url?: string | null
+        }
+        Update: {
+          aspect?: string
+          captions_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration_seconds?: number | null
+          edit_session_id?: string | null
+          episode_id?: string
+          failure_reason?: string | null
+          file_path?: string
+          file_size_bytes?: number | null
+          file_url?: string | null
+          id?: string
+          language?: string
+          preset?: string
+          qa?: Json
+          status?: string
+          thumbnail_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "episode_renders_edit_session_id_fkey"
+            columns: ["edit_session_id"]
+            isOneToOne: false
+            referencedRelation: "edit_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "episode_renders_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       episode_summaries: {
         Row: {
           character_changes: string[] | null
@@ -6698,6 +6773,17 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      deliver_edit: {
+        Args: {
+          p_episode_version: number
+          p_qa: Json
+          p_renders: Json
+          p_report: Json
+          p_session_id: string
+          p_summary: Json
+        }
+        Returns: Json
+      }
       disconnect_platform_connection: {
         Args: { p_connection_id: string }
         Returns: {
@@ -6718,6 +6804,7 @@ export type Database = {
         Returns: boolean
       }
       expire_generation_runs: { Args: never; Returns: number }
+      expire_stale_render_uploads: { Args: never; Returns: number }
       external_run_model_calls: {
         Args: { p_limit?: number }
         Returns: {

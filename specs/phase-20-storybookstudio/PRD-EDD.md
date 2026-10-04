@@ -664,7 +664,7 @@ alter table projects add column edit_policy jsonb not null default '{}';  -- tar
 alter table episodes add column edit_state jsonb not null default '{}';   -- {sessionId, lastDeliveredAt, editedIn:'studio', versions}
 ```
 
-`projects.brand` and `projects.edit_policy` are edited on the project settings page and travel inside the edit package. `episodes.final_video_url` and `master_video_asset_id` are set by finalize from the `youtube_16x9` render so the existing publish worker and public-sharing pages need no change. ClickHouse gets one new fact table, `edit_sessions_fact`, synced by the existing `analytics-sync` lambda from `edit_sessions.summary`.
+`projects.brand` and `projects.edit_policy` are edited on the project settings page and travel inside the edit package. `episodes.final_video_url` and `master_video_asset_id` are set by `deliver_edit` from the delivery's primary render (FILM-2003; `master_video_asset_id` is a new `assets` row for it) so the existing publish worker and public-sharing pages need no change. ClickHouse gets one new fact table, `edit_sessions_fact`, synced by the existing `analytics-sync` lambda from `edit_sessions.summary`.
 
 ## API: the desktop endpoints
 

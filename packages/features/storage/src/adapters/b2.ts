@@ -25,10 +25,16 @@ import type {
   SignedUploadRequest,
   SignedUploadResult,
   StorageAdapter,
+  StoredObjectInfo,
   UploadOptions,
   UploadResult,
 } from '../types';
-import { createPresignClient, presignPut } from './s3-presign';
+import {
+  createPresignClient,
+  headObject,
+  presignGet,
+  presignPut,
+} from './s3-presign';
 
 export class B2StorageAdapter implements StorageAdapter {
   private s3Client: S3Client;
@@ -189,6 +195,25 @@ export class B2StorageAdapter implements StorageAdapter {
     } catch {
       return null;
     }
+  }
+
+  async getSignedReadUrl(
+    bucket: string,
+    path: string,
+    expiresIn: number,
+  ): Promise<string> {
+    return presignGet(this.presignClient, {
+      bucket: this.bucketName,
+      key: `${bucket}/${path}`,
+      expiresIn,
+    });
+  }
+
+  async stat(bucket: string, path: string): Promise<StoredObjectInfo | null> {
+    return headObject(this.s3Client, {
+      bucket: this.bucketName,
+      key: `${bucket}/${path}`,
+    });
   }
 }
 

@@ -6,7 +6,7 @@ import {
   episodeVideoUrls,
   ownedEpisodeVideoUpload,
 } from '../src/episode-video';
-import { publishVideoPath } from '../src/upload-paths';
+import { episodeRenderKey, publishVideoPath } from '../src/upload-paths';
 
 /**
  * KB-123, save time: a new or changed video must be this episode's own
@@ -130,5 +130,47 @@ describe('episodeVideoUrls', () => {
         shorts_groups: [{ videos: { en: 's1' } }, 'junk', { videos: null }],
       }),
     ).toEqual(['f', 'l', 's1']);
+  });
+});
+
+describe('a StorybookStudio render of the episode (FILM-2003)', () => {
+  const P = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const OTHER_PROJECT = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  const RENDER = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  const render = url(episodeRenderKey(P, E, RENDER));
+
+  it('may be saved when the episode is in that project', () => {
+    expect(ownedEpisodeVideoUpload(render, E, env, P)).toBe(render);
+    expect(
+      episodeVideoSaveRefusal({
+        episodeId: E,
+        projectId: P,
+        stored: {},
+        next: [render],
+        env,
+      }),
+    ).toBeNull();
+  });
+
+  it('is refused without the project, under another project or for another episode', () => {
+    expect(ownedEpisodeVideoUpload(render, E, env)).toBeNull();
+    expect(ownedEpisodeVideoUpload(render, E, env, OTHER_PROJECT)).toBeNull();
+    expect(
+      ownedEpisodeVideoUpload(
+        url(episodeRenderKey(P, OTHER, RENDER)),
+        E,
+        env,
+        P,
+      ),
+    ).toBeNull();
+    expect(
+      episodeVideoSaveRefusal({
+        episodeId: E,
+        projectId: OTHER_PROJECT,
+        stored: {},
+        next: [render],
+        env,
+      }),
+    ).toBe(EPISODE_VIDEO_SAVE_REFUSAL);
   });
 });
