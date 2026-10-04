@@ -32,6 +32,8 @@ const TABS = [
   { id: 'shot-list', path: 'visual-studio' },
   { id: 'audio', path: 'audio-studio' },
   { id: 'publish', path: 'publish' },
+  // FILM-2006: the read-only Edit record, not the retired Edit Suite
+  { id: 'edit', path: 'edit' },
 ];
 
 const NOT_FOUND = 'Sorry, this page does not exist.';
