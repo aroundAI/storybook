@@ -3,7 +3,7 @@ title: "EditGraph v1, the Rough-Cut Builder, the Operation Log and Versions"
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: DRAFT
+status: PARTIAL
 effort: L
 dependencies:
   - spec_id: "FILM-2011"
@@ -29,41 +29,45 @@ summary: >
   v1" and Part 1 R-13, R-22, R-24, R-31, R-32.
 acceptance_criteria:
   - text: "src/studio/contracts/editgraph.schema.js (zod) defines the additive fields: asset {role enum, semantic {scene, shotId, characters[], purpose, emotion, prompt, continuationFrom}, analysis {loudnessLufs, silences[], bpm, keyframes[], semanticsVersion}, languageDependency none|language|locale}; clip.metadata {semantic {scene, shotId, role}, origin {versionId, opId, by ai|user}}; timeline.studio {kind master|variant, variantOf, aspect, language}; project.studio {schema 'editgraph/1', episodeId, currentVersion, audioBuses}; a Velorn sample project without them validates"
-    met: false
-    reason: "not built — spec drafted 2026-10-04"
+    met: true
+    evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 src/studio/contracts/editgraph.schema.js:154 EditGraphProjectSchema (asset :79, clip metadata :105, timeline.studio :121, project.studio :145); tests/studio/editgraph-schema.test.mjs:53 a stock Velorn project validates, :74 a bad role is refused)"
   - text: "Asset role taxonomy: primary_video, broll, reaction, establishing, generated_video, stock_video, overlay_video, dialogue, voiceover, soundbite, music, ambience, sfx, caption, title, lower_third, logo, image, composition; the builder maps shot → generated_video, dialogue line → dialogue, audio_tracks.type → music|sfx|ambience, character reference → image"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 src/studio/contracts/editgraph.schema.js:9 ASSET_ROLES, :35 STORYBOOK_ROLE_MAP (exported; the builder that applies it is slice B))"
   - text: "src/studio/projectBuilder.js (pure, no Electron import) produces a project with one master timeline at the episode's aspect and fps; shots on video-1 at timelineStart else packed by sequence_number; a Dialogue track per language at each line's timelineStart; Music, SFX, Ambience tracks with bus fields and audio_tracks.volume; a captions track from caption segments; a marker per scene named by heading at the scene's first shot; asset folders per scene; semantic on every clip and asset; a ShotAudio track for Veo audio set to duck under dialogue; storybook/package.json, link.json, brand.json, policy.json written beside"
     met: false
-    reason: "not built"
+    reason: "slice B (the rough-cut builder), in progress on fork branch feat/film-2012-rough-cut-builder; waits for FILM-2001's fixtures (#618)"
   - text: "Builder snapshot tests pass on the three FILM-2001 fixture packages (5, 20, 60 shots with dubbed audio) and the output opens in stock Velorn v0.3.36 without error"
     met: false
-    reason: "not built"
+    reason: "slice B (the rough-cut builder), in progress on fork branch feat/film-2012-rough-cut-builder; waits for FILM-2001's fixtures (#618)"
   - text: "src/studio/oplog.js wraps runMcpAction and the timeline/assets store mutators: one JSON line per applied operation {op, ts, by ai|user, session, tool, args, inverse, reason, scene, versionId}; preview-only calls are not logged; the file is append-only and fsynced on version boundaries"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 src/studio/oplog.js:157 wrapMcpActionRunner, :197 attachUserEditLogger, :50 createOpLog; src/services/mcpActions.js:8938; tests/studio/oplog.test.mjs:90 one line per write tool, :112 a preview appends none; tests/studio/edit-log-runtime.test.mjs:139 real stores and handlers)"
   - text: "src/studio/versions.js: createVersion(name, {prompt, by}) snapshots the timeline document under edits/snapshots/<id>.json and records {id, name, parent, opRange, createdBy, createdAt, prompt}; restoreVersion(id) loads the snapshot in O(1) and appends a restore op; versions survive restart; Velorn's in-memory undo stays the fast path"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 src/studio/versions.js:49 createVersion, :89 restoreVersion; tests/studio/versions.test.mjs:99 restore equals the snapshot with no replay, :144 survives a restart)"
   - text: "src/studio/report.js derives the explain-why report for a version from the op log (removed, changed, added per scene with reasons; duration before/after per scene and total; audio changes; QA summary) as JSON (ExplainWhyReportSchema, shared with FILM-2003) and as the text block in the PRD"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 src/studio/report.js:56 buildExplainWhyReport, :206 formatExplainWhyText; tests/studio/report.test.mjs:129 JSON, :158 text)"
   - text: "Hand edits are logged with by: user; the AI's next plan re-bases on the current document and never touches a clip whose last origin is user without listing it in the plan (enforced in FILM-2013's compiler, tested here with the log)"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 src/studio/oplog.js:279 clipsTouchedByUserSince; tests/studio/oplog.test.mjs:339)"
   - text: "fileSystem.saveProject no longer overwrites version with '1.0'; it writes project.version = '1.2' with studio.schema 'editgraph/1', and normalizeOpenedProjectData accepts 1.0, 1.1 and 1.2"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 src/services/fileSystem.js:246; src/stores/projectStore.js:169 normalize, :445 create; src/studio/projectVersion.js:29; tests/studio/project-version.test.mjs:53; tests/studio/edit-log-runtime.test.mjs:89)"
 test_plan:
   unit:
-    - {text: "Schema: Velorn project validates; Studio fields validate; bad role refused", met: false, reason: "not built"}
-    - {text: "Builder snapshots (3 fixtures); packing rule when timelineStart is null; captions and markers", met: false, reason: "not built"}
-    - {text: "Op log: every write tool appends exactly one line; preview appends none; restore appends a restore op and the document equals the snapshot", met: false, reason: "not built"}
-    - {text: "Report: fixture log → expected JSON and text", met: false, reason: "not built"}
+    - {text: "Schema: Velorn project validates; Studio fields validate; bad role refused", met: true, evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 tests/studio/editgraph-schema.test.mjs)"}
+    - {text: "Builder snapshots (3 fixtures); packing rule when timelineStart is null; captions and markers", met: false, reason: "slice B (the rough-cut builder)"}
+    - {text: "Op log: every write tool appends exactly one line; preview appends none; restore appends a restore op and the document equals the snapshot", met: true, evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 tests/studio/oplog.test.mjs, tests/studio/versions.test.mjs, tests/studio/edit-log-runtime.test.mjs)"}
+    - {text: "Report: fixture log → expected JSON and text", met: true, evidence: "aroundAI/storybookstudio#5 (storybookstudio@dc20b56 tests/studio/report.test.mjs)"}
   integration:
-    - {text: "Open a built project in stock Velorn (packaged, CI job on the fork) and save it; the Studio re-opens it with its fields intact", met: false, reason: "not built"}
+    - {text: "Open a built project in stock Velorn (packaged, CI job on the fork) and save it; the Studio re-opens it with its fields intact", met: false, reason: "slice B (needs a built project)"}
   e2e: []
+remaining:
+  - criterion: "Rough-cut builder (ACs 3, 4) and its snapshot/stock-Velorn tests"
+    reason: "slice B"
+    closed_by: "FILM-2012"
 open_questions: []
 notes: >
   Why additive and not a new format: Velorn's stores, exporter and MCP
@@ -72,6 +76,20 @@ notes: >
   Velorn's undo stack (timeline history plus projectHistory, max 25) stays
   for fast interactive undo. Snapshots make restore O(1) so a version is as
   cheap to return to as to create.
+
+  Slice A (aroundAI/storybookstudio#5, fork main dc20b56) recorded and the
+  pin bumped in #621. Decisions: the fork's
+  src/studio/contracts/explain-why-report.schema.js is a copy written from
+  FILM-2003's field list because FILM-2003 had not landed; the sync script
+  replaces it. Registration points touched: electron/main.js (require and
+  register), electron/preload.js (studioEdits block) and
+  src/services/mcpActions.js (runMcpAction and the import). The op log uses
+  its own <project>/edits/** bridge (electron/studio/editsFiles.js) because
+  AC5 needs append and fsync; checkpoints (FILM-2010) use fs:writeFile, and
+  both live under edits/. zod is a renderer dependency, the same major as
+  StoryBook. Hand edits made through a component's direct setState are not
+  logged. Restore returns the timeline to the version's snapshot (taken at
+  creation); its op range is the ops after that point.
 feature:
   database: {tables: [], columns_added: []}
   queries: []
@@ -79,5 +97,5 @@ feature:
   ui: []
   provider_integration: null
   repo: "aroundAI/storybookstudio"
-  modules: ["src/studio/contracts/editgraph.schema.js", "src/studio/projectBuilder.js", "src/studio/oplog.js", "src/studio/versions.js", "src/studio/report.js"]
-  files_changed: ["src/services/fileSystem.js (saveProject version)", "src/stores/projectStore.js (normalizeOpenedProjectData)", "src/stores/timelineStore.js (studio fields, bus on tracks)", "src/stores/assetsStore.js (role, semantic, analysis)"]
+  modules: ["src/studio/contracts/editgraph.schema.js", "src/studio/projectBuilder.js", "src/studio/oplog.js", "src/studio/versions.js", "src/studio/report.js", "src/studio/editLogRuntime.js", "src/studio/documentDiff.js", "src/studio/projectVersion.js", "electron/studio/editsFiles.js"]
+  files_changed: ["electron/main.js", "electron/preload.js", "src/services/mcpActions.js", "src/services/fileSystem.js (saveProject version)", "src/stores/projectStore.js (normalizeOpenedProjectData)", "src/stores/timelineStore.js (studio fields, bus on tracks)", "src/stores/assetsStore.js (role, semantic, analysis)"]
