@@ -1,0 +1,67 @@
+{
+  "feature": "FILM-2003",
+  "mutations": [
+    {
+      "name": "FILM-2003 U1 finalize accepts a file of another size",
+      "kind": "unit",
+      "file": "packages/features/studio-mcp/src/server/tools/studio/renders.ts",
+      "find": "        : stored.size !== render.file_size_bytes\n",
+      "replace": "        : false\n",
+      "cwd": "packages/features/studio-mcp",
+      "test": "__tests__/tools/studio-render-tools.test.ts",
+      "pattern": "fails a render whose file is the wrong size"
+    },
+    {
+      "name": "FILM-2003 U2 a delivery may have no primary render",
+      "kind": "unit",
+      "file": "packages/features/desktop-integration/src/delivery-package.schema.ts",
+      "find": "    if (primaries !== 1) {",
+      "replace": "    if (primaries > 1) {",
+      "cwd": "packages/features/desktop-integration",
+      "test": "__tests__/delivery-schemas.test.ts",
+      "pattern": "refuses no primary, two primaries and a render listed twice"
+    },
+    {
+      "name": "FILM-2003 U3 render keys are refused by the project-assets rule",
+      "kind": "unit",
+      "file": "packages/features/storage/src/upload-paths.ts",
+      "find": "(?:assets|shots\\/[a-f0-9-]+|episodes\\/[a-f0-9-]+)|episodes",
+      "replace": "(?:assets|shots\\/[a-f0-9-]+)|episodes",
+      "cwd": "packages/features/storage",
+      "test": "__tests__/upload-paths.test.ts",
+      "pattern": "studio render"
+    },
+    {
+      "name": "FILM-2003 U4 a render URL cannot be saved as a publish video",
+      "kind": "unit",
+      "file": "packages/features/storage/src/episode-video.ts",
+      "find": "    ...(projectId ? [episodeRenderFolder(projectId, episodeId)] : []),\n",
+      "replace": "",
+      "cwd": "packages/features/storage",
+      "test": "__tests__/episode-video.test.ts",
+      "pattern": "may be saved when the episode is in that project"
+    },
+    {
+      "name": "FILM-2003 U5 the hourly cron leaves stale render uploads",
+      "kind": "unit",
+      "file": "apps/web/app/api/cron/expire-generation-runs/route.ts",
+      "find": "    const renders = await expireStaleRenderUploads(admin);",
+      "replace": "    const renders = { ok: true as const, failed: 0 };",
+      "cwd": "apps/web",
+      "test": "app/api/cron/expire-generation-runs/__tests__/expire-render-uploads.test.ts",
+      "pattern": "fails renders left uploading for a day"
+    },
+    {
+      "name": "FILM-2003 DB1 a viewer may insert a render",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/episode-renders.test.sql",
+      "sql": "drop policy episode_renders_insert on public.episode_renders; create policy episode_renders_insert on public.episode_renders for insert to authenticated with check (created_by = (select auth.uid()) and status = 'uploading');"
+    },
+    {
+      "name": "FILM-2003 DB2 a render's key can be rewritten",
+      "kind": "pgtap",
+      "test": "apps/web/supabase/tests/database/episode-renders.test.sql",
+      "sql": "grant update (file_path) on public.episode_renders to authenticated;"
+    }
+  ]
+}
