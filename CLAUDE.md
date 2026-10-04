@@ -129,6 +129,7 @@ storybook/
 │   ├── supabase/             # Supabase client & types
 │   └── ui/                   # UI components (Shadcn)
 ├── tooling/                   # Build tools & configs
+├── storybookstudio/          # Submodule: aroundAI/storybookstudio, the Phase 20 desktop editor
 ├── sst.config.ts             # AWS Lambda infrastructure (SST)
 ├── DEPLOYMENT.md             # Comprehensive deployment guide
 └── SUPABASE_VENDOR_LOCKIN_REPORT.md  # Provider migration strategies
@@ -139,6 +140,12 @@ storybook/
 - Check `apps/web/CLAUDE.md` for web application patterns
 - See `apps/web/supabase/CLAUDE.md` for database workflows
 - Review `packages/features/CLAUDE.md` for feature development
+- **StorybookStudio (Phase 20, FILM-2010..2019) is in `storybookstudio/`**, a git
+  submodule of `aroundAI/storybookstudio` (the Velorn fork), like `deployment/config`.
+  Read and change its code there; do not look for it elsewhere or clone it again. Run
+  `git submodule update --init storybookstudio` if the folder is empty. It is outside the
+  pnpm workspace and CI does not check it out; commits inside it go to that repo, and
+  StoryBook pins one of its commits (bump the pin here to follow it).
 
 ## Multi-Tenant Architecture
 
