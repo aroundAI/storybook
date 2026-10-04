@@ -128,17 +128,15 @@ function OpenSession(props: {
   );
 }
 
-function Delivered(props: {
-  delivered: NonNullable<EditRecord['delivered']>;
-}) {
+function Delivered(props: { delivered: NonNullable<EditRecord['delivered']> }) {
   const { report, style, deliveredAt } = props.delivered;
 
   if (!report) {
     return (
       <Card data-test="edit-record-unreadable">
         <CardContent className="py-6 text-sm text-muted-foreground">
-          Delivered from StorybookStudio on {when(deliveredAt)}, but the
-          stored edit report could not be read.
+          Delivered from StorybookStudio on {when(deliveredAt)}, but the stored
+          edit report could not be read.
         </CardContent>
       </Card>
     );
@@ -196,7 +194,7 @@ function Delivered(props: {
                 className="flex items-center gap-3 text-sm"
                 data-test="edit-record-version"
               >
-                <span className="w-6 text-right tabular-nums text-muted-foreground">
+                <span className="w-6 text-right text-muted-foreground tabular-nums">
                   {index + 1}
                 </span>
                 <span className="font-medium">{version.label}</span>

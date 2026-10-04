@@ -24,7 +24,8 @@ export const STUDIO_DELIVERY_ALERTS = {
   targetChanged: 'studio.alert.target_changed',
 } as const;
 
-type Alert = (typeof STUDIO_DELIVERY_ALERTS)[keyof typeof STUDIO_DELIVERY_ALERTS];
+type Alert =
+  (typeof STUDIO_DELIVERY_ALERTS)[keyof typeof STUDIO_DELIVERY_ALERTS];
 
 const HOUR_MS = 3_600_000;
 

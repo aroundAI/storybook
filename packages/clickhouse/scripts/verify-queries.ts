@@ -52,9 +52,9 @@ import { addViews } from '../src/lib/views';
 import {
   getClickHouseClient,
   insertChannelDaily,
-  insertEditSessionFacts,
   insertChannelReachDaily,
   insertChannelWindows,
+  insertEditSessionFacts,
   insertRetentionCurves,
   insertSubscriberSnapshot,
   insertVideoAudience,
@@ -6925,8 +6925,18 @@ async function editStyleSteps() {
       videoIds: ['es-vid-a-full', 'es-vid-a-short', 'es-vid-b', 'es-vid-none'],
       accountId: ES_ACCOUNT,
     });
-    const a = { cutsPerMinute: 10, avgShotLength: 5.625, hookType: 'cold-open', aiShare: 0.75 };
-    const b = { cutsPerMinute: null, avgShotLength: null, hookType: null, aiShare: null };
+    const a = {
+      cutsPerMinute: 10,
+      avgShotLength: 5.625,
+      hookType: 'cold-open',
+      aiShare: 0.75,
+    };
+    const b = {
+      cutsPerMinute: null,
+      avgShotLength: null,
+      hookType: null,
+      aiShare: null,
+    };
     const got = JSON.stringify([...styles.entries()].sort());
     const expected = JSON.stringify([
       ['es-vid-a-full', a],

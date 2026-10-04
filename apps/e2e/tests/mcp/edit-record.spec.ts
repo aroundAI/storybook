@@ -254,9 +254,7 @@ test.describe('The Edit record after a delivery over MCP (FILM-2006)', () => {
     await expect(byTest(page, 'edit-record-duration')).toContainText(
       'Target 1:35 · −0:05',
     );
-    await expect(byTest(page, 'edit-record-versions-count')).toContainText(
-      '2',
-    );
+    await expect(byTest(page, 'edit-record-versions-count')).toContainText('2');
     await expect(byTest(page, 'edit-record-ai-ops')).toContainText('4');
     await expect(byTest(page, 'edit-record-user-ops')).toContainText('1');
     await expect(byTest(page, 'edit-record-version')).toHaveCount(2);
@@ -315,9 +313,7 @@ test.describe('The Edit record after a delivery over MCP (FILM-2006)', () => {
     await expect(byTest(card, 'edit-style-shot-length-value')).toHaveText(
       '5.6 s',
     );
-    await expect(byTest(card, 'edit-style-hook-value')).toHaveText(
-      'cold-open',
-    );
+    await expect(byTest(card, 'edit-style-hook-value')).toHaveText('cold-open');
     await expect(byTest(card, 'edit-style-ai-share-value')).toHaveText('80%');
     await card.scrollIntoViewIfNeeded();
     await capture(page, 'film-2006-02-edit-style-card');
@@ -363,7 +359,10 @@ test.describe('The Edit record after a delivery over MCP (FILM-2006)', () => {
     await seedProjectMember(project.id, editor.userId, 'member');
     const editorToken = await mintPersonalAccessToken(
       { ...editor, accountId: team.accountId },
-      { name: "Studio on the editor's laptop", scopes: ['studio:read', 'studio:write'] },
+      {
+        name: "Studio on the editor's laptop",
+        scopes: ['studio:read', 'studio:write'],
+      },
     );
 
     for (const round of [1, 2]) {

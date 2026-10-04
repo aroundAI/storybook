@@ -38,8 +38,8 @@ import type { XAnalyticsResult } from '../providers/twitter';
 import { createYouTubeAnalyticsProvider } from '../providers/youtube';
 import type { YouTubeAnalyticsResult } from '../providers/youtube';
 import { syncAssetDurations } from './asset-duration-sync';
-import { syncEditSessionFacts } from './edit-sessions-fact-sync';
 import type { AssetDurationCandidate } from './asset-duration-sync';
+import { syncEditSessionFacts } from './edit-sessions-fact-sync';
 import {
   buildAudienceRows,
   buildFacebookAudienceRows,

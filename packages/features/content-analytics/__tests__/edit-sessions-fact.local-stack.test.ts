@@ -135,7 +135,9 @@ function fixtureClient() {
           return builder;
         },
         order: (column: string) => {
-          rows.sort((a, b) => String(a[column]).localeCompare(String(b[column])));
+          rows.sort((a, b) =>
+            String(a[column]).localeCompare(String(b[column])),
+          );
           return builder;
         },
         range: (from: number, to: number) =>

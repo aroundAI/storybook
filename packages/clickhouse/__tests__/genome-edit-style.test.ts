@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import { analyseGenome } from '../src/lib/genome';
+import type { GenomeVideo } from '../src/lib/genome';
 import {
   GENOME_DIMENSION_STAGE,
   TAG_DIMENSIONS,
   editStyleAttributes,
   withEditStyle,
 } from '../src/lib/genome-attributes';
-import { analyseGenome } from '../src/lib/genome';
-import type { GenomeVideo } from '../src/lib/genome';
 
 /**
  * FILM-2006: edit style from `edit_sessions_fact` joins the content genome
@@ -174,9 +174,9 @@ describe('analyseGenome with edit style', () => {
       video(6, true),
     ]);
 
-    expect(
-      analysis.findings.map((finding) => finding.attribute.tag),
-    ).toContain('cuts_per_minute:15-to-30');
+    expect(analysis.findings.map((finding) => finding.attribute.tag)).toContain(
+      'cuts_per_minute:15-to-30',
+    );
   });
 
   it('videos never edited in the Studio contribute no edit-style attribute', () => {

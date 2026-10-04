@@ -47,7 +47,9 @@ function admin(result: { count: number | null; error: unknown }) {
   };
 
   return {
-    client: { from: (table: string) => (filters.push(['from', table, null]), builder) },
+    client: {
+      from: (table: string) => (filters.push(['from', table, null]), builder),
+    },
     filters,
   };
 }

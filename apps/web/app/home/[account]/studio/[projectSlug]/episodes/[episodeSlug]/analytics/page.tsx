@@ -68,8 +68,7 @@ export default function EpisodeAnalyticsPage() {
   // a delivery exists, beside the retention it can be read against.
   const editStyleQuery = useQuery({
     queryKey: ['episode-edit-style', episode.id],
-    queryFn: () =>
-      unwrap(getEpisodeEditStyleAction({ episodeId: episode.id })),
+    queryFn: () => unwrap(getEpisodeEditStyleAction({ episodeId: episode.id })),
   });
 
   const curveQuery = useQuery({

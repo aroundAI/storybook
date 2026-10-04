@@ -31,7 +31,10 @@ async function capture(page: Page, name: string) {
   if (!process.env.CAPTURE_EVIDENCE) return;
 
   mkdirSync(OUT, { recursive: true });
-  await page.screenshot({ path: `${OUT}/film-2006-${name}.png`, fullPage: true });
+  await page.screenshot({
+    path: `${OUT}/film-2006-${name}.png`,
+    fullPage: true,
+  });
 }
 
 const COUNTERS = [

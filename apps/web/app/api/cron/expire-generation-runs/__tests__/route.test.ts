@@ -16,7 +16,10 @@ vi.mock('@kit/desktop-integration/server', () => ({
 
 // FILM-2006's alerts have their own test (studio-delivery-alerts.test.ts)
 vi.mock('../studio-delivery-alerts', () => ({
-  raiseStudioDeliveryAlerts: vi.fn(async () => ({ targetChanged: 0, alerts: [] })),
+  raiseStudioDeliveryAlerts: vi.fn(async () => ({
+    targetChanged: 0,
+    alerts: [],
+  })),
 }));
 
 vi.mock('@kit/supabase/server-admin-client', () => ({

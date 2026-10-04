@@ -225,9 +225,9 @@ function StudioDeliveryCard({
         <CardDescription>
           Edit packages served and deliveries in the last{' '}
           {days === 1 ? '24 hours' : `${days} days`}. A TARGET_CHANGED refusal
-          means the episode changed in StoryBook during an edit; a render
-          still uploading after a day was never finalized. The hourly cron
-          alerts on both.
+          means the episode changed in StoryBook during an edit; a render still
+          uploading after a day was never finalized. The hourly cron alerts on
+          both.
         </CardDescription>
       </CardHeader>
 

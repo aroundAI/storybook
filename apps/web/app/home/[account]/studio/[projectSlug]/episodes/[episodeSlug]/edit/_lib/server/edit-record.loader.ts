@@ -2,7 +2,10 @@ import 'server-only';
 
 import { cache } from 'react';
 
-import { type EditStyle, deriveEditStyle } from '@kit/content-analytics/lib/edit-style';
+import {
+  type EditStyle,
+  deriveEditStyle,
+} from '@kit/content-analytics/lib/edit-style';
 import {
   type ExplainWhyReport,
   ExplainWhyReportSchema,
@@ -242,7 +245,9 @@ export const loadEditRecord = cache(
       : null;
 
     if (device?.error) {
-      throw new Error(`Reading the session's device failed: ${device.error.message}`);
+      throw new Error(
+        `Reading the session's device failed: ${device.error.message}`,
+      );
     }
 
     return {
@@ -252,20 +257,18 @@ export const loadEditRecord = cache(
         status: episode.status,
         targetDurationSeconds: episode.target_duration_seconds,
       },
-      canForceClose:
-        role.data?.role === 'owner' || role.data?.role === 'admin',
-      delivered:
-        lastDelivery?.delivered_at
-          ? {
-              sessionId: lastDelivery.id,
-              deliveredAt: lastDelivery.delivered_at,
-              report: report?.success ? report.data : null,
-              style: deriveEditStyle({
-                summary: lastDelivery.summary,
-                episodeTargetDurationSeconds: episode.target_duration_seconds,
-              }),
-            }
-          : null,
+      canForceClose: role.data?.role === 'owner' || role.data?.role === 'admin',
+      delivered: lastDelivery?.delivered_at
+        ? {
+            sessionId: lastDelivery.id,
+            deliveredAt: lastDelivery.delivered_at,
+            report: report?.success ? report.data : null,
+            style: deriveEditStyle({
+              summary: lastDelivery.summary,
+              episodeTargetDurationSeconds: episode.target_duration_seconds,
+            }),
+          }
+        : null,
       open: openSession
         ? {
             sessionId: openSession.id,
