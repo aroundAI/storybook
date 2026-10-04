@@ -15,8 +15,8 @@
       "name": "MCP-RW U2 an author tool is registered with the read scope",
       "kind": "unit",
       "file": "packages/features/studio-mcp/src/server/tools/author/assets.ts",
-      "find": "  scope: 'studio:write',\n  annotations: {\n    readOnlyHint: false,\n    destructiveHint: false,\n    idempotentHint: true,\n  },\n  async handler(input, context) {\n    const client = context.principal.supabase;\n\n    await requireProjectInAccount(client, context.accountId, input.projectId);\n\n    if (input.type === 'character' && input.location) {",
-      "replace": "  scope: 'studio:read',\n  annotations: {\n    readOnlyHint: false,\n    destructiveHint: false,\n    idempotentHint: true,\n  },\n  async handler(input, context) {\n    const client = context.principal.supabase;\n\n    await requireProjectInAccount(client, context.accountId, input.projectId);\n\n    if (input.type === 'character' && input.location) {",
+      "find": "  scope: 'studio:write',\n  annotations: {\n    readOnlyHint: false,\n    destructiveHint: false,\n    idempotentHint: true,\n    openWorldHint: false,\n  },\n  async handler(input, context) {\n    const client = context.principal.supabase;\n\n    await requireProjectInAccount(client, context.accountId, input.projectId);\n\n    if (input.type === 'character' && input.location) {",
+      "replace": "  scope: 'studio:read',\n  annotations: {\n    readOnlyHint: false,\n    destructiveHint: false,\n    idempotentHint: true,\n    openWorldHint: false,\n  },\n  async handler(input, context) {\n    const client = context.principal.supabase;\n\n    await requireProjectInAccount(client, context.accountId, input.projectId);\n\n    if (input.type === 'character' && input.location) {",
       "cwd": "packages/features/studio-mcp",
       "test": "__tests__/tools/no-generated-writes.test.ts",
       "pattern": "six author tools"
