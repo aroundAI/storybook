@@ -3,7 +3,7 @@ title: "Generation Core: prepare, commit and output schemas per stage"
 phase: 19
 phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
 category: package
-status: PARTIAL
+status: DONE
 effort: XL
 dependencies: []
 summary: >
@@ -53,11 +53,7 @@ test_plan:
   integration:
     - {text: "Against local Supabase: commit() for shots replaces the episode's shots in one transaction and writes a content_revisions snapshot", met: true, evidence: "Against a throwaway Postgres with every repo migration (pgthrow): the shots stage's own plan, recorded by the unit matrix, applies through apply_generation_commit in server and external mode (apps/web/supabase/tests/database/apply-generation-commit-stages-server.test.sql, -external), and apply-generation-commit.test.sql A1/A2 prove the shots replace is one transaction (a failing insert leaves the cleared shots and shot_list in place) and writes the snapshot of the old shots and shot_list (#574)"}
   e2e:
-    - {text: "FILM-1804's studio flow (ideation → story → screenplay → shots → audio) still passes against the AI sandbox after the worker moves onto the core", met: false, reason: "not met — run 2026-10-04 on main b05c463fc against the AI sandbox (sandbox, local queue and workers from that tree): ideation ran, then Generate Story was refused with an episode-modified error because the ideation commit bumps episodes.version under the open page (KB-186), so the flow stops before the story stage; the AI-sandbox spec also fails on the asset description, whose action opens its run on the personal account (KB-187). Both are product regressions from the core move. tkb184's branch has since passed the full studio flow with the KB-186 and KB-188 fixes, but this item stays unmet until those fixes are on main and the flow is rerun there"}
-remaining:
-  - criterion: "FILM-1804's studio flow (ideation → story → screenplay → shots → audio) still passes against the AI sandbox after the worker moves onto the core"
-    reason: "run pending: the stale sandbox on 4100 is being replaced. It is to be run on the KB-184 branch (#600), which moves every orchestrated stage's server write behind run.write()"
-    closed_by: "FILM-1901"
+    - {text: "FILM-1804's studio flow (ideation → story → screenplay → shots → audio) still passes against the AI sandbox after the worker moves onto the core", met: true, evidence: "2026-10-04, main 2d99b8334 (every stage on the core; KB-184 #600, KB-187 #606, KB-186 and KB-188 #607 in): sandbox on SANDBOX_PORT_BASE=4300, the local queue's workers and the app from that tree, db lane lock A, app under the egress guard. `STUDIO_FLOW_EVIDENCE=1 AI_SANDBOX_EVIDENCE=1 CAPTURE_EVIDENCE=1 npx playwright test studio-flow-evidence ai-sandbox-evidence --project=chromium --workers=1 --retries=0` named both files: 4 passed, 0 failed, 0 skipped (apps/e2e/tests/sandbox/studio-flow-evidence.spec.ts: ideation → story → screenplay → shots → voice, 1 test; apps/e2e/tests/sandbox/ai-sandbox-evidence.spec.ts: 3 tests). The first run on b05c463fc failed at story (KB-186) and the asset description (KB-187), #602; this run is #609"}
 open_questions: []
 notes: |
   Closed 2026-10-03 (#573): "The episode context loader is reachable from the Next.js app" — the MCP route builds it with episodeContextLoader from the worker's utils (apps/web/app/api/mcp/route.ts:21), semantic recall off.
