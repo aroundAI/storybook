@@ -48,8 +48,12 @@ export interface DubEpisodeDeps {
     text: string;
     settings: { stability: number; similarityBoost: number; style?: number };
   }) => Promise<Buffer>;
-  /** Stores the audio inside the job's episode; returns its URL */
-  upload: (path: string, body: Buffer, episodeId: string) => Promise<string>;
+  /** Stores the audio inside the job's episode (uploadToR2, KB-57); returns its URL */
+  storeAudio: (
+    path: string,
+    body: Buffer,
+    episodeId: string,
+  ) => Promise<string>;
   /** Sends the message back to the voice queue */
   requeue: (message: DubEpisodeMessage, delaySeconds: number) => Promise<void>;
   now?: () => Date;
@@ -371,7 +375,7 @@ export async function processDubEpisode(
           style: voice.settings?.style,
         },
       });
-      const url = await deps.upload(
+      const url = await deps.storeAudio(
         dubbedDialogueAudioPath(
           message.episodeId,
           message.language,

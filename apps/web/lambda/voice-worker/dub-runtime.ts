@@ -74,7 +74,7 @@ export function dubEpisodeDeps(
   return {
     apiKey: (accountId) => getAccountElevenLabsApiKey(supabase, accountId),
     speak: speakWithElevenLabs,
-    upload: async (path, body, episodeId) =>
+    storeAudio: async (path, body, episodeId) =>
       (await uploadToR2('audio', path, body, 'audio/mpeg', { episodeId })).url,
     requeue: async (message, delaySeconds) => {
       const queueUrl = voiceQueueUrl();

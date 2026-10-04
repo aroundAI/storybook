@@ -394,13 +394,17 @@ export class GenerationService {
     });
   }
 
+  async start(input: { stage: StageKey } & StartTargetInput) {
+    return this.startAs(input, 'start_generation');
+  }
+
   /**
-   * `originName` is the tool that opened the run: `regenerate_shots`
+   * `start`, recorded as opened by `originName`: `regenerate_shots`
    * (FILM-2007) opens a shots run scoped to some shots through here.
    */
-  async start(
+  async startAs(
     input: { stage: StageKey } & StartTargetInput,
-    originName = 'start_generation',
+    originName: string,
   ) {
     const stage = this.stage(input.stage);
     const { target, runTarget } = await resolveStageTarget(

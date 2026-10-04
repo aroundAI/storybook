@@ -97,7 +97,7 @@ async function decrypt(encryptedBase64: string): Promise<string> {
 // API Key Fetching
 // =============================================================================
 
-export async function getAccountElevenLabsApiKey(
+async function getAccountElevenLabsApiKey(
   supabase: SupabaseClient<Database>,
   accountId: string,
 ): Promise<string> {
@@ -329,3 +329,6 @@ export async function processDialogueVoiceGeneration(
     throw error;
   }
 }
+
+/** The account's ElevenLabs key, for the dub-episode job (FILM-2007). */
+export { getAccountElevenLabsApiKey };

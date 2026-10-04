@@ -370,7 +370,7 @@ describe('localize_episode (FILM-2007)', () => {
     const result = (await call('localize_episode', {
       episodeId: EPISODE_ID,
       languages: ['es', 'hi'],
-    })) as { structuredContent: LocalizationStart };
+    })) as unknown as { structuredContent: LocalizationStart };
 
     expect(localize).toHaveBeenCalledWith(
       expect.anything(),

@@ -94,14 +94,14 @@ const message = (
 
 function deps(): DubEpisodeDeps & {
   speak: ReturnType<typeof vi.fn>;
-  upload: ReturnType<typeof vi.fn>;
+  storeAudio: ReturnType<typeof vi.fn>;
   requeue: ReturnType<typeof vi.fn>;
 } {
   return {
     apiKey: async () => 'sk-test',
     // 48 000 bytes = 3 s at 128 kbit/s
     speak: vi.fn(async () => Buffer.alloc(48_000)),
-    upload: vi.fn(async (path: string) => `https://r2.test/audio/${path}`),
+    storeAudio: vi.fn(async (path: string) => `https://r2.test/audio/${path}`),
     requeue: vi.fn(async () => undefined),
     now: () => NOW,
   };
@@ -131,7 +131,7 @@ describe('dub-episode (FILM-2007)', () => {
       ['voice-maya', 'पंक्ति 2', 'eleven_multilingual_v2'],
       ['voice-narrator', 'पंक्ति 3', 'eleven_multilingual_v2'],
     ]);
-    expect(d.upload.mock.calls[0]![0]).toBe(
+    expect(d.storeAudio.mock.calls[0]![0]).toBe(
       `episodes/${EPISODE}/dubbed/hi/${src(1)}_${NOW.getTime()}.mp3`,
     );
 

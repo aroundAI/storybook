@@ -181,7 +181,7 @@ export function createStudioJobTools(deps: StudioJobDeps) {
       }
 
       const service = new GenerationService(deps.generation(), context);
-      const started = await service.start(
+      const started = await service.startAs(
         {
           stage: 'shots',
           episodeId: input.episodeId,
