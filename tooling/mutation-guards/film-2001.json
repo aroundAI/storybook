@@ -1,0 +1,75 @@
+{
+  "feature": "FILM-2001",
+  "mutations": [
+    {
+      "name": "E1 the etag ignores what the package holds",
+      "kind": "unit",
+      "file": "packages/features/desktop-integration/src/build-edit-package.ts",
+      "find": "    .update(canonicalJson(packageContent(sources, asStored)))",
+      "replace": "    .update(String(sources.episode.version))",
+      "cwd": "packages/features/desktop-integration",
+      "test": "__tests__/edit-package-etag.test.ts",
+      "pattern": "changes when the brand changes"
+    },
+    {
+      "name": "E2 a matching ifNoneMatch still signs every media file",
+      "kind": "unit",
+      "file": "packages/features/desktop-integration/src/server/load-edit-package.ts",
+      "find": "  if (input.ifNoneMatch && input.ifNoneMatch === etag) {",
+      "replace": "  if (input.ifNoneMatch && input.ifNoneMatch === `${etag}-never`) {",
+      "cwd": "packages/features/desktop-integration",
+      "test": "__tests__/get-edit-package.test.ts",
+      "pattern": "answers unchanged for the current etag"
+    },
+    {
+      "name": "M1 a URL into another project is signed",
+      "kind": "unit",
+      "file": "packages/features/desktop-integration/src/server/resolve-media.ts",
+      "find": "  if (!isOwnKey(bucket, key, options)) return missing('outside_project');",
+      "replace": "",
+      "cwd": "packages/features/desktop-integration",
+      "test": "__tests__/edit-package-fixtures.test.ts",
+      "pattern": "gives a reason for every slot it cannot sign"
+    },
+    {
+      "name": "M2 a signed read URL ignores the TTL it was asked for",
+      "kind": "unit",
+      "file": "packages/features/storage/src/adapters/s3-presign.ts",
+      "find": "    { expiresIn: request.expiresIn },",
+      "replace": "    { expiresIn: 604800 },",
+      "cwd": "packages/features/storage",
+      "test": "__tests__/signed-read.test.ts",
+      "pattern": "expires when asked"
+    },
+    {
+      "name": "M3 a store that cannot be asked reads as a missing file",
+      "kind": "unit",
+      "file": "packages/features/storage/src/adapters/s3-presign.ts",
+      "find": "    if (status === 404 || name === 'NotFound' || name === 'NoSuchKey') {",
+      "replace": "    if (status) {",
+      "cwd": "packages/features/storage",
+      "test": "__tests__/signed-read.test.ts",
+      "pattern": "throws when the store cannot be asked"
+    },
+    {
+      "name": "R1 every small decline is a retention hint",
+      "kind": "unit",
+      "file": "packages/features/desktop-integration/src/retention-hints.ts",
+      "find": "    if (dropPercentage < RETENTION_HINT_MIN_DROP) continue;",
+      "replace": "    if (dropPercentage <= 0) continue;",
+      "cwd": "packages/features/desktop-integration",
+      "test": "__tests__/edit-package-fixtures.test.ts",
+      "pattern": "hand-computed drops"
+    },
+    {
+      "name": "R2 analytics off reads ClickHouse anyway",
+      "kind": "unit",
+      "file": "packages/features/content-analytics/src/server/diagnostics-service.ts",
+      "find": "  if (!isClickHouseEnabled()) return { state: 'unmeasured' };",
+      "replace": "",
+      "cwd": "packages/features/content-analytics",
+      "test": "__tests__/episode-retention-curve.test.ts",
+      "pattern": "is unmeasured with ClickHouse off"
+    }
+  ]
+}
