@@ -22,6 +22,7 @@ import {
 import { hashToken } from '../../src/server/token';
 
 const RESOURCE = 'http://localhost:3000/api/mcp';
+const ISSUER = 'http://localhost:3000';
 const USER = '11111111-1111-4111-8111-111111111111';
 const TEAM = '22222222-2222-4222-8222-222222222222';
 const CALLBACK = 'https://claude.ai/api/mcp/auth_callback';
@@ -75,6 +76,7 @@ async function approve(
   const parsed = await parseAuthorizeRequest(params, {
     store,
     resource: RESOURCE,
+    issuer: ISSUER,
   });
 
   if (!parsed.ok)
@@ -146,6 +148,7 @@ describe('/oauth/authorize request parsing', () => {
     const parsed = await parseAuthorizeRequest(params, {
       store,
       resource: RESOURCE,
+      issuer: ISSUER,
     });
 
     expect(parsed.ok).toBe(true);
@@ -163,6 +166,7 @@ describe('/oauth/authorize request parsing', () => {
     const parsed = await parseAuthorizeRequest(params, {
       store,
       resource: RESOURCE,
+      issuer: ISSUER,
     });
 
     expect(parsed).toMatchObject({ ok: false, kind: 'render' });
@@ -183,6 +187,7 @@ describe('/oauth/authorize request parsing', () => {
       const parsed = await parseAuthorizeRequest(params, {
         store,
         resource: RESOURCE,
+        issuer: ISSUER,
       });
 
       expect(parsed, uri).toMatchObject({ ok: false, kind: 'render' });
@@ -206,6 +211,7 @@ describe('/oauth/authorize request parsing', () => {
       const parsed = await parseAuthorizeRequest(params, {
         store,
         resource: RESOURCE,
+        issuer: ISSUER,
       });
 
       expect(parsed, JSON.stringify(overrides)).toMatchObject({
@@ -218,6 +224,7 @@ describe('/oauth/authorize request parsing', () => {
       expect(location.origin + location.pathname).toBe(CALLBACK);
       expect(location.searchParams.get('error')).toBe('invalid_request');
       expect(location.searchParams.get('state')).toBe('xyz');
+      expect(location.searchParams.get('iss')).toBe(ISSUER);
     }
   });
 
@@ -226,7 +233,7 @@ describe('/oauth/authorize request parsing', () => {
 
     const scope = await parseAuthorizeRequest(
       authorizeParams({ scope: 'studio:read admin:all' }).params,
-      { store, resource: RESOURCE },
+      { store, resource: RESOURCE, issuer: ISSUER },
     );
     expect(scope).toMatchObject({ ok: false, kind: 'redirect' });
     if (scope.ok || scope.kind !== 'redirect') return;
@@ -236,7 +243,7 @@ describe('/oauth/authorize request parsing', () => {
 
     const resource = await parseAuthorizeRequest(
       authorizeParams({ resource: 'https://other.example/api/mcp' }).params,
-      { store, resource: RESOURCE },
+      { store, resource: RESOURCE, issuer: ISSUER },
     );
     expect(resource).toMatchObject({ ok: false, kind: 'redirect' });
     if (resource.ok || resource.kind !== 'redirect') return;
@@ -255,6 +262,7 @@ describe('/oauth/authorize request parsing', () => {
     const parsed = await parseAuthorizeRequest(params, {
       store,
       resource: RESOURCE,
+      issuer: ISSUER,
     });
 
     expect(parsed.ok).toBe(true);
@@ -262,11 +270,12 @@ describe('/oauth/authorize request parsing', () => {
     expect(parsed.request.scopes).toEqual(['studio:read', 'studio:write']);
   });
 
-  it('a denial redirects with access_denied and the state', async () => {
+  it('a denial redirects with access_denied, the state and the issuer', async () => {
     const store = storeWithClient();
     const parsed = await parseAuthorizeRequest(authorizeParams().params, {
       store,
       resource: RESOURCE,
+      issuer: ISSUER,
     });
     if (!parsed.ok) throw new Error('setup');
 
@@ -274,12 +283,13 @@ describe('/oauth/authorize request parsing', () => {
 
     expect(location.searchParams.get('error')).toBe('access_denied');
     expect(location.searchParams.get('state')).toBe('xyz');
+    expect(location.searchParams.get('iss')).toBe(ISSUER);
     expect(location.searchParams.has('code')).toBe(false);
   });
 });
 
 describe('authorization codes', () => {
-  it('are stored hashed, expire in 60 seconds and redirect with code and state', async () => {
+  it('are stored hashed, expire in 60 seconds and redirect with code, state and the issuer (RFC 9207)', async () => {
     const store = storeWithClient();
     const now = new Date('2026-10-03T10:00:00Z');
     const { params } = authorizeParams();
@@ -290,6 +300,7 @@ describe('authorization codes', () => {
     expect(location.origin + location.pathname).toBe(CALLBACK);
     expect(location.searchParams.get('code')).toBe(issued.code);
     expect(location.searchParams.get('state')).toBe('xyz');
+    expect(location.searchParams.get('iss')).toBe(ISSUER);
 
     expect(AUTHORIZATION_CODE_TTL_SECONDS).toBe(60);
     expect(store.codes.has(issued.code)).toBe(false);

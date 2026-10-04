@@ -42,6 +42,9 @@ export function authorizationServerMetadata(input: { issuer: string }) {
     revocation_endpoint_auth_methods_supported: ['none'],
     code_challenge_methods_supported: ['S256'],
     client_id_metadata_document_supported: true,
+    // RFC 9207: every authorization response carries `iss`, so ChatGPT
+    // uses its stable redirect URI
+    authorization_response_iss_parameter_supported: true,
     service_documentation: `${issuer}/docs/mcp`,
   };
 }

@@ -11,8 +11,8 @@ import type { OAuthClientRecord, OAuthStore } from './store';
  * - Dynamic Client Registration (RFC 7591): `POST /oauth/register` with the
  *   client's metadata; we mint a `client_id` and store the metadata.
  * - A client metadata document: the client's `client_id` is an https URL
- *   that serves its metadata as JSON (Claude's published identity works
- *   this way). The first `/oauth/authorize` with that id fetches the
+ *   that serves its metadata as JSON (Claude's and ChatGPT's published
+ *   identities work this way). The first `/oauth/authorize` with that id fetches the
  *   document once, validates it and caches it with `metadata_url` set.
  *
  * The one thing a client is held to afterwards is its `redirect_uris`:
@@ -31,6 +31,7 @@ const ClientMetadataSchema = z.object({
   client_name: z.string().trim().min(1).max(200).optional(),
   client_uri: z.string().url().optional(),
   token_endpoint_auth_method: z.string().optional(),
+  token_endpoint_auth_methods_supported: z.array(z.string()).optional(),
   grant_types: z.array(z.string()).optional(),
   response_types: z.array(z.string()).optional(),
   scope: z.string().optional(),
@@ -109,23 +110,21 @@ export function validateClientMetadata(body: unknown): ClientMetadata & {
     }
   }
 
-  if (
-    metadata.token_endpoint_auth_method &&
-    metadata.token_endpoint_auth_method !== 'none'
-  ) {
+  if (!canActAsPublicClient(metadata)) {
     throw new OAuthError(
       'invalid_client_metadata',
-      'Only public clients are registered here: token_endpoint_auth_method must be "none".',
+      'Only public clients are registered here: token_endpoint_auth_method must be "none", or token_endpoint_auth_methods_supported must include it.',
     );
   }
 
-  for (const grant of metadata.grant_types ?? []) {
-    if (!(ALLOWED_GRANT_TYPES as readonly string[]).includes(grant)) {
-      throw new OAuthError(
-        'invalid_client_metadata',
-        `grant_type ${grant} is not supported: authorization_code and refresh_token are.`,
-      );
-    }
+  if (
+    metadata.grant_types &&
+    !metadata.grant_types.includes('authorization_code')
+  ) {
+    throw new OAuthError(
+      'invalid_client_metadata',
+      'grant_types must include authorization_code; refresh_token is the only other grant issued.',
+    );
   }
 
   for (const type of metadata.response_types ?? []) {
@@ -142,6 +141,33 @@ export function validateClientMetadata(body: unknown): ClientMetadata & {
     client_name:
       metadata.client_name ?? new URL(metadata.redirect_uris[0]!).hostname,
   };
+}
+
+/**
+ * Whether the client can redeem a code with PKCE alone. ChatGPT's document
+ * prefers `private_key_jwt` but lists `none` among the methods it supports,
+ * so it is registered as public, as RFC 7591 §3.2.1 lets a server do. A
+ * client that can only authenticate is refused: no secret or key is ever
+ * accepted here.
+ */
+function canActAsPublicClient(metadata: ClientMetadata) {
+  const method = metadata.token_endpoint_auth_method;
+
+  return (
+    !method ||
+    method === 'none' ||
+    (metadata.token_endpoint_auth_methods_supported ?? []).includes('none')
+  );
+}
+
+/**
+ * The grants a client gets: those it asked for that we issue. Claude's
+ * document also lists a JWT-bearer grant, which is dropped, not refused.
+ */
+function issuedGrantTypes(metadata: ClientMetadata) {
+  return ALLOWED_GRANT_TYPES.filter(
+    (grant) => !metadata.grant_types || metadata.grant_types.includes(grant),
+  );
 }
 
 export interface ClientRegistrationResponse {
@@ -177,7 +203,7 @@ export async function registerClient(
     client_id_issued_at: Math.floor(now.getTime() / 1000),
     client_name: metadata.client_name,
     redirect_uris: metadata.redirect_uris,
-    grant_types: metadata.grant_types ?? [...ALLOWED_GRANT_TYPES],
+    grant_types: issuedGrantTypes(metadata),
     response_types: ['code'],
     token_endpoint_auth_method: 'none',
   };

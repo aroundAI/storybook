@@ -4,6 +4,7 @@ import {
   OAuthError,
   createSupabaseOAuthStore,
   mcpResourceFromEnv,
+  siteOriginFromEnv,
   toOAuthError,
 } from '@kit/studio-mcp/server';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
@@ -24,6 +25,7 @@ export function oauthDeps() {
   return {
     store: createSupabaseOAuthStore(getSupabaseServerAdminClient()),
     resource: mcpResourceFromEnv(),
+    issuer: siteOriginFromEnv(),
   };
 }
 

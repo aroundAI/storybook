@@ -82,6 +82,7 @@ test.describe('MCP OAuth: discovery', () => {
       code_challenge_methods_supported: ['S256'],
       grant_types_supported: ['authorization_code', 'refresh_token'],
       token_endpoint_auth_methods_supported: ['none'],
+      authorization_response_iss_parameter_supported: true,
     });
 
     // The endpoint's 401 points at the protected-resource document.

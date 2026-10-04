@@ -22,6 +22,8 @@ export interface AuthorizeRequest {
   state: string | null;
   /** The MCP resource URL the grant is for, canonical. */
   resource: string;
+  /** Our issuer, returned as `iss` on every redirect (RFC 9207). */
+  issuer: string;
 }
 
 export type AuthorizeParse =
@@ -39,6 +41,8 @@ export interface AuthorizeDeps {
   store: OAuthStore;
   /** The configured MCP resource URL. */
   resource: string;
+  /** The authorization server's issuer, exactly as its metadata names it. */
+  issuer: string;
   fetchFn?: typeof fetch;
 }
 
@@ -85,7 +89,7 @@ export async function parseAuthorizeRequest(
   const redirectWith = (error: OAuthError): AuthorizeParse => ({
     ok: false,
     kind: 'redirect',
-    location: errorLocation(redirectUri, error, state),
+    location: errorLocation(redirectUri, error, state, deps.issuer),
     error,
   });
 
@@ -149,6 +153,7 @@ export async function parseAuthorizeRequest(
       codeChallenge,
       state,
       resource: deps.resource,
+      issuer: deps.issuer,
     },
   };
 }
@@ -220,6 +225,8 @@ export async function issueAuthorizationCode(
     location.searchParams.set('state', input.request.state);
   }
 
+  location.searchParams.set('iss', input.request.issuer);
+
   return { code, location: location.toString() };
 }
 
@@ -229,6 +236,7 @@ export function denialLocation(request: AuthorizeRequest) {
     request.redirectUri,
     new OAuthError('access_denied', 'The user declined the request.'),
     request.state,
+    request.issuer,
   );
 }
 
@@ -236,6 +244,7 @@ function errorLocation(
   redirectUri: string,
   error: OAuthError,
   state: string | null,
+  issuer: string,
 ) {
   const location = new URL(redirectUri);
 
@@ -243,6 +252,8 @@ function errorLocation(
   location.searchParams.set('error_description', error.message);
 
   if (state !== null) location.searchParams.set('state', state);
+
+  location.searchParams.set('iss', issuer);
 
   return location.toString();
 }
