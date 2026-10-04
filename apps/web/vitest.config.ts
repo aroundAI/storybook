@@ -360,6 +360,13 @@ export default defineConfig({
         __dirname,
         '../../packages/features/content-analytics/src/server/report-storage.ts',
       ),
+      // FILM-2001: the edit package's retention read. Must sit above
+      // '@kit/content-analytics/server', which would otherwise rewrite it as
+      // a path under server/index.ts.
+      '@kit/content-analytics/server/diagnostics-service': path.resolve(
+        __dirname,
+        '../../packages/features/content-analytics/src/server/diagnostics-service.ts',
+      ),
       '@kit/content-analytics/lib/raw-export-generator': path.resolve(
         __dirname,
         '../../packages/features/content-analytics/src/lib/raw-export-generator.ts',
