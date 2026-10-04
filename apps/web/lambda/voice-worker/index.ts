@@ -189,6 +189,54 @@ async function sendToUser(
 }
 
 /**
+ * A `dub-episode` job (FILM-2007): checked as every voice job is, then
+ * voiced by `processDubEpisode`. A refusal is acknowledged; anything else
+ * throws, so SQS retries it and then dead-letters it.
+ */
+async function runDubEpisode(body: unknown): Promise<void> {
+  const { DubEpisodeMessageSchema } = await import(
+    '@kit/audio-generation/dub-episode'
+  );
+  const message = DubEpisodeMessageSchema.parse(body);
+
+  try {
+    await assertQueuedJobAccess(supabase, {
+      userId: message.userId,
+      accountId: message.accountId,
+      episodeId: message.episodeId,
+    });
+
+    const { processDubEpisode } = await import('./dub-episode');
+    const { dubEpisodeDeps } = await import('./dub-runtime');
+    const outcome = await processDubEpisode(
+      message,
+      supabase,
+      dubEpisodeDeps(supabase),
+    );
+
+    if (outcome.status === 'ready' || outcome.status === 'failed') {
+      await sendToUser(message.userId, {
+        type: outcome.status === 'ready' ? 'llm-result' : 'llm-error',
+        jobType: 'dub-episode',
+        result: {
+          ...outcome,
+          episodeId: message.episodeId,
+          language: message.language,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    if (error instanceof QueuedJobRefused) {
+      console.warn(`[Voice Worker] dub-episode refused: ${error.message}`);
+      return;
+    }
+
+    throw error;
+  }
+}
+
+/**
  * Main Lambda handler
  * Processes batch of SQS messages containing voice generation jobs
  */
@@ -197,7 +245,13 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
 
   const results = await Promise.allSettled(
     event.Records.map(async (record) => {
-      const payload: VoiceJobMessage = JSON.parse(record.body);
+      const body = JSON.parse(record.body) as { kind?: unknown };
+
+      if (body.kind === 'dub-episode') {
+        return runDubEpisode(body);
+      }
+
+      const payload = body as unknown as VoiceJobMessage;
 
       console.log(
         `[Voice Worker] Processing dialogue ${payload.dialogueLineId} for user ${payload.userId.substring(0, 8)}...`,

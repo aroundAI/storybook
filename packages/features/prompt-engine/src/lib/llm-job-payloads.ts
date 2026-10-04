@@ -266,6 +266,12 @@ const TranslateDialogue = z.object({
   userId,
   targetLanguage: z.string(),
   preserveTiming: z.boolean(),
+  /**
+   * More languages for the same run, translated in turn after
+   * `targetLanguage` (FILM-2007): one translation run per episode can be
+   * open at a time, so a localization into several languages is one run.
+   */
+  additionalLanguages: z.array(z.string().min(1)).max(10).optional(),
 });
 
 const AudioCueGeneration = z.object({

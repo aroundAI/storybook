@@ -62,7 +62,7 @@ export interface DialogueLineForBatch {
  * Build voice assignments for all characters in dialogue lines
  * Merges user-provided assignments with character voice profiles
  */
-async function buildVoiceAssignments(
+export async function buildVoiceAssignments(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
   dialogueLines: DialogueLineForBatch[],

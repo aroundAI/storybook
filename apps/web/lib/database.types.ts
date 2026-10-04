@@ -2001,6 +2001,7 @@ export type Database = {
           id: string
           original_dialogue_id: string
           status: string
+          timeline_start_seconds: number | null
           timing_adjustment: number
           translated_text: string
           updated_at: string
@@ -2014,6 +2015,7 @@ export type Database = {
           id?: string
           original_dialogue_id: string
           status?: string
+          timeline_start_seconds?: number | null
           timing_adjustment?: number
           translated_text: string
           updated_at?: string
@@ -2027,6 +2029,7 @@ export type Database = {
           id?: string
           original_dialogue_id?: string
           status?: string
+          timeline_start_seconds?: number | null
           timing_adjustment?: number
           translated_text?: string
           updated_at?: string

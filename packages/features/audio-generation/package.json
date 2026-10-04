@@ -17,6 +17,8 @@
     "./server": "./src/server/index.ts",
     "./server/voice-queue-helper": "./src/server/voice-queue-helper.ts",
     "./server/render-starts": "./src/server/render-starts.ts",
+    "./server/localize-starts": "./src/server/localize-starts.ts",
+    "./dub-episode": "./src/lib/dub-episode.ts",
     "./server-core": "./src/server/core/index.ts",
     "./providers": "./src/providers/index.ts",
     "./lib": "./src/lib/index.ts",

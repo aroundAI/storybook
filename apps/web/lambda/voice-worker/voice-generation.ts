@@ -97,7 +97,7 @@ async function decrypt(encryptedBase64: string): Promise<string> {
 // API Key Fetching
 // =============================================================================
 
-async function getAccountElevenLabsApiKey(
+export async function getAccountElevenLabsApiKey(
   supabase: SupabaseClient<Database>,
   accountId: string,
 ): Promise<string> {

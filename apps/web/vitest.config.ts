@@ -393,6 +393,10 @@ export default defineConfig({
         __dirname,
         '../../packages/features/storage/node_modules/@aws-sdk/client-s3',
       ),
+      '@kit/audio-generation/dub-episode': path.resolve(
+        __dirname,
+        '../../packages/features/audio-generation/src/lib/dub-episode.ts',
+      ),
       '@kit/storage/buckets': path.resolve(
         __dirname,
         '../../packages/features/storage/src/buckets.ts',
