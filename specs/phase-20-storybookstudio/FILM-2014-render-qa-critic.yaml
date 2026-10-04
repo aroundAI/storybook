@@ -70,7 +70,7 @@ notes: >
   issue type; SPIKE-06 decides whether it grows into generation requests.
 
   Built in aroundAI/storybookstudio#12 (merged as dc363cc; pinned at
-  storybookstudio@31127e4 by #629). Lead defaults, the owner may change them:
+  storybookstudio@31127e4 by #630). Lead defaults, the owner may change them:
   silence longer than 1.5 s fails unless the policy carries maxSilenceSeconds
   (EditPolicySchema has no silence field: a FILM-2004 follow-up); QA fails at
   severity 0.5 and above; preview pictures come from FFmpeg, not the canvas

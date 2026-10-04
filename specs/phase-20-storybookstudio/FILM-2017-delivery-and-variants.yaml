@@ -92,7 +92,7 @@ notes: >
   src/studio/intents/common.js.
 
   Fix in aroundAI/storybookstudio#15 (merged as f041b9f, pinned at
-  storybookstudio@31127e4 by #629), found in the packaged-app run of FILM-2015:
+  storybookstudio@31127e4 by #630), found in the packaged-app run of FILM-2015:
   the delivery summary hash included timeline.modified, so the confirmation
   token never matched after a save; it now ignores that field. A delivery
   summary also no longer journals a save as an 'ai save_project' op. FILM-2014

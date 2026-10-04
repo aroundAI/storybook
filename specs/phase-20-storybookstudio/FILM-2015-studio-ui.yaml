@@ -77,7 +77,7 @@ notes: >
   one click away and unchanged.
 
   Built in aroundAI/storybookstudio#16 (merged as 95d54c6; pinned at
-  storybookstudio@31127e4 by #629). Lead defaults, the owner may change them:
+  storybookstudio@31127e4 by #630). Lead defaults, the owner may change them:
   the scene strip's tolerance is 10 percent until EditPolicySchema has a field
   for it (a FILM-2004 follow-up); seasons are labelled by number because
   StoryBook returns no season names; the instruction box maps only a few

@@ -112,7 +112,7 @@ notes: >
   are real since FILM-2017 (aroundAI/storybookstudio#10).
 
   M2 correction (aroundAI/storybookstudio#14, merged as 0b7bc20, pinned at
-  storybookstudio@31127e4 by #629). M2 was first measured on a media-less
+  storybookstudio@31127e4 by #630). M2 was first measured on a media-less
   fixture (#9: scene 3 21.0 s to 13.9 s); the compile-time audio reads never
   decoded anything there. Re-measured with real media: tighten_pacing finds no
   cut on the seeded episode (the card explains: 8 lines fill 19.5 of 21 s, and
