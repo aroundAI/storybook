@@ -188,7 +188,7 @@ notes: |
   ## Daily LLM spend cap (owner decision 2026-10-03)
 
   Owner decision 2026-10-03: daily LLM spend cap, web/server mode only
-  (#TBD-cap). The gateway's openRun reads the team's cap with the mode
+  (#593). The gateway's openRun reads the team's cap with the mode
   (resolveRunPolicy, on the caller's client under RLS) and, for a server
   run that is not a render, sums today's UTC spend before the run row
   exists: public.llm_spend_since, a SECURITY INVOKER aggregate only the

@@ -88,7 +88,7 @@ notes: |
   generation_origin for analytics (FILM-1912).
 
   Owner decision 2026-10-03: daily LLM spend cap, web/server mode only
-  (#TBD-cap). Team settings -> AI has a "Daily Gemini spend cap (USD)"
+  (#593). Team settings -> AI has a "Daily Gemini spend cap (USD)"
   field, account_ai_settings.daily_llm_spend_cap_usd (null is no cap; a
   CHECK keeps a set cap above zero). Owners edit it, members see it
   read-only; the action refuses a bad cap as a value. The page says the
