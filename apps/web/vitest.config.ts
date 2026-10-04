@@ -106,11 +106,6 @@ export default defineConfig({
         '../../packages/agent/src/index.ts',
       ),
       '@kit/llm': path.resolve(__dirname, '../../packages/llm/src/index.ts'),
-      // "Open in Studio" (FILM-2005) imports the deep-link helpers
-      '@kit/desktop-integration': path.resolve(
-        __dirname,
-        '../../packages/features/desktop-integration/src/index.ts',
-      ),
       '@kit/generation/testing': path.resolve(
         __dirname,
         '../../packages/features/generation/src/testing/index.ts',
