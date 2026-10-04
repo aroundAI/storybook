@@ -14,6 +14,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { withI18n } from '~/lib/i18n/with-i18n';
 
+import { editingInStudioOf } from './[episodeSlug]/_components/editing-in-studio-badge';
 import { CollapsibleSeasonSection } from './_components/collapsible-season-section';
 import { CreateEpisodeDialog } from './_components/create-episode-dialog';
 import { CreateEpisodeWizardWrapper } from './_components/create-episode-wizard-wrapper';
@@ -79,6 +80,7 @@ interface Episode {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  edit_state: unknown;
 }
 
 async function EpisodesPage({ params }: EpisodesPageProps) {
@@ -111,7 +113,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
         id, slug, project_id, season_id, number, title, description,
         status, version, duration_seconds, thumbnail_url,
         story_data, screenplay_data, target_duration_seconds,
-        metadata,
+        metadata, edit_state,
         created_at, updated_at, deleted_at
       `,
       )
@@ -126,7 +128,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
         id, slug, project_id, season_id, number, title, description,
         status, version, duration_seconds, thumbnail_url,
         story_data, screenplay_data, target_duration_seconds,
-        metadata,
+        metadata, edit_state,
         created_at, updated_at, deleted_at
       `,
       )
@@ -442,6 +444,7 @@ function mapEpisode(episode: Episode) {
     locationNames: (meta?.location_names as string[]) ?? [],
     characterIds: (meta?.character_ids as string[]) ?? [],
     locationIds: (meta?.location_ids as string[]) ?? [],
+    editingInStudio: editingInStudioOf(episode),
   };
 }
 

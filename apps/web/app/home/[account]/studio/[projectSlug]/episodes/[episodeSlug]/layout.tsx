@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { AssetRow, mapRowToAsset } from '@kit/assets';
+import { getOpenEditSession } from '@kit/desktop-integration/server';
 import { STUDIO_SHOT_COLUMNS, shotFromRow } from '@kit/episodes/lib/shot-row';
 import { listOpenExternalRuns } from '@kit/episodes/lib/stage-runs';
 import type {
@@ -22,6 +23,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { withI18n } from '~/lib/i18n/with-i18n';
 
+import { editingInStudioOf } from './_components/editing-in-studio-badge';
 import { EpisodeContextProvider } from './_components/episode-context-provider';
 import { EpisodeWorkspaceHeader } from './_components/episode-workspace-header';
 import { EpisodeWorkspaceTabs } from './_components/episode-workspace-tabs';
@@ -137,7 +139,7 @@ async function EpisodeWorkspaceLayout({
         status, duration_seconds, thumbnail_url, final_video_url,
         localized_videos, shorts_groups, story_data, screenplay_data, shot_list,
         metadata, version, created_at, updated_at, deleted_at,
-        master_video_asset_id, generation_origin,
+        master_video_asset_id, generation_origin, edit_state,
         season:seasons(id, name, number),
         master_video:assets!episodes_master_video_asset_id_fkey(*),
         title_cards:assets!assets_episode_id_fkey(*)
@@ -226,6 +228,18 @@ async function EpisodeWorkspaceLayout({
     () => [],
   );
 
+  // FILM-2002: the "Editing in Studio" badge, while a session is open; a
+  // failed read shows no badge rather than failing the page
+  const openEditSession = await getOpenEditSession(client, episode.id).catch(
+    () => null,
+  );
+  const editingInStudio = openEditSession
+    ? editingInStudioOf({
+        status: episodeData.status,
+        edit_state: episodeData.edit_state,
+      })
+    : null;
+
   return (
     <EpisodeContextProvider
       episode={episode}
@@ -239,7 +253,7 @@ async function EpisodeWorkspaceLayout({
       initialExternalRuns={externalRuns}
     >
       <div className="flex h-full flex-col bg-[#F5F5F7] dark:bg-[#0A0A0A]">
-        <EpisodeWorkspaceHeader />
+        <EpisodeWorkspaceHeader editingInStudio={editingInStudio} />
         <EpisodeWorkspaceTabs />
         <StageRunBar />
         <div className="flex-1 overflow-y-auto">{children}</div>

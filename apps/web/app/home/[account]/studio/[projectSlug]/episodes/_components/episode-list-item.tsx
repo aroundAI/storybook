@@ -10,6 +10,10 @@ import type { Episode } from '@kit/episodes/types';
 import { Checkbox } from '@kit/ui/checkbox';
 import { cn } from '@kit/ui/utils';
 
+import {
+  type EditingInStudio,
+  EditingInStudioBadge,
+} from '../[episodeSlug]/_components/editing-in-studio-badge';
 import { AssetChipBar } from './asset-chip-bar';
 import { SelectionContext } from './episode-list-wrapper';
 
@@ -33,6 +37,7 @@ interface EpisodeListItemProps {
     locationNames?: string[];
     characterIds?: string[];
     locationIds?: string[];
+    editingInStudio?: EditingInStudio | null;
   };
   account: string;
   projectSlug: string;
@@ -153,6 +158,12 @@ export function EpisodeListItem({
           <h3 className="mb-1 text-sm font-semibold text-gray-900 dark:text-white">
             {episode.title}
           </h3>
+          {episode.editingInStudio && (
+            <EditingInStudioBadge
+              editing={episode.editingInStudio}
+              className="mb-1"
+            />
+          )}
           <p className="mb-1 text-xs text-gray-400 dark:text-gray-500">
             Updated {new Date(episode.updatedAt).toLocaleDateString()}
           </p>
