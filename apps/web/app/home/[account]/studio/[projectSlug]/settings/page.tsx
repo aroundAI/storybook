@@ -404,6 +404,44 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
             </section>
           </If>
 
+          {/* ─── Section: StorybookStudio (FILM-2004 sub-pages) ─── */}
+          <section className="border-t pt-8">
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold">StorybookStudio</h2>
+              <p className="text-sm text-muted-foreground">
+                What the desktop AI editor applies when it cuts an episode.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                {
+                  path: 'brand',
+                  title: 'Brand',
+                  text: 'Fonts, colours, caption style, logo, intro and outro.',
+                },
+                {
+                  path: 'edit-policy',
+                  title: 'Edit policy',
+                  text: 'Shot lengths, transitions, music ducking, captions.',
+                },
+              ].map((link) => (
+                <Link
+                  key={link.path}
+                  data-test={`settings-link-${link.path}`}
+                  href={`/home/${account}/studio/${project.slug}/settings/${link.path}`}
+                  className="flex items-center justify-between rounded-lg border border-border bg-card px-5 py-4 transition-colors hover:bg-accent"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{link.title}</p>
+                    <p className="text-xs text-muted-foreground">{link.text}</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                </Link>
+              ))}
+            </div>
+          </section>
+
           {/* ─── Section: Visibility (1 form, 1 save) ─── */}
           <If condition={permissions.canEdit}>
             <section className="border-t pt-8">

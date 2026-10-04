@@ -516,6 +516,18 @@ export default defineConfig({
         __dirname,
         '../../packages/features/publishing/src/server/oauth-app-credentials.ts',
       ),
+      '@kit/audit-logs/server': path.resolve(
+        __dirname,
+        '../../packages/audit-logs/src/server/index.ts',
+      ),
+      '@kit/desktop-integration/server': path.resolve(
+        __dirname,
+        '../../packages/features/desktop-integration/src/server/index.ts',
+      ),
+      '@kit/desktop-integration': path.resolve(
+        __dirname,
+        '../../packages/features/desktop-integration/src/index.ts',
+      ),
       '@kit': path.resolve(__dirname, '../../packages'),
       '~/lib/server/require-user-in-server-component': path.resolve(
         __dirname,
