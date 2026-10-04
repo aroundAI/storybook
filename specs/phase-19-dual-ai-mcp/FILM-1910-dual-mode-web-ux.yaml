@@ -95,8 +95,8 @@ notes: |
   day is UTC, that running work finishes, and that MCP work and ElevenLabs
   renders are never capped. Enforcement is the gateway's (FILM-1902
   notes). No criterion here asked for it, so none is ticked. Production
-  words the refusal on the five call sites that already word run refusals;
-  the other eighteen show the generic sentence until KB-182 is fixed.
+  words the refusal on every Generate action, through refuseRunError since
+  KB-182 (#590).
   E2E: apps/e2e/tests/generation/daily-spend-cap.spec.ts (the Generate
   test needs a server with a model key, E2E_SERVER_HAS_MODEL_KEY=1, since
   with none LLM_NOT_CONFIGURED is the refusal, as it should be).

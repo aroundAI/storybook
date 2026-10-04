@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TEST_IDS, fakeRunHandle } from '@kit/generation/testing';
+import { ActionRefusal } from '@kit/next/action-result';
 
 import { isGatewayError, openRun, runRefusalMessage } from '../src';
+import { refuseRunError } from '../src/refuse-run-error';
 
 /**
  * Owner decision 2026-10-03: a team's daily spend cap applies to LLM spend
@@ -214,5 +216,19 @@ describe('what a Generate action shows', () => {
 
     expect(runRefusalMessage(error)).toBe((error as Error).message);
     expect(runRefusalMessage(error)).toContain('daily Gemini spend cap');
+  });
+
+  it('becomes a refusal value on every Generate action that words run refusals (KB-182)', async () => {
+    spentToday(6, 10);
+    const { ctx } = teamWithCap(5);
+
+    const refused = await openRun('story', target, origin, ctx)
+      .catch(refuseRunError)
+      .catch((thrown: unknown) => thrown);
+
+    expect(refused).toBeInstanceOf(ActionRefusal);
+    expect((refused as Error).message).toContain(
+      'daily Gemini spend cap of $5.00',
+    );
   });
 });
