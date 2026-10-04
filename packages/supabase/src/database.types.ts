@@ -3186,6 +3186,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "generation_runs_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "mcp_connections"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "generation_runs_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
@@ -7175,6 +7182,7 @@ export type Database = {
         Args: { p_error?: Json; p_run_id: string; p_status: string }
         Returns: Json
       }
+      trim_mcp_tool_calls: { Args: { p_batch?: number }; Returns: number }
       update_character_with_details: {
         Args: {
           p_asset_id: string

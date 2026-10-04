@@ -3,7 +3,7 @@ title: "MCP Endpoint, Personal Access Tokens and Request Auth"
 phase: 19
 phase_name: "Dual AI (Gemini in the app, Claude over MCP)"
 category: feature
-status: PARTIAL
+status: DONE
 audited: "2026-10-03"
 effort: M
 dependencies: []
@@ -66,10 +66,6 @@ test_plan:
     - {text: "pgTAP: a user reads and revokes only their own mcp_connections", met: true, evidence: "apps/web/supabase/tests/database/mcp-connections-rls.test.sql (27 cases; red with the migration skipped); guards MCP DB1-DB5 each go red"}
   e2e:
     - {text: "Settings page: create a PAT, see it once, revoke it; screenshots in the PR (CLAUDE.md)", met: true, evidence: "apps/e2e/tests/mcp/connected-apps.spec.ts (two tokens, revoke, reload; whoami over HTTP before and after); connected-apps-evidence.spec.ts behind CAPTURE_EVIDENCE=1; screenshots in #558"}
-remaining:
-  - criterion: "mcp_tool_calls rows older than 90 days are trimmed by the cron (notes: 'Team owners read; 90-day retention by cron')"
-    reason: "The table and its index exist; no scheduled job deletes old rows yet. The EDD's one cron (expired runs, used codes and tokens, old tool calls) belongs with FILM-1903's leases and FILM-1907's codes"
-    closed_by: "unassigned"
 open_questions: []
 notes: |
   ## Decisions made while building (#558)
@@ -108,7 +104,9 @@ notes: |
 
   mcp_tool_calls: id, connection_id, user_id, account_id, tool, run_id,
   status, error_code, duration_ms, created_at. Team owners read; 90-day
-  retention by cron.
+  retention by cron: the hourly expire-generation-runs route calls
+  trim_mcp_tool_calls() (migration film-1903-run-connection-fk-and-tool-call-trim,
+  with a created_at index), closed 2026-10-04 (#592).
 
   ## Why the route sits outside enhanceRouteHandler
 

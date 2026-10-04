@@ -338,6 +338,7 @@ export const screenplayRefinementStage: StageDefinition<
       episodeId,
       refined.scenes,
       characterIdMap(inputs.characters),
+      ctx.originColumnsAvailable ? run.origin : undefined,
     );
 
     // One transaction under a run: the screenplay (its content_revisions
