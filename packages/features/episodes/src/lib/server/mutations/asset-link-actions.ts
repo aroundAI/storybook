@@ -88,7 +88,8 @@ async function describeAsset(
       input: { kind: 'stage', target },
     },
     { kind: 'web', name: context.name },
-    ctx,
+    // Written here on the server: refused if the team has it off (KB-182)
+    { ...ctx, runMode: () => 'server' },
   );
 
   try {
@@ -143,9 +144,15 @@ export const extractDescriptionAction = enhanceAction(
     } catch (err) {
       console.error('[extractDescription] LLM extraction failed:', err);
 
+      // A refusal is worded for the page; a model failure stays quiet (KB-182)
+      const { runRefusalMessage } = await import('@kit/ai-gateway');
+
       return {
         success: true as const,
-        data: { description: '' },
+        data: {
+          description: '',
+          refusal: runRefusalMessage(err) ?? undefined,
+        },
       };
     }
   },
@@ -226,6 +233,7 @@ const batchCreateUnlinked = enhanceAction(
     );
 
     const newAssets: Array<{ id: string; name: string; type: string }> = [];
+    let refusal: string | undefined;
 
     if (itemsToCreate.length > 0) {
       const ctx: Ctx = { client, accountId: user.id, userId: user.id };
@@ -235,6 +243,8 @@ const batchCreateUnlinked = enhanceAction(
         asset: item,
         storyContext: data.storyContext,
       }));
+
+      const { runRefusalMessage } = await import('@kit/ai-gateway');
 
       // 3. Describe in parallel; a failed description still gets an asset
       const described = await Promise.all(
@@ -253,10 +263,20 @@ const batchCreateUnlinked = enhanceAction(
             return {
               description: fallbackDescription(target.asset.type),
               run: null,
+              refusal: runRefusalMessage(err) ?? undefined,
             };
           }
         }),
       );
+
+      // The assets are still created with a default description; the user
+      // is told why no model wrote them (KB-182)
+      for (const item of described) {
+        if ('refusal' in item && item.refusal) {
+          refusal = item.refusal;
+          break;
+        }
+      }
 
       // 4. Commit each asset row: an upsert on (project_id, type, name), so a
       // soft-deleted asset of the same name is resurrected rather than
@@ -358,6 +378,7 @@ const batchCreateUnlinked = enhanceAction(
         created: newAssets.length,
         linked: existingMap.size,
         failed: data.items.length - newAssets.length - existingMap.size,
+        refusal,
       },
     };
   },

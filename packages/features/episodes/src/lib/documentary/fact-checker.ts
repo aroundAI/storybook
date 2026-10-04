@@ -70,6 +70,7 @@ export async function runFactCheck(
   requiredClaims?: string[],
 ): Promise<FactCheckResult> {
   const { executeLLM, openRun } = await import('@kit/ai-gateway');
+  const { refuseRunError } = await import('@kit/ai-gateway/refuse-run-error');
   const { accountId, userId, supabase } = await getProjectContext(projectId);
 
   // Fetch all verified facts for this project
@@ -142,8 +143,8 @@ export async function runFactCheck(
       input: { kind: 'stage', target: { projectId } },
     },
     { kind: 'web', name: 'documentary.factCheck' },
-    { client: supabase, accountId, userId },
-  );
+    { client: supabase, accountId, userId, runMode: () => 'server' },
+  ).catch(refuseRunError);
 
   let result: Awaited<ReturnType<typeof executeLLM<FactCheckLLMResponse>>>;
 
@@ -161,7 +162,9 @@ export async function runFactCheck(
     await run.complete();
   } catch (error) {
     await run.fail(error).catch(() => undefined);
-    throw error;
+    // A refusal the user can act on (the daily cap) reaches the action's
+    // withRefusals as words; anything else is rethrown as it was (KB-182)
+    return refuseRunError(error);
   }
 
   const check = result.data.fact_check;

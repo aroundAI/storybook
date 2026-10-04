@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ActionRefusal } from '@kit/next/action-result';
+
 import { factCheckContentAction } from '../src/server/fact-check-actions';
 
 // FILM-1123. The action is what a person reaches runFactCheck through: it
@@ -89,5 +91,15 @@ describe('factCheckContentAction (FILM-1123)', () => {
       error:
         'Could not fact-check the content. Try again; if it keeps failing, reload the page.',
     });
+  });
+
+  it('returns a refused run in the gateway’s words (KB-182)', async () => {
+    runFactCheck.mockRejectedValue(
+      new ActionRefusal('Server generation is off.'),
+    );
+
+    await expect(
+      factCheckContentAction({ projectId: PROJECT, content: 'text' }),
+    ).resolves.toEqual({ ok: false, error: 'Server generation is off.' });
   });
 });

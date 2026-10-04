@@ -14,15 +14,9 @@ const SKIPPED = new Set([
 
 /**
  * Callers of `openRun` that have no page to word a refusal for: an MCP tool,
- * a skill, or a call that degrades gracefully by design. Each needs its reason.
+ * whose refusal is a tool result. Each needs its reason.
  */
 const ALLOWED: Record<string, string> = {
-  'packages/features/episodes/src/server/canon-actions.ts':
-    'extractCanonChanges falls back to a basic extraction on any model failure',
-  'packages/features/episodes/src/lib/server/mutations/asset-link-actions.ts':
-    'asset descriptions fall back to an empty or default description by design',
-  'packages/features/episodes/src/lib/documentary/fact-checker.ts':
-    'an agent skill, not an action: its caller reports the failure',
   'packages/features/studio-mcp/src/server/tools/edit/writer.ts':
     'MCP tool: the refusal is a tool result, not a server action',
   'packages/features/studio-mcp/src/server/tools/generation/index.ts':

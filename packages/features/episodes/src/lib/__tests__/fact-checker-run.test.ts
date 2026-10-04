@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { SERVER_GENERATION_OFF_REFUSAL } from '@kit/ai-gateway';
+import { RunError } from '@kit/generation';
+import { ActionRefusal } from '@kit/next/action-result';
+
 import { runFactCheck } from '../documentary/fact-checker';
 
 // FILM-1123. runFactCheck reads the project's verified facts, hands them and
@@ -12,6 +16,7 @@ import { runFactCheck } from '../documentary/fact-checker';
 // the project, writes through it and closes it.
 
 const executeLLM = vi.fn();
+const refused = vi.hoisted(() => ({ error: null as Error | null }));
 const runs = vi.hoisted(
   () =>
     [] as Array<{
@@ -27,6 +32,7 @@ vi.mock('@kit/ai-gateway', async (importOriginal) => {
   const { fakeRunHandle } = await import('@kit/generation/testing');
 
   return {
+    ...gateway,
     executeLLM: (config: { templateSlug: string; run?: never }) => {
       gateway.requireRun(`executeLLM(${config.templateSlug})`, config.run);
       return executeLLM(config);
@@ -37,6 +43,8 @@ vi.mock('@kit/ai-gateway', async (importOriginal) => {
       _origin: unknown,
       ctx: Record<string, unknown>,
     ) => {
+      if (refused.error) throw refused.error;
+
       // The fake store's ids are its own UUIDs; `target` is what was asked
       const { run } = fakeRunHandle({
         stage: stage as never,
@@ -97,6 +105,7 @@ describe('runFactCheck (FILM-1123)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     runs.length = 0;
+    refused.error = null;
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     factsQuery.mockReturnValue({ data: [FACT], error: null });
   });
@@ -132,8 +141,25 @@ describe('runFactCheck (FILM-1123)', () => {
       target: { type: 'project', id: 'project-1', accountId: 'account-1' },
       ctx: { accountId: 'account-1', userId: 'user-1' },
     });
+    // Asks for a server run, so a team with server generation off is refused
+    expect((runs[0]!.ctx.runMode as () => string)()).toBe('server');
     expect(executeLLM.mock.calls[0]![0].run).toBe(runs[0]!.run);
     expect(runs[0]!.run.status).toBe('committed');
+  });
+
+  it('refuses in words when the run is refused, opening nothing (KB-182)', async () => {
+    refused.error = new RunError('SERVER_GENERATION_DISABLED', 'internal');
+
+    const refusal = await runFactCheck('project-1', 'text').catch(
+      (error: unknown) => error,
+    );
+
+    expect(refusal).toBeInstanceOf(ActionRefusal);
+    expect((refusal as ActionRefusal).message).toBe(
+      SERVER_GENERATION_OFF_REFUSAL,
+    );
+    expect(runs).toEqual([]);
+    expect(executeLLM).not.toHaveBeenCalled();
   });
 
   it('marks the run failed when the model call fails', async () => {

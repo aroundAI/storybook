@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  SERVER_GENERATION_OFF_REFUSAL,
+  STAGE_IN_PROGRESS_REFUSAL,
+} from '@kit/ai-gateway';
+import { RunError } from '@kit/generation';
 import { recordingClient, tableResponder } from '@kit/generation/testing';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -18,6 +23,7 @@ import { extractCanonChangesAction } from '../src/server/canon-actions';
 const USER = '44444444-4444-4444-8444-444444444444';
 const calls = vi.hoisted(() => [] as Array<{ variables: unknown }>);
 const replies = vi.hoisted(() => [] as unknown[]);
+const refused = vi.hoisted(() => ({ error: null as Error | null }));
 
 vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: vi.fn(),
@@ -38,10 +44,12 @@ vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
  * and the run writes the stage's brief: here a fake run whose writer answers
  * from `replies`, so the brief's variables are what reached the model.
  */
-vi.mock('@kit/ai-gateway', async () => {
+vi.mock('@kit/ai-gateway', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@kit/ai-gateway')>();
   const { fakeRunHandle } = await import('@kit/generation/testing');
 
   return {
+    ...actual,
     openRun: async (
       stage: 'episode_summary',
       target: {
@@ -50,8 +58,10 @@ vi.mock('@kit/ai-gateway', async () => {
         projectId: string | null;
         input: never;
       },
-    ) =>
-      fakeRunHandle({
+    ) => {
+      if (refused.error) throw refused.error;
+
+      return fakeRunHandle({
         stage,
         targetId: target.id,
         accountId: target.accountId,
@@ -72,7 +82,8 @@ vi.mock('@kit/ai-gateway', async () => {
           },
           dispatch: async () => undefined,
         },
-      }).run,
+      }).run;
+    },
   };
 });
 
@@ -97,6 +108,7 @@ describe('extractCanonChangesAction on the episode_summary stage', () => {
   beforeEach(() => {
     calls.length = 0;
     replies.length = 0;
+    refused.error = null;
   });
 
   it('renders the same variables and returns the same extraction as before, writing nothing', async () => {
@@ -124,6 +136,40 @@ describe('extractCanonChangesAction on the episode_summary stage', () => {
       '[Canon Extraction] LLM extraction failed, falling back to basic:',
       expect.objectContaining({ name: 'StageOutputRejected' }),
     );
+
+    warn.mockRestore();
+  });
+
+  it.each([
+    ['SERVER_GENERATION_DISABLED', SERVER_GENERATION_OFF_REFUSAL],
+    ['RUN_IN_PROGRESS', STAGE_IN_PROGRESS_REFUSAL],
+  ] as const)(
+    'returns the basic summary and says in words why no model ran (%s)',
+    async (code, words) => {
+      clientWithFixtures();
+      refused.error = new RunError(code, 'internal');
+      const warn = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+
+      const result = await extractCanonChangesAction(fixture.input);
+
+      expect(result.refusal).toBe(words);
+      expect(result.episodeSummary).toContain('Maya confronts Dev');
+      expect(result.immutableEvents).toEqual([]);
+
+      warn.mockRestore();
+    },
+  );
+
+  it('stays quiet about a model failure that is not a refusal', async () => {
+    clientWithFixtures();
+    replies.push({ summary: 'no extraction object' });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const result = await extractCanonChangesAction(fixture.input);
+
+    expect(result.refusal).toBeUndefined();
 
     warn.mockRestore();
   });

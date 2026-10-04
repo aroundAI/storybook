@@ -1394,6 +1394,8 @@ export interface CanonExtractionResult {
   keyEvents: string[];
   characterChanges: string[];
   worldState?: ExtractedWorldState;
+  /** Why no model ran, in words, when the fallback extraction is returned */
+  refusal?: string;
 }
 
 /**
@@ -1455,7 +1457,9 @@ export const extractCanonChangesAction = enhanceAction(
           input: { kind: 'stage', target: data },
         },
         { kind: 'web', name: 'episodes.extractCanonChanges' },
-        runCtx,
+        // The server runs it below, so a team with server generation off is
+        // refused here, not given an external run it cannot execute (KB-182)
+        { ...runCtx, runMode: () => 'server' },
       );
 
       const { commit } = await executeServerRun<CanonExtractionResult>(
@@ -1470,6 +1474,11 @@ export const extractCanonChangesAction = enhanceAction(
         err,
       );
 
+      // A refusal (server generation off, the stage held, no key, the daily
+      // cap) is worded for the page; a model failure stays quiet (KB-182)
+      const { runRefusalMessage } = await import('@kit/ai-gateway');
+      const refusal = runRefusalMessage(err) ?? undefined;
+
       // Fallback: return minimal extraction with truncated summary
       const words = data.storyContent.split(/\s+/).slice(0, 50).join(' ');
       return {
@@ -1481,6 +1490,7 @@ export const extractCanonChangesAction = enhanceAction(
         sentimentScore: 0.5,
         keyEvents: [],
         characterChanges: [],
+        refusal,
       };
     }
   },
