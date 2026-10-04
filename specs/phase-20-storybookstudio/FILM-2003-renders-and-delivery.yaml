@@ -3,7 +3,7 @@ title: "Episode Renders and the Delivery Package"
 phase: 20
 phase_name: "StorybookStudio (the desktop AI editor)"
 category: feature
-status: DRAFT
+status: DONE
 effort: L
 dependencies:
   - spec_id: "FILM-2002"
@@ -25,48 +25,64 @@ summary: >
   "Data model changes" (episode_renders), "API" (delivery package), "Workers,
   jobs and the status machine".
 acceptance_criteria:
-  - text: "Migration creates episode_renders (id, episode_id FK cascade, edit_session_id FK, preset, language default 'en', aspect, file_url, file_path, file_size_bytes, duration_seconds, thumbnail_url, captions_url, qa jsonb default '{}', status uploading|ready|failed|superseded, created_by, created_at) with an index on (episode_id, status); RLS: project members read, the session's user writes"
-    met: false
-    reason: "not built — spec drafted 2026-10-04"
-  - text: "request_render_upload({sessionId, preset, language, aspect, bytes, contentType}) (studio:write) validates preset against the fixed list (youtube_16x9, shorts_9x16, tiktok_9x16, reels_9x16, square_1x1, master), inserts a row in status uploading, and returns {renderId, uploadUrl, key} where uploadUrl is a presigned PUT (1 h, exact size and content type) under projects/{projectId}/episodes/{episodeId}/renders/{renderId}.mp4 via the existing presign service"
-    met: false
-    reason: "not built"
-  - text: "finalize_render({renderId, durationSeconds, qa, captionsKey?, thumbnailKey?}) verifies the object exists with the declared size (HEAD on R2), stores the probe and QA data, sets status ready; a missing object sets failed with the reason"
-    met: false
-    reason: "not built"
-  - text: "deliver_edit({sessionId, episodeVersion, renders:[{renderId, primary?}], report, qa}) requires every listed render ready and exactly one primary; refuses with TARGET_CHANGED when episodes.version != episodeVersion (the content changed in StoryBook during the edit), returning the current etag; on success, in one transaction: final_video_url and master_video_asset_id from the primary render, edit_state updated, the session set delivered with the summary and report, previous ready renders of the episode set superseded, episodes.status = 'ready', episodes.version incremented"
-    met: false
-    reason: "not built"
-  - text: "deliver_edit refuses a viewer role (FORBIDDEN) and refuses delivery on a published episode unless the caller is project admin/owner, per README open question 5 (supersede on allow)"
-    met: false
-    reason: "not built"
-  - text: "The report jsonb is validated against ExplainWhyReportSchema (versions[], finalDuration, aiOps, userOps, explain{scenes[]}); the qa jsonb against QaResultSchema ({pass, issues[{type, severity, timeRange, scene, detail}]}); both schemas live in @kit/desktop-integration and are copied into the fork"
-    met: false
-    reason: "not built"
+  - text: "Migration creates episode_renders (id, episode_id FK cascade, edit_session_id FK, preset, language default 'en', aspect, file_url, file_path, file_size_bytes, duration_seconds, thumbnail_url, captions_url, qa jsonb default '{}', status uploading|ready|failed|superseded, failure_reason, created_by, created_at) with an index on (episode_id, status); RLS: project members read, the session's user writes (insert while their session is open, for the row's own key; update only while uploading, to ready or failed; only the columns finalize writes are updatable)"
+    met: true
+    evidence: "apps/web/supabase/migrations/20261004162108_film-2003-episode-renders.sql:23 (table, CHECKs on preset, aspect, status and the row's own key), :73 (index), :99 (read), :111 (insert), :134 (finalize); RLS matrix in apps/web/supabase/tests/database/episode-renders.test.sql"
+    reason: "Corrected (#620): failure_reason is added so a failed render says why (AC3); the write rules are spelled out as built."
+  - text: "request_render_upload({sessionId, preset, language, aspect, bytes, contentType}) (studio:write) validates preset against the fixed list (youtube_16x9, shorts_9x16, tiktok_9x16, reels_9x16, square_1x1, master), inserts a row in status uploading, and returns {renderId, uploadUrl, key} where uploadUrl is a presigned PUT (1 h, exact size and content type) under projects/{projectId}/episodes/{episodeId}/renders/{renderId}.mp4 via the storage adapter's getSignedUploadUrl, after KB-28's project check as the caller"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/tools/studio/renders.ts:172; RENDER_UPLOAD_TTL_SECONDS packages/features/studio-mcp/src/server/tools/studio/renders.ts:52; key rule packages/features/storage/src/upload-paths.ts:31, builder :170; packages/features/studio-mcp/__tests__/tools/studio-render-tools.test.ts; apps/web/app/api/storage/presign/__tests__/render-upload.s3-local.test.ts (exact size on a real SigV4 server)"
+  - text: "finalize_render({renderId, durationSeconds, qa, captionsKey?, thumbnailKey?}) verifies the object exists with the declared size (HEAD on R2, a listing on Supabase storage, through the adapters' new stat), stores the probe and QA data, sets status ready; a missing or wrong-sized object sets failed with the reason"
+    met: true
+    evidence: "packages/features/studio-mcp/src/server/tools/studio/renders.ts:340, failure packages/features/studio-mcp/src/server/tools/studio/renders.ts:429; packages/features/storage/src/types.ts (stat); packages/features/storage/__tests__/stat.test.ts"
+  - text: "deliver_edit({sessionId, episodeVersion, renders:[{renderId, primary?}], report, qa}) requires every listed render ready and exactly one primary; refuses with TARGET_CHANGED when episodes.version != episodeVersion (the content changed in StoryBook during the edit), returning the current version; on success, in one transaction: an assets row (master_video) for the primary render, final_video_url and master_video_asset_id from it, the primary's language publish slot set to it, edit_state updated, the session set delivered with the summary and report, previous ready renders of the episode set superseded, episodes.status = 'ready', episodes.version incremented"
+    met: true
+    evidence: "public.deliver_edit apps/web/supabase/migrations/20261004162108_film-2003-episode-renders.sql:178 (TARGET_CHANGED :253, asset :306, supersede :328, kit.end_edit_session :335, ready :362); tool packages/features/studio-mcp/src/server/tools/studio/renders.ts:559; refusals change nothing and the success sets every field: apps/web/supabase/tests/database/episode-renders.test.sql"
+    reason: "Corrected (#620): TARGET_CHANGED returns currentVersion; the package etag is FILM-2001's (not on this branch), so details.etag is null until get_edit_package lands, and the Studio re-syncs through get_edit_package either way. The language slot and the asset row are lead decision 3 (TEAM_BRIEF_v5) and the reason Publish Now sends the primary (packages/features/publishing/__tests__/studio-render-publish.test.ts)."
+  - text: "deliver_edit refuses a viewer role (FILM-2002's open already refuses viewers; deliver_edit refuses a viewer and anyone but the session's user) and refuses delivery on a published episode unless the caller is project admin/owner, per README open question 5 (supersede on allow)"
+    met: true
+    evidence: "apps/web/supabase/migrations/20261004162108_film-2003-episode-renders.sql:229 (viewer), :249 (published); apps/web/supabase/tests/database/episode-renders.test.sql (viewer, owner on another's session, member on a published episode refused; admin allowed and supersedes)"
+  - text: "The report jsonb is validated against ExplainWhyReportSchema (versions[], finalDuration, aiOps, userOps, explain{scenes[]}); the qa jsonb against QaResultSchema ({pass, issues[{type, severity 0-1, timeRange, scene, detail, repairIntent?}]}); both schemas live in @kit/desktop-integration (zod only) for the fork to copy"
+    met: true
+    evidence: "packages/features/desktop-integration/src/explain-why-report.schema.ts:55, qa-result.schema.ts:44, delivery-package.schema.ts:86, render-presets.ts:16; packages/features/desktop-integration/__tests__/delivery-schemas.test.ts"
+    reason: "The copy into the fork is FILM-2001's sync script (scripts/sync-studio-contracts.mjs), not on this branch; the files import only zod and each other."
   - text: "Publish page lists the episode's ready renders by preset and language, defaults the primary to the publish target, and offers 9:16 renders to TikTok, Reels and Shorts targets; the manual upload remains as a fallback"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/render-picker.tsx:67, mounted apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx:1506; KB-123 save rule admits the episode's render folder packages/features/storage/src/episode-video.ts:75; apps/e2e/tests/mcp/studio-delivery.spec.ts"
   - text: "Stale uploading renders older than 24 h are set failed by the hourly cron route"
-    met: false
-    reason: "not built"
+    met: true
+    evidence: "public.expire_stale_render_uploads apps/web/supabase/migrations/20261004162108_film-2003-episode-renders.sql:393; apps/web/app/api/cron/expire-generation-runs/route.ts:127; apps/web/app/api/cron/expire-generation-runs/__tests__/expire-render-uploads.test.ts"
 test_plan:
   unit:
-    - {text: "Preset list, delivery package schema, report schema: valid and invalid cases", met: false, reason: "not built"}
-    - {text: "deliver_edit transaction: version mismatch refuses and changes nothing; success sets every field and supersedes older renders", met: false, reason: "not built"}
+    - {text: "Preset list, delivery package schema, report schema: valid and invalid cases", met: true, evidence: "packages/features/desktop-integration/__tests__/delivery-schemas.test.ts"}
+    - {text: "deliver_edit transaction: version mismatch refuses and changes nothing; success sets every field and supersedes older renders", met: true, evidence: "apps/web/supabase/tests/database/episode-renders.test.sql (run as SQL, pgTAP); the tool's mapping in packages/features/studio-mcp/__tests__/tools/studio-render-tools.test.ts"}
   integration:
-    - {text: "SDK client: request → PUT a fixture mp4 to the URL → finalize → deliver; publish page shows the render (Playwright reads it)", met: false, reason: "not built"}
-    - {text: "pgTAP: RLS matrix on episode_renders; status CHECK; a viewer cannot insert", met: false, reason: "not built"}
+    - {text: "SDK client: request → PUT a fixture mp4 to the URL → finalize → deliver; publish page shows the render (Playwright reads it)", met: true, evidence: "apps/e2e/tests/mcp/studio-delivery.spec.ts (local Supabase storage); R2 signing on MinIO in apps/web/app/api/storage/presign/__tests__/render-upload.s3-local.test.ts"}
+    - {text: "pgTAP: RLS matrix on episode_renders; status CHECK; a viewer cannot insert", met: true, evidence: "apps/web/supabase/tests/database/episode-renders.test.sql"}
   e2e:
-    - {text: "Publish flow with a delivered render reaches the publish worker with the render's URL (mocked platform)", met: false, reason: "not built"}
+    - {text: "Publish flow with a delivered render reaches the publish worker with the render's URL (mocked platform)", met: true, evidence: "packages/features/publishing/__tests__/studio-render-publish.test.ts"}
 open_questions:
-  - "Keep superseded render files in R2 for 30 days then purge via vendor-data-purge, or keep forever? Recommended 30 days."
+  - "Keep superseded render files in R2 for 30 days then purge via vendor-data-purge, or keep forever? Recommended 30 days. Lead default (2026-10-04): the recommendation; the purge is not built (see notes)."
 notes: >
-  The upload path reuses POST /api/storage/presign's service (exact size and
-  type on R2, 1 h) rather than the route, since the caller is a tool. Thumbnails
-  and captions ride the same presign with their own keys. The Studio always
-  shows a confirmation before calling request_render_upload (FILM-2017); the
-  tool itself cannot know that, so the web app treats a delivery as an
-  explicit user act and records created_by.
+  Built in #620. The upload path reuses the storage adapter's
+  getSignedUploadUrl (exact size and type on R2, 1 h) with the presign
+  route's two rules (KB-28 key shape, canWriteProjectKey as the caller)
+  rather than the route, since the caller is a tool. Thumbnails (image) and
+  captions (WebVTT, a new 2 MB captions category in UPLOAD_CONSTRAINTS and
+  the bucket's types) ride the same presign with their own keys. Renders
+  stay within the project-assets limits: video/mp4 up to 500 MB. The Studio
+  always shows a confirmation before calling request_render_upload
+  (FILM-2017); the tool itself cannot know that, so the web app treats a
+  delivery as an explicit user act and records created_by.
+  deliver_edit is public.deliver_edit, SECURITY DEFINER and executable by
+  authenticated, since the tool calls it through PostgREST as the user; the
+  brief named it kit.deliver_edit. Every episodes update bumps version, and
+  a delivery makes two (kit.end_edit_session's edit_state write, then the
+  ready update); record_edit_events writes only edit_sessions, so the
+  version the Studio got from open_edit_session holds through the edit.
+  Lead default, owner may change: superseded render files are kept; the
+  recommended 30-day purge via vendor-data-purge is not built here and is
+  a follow-up for whoever builds the Edit record's retention (FILM-2006).
 feature:
   database:
     tables: ["episode_renders"]
